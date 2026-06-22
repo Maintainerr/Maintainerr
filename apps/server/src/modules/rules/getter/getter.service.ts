@@ -12,6 +12,7 @@ import { RulesDto } from '../dtos/rules.dto';
 import { ArrLookupCache } from '../helpers/arr-lookup-cache';
 import { EmbyGetterService } from './emby-getter.service';
 import { JellyfinGetterService } from './jellyfin-getter.service';
+import { KodiGetterService } from './kodi-getter.service';
 import { PlexGetterService } from './plex-getter.service';
 import { RadarrGetterService } from './radarr-getter.service';
 import { SeerrGetterService } from './seerr-getter.service';
@@ -30,6 +31,7 @@ export class ValueGetterService {
     private readonly streamystatsGetter: StreamystatsGetterService,
     private readonly jellyfinGetter: JellyfinGetterService,
     private readonly embyGetter: EmbyGetterService,
+    private readonly kodiGetter: KodiGetterService,
     private readonly mediaServerFactory: MediaServerFactory,
   ) {}
 
@@ -48,7 +50,8 @@ export class ValueGetterService {
       // can still evaluate against a configured Emby server.
       case Application.PLEX:
       case Application.JELLYFIN:
-      case Application.EMBY: {
+      case Application.EMBY:
+      case Application.KODI: {
         const serverType =
           await this.mediaServerFactory.getConfiguredServerType();
 
@@ -59,7 +62,9 @@ export class ValueGetterService {
               ? this.plexGetter
               : serverType === MediaServerType.EMBY
                 ? this.embyGetter
-                : null;
+                : serverType === MediaServerType.KODI
+                  ? this.kodiGetter
+                  : null;
 
         return getter?.get(val2, libItem, dataType, ruleGroup) ?? null;
       }

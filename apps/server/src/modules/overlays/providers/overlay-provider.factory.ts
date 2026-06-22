@@ -37,6 +37,10 @@ export class OverlayProviderFactory {
         return this.jellyfinProvider;
       case MediaServerType.EMBY:
         return this.embyProvider;
+      case MediaServerType.KODI:
+        // Kodi exposes no writable per-item poster surface over JSON-RPC, so
+        // overlays are unsupported (gated by MediaServerFeature.OVERLAYS).
+        return null;
       default:
         return null;
     }

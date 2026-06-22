@@ -5,6 +5,7 @@ import { Settings } from '../../settings/entities/settings.entities';
 import { SettingsDataService } from '../../settings/settings-data.service';
 import { EmbyAdapterService } from './emby/emby-adapter.service';
 import { JellyfinAdapterService } from './jellyfin/jellyfin-adapter.service';
+import { KodiAdapterService } from './kodi/kodi-adapter.service';
 import { MediaServerSwitchState } from './media-server-switch-state.service';
 import { MediaServerFactory } from './media-server.factory';
 import { PlexAdapterService } from './plex/plex-adapter.service';
@@ -46,6 +47,13 @@ describe('MediaServerFactory', () => {
     loginWithCredentials: jest.fn(),
   } as unknown as jest.Mocked<EmbyAdapterService>;
 
+  const kodiAdapter = {
+    isSetup: jest.fn(),
+    initialize: jest.fn(),
+    uninitialize: jest.fn(),
+    testConnection: jest.fn(),
+  } as unknown as jest.Mocked<KodiAdapterService>;
+
   const createSettings = (overrides: Partial<Settings> = {}): Settings =>
     Object.assign(new Settings(), {
       media_server_type: null,
@@ -57,6 +65,8 @@ describe('MediaServerFactory', () => {
       jellyfin_api_key: null,
       emby_url: null,
       emby_api_key: null,
+      kodi_url: null,
+      kodi_username: null,
       ...overrides,
     });
 
@@ -68,6 +78,7 @@ describe('MediaServerFactory', () => {
       plexAdapter,
       jellyfinAdapter,
       embyAdapter,
+      kodiAdapter,
       logger,
     );
 
@@ -75,6 +86,7 @@ describe('MediaServerFactory', () => {
     plexAdapter.isSetup.mockReturnValue(true);
     jellyfinAdapter.isSetup.mockReturnValue(true);
     embyAdapter.isSetup.mockReturnValue(true);
+    kodiAdapter.isSetup.mockReturnValue(true);
   });
 
   it('throws ServiceUnavailableException while switch is in progress', async () => {
@@ -251,14 +263,46 @@ describe('MediaServerFactory', () => {
     );
   });
 
+  it('returns and initializes Kodi adapter when configured', async () => {
+    settingsDataService.getSettings.mockResolvedValue(
+      createSettings({
+        media_server_type: MediaServerType.KODI,
+        kodi_url: 'http://kodi.local:8080',
+        kodi_username: 'kodi',
+      }),
+    );
+    kodiAdapter.isSetup.mockReturnValueOnce(false).mockReturnValueOnce(true);
+
+    const service = await factory.getService();
+
+    expect(kodiAdapter.initialize).toHaveBeenCalledTimes(1);
+    expect(service).toBe(kodiAdapter);
+  });
+
+  it('infers Kodi when only Kodi credentials exist and type is unset', async () => {
+    settingsDataService.getSettings.mockResolvedValue(
+      createSettings({
+        media_server_type: null,
+        kodi_url: 'http://kodi.local:8080',
+        kodi_username: 'kodi',
+      }),
+    );
+
+    await expect(factory.getConfiguredServerType()).resolves.toBe(
+      MediaServerType.KODI,
+    );
+  });
+
   it('uninitializes the correct adapter by server type', () => {
     factory.uninitializeServer(MediaServerType.PLEX);
     factory.uninitializeServer(MediaServerType.JELLYFIN);
     factory.uninitializeServer(MediaServerType.EMBY);
+    factory.uninitializeServer(MediaServerType.KODI);
 
     expect(plexAdapter.uninitialize).toHaveBeenCalledTimes(1);
     expect(jellyfinAdapter.uninitialize).toHaveBeenCalledTimes(1);
     expect(embyAdapter.uninitialize).toHaveBeenCalledTimes(1);
+    expect(kodiAdapter.uninitialize).toHaveBeenCalledTimes(1);
   });
 
   it('throws for unsupported type in getServiceByType', async () => {

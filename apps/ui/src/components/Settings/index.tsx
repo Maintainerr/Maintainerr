@@ -53,6 +53,10 @@ const getMediaServerTypeFromPath = (
     return MediaServerType.EMBY
   }
 
+  if (pathname.startsWith('/settings/kodi')) {
+    return MediaServerType.KODI
+  }
+
   if (
     pathname.startsWith('/settings/plex') ||
     pathname.startsWith('/settings/tautulli')
@@ -82,6 +86,15 @@ const getMediaServerRoute = (
       content: mediaServerTabContent('Emby'),
       route: '/settings/emby',
       regex: /^\/settings\/emby$/,
+    }
+  }
+
+  if (mediaServerType === MediaServerType.KODI) {
+    return {
+      text: 'Kodi',
+      content: mediaServerTabContent('Kodi'),
+      route: '/settings/kodi',
+      regex: /^\/settings\/kodi$/,
     }
   }
 

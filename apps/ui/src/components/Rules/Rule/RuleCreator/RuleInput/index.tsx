@@ -62,9 +62,20 @@ interface IRuleInput {
   sonarrSettingsId?: number | null
 }
 
+/** Media-server applications — exactly one (the active server) is ever shown. */
+const MEDIA_SERVER_APPLICATIONS = [
+  Application.PLEX,
+  Application.JELLYFIN,
+  Application.EMBY,
+  Application.KODI,
+]
+
 /**
- * Helper function to determine if an application should be filtered out
- * based on server selection and media server type
+ * Determine whether a rule application should be hidden, given the configured
+ * services and the active media server. Rules are gated so the builder only
+ * offers the current media server's properties plus the services that are
+ * actually available — never another media server's, and never a companion
+ * service tied to a different server.
  */
 const shouldFilterApplication = (
   appId: number,
@@ -73,37 +84,45 @@ const shouldFilterApplication = (
   isPlex: boolean,
   isJellyfin: boolean,
   isEmby: boolean = false,
+  isKodi: boolean = false,
 ): boolean => {
-  // Filter out Radarr if no Radarr server is selected
+  // Filter out Radarr/Sonarr if their server isn't selected.
   if (
     appId === Application.RADARR &&
     (radarrSettingsId === undefined || radarrSettingsId === null)
   ) {
     return true
   }
-  // Filter out Sonarr if no Sonarr server is selected
   if (
     appId === Application.SONARR &&
     (sonarrSettingsId === undefined || sonarrSettingsId === null)
   ) {
     return true
   }
-  // Filter out Plex/Tautulli on non-Plex servers (Jellyfin, Emby).
+
+  // Show only the active media server's own application.
+  const activeServerApp = isPlex
+    ? Application.PLEX
+    : isJellyfin
+      ? Application.JELLYFIN
+      : isEmby
+        ? Application.EMBY
+        : isKodi
+          ? Application.KODI
+          : null
   if (
-    (isJellyfin || isEmby) &&
-    (appId === Application.PLEX || appId === Application.TAUTULLI)
+    MEDIA_SERVER_APPLICATIONS.includes(appId) &&
+    appId !== activeServerApp
   ) {
     return true
   }
-  // Filter out Jellyfin and its Streamystats companion on Plex/Emby.
-  if (
-    (isPlex || isEmby) &&
-    (appId === Application.JELLYFIN || appId === Application.STREAMYSTATS)
-  ) {
+
+  // Companion services are tied to a specific media server.
+  // Tautulli is Plex-only; Streamystats is Jellyfin-only.
+  if (appId === Application.TAUTULLI && !isPlex) {
     return true
   }
-  // Filter out Emby on Plex/Jellyfin.
-  if ((isPlex || isJellyfin) && appId === Application.EMBY) {
+  if (appId === Application.STREAMYSTATS && !isJellyfin) {
     return true
   }
   return false
@@ -288,7 +307,7 @@ const RuleInput = (props: IRuleInput) => {
   )
 
   const { data: constants, isLoading: constantsLoading } = useRuleConstants()
-  const { isPlex, isJellyfin, isEmby } = useMediaServerType()
+  const { isPlex, isJellyfin, isEmby, isKodi } = useMediaServerType()
 
   const availableApplications = useMemo(() => {
     return (
@@ -302,6 +321,7 @@ const RuleInput = (props: IRuleInput) => {
               isPlex,
               isJellyfin,
               isEmby,
+              isKodi,
             ) &&
             (app.mediaType === MediaType.BOTH ||
               props.mediaType === app.mediaType),
@@ -322,6 +342,7 @@ const RuleInput = (props: IRuleInput) => {
     constants?.applications,
     isEmby,
     isJellyfin,
+    isKodi,
     isPlex,
     props.dataType,
     props.mediaType,

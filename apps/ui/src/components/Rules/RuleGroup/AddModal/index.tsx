@@ -433,6 +433,14 @@ const AddModal = (props: AddModal) => {
     mediaServerType,
     MediaServerFeature.COLLECTION_SORT,
   )
+  const supportsOverlays = supportsFeature(
+    mediaServerType,
+    MediaServerFeature.OVERLAYS,
+  )
+  const supportsCollectionPoster = supportsFeature(
+    mediaServerType,
+    MediaServerFeature.COLLECTION_POSTER,
+  )
   // Both Plex and Jellyfin call them "Collections" in their GUI
   // (Jellyfin's internal API type is "BoxSet" but the user-facing term is "Collection")
   const collectionTerm = 'collection'
@@ -1231,27 +1239,29 @@ const AddModal = (props: AddModal) => {
                       </>
                     )}
 
-                    <div className="flex flex-row items-center justify-between py-4">
-                      <label htmlFor="overlay_enabled" className="text-label">
-                        Enable overlays
-                        <p className="text-xs font-normal">
-                          Apply date overlays to posters in this{' '}
-                          {collectionTerm}
-                        </p>
-                      </label>
-                      <div className="form-input">
-                        <div className="form-input-field">
-                          <input
-                            type="checkbox"
-                            id="overlay_enabled"
-                            className="checkbox"
-                            {...register('overlayEnabled')}
-                          />
+                    {supportsOverlays && (
+                      <div className="flex flex-row items-center justify-between py-4">
+                        <label htmlFor="overlay_enabled" className="text-label">
+                          Enable overlays
+                          <p className="text-xs font-normal">
+                            Apply date overlays to posters in this{' '}
+                            {collectionTerm}
+                          </p>
+                        </label>
+                        <div className="form-input">
+                          <div className="form-input-field">
+                            <input
+                              type="checkbox"
+                              id="overlay_enabled"
+                              className="checkbox"
+                              {...register('overlayEnabled')}
+                            />
+                          </div>
                         </div>
                       </div>
-                    </div>
+                    )}
 
-                    {overlayEnabled && (
+                    {supportsOverlays && overlayEnabled && (
                       <div className="form-row items-center">
                         <label
                           htmlFor="overlay_template_id"
@@ -1605,28 +1615,30 @@ const AddModal = (props: AddModal) => {
                       </div>
                     </div>
 
-                    <div className="flex flex-col py-2 md:py-4">
-                      <label className="text-label text-left">
-                        Custom {collectionTerm} poster
-                        <p className="text-xs font-normal">
-                          Upload your own cover art for the {collectionTerm} on{' '}
-                          {mediaServerName}
-                        </p>
-                      </label>
-                      <div className="py-2">
-                        {props.editData?.collection?.id ? (
-                          <CollectionPosterPicker
-                            collectionId={props.editData.collection.id}
-                            collectionTerm={collectionTerm}
-                            mediaServerName={mediaServerName}
-                          />
-                        ) : (
-                          <p className="text-xs text-zinc-400">
-                            Save first to enable poster upload.
+                    {supportsCollectionPoster && (
+                      <div className="flex flex-col py-2 md:py-4">
+                        <label className="text-label text-left">
+                          Custom {collectionTerm} poster
+                          <p className="text-xs font-normal">
+                            Upload your own cover art for the {collectionTerm} on{' '}
+                            {mediaServerName}
                           </p>
-                        )}
+                        </label>
+                        <div className="py-2">
+                          {props.editData?.collection?.id ? (
+                            <CollectionPosterPicker
+                              collectionId={props.editData.collection.id}
+                              collectionTerm={collectionTerm}
+                              mediaServerName={mediaServerName}
+                            />
+                          ) : (
+                            <p className="text-xs text-zinc-400">
+                              Save first to enable poster upload.
+                            </p>
+                          )}
+                        </div>
                       </div>
-                    </div>
+                    )}
                   </div>
                 </div>
               </div>

@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
-import { render, screen } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { cleanup, render, screen } from '@testing-library/react'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { MemoryRouter } from 'react-router-dom'
 import SearchContext from '../../../contexts/search-context'
 import NavBar from './index'
@@ -29,6 +29,11 @@ vi.mock('@headlessui/react', () => ({
   TransitionChild: ({ children }: { children: ReactNode }) => <>{children}</>,
 }))
 
+const mediaServerTypeMock = vi.fn()
+vi.mock('../../../hooks/useMediaServerType', () => ({
+  useMediaServerType: () => mediaServerTypeMock(),
+}))
+
 const renderNavBar = () =>
   render(
     <MemoryRouter>
@@ -45,12 +50,23 @@ const renderNavBar = () =>
   )
 
 describe('NavBar', () => {
-  it('renders the overlays navigation entry unconditionally', () => {
-    // The router-level MediaServerSetupGuard keeps unconfigured users out of
-    // the nav entirely, so the overlay link shows for any configured server
-    // (Plex or Jellyfin). One instance in the desktop nav, one in mobile.
+  afterEach(() => {
+    cleanup()
+    mediaServerTypeMock.mockReset()
+  })
+
+  it('renders the overlays entry on servers that support overlays', () => {
+    // One instance in the desktop nav, one in mobile.
+    mediaServerTypeMock.mockReturnValue({ mediaServerType: 'plex' })
     renderNavBar()
 
     expect(screen.getAllByText('Overlays')).toHaveLength(2)
+  })
+
+  it('hides the overlays entry on servers without overlay support (Kodi)', () => {
+    mediaServerTypeMock.mockReturnValue({ mediaServerType: 'kodi' })
+    renderNavBar()
+
+    expect(screen.queryByText('Overlays')).toBeNull()
   })
 })

@@ -46,6 +46,29 @@ export function isLikelyEmbyId(value: string): boolean {
   return isLikelyJellyfinId(value);
 }
 
+// Kodi IDs are composite `<type>-<digits>` (e.g. movie-1), since Kodi's library
+// IDs are per-type integers that overlap across types.
+const KODI_ID_TYPES = ['movie', 'show', 'season', 'episode'];
+export function isLikelyKodiId(value: string): boolean {
+  if (isBlankMediaServerId(value)) {
+    return false;
+  }
+  const sep = value.indexOf('-');
+  if (sep <= 0 || sep === value.length - 1) {
+    return false;
+  }
+  const type = value.slice(0, sep);
+  if (!KODI_ID_TYPES.includes(type)) {
+    return false;
+  }
+  for (const char of value.slice(sep + 1)) {
+    if (char < '0' || char > '9') {
+      return false;
+    }
+  }
+  return true;
+}
+
 export function isJellyfinEmptyGuid(value: string): boolean {
   return (
     value === JELLYFIN_EMPTY_GUID_DASHED ||
@@ -74,6 +97,11 @@ export function isForeignServerId(
     return isLikelyPlexId(value);
   }
 
+  if (serverType === MediaServerType.KODI) {
+    // Kodi IDs are composite; anything not in that shape is foreign.
+    return !isLikelyKodiId(value);
+  }
+
   return false;
 }
 
@@ -99,6 +127,10 @@ export function shouldRefreshMetadataItemId(
 
   if (serverType === MediaServerType.EMBY) {
     return isLikelyEmbyId(value) && !isJellyfinEmptyGuid(value);
+  }
+
+  if (serverType === MediaServerType.KODI) {
+    return isLikelyKodiId(value);
   }
 
   return true;

@@ -57,7 +57,10 @@ describe('OverlaysWrapper', () => {
   })
 
   it('renders overlay tabs and outlet once the media server type resolves', () => {
-    useMediaServerType.mockReturnValue({ isLoading: false })
+    useMediaServerType.mockReturnValue({
+      isLoading: false,
+      mediaServerType: 'plex',
+    })
     useOverlaySettings.mockReturnValue({
       data: { enabled: true, cronSchedule: null },
       isLoading: false,
@@ -72,7 +75,10 @@ describe('OverlaysWrapper', () => {
   })
 
   it('redirects away from a templates route while overlays are disabled', () => {
-    useMediaServerType.mockReturnValue({ isLoading: false })
+    useMediaServerType.mockReturnValue({
+      isLoading: false,
+      mediaServerType: 'plex',
+    })
     useOverlaySettings.mockReturnValue({
       data: { enabled: false, cronSchedule: null },
       isLoading: false,
@@ -87,8 +93,28 @@ describe('OverlaysWrapper', () => {
     expect(screen.queryByTestId('outlet')).toBeNull()
   })
 
+  it('redirects to overview on servers without overlay support (Kodi)', () => {
+    useMediaServerType.mockReturnValue({
+      isLoading: false,
+      mediaServerType: 'kodi',
+    })
+    useOverlaySettings.mockReturnValue({
+      data: { enabled: true, cronSchedule: null },
+      isLoading: false,
+    })
+    useLocation.mockReturnValue({ pathname: '/overlays/settings' })
+
+    render(<OverlaysWrapper />)
+
+    expect(screen.getByTestId('navigate').textContent).toBe('/overview')
+    expect(screen.queryByTestId('outlet')).toBeNull()
+  })
+
   it('keeps rendering the settings outlet when overlays are disabled', () => {
-    useMediaServerType.mockReturnValue({ isLoading: false })
+    useMediaServerType.mockReturnValue({
+      isLoading: false,
+      mediaServerType: 'plex',
+    })
     useOverlaySettings.mockReturnValue({
       data: { enabled: false, cronSchedule: null },
       isLoading: false,

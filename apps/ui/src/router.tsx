@@ -79,6 +79,9 @@ const settingsJellyfinRoute = createLazyRoute(
 const settingsEmbyRoute = createLazyRoute(
   () => import('./components/Settings/Emby'),
 )
+const settingsKodiRoute = createLazyRoute(
+  () => import('./components/Settings/Kodi'),
+)
 const settingsSonarrRoute = createLazyRoute(
   () => import('./components/Settings/Sonarr'),
 )
@@ -268,6 +271,11 @@ const appRoutes: AppRoute[] = [
         path: 'emby',
         lazy: settingsEmbyRoute.lazy,
         preload: settingsEmbyRoute.preload,
+      },
+      {
+        path: 'kodi',
+        lazy: settingsKodiRoute.lazy,
+        preload: settingsKodiRoute.preload,
       },
       {
         path: 'sonarr',

@@ -84,6 +84,14 @@ export class SettingsDataService implements SettingDto {
 
   emby_server_name?: string;
 
+  kodi_url?: string;
+
+  kodi_username?: string;
+
+  kodi_password?: string;
+
+  kodi_server_name?: string;
+
   // Seerr settings
   seerr_url: string;
 
@@ -155,6 +163,10 @@ export class SettingsDataService implements SettingDto {
       this.emby_api_key = settingsDb?.emby_api_key;
       this.emby_user_id = settingsDb?.emby_user_id;
       this.emby_server_name = settingsDb?.emby_server_name;
+      this.kodi_url = settingsDb?.kodi_url;
+      this.kodi_username = settingsDb?.kodi_username;
+      this.kodi_password = settingsDb?.kodi_password;
+      this.kodi_server_name = settingsDb?.kodi_server_name;
       this.seerr_url = settingsDb?.seerr_url;
       this.seerr_api_key = settingsDb?.seerr_api_key;
       this.tmdb_api_key = settingsDb?.tmdb_api_key;
@@ -274,6 +286,7 @@ export class SettingsDataService implements SettingDto {
       plex_auth_token: maskSecret(settings.plex_auth_token),
       jellyfin_api_key: maskSecret(settings.jellyfin_api_key),
       emby_api_key: maskSecret(settings.emby_api_key),
+      kodi_password: maskSecret(settings.kodi_password),
       seerr_api_key: maskSecret(settings.seerr_api_key),
       tmdb_api_key: maskSecret(settings.tmdb_api_key),
       tvdb_api_key: maskSecret(settings.tvdb_api_key),
@@ -382,6 +395,11 @@ export class SettingsDataService implements SettingDto {
       } else if (this.media_server_type === MediaServerType.EMBY) {
         // Emby requires URL and API key (user ID is optional, can be auto-detected later)
         if (this.emby_url && this.emby_api_key) {
+          return true;
+        }
+      } else if (this.media_server_type === MediaServerType.KODI) {
+        // Kodi requires URL and username (HTTP Basic; password may be blank)
+        if (this.kodi_url && this.kodi_username) {
           return true;
         }
       } else if (this.media_server_type === MediaServerType.PLEX) {

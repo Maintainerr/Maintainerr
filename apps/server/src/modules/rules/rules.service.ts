@@ -1567,6 +1567,11 @@ export class RulesService {
           this.logger.log(
             `Flushed Emby cache because a rule in the group required it`,
           );
+        } else if (serverType === MediaServerType.KODI) {
+          cacheManager.getCache('kodi').flush();
+          this.logger.log(
+            `Flushed Kodi cache because a rule in the group required it`,
+          );
         }
       }
 

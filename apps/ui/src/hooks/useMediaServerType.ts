@@ -13,6 +13,8 @@ type MediaServerSetupSettings =
       | 'jellyfin_api_key'
       | 'emby_url'
       | 'emby_api_key'
+      | 'kodi_url'
+      | 'kodi_username'
     >
   | null
   | undefined
@@ -34,6 +36,10 @@ export const hasCompletedMediaServerSetup = (
 
   if (settings.media_server_type === MediaServerType.EMBY) {
     return Boolean(settings.emby_url && settings.emby_api_key)
+  }
+
+  if (settings.media_server_type === MediaServerType.KODI) {
+    return Boolean(settings.kodi_url && settings.kodi_username)
   }
 
   if (settings.media_server_type === MediaServerType.PLEX) {
@@ -67,6 +73,7 @@ export function useMediaServerType() {
     isPlex: mediaServerType === MediaServerType.PLEX,
     isJellyfin: mediaServerType === MediaServerType.JELLYFIN,
     isEmby: mediaServerType === MediaServerType.EMBY,
+    isKodi: mediaServerType === MediaServerType.KODI,
     isMediaServerTypeSelected: hasSelectedMediaServerType(settings),
     isSetupComplete,
     isNotConfigured: !isSetupComplete,

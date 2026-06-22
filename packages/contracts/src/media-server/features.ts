@@ -16,11 +16,13 @@ export const MEDIA_SERVER_FEATURES: Record<
     MediaServerFeature.PLAYLISTS,
     MediaServerFeature.COLLECTION_POSTER,
     MediaServerFeature.COLLECTION_SORT,
+    MediaServerFeature.OVERLAYS,
   ]),
   [MediaServerType.JELLYFIN]: new Set([
     MediaServerFeature.LABELS, // Tags in Jellyfin
     MediaServerFeature.PLAYLISTS,
     MediaServerFeature.COLLECTION_POSTER,
+    MediaServerFeature.OVERLAYS,
     MediaServerFeature.CROSS_LIBRARY_COLLECTIONS, // BoxSets are server-global
     // Note: COLLECTION_VISIBILITY not supported
     // Note: WATCHLIST not supported (no API)
@@ -31,6 +33,7 @@ export const MEDIA_SERVER_FEATURES: Record<
     MediaServerFeature.LABELS,
     MediaServerFeature.PLAYLISTS,
     MediaServerFeature.COLLECTION_POSTER,
+    MediaServerFeature.OVERLAYS,
     MediaServerFeature.CROSS_LIBRARY_COLLECTIONS, // BoxSets are server-global
     // Conservative defaults mirroring Jellyfin:
     // - COLLECTION_VISIBILITY: Emby has no Plex-style home/recommended pinning.
@@ -39,6 +42,20 @@ export const MEDIA_SERVER_FEATURES: Record<
     // - COLLECTION_SORT: Emby exposes DisplayOrder = PremiereDate | SortName
     //   on a BoxSet but no item-move/reorder endpoint, so Maintainerr's
     //   "push an explicit ordered list of item IDs" contract isn't satisfiable.
+  ]),
+  [MediaServerType.KODI]: new Set([
+    // Kodi is a single-user player exposing only a JSON-RPC client surface;
+    // none of the optional capabilities below are available over JSON-RPC:
+    // - COLLECTION_VISIBILITY: no home/recommended pinning.
+    // - WATCHLIST: no watchlist API.
+    // - CENTRAL_WATCH_HISTORY: single-user, only per-item playcount/lastplayed.
+    // - COLLECTION_POSTER: collections are tag-backed; tags carry no artwork.
+    // - COLLECTION_SORT: no item-move/reorder endpoint.
+    // - CROSS_LIBRARY_COLLECTIONS: libraries are synthesized (movies/tvshows).
+    // - PLAYLISTS: no library-scoped collection-style playlist analogue.
+    // - LABELS: the tag field is reserved for collection membership, so
+    //   exposing it as a separate label writer would collide.
+    // - OVERLAYS: no writable per-item poster surface over JSON-RPC.
   ]),
 }
 

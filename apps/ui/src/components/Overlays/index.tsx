@@ -1,3 +1,4 @@
+import { MediaServerFeature, supportsFeature } from '@maintainerr/contracts'
 import { useCallback } from 'react'
 import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import { toast } from 'react-toastify'
@@ -41,11 +42,16 @@ const showOverlaysDisabledToast = () => {
 // the overlay master switch is off, only the Settings tab stays clickable;
 // templates routes are disabled and any direct navigation redirects back.
 const OverlaysWrapper = () => {
-  const { isLoading: isMediaServerLoading } = useMediaServerType()
+  const { isLoading: isMediaServerLoading, mediaServerType } =
+    useMediaServerType()
   const location = useLocation()
   const { data: overlaySettings, isLoading: isOverlaySettingsLoading } =
     useOverlaySettings()
 
+  const overlaysSupported = supportsFeature(
+    mediaServerType,
+    MediaServerFeature.OVERLAYS,
+  )
   const overlaysEnabled = overlaySettings?.enabled === true
   const isLoading = isMediaServerLoading || isOverlaySettingsLoading
 
@@ -60,6 +66,12 @@ const OverlaysWrapper = () => {
     },
     [overlaysEnabled],
   )
+
+  // Overlays need a writable per-item poster surface; servers without it
+  // (e.g. Kodi) get no overlay UI — bounce direct navigation to Overview.
+  if (!isLoading && !overlaysSupported) {
+    return <Navigate to="/overview" replace />
+  }
 
   return (
     <>

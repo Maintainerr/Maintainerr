@@ -52,6 +52,12 @@ const serverOptions: {
     description: 'Emby Media Server',
     icon: `${basePath}/icons_logos/emby.png`,
   },
+  {
+    value: MediaServerType.KODI,
+    name: 'Kodi',
+    description: 'Kodi Media Center',
+    icon: `${basePath}/icons_logos/kodi.svg`,
+  },
 ]
 
 const nameOf = (type: MediaServerType | null): string =>
@@ -198,7 +204,7 @@ const MediaServerSelector = ({
             : 'Select your media server to get started with Maintainerr.'}
         </p>
 
-        <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {serverOptions.map((option) => {
             const isSelected = currentType === option.value
             const isPending =

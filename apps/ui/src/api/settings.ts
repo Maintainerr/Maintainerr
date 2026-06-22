@@ -3,6 +3,7 @@ import {
   DownloadClientSetting,
   EmbySetting,
   JellyfinSetting,
+  KodiSetting,
   MediaServerSwitchPreview,
   MediaServerType,
   MetadataProviderPreference,
@@ -55,6 +56,11 @@ export interface ISettings {
   emby_api_key?: string
   emby_user_id?: string
   emby_server_name?: string
+  // Kodi settings
+  kodi_url?: string
+  kodi_username?: string
+  kodi_password?: string
+  kodi_server_name?: string
   // Seerr integration
   seerr_api_key: string
   tautulli_url: string
@@ -86,6 +92,9 @@ export interface JellyfinTestResult {
 
 // Emby shares the Jellyfin test-result shape; aliased for call-site clarity.
 export type EmbyTestResult = JellyfinTestResult
+
+// Kodi shares the Jellyfin test-result shape (no user list); aliased for clarity.
+export type KodiTestResult = JellyfinTestResult
 
 // Login response shape for the Plex-style Emby credentials login flow.
 export interface EmbyLoginResult extends JellyfinTestResult {
@@ -766,6 +775,116 @@ export const useLoginEmby = (options?: UseLoginEmbyOptions) => {
 }
 
 export type UseLoginEmbyResult = ReturnType<typeof useLoginEmby>
+
+// --------------------------------------------------------------------------
+// Kodi
+// --------------------------------------------------------------------------
+
+type UseKodiSettingsQueryKey = ['settings', 'kodi']
+
+type UseKodiSettingsOptions = Omit<
+  UseQueryOptions<KodiSetting, Error, KodiSetting, UseKodiSettingsQueryKey>,
+  'queryKey' | 'queryFn'
+>
+
+export const useKodiSettings = (options?: UseKodiSettingsOptions) => {
+  return useQuery<KodiSetting, Error, KodiSetting, UseKodiSettingsQueryKey>({
+    queryKey: ['settings', 'kodi'],
+    queryFn: async () => {
+      return await GetApiHandler<KodiSetting>(`/settings/kodi`)
+    },
+    staleTime: 0,
+    ...options,
+  })
+}
+
+export type UseKodiSettingsResult = ReturnType<typeof useKodiSettings>
+
+type UseTestKodiOptions = Omit<
+  UseMutationOptions<KodiTestResult, Error, KodiSetting>,
+  'mutationFn' | 'mutationKey'
+>
+
+export const useTestKodi = (options?: UseTestKodiOptions) => {
+  return useMutation<KodiTestResult, Error, KodiSetting>({
+    mutationKey: ['settings', 'testKodi'],
+    mutationFn: async (payload) => {
+      return await PostApiHandler<KodiTestResult>(
+        '/settings/kodi/test',
+        payload,
+      )
+    },
+    ...options,
+  })
+}
+
+export type UseTestKodiResult = ReturnType<typeof useTestKodi>
+
+type UseSaveKodiSettingsOptions = Omit<
+  UseMutationOptions<BasicResponseDto, Error, KodiSetting>,
+  'mutationFn' | 'mutationKey' | 'onSuccess'
+>
+
+export const useSaveKodiSettings = (options?: UseSaveKodiSettingsOptions) => {
+  const queryClient = useQueryClient()
+
+  return useMutation<BasicResponseDto, Error, KodiSetting>({
+    mutationKey: ['settings', 'saveKodi'],
+    mutationFn: async (payload) => {
+      const response = await PostApiHandler<BasicResponseDto>(
+        '/settings/kodi',
+        payload,
+      )
+
+      return assertSettingsMutationSucceeded(
+        response,
+        'Kodi settings could not be updated',
+      )
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ['settings'] satisfies UseSettingsQueryKey,
+      })
+    },
+    ...options,
+  })
+}
+
+export type UseSaveKodiSettingsResult = ReturnType<typeof useSaveKodiSettings>
+
+type UseDeleteKodiSettingsOptions = Omit<
+  UseMutationOptions<BasicResponseDto, Error, void>,
+  'mutationFn' | 'mutationKey' | 'onSuccess'
+>
+
+export const useDeleteKodiSettings = (
+  options?: UseDeleteKodiSettingsOptions,
+) => {
+  const queryClient = useQueryClient()
+
+  return useMutation<BasicResponseDto, Error, void>({
+    mutationKey: ['settings', 'deleteKodi'],
+    mutationFn: async () => {
+      const response =
+        await DeleteApiHandler<BasicResponseDto>('/settings/kodi')
+
+      return assertSettingsMutationSucceeded(
+        response,
+        'Kodi settings could not be updated',
+      )
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ['settings'] satisfies UseSettingsQueryKey,
+      })
+    },
+    ...options,
+  })
+}
+
+export type UseDeleteKodiSettingsResult = ReturnType<
+  typeof useDeleteKodiSettings
+>
 
 type UsePreviewMediaServerSwitchOptions = Omit<
   UseMutationOptions<MediaServerSwitchPreview, Error, MediaServerType>,

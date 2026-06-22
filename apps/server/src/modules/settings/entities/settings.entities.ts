@@ -83,6 +83,19 @@ export class Settings implements SettingDto {
   @Column({ nullable: true })
   emby_server_name?: string;
 
+  // Kodi settings (JSON-RPC over HTTP Basic auth — no API key)
+  @Column({ nullable: true })
+  kodi_url?: string;
+
+  @Column({ nullable: true })
+  kodi_username?: string;
+
+  @Column({ nullable: true })
+  kodi_password?: string;
+
+  @Column({ nullable: true })
+  kodi_server_name?: string;
+
   // Seerr integration
   @Column({ nullable: true })
   seerr_api_key: string;

@@ -521,8 +521,12 @@ export class RuleExecutorService {
         const isJellyfin =
           this.settings.media_server_type === MediaServerType.JELLYFIN;
         const isEmby = this.settings.media_server_type === MediaServerType.EMBY;
+        // Kodi shares this guard: its tag-backed getCollectionChildren swallows
+        // a transient JSON-RPC blip to [], which would otherwise flag every
+        // member as manually removed.
+        const isKodi = this.settings.media_server_type === MediaServerType.KODI;
         const shouldCheckRemovals =
-          isJellyfin || isEmby ? children && children.length > 0 : true;
+          isJellyfin || isEmby || isKodi ? children && children.length > 0 : true;
 
         if (
           collectionMedia &&

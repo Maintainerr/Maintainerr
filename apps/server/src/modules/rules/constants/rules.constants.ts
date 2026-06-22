@@ -1480,5 +1480,34 @@ export class RuleConstants {
         props: jellyfinApp.props,
       });
     }
+
+    // Kodi gets its OWN rule-property set (a separate, owned array — never a
+    // shared reference to Jellyfin's). It reuses the Jellyfin property IDs/names
+    // for the capabilities Kodi can satisfy over JSON-RPC, so rule migration
+    // maps cleanly; capabilities Kodi genuinely lacks are dropped so the rule
+    // builder never offers a property that would silently never match. Dropped:
+    // favourites (no per-item favourite over JSON-RPC) and playlists (no
+    // library-scoped playlist analogue). Single-user fields (seenBy, watchers)
+    // are kept and project onto Kodi's one synthetic user.
+    if (
+      jellyfinApp &&
+      !this.applications.some((a) => a.id === Application.KODI)
+    ) {
+      const kodiUnsupportedProps = new Set([
+        'favoritedBy',
+        'sw_favoritedBy',
+        'sw_favoritedBy_including_parent',
+        'playlists',
+        'playlist_names',
+      ]);
+      this.applications.push({
+        id: Application.KODI,
+        name: 'Kodi',
+        mediaType: MediaType.BOTH,
+        props: jellyfinApp.props
+          .filter((prop) => !kodiUnsupportedProps.has(prop.name))
+          .map((prop) => ({ ...prop })),
+      });
+    }
   }
 }

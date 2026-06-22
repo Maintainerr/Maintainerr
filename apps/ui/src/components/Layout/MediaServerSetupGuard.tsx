@@ -25,6 +25,10 @@ export const getMediaServerSetupRoute = (
     return '/settings/emby'
   }
 
+  if (mediaServerType === MediaServerType.KODI) {
+    return '/settings/kodi'
+  }
+
   if (mediaServerType === MediaServerType.PLEX) {
     return '/settings/plex'
   }

@@ -2,6 +2,7 @@ import {
   BasicResponseDto,
   EmbySetting,
   JellyfinSetting,
+  KodiSetting,
   DownloadClientSetting,
   MediaServerType,
   SeerrSetting,
@@ -800,6 +801,123 @@ export class SettingsOperationsService {
     }
   }
 
+  /**
+   * Test connection to a Kodi server using the HTTP Basic credentials.
+   */
+  public async testKodi(settings: KodiSetting): Promise<
+    BasicResponseDto & {
+      serverName?: string;
+      version?: string;
+    }
+  > {
+    try {
+      const result = await this.mediaServerFactory.testKodiConnection(
+        settings.kodi_url,
+        settings.kodi_username,
+        settings.kodi_password,
+      );
+
+      if (result.success) {
+        return {
+          status: 'OK',
+          code: 1,
+          message: `Connected to ${result.serverName}`,
+          serverName: result.serverName,
+          version: result.version,
+        };
+      }
+
+      return {
+        status: 'NOK',
+        code: 0,
+        message: formatConnectionFailureMessage(
+          result.error,
+          'Failed to connect to Kodi. Verify URL, username and password.',
+        ),
+      };
+    } catch (error) {
+      logConnectionTestError(this.logger, 'Kodi');
+      return {
+        status: 'NOK',
+        code: 0,
+        message: formatConnectionFailureMessage(
+          error,
+          'Failed to connect to Kodi. Verify URL, username and password.',
+        ),
+      };
+    }
+  }
+
+  /**
+   * Save Kodi settings and initialize the service.
+   */
+  public async saveKodiSettings(
+    settings: KodiSetting,
+  ): Promise<BasicResponseDto> {
+    try {
+      const settingsDb = await this.settingsRepo.findOne({ where: {} });
+
+      const testResult = await this.testKodi(settings);
+      if (testResult.code !== 1) {
+        return {
+          status: 'NOK',
+          code: 0,
+          message: testResult.message || 'Connection test failed',
+        };
+      }
+
+      await this.settingsDataService.saveSettings({
+        ...settingsDb,
+        kodi_url: settings.kodi_url,
+        kodi_username: settings.kodi_username,
+        kodi_password: settings.kodi_password,
+        kodi_server_name: testResult.serverName || null,
+        media_server_type: MediaServerType.KODI,
+      });
+
+      this.mediaServerFactory.uninitializeServer(MediaServerType.KODI);
+
+      await this.settingsDataService.init();
+
+      this.logger.log('Kodi settings saved successfully');
+      return { status: 'OK', code: 1, message: 'Success' };
+    } catch (error) {
+      this.logger.error('Error while saving Kodi settings');
+      this.logger.debug(error);
+      const message =
+        error instanceof Error ? error.message : 'Failed to save settings';
+      return { status: 'NOK', code: 0, message };
+    }
+  }
+
+  /**
+   * Remove Kodi settings.
+   */
+  public async removeKodiSettings(): Promise<BasicResponseDto> {
+    try {
+      const settingsDb = await this.settingsRepo.findOne({ where: {} });
+
+      await this.settingsDataService.saveSettings({
+        ...settingsDb,
+        kodi_url: null,
+        kodi_username: null,
+        kodi_password: null,
+        kodi_server_name: null,
+      });
+
+      this.mediaServerFactory.uninitializeServer(MediaServerType.KODI);
+
+      await this.settingsDataService.init();
+
+      this.logger.log('Kodi settings cleared');
+      return { status: 'OK', code: 1, message: 'Success' };
+    } catch (error) {
+      this.logger.error('Error removing Kodi settings');
+      this.logger.debug(error);
+      return { status: 'NOK', code: 0, message: 'Failed' };
+    }
+  }
+
   public async addSonarrSetting(
     settings: Omit<SonarrSettings, 'id' | 'collections'>,
   ): Promise<SonarrSettingResponseDto> {
@@ -1383,6 +1501,23 @@ export class SettingsOperationsService {
               emby_url: this.settingsDataService.emby_url,
               emby_api_key: this.settingsDataService.emby_api_key,
               emby_user_id: this.settingsDataService.emby_user_id,
+            })
+          ).status === 'OK'
+        );
+      }
+      case MediaServerType.KODI: {
+        if (
+          !this.settingsDataService.kodi_url ||
+          !this.settingsDataService.kodi_username
+        ) {
+          return false;
+        }
+        return (
+          (
+            await this.testKodi({
+              kodi_url: this.settingsDataService.kodi_url,
+              kodi_username: this.settingsDataService.kodi_username,
+              kodi_password: this.settingsDataService.kodi_password ?? '',
             })
           ).status === 'OK'
         );

@@ -151,7 +151,7 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
   }) => {
     useLockBodyScroll(true)
 
-    const { isPlex, isJellyfin, isEmby } = useMediaServerType()
+    const { isPlex, isJellyfin, isEmby, isKodi } = useMediaServerType()
     const [loading, setLoading] = useState<boolean>(true)
     const [backdropResult, setBackdropResult] =
       useState<BackdropResult>(emptyBackdropResult)
@@ -594,6 +594,21 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
                           width={128}
                           height={32}
                           className="mt-1 h-8 w-32 rounded-lg bg-black/70 p-1 shadow-lg"
+                        />
+                      </a>
+                    </div>
+                  )}
+                  {isKodi && serverUrl && (
+                    <div>
+                      {/* Kodi's web UI (Chorus) exposes no stable per-item deep
+                          link, so this opens the web interface root. */}
+                      <a href={`${serverUrl}/`} target="_blank" rel="noreferrer">
+                        <img
+                          src={`${basePath}/icons_logos/kodi.svg`}
+                          alt="Kodi Logo"
+                          width={128}
+                          height={32}
+                          className="mt-1 h-8 w-32 rounded-lg bg-black/70 object-contain p-1 shadow-lg"
                         />
                       </a>
                     </div>

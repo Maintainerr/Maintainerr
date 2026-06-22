@@ -5,6 +5,7 @@ import { Settings } from '../../settings/entities/settings.entities';
 import { SettingsDataService } from '../../settings/settings-data.service';
 import { EmbyAdapterService } from './emby/emby-adapter.service';
 import { JellyfinAdapterService } from './jellyfin/jellyfin-adapter.service';
+import { KodiAdapterService } from './kodi/kodi-adapter.service';
 import { MediaServerSwitchState } from './media-server-switch-state.service';
 import { IMediaServerService } from './media-server.interface';
 import { PlexAdapterService } from './plex/plex-adapter.service';
@@ -33,6 +34,7 @@ export class MediaServerFactory {
     private readonly plexAdapter: PlexAdapterService,
     private readonly jellyfinAdapter: JellyfinAdapterService,
     private readonly embyAdapter: EmbyAdapterService,
+    private readonly kodiAdapter: KodiAdapterService,
     private readonly logger: MaintainerrLogger,
   ) {
     this.logger.setContext(MediaServerFactory.name);
@@ -110,6 +112,8 @@ export class MediaServerFactory {
         );
       case MediaServerType.EMBY:
         return Boolean(settings.emby_url && settings.emby_api_key);
+      case MediaServerType.KODI:
+        return Boolean(settings.kodi_url && settings.kodi_username);
       default:
         return false;
     }
@@ -132,6 +136,9 @@ export class MediaServerFactory {
 
       case MediaServerType.EMBY:
         return await this.ensureAdapterReady(serverType, this.embyAdapter);
+
+      case MediaServerType.KODI:
+        return await this.ensureAdapterReady(serverType, this.kodiAdapter);
 
       default:
         throw new Error(`Unsupported media server type: ${serverType}`);
@@ -159,10 +166,14 @@ export class MediaServerFactory {
       settings.plex_auth_token,
     );
     const embyConfigured = Boolean(settings.emby_url && settings.emby_api_key);
+    const kodiConfigured = Boolean(
+      settings.kodi_url && settings.kodi_username,
+    );
     const inferredType = this.resolveServerType(
       plexConfigured,
       jellyfinConfigured,
       embyConfigured,
+      kodiConfigured,
     );
 
     if (!configuredType) {
@@ -194,6 +205,9 @@ export class MediaServerFactory {
         break;
       case MediaServerType.EMBY:
         this.embyAdapter.uninitialize();
+        break;
+      case MediaServerType.KODI:
+        this.kodiAdapter.uninitialize();
         break;
       default:
         throw new Error(`Unsupported media server type: ${serverType}`);
@@ -246,25 +260,38 @@ export class MediaServerFactory {
     return this.embyAdapter.loginWithCredentials(url, username, password);
   }
 
+  /**
+   * Test a Kodi connection with the given credentials (HTTP Basic auth).
+   * Used by settings to validate credentials before saving.
+   */
+  async testKodiConnection(
+    url: string,
+    username: string,
+    password: string,
+  ): Promise<{
+    success: boolean;
+    serverName?: string;
+    version?: string;
+    error?: string;
+  }> {
+    return this.kodiAdapter.testConnection(url, username, password);
+  }
+
   private resolveServerType(
     plexConfigured: boolean,
     jellyfinConfigured: boolean,
     embyConfigured: boolean,
+    kodiConfigured: boolean,
   ): MediaServerType | null {
-    if (jellyfinConfigured && !plexConfigured && !embyConfigured) {
-      return MediaServerType.JELLYFIN;
-    }
+    const configured = [
+      plexConfigured && MediaServerType.PLEX,
+      jellyfinConfigured && MediaServerType.JELLYFIN,
+      embyConfigured && MediaServerType.EMBY,
+      kodiConfigured && MediaServerType.KODI,
+    ].filter((t): t is MediaServerType => Boolean(t));
 
-    if (plexConfigured && !jellyfinConfigured && !embyConfigured) {
-      return MediaServerType.PLEX;
-    }
-
-    if (embyConfigured && !plexConfigured && !jellyfinConfigured) {
-      return MediaServerType.EMBY;
-    }
-
-    // Multiple configured or none configured - can't infer
-    return null;
+    // Only infer when exactly one server is configured.
+    return configured.length === 1 ? configured[0] : null;
   }
 
   /**

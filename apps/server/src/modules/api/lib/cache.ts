@@ -12,7 +12,8 @@ type AvailableCacheIds =
   | 'streamystats'
   | 'github'
   | 'jellyfin'
-  | 'emby';
+  | 'emby'
+  | 'kodi';
 
 type CacheType = AvailableCacheIds | 'radarr' | 'sonarr';
 
@@ -107,6 +108,7 @@ class CacheManager {
     }),
     jellyfin: new Cache('jellyfin', 'Jellyfin API', 'jellyfin'),
     emby: new Cache('emby', 'Emby API', 'emby'),
+    kodi: new Cache('kodi', 'Kodi API', 'kodi'),
   };
 
   public createCache(

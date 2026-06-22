@@ -414,6 +414,11 @@ export class MediaServerSwitchService {
       updatedSettings.emby_api_key = null;
       updatedSettings.emby_user_id = null;
       updatedSettings.emby_server_name = null;
+    } else if (currentServerType === MediaServerType.KODI) {
+      updatedSettings.kodi_url = null;
+      updatedSettings.kodi_username = null;
+      updatedSettings.kodi_password = null;
+      updatedSettings.kodi_server_name = null;
     }
 
     await queryRunner.manager.save(Settings, updatedSettings);

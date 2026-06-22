@@ -2,6 +2,7 @@ export enum MediaServerType {
   PLEX = 'plex',
   JELLYFIN = 'jellyfin',
   EMBY = 'emby',
+  KODI = 'kodi',
 }
 
 export type MediaItemType = 'movie' | 'show' | 'season' | 'episode'
@@ -64,4 +65,10 @@ export enum MediaServerFeature {
    * bound to one library. Gates the cross-library lookup for manual collections.
    */
   CROSS_LIBRARY_COLLECTIONS = 'cross_library_collections',
+  /**
+   * Poster/title-card overlays can be rendered and written back to the server.
+   * Requires a writable per-item image the overlay processor can replace; not
+   * available on players that expose no such surface (e.g. Kodi over JSON-RPC).
+   */
+  OVERLAYS = 'overlays',
 }

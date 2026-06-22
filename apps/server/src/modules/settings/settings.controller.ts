@@ -6,6 +6,8 @@ import {
   embySettingSchema,
   JellyfinSetting,
   jellyfinSettingSchema,
+  KodiSetting,
+  kodiSettingSchema,
   MediaServerSwitchPreview,
   MediaServerType,
   MetadataProviderPreference,
@@ -539,6 +541,46 @@ export class SettingsController {
   @Delete('/emby')
   async removeEmbySettings(): Promise<BasicResponseDto> {
     return await this.settingsOperationsService.removeEmbySettings();
+  }
+
+  // --------------------------------------------------------------------------
+  // Kodi
+  // --------------------------------------------------------------------------
+
+  @Get('/kodi')
+  async getKodiSetting(): Promise<KodiSetting | BasicResponseDto> {
+    const settings = await this.settingsOperationsService.getSettings();
+
+    if (!(settings instanceof Settings)) {
+      return settings;
+    }
+
+    return {
+      kodi_url: settings.kodi_url,
+      kodi_username: settings.kodi_username,
+      kodi_password: settings.kodi_password,
+    };
+  }
+
+  @Post('/kodi/test')
+  testKodi(
+    @Body(new ZodValidationPipe(kodiSettingSchema))
+    payload: KodiSetting,
+  ): Promise<BasicResponseDto> {
+    return this.settingsOperationsService.testKodi(payload);
+  }
+
+  @Post('/kodi')
+  async saveKodiSettings(
+    @Body(new ZodValidationPipe(kodiSettingSchema))
+    payload: KodiSetting,
+  ): Promise<BasicResponseDto> {
+    return await this.settingsOperationsService.saveKodiSettings(payload);
+  }
+
+  @Delete('/kodi')
+  async removeKodiSettings(): Promise<BasicResponseDto> {
+    return await this.settingsOperationsService.removeKodiSettings();
   }
 
   /**

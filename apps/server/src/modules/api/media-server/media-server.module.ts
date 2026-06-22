@@ -9,6 +9,12 @@ import { EmbyModule } from './emby/emby.module';
 import { MediaServerSetupGuard } from './guards/media-server-setup.guard';
 import { JellyfinAdapterService } from './jellyfin/jellyfin-adapter.service';
 import { JellyfinModule } from './jellyfin/jellyfin.module';
+import { KodiAdapterService } from './kodi/kodi-adapter.service';
+import {
+  KodiCollection,
+  KodiCollectionMember,
+} from './kodi/kodi-collection.entities';
+import { KodiModule } from './kodi/kodi.module';
 import { MediaItemEnrichmentService } from './media-item-enrichment.service';
 import { MediaServerSwitchState } from './media-server-switch-state.service';
 import { MediaServerController } from './media-server.controller';
@@ -37,16 +43,24 @@ import { PlexAdapterService } from './plex/plex-adapter.service';
  */
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Exclusion, CollectionMedia, RuleGroup]),
+    TypeOrmModule.forFeature([
+      Exclusion,
+      CollectionMedia,
+      RuleGroup,
+      KodiCollection,
+      KodiCollectionMember,
+    ]),
     PlexApiModule,
     JellyfinModule,
     EmbyModule,
+    KodiModule,
   ],
   controllers: [MediaServerController],
   providers: [
     PlexAdapterService,
     JellyfinAdapterService,
     EmbyAdapterService,
+    KodiAdapterService,
     MediaServerFactory,
     MediaServerSwitchState,
     MediaServerSetupGuard,
@@ -63,6 +77,8 @@ import { PlexAdapterService } from './plex/plex-adapter.service';
     JellyfinAdapterService,
     // EmbyAdapterService is exported for EmbyGetterService (mirrors Jellyfin pattern).
     EmbyAdapterService,
+    // KodiAdapterService is exported for KodiGetterService (mirrors Emby pattern).
+    KodiAdapterService,
     MediaServerFactory,
     MediaServerSwitchState,
     MediaServerSetupGuard,

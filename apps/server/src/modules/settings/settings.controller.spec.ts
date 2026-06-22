@@ -28,6 +28,9 @@ describe('SettingsController', () => {
     testPlex: jest.fn(),
     testPlexAuthToken: jest.fn(),
     removeJellyfinSettings: jest.fn(),
+    testKodi: jest.fn(),
+    saveKodiSettings: jest.fn(),
+    removeKodiSettings: jest.fn(),
   } as unknown as jest.Mocked<SettingsOperationsService>;
 
   const settingsDataService = {
@@ -62,6 +65,9 @@ describe('SettingsController', () => {
       jellyfin_url: null,
       jellyfin_api_key: null,
       jellyfin_user_id: null,
+      kodi_url: null,
+      kodi_username: null,
+      kodi_password: null,
       ...overrides,
     });
 
@@ -116,6 +122,20 @@ describe('SettingsController', () => {
           jellyfin_user_id: 'u-1',
         },
       },
+      {
+        name: 'Kodi',
+        method: 'getKodiSetting' as const,
+        entityOverrides: {
+          kodi_url: 'http://kodi.local:8080',
+          kodi_username: 'kodi',
+          kodi_password: 'secret',
+        },
+        expected: {
+          kodi_url: 'http://kodi.local:8080',
+          kodi_username: 'kodi',
+          kodi_password: 'secret',
+        },
+      },
     ])(
       'maps $name settings from entity values',
       async ({ method, entityOverrides, expected }) => {
@@ -131,6 +151,7 @@ describe('SettingsController', () => {
       { name: 'Tautulli', method: 'getTautulliSetting' as const },
       { name: 'Seerr', method: 'getSeerrSetting' as const },
       { name: 'Jellyfin', method: 'getJellyfinSetting' as const },
+      { name: 'Kodi', method: 'getKodiSetting' as const },
     ])(
       'passes through non-entity response for $name settings',
       async ({ method }) => {
@@ -278,6 +299,70 @@ describe('SettingsController', () => {
     });
 
     expect(settingsOperationsService.testPlexAuthToken).toHaveBeenCalledTimes(
+      1,
+    );
+  });
+
+  it('delegates Kodi connectivity testing to the settings service', async () => {
+    const payload = {
+      kodi_url: 'http://kodi.local:8080',
+      kodi_username: 'kodi',
+      kodi_password: 'secret',
+    };
+    settingsOperationsService.testKodi.mockResolvedValue({
+      status: 'OK',
+      code: 1,
+      message: 'Success',
+    });
+
+    await expect(controller.testKodi(payload)).resolves.toEqual({
+      status: 'OK',
+      code: 1,
+      message: 'Success',
+    });
+
+    expect(settingsOperationsService.testKodi).toHaveBeenCalledTimes(1);
+    expect(settingsOperationsService.testKodi).toHaveBeenCalledWith(payload);
+  });
+
+  it('delegates saving Kodi settings to the settings service', async () => {
+    const payload = {
+      kodi_url: 'http://kodi.local:8080',
+      kodi_username: 'kodi',
+      kodi_password: 'secret',
+    };
+    settingsOperationsService.saveKodiSettings.mockResolvedValue({
+      status: 'OK',
+      code: 1,
+      message: 'Success',
+    });
+
+    await expect(controller.saveKodiSettings(payload)).resolves.toEqual({
+      status: 'OK',
+      code: 1,
+      message: 'Success',
+    });
+
+    expect(settingsOperationsService.saveKodiSettings).toHaveBeenCalledTimes(1);
+    expect(settingsOperationsService.saveKodiSettings).toHaveBeenCalledWith(
+      payload,
+    );
+  });
+
+  it('delegates removing Kodi settings to the settings service', async () => {
+    settingsOperationsService.removeKodiSettings.mockResolvedValue({
+      status: 'OK',
+      code: 1,
+      message: 'Success',
+    });
+
+    await expect(controller.removeKodiSettings()).resolves.toEqual({
+      status: 'OK',
+      code: 1,
+      message: 'Success',
+    });
+
+    expect(settingsOperationsService.removeKodiSettings).toHaveBeenCalledTimes(
       1,
     );
   });

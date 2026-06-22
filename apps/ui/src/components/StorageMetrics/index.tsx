@@ -427,7 +427,14 @@ interface MediaServerSectionProps {
 const mediaServerLabel: Record<string, string> = {
   plex: 'Plex',
   jellyfin: 'Jellyfin',
+  emby: 'Emby',
+  kodi: 'Kodi',
 }
+
+// Servers that can compute on-disk library sizes. Kodi exposes no file-size
+// data over JSON-RPC, so size computation is unavailable there.
+const serverReportsSizes = (serverType?: string | null): boolean =>
+  serverType !== 'kodi'
 
 const MediaServerSection: React.FC<MediaServerSectionProps> = ({
   mediaServer,
@@ -467,8 +474,7 @@ const MediaServerSection: React.FC<MediaServerSectionProps> = ({
       <section className="mt-8">
         <h2 className="sm-heading">Media server</h2>
         <p className="description">
-          Connect a Plex or Jellyfin server in Settings to see library item
-          counts here.
+          Connect a media server in Settings to see library item counts here.
         </p>
       </section>
     )
@@ -499,7 +505,9 @@ const MediaServerSection: React.FC<MediaServerSectionProps> = ({
             <span className="text-base font-medium text-white">{header}</span>
           </div>
           <div className="flex items-center gap-3">
-            {mediaServer.reachable && mediaServer.libraries.length > 0 ? (
+            {mediaServer.reachable &&
+            mediaServer.libraries.length > 0 &&
+            serverReportsSizes(mediaServer.serverType) ? (
               <Button
                 buttonType="success"
                 buttonSize="sm"
@@ -522,8 +530,9 @@ const MediaServerSection: React.FC<MediaServerSectionProps> = ({
 
         {mediaServer.reachable && mediaServer.libraries.length > 0 ? (
           <p className="mt-2 text-xs text-zinc-500">
-            Sizes approximate on-disk bytes and may not fully reflect hardlinks,
-            sparse files, or filesystem snapshots.
+            {serverReportsSizes(mediaServer.serverType)
+              ? 'Sizes approximate on-disk bytes and may not fully reflect hardlinks, sparse files, or filesystem snapshots.'
+              : 'Kodi does not expose file sizes over JSON-RPC, so on-disk library sizes are unavailable. Item counts are still shown.'}
           </p>
         ) : null}
 

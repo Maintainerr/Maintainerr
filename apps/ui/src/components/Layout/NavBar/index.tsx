@@ -9,9 +9,11 @@ import {
   PhotographIcon,
   XIcon,
 } from '@heroicons/react/outline'
+import { MediaServerFeature, supportsFeature } from '@maintainerr/contracts'
 import { ReactNode, use, useMemo, useRef } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import SearchContext from '../../../contexts/search-context'
+import { useMediaServerType } from '../../../hooks/useMediaServerType'
 import { prefetchRoute } from '../../../router'
 import Messages from '../../Messages/Messages'
 import VersionStatus from '../../VersionStatus'
@@ -37,6 +39,11 @@ const NavBar: React.FC<NavBarProps> = ({ open, setClosed }) => {
   const location = useLocation()
   const { isRouteBlocked, showBlockedNavigationToast } =
     useMediaServerSetupNavigationGuard()
+  const { mediaServerType } = useMediaServerType()
+  const overlaysSupported = supportsFeature(
+    mediaServerType,
+    MediaServerFeature.OVERLAYS,
+  )
   // Keep variable for potential future customization
   const collectionsLabel = 'Collections'
 
@@ -86,16 +93,20 @@ const NavBar: React.FC<NavBarProps> = ({ open, setClosed }) => {
       },
     ]
 
-    items.splice(5, 0, {
-      key: '5',
-      href: '/overlays',
-      svgIcon: <PhotographIcon className="mr-3 h-6 w-6" />,
-      name: 'Overlays',
-      matchPattern: /^\/overlays(?:\/.*)?$/,
-    })
+    // Overlays require a writable per-item poster surface; hide the entry on
+    // servers that don't support them (e.g. Kodi).
+    if (overlaysSupported) {
+      items.splice(5, 0, {
+        key: '5',
+        href: '/overlays',
+        svgIcon: <PhotographIcon className="mr-3 h-6 w-6" />,
+        name: 'Overlays',
+        matchPattern: /^\/overlays(?:\/.*)?$/,
+      })
+    }
 
     return items
-  }, [collectionsLabel])
+  }, [collectionsLabel, overlaysSupported])
 
   const linkIsActive = (link: NavBarLink) => {
     if (link.matchPattern) {
