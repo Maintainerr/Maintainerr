@@ -1436,6 +1436,27 @@ export class RuleConstants {
           mediaType: MediaType.BOTH,
           type: RuleType.TEXT_LIST, // returns usernames []
         },
+        // Parent-inclusive variants: a Streamystats list holds the show item ID,
+        // not its seasons/episodes, so the item-only props above never match a
+        // watchlisted show when evaluated below show level. These roll the
+        // parent show (and season) in. Show-only and season/episode-only — a
+        // show is the top level (no parent) and a movie has no parent show.
+        {
+          id: 2,
+          name: 'isInWatchlist_including_parent',
+          humanName: 'Is in a watchlist (incl. parents)',
+          mediaType: MediaType.SHOW,
+          type: RuleType.BOOL,
+          showType: ['season', 'episode'],
+        },
+        {
+          id: 3,
+          name: 'watchlistedByUsers_including_parent',
+          humanName: '[list] In watchlist of (username) (incl. parents)',
+          mediaType: MediaType.SHOW,
+          type: RuleType.TEXT_LIST, // returns usernames []
+          showType: ['season', 'episode'],
+        },
       ],
     },
   ];

@@ -56,29 +56,63 @@ describe('RadarrApi', () => {
         addImportExclusion: true,
       });
 
-    // The bulk endpoint de-dupes server-side, so re-adding an existing
-    // exclusion is a no-op rather than the HTTP 400 the singular endpoint
-    // returns.
     it('adds the exclusion via the de-duping bulk endpoint', async () => {
       postSpy.mockResolvedValue([exclusionFor(movie)]);
 
       await expect(unmonitorWithExclusion()).resolves.toBe(true);
-      expect(postSpy).toHaveBeenCalledWith('/exclusions/bulk', [
-        exclusionFor(movie),
-      ]);
+      expect(postSpy).toHaveBeenCalledWith(
+        '/exclusions/bulk',
+        [exclusionFor(movie)],
+        undefined,
+        { rethrow: true },
+      );
     });
 
-    // Radarr's bulk endpoint documents 200 with no response schema, so a
-    // successful add can have an empty body (''); only undefined (a failed
-    // request) is a failure.
-    it('treats a successful empty-body response as success', async () => {
-      postSpy.mockResolvedValue('');
+    // Radarr validates the exclusion POST and returns HTTP 400 with the
+    // uniqueness message when the movie is already excluded; the goal ("movie is
+    // excluded") is already met, so a re-run must not fail the whole collection
+    // action (#3084).
+    it('treats the "already added" 400 as success', async () => {
+      postSpy.mockRejectedValue({
+        isAxiosError: true,
+        response: {
+          status: 400,
+          data: [
+            {
+              propertyName: 'TmdbId',
+              errorMessage: 'This exclusion has already been added.',
+            },
+          ],
+        },
+      });
 
       await expect(unmonitorWithExclusion()).resolves.toBe(true);
     });
 
-    it('returns false when the bulk exclusion request fails', async () => {
-      postSpy.mockResolvedValue(undefined);
+    // A 400 from a different validation rule (e.g. an invalid year) is a real
+    // failure — it must not be silently reported as "already excluded".
+    it('returns false on a non-duplicate validation 400', async () => {
+      postSpy.mockRejectedValue({
+        isAxiosError: true,
+        response: {
+          status: 400,
+          data: [
+            {
+              propertyName: 'MovieYear',
+              errorMessage: 'Must be greater than or equal to 0',
+            },
+          ],
+        },
+      });
+
+      await expect(unmonitorWithExclusion()).resolves.toBe(false);
+    });
+
+    it('returns false when the exclusion request fails for another reason', async () => {
+      postSpy.mockRejectedValue({
+        isAxiosError: true,
+        response: { status: 500 },
+      });
 
       await expect(unmonitorWithExclusion()).resolves.toBe(false);
     });
@@ -118,6 +152,39 @@ describe('RadarrApi', () => {
       expect(runPutSpy).toHaveBeenCalledWith(
         'movie/5',
         JSON.stringify({ ...movie, monitored: false }),
+      );
+    });
+  });
+
+  // Same null/undefined contract as Sonarr (#3125): `undefined` = the lookup
+  // itself failed (fail closed), `null` = Radarr confirmed the movie isn't
+  // tracked. getWithoutCache swallows HTTP errors to `undefined` without
+  // throwing, so the failure must be detected from that value.
+  describe('getMovieByTmdbId null/undefined contract (#3125)', () => {
+    it('returns undefined when the lookup fails transiently (getWithoutCache → undefined)', async () => {
+      jest.spyOn(api as any, 'getWithoutCache').mockResolvedValue(undefined);
+
+      await expect(api.getMovieByTmdbId(123)).resolves.toBeUndefined();
+      expect(logger.warn).toHaveBeenCalledWith(
+        'Error retrieving movie by TMDb ID 123',
+      );
+    });
+
+    it('returns null when Radarr confirms the movie is not tracked (empty array)', async () => {
+      jest.spyOn(api as any, 'getWithoutCache').mockResolvedValue([]);
+
+      await expect(api.getMovieByTmdbId(123)).resolves.toBeNull();
+      expect(logger.warn).toHaveBeenCalledWith(
+        'Could not find Movie with TMDb id 123 in Radarr',
+      );
+    });
+
+    it('returns the movie when Radarr has it', async () => {
+      const movie = createRadarrMovie({ id: 5, tmdbId: 123 });
+      jest.spyOn(api as any, 'getWithoutCache').mockResolvedValue([movie]);
+
+      await expect(api.getMovieByTmdbId(123)).resolves.toEqual(
+        expect.objectContaining({ id: 5 }),
       );
     });
   });

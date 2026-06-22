@@ -270,7 +270,7 @@ export class CollectionsService {
     );
   }
 
-  private async resyncRuleOwnedItemsToSharedCollection(
+  private async resyncRuleOwnedItemsToMediaServerCollection(
     collection: Pick<Collection, 'id' | 'mediaServerId' | 'title'>,
     serverChildIds: Set<string>,
   ): Promise<{ attempted: number; rejected: number }> {
@@ -293,7 +293,7 @@ export class CollectionsService {
 
       const mediaServer = await this.getMediaServer();
       this.logger.log(
-        `[checkAutomaticMediaServerLink] Resyncing ${missingRuleOwnedIds.length} local rule-owned item(s) into shared media server collection ${collection.mediaServerId} for "${collection.title}"`,
+        `[checkAutomaticMediaServerLink] Resyncing ${missingRuleOwnedIds.length} local rule-owned item(s) into media server collection ${collection.mediaServerId} for "${collection.title}"`,
       );
 
       const failedItemIds = new Set(
@@ -306,7 +306,7 @@ export class CollectionsService {
       for (const itemId of missingRuleOwnedIds) {
         if (failedItemIds.has(itemId)) {
           this.logger.warn(
-            `Failed to resync item ${itemId} into shared media server collection ${collection.mediaServerId}`,
+            `Failed to resync item ${itemId} into media server collection ${collection.mediaServerId}`,
           );
         }
       }
@@ -317,7 +317,7 @@ export class CollectionsService {
       };
     } catch (error) {
       this.logger.warn(
-        'Failed to resync local rule-owned items into shared media server collection',
+        'Failed to resync local rule-owned items into media server collection',
       );
       this.logger.debug(error);
       // An exception is not evidence the server rejected the adds, so
@@ -339,8 +339,9 @@ export class CollectionsService {
    * record): delete it so the regular add flow recreates it fresh on the
    * next pass. Deletion is gated on a successful live read confirming the
    * collection is still empty, so a transient outage never triggers it.
-   * Plex-only, matching the empty-collection cleanup in
-   * checkAutomaticMediaServerLink (Jellyfin lags and auto-deletes empties).
+   * Plex-only: an empty Plex collection rejects every add, so it must be
+   * recreated. Jellyfin/Emby accept adds into an empty BoxSet, so those are
+   * repopulated in place by checkAutomaticMediaServerLink instead of deleted.
    */
   private async deleteEmptyCollectionRejectingAdds(
     collection: Pick<
@@ -1533,6 +1534,7 @@ export class CollectionsService {
   async createCollection(
     collection: ICollection,
     empty = true,
+    initialItemId?: string,
   ): Promise<
     | {
         dbCollection: addCollectionDbResponse;
@@ -1555,6 +1557,7 @@ export class CollectionsService {
           summary: collection?.description,
           sortTitle: collection?.sortTitle,
           type: collection.type,
+          initialItemId,
         });
 
         // Store the media server ID from the created collection
@@ -1643,7 +1646,15 @@ export class CollectionsService {
     | undefined
   > {
     try {
-      const createdCollection = await this.createCollection(collection, false);
+      const hasMedia = !!media && media.length > 0;
+      // With no items to add, create the DB row only and defer the remote
+      // collection to the first add (which seeds it). An empty remote collection
+      // is pointless on every server and Emby rejects it outright (#3075).
+      const createdCollection = await this.createCollection(
+        collection,
+        !hasMedia,
+        media?.[0]?.mediaServerId,
+      );
 
       if (!createdCollection?.dbCollection) {
         return undefined;
@@ -1876,13 +1887,13 @@ export class CollectionsService {
         }
       }
 
-      // If the collection is empty, remove it. Otherwise issues when adding media.
-      // ONLY check this if we already had a mediaServerId when entering this function.
-      // If we just linked/found it (originalMediaServerId was null), don't delete it -
-      // the media server may not have finished processing recent additions yet.
+      // Reconcile an automatic collection that already exists on the server.
+      // ONLY act when we had a mediaServerId on entry; if we just linked/found
+      // it (originalMediaServerId was null) the server may not have finished
+      // indexing recent additions yet.
       //
-      // Skip for Jellyfin because API lag causes false positives.
-      // Jellyfin natively auto-deletes empty collections, so no manual cleanup needed.
+      // Plex: an empty Plex collection rejects subsequent adds, so delete the
+      // empty/stale record and let the regular add flow recreate it fresh.
       if (
         this.settingsDataService.media_server_type === MediaServerType.PLEX &&
         serverColl &&
@@ -1910,7 +1921,7 @@ export class CollectionsService {
             `[checkAutomaticMediaServerLink] Shared collection ${serverColl.id} has ${serverChildIds.size} children — checking for local rule-owned drift`,
           );
           const resyncResult =
-            await this.resyncRuleOwnedItemsToSharedCollection(
+            await this.resyncRuleOwnedItemsToMediaServerCollection(
               collection,
               serverChildIds,
             );
@@ -1961,6 +1972,35 @@ export class CollectionsService {
             );
           }
         }
+      } else if (
+        serverColl &&
+        collection.mediaServerId !== null &&
+        originalMediaServerId !== null
+      ) {
+        // Jellyfin/Emby: a BoxSet can drain — its items re-imported with new
+        // ids, or a one-time add that didn't fully land — and sit on the server
+        // under-populated while the DB still lists its rule-owned items. Re-add
+        // the missing ones: empty BoxSets accept adds, so this repopulates in
+        // place, the BoxSet id (with its overlays/poster) stays stable, and
+        // re-adding an item already present is an idempotent no-op. (#3129)
+        //
+        // Removal is intentionally left to the existing flow, which Maintainerr
+        // already drives: when handling empties an automatic collection,
+        // removeFromCollection deletes the BoxSet (or just unlinks it when a
+        // sibling rule group shares it), and the (!serverColl) clear-link path
+        // below recovers a collection whose BoxSet is already gone. This branch
+        // only ever re-adds, never deletes.
+        const serverChildren =
+          (await mediaServer.getCollectionChildren(serverColl.id)) ?? [];
+        const serverChildIds = new Set(
+          serverChildren
+            .map((child) => child?.id?.toString())
+            .filter((childId): childId is string => Boolean(childId)),
+        );
+        await this.resyncRuleOwnedItemsToMediaServerCollection(
+          collection,
+          serverChildIds,
+        );
       }
 
       if (!serverColl) {
@@ -2127,6 +2167,10 @@ export class CollectionsService {
                 summary: collection.description,
                 sortTitle: collection.sortTitle,
                 type: collection.type,
+                // Create with one item so Emby accepts it (it 500s on an empty
+                // create, #3075). The full set is synced below.
+                initialItemId: (newMedia[0] ?? collectionMedia[0])
+                  ?.mediaServerId,
               });
             }
           }

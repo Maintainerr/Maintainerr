@@ -4,9 +4,10 @@
     "dockerfile": "Dockerfile",
     "context": "..",
     "args": {
-      "NODE_VERSION": "24"
+      "NODE_VERSION": "26"
     }
   },
+  "workspaceFolder": "/workspace",
   "features": {
     "ghcr.io/devcontainers/features/common-utils:2": {
       "installZsh": true,

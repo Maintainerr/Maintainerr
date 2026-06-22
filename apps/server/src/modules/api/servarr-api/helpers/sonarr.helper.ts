@@ -6,7 +6,6 @@ import {
   SonarrEpisode,
   SonarrEpisodeFile,
   SonarrInfo,
-  SonarrSeason,
   SonarrSeries,
 } from '../interfaces/sonarr.interface';
 
@@ -123,7 +122,16 @@ export class SonarrApi extends ServarrApi<{
         `/series?tvdbId=${id}`,
       );
 
-      if (!response?.[0]) {
+      // getWithoutCache swallows transport/auth/5xx into `undefined` (it never
+      // throws), so the catch below can't see those failures. Distinguish them
+      // here and fail closed (undefined), rather than letting the empty check
+      // collapse a transient outage into `null` ("not tracked"). (#3125)
+      if (response === undefined) {
+        this.logger.warn(`Error retrieving show by tvdb ID ${id}`);
+        return undefined;
+      }
+
+      if (!response[0]) {
         this.logger.warn(`Could not retrieve show by tvdb ID ${id}`);
         return null;
       }
@@ -350,31 +358,6 @@ export class SonarrApi extends ServarrApi<{
       this.logger.debug(error);
       return undefined;
     }
-  }
-
-  private buildSeasonList(
-    seasons: number[],
-    existingSeasons?: SonarrSeason[],
-  ): SonarrSeason[] {
-    if (existingSeasons) {
-      const newSeasons = existingSeasons.map((season) => {
-        if (seasons.includes(season.seasonNumber)) {
-          season.monitored = true;
-        }
-        return season;
-      });
-
-      return newSeasons;
-    }
-
-    const newSeasons = seasons.map(
-      (seasonNumber): SonarrSeason => ({
-        seasonNumber,
-        monitored: true,
-      }),
-    );
-
-    return newSeasons;
   }
 
   public async info(): Promise<SonarrInfo> {

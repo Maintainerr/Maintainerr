@@ -371,21 +371,24 @@ export class PlexGetterService {
           return [];
         }
         case 'sw_lastWatched': {
-          let watchHistory = await this.plexApi.getWatchHistory(
+          const watchHistory = await this.plexApi.getWatchHistory(
             metadata.ratingKey,
             true,
             metadata.type,
           );
-          watchHistory?.sort((a, b) => a.parentIndex - b.parentIndex).reverse();
-          watchHistory = watchHistory?.filter(
+          // getWatchHistory returns [] for a confirmed-empty history (it throws
+          // on a real outage). [] is truthy and the sort/filter below index
+          // watchHistory[0], so guard up front: "never watched" returns null
+          // (confirmed absent) rather than reading viewedAt off undefined (#3083).
+          if (!watchHistory.length) {
+            return null;
+          }
+          watchHistory.sort((a, b) => b.parentIndex - a.parentIndex);
+          const newestSeason = watchHistory.filter(
             (el) => el.parentIndex === watchHistory[0].parentIndex,
           );
-          watchHistory?.sort((a, b) => a.index - b.index).reverse();
-          // An empty array is truthy, so guard on length: a show with no view
-          // history must return null here, not read viewedAt off undefined.
-          return watchHistory?.length
-            ? new Date(+watchHistory[0].viewedAt * 1000)
-            : null;
+          newestSeason.sort((a, b) => b.index - a.index);
+          return new Date(+newestSeason[0].viewedAt * 1000);
         }
         case 'sw_episodes': {
           if (metadata.type === 'season') {

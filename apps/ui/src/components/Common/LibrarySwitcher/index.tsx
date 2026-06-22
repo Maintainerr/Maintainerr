@@ -24,7 +24,7 @@ const LibrarySwitcher = (props: ILibrarySwitcher) => {
     librariesLoading = false,
     librariesError = false,
   } = props
-  const lastAutoSelectedLibraryId = useRef<string | null>(null)
+  const lastAutoSelectedLibraryIdRef = useRef<string | null>(null)
   const selectValue =
     librariesLoading || librariesError
       ? ''
@@ -42,18 +42,18 @@ const LibrarySwitcher = (props: ILibrarySwitcher) => {
 
     if (shouldShowAllOption === false) {
       if (selectedLibraryId) {
-        lastAutoSelectedLibraryId.current = selectedLibraryId
+        lastAutoSelectedLibraryIdRef.current = selectedLibraryId
         return
       }
 
       const firstId = libraries[0].id
 
-      if (firstId && lastAutoSelectedLibraryId.current !== firstId) {
-        lastAutoSelectedLibraryId.current = firstId
+      if (firstId && lastAutoSelectedLibraryIdRef.current !== firstId) {
+        lastAutoSelectedLibraryIdRef.current = firstId
         onLibraryChange(firstId)
       }
     } else {
-      lastAutoSelectedLibraryId.current = null
+      lastAutoSelectedLibraryIdRef.current = null
     }
   }, [libraries, onLibraryChange, selectedLibraryId, shouldShowAllOption])
 

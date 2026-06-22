@@ -1,3 +1,48 @@
+# [3.15.2](https://github.com/Maintainerr/Maintainerr/compare/v3.15.1...v3.15.2) (2026-06-20)
+
+
+## Highlights
+- Fixed transient failure handling for Sonarr and Radarr lookups, preventing data loss during rule evaluations under heavy load (#3125, #3128, #3139).
+- Resolved issues with Jellyfin/Emby automatic collections, ensuring proper handling of empty collections and preventing resurrection of deleted media-server links (#3129, #3134, #3135, #3137).
+- Improved Streamystats watchlist handling by inheriting parent show information for season/episode-level rules, preventing unintended deletions or unmonitoring (#3127, #3133).
+
+## Fixes
+- Fixed transient failure handling for Sonarr and Radarr lookups, ensuring fail-closed behavior to prevent data loss during rule evaluations under heavy load (#3125, #3128, #3139).
+- Resolved issues with Jellyfin/Emby automatic collections:
+  - Fixed empty collections not healing properly for Jellyfin/Emby servers (#3129, #3134).
+  - Prevented resurrection of deleted media-server links when handling empty collections (#3135).
+  - Removed redundant empty-collection delete logic for Jellyfin/Emby, retaining only the repopulation path (#3137).
+- Improved Streamystats watchlist handling by inheriting parent show information for season/episode-level rules, preventing unintended deletions or unmonitoring (#3127, #3133).
+
+## Dependencies
+- Updated 12 dependencies, including @types/node, sharp, @faker-js/faker, and typescript-eslint.
+
+# [3.15.1](https://github.com/Maintainerr/Maintainerr/compare/v3.15.0...v3.15.1) (2026-06-17)
+
+
+## Highlights
+- Fixed Plex `sw_lastWatched` getter to correctly return `null` for shows never watched, resolving a `TypeError` when accessing empty watch history (#3102).
+- Fixed Emby collection creation to include an initial item, avoiding HTTP 500 errors for empty collections (#3097).
+- Fixed Radarr import-list exclusions to correctly handle "already excluded" HTTP 400 responses as success (#3096, #3099).
+
+## Fixes
+- Fixed Plex `sw_lastWatched` getter to correctly return `null` for shows never watched, resolving a `TypeError` when accessing empty watch history (#3102).
+- Fixed Emby collection creation to include an initial item, avoiding HTTP 500 errors for empty collections (#3097).
+- Fixed Emby collection creation to skip remote creation for empty collections, preventing HTTP 500 errors (#3098).
+- Fixed Radarr import-list exclusions to correctly handle "already excluded" HTTP 400 responses as success (#3096, #3099).
+- Fixed Radarr exclusion handling to avoid misreporting non-duplicate validation errors as success (#3099).
+- Fixed Plex collections to self-heal when stale/corrupt records reject every item add (#3094).
+- Fixed metadata resolution for movie/show IDs to correctly resolve from the item itself instead of its parent (#3100).
+
+## Performance
+- Increased timeout for `OverlayRenderService` render tests to avoid CI flakiness during sharp-based image processing (#3101).
+
+## Internal
+- Updated README feature wording.
+
+## Dependencies
+- 23 dependency updates, including nodemailer, @typescript-eslint/parser, axios, @nestjs/typeorm, sharp, and semantic-release.
+
 # [3.15.0](https://github.com/Maintainerr/Maintainerr/compare/v3.14.0...v3.15.0) (2026-06-09)
 
 

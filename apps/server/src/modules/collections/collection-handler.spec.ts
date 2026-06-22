@@ -511,6 +511,42 @@ describe('CollectionHandler', () => {
     );
   });
 
+  it('persists the cleared link when removing the last item empties (and deletes) the collection', async () => {
+    const collection = createCollection({
+      arrAction: ServarrAction.DELETE,
+      type: 'movie',
+      mediaServerId: 'dead-boxset-id',
+    });
+    const collectionMedia = createCollectionMedia(collection);
+
+    mediaServer.getLibraries.mockResolvedValue(
+      createMediaLibraries({
+        id: collection.libraryId.toString(),
+        type: 'movie',
+      }),
+    );
+
+    // Removing the last item empties the collection: removeFromCollection
+    // deletes the media-server BoxSet and returns the persisted collection with
+    // mediaServerId cleared.
+    collectionsService.removeFromCollection.mockResolvedValue({
+      ...collection,
+      mediaServerId: null,
+    } as typeof collection);
+
+    await collectionHandler.handleMedia(collection, collectionMedia);
+
+    // The post-handle save must carry the cleared link forward — saving the
+    // stale snapshot would resurrect the dead BoxSet id and force the next rule
+    // run to rediscover it via a 404.
+    expect(collectionsService.saveCollection).toHaveBeenCalledWith(
+      expect.objectContaining({
+        mediaServerId: null,
+        handledMediaAmount: 1,
+      }),
+    );
+  });
+
   it('should call removeMediaByTmdbId for movies', async () => {
     const collection = createCollection({
       arrAction: ServarrAction.DELETE,

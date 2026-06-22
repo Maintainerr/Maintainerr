@@ -5,7 +5,7 @@ import type {
 } from '@maintainerr/contracts'
 import {
   useCallback,
-  useContext,
+  use,
   useEffect,
   useEffectEvent,
   useMemo,
@@ -80,10 +80,10 @@ const Overview = () => {
   const lastAutoSyncKeyRef = useRef<string | undefined>(undefined)
   const bootstrapRequestedRef = useRef<boolean>(false)
 
-  const pageData = useRef<number>(0)
+  const pageDataRef = useRef<number>(0)
   const fetchingRef = useRef<boolean>(false)
   const { invalidate, guardedFetch } = useRequestGeneration()
-  const SearchCtx = useContext(SearchContext)
+  const SearchCtx = use(SearchContext)
 
   const defaultLibraryId = libraries?.[0]?.id
   const effectiveSelectedLibraryId =
@@ -156,7 +156,7 @@ const Overview = () => {
           lastAutoSyncKeyRef.current = nextLibraryId
             ? `library:${nextLibraryId}`
             : undefined
-          pageData.current = nextLibraryId ? 1 : 0
+          pageDataRef.current = nextLibraryId ? 1 : 0
           setTotalSize(nextContent.totalSize)
           totalSizeRef.current = nextContent.totalSize
           dataRef.current = nextContent.items
@@ -194,7 +194,7 @@ const Overview = () => {
         !libraryId ||
         SearchCtx.search.text !== '' ||
         (!options?.replaceExisting &&
-          !(totalSizeRef.current >= pageData.current * fetchAmount))
+          !(totalSizeRef.current >= pageDataRef.current * fetchAmount))
       ) {
         return
       }
@@ -212,7 +212,7 @@ const Overview = () => {
           ? Math.max(1, options.preservedPageCount ?? 1)
           : undefined
         const query = buildLibraryContentQuery({
-          page: options?.replaceExisting ? 1 : pageData.current + 1,
+          page: options?.replaceExisting ? 1 : pageDataRef.current + 1,
           limit: preservedPageCount
             ? preservedPageCount * fetchAmount
             : fetchAmount,
@@ -237,7 +237,7 @@ const Overview = () => {
 
           setTotalSize(result.data.totalSize)
           totalSizeRef.current = result.data.totalSize
-          pageData.current = preservedPageCount ?? pageData.current + 1
+          pageDataRef.current = preservedPageCount ?? pageDataRef.current + 1
           dataRef.current = mergedItems
           setData(mergedItems)
           setLoadingExtra(false)
@@ -280,7 +280,7 @@ const Overview = () => {
             if (result.status === 'success') {
               setSearchUsed(true)
               setTotalSize(result.data.length)
-              pageData.current = result.data.length * 50
+              pageDataRef.current = result.data.length * 50
               setData(sortMediaItems(result.data, nextSortParams))
               setLoading(false)
             }
@@ -297,10 +297,10 @@ const Overview = () => {
         libraryId ?? selectedLibraryRef.current ?? effectiveSelectedLibraryId
       const hasExistingData = dataRef.current.length > 0
       const preservedPageCount =
-        !searchUsed && hasExistingData ? Math.max(pageData.current, 1) : 1
+        !searchUsed && hasExistingData ? Math.max(pageDataRef.current, 1) : 1
 
       setSearchUsed(false)
-      pageData.current = 0
+      pageDataRef.current = 0
       setLoading(true)
       setLoadingExtra(false)
 
@@ -373,7 +373,7 @@ const Overview = () => {
       invalidateFetches()
       dataRef.current = []
       totalSizeRef.current = 999
-      pageData.current = 0
+      pageDataRef.current = 0
       bootstrapRequestedRef.current = false
       selectedLibraryRef.current = undefined
       setFetching(false)

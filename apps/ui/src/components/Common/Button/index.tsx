@@ -37,17 +37,15 @@ type ButtonProps<P extends React.ElementType> = {
   as?: P
 } & MergeElementProps<P, BaseProps<P>>
 
-function Button<P extends ElementTypes = 'button'>(
-  {
-    buttonType = 'default',
-    buttonSize = 'default',
-    as,
-    children,
-    className,
-    ...props
-  }: ButtonProps<P>,
-  ref?: React.Ref<Element<P>>,
-): JSX.Element {
+function Button<P extends ElementTypes = 'button'>({
+  buttonType = 'default',
+  buttonSize = 'default',
+  as,
+  children,
+  className,
+  ref,
+  ...props
+}: ButtonProps<P> & { ref?: React.Ref<Element<P>> }): JSX.Element {
   const buttonStyle = [
     'inline-flex items-center justify-center border border-transparent leading-5 font-medium focus:outline-hidden transition ease-in-out duration-150 cursor-pointer disabled:opacity-50 whitespace-nowrap',
   ]
@@ -74,7 +72,7 @@ function Button<P extends ElementTypes = 'button'>(
       break
     case 'ghost':
       buttonStyle.push(
-        'text-white bg-transaprent border-zinc-600 hover:border-zinc-200 focus:border-zinc-100 rounded-md active:border-zinc-100',
+        'text-white bg-transparent border-zinc-600 hover:border-zinc-200 focus:border-zinc-100 rounded-md active:border-zinc-100',
       )
       break
     case 'twin-primary-l':
@@ -140,4 +138,4 @@ function Button<P extends ElementTypes = 'button'>(
   }
 }
 
-export default React.forwardRef(Button) as typeof Button
+export default Button

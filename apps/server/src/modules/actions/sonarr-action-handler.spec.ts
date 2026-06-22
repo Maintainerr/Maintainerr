@@ -156,9 +156,7 @@ describe('SonarrActionHandler', () => {
       mockMediaServerMetadata(collectionMedia.mediaData);
 
       const mockedSonarrApi = mockSonarrApi(servarrService, logger);
-      jest
-        .spyOn(mockedSonarrApi, 'getSeriesByTvdbId')
-        .mockResolvedValue(undefined);
+      jest.spyOn(mockedSonarrApi, 'getSeriesByTvdbId').mockResolvedValue(null);
 
       mediaIdFinder.findTvdbId.mockResolvedValue(1);
 
@@ -232,9 +230,7 @@ describe('SonarrActionHandler', () => {
       mockMediaServerMetadata(collectionMedia.mediaData);
 
       const mockedSonarrApi = mockSonarrApi(servarrService, logger);
-      jest
-        .spyOn(mockedSonarrApi, 'getSeriesByTvdbId')
-        .mockResolvedValue(undefined);
+      jest.spyOn(mockedSonarrApi, 'getSeriesByTvdbId').mockResolvedValue(null);
 
       mediaIdFinder.findTvdbId.mockResolvedValue(1);
 
@@ -246,6 +242,37 @@ describe('SonarrActionHandler', () => {
       validateNoSonarrActionsTaken(mockedSonarrApi);
     },
   );
+
+  // A transient Sonarr lookup failure (getSeriesByTvdbId → undefined) must NOT
+  // be read as "not in Sonarr" and trigger a media-server delete — fail closed
+  // so the item stays in the collection and is retried next run. (#3125)
+  it('fails closed (no delete, no action) when the Sonarr lookup fails transiently for a DELETE action', async () => {
+    const collection = createCollection({
+      arrAction: ServarrAction.DELETE,
+      sonarrSettingsId: 1,
+      type: 'show',
+    });
+    const collectionMedia = createCollectionMediaWithMetadata(collection, {
+      tmdbId: 1,
+    });
+
+    mockMediaServerMetadata(collectionMedia.mediaData);
+
+    const mockedSonarrApi = mockSonarrApi(servarrService, logger);
+    jest
+      .spyOn(mockedSonarrApi, 'getSeriesByTvdbId')
+      .mockResolvedValue(undefined);
+
+    mediaIdFinder.findTvdbId.mockResolvedValue(1);
+
+    await expect(
+      sonarrActionHandler.handleAction(collection, collectionMedia),
+    ).resolves.toBe(false);
+
+    expect(mockedSonarrApi.getSeriesByTvdbId).toHaveBeenCalled();
+    expect(mediaServer.deleteFromDisk).not.toHaveBeenCalled();
+    validateNoSonarrActionsTaken(mockedSonarrApi);
+  });
 
   it('should unmonitor season and delete episodes when type SEASONS and action DELETE', async () => {
     const collection = createCollection({

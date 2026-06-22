@@ -228,6 +228,34 @@ export class RuleExecutorService {
         removedMediaServerIds: new Set<string>(),
       };
 
+      // Snapshot whether this collection was already linked to a media server
+      // collection BEFORE this run. handleCollection below can link a freshly
+      // created automatic collection to a pre-existing, same-named server
+      // collection; the post-handle state would then look "already linked" and
+      // make the sync below import that collection's existing contents as
+      // manual. Capturing the pre-run state lets the run that *establishes* the
+      // link skip that import — the membership-provenance guard (#2663)
+      // otherwise reads the link state too late (after handleCollection has
+      // already linked it) and never skips.
+      //
+      // Be honest about the scope: this only suppresses the import on the run
+      // that adopts the collection. On the NEXT run the collection is already
+      // linked (collectionLinkedBeforeRun === true), so the import runs and the
+      // pre-existing, rule-unselected items get tracked as manual then. We can't
+      // distinguish "was on the BoxSet at adoption time" from "the user added it
+      // to the BoxSet afterwards" without persisted provenance, so the guard
+      // only removes the noisy first-run flood — a long-lived adopted collection
+      // still absorbs its foreign items as manual on a later run.
+      const collectionLinkedBeforeRun = ruleGroup.collection?.id
+        ? Boolean(
+            (
+              await this.collectionService.getCollection(
+                ruleGroup.collection.id,
+              )
+            )?.mediaServerId,
+          )
+        : false;
+
       if (ruleGroup.useRules) {
         this.logger.log(`Executing rules for '${ruleGroup.name}'`);
         this.startTime = new Date();
@@ -305,6 +333,7 @@ export class RuleExecutorService {
       await this.syncManualMediaServerToCollectionDB(
         await this.rulesService.getRuleGroupById(ruleGroup.id), // refetch to get latest changes
         collectionSyncChanges,
+        collectionLinkedBeforeRun,
       );
     } catch (error) {
       const executionBeingAborted =
@@ -354,9 +383,13 @@ export class RuleExecutorService {
   private async syncManualMediaServerToCollectionDB(
     rulegroup: RuleGroup,
     collectionSyncChanges: CollectionMembershipSyncChanges,
+    collectionLinkedBeforeRun?: boolean,
   ) {
     if (rulegroup && rulegroup.collectionId) {
-      const syncContext = await this.getCollectionForMediaServerSync(rulegroup);
+      const syncContext = await this.getCollectionForMediaServerSync(
+        rulegroup,
+        collectionLinkedBeforeRun,
+      );
       const collection = syncContext.collection;
 
       if (collection) {
@@ -545,6 +578,7 @@ export class RuleExecutorService {
 
   private async getCollectionForMediaServerSync(
     rulegroup: RuleGroup,
+    collectionLinkedBeforeRun?: boolean,
   ): Promise<MediaServerSyncContext> {
     const collection = await this.collectionService.getCollection(
       rulegroup.collectionId,
@@ -575,7 +609,14 @@ export class RuleExecutorService {
         : { collection: relinkedCollection };
     }
 
-    const wasLinkedBeforeSync = Boolean(collection.mediaServerId);
+    // Prefer the link state captured BEFORE this run (handleCollection may have
+    // linked a freshly created collection to a pre-existing server collection
+    // in the meantime). A collection linked only during this run must skip the
+    // manual child import so it does not absorb that server collection's
+    // existing contents as manual members. Falls back to the collection's
+    // current link state when the caller didn't capture the pre-run snapshot.
+    const wasLinkedBeforeSync =
+      collectionLinkedBeforeRun ?? Boolean(collection.mediaServerId);
 
     const linkedCollection =
       await this.collectionService.checkAutomaticMediaServerLink(collection);

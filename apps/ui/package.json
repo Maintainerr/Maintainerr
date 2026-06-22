@@ -1,6 +1,6 @@
 {
   "name": "@maintainerr/ui",
-  "version": "3.15.0",
+  "version": "3.15.2",
   "private": true,
   "scripts": {
     "dev": "vite",
@@ -25,7 +25,7 @@
     "@tanstack/react-query": "^5.101.0",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
-    "axios": "^1.17.0",
+    "axios": "^1.18.0",
     "bowser": "^2.14.1",
     "clsx": "^2.1.1",
     "compare-versions": "^6.1.1",
@@ -35,11 +35,11 @@
     "monaco-editor": "0.55.1",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
-    "react-hook-form": "^7.78.0",
+    "react-hook-form": "^7.79.0",
     "react-konva": "^19.2.5",
     "react-markdown": "10.1.0",
     "react-movable": "^3.4.1",
-    "react-router-dom": "^7.17.0",
+    "react-router-dom": "^7.18.0",
     "react-select": "^5.10.2",
     "react-toastify": "^11.1.0",
     "reconnecting-eventsource": "^1.6.5",
@@ -54,22 +54,21 @@
     "not IE 11"
   ],
   "devDependencies": {
-    "@eslint/eslintrc": "^3.3.5",
-    "@eslint/js": "^9.39.2",
+    "@eslint-react/eslint-plugin": "^5.9.0",
+    "@eslint/js": "^10.0.1",
     "@tailwindcss/forms": "^0.5.11",
     "@tailwindcss/typography": "^0.5.20",
-    "@tailwindcss/vite": "^4.3.0",
+    "@tailwindcss/vite": "^4.3.1",
     "@tanstack/eslint-plugin-query": "^5.101.0",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/react": "^16.3.2",
     "@types/lodash-es": "^4.17.12",
-    "@types/node": "^22",
-    "@typescript-eslint/eslint-plugin": "^8.61.0",
-    "@typescript-eslint/parser": "^8.61.0",
+    "@types/node": "^26",
+    "@typescript-eslint/eslint-plugin": "^8.61.1",
+    "@typescript-eslint/parser": "^8.61.1",
     "@vitejs/plugin-react": "^6.0.2",
-    "eslint": "^9.39.2",
+    "eslint": "^10.5.0",
     "eslint-config-prettier": "^10.1.8",
-    "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^7.1.1",
     "jsdom": "^29.1.1",
     "prettier": "^3.8.4",
@@ -77,9 +76,9 @@
     "tailwindcss": "^4.3.0",
     "typescript": "^6.0.3",
     "vite": "^8.0.16",
-    "vitest": "^4.1.8"
+    "vitest": "^4.1.9"
   },
   "optionalDependencies": {
-    "rolldown": "^1.1.1"
+    "rolldown": "^1.1.2"
   }
 }

@@ -5,7 +5,7 @@
 **When running yarn commands (build, test, etc.), always execute from the workspace root:**
 
 ```bash
-cd /workspaces/Maintainerr  <--- ensure you are in the root workspace
+cd /workspace  <--- ensure you are in the root workspace (inside the devbox container)
 yarn build | tail -20
 yarn test | tail -20
 ```
@@ -75,6 +75,49 @@ This is a **TypeScript monorepo** managed with **Turborepo** and **Yarn workspac
 
 - **Purpose**: Shared TypeScript types, DTOs, validation schemas
 - **Technologies**: Zod schemas, class-validator decorators, Nest.js decorators
+
+## Development Environment
+
+The development environment runs inside **`devbox`** — a rootless Docker container
+managed by `~/infra/compose.yml` on the host. This IS the devcontainer for this project.
+
+- `devbox` mounts the repo at `/workspace` and has Node 26 + Yarn 4.11 pre-installed.
+  Work directly inside the container at `/workspace` — open your editor/agent here,
+  run all `yarn` commands here. Node is only installed in the container, not the host.
+- Git works normally from `/workspace`: `git commit` and `git push` directly. The
+  SSH key for GitHub is mounted into the container, so no host-side push relay is
+  needed.
+- Agent state (Claude, Copilot, VS Code server/extensions, SSH, Git config) is mounted
+  into `/root` from the host, so it persists across container restarts and recreates.
+  Leave those mounts as configured.
+- `~/infra/compose.yml` (which defines `devbox`) is live server config on the host,
+  outside this git repo. Treat it as operational state, not project code.
+- `yarn dev` serves UI on port 3000 and API on port 6246. Logs at `/tmp/yarn-dev.log`.
+
+**Dev media servers** (Plex, Jellyfin, Emby) run as separate rootless Docker containers
+in `~/dev-media.compose.yml`, reachable from inside `devbox` by hostname:
+- Plex → `http://dev-plex:32400`
+- Jellyfin → `http://dev-jellyfin:8096`
+- Emby → `http://dev-emby:8096`
+
+Credentials are in `~/dev-media-creds.env` (not committed). Media lives on `/mnt/dev-media`.
+
+### Security model — you are L3, the confined devbox
+
+Three trust levels, privilege descending: **`root`@host** (everything) › **`maintainerr-dev`**
+(the SSH host — runs the dev media stack, holds its secrets, controls the devbox) ›
+**`devbox`** (you: dev/test only). You can reach the media/service stack by hostname
+(`dev-plex`, `dev-radarr`, …) to test and seed against it, but you **cannot break out** to
+the host — and that boundary is enforced from above you, so you can't disable it:
+
+- **Read-only Docker** — the socket-proxy allows `ps`/`logs`, never `start`/`stop`/`exec`/`create`.
+- **Host egress firewall** — outbound is default-deny to an allowlist (GitHub, npm, Anthropic,
+  Plex/TMDB) plus the internal docker network; `NET_ADMIN` is stripped from the container.
+- **Rootless + `cap_drop: ALL` + `no-new-privileges`** — even container-root is an unprivileged
+  subuid, never the host user.
+
+Don't fight these (e.g. trying to `exec` into another container, or reaching a non-allowlisted
+host) — they're intentional, not bugs. Operator-side detail lives in `~/infra/README.md`.
 
 ## Development Workflow
 
@@ -344,7 +387,7 @@ degrade gracefully.
 
 ### Environment Setup
 
-- **Node.js**: Version 20.19.0+, 22.13.0+, or 24.11.0+ (the floor is set by TypeORM 1.0.0's engine requirement; the Docker image ships Node 26)
+- **Node.js**: Version 22.13.0+ or 24.11.0+ (the floor is Node 22, raised from TypeORM 1.0.0's 20.19 requirement by the `@eslint-react` lint toolchain, which needs Node 22+; the Docker image and devcontainer ship Node 26)
 - **Package Manager**: Yarn 4.11 (managed via corepack)
 - **Data Directory**: Requires `data/` folder with proper permissions for development
 

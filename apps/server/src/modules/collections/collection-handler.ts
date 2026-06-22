@@ -210,11 +210,23 @@ export class CollectionHandler {
       }
     }
 
-    await this.collectionService.removeFromCollection(collection.id, [
-      {
-        mediaServerId: media.mediaServerId,
-      },
-    ]);
+    // Removing the last item empties the collection, which deletes the
+    // media-server collection and clears `mediaServerId` in the DB. Continue
+    // from the persisted result, not the stale snapshot passed in: the
+    // `saveCollection` below would otherwise rewrite the whole row and
+    // resurrect the now-dead `mediaServerId`, leaving a link the next rule run
+    // can only discover via a 404.
+    const updatedCollection = await this.collectionService.removeFromCollection(
+      collection.id,
+      [
+        {
+          mediaServerId: media.mediaServerId,
+        },
+      ],
+    );
+    if (updatedCollection) {
+      collection = updatedCollection;
+    }
 
     // The file is gone after a disk-freeing action (DELETE, DELETE_SHOW_IF_EMPTY,
     // and the UNMONITOR_DELETE_* variants all delete files), but the item still
