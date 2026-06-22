@@ -72,6 +72,11 @@ export class KodiApi {
    * failures.
    */
   async call<T>(method: string, params?: Record<string, unknown>): Promise<T> {
+    // The request host is the URL the user configured for their own Kodi
+    // server — Maintainerr is intentionally self-hosted and connects to
+    // user-chosen LAN/private/public addresses (the same data flow as the
+    // Plex/Jellyfin/Emby adapters). This is not an externally-controllable SSRF.
+    // codeql[js/request-forgery]
     const { data } = await this.axios.post<KodiRpcEnvelope<T>>('/jsonrpc', {
       jsonrpc: '2.0',
       method,

@@ -234,7 +234,12 @@ const server = http.createServer((req, res) => {
     try {
       envelope = { jsonrpc: '2.0', id, result: dispatch(method, params) };
     } catch (error) {
-      envelope = { jsonrpc: '2.0', id, error };
+      // Echo only a sanitized JSON-RPC error shape — never a raw Error/stack.
+      const rpcError =
+        error && typeof error === 'object' && 'code' in error
+          ? { code: error.code, message: String(error.message ?? 'error') }
+          : { code: -32603, message: 'Internal error' };
+      envelope = { jsonrpc: '2.0', id, error: rpcError };
     }
     const json = JSON.stringify(envelope);
     res.writeHead(200, {
