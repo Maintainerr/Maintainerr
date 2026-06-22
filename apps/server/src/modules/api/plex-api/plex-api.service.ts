@@ -749,8 +749,25 @@ export class PlexApiService {
             false,
           );
 
-      const records =
-        (response?.MediaContainer?.Metadata as PlexSeenBy[]) ?? [];
+      const container = response?.MediaContainer;
+      const records = (container?.Metadata as PlexSeenBy[]) ?? [];
+
+      // The leaf map is authoritative for "never watched": a movie/episode
+      // absent from it is read as empty history with NO per-item fallback. So
+      // only cache a sweep we can prove is complete. Plex reports totalSize on
+      // this endpoint; queryAll stops paging once totalSize is reached, but a
+      // missing/short totalSize would make it stop early and silently truncate.
+      // Treat that as a failed prefetch so callers fall back to per-item queries
+      // rather than trusting a partial map.
+      const totalSize = container?.totalSize;
+      if (typeof totalSize !== 'number' || records.length < totalSize) {
+        this.logger.warn(
+          `Watch history prefetch returned an unverifiable result ` +
+            `(received ${records.length}, totalSize ${totalSize ?? 'absent'}) — ` +
+            `falling back to per-item queries.`,
+        );
+        return;
+      }
 
       const leafMap = new Map<string, PlexSeenBy[]>();
       for (const record of records) {
@@ -802,38 +819,37 @@ export class PlexApiService {
     useCache: boolean = true,
     itemType?: PlexLibraryItem['type'],
   ): Promise<PlexSeenBy[]> {
-    // Serve leaf items (movies, episodes) from the bulk map when it is
-    // populated. This applies even to useCache: false callers (e.g.
-    // getWatchState): that flag opts out of the stale per-item HTTP response
-    // cache (5 min TTL, survives across runs), whereas the bulk map is a
-    // deliberate snapshot with a run-scoped lifecycle — rebuilt by
-    // prefetchWatchHistory and flushed whenever a rule group requires a cache
-    // reset.
-    switch (itemType) {
-      case 'movie':
-      case 'episode': {
-        const records = this.getBulkWatchHistory(
-          WATCH_HISTORY_BULK_CACHE_KEY,
-          itemId,
-        );
-        if (records !== undefined) return records;
-        break;
-      }
-      case 'show':
-      case 'season':
-        // The bulk map holds no show/season rollups (see prefetchWatchHistory);
-        // fall through to the per-item metadataItemID query, which Plex rolls up
-        // server-side.
-        break;
-      default: {
-        // Untyped callers may pass any kind of ratingKey, so only a non-empty
-        // leaf hit is trusted — a miss falls through to the per-item query.
-        const records = this.getBulkWatchHistory(
-          WATCH_HISTORY_BULK_CACHE_KEY,
-          itemId,
-        );
-        if (records !== undefined && records.length > 0) return records;
-        break;
+    // Serve leaf items (movies, episodes) from the bulk map when caching is
+    // allowed. The map is a point-in-time snapshot taken at prefetch time;
+    // callers that pass useCache: false intentionally bypass it and read the
+    // per-item endpoint instead.
+    if (useCache) {
+      switch (itemType) {
+        case 'movie':
+        case 'episode': {
+          const records = this.getBulkWatchHistory(
+            WATCH_HISTORY_BULK_CACHE_KEY,
+            itemId,
+          );
+          if (records !== undefined) return records;
+          break;
+        }
+        case 'show':
+        case 'season':
+          // The bulk map holds no show/season rollups (see
+          // prefetchWatchHistory); fall through to the per-item metadataItemID
+          // query, which Plex rolls up server-side.
+          break;
+        default: {
+          // Untyped callers may pass any kind of ratingKey, so only a non-empty
+          // leaf hit is trusted — a miss falls through to the per-item query.
+          const records = this.getBulkWatchHistory(
+            WATCH_HISTORY_BULK_CACHE_KEY,
+            itemId,
+          );
+          if (records !== undefined && records.length > 0) return records;
+          break;
+        }
       }
     }
 

@@ -720,6 +720,7 @@ describe('PlexApiService.prefetchWatchHistory', () => {
             viewedAt: 1720000000,
           },
         ],
+        totalSize: 3,
       },
     });
 
@@ -765,6 +766,7 @@ describe('PlexApiService.prefetchWatchHistory', () => {
             viewedAt: 1700000003,
           },
         ],
+        totalSize: 3,
       },
     });
 
@@ -782,7 +784,7 @@ describe('PlexApiService.prefetchWatchHistory', () => {
 
   it('skips the fetch when the bulk map is already cached', async () => {
     const queryAll = jest.fn().mockResolvedValue({
-      MediaContainer: { Metadata: [] },
+      MediaContainer: { Metadata: [], totalSize: 0 },
     });
 
     (service as any).plexClient = { queryAll };
@@ -793,6 +795,32 @@ describe('PlexApiService.prefetchWatchHistory', () => {
     await service.prefetchWatchHistory();
 
     expect(queryAll).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not cache the map when the sweep is unverifiable (missing/short totalSize)', async () => {
+    const cacheManager = (await import('../lib/cache')).default;
+
+    // A full-looking page with no totalSize: queryAll may have truncated, so the
+    // map must NOT be cached — callers fall back to the per-item query instead.
+    const queryAll = jest.fn().mockResolvedValue({
+      MediaContainer: {
+        Metadata: [
+          { ratingKey: '1', type: 'movie', accountID: 1, viewedAt: 1 },
+        ],
+      },
+    });
+    (service as any).plexClient = { queryAll };
+
+    await service.prefetchWatchHistory();
+
+    expect(
+      cacheManager
+        .getCache('plexwatchhistory')
+        .data.has(WATCH_HISTORY_BULK_CACHE_KEY),
+    ).toBe(false);
+    expect(logger.warn).toHaveBeenCalledWith(
+      expect.stringContaining('unverifiable result'),
+    );
   });
 
   it('logs a warning and does not throw when the Plex API call fails', async () => {
@@ -983,7 +1011,9 @@ describe('PlexApiService.getWatchHistory bulk map', () => {
     expect(queryAll).not.toHaveBeenCalled();
   });
 
-  it('serves useCache: false callers from the bulk snapshot (flag only opts out of the per-item HTTP cache)', async () => {
+  it('bypasses the bulk snapshot for explicit useCache: false callers and reads per-item', async () => {
+    // Keep an escape hatch for callers that explicitly need a live per-item
+    // read; rule evaluation uses useCache: true to share the run snapshot.
     const cacheManager = (await import('../lib/cache')).default;
     const bulkMap = new Map([
       ['42', [{ ratingKey: '42', accountID: 10, viewedAt: 1700000000 }]],
@@ -992,13 +1022,22 @@ describe('PlexApiService.getWatchHistory bulk map', () => {
       .getCache('plexwatchhistory')
       .data.set(WATCH_HISTORY_BULK_CACHE_KEY, bulkMap);
 
-    const queryAll = jest.fn();
+    const queryAll = jest.fn().mockResolvedValue({
+      MediaContainer: {
+        Metadata: [{ ratingKey: '42', accountID: 99, viewedAt: 1720000000 }],
+      },
+    });
     (service as any).plexClient = { queryAll };
 
     const result = await service.getWatchHistory('42', false, 'movie');
 
-    expect(result).toHaveLength(1);
-    expect(queryAll).not.toHaveBeenCalled();
+    expect(queryAll).toHaveBeenCalledWith(
+      expect.objectContaining({
+        uri: expect.stringContaining('metadataItemID=42'),
+      }),
+      false,
+    );
+    expect(result[0].accountID).toBe(99);
   });
 
   it('passes useCache: false through to the per-item query when the bulk map is absent', async () => {
