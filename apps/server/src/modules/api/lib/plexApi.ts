@@ -15,6 +15,7 @@ type PlexApiOptions = {
 type RequestOptions = {
   uri: string;
   extraHeaders?: Record<string, string>;
+  signal?: AbortSignal;
 };
 
 class PlexApi {
@@ -71,12 +72,14 @@ class PlexApi {
   async queryAll<T>(
     options: RequestOptions,
     useCache: boolean = true,
+    signal?: AbortSignal,
   ): Promise<T> {
     // vars
     let result = undefined;
     let next = true;
     let page = 0;
     const size = 120;
+    const requestSignal = signal ?? options.signal;
     options = {
       ...options,
       extraHeaders: {
@@ -84,10 +87,12 @@ class PlexApi {
         'X-Plex-Container-Start': `${page}`,
         'X-Plex-Container-Size': `${size}`,
       },
+      signal: requestSignal,
     };
 
     // loop responses
     while (next) {
+      requestSignal?.throwIfAborted();
       const query: PlexLibraryResponse = await this.query(options, useCache);
       if (result === undefined) {
         // if first response, replace result
@@ -141,6 +146,7 @@ class PlexApi {
       url: options.uri,
       method,
       headers: options.extraHeaders,
+      signal: options.signal,
     };
 
     try {
@@ -153,6 +159,13 @@ class PlexApi {
       );
 
       if (error instanceof AxiosError) {
+        if (error.code === 'ERR_CANCELED') {
+          const reason = options.signal?.reason;
+          throw reason instanceof DOMException
+            ? reason
+            : new DOMException('The operation was aborted.', 'AbortError');
+        }
+
         if (error.response?.status === 403) {
           throw new Error(
             `${requestConfig.method} ${url} failed: Plex Server denied request due to lack of managed user permissions! In case of a delete request, delete content must be allowed in plex-media-server options.`,

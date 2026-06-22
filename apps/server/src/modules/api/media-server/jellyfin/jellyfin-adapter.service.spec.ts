@@ -381,6 +381,12 @@ describe('JellyfinAdapterService', () => {
         service.reorderCollectionItems('col1', ['a', 'b']),
       ).rejects.toThrow('Collection sort not supported on Jellyfin');
     });
+
+    it('prefetchWatchHistory throws because Jellyfin has no central history endpoint', async () => {
+      await expect(service.prefetchWatchHistory()).rejects.toThrow(
+        'not supported on Jellyfin',
+      );
+    });
   });
 
   describe('getLibraryContents', () => {

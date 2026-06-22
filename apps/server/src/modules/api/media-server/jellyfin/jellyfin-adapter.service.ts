@@ -1042,6 +1042,16 @@ export class JellyfinAdapterService implements IMediaServerService {
     }
   }
 
+  async prefetchWatchHistory(): Promise<void> {
+    // Jellyfin has no central watch-history endpoint (history is per-user), so
+    // there is nothing to bulk prefetch. Gated by
+    // supportsFeature(CENTRAL_WATCH_HISTORY) which is false for Jellyfin —
+    // callers shouldn't reach here.
+    throw new Error(
+      'Bulk watch-history prefetch is not supported on Jellyfin (per-user history)',
+    );
+  }
+
   async getWatchHistory(itemId: string): Promise<WatchRecord[]> {
     if (!this.api) return [];
 

@@ -431,6 +431,14 @@ describe('PlexAdapterService', () => {
     });
   });
 
+  describe('prefetchWatchHistory', () => {
+    it('delegates to plexApi.prefetchWatchHistory', async () => {
+      plexApi.prefetchWatchHistory = jest.fn().mockResolvedValue(undefined);
+      await service.prefetchWatchHistory();
+      expect(plexApi.prefetchWatchHistory).toHaveBeenCalledTimes(1);
+    });
+  });
+
   describe('getWatchHistory', () => {
     it('should return empty array when Plex returned no history entries', async () => {
       plexApi.getWatchHistory.mockResolvedValue([]);
@@ -471,7 +479,11 @@ describe('PlexAdapterService', () => {
         viewCount: 1,
         isWatched: true,
       });
-      expect(plexApi.getWatchHistory).toHaveBeenCalledWith('item123', false);
+      expect(plexApi.getWatchHistory).toHaveBeenCalledWith(
+        'item123',
+        false,
+        undefined,
+      );
     });
 
     it('should return unwatched state when history is empty', async () => {
@@ -483,7 +495,11 @@ describe('PlexAdapterService', () => {
         viewCount: 0,
         isWatched: false,
       });
-      expect(plexApi.getWatchHistory).toHaveBeenCalledWith('item123', false);
+      expect(plexApi.getWatchHistory).toHaveBeenCalledWith(
+        'item123',
+        false,
+        undefined,
+      );
     });
 
     it('should fall back to nativeViewCount for isWatched when history is empty', async () => {
