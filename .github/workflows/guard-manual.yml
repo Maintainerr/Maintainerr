@@ -27,7 +27,7 @@ jobs:
     steps:
       - name: Check out repository
         if: ${{ inputs.enabled && inputs.allowed == '__CODEOWNERS__' }}
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Resolve allowed actors
         id: allowed
