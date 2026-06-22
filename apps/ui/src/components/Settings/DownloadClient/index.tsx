@@ -55,8 +55,6 @@ const DownloadClientSettings = () => {
     'Download client settings',
   )
 
-  const basePath = import.meta.env.VITE_BASE_PATH ?? ''
-
   const { settings } = useSettingsOutletContext()
 
   const { data: downloadClientData } = useDownloadClientSettings({
@@ -254,13 +252,9 @@ const DownloadClientSettings = () => {
         <div className="section h-full w-full">
           <h3 className="heading flex items-center gap-2">
             Download Client
-            <img
-              className="h-[1em] w-[2.5em]"
-              width={'0'}
-              height={'0'}
-              src={`${basePath}/beta.svg`}
-              alt="BETA"
-            />
+            <span className="ml-1.5 rounded-full bg-maintainerr-600 px-3 text-sm font-medium text-white">
+              BETA
+            </span>
           </h3>
           <p className="description">
             When media is removed through Radarr or Sonarr, Maintainerr can

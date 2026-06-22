@@ -122,7 +122,7 @@ const CollectionLogsTable = ({
                       isMetaActionedByRule(row.meta) && (
                         <button
                           type="button"
-                          className="rounded-sm bg-maintainerr-600 px-2 py-1 text-white shadow-md hover:bg-maintainerr"
+                          className="rounded-md bg-maintainerr-600 px-2 py-1 text-white shadow-md hover:bg-maintainerr"
                           title="View Metadata"
                           onClick={() => {
                             if (!isMetaActionedByRule(row.meta)) return

@@ -161,7 +161,7 @@ const RadarrSettings = () => {
             <li className="flex h-full min-h-39 items-center justify-center rounded-xl border-2 border-dashed border-gray-400 bg-zinc-800 p-4 text-zinc-400 shadow-sm">
               <button
                 type="button"
-                className="add-button m-auto flex h-9 rounded-sm bg-maintainerr-600 px-4 text-zinc-200 shadow-md hover:bg-maintainerr"
+                className="add-button m-auto flex h-9 rounded-md bg-maintainerr-600 px-4 text-zinc-200 shadow-md hover:bg-maintainerr"
                 onClick={showAddModal}
               >
                 {<PlusCircleIcon className="m-auto h-5" />}

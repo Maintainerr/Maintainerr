@@ -1437,9 +1437,6 @@ const AddModal = (props: AddModal) => {
                         className="text-label flex flex-wrap gap-1"
                       >
                         Notifications
-                        <span className="ml-1.5 rounded-full bg-maintainerr-600 px-3 text-white">
-                          BETA
-                        </span>
                       </label>
                       <div className="flex justify-end px-2 py-2">
                         <div className="form-input-field w-32">
@@ -1650,46 +1647,37 @@ const AddModal = (props: AddModal) => {
                       </p>
                     </div>
                     <div className="ml-auto">
-                      <button
-                        className="ml-3 flex h-fit rounded-sm bg-maintainerrdark p-1 text-sm text-zinc-900 shadow-md hover:bg-maintainerrdark-800 md:h-10 md:text-base"
+                      <Button
+                        buttonType="success"
+                        className="ml-3"
                         onClick={toggleCommunityRuleModal}
                         type="button"
                       >
-                        {
-                          <CloudDownloadIcon className="m-auto ml-4 h-6 w-6 text-zinc-200" />
-                        }
-                        <p className="button-text m-auto mr-4 ml-1 text-zinc-100">
-                          Community
-                        </p>
-                      </button>
+                        <CloudDownloadIcon className="mr-2 h-5 w-5" />
+                        Community
+                      </Button>
                     </div>
                   </div>
                   <div className="mt-4 flex items-center justify-center sm:justify-end">
-                    <button
-                      className="ml-3 flex h-fit rounded-sm bg-maintainerr-600 p-1 text-sm text-zinc-900 shadow-md hover:bg-maintainerr md:h-10 md:text-base"
+                    <Button
+                      buttonType="success"
+                      className="ml-3"
                       onClick={toggleYamlImporter}
                       type="button"
                     >
-                      {
-                        <DownloadIcon className="m-auto ml-4 h-6 w-6 text-zinc-200 md:h-6" />
-                      }
-                      <p className="button-text m-auto mr-4 ml-1 text-zinc-100">
-                        Import
-                      </p>
-                    </button>
+                      <DownloadIcon className="mr-2 h-5 w-5" />
+                      Import
+                    </Button>
 
-                    <button
-                      className="ml-3 flex h-fit rounded-sm bg-maintainerrdark p-1 text-sm shadow-md hover:bg-maintainerrdark-800 md:h-10 md:text-base"
+                    <Button
+                      buttonType="success"
+                      className="ml-3"
                       onClick={toggleYamlExporter}
                       type="button"
                     >
-                      {
-                        <UploadIcon className="m-auto ml-4 h-6 w-6 text-zinc-200" />
-                      }
-                      <p className="button-text m-auto mr-4 ml-1 text-zinc-100">
-                        Export
-                      </p>
-                    </button>
+                      <UploadIcon className="mr-2 h-5 w-5" />
+                      Export
+                    </Button>
                   </div>
                 </div>
                 {showCommunityModal && selectedLibraryType && (

@@ -345,18 +345,16 @@ const CommunityRuleModal = (props: ICommunityRuleModal) => {
                 />
               </span>
               <span className="float-right">
-                <button
-                  disabled={false}
-                  className="mb-2 flex h-9 w-fit rounded-sm bg-zinc-900 text-zinc-200 shadow-md hover:bg-zinc-800 disabled:opacity-50 md:ml-2"
+                <Button
+                  buttonType="success"
+                  className="mb-2 md:ml-2"
                   onClick={() => {
                     setUploadMyRules(true)
                   }}
                 >
-                  {<UploadIcon className="m-auto ml-5 h-5" />}{' '}
-                  <p className="rules-button-text m-auto mr-5 ml-1">
-                    Upload my rules
-                  </p>
-                </button>
+                  <UploadIcon className="mr-2 h-5 w-5" />
+                  Upload my rules
+                </Button>
               </span>
             </div>
             <Pagination

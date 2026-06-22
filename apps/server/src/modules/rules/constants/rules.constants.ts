@@ -9,12 +9,12 @@ import {
 export { Application, MediaType, RuleOperators, RulePossibility };
 
 // How many media items a rule is evaluated against concurrently. Each item's
-// operand lookup can hit an external service (Plex, Tautulli, Sonarr, …) with
-// no bulk equivalent — most expensively Plex watch history, which has no bulk
-// endpoint (see feature #2936). Resolving a bounded number of items in parallel
-// turns a long sequential chain of round-trips into batches. This is the single
-// global cap on concurrent operand lookups (batching happens only here, never
-// nested inside the getters).
+// operand lookup can hit an external service (Plex, Tautulli, Sonarr, …). Plex
+// leaf watch history now has a batch-scoped prefetch, but show/season rollups
+// and other integrations still fall back to per-item calls. Resolving a bounded
+// number of items in parallel turns a long sequential chain of round-trips into
+// batches. This is the single global cap on concurrent operand lookups (batching
+// happens only here, never nested inside the getters).
 //
 // Deliberately conservative: the binding constraint is the slowest co-located
 // backend, not the host's core count. On an all-in-one box (e.g. Tautulli's
