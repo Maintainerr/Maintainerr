@@ -54,7 +54,7 @@
     "not IE 11"
   ],
   "devDependencies": {
-    "@eslint-react/eslint-plugin": "^5.9.1",
+    "@eslint-react/eslint-plugin": "^5.9.2",
     "@eslint/js": "^10.0.1",
     "@tailwindcss/forms": "^0.5.11",
     "@tailwindcss/typography": "^0.5.20",
@@ -64,9 +64,9 @@
     "@testing-library/react": "^16.3.2",
     "@types/lodash-es": "^4.17.12",
     "@types/node": "^26",
-    "@typescript-eslint/eslint-plugin": "^8.61.1",
-    "@typescript-eslint/parser": "^8.61.1",
-    "@vitejs/plugin-react": "^6.0.2",
+    "@typescript-eslint/eslint-plugin": "^8.62.0",
+    "@typescript-eslint/parser": "^8.62.0",
+    "@vitejs/plugin-react": "^6.0.3",
     "eslint": "^10.5.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-react-hooks": "^7.1.1",
@@ -75,7 +75,7 @@
     "prettier-plugin-tailwindcss": "^0.8.0",
     "tailwindcss": "^4.3.0",
     "typescript": "^6.0.3",
-    "vite": "^8.0.16",
+    "vite": "^8.1.0",
     "vitest": "^4.1.9"
   },
   "optionalDependencies": {
