@@ -148,6 +148,28 @@ export class SonarrApi extends ServarrApi<{
     return this.runPut('series', JSON.stringify(series));
   }
 
+  /**
+   * Add or remove a single tag on a batch of series via the series editor.
+   * `applyTags: 'add' | 'remove'` only — never 'replace', which would wipe every
+   * other tag the user has on those series. Best-effort: returns false on failure
+   * (callers treat tagging as non-fatal). No-ops on an empty id list. Sonarr tags
+   * are series-level; there is no per-season tag.
+   */
+  public async setSeriesTags(
+    seriesIds: number[],
+    tagId: number,
+    mode: 'add' | 'remove',
+  ): Promise<boolean> {
+    if (seriesIds.length === 0) {
+      return true;
+    }
+
+    return this.runPut(
+      'series/editor',
+      JSON.stringify({ seriesIds, tags: [tagId], applyTags: mode }),
+    );
+  }
+
   public async searchSeries(seriesId: number): Promise<void> {
     this.logger.log(
       `Executing series search command for seriesId ${seriesId}.`,

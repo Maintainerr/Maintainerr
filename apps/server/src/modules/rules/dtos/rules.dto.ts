@@ -26,4 +26,5 @@ export class RulesDto {
   sonarrSettingsId?: number;
   radarrQualityProfileId?: number;
   sonarrQualityProfileId?: number;
+  tagInArr?: boolean;
 }

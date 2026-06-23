@@ -42,4 +42,40 @@ describe('ServarrApi', () => {
       rootFolderPaths: new Set(),
     });
   });
+
+  describe('ensureTag', () => {
+    it('returns an existing tag id without creating (case-insensitive match)', async () => {
+      jest.spyOn(api, 'getTags').mockResolvedValue([{ id: 7, label: 'DND' }]);
+      const createTag = jest.spyOn(api, 'createTag');
+
+      await expect(api.ensureTag('dnd')).resolves.toBe(7);
+      expect(createTag).not.toHaveBeenCalled();
+    });
+
+    it('creates the tag when missing and returns the new id', async () => {
+      jest.spyOn(api, 'getTags').mockResolvedValue([]);
+      jest.spyOn(api, 'createTag').mockResolvedValue({ id: 12, label: 'dnd' });
+
+      await expect(api.ensureTag('dnd')).resolves.toBe(12);
+    });
+
+    it('is race-tolerant: re-reads and returns the id when create fails', async () => {
+      // First read: absent. Create fails (undefined) because a concurrent caller
+      // created it. Second read: now present.
+      jest
+        .spyOn(api, 'getTags')
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([{ id: 3, label: 'dnd' }]);
+      jest.spyOn(api, 'createTag').mockResolvedValue(undefined);
+
+      await expect(api.ensureTag('dnd')).resolves.toBe(3);
+    });
+
+    it('returns undefined when the id cannot be resolved (best-effort)', async () => {
+      jest.spyOn(api, 'getTags').mockResolvedValue([]);
+      jest.spyOn(api, 'createTag').mockResolvedValue(undefined);
+
+      await expect(api.ensureTag('dnd')).resolves.toBeUndefined();
+    });
+  });
 });

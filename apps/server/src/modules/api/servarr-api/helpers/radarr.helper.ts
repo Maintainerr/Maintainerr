@@ -94,6 +94,27 @@ export class RadarrApi extends ServarrApi<{ movieId: number }> {
     return this.getDownloadIdsFromHistory(`/history/movie?movieId=${movieId}`);
   }
 
+  /**
+   * Add or remove a single tag on a batch of movies via the movie editor.
+   * `applyTags: 'add' | 'remove'` only — never 'replace', which would wipe every
+   * other tag the user has on those movies. Best-effort: returns false on failure
+   * (callers treat tagging as non-fatal). No-ops on an empty id list.
+   */
+  public async setMovieTags(
+    movieIds: number[],
+    tagId: number,
+    mode: 'add' | 'remove',
+  ): Promise<boolean> {
+    if (movieIds.length === 0) {
+      return true;
+    }
+
+    return this.runPut(
+      'movie/editor',
+      JSON.stringify({ movieIds, tags: [tagId], applyTags: mode }),
+    );
+  }
+
   public async searchMovie(movieId: number): Promise<void> {
     this.logger.log('Executing movie search command');
 

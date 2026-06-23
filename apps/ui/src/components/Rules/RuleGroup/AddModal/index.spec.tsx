@@ -73,6 +73,41 @@ describe('ruleGroupFormSchema', () => {
     ])
   })
 
+  it('accepts the optional tagInArr membership-tag opt-in', () => {
+    const base = {
+      name: 'Rule group',
+      description: '',
+      libraryId: '1',
+      dataType: 'movie',
+      arrAction: ServarrAction.DELETE,
+      deleteAfterDays: 30,
+      keepLogsForMonths: 6,
+      showRecommended: true,
+      showHome: true,
+      overlayEnabled: false,
+      overlayTemplateId: null,
+      listExclusions: true,
+      forceSeerr: false,
+      manualCollection: false,
+      manualCollectionName: '',
+      sortTitle: '',
+      active: true,
+      useRules: true,
+      radarrSettingsId: 1,
+      sonarrSettingsId: undefined,
+      ruleHandlerCronSchedule: null,
+    }
+
+    const enabled = ruleGroupFormSchema.safeParse({ ...base, tagInArr: true })
+    expect(enabled.success).toBe(true)
+    if (enabled.success) {
+      expect(enabled.data.tagInArr).toBe(true)
+    }
+
+    // Optional — omitting it is still valid.
+    expect(ruleGroupFormSchema.safeParse(base).success).toBe(true)
+  })
+
   it('does not show the stored-library fallback while libraries are still loading', () => {
     expect(
       getStoredLibraryFallbackState('library-1', undefined, true, false),

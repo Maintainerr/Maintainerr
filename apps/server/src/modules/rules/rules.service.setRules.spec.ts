@@ -1,4 +1,7 @@
-import { createMockLogger } from '../../../test/utils/data';
+import {
+  createMockLogger,
+  createMockServarrTagService,
+} from '../../../test/utils/data';
 import { Application, RulePossibility } from './constants/rules.constants';
 import { RulesService } from './rules.service';
 
@@ -40,6 +43,7 @@ describe('RulesService.setRules', () => {
       (overrides.ruleComparatorServiceFactory ?? {}) as any,
       (overrides.ruleMigrationService ?? {}) as any,
       (overrides.eventEmitter ?? {}) as any,
+      createMockServarrTagService() as any,
       logger as any,
     );
 

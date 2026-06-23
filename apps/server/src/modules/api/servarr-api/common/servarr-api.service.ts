@@ -252,6 +252,36 @@ export abstract class ServarrApi<QueueItemAppendT> extends ExternalApiService {
     }
   };
 
+  /**
+   * Resolve a tag id for `label`, creating the tag if it doesn't exist yet.
+   * Matching is case-insensitive — *arr stores labels verbatim but treats them
+   * case-insensitively, so we never create a duplicate that differs only in case.
+   *
+   * Race-tolerant: if the create fails (another caller created the same label in
+   * between, or the POST errored) we re-read the tag list once and return the id
+   * if it now exists. Returns undefined when the id still can't be resolved, so
+   * tag application stays best-effort and never throws.
+   */
+  public ensureTag = async (label: string): Promise<number | undefined> => {
+    const target = label.toLowerCase();
+    const match = (tags: Tag[] | undefined): number | undefined =>
+      (tags ?? []).find((tag) => tag.label?.toLowerCase() === target)?.id;
+
+    const existing = match(await this.getTags());
+    if (existing !== undefined) {
+      return existing;
+    }
+
+    const created = await this.createTag({ label });
+    if (created?.id !== undefined) {
+      return created.id;
+    }
+
+    // Create failed (already exists from a concurrent caller, or errored) —
+    // re-read and return the id if the label is now present.
+    return match(await this.getTags());
+  };
+
   public async runCommand(
     commandName: string,
     options: Record<string, unknown>,
