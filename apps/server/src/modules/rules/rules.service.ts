@@ -650,15 +650,15 @@ export class RulesService {
           await this.collectionService.applyCollectionSort(savedCollection);
         }
 
-        // Behavior A: backfill / clean up *arr membership tags on a tagInArr
-        // toggle. Ongoing membership changes are tagged from the executor's
-        // per-run deltas; this one-time reconcile covers enabling (tag current
-        // members) and disabling (untag them). Best-effort, off the response path.
+        // Behavior A: one-time *arr membership-tag reconcile on a tagInArr toggle
+        // — enabling tags current members, disabling untags them (ongoing changes
+        // are handled by the executor's per-run deltas). Best-effort; awaited so
+        // the backfill completes before the save returns.
         if (
           savedCollection &&
           (dbCollection?.tagInArr ?? false) !== savedCollection.tagInArr
         ) {
-          void this.reconcileMembershipTagsOnToggle(
+          await this.reconcileMembershipTagsOnToggle(
             dbCollection,
             savedCollection,
             preDeleteMembers,
@@ -1166,6 +1166,8 @@ export class RulesService {
       // Behavior B (https://features.maintainerr.info/posts/81): opt-in removal of
       // the protective *arr tag once every exclusion for the item is cleared.
       // Global instance resolution; the guard always passes (no rows remain).
+      // Known limitation: with multiple *arr instances the global resolver is
+      // ambiguous (skips), so a scoped-excluded item's tag may linger here.
       if (this.servarrTagService.anyExclusionUntaggingEnabled()) {
         await this.syncExclusionTag(
           'remove',

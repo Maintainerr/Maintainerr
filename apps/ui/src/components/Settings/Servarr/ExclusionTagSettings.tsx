@@ -63,7 +63,7 @@ const ExclusionTagSettings = ({ service }: ExclusionTagSettingsProps) => {
       showError(
         trimmedLabel === ''
           ? `A tag label is required when exclusion tagging is enabled. ${ARR_TAG_LABEL_HINT}.`
-          : `"${trimmedLabel}" is not a valid ${name} tag. ${ARR_TAG_LABEL_HINT}.`,
+          : `"${trimmedLabel}" is not a valid ${name} tag. ${ARR_TAG_LABEL_HINT}, with no leading, trailing, or repeated hyphens.`,
       )
       return
     }

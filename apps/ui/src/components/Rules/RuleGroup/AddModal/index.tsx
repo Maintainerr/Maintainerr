@@ -1348,6 +1348,9 @@ const AddModal = (props: AddModal) => {
                       </div>
                     )}
 
+                    {/* Strict 'show' (not selectedLibraryType) on purpose:
+                        Sonarr tags are series-level, so season/episode
+                        collections — which map to 'show' — are excluded. */}
                     {((selectedLibraryType === 'movie' &&
                       hasSelectedRadarrServer) ||
                       (selectedType === 'show' && hasSelectedSonarrServer)) && (
