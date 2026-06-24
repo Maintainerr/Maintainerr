@@ -3429,10 +3429,7 @@ export class CollectionsService {
   }
 
   public async removeAllCollectionLogs(collectionId: number) {
-    const collection = await this.collectionRepo.findOne({
-      where: { id: collectionId },
-    });
-    await this.CollectionLogRepo.delete({ collection: collection });
+    await this.CollectionLogRepo.delete({ collection: { id: collectionId } });
   }
 
   /**
@@ -3471,7 +3468,7 @@ export class CollectionsService {
         // get all logs older than param
         const logs = await this.CollectionLogRepo.find({
           where: {
-            collection: collection,
+            collection: { id: collection.id },
             timestamp: LessThan(configuredMonths),
           },
         });

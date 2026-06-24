@@ -7,7 +7,7 @@ import {
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Mocked, TestBed } from '@suites/unit';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, FindOperator, Repository } from 'typeorm';
 import {
   createCollection,
   createCollectionMedia,
@@ -22,6 +22,7 @@ import { SettingsDataService } from '../settings/settings-data.service';
 import { CollectionPosterService } from './collection-poster.service';
 import { CollectionsService } from './collections.service';
 import { Collection } from './entities/collection.entities';
+import { CollectionLog } from './entities/collection_log.entities';
 import {
   CollectionMedia,
   CollectionMediaManualMembershipSource,
@@ -36,6 +37,7 @@ describe('CollectionsService', () => {
   let collectionMediaRepo: Mocked<Repository<CollectionMedia>>;
   let ruleGroupRepo: Mocked<Repository<RuleGroup>>;
   let exclusionRepo: Mocked<Repository<Exclusion>>;
+  let collectionLogRepo: Mocked<Repository<CollectionLog>>;
   let metadataService: Mocked<MetadataService>;
   let settingsDataService: Mocked<SettingsDataService>;
   let collectionPosterService: Mocked<CollectionPosterService>;
@@ -54,6 +56,7 @@ describe('CollectionsService', () => {
     );
     ruleGroupRepo = unitRef.get(getRepositoryToken(RuleGroup) as string);
     exclusionRepo = unitRef.get(getRepositoryToken(Exclusion) as string);
+    collectionLogRepo = unitRef.get(getRepositoryToken(CollectionLog) as string);
     metadataService = unitRef.get(MetadataService);
     settingsDataService = unitRef.get(SettingsDataService);
     collectionPosterService = unitRef.get(CollectionPosterService);
@@ -2779,6 +2782,52 @@ describe('CollectionsService', () => {
 
       expect(found).toBeUndefined();
       expect(mediaServer.getLibraries).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('removeOldCollectionLogs', () => {
+    it('queries by the collection FK only, never the unloaded ruleGroup relation (#3147)', async () => {
+      // getAllCollections() loads collections without relations, so ruleGroup is
+      // an own `undefined` property under useDefineForClassFields. Passing the
+      // whole entity into a where would serialize that undefined and throw.
+      const collection = createCollection({ id: 42, keepLogsForMonths: 6 });
+      expect('ruleGroup' in collection).toBe(true);
+      collectionLogRepo.find.mockResolvedValue([]);
+
+      await service.removeOldCollectionLogs(collection);
+
+      expect(collectionLogRepo.find).toHaveBeenCalledTimes(1);
+      const where = collectionLogRepo.find.mock.calls[0][0]?.where as Record<
+        string,
+        unknown
+      >;
+      expect(where.collection).toEqual({ id: 42 });
+      expect(where).not.toHaveProperty('ruleGroup');
+      expect(where.timestamp).toBeInstanceOf(FindOperator);
+      // no undefined leaks into the criteria
+      expect(Object.values(where.collection as object)).not.toContain(undefined);
+    });
+
+    it('keeps logs forever when keepLogsForMonths is 0', async () => {
+      const collection = createCollection({ id: 7, keepLogsForMonths: 0 });
+
+      await service.removeOldCollectionLogs(collection);
+
+      expect(collectionLogRepo.find).not.toHaveBeenCalled();
+      expect(collectionLogRepo.remove).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('removeAllCollectionLogs', () => {
+    it('deletes by the collection FK without loading the entity', async () => {
+      collectionLogRepo.delete.mockResolvedValue({} as any);
+
+      await service.removeAllCollectionLogs(99);
+
+      expect(collectionRepo.findOne).not.toHaveBeenCalled();
+      expect(collectionLogRepo.delete).toHaveBeenCalledWith({
+        collection: { id: 99 },
+      });
     });
   });
 });
