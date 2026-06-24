@@ -5,7 +5,10 @@ import {
   supportsFeature as serverSupportsFeature,
 } from '@maintainerr/contracts';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { createMockLogger } from '../../../../test/utils/data';
+import {
+  createMockLogger,
+  createMockServarrTagService,
+} from '../../../../test/utils/data';
 import { MediaServerFactory } from '../../api/media-server/media-server.factory';
 import { CollectionsService } from '../../collections/collections.service';
 import { CollectionMediaManualMembershipSource } from '../../collections/entities/collection_media.entities';
@@ -145,6 +148,7 @@ describe('RuleExecutorService', () => {
       progressManager,
       logger,
       recentlyHandledMedia,
+      createMockServarrTagService(),
     );
 
     return {

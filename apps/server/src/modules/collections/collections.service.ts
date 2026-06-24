@@ -3197,6 +3197,13 @@ export class CollectionsService {
                 : '',
             sonarrSettingsId: collection.sonarrSettingsId,
             radarrSettingsId: collection.radarrSettingsId,
+            // These were previously persisted only on update (updateCollection
+            // spreads the whole ICollection); the create path listed columns
+            // explicitly and dropped them, so a profile/tag chosen at create
+            // time was silently lost until the first edit.
+            radarrQualityProfileId: collection.radarrQualityProfileId ?? null,
+            sonarrQualityProfileId: collection.sonarrQualityProfileId ?? null,
+            tagInArr: collection.tagInArr ?? false,
             sortTitle: collection.sortTitle,
             mediaServerSort: collection.mediaServerSort ?? null,
             overlayEnabled: collection.overlayEnabled ?? false,

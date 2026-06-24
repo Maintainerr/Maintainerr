@@ -426,4 +426,41 @@ describe('SonarrApi', () => {
       await expect(sonarrApi.getDownloadIdsForSeries(1)).resolves.toEqual([]);
     });
   });
+
+  describe('setSeriesTags', () => {
+    it('adds a tag to a batch of series via the series editor', async () => {
+      const runPut = jest
+        .spyOn(sonarrApi as any, 'runPut')
+        .mockResolvedValue(true);
+
+      await expect(sonarrApi.setSeriesTags([1, 2], 7, 'add')).resolves.toBe(
+        true,
+      );
+
+      expect(runPut).toHaveBeenCalledWith(
+        'series/editor',
+        JSON.stringify({ seriesIds: [1, 2], tags: [7], applyTags: 'add' }),
+      );
+    });
+
+    it('removes a tag via the series editor', async () => {
+      const runPut = jest
+        .spyOn(sonarrApi as any, 'runPut')
+        .mockResolvedValue(true);
+
+      await sonarrApi.setSeriesTags([3], 7, 'remove');
+
+      expect(runPut).toHaveBeenCalledWith(
+        'series/editor',
+        JSON.stringify({ seriesIds: [3], tags: [7], applyTags: 'remove' }),
+      );
+    });
+
+    it('no-ops on an empty id list (no request)', async () => {
+      const runPut = jest.spyOn(sonarrApi as any, 'runPut');
+
+      await expect(sonarrApi.setSeriesTags([], 7, 'add')).resolves.toBe(true);
+      expect(runPut).not.toHaveBeenCalled();
+    });
+  });
 });
