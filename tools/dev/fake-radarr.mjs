@@ -41,6 +41,27 @@ const LOG = process.env.FAKE_RADARR_LOG !== "0";
 const exclusions = new Map();
 let nextExclusionId = 1;
 
+// In-memory tag store (id -> { id, label }) and per-movie tag membership
+// (movieId -> Set<tagId>), so the membership/exclusion tagging flow can be driven
+// and asserted via GET /tag and GET /movie.
+const tags = new Map();
+let nextTagId = 1;
+const movieTags = new Map();
+
+// Radarr restricts tag labels to ^[a-z0-9-]+$ (lowercase alnum + hyphen) and
+// 400s otherwise — mirror it so the label-charset path is exercised offline.
+const isValidTagLabel = (label) => /^[a-z0-9-]+$/.test(String(label));
+
+const ensureTag = (label) => {
+  for (const tag of tags.values()) {
+    if (tag.label.toLowerCase() === String(label).toLowerCase()) return tag;
+  }
+  const tag = { id: nextTagId++, label: String(label) };
+  tags.set(tag.id, tag);
+  if (LOG) console.log(`  + tag created: ${tag.id} '${tag.label}'`);
+  return tag;
+};
+
 // A deterministic movie for any requested id/tmdbId — id and tmdbId are kept equal
 // so a collection_media.tmdbId resolves straight through to a Radarr "movie".
 const movieFor = (tmdbId) => ({
@@ -53,6 +74,7 @@ const movieFor = (tmdbId) => ({
   qualityProfileId: 1,
   sizeOnDisk: 1024 ** 3,
   path: `/movies/mock-${tmdbId}`,
+  tags: [...(movieTags.get(tmdbId) ?? [])],
 });
 
 const send = (res, status, body) => {
@@ -92,6 +114,40 @@ const server = http.createServer(async (req, res) => {
     status = send(res, 200, movieFor(Number(path.split("/")[2])));
   } else if (method === "GET" && path === "/moviefile") {
     status = send(res, 200, []); // no files to delete in the mock
+
+    // --- Tags (membership / exclusion tagging) -------------------------------
+  } else if (method === "GET" && path === "/tag") {
+    status = send(res, 200, [...tags.values()]);
+  } else if (method === "POST" && path === "/tag") {
+    const body = (await readBody(req)) ?? {};
+    if (!isValidTagLabel(body.label)) {
+      status = send(res, 400, [
+        {
+          propertyName: "Label",
+          errorMessage: "Allowed characters a-z, 0-9 and -",
+          attemptedValue: body.label,
+          severity: "error",
+        },
+      ]);
+    } else {
+      status = send(res, 201, ensureTag(body.label));
+    }
+  } else if (method === "PUT" && path === "/movie/editor") {
+    // Bulk tag editor: { movieIds, tags: [tagId], applyTags: 'add'|'remove' }.
+    const body = (await readBody(req)) ?? {};
+    const mode = body.applyTags;
+    for (const movieId of body.movieIds ?? []) {
+      const set = movieTags.get(movieId) ?? new Set();
+      for (const tagId of body.tags ?? []) {
+        if (mode === "remove") set.delete(tagId);
+        else set.add(tagId); // 'add' (we never send 'replace')
+      }
+      movieTags.set(movieId, set);
+      if (LOG) {
+        console.log(`  ~ movie ${movieId} tags ${mode}: [${[...set]}]`);
+      }
+    }
+    status = send(res, 200, (body.movieIds ?? []).map(movieFor));
 
     // --- Import list exclusions ----------------------------------------------
   } else if (method === "POST" && path === "/exclusions/bulk") {
@@ -137,9 +193,7 @@ const server = http.createServer(async (req, res) => {
     // --- Misc endpoints other flows may probe --------------------------------
   } else if (
     method === "GET" &&
-    ["/qualityProfile", "/rootfolder", "/diskspace", "/tag", "/queue"].includes(
-      path,
-    )
+    ["/qualityProfile", "/rootfolder", "/diskspace", "/queue"].includes(path)
   ) {
     status = send(res, 200, []);
   } else {

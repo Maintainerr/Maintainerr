@@ -133,6 +133,12 @@ export class Collection {
   @Column({ nullable: true })
   sonarrQualityProfileId: number;
 
+  // When true, Maintainerr keeps a Radarr/Sonarr tag (label = this collection's
+  // title / rule group name) on the *arr entity for as long as the item is a
+  // member of this collection — applied on entry, removed on exit.
+  @Column({ nullable: false, default: false })
+  tagInArr: boolean;
+
   @OneToMany(
     () => CollectionMedia,
     (collectionMedia) => collectionMedia.collectionId,

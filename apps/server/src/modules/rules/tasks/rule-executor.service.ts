@@ -27,6 +27,7 @@ import {
   CollectionMediaRemovedDto,
   RuleHandlerFailedDto,
 } from '../../events/events.dto';
+import { ServarrTagService } from '../../actions/servarr-tag.service';
 import { MaintainerrLogger } from '../../logging/logs.service';
 import { SettingsDataService } from '../../settings/settings-data.service';
 import { RuleConstants } from '../constants/rules.constants';
@@ -109,6 +110,7 @@ export class RuleExecutorService {
     private readonly progressManager: RuleExecutorProgressService,
     private readonly logger: MaintainerrLogger,
     private readonly recentlyHandledMedia: RecentlyHandledMediaService,
+    private readonly servarrTagService: ServarrTagService,
   ) {
     logger.setContext(RuleExecutorService.name);
     this.ruleConstants = new RuleConstants();
@@ -922,12 +924,30 @@ export class RuleExecutorService {
         }
 
         // Determine which items were actually added/removed by comparing DB state
+        const updatedMedia =
+          (await this.collectionService.getCollectionMedia(collection?.id)) ??
+          [];
         const updatedMediaServerIds = new Set(
-          (
-            (await this.collectionService.getCollectionMedia(collection?.id)) ??
-            []
-          ).map((e) => e.mediaServerId),
+          updatedMedia.map((e) => e.mediaServerId),
         );
+
+        // Cached provider ids per item, so *arr tag resolution has a tmdb/tvdb
+        // fallback even when the media-server item omits them. collMediaData
+        // covers removed/existing rows; updatedMedia covers freshly added ones.
+        const providerIdsByMediaServerId = new Map<
+          string,
+          { tmdbId?: number | null; tvdbId?: number | null }
+        >();
+        for (const m of [...collMediaData, ...updatedMedia]) {
+          providerIdsByMediaServerId.set(m.mediaServerId, {
+            tmdbId: m.tmdbId,
+            tvdbId: m.tvdbId,
+          });
+        }
+        const toArrTagItem = (m: CollectionMediaChange) => ({
+          mediaServerId: m.mediaServerId,
+          ...providerIdsByMediaServerId.get(m.mediaServerId),
+        });
 
         const addedToCollection = dataToAdd.filter(
           (m) =>
@@ -968,6 +988,16 @@ export class RuleExecutorService {
             ),
           );
         }
+
+        // Reconcile Radarr/Sonarr membership tags off the just-applied deltas.
+        // Best-effort and self-guarded (no-ops unless the collection opted in):
+        // it never throws, alters membership, or raises eval concurrency, so a
+        // tagging failure can't affect the run.
+        await this.servarrTagService.syncMembershipTags(
+          collection,
+          addedToCollection.map(toArrTagItem),
+          removedFromCollection.map(toArrTagItem),
+        );
 
         // add the run duration to the collection
         await this.AddCollectionRunDuration(collection);

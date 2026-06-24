@@ -1,6 +1,6 @@
 {
   "name": "maintainerr",
-  "version": "3.15.2",
+  "version": "3.15.3",
   "private": true,
   "packageManager": "yarn@4.11.0",
   "repository": {
@@ -35,7 +35,7 @@
     "@semantic-release/exec": "^7.1.0",
     "@semantic-release/git": "^10.0.1",
     "@types/node": "^26.0.0",
-    "knip": "^6.17.2",
+    "knip": "^6.20.0",
     "semantic-release": "^25.0.5",
     "turbo": "^2.9.18",
     "typescript": "^6.0.3"

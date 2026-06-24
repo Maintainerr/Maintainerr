@@ -1,5 +1,8 @@
 import { DataSource, EntitySchema, Repository } from 'typeorm';
-import { createMockLogger } from '../../../test/utils/data';
+import {
+  createMockLogger,
+  createMockServarrTagService,
+} from '../../../test/utils/data';
 import {
   buildExclusionCascadeSets,
   isMediaItemExcluded,
@@ -57,6 +60,7 @@ describe('Exclusion scoping (real DB) — excluded-in-A item is added in B', () 
       {} as any, // ruleComparatorServiceFactory
       {} as any, // ruleMigrationService
       { emit: jest.fn() } as any, // eventEmitter
+      createMockServarrTagService() as any,
       createMockLogger() as any,
     );
 

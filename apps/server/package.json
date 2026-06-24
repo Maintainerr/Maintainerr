@@ -1,6 +1,6 @@
 {
   "name": "@maintainerr/server",
-  "version": "3.15.2",
+  "version": "3.15.3",
   "private": true,
   "scripts": {
     "dev": "nest start --watch",
@@ -39,7 +39,7 @@
     "@octokit/plugin-throttling": "^8.2.0",
     "@tygra/nestjs-graceful-shutdown": "^2.0.0",
     "@types/express": "^5.0.6",
-    "axios": "^1.18.0",
+    "axios": "^1.18.1",
     "axios-retry": "^4.5.0",
     "better-sqlite3": "^12.11.1",
     "canvas": "^3.2.3",
@@ -84,8 +84,8 @@
     "@types/mime-types": "^3",
     "@types/node": "^26",
     "@types/xml2js": "^0.4.14",
-    "@typescript-eslint/eslint-plugin": "^8.61.1",
-    "@typescript-eslint/parser": "^8.61.1",
+    "@typescript-eslint/eslint-plugin": "^8.62.0",
+    "@typescript-eslint/parser": "^8.62.0",
     "eslint": "^10.5.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-jest": "^29.15.2",

@@ -79,6 +79,7 @@ export const createCollection = (
     sonarrSettings: undefined,
     sonarrSettingsId: undefined,
     sonarrQualityProfileId: undefined,
+    tagInArr: false,
     listExclusions: false,
     ruleGroup: undefined,
     visibleOnHome: false,
@@ -640,6 +641,19 @@ export const createMockLogger = (): jest.Mocked<MaintainerrLogger> =>
     error: jest.fn(),
     debug: jest.fn(),
   }) as unknown as jest.Mocked<MaintainerrLogger>;
+
+// Inert ServarrTagService double: the exclusion-tag gates report "disabled" so
+// the tagging side effects stay off unless a test opts in by overriding them.
+export const createMockServarrTagService = () =>
+  ({
+    syncMembershipTags: jest.fn().mockResolvedValue(undefined),
+    applyExclusionTag: jest.fn().mockResolvedValue(undefined),
+    removeExclusionTag: jest.fn().mockResolvedValue(undefined),
+    anyExclusionTaggingEnabled: jest.fn().mockReturnValue(false),
+    anyExclusionUntaggingEnabled: jest.fn().mockReturnValue(false),
+    exclusionTaggingEnabled: jest.fn().mockReturnValue(false),
+    exclusionUntaggingEnabled: jest.fn().mockReturnValue(false),
+  }) as any;
 
 type MetadataDetailsFixture = Partial<Omit<MetadataDetails, 'externalIds'>> & {
   externalIds?: Partial<ResolvedMediaIds> & Pick<ResolvedMediaIds, 'type'>;
