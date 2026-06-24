@@ -56,7 +56,9 @@ describe('CollectionsService', () => {
     );
     ruleGroupRepo = unitRef.get(getRepositoryToken(RuleGroup) as string);
     exclusionRepo = unitRef.get(getRepositoryToken(Exclusion) as string);
-    collectionLogRepo = unitRef.get(getRepositoryToken(CollectionLog) as string);
+    collectionLogRepo = unitRef.get(
+      getRepositoryToken(CollectionLog) as string,
+    );
     metadataService = unitRef.get(MetadataService);
     settingsDataService = unitRef.get(SettingsDataService);
     collectionPosterService = unitRef.get(CollectionPosterService);
@@ -2805,7 +2807,9 @@ describe('CollectionsService', () => {
       expect(where).not.toHaveProperty('ruleGroup');
       expect(where.timestamp).toBeInstanceOf(FindOperator);
       // no undefined leaks into the criteria
-      expect(Object.values(where.collection as object)).not.toContain(undefined);
+      expect(Object.values(where.collection as object)).not.toContain(
+        undefined,
+      );
     });
 
     it('keeps logs forever when keepLogsForMonths is 0', async () => {
