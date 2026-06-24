@@ -1,3 +1,28 @@
+# [3.15.3](https://github.com/Maintainerr/Maintainerr/compare/v3.15.2...v3.15.3) (2026-06-23)
+
+
+## Highlights
+- Improved Plex rule evaluation performance by prefetching watch history in bulk, reducing API calls and enhancing efficiency (#3082).
+- Standardized UI action buttons with consistent corner radii, text styles, and theme colors (#3143, #3144).
+
+## Fixes
+- Log benign SSE client disconnects without a stack trace to reduce log noise (#3145).
+- Initialize the active media server adapter immediately after a switch to prevent false connection-test failures.
+- Dropped BETA tag from notifications and marked download client as BETA.
+- Fixed `ExecuteButton` corner radius to align with the shared `Button` component (#3144).
+- Standardized action buttons on the shared `Button` component and ensured consistent theme colors (#3143).
+- Explicitly installed corepack in the dev container for compatibility with Node 26+ (#3141).
+
+## Performance
+- Optimized Plex rule evaluation by prefetching watch history in bulk, reducing redundant API calls (#3082).
+
+## Internal
+- Updated documentation for the development environment, including devbox workflows and agent confinement models.
+- Fixed stale workspace path in agent documentation (/home/maintainerr-dev -> /workspace).
+
+## Dependencies
+- Updated 1 dependency: explicitly installed corepack for Node 26+ compatibility.
+
 # [3.15.2](https://github.com/Maintainerr/Maintainerr/compare/v3.15.1...v3.15.2) (2026-06-20)
 
 

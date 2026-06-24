@@ -13,27 +13,15 @@
 export const ARR_TAG_LABEL_HINT =
   'Lowercase letters, numbers and hyphens only (a-z, 0-9, -)'
 
-// a-z (97-122), 0-9 (48-57), '-' (45)
-const isAllowedArrTagChar = (code: number): boolean =>
-  (code >= 97 && code <= 122) || (code >= 48 && code <= 57) || code === 45
-
 /**
- * True when `label` is a valid *arr tag label that the server would apply
- * verbatim: non-empty, only allowed characters, AND already in normalized form
- * (no leading/trailing/doubled hyphens). The last check rejects inputs like
- * `-dnd`, `dnd-`, `my--tag` and `--` that `normalizeArrTagLabel` would alter or
- * empty out — so the label the user saves is exactly the tag the instance gets.
+ * True when `label` is a valid *arr tag label the server applies verbatim: it's
+ * non-empty and already in normalized form. `normalizeArrTagLabel` lowercases and
+ * collapses/strips every disallowed character, so a label it leaves unchanged
+ * contains only `a-z0-9-` with no leading/trailing/doubled hyphens — exactly what
+ * Radarr/Sonarr accept. This rejects e.g. `Tag`, `my--tag`, `-dnd`, `dnd-`, `--`.
  */
 export function isValidArrTagLabel(label: string): boolean {
-  if (label.length === 0) {
-    return false
-  }
-  for (let i = 0; i < label.length; i++) {
-    if (!isAllowedArrTagChar(label.charCodeAt(i))) {
-      return false
-    }
-  }
-  return normalizeArrTagLabel(label) === label
+  return label.length > 0 && normalizeArrTagLabel(label) === label
 }
 
 /**

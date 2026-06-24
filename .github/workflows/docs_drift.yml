@@ -68,14 +68,14 @@ jobs:
           repositories: Maintainerr_docs
 
       - name: Checkout Maintainerr
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
           ref: ${{ github.event.pull_request.head.sha || github.ref }}
           token: ${{ steps.app-token.outputs.token }}
 
       - name: Checkout Maintainerr_docs
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           repository: Maintainerr/Maintainerr_docs
           ref: main
