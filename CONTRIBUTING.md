@@ -189,4 +189,4 @@ If branch sync needs to be rerun manually, use:
 
 ## Attribution
 
-This contribution guide was inspired by the [Overseerr](https://github.com/sct/overseerr) contribution guide.
+This contribution guide was inspired by the [Seerr](https://github.com/seerr-team/seerr) contribution guide.

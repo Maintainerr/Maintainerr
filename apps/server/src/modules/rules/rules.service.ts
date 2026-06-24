@@ -1733,6 +1733,9 @@ export class RulesService {
     const mediaServer = await this.getMediaServer();
     mediaServer.resetMetadataCache(mediaId);
     cacheManager.getCache('seerr').data.flushAll();
+    // Drop the run-scoped Seerr request index too, so a single-item test rebuilds
+    // it from a fresh /request sweep and agrees with a full run (#3152).
+    cacheManager.getCache('seerrrequests').data.flushAll();
     cacheManager.getCache('tautulli').data.flushAll();
     cacheManager
       .getCachesByType('radarr')

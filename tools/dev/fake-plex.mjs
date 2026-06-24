@@ -36,6 +36,7 @@
  * re-discovery).
  */
 import http from 'node:http';
+import { buildScaleLibrary } from './lib/scale-library.mjs';
 
 const PORT = Number(process.env.FAKE_PLEX_PORT ?? 32400);
 const LOG = process.env.FAKE_PLEX_LOG === '1';
@@ -199,6 +200,31 @@ const EPISODES = [
 const ALL_ITEMS = [...MOVIES, SHOW, ...SEASONS, ...EPISODES];
 const ITEMS_BY_ID = new Map(ALL_ITEMS.map((m) => [m.ratingKey, m]));
 
+// --- Optional large library for Seerr whole-library scale tests (#3152) ------
+// Off unless FAKE_SCALE>0 (see lib/scale-library.mjs). Each item carries only a
+// tmdb Guid and no `year`, so the metadata resolver accepts the direct id
+// without a year cross-check. Shared with fake-jellyfin/fake-emby so the item
+// set is identical across backends.
+const SCALE = buildScaleLibrary();
+const scaleItem = (it) => ({
+  ratingKey: it.key,
+  key: `/library/metadata/${it.key}`,
+  guid: `plex://${it.type}/${it.key}`,
+  type: it.type,
+  title: it.title,
+  librarySectionID: it.type === 'movie' ? 1 : 2,
+  librarySectionKey: `/library/sections/${it.type === 'movie' ? 1 : 2}`,
+  addedAt: daysAgo(30),
+  updatedAt: daysAgo(30),
+  Media: [media()],
+  Guid: [{ id: `tmdb://${it.tmdbId}` }],
+});
+const SCALE_MOVIES = SCALE.movies.map(scaleItem);
+const SCALE_SHOWS = SCALE.shows.map(scaleItem);
+for (const it of [...SCALE_MOVIES, ...SCALE_SHOWS]) {
+  ITEMS_BY_ID.set(it.ratingKey, it);
+}
+
 // children: show -> [seasons], season 1 -> [episodes]
 const CHILDREN = {
   sh1: SEASONS,
@@ -257,6 +283,19 @@ function send(res, status, body) {
 const container = (extra) => ({ MediaContainer: { size: 0, ...extra } });
 const list = (key, items) =>
   container({ size: items.length, totalSize: items.length, [key]: items });
+// Honors X-Plex-Container-Start/Size so the adapter's pagination loop (plexApi.ts,
+// size 120, loops while totalSize > size*(page+1)) terminates instead of
+// re-fetching the full set per page — only matters once a library exceeds 120.
+function sendPaged(res, req, items) {
+  const start = Number(req.headers['x-plex-container-start']) || 0;
+  const size = Number(req.headers['x-plex-container-size']) || items.length;
+  const slice = items.slice(start, start + size);
+  return send(
+    res,
+    200,
+    container({ size: slice.length, totalSize: items.length, Metadata: slice }),
+  );
+}
 
 const server = http.createServer((req, res) => {
   const u = new URL(req.url, `http://localhost:${PORT}`);
@@ -310,12 +349,17 @@ const server = http.createServer((req, res) => {
   // season-scoped rule group enumerates seasons, not the show.
   const allMatch = path.match(/^\/library\/sections\/([^/]+)\/all$/);
   if (allMatch) {
-    let items = MOVIES;
+    let items = [...MOVIES, ...SCALE_MOVIES];
     if (allMatch[1] === '2') {
       const type = u.searchParams.get('type');
-      items = type === '3' ? SEASONS : type === '4' ? EPISODES : [SHOW];
+      items =
+        type === '3'
+          ? SEASONS
+          : type === '4'
+            ? EPISODES
+            : [SHOW, ...SCALE_SHOWS];
     }
-    return send(res, 200, list('Metadata', items));
+    return sendPaged(res, req, items);
   }
 
   // Section collections: /library/sections/:id/collections

@@ -24,6 +24,7 @@
  * needed — just start this before (or alongside) `yarn dev`.
  */
 import http from 'node:http';
+import { buildScaleLibrary } from './lib/scale-library.mjs';
 
 const PORT = Number(process.env.FAKE_JELLYFIN_PORT ?? 8096);
 const LOG = process.env.FAKE_JELLYFIN_LOG === '1';
@@ -142,8 +143,52 @@ const SHARED_BOXSET = {
   ImageTags: { Primary: 'mocktag' },
 };
 
+// --- Optional large library for Seerr whole-library scale tests (#3152) ----------
+// Off unless FAKE_SCALE>0 (see lib/scale-library.mjs). Items carry a real tmdb
+// ProviderId and NO ProductionYear, so the metadata resolver accepts the direct
+// id without a year cross-check. Shared with fake-plex/fake-emby so the item set
+// is identical across backends.
+const SCALE = buildScaleLibrary();
+const scaleMovie = (it) => ({
+  Id: it.key,
+  Name: it.title,
+  Type: 'Movie',
+  ServerId: 'mockserver',
+  ParentId: 'jellyfin-movies',
+  DateCreated: ISO('2026-01-01'),
+  ProviderIds: { Tmdb: String(it.tmdbId) },
+  ImageTags: { Primary: 'mocktag' },
+  MediaSources: [
+    {
+      Id: it.key,
+      Size: 1_000_000_000,
+      Container: 'mkv',
+      MediaStreams: [
+        { Type: 'Video', Codec: 'h264', Width: 1920, Height: 1080 },
+        { Type: 'Audio', Codec: 'aac', Channels: 6 },
+      ],
+    },
+  ],
+  UserData: { PlayCount: 0, Played: false, PlayedPercentage: 0, IsFavorite: false },
+});
+const scaleSeries = (it) => ({
+  Id: it.key,
+  Name: it.title,
+  Type: 'Series',
+  ServerId: 'mockserver',
+  ParentId: 'jellyfin-shows',
+  DateCreated: ISO('2026-01-01'),
+  ProviderIds: { Tmdb: String(it.tmdbId) },
+  ImageTags: { Primary: 'mocktag' },
+  UserData: { PlayCount: 0, Played: false, PlayedPercentage: 0, IsFavorite: false },
+});
+const SCALE_MOVIES = SCALE.movies.map(scaleMovie);
+const SCALE_SHOWS = SCALE.shows.map(scaleSeries);
+
 const ITEMS_BY_ID = new Map(
-  [...MOVIES, ...SHOWS, SHARED_BOXSET].map((item) => [item.Id, item]),
+  [...MOVIES, ...SHOWS, SHARED_BOXSET, ...SCALE_MOVIES, ...SCALE_SHOWS].map(
+    (item) => [item.Id, item],
+  ),
 );
 
 // --- HTTP helpers ----------------------------------------------------------------
@@ -176,6 +221,19 @@ const USERS = [
 
 function itemsResponse(items) {
   return { Items: items, TotalRecordCount: items.length, StartIndex: 0 };
+}
+
+// Honors startIndex/limit so the adapter's pagination loop terminates at scale
+// (jellyfin-adapter breaks on items.length < pageSize || startIndex >= total).
+// Only matters once a library exceeds one page.
+function pagedItems(items, u) {
+  const start =
+    Number(u.searchParams.get('startIndex') ?? u.searchParams.get('StartIndex')) ||
+    0;
+  const limRaw = u.searchParams.get('limit') ?? u.searchParams.get('Limit');
+  const lim = limRaw ? Number(limRaw) : items.length;
+  const slice = items.slice(start, start + (lim || items.length));
+  return { Items: slice, TotalRecordCount: items.length, StartIndex: start };
 }
 
 const server = http.createServer((req, res) => {
@@ -255,10 +313,10 @@ const server = http.createServer((req, res) => {
       return send(res, 200, itemsResponse([]));
     }
     if (parentId === 'jellyfin-movies' || itemTypes === 'Movie') {
-      return send(res, 200, itemsResponse(MOVIES));
+      return send(res, 200, pagedItems([...MOVIES, ...SCALE_MOVIES], u));
     }
     if (parentId === 'jellyfin-shows' || itemTypes === 'Series') {
-      return send(res, 200, itemsResponse(SHOWS));
+      return send(res, 200, pagedItems([...SHOWS, ...SCALE_SHOWS], u));
     }
     // Episodes, etc. -> empty for now
     return send(res, 200, itemsResponse([]));
