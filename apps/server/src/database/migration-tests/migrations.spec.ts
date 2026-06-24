@@ -14,7 +14,11 @@ import { DataSource, MigrationInterface } from 'typeorm';
 //      release step: TypeORM's metadata builder can't run under @swc/jest, which
 //      reflects the codebase's `T | null` columns as `Object` and rejects the
 //      build. A new migration adds its columns to test 2.)
-//   3. The newest migration's down() is symmetric.
+//   3. That migration's up() carries TypeORM's SQLite create-temporary-table
+//      rebuild — the fingerprint of `migration:generate`. Matching columns (2)
+//      can be reproduced by a hand-written `ALTER TABLE ADD COLUMN`; the rebuild
+//      cannot, so its absence flags a hand-waived migration.
+//   4. The newest migration's down() is symmetric.
 // v1→current upgrade + rule-operator backfill live in upgrade-from-1x.spec.ts.
 
 const MIGRATIONS_DIR = path.join(__dirname, '..', 'migrations');
@@ -105,6 +109,17 @@ describe('database migrations', () => {
     } finally {
       await ds.destroy();
     }
+  });
+
+  it('emit the SQLite create-temporary-table rebuild (generated, not hand-waived)', () => {
+    const newest = all[all.length - 1];
+    const src = fs.readFileSync(path.join(MIGRATIONS_DIR, newest.file), 'utf8');
+    // SQLite can't ALTER most columns in place, so `migration:generate` always
+    // emits a full create-temporary-table / copy / drop / rename rebuild for the
+    // changed tables. A hand-written ALTER shortcut lacks it — this is the
+    // cheapest signal the migration was generated rather than authored.
+    expect(src).toContain('CREATE TABLE "temporary_collection"');
+    expect(src).toContain('CREATE TABLE "temporary_settings"');
   });
 
   // We don't revert the whole chain: several pre-existing migrations have
