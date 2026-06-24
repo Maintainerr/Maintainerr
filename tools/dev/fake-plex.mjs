@@ -145,24 +145,35 @@ const MOVIES = [
 ];
 
 // --- Show / seasons / episodes (section 2) -----------------------------------
+// tvdb id stamped on the show's Guid[] so the Sonarr getter resolves it through
+// fake-sonarr (which maps any tvdbId to a deterministic 4-season series).
+const SHOW_TVDB_ID = 990013;
 const SHOW = baseItem('sh1', 'show', 'Mock Series One', {
   leafCount: 2,
   viewedLeafCount: 1, // sw_markedWatchedEpisodes
-  childCount: 1,
+  childCount: 4,
   addedAt: daysAgo(200),
   originallyAvailableAt: '2023-01-01',
+  Guid: [{ id: `tvdb://${SHOW_TVDB_ID}` }],
   Role: ROLE,
   Genre: GENRE,
   Label: [{ id: 1, tag: 'Keep' }],
   Collection: [{ tag: 'Box Set' }],
 });
-const SEASON = baseItem('se1', 'season', 'Season 1', {
-  parentRatingKey: 'sh1',
-  index: 1,
-  leafCount: 2,
-  addedAt: daysAgo(200),
-  Collection: [{ tag: 'Box Set' }, { tag: 'Season Set' }],
-});
+// Four seasons drive the #3153 part_of_latest_season repro: fake-sonarr dates
+// S0/S1/S2 episode 1 in the past and S3 in the future, so the latest aired season
+// is S2. Evaluated together in one run they share a memoized series object — the
+// case the in-place season reverse corrupted. Season 1 keeps the episodes the
+// sw_* episode rules use.
+const SEASONS = [0, 1, 2, 3].map((n) =>
+  baseItem(`se${n}`, 'season', `Season ${n}`, {
+    parentRatingKey: 'sh1',
+    index: n,
+    leafCount: n === 1 ? 2 : 1,
+    addedAt: daysAgo(200),
+    Collection: n === 1 ? [{ tag: 'Box Set' }, { tag: 'Season Set' }] : [],
+  }),
+);
 const EPISODES = [
   baseItem('ep1', 'episode', 'Episode One', {
     parentRatingKey: 'se1',
@@ -185,12 +196,12 @@ const EPISODES = [
   }),
 ];
 
-const ALL_ITEMS = [...MOVIES, SHOW, SEASON, ...EPISODES];
+const ALL_ITEMS = [...MOVIES, SHOW, ...SEASONS, ...EPISODES];
 const ITEMS_BY_ID = new Map(ALL_ITEMS.map((m) => [m.ratingKey, m]));
 
-// children: show -> [season], season -> [episodes]
+// children: show -> [seasons], season 1 -> [episodes]
 const CHILDREN = {
-  sh1: [SEASON],
+  sh1: SEASONS,
   se1: EPISODES,
 };
 
@@ -294,10 +305,16 @@ const server = http.createServer((req, res) => {
   // Libraries
   if (path === '/library/sections') return send(res, 200, list('Directory', SECTIONS));
 
-  // Section contents: /library/sections/:id/all
+  // Section contents: /library/sections/:id/all. The rule executor passes Plex's
+  // numeric data type (EPlexDataType: movie=1, show=2, season=3, episode=4) so a
+  // season-scoped rule group enumerates seasons, not the show.
   const allMatch = path.match(/^\/library\/sections\/([^/]+)\/all$/);
   if (allMatch) {
-    const items = allMatch[1] === '2' ? [SHOW] : MOVIES;
+    let items = MOVIES;
+    if (allMatch[1] === '2') {
+      const type = u.searchParams.get('type');
+      items = type === '3' ? SEASONS : type === '4' ? EPISODES : [SHOW];
+    }
     return send(res, 200, list('Metadata', items));
   }
 
