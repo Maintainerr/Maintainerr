@@ -178,7 +178,9 @@ const run = db.transaction(() => {
   // 2) Configure the active media server + metadata + integrations.
   if (TARGET === "plex") {
     // Points at tools/dev/fake-plex.mjs. The fixed machine id lets the primary
-    // connection succeed without plex.tv re-discovery.
+    // connection succeed without plex.tv re-discovery. tvdb_api_key is cleared so
+    // the Sonarr getter's tvdb lookup resolves against fake-sonarr offline instead
+    // of validating the invented id against the real TVDB API (which 404s).
     db.prepare(
       `UPDATE settings SET
          media_server_type = 'plex',
@@ -188,7 +190,8 @@ const run = db.transaction(() => {
          plex_ssl = 0,
          plex_auth_token = @token,
          plex_machine_id = @machine,
-         tmdb_api_key = @tmdb
+         tmdb_api_key = @tmdb,
+         tvdb_api_key = NULL
        WHERE id = 1`,
     ).run({
       name: "Plex (dev seed)",
@@ -382,6 +385,53 @@ const run = db.transaction(() => {
       arrAction: 4, // DO_NOTHING (null deleteAfterDays would otherwise be "due now")
     }),
   ];
+
+  // 4b) #3153 repro (Plex only): a season-scoped group sweeping every season that
+  //     is NOT part of the latest aired season. Pairs tools/dev/fake-plex.mjs's
+  //     four-season show with tools/dev/fake-sonarr.mjs. The latest aired season
+  //     (S2) must be excluded; the rest swept. A full run evaluates the seasons
+  //     together (shared memoized series) where Test Media evaluates one — the
+  //     two must now agree.
+  if (TARGET === "plex") {
+    const seasonColId = insCollection.run({
+      libraryId: LIB.show,
+      title: "Latest Season Sweep",
+      description: "Seasons that are not the latest aired season (#3153).",
+      type: "season",
+      mediaServerType: TARGET,
+      deleteAfterDays: 30,
+      visibleOnHome: 0,
+      arrAction: 4, // DO_NOTHING
+      listExclusions: 0,
+      radarrSettingsId: null,
+      sonarrSettingsId: sonarrId,
+      handledMediaAmount: 0,
+      handledMediaSizeBytes: 0,
+      totalSizeBytes: 0,
+      lastDuration: 0,
+      addDate: daysAgo(30),
+    }).lastInsertRowid;
+    const seasonGroupId = insRuleGroup.run(
+      "Latest Season Sweep",
+      "part_of_latest_season == False",
+      LIB.show,
+      seasonColId,
+      "season",
+    ).lastInsertRowid;
+    // Sonarr (Application.SONARR=2) part_of_latest_season (prop 13, BOOL) EQUALS
+    // False. ruleTypeId BOOL=3, RulePossibility.EQUALS=2; BOOL false encodes as
+    // "0" (the comparator coerces +customVal.value).
+    insRule.run(
+      seasonGroupId,
+      JSON.stringify({
+        customVal: { ruleTypeId: 3, value: "0" },
+        operator: null,
+        firstVal: [2, 13],
+        action: 2,
+        section: 0,
+      }),
+    );
+  }
 
   // 5) Cron schedules (Settings handlers + one per-group override + overlays).
   db.prepare(

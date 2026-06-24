@@ -507,14 +507,17 @@ export class SonarrGetterService {
    *
    * @param {SonarrSeason[]} seasons - The array of seasons to search through.
    * @param {number} showId - The ID of the show.
-   * @return {Promise<SonarrSeason>} The last season found, or undefined if none is found.
+   * @return {Promise<SonarrSeason | undefined>} The last season found, or undefined if none is found.
    */
   private async getLastAiredOrCurrentlyAiringSeason(
     seasons: SonarrSeason[],
     showId: number,
     apiClient: SonarrApi,
-  ): Promise<SonarrSeason> {
-    for (const s of seasons.reverse()) {
+  ): Promise<SonarrSeason | undefined> {
+    // `seasons` belongs to the run-shared memoized series; reversing in place
+    // corrupts season order for the show's other (concurrently evaluated)
+    // seasons (#3153). Reverse a copy.
+    for (const s of [...seasons].reverse()) {
       const epResp = await apiClient.getEpisodes(showId, s.seasonNumber, [1]);
 
       if (epResp[0]?.airDateUtc === undefined) {

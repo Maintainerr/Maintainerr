@@ -18,6 +18,7 @@ import { ServarrService } from '../../api/servarr-api/servarr.service';
 import { CollectionMedia } from '../../collections/entities/collection_media.entities';
 import { MaintainerrLogger } from '../../logging/logs.service';
 import { MetadataService } from '../../metadata/metadata.service';
+import { ArrLookupCache } from '../helpers/arr-lookup-cache';
 import { SonarrGetterService } from './sonarr-getter.service';
 
 describe('SonarrGetterService', () => {
@@ -241,6 +242,89 @@ describe('SonarrGetterService', () => {
           );
 
           expect(response).toBe(false);
+        },
+      );
+    });
+
+    // #3153: in a full run the comparator resolves several of a show's seasons
+    // concurrently, all sharing ONE memoized `showResponse.seasons` array via the
+    // run-scoped ArrLookupCache. The latest-aired-season scan must not mutate that
+    // shared array, or evaluating one season corrupts the answer for the others.
+    // (Test Media passes no cache, so it never hit this — hence the run/test split.)
+    describe('shared ArrLookupCache across show seasons (#3153)', () => {
+      it.each([
+        { type: 'season', title: 'SEASONS' },
+        { type: 'episode', title: 'EPISODES' },
+      ])(
+        'evaluating an earlier season first does not flip the latest aired season for $title',
+        async ({ type }: { type: string }) => {
+          jest.useFakeTimers().setSystemTime(new Date('2025-06-01'));
+
+          const collectionMedia = createCollectionMedia(type as MediaItemType);
+          collectionMedia.collection.sonarrSettingsId = 1;
+
+          mockMediaServer.getMetadata.mockResolvedValue(
+            createMediaItem({ type: 'show' }),
+          );
+
+          // S0/S1/S2 episode 1 already aired; S3 episode 1 is in the future, so
+          // the latest *aired* season is S2.
+          const series = createSonarrSeries({
+            seasons: [
+              { seasonNumber: 0, monitored: false },
+              { seasonNumber: 1, monitored: true },
+              { seasonNumber: 2, monitored: true },
+              { seasonNumber: 3, monitored: true },
+            ],
+          });
+
+          const airDateUtcBySeason: Record<number, string> = {
+            0: '2024-01-01T00:00:00Z',
+            1: '2024-06-25T00:00:00Z',
+            2: '2025-04-01T00:00:00Z',
+            3: '2025-12-01T00:00:00Z',
+          };
+
+          const mockedSonarrApi = mockSonarrApi(series);
+          jest
+            .spyOn(mockedSonarrApi, 'getEpisodes')
+            .mockImplementation((seriesId, seasonNumber) =>
+              Promise.resolve([
+                createSonarrEpisode({
+                  seriesId,
+                  seasonNumber,
+                  episodeNumber: 1,
+                  airDateUtc: airDateUtcBySeason[seasonNumber as number],
+                }),
+              ]),
+            );
+
+          const evaluate = (seasonNumber: number, cache: ArrLookupCache) =>
+            sonarrGetterService.get(
+              13,
+              createMediaItem({
+                type: type === 'episode' ? 'episode' : 'season',
+                index: seasonNumber,
+                parentIndex: type === 'episode' ? seasonNumber : undefined,
+              }),
+              type as MediaItemType,
+              createRulesDto({
+                collection: collectionMedia.collection,
+                dataType: type as MediaItemType,
+              }),
+              undefined,
+              cache,
+            );
+
+          // One run-shared cache, exactly as the comparator wires it. Evaluating
+          // the older S1 first must not corrupt the shared season array and flip
+          // S2 (the real latest aired season) to false.
+          const cache = new ArrLookupCache();
+          const s1 = await evaluate(1, cache);
+          const s2 = await evaluate(2, cache);
+
+          expect(s1).toBe(false);
+          expect(s2).toBe(true);
         },
       );
     });
