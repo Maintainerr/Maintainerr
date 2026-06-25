@@ -231,4 +231,35 @@ describe('RadarrApi', () => {
       await expect(api.getDownloadIdsForMovie(5)).resolves.toEqual([]);
     });
   });
+
+  describe('setMovieTags', () => {
+    it('adds a tag to a batch of movies via the movie editor', async () => {
+      const runPut = jest.spyOn(api as any, 'runPut').mockResolvedValue(true);
+
+      await expect(api.setMovieTags([1, 2], 5, 'add')).resolves.toBe(true);
+
+      expect(runPut).toHaveBeenCalledWith(
+        'movie/editor',
+        JSON.stringify({ movieIds: [1, 2], tags: [5], applyTags: 'add' }),
+      );
+    });
+
+    it('removes a tag via the movie editor', async () => {
+      const runPut = jest.spyOn(api as any, 'runPut').mockResolvedValue(true);
+
+      await api.setMovieTags([3], 5, 'remove');
+
+      expect(runPut).toHaveBeenCalledWith(
+        'movie/editor',
+        JSON.stringify({ movieIds: [3], tags: [5], applyTags: 'remove' }),
+      );
+    });
+
+    it('no-ops on an empty id list (no request)', async () => {
+      const runPut = jest.spyOn(api as any, 'runPut');
+
+      await expect(api.setMovieTags([], 5, 'add')).resolves.toBe(true);
+      expect(runPut).not.toHaveBeenCalled();
+    });
+  });
 });

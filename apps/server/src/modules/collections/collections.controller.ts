@@ -150,6 +150,7 @@ const collectionBaseShape = {
   sonarrSettingsId: z.coerce.number().int().optional().nullable(),
   radarrQualityProfileId: z.coerce.number().int().optional().nullable(),
   sonarrQualityProfileId: z.coerce.number().int().optional().nullable(),
+  tagInArr: z.boolean().optional(),
   sortTitle: z.string().optional().nullable(),
   mediaServerSort: collectionMediaSortKeySchema.optional().nullable(),
   overlayEnabled: z.boolean().optional(),

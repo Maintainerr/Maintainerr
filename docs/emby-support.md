@@ -276,10 +276,9 @@ Emby itself returns:
 
 The original plan included Emby Connect (the emby.media cloud-account flow)
 as an MVP feature, citing an `embyconnect.ts` reference implementation in
-Jellyseerr. **That file does not exist** — verified via the GitHub API
-against both [Seerr](https://github.com/seerr-team/seerr/tree/develop/server/api)
-and [Jellyseerr](https://github.com/Fallenbagel/jellyseerr/tree/develop/server/api).
-Neither repo has a dedicated Emby Connect module, and neither `jellyfin.ts`
+Seerr. **That file does not exist** — verified via the GitHub API against
+[Seerr](https://github.com/seerr-team/seerr/tree/develop/server/api).
+The repo has no dedicated Emby Connect module, and `jellyfin.ts`
 contains any references to `api.emby.media`, `/service/`, or
 `X-Connect-UserToken`.
 

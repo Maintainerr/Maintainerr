@@ -87,7 +87,7 @@ export const ApplicationNames: Record<Application, string> = {
 }
 
 /**
- * Media status for Overseerr/Jellyseerr requests
+ * Media status for Seerr requests
  */
 export enum RequestMediaStatus {
   UNKNOWN = 1,

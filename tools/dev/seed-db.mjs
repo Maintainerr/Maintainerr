@@ -8,11 +8,12 @@
  * and rule groups whose rules cover (almost) the whole rule-property surface
  * for the active media server.
  *
- * This is the only one of the three dev scripts that touches the DB; the
- * companion mocks are stateless HTTP servers:
+ * This is the only one of the dev scripts that touches the DB; the companion
+ * mocks are stateless HTTP servers:
  *   - tools/dev/fake-jellyfin.mjs  (mock Jellyfin, :8096) — pairs with MEDIA_SERVER=jellyfin
  *   - tools/dev/fake-emby.mjs      (mock Emby, :8097)     — pairs with MEDIA_SERVER=emby
  *   - tools/dev/fake-plex.mjs      (mock Plex, :32400)    — pairs with MEDIA_SERVER=plex
+ *   - tools/dev/fake-seerr.mjs     (mock Seerr, :5055)    — evaluates the Seerr rule groups
  *
  * Notes
  * -----
@@ -178,7 +179,9 @@ const run = db.transaction(() => {
   // 2) Configure the active media server + metadata + integrations.
   if (TARGET === "plex") {
     // Points at tools/dev/fake-plex.mjs. The fixed machine id lets the primary
-    // connection succeed without plex.tv re-discovery.
+    // connection succeed without plex.tv re-discovery. tvdb_api_key is cleared so
+    // the Sonarr getter's tvdb lookup resolves against fake-sonarr offline instead
+    // of validating the invented id against the real TVDB API (which 404s).
     db.prepare(
       `UPDATE settings SET
          media_server_type = 'plex',
@@ -188,7 +191,8 @@ const run = db.transaction(() => {
          plex_ssl = 0,
          plex_auth_token = @token,
          plex_machine_id = @machine,
-         tmdb_api_key = @tmdb
+         tmdb_api_key = @tmdb,
+         tvdb_api_key = NULL
        WHERE id = 1`,
     ).run({
       name: "Plex (dev seed)",
@@ -235,6 +239,20 @@ const run = db.transaction(() => {
       tmdb: "devseed00000000000000000000000tmdb",
     });
   }
+
+  // 2b) Seerr (request service) — points at tools/dev/fake-seerr.mjs (same for
+  //     every target). Pair with `node tools/dev/fake-seerr.mjs`; the Seerr rule
+  //     groups below evaluate against it. The Seerr getter resolves each library
+  //     item to a tmdbId, so matching needs items that resolve to a tmdbId Seerr
+  //     has a request for — point fake-seerr's FAKE_SEERR_TMDB_IDS at the
+  //     library's real tmdbIds (and use the built-in TMDB key, i.e. leave
+  //     tmdb_api_key empty, so those ids resolve).
+  db.prepare(
+    `UPDATE settings SET seerr_url = @url, seerr_api_key = @key WHERE id = 1`,
+  ).run({
+    url: 'http://localhost:5055',
+    key: 'devseed000000000000000000000seerr',
+  });
 
   // 3) Radarr / Sonarr settings rows.
   const radarrId = db
@@ -383,6 +401,168 @@ const run = db.transaction(() => {
     }),
   ];
 
+  // 4b) #3153 repro (Plex only): a season-scoped group sweeping every season that
+  //     is NOT part of the latest aired season. Pairs tools/dev/fake-plex.mjs's
+  //     four-season show with tools/dev/fake-sonarr.mjs. The latest aired season
+  //     (S2) must be excluded; the rest swept. A full run evaluates the seasons
+  //     together (shared memoized series) where Test Media evaluates one — the
+  //     two must now agree.
+  if (TARGET === "plex") {
+    const seasonColId = insCollection.run({
+      libraryId: LIB.show,
+      title: "Latest Season Sweep",
+      description: "Seasons that are not the latest aired season (#3153).",
+      type: "season",
+      mediaServerType: TARGET,
+      deleteAfterDays: 30,
+      visibleOnHome: 0,
+      arrAction: 4, // DO_NOTHING
+      listExclusions: 0,
+      radarrSettingsId: null,
+      sonarrSettingsId: sonarrId,
+      handledMediaAmount: 0,
+      handledMediaSizeBytes: 0,
+      totalSizeBytes: 0,
+      lastDuration: 0,
+      addDate: daysAgo(30),
+    }).lastInsertRowid;
+    const seasonGroupId = insRuleGroup.run(
+      "Latest Season Sweep",
+      "part_of_latest_season == False",
+      LIB.show,
+      seasonColId,
+      "season",
+    ).lastInsertRowid;
+    // Sonarr (Application.SONARR=2) part_of_latest_season (prop 13, BOOL) EQUALS
+    // False. ruleTypeId BOOL=3, RulePossibility.EQUALS=2; BOOL false encodes as
+    // "0" (the comparator coerces +customVal.value).
+    insRule.run(
+      seasonGroupId,
+      JSON.stringify({
+        customVal: { ruleTypeId: 3, value: "0" },
+        operator: null,
+        firstVal: [2, 13],
+        action: 2,
+        section: 0,
+      }),
+    );
+  }
+
+  // 4c) #3152 repro: Seerr-seeded rule groups. The Seerr getter now reads ONE
+  //     bulk /request sweep per run (tools/dev/fake-seerr.mjs) instead of a
+  //     per-item /movie|/tv call per item — those rate-limited under a whole
+  //     library run and made Seerr-seeded rules match almost nothing. Run with
+  //     FAKE_SEERR_FLAKY=1 to reproduce the rate-limiting the bulk sweep is
+  //     immune to. A full run and POST /api/rules/test must agree (the issue's
+  //     key symptom was test-vs-bulk disagreement).
+  const SEERR = 3; // Application.SEERR
+  const seerrCol = (title, description, libraryId, type) =>
+    insCollection.run({
+      libraryId,
+      title,
+      description,
+      type,
+      mediaServerType: TARGET,
+      deleteAfterDays: 30,
+      visibleOnHome: 0,
+      arrAction: 4, // DO_NOTHING
+      listExclusions: 0,
+      radarrSettingsId: null,
+      sonarrSettingsId: null,
+      handledMediaAmount: 0,
+      handledMediaSizeBytes: 0,
+      totalSizeBytes: 0,
+      lastDuration: 0,
+      addDate: daysAgo(30),
+    }).lastInsertRowid;
+
+  // Movie group: Seerr isRequested == False (find unrequested movies). BOOL=3,
+  // RulePossibility.EQUALS=2; BOOL false encodes as "0" (comparator coerces it).
+  const seerrMovieCol = seerrCol(
+    'Seerr Unrequested Movies',
+    'Seerr isRequested == False (#3152).',
+    LIB.movie,
+    'movie',
+  );
+  const seerrMovieGroup = insRuleGroup.run(
+    'Seerr Unrequested Movies',
+    'Seerr isRequested == False (#3152).',
+    LIB.movie,
+    seerrMovieCol,
+    'movie',
+  ).lastInsertRowid;
+  insRule.run(
+    seerrMovieGroup,
+    JSON.stringify({
+      customVal: { ruleTypeId: 3, value: '0' },
+      operator: null,
+      firstVal: [SEERR, 6], // isRequested
+      action: 2, // EQUALS
+      section: 0,
+    }),
+  );
+
+  // Season group: Seerr isRequested == True at season level, so the getter's
+  // season path (per-request seasons[] from the /request sweep) runs end-to-end.
+  const seerrSeasonCol = seerrCol(
+    'Seerr Requested Seasons',
+    'Seerr isRequested == True, season level (#3152).',
+    LIB.show,
+    'season',
+  );
+  const seerrSeasonGroup = insRuleGroup.run(
+    'Seerr Requested Seasons',
+    'Seerr isRequested == True, season level (#3152).',
+    LIB.show,
+    seerrSeasonCol,
+    'season',
+  ).lastInsertRowid;
+  insRule.run(
+    seerrSeasonGroup,
+    JSON.stringify({
+      customVal: { ruleTypeId: 3, value: '1' },
+      operator: null,
+      firstVal: [SEERR, 6], // isRequested
+      action: 2, // EQUALS
+      section: 0,
+    }),
+  );
+
+  // One movie group per remaining request-derived property (and the per-item
+  // releaseDate fallback), each EXISTS so the getter resolves every property the
+  // bulk index feeds — matching the property list in the #3152 commit and making
+  // the live POST /api/rules/test matrix reproducible from a clean seed.
+  const seerrMovieProps = [
+    [0, 'addUser'],
+    [1, 'requestDate'],
+    [2, 'releaseDate'], // per-item getMovie fallback, not the request index
+    [3, 'approvalDate'],
+    [4, 'mediaAddedAt'],
+    [5, 'amountRequested'],
+  ];
+  for (const [propId, propName] of seerrMovieProps) {
+    const description = `Seerr ${propName} EXISTS (#3152).`;
+    const col = seerrCol(`Seerr ${propName}`, description, LIB.movie, 'movie');
+    const group = insRuleGroup.run(
+      `Seerr ${propName}`,
+      description,
+      LIB.movie,
+      col,
+      'movie',
+    ).lastInsertRowid;
+    insRule.run(
+      group,
+      JSON.stringify({
+        // EXISTS ignores the operand, so ruleTypeId is irrelevant here.
+        customVal: { ruleTypeId: 0, value: '' },
+        operator: null,
+        firstVal: [SEERR, propId],
+        action: 18, // EXISTS — resolves the property without a comparison operand
+        section: 0,
+      }),
+    );
+  }
+
   // 5) Cron schedules (Settings handlers + one per-group override + overlays).
   db.prepare(
     `UPDATE settings SET collection_handler_job_cron = ?, rules_handler_job_cron = ? WHERE id = 1`,
@@ -486,7 +666,10 @@ console.log(
   `Media server set to ${TARGET === "plex" ? "Plex" : TARGET === "emby" ? "Emby" : "Jellyfin"} (dev seed); Radarr + Sonarr configured.`,
 );
 console.log(
-  "Also seeded: notifications, cron schedules, collection logs, exclusions, overlays.",
+  "Also seeded: Seerr rule groups (#3152), notifications, cron schedules, collection logs, exclusions, overlays.",
+);
+console.log(
+  "Seerr points at tools/dev/fake-seerr.mjs (http://localhost:5055) — start it to evaluate the Seerr rule groups.",
 );
 console.log("Restart `yarn dev` and open http://localhost:3000/collections");
 db.close();

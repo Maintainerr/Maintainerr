@@ -308,6 +308,7 @@ export const ruleGroupFormSchema = z
     sonarrSettingsId: z.number().int().nullable().optional(),
     radarrQualityProfileId: z.number().int().nullable().optional(),
     sonarrQualityProfileId: z.number().int().nullable().optional(),
+    tagInArr: z.boolean().optional(),
     ruleHandlerCronSchedule: z.preprocess(
       (val) => (val === '' ? null : val),
       z
@@ -399,6 +400,7 @@ const buildFormDefaults = (editData?: IRuleGroup): RuleGroupFormValues => ({
   sonarrQualityProfileId: editData
     ? (editData.collection?.sonarrQualityProfileId ?? undefined)
     : undefined,
+  tagInArr: editData?.collection?.tagInArr ?? false,
   ruleHandlerCronSchedule: editData?.ruleHandlerCronSchedule ?? null,
 })
 
@@ -617,6 +619,7 @@ const AddModal = (props: AddModal) => {
     setValue('sonarrSettingsId', undefined)
     setValue('radarrQualityProfileId', undefined)
     setValue('sonarrQualityProfileId', undefined)
+    setValue('tagInArr', false)
     updateArrOption(ServarrAction.DELETE)
 
     // Clear rules that reference *arr servers since we're resetting them
@@ -660,6 +663,12 @@ const AddModal = (props: AddModal) => {
 
     if (type === 'Sonarr' && settingId !== sonarrSettingsId) {
       setValue('sonarrQualityProfileId', undefined)
+    }
+
+    // Drop the membership-tag opt-in if the matching *arr server is deselected;
+    // the checkbox hides with the server, so don't leave a stale enabled flag.
+    if (settingId == null) {
+      setValue('tagInArr', false)
     }
 
     const newRadarrId = type === 'Radarr' ? settingId : undefined
@@ -808,6 +817,7 @@ const AddModal = (props: AddModal) => {
       sonarrSettingsId: data.sonarrSettingsId ?? undefined,
       radarrQualityProfileId: data.radarrQualityProfileId ?? undefined,
       sonarrQualityProfileId: data.sonarrQualityProfileId ?? undefined,
+      tagInArr: data.tagInArr ?? false,
       collection: {
         visibleOnRecommended: data.showRecommended,
         visibleOnHome: data.showHome,
@@ -1332,6 +1342,45 @@ const AddModal = (props: AddModal) => {
                               id="list_exclusions"
                               className="checkbox"
                               {...register('listExclusions')}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Strict 'show' (not selectedLibraryType) on purpose:
+                        Sonarr tags are series-level, so season/episode
+                        collections — which map to 'show' — are excluded. */}
+                    {((selectedLibraryType === 'movie' &&
+                      hasSelectedRadarrServer) ||
+                      (selectedType === 'show' && hasSelectedSonarrServer)) && (
+                      <div className="flex flex-row items-center justify-between py-4">
+                        <label htmlFor="tag_in_arr" className="text-label">
+                          Tag this content in{' '}
+                          {selectedLibraryType === 'movie'
+                            ? 'Radarr'
+                            : 'Sonarr'}
+                          <p className="text-xs font-normal">
+                            Tag matching{' '}
+                            {selectedLibraryType === 'movie'
+                              ? 'movies'
+                              : 'shows'}{' '}
+                            in{' '}
+                            {selectedLibraryType === 'movie'
+                              ? 'Radarr'
+                              : 'Sonarr'}{' '}
+                            with a tag based on this rule group&apos;s name
+                            while they&apos;re in the {collectionTerm}, removed
+                            when they leave
+                          </p>
+                        </label>
+                        <div className="form-input">
+                          <div className="form-input-field">
+                            <input
+                              type="checkbox"
+                              id="tag_in_arr"
+                              className="checkbox"
+                              {...register('tagInArr')}
                             />
                           </div>
                         </div>

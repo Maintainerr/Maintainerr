@@ -16,7 +16,7 @@ yarn test | tail -20
 
 ## Project Overview
 
-Maintainerr is a media management application that helps users automatically manage their media libraries by creating rules to handle unused or unwatched content. It integrates with Plex, Jellyfin, Emby, \*arr applications (Radarr/Sonarr), Overseerr/Jellyseerr, Tautulli, and Streamystats (Jellyfin only) to provide comprehensive media lifecycle management.
+Maintainerr is a media management application that helps users automatically manage their media libraries by creating rules to handle unused or unwatched content. It integrates with Plex, Jellyfin, Emby, \*arr applications (Radarr/Sonarr), Seerr, Tautulli, and Streamystats (Jellyfin only) to provide comprehensive media lifecycle management.
 
 For the broader system architecture map, see [ARCHITECTURE.md](ARCHITECTURE.md).
 
@@ -305,7 +305,7 @@ The application integrates with several external services:
 - **Plex**: Media server API for collections and metadata
 - **Jellyfin/Emby**: Media server APIs through the shared media-server abstraction
 - **Radarr/Sonarr**: Movie/TV show management APIs
-- **Overseerr/Jellyseerr**: Request management systems
+- **Seerr**: Request management system
 - **Tautulli**: Plex analytics and statistics
 - **Streamystats**: Jellyfin item-level analytics surfaced on media details
 
@@ -328,8 +328,7 @@ Reference the following OpenAPI specifications and API documentation when workin
 
 ### Request Management Services
 
-- **Overseerr**: [API Documentation](https://api-docs.overseerr.dev/overseerr-api.yml)
-- **Jellyseerr**: [OpenAPI Specification](https://github.com/fallenbagel/jellyseerr/blob/develop/jellyseerr-api.yml)
+- **Seerr**: [Documentation](https://docs.seerr.dev/) | [Source](https://github.com/seerr-team/seerr)
 
 ### Media Server Services
 

@@ -3197,6 +3197,13 @@ export class CollectionsService {
                 : '',
             sonarrSettingsId: collection.sonarrSettingsId,
             radarrSettingsId: collection.radarrSettingsId,
+            // These were previously persisted only on update (updateCollection
+            // spreads the whole ICollection); the create path listed columns
+            // explicitly and dropped them, so a profile/tag chosen at create
+            // time was silently lost until the first edit.
+            radarrQualityProfileId: collection.radarrQualityProfileId ?? null,
+            sonarrQualityProfileId: collection.sonarrQualityProfileId ?? null,
+            tagInArr: collection.tagInArr ?? false,
             sortTitle: collection.sortTitle,
             mediaServerSort: collection.mediaServerSort ?? null,
             overlayEnabled: collection.overlayEnabled ?? false,
@@ -3422,10 +3429,7 @@ export class CollectionsService {
   }
 
   public async removeAllCollectionLogs(collectionId: number) {
-    const collection = await this.collectionRepo.findOne({
-      where: { id: collectionId },
-    });
-    await this.CollectionLogRepo.delete({ collection: collection });
+    await this.CollectionLogRepo.delete({ collection: { id: collectionId } });
   }
 
   /**
@@ -3464,7 +3468,7 @@ export class CollectionsService {
         // get all logs older than param
         const logs = await this.CollectionLogRepo.find({
           where: {
-            collection: collection,
+            collection: { id: collection.id },
             timestamp: LessThan(configuredMonths),
           },
         });

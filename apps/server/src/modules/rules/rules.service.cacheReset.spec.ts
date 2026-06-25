@@ -1,5 +1,8 @@
 import { MediaServerType } from '@maintainerr/contracts';
-import { createMockLogger } from '../../../test/utils/data';
+import {
+  createMockLogger,
+  createMockServarrTagService,
+} from '../../../test/utils/data';
 import cacheManager, { Cache } from '../api/lib/cache';
 import { RulesDto } from './dtos/rules.dto';
 import { RulesService } from './rules.service';
@@ -34,6 +37,7 @@ describe('RulesService.resetCacheIfGroupUsesRuleThatRequiresIt', () => {
       {} as any,
       {} as any,
       {} as any,
+      createMockServarrTagService() as any,
       logger as any,
     );
 

@@ -30,7 +30,7 @@ export interface EmbyLoginButtonProps {
  * server-specific auth UX lives outside the settings page.
  *
  * Emby's auth endpoint is `POST /Users/AuthenticateByName` — verified against
- * Emby Server 4.9 and consistent with the Jellyseerr/Seerr Jellyfin client.
+ * Emby Server 4.9 and consistent with the Seerr Jellyfin client.
  */
 const EmbyLoginButton: React.FC<EmbyLoginButtonProps> = ({
   embyUrl,
