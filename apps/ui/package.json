@@ -54,7 +54,7 @@
     "not IE 11"
   ],
   "devDependencies": {
-    "@eslint-react/eslint-plugin": "^5.9.2",
+    "@eslint-react/eslint-plugin": "^5.9.3",
     "@eslint/js": "^10.0.1",
     "@tailwindcss/forms": "^0.5.11",
     "@tailwindcss/typography": "^0.5.20",
