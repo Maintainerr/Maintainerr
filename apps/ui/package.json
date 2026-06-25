@@ -79,6 +79,6 @@
     "vitest": "^4.1.9"
   },
   "optionalDependencies": {
-    "rolldown": "^1.1.2"
+    "rolldown": "^1.1.3"
   }
 }
