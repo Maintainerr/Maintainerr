@@ -429,7 +429,7 @@ export class SettingsController {
     return this.metadataSettingsService.refreshMetadataCache(provider);
   }
 
-  // Unified Seerr endpoints (replaces both Overseerr and Jellyseerr)
+  // Unified Seerr settings endpoints (legacy aliases kept for backward compatibility)
   @Get(['/seerr', '/overseerr', '/jellyseerr'])
   async getSeerrSetting(): Promise<SeerrSetting | BasicResponseDto> {
     const settings = await this.settingsOperationsService.getSettings();

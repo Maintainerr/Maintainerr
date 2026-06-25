@@ -44,14 +44,14 @@ const SeerrSettings = () => {
       scope="Seerr settings"
       pageTitle="Seerr settings - Maintainerr"
       heading="Seerr Settings"
-      description="Seerr configuration (also compatible with Overseerr and Jellyseerr)"
+      description="Seerr configuration"
       docsPage="Configuration/#seerr"
       settingsPath="/settings/seerr"
       testPath="/settings/test/seerr"
       schema={SeerrSettingFormSchema}
       fields={fields}
       testSuccessTitle="Seerr"
-      testFailureMessage="Failed to connect to Overseerr. Verify URL and API key."
+      testFailureMessage="Failed to connect to Seerr. Verify URL and API key."
     />
   )
 }

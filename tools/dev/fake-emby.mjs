@@ -23,6 +23,7 @@
  *   FAKE_EMBY_PORT=8097 FAKE_EMBY_LOG=1 node tools/dev/fake-emby.mjs
  */
 import http from 'node:http';
+import { buildScaleLibrary } from './lib/scale-library.mjs';
 
 const PORT = Number(process.env.FAKE_EMBY_PORT ?? 8097);
 const LOG = process.env.FAKE_EMBY_LOG === '1';
@@ -66,8 +67,37 @@ const SHARED_BOXSET = {
   Overview: 'Shared manual collection (mock)',
 };
 
+// --- Optional large library for Seerr whole-library scale tests (#3152) ----------
+// Off unless FAKE_SCALE>0 (see lib/scale-library.mjs). Real tmdb ProviderId, no
+// ProductionYear (so the metadata resolver accepts the id without a year check).
+// Shared with fake-plex/fake-jellyfin so the item set is identical across
+// backends — note this is the only movie content this Emby mock serves.
+const SCALE = buildScaleLibrary();
+const scaleMovie = (it) => ({
+  Id: it.key,
+  Name: it.title,
+  Type: 'Movie',
+  ParentId: 'emby-movies',
+  DateCreated: ISO('2026-01-01'),
+  ProviderIds: { Tmdb: String(it.tmdbId) },
+  MediaSources: [{ Id: it.key, Size: 1_000_000_000, Container: 'mkv' }],
+});
+const scaleSeries = (it) => ({
+  Id: it.key,
+  Name: it.title,
+  Type: 'Series',
+  ParentId: 'emby-shows',
+  DateCreated: ISO('2026-01-01'),
+  ProviderIds: { Tmdb: String(it.tmdbId) },
+});
+const SCALE_MOVIES = SCALE.movies.map(scaleMovie);
+const SCALE_SHOWS = SCALE.shows.map(scaleSeries);
+
 const ITEMS_BY_ID = new Map(
-  [...SHOWS, SHARED_BOXSET].map((item) => [item.Id, item]),
+  [...SHOWS, SHARED_BOXSET, ...SCALE_MOVIES, ...SCALE_SHOWS].map((item) => [
+    item.Id,
+    item,
+  ]),
 );
 
 // --- HTTP helpers ----------------------------------------------------------------
@@ -84,6 +114,15 @@ const itemsResponse = (items) => ({
   TotalRecordCount: items.length,
   StartIndex: 0,
 });
+// Honors PascalCase StartIndex/Limit so the adapter's offset loop terminates at
+// scale instead of re-fetching the full set per page. Only matters past one page.
+function pagedItems(items, u) {
+  const start = Number(u.searchParams.get('StartIndex')) || 0;
+  const limRaw = u.searchParams.get('Limit');
+  const lim = limRaw ? Number(limRaw) : items.length;
+  const slice = items.slice(start, start + (lim || items.length));
+  return { Items: slice, TotalRecordCount: items.length, StartIndex: start };
+}
 
 const SYSTEM_INFO = {
   Id: 'mockembyserver',
@@ -154,8 +193,11 @@ const server = http.createServer((req, res) => {
       }
       return send(res, 200, itemsResponse([]));
     }
+    if (parentId === 'emby-movies' || itemTypes === 'Movie') {
+      return send(res, 200, pagedItems(SCALE_MOVIES, u));
+    }
     if (parentId === 'emby-shows' || itemTypes === 'Series') {
-      return send(res, 200, itemsResponse(SHOWS));
+      return send(res, 200, pagedItems([...SHOWS, ...SCALE_SHOWS], u));
     }
     return send(res, 200, itemsResponse([]));
   }

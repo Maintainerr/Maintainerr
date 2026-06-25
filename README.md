@@ -279,4 +279,4 @@ The overlay system was built by [@gssariev](https://github.com/gssariev), with [
 
 <sub>Made with [contrib.rocks](https://contrib.rocks).</sub>
 
-Maintainerr is heavily inspired by Seerr (Overseerr / Jellyseerr). Some parts of Maintainerr's code are direct copies. Big thanks to the Seerr team!
+Maintainerr is heavily inspired by Seerr. Some parts of Maintainerr's code are direct copies. Big thanks to the Seerr team!

@@ -603,7 +603,7 @@ export class EmbyAdapterService implements IMediaServerService {
     options?: RecentlyAddedOptions,
   ): Promise<MediaItem[]> {
     if (!this.http) return [];
-    // Emby uses /Users/{userId}/Items/Latest (per Jellyseerr precedent),
+    // Emby uses /Users/{userId}/Items/Latest (per Seerr precedent),
     // whereas Jellyfin exposes /Items/Latest. The user-scoped endpoint is the
     // documented path for Emby.
     if (!this.embyUserId) {
@@ -721,7 +721,7 @@ export class EmbyAdapterService implements IMediaServerService {
   // Watch State
   // ============================================================================
   // TODO(emby-server-test): Emby lacks a central watch-history endpoint; per
-  // Jellyseerr precedent, iterate over users via /Users/{id}/Items with
+  // Seerr precedent, iterate over users via /Users/{id}/Items with
   // IsPlayed=true filter. The implementations below mirror the Jellyfin
   // adapter's shape but use Emby endpoint paths.
 

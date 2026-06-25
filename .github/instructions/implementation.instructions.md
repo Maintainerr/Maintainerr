@@ -34,7 +34,7 @@ When implementing against any external API or SDK (Plex, Jellyfin, TypeORM, etc.
 
 #### Request management services
 
-- Seerr/Overseerr/Jellyseerr: https://docs.seerr.dev/
+- Seerr: https://docs.seerr.dev/
 
 #### Media server services
 
