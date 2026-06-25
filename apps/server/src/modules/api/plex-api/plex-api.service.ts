@@ -1646,7 +1646,7 @@ export class PlexApiService {
       const plextv = plexTvUsers?.find((tvEl) => Number(tvEl.$?.id) === el.id);
       const ownerUser = owner?.username === el.name ? owner : undefined;
 
-      // use the username from plex.tv if available, since Overseerr also does this
+      // use the username from plex.tv if available, since Seerr also does this
       if (ownerUser) {
         const uuid = this.extractPlexAvatarUuid(ownerUser.thumb);
         return {

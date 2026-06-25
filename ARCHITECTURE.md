@@ -272,6 +272,6 @@ See `CONTRIBUTING.md` for setup, branching, and pull request expectations.
   shared code.
 - Rule group: A configured set of rules that selects media and links it to a
   Maintainerr collection.
-- Seerr: The request-management integration family covering Overseerr,
-  Jellyseerr, and Seerr-compatible APIs.
+- Seerr: The request-management integration (github.com/seerr-team/seerr) used
+  for request cleanup.
 - SSE: Server-sent events used for live rule and collection job updates.
