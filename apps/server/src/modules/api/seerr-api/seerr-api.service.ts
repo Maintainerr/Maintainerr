@@ -1,5 +1,6 @@
 import { BasicResponseDto } from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
+import { cloneDeep } from 'lodash';
 import { SettingsDataService } from '../../../modules/settings/settings-data.service';
 import {
   CONNECTION_TEST_TIMEOUT_MS,
@@ -321,8 +322,12 @@ export class SeerrApiService {
       const requests: SeerrRequest[] = [];
 
       while (hasNext) {
+        // Seerr has no `added` sort value (only `modified` → request.updatedAt;
+        // anything else falls back to the default `request.id DESC`), so we omit
+        // `sort` and let buildRequestIndex normalise ordering instead of relying
+        // on the sweep order. `filter=all` keeps every request status.
         const resp = await this.api.getWithoutCache<SeerrRequestPageResponse>(
-          `/request?take=${size}&skip=${skip}&filter=all&sort=added`,
+          `/request?take=${size}&skip=${skip}&filter=all`,
         );
 
         // The HTTP helper swallows request failures and returns undefined; a
@@ -359,11 +364,12 @@ export class SeerrApiService {
    * getMovie/getShow calls this replaces rate-limited under whole-library runs,
    * making Seerr-seeded rules silently match almost nothing.
    *
-   * Returns a COPY of the title's request list (the cache holds the Map by
-   * reference). `[]` means the sweep succeeded and the title has no request
-   * (definitive). `undefined` means the sweep failed — Seerr is unreachable —
-   * so the getter returns `undefined` (transient) and the comparator protects
-   * the item rather than treating it as "not requested".
+   * Returns a deep copy of the title's request list (the cache holds the Map by
+   * reference with useClones off), so callers may read or mutate it freely
+   * without corrupting the shared index. `[]` means the sweep succeeded and the
+   * title has no request (definitive). `undefined` means the sweep failed —
+   * Seerr is unreachable — so the getter returns `undefined` (transient) and the
+   * comparator protects the item rather than treating it as "not requested".
    */
   public async getRequestsForMedia(
     tmdbId: number,
@@ -373,7 +379,9 @@ export class SeerrApiService {
       return undefined;
     }
     const requests = index.get(tmdbId);
-    return requests ? [...requests] : [];
+    // cloneDeep, not structuredClone: it never throws on an unexpected
+    // non-cloneable value (which would surface as a per-item warn + skip).
+    return requests ? cloneDeep(requests) : [];
   }
 
   private async getRequestIndex(): Promise<
@@ -403,6 +411,17 @@ export class SeerrApiService {
     if (requests === undefined) {
       return undefined;
     }
+
+    // requestDate reads requests[0].createdAt and the legacy per-item
+    // getMovie/getShow path returned mediaInfo.requests oldest-first. The bulk
+    // /request sweep is newest-first, so sort ascending by createdAt (tie-break
+    // on id) — requestDate, addUser and the season ordering then match the
+    // pre-#3152 behaviour regardless of how Seerr happened to page the sweep.
+    requests.sort(
+      (a, b) =>
+        new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime() ||
+        a.id - b.id,
+    );
 
     // Group by media.tmdbId: Seerr keys every media row by tmdbId (non-null,
     // indexed — tvdbId/imdbId are optional extras), and the metadata service

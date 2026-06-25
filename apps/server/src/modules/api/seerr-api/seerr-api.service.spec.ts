@@ -214,12 +214,16 @@ describe('SeerrApiService', () => {
     );
   });
 
-  const requestWithTmdb = (id: number, tmdbId: number): SeerrRequest =>
+  const requestWithTmdb = (
+    id: number,
+    tmdbId: number,
+    createdAt = '2026-01-01',
+  ): SeerrRequest =>
     ({
       id,
       type: 'movie',
       status: SeerrRequestStatus.APPROVED,
-      createdAt: '2026-01-01',
+      createdAt,
       updatedAt: '2026-01-01',
       requestedBy: {} as never,
       modifiedBy: {} as never,
@@ -256,15 +260,15 @@ describe('SeerrApiService', () => {
       expect(getWithoutCache).toHaveBeenCalledTimes(3);
       expect(getWithoutCache).toHaveBeenNthCalledWith(
         1,
-        '/request?take=100&skip=0&filter=all&sort=added',
+        '/request?take=100&skip=0&filter=all',
       );
       expect(getWithoutCache).toHaveBeenNthCalledWith(
         2,
-        '/request?take=100&skip=100&filter=all&sort=added',
+        '/request?take=100&skip=100&filter=all',
       );
       expect(getWithoutCache).toHaveBeenNthCalledWith(
         3,
-        '/request?take=100&skip=200&filter=all&sort=added',
+        '/request?take=100&skip=200&filter=all',
       );
       expect(result).toHaveLength(3);
     });
@@ -279,6 +283,15 @@ describe('SeerrApiService', () => {
 
     it('returns undefined (not []) when the first page fails', async () => {
       const getWithoutCache = jest.fn().mockResolvedValue(undefined);
+      (service as unknown as { api: unknown }).api = { getWithoutCache };
+
+      await expect(service.getRequests()).resolves.toBeUndefined();
+    });
+
+    it('returns undefined when a truthy response is missing pageInfo', async () => {
+      // A genuine empty result still carries pageInfo; a response object without
+      // it means the sweep failed and must be treated as transient, not empty.
+      const getWithoutCache = jest.fn().mockResolvedValue({ results: [] });
       (service as unknown as { api: unknown }).api = { getWithoutCache };
 
       await expect(service.getRequests()).resolves.toBeUndefined();
@@ -322,10 +335,51 @@ describe('SeerrApiService', () => {
       // One sweep total — later lookups are served from the cached index.
       expect(getWithoutCache).toHaveBeenCalledTimes(1);
 
-      // Returned arrays are copies: mutating one must not corrupt the index.
+      // Returned values are deep copies: neither reshaping the array nor
+      // mutating a request object may corrupt the cached index.
       const copy = await service.getRequestsForMedia(100);
       copy.push(requestWithTmdb(99, 100));
-      await expect(service.getRequestsForMedia(100)).resolves.toHaveLength(2);
+      copy[0].media.tmdbId = -1;
+      const fresh = await service.getRequestsForMedia(100);
+      expect(fresh).toHaveLength(2);
+      expect(fresh[0].media.tmdbId).toBe(100);
+    });
+
+    it('returns each title oldest-first regardless of the sweep order', async () => {
+      // The /request sweep is newest-first; the index must normalise to
+      // createdAt-ascending so the getter's requests[0] is the oldest request.
+      const getWithoutCache = jest
+        .fn()
+        .mockResolvedValue(
+          page(
+            [
+              requestWithTmdb(3, 100, '2026-03-01'),
+              requestWithTmdb(1, 100, '2026-01-01'),
+              requestWithTmdb(2, 100, '2026-02-01'),
+            ],
+            1,
+            1,
+          ),
+        );
+      (service as unknown as { api: unknown }).api = { getWithoutCache };
+
+      const requests = await service.getRequestsForMedia(100);
+      expect(requests?.map((r) => r.createdAt)).toEqual([
+        '2026-01-01',
+        '2026-02-01',
+        '2026-03-01',
+      ]);
+    });
+
+    it('skips requests whose media.tmdbId is not a number', async () => {
+      const noTmdb = requestWithTmdb(2, 100);
+      (noTmdb.media as { tmdbId?: number }).tmdbId = undefined;
+      const getWithoutCache = jest
+        .fn()
+        .mockResolvedValue(page([requestWithTmdb(1, 100), noTmdb], 1, 1));
+      (service as unknown as { api: unknown }).api = { getWithoutCache };
+
+      await expect(service.getRequestsForMedia(100)).resolves.toHaveLength(1);
     });
 
     it('builds the index once for a concurrent first batch (in-flight dedup)', async () => {

@@ -528,6 +528,41 @@ const run = db.transaction(() => {
     }),
   );
 
+  // One movie group per remaining request-derived property (and the per-item
+  // releaseDate fallback), each EXISTS so the getter resolves every property the
+  // bulk index feeds — matching the property list in the #3152 commit and making
+  // the live POST /api/rules/test matrix reproducible from a clean seed.
+  const seerrMovieProps = [
+    [0, 'addUser'],
+    [1, 'requestDate'],
+    [2, 'releaseDate'], // per-item getMovie fallback, not the request index
+    [3, 'approvalDate'],
+    [4, 'mediaAddedAt'],
+    [5, 'amountRequested'],
+  ];
+  for (const [propId, propName] of seerrMovieProps) {
+    const description = `Seerr ${propName} EXISTS (#3152).`;
+    const col = seerrCol(`Seerr ${propName}`, description, LIB.movie, 'movie');
+    const group = insRuleGroup.run(
+      `Seerr ${propName}`,
+      description,
+      LIB.movie,
+      col,
+      'movie',
+    ).lastInsertRowid;
+    insRule.run(
+      group,
+      JSON.stringify({
+        // EXISTS ignores the operand, so ruleTypeId is irrelevant here.
+        customVal: { ruleTypeId: 0, value: '' },
+        operator: null,
+        firstVal: [SEERR, propId],
+        action: 18, // EXISTS — resolves the property without a comparison operand
+        section: 0,
+      }),
+    );
+  }
+
   // 5) Cron schedules (Settings handlers + one per-group override + overlays).
   db.prepare(
     `UPDATE settings SET collection_handler_job_cron = ?, rules_handler_job_cron = ? WHERE id = 1`,

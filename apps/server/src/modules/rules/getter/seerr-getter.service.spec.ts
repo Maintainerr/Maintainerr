@@ -399,6 +399,16 @@ describe('SeerrGetterService', () => {
       ).resolves.toBe(0);
     });
 
+    it('should return undefined (transient) when the request sweep failed', async () => {
+      const { service, seerrApi } = createService();
+
+      seerrApi.getRequestsForMedia.mockResolvedValue(undefined);
+
+      await expect(
+        service.get(AMOUNT_REQUESTED_PROP_ID, movieLibItem, undefined),
+      ).resolves.toBeUndefined();
+    });
+
     it('should count only the matching season for seasons', async () => {
       const { service, seerrApi, mediaServerFactory } = createService();
       const mockMediaServer = await mediaServerFactory.getService();
@@ -554,6 +564,22 @@ describe('SeerrGetterService', () => {
       await expect(
         service.get(REQUEST_DATE_PROP_ID, movieLibItem, undefined),
       ).resolves.toBeNull();
+    });
+
+    it('returns the OLDEST request createdAt for a multi-request movie', async () => {
+      const { service, seerrApi } = createService();
+
+      // SeerrApiService.buildRequestIndex normalises each title's list to
+      // oldest-first, so requestDate is the first (earliest) request — matching
+      // the pre-#3152 getMovie ordering, not the newest re-request (#3152).
+      seerrApi.getRequestsForMedia.mockResolvedValue([
+        movieRequest({ id: 1, createdAt: '2026-04-01' }),
+        movieRequest({ id: 2, createdAt: '2026-05-01' }),
+      ]);
+
+      await expect(
+        service.get(REQUEST_DATE_PROP_ID, movieLibItem, undefined),
+      ).resolves.toEqual(new Date('2026-04-01'));
     });
 
     it('should return the matching season request createdAt for seasons', async () => {
