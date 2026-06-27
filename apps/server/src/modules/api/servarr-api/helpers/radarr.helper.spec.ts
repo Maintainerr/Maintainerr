@@ -130,7 +130,9 @@ describe('RadarrApi', () => {
 
       await api.getMovieByTmdbId(123);
 
-      expect(getWithoutCacheSpy).toHaveBeenCalledWith('/movie?tmdbId=123');
+      expect(getWithoutCacheSpy).toHaveBeenCalledWith('/movie?tmdbId=123', {
+        timeout: 20000,
+      });
       expect(getSpy).not.toHaveBeenCalled();
     });
 

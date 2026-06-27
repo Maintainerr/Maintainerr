@@ -61,6 +61,9 @@ export class RadarrApi extends ServarrApi<{ movieId: number }> {
     try {
       const response = await this.getWithoutCache<RadarrMovie[]>(
         `/movie?tmdbId=${id}`,
+        // Slow/underpowered Radarr can take >10s to resolve a tmdbId; allow more
+        // headroom than the shared default before aborting (#3181).
+        { timeout: 20000 },
       );
 
       // getWithoutCache swallows transport/auth/5xx into `undefined` (it never
