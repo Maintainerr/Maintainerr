@@ -120,6 +120,9 @@ export class SonarrApi extends ServarrApi<{
     try {
       const response = await this.getWithoutCache<SonarrSeries[]>(
         `/series?tvdbId=${id}`,
+        // Slow/underpowered Sonarr can take >10s to resolve a tvdbId; allow more
+        // headroom than the shared default before aborting (#3181).
+        { timeout: 20000 },
       );
 
       // getWithoutCache swallows transport/auth/5xx into `undefined` (it never
