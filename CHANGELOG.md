@@ -1,3 +1,26 @@
+# [3.16.0](https://github.com/Maintainerr/Maintainerr/compare/v3.15.3...v3.16.0) (2026-06-28)
+
+
+## Highlights
+- Sonarr/Radarr tags can now be written from Maintainerr collections and exclusions (#3162).
+- Fixed Seerr rule evaluation for large libraries by implementing bulk-prefetching (#3170).
+- Resolved issue where Sonarr season array corruption caused incorrect `part_of_latest_season` rule results (#3169).
+
+## Features
+- Added functionality to write Sonarr/Radarr tags based on Maintainerr collections and exclusions (#3162).
+
+## Fixes
+- Increased Sonarr/Radarr ID lookup timeout to 20 seconds for slow servers (#3181).
+- Fixed Seerr rule evaluation by bulk-prefetching requests to avoid rate-limiting and degraded matches (#3170).
+- Prevented mutation of shared Sonarr season arrays, resolving incorrect `part_of_latest_season` rule results (#3169).
+- Fixed collection log cleaning to avoid TypeORM errors on undefined `ruleGroup` (#3168).
+
+## Database migrations
+- Added `tagInArr` column to the `collection` table to support Sonarr/Radarr tagging.
+
+## Dependencies
+- Updated 24 dependencies, including notable packages: TypeScript, Prettier, Vite, and React Query.
+
 # [3.15.3](https://github.com/Maintainerr/Maintainerr/compare/v3.15.2...v3.15.3) (2026-06-23)
 
 
