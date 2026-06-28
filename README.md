@@ -35,6 +35,8 @@ Docker images for amd64 & arm64 are available from:
 
 > **Data directory.** Maintainerr stores its data at `/opt/data` inside the container. Mount a persistent volume there in your `docker run` command or Compose file. The directory must be readable and writable by the configured `user`; if no `user` is set, make it accessible to UID:GID `1000:1000`.
 
+> **CPU requirement (x86-64).** Image features (overlays and collection posters) use `sharp`, whose prebuilt binaries require a CPU with the `x86-64-v2` microarchitecture. Maintainerr still starts on older CPUs, but those features are disabled. If you run in a VM and hit this, set the VM CPU type to `host`, `x86-64-v2`, or newer (e.g. Proxmox/QEMU's default `kvm64` does not expose `x86-64-v2`). This does not apply to arm64.
+
 > If you set `BASE_PATH`, add it to the start of the paths too (e.g. `/maintainerr/api/health/ready`).
 
 For more information, visit the [installation guide](https://docs.maintainerr.info/installation).
