@@ -9,6 +9,7 @@ import { AppModule } from './app/app.module';
 import { dataDir } from './app/config/dataDir';
 import { MaintainerrLogger } from './modules/logging/logs.service';
 import { installStdioPipeGuards } from './modules/logging/winston/stdioPipeGuard';
+import { isSharpAvailable, SHARP_UNAVAILABLE_MESSAGE } from './utils/sharp';
 
 // Pre-bootstrap guard so the console.warn/console.error calls below — and any
 // other write before LogsModule loads — cannot crash the process on a broken
@@ -48,6 +49,12 @@ async function bootstrap() {
 
   app.useLogger(await app.resolve(MaintainerrLogger));
   app.enableCors({ origin: true });
+
+  if (!isSharpAvailable) {
+    const sharpLogger = await app.resolve(MaintainerrLogger);
+    sharpLogger.setContext('Sharp');
+    sharpLogger.warn(SHARP_UNAVAILABLE_MESSAGE);
+  }
 
   const apiPort = process.env.UI_PORT || 6246;
   const apiHostname = process.env.UI_HOSTNAME || '0.0.0.0';

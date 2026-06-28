@@ -40,7 +40,7 @@ import { Response } from 'express';
 import * as fs from 'fs';
 import { ZodValidationPipe } from 'nestjs-zod';
 import * as path from 'path';
-import sharp from 'sharp';
+import { sharp } from '../../utils/sharp';
 import {
   type OverlayProcessRequest,
   overlayProcessRequestSchema,
