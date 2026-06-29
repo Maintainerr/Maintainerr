@@ -13,4 +13,3 @@ export const translations = {
 } as const
 
 export type LocaleCode = keyof typeof translations
-

@@ -1,10 +1,4 @@
-import {
-  createContext,
-  type ReactNode,
-  use,
-  useEffect,
-  useMemo,
-} from 'react'
+import { createContext, type ReactNode, use, useEffect, useMemo } from 'react'
 import { useSettings } from '../api/settings'
 import {
   type LocaleCode,
@@ -47,8 +41,7 @@ const interpolate = (message: string, values?: InterpolationValues): string => {
   }
 
   return Object.entries(values).reduce(
-    (current, [key, value]) =>
-      current.replaceAll(`{${key}}`, String(value)),
+    (current, [key, value]) => current.replaceAll(`{${key}}`, String(value)),
     message,
   )
 }
