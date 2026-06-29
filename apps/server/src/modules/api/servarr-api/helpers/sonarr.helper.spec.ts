@@ -193,7 +193,9 @@ describe('SonarrApi', () => {
 
       await sonarrApi.getSeriesByTvdbId(555);
 
-      expect(getWithoutCacheSpy).toHaveBeenCalledWith('/series?tvdbId=555');
+      expect(getWithoutCacheSpy).toHaveBeenCalledWith('/series?tvdbId=555', {
+        timeout: 20000,
+      });
       expect(getSpy).not.toHaveBeenCalled();
     });
   });
