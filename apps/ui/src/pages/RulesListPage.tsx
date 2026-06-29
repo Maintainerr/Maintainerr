@@ -10,11 +10,13 @@ import LibrarySwitcher from '../components/Common/LibrarySwitcher'
 import LoadingSpinner from '../components/Common/LoadingSpinner'
 import PageControlRow from '../components/Common/PageControlRow'
 import RuleGroup, { IRuleGroup } from '../components/Rules/RuleGroup'
+import { useI18n } from '../contexts/i18n-context'
 import { useTaskStatusContext } from '../contexts/taskstatus-context'
 import { PostApiHandler } from '../utils/ApiHandler'
 
 const RulesListPage = () => {
   const navigate = useNavigate()
+  const { t } = useI18n()
   const [selectedLibrary, setSelectedLibrary] = useState<string>('all')
   const {
     data: libraries,
@@ -24,10 +26,10 @@ const RulesListPage = () => {
   const { ruleHandlerRunning } = useTaskStatusContext()
   const { mutate: stopAllExecution } = useStopAllRuleExecution({
     onSuccess() {
-      toast.success('Requested to stop all rule executions.')
+      toast.success(t('pages.rules.stopAllRequested'))
     },
     onError() {
-      toast.error('Failed to request stop of all rule executions.')
+      toast.error(t('pages.rules.stopAllFailed'))
     },
   })
   const { data = [], isLoading, refetch } = useRuleGroups(selectedLibrary)
@@ -47,26 +49,26 @@ const RulesListPage = () => {
   const sync = async () => {
     try {
       await PostApiHandler(`/rules/execute`, {})
-      toast.success('Rule execution started.')
+      toast.success(t('pages.rules.executionStarted'))
     } catch (error) {
       if (error instanceof AxiosError && error.response?.data?.message) {
         toast.error(error.response.data.message)
         return
       }
-      toast.error('Failed to initiate rule execution.')
+      toast.error(t('pages.rules.executionFailed'))
     }
   }
 
   return (
     <>
-      <title>Rules - Maintainerr</title>
+      <title>{`${t('pages.rules.title')} - Maintainerr`}</title>
       <div className="w-full px-4">
         <PageControlRow
           actions={
             <>
               <AddButton
                 onClick={() => navigate('/rules/new')}
-                text="New Rule"
+                text={t('pages.rules.newRule')}
               />
               <ExecuteButton
                 onClick={() => {
@@ -76,7 +78,11 @@ const RulesListPage = () => {
                     sync()
                   }
                 }}
-                text={ruleHandlerRunning ? 'Stop Rules' : 'Run Rules'}
+                text={
+                  ruleHandlerRunning
+                    ? t('pages.rules.stopRules')
+                    : t('pages.rules.runRules')
+                }
                 executing={ruleHandlerRunning}
               />
             </>
@@ -93,7 +99,9 @@ const RulesListPage = () => {
             />
           }
         />
-        <h1 className="mb-3 text-lg font-bold text-zinc-200">Rules</h1>
+        <h1 className="mb-3 text-lg font-bold text-zinc-200">
+          {t('pages.rules.heading')}
+        </h1>
         {isLoading ? (
           <LoadingSpinner />
         ) : (

@@ -9,6 +9,7 @@ import {
   useRouteError,
 } from 'react-router-dom'
 import { ToastContainer } from 'react-toastify'
+import { useI18n } from '../../contexts/i18n-context'
 import SearchContext from '../../contexts/search-context'
 import { INTERACTION_DEBOUNCE_MS } from '../../utils/uiBehavior'
 import { SmallLoadingSpinner } from '../Common/LoadingSpinner'
@@ -22,6 +23,7 @@ type LayoutShellProps = {
 const LayoutShell: React.FC<LayoutShellProps> = ({ children }) => {
   const [navBarOpen, setNavBarOpen] = useState(false)
   const SearchCtx = use(SearchContext)
+  const { t } = useI18n()
   const navigate = useNavigate()
   const navigation = useNavigation()
   const basePath = import.meta.env.VITE_BASE_PATH ?? ''
@@ -83,7 +85,7 @@ const LayoutShell: React.FC<LayoutShellProps> = ({ children }) => {
           <div className="transparent-glass-bg flex flex-1 items-center justify-between pr-4 md:pr-4 md:pl-4">
             <button
               className={`px-4 text-white opacity-70 transition duration-300 focus:outline-hidden lg:hidden`}
-              aria-label="Open sidebar"
+              aria-label={t('layout.openSidebar')}
               onClick={() => setNavBarOpen(true)}
             >
               <MenuAlt2Icon className="h-6 w-6" />
@@ -140,11 +142,12 @@ const Layout: React.FC = () => {
 
 const describeRouteError = (
   error: unknown,
+  t: ReturnType<typeof useI18n>['t'],
 ): { title: string; message: string } => {
   if (!error) {
     return {
-      title: 'Unknown error',
-      message: 'An unexpected error occurred.',
+      title: t('layout.unknownError'),
+      message: t('layout.unexpectedError'),
     }
   }
 
@@ -156,7 +159,7 @@ const describeRouteError = (
 
     return {
       title: `${error.status} ${error.statusText}`.trim(),
-      message: dataMessage ?? 'The server returned an unexpected response.',
+      message: dataMessage ?? t('layout.serverUnexpected'),
     }
   }
 
@@ -168,7 +171,7 @@ const describeRouteError = (
   }
 
   return {
-    title: 'Unexpected error',
+    title: t('layout.unexpectedError'),
     message: String(error),
   }
 }
@@ -176,7 +179,8 @@ const describeRouteError = (
 export const LayoutErrorBoundary: React.FC = () => {
   const error = useRouteError()
   const navigate = useNavigate()
-  const { title, message } = describeRouteError(error)
+  const { t } = useI18n()
+  const { title, message } = describeRouteError(error, t)
 
   return (
     <LayoutShell>
@@ -187,21 +191,20 @@ export const LayoutErrorBoundary: React.FC = () => {
         <h2 className="text-lg font-semibold text-error-200">{title}</h2>
         <p className="mt-2 text-sm text-error-100">{message}</p>
         <p className="mt-4 text-xs text-error-200/80">
-          You can try going back or reloading the page. If the problem persists,
-          please check the browser console for more details.
+          {t('layout.routeErrorHelp')}
         </p>
         <div className="mt-4 flex flex-wrap gap-3">
           <button
             className="rounded-sm bg-error-500/30 px-4 py-2 text-sm font-medium text-error-50 transition hover:bg-error-500/40 focus:ring-2 focus:ring-error-300/60 focus:outline-hidden"
             onClick={() => navigate(-1)}
           >
-            Go Back
+            {t('common.back')}
           </button>
           <button
             className="rounded-sm bg-zinc-800 px-4 py-2 text-sm font-medium text-zinc-100 transition hover:bg-zinc-700 focus:ring-2 focus:ring-zinc-500/60 focus:outline-hidden"
             onClick={() => navigate('/overview')}
           >
-            Go To Overview
+            {t('layout.goToOverview')}
           </button>
         </div>
       </div>

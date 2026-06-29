@@ -11,6 +11,7 @@ import {
   useSettings,
   type UseSettingsResult,
 } from '../../api/settings'
+import { useI18n } from '../../contexts/i18n-context'
 import {
   hasCompletedMediaServerSetup,
   hasSelectedMediaServerType,
@@ -118,6 +119,7 @@ export const useSettingsOutletContext = () =>
 
 const SettingsWrapper = () => {
   const location = useLocation()
+  const { t } = useI18n()
   const { data: settings, isLoading, error } = useSettings()
   const [hasDismissedSetupWelcome, setHasDismissedSetupWelcome] =
     useState(false)
@@ -141,7 +143,7 @@ const SettingsWrapper = () => {
   const settingsRoutes: SettingsRoute[] = useMemo(() => {
     const baseRoutes: SettingsRoute[] = [
       {
-        text: 'General',
+        text: t('settings.general'),
         route: '/settings/main',
         regex: /^\/settings\/main$/,
       },
@@ -170,7 +172,7 @@ const SettingsWrapper = () => {
         regex: /^\/settings\/sonarr$/,
       },
       {
-        text: 'Metadata',
+        text: t('settings.metadata'),
         route: '/settings/metadata',
         regex: /^\/settings\/metadata$/,
       },
@@ -198,7 +200,7 @@ const SettingsWrapper = () => {
     // Radarr/Sonarr, so the tab is only shown when at least one is configured.
     if (hasArrConfigured) {
       baseRoutes.push({
-        text: 'Download client',
+        text: t('settings.downloadClient'),
         route: '/settings/download-client',
         regex: /^\/settings\/download-client$/,
       })
@@ -206,29 +208,29 @@ const SettingsWrapper = () => {
 
     baseRoutes.push(
       {
-        text: 'Notifications',
+        text: t('settings.notifications'),
         route: '/settings/notifications',
         regex: /^\/settings\/notifications$/,
       },
       {
-        text: 'Logs',
+        text: t('settings.logs'),
         route: '/settings/logs',
         regex: /^\/settings\/logs$/,
       },
       {
-        text: 'Jobs',
+        text: t('settings.jobs'),
         route: '/settings/jobs',
         regex: /^\/settings\/jobs$/,
       },
       {
-        text: 'About',
+        text: t('settings.about'),
         route: '/settings/about',
         regex: /^\/settings\/about$/,
       },
     )
 
     return baseRoutes
-  }, [isLoading, mediaServerType, hasArrConfigured])
+  }, [isLoading, mediaServerType, hasArrConfigured, t])
 
   const isMediaServerSetupComplete = hasCompletedMediaServerSetup(settings)
   const hasSelectedMediaServer = hasSelectedMediaServerType(settings)
@@ -258,7 +260,7 @@ const SettingsWrapper = () => {
           <SettingsTabs settingsRoutes={settingsRoutes} allEnabled={false} />
         </div>
         <div className="mt-10 flex">
-          <Alert type="error" title="There was a problem loading settings." />
+          <Alert type="error" title={t('settings.loadingError')} />
         </div>
       </>
     )
@@ -292,7 +294,7 @@ const SettingsWrapper = () => {
       <>
         {shouldShowSetupWelcome ? (
           <Modal
-            title="Welcome to Maintainerr!"
+            title={t('settings.setup.title')}
             backgroundClickable={false}
             size="md"
             footerActions={
@@ -301,23 +303,21 @@ const SettingsWrapper = () => {
                 className="ml-3"
                 onClick={() => setHasDismissedSetupWelcome(true)}
               >
-                Let&apos;s get started
+                {t('settings.setup.cta')}
               </Button>
             }
           >
             <div className="space-y-4 text-zinc-100">
               <div className="rounded-md border border-info-500/40 bg-info-900/30 p-4 backdrop-blur-sm">
                 <p className="text-base font-medium text-info-100">
-                  Connect your media server to finish setup.
+                  {t('settings.setup.titleBody')}
                 </p>
                 <p className="mt-2 leading-6 text-info-200">
-                  Choose your media server, confirm the connection, and then you
-                  can continue configuring the rest of Maintainerr.
+                  {t('settings.setup.body')}
                 </p>
               </div>
               <p className="text-sm leading-6 text-zinc-400">
-                The Logs page stays available during setup if you need to
-                troubleshoot your connection.
+                {t('settings.setup.logsAvailable')}
               </p>
             </div>
           </Modal>

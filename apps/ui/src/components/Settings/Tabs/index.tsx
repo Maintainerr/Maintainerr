@@ -1,5 +1,6 @@
 import React, { ReactNode } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { useI18n } from '../../../contexts/i18n-context'
 import { prefetchRoute } from '../../../router'
 import { Select } from '../../Forms/Select'
 import { showMediaServerSetupRequiredToast } from '../../Layout/MediaServerSetupGuard'
@@ -100,6 +101,7 @@ const SettingsTabs: React.FC<{
 }) => {
   const location = useLocation()
   const navigate = useNavigate()
+  const { t } = useI18n()
 
   const routeIsDisabled = (route: SettingsRoute) => {
     return !allEnabled || isRouteDisabled?.(route) === true
@@ -114,7 +116,7 @@ const SettingsTabs: React.FC<{
     <>
       <div className="sm:hidden">
         <label htmlFor="tabs" className="sr-only">
-          Select a Tab
+          {t('settings.selectTab')}
         </label>
         <Select
           value={currentRoute}
@@ -146,7 +148,7 @@ const SettingsTabs: React.FC<{
               navigate(e.target.value)
             }
           }}
-          aria-label="Selected Tab"
+          aria-label={t('settings.selectedTab')}
         >
           {settingsRoutes.map((route, index) => (
             <SettingsLink
