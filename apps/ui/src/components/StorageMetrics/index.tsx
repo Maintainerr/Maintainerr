@@ -370,8 +370,7 @@ const StorageMetrics: React.FC = () => {
             {metrics.instances.map((instance) => {
               const mounts =
                 (mountsByInstance.get(`${instance.type}-${instance.id}`) as
-                  | StorageDiskspaceEntry[]
-                  | undefined) ?? []
+                  StorageDiskspaceEntry[] | undefined) ?? []
 
               return (
                 <InstanceCard

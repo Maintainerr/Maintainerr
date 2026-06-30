@@ -46,10 +46,7 @@ export interface PlexLibraryResponse {
     size: number;
     totalSize?: number;
     Metadata?:
-      | PlexLibraryItem[]
-      | PlexCollection[]
-      | PlexCollection
-      | PlexPlaylist[];
+      PlexLibraryItem[] | PlexCollection[] | PlexCollection | PlexPlaylist[];
   };
 }
 export interface PlexGenre {

@@ -143,8 +143,7 @@ describe('RuleExecutorJobManagerService', () => {
     service.stopProcessingRuleGroup(42);
 
     const abortController = (service as any).abortController as
-      | AbortController
-      | undefined;
+      AbortController | undefined;
     expect(abortController?.signal.aborted).toBe(true);
 
     // Let the execution finish to avoid dangling promises
@@ -368,8 +367,7 @@ describe('RuleExecutorJobManagerService', () => {
     service.stopProcessingRuleGroup(42);
 
     const abortController = (service as any).abortController as
-      | AbortController
-      | undefined;
+      AbortController | undefined;
     expect(abortController?.signal.aborted).toBe(true);
     expect(service.getStatus()).toEqual({
       processingQueue: true,
