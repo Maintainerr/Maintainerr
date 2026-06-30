@@ -482,16 +482,11 @@ const AddModal = (props: AddModal) => {
   }) as number | null | undefined
   const useRulesEnabled = useWatch({ control, name: 'useRules' })
   const arrActionValue = useWatch({ control, name: 'arrAction' }) as
-    | number
-    | undefined
+    number | undefined
   const radarrSettingsId = useWatch({ control, name: 'radarrSettingsId' }) as
-    | number
-    | null
-    | undefined
+    number | null | undefined
   const sonarrSettingsId = useWatch({ control, name: 'sonarrSettingsId' }) as
-    | number
-    | null
-    | undefined
+    number | null | undefined
   const radarrQualityProfileId = useWatch({
     control,
     name: 'radarrQualityProfileId',

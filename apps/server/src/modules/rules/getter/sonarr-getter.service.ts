@@ -212,8 +212,7 @@ export class SonarrGetterService {
       };
 
       let episodeFilePromise:
-        | Promise<SonarrEpisodeFile | undefined>
-        | undefined;
+        Promise<SonarrEpisodeFile | undefined> | undefined;
       const getEpisodeFile = async (): Promise<
         SonarrEpisodeFile | undefined
       > => {
@@ -234,8 +233,7 @@ export class SonarrGetterService {
       };
 
       let seasonEpisodesPromise:
-        | Promise<SonarrEpisode[] | undefined>
-        | undefined;
+        Promise<SonarrEpisode[] | undefined> | undefined;
       const getSeasonEpisodes = async (): Promise<
         SonarrEpisode[] | undefined
       > => {
