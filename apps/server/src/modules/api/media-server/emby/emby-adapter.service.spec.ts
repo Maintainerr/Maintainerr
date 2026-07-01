@@ -1,22 +1,33 @@
-import { MediaServerFeature } from '@maintainerr/contracts';
 import { AxiosError } from 'axios';
-import cacheManager from '../../lib/cache';
+import { EMBY_CACHE_TTL } from './emby.constants';
 import { EmbyAdapterService } from './emby-adapter.service';
+
+const embyCacheMocks = {
+  flush: jest.fn(),
+  data: {
+    has: jest.fn(),
+    get: jest.fn(),
+    set: jest.fn(),
+    del: jest.fn(),
+    flushAll: jest.fn(),
+    keys: jest.fn(),
+  },
+};
 
 jest.mock('../../lib/cache', () => ({
   __esModule: true,
   default: {
-    getCache: jest.fn().mockReturnValue({
-      flush: jest.fn(),
+    getCache: jest.fn().mockImplementation(() => ({
+      flush: (...args: unknown[]) => embyCacheMocks.flush(...args),
       data: {
-        get: jest.fn(),
-        set: jest.fn(),
-        has: jest.fn(),
-        del: jest.fn(),
-        keys: jest.fn(),
-        flushAll: jest.fn(),
+        has: (...args: unknown[]) => embyCacheMocks.data.has(...args),
+        get: (...args: unknown[]) => embyCacheMocks.data.get(...args),
+        set: (...args: unknown[]) => embyCacheMocks.data.set(...args),
+        del: (...args: unknown[]) => embyCacheMocks.data.del(...args),
+        flushAll: (...args: unknown[]) => embyCacheMocks.data.flushAll(...args),
+        keys: (...args: unknown[]) => embyCacheMocks.data.keys(...args),
       },
-    }),
+    })),
   },
 }));
 
@@ -80,37 +91,64 @@ describe('EmbyAdapterService', () => {
     setHttp();
   });
 
-  it('reports bulk-collection-create capability for Emby', () => {
-    expect(
-      service.supportsFeature(MediaServerFeature.BULK_COLLECTION_CREATE),
-    ).toBe(true);
-    expect(cacheManager.getCache).toHaveBeenCalledWith('emby');
+  describe('getActiveSessions', () => {
+    it('collects the playing item plus its season and series ids', async () => {
+      http.get.mockResolvedValue({
+        data: [
+          { NowPlayingItem: { Id: 'movie1', Type: 'Movie' } },
+          {
+            NowPlayingItem: {
+              Id: 'episode1',
+              SeasonId: 'season1',
+              SeriesId: 'series1',
+              Type: 'Episode',
+            },
+          },
+          // No NowPlayingItem (idle/remote-control session) is skipped.
+          { Id: 'idle-session' },
+        ],
+      });
+
+      const playing = await service.getActiveSessions();
+
+      expect(http.get).toHaveBeenCalledWith('/Sessions');
+      expect(playing).toEqual(
+        new Set(['movie1', 'episode1', 'season1', 'series1']),
+      );
+    });
+
+    it('returns an empty set when the sessions request fails', async () => {
+      http.get.mockRejectedValue(new Error('boom'));
+      await expect(service.getActiveSessions()).resolves.toEqual(
+        new Set<string>(),
+      );
+    });
   });
 
   describe('createCollection', () => {
-    it('passes initial item ids on create and hydrates the created collection', async () => {
+    it('omits Ids when no initial item is provided', async () => {
+      // The full item set must never be sent on create (the ids go in the query
+      // string → HTTP 414 at scale); they are added via addBatchToCollection.
       http.post.mockResolvedValueOnce({ data: { Id: 'collection-1' } });
       http.get.mockResolvedValueOnce({
         data: {
           Id: 'collection-1',
-          Name: 'Seeded Collection',
+          Name: 'New Collection',
           Overview: 'summary',
-          ChildCount: 2,
+          ChildCount: 0,
         },
       });
 
       const result = await service.createCollection({
         libraryId: 'library-1',
-        title: 'Seeded Collection',
+        title: 'New Collection',
         type: 'show',
-        initialItemIds: ['item-1', 'item-2'],
       });
 
       expect(http.post).toHaveBeenCalledWith('/Collections', null, {
         params: {
-          Name: 'Seeded Collection',
+          Name: 'New Collection',
           ParentId: 'library-1',
-          Ids: 'item-1,item-2',
           IsLocked: true,
         },
       });
@@ -118,9 +156,34 @@ describe('EmbyAdapterService', () => {
       expect(result).toEqual(
         expect.objectContaining({
           id: 'collection-1',
-          title: 'Seeded Collection',
+          title: 'New Collection',
         }),
       );
+    });
+
+    it('creates with a single initial item id when provided', async () => {
+      // Emby 500s on an empty create, so it gets exactly one item; the rest are
+      // added via addBatchToCollection (#3075). One id keeps it under the URL
+      // length limit that an all-ids create would hit (#3001).
+      http.post.mockResolvedValueOnce({
+        data: { Id: 'collection-1', Name: 'New Collection', ChildCount: 1 },
+      });
+
+      await service.createCollection({
+        libraryId: 'library-1',
+        title: 'New Collection',
+        type: 'show',
+        initialItemId: 'item-1',
+      });
+
+      expect(http.post).toHaveBeenCalledWith('/Collections', null, {
+        params: {
+          Name: 'New Collection',
+          ParentId: 'library-1',
+          Ids: 'item-1',
+          IsLocked: true,
+        },
+      });
     });
 
     it('runs the metadata follow-up when sortTitle is provided without summary', async () => {
@@ -148,6 +211,185 @@ describe('EmbyAdapterService', () => {
           sortTitle: 'A Sorted Title',
         }),
       );
+    });
+  });
+
+  // Mirrors the Jellyfin adapter's collection cache so the cross-library
+  // manual-collection lookup stays cheap on repeated rule runs, while
+  // create/rename/delete stay immediately visible.
+  describe('collection caching', () => {
+    it('caches non-empty getCollections results and serves them on the next call', async () => {
+      http.get.mockResolvedValueOnce({
+        data: { Items: [{ Id: 'box-1', Name: 'Shared', ChildCount: 2 }] },
+      });
+
+      await service.getCollections('library-1');
+
+      // A configured Emby user means the user-scoped read: literal /Items path
+      // with UserId in the query param (no user value in the request path).
+      expect(http.get).toHaveBeenCalledWith(
+        '/Items',
+        expect.objectContaining({
+          params: expect.objectContaining({
+            UserId: 'user-1',
+            ParentId: 'library-1',
+            IncludeItemTypes: 'BoxSet',
+          }),
+        }),
+      );
+      expect(embyCacheMocks.data.set).toHaveBeenCalledWith(
+        'emby:collections:library-1',
+        expect.arrayContaining([expect.objectContaining({ id: 'box-1' })]),
+        EMBY_CACHE_TTL.COLLECTIONS,
+      );
+
+      const cached = [{ id: 'cached', title: 'Cached' }];
+      embyCacheMocks.data.get.mockReturnValueOnce(cached);
+
+      const second = await service.getCollections('library-1');
+      expect(second).toBe(cached);
+      // Only the first call hit the API.
+      expect(http.get).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not cache an empty getCollections result', async () => {
+      http.get.mockResolvedValueOnce({ data: { Items: [] } });
+
+      await service.getCollections('library-1');
+
+      expect(embyCacheMocks.data.set).not.toHaveBeenCalledWith(
+        'emby:collections:library-1',
+        expect.anything(),
+        expect.anything(),
+      );
+    });
+
+    it('invalidates the per-library collections cache after createCollection', async () => {
+      http.post.mockResolvedValueOnce({ data: { Id: 'box-new', Name: 'New' } });
+
+      await service.createCollection({
+        libraryId: 'library-1',
+        title: 'New',
+        type: 'movie',
+      });
+
+      expect(embyCacheMocks.data.del).toHaveBeenCalledWith(
+        'emby:collections:library-1',
+      );
+    });
+
+    it('invalidates the per-library collections cache after updateCollection', async () => {
+      http.get.mockResolvedValueOnce({ data: { Id: 'box-1', Name: 'Old' } });
+      http.post.mockResolvedValueOnce({ data: undefined });
+      jest
+        .spyOn(service, 'getCollection')
+        .mockResolvedValue({ id: 'box-1', title: 'New', smart: false } as any);
+
+      await service.updateCollection({
+        libraryId: 'library-1',
+        collectionId: 'box-1',
+        title: 'New',
+      });
+
+      expect(embyCacheMocks.data.del).toHaveBeenCalledWith(
+        'emby:collections:library-1',
+      );
+    });
+
+    it('clears every per-library collections entry on deleteCollection', async () => {
+      embyCacheMocks.data.keys.mockReturnValueOnce([
+        'emby:collections:library-1',
+        'emby:collections:library-2',
+        'emby:users',
+      ]);
+
+      await service.deleteCollection('box-1');
+
+      expect(embyCacheMocks.data.del).toHaveBeenCalledWith([
+        'emby:collections:library-1',
+        'emby:collections:library-2',
+      ]);
+    });
+  });
+
+  // Collection reads must be user-scoped: Emby resolves the BoxSet query
+  // against a user's library view, so the plain /Items path can miss or 404,
+  // which would break the manual-collection bootstrap (incl. the cross-library
+  // lookup). Maintainerr only ever operates as an admin, so when no user is
+  // configured we resolve one rather than degrade to /Items.
+  describe('user-scoped collection reads', () => {
+    const clearConfiguredUser = () => {
+      // Clear the user directly: setHttp(undefined) would hit its default param.
+      (service as unknown as { embyUserId?: string }).embyUserId = undefined;
+    };
+
+    it('scopes reads to the configured admin user without querying /Users', async () => {
+      http.get.mockResolvedValue({ data: { Items: [] } });
+
+      await service.getCollections('library-1');
+      await service.getCollectionChildren('box-1');
+
+      expect(http.get).toHaveBeenCalledWith(
+        '/Items',
+        expect.objectContaining({
+          params: expect.objectContaining({
+            UserId: 'user-1',
+            ParentId: 'library-1',
+          }),
+        }),
+      );
+      expect(http.get).toHaveBeenCalledWith(
+        '/Items',
+        expect.objectContaining({
+          params: expect.objectContaining({
+            UserId: 'user-1',
+            ParentId: 'box-1',
+          }),
+        }),
+      );
+      expect(http.get).not.toHaveBeenCalledWith('/Users/Query');
+    });
+
+    it('auto-resolves an admin user when none is configured (token-only setup)', async () => {
+      clearConfiguredUser();
+      http.get.mockImplementation((path: string) =>
+        path === '/Users/Query'
+          ? Promise.resolve({
+              data: [
+                { Id: 'viewer-1', Policy: { IsAdministrator: false } },
+                { Id: 'admin-9', Policy: { IsAdministrator: true } },
+              ],
+            })
+          : Promise.resolve({ data: { Items: [] } }),
+      );
+
+      await service.getCollections('library-1');
+
+      expect(http.get).toHaveBeenCalledWith(
+        '/Items',
+        expect.objectContaining({
+          params: expect.objectContaining({
+            UserId: 'admin-9',
+            ParentId: 'library-1',
+          }),
+        }),
+      );
+    });
+
+    it('falls back to an unscoped read (no UserId) when no admin can be resolved', async () => {
+      clearConfiguredUser();
+      http.get.mockImplementation((path: string) =>
+        path === '/Users/Query'
+          ? Promise.resolve({ data: { Items: [] } })
+          : Promise.resolve({ data: { Items: [] } }),
+      );
+
+      await service.getCollections('library-1');
+
+      const itemsCall = http.get.mock.calls.find((c) => c[0] === '/Items');
+      expect(itemsCall).toBeDefined();
+      expect(itemsCall[1].params.ParentId).toBe('library-1');
+      expect(itemsCall[1].params.UserId).toBeUndefined();
     });
   });
 
@@ -374,6 +616,12 @@ describe('EmbyAdapterService', () => {
       http.get.mockRejectedValueOnce(error);
 
       await expect(service.getWatchHistory('item-1')).rejects.toBe(error);
+    });
+
+    it('prefetchWatchHistory throws because Emby has no central history endpoint', async () => {
+      await expect(service.prefetchWatchHistory()).rejects.toThrow(
+        'not supported on Emby',
+      );
     });
   });
 

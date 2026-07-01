@@ -21,8 +21,6 @@ const NotificationSettings = () => {
   const [editConfig, setEditConfig] = useState<AgentConfiguration>()
   const { feedback, showSuccess } = useSettingsFeedback('Notification settings')
 
-  const basePath = import.meta.env.VITE_BASE_PATH ?? ''
-
   useEffect(() => {
     GetApiHandler<AgentConfiguration[]>('/notifications/configurations').then(
       (configs) => setConfigurations(configs),
@@ -54,16 +52,7 @@ const NotificationSettings = () => {
       <title>Notification settings - Maintainerr</title>
       <div className="h-full w-full">
         <div className="section h-full w-full">
-          <h3 className="heading flex items-center gap-2">
-            Notification Settings
-            <img
-              className="h-[1em] w-[2.5em]"
-              width={'0'}
-              height={'0'}
-              src={`${basePath}/beta.svg`}
-              alt="BETA"
-            />
-          </h3>
+          <h3 className="heading">Notification Settings</h3>
           <p className="description">Notification Agent configuration</p>
         </div>
 
@@ -114,7 +103,7 @@ const NotificationSettings = () => {
             <li className="flex h-full items-center justify-center rounded-xl border-2 border-dashed border-gray-400 bg-zinc-800 p-4 text-zinc-400 shadow-sm">
               <button
                 type="button"
-                className="add-button m-auto flex h-9 rounded-sm bg-maintainerr-600 px-4 text-zinc-200 shadow-md hover:bg-maintainerr"
+                className="add-button m-auto flex h-9 rounded-md bg-maintainerr-600 px-4 text-zinc-200 shadow-md hover:bg-maintainerr"
                 onClick={() => updateAddModalActive(!addModalActive)}
               >
                 {<PlusCircleIcon className="m-auto h-5" />}

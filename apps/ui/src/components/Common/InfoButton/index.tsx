@@ -1,4 +1,5 @@
 import { InformationCircleIcon } from '@heroicons/react/solid'
+import Button from '../Button'
 
 interface IInfoButton {
   text: string
@@ -8,14 +9,15 @@ interface IInfoButton {
 
 const InfoButton = (props: IInfoButton) => {
   return (
-    <button
+    <Button
+      buttonType="success"
       disabled={props.enabled !== undefined ? !props.enabled : false}
-      className="mb-2 flex h-9 w-24 rounded-sm bg-maintainerr-600 text-zinc-200 shadow-md hover:bg-maintainerr disabled:opacity-50 md:ml-2"
+      className="mb-2 md:ml-2"
       onClick={props.onClick}
     >
-      {<InformationCircleIcon className="m-auto ml-5 h-5" />}{' '}
-      <p className="rules-button-text m-auto mr-5 ml-1">{props.text}</p>
-    </button>
+      <InformationCircleIcon className="mr-2 h-5 w-5" />
+      {props.text}
+    </Button>
   )
 }
 

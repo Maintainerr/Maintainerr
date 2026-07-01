@@ -9,6 +9,7 @@ import {
 } from '../notifications-interfaces';
 import { hasNotificationType } from '../notifications.service';
 import type { NotificationAgent, NotificationPayload } from './agent';
+import { validateWebhookUrl } from './webhookUrl';
 
 class LunaSeaAgent implements NotificationAgent {
   public constructor(
@@ -57,11 +58,19 @@ class LunaSeaAgent implements NotificationAgent {
       return 'Success';
     }
 
+    const webhookUrl = validateWebhookUrl(settings.options.webhookUrl);
+    if (!webhookUrl.ok) {
+      this.logger.error(
+        `Webhook URL ${JSON.stringify(settings.options.webhookUrl)} rejected: ${webhookUrl.reason}.`,
+      );
+      return `Failure: ${webhookUrl.reason}`;
+    }
+
     this.logger.log('Sending LunaSea notification');
 
     try {
       await axios.post(
-        this.getSettings().options.webhookUrl,
+        webhookUrl.url,
         this.buildPayload(type, payload),
         settings.options.profileName
           ? {

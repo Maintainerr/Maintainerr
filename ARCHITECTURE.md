@@ -25,6 +25,7 @@ Maintainerr/
 |-- docs/                    # Feature-level technical notes
 |-- docker/                  # Docker helper configuration
 |-- tools/                   # Release and maintenance scripts
+|   `-- dev/                 # Local dev mocks (fake Plex/Jellyfin) and DB seed
 |-- .codex/config.toml       # Codex project MCP server config
 |-- .mcp.json                # Claude Code project MCP server config
 |-- .vscode/mcp.json         # VS Code MCP server config mirror
@@ -231,6 +232,10 @@ Testing conventions:
 - Project MCP server config lives in `.codex/config.toml`, `.mcp.json`, and
   `.vscode/mcp.json`; keep them in sync. The GitHub MCP server is read-only,
   and Playwright screenshots should be saved under `.playwright-mcp/`.
+- End-to-end checks of media-server-dependent flows use the dev mocks and DB
+  seed under `tools/dev/` (`fake-plex.mjs` / `fake-jellyfin.mjs` +
+  `seed-db.mjs`) to drive the UI with Playwright against deterministic data;
+  see `AGENTS.md` for the workflow.
 
 See `CONTRIBUTING.md` for setup, branching, and pull request expectations.
 
@@ -274,6 +279,6 @@ See `CONTRIBUTING.md` for setup, branching, and pull request expectations.
   shared code.
 - Rule group: A configured set of rules that selects media and links it to a
   Maintainerr collection.
-- Seerr: The request-management integration family covering Overseerr,
-  Jellyseerr, and Seerr-compatible APIs.
+- Seerr: The request-management integration (github.com/seerr-team/seerr) used
+  for request cleanup.
 - SSE: Server-sent events used for live rule and collection job updates.

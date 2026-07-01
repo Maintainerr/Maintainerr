@@ -5,7 +5,7 @@
 **When running yarn commands (build, test, etc.), always execute from the workspace root:**
 
 ```bash
-cd /workspaces/Maintainerr  <--- ensure you are in the root workspace
+cd /workspace  <--- ensure you are in the root workspace (inside the devbox container)
 yarn build | tail -20
 yarn test | tail -20
 ```
@@ -16,9 +16,24 @@ yarn test | tail -20
 
 ## Project Overview
 
-Maintainerr is a media management application that helps users automatically manage their media libraries by creating rules to handle unused or unwatched content. It integrates with Plex, Jellyfin, Emby, \*arr applications (Radarr/Sonarr), Overseerr/Jellyseerr, Tautulli, and Streamystats (Jellyfin only) to provide comprehensive media lifecycle management.
+Maintainerr is a media management application that helps users automatically manage their media libraries by creating rules to handle unused or unwatched content. It integrates with Plex, Jellyfin, Emby, \*arr applications (Radarr/Sonarr), Seerr, Tautulli, and Streamystats (Jellyfin only) to provide comprehensive media lifecycle management.
 
 For the broader system architecture map, see [ARCHITECTURE.md](ARCHITECTURE.md).
+
+## Documentation map
+
+**Standing rules — read before writing any code (they apply to all work):**
+
+- [implementation.instructions.md](.github/instructions/implementation.instructions.md) — implementation rules and API-doc references.
+- [project-notes.instructions.md](.github/instructions/project-notes.instructions.md) — non-obvious project knowledge, conventions, and gotchas (rule engine, Tailwind v4, migrations, naming) that isn't derivable from the code or git history.
+
+**Task-specific — read only when the task calls for it (don't load them every session):**
+
+- [release-review.instructions.md](.github/instructions/release-review.instructions.md) — when auditing a release candidate before tagging.
+- [ARCHITECTURE.md](ARCHITECTURE.md) — before changing cross-module boundaries.
+
+When you add a doc, list it under the matching heading here. For how each agent
+(Claude, Copilot, Cursor, Codex) loads these docs, see [README_AGENTS.md](README_AGENTS.md).
 
 ## Repository Structure
 
@@ -39,7 +54,7 @@ This is a **TypeScript monorepo** managed with **Turborepo** and **Yarn workspac
 ### Backend (`apps/server/`)
 
 - **Framework**: Nest.js v11+ with TypeScript
-- **Database**: TypeORM with SQLite
+- **Database**: TypeORM 1.x with SQLite (`better-sqlite3` driver)
 - **Testing**: Jest with @suites for dependency mocking and unit testing
 - **API Documentation**: Swagger/OpenAPI
 - **Validation**: Zod v4+ schemas with nestjs-zod
@@ -60,6 +75,49 @@ This is a **TypeScript monorepo** managed with **Turborepo** and **Yarn workspac
 
 - **Purpose**: Shared TypeScript types, DTOs, validation schemas
 - **Technologies**: Zod schemas, class-validator decorators, Nest.js decorators
+
+## Development Environment
+
+The development environment runs inside **`devbox`** — a rootless Docker container
+managed by `~/infra/compose.yml` on the host. This IS the devcontainer for this project.
+
+- `devbox` mounts the repo at `/workspace` and has Node 26 + Yarn 4.11 pre-installed.
+  Work directly inside the container at `/workspace` — open your editor/agent here,
+  run all `yarn` commands here. Node is only installed in the container, not the host.
+- Git works normally from `/workspace`: `git commit` and `git push` directly. The
+  SSH key for GitHub is mounted into the container, so no host-side push relay is
+  needed.
+- Agent state (Claude, Copilot, VS Code server/extensions, SSH, Git config) is mounted
+  into `/root` from the host, so it persists across container restarts and recreates.
+  Leave those mounts as configured.
+- `~/infra/compose.yml` (which defines `devbox`) is live server config on the host,
+  outside this git repo. Treat it as operational state, not project code.
+- `yarn dev` serves UI on port 3000 and API on port 6246. Logs at `/tmp/yarn-dev.log`.
+
+**Dev media servers** (Plex, Jellyfin, Emby) run as separate rootless Docker containers
+in `~/dev-media.compose.yml`, reachable from inside `devbox` by hostname:
+- Plex → `http://dev-plex:32400`
+- Jellyfin → `http://dev-jellyfin:8096`
+- Emby → `http://dev-emby:8096`
+
+Credentials are in `~/dev-media-creds.env` (not committed). Media lives on `/mnt/dev-media`.
+
+### Security model — you are L3, the confined devbox
+
+Three trust levels, privilege descending: **`root`@host** (everything) › **`maintainerr-dev`**
+(the SSH host — runs the dev media stack, holds its secrets, controls the devbox) ›
+**`devbox`** (you: dev/test only). You can reach the media/service stack by hostname
+(`dev-plex`, `dev-radarr`, …) to test and seed against it, but you **cannot break out** to
+the host — and that boundary is enforced from above you, so you can't disable it:
+
+- **Read-only Docker** — the socket-proxy allows `ps`/`logs`, never `start`/`stop`/`exec`/`create`.
+- **Host egress firewall** — outbound is default-deny to an allowlist (GitHub, npm, Anthropic,
+  Plex/TMDB) plus the internal docker network; `NET_ADMIN` is stripped from the container.
+- **Rootless + `cap_drop: ALL` + `no-new-privileges`** — even container-root is an unprivileged
+  subuid, never the host user.
+
+Don't fight these (e.g. trying to `exec` into another container, or reaching a non-allowlisted
+host) — they're intentional, not bugs. Operator-side detail lives in `~/infra/README.md`.
 
 ## Development Workflow
 
@@ -87,6 +145,13 @@ yarn test
 # Type checking
 yarn check-types
 ```
+
+> **`yarn test` / `yarn lint` fails with `command not found: <tool>` (exit 127)?**
+> Almost always a stale `node_modules` out of sync with `yarn.lock` — yarn can't
+> resolve the binary (commonly `vitest`, which is the one test binary not hoisted
+> to the root `node_modules/.bin`). Run `yarn install` to resync, then retry. It
+> is **not** a PATH or workspace-config problem, so don't reach for explicit
+> `./node_modules/.bin/...` paths — fix the install instead.
 
 ### CI Workflow Commands
 
@@ -245,7 +310,7 @@ The application integrates with several external services:
 - **Plex**: Media server API for collections and metadata
 - **Jellyfin/Emby**: Media server APIs through the shared media-server abstraction
 - **Radarr/Sonarr**: Movie/TV show management APIs
-- **Overseerr/Jellyseerr**: Request management systems
+- **Seerr**: Request management system
 - **Tautulli**: Plex analytics and statistics
 - **Streamystats**: Jellyfin item-level analytics surfaced on media details
 
@@ -268,8 +333,7 @@ Reference the following OpenAPI specifications and API documentation when workin
 
 ### Request Management Services
 
-- **Overseerr**: [API Documentation](https://api-docs.overseerr.dev/overseerr-api.yml)
-- **Jellyseerr**: [OpenAPI Specification](https://github.com/fallenbagel/jellyseerr/blob/develop/jellyseerr-api.yml)
+- **Seerr**: [Documentation](https://docs.seerr.dev/) | [Source](https://github.com/seerr-team/seerr)
 
 ### Media Server Services
 
@@ -291,11 +355,43 @@ These specifications provide comprehensive type definitions and endpoint documen
 - **Test Runner**: Vitest with React Testing Library
 - Keep tests focused on critical user flows
 
+### Local dev mocks & seeding (manual / Playwright testing)
+
+For end-to-end checks of media-server-dependent flows (rules, collections,
+overview, calendar, storage) without a real Plex/Jellyfin, the `tools/dev/` folder
+has scripts that **complement Playwright** — Playwright drives the UI, these
+provide the backend data:
+
+- `tools/dev/fake-jellyfin.mjs` — stateless mock Jellyfin (`:8096`).
+- `tools/dev/fake-plex.mjs` — stateless mock Plex (`:32400`); covers the Plex-only
+  getter paths (smart collections, watch history, accounts, ratings,
+  shows/seasons/episodes) that the Jellyfin mock can't.
+- `tools/dev/fake-radarr.mjs` — mock Radarr v3 (`:7878`); covers the
+  collection-handler → RadarrActionHandler flow (DELETE / UNMONITOR / "add import
+  list exclusion") that the media-server mocks can't. Resolves any `tmdbId` to a
+  movie, and replicates Radarr's exclusion semantics: `POST /exclusions/bulk`
+  de-dupes (idempotent), singular `POST /exclusions` 400s on a duplicate.
+- `tools/dev/seed-db.mjs` — the **only** DB-touching script. Seeds settings,
+  collections, and rule groups **with rules** covering ~all rule properties, plus
+  notifications, cron, logs, exclusions, and overlays. The "Stale Movies"
+  collection is seeded as UNMONITOR + listExclusions with `tmdbId`s set, so it
+  exercises the Radarr exclusion path against `fake-radarr.mjs`. Target a server
+  with `MEDIA_SERVER=plex|jellyfin` (default `jellyfin`).
+
+Workflow: start the matching mock(s), stop `yarn dev` (SQLite is single-writer),
+run the seed, restart `yarn dev`. Inspect a getter's live output with
+`POST /api/rules/test {"mediaId","rulegroupId"}`, run a rule with
+`POST /api/rules/:id/execute`, or run collection handling with
+`POST /api/collections/handle`. Note: after editing server code, **restart
+`yarn dev`** — a long-lived dev server can serve stale getter logic. Watchlist
+and plex.tv user enrichment can't be mocked locally (they hit plex.tv) and
+degrade gracefully.
+
 ## Development Notes
 
 ### Environment Setup
 
-- **Node.js**: Version 20.19.0+ or 22.12.0+
+- **Node.js**: Version 22.13.0+ or 24.11.0+ (the floor is Node 22, raised from TypeORM 1.0.0's 20.19 requirement by the `@eslint-react` lint toolchain, which needs Node 22+; the Docker image and devcontainer ship Node 26)
 - **Package Manager**: Yarn 4.11 (managed via corepack)
 - **Data Directory**: Requires `data/` folder with proper permissions for development
 

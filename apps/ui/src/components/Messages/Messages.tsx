@@ -67,7 +67,7 @@ const Messages = () => {
 }
 
 const RuleHandlerMessages = () => {
-  const finishedTimer = useRef<NodeJS.Timeout>(undefined)
+  const finishedTimerRef = useRef<NodeJS.Timeout>(undefined)
   const [show, setShow] = useState<boolean>(false)
 
   const [event, setEvent] = useState<
@@ -81,7 +81,7 @@ const RuleHandlerMessages = () => {
     (event) => {
       setEvent(event)
       setShow(true)
-      clearTimeout(finishedTimer.current)
+      clearTimeout(finishedTimerRef.current)
     },
   )
 
@@ -90,7 +90,7 @@ const RuleHandlerMessages = () => {
     (event) => {
       setEvent(event)
       setShow(true)
-      clearTimeout(finishedTimer.current)
+      clearTimeout(finishedTimerRef.current)
     },
   )
 
@@ -99,7 +99,7 @@ const RuleHandlerMessages = () => {
     (event) => {
       setEvent(event)
       setShow(true)
-      finishedTimer.current = setTimeout(() => setShow(false), 5000)
+      finishedTimerRef.current = setTimeout(() => setShow(false), 5000)
     },
   )
 
@@ -147,7 +147,7 @@ const RuleHandlerMessages = () => {
 }
 
 const CollectionHandlerMessages = () => {
-  const finishedTimer = useRef<NodeJS.Timeout>(undefined)
+  const finishedTimerRef = useRef<NodeJS.Timeout>(undefined)
   const [show, setShow] = useState<boolean>(false)
 
   const [event, setEvent] = useState<
@@ -161,7 +161,7 @@ const CollectionHandlerMessages = () => {
     (event) => {
       setEvent(event)
       setShow(true)
-      clearTimeout(finishedTimer.current)
+      clearTimeout(finishedTimerRef.current)
     },
   )
 
@@ -170,7 +170,7 @@ const CollectionHandlerMessages = () => {
     (event) => {
       setEvent(event)
       setShow(true)
-      clearTimeout(finishedTimer.current)
+      clearTimeout(finishedTimerRef.current)
     },
   )
 
@@ -179,7 +179,7 @@ const CollectionHandlerMessages = () => {
     (event) => {
       setEvent(event)
       setShow(true)
-      finishedTimer.current = setTimeout(() => setShow(false), 5000)
+      finishedTimerRef.current = setTimeout(() => setShow(false), 5000)
     },
   )
 

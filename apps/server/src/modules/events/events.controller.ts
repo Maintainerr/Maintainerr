@@ -24,6 +24,7 @@ import { IncomingMessage } from 'http';
 import { interval, Subscription } from 'rxjs';
 import { createSseStreamClient, SseStreamClient } from '../../utils/sse-stream';
 import { MaintainerrLogger } from '../logging/logs.service';
+import { isBrokenPipeError } from '../logging/winston/stdioPipeGuard';
 import { EventsBufferService } from './events-buffer.service';
 
 @Controller('/api/events')
@@ -76,6 +77,13 @@ export class EventsController implements BeforeApplicationShutdown {
         this.connectedClients.delete(clientKey);
       },
       onError: (error) => {
+        // A client disconnecting mid-write surfaces as a broken pipe (EPIPE /
+        // ERR_STREAM_DESTROYED). That's expected for SSE, so log it concisely
+        // instead of dumping a full error stack.
+        if (isBrokenPipeError(error)) {
+          this.logger.debug('SSE client disconnected before a write completed');
+          return;
+        }
         this.logger.debug(error);
       },
     });

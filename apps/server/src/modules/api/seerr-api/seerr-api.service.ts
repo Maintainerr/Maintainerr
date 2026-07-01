@@ -1,5 +1,6 @@
 import { BasicResponseDto } from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
+import { cloneDeep } from 'lodash';
 import { SettingsDataService } from '../../../modules/settings/settings-data.service';
 import {
   CONNECTION_TEST_TIMEOUT_MS,
@@ -10,6 +11,12 @@ import {
   MaintainerrLogger,
   MaintainerrLoggerFactory,
 } from '../../logging/logs.service';
+import cacheManager from '../lib/cache';
+import {
+  SEERR_REQUESTS_CACHE_ID,
+  SEERR_REQUESTS_CACHE_KEY,
+  SEERR_REQUESTS_PAGE_SIZE,
+} from './seerr-api.constants';
 import { SeerrApi } from './helpers/seerr-api.helper';
 
 interface SeerrMediaInfo {
@@ -160,9 +167,25 @@ interface SeerrUserResponseResult {
   displayName: string;
 }
 
+interface SeerrRequestPageResponse {
+  pageInfo: {
+    pages: number;
+    pageSize: number;
+    results: number;
+    page: number;
+  };
+  results: SeerrRequest[];
+}
+
 @Injectable()
 export class SeerrApiService {
   api: SeerrApi;
+
+  // Deduplicates concurrent callers (the first batch of rule-evaluation items)
+  // onto a single /request sweep while the run-scoped index is being built.
+  private requestIndexPromise?: Promise<
+    Map<number, SeerrRequest[]> | undefined
+  >;
 
   constructor(
     private readonly settings: SettingsDataService,
@@ -281,6 +304,153 @@ export class SeerrApiService {
       );
       return [];
     }
+  }
+
+  /**
+   * Fetches every request in a single paginated sweep, mirroring getUsers()'s
+   * pagination. Unlike getUsers() (which collapses errors to []), this returns
+   * `undefined` on failure so the index build can tell a genuinely empty Seerr
+   * (definitive: nothing requested) from an unreachable one (transient: protect
+   * items). `[]` therefore means "Seerr reachable, no requests".
+   */
+  public async getRequests(): Promise<SeerrRequest[] | undefined> {
+    try {
+      const size = SEERR_REQUESTS_PAGE_SIZE;
+      let hasNext = true;
+      let skip = 0;
+
+      const requests: SeerrRequest[] = [];
+
+      while (hasNext) {
+        // Seerr has no `added` sort value (only `modified` → request.updatedAt;
+        // anything else falls back to the default `request.id DESC`), so we omit
+        // `sort` and let buildRequestIndex normalise ordering instead of relying
+        // on the sweep order. `filter=all` keeps every request status.
+        const resp = await this.api.getWithoutCache<SeerrRequestPageResponse>(
+          `/request?take=${size}&skip=${skip}&filter=all`,
+        );
+
+        // The HTTP helper swallows request failures and returns undefined; a
+        // genuine empty result still carries pageInfo. A missing pageInfo means
+        // the sweep failed — surface that (transient), don't read it as empty.
+        if (!resp?.pageInfo) {
+          return undefined;
+        }
+
+        requests.push(...(resp.results ?? []));
+
+        if (resp.pageInfo.page < resp.pageInfo.pages) {
+          skip = skip + size;
+        } else {
+          hasNext = false;
+        }
+      }
+      return requests;
+    } catch (error) {
+      this.logger.warn(
+        `Couldn't fetch Seerr requests. Is the application running?`,
+      );
+      this.logger.debug(
+        `Couldn't fetch Seerr requests. Is the application running?`,
+        error,
+      );
+      return undefined;
+    }
+  }
+
+  /**
+   * Run-scoped lookup of the Seerr requests for a single tmdbId, backed by one
+   * bulk /request sweep per rule-group run (issue #3152). The per-item
+   * getMovie/getShow calls this replaces rate-limited under whole-library runs,
+   * making Seerr-seeded rules silently match almost nothing.
+   *
+   * Returns a deep copy of the title's request list (the cache holds the Map by
+   * reference with useClones off), so callers may read or mutate it freely
+   * without corrupting the shared index. `[]` means the sweep succeeded and the
+   * title has no request (definitive). `undefined` means the sweep failed —
+   * Seerr is unreachable — so the getter returns `undefined` (transient) and the
+   * comparator protects the item rather than treating it as "not requested".
+   */
+  public async getRequestsForMedia(
+    tmdbId: number,
+  ): Promise<SeerrRequest[] | undefined> {
+    const index = await this.getRequestIndex();
+    if (index === undefined) {
+      return undefined;
+    }
+    const requests = index.get(tmdbId);
+    // cloneDeep, not structuredClone: it never throws on an unexpected
+    // non-cloneable value (which would surface as a per-item warn + skip).
+    return requests ? cloneDeep(requests) : [];
+  }
+
+  private async getRequestIndex(): Promise<
+    Map<number, SeerrRequest[]> | undefined
+  > {
+    const cache = cacheManager.getCache(SEERR_REQUESTS_CACHE_ID)?.data;
+    const cached = cache?.get<Map<number, SeerrRequest[]>>(
+      SEERR_REQUESTS_CACHE_KEY,
+    );
+    if (cached) {
+      return cached;
+    }
+
+    // Collapse the first concurrent batch of callers onto one sweep.
+    this.requestIndexPromise ??= this.buildRequestIndex().finally(() => {
+      this.requestIndexPromise = undefined;
+    });
+    return this.requestIndexPromise;
+  }
+
+  private async buildRequestIndex(): Promise<
+    Map<number, SeerrRequest[]> | undefined
+  > {
+    const requests = await this.getRequests();
+    // Don't cache a failed sweep: a later batch in the same run retries, giving
+    // a transient Seerr blip a chance to recover instead of poisoning the run.
+    if (requests === undefined) {
+      return undefined;
+    }
+
+    // requestDate reads requests[0].createdAt and the legacy per-item
+    // getMovie/getShow path returned mediaInfo.requests oldest-first. The bulk
+    // /request sweep is newest-first, so sort ascending by createdAt (tie-break
+    // on id) — requestDate, addUser and the season ordering then match the
+    // pre-#3152 behaviour regardless of how Seerr happened to page the sweep.
+    requests.sort(
+      (a, b) =>
+        new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime() ||
+        a.id - b.id,
+    );
+
+    // Group by media.tmdbId: Seerr keys every media row by tmdbId (non-null,
+    // indexed — tvdbId/imdbId are optional extras), and the metadata service
+    // resolves each library item to that tmdbId via all its providers (with
+    // tvdb/imdb -> tmdb bridging), so tmdbId is the canonical join key (and
+    // matches the per-item getMovie/getShow path this replaces). media.requests
+    // is not populated on the list endpoint (it would be circular), so each
+    // title's request set is rebuilt here.
+    const index = new Map<number, SeerrRequest[]>();
+    for (const request of requests) {
+      const tmdbId = request.media?.tmdbId;
+      if (typeof tmdbId !== 'number') {
+        continue;
+      }
+      const existing = index.get(tmdbId);
+      if (existing) {
+        existing.push(request);
+      } else {
+        index.set(tmdbId, [request]);
+      }
+    }
+
+    cacheManager
+      .getCache(SEERR_REQUESTS_CACHE_ID)
+      ?.data.set(SEERR_REQUESTS_CACHE_KEY, index);
+    this.logger.log(
+      `Seerr request prefetch complete: ${requests.length} requests across ${index.size} titles.`,
+    );
+    return index;
   }
 
   public async deleteRequest(requestId: string) {

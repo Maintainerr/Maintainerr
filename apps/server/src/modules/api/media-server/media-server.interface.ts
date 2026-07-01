@@ -131,6 +131,17 @@ export interface IMediaServerService {
   getMetadata(itemId: string): Promise<MediaItem | undefined>;
 
   /**
+   * Confirm an item is still present on the media server.
+   *
+   * Returns `false` only when the server explicitly reports the item as
+   * absent (404 / empty result); any other failure (auth, network, 5xx)
+   * throws so callers don't treat "couldn't check" as "gone" and drop state
+   * on a transient blip. Unlike `getMetadata`, which returns `undefined` for
+   * both absent and failed reads, this is safe for cleanup decisions.
+   */
+  itemExists(itemId: string): Promise<boolean>;
+
+  /**
    * Get child items (seasons for shows, episodes for seasons).
    */
   getChildrenMetadata(parentId: string): Promise<MediaItem[]>;
@@ -147,6 +158,18 @@ export interface IMediaServerService {
    * Search across all content on the server.
    */
   searchContent(query: string): Promise<MediaItem[]>;
+
+  /**
+   * Prefetch watch history for all library items in a single bulk request,
+   * caching the result so that subsequent per-item getWatchHistory /
+   * getWatchState calls can be served from memory instead of making individual
+   * HTTP requests.
+   *
+   * Gated by MediaServerFeature.CENTRAL_WATCH_HISTORY (a centrally queryable
+   * history endpoint). Throws if not supported — callers must check
+   * supportsFeature() first; when unsupported, evaluation uses per-item queries.
+   */
+  prefetchWatchHistory(abortSignal?: AbortSignal): Promise<void>;
 
   /**
    * Get watch history for a specific item.
@@ -168,6 +191,8 @@ export interface IMediaServerService {
   getWatchState(
     itemId: string,
     nativeViewCount?: number,
+    itemTitle?: string,
+    itemType?: MediaItemType,
   ): Promise<MediaWatchState>;
 
   /**
@@ -175,6 +200,27 @@ export interface IMediaServerService {
    * Convenience method built on top of getWatchHistory.
    */
   getItemSeenBy(itemId: string): Promise<string[]>;
+
+  /**
+   * Get the set of media server item IDs that are currently being played in
+   * an active streaming session. The collection worker uses this to defer
+   * handling of in-use media to the next run (deletion is the case that
+   * matters; the occasional non-destructive action is deferred too rather
+   * than scoped — a deliberate simplification).
+   *
+   * For hierarchical media the set includes every level a collection might
+   * track: a playing episode contributes its own id plus its season and show
+   * ids, so a collection holding the episode, season, or whole show is
+   * protected.
+   *
+   * Best-effort: returns an empty set when nothing is playing and, after the
+   * HTTP client's own retries, when the lookup could not be completed — so a
+   * session outage degrades to the pre-existing behaviour (handle as usual)
+   * rather than blocking the run. The worker reads this once at the start of a
+   * run, so media that starts playing mid-run isn't protected until the next
+   * run.
+   */
+  getActiveSessions(): Promise<Set<string>>;
 
   /**
    * Get all collections in a library.

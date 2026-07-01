@@ -65,35 +65,37 @@ vi.mock('react-konva', async () => {
       )
     }
 
-  const Stage = React.forwardRef<StageHandle, KonvaNodeProps>(
-    function MockStage({ children, ...props }, ref) {
-      React.useImperativeHandle(ref, () => ({
-        batchDraw: () => undefined,
-        findOne: () => null,
-      }))
+  const Stage = ({
+    children,
+    ref,
+    ...props
+  }: KonvaNodeProps & { ref?: React.Ref<StageHandle> }) => {
+    React.useImperativeHandle(ref, () => ({
+      batchDraw: () => undefined,
+      findOne: () => null,
+    }))
 
-      return React.createElement(
-        'div',
-        {
-          'data-konva': 'Stage',
-          'data-width': numericAttribute(props.width),
-          'data-height': numericAttribute(props.height),
-        },
-        children,
-      )
-    },
-  )
+    return React.createElement(
+      'div',
+      {
+        'data-konva': 'Stage',
+        'data-width': numericAttribute(props.width),
+        'data-height': numericAttribute(props.height),
+      },
+      children,
+    )
+  }
 
-  const Transformer = React.forwardRef<TransformerHandle, KonvaNodeProps>(
-    function MockTransformer(_props, ref) {
-      React.useImperativeHandle(ref, () => ({
-        getLayer: () => ({ batchDraw: () => undefined }),
-        nodes: () => undefined,
-      }))
+  const Transformer = ({
+    ref,
+  }: KonvaNodeProps & { ref?: React.Ref<TransformerHandle> }) => {
+    React.useImperativeHandle(ref, () => ({
+      getLayer: () => ({ batchDraw: () => undefined }),
+      nodes: () => undefined,
+    }))
 
-      return React.createElement('div', { 'data-konva': 'Transformer' })
-    },
-  )
+    return React.createElement('div', { 'data-konva': 'Transformer' })
+  }
 
   return {
     Ellipse: node('Ellipse'),

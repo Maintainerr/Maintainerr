@@ -4,6 +4,7 @@ import {
 } from '@maintainerr/contracts';
 import { Injectable, OnApplicationShutdown } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import cacheManager from '../../api/lib/cache';
 import { MediaServerFactory } from '../../api/media-server/media-server.factory';
 import { MaintainerrLogger } from '../../logging/logs.service';
 import {
@@ -205,6 +206,11 @@ export class RuleExecutorJobManagerService implements OnApplicationShutdown {
       } finally {
         this.processingQueue = false;
         this.processQueuePromise = null;
+        // Drop the run-scoped Plex watch-history snapshot at batch end so the
+        // next batch rebuilds it fresh (it is persistent, so the per-group
+        // flushAll() never clears it). Groups within a batch still share one
+        // sweep; the 1 h TTL is only a backstop for an unusually long batch.
+        cacheManager.getCache('plexwatchhistory')?.data.flushAll();
         // Broadcast the false transition so listeners that scope work to a
         // single batch (e.g. notification dedupe) can observe batch end.
         this.emitStatusUpdate();

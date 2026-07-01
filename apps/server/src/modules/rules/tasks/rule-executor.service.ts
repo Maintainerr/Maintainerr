@@ -3,6 +3,7 @@ import {
   MaintainerrEvent,
   MediaItem,
   MediaItemType,
+  MediaServerFeature,
   MediaServerType,
   RuleHandlerFinishedEventDto,
   RuleHandlerStartedEventDto,
@@ -26,6 +27,7 @@ import {
   CollectionMediaRemovedDto,
   RuleHandlerFailedDto,
 } from '../../events/events.dto';
+import { ServarrTagService } from '../../actions/servarr-tag.service';
 import { MaintainerrLogger } from '../../logging/logs.service';
 import { SettingsDataService } from '../../settings/settings-data.service';
 import { RuleConstants } from '../constants/rules.constants';
@@ -108,6 +110,7 @@ export class RuleExecutorService {
     private readonly progressManager: RuleExecutorProgressService,
     private readonly logger: MaintainerrLogger,
     private readonly recentlyHandledMedia: RecentlyHandledMediaService,
+    private readonly servarrTagService: ServarrTagService,
   ) {
     logger.setContext(RuleExecutorService.name);
     this.ruleConstants = new RuleConstants();
@@ -227,6 +230,34 @@ export class RuleExecutorService {
         removedMediaServerIds: new Set<string>(),
       };
 
+      // Snapshot whether this collection was already linked to a media server
+      // collection BEFORE this run. handleCollection below can link a freshly
+      // created automatic collection to a pre-existing, same-named server
+      // collection; the post-handle state would then look "already linked" and
+      // make the sync below import that collection's existing contents as
+      // manual. Capturing the pre-run state lets the run that *establishes* the
+      // link skip that import — the membership-provenance guard (#2663)
+      // otherwise reads the link state too late (after handleCollection has
+      // already linked it) and never skips.
+      //
+      // Be honest about the scope: this only suppresses the import on the run
+      // that adopts the collection. On the NEXT run the collection is already
+      // linked (collectionLinkedBeforeRun === true), so the import runs and the
+      // pre-existing, rule-unselected items get tracked as manual then. We can't
+      // distinguish "was on the BoxSet at adoption time" from "the user added it
+      // to the BoxSet afterwards" without persisted provenance, so the guard
+      // only removes the noisy first-run flood — a long-lived adopted collection
+      // still absorbs its foreign items as manual on a later run.
+      const collectionLinkedBeforeRun = ruleGroup.collection?.id
+        ? Boolean(
+            (
+              await this.collectionService.getCollection(
+                ruleGroup.collection.id,
+              )
+            )?.mediaServerId,
+          )
+        : false;
+
       if (ruleGroup.useRules) {
         this.logger.log(`Executing rules for '${ruleGroup.name}'`);
         this.startTime = new Date();
@@ -235,6 +266,20 @@ export class RuleExecutorService {
         await this.rulesService.resetCacheIfGroupUsesRuleThatRequiresIt(
           ruleGroup,
         );
+
+        // Prefetch watch history so per-item getWatchHistory calls during
+        // evaluation are served from an in-memory map instead of individual
+        // HTTP requests. Reused across rule groups within a scheduler batch;
+        // rebuilt here when the reset above flushed it. Gated on a centrally
+        // queryable history endpoint — Jellyfin/Emby (per-user history) keep
+        // their per-item path. Abort-checked first so a cancellation that
+        // lands just before evaluation doesn't kick off a long history sweep.
+        abortSignal.throwIfAborted();
+        if (
+          mediaServer.supportsFeature(MediaServerFeature.CENTRAL_WATCH_HISTORY)
+        ) {
+          await mediaServer.prefetchWatchHistory(abortSignal);
+        }
 
         // prepare
         this.workerData = [];
@@ -290,6 +335,7 @@ export class RuleExecutorService {
       await this.syncManualMediaServerToCollectionDB(
         await this.rulesService.getRuleGroupById(ruleGroup.id), // refetch to get latest changes
         collectionSyncChanges,
+        collectionLinkedBeforeRun,
       );
     } catch (error) {
       const executionBeingAborted =
@@ -339,9 +385,13 @@ export class RuleExecutorService {
   private async syncManualMediaServerToCollectionDB(
     rulegroup: RuleGroup,
     collectionSyncChanges: CollectionMembershipSyncChanges,
+    collectionLinkedBeforeRun?: boolean,
   ) {
     if (rulegroup && rulegroup.collectionId) {
-      const syncContext = await this.getCollectionForMediaServerSync(rulegroup);
+      const syncContext = await this.getCollectionForMediaServerSync(
+        rulegroup,
+        collectionLinkedBeforeRun,
+      );
       const collection = syncContext.collection;
 
       if (collection) {
@@ -530,6 +580,7 @@ export class RuleExecutorService {
 
   private async getCollectionForMediaServerSync(
     rulegroup: RuleGroup,
+    collectionLinkedBeforeRun?: boolean,
   ): Promise<MediaServerSyncContext> {
     const collection = await this.collectionService.getCollection(
       rulegroup.collectionId,
@@ -560,7 +611,14 @@ export class RuleExecutorService {
         : { collection: relinkedCollection };
     }
 
-    const wasLinkedBeforeSync = Boolean(collection.mediaServerId);
+    // Prefer the link state captured BEFORE this run (handleCollection may have
+    // linked a freshly created collection to a pre-existing server collection
+    // in the meantime). A collection linked only during this run must skip the
+    // manual child import so it does not absorb that server collection's
+    // existing contents as manual members. Falls back to the collection's
+    // current link state when the caller didn't capture the pre-run snapshot.
+    const wasLinkedBeforeSync =
+      collectionLinkedBeforeRun ?? Boolean(collection.mediaServerId);
 
     const linkedCollection =
       await this.collectionService.checkAutomaticMediaServerLink(collection);
@@ -866,12 +924,30 @@ export class RuleExecutorService {
         }
 
         // Determine which items were actually added/removed by comparing DB state
+        const updatedMedia =
+          (await this.collectionService.getCollectionMedia(collection?.id)) ??
+          [];
         const updatedMediaServerIds = new Set(
-          (
-            (await this.collectionService.getCollectionMedia(collection?.id)) ??
-            []
-          ).map((e) => e.mediaServerId),
+          updatedMedia.map((e) => e.mediaServerId),
         );
+
+        // Cached provider ids per item, so *arr tag resolution has a tmdb/tvdb
+        // fallback even when the media-server item omits them. collMediaData
+        // covers removed/existing rows; updatedMedia covers freshly added ones.
+        const providerIdsByMediaServerId = new Map<
+          string,
+          { tmdbId?: number | null; tvdbId?: number | null }
+        >();
+        for (const m of [...collMediaData, ...updatedMedia]) {
+          providerIdsByMediaServerId.set(m.mediaServerId, {
+            tmdbId: m.tmdbId,
+            tvdbId: m.tvdbId,
+          });
+        }
+        const toArrTagItem = (m: CollectionMediaChange) => ({
+          mediaServerId: m.mediaServerId,
+          ...providerIdsByMediaServerId.get(m.mediaServerId),
+        });
 
         const addedToCollection = dataToAdd.filter(
           (m) =>
@@ -912,6 +988,16 @@ export class RuleExecutorService {
             ),
           );
         }
+
+        // Reconcile Radarr/Sonarr membership tags off the just-applied deltas.
+        // Best-effort and self-guarded (no-ops unless the collection opted in):
+        // it never throws, alters membership, or raises eval concurrency, so a
+        // tagging failure can't affect the run.
+        await this.servarrTagService.syncMembershipTags(
+          collection,
+          addedToCollection.map(toArrTagItem),
+          removedFromCollection.map(toArrTagItem),
+        );
 
         // add the run duration to the collection
         await this.AddCollectionRunDuration(collection);

@@ -5,6 +5,7 @@ import { Repository } from 'typeorm';
 import winston from 'winston';
 import DailyRotateFile from 'winston-daily-rotate-file';
 import { LogSettings } from './entities/logSettings.entities';
+import { resolveLogLevel } from './logLevel';
 
 type LogLevel = 'fatal' | 'error' | 'warn' | 'info' | 'verbose' | 'debug';
 type LogMeta = Record<string, unknown>;
@@ -44,7 +45,15 @@ export class LogSettingsService {
   }
 
   public async update(settings: LogSetting): Promise<void> {
-    this.logger.level = settings.level;
+    // LOG_LEVEL env var takes precedence over the saved value for the live
+    // logger, mirroring the startup factory in logs.module.ts. An invalid
+    // LOG_LEVEL is ignored here without re-warning: the startup factory already
+    // surfaced the typo, and warning on every settings save would be noisy.
+    const { level: resolvedLevel } = resolveLogLevel(
+      process.env.LOG_LEVEL,
+      settings.level,
+    );
+    this.logger.level = resolvedLevel;
 
     const rotateTransport = this.logger.transports.find(
       (x): x is DailyRotateFile => x instanceof DailyRotateFile,

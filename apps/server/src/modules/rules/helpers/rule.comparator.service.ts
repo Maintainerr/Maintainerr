@@ -126,7 +126,19 @@ export class RuleComparatorService {
           this.handleSectionAction(sectionActionAnd);
 
           // save new section action
-          sectionActionAnd = +parsedRule.operator === 0;
+          // Null-guarded coercion. The section operator lives on the first
+          // condition of the new section and is persisted as a string
+          // ("0"/"1"), or null when unset. +null === 0 is true in JS, so the
+          // bare `+operator === 0` check coerced an unset operator to AND.
+          // Guard against null first, then coerce — mirroring the
+          // within-section idiom (`operator != null && +operator === ...`)
+          // used elsewhere in this service — so an unset operator falls
+          // through to OR while an explicit AND ("0") is still honoured.
+          // Persisted rules are normalised to an explicit operator by
+          // migration, so null should not reach here in practice.
+          sectionActionAnd =
+            parsedRule.operator != null &&
+            +parsedRule.operator === RuleOperators.AND;
           // reset first operator of new section
           parsedRule.operator = null;
           // add new section to stats
@@ -203,20 +215,23 @@ export class RuleComparatorService {
     let secondVal: RuleValueType;
 
     if (rule.operator === null || +rule.operator === +RuleOperators.OR) {
-      data = this.plexData;
+      data = this.plexData.filter(
+        (mediaItem) => !this.workerIds.has(mediaItem.id),
+      );
     } else {
       data = this.workerData;
     }
 
     // Value resolution (firstVal/secondVal) is the slow part: each item may
-    // trigger an external lookup with no bulk equivalent — most expensively a
-    // Plex watch-history round-trip (no bulk endpoint, see feature #2936).
-    // Those getters are pure reads and touch no comparator state, so we resolve
-    // them up front in bounded parallel batches — the same chunk + Promise.all
-    // idiom used for Plex collection writes. Batching lives only here, so the
-    // total in-flight lookups never exceed RULE_EVALUATION_CONCURRENCY. The
-    // mutation pass below then stays strictly sequential and in the original
-    // backward order, preserving the index-based splice semantics exactly.
+    // trigger an external lookup. Plex leaf watch history is prefetched for the
+    // rule batch, but show/season rollups and other integrations can still make
+    // per-item calls. These getters are pure reads and touch no comparator
+    // state, so we resolve them up front in bounded parallel batches — the same
+    // chunk + Promise.all idiom used for Plex collection writes. Batching lives
+    // only here, so the total in-flight lookups never exceed
+    // RULE_EVALUATION_CONCURRENCY. The mutation pass below then stays strictly
+    // sequential and in the original backward order, preserving the index-based
+    // splice semantics exactly.
     const firstVals: RuleValueType[] = new Array(data.length);
     const secondVals: RuleValueType[] = new Array(data.length);
     for (
@@ -511,9 +526,17 @@ export class RuleComparatorService {
   }
 
   private getSecondValueName(rule: RuleDto): string {
-    return rule.lastVal
-      ? this.ruleConstanstService.getValueHumanName(rule.lastVal)
-      : this.ruleConstanstService.getCustomValueIdentifier(rule.customVal).type;
+    if (rule.lastVal) {
+      return this.ruleConstanstService.getValueHumanName(rule.lastVal);
+    }
+    // Unary actions (EXISTS / NOT_EXISTS) have neither a second value nor a
+    // custom value. Guard against it so this diagnostic-only helper never
+    // throws while logging a skipped comparison (which would abort the run).
+    if (rule.customVal) {
+      return this.ruleConstanstService.getCustomValueIdentifier(rule.customVal)
+        .type;
+    }
+    return 'none';
   }
 
   private handleSectionAction(sectionActionAnd: boolean) {

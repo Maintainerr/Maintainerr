@@ -1,11 +1,18 @@
 import { MaintainerrEvent } from '@maintainerr/contracts';
-import { createMockLogger } from '../../../test/utils/data';
+import {
+  createMockLogger,
+  createMockServarrTagService,
+} from '../../../test/utils/data';
 import { RulesService } from './rules.service';
 
 describe('RulesService.deleteRuleGroup', () => {
   const logger = createMockLogger();
 
-  const createRulesService = (options?: { group?: any }) => {
+  const createRulesService = (options?: {
+    group?: any;
+    collectionService?: any;
+    servarrTagService?: any;
+  }) => {
     const { group = undefined } = options ?? {};
 
     const ruleGroupRepository = {
@@ -17,11 +24,14 @@ describe('RulesService.deleteRuleGroup', () => {
       delete: jest.fn().mockResolvedValue(undefined),
     };
 
-    const collectionService = {
+    const collectionService = options?.collectionService ?? {
       deleteCollection: jest
         .fn()
         .mockResolvedValue({ status: 'OK', code: 1, message: 'Success' }),
     };
+
+    const servarrTagService =
+      options?.servarrTagService ?? createMockServarrTagService();
 
     const eventEmitter = {
       emit: jest.fn(),
@@ -44,6 +54,7 @@ describe('RulesService.deleteRuleGroup', () => {
       {} as any, // ruleComparatorServiceFactory
       {} as any, // ruleMigrationService
       eventEmitter as any,
+      servarrTagService as any,
       logger as any,
     );
 
@@ -53,6 +64,7 @@ describe('RulesService.deleteRuleGroup', () => {
       exclusionRepo,
       collectionService,
       eventEmitter,
+      servarrTagService,
     };
   };
 
@@ -176,6 +188,68 @@ describe('RulesService.deleteRuleGroup', () => {
       expect(ruleGroupRepository.delete).toHaveBeenCalledWith(42);
     });
   });
+
+  describe('Behavior A — membership tag cleanup on delete', () => {
+    it("strips members' *arr membership tags before deleting a tagging-enabled group", async () => {
+      const group = { id: 42, collectionId: 100 };
+      const collection = {
+        id: 100,
+        type: 'movie',
+        radarrSettingsId: 1,
+        tagInArr: true,
+      };
+      const members = [{ mediaServerId: 'm1', tmdbId: 1, tvdbId: null }];
+      const servarrTagService = createMockServarrTagService();
+      const collectionService = {
+        deleteCollection: jest
+          .fn()
+          .mockResolvedValue({ status: 'OK', code: 1, message: 'Success' }),
+        getCollection: jest.fn().mockResolvedValue(collection),
+        getCollectionMedia: jest.fn().mockResolvedValue(members),
+      };
+
+      const { service } = createRulesService({
+        group,
+        collectionService,
+        servarrTagService,
+      });
+
+      await service.deleteRuleGroup(42);
+
+      // all members "leave" → untag delta, before the collection rows are deleted
+      expect(servarrTagService.syncMembershipTags).toHaveBeenCalledWith(
+        collection,
+        [],
+        [{ mediaServerId: 'm1', tmdbId: 1, tvdbId: null }],
+      );
+      expect(collectionService.deleteCollection).toHaveBeenCalledWith(100);
+    });
+
+    it('does not attempt tag cleanup when the group is not tagging-enabled', async () => {
+      const group = { id: 42, collectionId: 100 };
+      const servarrTagService = createMockServarrTagService();
+      const collectionService = {
+        deleteCollection: jest
+          .fn()
+          .mockResolvedValue({ status: 'OK', code: 1, message: 'Success' }),
+        getCollection: jest
+          .fn()
+          .mockResolvedValue({ id: 100, type: 'movie', tagInArr: false }),
+        getCollectionMedia: jest.fn(),
+      };
+
+      const { service } = createRulesService({
+        group,
+        collectionService,
+        servarrTagService,
+      });
+
+      await service.deleteRuleGroup(42);
+
+      expect(servarrTagService.syncMembershipTags).not.toHaveBeenCalled();
+      expect(collectionService.getCollectionMedia).not.toHaveBeenCalled();
+    });
+  });
 });
 
 describe('RulesService.removeExclusion', () => {
@@ -216,6 +290,7 @@ describe('RulesService.removeExclusion', () => {
       {} as any, // ruleComparatorServiceFactory
       {} as any, // ruleMigrationService
       {} as any, // eventEmitter
+      createMockServarrTagService() as any,
       logger as any,
     );
 

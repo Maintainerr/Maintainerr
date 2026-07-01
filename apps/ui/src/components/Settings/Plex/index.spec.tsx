@@ -25,6 +25,7 @@ let loginErrorMessage: string | null = null
 let storedTokenValidationResponse:
   | {
       valid: boolean
+      unreachable?: boolean
       errorMessage?: string
     }
   | undefined
@@ -360,6 +361,63 @@ describe('PlexSettings', () => {
       expect(usePlexAuthValidationMock).toHaveBeenCalledWith(
         expect.objectContaining({ enabled: true }),
       )
+    })
+  })
+
+  it('stays authenticated and warns instead of erroring when plex.tv is unreachable', async () => {
+    storedTokenValidationResponse = {
+      valid: false,
+      unreachable: true,
+      errorMessage:
+        "Couldn't reach plex.tv to verify your credentials — retrying. Your saved token is still in use.",
+    }
+
+    render(<PlexSettings />)
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Authenticated' })).toBeTruthy()
+    })
+
+    expect(
+      screen.queryByText(
+        'Stored Plex credentials are invalid. Re-authenticate with Plex.',
+      ),
+    ).toBeNull()
+
+    expect(
+      screen.getByText(
+        "Couldn't reach plex.tv to verify your credentials — retrying. Your saved token is still in use.",
+      ),
+    ).toBeTruthy()
+  })
+
+  it('clears the plex.tv unreachable warning once validation succeeds', async () => {
+    storedTokenValidationResponse = {
+      valid: false,
+      unreachable: true,
+      errorMessage:
+        "Couldn't reach plex.tv to verify your credentials — retrying. Your saved token is still in use.",
+    }
+
+    const { rerender } = render(<PlexSettings />)
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(
+          "Couldn't reach plex.tv to verify your credentials — retrying. Your saved token is still in use.",
+        ),
+      ).toBeTruthy()
+    })
+
+    storedTokenValidationResponse = { valid: true }
+    rerender(<PlexSettings />)
+
+    await waitFor(() => {
+      expect(
+        screen.queryByText(
+          "Couldn't reach plex.tv to verify your credentials — retrying. Your saved token is still in use.",
+        ),
+      ).toBeNull()
     })
   })
 

@@ -95,6 +95,7 @@ export interface RuleGroupCreatePayload {
   sonarrSettingsId?: number
   radarrQualityProfileId?: number
   sonarrQualityProfileId?: number
+  tagInArr?: boolean
   collection: RuleGroupCollectionPayload
   rules: IRule[]
   dataType: MediaItemType

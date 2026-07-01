@@ -22,6 +22,8 @@ export const EMBY_CACHE_KEYS = {
   USERS: 'emby:users',
   LIBRARIES: 'emby:libraries',
   STATUS: 'emby:status',
+  COLLECTIONS: 'emby:collections',
+  RESOLVED_USER_ID: 'emby:resolved-user-id',
 } as const;
 
 // Emby uses the same .NET DateTime tick convention as Jellyfin.
@@ -29,7 +31,7 @@ export const EMBY_CACHE_KEYS = {
 export const EMBY_TICKS_PER_MS = 10000;
 
 // Emby's authorization header requires a pinned client Version string of
-// '1.0.0'. Newer values are rejected by some endpoints. See Jellyseerr
+// '1.0.0'. Newer values are rejected by some endpoints. See Seerr
 // server/api/jellyfin.ts where mediaServerType === 'emby' hardcodes the same.
 export const EMBY_CLIENT_INFO = {
   name: 'Maintainerr',

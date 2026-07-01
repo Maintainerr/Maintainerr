@@ -9,12 +9,12 @@ import {
 export { Application, MediaType, RuleOperators, RulePossibility };
 
 // How many media items a rule is evaluated against concurrently. Each item's
-// operand lookup can hit an external service (Plex, Tautulli, Sonarr, …) with
-// no bulk equivalent — most expensively Plex watch history, which has no bulk
-// endpoint (see feature #2936). Resolving a bounded number of items in parallel
-// turns a long sequential chain of round-trips into batches. This is the single
-// global cap on concurrent operand lookups (batching happens only here, never
-// nested inside the getters).
+// operand lookup can hit an external service (Plex, Tautulli, Sonarr, …). Plex
+// leaf watch history now has a batch-scoped prefetch, but show/season rollups
+// and other integrations still fall back to per-item calls. Resolving a bounded
+// number of items in parallel turns a long sequential chain of round-trips into
+// batches. This is the single global cap on concurrent operand lookups (batching
+// happens only here, never nested inside the getters).
 //
 // Deliberately conservative: the binding constraint is the slowest co-located
 // backend, not the host's core count. On an all-in-one box (e.g. Tautulli's
@@ -254,6 +254,14 @@ export class RuleConstants {
           id: 15,
           name: 'sw_viewedEpisodes',
           humanName: 'Amount of watched episodes',
+          mediaType: MediaType.SHOW,
+          type: RuleType.NUMBER,
+          showType: ['show', 'season'],
+        },
+        {
+          id: 45,
+          name: 'sw_markedWatchedEpisodes',
+          humanName: 'Amount of episodes marked as watched',
           mediaType: MediaType.SHOW,
           type: RuleType.NUMBER,
           showType: ['show', 'season'],
@@ -1398,6 +1406,56 @@ export class RuleConstants {
           mediaType: MediaType.MOVIE,
           type: RuleType.DATE,
           cacheReset: true,
+        },
+      ],
+    },
+    {
+      // Streamystats is an optional, Jellyfin-only companion (the Jellyfin
+      // analog of Tautulli for Plex). It is removed from the constants unless
+      // configured and Jellyfin is the active server (see RulesService).
+      //
+      // A Streamystats "watchlist" is a user-created curated list, and only
+      // PUBLIC lists are reachable with Maintainerr's Jellyfin API key — see
+      // the StreamystatsWatchlistMembership contract for why. These properties
+      // act as a "users curated this" protection signal.
+      id: Application.STREAMYSTATS,
+      name: 'Streamystats',
+      mediaType: MediaType.BOTH,
+      props: [
+        {
+          id: 0,
+          name: 'isInWatchlist',
+          humanName: 'Is in a watchlist',
+          mediaType: MediaType.BOTH,
+          type: RuleType.BOOL,
+        },
+        {
+          id: 1,
+          name: 'watchlistedByUsers',
+          humanName: '[list] In watchlist of (username)',
+          mediaType: MediaType.BOTH,
+          type: RuleType.TEXT_LIST, // returns usernames []
+        },
+        // Parent-inclusive variants: a Streamystats list holds the show item ID,
+        // not its seasons/episodes, so the item-only props above never match a
+        // watchlisted show when evaluated below show level. These roll the
+        // parent show (and season) in. Show-only and season/episode-only — a
+        // show is the top level (no parent) and a movie has no parent show.
+        {
+          id: 2,
+          name: 'isInWatchlist_including_parent',
+          humanName: 'Is in a watchlist (incl. parents)',
+          mediaType: MediaType.SHOW,
+          type: RuleType.BOOL,
+          showType: ['season', 'episode'],
+        },
+        {
+          id: 3,
+          name: 'watchlistedByUsers_including_parent',
+          humanName: '[list] In watchlist of (username) (incl. parents)',
+          mediaType: MediaType.SHOW,
+          type: RuleType.TEXT_LIST, // returns usernames []
+          showType: ['season', 'episode'],
         },
       ],
     },

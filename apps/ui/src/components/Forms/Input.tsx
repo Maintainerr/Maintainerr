@@ -1,10 +1,5 @@
 import clsx from 'clsx'
-import {
-  HTMLAttributes,
-  ReactNode,
-  forwardRef,
-  InputHTMLAttributes,
-} from 'react'
+import { HTMLAttributes, ReactNode, Ref, InputHTMLAttributes } from 'react'
 
 // Field base styling lives in the global `input/select/textarea` rule in
 // globals.css (single source of truth). Only deltas live here.
@@ -40,31 +35,35 @@ type InputProps = {
   className?: string
   error?: boolean
   join?: 'left' | 'right'
+  ref?: Ref<HTMLInputElement>
 } & InputHTMLAttributes<HTMLInputElement>
 
-export const Input = forwardRef<HTMLInputElement, InputProps>(
-  ({ className, required, error, join, ...props }: InputProps, ref) => {
-    return (
-      <input
-        {...props}
-        ref={ref}
-        id={props.id || props.name}
-        className={clsx(
-          join === 'left' && inputClassNames.joinedLeft,
-          join === 'right' && inputClassNames.joinedRight,
-          !props.disabled &&
-            error &&
-            'border-error-500! outline-error-500 focus:border-error-500 focus:ring-0',
-          className,
-        )}
-        aria-required={required}
-        aria-invalid={error}
-      />
-    )
-  },
-)
-
-Input.displayName = 'Input'
+export const Input = ({
+  className,
+  required,
+  error,
+  join,
+  ref,
+  ...props
+}: InputProps) => {
+  return (
+    <input
+      {...props}
+      ref={ref}
+      id={props.id || props.name}
+      className={clsx(
+        join === 'left' && inputClassNames.joinedLeft,
+        join === 'right' && inputClassNames.joinedRight,
+        !props.disabled &&
+          error &&
+          'border-error-500! outline-error-500 focus:border-error-500 focus:ring-0',
+        className,
+      )}
+      aria-required={required}
+      aria-invalid={error}
+    />
+  )
+}
 
 type InputAdornmentProps = {
   children?: ReactNode
@@ -87,47 +86,49 @@ type InputGroupProps = {
   label: string
   helpText?: ReactNode
   error?: string
+  ref?: Ref<HTMLInputElement>
 } & InputHTMLAttributes<HTMLInputElement>
 
-export const InputGroup = forwardRef<HTMLInputElement, InputGroupProps>(
-  ({ label, helpText, ...props }: InputGroupProps, ref) => {
-    const ariaDescribedBy = []
-    if (helpText) ariaDescribedBy.push(`${props.name}-help`)
-    if (props.error) ariaDescribedBy.push(`${props.name}-error`)
+export const InputGroup = ({
+  label,
+  helpText,
+  ref,
+  ...props
+}: InputGroupProps) => {
+  const ariaDescribedBy = []
+  if (helpText) ariaDescribedBy.push(`${props.name}-help`)
+  if (props.error) ariaDescribedBy.push(`${props.name}-error`)
 
-    return (
-      <div className="mt-6 max-w-6xl sm:mt-5 sm:grid sm:grid-cols-3 sm:items-start sm:gap-4">
-        <label htmlFor={props.id || props.name} className="sm:mt-2">
-          {label} {props.required && <>*</>}
-          {helpText && (
-            <p className={'text-xs font-normal'} id={`${props.name}-help`}>
-              {helpText}
+  return (
+    <div className="mt-6 max-w-6xl sm:mt-5 sm:grid sm:grid-cols-3 sm:items-start sm:gap-4">
+      <label htmlFor={props.id || props.name} className="sm:mt-2">
+        {label} {props.required && <>*</>}
+        {helpText && (
+          <p className={'text-xs font-normal'} id={`${props.name}-help`}>
+            {helpText}
+          </p>
+        )}
+      </label>
+      <div className="px-3 py-2 sm:col-span-2">
+        <div className="max-w-xl">
+          <Input
+            {...props}
+            ref={ref}
+            aria-describedby={
+              ariaDescribedBy.length ? ariaDescribedBy.join(' ') : undefined
+            }
+            error={!!props.error}
+          />
+          {props.error && (
+            <p
+              className={'mt-2 min-h-5 text-sm text-error-500'}
+              id={`${props.name}-error`}
+            >
+              {props.error}
             </p>
           )}
-        </label>
-        <div className="px-3 py-2 sm:col-span-2">
-          <div className="max-w-xl">
-            <Input
-              {...props}
-              ref={ref}
-              aria-describedby={
-                ariaDescribedBy.length ? ariaDescribedBy.join(' ') : undefined
-              }
-              error={!!props.error}
-            />
-            {props.error && (
-              <p
-                className={'mt-2 min-h-5 text-sm text-error-500'}
-                id={`${props.name}-error`}
-              >
-                {props.error}
-              </p>
-            )}
-          </div>
         </div>
       </div>
-    )
-  },
-)
-
-InputGroup.displayName = 'InputGroup'
+    </div>
+  )
+}

@@ -7,8 +7,14 @@ import path from 'path';
 import { Repository } from 'typeorm';
 import winston from 'winston';
 import DailyRotateFile from 'winston-daily-rotate-file';
-import { LogSettings } from './entities/logSettings.entities';
+import {
+  DEFAULT_LOG_LEVEL,
+  DEFAULT_LOG_MAX_FILES,
+  DEFAULT_LOG_MAX_SIZE,
+  LogSettings,
+} from './entities/logSettings.entities';
 import { formatLogMessage, sanitizeLogInfo } from './logFormatting';
+import { resolveLogLevel } from './logLevel';
 import { LogsController } from './logs.controller';
 import {
   LogSettingsService,
@@ -25,8 +31,8 @@ const dataDir =
     ? '/opt/data'
     : path.join(__dirname, '../../../../../data');
 
-const sanitizeLogFormat = winston.format(
-  (info): TransformableInfo => sanitizeLogInfo(info),
+const sanitizeLogFormat = winston.format((info): TransformableInfo =>
+  sanitizeLogInfo(info),
 );
 
 @Global()
@@ -44,8 +50,24 @@ const sanitizeLogFormat = winston.format(
         eventEmitter: EventEmitter2,
       ) => {
         const logSettings = await logSettingsRepo.findOne({ where: {} });
-        const maxSize = `${logSettings.max_size}m`;
-        const maxFiles = `${logSettings.max_files}d`;
+        // LOG_LEVEL env var takes precedence over the persisted setting so
+        // operators can change verbosity for a single container without
+        // touching the database. The persisted setting is the user-facing UI
+        // value; the env var is the ops-facing override. Defaults cover the
+        // first-boot window before the log_settings row exists.
+        const { level: resolvedLevel, invalidEnvValue } = resolveLogLevel(
+          process.env.LOG_LEVEL,
+          logSettings?.level ?? DEFAULT_LOG_LEVEL,
+        );
+        if (invalidEnvValue !== undefined) {
+          // Surface the typo early; the winston logger does not exist yet here,
+          // so console is the only channel.
+          console.warn(
+            `LOG_LEVEL=${JSON.stringify(invalidEnvValue)} is not a recognised level; using ${resolvedLevel}.`,
+          );
+        }
+        const maxSize = `${logSettings?.max_size ?? DEFAULT_LOG_MAX_SIZE}m`;
+        const maxFiles = `${logSettings?.max_files ?? DEFAULT_LOG_MAX_FILES}d`;
 
         const dailyRotateFileTransport = new DailyRotateFile({
           filename: path.join(dataDir, 'logs/maintainerr-%DATE%.log'),
@@ -65,7 +87,7 @@ const sanitizeLogFormat = winston.format(
         });
 
         return winston.createLogger({
-          level: logSettings.level,
+          level: resolvedLevel,
           levels: {
             fatal: 0,
             error: 1,

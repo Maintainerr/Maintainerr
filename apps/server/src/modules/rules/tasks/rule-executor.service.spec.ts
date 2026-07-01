@@ -1,6 +1,14 @@
-import { MaintainerrEvent, MediaServerType } from '@maintainerr/contracts';
+import {
+  MaintainerrEvent,
+  MediaServerFeature,
+  MediaServerType,
+  supportsFeature as serverSupportsFeature,
+} from '@maintainerr/contracts';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { createMockLogger } from '../../../../test/utils/data';
+import {
+  createMockLogger,
+  createMockServarrTagService,
+} from '../../../../test/utils/data';
 import { MediaServerFactory } from '../../api/media-server/media-server.factory';
 import { CollectionsService } from '../../collections/collections.service';
 import { CollectionMediaManualMembershipSource } from '../../collections/entities/collection_media.entities';
@@ -27,6 +35,9 @@ describe('RuleExecutorService', () => {
         items: [],
         totalSize: 0,
       }),
+      supportsFeature: jest.fn((feature: MediaServerFeature) =>
+        serverSupportsFeature(mediaServerType, feature),
+      ),
     };
 
     const mediaServerFactory = {
@@ -137,6 +148,7 @@ describe('RuleExecutorService', () => {
       progressManager,
       logger,
       recentlyHandledMedia,
+      createMockServarrTagService(),
     );
 
     return {
@@ -356,6 +368,58 @@ describe('RuleExecutorService', () => {
       collectionService.syncMediaServerChildrenToCollection,
     ).not.toHaveBeenCalled();
     expect(collectionService.addToCollection).not.toHaveBeenCalled();
+    expect(logger.debug).toHaveBeenCalledWith(
+      "Skipping manual child import for newly linked automatic collection 'Test Collection' to avoid marking existing collection contents as manual.",
+    );
+  });
+
+  it('skips manual import using the pre-run link snapshot even when the collection now reports as linked', async () => {
+    const { service, mediaServer, collectionService, logger } = createService(
+      MediaServerType.JELLYFIN,
+    );
+
+    // Mirrors production: by sync time the collection already has a
+    // mediaServerId because handleCollection linked it to a pre-existing,
+    // same-named BoxSet earlier in this run. The pre-run snapshot (false) must
+    // still win so the BoxSet's existing contents are NOT absorbed as manual.
+    collectionService.getCollection.mockResolvedValue({
+      id: 1,
+      title: 'Test Collection',
+      mediaServerId: 'coll-1',
+      manualCollection: false,
+    } as any);
+    collectionService.checkAutomaticMediaServerLink.mockResolvedValue({
+      id: 1,
+      title: 'Test Collection',
+      mediaServerId: 'coll-1',
+      manualCollection: false,
+    } as any);
+    collectionService.getCollectionMedia.mockResolvedValue([]);
+    mediaServer.getCollectionChildren.mockResolvedValue([{ id: 'm-existing' }]);
+
+    await (
+      service as unknown as {
+        syncManualMediaServerToCollectionDB: (
+          ruleGroup: { id: number; collectionId: number },
+          collectionSyncChanges: {
+            addedMediaServerIds: Set<string>;
+            removedMediaServerIds: Set<string>;
+          },
+          collectionLinkedBeforeRun: boolean,
+        ) => Promise<void>;
+      }
+    ).syncManualMediaServerToCollectionDB(
+      { id: 10, collectionId: 1 },
+      {
+        addedMediaServerIds: new Set(),
+        removedMediaServerIds: new Set(),
+      },
+      false,
+    );
+
+    expect(
+      collectionService.syncMediaServerChildrenToCollection,
+    ).not.toHaveBeenCalled();
     expect(logger.debug).toHaveBeenCalledWith(
       "Skipping manual child import for newly linked automatic collection 'Test Collection' to avoid marking existing collection contents as manual.",
     );
@@ -1611,5 +1675,76 @@ describe('RuleExecutorService', () => {
       MaintainerrEvent.CollectionMedia_Removed,
       expect.anything(),
     );
+  });
+
+  describe('prefetchWatchHistory', () => {
+    const ruleGroup = {
+      id: 10,
+      name: 'Test Rule',
+      isActive: true,
+      libraryId: 'library-1',
+      useRules: true,
+      rules: [],
+      collectionId: 1,
+      collection: { title: 'Test Collection' },
+    };
+
+    it('calls prefetchWatchHistory when the server supports central watch history (Plex)', async () => {
+      const { service, rulesService, mediaServer } = createService(
+        MediaServerType.PLEX,
+      );
+      rulesService.getRuleGroup.mockResolvedValue(ruleGroup as any);
+      rulesService.getRuleGroupById.mockResolvedValue(ruleGroup as any);
+      (mediaServer as any).prefetchWatchHistory = jest
+        .fn()
+        .mockResolvedValue(undefined);
+
+      await service.executeForRuleGroups(10, new AbortController().signal);
+
+      expect((mediaServer as any).prefetchWatchHistory).toHaveBeenCalledTimes(
+        1,
+      );
+    });
+
+    it('does not prefetch when the server lacks central watch history (e.g. Jellyfin)', async () => {
+      const { service, rulesService, mediaServer } = createService(
+        MediaServerType.JELLYFIN,
+      );
+      rulesService.getRuleGroup.mockResolvedValue(ruleGroup as any);
+      rulesService.getRuleGroupById.mockResolvedValue(ruleGroup as any);
+      (mediaServer as any).prefetchWatchHistory = jest.fn();
+
+      await expect(
+        service.executeForRuleGroups(10, new AbortController().signal),
+      ).resolves.toEqual({ status: 'success' });
+      expect((mediaServer as any).prefetchWatchHistory).not.toHaveBeenCalled();
+    });
+
+    it('does not start the prefetch when aborted just before evaluation', async () => {
+      const { service, rulesService, mediaServer } = createService(
+        MediaServerType.PLEX,
+      );
+      rulesService.getRuleGroup.mockResolvedValue(ruleGroup as any);
+      rulesService.getRuleGroupById.mockResolvedValue(ruleGroup as any);
+      (mediaServer as any).prefetchWatchHistory = jest
+        .fn()
+        .mockResolvedValue(undefined);
+
+      // Abort during the pre-evaluation cache reset, i.e. after the top-level
+      // abort check but before the prefetch — so only the pre-prefetch check
+      // can stop the sweep.
+      const abortController = new AbortController();
+      rulesService.resetCacheIfGroupUsesRuleThatRequiresIt.mockImplementation(
+        async () => {
+          abortController.abort();
+          return false;
+        },
+      );
+
+      await expect(
+        service.executeForRuleGroups(10, abortController.signal),
+      ).resolves.toEqual({ status: 'aborted' });
+      expect((mediaServer as any).prefetchWatchHistory).not.toHaveBeenCalled();
+    });
   });
 });

@@ -60,7 +60,30 @@ export class SettingDto {
 
   streamystats_url: string;
 
+  download_client_url: string;
+
+  download_client_username: string;
+
+  download_client_password: string;
+
+  download_client_delete_data: boolean;
+
+  download_client_fallback_ratio: number;
+
   collection_handler_job_cron: string;
 
   rules_handler_job_cron: string;
+
+  // *arr exclusion tagging (https://features.maintainerr.info/posts/81) — Radarr and Sonarr configured independently
+  radarr_tag_exclusions: boolean;
+
+  radarr_exclusion_tag: string;
+
+  radarr_untag_on_unexclude: boolean;
+
+  sonarr_tag_exclusions: boolean;
+
+  sonarr_exclusion_tag: string;
+
+  sonarr_untag_on_unexclude: boolean;
 }

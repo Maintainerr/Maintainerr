@@ -1,9 +1,11 @@
 import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { ActionsModule } from '../actions/actions.module';
 import { MediaServerModule } from '../api/media-server/media-server.module';
 import { SeerrApiModule } from '../api/seerr-api/seerr-api.module';
 import { PlexApiModule } from '../api/plex-api/plex-api.module';
 import { ServarrApiModule } from '../api/servarr-api/servarr-api.module';
+import { StreamystatsApiModule } from '../api/streamystats-api/streamystats-api.module';
 import { TautulliApiModule } from '../api/tautulli-api/tautulli-api.module';
 import { CollectionsModule } from '../collections/collections.module';
 import { Collection } from '../collections/entities/collection.entities';
@@ -25,6 +27,7 @@ import { SeerrGetterService } from './getter/seerr-getter.service';
 import { PlexGetterService } from './getter/plex-getter.service';
 import { RadarrGetterService } from './getter/radarr-getter.service';
 import { SonarrGetterService } from './getter/sonarr-getter.service';
+import { StreamystatsGetterService } from './getter/streamystats-getter.service';
 import { TautulliGetterService } from './getter/tautulli-getter.service';
 import {
   RuleComparatorService,
@@ -58,7 +61,9 @@ import { RuleMaintenanceService } from './tasks/rule-maintenance.service';
     ]),
     SeerrApiModule,
     TautulliApiModule,
+    StreamystatsApiModule,
     MetadataModule,
+    ActionsModule,
     forwardRef(() => CollectionsModule),
     TasksModule,
   ],
@@ -77,6 +82,7 @@ import { RuleMaintenanceService } from './tasks/rule-maintenance.service';
     SonarrGetterService,
     SeerrGetterService,
     TautulliGetterService,
+    StreamystatsGetterService,
     ValueGetterService,
     RuleYamlService,
     RuleComparatorService,

@@ -1,4 +1,7 @@
-import { createMockLogger } from '../../../test/utils/data';
+import {
+  createMockLogger,
+  createMockServarrTagService,
+} from '../../../test/utils/data';
 import {
   Application,
   RulePossibility,
@@ -26,6 +29,7 @@ describe('RulesService.updateRules', () => {
       ruleComparatorServiceFactory: unknown;
       ruleMigrationService: unknown;
       eventEmitter: unknown;
+      servarrTagService: unknown;
     }> = {},
   ) =>
     new RulesService(
@@ -44,8 +48,12 @@ describe('RulesService.updateRules', () => {
       (overrides.ruleComparatorServiceFactory ?? {}) as any,
       (overrides.ruleMigrationService ?? {}) as any,
       (overrides.eventEmitter ?? {}) as any,
+      (overrides.servarrTagService ?? createMockServarrTagService()) as any,
       logger as any,
     );
+
+  // Let the fire-and-forget membership reconcile settle before asserting on it.
+  const flushAsync = () => new Promise((resolve) => setImmediate(resolve));
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -143,6 +151,78 @@ describe('RulesService.updateRules', () => {
       code: 0,
       result: 'Validation failed',
       message: 'Validation failed',
+    });
+  });
+
+  it('rejects missing operators on non-first rules before saving', async () => {
+    const ruleGroupRepository = {
+      findOne: jest.fn().mockResolvedValue(null),
+    };
+
+    const service = createRulesService({ ruleGroupRepository });
+
+    const result = await service.updateRules({
+      id: 999,
+      libraryId: '1',
+      dataType: 'movie',
+      name: 'Test',
+      description: '',
+      rules: [
+        {
+          operator: null,
+          action: RulePossibility.EXISTS,
+          firstVal: [Application.PLEX, 10],
+          section: 0,
+        },
+        {
+          operator: null,
+          action: RulePossibility.EXISTS,
+          firstVal: [Application.PLEX, 10],
+          section: 1,
+        },
+      ],
+    } as any);
+
+    expect(ruleGroupRepository.findOne).not.toHaveBeenCalled();
+    expect(result).toEqual({
+      code: 0,
+      result: 'Operator is required for every rule after the first',
+      message: 'Operator is required for every rule after the first',
+    });
+  });
+
+  it('returns a clean status (not a crash) when a rule references a property not on this server', async () => {
+    const ruleGroupRepository = {
+      findOne: jest.fn().mockResolvedValue(null),
+    };
+
+    const service = createRulesService({ ruleGroupRepository });
+
+    const result = await service.updateRules({
+      id: 999,
+      libraryId: '1',
+      dataType: 'movie',
+      name: 'Test',
+      description: '',
+      rules: [
+        {
+          operator: null,
+          action: RulePossibility.EQUALS,
+          // Application/property that does not exist (e.g. an imported rule for
+          // an unconfigured service). Previously threw a TypeError that surfaced
+          // as a generic "Unexpected error occurred".
+          firstVal: [999, 999],
+          customVal: { ruleTypeId: 0, value: '1' },
+          section: 0,
+        },
+      ],
+    } as any);
+
+    expect(ruleGroupRepository.findOne).not.toHaveBeenCalled();
+    expect(result).toEqual({
+      code: 0,
+      result: 'First value is not available for this server',
+      message: 'First value is not available for this server',
     });
   });
 
@@ -251,6 +331,82 @@ describe('RulesService.updateRules', () => {
     expect(rulesRepository.delete).toHaveBeenCalledWith({
       ruleGroupId: group.id,
     });
+    expect(result).toEqual({
+      code: 1,
+      result: 'Success',
+      message: 'Success',
+    });
+  });
+
+  // Leaving the collection block out of an update shouldn't throw, wipe media,
+  // or quietly drop the saved keepLogsForMonths, manual link, or visibility
+  // (#3044 + partial-update review).
+  it('keeps existing collection settings when the collection block is omitted', async () => {
+    const group = { id: 5, collectionId: 42, dataType: 'movie' };
+    const dbCollection = {
+      id: 42,
+      libraryId: 'lib-1',
+      mediaServerId: 'col-1',
+      manualCollection: true,
+      manualCollectionName: 'Shared Collection',
+      visibleOnHome: true,
+      visibleOnRecommended: true,
+    };
+
+    const collectionMediaRepository = { delete: jest.fn() };
+    const collectionService = {
+      getCollection: jest.fn().mockResolvedValue(dbCollection),
+      saveCollection: jest.fn().mockResolvedValue(undefined),
+      addLogRecord: jest.fn().mockResolvedValue(undefined),
+      updateCollection: jest
+        .fn()
+        .mockResolvedValue({ dbCollection: { id: 42 } }),
+    };
+    const mediaServer = {
+      cleanupCollectionForLibrary: jest.fn().mockResolvedValue(undefined),
+      getLibraries: jest
+        .fn()
+        .mockResolvedValue([{ id: 'lib-1', title: 'Movies', type: 'movie' }]),
+    };
+
+    const service = createRulesService({
+      rulesRepository: { delete: jest.fn(), save: jest.fn() },
+      ruleGroupRepository: { findOne: jest.fn().mockResolvedValue(group) },
+      collectionMediaRepository,
+      exclusionRepo: { delete: jest.fn() },
+      collectionService,
+      mediaServerFactory: {
+        getService: jest.fn().mockReturnValue(mediaServer),
+      },
+    });
+
+    jest
+      .spyOn(service as any, 'createOrUpdateGroup')
+      .mockResolvedValue(group.id);
+
+    const result = await service.updateRules({
+      id: group.id,
+      libraryId: 'lib-1',
+      dataType: 'movie',
+      name: 'No collection block',
+      description: '',
+      rules: [],
+      useRules: true,
+      isActive: true,
+      // collection intentionally omitted
+    } as any);
+
+    // An absent block means "unchanged", not a crucial change or a reset.
+    expect(collectionMediaRepository.delete).not.toHaveBeenCalled();
+    expect(collectionService.updateCollection).toHaveBeenCalledWith(
+      expect.objectContaining({
+        keepLogsForMonths: 6,
+        manualCollection: true,
+        manualCollectionName: 'Shared Collection',
+        visibleOnHome: true,
+        visibleOnRecommended: true,
+      }),
+    );
     expect(result).toEqual({
       code: 1,
       result: 'Success',
@@ -397,5 +553,174 @@ describe('RulesService.updateRules', () => {
     } as any);
 
     expect(collectionService.applyCollectionSort).not.toHaveBeenCalled();
+  });
+
+  it('backfills *arr membership tags when tagInArr is turned on (false→true)', async () => {
+    const group = { id: 5, collectionId: 42, dataType: 'movie' };
+    const dbCollection = {
+      id: 42,
+      libraryId: '1',
+      manualCollection: false,
+      manualCollectionName: '',
+      tagInArr: false,
+    };
+    const savedCollection = {
+      id: 42,
+      title: 'My Group',
+      type: 'movie',
+      radarrSettingsId: 1,
+      tagInArr: true,
+    };
+    const members = [{ mediaServerId: 'm1', tmdbId: 1, tvdbId: null }];
+    const servarrTagService = createMockServarrTagService();
+    const collectionService = {
+      getCollection: jest.fn().mockResolvedValue(dbCollection),
+      saveCollection: jest.fn().mockResolvedValue(undefined),
+      addLogRecord: jest.fn().mockResolvedValue(undefined),
+      updateCollection: jest
+        .fn()
+        .mockResolvedValue({ dbCollection: savedCollection }),
+      getCollectionMedia: jest.fn().mockResolvedValue(members),
+      applyCollectionSort: jest.fn(),
+    };
+    const mediaServer = {
+      getLibraries: jest
+        .fn()
+        .mockResolvedValue([{ id: '1', title: 'Movies', type: 'movie' }]),
+    };
+    const service = createRulesService({
+      rulesRepository: {
+        delete: jest.fn().mockResolvedValue(undefined),
+        save: jest.fn().mockResolvedValue(undefined),
+      },
+      ruleGroupRepository: { findOne: jest.fn().mockResolvedValue(group) },
+      collectionMediaRepository: {
+        delete: jest.fn().mockResolvedValue(undefined),
+      },
+      collectionService,
+      mediaServerFactory: {
+        getService: jest.fn().mockReturnValue(mediaServer),
+      },
+      servarrTagService,
+    });
+    jest
+      .spyOn(service as any, 'createOrUpdateGroup')
+      .mockResolvedValue(group.id);
+
+    await service.updateRules({
+      id: 5,
+      libraryId: '1',
+      dataType: 'movie',
+      name: 'My Group',
+      description: '',
+      rules: [],
+      useRules: false,
+      isActive: true,
+      radarrSettingsId: 1,
+      tagInArr: true,
+      collection: {
+        manualCollection: false,
+        manualCollectionName: '',
+        keepLogsForMonths: 1,
+      },
+      notifications: [],
+    } as any);
+    await flushAsync();
+
+    expect(servarrTagService.syncMembershipTags).toHaveBeenCalledWith(
+      savedCollection,
+      [{ mediaServerId: 'm1', tmdbId: 1, tvdbId: null }],
+      [],
+    );
+  });
+
+  it('untags members captured before the wipe when tagInArr is disabled alongside a crucial change', async () => {
+    const group = { id: 5, collectionId: 42, dataType: 'movie' };
+    const dbCollection = {
+      id: 42,
+      libraryId: 'old-lib',
+      mediaServerId: 'srv-coll',
+      manualCollection: false,
+      manualCollectionName: '',
+      title: 'My Group',
+      type: 'movie',
+      radarrSettingsId: 1,
+      tagInArr: true,
+    };
+    const savedCollection = {
+      id: 42,
+      title: 'My Group',
+      type: 'movie',
+      radarrSettingsId: 1,
+      tagInArr: false,
+    };
+    const members = [{ mediaServerId: 'm1', tmdbId: 1, tvdbId: null }];
+    const servarrTagService = createMockServarrTagService();
+    const collectionService = {
+      getCollection: jest.fn().mockResolvedValue(dbCollection),
+      saveCollection: jest.fn().mockResolvedValue(undefined),
+      addLogRecord: jest.fn().mockResolvedValue(undefined),
+      updateCollection: jest
+        .fn()
+        .mockResolvedValue({ dbCollection: savedCollection }),
+      // members exist pre-wipe; the crucial-change deletion empties them afterward
+      getCollectionMedia: jest
+        .fn()
+        .mockResolvedValueOnce(members)
+        .mockResolvedValue([]),
+      applyCollectionSort: jest.fn(),
+    };
+    const mediaServer = {
+      cleanupCollectionForLibrary: jest.fn().mockResolvedValue(undefined),
+      getLibraries: jest
+        .fn()
+        .mockResolvedValue([{ id: 'new-lib', title: 'Movies', type: 'movie' }]),
+    };
+    const service = createRulesService({
+      rulesRepository: {
+        delete: jest.fn().mockResolvedValue(undefined),
+        save: jest.fn().mockResolvedValue(undefined),
+      },
+      ruleGroupRepository: { findOne: jest.fn().mockResolvedValue(group) },
+      collectionMediaRepository: {
+        delete: jest.fn().mockResolvedValue(undefined),
+      },
+      exclusionRepo: { delete: jest.fn().mockResolvedValue(undefined) },
+      collectionService,
+      mediaServerFactory: {
+        getService: jest.fn().mockReturnValue(mediaServer),
+      },
+      servarrTagService,
+    });
+    jest
+      .spyOn(service as any, 'createOrUpdateGroup')
+      .mockResolvedValue(group.id);
+
+    await service.updateRules({
+      id: 5,
+      libraryId: 'new-lib',
+      dataType: 'movie',
+      name: 'My Group',
+      description: '',
+      rules: [],
+      useRules: false,
+      isActive: true,
+      radarrSettingsId: 1,
+      tagInArr: false,
+      collection: {
+        manualCollection: false,
+        manualCollectionName: '',
+        keepLogsForMonths: 1,
+      },
+      notifications: [],
+    } as any);
+    await flushAsync();
+
+    // untagged via the previous collection, using the pre-wipe member snapshot
+    expect(servarrTagService.syncMembershipTags).toHaveBeenCalledWith(
+      dbCollection,
+      [],
+      [{ mediaServerId: 'm1', tmdbId: 1, tvdbId: null }],
+    );
   });
 });

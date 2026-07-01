@@ -109,9 +109,53 @@ export class Settings implements SettingDto {
   @Column({ nullable: true })
   streamystats_url: string;
 
+  // Download client integration (currently qBittorrent)
+  @Column({ nullable: true })
+  download_client_url: string;
+
+  @Column({ nullable: true })
+  download_client_username: string;
+
+  @Column({ nullable: true })
+  download_client_password: string;
+
+  @Column({ type: 'boolean', nullable: true, default: true })
+  download_client_delete_data: boolean;
+
+  // Fallback seeding ratio applied only when the download client enforces no
+  // ratio/seed-time limit of its own. Defaults to 0.5; the UI/contract forbid
+  // setting it lower.
+  @Column({ type: 'float', nullable: false, default: 0.5 })
+  download_client_fallback_ratio: number;
+
   @Column({ nullable: false, default: CronExpression.EVERY_12_HOURS })
   collection_handler_job_cron: string;
 
   @Column({ nullable: false, default: CronExpression.EVERY_8_HOURS })
   rules_handler_job_cron: string;
+
+  // *arr exclusion tagging (https://features.maintainerr.info/posts/81): when an item is excluded, optionally apply a
+  // protective tag (default "dnd") to the matching *arr entity, giving the *arr
+  // instance a single source of truth for "do not touch". Radarr and Sonarr are
+  // configured independently (each its own enable / label / removal policy);
+  // only the apply/remove logic is shared. `*_untag_on_unexclude` is conservative
+  // by default (off) so a manually-set tag is never stripped, and even when on
+  // only ever touches the configured label.
+  @Column({ type: 'boolean', nullable: false, default: false })
+  radarr_tag_exclusions: boolean;
+
+  @Column({ nullable: false, default: 'dnd' })
+  radarr_exclusion_tag: string;
+
+  @Column({ type: 'boolean', nullable: false, default: false })
+  radarr_untag_on_unexclude: boolean;
+
+  @Column({ type: 'boolean', nullable: false, default: false })
+  sonarr_tag_exclusions: boolean;
+
+  @Column({ nullable: false, default: 'dnd' })
+  sonarr_exclusion_tag: string;
+
+  @Column({ type: 'boolean', nullable: false, default: false })
+  sonarr_untag_on_unexclude: boolean;
 }

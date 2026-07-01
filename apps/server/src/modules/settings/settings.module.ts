@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { InternalApiModule } from '../api/internal-api/internal-api.module';
 import { MediaServerModule } from '../api/media-server/media-server.module';
 import { SeerrApiModule } from '../api/seerr-api/seerr-api.module';
+import { DownloadClientApiModule } from '../api/download-client-api/download-client-api.module';
 import { PlexApiModule } from '../api/plex-api/plex-api.module';
 import { ServarrApiModule } from '../api/servarr-api/servarr-api.module';
 import { StreamystatsApiModule } from '../api/streamystats-api/streamystats-api.module';
@@ -35,6 +36,7 @@ import { SettingsDataService } from './settings-data.service';
     SeerrApiModule,
     TautulliApiModule,
     StreamystatsApiModule,
+    DownloadClientApiModule,
     TmdbApiModule,
     TvdbApiModule,
     InternalApiModule,

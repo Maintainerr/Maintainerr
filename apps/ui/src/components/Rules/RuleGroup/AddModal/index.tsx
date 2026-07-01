@@ -308,6 +308,7 @@ export const ruleGroupFormSchema = z
     sonarrSettingsId: z.number().int().nullable().optional(),
     radarrQualityProfileId: z.number().int().nullable().optional(),
     sonarrQualityProfileId: z.number().int().nullable().optional(),
+    tagInArr: z.boolean().optional(),
     ruleHandlerCronSchedule: z.preprocess(
       (val) => (val === '' ? null : val),
       z
@@ -399,8 +400,28 @@ const buildFormDefaults = (editData?: IRuleGroup): RuleGroupFormValues => ({
   sonarrQualityProfileId: editData
     ? (editData.collection?.sonarrQualityProfileId ?? undefined)
     : undefined,
+  tagInArr: editData?.collection?.tagInArr ?? false,
   ruleHandlerCronSchedule: editData?.ruleHandlerCronSchedule ?? null,
 })
+
+/**
+ * Tell the user that some rules were dropped because a property isn't available
+ * (no equivalent on the configured media server, or an unresolved identifier).
+ * Shared by the community import, YAML import and YAML export paths, so the copy
+ * stays neutral about direction.
+ */
+const notifySkippedRules = (skipped: number) => {
+  if (skipped <= 0) return
+  const plural = skipped !== 1
+  toast.warn(
+    `${skipped} rule${plural ? 's' : ''} ${plural ? 'were' : 'was'} skipped — ${
+      plural
+        ? "they use properties that aren't available"
+        : "it uses a property that isn't available"
+    }.`,
+    { autoClose: 6000 },
+  )
+}
 
 const AddModal = (props: AddModal) => {
   const navigate = useNavigate()
@@ -461,16 +482,11 @@ const AddModal = (props: AddModal) => {
   }) as number | null | undefined
   const useRulesEnabled = useWatch({ control, name: 'useRules' })
   const arrActionValue = useWatch({ control, name: 'arrAction' }) as
-    | number
-    | undefined
+    number | undefined
   const radarrSettingsId = useWatch({ control, name: 'radarrSettingsId' }) as
-    | number
-    | null
-    | undefined
+    number | null | undefined
   const sonarrSettingsId = useWatch({ control, name: 'sonarrSettingsId' }) as
-    | number
-    | null
-    | undefined
+    number | null | undefined
   const radarrQualityProfileId = useWatch({
     control,
     name: 'radarrQualityProfileId',
@@ -483,7 +499,7 @@ const AddModal = (props: AddModal) => {
   const hasSelectedSonarrServer = sonarrSettingsId != null
   const [showCommunityModal, setShowCommunityModal] = useState(false)
   const [yamlImporterModal, setYamlImporterModal] = useState(false)
-  const [configureNotificionModal, setConfigureNotificationModal] =
+  const [configureNotificationModal, setConfigureNotificationModal] =
     useState(false)
 
   const [yaml, setYaml] = useState<string | undefined>(undefined)
@@ -598,6 +614,7 @@ const AddModal = (props: AddModal) => {
     setValue('sonarrSettingsId', undefined)
     setValue('radarrQualityProfileId', undefined)
     setValue('sonarrQualityProfileId', undefined)
+    setValue('tagInArr', false)
     updateArrOption(ServarrAction.DELETE)
 
     // Clear rules that reference *arr servers since we're resetting them
@@ -643,6 +660,12 @@ const AddModal = (props: AddModal) => {
       setValue('sonarrQualityProfileId', undefined)
     }
 
+    // Drop the membership-tag opt-in if the matching *arr server is deselected;
+    // the checkbox hides with the server, so don't leave a stale enabled flag.
+    if (settingId == null) {
+      setValue('tagInArr', false)
+    }
+
     const newRadarrId = type === 'Radarr' ? settingId : undefined
     const newSonarrId = type === 'Sonarr' ? settingId : undefined
 
@@ -677,6 +700,7 @@ const AddModal = (props: AddModal) => {
 
     if (response.code === 1) {
       setYaml(response.result)
+      notifySkippedRules(response.skipped ?? 0)
 
       if (!yamlImporterModal) {
         setYamlImporterModal(true)
@@ -713,6 +737,7 @@ const AddModal = (props: AddModal) => {
       toast.success('Successfully imported rules from Yaml.', {
         autoClose: 5000,
       })
+      notifySkippedRules(response.skipped ?? 0)
     } else {
       toast.error(response.message, { autoClose: 5000 })
     }
@@ -727,6 +752,7 @@ const AddModal = (props: AddModal) => {
     if (response && response.code === 1) {
       const migratedRules = JSON.parse(response.result) as IRule[]
       updateRules(migratedRules)
+      notifySkippedRules(rules.length - migratedRules.length)
     } else {
       // If migration fails, use original rules
       updateRules(rules)
@@ -786,6 +812,7 @@ const AddModal = (props: AddModal) => {
       sonarrSettingsId: data.sonarrSettingsId ?? undefined,
       radarrQualityProfileId: data.radarrQualityProfileId ?? undefined,
       sonarrQualityProfileId: data.sonarrQualityProfileId ?? undefined,
+      tagInArr: data.tagInArr ?? false,
       collection: {
         visibleOnRecommended: data.showRecommended,
         visibleOnHome: data.showHome,
@@ -945,35 +972,29 @@ const AddModal = (props: AddModal) => {
                     </label>
                     <div className="form-input">
                       <div className="form-input-field">
-                        {(() => {
-                          const field = register('libraryId')
-                          return (
-                            <Select
-                              id="library"
-                              {...field}
-                              onChange={(event) => {
-                                field.onChange(event)
-                                updateLibraryId(event.target.value)
-                              }}
-                            >
-                              {selectedLibraryId === '' && (
-                                <option value="" disabled></option>
-                              )}
-                              {showStoredLibraryFallback && storedLibraryId && (
-                                <option value={storedLibraryId}>
-                                  Stored library (unavailable)
-                                </option>
-                              )}
-                              {libraries?.map((data: MediaLibrary) => {
-                                return (
-                                  <option key={data.id} value={data.id}>
-                                    {data.title}
-                                  </option>
-                                )
-                              })}
-                            </Select>
-                          )
-                        })()}
+                        <Select
+                          id="library"
+                          {...register('libraryId', {
+                            onChange: (event) =>
+                              updateLibraryId(event.target.value),
+                          })}
+                        >
+                          {selectedLibraryId === '' && (
+                            <option value="" disabled></option>
+                          )}
+                          {showStoredLibraryFallback && storedLibraryId && (
+                            <option value={storedLibraryId}>
+                              Stored library (unavailable)
+                            </option>
+                          )}
+                          {libraries?.map((data: MediaLibrary) => {
+                            return (
+                              <option key={data.id} value={data.id}>
+                                {data.title}
+                              </option>
+                            )
+                          })}
+                        </Select>
                       </div>
                       {(librariesError || storedLibraryMissing) && (
                         <p className="mt-1 text-xs text-warning-500">
@@ -1033,30 +1054,24 @@ const AddModal = (props: AddModal) => {
                         </label>
                         <div className="form-input">
                           <div className="form-input-field">
-                            {(() => {
-                              const field = register('dataType')
-                              return (
-                                <Select
-                                  id="type"
-                                  {...field}
-                                  onChange={(event) => {
-                                    field.onChange(event)
-                                    updateArrOption(ServarrAction.DELETE)
-                                  }}
-                                >
-                                  {/* Show TV-related types: show, season, episode */}
-                                  {(['show', 'season', 'episode'] as const).map(
-                                    (mediaType) => (
-                                      <option key={mediaType} value={mediaType}>
-                                        {mediaType[0].toUpperCase() +
-                                          mediaType.slice(1) +
-                                          's'}
-                                      </option>
-                                    ),
-                                  )}
-                                </Select>
-                              )
-                            })()}
+                            <Select
+                              id="type"
+                              {...register('dataType', {
+                                onChange: () =>
+                                  updateArrOption(ServarrAction.DELETE),
+                              })}
+                            >
+                              {/* Show TV-related types: show, season, episode */}
+                              {(['show', 'season', 'episode'] as const).map(
+                                (mediaType) => (
+                                  <option key={mediaType} value={mediaType}>
+                                    {mediaType[0].toUpperCase() +
+                                      mediaType.slice(1) +
+                                      's'}
+                                  </option>
+                                ),
+                              )}
+                            </Select>
                           </div>
                           {errors.dataType && (
                             <p className="mt-1 text-xs text-error-400">
@@ -1328,7 +1343,46 @@ const AddModal = (props: AddModal) => {
                       </div>
                     )}
 
-                    {seerrEnabled && (
+                    {/* Strict 'show' (not selectedLibraryType) on purpose:
+                        Sonarr tags are series-level, so season/episode
+                        collections — which map to 'show' — are excluded. */}
+                    {((selectedLibraryType === 'movie' &&
+                      hasSelectedRadarrServer) ||
+                      (selectedType === 'show' && hasSelectedSonarrServer)) && (
+                      <div className="flex flex-row items-center justify-between py-4">
+                        <label htmlFor="tag_in_arr" className="text-label">
+                          Tag this content in{' '}
+                          {selectedLibraryType === 'movie'
+                            ? 'Radarr'
+                            : 'Sonarr'}
+                          <p className="text-xs font-normal">
+                            Tag matching{' '}
+                            {selectedLibraryType === 'movie'
+                              ? 'movies'
+                              : 'shows'}{' '}
+                            in{' '}
+                            {selectedLibraryType === 'movie'
+                              ? 'Radarr'
+                              : 'Sonarr'}{' '}
+                            with a tag based on this rule group&apos;s name
+                            while they&apos;re in the {collectionTerm}, removed
+                            when they leave
+                          </p>
+                        </label>
+                        <div className="form-input">
+                          <div className="form-input-field">
+                            <input
+                              type="checkbox"
+                              id="tag_in_arr"
+                              className="checkbox"
+                              {...register('tagInArr')}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {seerrEnabled && selectedType !== 'episode' && (
                       <div className="flex flex-row items-center justify-between py-4">
                         <label htmlFor="force_seerr" className="text-label">
                           Force delete Seerr request
@@ -1427,9 +1481,6 @@ const AddModal = (props: AddModal) => {
                         className="text-label flex flex-wrap gap-1"
                       >
                         Notifications
-                        <span className="ml-1.5 rounded-full bg-maintainerr-600 px-3 text-white">
-                          BETA
-                        </span>
                       </label>
                       <div className="flex justify-end px-2 py-2">
                         <div className="form-input-field w-32">
@@ -1440,7 +1491,7 @@ const AddModal = (props: AddModal) => {
                             className="w-full bg-maintainerr-600! hover:bg-maintainerr!"
                             onClick={() => {
                               setConfigureNotificationModal(
-                                !configureNotificionModal,
+                                !configureNotificationModal,
                               )
                             }}
                           >
@@ -1640,46 +1691,37 @@ const AddModal = (props: AddModal) => {
                       </p>
                     </div>
                     <div className="ml-auto">
-                      <button
-                        className="ml-3 flex h-fit rounded-sm bg-maintainerrdark p-1 text-sm text-zinc-900 shadow-md hover:bg-maintainerrdark-800 md:h-10 md:text-base"
+                      <Button
+                        buttonType="success"
+                        className="ml-3"
                         onClick={toggleCommunityRuleModal}
                         type="button"
                       >
-                        {
-                          <CloudDownloadIcon className="m-auto ml-4 h-6 w-6 text-zinc-200" />
-                        }
-                        <p className="button-text m-auto mr-4 ml-1 text-zinc-100">
-                          Community
-                        </p>
-                      </button>
+                        <CloudDownloadIcon className="mr-2 h-5 w-5" />
+                        Community
+                      </Button>
                     </div>
                   </div>
                   <div className="mt-4 flex items-center justify-center sm:justify-end">
-                    <button
-                      className="ml-3 flex h-fit rounded-sm bg-maintainerr-600 p-1 text-sm text-zinc-900 shadow-md hover:bg-maintainerr md:h-10 md:text-base"
+                    <Button
+                      buttonType="success"
+                      className="ml-3"
                       onClick={toggleYamlImporter}
                       type="button"
                     >
-                      {
-                        <DownloadIcon className="m-auto ml-4 h-6 w-6 text-zinc-200 md:h-6" />
-                      }
-                      <p className="button-text m-auto mr-4 ml-1 text-zinc-100">
-                        Import
-                      </p>
-                    </button>
+                      <DownloadIcon className="mr-2 h-5 w-5" />
+                      Import
+                    </Button>
 
-                    <button
-                      className="ml-3 flex h-fit rounded-sm bg-maintainerrdark p-1 text-sm shadow-md hover:bg-maintainerrdark-800 md:h-10 md:text-base"
+                    <Button
+                      buttonType="success"
+                      className="ml-3"
                       onClick={toggleYamlExporter}
                       type="button"
                     >
-                      {
-                        <UploadIcon className="m-auto ml-4 h-6 w-6 text-zinc-200" />
-                      }
-                      <p className="button-text m-auto mr-4 ml-1 text-zinc-100">
-                        Export
-                      </p>
-                    </button>
+                      <UploadIcon className="mr-2 h-5 w-5" />
+                      Export
+                    </Button>
                   </div>
                 </div>
                 {showCommunityModal && selectedLibraryType && (
@@ -1711,7 +1753,7 @@ const AddModal = (props: AddModal) => {
                   </LazyModalBoundary>
                 )}
 
-                {configureNotificionModal && (
+                {configureNotificationModal && (
                   <LazyModalBoundary
                     title="Configure Notifications"
                     onCancel={() => {
@@ -1777,7 +1819,7 @@ const AddModal = (props: AddModal) => {
                 label="Save"
                 pendingLabel="Save"
                 contentSize="compact"
-                className="w-full max-w-[160px]"
+                className="w-full max-w-40"
                 isPending={isCreatePending || isUpdatePending}
                 disabled={isCreatePending || isUpdatePending}
                 type="submit"
@@ -1785,7 +1827,7 @@ const AddModal = (props: AddModal) => {
 
               <Button
                 buttonType="default"
-                className="w-full max-w-[160px] justify-center"
+                className="w-full max-w-40 justify-center"
                 type="button"
                 onClick={cancel}
                 disabled={isCreatePending || isUpdatePending}

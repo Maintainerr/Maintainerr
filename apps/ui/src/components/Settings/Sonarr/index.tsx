@@ -13,6 +13,7 @@ import {
   SettingsFeedbackAlert,
   useSettingsFeedback,
 } from '../useSettingsFeedback'
+import ExclusionTagSettings from '../Servarr/ExclusionTagSettings'
 import ServarrSettingsModal from '../Servarr/ServarrSettingsModal'
 
 type DeleteSonarrSettingResponseDto =
@@ -118,7 +119,9 @@ const SonarrSettings = () => {
 
         <SettingsFeedbackAlert feedback={feedback} />
 
-        <ul className="grid max-w-6xl grid-cols-1 gap-6 lg:grid-cols-2 xl:grid-cols-3">
+        {/* Reserve the card-row height so the list doesn't pop in / shift the
+            page (no layout shift) while the server list loads. */}
+        <ul className="grid min-h-39 max-w-6xl grid-cols-1 gap-6 lg:grid-cols-2 xl:grid-cols-3">
           {loaded
             ? settings.map((setting) => (
                 <li
@@ -161,7 +164,7 @@ const SonarrSettings = () => {
             <li className="flex h-full min-h-39 items-center justify-center rounded-xl border-2 border-dashed border-gray-400 bg-zinc-800 p-4 text-zinc-400 shadow-sm">
               <button
                 type="button"
-                className="add-button m-auto flex h-9 rounded-sm bg-maintainerr-600 px-4 text-zinc-200 shadow-md hover:bg-maintainerr"
+                className="add-button m-auto flex h-9 rounded-md bg-maintainerr-600 px-4 text-zinc-200 shadow-md hover:bg-maintainerr"
                 onClick={showAddModal}
               >
                 {<PlusCircleIcon className="m-auto h-5" />}
@@ -170,6 +173,8 @@ const SonarrSettings = () => {
             </li>
           ) : null}
         </ul>
+
+        <ExclusionTagSettings service="sonarr" />
       </div>
       {settingsModalActive && (
         <ServarrSettingsModal

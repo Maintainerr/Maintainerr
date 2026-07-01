@@ -1,6 +1,6 @@
 import { ChevronDownIcon } from '@heroicons/react/solid'
 import clsx from 'clsx'
-import { ReactNode, SelectHTMLAttributes, forwardRef } from 'react'
+import { ReactNode, Ref, SelectHTMLAttributes } from 'react'
 
 // Field base styling lives in the global `input/select/textarea` rule in
 // globals.css (single source of truth). Only select-specific deltas live here
@@ -18,44 +18,46 @@ export type SelectProps = {
   className?: string
   error?: boolean
   join?: 'left' | 'right'
+  ref?: Ref<HTMLSelectElement>
 } & SelectHTMLAttributes<HTMLSelectElement>
 
-export const Select = forwardRef<HTMLSelectElement, SelectProps>(
-  (
-    { className, children, error, join, required, ...props }: SelectProps,
-    ref,
-  ) => {
-    const showChevron = !props.multiple && props.size == null
+export const Select = ({
+  className,
+  children,
+  error,
+  join,
+  required,
+  ref,
+  ...props
+}: SelectProps) => {
+  const showChevron = !props.multiple && props.size == null
 
-    return (
-      <div className="relative w-full">
-        <select
-          {...props}
-          ref={ref}
-          className={clsx(
-            selectClassNames.base,
-            showChevron && 'pr-9',
-            join === 'left' && selectClassNames.joinedLeft,
-            join === 'right' && selectClassNames.joinedRight,
-            !props.disabled &&
-              error &&
-              'border-error-500! outline-error-500 focus:border-error-500 focus:ring-0',
-            className,
-          )}
-          aria-required={required}
-          aria-invalid={error}
-        >
-          {children}
-        </select>
-        {showChevron ? (
-          <ChevronDownIcon className="pointer-events-none absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2 text-zinc-400" />
-        ) : null}
-      </div>
-    )
-  },
-)
-
-Select.displayName = 'Select'
+  return (
+    <div className="relative w-full">
+      <select
+        {...props}
+        ref={ref}
+        className={clsx(
+          selectClassNames.base,
+          showChevron && 'pr-9',
+          join === 'left' && selectClassNames.joinedLeft,
+          join === 'right' && selectClassNames.joinedRight,
+          !props.disabled &&
+            error &&
+            'border-error-500! outline-error-500 focus:border-error-500 focus:ring-0',
+          className,
+        )}
+        aria-required={required}
+        aria-invalid={error}
+      >
+        {children}
+      </select>
+      {showChevron ? (
+        <ChevronDownIcon className="pointer-events-none absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2 text-zinc-400" />
+      ) : null}
+    </div>
+  )
+}
 
 type SelectAdornmentProps = {
   children?: ReactNode
@@ -78,36 +80,33 @@ type SelectGroupProps = {
   label: string
   children?: ReactNode
   error?: string
+  ref?: Ref<HTMLSelectElement>
 } & SelectHTMLAttributes<HTMLSelectElement>
 
-export const SelectGroup = forwardRef<HTMLSelectElement, SelectGroupProps>(
-  ({ label, ...props }: SelectGroupProps, ref) => {
-    return (
-      <div className="mt-6 max-w-6xl sm:mt-5 sm:grid sm:grid-cols-3 sm:items-start sm:gap-4">
-        <label htmlFor={props.id || props.name} className="sm:mt-2">
-          {label} {props.required && <>*</>}
-        </label>
-        <div className="px-3 py-2 sm:col-span-2">
-          <div className="max-w-xl">
-            <Select
-              {...props}
-              ref={ref}
-              aria-describedby={props.error ? `${props.name}-error` : undefined}
-              error={!!props.error}
-            />
-            {props.error && (
-              <p
-                className={'mt-2 min-h-5 text-sm text-error-500'}
-                id={`${props.name}-error`}
-              >
-                {props.error}
-              </p>
-            )}
-          </div>
+export const SelectGroup = ({ label, ref, ...props }: SelectGroupProps) => {
+  return (
+    <div className="mt-6 max-w-6xl sm:mt-5 sm:grid sm:grid-cols-3 sm:items-start sm:gap-4">
+      <label htmlFor={props.id || props.name} className="sm:mt-2">
+        {label} {props.required && <>*</>}
+      </label>
+      <div className="px-3 py-2 sm:col-span-2">
+        <div className="max-w-xl">
+          <Select
+            {...props}
+            ref={ref}
+            aria-describedby={props.error ? `${props.name}-error` : undefined}
+            error={!!props.error}
+          />
+          {props.error && (
+            <p
+              className={'mt-2 min-h-5 text-sm text-error-500'}
+              id={`${props.name}-error`}
+            >
+              {props.error}
+            </p>
+          )}
         </div>
       </div>
-    )
-  },
-)
-
-SelectGroup.displayName = 'SelectGroup'
+    </div>
+  )
+}

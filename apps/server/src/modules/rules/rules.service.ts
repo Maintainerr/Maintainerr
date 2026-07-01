@@ -9,7 +9,8 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 import axios from 'axios';
 import _ from 'lodash';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, IsNull, Not, Repository } from 'typeorm';
+import { ServarrTagService } from '../actions/servarr-tag.service';
 import cacheManager from '../api/lib/cache';
 import { MediaServerFactory } from '../api/media-server/media-server.factory';
 import { IMediaServerService } from '../api/media-server/media-server.interface';
@@ -46,6 +47,7 @@ export interface ReturnStatus {
   code: 0 | 1;
   result?: string;
   message?: string;
+  skipped?: number;
 }
 
 @Injectable()
@@ -77,6 +79,7 @@ export class RulesService {
     private readonly ruleComparatorServiceFactory: RuleComparatorServiceFactory,
     private readonly ruleMigrationService: RuleMigrationService,
     private readonly eventEmitter: EventEmitter2,
+    private readonly servarrTagService: ServarrTagService,
     private readonly logger: MaintainerrLogger,
   ) {
     logger.setContext(RulesService.name);
@@ -119,6 +122,14 @@ export class RulesService {
       if (!settings.tautulli_url || !settings.tautulli_api_key) {
         localConstants.applications = localConstants.applications.filter(
           (el) => el.id !== Application.TAUTULLI,
+        );
+      }
+
+      // remove streamystats if not configured. It is Jellyfin-only and reuses
+      // the Jellyfin API key; the UI further restricts it to Jellyfin servers.
+      if (!settings.streamystats_url || !settings.jellyfin_api_key) {
+        localConstants.applications = localConstants.applications.filter(
+          (el) => el.id !== Application.STREAMYSTATS,
         );
       }
     }
@@ -241,7 +252,7 @@ export class RulesService {
     try {
       return await this.ruleGroupRepository.findOne({
         where: { id: ruleGroupId },
-        relations: ['notifications'],
+        relations: { notifications: true },
       });
     } catch (error) {
       this.logger.warn('Rules - Action failed');
@@ -254,7 +265,7 @@ export class RulesService {
     try {
       return await this.ruleGroupRepository.findOne({
         where: { collectionId: id },
-        relations: ['notifications'],
+        relations: { notifications: true },
       });
     } catch (error) {
       this.logger.warn('Rules - Action failed');
@@ -271,6 +282,28 @@ export class RulesService {
 
       if (group) {
         if (group.collectionId) {
+          // Behavior A: deleting a tagging group makes every member "leave" — strip
+          // their *arr membership tags first (best-effort), while the collection
+          // media rows still exist (deleteCollection removes them next).
+          try {
+            const collection = await this.collectionService.getCollection(
+              group.collectionId,
+            );
+            if (collection?.tagInArr) {
+              const members =
+                (await this.collectionService.getCollectionMedia(
+                  group.collectionId,
+                )) ?? [];
+              await this.servarrTagService.syncMembershipTags(
+                collection,
+                [],
+                members.map((m) => this.toArrTagItem(m)),
+              );
+            }
+          } catch (error) {
+            this.logger.debug(error);
+          }
+
           // DB cascade doesn't work.. So do it manually
           const collectionDeleteResult =
             await this.collectionService.deleteCollection(group.collectionId);
@@ -301,10 +334,29 @@ export class RulesService {
     }
   }
 
+  // Resolve the collection's media type: a movie library is always 'movie';
+  // a TV library uses the rule group's selected dataType (show/season/episode),
+  // defaulting to 'show'.
+  private resolveCollectionType(
+    libType: MediaItemType,
+    params: RulesDto,
+  ): MediaItemType {
+    if (libType === 'movie') {
+      return 'movie';
+    }
+    return params.dataType !== undefined ? params.dataType : 'show';
+  }
+
   async setRules(params: RulesDto) {
     try {
       let state: ReturnStatus = this.createReturnStatus(true, 'Success');
-      for (const rule of params.rules as RuleDto[]) {
+      for (const [index, rule] of (params.rules as RuleDto[]).entries()) {
+        if (state.code === 1 && index > 0 && rule.operator == null) {
+          state = this.createReturnStatus(
+            false,
+            'Operator is required for every rule after the first',
+          );
+        }
         this.normalizeRuleDiskPath(rule);
         if (state.code === 1) {
           state = this.validateRule(rule);
@@ -329,33 +381,35 @@ export class RulesService {
       const lib = (await mediaServer.getLibraries()).find(
         (el) => el.id === params.libraryId,
       );
+      const collectionType = this.resolveCollectionType(lib.type, params);
       const collection = (
         await this.collectionService.createCollection({
           libraryId: params.libraryId,
-          type:
-            lib.type === 'movie'
-              ? 'movie'
-              : params.dataType !== undefined
-                ? params.dataType
-                : 'show',
+          type: collectionType,
           title: params.name,
           description: params.description,
           arrAction: params.arrAction ? params.arrAction : 0,
           isActive: params.isActive,
           listExclusions: params.listExclusions ? params.listExclusions : false,
-          forceSeerr: params.forceSeerr ? params.forceSeerr : false,
+          // Force Seerr is unsupported for episode rules (Seerr has no
+          // per-episode request granularity), so never persist it enabled. The
+          // UI hides the toggle; this also clears the flag on re-save for rules
+          // created before it was hidden.
+          forceSeerr:
+            collectionType !== 'episode' && params.forceSeerr ? true : false,
           tautulliWatchedPercentOverride:
             params.tautulliWatchedPercentOverride ?? null,
           radarrSettingsId: params.radarrSettingsId ?? null,
           sonarrSettingsId: params.sonarrSettingsId ?? null,
           radarrQualityProfileId: params.radarrQualityProfileId ?? null,
           sonarrQualityProfileId: params.sonarrQualityProfileId ?? null,
+          tagInArr: params.tagInArr ?? false,
           visibleOnRecommended: params.collection?.visibleOnRecommended,
           visibleOnHome: params.collection?.visibleOnHome,
           deleteAfterDays: params.collection?.deleteAfterDays ?? null,
           manualCollection: params.collection?.manualCollection,
           manualCollectionName: params.collection?.manualCollectionName,
-          keepLogsForMonths: +params.collection?.keepLogsForMonths,
+          keepLogsForMonths: params.collection?.keepLogsForMonths ?? 6,
           sortTitle: params.collection?.sortTitle,
           mediaServerSort: params.collection?.mediaServerSort ?? null,
           overlayEnabled: params.collection?.overlayEnabled,
@@ -364,7 +418,7 @@ export class RulesService {
       )?.dbCollection;
 
       if (!collection) {
-        return undefined;
+        return this.createReturnStatus(false, 'Failed to create collection');
       }
 
       const groupId = await this.createOrUpdateGroup(
@@ -399,14 +453,20 @@ export class RulesService {
     } catch (error) {
       this.logger.warn('Rules - Action failed');
       this.logger.debug(error);
-      return undefined;
+      return this.createReturnStatus(false, 'Failed to save the rule group');
     }
   }
 
   async updateRules(params: RulesDto) {
     try {
       let state: ReturnStatus = this.createReturnStatus(true, 'Success');
-      for (const rule of params.rules as RuleDto[]) {
+      for (const [index, rule] of (params.rules as RuleDto[]).entries()) {
+        if (state.code === 1 && index > 0 && rule.operator == null) {
+          state = this.createReturnStatus(
+            false,
+            'Operator is required for every rule after the first',
+          );
+        }
         this.normalizeRuleDiskPath(rule);
         if (state.code === 1) {
           state = this.validateRule(rule);
@@ -437,20 +497,35 @@ export class RulesService {
           ? await this.collectionService.getCollection(group.collectionId)
           : null;
 
+        // Behavior A: if a tagging-enabled collection is about to have its members
+        // wiped below (crucial-setting change) and tagInArr is being turned off in
+        // the same save, capture the members first so the toggle reconcile can
+        // still untag them (otherwise the rows — and our only record of them — are
+        // gone before the reconcile runs).
+        let preDeleteMembers: CollectionMedia[] | undefined;
+
         // if datatype or manual collection settings changed then remove the collection media and specific exclusions. The Plex collection will be removed later by updateCollection()
         // Only check if there's an existing collection
         if (
           dbCollection &&
           (group.dataType !== params.dataType ||
-            params.collection.manualCollection !==
+            (params.collection?.manualCollection ??
+              dbCollection.manualCollection) !==
               dbCollection.manualCollection ||
-            params.collection.manualCollectionName !==
+            (params.collection?.manualCollectionName ??
+              dbCollection.manualCollectionName) !==
               dbCollection.manualCollectionName ||
             params.libraryId !== dbCollection.libraryId)
         ) {
           this.logger.log(
             `A crucial setting of Rulegroup '${params.name}' was changed. Removed all media & specific exclusions`,
           );
+          if (dbCollection.tagInArr) {
+            preDeleteMembers =
+              (await this.collectionService.getCollectionMedia(
+                group.collectionId,
+              )) ?? [];
+          }
           await this.collectionMediaRepository.delete({
             collectionId: group.collectionId,
           });
@@ -497,32 +572,44 @@ export class RulesService {
           (el) => el.id === params.libraryId,
         );
 
+        const collectionType = this.resolveCollectionType(lib.type, params);
         const collectionData = {
           libraryId: params.libraryId,
-          type:
-            lib.type === 'movie'
-              ? 'movie'
-              : params.dataType !== undefined
-                ? params.dataType
-                : 'show',
+          type: collectionType,
           title: params.name,
           description: params.description,
           arrAction: params.arrAction ? params.arrAction : 0,
           isActive: params.isActive,
           listExclusions: params.listExclusions ? params.listExclusions : false,
-          forceSeerr: params.forceSeerr ? params.forceSeerr : false,
+          // Force Seerr is unsupported for episode rules (Seerr has no
+          // per-episode request granularity), so never persist it enabled. The
+          // UI hides the toggle; this also clears the flag on re-save for rules
+          // created before it was hidden.
+          forceSeerr:
+            collectionType !== 'episode' && params.forceSeerr ? true : false,
           tautulliWatchedPercentOverride:
             params.tautulliWatchedPercentOverride ?? null,
           radarrSettingsId: params.radarrSettingsId ?? null,
           sonarrSettingsId: params.sonarrSettingsId ?? null,
           radarrQualityProfileId: params.radarrQualityProfileId ?? null,
           sonarrQualityProfileId: params.sonarrQualityProfileId ?? null,
-          visibleOnRecommended: params.collection?.visibleOnRecommended,
-          visibleOnHome: params.collection?.visibleOnHome,
+          tagInArr: params.tagInArr ?? false,
+          // If the collection block is left out of an update, keep the saved
+          // values instead of sending undefined — otherwise we'd unlink a manual
+          // collection or switch off Plex visibility.
+          visibleOnRecommended:
+            params.collection?.visibleOnRecommended ??
+            dbCollection?.visibleOnRecommended,
+          visibleOnHome:
+            params.collection?.visibleOnHome ?? dbCollection?.visibleOnHome,
           deleteAfterDays: params.collection?.deleteAfterDays ?? null,
-          manualCollection: params.collection?.manualCollection,
-          manualCollectionName: params.collection?.manualCollectionName,
-          keepLogsForMonths: +params.collection?.keepLogsForMonths,
+          manualCollection:
+            params.collection?.manualCollection ??
+            dbCollection?.manualCollection,
+          manualCollectionName:
+            params.collection?.manualCollectionName ??
+            dbCollection?.manualCollectionName,
+          keepLogsForMonths: params.collection?.keepLogsForMonths ?? 6,
           sortTitle: params.collection?.sortTitle,
           mediaServerSort: params.collection?.mediaServerSort ?? null,
           overlayEnabled: params.collection?.overlayEnabled,
@@ -561,6 +648,21 @@ export class RulesService {
         const newSort = collectionData.mediaServerSort ?? null;
         if (newSort && previousSort !== newSort && savedCollection) {
           await this.collectionService.applyCollectionSort(savedCollection);
+        }
+
+        // Behavior A: one-time *arr membership-tag reconcile on a tagInArr toggle
+        // — enabling tags current members, disabling untags them (ongoing changes
+        // are handled by the executor's per-run deltas). Best-effort; awaited so
+        // the backfill completes before the save returns.
+        if (
+          savedCollection &&
+          (dbCollection?.tagInArr ?? false) !== savedCollection.tagInArr
+        ) {
+          await this.reconcileMembershipTagsOnToggle(
+            dbCollection,
+            savedCollection,
+            preDeleteMembers,
+          );
         }
 
         // update or create group
@@ -604,12 +706,151 @@ export class RulesService {
     } catch (error) {
       this.logger.warn('Rules - Action failed');
       this.logger.debug(error);
-      return undefined;
+      return this.createReturnStatus(false, 'Failed to save the rule group');
     }
   }
+  // A collection_media row reduced to the fields ServarrTagService needs to
+  // resolve an item to its *arr entity (id + provider-id fallbacks).
+  private toArrTagItem(m: CollectionMedia) {
+    return {
+      mediaServerId: m.mediaServerId,
+      tmdbId: m.tmdbId,
+      tvdbId: m.tvdbId,
+    };
+  }
+
+  // Behavior A: reconcile *arr membership tags after a tagInArr toggle
+  // (best-effort, off the save response path). Enabling tags all current members;
+  // disabling untags them using the previous collection (still tagInArr=true, with
+  // its old title) so the correct label is removed even if renamed in the same save.
+  // `preDeleteMembers` covers the disable case where a crucial-setting change in the
+  // same save already wiped the rows — pass the snapshot taken before the wipe.
+  private async reconcileMembershipTagsOnToggle(
+    previous: Collection | undefined,
+    saved: Collection,
+    preDeleteMembers?: CollectionMedia[],
+  ): Promise<void> {
+    try {
+      if (saved.tagInArr) {
+        const members =
+          (await this.collectionService.getCollectionMedia(saved.id)) ?? [];
+        await this.servarrTagService.syncMembershipTags(
+          saved,
+          members.map((m) => this.toArrTagItem(m)),
+          [],
+        );
+      } else if (previous) {
+        const members =
+          preDeleteMembers ??
+          (await this.collectionService.getCollectionMedia(saved.id)) ??
+          [];
+        await this.servarrTagService.syncMembershipTags(
+          previous,
+          [],
+          members.map((m) => this.toArrTagItem(m)),
+        );
+      }
+    } catch (error) {
+      this.logger.debug(error);
+    }
+  }
+
+  // The provider ids cached on a collection_media row, used as *arr tag
+  // resolution fallbacks (Behavior B) so an item resolves even when its
+  // media-server metadata omits tmdb/tvdb. Returns nulls when not found.
+  private async getCollectionMediaProviderIds(
+    collectionId: number,
+    mediaServerId: string,
+  ): Promise<{ tmdbId?: number | null; tvdbId?: number | null }> {
+    const row = await this.collectionMediaRepository.findOne({
+      where: { collectionId, mediaServerId },
+    });
+    return { tmdbId: row?.tmdbId ?? null, tvdbId: row?.tvdbId ?? null };
+  }
+
+  // Behavior B: resolve the single configured *arr instance for a GLOBAL
+  // exclusion (no collection). Skipped (null) when none or several instances of
+  // the item's type exist, since the tag target would then be ambiguous.
+  private async resolveGlobalExclusionInstance(
+    type: MediaItemType | undefined,
+  ): Promise<{ radarrSettingsId?: number; sonarrSettingsId?: number } | null> {
+    if (type === 'movie') {
+      const all = await this.radarrSettingsRepo.find();
+      return all.length === 1 ? { radarrSettingsId: all[0].id } : null;
+    }
+    if (type === 'show') {
+      const all = await this.sonarrSettingsRepo.find();
+      return all.length === 1 ? { sonarrSettingsId: all[0].id } : null;
+    }
+    return null;
+  }
+
+  // Behavior B: apply or remove the protective *arr tag for one excluded
+  // top-level item, shared by every exclusion entry/exit path (scoped + global,
+  // POST + DELETE). The settings gate is checked by the caller. A scoped exclusion
+  // takes its instance and (authoritative, non-null) type from the rule group's
+  // collection; a global one resolves the single configured instance. Removal is
+  // conservative and must run AFTER the rows are deleted: it leaves the tag in
+  // place if any exclusion for the item survives (another rule group or a global
+  // one), so a still-excluded item keeps its protection — last-exclusion-wins.
+  private async syncExclusionTag(
+    mode: 'add' | 'remove',
+    item: { mediaServerId: string; type: MediaItemType | undefined },
+    collectionId: number | undefined,
+  ): Promise<void> {
+    let instance: {
+      radarrSettingsId?: number | null;
+      sonarrSettingsId?: number | null;
+    } | null;
+    let type = item.type;
+    let hints: { tmdbId?: number | null; tvdbId?: number | null } = {};
+
+    if (collectionId) {
+      const collection =
+        await this.collectionService.getCollection(collectionId);
+      if (!collection) {
+        return;
+      }
+      instance = {
+        radarrSettingsId: collection.radarrSettingsId,
+        sonarrSettingsId: collection.sonarrSettingsId,
+      };
+      // collection.type is always set; prefer it over the exclusion row's nullable
+      // type (old rows predate the type column) so the right service is chosen.
+      type = collection.type ?? item.type;
+      hints = await this.getCollectionMediaProviderIds(
+        collectionId,
+        item.mediaServerId,
+      );
+    } else {
+      instance = await this.resolveGlobalExclusionInstance(item.type);
+      if (!instance) {
+        return;
+      }
+    }
+
+    if (mode === 'remove') {
+      const remaining = await this.exclusionRepo.count({
+        where: { mediaServerId: item.mediaServerId },
+      });
+      if (remaining > 0) {
+        return;
+      }
+    }
+
+    const target = { mediaServerId: item.mediaServerId, type, ...hints };
+    if (mode === 'add') {
+      await this.servarrTagService.applyExclusionTag(target, instance);
+    } else {
+      await this.servarrTagService.removeExclusionTag(target, instance);
+    }
+  }
+
   async setExclusion(data: ExclusionContextDto) {
     const mediaServer = await this.getMediaServer();
     let handleMedia: CollectionMediaChange[] = [];
+    // The top-level excluded item's type (movie/show/…) drives Behavior B below.
+    let topLevelType: MediaItemType | undefined;
 
     if (data.collectionId) {
       const group = await this.ruleGroupRepository.findOne({
@@ -627,6 +868,7 @@ export class RulesService {
       );
       handleMedia = ids.map((id) => ({ mediaServerId: id }));
       data.ruleGroupId = group.id;
+      topLevelType = group?.dataType;
     } else {
       // get type from metadata
       const metaData = await mediaServer.getMetadata(String(data.mediaId));
@@ -646,18 +888,36 @@ export class RulesService {
         String(data.mediaId),
       );
       handleMedia = ids.map((id) => ({ mediaServerId: id }));
+      topLevelType = metaData.type;
     }
     try {
       // add all items
       for (const media of handleMedia) {
         const metaData = await mediaServer.getMetadata(media.mediaServerId);
 
+        // Global subsumes scoped: skip a rule-group exclusion when the item is
+        // already globally excluded (an item is global or scoped, never both).
+        if (data.ruleGroupId !== undefined) {
+          const existingGlobal = await this.exclusionRepo.findOne({
+            where: {
+              mediaServerId: media.mediaServerId,
+              ruleGroupId: IsNull(),
+            },
+          });
+          if (existingGlobal) {
+            this.logger.log(
+              `Media ${media.mediaServerId} is already globally excluded; skipped rule group ${data.ruleGroupId} exclusion`,
+            );
+            continue;
+          }
+        }
+
         const old = await this.exclusionRepo.findOne({
           where: {
             mediaServerId: media.mediaServerId,
             ...(data.ruleGroupId !== undefined
               ? { ruleGroupId: data.ruleGroupId }
-              : { ruleGroupId: null }),
+              : { ruleGroupId: IsNull() }),
           },
         });
 
@@ -676,6 +936,15 @@ export class RulesService {
           },
         ]);
 
+        // Global subsumes scoped: a new global exclusion drops the item's
+        // now-redundant rule-group exclusions.
+        if (data.ruleGroupId === undefined) {
+          await this.exclusionRepo.delete({
+            mediaServerId: media.mediaServerId,
+            ruleGroupId: Not(IsNull()),
+          });
+        }
+
         // add collection log record if needed
         if (data.collectionId) {
           await this.collectionService.CollectionLogRecordForChild(
@@ -693,6 +962,19 @@ export class RulesService {
               ? `and rulegroup id ${data.ruleGroupId}`
               : ''
           } `,
+        );
+      }
+
+      // Behavior B (https://features.maintainerr.info/posts/81): apply the
+      // protective *arr tag to the top-level excluded item once (data.mediaId),
+      // not each traversed season/episode id. Covers both collection-scoped and
+      // global exclusions (a global exclusion resolves the single configured *arr
+      // instance). Best-effort; never blocks the exclusion.
+      if (this.servarrTagService.anyExclusionTaggingEnabled()) {
+        await this.syncExclusionTag(
+          'add',
+          { mediaServerId: String(data.mediaId), type: topLevelType },
+          data.collectionId,
         );
       }
 
@@ -719,8 +1001,9 @@ export class RulesService {
         return this.createReturnStatus(true, 'Success');
       }
 
-      // add collection log record if needed
-      if (exclcusion.ruleGroupId !== undefined) {
+      // global exclusions (null ruleGroupId) have no rule group to log against
+      let scopedCollectionId: number | undefined;
+      if (exclcusion.ruleGroupId != null) {
         const rulegroup = await this.ruleGroupRepository.findOne({
           where: {
             id: exclcusion.ruleGroupId,
@@ -728,6 +1011,7 @@ export class RulesService {
         });
         // add collection log record
         if (rulegroup) {
+          scopedCollectionId = rulegroup.collectionId;
           await this.collectionService.CollectionLogRecordForChild(
             exclcusion.mediaServerId,
             rulegroup.collectionId,
@@ -738,7 +1022,27 @@ export class RulesService {
 
       // do delete
       await this.exclusionRepo.delete(id);
-      this.logger.log(`Removed exclusion with id ${id}`);
+
+      // Behavior B (https://features.maintainerr.info/posts/81): opt-in removal of
+      // the protective *arr tag on un-exclude, for both scoped and global
+      // exclusions. Conservative by default (off) so a manually-set tag is never
+      // stripped; only ever touches the configured label. Runs after the delete so
+      // the shared-tag guard can see that no other exclusion still wants the tag.
+      if (this.servarrTagService.anyExclusionUntaggingEnabled()) {
+        await this.syncExclusionTag(
+          'remove',
+          { mediaServerId: exclcusion.mediaServerId, type: exclcusion.type },
+          scopedCollectionId,
+        );
+      }
+
+      this.logger.log(
+        `Removed exclusion ${id} for media ${exclcusion.mediaServerId} (${
+          exclcusion.ruleGroupId != null
+            ? `rule group ${exclcusion.ruleGroupId}`
+            : 'global'
+        })`,
+      );
       return this.createReturnStatus(true, 'Success');
     } catch (error) {
       this.logger.warn(`Removing exclusion with id ${id} failed.`);
@@ -750,6 +1054,7 @@ export class RulesService {
   async removeExclusionWitData(data: ExclusionContextDto) {
     const mediaServer = await this.getMediaServer();
     let handleMedia: CollectionMediaChange[] = [];
+    let topLevelType: MediaItemType | undefined;
 
     if (data.collectionId) {
       const group = await this.ruleGroupRepository.findOne({
@@ -759,6 +1064,7 @@ export class RulesService {
       });
 
       data.ruleGroupId = group.id;
+      topLevelType = group?.dataType;
       // get media - traverse show -> seasons -> episodes if needed
       const ids = await mediaServer.getAllIdsForContextAction(
         group?.dataType,
@@ -805,6 +1111,22 @@ export class RulesService {
           } `,
         );
       }
+
+      // Behavior B (https://features.maintainerr.info/posts/81): opt-in removal of
+      // the protective *arr tag on un-exclude — this is the POST /rules/exclusion
+      // remove path used by the media modal. Untag the top-level item once, after
+      // its rows are deleted so the shared-tag guard is accurate.
+      if (this.servarrTagService.anyExclusionUntaggingEnabled()) {
+        const type =
+          topLevelType ??
+          (await mediaServer.getMetadata(String(data.mediaId)))?.type;
+        await this.syncExclusionTag(
+          'remove',
+          { mediaServerId: String(data.mediaId), type },
+          data.collectionId,
+        );
+      }
+
       return this.createReturnStatus(true, 'Success');
     } catch (error) {
       this.logger.warn(
@@ -840,6 +1162,20 @@ export class RulesService {
       for (const media of handleMedia) {
         await this.exclusionRepo.delete({ mediaServerId: media.mediaServerId });
       }
+
+      // Behavior B (https://features.maintainerr.info/posts/81): opt-in removal of
+      // the protective *arr tag once every exclusion for the item is cleared.
+      // Global instance resolution; the guard always passes (no rows remain).
+      // Known limitation: with multiple *arr instances the global resolver is
+      // ambiguous (skips), so a scoped-excluded item's tag may linger here.
+      if (this.servarrTagService.anyExclusionUntaggingEnabled()) {
+        await this.syncExclusionTag(
+          'remove',
+          { mediaServerId, type: metaData.type },
+          undefined,
+        );
+      }
+
       return this.createReturnStatus(true, 'Success');
     } catch (error) {
       this.logger.warn(
@@ -877,7 +1213,7 @@ export class RulesService {
           ? exclusions.concat(
               await this.exclusionRepo.find({
                 where: {
-                  ruleGroupId: null,
+                  ruleGroupId: IsNull(),
                 },
               }),
             )
@@ -904,8 +1240,18 @@ export class RulesService {
   private validateRule(rule: RuleDto): ReturnStatus {
     try {
       const val1: Property = this.ruleConstants.applications
-        .find((el) => el.id === rule.firstVal[0])
-        .props.find((el) => el.id === rule.firstVal[1]);
+        .find((el) => el.id === rule.firstVal?.[0])
+        ?.props.find((el) => el.id === rule.firstVal?.[1]);
+      // Guard against a first value whose application/property no longer exists
+      // (e.g. an imported rule referencing an unconfigured service). Returning a
+      // clean status beats throwing a TypeError that surfaces as a generic
+      // "Unexpected error occurred".
+      if (!val1) {
+        return this.createReturnStatus(
+          false,
+          'First value is not available for this server',
+        );
+      }
       if (
         [RulePossibility.EXISTS, RulePossibility.NOT_EXISTS].includes(
           +rule.action,
@@ -919,7 +1265,13 @@ export class RulesService {
       if (rule.lastVal) {
         const val2: Property = this.ruleConstants.applications
           .find((el) => el.id === rule.lastVal[0])
-          .props.find((el) => el.id === rule.lastVal[1]);
+          ?.props.find((el) => el.id === rule.lastVal[1]);
+        if (!val2) {
+          return this.createReturnStatus(
+            false,
+            'Second value is not available for this server',
+          );
+        }
         if (
           val1.type === val2.type ||
           ([RuleType.TEXT_LIST, RuleType.TEXT].includes(val1.type) &&
@@ -1144,11 +1496,19 @@ export class RulesService {
             .loadMany(),
         );
 
-      // Associate new notifications to the RuleGroup
-      await connection
-        .relation(RuleGroup, 'notifications')
-        .of(id)
-        .add(notifications?.map((notification) => notification.id));
+      // Associate new notifications to the RuleGroup. Guard against an
+      // empty/omitted list: `.add(undefined)` (when `notifications` is omitted
+      // by an API/import client) inserts a join row with a null notificationId
+      // and fails the whole rule-group create.
+      const notificationIds = notifications?.map(
+        (notification) => notification.id,
+      );
+      if (notificationIds?.length) {
+        await connection
+          .relation(RuleGroup, 'notifications')
+          .of(id)
+          .add(notificationIds);
+      }
 
       return id;
     } catch (error) {
@@ -1306,11 +1666,17 @@ export class RulesService {
     // Migrate decoded rules to the configured media server
     if (result.code === 1 && result.result) {
       const parsed = JSON.parse(result.result);
+      const beforeMigrate = parsed.rules.length;
       const migrationResult = await this.migrateRules(parsed.rules);
       if (migrationResult.code === 1 && migrationResult.result) {
         parsed.rules = JSON.parse(migrationResult.result);
-        result.result = JSON.stringify(parsed);
       }
+      // Combine rules dropped by decode (unresolved identifier) and by
+      // migration (no equivalent on the target server) into the single
+      // top-level skipped count so the UI reads it the same way as export.
+      result.skipped =
+        (result.skipped ?? 0) + (beforeMigrate - parsed.rules.length);
+      result.result = JSON.stringify(parsed);
     }
 
     return result;
@@ -1367,6 +1733,9 @@ export class RulesService {
     const mediaServer = await this.getMediaServer();
     mediaServer.resetMetadataCache(mediaId);
     cacheManager.getCache('seerr').data.flushAll();
+    // Drop the run-scoped Seerr request index too, so a single-item test rebuilds
+    // it from a fresh /request sweep and agrees with a full run (#3152).
+    cacheManager.getCache('seerrrequests').data.flushAll();
     cacheManager.getCache('tautulli').data.flushAll();
     cacheManager
       .getCachesByType('radarr')
@@ -1448,6 +1817,7 @@ export class RulesService {
         } else if (serverType === MediaServerType.PLEX) {
           cacheManager.getCache('plextv').flush();
           cacheManager.getCache('plexguid').flush();
+          cacheManager.getCache('plexwatchhistory').flush();
           this.logger.log(
             `Flushed Plex cache because a rule in the group required it`,
           );

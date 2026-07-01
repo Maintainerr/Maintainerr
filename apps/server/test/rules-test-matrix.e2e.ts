@@ -190,6 +190,137 @@ async function executeScenario(baseUrl: string, scenario: Scenario) {
   return normalizeResponse(scenario.name, await response.json());
 }
 
+// Generated coverage of every RuleType x RulePossibility. The identical
+// generator runs on the baseline and current builds, so any per-cell diff
+// signals real comparator drift — the operand values only need to reach the
+// code path, not be domain-realistic. Binary ops get a value + missing-first
+// case; unary ops (EXISTS / NOT_EXISTS) get a present + absent case.
+function buildGeneratedMatrix(): Scenario[] {
+  type Sec = { ruleTypeId: number; value: string };
+  type Cfg = {
+    type: string;
+    first: unknown;
+    sec: Sec;
+    binary: string[];
+    unary: string[];
+    special?: Record<string, Sec>;
+  };
+  const configs: Cfg[] = [
+    {
+      type: 'number',
+      first: 5,
+      sec: { ruleTypeId: 0, value: '5' },
+      binary: ['BIGGER', 'SMALLER', 'EQUALS', 'NOT_EQUALS'],
+      unary: ['EXISTS', 'NOT_EXISTS'],
+    },
+    {
+      type: 'date',
+      first: new Date('2025-06-01T00:00:00.000Z'),
+      sec: { ruleTypeId: 1, value: '2025-01-01T00:00:00.000Z' },
+      binary: ['EQUALS', 'NOT_EQUALS', 'BEFORE', 'AFTER'],
+      special: {
+        IN_LAST: { ruleTypeId: 0, value: '30' },
+        IN_NEXT: { ruleTypeId: 0, value: '30' },
+      },
+      unary: ['EXISTS', 'NOT_EXISTS'],
+    },
+    {
+      type: 'text',
+      first: 'HEVC 1080p',
+      sec: { ruleTypeId: 2, value: '1080' },
+      binary: ['EQUALS', 'NOT_EQUALS', 'CONTAINS', 'NOT_CONTAINS'],
+      unary: ['EXISTS', 'NOT_EXISTS'],
+    },
+    {
+      type: 'boolean',
+      first: true,
+      sec: { ruleTypeId: 3, value: '1' },
+      binary: ['EQUALS', 'NOT_EQUALS'],
+      unary: ['EXISTS', 'NOT_EXISTS'],
+    },
+    {
+      type: 'list',
+      first: ['alpha', 'bravo', 'charlie'],
+      sec: { ruleTypeId: 2, value: 'bravo' },
+      binary: [
+        'EQUALS',
+        'NOT_EQUALS',
+        'CONTAINS',
+        'NOT_CONTAINS',
+        'CONTAINS_PARTIAL',
+        'NOT_CONTAINS_PARTIAL',
+        'CONTAINS_ALL',
+        'NOT_CONTAINS_ALL',
+      ],
+      special: {
+        COUNT_EQUALS: { ruleTypeId: 0, value: '3' },
+        COUNT_NOT_EQUALS: { ruleTypeId: 0, value: '3' },
+        COUNT_BIGGER: { ruleTypeId: 0, value: '3' },
+        COUNT_SMALLER: { ruleTypeId: 0, value: '3' },
+      },
+      unary: ['EXISTS', 'NOT_EXISTS'],
+    },
+  ];
+
+  const op = (name: string): RulePossibility =>
+    (RulePossibility as unknown as Record<string, RulePossibility>)[name];
+  const out: Scenario[] = [];
+
+  for (const c of configs) {
+    const binaryEntries: [string, Sec][] = [
+      ...c.binary.map((b): [string, Sec] => [b, c.sec]),
+      ...Object.entries(c.special ?? {}),
+    ];
+    for (const [name, sec] of binaryEntries) {
+      out.push({
+        name: `gen-${c.type}-${name.toLowerCase()}-value`,
+        rules: [
+          createStoredRule(1, 0, {
+            action: op(name),
+            firstVal: [Application.PLEX, 3],
+            customVal: sec,
+          }),
+        ],
+        values: [c.first],
+      });
+      out.push({
+        name: `gen-${c.type}-${name.toLowerCase()}-missing`,
+        rules: [
+          createStoredRule(1, 0, {
+            action: op(name),
+            firstVal: [Application.PLEX, 3],
+            customVal: sec,
+          }),
+        ],
+        values: [null],
+      });
+    }
+    for (const name of c.unary) {
+      out.push({
+        name: `gen-${c.type}-${name.toLowerCase()}-present`,
+        rules: [
+          createStoredRule(1, 0, {
+            action: op(name),
+            firstVal: [Application.PLEX, 3],
+          }),
+        ],
+        values: [c.first],
+      });
+      out.push({
+        name: `gen-${c.type}-${name.toLowerCase()}-absent`,
+        rules: [
+          createStoredRule(1, 0, {
+            action: op(name),
+            firstVal: [Application.PLEX, 3],
+          }),
+        ],
+        values: [null],
+      });
+    }
+  }
+  return out;
+}
+
 function buildScenarioMatrix(): Scenario[] {
   return [
     {
@@ -562,6 +693,27 @@ function buildScenarioMatrix(): Scenario[] {
       values: [10, null],
     },
     {
+      // Regression: an unset section operator (null) must behave as OR, not AND.
+      // `+null === 0` previously coerced it to AND, so an item matching only the
+      // earlier section was dropped. The item below matches section 0 (10 > 5)
+      // but not section 1 (0 > 5); OR must keep it, so result stays true.
+      name: 'or-section-unset-operator-keeps-single-section-match',
+      rules: [
+        createStoredRule(1, 0, {
+          action: RulePossibility.BIGGER,
+          firstVal: [Application.PLEX, 3],
+          customVal: { ruleTypeId: 0, value: '5' },
+        }),
+        createStoredRule(2, 1, {
+          operator: null,
+          action: RulePossibility.BIGGER,
+          firstVal: [Application.PLEX, 3],
+          customVal: { ruleTypeId: 0, value: '5' },
+        }),
+      ],
+      values: [10, 0],
+    },
+    {
       name: 'three-section-and-or-chain-keeps-earlier-match',
       rules: [
         createStoredRule(1, 0, {
@@ -607,6 +759,7 @@ function buildScenarioMatrix(): Scenario[] {
       ],
       values: [3, ['PlexUser', 'LocalUser'], true],
     },
+    ...buildGeneratedMatrix(),
   ];
 }
 

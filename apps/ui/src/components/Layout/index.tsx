@@ -1,6 +1,6 @@
 import { ArrowLeftIcon, MenuAlt2Icon } from '@heroicons/react/solid'
 import { debounce } from 'lodash-es'
-import { ReactNode, useContext, useEffect, useRef, useState } from 'react'
+import { ReactNode, use, useEffect, useRef, useState } from 'react'
 import {
   isRouteErrorResponse,
   Outlet,
@@ -21,7 +21,7 @@ type LayoutShellProps = {
 
 const LayoutShell: React.FC<LayoutShellProps> = ({ children }) => {
   const [navBarOpen, setNavBarOpen] = useState(false)
-  const SearchCtx = useContext(SearchContext)
+  const SearchCtx = use(SearchContext)
   const navigate = useNavigate()
   const navigation = useNavigation()
   const basePath = import.meta.env.VITE_BASE_PATH ?? ''

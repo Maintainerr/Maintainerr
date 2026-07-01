@@ -1,8 +1,7 @@
 import { useCallback, useRef } from 'react'
 
 export type GuardedResult<T> =
-  | { status: 'success'; data: T }
-  | { status: 'stale' }
+  { status: 'success'; data: T } | { status: 'stale' }
 
 export const useRequestGeneration = () => {
   const generationRef = useRef(0)

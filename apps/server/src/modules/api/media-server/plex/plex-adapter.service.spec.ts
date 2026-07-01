@@ -64,6 +64,39 @@ describe('PlexAdapterService', () => {
     });
   });
 
+  describe('getActiveSessions', () => {
+    it('collects ratingKey plus season and show ids and de-duplicates', async () => {
+      plexApi.getActiveSessions.mockResolvedValue([
+        { ratingKey: 'movie1', type: 'movie' },
+        {
+          ratingKey: 'episode1',
+          parentRatingKey: 'season1',
+          grandparentRatingKey: 'show1',
+          type: 'episode',
+        },
+        // A second episode of the same show contributes a new episode id but
+        // the show id should only appear once.
+        {
+          ratingKey: 'episode2',
+          parentRatingKey: 'season1',
+          grandparentRatingKey: 'show1',
+          type: 'episode',
+        },
+      ] as any);
+
+      const playing = await service.getActiveSessions();
+
+      expect(playing).toEqual(
+        new Set(['movie1', 'episode1', 'season1', 'show1', 'episode2']),
+      );
+    });
+
+    it('returns an empty set when nothing is playing', async () => {
+      plexApi.getActiveSessions.mockResolvedValue([]);
+      expect(await service.getActiveSessions()).toEqual(new Set<string>());
+    });
+  });
+
   describe('cache management', () => {
     it('should delegate resetMetadataCache to PlexApiService when itemId provided', () => {
       service.resetMetadataCache('item123');
@@ -356,6 +389,21 @@ describe('PlexAdapterService', () => {
     });
   });
 
+  describe('itemExists', () => {
+    it('delegates to the Plex API existence check', async () => {
+      plexApi.itemExists.mockResolvedValue(true);
+
+      await expect(service.itemExists('movie-1')).resolves.toBe(true);
+      expect(plexApi.itemExists).toHaveBeenCalledWith('movie-1');
+    });
+
+    it('propagates an inconclusive check so callers do not drop state', async () => {
+      plexApi.itemExists.mockRejectedValue(new Error('network'));
+
+      await expect(service.itemExists('movie-1')).rejects.toThrow('network');
+    });
+  });
+
   describe('getLibraryContents', () => {
     it('should return empty result for empty libraryId', async () => {
       const result = await service.getLibraryContents('');
@@ -380,6 +428,14 @@ describe('PlexAdapterService', () => {
 
       await service.getLibraryContents('1', { offset: 0, limit: 50 });
       expect(plexApi.getLibraryContents).toHaveBeenCalled();
+    });
+  });
+
+  describe('prefetchWatchHistory', () => {
+    it('delegates to plexApi.prefetchWatchHistory', async () => {
+      plexApi.prefetchWatchHistory = jest.fn().mockResolvedValue(undefined);
+      await service.prefetchWatchHistory();
+      expect(plexApi.prefetchWatchHistory).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -423,7 +479,11 @@ describe('PlexAdapterService', () => {
         viewCount: 1,
         isWatched: true,
       });
-      expect(plexApi.getWatchHistory).toHaveBeenCalledWith('item123', false);
+      expect(plexApi.getWatchHistory).toHaveBeenCalledWith(
+        'item123',
+        false,
+        undefined,
+      );
     });
 
     it('should return unwatched state when history is empty', async () => {
@@ -435,7 +495,11 @@ describe('PlexAdapterService', () => {
         viewCount: 0,
         isWatched: false,
       });
-      expect(plexApi.getWatchHistory).toHaveBeenCalledWith('item123', false);
+      expect(plexApi.getWatchHistory).toHaveBeenCalledWith(
+        'item123',
+        false,
+        undefined,
+      );
     });
 
     it('should fall back to nativeViewCount for isWatched when history is empty', async () => {
@@ -618,13 +682,15 @@ describe('PlexAdapterService', () => {
       ).rejects.toThrow('Failed to create collection');
     });
 
-    it('forwards initialItemIds to PlexApiService for bulk create', async () => {
+    it('creates the collection empty without forwarding item ids', async () => {
+      // Items are added afterwards via the batched add path; seeding them into
+      // the create request overflows the URL (HTTP 414).
       plexApi.createCollection.mockResolvedValue(
         createPlexCollection({
           ratingKey: 'col456',
           key: '/library/collections/col456',
           guid: 'plex://collection/col456',
-          title: 'Seeded',
+          title: 'New',
           subtype: 'movie',
           summary: '',
           index: 0,
@@ -632,7 +698,7 @@ describe('PlexAdapterService', () => {
           thumb: '/thumb/col456',
           addedAt: 1609459200,
           updatedAt: 1609459200,
-          childCount: '2',
+          childCount: '0',
           maxYear: '2021',
           minYear: '2021',
         }),
@@ -640,14 +706,13 @@ describe('PlexAdapterService', () => {
 
       await service.createCollection({
         libraryId: 'lib1',
-        title: 'Seeded',
+        title: 'New',
         type: 'movie',
-        initialItemIds: ['item-1', 'item-2'],
       });
 
-      expect(plexApi.createCollection).toHaveBeenCalledWith(
+      expect(plexApi.createCollection).not.toHaveBeenCalledWith(
         expect.objectContaining({
-          initialItemIds: ['item-1', 'item-2'],
+          initialItemIds: expect.anything(),
         }),
       );
     });

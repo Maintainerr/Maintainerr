@@ -8,13 +8,39 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, Repository } from 'typeorm';
 import { MaintainerrLogger } from '../logging/logs.service';
-import { Application, RuleConstants } from '../rules/constants/rules.constants';
+import {
+  Application,
+  RuleConstants,
+  RuleOperators,
+} from '../rules/constants/rules.constants';
 import { RuleDto } from '../rules/dtos/rule.dto';
+import { reassertSectionBoundaryOperators } from '../rules/helpers/section-operators';
 import { RuleGroup } from '../rules/entities/rule-group.entities';
 import { Rules } from '../rules/entities/rules.entities';
 
 /** Singleton instance – avoids re-creating the constant data on every call. */
 const RULE_CONSTANTS = new RuleConstants();
+
+/**
+ * Single source of truth mapping each supported media server to its rule
+ * `Application` id. The `Record<MediaServerType, …>` type is exhaustive — adding
+ * a new media server to `MediaServerType` is a compile error until it is mapped
+ * here, which keeps the migrator in step with the supported-server list.
+ */
+const MEDIA_SERVER_TYPE_TO_APP: Record<MediaServerType, Application> = {
+  [MediaServerType.PLEX]: Application.PLEX,
+  [MediaServerType.JELLYFIN]: Application.JELLYFIN,
+  [MediaServerType.EMBY]: Application.EMBY,
+};
+
+/**
+ * Apps that represent the media server itself and therefore differ between
+ * servers. Only these are remapped during migration; every other app (Radarr,
+ * Sonarr, Seerr, Tautulli) is media-server independent and left exactly as-is.
+ */
+const MEDIA_SERVER_APPS = new Set<Application>(
+  Object.values(MEDIA_SERVER_TYPE_TO_APP),
+);
 
 /**
  * Outcome of checking whether a single rule can be migrated.
@@ -137,7 +163,7 @@ export class RuleMigrationService {
     const compat = computePropertyCompatibility(sourceApp, targetApp);
 
     const allRules = await this.rulesRepo.find({
-      relations: ['ruleGroup'],
+      relations: { ruleGroup: true },
     });
 
     const skippedDetails: SkippedRuleDetail[] = [];
@@ -207,7 +233,7 @@ export class RuleMigrationService {
     }
 
     const allRules = await rulesRepo.find({
-      relations: ['ruleGroup'],
+      relations: { ruleGroup: true },
     });
 
     const result: RuleMigrationResult = {
@@ -324,9 +350,15 @@ export class RuleMigrationService {
    * This is intended for imports (e.g. community/YAML) and does not touch the DB.
    *
    * Behavior:
-   * - Auto-detects source app per rule (Plex/Jellyfin only)
-   * - Rewrites firstVal/lastVal app ID to the target app
-   * - Skips rules that use properties not available on the target server
+   * - Migrates `firstVal` and `lastVal` INDEPENDENTLY, each by its own app. A
+   *   rule may compare a media-server property (e.g. last-viewed date) against a
+   *   value sourced from another app (e.g. a Seerr request date in `lastVal`);
+   *   only the media-server field is remapped, the other is left untouched.
+   * - Radarr/Sonarr/Seerr/Tautulli fields are media-server independent and are
+   *   never rewritten.
+   * - A rule is dropped only when one of its media-server properties has no
+   *   equivalent on the target server (e.g. Plex watchlist → Jellyfin). This is
+   *   expected and logged at debug, not as a warning.
    */
   migrateImportedRuleDtos(
     rules: RuleDto[],
@@ -338,62 +370,112 @@ export class RuleMigrationService {
 
     const targetApp = this.getApplicationId(toServer);
 
+    // Capture each section's combine operator (the operator on its first rule)
+    // BEFORE any drops. A section's first rule carries the section-combine
+    // operator; if it is later dropped as incompatible, the next surviving rule
+    // must inherit this value, otherwise its within-section operator would
+    // silently become the section boundary and flip the section AND<->OR.
+    const sectionCombineOp = new Map<number, RuleDto['operator']>();
+    for (const rule of rules) {
+      if (!sectionCombineOp.has(rule.section)) {
+        sectionCombineOp.set(rule.section, rule.operator ?? null);
+      }
+    }
+
     // Cache compatibility per source app – avoids recomputing for every rule.
     const compatCache = new Map<Application, PropertyCompatibility>();
-
-    let migratedRules = 0;
-    let skippedRules = 0;
-
-    const migrated = rules.map((rule) => {
-      const sourceApp = this.detectRuleSourceApp(rule);
-
-      // Only migrate if rule clearly belongs to Plex/Jellyfin and is not already on target.
-      if (sourceApp === undefined || sourceApp === targetApp) {
-        return rule;
-      }
-
+    const getCompat = (sourceApp: Application): PropertyCompatibility => {
       if (!compatCache.has(sourceApp)) {
         compatCache.set(
           sourceApp,
           computePropertyCompatibility(sourceApp, targetApp),
         );
       }
-      const compat = compatCache.get(sourceApp)!;
+      return compatCache.get(sourceApp)!;
+    };
 
-      const analysis = this.analyzeRuleDto(rule, sourceApp, compat);
-      if (!analysis.canMigrate) {
+    let migratedRules = 0;
+    let skippedRules = 0;
+    const result: RuleDto[] = [];
+
+    for (const rule of rules) {
+      let changed = false;
+      let incompatibleProperty: string | undefined;
+
+      const migrateField = (
+        val?: [number, number],
+      ): [number, number] | undefined => {
+        if (!val) return val;
+        const [app, propId] = val;
+        // Only media-server apps differ between servers; leave everything else.
+        if (!MEDIA_SERVER_APPS.has(app) || app === targetApp) return val;
+
+        const compat = getCompat(app);
+        if (compat.incompatible.has(propId)) {
+          incompatibleProperty = getPropertyName(app, propId);
+          return val;
+        }
+        changed = true;
+        return [targetApp, compat.remapping.get(propId) ?? propId];
+      };
+
+      const newFirst = migrateField(rule.firstVal as [number, number]);
+      const newLast = migrateField(rule.lastVal as [number, number]);
+
+      if (incompatibleProperty !== undefined) {
         skippedRules += 1;
         this.logger.warn(
-          `Skipping imported rule migration: ${analysis.reason}${analysis.propertyName ? ` (property: ${analysis.propertyName})` : ''}`,
+          `Skipping imported rule migration: property not available on ` +
+            `target server (property: ${incompatibleProperty})`,
         );
-        return undefined;
+        this.logger.debug(
+          `Skipped rule detail: firstVal=${JSON.stringify(rule.firstVal)} ` +
+            `lastVal=${JSON.stringify(rule.lastVal)} action=${rule.action}`,
+        );
+        continue;
       }
 
-      migratedRules += 1;
-      return this.migrateRuleDto(rule, sourceApp, targetApp, compat.remapping);
-    });
+      if (changed) {
+        migratedRules += 1;
+        const clone: RuleDto = JSON.parse(JSON.stringify(rule));
+        clone.firstVal = newFirst as [number, number];
+        if (rule.lastVal) {
+          clone.lastVal = newLast as [number, number];
+        }
+        result.push(clone);
+      } else {
+        result.push(rule);
+      }
+    }
 
-    return {
-      rules: migrated.filter((rule): rule is RuleDto => rule !== undefined),
-      migratedRules,
-      skippedRules,
-    };
+    // Carry each section's original combine operator onto its first surviving
+    // rule so a dropped boundary can't silently flip the section AND<->OR.
+    reassertSectionBoundaryOperators(result, sectionCombineOp);
+
+    // Backfill any remaining unset within-section operator to OR — the default
+    // the comparator and the NormalizeRuleSectionOperators migration both apply.
+    // reassert only sets section-boundary operators, so a pre-explicit-operator
+    // community rule can still carry a null within-section operator here, which
+    // the "operator is required for every rule after the first" save validation
+    // would otherwise reject on import. The first rule of the group stays null.
+    for (let i = 1; i < result.length; i++) {
+      if (result[i].operator == null) {
+        result[i] = { ...result[i], operator: RuleOperators.OR };
+      }
+    }
+
+    return { rules: result, migratedRules, skippedRules };
   }
 
   /**
    * Get the Application enum value for a media server type.
    */
   private getApplicationId(serverType: MediaServerType): Application {
-    switch (serverType) {
-      case MediaServerType.PLEX:
-        return Application.PLEX;
-      case MediaServerType.JELLYFIN:
-        return Application.JELLYFIN;
-      case MediaServerType.EMBY:
-        return Application.EMBY;
-      default:
-        throw new Error(`Unknown media server type: ${serverType}`);
+    const app = MEDIA_SERVER_TYPE_TO_APP[serverType];
+    if (app === undefined) {
+      throw new Error(`Unknown media server type: ${serverType}`);
     }
+    return app;
   }
 
   /**
@@ -451,27 +533,6 @@ export class RuleMigrationService {
     }
 
     return { canMigrate: true, reason: '' };
-  }
-
-  private detectRuleSourceApp(
-    rule: RuleDto,
-  ): Application.PLEX | Application.JELLYFIN | Application.EMBY | undefined {
-    const firstApp = rule.firstVal?.[0];
-    const lastApp = rule.lastVal?.[0];
-
-    if (
-      firstApp !== Application.PLEX &&
-      firstApp !== Application.JELLYFIN &&
-      firstApp !== Application.EMBY
-    ) {
-      return undefined;
-    }
-
-    if (lastApp !== undefined && lastApp !== firstApp) {
-      return undefined;
-    }
-
-    return firstApp;
   }
 
   private migrateRuleDto(

@@ -4,8 +4,10 @@ type AvailableCacheIds =
   | 'tmdb'
   | 'tvdb'
   | 'plexguid'
+  | 'plexwatchhistory'
   | 'plextv'
   | 'seerr'
+  | 'seerrrequests'
   | 'plexcommunity'
   | 'tautulli'
   | 'streamystats'
@@ -21,6 +23,14 @@ const DEFAULT_CHECK_PERIOD = 120; // 2 min
 type CacheOptions = {
   stdTtl?: number;
   checkPeriod?: number;
+  // If true, this cache is NOT flushed by flushAll(). Use for external metadata
+  // caches (e.g. TMDB, TVDB) whose data doesn't change between rule group runs.
+  persistent?: boolean;
+  // If false, NodeCache stores and returns object references without cloning.
+  // Required for non-POJO values (Maps, Sets) and for high-frequency lookups
+  // where cloning large objects on every get() would be prohibitively expensive.
+  // Never mutate values returned from caches that set this to false.
+  useClones?: boolean;
 };
 
 export class Cache {
@@ -28,6 +38,7 @@ export class Cache {
   public data: NodeCache;
   public name: string;
   public type?: CacheType;
+  public persistent: boolean;
 
   constructor(
     id: string,
@@ -38,9 +49,11 @@ export class Cache {
     this.id = id;
     this.name = name;
     this.type = type;
+    this.persistent = options.persistent ?? false;
     this.data = new NodeCache({
       stdTTL: options.stdTtl ?? DEFAULT_TTL,
       checkperiod: options.checkPeriod ?? DEFAULT_CHECK_PERIOD,
+      useClones: options.useClones ?? true,
     });
   }
 
@@ -58,14 +71,45 @@ class CacheManager {
     tmdb: new Cache('tmdb', 'The Movie Database API', 'tmdb', {
       stdTtl: 21600, // 6 hours
       checkPeriod: 60 * 30,
+      persistent: true,
     }),
     tvdb: new Cache('tvdb', 'TheTVDB API', 'tvdb', {
       stdTtl: 21600, // 6 hours
       checkPeriod: 60 * 30,
+      persistent: true,
     }),
     plexguid: new Cache('plexguid', 'Plex GUID', 'plexguid'),
+    // Holds the leaf watch-history map built by PlexApiService.prefetchWatchHistory.
+    // Persistent so the map survives flushAll() between rule groups in the same
+    // cron window; useClones is off because the value is a large Map —
+    // getWatchHistory returns copies of the per-item arrays instead.
+    plexwatchhistory: new Cache(
+      'plexwatchhistory',
+      'Plex watch history',
+      'plexwatchhistory',
+      {
+        stdTtl: 3600, // 1 hour
+        persistent: true,
+        useClones: false,
+      },
+    ),
     plextv: new Cache('plextv', 'Plex.tv', 'plextv'),
     seerr: new Cache('seerr', 'Seerr API', 'seerr'),
+    // Holds the run-scoped request index built by SeerrApiService.getRequestsForMedia
+    // (one bulk /request sweep grouped by tmdbId). useClones is off because the
+    // value is a Map — per-item reads copy the per-title array out. Unlike
+    // plexwatchhistory this is NOT persistent: request data changes between runs,
+    // so flushAll() at each rule-group start rebuilds it (freshness over reuse).
+    // Long TTL so a single long run can't expire it mid-sweep.
+    seerrrequests: new Cache(
+      'seerrrequests',
+      'Seerr requests',
+      'seerrrequests',
+      {
+        stdTtl: 3600, // 1 hour
+        useClones: false,
+      },
+    ),
     plexcommunity: new Cache(
       'plexcommunity',
       'community.Plex.tv',
@@ -110,7 +154,9 @@ class CacheManager {
 
   public flushAll(): void {
     for (const [, value] of Object.entries(this.getAllCaches())) {
-      value.flush();
+      if (!value.persistent) {
+        value.flush();
+      }
     }
   }
 }

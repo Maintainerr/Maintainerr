@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { DownloadClientApiService } from '../api/download-client-api/download-client-api.service';
 import { MediaServerFactory } from '../api/media-server/media-server.factory';
 import { ServarrService } from '../api/servarr-api/servarr.service';
 import { Collection } from '../collections/entities/collection.entities';
@@ -10,6 +11,7 @@ import {
   formatMetadataLookupCandidates,
 } from '../metadata/metadata-lookup.util';
 import { MetadataService } from '../metadata/metadata.service';
+import { SettingsDataService } from '../settings/settings-data.service';
 
 @Injectable()
 export class RadarrActionHandler {
@@ -17,6 +19,8 @@ export class RadarrActionHandler {
     private readonly servarrApi: ServarrService,
     private readonly mediaServerFactory: MediaServerFactory,
     private readonly metadataService: MetadataService,
+    private readonly settings: SettingsDataService,
+    private readonly downloadClient: DownloadClientApiService,
     private readonly logger: MaintainerrLogger,
   ) {
     logger.setContext(RadarrActionHandler.name);
@@ -46,10 +50,32 @@ export class RadarrActionHandler {
       });
       const radarrMedia = matchedResult?.result;
 
+      if (radarrMedia === undefined) {
+        // Transient Radarr lookup failure (vs. null = confirmed not tracked):
+        // fail closed instead of falling through to a media-server delete on a
+        // blip. The item stays in the collection and is retried next run. (#3125)
+        this.logger.log(
+          `Couldn't reach Radarr to resolve a movie for media server item ${media.mediaServerId}. No action was taken; will retry next run.`,
+        );
+        return false;
+      }
+
       if (radarrMedia?.id) {
         const matchedProvider =
           matchedResult.candidate.providerKey.toUpperCase();
         const matchedId = matchedResult.candidate.id;
+
+        // Capture the torrent download ids BEFORE deleting: Radarr purges a
+        // movie's history when the movie is removed, so this is the last chance
+        // to learn which torrent(s) produced its files.
+        const isFileDeletingAction =
+          collection.arrAction === ServarrAction.DELETE ||
+          collection.arrAction === ServarrAction.UNMONITOR_DELETE_EXISTING ||
+          collection.arrAction === ServarrAction.UNMONITOR_DELETE_ALL;
+        const downloadIds =
+          isFileDeletingAction && this.settings.downloadClientConfigured()
+            ? await radarrApiClient.getDownloadIdsForMovie(radarrMedia.id)
+            : [];
 
         switch (collection.arrAction) {
           case ServarrAction.DELETE:
@@ -66,6 +92,7 @@ export class RadarrActionHandler {
             this.logger.log(
               `Removed movie with ${matchedProvider} ID ${matchedId} from filesystem & Radarr`,
             );
+            await this.downloadClient.removeDownloads(downloadIds);
             return true;
           case ServarrAction.UNMONITOR:
             if (
@@ -93,6 +120,7 @@ export class RadarrActionHandler {
             this.logger.log(
               `Unmonitored movie with ${matchedProvider} ID ${matchedId}${collection.listExclusions ? ', added to import exclusion list' : ''} & removed files from filesystem in Radarr`,
             );
+            await this.downloadClient.removeDownloads(downloadIds);
             return true;
           case ServarrAction.CHANGE_QUALITY_PROFILE: {
             const targetProfileId = collection.radarrQualityProfileId;

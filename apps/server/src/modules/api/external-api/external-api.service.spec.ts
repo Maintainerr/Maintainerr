@@ -1,4 +1,5 @@
 import { AxiosError } from 'axios';
+import NodeCache from 'node-cache';
 import { ExternalApiService } from './external-api.service';
 
 describe('ExternalApiService', () => {
@@ -62,5 +63,70 @@ describe('ExternalApiService', () => {
     expect(logger.debug).toHaveBeenCalledWith(
       'GET https://example.test/items/123 failed (code=ETIMEDOUT)',
     );
+  });
+
+  describe('caching guard (isCacheable)', () => {
+    const createServiceWithCache = () => {
+      const logger = createLogger();
+      const cache = new NodeCache({ stdTTL: 300 });
+      const service = new ExternalApiService(
+        'https://example.test',
+        {},
+        logger as any,
+        { nodeCache: cache },
+      );
+      return { service, cache };
+    };
+
+    it('does not cache Buffer responses — second call hits the network again', async () => {
+      const { service } = createServiceWithCache();
+      const validObject = { data: 'ok' };
+
+      const getFn = jest
+        .fn()
+        .mockResolvedValueOnce({ data: Buffer.from('binary') })
+        .mockResolvedValueOnce({ data: validObject });
+
+      (service as any).axios = { get: getFn };
+
+      await service.get('/binary');
+      await service.get('/binary');
+
+      // Buffer was not cached, so two network calls were made
+      expect(getFn).toHaveBeenCalledTimes(2);
+    });
+
+    it('does not cache null responses — second call hits the network again', async () => {
+      const { service } = createServiceWithCache();
+      const validObject = { items: [] };
+
+      const getFn = jest
+        .fn()
+        .mockResolvedValueOnce({ data: null })
+        .mockResolvedValueOnce({ data: validObject });
+
+      (service as any).axios = { get: getFn };
+
+      await service.get('/nullable');
+      await service.get('/nullable');
+
+      expect(getFn).toHaveBeenCalledTimes(2);
+    });
+
+    it('caches valid object responses — second call does not hit the network', async () => {
+      const { service } = createServiceWithCache();
+      const validObject = { items: [1, 2, 3] };
+
+      const getFn = jest.fn().mockResolvedValueOnce({ data: validObject });
+
+      (service as any).axios = { get: getFn };
+
+      const first = await service.get('/data');
+      const second = await service.get('/data');
+
+      expect(getFn).toHaveBeenCalledTimes(1);
+      expect(first).toEqual(validObject);
+      expect(second).toEqual(validObject);
+    });
   });
 });

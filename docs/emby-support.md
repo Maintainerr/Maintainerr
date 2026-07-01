@@ -251,7 +251,7 @@ Each unverified path is marked `TODO(emby-server-test):` in the code (10 sites).
 | `computeLibraryStorageSizes`                                                                                                                                  | Coded, may report misleading totals if the `Size` field aggregates differently than expected                                                                                                                                                                                                                                                        |
 | `getAllIdsForContextAction` (show ↔ episode traversal)                                                                                                        | Coded, unverified                                                                                                                                                                                                                                                                                                                                   |
 | `EmbyGetterService` — all 50+ property cases                                                                                                                  | Ported 1:1 from the verified `JellyfinGetterService`; structurally correct but the underlying adapter HTTP calls are unverified                                                                                                                                                                                                                     |
-| `EmbyOverlayProvider`                                                                                                                                         | `isAvailable`, `getSections`, `itemExists`, image upload have implementations; `getRandomItem`, `getRandomEpisode`, `downloadImage` return `null` with a TODO                                                                                                                                                                                       |
+| `EmbyOverlayProvider`                                                                                                                                         | `isAvailable`, `getSections`, image upload have implementations; `getRandomItem`, `getRandomEpisode`, `downloadImage` return `null` with a TODO. Item-existence checks go through the shared `IMediaServerService.itemExists` (backed by `EmbyAdapterService`), not the provider                                                                    |
 | `supportsFeature()` matrix                                                                                                                                    | Conservative defaults matching Jellyfin: COLLECTION_VISIBILITY, WATCHLIST, CENTRAL_WATCH_HISTORY, COLLECTION_SORT all off. The COLLECTION_SORT note is updated to reflect that Emby has no item-move endpoint (only DisplayOrder = PremiereDate \| SortName), so Maintainerr's "push an ordered list of IDs" contract is structurally unsatisfiable |
 
 ### Tests landed in this PR
@@ -276,10 +276,9 @@ Emby itself returns:
 
 The original plan included Emby Connect (the emby.media cloud-account flow)
 as an MVP feature, citing an `embyconnect.ts` reference implementation in
-Jellyseerr. **That file does not exist** — verified via the GitHub API
-against both [Seerr](https://github.com/seerr-team/seerr/tree/develop/server/api)
-and [Jellyseerr](https://github.com/Fallenbagel/jellyseerr/tree/develop/server/api).
-Neither repo has a dedicated Emby Connect module, and neither `jellyfin.ts`
+Seerr. **That file does not exist** — verified via the GitHub API against
+[Seerr](https://github.com/seerr-team/seerr/tree/develop/server/api).
+The repo has no dedicated Emby Connect module, and `jellyfin.ts`
 contains any references to `api.emby.media`, `/service/`, or
 `X-Connect-UserToken`.
 

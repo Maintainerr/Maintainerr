@@ -4,4 +4,4 @@ http_headers = { "X-MCP-Readonly" = "true" }
 
 [mcp_servers.playwright]
 command = "npx"
-args = ["@playwright/mcp@latest", "--headless", "--isolated", "--output-dir", ".playwright-mcp"]
+args = ["@playwright/mcp@latest", "--headless", "--isolated", "--no-sandbox", "--executable-path", "/usr/bin/chromium", "--output-dir", ".playwright-mcp"]

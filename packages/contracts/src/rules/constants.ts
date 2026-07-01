@@ -69,6 +69,7 @@ export enum Application {
   TAUTULLI = 4,
   JELLYFIN = 6,
   EMBY = 7,
+  STREAMYSTATS = 8,
 }
 
 /**
@@ -82,10 +83,11 @@ export const ApplicationNames: Record<Application, string> = {
   [Application.TAUTULLI]: 'Tautulli',
   [Application.JELLYFIN]: 'Jellyfin',
   [Application.EMBY]: 'Emby',
+  [Application.STREAMYSTATS]: 'Streamystats',
 }
 
 /**
- * Media status for Overseerr/Jellyseerr requests
+ * Media status for Seerr requests
  */
 export enum RequestMediaStatus {
   UNKNOWN = 1,

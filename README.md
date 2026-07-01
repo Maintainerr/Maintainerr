@@ -2,8 +2,10 @@
   <img src="apps/ui/public/logo_black.svg?raw=true" alt="Maintainerr's custom image"/>
 </p>
 
+<p align="center"><i>Founded in 2021 - real human work, before mainstream AI.</i></p>
+
 <p align="center" >
-<!-- Discord Badge -->  <a href="https://discord.gg/WP4ZW2QYwk"><img alt="Discord" src="https://img.shields.io/discord/1152219249549512724?style=flat&logo=discord&logoColor=white&label=Maintainerr"></a>
+<!-- Discord Badge -->  <a href="https://discord.maintainerr.info"><img alt="Discord" src="https://img.shields.io/discord/1152219249549512724?style=flat&logo=discord&logoColor=white&label=Maintainerr"></a>
 <!-- Latest Build -->  <picture><img alt="GitHub Actions Workflow Status" src="https://img.shields.io/github/actions/workflow/status/maintainerr/maintainerr/.github%2Fworkflows%2Fbuild_dev.yml?branch=development&style=flat&logo=github&label=Latest%20Build"></picture>
 <!-- Latest Release -->  <a href="https://github.com/maintainerr/Maintainerr/releases"><img alt="GitHub Release" src="https://img.shields.io/github/v/release/maintainerr/maintainerr?style=flat&logo=github&logoColor=white&label=Latest%20Release"></a>
 <!-- Commits -->  <picture><img alt="GitHub commits since latest release" src="https://img.shields.io/github/commits-since/maintainerr/maintainerr/latest?style=flat&logo=github&logoColor=white"></picture>
@@ -17,60 +19,30 @@
 <!-- License -->  <picture><img alt="GitHub License" src="https://img.shields.io/github/license/maintainerr/maintainerr?style=flat"></picture>
 </p>
 
-<b>Maintainerr</b> makes managing your media easy.
+<b>Maintainerr</b> is the janitor your media server doesn't have.
 
-- Do you hate being the janitor of your server?
-- Do you have a lot of media that never gets watched?
-- Do your users constantly request media, and let it sit there afterward never to be touched again?
+Libraries fill up. Users request a movie, watch it once, and never touch it again. Half-finished shows sit around for years. And somehow you're the one who has to decide what to delete.
 
-If you answered yes to any of those questions, you need <b>Maintainerr</b>.
-It's a one-stop shop for handling those outlier shows and movies that take up precious space on your server.
-
-# Features
-
-- Configure rules specific to your needs, based on several available options from Plex, Jellyfin, Seerr, Radarr, Sonarr and Tautulli.
-- Switch between Plex and Jellyfin as your media server, with automatic rule migration.
-- Manually add media to a collection if it is not included after rule execution. (for one-off items that do not match a rule set)
-- Selectively exclude media from being added to a collection, even if it matches a rule.
-- Show a collection containing rule-matched media on the media server home screen for a specific duration before deletion. Think "Leaving soon".
-- Optionally, use a manual collection, in case you don't want <b>Maintainerr</b> to add & remove collections at will.
-- Manage media straight from the collection within your media server. <b>Maintainerr</b> will sync and add or exclude media to/from the internal collection.
-- Remove or unmonitor media from \*arr
-- Clear requests from Seerr
-- Delete files from disk
-
-<br />
-
-Currently, <b>Maintainerr</b> supports rule parameters from the following apps:
-
-- [Plex](https://www.plex.tv/)
-- [Jellyfin](https://jellyfin.org/)
-- [Seerr](https://seerr.dev/)
-- [Radarr](https://radarr.video/)
-- [Sonarr](https://sonarr.tv/)
-- [Tautulli](https://tautulli.com/)
-- [Streamystats](https://github.com/fredrikburmester/streamystats) (Jellyfin only)
-
-# Preview
-
-![image](apps/ui/public/screenshots/overview_screenshot.png)
-![image](apps/ui/public/screenshots/rules_screenshot.png)
-![image](apps/ui/public/screenshots/collections_screenshot.png)
-![image](apps/ui/public/screenshots/rule_example_screenshot.png)
+Maintainerr does the deciding for you. Write rules for the stuff that's just taking up space - unwatched, unrequested, gathering dust - and it gathers those titles into a collection, gives everyone a grace period to catch up, then clears them from your media server, the \*arrs and Seerr. **Set it up once and forget it. Everything is automated!**
 
 # Installation
 
-Docker images for amd64 & arm64 are available from these sources:
+Docker images for amd64 & arm64 are available from:
 
-- [ghcr.io/maintainerr/maintainerr](https://ghcr.io/maintainerr/maintainerr) <--- recommended
-- [maintainerr/maintainerr](https://hub.docker.com/r/maintainerr/maintainerr)
+[![GHCR](https://img.shields.io/badge/GHCR-Recommended-78350f?style=for-the-badge&logo=github&logoColor=white)](https://ghcr.io/maintainerr/maintainerr)
 
-Data is saved inside the container at /opt/data. It is recommended to mount a persistent volume to this location in your Docker run command or Compose file.
-Make sure this directory is readable and writable by the user specified in the 'user' setting. If no 'user' setting is configured, the volume should be accessible by UID:GID 1000:1000.
+[![Docker Hub](https://img.shields.io/badge/Docker_Hub-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://hub.docker.com/r/maintainerr/maintainerr)
+
+> **Data directory.** Maintainerr stores its data at `/opt/data` inside the container. Mount a persistent volume there in your `docker run` command or Compose file. The directory must be readable and writable by the configured `user`; if no `user` is set, make it accessible to UID:GID `1000:1000`.
+
+> **CPU requirement (x86-64).** Image features (overlays and collection posters) use `sharp`, whose prebuilt binaries require a CPU with the `x86-64-v2` microarchitecture. Maintainerr still starts on older CPUs, but those features are disabled. If you run in a VM and hit this, set the VM CPU type to `host`, `x86-64-v2`, or newer (e.g. Proxmox/QEMU's default `kvm64` does not expose `x86-64-v2`). This does not apply to arm64.
+
+> If you set `BASE_PATH`, add it to the start of the paths too (e.g. `/maintainerr/api/health/ready`).
 
 For more information, visit the [installation guide](https://docs.maintainerr.info/installation).
 
-Docker run:
+<details>
+<summary><b>Docker run</b></summary>
 
 ```Yaml
 docker run -d \
@@ -83,7 +55,10 @@ docker run -d \
 ghcr.io/maintainerr/maintainerr:latest
 ```
 
-Docker Compose:
+</details>
+
+<details>
+<summary><b>Docker Compose</b></summary>
 
 ```Yaml
 services:
@@ -104,21 +79,206 @@ services:
         ports:
           - 6246:6246
         restart: unless-stopped
+        healthcheck: # already baked into the image; included here so you can tune it
+          test: ['CMD', '/opt/app/healthcheck.sh']
+          interval: 30s
+          timeout: 5s
+          start_period: 40s
+          retries: 3
 ```
 
-# Documentation
+</details>
 
-[For more information, please consult the documentation](https://docs.maintainerr.info/)
+<details>
+<summary><b>Kubernetes (Deployment + Service)</b></summary>
 
-# API Compatibility
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: maintainerr
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: maintainerr
+  template:
+    metadata:
+      labels:
+        app: maintainerr
+    spec:
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+      containers:
+        - name: maintainerr
+          image: ghcr.io/maintainerr/maintainerr:latest
+          ports:
+            - containerPort: 6246
+          env:
+            - name: TZ
+              value: Europe/Brussels
+            # - name: BASE_PATH      # if serving from a subdirectory
+            #   value: /maintainerr
+          volumeMounts:
+            - name: data
+              mountPath: /opt/data
+          livenessProbe:
+            httpGet:
+              path: /api/health/live
+              port: 6246
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /api/health/ready
+              port: 6246
+            initialDelaySeconds: 10
+            periodSeconds: 10
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: maintainerr-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: maintainerr
+spec:
+  selector:
+    app: maintainerr
+  ports:
+    - port: 6246
+      targetPort: 6246
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: maintainerr-data
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 1Gi
+```
 
-- Since v3, `/api/media-server` is the canonical API for media-server operations.
-- `/api/collections` and other app-specific endpoints are internal application APIs and are not a backward-compatible Plex contract.
+</details>
 
 # Features
 
-[To get an indication of which features are most desired, you can vote for them](https://features.maintainerr.info/?view=most-wanted)
+- Build rules from properties across Plex, Jellyfin, Emby, Radarr, Sonarr, Seerr, Tautulli and Streamystats, combined with AND/OR logic.
+- Use Plex, Jellyfin or Emby as your media server.
+- Switch between media server types with rule migration.
+- Deploy separate Maintainerr instances for separate media servers, each with isolated rules, collections and data.
+- Smart metadata matching - resolves every item across your media server, the \*arrs and Seerr by external IDs (IMDB/TMDB/TVDB), bridges missing IDs, and sanity-checks each match by release year so the right title is acted on.
+- Bring your own TVDB key for a second metadata source alongside the built-in TMDB - Maintainerr cross-checks IDs and years between providers and fills the gaps from whichever has the data.
+- Collect rule-matched media into a Maintainerr collection that is held for a configurable period before action - optionally pinned to the Plex home screen as a "Leaving soon" shelf.
+- Run automatic collections, or manual ones you manage; add or exclude individual items even when they match a rule.
+- Delete items from your download client.
+- Manage collection membership from within your media server - Maintainerr syncs manual changes back.
+- On handling: delete files from disk, unmonitor or delete in Radarr/Sonarr, change quality profile, and clear requests in Seerr.
+- Render configurable overlays (text, countdown, shapes, images) onto posters and title cards on your media server(s).
+- Set a custom collection poster that survives recreation.
+- Send notifications via Discord, Slack, Telegram, Pushover, Gotify, ntfy, Pushbullet, LunaSea, email or webhook.
+- Share rules through YAML import/export, the community rule library, and cross-server migration.
+- Schedule rule and collection runs with cron and watch progress live.
+- Plus storage metrics, a calendar, logs, an OpenAPI/Swagger API, health endpoints, and subfolder (`BASE_PATH`) hosting.
+- and more...
+
+<br />
+
+Maintainerr builds rules from data across these apps:
+
+[![Plex](https://img.shields.io/badge/Plex-E5A00D?style=for-the-badge&logo=plex&logoColor=white)](https://www.plex.tv/)
+[![Jellyfin](https://img.shields.io/badge/Jellyfin-00A4DC?style=for-the-badge&logo=jellyfin&logoColor=white)](https://jellyfin.org/)
+[![Emby](https://img.shields.io/badge/Emby-52B54B?style=for-the-badge&logo=emby&logoColor=white)](https://emby.media/)
+[![Seerr](https://img.shields.io/badge/Seerr-5969F8?style=for-the-badge)](https://seerr.dev/)
+[![Radarr](https://img.shields.io/badge/Radarr-FFC230?style=for-the-badge&logo=radarr&logoColor=white)](https://radarr.video/)
+[![Sonarr](https://img.shields.io/badge/Sonarr-2596BE?style=for-the-badge&logo=sonarr&logoColor=white)](https://sonarr.tv/)
+[![Tautulli](https://img.shields.io/badge/Tautulli-DBA81A?style=for-the-badge)](https://tautulli.com/)
+[![Streamystats](https://img.shields.io/badge/Streamystats-8A4FBE?style=for-the-badge)](https://github.com/fredrikburmester/streamystats)
+
+<sub>Tautulli is Plex-only; Streamystats is Jellyfin-only.</sub>
+
+# API
+
+Each instance serves interactive Swagger / OpenAPI docs at `/api/swagger` (prefixed with `BASE_PATH` when set). For everything else, see the [API documentation](https://docs.maintainerr.info/api/).
+
+Compatibility:
+
+- Since Maintainerr v3.0.0, `/api/media-server` is the canonical API for media-server operations.
+- `/api/collections` and other app-specific endpoints are internal application APIs and are not a backward-compatible Plex contract.
+
+# Preview
+
+<table>
+  <tr>
+    <td width="50%"><img width="100%" src="https://raw.githubusercontent.com/Maintainerr/maintainerr_site/main/src/assets/screenshots/Collections.png" alt="Collections" /></td>
+    <td width="50%"><img width="100%" src="https://raw.githubusercontent.com/Maintainerr/maintainerr_site/main/src/assets/screenshots/Rules.png" alt="Rules" /></td>
+  </tr>
+  <tr>
+    <td width="50%"><img width="100%" src="https://raw.githubusercontent.com/Maintainerr/maintainerr_site/main/src/assets/screenshots/Ruleconfig.png" alt="Rule configuration" /></td>
+    <td width="50%"><img width="100%" src="https://raw.githubusercontent.com/Maintainerr/maintainerr_site/main/src/assets/screenshots/Overlays.png" alt="Overlays" /></td>
+  </tr>
+  <tr>
+    <td width="50%"><img width="100%" src="https://raw.githubusercontent.com/Maintainerr/maintainerr_site/main/src/assets/screenshots/Calendar.png" alt="Calendar" /></td>
+    <td width="50%"><img width="100%" src="https://raw.githubusercontent.com/Maintainerr/maintainerr_site/main/src/assets/screenshots/StorageMetrics.png" alt="Storage metrics" /></td>
+  </tr>
+</table>
+
+# Health endpoints
+
+Maintainerr serves health probes under `/api/health` (prefixed with `BASE_PATH` when set): `/live` (process only), `/ready` (also checks the database, returns `503` if it's unreachable), and `/api/health` (alias of `/ready`). The Docker image already ships a `HEALTHCHECK` against `/api/health/ready`, and the Kubernetes example above wires the liveness and readiness probes.
+
+[See the documentation for response shapes and full details.](https://docs.maintainerr.info/)
+
+# Documentation
+
+Want the full picture? Every feature, setting, and gotcha, documented in detail:
+
+[![Documentation](https://img.shields.io/badge/Documentation-78350f?style=for-the-badge&logo=materialformkdocs&logoColor=white)](https://docs.maintainerr.info/)
+
+# Feature requests
+
+Missing something, or want to back an idea?
+
+[![Vote on features](https://img.shields.io/badge/Vote_on_features-78350f?style=for-the-badge)](https://features.maintainerr.info/?view=most-wanted)
+
+# Contributing
+
+Maintainerr is community-driven, and we're always looking for more hands. You don't have to be a developer:
+
+- Code - pick up an open issue or feature request, or bring your own idea.
+- Bugs - report them, or even better, send a fix.
+- Support - answer questions and help others on Discord.
+
+Start with [CONTRIBUTING.md](CONTRIBUTING.md), then dive into the [issues](https://github.com/Maintainerr/Maintainerr/issues) or our [Discord](https://discord.maintainerr.info). New contributors are genuinely welcome.
+
+# Support us
+
+Maintainerr is free and open source. We cover the server costs ourselves and spend countless hours keeping it stable, adding features, and fixing issues. If it saves you time, chipping in keeps it going - and is hugely appreciated.
+
+[![Donate](https://img.shields.io/badge/Donate-Open_Collective-78350f?style=for-the-badge&logo=opencollective&logoColor=white)](https://opencollective.com/maintainerr)
 
 # Credits
 
-Maintainerr is heavily inspired by Seerr (Overseerr / Jellyseerr). Some parts of Maintainerr's code are direct copies. Big thanks to the Seerr team!
+Maintainerr is built and maintained by:
+
+- [@jorenn92](https://github.com/jorenn92) - founder & original author
+- [@ydkmlt84](https://github.com/ydkmlt84) - code owner
+- [@benscobie](https://github.com/benscobie) - core developer (2024-2026)
+- [@enoch85](https://github.com/enoch85) - code owner & current maintainer
+- [@SmolSoftBoi](https://github.com/SmolSoftBoi) - core contributor
+
+The overlay system was built by [@gssariev](https://github.com/gssariev), with [@MrLinford](https://github.com/MrLinford), [@SmolSoftBoi](https://github.com/SmolSoftBoi) and [@Simon-Eklundh](https://github.com/Simon-Eklundh).
+
+...and everyone else in the community who has contributed (auto-updated):
+
+<a href="https://github.com/Maintainerr/Maintainerr/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=Maintainerr/Maintainerr" alt="Maintainerr contributors" />
+</a>
+
+<sub>Made with [contrib.rocks](https://contrib.rocks).</sub>
+
+Maintainerr is heavily inspired by Seerr. Some parts of Maintainerr's code are direct copies. Big thanks to the Seerr team!

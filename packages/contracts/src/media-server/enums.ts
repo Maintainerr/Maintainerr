@@ -46,8 +46,6 @@ export function isValidMediaItemType(type: string): type is MediaItemType {
 export enum MediaServerFeature {
   /** Ability to set collection visibility (home/recommended) */
   COLLECTION_VISIBILITY = 'collection_visibility',
-  /** Adapter creates a collection and seeds initial items in one API call */
-  BULK_COLLECTION_CREATE = 'bulk_collection_create',
   /** Watchlist functionality via external API (Plex.tv) */
   WATCHLIST = 'watchlist',
   /** Central watch history endpoint (vs per-user iteration) */
@@ -60,4 +58,10 @@ export enum MediaServerFeature {
   COLLECTION_POSTER = 'collection_poster',
   /** Ability to sort collections */
   COLLECTION_SORT = 'collection_sort',
+  /**
+   * A single collection can span multiple libraries. Jellyfin/Emby BoxSets are
+   * server-global and may hold items from any library; Plex collections are
+   * bound to one library. Gates the cross-library lookup for manual collections.
+   */
+  CROSS_LIBRARY_COLLECTIONS = 'cross_library_collections',
 }

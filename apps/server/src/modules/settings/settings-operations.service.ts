@@ -2,6 +2,7 @@ import {
   BasicResponseDto,
   EmbySetting,
   JellyfinSetting,
+  DownloadClientSetting,
   MediaServerType,
   SeerrSetting,
   StreamystatsSetting,
@@ -17,6 +18,7 @@ import {
 } from '../../utils/connection-error';
 import { InternalApiService } from '../api/internal-api/internal-api.service';
 import { MediaServerFactory } from '../api/media-server/media-server.factory';
+import { DownloadClientApiService } from '../api/download-client-api/download-client-api.service';
 import { PlexApiService } from '../api/plex-api/plex-api.service';
 import { SeerrApiService } from '../api/seerr-api/seerr-api.service';
 import { ServarrService } from '../api/servarr-api/servarr.service';
@@ -48,6 +50,7 @@ export class SettingsOperationsService {
     private readonly seerr: SeerrApiService,
     private readonly tautulli: TautulliApiService,
     private readonly streamystats: StreamystatsApiService,
+    private readonly downloadClient: DownloadClientApiService,
     private readonly internalApi: InternalApiService,
     @InjectRepository(Settings)
     private readonly settingsRepo: Repository<Settings>,
@@ -198,7 +201,7 @@ export class SettingsOperationsService {
     try {
       const settingsDb = await this.radarrSettingsRepo.findOne({
         where: { id: id },
-        relations: ['collections'],
+        relations: { collections: true },
       });
 
       if (settingsDb.collections.length > 0) {
@@ -308,6 +311,59 @@ export class SettingsOperationsService {
       return { status: 'OK', code: 1, message: 'Success' };
     } catch (error) {
       this.logger.error('Error while updating Streamystats settings');
+      this.logger.debug(error);
+      return { status: 'NOK', code: 0, message: 'Failed' };
+    }
+  }
+
+  public async removeDownloadClientSetting() {
+    try {
+      const settingsDb = await this.settingsRepo.findOne({ where: {} });
+
+      // Clear the whole integration config, not just the connection fields, so
+      // a removed download client leaves no stale cleanup options behind (and a
+      // later reconfigure starts from defaults).
+      await this.settingsDataService.saveSettings({
+        ...settingsDb,
+        download_client_url: null,
+        download_client_username: null,
+        download_client_password: null,
+        download_client_delete_data: true,
+        download_client_fallback_ratio: 0.5,
+      });
+
+      await this.settingsDataService.init();
+      this.downloadClient.init();
+
+      return { status: 'OK', code: 1, message: 'Success' };
+    } catch (error) {
+      this.logger.error('Error removing download client settings');
+      this.logger.debug(error);
+      return { status: 'NOK', code: 0, message: 'Failed' };
+    }
+  }
+
+  public async updateDownloadClientSetting(
+    settings: DownloadClientSetting,
+  ): Promise<BasicResponseDto> {
+    try {
+      const settingsDb = await this.settingsRepo.findOne({ where: {} });
+
+      await this.settingsDataService.saveSettings({
+        ...settingsDb,
+        download_client_url: settings.download_client_url,
+        download_client_username: settings.download_client_username || null,
+        download_client_password: settings.download_client_password || null,
+        download_client_delete_data: settings.download_client_delete_data,
+        download_client_fallback_ratio: settings.download_client_fallback_ratio,
+      });
+
+      await this.settingsDataService.init();
+      this.downloadClient.init();
+
+      return { status: 'OK', code: 1, message: 'Success' };
+    } catch (error) {
+      this.logger.error('Error while updating download client settings');
       this.logger.debug(error);
       return { status: 'NOK', code: 0, message: 'Failed' };
     }
@@ -800,7 +856,7 @@ export class SettingsOperationsService {
     try {
       const settingsDb = await this.sonarrSettingsRepo.findOne({
         where: { id: id },
-        relations: ['collections'],
+        relations: { collections: true },
       });
 
       if (settingsDb.collections.length > 0) {
@@ -1026,6 +1082,7 @@ export class SettingsOperationsService {
       await this.mediaServerFactory.initialize();
       this.seerr.init();
       this.tautulli.init();
+      this.downloadClient.init();
       this.internalApi.init();
 
       // reload Collection handler job if changed
@@ -1130,6 +1187,32 @@ export class SettingsOperationsService {
     }
   }
 
+  public async testDownloadClient(
+    setting?: DownloadClientSetting,
+  ): Promise<BasicResponseDto> {
+    if (setting) {
+      return await this.downloadClient.testConnection({
+        url: setting.download_client_url,
+        username: setting.download_client_username,
+        password: setting.download_client_password,
+      });
+    }
+
+    if (!this.settingsDataService.downloadClientConfigured()) {
+      return {
+        status: 'NOK',
+        code: 0,
+        message: 'Download client is not configured',
+      };
+    }
+
+    return await this.downloadClient.testConnection({
+      url: this.settingsDataService.download_client_url,
+      username: this.settingsDataService.download_client_username,
+      password: this.settingsDataService.download_client_password,
+    });
+  }
+
   public async testRadarr(
     id: number | RadarrSettingRawDto,
   ): Promise<BasicResponseDto> {
@@ -1219,7 +1302,9 @@ export class SettingsOperationsService {
     }
   }
 
-  public async testPlexAuthToken(): Promise<BasicResponseDto> {
+  public async testPlexAuthToken(): Promise<
+    BasicResponseDto & { unreachable?: boolean }
+  > {
     if (!this.settingsDataService.plex_auth_token) {
       return {
         status: 'NOK',
@@ -1228,26 +1313,35 @@ export class SettingsOperationsService {
       };
     }
 
-    try {
-      const valid = await this.plexApi.validateAuthToken();
+    const unreachableMessage =
+      "Couldn't reach plex.tv to verify your credentials — retrying. Your saved token is still in use.";
 
-      return valid
-        ? { status: 'OK', code: 1, message: 'Success' }
-        : {
+    try {
+      switch (await this.plexApi.validateAuthToken()) {
+        case 'valid':
+          return { status: 'OK', code: 1, message: 'Success' };
+        case 'invalid':
+          return {
             status: 'NOK',
             code: 0,
             message:
               'Stored Plex credentials are invalid. Re-authenticate with Plex.',
           };
+        case 'unreachable':
+          return {
+            status: 'NOK',
+            code: 0,
+            unreachable: true,
+            message: unreachableMessage,
+          };
+      }
     } catch (error) {
       logConnectionTestError(this.logger, 'Plex auth');
       return {
         status: 'NOK',
         code: 0,
-        message: formatConnectionFailureMessage(
-          error,
-          'Stored Plex credentials could not be validated. Re-authenticate with Plex.',
-        ),
+        unreachable: true,
+        message: formatConnectionFailureMessage(error, unreachableMessage),
       };
     }
   }

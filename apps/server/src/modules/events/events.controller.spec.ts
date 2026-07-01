@@ -45,12 +45,14 @@ describe('EventsController', () => {
     const eventsBufferService = {
       parseLastEventId: jest.fn().mockReturnValue(undefined),
       getEventsAfter: jest.fn().mockReturnValue([]),
-      buildBufferedEvent: jest.fn().mockImplementation(
-        (message: Omit<NestMessageEvent, 'id'>): NestMessageEvent => ({
-          ...message,
-          id: '1',
-        }),
-      ),
+      buildBufferedEvent: jest
+        .fn()
+        .mockImplementation(
+          (message: Omit<NestMessageEvent, 'id'>): NestMessageEvent => ({
+            ...message,
+            id: '1',
+          }),
+        ),
     } as unknown as jest.Mocked<EventsBufferService>;
     const controller = new EventsController(
       eventsBufferService,

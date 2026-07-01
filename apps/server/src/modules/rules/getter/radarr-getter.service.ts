@@ -72,7 +72,7 @@ export class RadarrGetterService {
 
       if (lookupCandidates.length === 0) {
         this.logger.warn(
-          `Failed to resolve external IDs for '${libItem.title}' with id '${libItem.id}'. As a result, no Radarr query could be made.`,
+          `Failed to resolve external IDs for '${libItem.title}' (media server ID '${libItem.id}'). As a result, no Radarr query could be made.`,
         );
         return null;
       }
@@ -100,11 +100,19 @@ export class RadarrGetterService {
       });
       const movieResponse = matchedResult?.result;
 
+      if (movieResponse === undefined) {
+        // The Radarr lookup itself failed (or every candidate's lookup
+        // returned undefined) — could be a transient outage. Fail closed
+        // rather than returning null (definitive absence), which would drop
+        // the item from the collection on a transient blip. (#3125)
+        return undefined;
+      }
+
       if (!movieResponse) {
         const attemptedIds = formatMetadataLookupCandidates(lookupCandidates);
 
         this.logger.warn(
-          `None of the resolved external IDs [${attemptedIds}] for '${libItem.title}' matched a movie in Radarr.`,
+          `None of the resolved external IDs [${attemptedIds}] for '${libItem.title}' matched a movie in Radarr. Is the movie tracked in Radarr?`,
         );
         return null;
       }
@@ -167,7 +175,7 @@ export class RadarrGetterService {
           }
           case 'releaseDate': {
             return movieResponse.physicalRelease && movieResponse.digitalRelease
-              ? (await new Date(movieResponse.physicalRelease)) >
+              ? new Date(movieResponse.physicalRelease) >
                 new Date(movieResponse.digitalRelease)
                 ? new Date(movieResponse.digitalRelease)
                 : new Date(movieResponse.physicalRelease)

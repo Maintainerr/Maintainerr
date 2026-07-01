@@ -1,7 +1,7 @@
 import axios, { AxiosError, AxiosInstance, RawAxiosRequestConfig } from 'axios';
-import axiosRetry from 'axios-retry';
 import NodeCache from 'node-cache';
 import { MaintainerrLogger } from '../../logging/logs.service';
+import { applyHttpRetry } from '../lib/httpRetry';
 import { describeRequestTarget } from '../lib/requestLogging';
 
 // 20 minute default TTL (in seconds)
@@ -36,10 +36,7 @@ export class ExternalApiService {
         ...options.headers,
       },
     });
-    axiosRetry(this.axios, {
-      retries: 3,
-      retryDelay: axiosRetry.exponentialDelay,
-    });
+    applyHttpRetry(this.axios);
     this.baseUrl = baseUrl;
     this.cache = options.nodeCache;
   }
@@ -57,7 +54,7 @@ export class ExternalApiService {
       }
       const response = await this.axios.get<T>(endpoint, config);
 
-      if (this.cache) {
+      if (this.cache && this.isCacheable(response.data)) {
         this.cache.set(cacheKey, response.data, ttl ?? DEFAULT_TTL);
       }
 
@@ -118,11 +115,17 @@ export class ExternalApiService {
     endpoint: string,
     data?: any,
     config?: RawAxiosRequestConfig,
+    options?: { rethrow?: boolean },
   ): Promise<T> {
     try {
       const response = await this.axios.post<T>(endpoint, data, config);
       return response.data;
     } catch (error) {
+      // rethrow lets a caller inspect the failure (e.g. the HTTP status) instead
+      // of collapsing every error to undefined; it then owns the logging.
+      if (options?.rethrow) {
+        throw error;
+      }
       this.logRequestFailure('POST', endpoint, config, error);
       return undefined;
     }
@@ -146,7 +149,9 @@ export class ExternalApiService {
           Date.now() - DEFAULT_ROLLING_BUFFER
         ) {
           void this.axios.get<T>(endpoint, config).then((response) => {
-            this.cache?.set(cacheKey, response.data, ttl ?? DEFAULT_TTL);
+            if (this.isCacheable(response.data)) {
+              this.cache?.set(cacheKey, response.data, ttl ?? DEFAULT_TTL);
+            }
           });
         }
         return cachedItem;
@@ -154,7 +159,7 @@ export class ExternalApiService {
 
       const response = await this.axios.get<T>(endpoint, config);
 
-      if (this.cache) {
+      if (this.cache && this.isCacheable(response.data)) {
         this.cache.set(cacheKey, response.data, ttl ?? DEFAULT_TTL);
       }
 
@@ -188,7 +193,9 @@ export class ExternalApiService {
           this.axios
             .post<T>(endpoint, data, config)
             .then((response) => {
-              this.cache?.set(cacheKey, response.data, ttl ?? DEFAULT_TTL);
+              if (this.isCacheable(response.data)) {
+                this.cache?.set(cacheKey, response.data, ttl ?? DEFAULT_TTL);
+              }
             })
             .catch((error: AxiosError) => {
               if (error.response?.status === 429) {
@@ -220,15 +227,19 @@ export class ExternalApiService {
           return undefined;
         });
 
-      if (this.cache) {
+      if (this.cache && this.isCacheable(response?.data)) {
         this.cache.set(cacheKey, response.data, ttl ?? DEFAULT_TTL);
       }
 
-      return response.data;
+      return response?.data;
     } catch (error: any) {
       this.logger.warn(this.formatRequestFailure('POST', url, error));
       return undefined;
     }
+  }
+
+  private isCacheable(data: unknown): boolean {
+    return data != null && typeof data === 'object' && !Buffer.isBuffer(data);
   }
 
   private logRequestFailure(

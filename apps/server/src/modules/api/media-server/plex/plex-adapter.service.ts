@@ -19,6 +19,7 @@ import {
 import { Injectable } from '@nestjs/common';
 import { MaintainerrLogger } from '../../../logging/logs.service';
 import { EPlexDataType } from '../../plex-api/enums/plex-data-type-enum';
+import { PlexLibraryItem } from '../../plex-api/interfaces/library.interfaces';
 import { PLEX_PAGE_SIZE } from '../../plex-api/plex-api.constants';
 import { PlexApiService } from '../../plex-api/plex-api.service';
 import {
@@ -190,6 +191,10 @@ export class PlexAdapterService implements IMediaServerService {
     return PlexMapper.metadataToMediaItem(metadata);
   }
 
+  async itemExists(itemId: string): Promise<boolean> {
+    return this.plexApi.itemExists(itemId);
+  }
+
   async getChildrenMetadata(parentId: string): Promise<MediaItem[]> {
     const children = await this.plexApi.getChildrenMetadata(parentId);
     if (!children) return [];
@@ -216,6 +221,10 @@ export class PlexAdapterService implements IMediaServerService {
     return results.map(PlexMapper.metadataToMediaItem);
   }
 
+  async prefetchWatchHistory(abortSignal?: AbortSignal): Promise<void> {
+    await this.plexApi.prefetchWatchHistory(abortSignal);
+  }
+
   async getWatchHistory(itemId: string): Promise<WatchRecord[]> {
     const history = await this.plexApi.getWatchHistory(itemId);
     return history.map(PlexMapper.toWatchRecord);
@@ -225,8 +234,9 @@ export class PlexAdapterService implements IMediaServerService {
     itemId: string,
     nativeViewCount?: number,
     itemTitle?: string,
+    itemType?: PlexLibraryItem['type'],
   ): Promise<MediaWatchState> {
-    const history = await this.plexApi.getWatchHistory(itemId, false);
+    const history = await this.plexApi.getWatchHistory(itemId, false, itemType);
 
     if (history.length > 0) {
       return {
@@ -261,6 +271,20 @@ export class PlexAdapterService implements IMediaServerService {
     const history = await this.getWatchHistory(itemId);
     const userIds = new Set(history.map((record) => record.userId));
     return Array.from(userIds);
+  }
+
+  async getActiveSessions(): Promise<Set<string>> {
+    const sessions = await this.plexApi.getActiveSessions();
+    const playing = new Set<string>();
+    for (const session of sessions) {
+      // A collection can track an episode at any level, so protect the
+      // episode and its season and show (movies only carry ratingKey).
+      if (session.ratingKey) playing.add(session.ratingKey);
+      if (session.parentRatingKey) playing.add(session.parentRatingKey);
+      if (session.grandparentRatingKey)
+        playing.add(session.grandparentRatingKey);
+    }
+    return playing;
   }
 
   async getCollections(libraryId: string): Promise<MediaCollection[]> {
@@ -299,7 +323,6 @@ export class PlexAdapterService implements IMediaServerService {
       title: params.title,
       summary: params.summary,
       sortTitle: params.sortTitle,
-      initialItemIds: params.initialItemIds,
     });
 
     if (!result) {

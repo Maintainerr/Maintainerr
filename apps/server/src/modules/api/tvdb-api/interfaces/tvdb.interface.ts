@@ -25,6 +25,21 @@ export interface TvdbRemoteId {
   sourceName: string;
 }
 
+export interface TvdbSeasonType {
+  id: number;
+  name: string;
+  type: string;
+  alternateName: string | null;
+}
+
+export interface TvdbSeason {
+  id: number;
+  seriesId: number;
+  type: TvdbSeasonType;
+  number: number;
+  name: string | null;
+}
+
 export interface TvdbSeriesBase {
   id: number;
   name: string;
@@ -53,6 +68,7 @@ export interface TvdbSeriesBase {
   year: string;
   artworks: TvdbArtwork[];
   remoteIds: TvdbRemoteId[];
+  seasons?: TvdbSeason[];
 }
 
 export interface TvdbMovieBase {

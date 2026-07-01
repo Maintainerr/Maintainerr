@@ -110,6 +110,24 @@ describe('RuleExecutorJobManagerService', () => {
     expect(executeMock).toHaveBeenCalledTimes(2);
   });
 
+  it('flushes the Plex watch-history snapshot at batch end', async () => {
+    const cacheManager = (await import('../../api/lib/cache')).default;
+    const bulkCache = cacheManager.getCache('plexwatchhistory').data;
+    bulkCache.set('watch-history-bulk', new Map());
+    expect(bulkCache.has('watch-history-bulk')).toBe(true);
+
+    const { service } = buildService();
+    service.enqueue({ ruleGroupId: 1 });
+
+    for (let i = 0; i < 10 && service.isProcessing(); i++) {
+      await flushMicrotasks();
+      await waitForNextTick();
+    }
+
+    expect(service.isProcessing()).toBe(false);
+    expect(bulkCache.has('watch-history-bulk')).toBe(false);
+  });
+
   it('aborts the currently executing job when requested', async () => {
     const executionDeferred = createDeferred();
     const executeMock: ExecuteMock = jest.fn().mockImplementation(async () => {
@@ -125,8 +143,7 @@ describe('RuleExecutorJobManagerService', () => {
     service.stopProcessingRuleGroup(42);
 
     const abortController = (service as any).abortController as
-      | AbortController
-      | undefined;
+      AbortController | undefined;
     expect(abortController?.signal.aborted).toBe(true);
 
     // Let the execution finish to avoid dangling promises
@@ -350,8 +367,7 @@ describe('RuleExecutorJobManagerService', () => {
     service.stopProcessingRuleGroup(42);
 
     const abortController = (service as any).abortController as
-      | AbortController
-      | undefined;
+      AbortController | undefined;
     expect(abortController?.signal.aborted).toBe(true);
     expect(service.getStatus()).toEqual({
       processingQueue: true,

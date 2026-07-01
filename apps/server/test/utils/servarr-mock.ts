@@ -20,6 +20,8 @@ export const mockRadarrApi = (
   jest.spyOn(api, 'getMovieByTmdbId').mockResolvedValue(undefined);
   jest.spyOn(api, 'deleteMovie').mockResolvedValue(true);
   jest.spyOn(api, 'updateMovie').mockResolvedValue(true);
+  jest.spyOn(api, 'ensureTag').mockResolvedValue(1);
+  jest.spyOn(api, 'setMovieTags').mockResolvedValue(true);
 
   servarrService.getRadarrApiClient.mockResolvedValue(api);
 
@@ -45,6 +47,12 @@ export const mockSonarrApi = (
   jest.spyOn(api, 'deleteShow').mockResolvedValue(true);
   jest.spyOn(api, 'delete').mockImplementation(jest.fn());
   jest.spyOn(api, 'updateSeries').mockResolvedValue(true);
+  // Download-client cleanup helpers default to "no coverage" so tests that
+  // don't exercise cleanup never hit the network; coverage tests override these.
+  jest.spyOn(api, 'getEpisodes').mockResolvedValue([]);
+  jest.spyOn(api, 'getSeriesDownloadHistory').mockResolvedValue([]);
+  jest.spyOn(api, 'ensureTag').mockResolvedValue(1);
+  jest.spyOn(api, 'setSeriesTags').mockResolvedValue(true);
 
   servarrService.getSonarrApiClient.mockResolvedValue(api);
 

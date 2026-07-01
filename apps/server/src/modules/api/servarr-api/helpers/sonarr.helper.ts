@@ -2,10 +2,10 @@ import { CONNECTION_TEST_TIMEOUT_MS } from '../../../../utils/connection-error';
 import { MaintainerrLogger } from '../../../logging/logs.service';
 import { ServarrApi } from '../common/servarr-api.service';
 import {
+  DownloadHistoryItem,
   SonarrEpisode,
   SonarrEpisodeFile,
   SonarrInfo,
-  SonarrSeason,
   SonarrSeries,
 } from '../interfaces/sonarr.interface';
 
@@ -109,26 +109,68 @@ export class SonarrApi extends ServarrApi<{
   // (unmonitor + file deletes) by the empty-show cleanup, and also drives
   // rule evaluation — both need Sonarr's current truth, not a snapshot that
   // can be up to DEFAULT_TTL stale (see issue #2757 / #2891).
-  public async getSeriesByTvdbId(id: number): Promise<SonarrSeries> {
+  // Returns `null` when Sonarr confirms the series isn't tracked (empty
+  // response) and `undefined` when the lookup itself failed (transport, auth,
+  // 5xx). Callers must keep these distinct: a confirmed miss is safe to fall
+  // back from, a failure must fail closed so a transient Sonarr outage can't
+  // silently change rule evaluation.
+  public async getSeriesByTvdbId(
+    id: number,
+  ): Promise<SonarrSeries | null | undefined> {
     try {
       const response = await this.getWithoutCache<SonarrSeries[]>(
         `/series?tvdbId=${id}`,
+        // Slow/underpowered Sonarr can take >10s to resolve a tvdbId; allow more
+        // headroom than the shared default before aborting (#3181).
+        { timeout: 20000 },
       );
 
-      if (!response?.[0]) {
-        this.logger.warn(`Could not retrieve show by tvdb ID ${id}`);
+      // getWithoutCache swallows transport/auth/5xx into `undefined` (it never
+      // throws), so the catch below can't see those failures. Distinguish them
+      // here and fail closed (undefined), rather than letting the empty check
+      // collapse a transient outage into `null` ("not tracked"). (#3125)
+      if (response === undefined) {
+        this.logger.warn(`Error retrieving show by tvdb ID ${id}`);
         return undefined;
+      }
+
+      if (!response[0]) {
+        this.logger.warn(`Could not retrieve show by tvdb ID ${id}`);
+        return null;
       }
 
       return response[0];
     } catch (error) {
       this.logger.warn(`Error retrieving show by tvdb ID ${id}`);
       this.logger.debug(error);
+      return undefined;
     }
   }
 
   public async updateSeries(series: SonarrSeries): Promise<boolean> {
     return this.runPut('series', JSON.stringify(series));
+  }
+
+  /**
+   * Add or remove a single tag on a batch of series via the series editor.
+   * `applyTags: 'add' | 'remove'` only — never 'replace', which would wipe every
+   * other tag the user has on those series. Best-effort: returns false on failure
+   * (callers treat tagging as non-fatal). No-ops on an empty id list. Sonarr tags
+   * are series-level; there is no per-season tag.
+   */
+  public async setSeriesTags(
+    seriesIds: number[],
+    tagId: number,
+    mode: 'add' | 'remove',
+  ): Promise<boolean> {
+    if (seriesIds.length === 0) {
+      return true;
+    }
+
+    return this.runPut(
+      'series/editor',
+      JSON.stringify({ seriesIds, tags: [tagId], applyTags: mode }),
+    );
   }
 
   public async searchSeries(seriesId: number): Promise<void> {
@@ -144,6 +186,41 @@ export class SonarrApi extends ServarrApi<{
       );
       this.logger.debug(error);
     }
+  }
+
+  /**
+   * The distinct torrent infohashes that produced this series' files, for a
+   * whole-show delete. Derived from the same grab/import-filtered history as the
+   * coverage path, so a torrent that only ever failed for this series isn't
+   * removed.
+   */
+  public async getDownloadIdsForSeries(seriesId: number): Promise<string[]> {
+    const history = await this.getSeriesDownloadHistory(seriesId);
+    return [...new Set(history.map((item) => item.hash))];
+  }
+
+  /**
+   * Per-torrent episode coverage from a series' Sonarr history: one item per
+   * grab/import event, giving the torrent infohash and the episode it backed.
+   * Used by season/episode deletes to remove only torrents whose every backed
+   * episode is being deleted. Never throws (returns [] on failure).
+   */
+  public async getSeriesDownloadHistory(
+    seriesId: number,
+  ): Promise<DownloadHistoryItem[]> {
+    const records = await this.getHistoryRecords(
+      `/history/series?seriesId=${seriesId}`,
+    );
+
+    const items: DownloadHistoryItem[] = [];
+    for (const record of records) {
+      const hash = this.downloadProducingHash(record);
+      if (hash) {
+        items.push({ hash, episodeId: record.episodeId });
+      }
+    }
+
+    return items;
   }
 
   public async deleteShow(
@@ -306,31 +383,6 @@ export class SonarrApi extends ServarrApi<{
       this.logger.debug(error);
       return undefined;
     }
-  }
-
-  private buildSeasonList(
-    seasons: number[],
-    existingSeasons?: SonarrSeason[],
-  ): SonarrSeason[] {
-    if (existingSeasons) {
-      const newSeasons = existingSeasons.map((season) => {
-        if (seasons.includes(season.seasonNumber)) {
-          season.monitored = true;
-        }
-        return season;
-      });
-
-      return newSeasons;
-    }
-
-    const newSeasons = seasons.map(
-      (seasonNumber): SonarrSeason => ({
-        seasonNumber,
-        monitored: true,
-      }),
-    );
-
-    return newSeasons;
   }
 
   public async info(): Promise<SonarrInfo> {

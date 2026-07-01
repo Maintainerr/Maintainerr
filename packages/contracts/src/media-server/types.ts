@@ -227,7 +227,16 @@ export interface CreateCollectionParams {
   summary?: string
   type: MediaItemType
   sortTitle?: string
-  initialItemIds?: string[]
+  /**
+   * Optional id of a single item to include when the collection is created.
+   * Emby's create-collection endpoint throws (HTTP 500) when asked to create an
+   * empty collection under a library folder (#3075), so it must be given at least
+   * one item. Plex and Jellyfin create empty (their behaviour since #3001) and do
+   * not read this. Kept to a single id so the create request stays well under the
+   * URL length limit (#3001); the rest are added afterwards via
+   * addBatchToCollection.
+   */
+  initialItemId?: string
 }
 
 /** Plex-only visibility settings */

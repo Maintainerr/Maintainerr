@@ -190,6 +190,15 @@ describe('MediaServerSwitchService', () => {
           }
         ).mediaServerFactory.uninitializeServer,
       ).toHaveBeenCalledWith(MediaServerType.PLEX);
+      // The newly-active adapter is initialized once the switch lock releases,
+      // so a carried-over server is usable (and its test passes) immediately.
+      expect(
+        (
+          service as unknown as {
+            mediaServerFactory: { initialize: jest.Mock };
+          }
+        ).mediaServerFactory.initialize,
+      ).toHaveBeenCalled();
       expect(queryRunner.release).toHaveBeenCalled();
     });
 
@@ -227,6 +236,14 @@ describe('MediaServerSwitchService', () => {
             };
           }
         ).mediaServerFactory.uninitializeServer,
+      ).not.toHaveBeenCalled();
+      // A failed switch (NOK) must not initialize any adapter.
+      expect(
+        (
+          service as unknown as {
+            mediaServerFactory: { initialize: jest.Mock };
+          }
+        ).mediaServerFactory.initialize,
       ).not.toHaveBeenCalled();
       expect(queryRunner.release).toHaveBeenCalled();
     });

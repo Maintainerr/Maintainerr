@@ -20,7 +20,7 @@ import {
 import { Settings } from '../../settings/entities/settings.entities';
 import { SettingsDataService } from '../../settings/settings-data.service';
 import PlexApi from '../lib/plexApi';
-import PlexTvApi, { PlexUser } from '../lib/plextvApi';
+import PlexTvApi, { PlexTokenValidation, PlexUser } from '../lib/plextvApi';
 import { CollectionHubSettingsDto } from './dto/collection-hub-settings.dto';
 import { EPlexDataType } from './enums/plex-data-type-enum';
 import {
@@ -49,15 +49,11 @@ import {
   PlexDevice,
   PlexStatusResponse,
 } from './interfaces/server.interface';
-import { PLEX_PAGE_SIZE, PLEX_REQUEST_TIMEOUT_MS } from './plex-api.constants';
-
-type PlexDiscoverUserState = Record<string, unknown>;
-
-type PlexDiscoverUserStateResponse = {
-  MediaContainer: {
-    UserState: PlexDiscoverUserState;
-  };
-};
+import {
+  PLEX_PAGE_SIZE,
+  PLEX_REQUEST_TIMEOUT_MS,
+  WATCH_HISTORY_BULK_CACHE_KEY,
+} from './plex-api.constants';
 
 @Injectable()
 export class PlexApiService {
@@ -65,6 +61,7 @@ export class PlexApiService {
   private plexTvClient: PlexTvApi;
   private plexCommunityClient: PlexCommunityApi;
   private machineId: string;
+  private watchHistoryPrefetch?: Promise<void>;
 
   constructor(
     private readonly settings: SettingsDataService,
@@ -190,9 +187,13 @@ export class PlexApiService {
     this.plexClient = undefined;
     this.plexCommunityClient = undefined;
     this.plexTvClient = undefined;
+    // Drop the watch-history snapshot too — on a server/token switch it would
+    // otherwise serve the previous server's history for up to its TTL.
+    this.watchHistoryPrefetch = undefined;
     cacheManager.getCache('plexguid').data.flushAll();
     cacheManager.getCache('plextv').data.flushAll();
     cacheManager.getCache('plexcommunity').data.flushAll();
+    cacheManager.getCache('plexwatchhistory').data.flushAll();
   }
 
   public async initialize() {
@@ -343,8 +344,12 @@ export class PlexApiService {
         this.logger.debug('Plex client not initialized, skipping getStatus');
         return undefined;
       }
+      // Probe `/identity`, not `/`: it returns machineIdentifier + version
+      // without auth quirks. Bare `/` returns 401 behind reverse proxies (it
+      // redirects to the web UI), which would break connection/machine-id
+      // detection for proxied servers.
       const response: PlexStatusResponse = await this.plexClient.query(
-        '/',
+        '/identity',
         false,
       );
       return response.MediaContainer;
@@ -354,26 +359,19 @@ export class PlexApiService {
     }
   }
 
-  public async validateAuthToken(token?: string): Promise<boolean> {
+  public async validateAuthToken(token?: string): Promise<PlexTokenValidation> {
     const authToken = token ?? this.settings.plex_auth_token;
 
     if (!authToken) {
       throw new Error('Plex auth token is required for validation');
     }
 
-    try {
-      const plexTvClient = new PlexTvApi(
-        authToken,
-        this.loggerFactory.createLogger(),
-      );
+    const plexTvClient = new PlexTvApi(
+      authToken,
+      this.loggerFactory.createLogger(),
+    );
 
-      await plexTvClient.getUser();
-      return true;
-    } catch (error) {
-      this.logger.debug('Plex auth token validation failed');
-      this.logger.debug(error);
-      return false;
-    }
+    return plexTvClient.validateToken();
   }
 
   public async searchContent(input: string) {
@@ -633,32 +631,6 @@ export class PlexApiService {
     );
   }
 
-  public async getDiscoverDataUserState(
-    metaDataRatingKey: string,
-  ): Promise<PlexDiscoverUserState | undefined> {
-    const settings = this.getDbSettings();
-
-    try {
-      const response = await axios.get<PlexDiscoverUserStateResponse>(
-        `https://discover.provider.plex.tv/library/metadata/${metaDataRatingKey}/userState`,
-        {
-          headers: {
-            'content-type': 'application/json',
-            'X-Plex-Token': settings.auth_token,
-          },
-        },
-      );
-
-      return response.data.MediaContainer.UserState;
-    } catch (error) {
-      this.logger.error(
-        "Outbound call to discover.provider.plex.tv failed. Couldn't fetch userState",
-      );
-      this.logger.debug(error);
-      return undefined;
-    }
-  }
-
   public async getUserDataFromPlexTv(): Promise<PlexTvUser[] | undefined> {
     try {
       const response = await this.plexTvClient.getUsers();
@@ -725,10 +697,162 @@ export class PlexApiService {
     }
   }
 
+  /**
+   * Fetches the complete watch history in a single paginated sweep and stores
+   * a leaf lookup map (movies + episodes keyed by their own ratingKey) in the
+   * 'plexwatchhistory' cache (1 hour TTL). Subsequent getWatchHistory calls for
+   * leaf items are served from this map instead of issuing one HTTP request per
+   * item. Returns immediately when the map is already cached, so it is safe to
+   * call at the start of every rule group.
+   *
+   * Show/season history is intentionally NOT rolled up here: the bulk endpoint
+   * keys each row by leaf ratingKey, and grouping to show/season would depend on
+   * grandparentKey/parentKey, which are undocumented on this endpoint and absent
+   * over some Plex connections — a missing key would silently read as "never
+   * watched". Show/season queries therefore fall through to the per-item
+   * metadataItemID query in getWatchHistory, which Plex rolls up server-side.
+   *
+   * On failure the error is logged and swallowed — getWatchHistory falls back
+   * to per-item queries automatically when the map is absent.
+   */
+  public prefetchWatchHistory(abortSignal?: AbortSignal): Promise<void> {
+    const cache = cacheManager.getCache('plexwatchhistory').data;
+    if (cache.has(WATCH_HISTORY_BULK_CACHE_KEY)) {
+      return Promise.resolve();
+    }
+
+    // Deduplicate concurrent callers onto one in-flight fetch.
+    this.watchHistoryPrefetch ??= this.fetchWatchHistoryMap(
+      abortSignal,
+    ).finally(() => {
+      this.watchHistoryPrefetch = undefined;
+    });
+    return this.watchHistoryPrefetch;
+  }
+
+  private async fetchWatchHistoryMap(abortSignal?: AbortSignal): Promise<void> {
+    this.logger.log('Prefetching watch history for all library items...');
+
+    try {
+      abortSignal?.throwIfAborted();
+      const historyQuery = {
+        uri: '/status/sessions/history/all?sort=viewedAt:desc',
+      };
+      const response = abortSignal
+        ? await this.plexClient.queryAll<PlexLibraryResponse>(
+            historyQuery,
+            false,
+            abortSignal,
+          )
+        : await this.plexClient.queryAll<PlexLibraryResponse>(
+            historyQuery,
+            false,
+          );
+
+      const container = response?.MediaContainer;
+      const records = (container?.Metadata as PlexSeenBy[]) ?? [];
+
+      // The leaf map is authoritative for "never watched": a movie/episode
+      // absent from it is read as empty history with NO per-item fallback. So
+      // only cache a sweep we can prove is complete. Plex reports totalSize on
+      // this endpoint; queryAll stops paging once totalSize is reached, but a
+      // missing/short totalSize would make it stop early and silently truncate.
+      // Treat that as a failed prefetch so callers fall back to per-item queries
+      // rather than trusting a partial map.
+      const totalSize = container?.totalSize;
+      if (typeof totalSize !== 'number' || records.length < totalSize) {
+        this.logger.warn(
+          `Watch history prefetch returned an unverifiable result ` +
+            `(received ${records.length}, totalSize ${totalSize ?? 'absent'}) — ` +
+            `falling back to per-item queries.`,
+        );
+        return;
+      }
+
+      const leafMap = new Map<string, PlexSeenBy[]>();
+      for (const record of records) {
+        const existing = leafMap.get(record.ratingKey);
+        if (existing) {
+          existing.push(record);
+        } else {
+          leafMap.set(record.ratingKey, [record]);
+        }
+      }
+
+      cacheManager
+        .getCache('plexwatchhistory')
+        .data.set(WATCH_HISTORY_BULK_CACHE_KEY, leafMap);
+
+      this.logger.log(
+        `Watch history prefetch complete: ${records.length} records — ` +
+          `${leafMap.size} leaf items.`,
+      );
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        throw error;
+      }
+
+      this.logger.warn(
+        `Watch history prefetch failed — falling back to per-item queries. Error: ${error}`,
+      );
+    }
+  }
+
+  // The 'plexwatchhistory' cache stores by reference (useClones: false), so
+  // always hand callers a copy — plex-getter sorts these arrays in place.
+  private getBulkWatchHistory(
+    mapKey: string,
+    itemId: string,
+  ): PlexSeenBy[] | undefined {
+    const map = cacheManager
+      .getCache('plexwatchhistory')
+      .data.get<Map<string, PlexSeenBy[]>>(mapKey);
+    if (map === undefined) {
+      return undefined;
+    }
+    const records = map.get(itemId);
+    return records ? [...records] : [];
+  }
+
   public async getWatchHistory(
     itemId: string,
     useCache: boolean = true,
+    itemType?: PlexLibraryItem['type'],
   ): Promise<PlexSeenBy[]> {
+    // Serve leaf items (movies, episodes) from the bulk map when caching is
+    // allowed. The map is a point-in-time snapshot taken at prefetch time;
+    // callers that pass useCache: false intentionally bypass it and read the
+    // per-item endpoint instead.
+    if (useCache) {
+      switch (itemType) {
+        case 'movie':
+        case 'episode': {
+          const records = this.getBulkWatchHistory(
+            WATCH_HISTORY_BULK_CACHE_KEY,
+            itemId,
+          );
+          if (records !== undefined) return records;
+          break;
+        }
+        case 'show':
+        case 'season':
+          // The bulk map holds no show/season rollups (see
+          // prefetchWatchHistory); fall through to the per-item metadataItemID
+          // query, which Plex rolls up server-side.
+          break;
+        default: {
+          // Untyped callers may pass any kind of ratingKey, so only a non-empty
+          // leaf hit is trusted — a miss falls through to the per-item query.
+          const records = this.getBulkWatchHistory(
+            WATCH_HISTORY_BULK_CACHE_KEY,
+            itemId,
+          );
+          if (records !== undefined && records.length > 0) return records;
+          break;
+        }
+      }
+    }
+
     // Errors must propagate so callers can distinguish a real outage from a
     // confirmed empty history. Returning [] (or undefined) here would
     // misclassify failures as "never watched", which leaks into NOT_EXISTS
@@ -742,6 +866,29 @@ export class PlexApiService {
         useCache,
       );
     return (response?.MediaContainer?.Metadata as PlexSeenBy[]) ?? [];
+  }
+
+  /**
+   * Returns the items in every active play session. Plex's
+   * `/status/sessions` returns only the `MediaContainer` (no `Metadata`) when
+   * nothing is playing, so an empty array is the normal "idle" result. Never
+   * cached — sessions are live state. Best-effort: the plexClient retries
+   * transient failures (axios-retry, exponential backoff), and a persistent
+   * failure returns [] so a session outage degrades to normal handling rather
+   * than blocking the run.
+   */
+  public async getActiveSessions(): Promise<PlexLibraryItem[]> {
+    try {
+      const response = await this.plexClient.query<PlexLibraryResponse>(
+        { uri: '/status/sessions' },
+        false,
+      );
+      return (response?.MediaContainer?.Metadata as PlexLibraryItem[]) ?? [];
+    } catch (error) {
+      this.logger.error('Failed to fetch active Plex sessions.');
+      this.logger.debug(error);
+      return [];
+    }
   }
 
   public async getCollections(
@@ -862,19 +1009,13 @@ export class PlexApiService {
 
   public async createCollection(params: CreateUpdateCollection) {
     try {
-      // When initial items are supplied, seed them at create time using the
-      // canonical server-URI form that python-plexapi's Collection.create()
-      // uses. Saves a round trip and avoids a half-created empty collection
-      // if the follow-up add were to fail.
-      const itemsUri = params.initialItemIds?.length
-        ? `&uri=${this.buildCollectionItemsUri(params.initialItemIds)}`
-        : '';
+      // Created empty; items are added afterwards via the batched add path.
       const response = await this.plexClient.postQuery<any>({
         uri: `/library/collections?type=${
           params.type
         }&title=${encodeURIComponent(params.title)}&sectionId=${
           params.libraryId
-        }${itemsUri}`,
+        }`,
       });
       const collection: PlexCollection = response.MediaContainer
         .Metadata[0] as PlexCollection;
@@ -1082,14 +1223,24 @@ export class PlexApiService {
     logLevel: 'warn' | 'error';
     message: string;
   } {
-    if (axios.isAxiosError(error) && error.response?.status) {
-      const responseBody = this.stringifyResponseBody(error.response.data);
-      const statusMessage = `Plex request failed with ${error.response.status}${error.response.statusText ? ` ${error.response.statusText}` : ''}`;
+    // lib/plexApi wraps Axios failures in a plain Error with the original
+    // attached as `cause` — unwrap it, or the status and response body
+    // (Plex's actual rejection reason) never reach the logs.
+    const cause = error instanceof Error ? error.cause : undefined;
+    const axiosError = axios.isAxiosError(error)
+      ? error
+      : axios.isAxiosError(cause)
+        ? cause
+        : undefined;
+
+    if (axiosError && axiosError.response?.status) {
+      const responseBody = this.stringifyResponseBody(axiosError.response.data);
+      const statusMessage = `Plex request failed with ${axiosError.response.status}${axiosError.response.statusText ? ` ${axiosError.response.statusText}` : ''}`;
 
       return {
-        code: error.response.status,
+        code: axiosError.response.status,
         logLevel:
-          error.response.status >= 400 && error.response.status < 500
+          axiosError.response.status >= 400 && axiosError.response.status < 500
             ? 'warn'
             : 'error',
         message: responseBody
@@ -1207,11 +1358,11 @@ export class PlexApiService {
         this.loggerFactory.createLogger(),
       );
 
-      const devices = (await this.plexTvClient?.getDevices())?.filter(
-        (device) => {
-          return device.provides.includes('server') && device.owned;
-        },
-      );
+      const devices = (
+        await this.plexTvClient?.getDevices(settings.clientId)
+      )?.filter((device) => {
+        return device.provides.includes('server') && device.owned;
+      });
 
       if (devices) {
         await Promise.all(
@@ -1495,7 +1646,7 @@ export class PlexApiService {
       const plextv = plexTvUsers?.find((tvEl) => Number(tvEl.$?.id) === el.id);
       const ownerUser = owner?.username === el.name ? owner : undefined;
 
-      // use the username from plex.tv if available, since Overseerr also does this
+      // use the username from plex.tv if available, since Seerr also does this
       if (ownerUser) {
         const uuid = this.extractPlexAvatarUuid(ownerUser.thumb);
         return {

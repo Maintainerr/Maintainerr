@@ -28,6 +28,7 @@ const jellyfinApiMocks = {
   refreshItem: jest.fn(),
   getItemImage: jest.fn(),
   setItemImage: jest.fn(),
+  getSessions: jest.fn(),
 };
 
 const collectionApiMocks = {
@@ -55,6 +56,14 @@ jest.mock('@jellyfin/sdk', () => ({
     createApi: jest.fn().mockReturnValue({
       accessToken: '',
       configuration: {},
+      // axios-retry attaches interceptors to this instance during
+      // createApiClient; stub them so the real attach call is a no-op in tests.
+      axiosInstance: {
+        interceptors: {
+          request: { use: jest.fn() },
+          response: { use: jest.fn() },
+        },
+      },
     }),
   })),
 }));
@@ -161,6 +170,9 @@ jest.mock('@jellyfin/sdk/lib/utils/api/index.js', () => ({
       jellyfinApiMocks.getItemImage(...args),
     setItemImage: (...args: unknown[]) =>
       jellyfinApiMocks.setItemImage(...args),
+  })),
+  getSessionApi: jest.fn().mockImplementation(() => ({
+    getSessions: (...args: unknown[]) => jellyfinApiMocks.getSessions(...args),
   })),
   getSearchApi: jest.fn(),
   getPlaylistsApi: jest.fn(),
@@ -368,6 +380,12 @@ describe('JellyfinAdapterService', () => {
       await expect(
         service.reorderCollectionItems('col1', ['a', 'b']),
       ).rejects.toThrow('Collection sort not supported on Jellyfin');
+    });
+
+    it('prefetchWatchHistory throws because Jellyfin has no central history endpoint', async () => {
+      await expect(service.prefetchWatchHistory()).rejects.toThrow(
+        'not supported on Jellyfin',
+      );
     });
   });
 
@@ -781,6 +799,48 @@ describe('JellyfinAdapterService', () => {
         }
       },
     );
+  });
+
+  describe('getActiveSessions', () => {
+    beforeEach(async () => {
+      settingsDataService.getSettings.mockResolvedValue(
+        mockSettings as unknown as Awaited<
+          ReturnType<SettingsDataService['getSettings']>
+        >,
+      );
+      await service.initialize();
+    });
+
+    it('collects the playing item plus its season and series ids', async () => {
+      jellyfinApiMocks.getSessions.mockResolvedValue({
+        data: [
+          { NowPlayingItem: { Id: 'movie1', Type: 'Movie' } },
+          {
+            NowPlayingItem: {
+              Id: 'episode1',
+              SeasonId: 'season1',
+              SeriesId: 'series1',
+              Type: 'Episode',
+            },
+          },
+          // No NowPlayingItem (idle/remote-control session) is skipped.
+          { Id: 'idle-session' },
+        ],
+      });
+
+      const playing = await service.getActiveSessions();
+
+      expect(playing).toEqual(
+        new Set(['movie1', 'episode1', 'season1', 'series1']),
+      );
+    });
+
+    it('returns an empty set when the sessions request fails', async () => {
+      jellyfinApiMocks.getSessions.mockRejectedValue(new Error('boom'));
+      await expect(service.getActiveSessions()).resolves.toEqual(
+        new Set<string>(),
+      );
+    });
   });
 
   describe('getWatchHistory', () => {
@@ -1456,35 +1516,13 @@ describe('JellyfinAdapterService', () => {
           isLocked: true,
         }),
       );
-      // When no initialItemIds are supplied, `ids` is forwarded as undefined
-      // rather than omitted — the SDK signature accepts undefined and the
-      // server treats it the same as absent.
-      expect(collectionApiMocks.createCollection).toHaveBeenCalledWith(
-        expect.objectContaining({ ids: undefined }),
+      // Collections are created empty — item ids must never be sent on create
+      // (they go in the query string → HTTP 414 at scale); items are added via
+      // addBatchToCollection.
+      expect(collectionApiMocks.createCollection).not.toHaveBeenCalledWith(
+        expect.objectContaining({ ids: expect.anything() }),
       );
       expect(result.id).toBe('collection-1');
-    });
-
-    it('forwards initialItemIds to the Jellyfin SDK as ids', async () => {
-      collectionApiMocks.createCollection.mockResolvedValueOnce({
-        data: { Id: 'collection-2' },
-      });
-
-      await service.createCollection({
-        libraryId: 'library-1',
-        title: 'Seeded',
-        type: 'movie',
-        initialItemIds: ['item-1', 'item-2'],
-      });
-
-      expect(collectionApiMocks.createCollection).toHaveBeenCalledWith(
-        expect.objectContaining({
-          name: 'Seeded',
-          parentId: 'library-1',
-          isLocked: true,
-          ids: ['item-1', 'item-2'],
-        }),
-      );
     });
 
     it('should add a batch of items in one Jellyfin request', async () => {

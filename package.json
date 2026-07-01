@@ -1,6 +1,6 @@
 {
   "name": "maintainerr",
-  "version": "3.12.1",
+  "version": "3.16.0",
   "private": true,
   "packageManager": "yarn@4.11.0",
   "repository": {
@@ -27,17 +27,17 @@
     "packages/*"
   ],
   "engines": {
-    "node": "^20.19.0 || >=22.12.0"
+    "node": "^22.13.0 || >=24.11.0"
   },
   "devDependencies": {
     "@semantic-release/changelog": "^6.0.3",
     "@semantic-release/commit-analyzer": "^13.0.1",
     "@semantic-release/exec": "^7.1.0",
     "@semantic-release/git": "^10.0.1",
-    "@types/node": "^22.19.19",
-    "knip": "^6.14.1",
-    "semantic-release": "^25.0.3",
-    "turbo": "^2.9.14",
+    "@types/node": "^26.1.0",
+    "knip": "^6.23.0",
+    "semantic-release": "^25.0.5",
+    "turbo": "^2.10.2",
     "typescript": "^6.0.3"
   },
   "release": {
@@ -53,7 +53,7 @@
       [
         "@semantic-release/exec",
         {
-          "generateNotesCmd": "node tools/generate-release-notes.mjs",
+          "generateNotesCmd": "NEXT_RELEASE_VERSION=\"${nextRelease.version}\" LAST_RELEASE_GITTAG=\"${lastRelease.gitTag}\" NEXT_RELEASE_GITHEAD=\"${nextRelease.gitHead}\" node tools/generate-release-notes.mjs",
           "prepareCmd": "yarn --cwd apps/server version ${nextRelease.version} && yarn --cwd apps/ui version ${nextRelease.version}"
         }
       ],
@@ -85,7 +85,7 @@
     ]
   },
   "resolutions": {
-    "dompurify": ">=3.4.0",
+    "dompurify": ">=3.4.11",
     "picomatch": ">=4.0.4",
     "postcss": ">=8.5.10",
     "lodash": ">=4.18.0",
@@ -94,7 +94,9 @@
     "minimatch@^9.0.4": "9.0.9",
     "yaml@^1.10.0": "1.10.3",
     "ajv@8.17.1": "8.20.0",
-    "undici@^6.19.5": "6.25.0",
-    "uuid@^9.0.1": "11.1.1"
+    "undici@^6.19.5": "6.27.0",
+    "uuid@^9.0.1": "11.1.1",
+    "multer": "2.2.0",
+    "linkify-it": "5.0.1"
   }
 }

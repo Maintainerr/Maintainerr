@@ -28,4 +28,12 @@ export interface MetadataDetails {
   rating?: number;
   externalIds: ResolvedMediaIds;
   type: 'movie' | 'tv';
+  // Show-only fallback fields. Limited to values whose semantics match across
+  // Sonarr / TMDB / TVDB; status strings, language codes vs names, and the
+  // rating scale differ enough between sources that exposing them would let
+  // rules silently mis-evaluate.
+  ended?: boolean;
+  firstAirDate?: string;
+  // Excludes Season 0 / specials to match Sonarr's `statistics.seasonCount`.
+  seasonCount?: number;
 }
