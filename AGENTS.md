@@ -176,6 +176,11 @@ yarn turbo test
 The development Docker workflow builds the multi-stage `Dockerfile` for
 `linux/amd64` and `linux/arm64`.
 
+The built Docker image includes `/opt/app/healthcheck.sh` as its
+`HEALTHCHECK`. It probes `/api/health/ready` on `UI_PORT` and preserves
+`BASE_PATH`; use `/api/health/live` for process-only liveness checks and
+`/api/health/ready` for database readiness checks.
+
 ### Workspace MCP Servers
 
 Project MCP server config lives in `.codex/config.toml` for Codex, `.mcp.json`
