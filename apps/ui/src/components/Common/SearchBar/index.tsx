@@ -1,4 +1,5 @@
 import { ChangeEvent, useState } from 'react'
+import { useI18n } from '../../../contexts/i18n-context'
 import { Input } from '../../Forms/Input'
 
 interface ISearchBar {
@@ -10,6 +11,7 @@ interface ISearchBar {
 
 const SearchBar = (props: ISearchBar) => {
   const { initialValue = '', onSearch, placeholder, value } = props
+  const { t } = useI18n()
   const [text, setText] = useState(initialValue)
   const displayedValue = value ?? text
 
@@ -41,7 +43,7 @@ const SearchBar = (props: ISearchBar) => {
         type="search"
         name="search"
         onChange={(e) => inputHandler(e)}
-        placeholder={placeholder ? placeholder : 'Search'}
+        placeholder={placeholder ? placeholder : t('common.search')}
         value={displayedValue}
         className="pl-10"
       />

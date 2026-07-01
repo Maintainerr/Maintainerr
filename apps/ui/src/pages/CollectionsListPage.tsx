@@ -6,11 +6,13 @@ import { toast } from 'react-toastify'
 import { fetchCollections, useCollections } from '../api/collections'
 import { ICollection } from '../components/Collection'
 import CollectionOverview from '../components/Collection/CollectionOverview'
+import { useI18n } from '../contexts/i18n-context'
 import useLibrarySelection from '../hooks/useLibrarySelection'
 import { PostApiHandler } from '../utils/ApiHandler'
 
 const CollectionsListPage = () => {
   const navigate = useNavigate()
+  const { t } = useI18n()
   const queryClient = useQueryClient()
   const [isSwitchingLibrary, setIsSwitchingLibrary] = useState(false)
   const {
@@ -53,16 +55,16 @@ const CollectionsListPage = () => {
     try {
       await PostApiHandler(`/collections/handle`, {})
 
-      toast.success('Initiated collection handling in the background.')
+      toast.success(t('pages.collections.handlingStarted'))
     } catch (error) {
       if (error instanceof AxiosError) {
         if (error.response?.status === 409) {
-          toast.error('Collection handling is already running.')
+          toast.error(t('pages.collections.handlingAlreadyRunning'))
           return
         }
       }
 
-      toast.error('Failed to initiate collection handling.')
+      toast.error(t('pages.collections.handlingFailed'))
     }
   }
 
@@ -72,7 +74,7 @@ const CollectionsListPage = () => {
 
   return (
     <>
-      <title>Collections - Maintainerr</title>
+      <title>{`${t('pages.collections.title')} - Maintainerr`}</title>
       <div className="w-full">
         <CollectionOverview
           onSwitchLibrary={onSwitchLibrary}

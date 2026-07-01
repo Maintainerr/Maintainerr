@@ -1,5 +1,6 @@
 import { ICollection } from '..'
 import { useMediaServerLibraries } from '../../../api/media-server'
+import { useI18n } from '../../../contexts/i18n-context'
 import { useTaskStatusContext } from '../../../contexts/taskstatus-context'
 import ExecuteButton from '../../Common/ExecuteButton'
 import LibrarySwitcher from '../../Common/LibrarySwitcher'
@@ -19,6 +20,7 @@ interface ICollectionOverview {
 }
 
 const CollectionOverview = (props: ICollectionOverview) => {
+  const { t } = useI18n()
   const { collectionHandlerRunning } = useTaskStatusContext()
   const {
     data: libraries,
@@ -36,10 +38,10 @@ const CollectionOverview = (props: ICollectionOverview) => {
         actions={
           <ExecuteButton
             onClick={props.doActions}
-            text="Handle Collections"
+            text={t('pages.collections.handle')}
             executing={collectionHandlerRunning}
             disabled={collectionHandlerRunning}
-            title="Executes each collection's configured action (Delete / Unmonitor / Do Nothing). Does not remove items from collections."
+            title={t('pages.collections.handleTitle')}
           />
         }
         controls={
@@ -58,7 +60,7 @@ const CollectionOverview = (props: ICollectionOverview) => {
       <div className="w-full">
         <div className="m-auto mb-3 flex items-center justify-between gap-3">
           <h1 className="m-auto text-lg font-bold text-zinc-200 sm:m-0 xl:m-0">
-            {'Automatic collections'}
+            {t('pages.collections.heading')}
           </h1>
           <div className="flex min-h-6 min-w-6 items-center justify-end">
             {showRefreshing ? (
@@ -89,7 +91,7 @@ const CollectionOverview = (props: ICollectionOverview) => {
           </ul>
         ) : (
           <div className="flex min-h-80 items-center justify-center rounded-xl border border-dashed border-zinc-700 bg-zinc-900/30 p-6 text-sm text-zinc-400">
-            No collections found for this library.
+            {t('pages.collections.empty')}
           </div>
         )}
       </div>

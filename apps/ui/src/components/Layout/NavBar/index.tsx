@@ -11,6 +11,7 @@ import {
 } from '@heroicons/react/outline'
 import { ReactNode, use, useMemo, useRef } from 'react'
 import { Link, useLocation } from 'react-router-dom'
+import { useI18n } from '../../../contexts/i18n-context'
 import SearchContext from '../../../contexts/search-context'
 import { prefetchRoute } from '../../../router'
 import Messages from '../../Messages/Messages'
@@ -33,55 +34,53 @@ interface NavBarProps {
 const NavBar: React.FC<NavBarProps> = ({ open, setClosed }) => {
   const navRef = useRef<HTMLDivElement>(null)
   const SearchCtx = use(SearchContext)
+  const { t } = useI18n()
   const basePath = import.meta.env.VITE_BASE_PATH ?? ''
   const location = useLocation()
   const { isRouteBlocked, showBlockedNavigationToast } =
     useMediaServerSetupNavigationGuard()
-  // Keep variable for potential future customization
-  const collectionsLabel = 'Collections'
-
   const navBarItems: NavBarLink[] = useMemo(() => {
     const items: NavBarLink[] = [
       {
         key: '0',
         href: '/overview',
         svgIcon: <EyeIcon className="mr-3 h-6 w-6" />,
-        name: 'Overview',
+        name: t('nav.overview'),
         matchPattern: /^\/(?:overview(?:\/.*)?|)$/,
       },
       {
         key: '1',
         href: '/rules',
         svgIcon: <ClipboardCheckIcon className="mr-3 h-6 w-6" />,
-        name: 'Rules',
+        name: t('nav.rules'),
         matchPattern: /^\/rules(?:\/.*)?$/,
       },
       {
         key: '2',
         href: '/collections',
         svgIcon: <CollectionIcon className="mr-3 h-6 w-6" />,
-        name: collectionsLabel,
+        name: t('nav.collections'),
         matchPattern: /^\/collections(?:\/.*)?$/,
       },
       {
         key: '4',
         href: '/calendar',
         svgIcon: <CalendarIcon className="mr-3 h-6 w-6" />,
-        name: 'Calendar',
+        name: t('nav.calendar'),
         matchPattern: /^\/calendar(?:\/.*)?$/,
       },
       {
         key: '6',
         href: '/storage-metrics',
         svgIcon: <ChartBarIcon className="mr-3 h-6 w-6" />,
-        name: 'Storage',
+        name: t('nav.storage'),
         matchPattern: /^\/storage-metrics(?:\/.*)?$/,
       },
       {
         key: '3',
         href: '/settings',
         svgIcon: <CogIcon className="mr-3 h-6 w-6" />,
-        name: 'Settings',
+        name: t('nav.settings'),
         matchPattern: /^\/settings(?:\/.*)?$/,
       },
     ]
@@ -90,12 +89,12 @@ const NavBar: React.FC<NavBarProps> = ({ open, setClosed }) => {
       key: '5',
       href: '/overlays',
       svgIcon: <PhotographIcon className="mr-3 h-6 w-6" />,
-      name: 'Overlays',
+      name: t('nav.overlays'),
       matchPattern: /^\/overlays(?:\/.*)?$/,
     })
 
     return items
-  }, [collectionsLabel])
+  }, [t])
 
   const linkIsActive = (link: NavBarLink) => {
     if (link.matchPattern) {
@@ -154,7 +153,7 @@ const NavBar: React.FC<NavBarProps> = ({ open, setClosed }) => {
         <img
           className="block h-full w-full object-contain object-left"
           src={`${basePath}/logo.svg`}
-          alt="Maintainerr logo"
+          alt={t('nav.logoAlt')}
           width={340}
           height={100}
           decoding="sync"
@@ -177,7 +176,7 @@ const NavBar: React.FC<NavBarProps> = ({ open, setClosed }) => {
                 <div className="sidebar-close-button absolute top-0 right-0 -mr-14 p-1">
                   <button
                     className="flex h-12 w-12 items-center justify-center rounded-full text-white focus:bg-zinc-600 focus:outline-hidden"
-                    aria-label="Close sidebar"
+                    aria-label={t('layout.closeSidebar')}
                     onClick={() => setClosed()}
                   >
                     <XIcon className="h-6 w-6 text-white" />
