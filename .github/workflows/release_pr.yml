@@ -103,6 +103,10 @@ jobs:
           repository: ${{ github.repository }}
           ref: ${{ needs.resolve-pr.outputs.head_sha }}
           fetch-depth: 1
+          # This job builds untrusted PR code, so don't leave the workflow's
+          # GITHUB_TOKEN (packages:write / pull-requests:write) in the worktree's
+          # git config where that code could reach it.
+          persist-credentials: false
 
       - name: Verify checked out commit matches resolved PR SHA
         run: |
