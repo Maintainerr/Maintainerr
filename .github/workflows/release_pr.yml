@@ -102,6 +102,16 @@ jobs:
         with:
           repository: ${{ github.repository }}
           ref: ${{ needs.resolve-pr.outputs.head_sha }}
+          fetch-depth: 1
+
+      - name: Verify checked out commit matches resolved PR SHA
+        run: |
+          expected_sha="${{ needs.resolve-pr.outputs.head_sha }}"
+          actual_sha="$(git rev-parse HEAD)"
+          if [ "$actual_sha" != "$expected_sha" ]; then
+            echo "Checked out SHA ($actual_sha) does not match expected SHA ($expected_sha)." >&2
+            exit 1
+          fi
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
