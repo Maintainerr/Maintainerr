@@ -332,7 +332,7 @@ export class SeerrApiService {
 
         // The HTTP helper swallows request failures and returns undefined; a
         // genuine empty result still carries pageInfo. A missing pageInfo means
-        // the sweep failed — surface that (transient), don't read it as empty.
+        // the sweep failed - surface that (transient), don't read it as empty.
         if (!resp?.pageInfo) {
           return undefined;
         }
@@ -367,8 +367,8 @@ export class SeerrApiService {
    * Returns a deep copy of the title's request list (the cache holds the Map by
    * reference with useClones off), so callers may read or mutate it freely
    * without corrupting the shared index. `[]` means the sweep succeeded and the
-   * title has no request (definitive). `undefined` means the sweep failed —
-   * Seerr is unreachable — so the getter returns `undefined` (transient) and the
+   * title has no request (definitive). `undefined` means the sweep failed -
+   * Seerr is unreachable - so the getter returns `undefined` (transient) and the
    * comparator protects the item rather than treating it as "not requested".
    */
   public async getRequestsForMedia(
@@ -415,7 +415,7 @@ export class SeerrApiService {
     // requestDate reads requests[0].createdAt and the legacy per-item
     // getMovie/getShow path returned mediaInfo.requests oldest-first. The bulk
     // /request sweep is newest-first, so sort ascending by createdAt (tie-break
-    // on id) — requestDate, addUser and the season ordering then match the
+    // on id) - requestDate, addUser and the season ordering then match the
     // pre-#3152 behaviour regardless of how Seerr happened to page the sweep.
     requests.sort(
       (a, b) =>
@@ -424,7 +424,7 @@ export class SeerrApiService {
     );
 
     // Group by media.tmdbId: Seerr keys every media row by tmdbId (non-null,
-    // indexed — tvdbId/imdbId are optional extras), and the metadata service
+    // indexed - tvdbId/imdbId are optional extras), and the metadata service
     // resolves each library item to that tmdbId via all its providers (with
     // tvdb/imdb -> tmdb bridging), so tmdbId is the canonical join key (and
     // matches the per-item getMovie/getShow path this replaces). media.requests

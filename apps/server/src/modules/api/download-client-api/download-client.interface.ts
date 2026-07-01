@@ -21,9 +21,9 @@ export interface DownloadClientTorrent {
   /**
    * Whether the client's OWN seeding goal (its ratio / seed-time limit) is met,
    * decided entirely by the client:
-   *   - `true`  — goal reached, safe to remove
-   *   - `false` — a limit exists but isn't reached yet, keep seeding
-   *   - `null`  — the client enforces no limit, so the caller applies its
+   *   - `true`  - goal reached, safe to remove
+   *   - `false` - a limit exists but isn't reached yet, keep seeding
+   *   - `null`  - the client enforces no limit, so the caller applies its
    *               fallback ratio instead
    */
   reachedSeedingGoal: boolean | null;

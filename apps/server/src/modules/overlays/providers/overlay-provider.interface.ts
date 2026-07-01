@@ -6,7 +6,7 @@ import {
 /**
  * Server-agnostic contract for overlay-specific media-server interactions.
  *
- * Intentionally narrower than IMediaServerService — overlays are a feature,
+ * Intentionally narrower than IMediaServerService - overlays are a feature,
  * not a core media-server responsibility, so the I/O and editor helpers the
  * overlay module needs live here. The overlay processor, controller, and
  * editor UI depend on this interface only; each supported media server
@@ -22,7 +22,7 @@ export interface IOverlayProvider {
 
   /**
    * Library sections suitable for the overlay editor's section picker.
-   * Returns only movie and show libraries — music / photos etc. never carry
+   * Returns only movie and show libraries - music / photos etc. never carry
    * overlay-worthy artwork in this feature.
    */
   getSections(): Promise<OverlayLibrarySection[]>;
@@ -42,8 +42,8 @@ export interface IOverlayProvider {
 
   /**
    * Download the artwork for `itemId`. Both Plex and Jellyfin expose the
-   * correct image on the item itself — poster for movies/shows, still for
-   * episodes — so providers don't need a kind hint. Returns null when no
+   * correct image on the item itself - poster for movies/shows, still for
+   * episodes - so providers don't need a kind hint. Returns null when no
    * artwork exists for the item.
    */
   downloadImage(itemId: string): Promise<Buffer | null>;

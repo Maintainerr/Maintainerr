@@ -197,7 +197,7 @@ describe('StorageMetrics', () => {
 
       expect(
         screen.getByText(
-          '2 of 3 reclaimable collections sized — duplicates not yet deduplicated, refreshes after next collection run',
+          '2 of 3 reclaimable collections sized - duplicates not yet deduplicated, refreshes after next collection run',
         ),
       ).toBeTruthy()
       expect(

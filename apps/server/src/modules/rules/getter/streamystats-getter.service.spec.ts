@@ -20,7 +20,7 @@ const membershipOf = (
 describe('StreamystatsGetterService', () => {
   const createService = (
     users: { id: string; name: string }[] = [],
-    // Items resolvable by getMetadata — the `_including_parent` props look up
+    // Items resolvable by getMetadata - the `_including_parent` props look up
     // the item's parent chain through the media server's metadata path.
     items: ReturnType<typeof createMediaItem>[] = [],
   ) => {
@@ -115,7 +115,7 @@ describe('StreamystatsGetterService', () => {
 
     it('returns undefined (transient skip) when the user lookup fails closed', async () => {
       // getUsers() returns [] on failure; with owners present that is a lookup
-      // failure, not "nobody owns it" — must skip, never an empty list.
+      // failure, not "nobody owns it" - must skip, never an empty list.
       const { service, streamystatsApi } = createService([]);
       const libItem = createMediaItem({ type: 'movie', id: 'item-1' });
       streamystatsApi.getWatchlistMembership.mockResolvedValue(
@@ -193,7 +193,7 @@ describe('StreamystatsGetterService', () => {
     });
 
     it('skips (undefined) when the item metadata cannot be fetched', async () => {
-      // getMetadata returns undefined (item not registered) — the parent chain
+      // getMetadata returns undefined (item not registered) - the parent chain
       // is unknown, so skip rather than fall back to an item-only check.
       const season = createMediaItem({
         type: 'season',
@@ -225,7 +225,7 @@ describe('StreamystatsGetterService', () => {
       );
 
       expect(await service.get(IS_IN_WATCHLIST_PROP_ID, season)).toBe(false);
-      // The base prop is item-only — no parent resolution needed.
+      // The base prop is item-only - no parent resolution needed.
       expect(getMetadata).not.toHaveBeenCalled();
     });
   });

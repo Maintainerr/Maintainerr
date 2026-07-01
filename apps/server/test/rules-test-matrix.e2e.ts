@@ -192,7 +192,7 @@ async function executeScenario(baseUrl: string, scenario: Scenario) {
 
 // Generated coverage of every RuleType x RulePossibility. The identical
 // generator runs on the baseline and current builds, so any per-cell diff
-// signals real comparator drift — the operand values only need to reach the
+// signals real comparator drift - the operand values only need to reach the
 // code path, not be domain-realistic. Binary ops get a value + missing-first
 // case; unary ops (EXISTS / NOT_EXISTS) get a present + absent case.
 function buildGeneratedMatrix(): Scenario[] {

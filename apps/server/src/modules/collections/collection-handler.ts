@@ -18,7 +18,7 @@ import { RecentlyHandledMediaService } from './recently-handled-media.service';
  * - `handled`: the configured action ran and the item was processed.
  * - `failed`: the action could not be completed; the item stays for retry.
  * - `removed-missing`: the item no longer existed on the media server and was
- *   pruned from the collection(s) — a cleanup, not a failure or a real handle.
+ *   pruned from the collection(s) - a cleanup, not a failure or a real handle.
  */
 export type HandleMediaResult = 'handled' | 'failed' | 'removed-missing';
 
@@ -114,8 +114,8 @@ export class CollectionHandler {
       // The action didn't run. Before treating this as a retryable failure,
       // check whether the item still exists: if it's already gone from the
       // media server there is nothing left to act on, and leaving it in the
-      // collection means re-processing it — and re-resolving its dead BoxSet
-      // link — on every run (#3023). A failed existence check is treated as
+      // collection means re-processing it - and re-resolving its dead BoxSet
+      // link - on every run (#3023). A failed existence check is treated as
       // "still present" so a transient blip never drops a live item.
       let exists = true;
       try {
@@ -134,7 +134,7 @@ export class CollectionHandler {
       // The removal-by-id is a no-op on the media server for a gone item (Plex
       // skips 404, Jellyfin/Emby return 2xx), so these drop the stale DB rows.
       // A genuinely transient removal failure keeps the row, which the next run
-      // retries — no permanent stale state, so no special-casing needed here.
+      // retries - no permanent stale state, so no special-casing needed here.
       await this.collectionService.removeFromCollection(collection.id, [
         {
           mediaServerId: media.mediaServerId,
@@ -185,7 +185,7 @@ export class CollectionHandler {
             }
             case 'episode': {
               // Seerr tracks requests per season, not per episode, so there is
-              // no per-episode request to remove — deleting the season request
+              // no per-episode request to remove - deleting the season request
               // would drop the request for every other (still-present) episode
               // in that season. Skip the force-removal and let Seerr's
               // availability sync reconcile, as it does when Force Seerr is off.
@@ -270,8 +270,8 @@ export class CollectionHandler {
    * dead BoxSet link doesn't linger and get re-resolved on every rule run
    * (#3023). Each pruned sibling is marked handled: the rule executor checks
    * that guard per collection, so without it the sibling's next pass could
-   * re-add the item — it may still resolve on the media server, and conditions
-   * like `isWatched` stay true — firing a spurious `Media Added` notification
+   * re-add the item - it may still resolve on the media server, and conditions
+   * like `isWatched` stay true - firing a spurious `Media Added` notification
    * and recreating the link this cleanup just removed.
    */
   private async pruneSiblingCollections(

@@ -41,6 +41,13 @@ conversational chat.
   rather than `.replace(/\/+$/, '')`. Rationale: explicit, no hidden engine cost,
   no surprises on empty input or unicode.
 
+- **Never use em or en dashes; always use a plain hyphen `-`.** This applies to
+  every committed artifact: code, comments, log and UI strings, tests, commit
+  messages, and docs. Do not paste `—` (U+2014) or `–` (U+2013); type `-`
+  (U+002D). Disable any "smart dash" autocorrect in your editor. Rationale:
+  a single ASCII dash keeps logs, diffs, and greps consistent and copy-paste
+  safe. To find stragglers: `git ls-files | xargs grep -lP '[\x{2013}\x{2014}]'`.
+
 - **Prefer the codebase's existing idiom over adding a dependency.** When a
   feature request or issue names a specific library (e.g. `p-limit` for bounded
   concurrency), check first whether the repo already solves it. It does for

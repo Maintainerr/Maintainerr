@@ -185,7 +185,7 @@ export class PlexTvApi extends ExternalApiService {
   public async getDevices(clientIdentifier: string): Promise<PlexDevice[]> {
     try {
       // v2 /api/v2/resources returns owned servers that legacy v1 /api/resources
-      // omits. It requires X-Plex-Client-Identifier — use the same id the UI
+      // omits. It requires X-Plex-Client-Identifier - use the same id the UI
       // authenticates with so plex.tv sees a consistent client.
       const resources = await this.get<PlexV2Resource[]>(
         '/api/v2/resources?includeHttps=1',

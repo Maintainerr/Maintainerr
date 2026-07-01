@@ -1,7 +1,7 @@
 import axios from 'axios'
 import Bowser from 'bowser'
 
-const PIN_POLL_TIMEOUT_MS = 5 * 60 * 1000 // 5 minutes — matches Plex PIN expiry
+const PIN_POLL_TIMEOUT_MS = 5 * 60 * 1000 // 5 minutes - matches Plex PIN expiry
 
 interface PlexHeaders extends Record<string, string> {
   Accept: string

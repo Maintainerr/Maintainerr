@@ -291,7 +291,7 @@ export class JellyfinGetterService {
         }
 
         // At season/show level this returns the UNION of users that watched
-        // any descendant episode — not the intersection. A user who watched
+        // any descendant episode - not the intersection. A user who watched
         // 3/6 episodes is included. This is the documented behaviour and is
         // covered by the #2559 regression test in
         // jellyfin-getter.service.spec.ts. Use `sw_allEpisodesSeenBy` when
@@ -603,7 +603,7 @@ export class JellyfinGetterService {
    * show or season, or null when nothing has been watched. Jellyfin does not
    * expose a watched timestamp on the parent item, so the only way to derive
    * a "last watched" signal for shows/seasons is to walk the children and
-   * take the max. This is an aggregate — it is not the view date of the
+   * take the max. This is an aggregate - it is not the view date of the
    * highest-numbered episode, the way the Plex/Tautulli `sw_lastWatched`
    * getters compute it. Used by the `lastViewedAt` rule only.
    */

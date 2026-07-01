@@ -18,12 +18,12 @@ import { reassertSectionBoundaryOperators } from '../rules/helpers/section-opera
 import { RuleGroup } from '../rules/entities/rule-group.entities';
 import { Rules } from '../rules/entities/rules.entities';
 
-/** Singleton instance – avoids re-creating the constant data on every call. */
+/** Singleton instance - avoids re-creating the constant data on every call. */
 const RULE_CONSTANTS = new RuleConstants();
 
 /**
  * Single source of truth mapping each supported media server to its rule
- * `Application` id. The `Record<MediaServerType, …>` type is exhaustive — adding
+ * `Application` id. The `Record<MediaServerType, …>` type is exhaustive - adding
  * a new media server to `MediaServerType` is a compile error until it is mapped
  * here, which keeps the migrator in step with the supported-server list.
  */
@@ -81,7 +81,7 @@ interface PropertyCompatibility {
  *   property.  The ID will be rewritten during migration.
  * - **incompatible** if none of the above applies.
  *
- * This is fully data-driven from `rules.constants.ts` — no hardcoded lists.
+ * This is fully data-driven from `rules.constants.ts` - no hardcoded lists.
  */
 function computePropertyCompatibility(
   sourceApp: Application,
@@ -382,7 +382,7 @@ export class RuleMigrationService {
       }
     }
 
-    // Cache compatibility per source app – avoids recomputing for every rule.
+    // Cache compatibility per source app - avoids recomputing for every rule.
     const compatCache = new Map<Application, PropertyCompatibility>();
     const getCompat = (sourceApp: Application): PropertyCompatibility => {
       if (!compatCache.has(sourceApp)) {
@@ -452,7 +452,7 @@ export class RuleMigrationService {
     // rule so a dropped boundary can't silently flip the section AND<->OR.
     reassertSectionBoundaryOperators(result, sectionCombineOp);
 
-    // Backfill any remaining unset within-section operator to OR — the default
+    // Backfill any remaining unset within-section operator to OR - the default
     // the comparator and the NormalizeRuleSectionOperators migration both apply.
     // reassert only sets section-boundary operators, so a pre-explicit-operator
     // community rule can still carry a null within-section operator here, which
@@ -500,7 +500,7 @@ export class RuleMigrationService {
 
   /**
    * Analyze an in-memory rule DTO to determine if it can be migrated.
-   * Only the `incompatible` set is checked — remapped properties are compatible
+   * Only the `incompatible` set is checked - remapped properties are compatible
    * by definition (the two sets are mutually exclusive).
    */
   private analyzeRuleDto(

@@ -64,7 +64,7 @@ export class SettingsOperationsService {
   }
 
   // ==========================================================================
-  // Read API — delegated to the passive settings store
+  // Read API - delegated to the passive settings store
   // ==========================================================================
 
   public init() {
@@ -143,7 +143,7 @@ export class SettingsOperationsService {
   }
 
   // ==========================================================================
-  // Coordination — test / save / reinit flows
+  // Coordination - test / save / reinit flows
   // ==========================================================================
 
   public async addRadarrSetting(
@@ -1314,7 +1314,7 @@ export class SettingsOperationsService {
     }
 
     const unreachableMessage =
-      "Couldn't reach plex.tv to verify your credentials — retrying. Your saved token is still in use.";
+      "Couldn't reach plex.tv to verify your credentials - retrying. Your saved token is still in use.";
 
     try {
       switch (await this.plexApi.validateAuthToken()) {

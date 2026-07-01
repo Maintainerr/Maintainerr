@@ -27,7 +27,7 @@ const COPY: Record<ArrService, { name: string; entity: string }> = {
 
 /**
  * Per-service Radarr/Sonarr exclusion-tag settings (https://features.maintainerr.info/posts/81). Radarr and Sonarr are
- * configured independently — this renders one service's settings on its own
+ * configured independently - this renders one service's settings on its own
  * settings page. The label/enable/removal map to that service's columns; only
  * the apply/remove logic is shared on the server.
  */

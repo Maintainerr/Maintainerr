@@ -205,7 +205,7 @@ const maskUrlAuthority = (authority: string): string => {
     }
   }
 
-  // Only treat as host:port when there is exactly one colon — multiple colons
+  // Only treat as host:port when there is exactly one colon - multiple colons
   // means a bare IPv6 literal (e.g. 2001:db8::1), which must not be split.
   const colonIdx = authority.lastIndexOf(':');
   if (

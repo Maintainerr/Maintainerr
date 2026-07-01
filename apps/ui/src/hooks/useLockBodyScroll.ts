@@ -30,7 +30,7 @@ const release = (): void => {
 
 /**
  * Resets the module-level counter and clears the body overflow style.
- * Intended for test teardown only — keeps counter leaks from propagating
+ * Intended for test teardown only - keeps counter leaks from propagating
  * across cases if a test throws before its hooks are tracked by RTL.
  */
 export const __resetLockBodyScrollForTests = (): void => {

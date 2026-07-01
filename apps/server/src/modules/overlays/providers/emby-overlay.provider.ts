@@ -50,7 +50,7 @@ export class EmbyOverlayProvider implements IOverlayProvider {
     const ep = await this.emby.findRandomEpisode(sectionKeys);
     if (!ep?.Id) return null;
     const name = ep.Name ?? '';
-    const title = ep.SeriesName ? `${ep.SeriesName} — ${name}` : name;
+    const title = ep.SeriesName ? `${ep.SeriesName} - ${name}` : name;
     return { itemId: ep.Id, title };
   }
 

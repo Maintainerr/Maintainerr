@@ -107,7 +107,7 @@ export class SonarrApi extends ServarrApi<{
 
   // Intentionally uncached: this endpoint is read straight after mutations
   // (unmonitor + file deletes) by the empty-show cleanup, and also drives
-  // rule evaluation — both need Sonarr's current truth, not a snapshot that
+  // rule evaluation - both need Sonarr's current truth, not a snapshot that
   // can be up to DEFAULT_TTL stale (see issue #2757 / #2891).
   // Returns `null` when Sonarr confirms the series isn't tracked (empty
   // response) and `undefined` when the lookup itself failed (transport, auth,
@@ -153,7 +153,7 @@ export class SonarrApi extends ServarrApi<{
 
   /**
    * Add or remove a single tag on a batch of series via the series editor.
-   * `applyTags: 'add' | 'remove'` only — never 'replace', which would wipe every
+   * `applyTags: 'add' | 'remove'` only - never 'replace', which would wipe every
    * other tag the user has on those series. Best-effort: returns false on failure
    * (callers treat tagging as non-fatal). No-ops on an empty id list. Sonarr tags
    * are series-level; there is no per-season tag.

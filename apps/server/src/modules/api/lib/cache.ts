@@ -81,7 +81,7 @@ class CacheManager {
     plexguid: new Cache('plexguid', 'Plex GUID', 'plexguid'),
     // Holds the leaf watch-history map built by PlexApiService.prefetchWatchHistory.
     // Persistent so the map survives flushAll() between rule groups in the same
-    // cron window; useClones is off because the value is a large Map —
+    // cron window; useClones is off because the value is a large Map -
     // getWatchHistory returns copies of the per-item arrays instead.
     plexwatchhistory: new Cache(
       'plexwatchhistory',
@@ -97,7 +97,7 @@ class CacheManager {
     seerr: new Cache('seerr', 'Seerr API', 'seerr'),
     // Holds the run-scoped request index built by SeerrApiService.getRequestsForMedia
     // (one bulk /request sweep grouped by tmdbId). useClones is off because the
-    // value is a Map — per-item reads copy the per-title array out. Unlike
+    // value is a Map - per-item reads copy the per-title array out. Unlike
     // plexwatchhistory this is NOT persistent: request data changes between runs,
     // so flushAll() at each rule-group start rebuilds it (freshness over reuse).
     // Long TTL so a single long run can't expire it mid-sweep.

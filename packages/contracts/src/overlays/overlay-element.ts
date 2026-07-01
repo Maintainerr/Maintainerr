@@ -58,9 +58,9 @@ export const shapeTypeValues = ['rectangle', 'ellipse'] as const
  * - `type: 'variable'` → substituted at render time
  *
  * Supported variable fields:
- *   {date}      – formatted deletion date
- *   {days}      – integer days remaining
- *   {daysText}  – localised "today" / "in 1 day" / "in X days"
+ *   {date}      - formatted deletion date
+ *   {days}      - integer days remaining
+ *   {daysText}  - localised "today" / "in 1 day" / "in X days"
  */
 export const variableSegmentSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('text'), value: z.string() }),

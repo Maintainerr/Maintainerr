@@ -8,7 +8,7 @@ import { RulesService } from './rules.service';
 // Regression coverage for global-exclusion handling (ruleGroupId IS NULL).
 // TypeORM 1.x throws on a bare `null` in a `where` clause, so these paths must
 // use IsNull() and must not feed a null id into a lookup.
-describe('RulesService exclusions — global (null ruleGroupId) handling', () => {
+describe('RulesService exclusions - global (null ruleGroupId) handling', () => {
   const logger = createMockLogger();
 
   const createService = (overrides?: {
@@ -95,7 +95,7 @@ describe('RulesService exclusions — global (null ruleGroupId) handling', () =>
     expect(exclusionRepo.find).toHaveBeenNthCalledWith(1, {
       where: { ruleGroupId: 5 },
     });
-    // second call: the global exclusions — must use IsNull(), never `null`
+    // second call: the global exclusions - must use IsNull(), never `null`
     const globalCallWhere = exclusionRepo.find.mock.calls[1][0].where;
     expect(isNullOperator(globalCallWhere.ruleGroupId)).toBe(true);
   });
@@ -408,7 +408,7 @@ describe('RulesService exclusions — global (null ruleGroupId) handling', () =>
         type: 'movie',
       }),
       delete: jest.fn().mockResolvedValue(undefined),
-      // another rule group still excludes this item — last-exclusion-wins
+      // another rule group still excludes this item - last-exclusion-wins
       count: jest.fn().mockResolvedValue(1),
     };
     const ruleGroupRepository = {

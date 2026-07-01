@@ -92,7 +92,7 @@ export class MetadataService {
 
   /**
    * Validates policy provider keys against all registered providers (not just
-   * available ones). An unavailable provider key like 'tvdb' is still valid —
+   * available ones). An unavailable provider key like 'tvdb' is still valid -
    * it just means the provider isn't configured right now. The "unsupported"
    * warning only fires for completely unknown keys (e.g. a typo).
    */
@@ -371,7 +371,7 @@ export class MetadataService {
     // Only episodes/seasons resolve their ids from a parent (up to the show).
     // A movie's (or show's) own provider ids live on the item itself, and on
     // Emby/Jellyfin a movie's parentId points at an id-less library/container
-    // folder — walking up there discards the real ids and the lookup fails
+    // folder - walking up there discards the real ids and the lookup fails
     // (#3065). Switch on item.type, never on parentId presence.
     if (item.type !== 'season' && item.type !== 'episode') {
       return item;
@@ -516,7 +516,7 @@ export class MetadataService {
    * Returns metadata details for the given IDs.
    *
    * Default behavior (no options): walks providers in preference order and
-   * returns the first non-undefined record — the fast path that existing
+   * returns the first non-undefined record - the fast path that existing
    * callers (poster/backdrop lookups, ID resolution) rely on.
    *
    * `{ merge: true }`: walks every available provider and fills any optional
@@ -634,7 +634,7 @@ export class MetadataService {
         continue;
       }
 
-      // Same-provider id is a redirect — authoritative, no lookup needed.
+      // Same-provider id is a redirect - authoritative, no lookup needed.
       const isRedirect = provider === sourceProvider;
 
       // Don't corroborate against an unconfigured provider: keep the id silently
@@ -940,7 +940,7 @@ export class MetadataService {
    * configured providers in preference order. Each provider is asked for
    * details about whatever direct ID it can extract from the item, and
    * the first provider whose release year matches the media server's year
-   * "vouches" for the ID set — we return its details and use its external
+   * "vouches" for the ID set - we return its details and use its external
    * IDs to fill in the other provider slots.
    *
    * This is the ID-primary / year-sanity model:
@@ -951,7 +951,7 @@ export class MetadataService {
    *     form, edition suffixes) is normal and comparing them caused the
    *     regressions in #2636 / #2638.
    *   - Cross-provider fallback gives the library a second opinion when
-   *     the preferred provider disagrees with the media server on year —
+   *     the preferred provider disagrees with the media server on year -
    *     the scenario the metadata settings description already promises
    *     users when they configure TVDB alongside TMDB.
    *
@@ -996,13 +996,13 @@ export class MetadataService {
       // in untagged libraries and stays at debug.
       if (providerDetails.year === undefined) {
         this.logger.warn(
-          `Accepted direct provider IDs for "${item.title}" via ${provider.name} without a year check — ${provider.name} returned no release year for this entry.`,
+          `Accepted direct provider IDs for "${item.title}" via ${provider.name} without a year check - ${provider.name} returned no release year for this entry.`,
         );
         return providerDetails;
       }
       if (itemYear === undefined) {
         this.logger.debug(
-          `Accepted direct provider IDs for "${item.title}" via ${provider.name} without a year check — media server item has no year.`,
+          `Accepted direct provider IDs for "${item.title}" via ${provider.name} without a year check - media server item has no year.`,
         );
         return providerDetails;
       }
@@ -1054,7 +1054,7 @@ export class MetadataService {
     }
 
     // Two providers agreeing on a year the media server disputes ⇒ the media
-    // server is the outlier. Accept rather than reject — we can't write its year
+    // server is the outlier. Accept rather than reject - we can't write its year
     // back anyway, so rejecting would only block the rule.
     const agreement = this.findProviderYearAgreement(disagreements);
     if (agreement) {

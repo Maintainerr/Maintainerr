@@ -20,13 +20,13 @@ interface ResourceFieldProps {
 
 /**
  * Compact `[label] [Select] [Upload]` row used for editor-level resources
- * that live as files on disk and are picked into element fields by name —
+ * that live as files on disk and are picked into element fields by name -
  * fonts and image assets. The dropdown shows server-listed files, and the
  * upload button posts a new file and selects it on success.
  *
  * If `value` is not in `options`, the Select is rendered with an empty
  * value (showing the placeholder) instead of synthesising a "missing"
- * option — a stale reference is just an unselected state, not an error.
+ * option - a stale reference is just an unselected state, not an error.
  */
 export function ResourceField({
   label,

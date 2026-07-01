@@ -32,7 +32,7 @@ export const overlayTemplateCreateSchema = overlayTemplateSchema.omit({
 
 // For updates: make isDefault and description optional *without* applying defaults.
 // Zod v4's `.partial()` preserves `.default()` on each field, so an omitted key
-// would still parse to `false` / `''` — silently clobbering the stored value.
+// would still parse to `false` / `''` - silently clobbering the stored value.
 // Overriding these two fields here yields `undefined` when omitted, which lets
 // the service distinguish "not provided" from "explicitly set to false/empty".
 // Keep this list in sync with any new defaulted fields added above.
@@ -77,7 +77,7 @@ export interface PresetTemplate {
 
 /** Built-in preset definitions. Seeded on first run. */
 export const PRESET_TEMPLATES: PresetTemplate[] = [
-  // 1. Classic Pill — poster, top-left
+  // 1. Classic Pill - poster, top-left
   {
     name: 'Classic Pill',
     description: 'Rounded pill in the top-left corner showing "Leaving <date>"',
@@ -139,7 +139,7 @@ export const PRESET_TEMPLATES: PresetTemplate[] = [
     ],
   },
 
-  // 2. Countdown Bar — poster, full-width bar at bottom
+  // 2. Countdown Bar - poster, full-width bar at bottom
   {
     name: 'Countdown Bar',
     description: 'Full-width bar at the bottom with a countdown in days',
@@ -198,7 +198,7 @@ export const PRESET_TEMPLATES: PresetTemplate[] = [
     ],
   },
 
-  // 3. Corner Badge — poster, small circle in top-right
+  // 3. Corner Badge - poster, small circle in top-right
   {
     name: 'Corner Badge',
     description: 'Small circular badge in the top-right with days remaining',
@@ -257,7 +257,7 @@ export const PRESET_TEMPLATES: PresetTemplate[] = [
     ],
   },
 
-  // 4. Title Card Pill — titlecard, same concept as Classic Pill
+  // 4. Title Card Pill - titlecard, same concept as Classic Pill
   {
     name: 'Title Card Pill',
     description:

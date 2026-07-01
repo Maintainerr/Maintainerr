@@ -130,7 +130,7 @@ const AddModal = (props: IAddModal) => {
     }
 
     // Only ADDING a global exclusion clears the item's rule-group exclusions.
-    // If it has any, warn and list each as "item — rule group", reusing the
+    // If it has any, warn and list each as "item - rule group", reusing the
     // backdrop's status data (no-cache fetch) so labels/links match and stay
     // fresh. (selectedAction 0 = Add, 1 = Remove.)
     if (
@@ -165,7 +165,7 @@ const AddModal = (props: IAddModal) => {
           return
         }
       } catch {
-        // Warning data unavailable — proceed without it.
+        // Warning data unavailable - proceed without it.
       }
     }
 
@@ -346,7 +346,7 @@ const AddModal = (props: IAddModal) => {
             <ul className="mt-2 list-disc pl-5">
               {affectedExclusions.map((e) => (
                 <li key={`${e.title}-${e.targetPath}`}>
-                  {e.title} —{' '}
+                  {e.title} -{' '}
                   <button
                     type="button"
                     className="text-maintainerr underline transition hover:text-maintainerr-400"

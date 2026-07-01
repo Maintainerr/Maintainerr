@@ -937,7 +937,7 @@ describe('PlexGetterService', () => {
 
       // Pre-refactor behaviour (#1630): dedupe runs on the RAW tag, so the
       // exact-equal 'Space Saga' from season, show and the smart collection
-      // collapse to one — but the episode's ' Space Saga ' (whitespace variant)
+      // collapse to one - but the episode's ' Space Saga ' (whitespace variant)
       // survives the raw dedupe and only trims afterwards, leaving two entries.
       expect(result).toEqual(['Space Saga', 'Space Saga', 'Season Set']);
     });
@@ -1140,7 +1140,7 @@ describe('PlexGetterService', () => {
           return [makeWatchEntry({ viewedAt: 1_700_000_000, accountID: 1 })];
         }
         if (rk === 'sibling-a') {
-          // A non-admin user watched this sibling — only visible via history.
+          // A non-admin user watched this sibling - only visible via history.
           return [makeWatchEntry({ viewedAt: 1_710_000_000, accountID: 2 })];
         }
         return [];

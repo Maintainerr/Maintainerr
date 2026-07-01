@@ -6,7 +6,7 @@ import type { EmbyBaseItemDto, EmbyUserDto } from './emby.types';
  * Maintainerr's MediaItem contract. Emby's API and Jellyfin's API share the
  * same .NET-derived BaseItemDto field shape (Jellyfin forked Emby in 2018),
  * so the synthetic fixtures below mirror the ones in jellyfin.mapper.spec.ts
- * — they assert how the mapper transforms a known input, not what Emby
+ * - they assert how the mapper transforms a known input, not what Emby
  * returns over the wire.
  */
 describe('EmbyMapper', () => {

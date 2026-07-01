@@ -439,7 +439,7 @@ describe('RuleComparatorService.executeRulesWithData', () => {
   });
 
   // Unary EXISTS/NOT_EXISTS must distinguish the getter's `null` (definitive
-  // absence — e.g. lastViewedAt for a never-watched item) from `undefined`
+  // absence - e.g. lastViewedAt for a never-watched item) from `undefined`
   // (outer-catch transport failure in plex/seerr-getter). Without the
   // tightened shouldCompare, `!hasExistsValue(undefined) === true` would
   // spuriously add items on every transient API blip (#1446).
@@ -490,7 +490,7 @@ describe('RuleComparatorService.executeRulesWithData', () => {
     it('completes the run and logs a skip (not a crash) when a unary rule value is unavailable', async () => {
       // getCustomValueIdentifier dereferences customValue.ruleTypeId. A unary
       // rule (EXISTS/NOT_EXISTS) carries no customVal, so logging the skipped
-      // comparison must not reach this helper — otherwise the run threw
+      // comparison must not reach this helper - otherwise the run threw
       // "Cannot read properties of undefined (reading 'ruleTypeId')" and aborted.
       ruleConstanstService.getCustomValueIdentifier.mockImplementation(
         (customValue: { ruleTypeId: number; value: string }) => ({
@@ -537,7 +537,7 @@ describe('RuleComparatorService.executeRulesWithData', () => {
   describe('OR sections', () => {
     // section 0: viewCount EQUALS 0  (operator: null = OR boundary)
     // section 1: viewCount BIGGER 0  (operator: null = OR boundary)
-    // These two conditions are mutually exclusive, which proves OR semantics —
+    // These two conditions are mutually exclusive, which proves OR semantics -
     // if AND were used, no item could satisfy both simultaneously.
     //
     // Field [Application.PLEX, 5] = viewCount
@@ -624,7 +624,7 @@ describe('RuleComparatorService.executeRulesWithData', () => {
       //   section 0: viewCount EQUALS 0
       //   section 1: viewCount SMALLER 1
       // An item with viewCount = 0 matches both sections. OR semantics must
-      // union the sections and dedupe, so the item appears exactly once — a
+      // union the sections and dedupe, so the item appears exactly once - a
       // regression here (e.g. pushing per matching section) would yield two.
       const overlappingRules = [
         createStoredRule(

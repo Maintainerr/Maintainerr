@@ -140,7 +140,7 @@ describe('CollectionPosterPicker', () => {
 
     expect(
       screen.getByText(
-        'Custom poster cleared. Plex metadata refresh requested — artwork may update depending on Plex behavior and configured agents.',
+        'Custom poster cleared. Plex metadata refresh requested - artwork may update depending on Plex behavior and configured agents.',
       ),
     ).toBeTruthy()
   })
@@ -179,7 +179,7 @@ describe('CollectionPosterPicker', () => {
 
     expect(
       screen.getByText(
-        'Custom poster cleared. The artwork on Plex is unchanged — refresh metadata there if you want the original back.',
+        'Custom poster cleared. The artwork on Plex is unchanged - refresh metadata there if you want the original back.',
       ),
     ).toBeTruthy()
   })

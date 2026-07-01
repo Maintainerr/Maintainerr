@@ -99,7 +99,7 @@ export class RuleConstanstService {
    * Translate a (null) rule value into a human-readable explanation of why
    * it was missing. Surfaces in the Test Media YAML output so users stop
    * seeing bare "null" values and can tell the field has no data for this
-   * item. Derived dynamically from the property's existing metadata — no
+   * item. Derived dynamically from the property's existing metadata - no
    * static table to maintain. Rules comparisons still fail closed; this is
    * purely diagnostic.
    */
@@ -184,7 +184,7 @@ export class RuleConstanstService {
     let value: string;
 
     // The encoder writes the RuleType humanName (e.g. TEXT_LIST -> "text list"),
-    // so normalise spaces to underscores before matching — otherwise "TEXT LIST"
+    // so normalise spaces to underscores before matching - otherwise "TEXT LIST"
     // misses the 'TEXT_LIST' case, leaving ruleType undefined and throwing on the
     // return's .toString(), which fails the whole YAML import.
     switch (identifier.type.toUpperCase().split(' ').join('_')) {

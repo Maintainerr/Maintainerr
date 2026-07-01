@@ -12,10 +12,10 @@ import {
 // blocks the caller. Bad credentials are NOT this case (they return HTTP 200
 // "Fails." and are handled at login), so "Invalid API key" (the shared util's
 // 401/403 message) is misleading. The reliable fix is whitelisting Maintainerr's
-// IP — it and qBittorrent commonly run on different (Docker) IPs — so lead with
+// IP - it and qBittorrent commonly run on different (Docker) IPs - so lead with
 // that and only mention proxy/host validation as a secondary cause.
 const DOWNLOAD_CLIENT_FORBIDDEN_MESSAGE =
-  'The download client accepted the login but returned 403 Forbidden — a ' +
+  'The download client accepted the login but returned 403 Forbidden - a ' +
   'qBittorrent Web UI security restriction, not a wrong username or password. ' +
   'In qBittorrent → Options → Web UI → Security, add Maintainerr’s IP or ' +
   'subnet to “Bypass authentication for clients in whitelisted IP subnets” ' +
@@ -120,9 +120,9 @@ export class DownloadClientApiService {
 
   /**
    * Remove the completed downloads identified by the given download-client ids
-   * (Radarr/Sonarr `downloadId`s — for a torrent client these are infohashes).
+   * (Radarr/Sonarr `downloadId`s - for a torrent client these are infohashes).
    * No-op when no download client is configured. Best-effort: each download is
-   * handled independently and a failure never throws into the caller — the
+   * handled independently and a failure never throws into the caller - the
    * media has already been deleted from the *arr at this point, so this cleanup
    * is a side effect.
    *
@@ -159,7 +159,7 @@ export class DownloadClientApiService {
         const torrent = await this.api.getTorrentByHash(hash);
         if (!torrent) {
           // Not in the download client (already removed, a different client, or
-          // a manual import that never had a download) — nothing to clean up.
+          // a manual import that never had a download) - nothing to clean up.
           continue;
         }
 

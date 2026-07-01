@@ -1300,7 +1300,7 @@ export class RuleConstants {
           type: RuleType.NUMBER,
           showType: ['episode'],
         },
-        // Rating properties — sourced from Jellyfin's CommunityRating and CriticRating.
+        // Rating properties - sourced from Jellyfin's CommunityRating and CriticRating.
         // CommunityRating is provider-dependent, commonly TMDb and sometimes IMDb.
         // CriticRating is typically the Rotten Tomatoes Tomatometer via OMDb.
         // IDs match Plex so rules migrate without property ID remapping.
@@ -1415,7 +1415,7 @@ export class RuleConstants {
       // configured and Jellyfin is the active server (see RulesService).
       //
       // A Streamystats "watchlist" is a user-created curated list, and only
-      // PUBLIC lists are reachable with Maintainerr's Jellyfin API key — see
+      // PUBLIC lists are reachable with Maintainerr's Jellyfin API key - see
       // the StreamystatsWatchlistMembership contract for why. These properties
       // act as a "users curated this" protection signal.
       id: Application.STREAMYSTATS,
@@ -1439,7 +1439,7 @@ export class RuleConstants {
         // Parent-inclusive variants: a Streamystats list holds the show item ID,
         // not its seasons/episodes, so the item-only props above never match a
         // watchlisted show when evaluated below show level. These roll the
-        // parent show (and season) in. Show-only and season/episode-only — a
+        // parent show (and season) in. Show-only and season/episode-only - a
         // show is the top level (no parent) and a movie has no parent show.
         {
           id: 2,

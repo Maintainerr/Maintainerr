@@ -131,7 +131,7 @@ describe.each([
       render(<ExclusionTagSettings service={service} />)
 
       fireEvent.click(enableToggle())
-      // In charset, but the server collapses 'my--tag' -> 'my-tag' — reject up front.
+      // In charset, but the server collapses 'my--tag' -> 'my-tag' - reject up front.
       fireEvent.change(labelInput(), { target: { value: 'my--tag' } })
       fireEvent.click(screen.getByRole('button', { name: /save changes/i }))
 

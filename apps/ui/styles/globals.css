@@ -534,7 +534,7 @@
 
   /*
     The single source of truth for checkboxes. Add `className="checkbox"` to any
-    `<input type="checkbox">` and it is fully and identically styled — nothing else
+    `<input type="checkbox">` and it is fully and identically styled - nothing else
     is needed. `focus:ring-0` + `focus:ring-offset-0` together remove the
     @tailwindcss/forms focus ring (its blue ring AND white offset ring); a subtle
     border change is the focus affordance instead.
@@ -548,7 +548,7 @@
     field element (raw or rendered by Forms/Input, Forms/Select, etc.), so
     changing it here restyles all inputs, selects, and textareas at once. The
     components only add element-specific deltas (select chevron, adornments,
-    error states) on top — they must not re-declare this base.
+    error states) on top - they must not re-declare this base.
   */
   input[type='text'],
   input[type='password'],
@@ -653,7 +653,7 @@
 }
 
 /* Focus: maintainerr border, no ring (react-select paints a blue box-shadow
-   ring by default) — mirrors the field's focus:border-maintainerr-600 + ring-0.
+   ring by default) - mirrors the field's focus:border-maintainerr-600 + ring-0.
    The :hover variant keeps the focus colour while hovering. */
 .react-select-container .react-select__control--is-focused,
 .react-select-container .react-select__control--is-focused:hover {

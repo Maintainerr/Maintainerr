@@ -19,14 +19,14 @@ export class InvalidCollectionPosterError extends Error {}
  * Storage model:
  *  - One JPEG per Maintainerr collection at
  *    `data/collection-posters/{collectionDbId}.jpg`. File presence is the
- *    flag — there is no DB column. Same on-disk pattern as the overlay
+ *    flag - there is no DB column. Same on-disk pattern as the overlay
  *    originals backup ([overlay-processor.service.ts](../overlays/overlay-processor.service.ts)).
  *  - Db id is stable across media-server collection re-creates, so a stored
  *    poster survives Plex/Jellyfin collection deletion + recreation.
  *
  * Coexistence:
  *  - Maintainerr is one writer among several (Kometa, Posterizarr, manual
- *    uploads). This is a single write — last writer wins. Unlike per-item
+ *    uploads). This is a single write - last writer wins. Unlike per-item
  *    overlays (which re-apply on cron because they carry day-counter state),
  *    collection posters carry no per-cycle state, so callers should write
  *    only when the source bytes change (user upload, collection re-create);
@@ -91,7 +91,7 @@ export class CollectionPosterService {
         .toBuffer();
     } catch (error) {
       this.logger.warn(
-        `Rejected collection ${collectionDbId} poster upload — not a valid image`,
+        `Rejected collection ${collectionDbId} poster upload - not a valid image`,
       );
       this.logger.debug(error);
       throw new InvalidCollectionPosterError(
@@ -109,7 +109,7 @@ export class CollectionPosterService {
   }
 
   /**
-   * Remove the stored poster file. Does not touch the media-server side —
+   * Remove the stored poster file. Does not touch the media-server side -
    * the user must clear/refresh the poster in Plex/Jellyfin themselves if
    * they want the original artwork back.
    */
@@ -122,7 +122,7 @@ export class CollectionPosterService {
 
   /**
    * Issue a generic metadata-refresh request to the media server for the
-   * given collection. This does not force image replacement — it just nudges
+   * given collection. This does not force image replacement - it just nudges
    * Plex/Jellyfin to re-evaluate their own artwork sources, which may or may
    * not change the visible poster depending on configured agents and server
    * caching. Best-effort: returns `requested: false` when no mediaServerId is
@@ -140,7 +140,7 @@ export class CollectionPosterService {
       mediaServer = await this.mediaServerFactory.getService();
     } catch (error) {
       this.logger.warn(
-        'Cannot refresh collection metadata — no media server configured',
+        'Cannot refresh collection metadata - no media server configured',
       );
       this.logger.debug(error);
       return { requested: false };
@@ -177,7 +177,7 @@ export class CollectionPosterService {
       mediaServer = await this.mediaServerFactory.getService();
     } catch (error) {
       this.logger.warn(
-        'Cannot push collection poster — no media server configured',
+        'Cannot push collection poster - no media server configured',
       );
       this.logger.debug(error);
       return { attempted: false, pushed: false };

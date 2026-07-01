@@ -215,6 +215,7 @@ yarn workspace @maintainerr/contracts build
   - `BREAKING CHANGE` footer or `!` (e.g. `feat!:`) → major release
 - **Import Organization**: Prefer absolute imports, group by type (external, internal, relative)
 - **String Handling**: Avoid regex for simple prefix/suffix/substring checks or single-character trimming. Prefer string primitives such as `endsWith`, `startsWith`, `slice`, `substring`, or direct character inspection to reduce unnecessary regex risk; see [OWASP ReDoS guidance](https://owasp.org/www-community/attacks/Regular_expression_Denial_of_Service_-_ReDoS). Example: `fix: avoid regex backtracking in disk path normalization (#2526)`.
+- **Punctuation**: Never use em or en dashes in any committed artifact (code, comments, log/UI strings, tests, commit messages, docs). Always type a plain ASCII hyphen `-` (U+002D), never `—` (U+2014) or `–` (U+2013). See the convention in [project-notes.instructions.md](.github/instructions/project-notes.instructions.md).
 
 ### TypeScript Guidelines
 

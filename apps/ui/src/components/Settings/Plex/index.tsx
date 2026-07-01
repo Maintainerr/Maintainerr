@@ -196,7 +196,7 @@ const PlexSettings = () => {
         title:
           storedTokenValidation?.errorMessage ??
           (tokenUnreachable
-            ? "Couldn't reach plex.tv to verify your credentials — retrying. Your saved token is still in use."
+            ? "Couldn't reach plex.tv to verify your credentials - retrying. Your saved token is still in use."
             : 'Stored Plex credentials are invalid. Re-authenticate with Plex.'),
       }
     : null
@@ -550,7 +550,7 @@ const PlexSettings = () => {
               </div>
             </div>
 
-            {/* Server — only shown when authenticated */}
+            {/* Server - only shown when authenticated */}
             {isAuthenticated && (
               <div className="form-row">
                 <label className="text-label">
@@ -636,7 +636,7 @@ const PlexSettings = () => {
                             {isRefreshingPresets
                               ? 'Retrieving servers...'
                               : isServersError
-                                ? 'Failed to load servers — press refresh to retry'
+                                ? 'Failed to load servers - press refresh to retry'
                                 : !availableServers
                                   ? 'Loading servers...'
                                   : 'Select a server...'}
@@ -672,7 +672,7 @@ const PlexSettings = () => {
               </div>
             )}
 
-            {/* Advanced Settings — hidden collapsible section */}
+            {/* Advanced Settings - hidden collapsible section */}
             {isAuthenticated && (
               <div className="mt-6">
                 <button
@@ -704,7 +704,7 @@ const PlexSettings = () => {
                         <span className="label-tip">
                           Override the connection discovered by Plex.
                           <br />
-                          Disables automatic reconnection — you manage the
+                          Disables automatic reconnection - you manage the
                           connection.
                         </span>
                       </label>

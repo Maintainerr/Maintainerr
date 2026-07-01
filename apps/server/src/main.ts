@@ -11,8 +11,8 @@ import { MaintainerrLogger } from './modules/logging/logs.service';
 import { installStdioPipeGuards } from './modules/logging/winston/stdioPipeGuard';
 import { isSharpAvailable, SHARP_UNAVAILABLE_MESSAGE } from './utils/sharp';
 
-// Pre-bootstrap guard so the console.warn/console.error calls below — and any
-// other write before LogsModule loads — cannot crash the process on a broken
+// Pre-bootstrap guard so the console.warn/console.error calls below - and any
+// other write before LogsModule loads - cannot crash the process on a broken
 // stdio pipe. The logging module re-installs these (idempotent) for
 // defence-in-depth.
 installStdioPipeGuards();
