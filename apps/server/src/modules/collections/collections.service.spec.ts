@@ -15,6 +15,7 @@ import {
 } from '../../../test/utils/data';
 import { MediaServerFactory } from '../api/media-server/media-server.factory';
 import { IMediaServerService } from '../api/media-server/media-server.interface';
+import { MaintainerrLogger } from '../logging/logs.service';
 import { MetadataService } from '../metadata/metadata.service';
 import { Exclusion } from '../rules/entities/exclusion.entities';
 import { RuleGroup } from '../rules/entities/rule-group.entities';
@@ -42,6 +43,7 @@ describe('CollectionsService', () => {
   let settingsDataService: Mocked<SettingsDataService>;
   let collectionPosterService: Mocked<CollectionPosterService>;
   let eventEmitter: Mocked<EventEmitter2>;
+  let logger: Mocked<MaintainerrLogger>;
 
   beforeEach(async () => {
     const { unit, unitRef } =
@@ -63,6 +65,7 @@ describe('CollectionsService', () => {
     settingsDataService = unitRef.get(SettingsDataService);
     collectionPosterService = unitRef.get(CollectionPosterService);
     eventEmitter = unitRef.get(EventEmitter2);
+    logger = unitRef.get(MaintainerrLogger);
     metadataService.resolveIds.mockResolvedValue({
       tmdb: 1,
       type: 'movie',
@@ -81,6 +84,7 @@ describe('CollectionsService', () => {
       removeBatchFromCollection: jest.fn().mockResolvedValue([]),
       getCollection: jest.fn().mockResolvedValue(undefined),
       getCollectionChildren: jest.fn().mockResolvedValue([]),
+      getLibraries: jest.fn().mockResolvedValue([{ id: 'library-1' }]),
       getMetadata: jest.fn().mockResolvedValue(undefined),
       itemExists: jest.fn().mockResolvedValue(true),
       removeFromCollection: jest.fn().mockResolvedValue(undefined),
@@ -474,6 +478,65 @@ describe('CollectionsService', () => {
       expect.objectContaining({ id: 28, mediaServerId: null }),
     );
     expect(mediaServer.deleteCollection).not.toHaveBeenCalled();
+  });
+
+  // #3203: a 404 on the collections lookup means the target library is gone,
+  // not that the collection is merely empty. The cleared-link log must say so
+  // rather than falsely promising automatic recreation.
+  it('reports a missing target library when clearing the link, instead of promising recreation', async () => {
+    const collection = createCollection({
+      id: 29,
+      mediaServerId: null,
+      manualCollection: false,
+      title: 'Presto non disponibile',
+      libraryId: 'library-removed',
+    });
+
+    mediaServer.getCollection.mockResolvedValue(undefined);
+    mediaServer.getLibraries.mockResolvedValue([{ id: 'library-1' }] as any);
+    collectionRepo.save.mockImplementation(async (c) => c as Collection);
+    jest
+      .spyOn(service as any, 'findMediaServerCollection')
+      .mockResolvedValue(undefined);
+
+    const result = await service.checkAutomaticMediaServerLink(collection);
+
+    expect(result.mediaServerId).toBeNull();
+    expect(logger.debug).toHaveBeenCalledWith(
+      expect.stringContaining('no longer exists on the media server'),
+    );
+    expect(logger.debug).not.toHaveBeenCalledWith(
+      expect.stringContaining('will be created automatically'),
+    );
+  });
+
+  // The common, genuinely-empty case (valid library, no matches yet) must keep
+  // the reassuring auto-create message and never claim the library is missing.
+  it('keeps the auto-create message when the target library still exists', async () => {
+    const collection = createCollection({
+      id: 30,
+      mediaServerId: null,
+      manualCollection: false,
+      title: 'Empty But Valid',
+      libraryId: 'library-1',
+    });
+
+    mediaServer.getCollection.mockResolvedValue(undefined);
+    mediaServer.getLibraries.mockResolvedValue([{ id: 'library-1' }] as any);
+    collectionRepo.save.mockImplementation(async (c) => c as Collection);
+    jest
+      .spyOn(service as any, 'findMediaServerCollection')
+      .mockResolvedValue(undefined);
+
+    const result = await service.checkAutomaticMediaServerLink(collection);
+
+    expect(result.mediaServerId).toBeNull();
+    expect(logger.debug).toHaveBeenCalledWith(
+      expect.stringContaining('will be created automatically'),
+    );
+    expect(logger.debug).not.toHaveBeenCalledWith(
+      expect.stringContaining('no longer exists on the media server'),
+    );
   });
 
   it('repopulates a shared empty automatic collection from local rule-owned items', async () => {

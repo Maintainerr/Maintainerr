@@ -2004,10 +2004,26 @@ export class CollectionsService {
       }
 
       if (!serverColl) {
+        // A missing server collection has two very different causes: the
+        // library is fine and simply has no matching items yet (auto-create
+        // will kick in), or the library the collection targets no longer
+        // exists on the server (removed, or recreated with a new id) - in
+        // which case nothing will ever be created and the user must re-point
+        // the collection. Only claim the library is gone when we positively
+        // fetched the library list and it's absent; treat an empty/failed
+        // fetch as inconclusive so a transient blip never mislabels it.
+        const libraries = (await mediaServer.getLibraries()) ?? [];
+        const libraryMissing =
+          !!collection.libraryId &&
+          libraries.length > 0 &&
+          !libraries.some((library) => library.id === collection.libraryId);
+
         this.logger.debug(
-          originalMediaServerId
-            ? `[checkAutomaticMediaServerLink] Media server collection for "${collection.title}" no longer exists - clearing link. It will be recreated automatically when items match the rule.`
-            : `[checkAutomaticMediaServerLink] No media server collection for "${collection.title}" - collection is empty and will be created automatically when items match the rule.`,
+          libraryMissing
+            ? `[checkAutomaticMediaServerLink] Library ${collection.libraryId} for "${collection.title}" no longer exists on the media server - clearing link. Re-point the collection at an existing library.`
+            : originalMediaServerId
+              ? `[checkAutomaticMediaServerLink] Media server collection for "${collection.title}" no longer exists - clearing link. It will be recreated automatically when items match the rule.`
+              : `[checkAutomaticMediaServerLink] No media server collection for "${collection.title}" - collection is empty and will be created automatically when items match the rule.`,
         );
         collection.mediaServerId = null;
         collection = await this.saveCollection(collection);
