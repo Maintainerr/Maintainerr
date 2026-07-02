@@ -929,6 +929,31 @@ export class RuleConstants {
           type: RuleType.NUMBER,
           showType: ['show', 'season', 'episode'],
         },
+        {
+          id: 32,
+          name: 'episodeFileRank',
+          humanName:
+            'Rank among on-disk episodes per show by air date (newest = 1)',
+          mediaType: MediaType.SHOW,
+          type: RuleType.NUMBER,
+          showType: ['episode'],
+        },
+        {
+          id: 33,
+          name: 'seriesTitle',
+          humanName: 'Series title',
+          mediaType: MediaType.SHOW,
+          type: RuleType.TEXT,
+          showType: ['show', 'season', 'episode'],
+        },
+        {
+          id: 34,
+          name: 'seriesId',
+          humanName: 'Series ID',
+          mediaType: MediaType.SHOW,
+          type: RuleType.NUMBER,
+          showType: ['show', 'season', 'episode'],
+        },
       ],
     },
     {
