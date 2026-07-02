@@ -127,6 +127,8 @@ export class SettingsDataService implements SettingDto {
 
   sonarr_untag_on_unexclude: boolean;
 
+  leftover_cleanup_enabled: boolean;
+
   constructor(
     @InjectRepository(Settings)
     private readonly settingsRepo: Repository<Settings>,
@@ -195,6 +197,8 @@ export class SettingsDataService implements SettingDto {
       this.sonarr_exclusion_tag = settingsDb?.sonarr_exclusion_tag ?? 'dnd';
       this.sonarr_untag_on_unexclude =
         settingsDb?.sonarr_untag_on_unexclude ?? false;
+      this.leftover_cleanup_enabled =
+        settingsDb?.leftover_cleanup_enabled ?? false;
 
       // Auto-detect media server type when not set but credentials exist.
       // This handles upgrades from pre-Jellyfin versions (Plex) and any future

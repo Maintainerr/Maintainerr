@@ -4,6 +4,7 @@ import { MediaServerModule } from '../api/media-server/media-server.module';
 import { SeerrApiModule } from '../api/seerr-api/seerr-api.module';
 import { ServarrApiModule } from '../api/servarr-api/servarr-api.module';
 import { MetadataModule } from '../metadata/metadata.module';
+import { LeftoverFolderCleanupService } from './leftover-folder-cleanup.service';
 import { RadarrActionHandler } from './radarr-action-handler';
 import { ServarrTagService } from './servarr-tag.service';
 import { SonarrActionHandler } from './sonarr-action-handler';
@@ -16,8 +17,18 @@ import { SonarrActionHandler } from './sonarr-action-handler';
     DownloadClientApiModule,
     MetadataModule,
   ],
-  providers: [RadarrActionHandler, SonarrActionHandler, ServarrTagService],
-  exports: [RadarrActionHandler, SonarrActionHandler, ServarrTagService],
+  providers: [
+    RadarrActionHandler,
+    SonarrActionHandler,
+    ServarrTagService,
+    LeftoverFolderCleanupService,
+  ],
+  exports: [
+    RadarrActionHandler,
+    SonarrActionHandler,
+    ServarrTagService,
+    LeftoverFolderCleanupService,
+  ],
   controllers: [],
 })
 export class ActionsModule {}

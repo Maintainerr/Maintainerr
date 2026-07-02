@@ -86,4 +86,6 @@ export class SettingDto {
   sonarr_exclusion_tag: string;
 
   sonarr_untag_on_unexclude: boolean;
+
+  leftover_cleanup_enabled: boolean;
 }

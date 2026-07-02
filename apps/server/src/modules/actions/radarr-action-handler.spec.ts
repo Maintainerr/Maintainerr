@@ -17,6 +17,7 @@ import { ServarrAction } from '../collections/interfaces/collection.interface';
 import { MaintainerrLogger } from '../logging/logs.service';
 import { MetadataService } from '../metadata/metadata.service';
 import { SettingsDataService } from '../settings/settings-data.service';
+import { LeftoverFolderCleanupService } from './leftover-folder-cleanup.service';
 import { RadarrActionHandler } from './radarr-action-handler';
 describe('RadarrActionHandler', () => {
   let radarrActionHandler: RadarrActionHandler;
@@ -26,6 +27,7 @@ describe('RadarrActionHandler', () => {
   let metadataService: Mocked<MetadataService>;
   let settings: Mocked<SettingsDataService>;
   let downloadClient: Mocked<DownloadClientApiService>;
+  let folderCleanup: Mocked<LeftoverFolderCleanupService>;
   let logger: Mocked<MaintainerrLogger>;
 
   beforeEach(async () => {
@@ -38,6 +40,7 @@ describe('RadarrActionHandler', () => {
     metadataService = unitRef.get(MetadataService);
     settings = unitRef.get(SettingsDataService);
     downloadClient = unitRef.get(DownloadClientApiService);
+    folderCleanup = unitRef.get(LeftoverFolderCleanupService);
     logger = unitRef.get(MaintainerrLogger);
 
     metadataService.resolveLookupCandidatesForService.mockImplementation(
@@ -215,6 +218,49 @@ describe('RadarrActionHandler', () => {
       expect(mockedRadarrApi.updateMovie).not.toHaveBeenCalled();
     },
   );
+
+  it('requests leftover-folder cleanup for the movie folder after a DELETE', async () => {
+    const collection = createCollection({
+      arrAction: ServarrAction.DELETE,
+      radarrSettingsId: 1,
+      type: 'movie',
+    });
+    const collectionMedia = createCollectionMedia(collection, { tmdbId: 1 });
+
+    const mockedRadarrApi = mockRadarrApi(servarrService, logger);
+    jest
+      .spyOn(mockedRadarrApi, 'getMovieByTmdbId')
+      .mockResolvedValue(
+        createRadarrMovie({ id: 5, path: '/data/movies/Sample Movie (2024)' }),
+      );
+
+    await radarrActionHandler.handleAction(collection, collectionMedia);
+
+    expect(folderCleanup.cleanupAfterDelete).toHaveBeenCalledWith(
+      expect.objectContaining({
+        folderPath: '/data/movies/Sample Movie (2024)',
+        scope: 'movie',
+      }),
+    );
+  });
+
+  it('does not request leftover-folder cleanup for a non-deleting UNMONITOR', async () => {
+    const collection = createCollection({
+      arrAction: ServarrAction.UNMONITOR,
+      radarrSettingsId: 1,
+      type: 'movie',
+    });
+    const collectionMedia = createCollectionMedia(collection, { tmdbId: 1 });
+
+    const mockedRadarrApi = mockRadarrApi(servarrService, logger);
+    jest
+      .spyOn(mockedRadarrApi, 'getMovieByTmdbId')
+      .mockResolvedValue(createRadarrMovie({ id: 5 }));
+
+    await radarrActionHandler.handleAction(collection, collectionMedia);
+
+    expect(folderCleanup.cleanupAfterDelete).not.toHaveBeenCalled();
+  });
 
   it.each([{ listExclusions: true }, { listExclusions: false }])(
     'should unmonitor movie when action is UNMONITOR',
