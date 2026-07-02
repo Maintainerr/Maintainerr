@@ -106,6 +106,7 @@ describe('database migrations', () => {
       expect(settings.sonarr_tag_exclusions).toMatchObject(bool);
       expect(settings.sonarr_exclusion_tag).toMatchObject(dnd);
       expect(settings.sonarr_untag_on_unexclude).toMatchObject(bool);
+      expect(settings.leftover_cleanup_enabled).toMatchObject(bool);
     } finally {
       await ds.destroy();
     }
@@ -117,8 +118,8 @@ describe('database migrations', () => {
     // SQLite can't ALTER most columns in place, so `migration:generate` always
     // emits a full create-temporary-table / copy / drop / rename rebuild for the
     // changed tables. A hand-written ALTER shortcut lacks it — this is the
-    // cheapest signal the migration was generated rather than authored.
-    expect(src).toContain('CREATE TABLE "temporary_collection"');
+    // cheapest signal the migration was generated rather than authored. The
+    // newest migration only adds a `settings` column, so it rebuilds that table.
     expect(src).toContain('CREATE TABLE "temporary_settings"');
   });
 
@@ -131,7 +132,9 @@ describe('database migrations', () => {
     try {
       await ds.runMigrations();
       const has = async () =>
-        (await columns(ds, 'collection')).some((c) => c.name === 'tagInArr');
+        (await columns(ds, 'settings')).some(
+          (c) => c.name === 'leftover_cleanup_enabled',
+        );
       expect(await has()).toBe(true);
 
       await ds.undoLastMigration();

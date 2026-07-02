@@ -19,6 +19,7 @@ import DatabaseBackupModal from './DatabaseBackupModal'
 interface GeneralSettingsFormValues {
   applicationUrl: string
   apikey: string
+  leftover_cleanup_enabled: boolean
 }
 
 const MainSettings = () => {
@@ -39,8 +40,13 @@ const MainSettings = () => {
     () => ({
       applicationUrl: settings.applicationUrl ?? '',
       apikey: settings.apikey ?? '',
+      leftover_cleanup_enabled: settings.leftover_cleanup_enabled ?? false,
     }),
-    [settings.apikey, settings.applicationUrl],
+    [
+      settings.apikey,
+      settings.applicationUrl,
+      settings.leftover_cleanup_enabled,
+    ],
   )
 
   return (
@@ -62,7 +68,7 @@ const MainSettings = () => {
 
         <div className="section">
           <MainSettingsForm
-            key={`${initialValues.applicationUrl}:${initialValues.apikey}`}
+            key={`${initialValues.applicationUrl}:${initialValues.apikey}:${initialValues.leftover_cleanup_enabled}`}
             initialValues={initialValues}
             onOpenBackup={() => setShowDownloadModal(true)}
             onClearError={clearError}
@@ -186,6 +192,30 @@ const MainSettingsForm = ({
           </div>
         </div>
       </div>
+      <div className="mt-6 max-w-6xl sm:mt-5 sm:grid sm:grid-cols-3 sm:items-start sm:gap-4">
+        <label htmlFor="leftover_cleanup_enabled" className="sm:mt-2">
+          Clean up leftover folders
+          <p className="text-xs font-normal">
+            After a delete removes a movie/show/season&apos;s files via
+            Radarr/Sonarr, remove the leftover folder and its sidecar files
+            (subtitles, .nfo, artwork). The folder is kept if anything
+            unrecognized remains, including a media file. Requires the media
+            library mounted into Maintainerr at the same path the *arr reports.
+            Off by default.
+          </p>
+        </label>
+        <div className="px-3 py-2 sm:col-span-2">
+          <input
+            id="leftover_cleanup_enabled"
+            type="checkbox"
+            className="checkbox"
+            {...register('leftover_cleanup_enabled', {
+              onChange: onClearError,
+            })}
+          />
+        </div>
+      </div>
+
       <div className="actions mt-5 w-full">
         <PageControlRow
           className="mb-0"

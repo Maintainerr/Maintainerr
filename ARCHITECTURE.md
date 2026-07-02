@@ -262,6 +262,9 @@ See `CONTRIBUTING.md` for setup, branching, and pull request expectations.
   media-server support, and switch behaviour.
 - `docs/overlay-feature.md` describes overlay templates, rendering, storage,
   scheduling, and provider integration.
+- `docs/leftover-folder-cleanup.md` describes the opt-in post-delete folder
+  cleanup, its \*arr-only v1 scope, the same-path mount requirement, and the
+  guardrails.
 - `README.md` describes product capabilities, installation, API compatibility,
   and supported services.
 
