@@ -259,6 +259,10 @@ export class SonarrGetterService {
         return seasonEpisodesPromise;
       };
 
+      // Run-scoped cache for the full series episode list: one fetch per
+      // show per rule-run (single-`get()` memo without the cache). Evicts on
+      // transient `undefined` so one failed fetch doesn't poison the run
+      // (matches `resolveSeries` above).
       let showEpisodesPromise: Promise<SonarrEpisode[] | undefined> | undefined;
       const getShowEpisodes = async (): Promise<
         SonarrEpisode[] | undefined
@@ -267,7 +271,13 @@ export class SonarrGetterService {
           return undefined;
         }
 
-        showEpisodesPromise ??= sonarrApiClient.getEpisodes(showResponse.id);
+        showEpisodesPromise ??= arrLookupCache
+          ? arrLookupCache.memoize(
+              `sonarr:${settingsId}:episodes-all:${showResponse.id}`,
+              () => sonarrApiClient.getEpisodes(showResponse.id),
+              (episodes) => episodes === undefined,
+            )
+          : sonarrApiClient.getEpisodes(showResponse.id);
 
         return showEpisodesPromise;
       };
@@ -311,6 +321,12 @@ export class SonarrGetterService {
           return (await sonarrApiClient.getTags())
             ?.filter((el) => tagIds.includes(el.id))
             .map((el) => el.label);
+        }
+        case 'seriesTitle': {
+          return showResponse.title ?? null;
+        }
+        case 'seriesId': {
+          return showResponse.id;
         }
         case 'qualityProfileId': {
           const episodeFile = await getEpisodeFile();
@@ -486,6 +502,157 @@ export class SonarrGetterService {
             ? showResponse.statistics.episodeCount -
                 showResponse.statistics.episodeFileCount
             : null;
+        }
+        case 'episodeFileRank': {
+          // Rank an episode within its show by air date (newest = 1) among
+          // the episodes currently on disk. Pool requires `hasFile === true`
+          // and excludes specials (S00), unaired, and null-airDate episodes;
+          // out-of-pool episodes get rank `null` so the comparator stays
+          // fail-closed. Pair with a scope filter (`Sonarr.tags` or
+          // `Sonarr.seriesTitle`) to avoid library-wide application.
+          if (dataType !== 'episode' || !origLibItem) {
+            return null;
+          }
+
+          // Air-date cutoff for the pool. Only the first build per show is
+          // cached, so every episode of the show ranks against one
+          // consistent cutoff within a run.
+          const nowMs = Date.now();
+
+          // The rank maps are identical for every episode of the show within
+          // a run, so cache them - otherwise a long daily series re-sorts
+          // the pool once per episode. The airDate map backs the
+          // daily-series fallback (Plex items with a date but no episode
+          // number).
+          const buildRankMaps = async (): Promise<
+            | {
+                rankByEpisode: Map<string, number>;
+                rankByAirDate: Map<string, number>;
+              }
+            | undefined
+          > => {
+            const episodes = await getShowEpisodes();
+            if (episodes === undefined) {
+              return undefined;
+            }
+
+            const pool = episodes
+              .map((e) => {
+                // Sonarr emits `'0001-01-01T00:00:00Z'` as the .NET
+                // null-date sentinel (see the `showResponse.added` checks
+                // above). It parses to a finite very-negative ms and would
+                // otherwise sneak into the pool with a bogus year-1 air
+                // date.
+                const airMs =
+                  e.airDateUtc && e.airDateUtc !== '0001-01-01T00:00:00Z'
+                    ? new Date(e.airDateUtc).getTime()
+                    : NaN;
+                return {
+                  seasonNumber: e.seasonNumber,
+                  episodeNumber: e.episodeNumber,
+                  hasFile: e.hasFile,
+                  airMs,
+                  // Sonarr ships `airDate` as the broadcast-day in the show's local
+                  // calendar (YYYY-MM-DD). Plex's `originallyAvailableAt` parses to the
+                  // same calendar date via ISO date-only semantics, so keying on the
+                  // string aligns both sides without UTC-day math (which would slip a
+                  // day for any primetime broadcast outside UTC).
+                  airDayKey:
+                    e.airDate && e.airDate !== '0001-01-01' ? e.airDate : null,
+                };
+              })
+              .filter(
+                (e) =>
+                  e.hasFile === true &&
+                  e.seasonNumber > 0 &&
+                  Number.isFinite(e.airMs) &&
+                  e.airMs <= nowMs,
+              );
+
+            pool.sort((a, b) => {
+              if (a.airMs !== b.airMs) return b.airMs - a.airMs;
+              if (b.seasonNumber !== a.seasonNumber) {
+                return b.seasonNumber - a.seasonNumber;
+              }
+              return b.episodeNumber - a.episodeNumber;
+            });
+
+            const rankByEpisode = new Map<string, number>();
+            const rankByAirDate = new Map<string, number>();
+            for (let i = 0; i < pool.length; i++) {
+              const e = pool[i];
+              const rank = i + 1;
+              rankByEpisode.set(`${e.seasonNumber}:${e.episodeNumber}`, rank);
+              // First-wins on same-day collisions: the newer episode of a
+              // same-day double already holds the slot, which is the
+              // conservative (keep) outcome when a daily-series Plex item
+              // carries only the date.
+              if (e.airDayKey !== null && !rankByAirDate.has(e.airDayKey)) {
+                rankByAirDate.set(e.airDayKey, rank);
+              }
+            }
+            return { rankByEpisode, rankByAirDate };
+          };
+
+          const rankMaps = await (arrLookupCache
+            ? arrLookupCache.memoize(
+                `sonarr:${settingsId}:episode-rank-map:${showResponse.id}`,
+                buildRankMaps,
+                (maps) => maps === undefined,
+              )
+            : buildRankMaps());
+
+          if (rankMaps === undefined) {
+            return undefined;
+          }
+          const { rankByEpisode, rankByAirDate } = rankMaps;
+          if (rankByEpisode.size === 0) {
+            return null;
+          }
+
+          const targetSeasonNumber = origLibItem.grandparentId
+            ? origLibItem.parentIndex
+            : origLibItem.index;
+          const targetEpisodeNumber = origLibItem.grandparentId
+            ? origLibItem.index
+            : 1;
+
+          const directRank = rankByEpisode.get(
+            `${targetSeasonNumber}:${targetEpisodeNumber}`,
+          );
+          if (directRank !== undefined) {
+            return directRank;
+          }
+
+          // Daily-series fallback: Plex episodes for daily-air shows carry
+          // `parentIndex = <year>` but no `index`, so the season:episode
+          // lookup misses. Sonarr identifies these episodes by air date, so
+          // when there's no episode number to key by, fall back to the
+          // airDate map. `originallyAvailableAt` is mapped to a Date by the
+          // Plex/Jellyfin/Emby adapters; an invalid Date or the .NET null
+          // sentinel returns null (fail-closed).
+          if (targetEpisodeNumber === undefined) {
+            const target = origLibItem.originallyAvailableAt;
+            if (!(target instanceof Date)) {
+              return null;
+            }
+            const targetMs = target.getTime();
+            if (!Number.isFinite(targetMs)) {
+              return null;
+            }
+            // Reject the .NET null sentinel symmetrically with the pool side.
+            if (target.toISOString() === '0001-01-01T00:00:00.000Z') {
+              return null;
+            }
+            // ISO date-only parsing of Plex/Jellyfin/Emby `originallyAvailableAt`
+            // lands the Date at UTC-midnight of the broadcast date, so the leading
+            // 10 chars are the broadcast-day YYYY-MM-DD - matching Sonarr's
+            // `airDate` shape exactly.
+            const targetDayKey = target.toISOString().slice(0, 10);
+            return rankByAirDate.get(targetDayKey) ?? null;
+          }
+
+          return null;
         }
       }
     } catch (error) {
