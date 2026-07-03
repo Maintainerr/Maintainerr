@@ -34,6 +34,10 @@ import http from "node:http";
 
 const PORT = Number(process.env.FAKE_RADARR_PORT ?? 7878);
 const LOG = process.env.FAKE_RADARR_LOG !== "0";
+// Library root reported by /rootfolder and used to build each movie's `path`
+// (<root>/mock-<tmdbId>). Point it at a writable dir to exercise the leftover-
+// folder cleanup flow against a real filesystem; defaults to a Radarr-style path.
+const LIBRARY_ROOT = process.env.FAKE_RADARR_LIBRARY_ROOT ?? "/movies";
 
 // In-memory import-list-exclusion store (tmdbId -> resource). Persists for the
 // lifetime of the process so re-running collection handling demonstrates the
@@ -73,7 +77,7 @@ const movieFor = (tmdbId) => ({
   hasFile: true,
   qualityProfileId: 1,
   sizeOnDisk: 1024 ** 3,
-  path: `/movies/mock-${tmdbId}`,
+  path: `${LIBRARY_ROOT}/mock-${tmdbId}`,
   tags: [...(movieTags.get(tmdbId) ?? [])],
 });
 
@@ -112,6 +116,11 @@ const server = http.createServer(async (req, res) => {
     status = send(res, 200, movieFor(Number(path.split("/")[2])));
   } else if (method === "PUT" && /^\/movie\/\d+$/.test(path)) {
     status = send(res, 200, movieFor(Number(path.split("/")[2])));
+  } else if (method === "DELETE" && /^\/movie\/\d+$/.test(path)) {
+    // Radarr deletes the movie (and, with deleteFiles=true, its files). The mock
+    // doesn't touch disk — the leftover-folder cleanup acts on whatever strays
+    // remain in the movie folder afterwards.
+    status = send(res, 200, {});
   } else if (method === "GET" && path === "/moviefile") {
     status = send(res, 200, []); // no files to delete in the mock
 
@@ -191,9 +200,13 @@ const server = http.createServer(async (req, res) => {
     status = send(res, 200, [...exclusions.values()]);
 
     // --- Misc endpoints other flows may probe --------------------------------
+  } else if (method === "GET" && path === "/rootfolder") {
+    status = send(res, 200, [
+      { id: 1, path: LIBRARY_ROOT, freeSpace: 1024 ** 4, unmappedFolders: [] },
+    ]);
   } else if (
     method === "GET" &&
-    ["/qualityProfile", "/rootfolder", "/diskspace", "/queue"].includes(path)
+    ["/qualityProfile", "/diskspace", "/queue"].includes(path)
   ) {
     status = send(res, 200, []);
   } else {

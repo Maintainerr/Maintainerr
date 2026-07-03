@@ -76,6 +76,8 @@ export interface ISettings {
   sonarr_tag_exclusions?: boolean
   sonarr_exclusion_tag?: string
   sonarr_untag_on_unexclude?: boolean
+  // Force-remove the leftover media folder after a confirmed *arr delete
+  leftover_cleanup_enabled?: boolean
 }
 
 // Jellyfin test result (not in contracts as it's UI-specific)

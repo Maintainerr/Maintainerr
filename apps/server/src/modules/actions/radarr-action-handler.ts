@@ -12,6 +12,7 @@ import {
 } from '../metadata/metadata-lookup.util';
 import { MetadataService } from '../metadata/metadata.service';
 import { SettingsDataService } from '../settings/settings-data.service';
+import { LeftoverFolderCleanupService } from './leftover-folder-cleanup.service';
 
 @Injectable()
 export class RadarrActionHandler {
@@ -21,6 +22,7 @@ export class RadarrActionHandler {
     private readonly metadataService: MetadataService,
     private readonly settings: SettingsDataService,
     private readonly downloadClient: DownloadClientApiService,
+    private readonly folderCleanup: LeftoverFolderCleanupService,
     private readonly logger: MaintainerrLogger,
   ) {
     logger.setContext(RadarrActionHandler.name);
@@ -77,6 +79,16 @@ export class RadarrActionHandler {
             ? await radarrApiClient.getDownloadIdsForMovie(radarrMedia.id)
             : [];
 
+        // The movie folder to clean up after the files are removed. Captured
+        // here (it stays in memory after the delete) and only fetched when the
+        // feature is on, to keep the common path free of extra calls.
+        const rootFolderPaths =
+          isFileDeletingAction && this.folderCleanup.isEnabled()
+            ? ((await radarrApiClient.getRootFolders()) ?? [])
+                .map((folder) => folder.path)
+                .filter((p): p is string => !!p)
+            : [];
+
         switch (collection.arrAction) {
           case ServarrAction.DELETE:
           case ServarrAction.UNMONITOR_DELETE_EXISTING:
@@ -93,6 +105,12 @@ export class RadarrActionHandler {
               `Removed movie with ${matchedProvider} ID ${matchedId} from filesystem & Radarr`,
             );
             await this.downloadClient.removeDownloads(downloadIds);
+            await this.folderCleanup.cleanupAfterDelete({
+              folderPath: radarrMedia.path,
+              rootFolderPaths,
+              scope: 'movie',
+              label: radarrMedia.title,
+            });
             return true;
           case ServarrAction.UNMONITOR:
             if (
@@ -121,6 +139,12 @@ export class RadarrActionHandler {
               `Unmonitored movie with ${matchedProvider} ID ${matchedId}${collection.listExclusions ? ', added to import exclusion list' : ''} & removed files from filesystem in Radarr`,
             );
             await this.downloadClient.removeDownloads(downloadIds);
+            await this.folderCleanup.cleanupAfterDelete({
+              folderPath: radarrMedia.path,
+              rootFolderPaths,
+              scope: 'movie',
+              label: radarrMedia.title,
+            });
             return true;
           case ServarrAction.CHANGE_QUALITY_PROFILE: {
             const targetProfileId = collection.radarrQualityProfileId;

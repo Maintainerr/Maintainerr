@@ -158,4 +158,13 @@ export class Settings implements SettingDto {
 
   @Column({ type: 'boolean', nullable: false, default: false })
   sonarr_untag_on_unexclude: boolean;
+
+  // Opt-in: after a confirmed file-deleting *arr action, force-remove the now
+  // orphaned media folder (the stray .srt/.nfo/trailer residue Sonarr leaves
+  // behind). Default off — it deletes from disk, fenced by strict guardrails
+  // (must be a real subfolder strictly inside a known *arr root, never a
+  // symlink, and aborted if any video file still remains). Requires the library
+  // mounted into Maintainerr at the same path the *arr reports.
+  @Column({ type: 'boolean', nullable: false, default: false })
+  leftover_cleanup_enabled: boolean;
 }

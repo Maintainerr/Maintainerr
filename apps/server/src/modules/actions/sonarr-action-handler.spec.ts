@@ -19,6 +19,7 @@ import { ServarrAction } from '../collections/interfaces/collection.interface';
 import { MaintainerrLogger } from '../logging/logs.service';
 import { MetadataService } from '../metadata/metadata.service';
 import { SettingsDataService } from '../settings/settings-data.service';
+import { LeftoverFolderCleanupService } from './leftover-folder-cleanup.service';
 import { SonarrActionHandler } from './sonarr-action-handler';
 
 describe('SonarrActionHandler', () => {
@@ -30,6 +31,7 @@ describe('SonarrActionHandler', () => {
   let metadataService: Mocked<MetadataService>;
   let settings: Mocked<SettingsDataService>;
   let downloadClient: Mocked<DownloadClientApiService>;
+  let folderCleanup: Mocked<LeftoverFolderCleanupService>;
   let mediaIdFinder: {
     findTvdbId: jest.Mock<Promise<number | undefined>, []>;
   };
@@ -46,6 +48,7 @@ describe('SonarrActionHandler', () => {
     metadataService = unitRef.get(MetadataService);
     settings = unitRef.get(SettingsDataService);
     downloadClient = unitRef.get(DownloadClientApiService);
+    folderCleanup = unitRef.get(LeftoverFolderCleanupService);
     logger = unitRef.get(MaintainerrLogger);
 
     mediaIdFinder = {
@@ -91,6 +94,67 @@ describe('SonarrActionHandler', () => {
     sizeOnDisk: 0,
     percentOfEpisodes: 0,
     ...overrides,
+  });
+
+  it('requests leftover-folder cleanup for the series folder after a whole-show DELETE', async () => {
+    const collection = createCollection({
+      arrAction: ServarrAction.DELETE,
+      sonarrSettingsId: 1,
+      type: 'show',
+    });
+    const collectionMedia = createCollectionMediaWithMetadata(collection, {
+      tmdbId: 1,
+    });
+
+    const series = createSonarrSeries({
+      id: 42,
+      path: '/data/tv/Sample Series',
+    });
+    const mockedSonarrApi = mockSonarrApi(servarrService, logger);
+    jest.spyOn(mockedSonarrApi, 'getSeriesByTvdbId').mockResolvedValue(series);
+    mediaIdFinder.findTvdbId.mockResolvedValue(1);
+
+    const result = await sonarrActionHandler.handleAction(
+      collection,
+      collectionMedia,
+    );
+
+    expect(result).toBe(true);
+    expect(mockedSonarrApi.deleteShow).toHaveBeenCalledWith(
+      42,
+      true,
+      collection.listExclusions,
+    );
+    expect(folderCleanup.cleanupAfterDelete).toHaveBeenCalledWith(
+      expect.objectContaining({
+        folderPath: '/data/tv/Sample Series',
+        scope: 'series',
+      }),
+    );
+  });
+
+  it('does not request leftover-folder cleanup for a non-deleting UNMONITOR show', async () => {
+    const collection = createCollection({
+      arrAction: ServarrAction.UNMONITOR,
+      sonarrSettingsId: 1,
+      type: 'show',
+    });
+    const collectionMedia = createCollectionMediaWithMetadata(collection, {
+      tmdbId: 1,
+    });
+
+    const series = createSonarrSeries({
+      id: 42,
+      path: '/data/tv/Sample Series',
+    });
+    const mockedSonarrApi = mockSonarrApi(servarrService, logger);
+    jest.spyOn(mockedSonarrApi, 'getSeriesByTvdbId').mockResolvedValue(series);
+    jest.spyOn(mockedSonarrApi, 'unmonitorSeasons').mockResolvedValue(series);
+    mediaIdFinder.findTvdbId.mockResolvedValue(1);
+
+    await sonarrActionHandler.handleAction(collection, collectionMedia);
+
+    expect(folderCleanup.cleanupAfterDelete).not.toHaveBeenCalled();
   });
 
   it.each([

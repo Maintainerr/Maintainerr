@@ -101,6 +101,7 @@ describe('MainSettings', () => {
       expect(updateSettings).toHaveBeenCalledWith({
         applicationUrl: '',
         apikey: '',
+        leftover_cleanup_enabled: false,
       })
     })
   })
