@@ -130,9 +130,9 @@ export class RuleComparatorService {
           // condition of the new section and is persisted as a string
           // ("0"/"1"), or null when unset. +null === 0 is true in JS, so the
           // bare `+operator === 0` check coerced an unset operator to AND.
-          // Guard against null first, then coerce — mirroring the
+          // Guard against null first, then coerce - mirroring the
           // within-section idiom (`operator != null && +operator === ...`)
-          // used elsewhere in this service — so an unset operator falls
+          // used elsewhere in this service - so an unset operator falls
           // through to OR while an explicit AND ("0") is still honoured.
           // Persisted rules are normalised to an explicit operator by
           // migration, so null should not reach here in practice.
@@ -226,7 +226,7 @@ export class RuleComparatorService {
     // trigger an external lookup. Plex leaf watch history is prefetched for the
     // rule batch, but show/season rollups and other integrations can still make
     // per-item calls. These getters are pure reads and touch no comparator
-    // state, so we resolve them up front in bounded parallel batches — the same
+    // state, so we resolve them up front in bounded parallel batches - the same
     // chunk + Promise.all idiom used for Plex collection writes. Batching lives
     // only here, so the total in-flight lookups never exceed
     // RULE_EVALUATION_CONCURRENCY. The mutation pass below then stays strictly
@@ -405,7 +405,7 @@ export class RuleComparatorService {
       // Key conversion off the first-value slot's *declared* type, not the
       // runtime value. This preserves the previous behavior for every action
       // (before/after/in_last/in_next plus equals/not_equals) while still
-      // converting custom_days when firstVal is null — see issue #2582.
+      // converting custom_days when firstVal is null - see issue #2582.
       const firstValProperty = this.ruleConstanstService
         .getRuleConstants()
         .applications.find((app) => app.id === rule.firstVal[0])

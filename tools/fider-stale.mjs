@@ -5,7 +5,7 @@ const {
   FIDER_API_KEY,
   DRY_RUN = 'false',
   // Optional Discord webhook for maintainer notifications. Silent no-op when
-  // unset — the stale sweep still happens, just nothing posted to chat.
+  // unset - the stale sweep still happens, just nothing posted to chat.
   DISCORD_FIDER_BOT_WEBHOOK = '',
   // Optional Discord role ID (snowflake) to @-mention in notifications.
   DISCORD_PING_ROLE_ID = '',
@@ -25,7 +25,7 @@ const COMMENT_MARKER_STALE_WARN = '<!-- maintainerr-fider-bot:stale-warn -->';
 // Mirrors the spirit of the GitHub stale-bot's exempt-issue-labels list.
 const EXEMPT_TAGS = new Set(['never-stale', 'planned', 'started', 'bug', 'enhancement', 'possibly-completed']);
 
-// Statuses that should NEVER be touched by the stale sweep — terminal states
+// Statuses that should NEVER be touched by the stale sweep - terminal states
 // or in-flight engagement that means a maintainer is on it.
 const SWEEPABLE_STATUSES = new Set(['open']);
 
@@ -82,7 +82,7 @@ const buildStaleWarnComment = () => {
     '',
     'Maintainers can suppress this check on a specific post by adding the `never-stale` tag.',
     '',
-    '_Automated cleanup — this comment is informational, not a deletion._',
+    '_Automated cleanup - this comment is informational, not a deletion._',
     '',
     COMMENT_MARKER_STALE_WARN,
   ].join('\n');
@@ -124,11 +124,11 @@ const sweepPost = async (post) => {
 
   // Phase 2: stale tag already present. Look for our warn comment to see how
   // long ago we warned. If the maintainer or the user has commented since
-  // (anything that ISN'T our warn marker), skip — they've engaged.
+  // (anything that ISN'T our warn marker), skip - they've engaged.
   const comments = await fider(`/api/v1/posts/${post.number}/comments`);
   const warn = (comments || []).find((c) => typeof c.content === 'string' && c.content.includes(COMMENT_MARKER_STALE_WARN));
   if (!warn) {
-    // Stale tag without our warn comment — probably manually tagged. Don't
+    // Stale tag without our warn comment - probably manually tagged. Don't
     // auto-decline; that requires explicit bot warning first.
     return { skipped: 'stale-no-warn' };
   }
@@ -196,7 +196,7 @@ const main = async () => {
           },
         });
       }
-      // Skips are quiet — most posts don't qualify and we don't want noise.
+      // Skips are quiet - most posts don't qualify and we don't want noise.
     } catch (err) {
       log(`#${post.number} error: ${err.message}`);
     }

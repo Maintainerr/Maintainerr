@@ -10,7 +10,7 @@
  * handful of endpoints those flows need so the whole thing can be exercised without
  * a real Jellyfin.
  *
- * It is intentionally minimal and invented — no real media names (repo rule). The
+ * It is intentionally minimal and invented - no real media names (repo rule). The
  * dataset is small and deterministic so rule evaluation is predictable.
  *
  * Usage
@@ -21,7 +21,7 @@
  *
  * The dev seed (tools/dev/seed-db.mjs) already points settings.jellyfin_url at
  * http://localhost:8096 with a fixed api key + user id, so no settings change is
- * needed — just start this before (or alongside) `yarn dev`.
+ * needed - just start this before (or alongside) `yarn dev`.
  */
 import http from 'node:http';
 import { buildScaleLibrary } from './lib/scale-library.mjs';
@@ -89,7 +89,7 @@ const MOVIES = [
 
 // Show counterpart, used to drive Sonarr/show-side flows (e.g. the
 // metadata-fallback path when a series is absent from Sonarr). Provider IDs
-// are synthetic — they won't resolve against real TMDB/TVDB, which is fine
+// are synthetic - they won't resolve against real TMDB/TVDB, which is fine
 // for any flow that doesn't depend on year-validation passing.
 function series(id, name, addDate, providerIds = {}) {
   return {
@@ -130,7 +130,7 @@ const SHOWS = [
 // A manual ("custom name") collection the user created in Jellyfin/Emby. BoxSets
 // are server-global, but the server only reports one under libraries whose content
 // it currently holds. This one holds movies only, so it is visible under the movie
-// library and INVISIBLE under the show library — exactly the #3026 reproduction.
+// library and INVISIBLE under the show library - exactly the #3026 reproduction.
 const SHARED_BOXSET = {
   Id: 'mock-boxset-shared',
   Name: 'Franchise A Collection',

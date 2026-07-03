@@ -10,22 +10,22 @@
  *
  * This is the only one of the dev scripts that touches the DB; the companion
  * mocks are stateless HTTP servers:
- *   - tools/dev/fake-jellyfin.mjs  (mock Jellyfin, :8096) — pairs with MEDIA_SERVER=jellyfin
- *   - tools/dev/fake-emby.mjs      (mock Emby, :8097)     — pairs with MEDIA_SERVER=emby
- *   - tools/dev/fake-plex.mjs      (mock Plex, :32400)    — pairs with MEDIA_SERVER=plex
- *   - tools/dev/fake-seerr.mjs     (mock Seerr, :5055)    — evaluates the Seerr rule groups
+ *   - tools/dev/fake-jellyfin.mjs  (mock Jellyfin, :8096) - pairs with MEDIA_SERVER=jellyfin
+ *   - tools/dev/fake-emby.mjs      (mock Emby, :8097)     - pairs with MEDIA_SERVER=emby
+ *   - tools/dev/fake-plex.mjs      (mock Plex, :32400)    - pairs with MEDIA_SERVER=plex
+ *   - tools/dev/fake-seerr.mjs     (mock Seerr, :5055)    - evaluates the Seerr rule groups
  *
  * Notes
  * -----
  * - Media titles are NOT stored on collection_media (they resolve at runtime
  *   from TMDB / the media server), so the seeded cards show posters only.
  *   Posters use picsum.photos seeded URLs (placeholder photography) via the
- *   collection_media.image_path "absolute URL" fast-path — no real media is
+ *   collection_media.image_path "absolute URL" fast-path - no real media is
  *   referenced, satisfying the repo's no-real-media-names rule.
  * - All names below are invented for testing.
  * - Rules use action EXISTS so they stay property-agnostic (any item with the
  *   value matches) while still exercising every getter. Inspect a getter's
- *   actual output with POST /api/rules/test {"mediaId","rulegroupId"} — e.g.
+ *   actual output with POST /api/rules/test {"mediaId","rulegroupId"} - e.g.
  *   the Plex case-sensitive smart-collection dedupe (rule ids 41/42).
  * - Watchlist rules (need plex.tv, not the local mock) are intentionally left out.
  * - This RESETS the collection/rule/servarr tables, then re-seeds, so it is
@@ -105,7 +105,7 @@ const COVERAGE = {
 // Jellyfin application as Application.EMBY), so reuse the same maps.
 TYPES.emby = TYPES.jellyfin;
 COVERAGE.emby = COVERAGE.jellyfin;
-const EXISTS = 18; // RulePossibility.EXISTS — valid for every RuleType
+const EXISTS = 18; // RulePossibility.EXISTS - valid for every RuleType
 const ruleType = TYPES[TARGET];
 const ruleJson = (id, i) =>
   JSON.stringify({
@@ -240,11 +240,11 @@ const run = db.transaction(() => {
     });
   }
 
-  // 2b) Seerr (request service) — points at tools/dev/fake-seerr.mjs (same for
+  // 2b) Seerr (request service) - points at tools/dev/fake-seerr.mjs (same for
   //     every target). Pair with `node tools/dev/fake-seerr.mjs`; the Seerr rule
   //     groups below evaluate against it. The Seerr getter resolves each library
   //     item to a tmdbId, so matching needs items that resolve to a tmdbId Seerr
-  //     has a request for — point fake-seerr's FAKE_SEERR_TMDB_IDS at the
+  //     has a request for - point fake-seerr's FAKE_SEERR_TMDB_IDS at the
   //     library's real tmdbIds (and use the built-in TMDB key, i.e. leave
   //     tmdb_api_key empty, so those ids resolve).
   db.prepare(
@@ -363,7 +363,7 @@ const run = db.transaction(() => {
   const results = [
     seedCollection({
       title: "Stale Movies",
-      description: "Movies untouched for a while — up for cleanup.",
+      description: "Movies untouched for a while - up for cleanup.",
       libraryId: LIB.movie,
       type: "movie",
       deleteAfterDays: 30,
@@ -405,7 +405,7 @@ const run = db.transaction(() => {
   //     is NOT part of the latest aired season. Pairs tools/dev/fake-plex.mjs's
   //     four-season show with tools/dev/fake-sonarr.mjs. The latest aired season
   //     (S2) must be excluded; the rest swept. A full run evaluates the seasons
-  //     together (shared memoized series) where Test Media evaluates one — the
+  //     together (shared memoized series) where Test Media evaluates one - the
   //     two must now agree.
   if (TARGET === "plex") {
     const seasonColId = insCollection.run({
@@ -450,7 +450,7 @@ const run = db.transaction(() => {
 
   // 4c) #3152 repro: Seerr-seeded rule groups. The Seerr getter now reads ONE
   //     bulk /request sweep per run (tools/dev/fake-seerr.mjs) instead of a
-  //     per-item /movie|/tv call per item — those rate-limited under a whole
+  //     per-item /movie|/tv call per item - those rate-limited under a whole
   //     library run and made Seerr-seeded rules match almost nothing. Run with
   //     FAKE_SEERR_FLAKY=1 to reproduce the rate-limiting the bulk sweep is
   //     immune to. A full run and POST /api/rules/test must agree (the issue's
@@ -530,7 +530,7 @@ const run = db.transaction(() => {
 
   // One movie group per remaining request-derived property (and the per-item
   // releaseDate fallback), each EXISTS so the getter resolves every property the
-  // bulk index feeds — matching the property list in the #3152 commit and making
+  // bulk index feeds - matching the property list in the #3152 commit and making
   // the live POST /api/rules/test matrix reproducible from a clean seed.
   const seerrMovieProps = [
     [0, 'addUser'],
@@ -557,7 +557,7 @@ const run = db.transaction(() => {
         customVal: { ruleTypeId: 0, value: '' },
         operator: null,
         firstVal: [SEERR, propId],
-        action: 18, // EXISTS — resolves the property without a comparison operand
+        action: 18, // EXISTS - resolves the property without a comparison operand
         section: 0,
       }),
     );
@@ -574,7 +574,7 @@ const run = db.transaction(() => {
   );
 
   // 6) Notifications (agents + links to rule groups). Endpoints are local
-  //    placeholders — these never fire in dev, they just populate the UI.
+  //    placeholders - these never fire in dev, they just populate the UI.
   const insNotification = db.prepare(
     `INSERT INTO notification (name, agent, enabled, types, options, aboutScale)
      VALUES (@name, @agent, @enabled, @types, @options, @aboutScale)`,
@@ -669,7 +669,7 @@ console.log(
   "Also seeded: Seerr rule groups (#3152), notifications, cron schedules, collection logs, exclusions, overlays.",
 );
 console.log(
-  "Seerr points at tools/dev/fake-seerr.mjs (http://localhost:5055) — start it to evaluate the Seerr rule groups.",
+  "Seerr points at tools/dev/fake-seerr.mjs (http://localhost:5055) - start it to evaluate the Seerr rule groups.",
 );
 console.log("Restart `yarn dev` and open http://localhost:3000/collections");
 db.close();

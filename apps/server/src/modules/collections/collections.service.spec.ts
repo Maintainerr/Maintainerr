@@ -2081,7 +2081,7 @@ describe('CollectionsService', () => {
     // `deleteSoonest` is equivalent to ordering by `collection_media.addDate`
     // because `deleteAfterDays` is constant across a collection. SQL does the
     // pagination so we don't have to hydrate every row in the collection
-    // before slicing — critical for collections with hundreds of items where
+    // before slicing - critical for collections with hundreds of items where
     // hydrating all rows would block the UI for minutes.
     const collection = createCollection({
       id: 9,
@@ -2707,7 +2707,7 @@ describe('CollectionsService', () => {
       childCount: rows.length,
     } as any);
 
-    // Hand back metadata where every item has the same library addedAt —
+    // Hand back metadata where every item has the same library addedAt -
     // if the comparator falls through to MediaItem.addedAt (the bug) the
     // ordering becomes whatever Map iteration gives us; the assertion
     // below would fail.
@@ -2811,7 +2811,7 @@ describe('CollectionsService', () => {
       );
 
       expect(found?.id).toBe('box-1');
-      // Own library searched first, then the other one — never re-searching it.
+      // Own library searched first, then the other one - never re-searching it.
       expect(mediaServer.getCollections).toHaveBeenCalledWith('shows');
       expect(mediaServer.getCollections).toHaveBeenCalledWith('movies');
       expect(mediaServer.getCollections).toHaveBeenCalledTimes(2);

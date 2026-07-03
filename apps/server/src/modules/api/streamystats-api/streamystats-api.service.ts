@@ -143,8 +143,8 @@ export class StreamystatsApiService {
    * so callers can skip rather than treat absence as "not watchlisted".
    *
    * The watchlist endpoints authenticate via Jellyfin's MediaBrowser token
-   * scheme — unlike the item-details endpoint, the `Bearer` header is rejected
-   * — so each call overrides the Authorization header accordingly.
+   * scheme - unlike the item-details endpoint, the `Bearer` header is rejected
+   * - so each call overrides the Authorization header accordingly.
    */
   public async getWatchlistMembership(): Promise<StreamystatsWatchlistMembership | null> {
     if (!this.api || !this.settings.jellyfin_api_key) {

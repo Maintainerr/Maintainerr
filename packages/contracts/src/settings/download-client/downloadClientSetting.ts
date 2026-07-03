@@ -8,7 +8,7 @@ import { serviceUrlSchema } from '../serviceUrl'
  */
 export const downloadClientSettingSchema = z.object({
   download_client_url: serviceUrlSchema,
-  // Credentials are optional — a client may allow unauthenticated access
+  // Credentials are optional - a client may allow unauthenticated access
   // (e.g. a localhost WebUI bypass). Not trimmed: the download client compares
   // them verbatim, so trimming would silently corrupt a credential that has
   // leading/trailing whitespace.

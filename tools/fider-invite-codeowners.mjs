@@ -16,7 +16,7 @@ You've been invited to join the Maintainerr feature-request board (Fider) becaus
 
 Click here to accept: %invite%
 
-— automated`,
+- automated`,
 } = process.env;
 
 const dryRun = DRY_RUN === 'true';
@@ -47,7 +47,7 @@ const ghApi = async (path) => {
 };
 
 // CODEOWNERS lines look like "<pattern> @user1 @user2 @org/team". Extract the
-// individual @user handles (skip @org/team — those are GitHub teams, not
+// individual @user handles (skip @org/team - those are GitHub teams, not
 // people we can email-invite).
 const parseCodeowners = () => {
   const text = readFileSync(CODEOWNERS_PATH, 'utf8');
@@ -98,7 +98,7 @@ const main = async () => {
   }
 
   // Skip CODEOWNERS who are already Collaborator (role=2) or Administrator
-  // (role=1) on Fider — they're fully onboarded. Visitors and people not in
+  // (role=1) on Fider - they're fully onboarded. Visitors and people not in
   // Fider at all still get an invite. Fider doesn't expose user email
   // through the public users endpoint, so we match on display-name
   // (case-insensitive); a false negative is just a re-sent invite.

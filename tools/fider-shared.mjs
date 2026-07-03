@@ -4,7 +4,7 @@
 
 export const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-// Headers safe to log on every model response — quota/rate-limit signals only.
+// Headers safe to log on every model response - quota/rate-limit signals only.
 // Anything that could leak infra topology, trace IDs, or session state is
 // deliberately omitted.
 const RATE_LIMIT_HEADERS = [
@@ -101,12 +101,12 @@ export const createModelCaller = ({
         Number.isFinite(retryAfterRaw) && retryAfterRaw > 0 ? retryAfterRaw * 1000 : 0;
       if (retryAfterMs > maxHonouredRetryAfterMs) {
         const text = await res.text().catch(() => '');
-        log(`models ${res.status} with retry-after=${retryAfterRaw}s exceeds ${Math.round(maxHonouredRetryAfterMs / 1000)}s cap — likely daily quota; giving up on this post`);
+        log(`models ${res.status} with retry-after=${retryAfterRaw}s exceeds ${Math.round(maxHonouredRetryAfterMs / 1000)}s cap - likely daily quota; giving up on this post`);
         log(`models headers on final failure: ${summariseRateHeaders(res.headers)}`);
         throw new Error(`GitHub Models ${res.status}: retry-after ${retryAfterRaw}s; ${text}`);
       }
       const wait = retryAfterMs > 0 ? retryAfterMs : retryDelaysMs[attempt];
-      log(`models ${res.status}, retrying in ${Math.round(wait / 1000)}s (attempt ${attempt + 1}/${retryDelaysMs.length}) — ${summariseRateHeaders(res.headers)}`);
+      log(`models ${res.status}, retrying in ${Math.round(wait / 1000)}s (attempt ${attempt + 1}/${retryDelaysMs.length}) - ${summariseRateHeaders(res.headers)}`);
       await sleep(wait);
       attempt += 1;
     }
@@ -147,13 +147,13 @@ export const createFider = ({ host, apiKey }) => {
 };
 
 // Tags on a post are returned either as bare slug strings or as objects
-// depending on Fider version / endpoint — this handles both shapes.
+// depending on Fider version / endpoint - this handles both shapes.
 export const postHasTag = (post, slug) =>
   Array.isArray(post.tags) &&
   post.tags.some((t) => (typeof t === 'string' ? t === slug : t.slug === slug));
 
 // Idempotently create a set of Fider tags. Skips ones that already exist.
-// Tag creation requires Administrator role (per docs.fider.io/api/tags) — on
+// Tag creation requires Administrator role (per docs.fider.io/api/tags) - on
 // 403 we throw a clear instructional error instead of the raw HTTP failure
 // so the maintainer knows about the one-time promote/demote dance.
 export const ensureTags = async ({ fider, log, dryRun, host, tags }) => {
@@ -204,7 +204,7 @@ const DISCORD_COLOURS = {
 
 // Post a single embed to a Discord webhook. Silent no-op if webhookUrl is empty
 // so workflows without the secret configured still complete cleanly. Discord
-// webhook errors are logged but never thrown — Discord is best-effort, the
+// webhook errors are logged but never thrown - Discord is best-effort, the
 // Fider work has already happened by the time we notify.
 //
 // pingRoleId (optional): a Discord snowflake for a role to @-mention. Goes in
@@ -229,7 +229,7 @@ export const notifyDiscord = async ({ webhookUrl, log, host, kind, post, fields 
       : { parse: [] },
     embeds: [
       {
-        title: `Fider — ${kind}: #${post.number} ${post.title || ''}`.slice(0, 256),
+        title: `Fider - ${kind}: #${post.number} ${post.title || ''}`.slice(0, 256),
         url: postUrl || undefined,
         description: description ? description.slice(0, 4000) : undefined,
         color: DISCORD_COLOURS[kind] || 0x7f8c8d,

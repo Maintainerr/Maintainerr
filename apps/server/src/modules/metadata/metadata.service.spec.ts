@@ -426,7 +426,7 @@ describe('MetadataService', () => {
         if (id === 'movie-1') {
           return movieItem;
         }
-        // The id-less container — must never be fetched for a movie.
+        // The id-less container - must never be fetched for a movie.
         return createMediaItem({
           id: 'container-1',
           type: 'movie',
@@ -740,7 +740,7 @@ describe('MetadataService', () => {
   });
 
   // Re-scan mixup: a newer library item wrongly tagged with an older entry's
-  // id. Titles are literally identical — only the year distinguishes them.
+  // id. Titles are literally identical - only the year distinguishes them.
   // This is the case a title-first policy would silently accept.
   it('rejects a rescan id mixup where titles match exactly but years differ', async () => {
     const libraryItem = createMediaItem({
@@ -1071,7 +1071,7 @@ describe('MetadataService', () => {
         title: 'Sample Series',
         type: 'tv',
         externalIds: { type: 'tv', tvdb: 1 },
-        // No `ended` from TVDB — say its status was 'Unknown'.
+        // No `ended` from TVDB - say its status was 'Unknown'.
         ended: undefined,
         firstAirDate: '2017-04-25',
         seasonCount: 4,

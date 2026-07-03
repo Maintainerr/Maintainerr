@@ -16,7 +16,7 @@ export class OverlayTaskService extends TaskBase {
     super(taskService, logger);
     this.logger.setContext(OverlayTaskService.name);
     this.name = 'Overlay Handler';
-    // Default to a rarely-firing cron — will be set in onBootstrapHook
+    // Default to a rarely-firing cron - will be set in onBootstrapHook
     this.cronSchedule = '0 0 0 1 1 *'; // Once a year, Jan 1st
   }
 

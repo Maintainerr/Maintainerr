@@ -536,7 +536,7 @@ const RuleInput = (props: IRuleInput) => {
     // (mirrors the render gate below): the section operator for the first
     // rule of a section, otherwise the within-section operator. Require an
     // explicit choice so the combine semantics are never inferred from an
-    // unset (null) value — see the comparator's section-action handling.
+    // unset (null) value - see the comparator's section-action handling.
     const operatorRequired =
       props.id !== 1 &&
       (!!(props.id && props.id > 0) || !!(props.section && props.section > 1))

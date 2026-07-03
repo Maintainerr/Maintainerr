@@ -10,7 +10,7 @@ import { InputGroup } from '../../Forms/Input'
 export interface EmbyLoginButtonProps {
   /**
    * Resolved Emby base URL the credentials should authenticate against.
-   * Required — the button is disabled while empty.
+   * Required - the button is disabled while empty.
    */
   embyUrl: string | undefined
   /**
@@ -29,7 +29,7 @@ export interface EmbyLoginButtonProps {
  * ([apps/ui/src/components/Login/Plex](apps/ui/src/components/Login/Plex)) so
  * server-specific auth UX lives outside the settings page.
  *
- * Emby's auth endpoint is `POST /Users/AuthenticateByName` — verified against
+ * Emby's auth endpoint is `POST /Users/AuthenticateByName` - verified against
  * Emby Server 4.9 and consistent with the Seerr Jellyfin client.
  */
 const EmbyLoginButton: React.FC<EmbyLoginButtonProps> = ({

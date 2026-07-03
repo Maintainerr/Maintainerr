@@ -536,7 +536,7 @@ describe('CollectionHandler', () => {
 
     await collectionHandler.handleMedia(collection, collectionMedia);
 
-    // The post-handle save must carry the cleared link forward — saving the
+    // The post-handle save must carry the cleared link forward - saving the
     // stale snapshot would resurrect the dead BoxSet id and force the next rule
     // run to rediscover it via a 404.
     expect(collectionsService.saveCollection).toHaveBeenCalledWith(

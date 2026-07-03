@@ -285,8 +285,8 @@ export class StorageMetricsService {
     // Coalesce mounts that survived the per-host dedupe but clearly point at
     // the same shared volume from different hosts (e.g. Radarr/Sonarr running
     // in separate LXC containers against the same NAS). A byte-exact match on
-    // totalSpace plus freeSpace — or a matching volume label plus byte-exact
-    // totalSpace — is implausible across truly unrelated filesystems, since
+    // totalSpace plus freeSpace - or a matching volume label plus byte-exact
+    // totalSpace - is implausible across truly unrelated filesystems, since
     // any block-level write would diverge them.
     const merged = this.mergeSharedMountsAcrossHosts(seen);
 
@@ -690,7 +690,7 @@ export class StorageMetricsService {
 
       // Group by mediaServerId so the same item across multiple collections
       // is counted once. Per-item sizes are identical across rows for the
-      // same id, so MAX is equivalent to "any" — it just deduplicates.
+      // same id, so MAX is equivalent to "any" - it just deduplicates.
       // Partitioning by collection.type assigns each unique item to its
       // collection's type bucket; collections are typed homogeneously, so
       // overlap between movie and show buckets is not a real-world concern.

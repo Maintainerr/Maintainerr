@@ -189,7 +189,7 @@ describe('RulesService.deleteRuleGroup', () => {
     });
   });
 
-  describe('Behavior A — membership tag cleanup on delete', () => {
+  describe('Behavior A - membership tag cleanup on delete', () => {
     it("strips members' *arr membership tags before deleting a tagging-enabled group", async () => {
       const group = { id: 42, collectionId: 100 };
       const collection = {

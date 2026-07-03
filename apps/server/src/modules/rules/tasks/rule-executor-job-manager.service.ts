@@ -76,7 +76,7 @@ export class RuleExecutorJobManagerService implements OnApplicationShutdown {
   }
 
   public async stopProcessing() {
-    // Drop any queued work – we only care about the in-flight execution
+    // Drop any queued work - we only care about the in-flight execution
     this.queue.length = 0;
 
     this.abortController?.abort();
@@ -233,7 +233,7 @@ export class RuleExecutorJobManagerService implements OnApplicationShutdown {
       );
 
       // Everything between acquire and release lives inside this try so
-      // release() always runs — including if `emitStatusUpdate` synchronously
+      // release() always runs - including if `emitStatusUpdate` synchronously
       // throws (e.g. an event listener throws). Without this, a thrown
       // listener would leak the lock entry forever and every future
       // `tryAcquire` would return null until restart (#2799).

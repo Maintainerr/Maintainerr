@@ -250,7 +250,7 @@ describe('SonarrGetterService', () => {
     // concurrently, all sharing ONE memoized `showResponse.seasons` array via the
     // run-scoped ArrLookupCache. The latest-aired-season scan must not mutate that
     // shared array, or evaluating one season corrupts the answer for the others.
-    // (Test Media passes no cache, so it never hit this — hence the run/test split.)
+    // (Test Media passes no cache, so it never hit this - hence the run/test split.)
     describe('shared ArrLookupCache across show seasons (#3153)', () => {
       it.each([
         { type: 'season', title: 'SEASONS' },
@@ -1068,7 +1068,7 @@ describe('SonarrGetterService', () => {
 
       const response = await callGet(7);
 
-      // Returns undefined (comparator skips) — must NOT serve metadata's
+      // Returns undefined (comparator skips) - must NOT serve metadata's
       // 'ended: true' while Sonarr is unreachable, since that would change
       // collection membership during an outage.
       expect(response).toBeUndefined();

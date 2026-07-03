@@ -27,7 +27,7 @@ export class StorageMetricsController {
   @Get('library-sizes')
   @ApiOperation({
     summary:
-      'Accurate per-library size computed by iterating media items. Potentially slow — call on demand.',
+      'Accurate per-library size computed by iterating media items. Potentially slow - call on demand.',
   })
   @ApiResponse({
     status: 200,

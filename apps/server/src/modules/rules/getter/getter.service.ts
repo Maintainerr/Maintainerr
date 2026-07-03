@@ -44,7 +44,7 @@ export class ValueGetterService {
     switch (val1) {
       // Route Plex/Jellyfin/Emby Application IDs to the configured media
       // server's getter. This handles community rules that reference the
-      // "wrong" server type — e.g. a rule authored with Application.JELLYFIN
+      // "wrong" server type - e.g. a rule authored with Application.JELLYFIN
       // can still evaluate against a configured Emby server.
       case Application.PLEX:
       case Application.JELLYFIN:

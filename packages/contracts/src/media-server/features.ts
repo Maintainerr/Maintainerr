@@ -25,7 +25,7 @@ export const MEDIA_SERVER_FEATURES: Record<
     // Note: COLLECTION_VISIBILITY not supported
     // Note: WATCHLIST not supported (no API)
     // Note: CENTRAL_WATCH_HISTORY not supported (requires user iteration)
-    // Note: COLLECTION_SORT not supported — no boxset reorder API; ForcedSortName has global side-effects.
+    // Note: COLLECTION_SORT not supported - no boxset reorder API; ForcedSortName has global side-effects.
   ]),
   [MediaServerType.EMBY]: new Set([
     MediaServerFeature.LABELS,

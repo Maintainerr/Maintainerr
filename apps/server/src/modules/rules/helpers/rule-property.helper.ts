@@ -16,8 +16,8 @@ export function uniqueTrimmedRulePropertyNames(
   names: readonly string[],
 ): string[] {
   // Behaviour-preserving extraction of the Plex smart-collection name logic
-  // from #1630: de-duplicate on the RAW value first — collapsing a collection
-  // that appears at several parent levels or as a smart collection — and trim
+  // from #1630: de-duplicate on the RAW value first - collapsing a collection
+  // that appears at several parent levels or as a smart collection - and trim
   // only afterwards. Because dedupe runs before trimming, names that differ
   // only in surrounding whitespace (or case) remain separate list entries.
   // That distinction is user-visible: these feed COUNT_* comparators on the

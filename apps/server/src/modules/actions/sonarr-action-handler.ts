@@ -437,7 +437,7 @@ export class SonarrActionHandler {
   /**
    * The torrents a season/episode delete fully covers: those whose every backed
    * episode is in the deleted set. A season/series pack also backs episodes that
-   * are kept, so it is excluded. Keyed on Sonarr's episodeId — this is the only
+   * are kept, so it is excluded. Keyed on Sonarr's episodeId - this is the only
    * safeguard for a lone pack, since removeDownloads' cross-seed guard protects
    * torrents that share a content path, not one torrent backing several wanted
    * episodes. Fails closed: returns [] whenever coverage cannot be proven.
@@ -632,7 +632,7 @@ export class SonarrActionHandler {
     // episode files; `ended` confirms no further episodes are coming. We do
     // NOT additionally require every season to be unmonitored: Sonarr carries
     // every TVDB season on the series, including ones the user never
-    // downloaded, and those stay monitored forever — which would block
+    // downloaded, and those stay monitored forever - which would block
     // deletion of a genuinely empty, ended show indefinitely (issue #2757 /
     // #2891: e.g. a show where the user only ever had seasons 1-4).
     if (series.status !== 'ended') {
@@ -705,13 +705,13 @@ export class SonarrActionHandler {
     // 'monitored': the show counts as empty once no season is still both
     // monitored AND holding files. Seasons the user never downloaded stay
     // monitored on the series object indefinitely (Sonarr carries every TVDB
-    // season) and have zero files — they must not count as monitored content,
+    // season) and have zero files - they must not count as monitored content,
     // or a genuinely finished show could never be unmonitored (#2757 / #2891).
     //
     // A monitored season is only treated as empty when Sonarr *explicitly*
     // reports zero files. season.statistics is optional; if it's absent the
     // file count is unknown, so the season is treated as still having content
-    // (conservative — never unmonitor a show on an assumption).
+    // (conservative - never unmonitor a show on an assumption).
     return series.seasons.every(
       (season) =>
         !season.monitored || season.statistics?.episodeFileCount === 0,

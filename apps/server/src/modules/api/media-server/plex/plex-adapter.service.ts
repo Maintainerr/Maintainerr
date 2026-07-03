@@ -777,7 +777,7 @@ export class PlexAdapterService implements IMediaServerService {
   async deleteFromDisk(itemId: string): Promise<void> {
     if (!itemId || itemId.trim() === '') {
       throw new Error(
-        'deleteFromDisk called with empty itemId — aborting to prevent unintended deletion',
+        'deleteFromDisk called with empty itemId - aborting to prevent unintended deletion',
       );
     }
 
@@ -815,7 +815,7 @@ export class PlexAdapterService implements IMediaServerService {
   async refreshItemMetadata(itemId: string): Promise<void> {
     if (isBlankMediaServerId(itemId)) {
       throw new Error(
-        'refreshItemMetadata called with empty itemId — aborting metadata refresh request',
+        'refreshItemMetadata called with empty itemId - aborting metadata refresh request',
       );
     }
 

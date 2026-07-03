@@ -244,7 +244,7 @@ describe('SonarrActionHandler', () => {
   );
 
   // A transient Sonarr lookup failure (getSeriesByTvdbId → undefined) must NOT
-  // be read as "not in Sonarr" and trigger a media-server delete — fail closed
+  // be read as "not in Sonarr" and trigger a media-server delete - fail closed
   // so the item stays in the collection and is retried next run. (#3125)
   it('fails closed (no delete, no action) when the Sonarr lookup fails transiently for a DELETE action', async () => {
     const collection = createCollection({
@@ -366,7 +366,7 @@ describe('SonarrActionHandler', () => {
   // empty-show cleanup must resolve the series from the (uncached) Sonarr
   // client on every run, never from a memo that could hold a pre-deletion
   // snapshot. The rule-evaluation memo is intentionally never threaded into
-  // this path — if a future refactor did so, the second run below would re-use
+  // this path - if a future refactor did so, the second run below would re-use
   // the stale "still has files" series and wrongly skip the deletion.
   it('resolves the series fresh from the client each run, never via a memo', async () => {
     const collection = createCollection({
@@ -617,7 +617,7 @@ describe('SonarrActionHandler', () => {
   // Regression for issues #2757 / #2891. Sonarr carries every TVDB season on
   // the series, including ones the user never downloaded; those stay
   // monitored forever. The no-Seerr fallback must not require every season to
-  // be unmonitored — an ended show with zero episode files is deletable even
+  // be unmonitored - an ended show with zero episode files is deletable even
   // when later (never-downloaded) seasons are still monitored.
   it('should delete ended show with no episode files when Seerr is not configured even if later seasons remain monitored', async () => {
     const collection = createCollection({
@@ -807,7 +807,7 @@ describe('SonarrActionHandler', () => {
   });
 
   // A season that is still monitored AND holds files means the user is not
-  // done with the show — it must not be unmonitored.
+  // done with the show - it must not be unmonitored.
   it('should not unmonitor show when a monitored season still has files', async () => {
     const collection = createCollection({
       arrAction: ServarrAction.UNMONITOR_SHOW_IF_EMPTY,
@@ -851,7 +851,7 @@ describe('SonarrActionHandler', () => {
   });
 
   // season.statistics is optional in Sonarr's response. A monitored season
-  // with no statistics has an unknown file count — it must be treated as
+  // with no statistics has an unknown file count - it must be treated as
   // still having content, never assumed empty.
   it('should not unmonitor show when a monitored season has no statistics', async () => {
     const collection = createCollection({
@@ -1757,7 +1757,7 @@ describe('SonarrActionHandler', () => {
 
         await sonarrActionHandler.handleAction(collection, collectionMedia);
 
-        // Coverage could not be proven, so nothing is removed — but the delete
+        // Coverage could not be proven, so nothing is removed - but the delete
         // itself still runs (cleanup is best-effort).
         expect(mockedSonarrApi.unmonitorSeasons).toHaveBeenCalled();
         expect(downloadClient.removeDownloads).toHaveBeenCalledWith([]);

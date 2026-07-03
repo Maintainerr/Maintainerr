@@ -3,7 +3,7 @@ import { Exclusion } from '../entities/exclusion.entities';
 /**
  * Pre-computed sets used to decide whether a media item is covered by any
  * exclusion. Cascade is driven by `exclusion.type` and `exclusion.mediaServerId`
- * — the `parent` field on Exclusion records the entry point of the original
+ * - the `parent` field on Exclusion records the entry point of the original
  * exclusion request (used by bulk find/delete) and must not be used as a
  * cascade key for typed rows, or a single-episode exclusion would skip every
  * other episode of the same show (issue #2858).

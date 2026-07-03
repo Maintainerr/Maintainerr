@@ -95,7 +95,7 @@ export interface IMediaServerService {
 
   /**
    * Compute per-library size on disk by enumerating items. Potentially slow
-   * — meant to be called on demand. Returns a map of library id → bytes.
+   * - meant to be called on demand. Returns a map of library id → bytes.
    * Libraries missing from the map could not be sized.
    */
   computeLibraryStorageSizes(): Promise<Map<string, number>>;
@@ -166,7 +166,7 @@ export interface IMediaServerService {
    * HTTP requests.
    *
    * Gated by MediaServerFeature.CENTRAL_WATCH_HISTORY (a centrally queryable
-   * history endpoint). Throws if not supported — callers must check
+   * history endpoint). Throws if not supported - callers must check
    * supportsFeature() first; when unsupported, evaluation uses per-item queries.
    */
   prefetchWatchHistory(abortSignal?: AbortSignal): Promise<void>;
@@ -206,7 +206,7 @@ export interface IMediaServerService {
    * an active streaming session. The collection worker uses this to defer
    * handling of in-use media to the next run (deletion is the case that
    * matters; the occasional non-destructive action is deferred too rather
-   * than scoped — a deliberate simplification).
+   * than scoped - a deliberate simplification).
    *
    * For hierarchical media the set includes every level a collection might
    * track: a playing episode contributes its own id plus its season and show
@@ -214,7 +214,7 @@ export interface IMediaServerService {
    * protected.
    *
    * Best-effort: returns an empty set when nothing is playing and, after the
-   * HTTP client's own retries, when the lookup could not be completed — so a
+   * HTTP client's own retries, when the lookup could not be completed - so a
    * session outage degrades to the pre-existing behaviour (handle as usual)
    * rather than blocking the run. The worker reads this once at the start of a
    * run, so media that starts playing mid-run isn't protected until the next
@@ -332,7 +332,7 @@ export interface IMediaServerService {
    * Set the primary poster image on a collection on the media server.
    *
    * Maintainerr is one writer among several (Kometa, Posterizarr, manual
-   * uploads). This is a single write — last writer wins. Unlike per-item
+   * uploads). This is a single write - last writer wins. Unlike per-item
    * overlays (which re-apply on cron because they carry day-counter state),
    * collection posters carry no per-cycle state, so callers should write
    * only when the source bytes change (user upload, collection re-create);
@@ -387,7 +387,7 @@ export interface IMediaServerService {
   /**
    * Ask the media server to re-fetch metadata for a specific item from its
    * own configured agents. This is a best-effort, fire-and-forget operation
-   * on the server side — the call returns quickly while the server works async.
+   * on the server side - the call returns quickly while the server works async.
    */
   refreshItemMetadata(itemId: string): Promise<void>;
 }

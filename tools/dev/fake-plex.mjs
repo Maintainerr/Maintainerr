@@ -11,14 +11,14 @@
  * people/genres/labels, file media, normal + smart collections, watch history,
  * accounts, playlists, and a show with seasons/episodes for the sw_* rules.
  *
- * It is intentionally minimal and invented — no real media names (repo rule).
+ * It is intentionally minimal and invented - no real media names (repo rule).
  * The dataset is deterministic so rule evaluation is predictable.
  *
  * NOT covered (need plex.tv, not the local PMS): the watchlist rules
  * (watchlist_isWatchlisted / watchlist_isListedByUsers) call plex.tv's
  * Discover/Community API and degrade to "not watchlisted" here.
  *
- * Highlight — case-sensitive smart-collection dedupe (rule ids 41/42):
+ * Highlight - case-sensitive smart-collection dedupe (rule ids 41/42):
  *   movie p1 owns Collection tags [' Saga ', 'saga'] and is a child of the SMART
  *   collection 'Saga'. id 42 aggregates [' Saga ', 'saga', smart 'Saga'] and,
  *   after case-sensitive dedupe, yields ['Saga', 'saga']: the smart 'Saga'
@@ -163,7 +163,7 @@ const SHOW = baseItem('sh1', 'show', 'Mock Series One', {
 });
 // Four seasons drive the #3153 part_of_latest_season repro: fake-sonarr dates
 // S0/S1/S2 episode 1 in the past and S3 in the future, so the latest aired season
-// is S2. Evaluated together in one run they share a memoized series object — the
+// is S2. Evaluated together in one run they share a memoized series object - the
 // case the in-place season reverse corrupted. Season 1 keeps the episodes the
 // sw_* episode rules use.
 const SEASONS = [0, 1, 2, 3].map((n) =>
@@ -232,7 +232,7 @@ const CHILDREN = {
 };
 
 // --- Collections (section-level; getCollections reads .smart) ----------------
-// Plex ratingKeys are numeric — collections too (updateCollection does +id).
+// Plex ratingKeys are numeric - collections too (updateCollection does +id).
 const COLLECTIONS_BY_SECTION = {
   1: [
     { ratingKey: '90001', key: '/library/collections/90001/children', type: 'collection', title: 'Saga', smart: true, subtype: 'movie', childCount: 2 },
@@ -285,7 +285,7 @@ const list = (key, items) =>
   container({ size: items.length, totalSize: items.length, [key]: items });
 // Honors X-Plex-Container-Start/Size so the adapter's pagination loop (plexApi.ts,
 // size 120, loops while totalSize > size*(page+1)) terminates instead of
-// re-fetching the full set per page — only matters once a library exceeds 120.
+// re-fetching the full set per page - only matters once a library exceeds 120.
 function sendPaged(res, req, items) {
   const start = Number(req.headers['x-plex-container-start']) || 0;
   const size = Number(req.headers['x-plex-container-size']) || items.length;

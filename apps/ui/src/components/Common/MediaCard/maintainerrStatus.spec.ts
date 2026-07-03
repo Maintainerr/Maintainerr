@@ -197,9 +197,9 @@ describe('maintainerrStatus', () => {
 
     invalidateMaintainerrStatusDetails(1)
 
-    // item 1: cache was invalidated — must refetch
+    // item 1: cache was invalidated - must refetch
     await loadMaintainerrStatusDetails({ cacheKey: '1', id: 1, getApiHandler })
-    // item 2: cache is still valid — no extra fetch
+    // item 2: cache is still valid - no extra fetch
     await loadMaintainerrStatusDetails({ cacheKey: '2', id: 2, getApiHandler })
 
     expect(getApiHandler).toHaveBeenCalledTimes(3)

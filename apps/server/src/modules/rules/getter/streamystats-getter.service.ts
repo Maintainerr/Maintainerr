@@ -16,7 +16,7 @@ import { definedUniqueValues } from '../helpers/rule-property.helper';
  * contributes its own rule Application. Properties surface membership of
  * Streamystats watchlists (a "users curated this" protection signal).
  *
- * Only PUBLIC watchlists are visible to Maintainerr — see
+ * Only PUBLIC watchlists are visible to Maintainerr - see
  * StreamystatsWatchlistMembership for why. Usernames are resolved through the
  * server-agnostic media-server abstraction (Jellyfin is the only configured
  * server when this getter runs, since the Application is gated to it).
@@ -52,7 +52,7 @@ export class StreamystatsGetterService {
       }
 
       const itemIds = await this.resolveWatchlistItemIds(prop.name, libItem);
-      // `undefined` when the parent chain couldn't be resolved — skip rather
+      // `undefined` when the parent chain couldn't be resolved - skip rather
       // than fall back to an item-only check, which would defeat the parent
       // variant and could let a protected item match a destructive rule.
       if (!itemIds) {
@@ -95,13 +95,13 @@ export class StreamystatsGetterService {
   /**
    * The Jellyfin item IDs to check for watchlist membership. The base props
    * check the item alone. The `_including_parent` variants additionally roll
-   * in the parent show (and season) for a season/episode — a Streamystats list
+   * in the parent show (and season) for a season/episode - a Streamystats list
    * holds the show item ID, not its seasons, so a season would otherwise never
    * inherit its watchlisted show.
    *
    * Parents are resolved through the media server's `getMetadata` (the same
    * canonical path the other getters use) so the parent IDs come from the
-   * mapper's hierarchy resolution — `SeriesId` for seasons, not the
+   * mapper's hierarchy resolution - `SeriesId` for seasons, not the
    * library-folder `parentId`. Gated on the server-agnostic `type` so a movie
    * is never rolled up. Returns `undefined` when metadata can't be fetched, so
    * the caller skips rather than falling back to an item-only check.
@@ -137,7 +137,7 @@ export class StreamystatsGetterService {
     const users = await mediaServer.getUsers();
     // getUsers() is fail-closed (returns [] on error). A public watchlist is
     // always owned by a user, so an empty user list while we have owners to
-    // resolve means the lookup failed — surface that as undefined (transient
+    // resolve means the lookup failed - surface that as undefined (transient
     // skip) rather than an empty list, which would otherwise flip negative
     // list comparisons and could let protected items match destructive rules.
     if (users.length === 0) {

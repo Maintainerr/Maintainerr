@@ -52,7 +52,7 @@ export function OverlayCanvas({
   } | null>(null)
   // Cache of decoded bitmaps keyed by `${imagePath}@${version}`. Including
   // the version in the key means an upload that overwrites an existing
-  // filename creates a fresh entry instead of serving stale bytes — without
+  // filename creates a fresh entry instead of serving stale bytes - without
   // needing a synchronous cache-clear effect.
   const [loadedImages, setLoadedImages] = useState<
     Record<string, HTMLImageElement>
@@ -157,7 +157,7 @@ export function OverlayCanvas({
 
     // Prune entries that are no longer reachable: stale versions after an
     // upload, and orphans from removed elements. Deferred to a microtask so
-    // the setState lands outside the effect body — same observable timing
+    // the setState lands outside the effect body - same observable timing
     // as a synchronous call (still pre-paint), but doesn't trip the
     // `react-hooks/set-state-in-effect` static check. Identity-preserving:
     // returns `prev` when nothing changed so it never causes a re-render.
@@ -518,7 +518,7 @@ function ElementRenderer({
       if (loaded) {
         // Mirror the server's sharp `fit: 'contain'`: scale to fit the
         // bounding box while preserving aspect ratio, centred, padded with
-        // transparent space — never stretched. Keeps the editor preview
+        // transparent space - never stretched. Keeps the editor preview
         // visually identical to the rendered output.
         const naturalW = loaded.naturalWidth || w
         const naturalH = loaded.naturalHeight || h

@@ -149,7 +149,7 @@ const StorageMetrics: React.FC = () => {
   const mountLabel = (count: number) =>
     `${count} mount${count === 1 ? '' : 's'}`
   const noTotalSubtitle = hasAnyFree
-    ? 'Free space only — Sonarr/Radarr do not report total size for NFS/CIFS mounts'
+    ? 'Free space only - Sonarr/Radarr do not report total size for NFS/CIFS mounts'
     : 'No instance reports total capacity'
 
   return (
@@ -168,7 +168,7 @@ const StorageMetrics: React.FC = () => {
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <SummaryCard
             title="Total capacity"
-            value={hasAnyTotal ? formatBytes(totals.totalSpace) : '—'}
+            value={hasAnyTotal ? formatBytes(totals.totalSpace) : '-'}
             subtitle={
               !hasAnyTotal
                 ? noTotalSubtitle
@@ -180,7 +180,7 @@ const StorageMetrics: React.FC = () => {
           />
           <SummaryCard
             title="Used"
-            value={hasAnyTotal ? formatBytes(totals.usedSpace) : '—'}
+            value={hasAnyTotal ? formatBytes(totals.usedSpace) : '-'}
             subtitle={
               hasAnyTotal
                 ? formatPercent(totals.usedSpace, totals.totalSpace)
@@ -199,8 +199,8 @@ const StorageMetrics: React.FC = () => {
             value={formatBytes(metrics.collectionSummary.activeSizeBytes)}
             subtitle={
               metrics.collectionSummary.reclaimableUsingFallback
-                ? `${metrics.collectionSummary.reclaimableSizedCount} of ${metrics.collectionSummary.reclaimableCount} reclaimable collections sized — duplicates not yet deduplicated, refreshes after next collection run`
-                : `${metrics.collectionSummary.reclaimableSizedCount} of ${metrics.collectionSummary.reclaimableCount} reclaimable collections sized — duplicates counted once`
+                ? `${metrics.collectionSummary.reclaimableSizedCount} of ${metrics.collectionSummary.reclaimableCount} reclaimable collections sized - duplicates not yet deduplicated, refreshes after next collection run`
+                : `${metrics.collectionSummary.reclaimableSizedCount} of ${metrics.collectionSummary.reclaimableCount} reclaimable collections sized - duplicates counted once`
             }
             icon={<CollectionIcon className="h-5 w-5" />}
           />

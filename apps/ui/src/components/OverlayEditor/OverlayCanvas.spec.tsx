@@ -392,7 +392,7 @@ describe('OverlayCanvas', () => {
       expect(buildOverlayImageUrlMock).toHaveBeenCalledTimes(1)
     })
 
-    // Hide the image — its filename is still referenced in the document,
+    // Hide the image - its filename is still referenced in the document,
     // so the cached bitmap must not be evicted.
     rerender(
       <OverlayCanvas
@@ -405,7 +405,7 @@ describe('OverlayCanvas', () => {
       />,
     )
 
-    // Show it again. No new fetch should happen — we re-use the cached
+    // Show it again. No new fetch should happen - we re-use the cached
     // bitmap rather than briefly rendering a placeholder.
     rerender(
       <OverlayCanvas

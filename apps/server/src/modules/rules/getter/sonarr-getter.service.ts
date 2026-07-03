@@ -116,7 +116,7 @@ export class SonarrGetterService {
 
       // The series lookup is keyed on the resolved tvdbId and is identical for
       // every episode/season of a show. The API call stays uncached (the
-      // cleanup needs post-deletion truth — #2757/#2891), but during rule
+      // cleanup needs post-deletion truth - #2757/#2891), but during rule
       // evaluation we dedupe it through the run-scoped memo, which is gone
       // before any deletion runs. Evict on a failed (undefined) lookup so a
       // transient error doesn't mark the whole series unresolved for the run.
@@ -141,7 +141,7 @@ export class SonarrGetterService {
 
       if (showResponse === undefined) {
         // The Sonarr lookup itself failed (or every candidate's lookup
-        // returned undefined) — could be a transient outage. Fail closed
+        // returned undefined) - could be a transient outage. Fail closed
         // rather than substituting metadata-provider values, which would
         // silently change rule evaluation while Sonarr is down.
         return undefined;
@@ -549,7 +549,7 @@ export class SonarrGetterService {
   // similar: `status` (Sonarr lowercase enum vs provider free-form strings),
   // `originalLanguage` (full name vs ISO 639-1 vs ISO 639-2/B), and `rating`
   // (different scales / aggregations). Sonarr-only state (monitored, tags,
-  // filePath, diskSize, …) is also absent — providers can't supply it.
+  // filePath, diskSize, …) is also absent - providers can't supply it.
   private static readonly METADATA_FALLBACK_SUPPORTED = new Set([
     'ended',
     'firstAirDate',

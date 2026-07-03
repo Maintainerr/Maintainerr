@@ -157,11 +157,11 @@
 
 ## Global vs scoped exclusions
 
-Exclusions are now either global (everywhere) or per-group — not both. Setting a global exclusion replaces any per-group ones for that item. If you later remove the global exclusion, you'll need to re-add the per-group ones.
+Exclusions are now either global (everywhere) or per-group - not both. Setting a global exclusion replaces any per-group ones for that item. If you later remove the global exclusion, you'll need to re-add the per-group ones.
 
 ## Per-group exclusions stay in their group
 
-Per-group exclusions used to hide an item in every group. They now apply only to the group you set them in, so items you excluded in one group may start showing up in others. Existing exclusions aren't auto-converted — to exclude something everywhere, use a global exclusion.
+Per-group exclusions used to hide an item in every group. They now apply only to the group you set them in, so items you excluded in one group may start showing up in others. Existing exclusions aren't auto-converted - to exclude something everywhere, use a global exclusion.
 
 ## Rule section operators
 
@@ -553,7 +553,7 @@ If a multi-section rule wasn't matching as you expected, this is probably why. T
 ### Features
 
 - add quality profile change action for Radarr and Sonarr ([#2360](https://github.com/maintainerr/Maintainerr/issues/2360)) ([fffdd05](https://github.com/maintainerr/Maintainerr/commit/fffdd0561f20b9d09f734aa436038ffb9eb56ae2))
-- Plex connection resilience — auto re-discovery + manual override ([#2661](https://github.com/maintainerr/Maintainerr/issues/2661)) ([befde07](https://github.com/maintainerr/Maintainerr/commit/befde07616b0e8738e987700c89c6564c55735a6))
+- Plex connection resilience - auto re-discovery + manual override ([#2661](https://github.com/maintainerr/Maintainerr/issues/2661)) ([befde07](https://github.com/maintainerr/Maintainerr/commit/befde07616b0e8738e987700c89c6564c55735a6))
 
 # [3.5.0](https://github.com/maintainerr/Maintainerr/compare/v3.4.1...v3.5.0) (2026-04-10)
 

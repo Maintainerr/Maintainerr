@@ -14,7 +14,7 @@
  * Seerr-seeded rules silently match almost nothing. The fix replaces those with
  * ONE bulk GET /request sweep per run. To prove that, this mock can be put in a
  * "flaky" mode (FAKE_SEERR_FLAKY=1) where the per-item /movie and /tv endpoints
- * fail with 429/503 while /request stays healthy — so the bulk path keeps
+ * fail with 429/503 while /request stays healthy - so the bulk path keeps
  * working and the per-item path collapses.
  *
  * Faithful to a real Seerr's /request shape (verified against a live instance):
@@ -23,7 +23,7 @@
  *   - each TV request carries request.seasons[] ({ seasonNumber, status })
  *   - media.requests is NOT populated on the list endpoint (would be circular)
  *
- * It is intentionally minimal and invented — no real media names (repo rule).
+ * It is intentionally minimal and invented - no real media names (repo rule).
  * Titles are generic; tmdbIds are plain numbers (like fake-radarr). The set of
  * "requested" tmdbIds is configurable so it can be paired with whatever media
  * server library is under test.
@@ -37,7 +37,7 @@
  *   FAKE_SEERR_LOG=0 node tools/dev/fake-seerr.mjs     # silence the request log
  *
  * The dev seed (tools/dev/seed-db.mjs) points settings.seerr_url at
- * http://localhost:5055, so no settings change is needed — just start this
+ * http://localhost:5055, so no settings change is needed - just start this
  * before (or alongside) `yarn dev`.
  */
 import http from 'node:http';
@@ -106,7 +106,7 @@ const MEDIA_PROCESSING = 3;
 // 7th gets a second request from another user (so amountRequested > 1 and
 // addUser de-dupes/aggregates). Roughly half are "available" (media.status 5,
 // so approvalDate/mediaAddedAt resolve) and half still processing (status 3,
-// so those date props are null) — exercises the status gate.
+// so those date props are null) - exercises the status gate.
 function buildRequests() {
   const requests = [];
   let requestId = 1;
@@ -138,7 +138,7 @@ function buildRequests() {
         media,
       };
       if (isShow) {
-        // First request covers seasons 1-2, the second (if any) season 3 — so a
+        // First request covers seasons 1-2, the second (if any) season 3 - so a
         // season-scoped rule can match a specific season's request.
         const seasonNumbers = r === 0 ? [1, 2] : [3];
         requests.push({
@@ -216,7 +216,7 @@ const server = http.createServer((req, res) => {
 
     // --- Bulk request sweep (the fix path; stays healthy even when flaky) ---
   } else if (method === 'GET' && path === '/request') {
-    // Honor `take` as-is — real Seerr imposes no upper bound (default 10).
+    // Honor `take` as-is - real Seerr imposes no upper bound (default 10).
     const take = Number(url.searchParams.get('take')) || 10;
     const skip = Number(url.searchParams.get('skip')) || 0;
     const pageItems = ALL_REQUESTS.slice(skip, skip + take);
@@ -231,7 +231,7 @@ const server = http.createServer((req, res) => {
       results: pageItems,
     });
 
-    // --- Per-item detail (releaseDate fallback) — flaky to reproduce #3152 --
+    // --- Per-item detail (releaseDate fallback) - flaky to reproduce #3152 --
   } else if (method === 'GET' && /^\/movie\/\d+$/.test(path)) {
     if (FLAKY) {
       status = send(res, 429, { message: 'Rate limit exceeded (fake-seerr flaky)' });

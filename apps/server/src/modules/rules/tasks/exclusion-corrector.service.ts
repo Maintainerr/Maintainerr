@@ -138,7 +138,7 @@ export class ExclusionTypeCorrectorService implements OnModuleInit {
     }
 
     this.logger.log(
-      `Backfilling type for ${exclusionsWithoutType.length} exclusion(s) from media server metadata — this may take a moment on first run`,
+      `Backfilling type for ${exclusionsWithoutType.length} exclusion(s) from media server metadata - this may take a moment on first run`,
     );
 
     const mediaServer = await this.mediaServerFactory.getService();

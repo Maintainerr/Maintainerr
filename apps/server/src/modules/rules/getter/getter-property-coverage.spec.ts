@@ -20,12 +20,12 @@ import { TautulliGetterService } from './tautulli-getter.service';
 // Purpose: prove that EVERY rule property (all ~166 across all applications)
 // has a getter path that resolves to a RuleValueType without throwing, and
 // that the result is independent of the TypeORM version. Run on both 0.3.x and
-// 1.0.x with the same code and diff the emitted JSON (GETTER_MATRIX_OUT) — it
+// 1.0.x with the same code and diff the emitted JSON (GETTER_MATRIX_OUT) - it
 // must be byte-identical, since getters derive values from (mocked) API
 // responses in memory, not from the database.
 //
 // Deterministic by construction: dependencies are auto-mocked (return
-// undefined) and the input media item is a fixed literal — no faker, no clock.
+// undefined) and the input media item is a fixed literal - no faker, no clock.
 
 const libItem: MediaItem = {
   id: 'fixed-item-1',
@@ -122,7 +122,7 @@ const apps: Array<{
 ];
 
 // Deterministic, version-independent summary of a getter result (no raw values
-// like random ids/dates — we record shape, which is what must stay stable).
+// like random ids/dates - we record shape, which is what must stay stable).
 const describeResult = (v: unknown): string => {
   if (v === undefined) return 'undefined';
   if (v === null) return 'null';

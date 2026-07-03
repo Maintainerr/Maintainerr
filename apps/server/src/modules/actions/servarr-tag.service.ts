@@ -39,7 +39,7 @@ const RESOLVE_CONCURRENCY = 5;
 const EDITOR_BATCH_SIZE = 100;
 
 /**
- * Applies/removes Radarr & Sonarr tags as a side effect of Maintainerr state —
+ * Applies/removes Radarr & Sonarr tags as a side effect of Maintainerr state -
  * NOT an action slot. Two triggers share this plumbing:
  *
  * - **Membership (Behavior A):** while a `tagInArr` collection holds an item, the
@@ -55,7 +55,7 @@ const EDITOR_BATCH_SIZE = 100;
  * contract (undefined = transient → skip & retry; null = confirmed-not-tracked →
  * nothing to do). A transient blip therefore never strips a tag.
  *
- * v1 is gated to movie (Radarr) and show (Sonarr) — Sonarr has no per-season tag,
+ * v1 is gated to movie (Radarr) and show (Sonarr) - Sonarr has no per-season tag,
  * so season/episode collections are skipped with a debug log.
  *
  * Known edge cases (v1 behaviour):
@@ -83,7 +83,7 @@ export class ServarrTagService {
   }
 
   /**
-   * Behavior A — reconcile *arr tags for the items that just entered/left a
+   * Behavior A - reconcile *arr tags for the items that just entered/left a
    * collection this run. `added`/`removed` are the executor's rule-scope deltas
    * (manual / co-owned members are already excluded from `removed`), each
    * carrying the item's cached provider ids. The tag label is the collection
@@ -199,7 +199,7 @@ export class ServarrTagService {
         };
   }
 
-  /** True if either *arr has exclusion tagging on — lets callers skip the
+  /** True if either *arr has exclusion tagging on - lets callers skip the
    * collection lookup entirely when both are off. */
   public anyExclusionTaggingEnabled(): boolean {
     return (
@@ -234,7 +234,7 @@ export class ServarrTagService {
   }
 
   /**
-   * Behavior B — apply the protective exclusion tag to the excluded item's *arr
+   * Behavior B - apply the protective exclusion tag to the excluded item's *arr
    * entity. No-ops unless exclusion tagging is enabled. The caller resolves the
    * instance: a collection-scoped exclusion uses its rule group's collection, a
    * global one the single configured instance (skipped when ambiguous). Adding on
@@ -251,10 +251,10 @@ export class ServarrTagService {
   }
 
   /**
-   * Behavior B — remove the protective exclusion tag on un-exclude. This is
+   * Behavior B - remove the protective exclusion tag on un-exclude. This is
    * conservative on purpose (Zipties' "second dnd source" pain): it only runs
    * when the user opts in via `<service>_untag_on_unexclude`, and even then only
-   * ever touches the configured label — never the user's other tags. With the
+   * ever touches the configured label - never the user's other tags. With the
    * default (opt-in OFF) a manually-set "dnd" is never stripped by Maintainerr.
    */
   public async removeExclusionTag(
@@ -318,7 +318,7 @@ export class ServarrTagService {
       const arrId = await this.resolveArrId(client, service, target);
       if (arrId == null) {
         // undefined = transient (retried on the next exclude/un-exclude),
-        // null = the item isn't tracked in *arr — nothing to tag either way.
+        // null = the item isn't tracked in *arr - nothing to tag either way.
         return;
       }
 
@@ -401,7 +401,7 @@ export class ServarrTagService {
    *   - null when the item is confirmed not tracked in *arr (no candidates, or
    *     *arr returned an empty match),
    *   - undefined when the lookup transiently failed (so callers skip & retry,
-   *     never untagging on a blip) — per the #3125 getter contract.
+   *     never untagging on a blip) - per the #3125 getter contract.
    * The item's cached tmdb/tvdb are passed as resolution fallbacks.
    */
   private async resolveArrId(

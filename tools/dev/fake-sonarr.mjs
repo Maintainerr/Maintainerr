@@ -11,7 +11,7 @@
  * It exists to reproduce #3153: the `part_of_latest_season` getter scans a show's
  * seasons newest-first to find the latest *aired* season, probing season episode 1's
  * airDateUtc. The seeded show therefore has four seasons whose episode-1 air dates are
- * past, past, past, future — so the latest aired season is S2 and only the live full
+ * past, past, past, future - so the latest aired season is S2 and only the live full
  * run (which shares one memoized series object across the show's seasons) ever
  * mis-evaluated it. The two endpoints the getter actually calls are answered here:
  *   - GET /series?tvdbId=<id>            -> the resolved series (getSeriesByTvdbId)
@@ -19,7 +19,7 @@
  *
  * Like fake-radarr, any tvdbId resolves to a deterministic series (series id == tvdbId)
  * so a media item carrying any tvdb id pairs straight through. It is intentionally
- * minimal and invented — no real media names (repo rule).
+ * minimal and invented - no real media names (repo rule).
  *
  * Usage
  * -----
@@ -28,7 +28,7 @@
  *   FAKE_SONARR_LOG=0 node tools/dev/fake-sonarr.mjs   # silence the per-request log
  *
  * The dev seed (tools/dev/seed-db.mjs) points sonarr_settings.url at
- * http://localhost:8989, so no settings change is needed — start this before (or
+ * http://localhost:8989, so no settings change is needed - start this before (or
  * alongside) `yarn dev`, then trigger a run with `POST /api/rules/:id/execute` or a
  * single-item check with `POST /api/rules/test`.
  */
@@ -62,7 +62,7 @@ const seasonsFor = () =>
     },
   }));
 
-// A deterministic series for any requested tvdbId — id and tvdbId are kept equal so
+// A deterministic series for any requested tvdbId - id and tvdbId are kept equal so
 // getEpisodes(seriesId=...) resolves straight back to the same show.
 const seriesFor = (tvdbId) => ({
   id: tvdbId,

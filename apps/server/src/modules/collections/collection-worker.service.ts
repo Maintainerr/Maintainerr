@@ -95,7 +95,7 @@ export class CollectionWorkerService extends TaskBase {
       }
 
       // Currently-playing media is deferred to the next run so we don't act on
-      // it — chiefly delete it — out from under an active viewer. Best-effort:
+      // it - chiefly delete it - out from under an active viewer. Best-effort:
       // fetched once at the start of the run (media that starts playing mid-run
       // isn't protected until next time), and an empty set (nothing playing or
       // a failed lookup) simply means "handle as usual".
@@ -246,7 +246,7 @@ export class CollectionWorkerService extends TaskBase {
             // The item was already gone from the media server and has been
             // pruned from the collection(s). It wasn't a failure and nothing
             // on disk was altered, so it stays out of both notification lists
-            // and doesn't trigger availability sync — the handler already
+            // and doesn't trigger availability sync - the handler already
             // logged the cleanup.
             removedMissingMedia++;
           } else {

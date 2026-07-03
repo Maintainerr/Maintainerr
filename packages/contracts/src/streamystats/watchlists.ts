@@ -1,7 +1,7 @@
 import z from 'zod'
 
 // A Streamystats "watchlist" is a user-created, named curated list of media
-// items with its own visibility flags — NOT a Plex-style personal "want to
+// items with its own visibility flags - NOT a Plex-style personal "want to
 // watch" queue. Maintainerr authenticates to Streamystats with a Jellyfin
 // server API key, which Streamystats resolves to its "system-api-key"
 // pseudo-user; the watchlist endpoints therefore only ever surface PUBLIC
