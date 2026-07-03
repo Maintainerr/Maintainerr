@@ -48,7 +48,7 @@ implementation.instructions.md ─→ ARCHITECTURE.md              ✓
 
 - **`AGENTS.md` is the single index.** Add any new doc to its "Documentation map".
 - **Standing rules** (read before any code): `implementation.instructions.md` and
-  `project-notes.instructions.md` — `applyTo: "**"` and named in every entrypoint.
+  `project-notes.instructions.md` - `applyTo: "**"` and named in every entrypoint.
 - **Task-specific** (read on demand, not every session): `release-review.instructions.md`
   (Copilot `applyTo` scoped to release artifacts) and `ARCHITECTURE.md`.
 - **Each agent entrypoint is a thin router** to `AGENTS.md` + the two standing rules.

@@ -1,4 +1,4 @@
-# Overlay Feature — Technical Documentation
+# Overlay Feature - Technical Documentation
 
 This document describes the overlay functionality added to Maintainerr, covering architecture, data flow, API surface, rendering pipeline, and integration points.
 
@@ -25,20 +25,20 @@ This document describes the overlay functionality added to Maintainerr, covering
 
 ## Overview
 
-The overlay feature automatically applies visual overlays to media-server posters and title cards for items in Maintainerr collections. Overlays are defined by **templates** — reusable, visually-editable compositions of text, variable, shape, and image elements. Works on both Plex and Jellyfin via the `IOverlayProvider` abstraction. It supports:
+The overlay feature automatically applies visual overlays to media-server posters and title cards for items in Maintainerr collections. Overlays are defined by **templates** - reusable, visually-editable compositions of text, variable, shape, and image elements. Works on both Plex and Jellyfin via the `IOverlayProvider` abstraction. It supports:
 
-- **Template-based design** — a visual Konva.js canvas editor for composing overlay elements
-- **Four element types** — static text, variable text (date/countdown), shapes (rectangle/ellipse), and images
-- **Poster overlays** — applied to movie/show poster art (1000×1500 canvas, 2:3 aspect ratio)
-- **Title card overlays** — applied to episode title cards (1920×1080 canvas, 16:9 aspect ratio)
-- **Per-element formatting** — each variable element carries its own date format, locale, and countdown text templates
-- **Built-in presets** — 4 preset templates seeded on first run (Classic Pill, Countdown Bar, Corner Badge, Title Card Pill)
-- **Template resolution** — per-collection template override → default template for mode → skip
-- **Live preview** — server-side rendering of templates onto actual media-server artwork
-- **Preview background** — the visual editor can display a real item poster or title card as the canvas background
-- **Cron scheduling** — periodic updates to refresh day-countdown labels
-- **Original poster backup** — saved to disk so overlays can be cleanly reverted
-- **Import/Export** — templates can be shared as JSON files between instances
+- **Template-based design** - a visual Konva.js canvas editor for composing overlay elements
+- **Four element types** - static text, variable text (date/countdown), shapes (rectangle/ellipse), and images
+- **Poster overlays** - applied to movie/show poster art (1000×1500 canvas, 2:3 aspect ratio)
+- **Title card overlays** - applied to episode title cards (1920×1080 canvas, 16:9 aspect ratio)
+- **Per-element formatting** - each variable element carries its own date format, locale, and countdown text templates
+- **Built-in presets** - 4 preset templates seeded on first run (Classic Pill, Countdown Bar, Corner Badge, Title Card Pill)
+- **Template resolution** - per-collection template override → default template for mode → skip
+- **Live preview** - server-side rendering of templates onto actual media-server artwork
+- **Preview background** - the visual editor can display a real item poster or title card as the canvas background
+- **Cron scheduling** - periodic updates to refresh day-countdown labels
+- **Original poster backup** - saved to disk so overlays can be cleanly reverted
+- **Import/Export** - templates can be shared as JSON files between instances
 
 ---
 
@@ -101,7 +101,7 @@ Elements are the building blocks of templates. Each element has a discriminated 
 | `height`     | `number`  | Height in canvas coordinates (min 1)      |
 | `rotation`   | `number`  | Rotation in degrees (-360 to 360)         |
 | `layerOrder` | `number`  | Z-index (0 = bottom)                      |
-| `opacity`    | `number`  | Element opacity (0–1)                     |
+| `opacity`    | `number`  | Element opacity (0-1)                     |
 | `visible`    | `boolean` | Whether element is rendered               |
 
 #### Text Element (`type: 'text'`)
@@ -110,11 +110,11 @@ Static text with font styling and optional background.
 
 | Field               | Type           | Default    | Description                            |
 | ------------------- | -------------- | ---------- | -------------------------------------- |
-| `text`              | `string`       | —          | Display text                           |
-| `fontFamily`        | `string`       | —          | Font family name                       |
-| `fontPath`          | `string`       | —          | Font file path (bare name or absolute) |
-| `fontSize`          | `number`       | —          | Font size in canvas units              |
-| `fontColor`         | `string`       | —          | Text color (hex, supports `#RRGGBBAA`) |
+| `text`              | `string`       | -          | Display text                           |
+| `fontFamily`        | `string`       | -          | Font family name                       |
+| `fontPath`          | `string`       | -          | Font file path (bare name or absolute) |
+| `fontSize`          | `number`       | -          | Font size in canvas units              |
+| `fontColor`         | `string`       | -          | Text color (hex, supports `#RRGGBBAA`) |
 | `fontWeight`        | `enum`         | `"bold"`   | `normal` or `bold`                     |
 | `textAlign`         | `enum`         | `"left"`   | `left`, `center`, or `right`           |
 | `verticalAlign`     | `enum`         | `"middle"` | `top`, `middle`, or `bottom`           |
@@ -130,7 +130,7 @@ Dynamic text with date/countdown substitution. Extends all text element fields p
 
 | Field             | Type                | Default         | Description                                 |
 | ----------------- | ------------------- | --------------- | ------------------------------------------- |
-| `segments`        | `VariableSegment[]` | —               | Array of literal text and variable segments |
+| `segments`        | `VariableSegment[]` | -               | Array of literal text and variable segments |
 | `dateFormat`      | `string`            | `"MMM d"`       | `date-fns` format pattern for `{date}`      |
 | `language`        | `string`            | `"en-US"`       | BCP 47 locale for formatting                |
 | `enableDaySuffix` | `boolean`           | `false`         | Append English ordinal (st/nd/rd/th)        |
@@ -138,7 +138,7 @@ Dynamic text with date/countdown substitution. Extends all text element fields p
 | `textDay`         | `string`            | `"in 1 day"`    | Text when 1 day remains                     |
 | `textDays`        | `string`            | `"in {0} days"` | Template for multiple days (`{0}` = count)  |
 
-**Variable Segments** — concatenated at render time:
+**Variable Segments** - concatenated at render time:
 
 - `{ type: 'text', value: '...' }` → literal string
 - `{ type: 'variable', field: 'date' }` → formatted deletion date
@@ -150,7 +150,7 @@ Dynamic text with date/countdown substitution. Extends all text element fields p
 | Field          | Type           | Default       | Description                     |
 | -------------- | -------------- | ------------- | ------------------------------- |
 | `shapeType`    | `enum`         | `"rectangle"` | `rectangle` or `ellipse`        |
-| `fillColor`    | `string`       | —             | Fill color                      |
+| `fillColor`    | `string`       | -             | Fill color                      |
 | `strokeColor`  | `string\|null` | `null`        | Stroke color                    |
 | `strokeWidth`  | `number`       | `0`           | Stroke width                    |
 | `cornerRadius` | `number`       | `0`           | Corner radius (rectangles only) |
@@ -167,7 +167,7 @@ Dynamic text with date/countdown substitution. Extends all text element fields p
 | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `OverlayTemplate`       | Full template with `id`, `name`, `description`, `mode`, `canvasWidth`, `canvasHeight`, `elements[]`, `isDefault`, `isPreset`, `createdAt`, `updatedAt` |
 | `OverlayTemplateCreate` | Omits `id`, `isPreset`, `createdAt`, `updatedAt`                                                                                                       |
-| `OverlayTemplateUpdate` | Partial — `name?`, `description?`, `elements?`                                                                                                         |
+| `OverlayTemplateUpdate` | Partial - `name?`, `description?`, `elements?`                                                                                                         |
 | `OverlayTemplateExport` | Sharing format with `name`, `description`, `mode`, `canvasWidth`, `canvasHeight`, `elements[]`                                                         |
 | `OverlayTemplateMode`   | `'poster' \| 'titlecard'`                                                                                                                              |
 
@@ -201,12 +201,12 @@ Dynamic text with date/countdown substitution. Extends all text element fields p
 | ----------------------- | -------------------- | ------- | -------------------------------------------- |
 | `enabled`               | `boolean`            | `false` | Master switch for overlay processing         |
 | `cronSchedule`          | `string\|null`       | `null`  | Cron expression for scheduled runs           |
-| `posterOverlayText`     | `OverlayTextConfig`  | —       | Legacy poster text config                    |
-| `posterOverlayStyle`    | `OverlayStyleConfig` | —       | Legacy poster style config                   |
-| `posterFrame`           | `FrameConfig`        | —       | Legacy poster frame config                   |
-| `titleCardOverlayText`  | `OverlayTextConfig`  | —       | Legacy title card text config                |
-| `titleCardOverlayStyle` | `OverlayStyleConfig` | —       | Legacy title card style config               |
-| `titleCardFrame`        | `FrameConfig`        | —       | Legacy title card frame config               |
+| `posterOverlayText`     | `OverlayTextConfig`  | -       | Legacy poster text config                    |
+| `posterOverlayStyle`    | `OverlayStyleConfig` | -       | Legacy poster style config                   |
+| `posterFrame`           | `FrameConfig`        | -       | Legacy poster frame config                   |
+| `titleCardOverlayText`  | `OverlayTextConfig`  | -       | Legacy title card text config                |
+| `titleCardOverlayStyle` | `OverlayStyleConfig` | -       | Legacy title card style config               |
+| `titleCardFrame`        | `FrameConfig`        | -       | Legacy title card frame config               |
 
 ---
 
@@ -283,7 +283,7 @@ Creates the template table and adds per-collection template override.
 
 ### OverlayTemplateService
 
-Manages overlay templates — CRUD, preset seeding, import/export, defaults.
+Manages overlay templates - CRUD, preset seeding, import/export, defaults.
 
 | Method                                           | Description                                                                                |
 | ------------------------------------------------ | ------------------------------------------------------------------------------------------ |
@@ -350,7 +350,7 @@ Extends `TaskBase` for cron scheduling.
 | Method                                      | Description                                                |
 | ------------------------------------------- | ---------------------------------------------------------- |
 | `onBootstrapHook()`                         | Reads settings on startup, sets cron schedule              |
-| `executeTask(abortSignal)`                  | Called by cron — runs `processAllCollections()` if enabled |
+| `executeTask(abortSignal)`                  | Called by cron - runs `processAllCollections()` if enabled |
 | `updateCronSchedule(cronSchedule, enabled)` | Hot-update the cron job                                    |
 
 ---
@@ -363,14 +363,14 @@ All endpoints are under `@Controller('api/overlays')`.
 
 | Method | Path        | Body/Params             | Response          | Description                         |
 | ------ | ----------- | ----------------------- | ----------------- | ----------------------------------- |
-| GET    | `/settings` | —                       | `OverlaySettings` | Get current settings                |
+| GET    | `/settings` | -                       | `OverlaySettings` | Get current settings                |
 | PUT    | `/settings` | `OverlaySettingsUpdate` | `OverlaySettings` | Update settings (also updates cron) |
 
 ### Plex Helpers
 
 | Method | Path              | Params      | Response                    | Description                                     |
 | ------ | ----------------- | ----------- | --------------------------- | ----------------------------------------------- |
-| GET    | `/sections`       | —           | `Array<{key, title, type}>` | List Plex library sections                      |
+| GET    | `/sections`       | -           | `Array<{key, title, type}>` | List Plex library sections                      |
 | GET    | `/random-item`    | `sectionId`         | `OverlayPreviewItem \| null` | Random movie/show from section                                  |
 | GET    | `/random-episode` | `sectionId`         | `OverlayPreviewItem \| null` | Random episode from section                                     |
 | GET    | `/poster`         | `itemId, mode`      | `StreamableFile` (JPEG)     | Proxy the item's artwork for the given mode (editor background) |
@@ -379,11 +379,11 @@ All endpoints are under `@Controller('api/overlays')`.
 
 | Method | Path                     | Params / Body                          | Response                        | Description                                                                                       |
 | ------ | ------------------------ | -------------------------------------- | ------------------------------- | ------------------------------------------------------------------------------------------------- |
-| GET    | `/status`                | —                                      | `{status, lastRun, lastResult}` | Current processor status                                                                          |
+| GET    | `/status`                | -                                      | `{status, lastRun, lastResult}` | Current processor status                                                                          |
 | POST   | `/process`               | `OverlayProcessRequest` (`{force?}`)   | `OverlayProcessorRunResult`     | Run overlay processing (409 if busy). `force: true` bypasses the unchanged-`daysLeft` skip.       |
 | POST   | `/process/:collectionId` | `collectionId`, `{force?}`             | `OverlayProcessorRunResult`     | Process single collection. `force: true` bypasses the unchanged-`daysLeft` skip.                  |
 | POST   | `/revert/:collectionId`  | `collectionId`                         | `{success: true}`               | Revert single collection                                                                          |
-| DELETE | `/reset`                 | —                                      | `{success: true}`               | Reset all overlays. Returns 409 if a processor run is in progress (prevents concurrent mutation). |
+| DELETE | `/reset`                 | -                                      | `{success: true}`               | Reset all overlays. Returns 409 if a processor run is in progress (prevents concurrent mutation). |
 
 `OverlayProcessRequest` and `OverlayProcessorRunResult` (`{processed, reverted, skipped, errors}`) are defined in [`@maintainerr/contracts`](../packages/contracts/src/overlays/overlay-processor.ts).
 
@@ -391,21 +391,21 @@ All endpoints are under `@Controller('api/overlays')`.
 
 | Method | Path     | Body                  | Response              | Description                          |
 | ------ | -------- | --------------------- | --------------------- | ------------------------------------ |
-| GET    | `/fonts` | —                     | `Array<{name, path}>` | List bundled + user fonts            |
+| GET    | `/fonts` | -                     | `Array<{name, path}>` | List bundled + user fonts            |
 | POST   | `/fonts` | Multipart `font` file | `{name, path}`        | Upload custom font (.ttf/.otf/.woff) |
 
 ### Templates
 
 | Method | Path                       | Body/Params             | Response                | Description                                |
 | ------ | -------------------------- | ----------------------- | ----------------------- | ------------------------------------------ |
-| GET    | `/templates`               | —                       | `OverlayTemplate[]`     | List all templates                         |
-| GET    | `/templates/:id`           | —                       | `OverlayTemplate`       | Get single template                        |
+| GET    | `/templates`               | -                       | `OverlayTemplate[]`     | List all templates                         |
+| GET    | `/templates/:id`           | -                       | `OverlayTemplate`       | Get single template                        |
 | POST   | `/templates`               | `OverlayTemplateCreate` | `OverlayTemplate`       | Create new template                        |
 | PUT    | `/templates/:id`           | `OverlayTemplateUpdate` | `OverlayTemplate`       | Update template (rejects presets)          |
-| DELETE | `/templates/:id`           | —                       | `{success: true}`       | Delete template (rejects presets)          |
-| POST   | `/templates/:id/duplicate` | —                       | `OverlayTemplate`       | Clone template                             |
-| POST   | `/templates/:id/default`   | —                       | `OverlayTemplate`       | Set as default for its mode                |
-| POST   | `/templates/:id/export`    | —                       | `OverlayTemplateExport` | Export template as JSON                    |
+| DELETE | `/templates/:id`           | -                       | `{success: true}`       | Delete template (rejects presets)          |
+| POST   | `/templates/:id/duplicate` | -                       | `OverlayTemplate`       | Clone template                             |
+| POST   | `/templates/:id/default`   | -                       | `OverlayTemplate`       | Set as default for its mode                |
+| POST   | `/templates/:id/export`    | -                       | `OverlayTemplateExport` | Export template as JSON                    |
 | POST   | `/templates/import`        | `OverlayTemplateExport` | `OverlayTemplate`       | Import template from JSON                  |
 | POST   | `/templates/:id/preview`   | `query: itemId`         | `StreamableFile` (JPEG) | Render template preview onto actual artwork |
 
@@ -428,7 +428,7 @@ The overlay module consumes media servers through a dedicated `IOverlayProvider`
 
 ### PlexOverlayProvider
 
-Delegates to existing helpers on `PlexApiService` — no new Plex logic. Both provider methods operate on the item's own `thumb`, which is the correct artwork for any template mode (movies/shows use the poster `thumb`; episodes use the title-card `thumb`).
+Delegates to existing helpers on `PlexApiService` - no new Plex logic. Both provider methods operate on the item's own `thumb`, which is the correct artwork for any template mode (movies/shows use the poster `thumb`; episodes use the title-card `thumb`).
 
 | Interface method                   | Underlying call                                           |
 | ---------------------------------- | --------------------------------------------------------- |
@@ -448,19 +448,19 @@ Wraps four public helpers on `JellyfinAdapterService`:
 | `findRandomItem(sectionIds, kinds)`                             | `getItems` with `ItemSortBy.Random`, configurable `BaseItemKind[]`, Virtual locations excluded   |
 | `findRandomEpisode(sectionIds)`                                 | Same with `includeItemTypes: [Episode]`                                                          |
 | `getItemImageBuffer(itemId, imageType)`                         | `getItemImage` with `format: Jpg` + `responseType: 'arraybuffer'`, 404 → `null`                  |
-| `setItemImage(itemId, imageType, buffer, contentType)`          | `setItemImage` with base64 body + explicit `Content-Type` (empirical workaround; Jellyfin rejects raw binary with 500 — see jellyfin/jellyfin#12447) |
+| `setItemImage(itemId, imageType, buffer, contentType)`          | `setItemImage` with base64 body + explicit `Content-Type` (empirical workaround; Jellyfin rejects raw binary with 500 - see jellyfin/jellyfin#12447) |
 
 Both provider methods target `ImageType.Primary` exclusively:
 
 - Movies and shows carry their poster on `Primary`.
-- Episodes carry their still/screenshot on `Primary` — Jellyfin's `Thumb` is mostly unpopulated on episodes by default and serves as a 16:9 continue-watching banner at the series level, neither of which is the correct target for a titlecard overlay.
+- Episodes carry their still/screenshot on `Primary` - Jellyfin's `Thumb` is mostly unpopulated on episodes by default and serves as a 16:9 continue-watching banner at the series level, neither of which is the correct target for a titlecard overlay.
 
 Keeping the `ImageType` constant inside the provider (not leaked to `IOverlayProvider` or `JellyfinAdapterService`) preserves the rule that Jellyfin SDK types don't escape `jellyfin/`.
 
 ### Server differences hidden behind the interface
 
 - **Upload semantics.** Plex uses upload → diff → select with content-addressed dedup and retries. Jellyfin replaces the image atomically with one request.
-- **Artwork taxonomy.** Both servers expose the correct per-item artwork as a single image kind — Plex on the item's `thumb`, Jellyfin on `ImageType.Primary` — so the provider interface is mode-free.
+- **Artwork taxonomy.** Both servers expose the correct per-item artwork as a single image kind - Plex on the item's `thumb`, Jellyfin on `ImageType.Primary` - so the provider interface is mode-free.
 
 ---
 
@@ -473,18 +473,18 @@ The `OverlayRenderService` uses **node-canvas** for text/shape rendering and **s
 This is the primary render method used by the processor. It composites all visible template elements onto a poster.
 
 1. **Read poster dimensions** via `sharp(posterBuffer).metadata()` → get actual width/height
-2. **Calculate scale factors** — `scaleX = posterWidth / canvasWidth`, `scaleY = posterHeight / canvasHeight`
+2. **Calculate scale factors** - `scaleX = posterWidth / canvasWidth`, `scaleY = posterHeight / canvasHeight`
 3. **Sort elements** by `layerOrder` ascending (bottom-up), filter to `visible: true`
 4. **For each element**, compute scaled position (`sx`, `sy`) and size (`sw`, `sh`):
    - Scale: `sx = Math.round(el.x * scaleX)`, `sw = Math.max(1, Math.round(el.width * scaleX))`, etc.
 5. **Render element to buffer** based on type:
-   - `renderTextElement()` — canvas text with optional background pill, font styling
-   - `renderVariableElement()` — resolves segments (`{date}`, `{days}`, `{daysText}`) using per-element formatting config, then renders as text
-   - `renderShapeElement()` — rectangle or ellipse with fill/stroke
-   - `renderImageElement()` — loads image from disk, resizes with `sharp.resize()`
-6. **Apply rotation** — `sharp.rotate(el.rotation)` with transparent background
-7. **Apply opacity** — pixel-level alpha channel modulation via `applyOpacity()`
-8. **Clamp to poster bounds** — after rotation (which can increase buffer dimensions), the code:
+   - `renderTextElement()` - canvas text with optional background pill, font styling
+   - `renderVariableElement()` - resolves segments (`{date}`, `{days}`, `{daysText}`) using per-element formatting config, then renders as text
+   - `renderShapeElement()` - rectangle or ellipse with fill/stroke
+   - `renderImageElement()` - loads image from disk, resizes with `sharp.resize()`
+6. **Apply rotation** - `sharp.rotate(el.rotation)` with transparent background
+7. **Apply opacity** - pixel-level alpha channel modulation via `applyOpacity()`
+8. **Clamp to poster bounds** - after rotation (which can increase buffer dimensions), the code:
    - Reads actual layer dimensions via `sharp.metadata()`
    - Handles negative offsets by extracting the visible sub-region
    - Trims layers that extend beyond the poster edges
@@ -497,10 +497,10 @@ This is the primary render method used by the processor. It composites all visib
 
 #### Variable Text Resolution
 
-Variable elements use `segments[]` — an array of literal text and variable references, concatenated at render time. Each element carries its own formatting configuration:
+Variable elements use `segments[]` - an array of literal text and variable references, concatenated at render time. Each element carries its own formatting configuration:
 
-- `formatElementDate(el, deleteDate)` — uses `el.dateFormat` and `el.language` with `date-fns` formatting; optionally adds English ordinal suffix if `el.enableDaySuffix` is true
-- `formatElementDaysText(el, daysLeft)` — returns `el.textToday` (0 days), `el.textDay` (1 day), or `el.textDays` with `{0}` substitution
+- `formatElementDate(el, deleteDate)` - uses `el.dateFormat` and `el.language` with `date-fns` formatting; optionally adds English ordinal suffix if `el.enableDaySuffix` is true
+- `formatElementDaysText(el, daysLeft)` - returns `el.textToday` (0 days), `el.textDay` (1 day), or `el.textDays` with `{0}` substitution
 
 ### Legacy `renderOverlay(posterBuffer, opts)` Pipeline
 
@@ -526,7 +526,7 @@ The `getFontFamily(fontPath)` method resolves font files:
 
 - `OverlayTaskService` extends `TaskBase` and registers as a scheduled task
 - On bootstrap, reads `settings.cronSchedule` and configures the cron job
-- Default cron is `'0 0 0 1 1 *'` (disabled — Jan 1 only)
+- Default cron is `'0 0 0 1 1 *'` (disabled - Jan 1 only)
 - When settings are saved with a new `cronSchedule`, `updateCronSchedule()` hot-updates the job
 - When the cron fires, `executeTask()` calls `processAllCollections()`
 
@@ -589,12 +589,12 @@ The main entry point for the overlay feature. Combines template management with 
 
 #### Key Behaviors
 
-- **Settings panel** — collapsed by default, toggled via "Settings" button with gear icon
-- **Settings form** — React Hook Form with `zodResolver(overlaySettingsSchema)` for `enabled`, `cronSchedule`
-- **Template cards** — grouped by mode (poster/titlecard), showing name, description, element count, canvas dimensions, default/preset badges
-- **Actions per card** — Edit (or View for presets), Duplicate, Set Default, Export, Delete
-- **Import** — hidden file input accepting `.json` files parsed as `OverlayTemplateExport`
-- **Processing** — "Run Now" triggers `processAllOverlays()` (optionally with `force: true` to rebuild unchanged items), "Reset All" triggers `resetAllOverlays()` with confirmation dialog. Reset is blocked (409) while a processor run is in progress. The run result summary surfaces `processed`, `reverted`, `skipped`, and `errors`.
+- **Settings panel** - collapsed by default, toggled via "Settings" button with gear icon
+- **Settings form** - React Hook Form with `zodResolver(overlaySettingsSchema)` for `enabled`, `cronSchedule`
+- **Template cards** - grouped by mode (poster/titlecard), showing name, description, element count, canvas dimensions, default/preset badges
+- **Actions per card** - Edit (or View for presets), Duplicate, Set Default, Export, Delete
+- **Import** - hidden file input accepting `.json` files parsed as `OverlayTemplateExport`
+- **Processing** - "Run Now" triggers `processAllOverlays()` (optionally with `force: true` to rebuild unchanged items), "Reset All" triggers `resetAllOverlays()` with confirmation dialog. Reset is blocked (409) while a processor run is in progress. The run result summary surfaces `processed`, `reverted`, `skipped`, and `errors`.
 
 ### Template Editor Page (`apps/ui/src/pages/OverlayTemplateEditorPage.tsx`)
 
@@ -623,15 +623,15 @@ A visual canvas editor for designing overlay templates.
 
 #### Key Behaviors
 
-- **Top bar** — template name input, mode selector (poster/titlecard, new templates only), Plex poster background picker, undo/redo, save
-- **Preview background** — section dropdown loads library sections via `getOverlaySections()`, selecting a section auto-fetches a random item via `getRandomItem()`/`getRandomEpisode()` (the latter for titlecard-mode templates). Refresh button loads a different one. Image is proxied through `GET /api/overlays/poster?itemId=...`
-- **Canvas** — Konva.js `Stage` with interactive drag/transform; scales template canvas to fit display (max 600px height)
-- **Element toolbox** — buttons to add text, variable, shape, or image elements with sensible defaults
-- **Layer panel** — ordered layer list with visibility toggle, reorder (move up/down by swapping `layerOrder`), delete
-- **Properties panel** — context-sensitive form for the selected element's properties (type-specific fields)
-- **Undo/redo** — custom `useUndoRedo<OverlayElement[]>` hook, keyboard shortcuts: Cmd/Ctrl+Z, Cmd/Ctrl+Shift+Z, Cmd/Ctrl+Y
-- **Delete** — Delete/Backspace key deletes selected element (only when body is focused, to avoid conflicts with text inputs)
-- **Preset protection** — preset templates show "View" (not "Edit"), save is disabled
+- **Top bar** - template name input, mode selector (poster/titlecard, new templates only), Plex poster background picker, undo/redo, save
+- **Preview background** - section dropdown loads library sections via `getOverlaySections()`, selecting a section auto-fetches a random item via `getRandomItem()`/`getRandomEpisode()` (the latter for titlecard-mode templates). Refresh button loads a different one. Image is proxied through `GET /api/overlays/poster?itemId=...`
+- **Canvas** - Konva.js `Stage` with interactive drag/transform; scales template canvas to fit display (max 600px height)
+- **Element toolbox** - buttons to add text, variable, shape, or image elements with sensible defaults
+- **Layer panel** - ordered layer list with visibility toggle, reorder (move up/down by swapping `layerOrder`), delete
+- **Properties panel** - context-sensitive form for the selected element's properties (type-specific fields)
+- **Undo/redo** - custom `useUndoRedo<OverlayElement[]>` hook, keyboard shortcuts: Cmd/Ctrl+Z, Cmd/Ctrl+Shift+Z, Cmd/Ctrl+Y
+- **Delete** - Delete/Backspace key deletes selected element (only when body is focused, to avoid conflicts with text inputs)
+- **Preset protection** - preset templates show "View" (not "Edit"), save is disabled
 
 ### Overlay Editor Components (`apps/ui/src/components/OverlayEditor/`)
 
@@ -662,7 +662,7 @@ All functions in `apps/ui/src/api/overlays.ts`:
 | `getOverlaySections()`        | `GET /overlays/sections`       | List Plex library sections        |
 | `getRandomItem(sectionId)`    | `GET /overlays/random-item`    | Random movie/show for preview     |
 | `getRandomEpisode(sectionId)` | `GET /overlays/random-episode` | Random episode for preview        |
-| `buildItemImageUrl(itemId, mode)` | —                              | Construct artwork proxy URL string for the given mode |
+| `buildItemImageUrl(itemId, mode)` | -                              | Construct artwork proxy URL string for the given mode |
 
 ### Processing
 
@@ -691,7 +691,7 @@ All functions in `apps/ui/src/api/overlays.ts`:
 | `setDefaultOverlayTemplate(id)`                   | `POST /overlays/templates/:id/default`   | Set as default        |
 | `exportOverlayTemplate(id)`                       | `POST /overlays/templates/:id/export`    | Export as JSON        |
 | `importOverlayTemplate(data)`                     | `POST /overlays/templates/import`        | Import from JSON      |
-| `buildTemplatePreviewUrl(id, itemId, cacheBust?)` | —                                        | Construct preview URL |
+| `buildTemplatePreviewUrl(id, itemId, cacheBust?)` | -                                        | Construct preview URL |
 
 ---
 
@@ -717,9 +717,9 @@ overlayTemplate: OverlayTemplateEntity | null;
 
 When processing a collection, the processor resolves the template to use via `OverlayTemplateService.resolveForCollection()`:
 
-1. **Collection override** — if `collection.overlayTemplateId` is set and the template exists, use it
-2. **Default for mode** — fall back to the default template for the collection's mode (`poster` or `titlecard`)
-3. **Skip** — if no template is found, the collection is skipped with a warning
+1. **Collection override** - if `collection.overlayTemplateId` is set and the template exists, use it
+2. **Default for mode** - fall back to the default template for the collection's mode (`poster` or `titlecard`)
+3. **Skip** - if no template is found, the collection is skipped with a warning
 
 ### Service Method
 

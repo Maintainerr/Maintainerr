@@ -16,7 +16,7 @@
  * added") on a duplicate tmdbId. Maintainerr therefore treats that 400 as
  * "already excluded" (#3084).
  *
- * It is intentionally minimal and invented — no real media names (repo rule). Any
+ * It is intentionally minimal and invented - no real media names (repo rule). Any
  * tmdbId queried resolves to a deterministic movie (movie id == tmdbId), so it pairs
  * with collection_media rows seeded with a tmdbId.
  *
@@ -27,7 +27,7 @@
  *   FAKE_RADARR_LOG=0 node tools/dev/fake-radarr.mjs   # silence the per-request log
  *
  * The dev seed (tools/dev/seed-db.mjs) already points radarr_settings.url at
- * http://localhost:7878, so no settings change is needed — just start this before
+ * http://localhost:7878, so no settings change is needed - just start this before
  * (or alongside) `yarn dev`, then trigger a run with `POST /api/collections/handle`.
  */
 import http from "node:http";
@@ -49,7 +49,7 @@ let nextTagId = 1;
 const movieTags = new Map();
 
 // Radarr restricts tag labels to ^[a-z0-9-]+$ (lowercase alnum + hyphen) and
-// 400s otherwise — mirror it so the label-charset path is exercised offline.
+// 400s otherwise - mirror it so the label-charset path is exercised offline.
 const isValidTagLabel = (label) => /^[a-z0-9-]+$/.test(String(label));
 
 const ensureTag = (label) => {
@@ -62,7 +62,7 @@ const ensureTag = (label) => {
   return tag;
 };
 
-// A deterministic movie for any requested id/tmdbId — id and tmdbId are kept equal
+// A deterministic movie for any requested id/tmdbId - id and tmdbId are kept equal
 // so a collection_media.tmdbId resolves straight through to a Radarr "movie".
 const movieFor = (tmdbId) => ({
   id: tmdbId,
