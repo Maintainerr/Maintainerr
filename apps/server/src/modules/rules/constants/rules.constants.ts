@@ -953,6 +953,14 @@ export class RuleConstants {
           type: RuleType.NUMBER,
           showType: ['show', 'season', 'episode'],
         },
+        {
+          id: 35,
+          name: 'seasonFileRank',
+          humanName: 'Season file rank by air date (newest = 1)',
+          mediaType: MediaType.SHOW,
+          type: RuleType.NUMBER,
+          showType: ['season'],
+        },
       ],
     },
     {
