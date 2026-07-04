@@ -159,6 +159,12 @@ export class RadarrGetterService {
               ?.filter((el) => movieTags.includes(el.id))
               .map((el) => el.label);
           }
+          case 'movieTitle': {
+            return movieResponse.title ?? null;
+          }
+          case 'movieId': {
+            return movieResponse.id;
+          }
           case 'profile': {
             const movieProfile = movieResponse.qualityProfileId;
 

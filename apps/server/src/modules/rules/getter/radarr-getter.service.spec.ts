@@ -325,6 +325,56 @@ describe('RadarrGetterService', () => {
     });
   });
 
+  // Scope handles mirroring Sonarr's seriesTitle/seriesId (#3220).
+  describe('movieTitle / movieId', () => {
+    let collectionMedia: CollectionMedia;
+    let mediaItem: MediaItem;
+
+    beforeEach(() => {
+      collectionMedia = createCollectionMedia('movie');
+      collectionMedia.collection.radarrSettingsId = 1;
+      mediaItem = createMediaItem({ type: 'movie' });
+    });
+
+    const call = (propertyId: number) =>
+      radarrGetterService.get(
+        propertyId,
+        mediaItem,
+        createRulesDto({
+          collection: collectionMedia.collection,
+          dataType: 'movie',
+        }),
+      );
+
+    it('returns the Radarr movie title', async () => {
+      mockRadarrApi(createRadarrMovie({ title: 'Sample Feature' }));
+
+      await expect(call(25)).resolves.toBe('Sample Feature');
+    });
+
+    it('returns the Radarr movie id', async () => {
+      mockRadarrApi(createRadarrMovie({ id: 4711 }));
+
+      await expect(call(26)).resolves.toBe(4711);
+    });
+
+    it('returns undefined (fail closed) when the movie lookup fails transiently', async () => {
+      const mockedRadarrApi = mockRadarrApi();
+      jest
+        .spyOn(mockedRadarrApi, 'getMovieByTmdbId')
+        .mockResolvedValue(undefined);
+
+      await expect(call(26)).resolves.toBeUndefined();
+    });
+
+    it('returns null when Radarr confirms the movie is not tracked', async () => {
+      const mockedRadarrApi = mockRadarrApi();
+      jest.spyOn(mockedRadarrApi, 'getMovieByTmdbId').mockResolvedValue(null);
+
+      await expect(call(26)).resolves.toBeNull();
+    });
+  });
+
   const mockRadarrApi = (movie?: RadarrMovie) => {
     const mockedRadarrApi = new RadarrApi(
       { url: 'http://localhost:7878', apiKey: 'test' },
