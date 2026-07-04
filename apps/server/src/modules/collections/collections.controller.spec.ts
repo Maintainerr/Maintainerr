@@ -192,6 +192,19 @@ describe('CollectionsController', () => {
         action: 0,
       },
     ],
+    [
+      'manual collection action body with an empty context id',
+      manualCollectionActionBodySchema,
+      {
+        collectionId: 1,
+        mediaId: '10',
+        context: {
+          id: '',
+          type: 'season',
+        },
+        action: 0,
+      },
+    ],
   ])('rejects invalid %s payloads', (_name, schema, payload) => {
     const pipe = new ZodValidationPipe(schema);
 
@@ -212,7 +225,7 @@ describe('CollectionsController', () => {
     await controller.ManualActionOnCollection({
       mediaId: '10',
       context: {
-        id: 1,
+        id: '1',
         type: 'movie',
       },
       action: 1,
@@ -223,12 +236,41 @@ describe('CollectionsController', () => {
     ).toHaveBeenCalledWith(
       undefined,
       {
-        id: 1,
+        id: '1',
         type: 'movie',
       },
       { mediaServerId: '10' },
       'remove',
     );
+  });
+
+  it('accepts a hex-GUID context.id for manual season/episode actions (Jellyfin/Emby, #3185)', () => {
+    const pipe = new ZodValidationPipe(manualCollectionActionBodySchema);
+
+    // Jellyfin/Emby item ids are 32-char hex GUIDs, not numeric Plex
+    // ratingKeys. Coercing them to a number yields NaN, which previously
+    // failed validation and 400'd the manual add/remove request.
+    const seasonAction = pipe.transform(
+      {
+        mediaId: '1815bdf1952bd0c75d37a59662895df8',
+        action: 0,
+        collectionId: 7,
+        context: { id: 'cdc55c8c59d63f58697e499aeb6ca210', type: 'season' },
+      },
+      { type: 'body', metatype: Object, data: '' },
+    );
+    expect(seasonAction.context.id).toBe('cdc55c8c59d63f58697e499aeb6ca210');
+
+    // Numeric Plex ratingKeys continue to validate unchanged.
+    const movieAction = pipe.transform(
+      {
+        mediaId: '10',
+        action: 1,
+        context: { id: 12345, type: 'movie' },
+      },
+      { type: 'body', metatype: Object, data: '' },
+    );
+    expect(Number(movieAction.context.id)).toBe(12345);
   });
 
   it('handles a collection item with the configured collection action', async () => {
