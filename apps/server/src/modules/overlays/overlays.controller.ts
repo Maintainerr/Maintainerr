@@ -40,7 +40,11 @@ import { Response } from 'express';
 import * as fs from 'fs';
 import { ZodValidationPipe } from 'nestjs-zod';
 import * as path from 'path';
-import { sharp } from '../../utils/sharp';
+import {
+  isSharpAvailable,
+  sharp,
+  SHARP_UNAVAILABLE_MESSAGE,
+} from '../../utils/sharp';
 import {
   type OverlayProcessRequest,
   overlayProcessRequestSchema,
@@ -418,6 +422,13 @@ export class OverlaysController {
       throw new HttpException(
         `Only ${OVERLAY_IMAGE_EXTENSIONS.join(', ')} image files are supported`,
         HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    if (!isSharpAvailable) {
+      throw new HttpException(
+        SHARP_UNAVAILABLE_MESSAGE,
+        HttpStatus.SERVICE_UNAVAILABLE,
       );
     }
 
