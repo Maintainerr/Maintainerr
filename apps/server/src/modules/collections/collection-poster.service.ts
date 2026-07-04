@@ -3,7 +3,11 @@ import { Injectable } from '@nestjs/common';
 import * as fs from 'fs';
 import * as path from 'path';
 import { dataDir as configDataDir } from '../../app/config/dataDir';
-import { sharp } from '../../utils/sharp';
+import {
+  isSharpAvailable,
+  sharp,
+  SHARP_UNAVAILABLE_MESSAGE,
+} from '../../utils/sharp';
 import { MediaServerFactory } from '../api/media-server/media-server.factory';
 import { IMediaServerService } from '../api/media-server/media-server.interface';
 import { MaintainerrLogger } from '../logging/logs.service';
@@ -83,6 +87,10 @@ export class CollectionPosterService {
     collectionDbId: number,
     buffer: Buffer,
   ): Promise<{ buffer: Buffer; contentType: string }> {
+    if (!isSharpAvailable) {
+      throw new InvalidCollectionPosterError(SHARP_UNAVAILABLE_MESSAGE);
+    }
+
     let normalised: Buffer;
     try {
       normalised = await sharp(buffer)
