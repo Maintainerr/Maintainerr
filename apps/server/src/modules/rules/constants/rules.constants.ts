@@ -946,7 +946,7 @@ export class RuleConstants {
         {
           id: 32,
           name: 'episodeFileRank',
-          humanName: 'Episode file rank by air date (newest = 1)',
+          humanName: 'Episode position by air date (1 = latest)',
           mediaType: MediaType.SHOW,
           type: RuleType.NUMBER,
           showType: ['episode'],
@@ -970,7 +970,7 @@ export class RuleConstants {
         {
           id: 35,
           name: 'seasonFileRank',
-          humanName: 'Season file rank by air date (newest = 1)',
+          humanName: 'Season position by air date (1 = latest)',
           mediaType: MediaType.SHOW,
           type: RuleType.NUMBER,
           showType: ['season'],
