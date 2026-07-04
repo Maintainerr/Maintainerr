@@ -190,7 +190,10 @@ export const updateScheduleBodySchema = z.object({
     }),
 });
 const manualCollectionContextSchema = z.object({
-  id: z.coerce.number().int(),
+  // Media-server item id: a numeric Plex ratingKey or a hex-GUID Jellyfin/Emby
+  // id. Coerce to a string rather than a number - a GUID coerced to a number is
+  // NaN (#3185), and every consumer already uses the id as a string.
+  id: z.coerce.string().min(1),
   index: z.coerce.number().int().optional(),
   parentIndex: z.coerce.number().int().optional(),
   type: z.enum(MediaItemTypes),
