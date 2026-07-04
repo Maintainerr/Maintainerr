@@ -204,7 +204,7 @@ describe('SonarrApi', () => {
   // contract: `undefined` = the lookup itself failed (fail closed), `null` =
   // Sonarr confirmed the series isn't tracked. getWithoutCache swallows HTTP
   // errors to `undefined` without throwing, so the failure must be detected
-  // from that value — the catch path never sees it. (#3125)
+  // from that value - the catch path never sees it. (#3125)
   describe('getSeriesByTvdbId null/undefined contract (#3125)', () => {
     it('returns undefined when the lookup fails transiently (getWithoutCache → undefined)', async () => {
       jest

@@ -78,7 +78,7 @@ describe('ExternalApiService', () => {
       return { service, cache };
     };
 
-    it('does not cache Buffer responses — second call hits the network again', async () => {
+    it('does not cache Buffer responses - second call hits the network again', async () => {
       const { service } = createServiceWithCache();
       const validObject = { data: 'ok' };
 
@@ -96,7 +96,7 @@ describe('ExternalApiService', () => {
       expect(getFn).toHaveBeenCalledTimes(2);
     });
 
-    it('does not cache null responses — second call hits the network again', async () => {
+    it('does not cache null responses - second call hits the network again', async () => {
       const { service } = createServiceWithCache();
       const validObject = { items: [] };
 
@@ -113,7 +113,7 @@ describe('ExternalApiService', () => {
       expect(getFn).toHaveBeenCalledTimes(2);
     });
 
-    it('caches valid object responses — second call does not hit the network', async () => {
+    it('caches valid object responses - second call does not hit the network', async () => {
       const { service } = createServiceWithCache();
       const validObject = { items: [1, 2, 3] };
 

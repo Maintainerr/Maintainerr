@@ -104,7 +104,7 @@ describe('ruleGroupFormSchema', () => {
       expect(enabled.data.tagInArr).toBe(true)
     }
 
-    // Optional — omitting it is still valid.
+    // Optional - omitting it is still valid.
     expect(ruleGroupFormSchema.safeParse(base).success).toBe(true)
   })
 

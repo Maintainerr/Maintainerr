@@ -81,7 +81,7 @@ describe('JellyfinOverlayProvider', () => {
 
       await expect(provider.getRandomEpisode(['lib-1'])).resolves.toEqual({
         itemId: 'jf-ep',
-        title: 'Series Name — Episode One',
+        title: 'Series Name - Episode One',
       });
     });
 

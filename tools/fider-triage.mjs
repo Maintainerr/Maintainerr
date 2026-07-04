@@ -129,7 +129,7 @@ const tagPost = async (post, slug) => {
 
 // Per-comment-type marker so a re-evaluation can leave a NEW kind of comment
 // (e.g. completion now, after previously commenting only as duplicate) without
-// double-posting the same kind. Hidden HTML comment — invisible in Fider's
+// double-posting the same kind. Hidden HTML comment - invisible in Fider's
 // rendered Markdown.
 const COMMENT_MARKERS = {
   completed: '<!-- maintainerr-fider-bot:completed -->',
@@ -186,16 +186,16 @@ const buildBotComment = ({ header, quote, footer, marker }) => {
 };
 
 const COMPLETED_FOOTER =
-  '_Automated triage — please verify and mark this post as Completed if the PR delivers what was requested, or remove the `possibly-completed` tag if not._';
+  '_Automated triage - please verify and mark this post as Completed if the PR delivers what was requested, or remove the `possibly-completed` tag if not._';
 const DUPLICATE_FOOTER =
-  '_Automated triage — please verify and either close as duplicate (with a link to the original) or remove the `possibly-duplicate` tag if these are distinct requests._';
+  '_Automated triage - please verify and either close as duplicate (with a link to the original) or remove the `possibly-duplicate` tag if these are distinct requests._';
 
 // Author handle is supplied by /api/v1/posts (each post carries a `user`
 // object). Used to address the OP directly in the pre-existing comment so
 // they see the nudge to split multi-ask requests.
 const opMention = (post) => (post.user?.name ? `@${post.user.name}` : 'the original poster');
 const preExistingFooter = (post) =>
-  `_Automated triage — ${opMention(post)}, if this request bundles multiple feature asks, please split them into separate posts so each can be tracked independently. A maintainer will verify the match._`;
+  `_Automated triage - ${opMention(post)}, if this request bundles multiple feature asks, please split them into separate posts so each can be tracked independently. A maintainer will verify the match._`;
 
 const commentOnPost = async (post, verdict, candidates) => {
   const candidate = candidates.find((c) => c.url === verdict.evidence_url);
@@ -317,7 +317,7 @@ const filterPRs = ({ candidates, post, dateGate, requireFeaturePrefix }) => {
 };
 
 // PRs merged AFTER the FR was filed are the only ones that can have
-// implemented it. Always require the feat:/fix: prefix here — this path is
+// implemented it. Always require the feat:/fix: prefix here - this path is
 // tuned for precision.
 const filterCandidates = (candidates, post) =>
   filterPRs({
@@ -386,7 +386,7 @@ const runJudge = async ({ post, system, userPayload, defaultVerdict, validate, l
   return validate(parsed) ?? defaultVerdict;
 };
 
-// Helper — true when the model's quote is ≥10 chars and appears verbatim
+// Helper - true when the model's quote is ≥10 chars and appears verbatim
 // (case-insensitively) somewhere in the candidate haystack.
 const quoteFoundIn = (verdict, haystack) => {
   const quote = (verdict.quote || '').toLowerCase().trim();
@@ -413,7 +413,7 @@ const judgeWithModel = (post, candidates) =>
     defaultVerdict: { status: 'not_done', confidence: 'low' },
     validate: (parsed) => {
       if (parsed.status === 'completed' && !quoteFoundIn(parsed, candidatesHaystack(candidates))) {
-        log(`#${post.number}: rejecting completed verdict — quote not found in candidates`);
+        log(`#${post.number}: rejecting completed verdict - quote not found in candidates`);
         return { status: 'not_done', confidence: 'low' };
       }
       return parsed;
@@ -427,7 +427,7 @@ const judgePreExistingWithModel = (post, candidates) =>
     system:
       'You decide whether a feature request is ALREADY supported by an EXISTING feature that shipped BEFORE this request was filed. ' +
       'Reply ONLY with compact JSON: {"status":"pre_existing"|"not_supported","confidence":"high"|"low","evidence_url":string,"quote":string}. ' +
-      'Use status="pre_existing" ONLY when one earlier PR clearly delivered exactly the behaviour the user is now asking for — i.e. the user simply may not know the feature exists. ' +
+      'Use status="pre_existing" ONLY when one earlier PR clearly delivered exactly the behaviour the user is now asking for - i.e. the user simply may not know the feature exists. ' +
       'Be MORE conservative than for completion: if the existing behaviour is similar but not the specific ask, return status="not_supported". ' +
       'You MUST copy a verbatim phrase from that PR\'s title or body into "quote" that proves the existing feature does what is asked. ' +
       'If you cannot quote a phrase that directly matches the request, return status="not_supported".',
@@ -438,7 +438,7 @@ const judgePreExistingWithModel = (post, candidates) =>
     defaultVerdict: { status: 'not_supported', confidence: 'low' },
     validate: (parsed) => {
       if (parsed.status === 'pre_existing' && !quoteFoundIn(parsed, candidatesHaystack(candidates))) {
-        log(`#${post.number}: rejecting pre_existing verdict — quote not found in candidates`);
+        log(`#${post.number}: rejecting pre_existing verdict - quote not found in candidates`);
         return { status: 'not_supported', confidence: 'low' };
       }
       return parsed;
@@ -452,7 +452,7 @@ const judgeDuplicateWithModel = (post, candidates) =>
     system:
       'You decide whether a feature request is a duplicate of an EARLIER feature request from the same project. ' +
       'Reply ONLY with compact JSON: {"status":"duplicate"|"unique","confidence":"high"|"low","original_number":number,"quote":string}. ' +
-      'Use status="duplicate" ONLY when one of the earlier candidates clearly asks for the same behaviour as the new request — not merely the same area of the product. ' +
+      'Use status="duplicate" ONLY when one of the earlier candidates clearly asks for the same behaviour as the new request - not merely the same area of the product. ' +
       'Different requests that touch the same feature but ask for different behaviour are NOT duplicates. ' +
       'You MUST copy a verbatim phrase from the matching earlier candidate that proves the overlap, and set original_number to that candidate\'s number. ' +
       'If you cannot do both, return status="unique".',
@@ -471,12 +471,12 @@ const judgeDuplicateWithModel = (post, candidates) =>
       // candidate list AND the quote must appear in its title/description.
       const original = candidates.find((c) => c.number === parsed.original_number);
       if (!original) {
-        log(`#${post.number}: rejecting duplicate verdict — original_number not in candidates`);
+        log(`#${post.number}: rejecting duplicate verdict - original_number not in candidates`);
         return { status: 'unique', confidence: 'low' };
       }
       const haystack = `${original.title}\n${original.description || ''}`.toLowerCase();
       if (!quoteFoundIn(parsed, haystack)) {
-        log(`#${post.number}: rejecting duplicate verdict — quote not found in #${original.number}`);
+        log(`#${post.number}: rejecting duplicate verdict - quote not found in #${original.number}`);
         return { status: 'unique', confidence: 'low' };
       }
       return parsed;
@@ -503,7 +503,7 @@ const triagePost = async (post, allOpen) => {
     try {
       prVerdict = await judgeWithModel(post, candidates);
     } catch (err) {
-      // Budget-exhausted is a hard stop — let it propagate so main()
+      // Budget-exhausted is a hard stop - let it propagate so main()
       // aborts cleanly with the deferred-posts log instead of treating it
       // as a per-post failure.
       if (err instanceof models.BudgetExhaustedError) throw err;
@@ -520,7 +520,7 @@ const triagePost = async (post, allOpen) => {
   }
 
   // Step 1b (opt-in): pre-existing-feature check. Inverts the date filter to
-  // look at PRs merged BEFORE the FR was filed — catches "user didn't know
+  // look at PRs merged BEFORE the FR was filed - catches "user didn't know
   // feature X already exists". Lower precision than the post-creation
   // completion check, hence opt-in and a separate tag for maintainer review.
   if (checkPreExisting) {
@@ -634,7 +634,7 @@ const main = async () => {
         log(`#${post.number} '${post.title}' → error`);
         consecutiveModelFailures += 1;
         if (consecutiveModelFailures >= MAX_CONSECUTIVE_MODEL_FAILURES) {
-          log(`aborting run: ${consecutiveModelFailures} consecutive model failures — likely API outage or quota exhausted. Remaining posts will be retried on the next scheduled run.`);
+          log(`aborting run: ${consecutiveModelFailures} consecutive model failures - likely API outage or quota exhausted. Remaining posts will be retried on the next scheduled run.`);
           aborted = true;
           break;
         }

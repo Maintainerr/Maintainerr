@@ -83,7 +83,7 @@ describe('upgrade from v1.7.1 to current', () => {
     await insertRule(4, 1, '1'); //  explicit operator     -> untouched
     await ds.destroy();
 
-    // --- Phase 3: upgrade — register ALL migrations, run the pending set ---
+    // --- Phase 3: upgrade - register ALL migrations, run the pending set ---
     ds = makeDS(all.map((m) => m.cls));
     await ds.initialize();
     const phase3 = await ds.runMigrations();

@@ -236,7 +236,7 @@ export class RuleExecutorService {
       // collection; the post-handle state would then look "already linked" and
       // make the sync below import that collection's existing contents as
       // manual. Capturing the pre-run state lets the run that *establishes* the
-      // link skip that import — the membership-provenance guard (#2663)
+      // link skip that import - the membership-provenance guard (#2663)
       // otherwise reads the link state too late (after handleCollection has
       // already linked it) and never skips.
       //
@@ -246,7 +246,7 @@ export class RuleExecutorService {
       // pre-existing, rule-unselected items get tracked as manual then. We can't
       // distinguish "was on the BoxSet at adoption time" from "the user added it
       // to the BoxSet afterwards" without persisted provenance, so the guard
-      // only removes the noisy first-run flood — a long-lived adopted collection
+      // only removes the noisy first-run flood - a long-lived adopted collection
       // still absorbs its foreign items as manual on a later run.
       const collectionLinkedBeforeRun = ruleGroup.collection?.id
         ? Boolean(
@@ -271,7 +271,7 @@ export class RuleExecutorService {
         // evaluation are served from an in-memory map instead of individual
         // HTTP requests. Reused across rule groups within a scheduler batch;
         // rebuilt here when the reset above flushed it. Gated on a centrally
-        // queryable history endpoint — Jellyfin/Emby (per-user history) keep
+        // queryable history endpoint - Jellyfin/Emby (per-user history) keep
         // their per-item path. Abort-checked first so a cancellation that
         // lands just before evaluation doesn't kick off a long history sweep.
         abortSignal.throwIfAborted();
@@ -436,7 +436,7 @@ export class RuleExecutorService {
         } else if (children && children.length > 0) {
           // When two automatic rule groups share a title they end up linked
           // to the same media server collection. Items rule-owned by a
-          // sibling collection must not be imported here as manual — that
+          // sibling collection must not be imported here as manual - that
           // would subject them to this rule's deleteAfterDays. If we cannot
           // determine sibling ownership (DB error), refuse to import: a
           // silent fallback to "no siblings" would re-introduce the
@@ -625,7 +625,7 @@ export class RuleExecutorService {
 
     if (!linkedCollection.mediaServerId) {
       this.logger.debug(
-        `Skipping media server sync for '${linkedCollection.title}' — no media server collection exists because no items currently match the rule.`,
+        `Skipping media server sync for '${linkedCollection.title}' - no media server collection exists because no items currently match the rule.`,
       );
       return {};
     }
@@ -690,7 +690,7 @@ export class RuleExecutorService {
 
       // Filter exclusions out of results. Cascade is keyed off the show/season
       // exclusion's own mediaServerId (via type), so a single-episode exclusion
-      // only skips that episode — not its siblings (issue #2858).
+      // only skips that episode - not its siblings (issue #2858).
       const desiredMediaServerIds = new Set<string>();
 
       for (const item of this.resultData ?? []) {
@@ -756,7 +756,7 @@ export class RuleExecutorService {
         // Conditions like "watched" / "lastViewedAt before N days" stay true
         // after the handler action, so without this guard the user gets a
         // `Media Removed` event immediately followed by `Media Added` for
-        // the same title — confusing and noisy via email/Discord.
+        // the same title - confusing and noisy via email/Discord.
         //
         // The marks are consumed here: this pass blocks the immediate echo,
         // and any subsequent pass treats the items normally. If the rule

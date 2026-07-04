@@ -1,5 +1,5 @@
 // TypeORM 1.x (better-sqlite3). Repository code uses object-form
-// `relations`/`select` ({ rel: true }) and IsNull() to match SQL NULL — see
+// `relations`/`select` ({ rel: true }) and IsNull() to match SQL NULL - see
 // project-notes.instructions.md.
 
 // Generate migration after entity changes
@@ -40,7 +40,7 @@ yarn workspace @maintainerr/server migration:create src/database/migrations/<mig
 //    yarn migration:generate src/database/migrations/<MigrationName>
 //
 // 3. Interpret the result:
-//    - "No changes in database schema were found" — schema is in sync, no migration needed.
-//    - A migration file is generated — review it, the changes are real schema drift.
+//    - "No changes in database schema were found" - schema is in sync, no migration needed.
+//    - A migration file is generated - review it, the changes are real schema drift.
 //
 // 4. Clean up: remove or empty data/maintainerr.sqlite so it doesn't get committed.

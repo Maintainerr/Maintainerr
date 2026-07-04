@@ -2,7 +2,7 @@ name: Fider - Move enhancements
 
 # Weekly sweep: mirrors open `label:enhancement` issues (excluding ones
 # authored by a CODEOWNER) to the Fider feature board and closes the GitHub
-# issue with a friendly comment linking to the new post. Idempotent — re-runs
+# issue with a friendly comment linking to the new post. Idempotent - re-runs
 # skip anything already mirrored.
 #
 # Scheduled runs always apply. Manual dispatch defaults to dry-run for

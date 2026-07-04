@@ -378,8 +378,7 @@ describe('Overview', () => {
     ]
 
     let resolveSecondRequest:
-      | ((value: { totalSize: number; items: any[] }) => void)
-      | undefined
+      ((value: { totalSize: number; items: any[] }) => void) | undefined
 
     getApiHandlerMock.mockImplementation((path: string) => {
       if (path.startsWith('/media-server/overview/bootstrap?')) {

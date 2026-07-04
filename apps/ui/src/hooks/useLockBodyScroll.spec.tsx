@@ -37,7 +37,7 @@ describe('useLockBodyScroll', () => {
     const { unmount: unmountA } = renderHook(() => useLockBodyScroll(true))
     const { unmount: unmountB } = renderHook(() => useLockBodyScroll(true))
 
-    // Both are locked – overflow is hidden.
+    // Both are locked - overflow is hidden.
     expect(document.body.style.overflow).toBe('hidden')
 
     // Releasing the first lock should NOT restore scrolling yet.
@@ -72,7 +72,7 @@ describe('useLockBodyScroll', () => {
 
     expect(document.body.style.overflow).toBe('hidden')
 
-    // Parent (mounted first) releases before child — the scenario from #2748.
+    // Parent (mounted first) releases before child - the scenario from #2748.
     // The old snapshot-restore implementation would leave overflow='hidden'
     // here because the child had captured 'hidden' as its "original" value.
     unmountParent()

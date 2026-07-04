@@ -2,20 +2,20 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { DataSource, MigrationInterface } from 'typeorm';
 
-// Generic migration matrix — we don't test each migration individually. These
+// Generic migration matrix - we don't test each migration individually. These
 // confirm TypeORM behaves and that migrations comply with typeorm_instructions.txt
 // (generated from the entities, never hand-waived):
-//   1. The whole chain applies in order on a fresh DB, each recorded once —
+//   1. The whole chain applies in order on a fresh DB, each recorded once -
 //      proving every migration is structurally valid SQL that TypeORM accepts.
 //   2. The schema migration this PR adds reproduces its entity columns EXACTLY
 //      (type + NOT NULL + default). A hand-edited migration that drifts from the
-//      entity definition fails here — the in-jest stand-in for `migration:generate`
+//      entity definition fails here - the in-jest stand-in for `migration:generate`
 //      reporting "No changes". (The repo-wide entity-vs-schema diff stays a manual
 //      release step: TypeORM's metadata builder can't run under @swc/jest, which
 //      reflects the codebase's `T | null` columns as `Object` and rejects the
 //      build. A new migration adds its columns to test 2.)
 //   3. That migration's up() carries TypeORM's SQLite create-temporary-table
-//      rebuild — the fingerprint of `migration:generate`. Matching columns (2)
+//      rebuild - the fingerprint of `migration:generate`. Matching columns (2)
 //      can be reproduced by a hand-written `ALTER TABLE ADD COLUMN`; the rebuild
 //      cannot, so its absence flags a hand-waived migration.
 //   4. The newest migration's down() is symmetric.
@@ -116,7 +116,7 @@ describe('database migrations', () => {
     const src = fs.readFileSync(path.join(MIGRATIONS_DIR, newest.file), 'utf8');
     // SQLite can't ALTER most columns in place, so `migration:generate` always
     // emits a full create-temporary-table / copy / drop / rename rebuild for the
-    // changed tables. A hand-written ALTER shortcut lacks it — this is the
+    // changed tables. A hand-written ALTER shortcut lacks it - this is the
     // cheapest signal the migration was generated rather than authored.
     expect(src).toContain('CREATE TABLE "temporary_collection"');
     expect(src).toContain('CREATE TABLE "temporary_settings"');
@@ -124,7 +124,7 @@ describe('database migrations', () => {
 
   // We don't revert the whole chain: several pre-existing migrations have
   // non-reversible down() paths (production only ever migrates up). We do confirm
-  // the newest migration's down() is symmetric — the regression this catches when
+  // the newest migration's down() is symmetric - the regression this catches when
   // a migration is added.
   it('revert the newest migration cleanly (symmetric down)', async () => {
     const ds = await makeDS(all.map((m) => m.cls)).initialize();

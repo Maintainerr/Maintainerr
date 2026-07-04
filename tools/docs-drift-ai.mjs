@@ -248,7 +248,7 @@ for (const pr of prs) {
     );
   } catch (e) {
     log(`  gh pr view failed: ${e.message}`);
-    lines.push(`**[PR #${pr.number}](${pr.url}) — ${pr.title}**`);
+    lines.push(`**[PR #${pr.number}](${pr.url}) - ${pr.title}**`);
     lines.push("");
     lines.push(`_Could not fetch PR detail: ${e.message}_`);
     lines.push("");
@@ -310,7 +310,7 @@ for (const pr of prs) {
 
   const issueRefs = pr.issues.map((i) => `[#${i.number}](${i.url})`).join(", ");
   lines.push(
-    `**[PR #${pr.number}](${pr.url}) — ${detail.title}**  \nResolves: ${issueRefs}`,
+    `**[PR #${pr.number}](${pr.url}) - ${detail.title}**  \nResolves: ${issueRefs}`,
   );
   lines.push("");
 

@@ -122,7 +122,7 @@ export class MediaServerSwitchService {
     }
 
     // Initialize the now-active media server adapter once the switch lock is
-    // released — getService() refuses while a switch is in progress, so this
+    // released - getService() refuses while a switch is in progress, so this
     // can't run inside executeSwitchInternal. When the target's credentials
     // carried over (e.g. switching back to a still-configured server), this
     // brings the adapter up immediately so its connection test reflects reality

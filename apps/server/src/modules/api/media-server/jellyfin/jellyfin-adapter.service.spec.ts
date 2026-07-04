@@ -772,7 +772,7 @@ describe('JellyfinAdapterService', () => {
 
     it('rejects blank Jellyfin item ids before calling the API', async () => {
       await expect(service.refreshItemMetadata('   ')).rejects.toThrow(
-        'refreshItemMetadata called with empty itemId — aborting metadata refresh request',
+        'refreshItemMetadata called with empty itemId - aborting metadata refresh request',
       );
 
       expect(jellyfinApiMocks.refreshItem).not.toHaveBeenCalled();
@@ -1516,7 +1516,7 @@ describe('JellyfinAdapterService', () => {
           isLocked: true,
         }),
       );
-      // Collections are created empty — item ids must never be sent on create
+      // Collections are created empty - item ids must never be sent on create
       // (they go in the query string → HTTP 414 at scale); items are added via
       // addBatchToCollection.
       expect(collectionApiMocks.createCollection).not.toHaveBeenCalledWith(

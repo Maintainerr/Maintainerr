@@ -69,7 +69,7 @@ export interface ISettings {
   collection_handler_job_cron: string
   rules_handler_job_cron: string
   metadata_provider_preference?: MetadataProviderPreference
-  // *arr exclusion tagging (https://features.maintainerr.info/posts/81) — Radarr and Sonarr configured independently
+  // *arr exclusion tagging (https://features.maintainerr.info/posts/81) - Radarr and Sonarr configured independently
   radarr_tag_exclusions?: boolean
   radarr_exclusion_tag?: string
   radarr_untag_on_unexclude?: boolean

@@ -408,7 +408,7 @@ export class JellyfinAdapterService implements IMediaServerService {
    * Pick a single random media item (movie or series, configurable) from the
    * given section ids. When no section ids are provided, picks across all
    * supported libraries. Uses Jellyfin's native `ItemSortBy.Random` so the
-   * server does the randomisation — no client-side sampling needed.
+   * server does the randomisation - no client-side sampling needed.
    */
   async findRandomItem(
     sectionIds: string[] | undefined,
@@ -419,7 +419,7 @@ export class JellyfinAdapterService implements IMediaServerService {
     try {
       const userId = await this.getUserId();
       // The overlay editor UI passes a single section key; for "all sections"
-      // the caller omits the param. Anything else is unsupported — the
+      // the caller omits the param. Anything else is unsupported - the
       // recursive getItems call spans the selected parent or the whole server.
       const parentId = sectionIds?.[0];
       const response = await getItemsApi(this.api).getItems({
@@ -456,7 +456,7 @@ export class JellyfinAdapterService implements IMediaServerService {
 
   /**
    * Download the raw bytes of a specific image for an item. The `imageType`
-   * is the caller's choice — `Primary` for movie/show posters, `Thumb` for
+   * is the caller's choice - `Primary` for movie/show posters, `Thumb` for
    * episode title-card stills. Forces JPEG so callers can rely on a known
    * Content-Type (the overlay editor's /poster proxy hard-codes image/jpeg;
    * the render pipeline also emits JPEG). Returns null when the item has no
@@ -488,7 +488,7 @@ export class JellyfinAdapterService implements IMediaServerService {
 
   /**
    * Replace the given image type on an item. Sends the image as a
-   * base64-encoded string body — the Jellyfin server (at least through the
+   * base64-encoded string body - the Jellyfin server (at least through the
    * versions this project targets) rejects raw binary payloads on this
    * endpoint with a 500, despite the OpenAPI description hinting at
    * `image/*` binary. Base64 is the empirically-verified working path; see
@@ -654,11 +654,11 @@ export class JellyfinAdapterService implements IMediaServerService {
         error instanceof AxiosError ? error.response?.status : undefined;
       if (status === 404) {
         this.logger.debug(
-          'Jellyfin /System/Info/Storage not available — server is older than 10.11',
+          'Jellyfin /System/Info/Storage not available - server is older than 10.11',
         );
       } else if (status === 401 || status === 403) {
         this.logger.debug(
-          'Jellyfin /System/Info/Storage denied — the configured user is not an administrator',
+          'Jellyfin /System/Info/Storage denied - the configured user is not an administrator',
         );
       } else {
         this.logger.debug(error);
@@ -887,7 +887,7 @@ export class JellyfinAdapterService implements IMediaServerService {
 
   /**
    * Confirm a Jellyfin item is still present. Distinguishes "definitely
-   * gone" (200 with empty Items, or 404) from "could not check" — the
+   * gone" (200 with empty Items, or 404) from "could not check" - the
    * latter throws so revert callers don't drop their state on a blip.
    * An uninitialised adapter is treated as inconclusive (throws) for the
    * same reason: callers must never delete the only restore-from-overlay
@@ -1045,7 +1045,7 @@ export class JellyfinAdapterService implements IMediaServerService {
   async prefetchWatchHistory(): Promise<void> {
     // Jellyfin has no central watch-history endpoint (history is per-user), so
     // there is nothing to bulk prefetch. Gated by
-    // supportsFeature(CENTRAL_WATCH_HISTORY) which is false for Jellyfin —
+    // supportsFeature(CENTRAL_WATCH_HISTORY) which is false for Jellyfin -
     // callers shouldn't reach here.
     throw new Error(
       'Bulk watch-history prefetch is not supported on Jellyfin (per-user history)',
@@ -1116,7 +1116,7 @@ export class JellyfinAdapterService implements IMediaServerService {
         if (!item) continue;
         // A collection can track an episode at any level, so protect the
         // episode and its season and series. ParentId is intentionally
-        // omitted — for Jellyfin movies it is the library folder, not a
+        // omitted - for Jellyfin movies it is the library folder, not a
         // collectable ancestor. Movies only carry Id.
         if (item.Id) playing.add(item.Id);
         if (item.SeasonId) playing.add(item.SeasonId);
@@ -1136,7 +1136,7 @@ export class JellyfinAdapterService implements IMediaServerService {
    * Jellyfin's Series Played flag is an all-or-nothing aggregate, so the
    * show-level watch history degenerates to sw_allEpisodesSeenBy (#2559).
    * One getItems call per user (batched via mapUsersBatched, shared with
-   * getAllUserItemData) — O(users), not O(users × episodes).
+   * getAllUserItemData) - O(users), not O(users × episodes).
    */
   async getDescendantEpisodeWatchers(parentId: string): Promise<string[]> {
     if (!this.api) return [];
@@ -1160,7 +1160,7 @@ export class JellyfinAdapterService implements IMediaServerService {
               // Ignore unaired placeholders (mirrors #2624).
               excludeLocationTypes: [LocationType.Virtual],
               enableUserData: true,
-              // Minimize payload — we only need UserData per episode.
+              // Minimize payload - we only need UserData per episode.
               fields: [],
             })
           ).data.Items ?? [],
@@ -1312,7 +1312,7 @@ export class JellyfinAdapterService implements IMediaServerService {
 
     try {
       // Use getItems with enableUserData instead of the dedicated
-      // getItemUserData endpoint — the latter does not reliably return
+      // getItemUserData endpoint - the latter does not reliably return
       // per-user data when authenticating with an API key on all
       // Jellyfin versions.
       const response = await getItemsApi(this.api).getItems({
@@ -1489,7 +1489,7 @@ export class JellyfinAdapterService implements IMediaServerService {
       if (await this.getCollection(collectionId).then(Boolean)) {
         this.logger.error(`Failed to delete collection ${collectionId}`);
         this.logger.debug(error);
-        // Throw before the cache invalidation below — the collection still
+        // Throw before the cache invalidation below - the collection still
         // exists, so cached entries are still valid.
         throw error;
       }
@@ -2040,13 +2040,13 @@ export class JellyfinAdapterService implements IMediaServerService {
   async deleteFromDisk(itemId: string): Promise<void> {
     if (!this.api) {
       throw new Error(
-        'Jellyfin API not initialized — cannot delete item from disk',
+        'Jellyfin API not initialized - cannot delete item from disk',
       );
     }
 
     if (!itemId || itemId.trim() === '') {
       throw new Error(
-        'deleteFromDisk called with empty itemId — aborting to prevent unintended deletion',
+        'deleteFromDisk called with empty itemId - aborting to prevent unintended deletion',
       );
     }
 
@@ -2081,13 +2081,13 @@ export class JellyfinAdapterService implements IMediaServerService {
   async refreshItemMetadata(itemId: string): Promise<void> {
     if (!this.api) {
       throw new Error(
-        'Jellyfin API not initialized — cannot refresh item metadata',
+        'Jellyfin API not initialized - cannot refresh item metadata',
       );
     }
 
     if (isBlankMediaServerId(itemId)) {
       throw new Error(
-        'refreshItemMetadata called with empty itemId — aborting metadata refresh request',
+        'refreshItemMetadata called with empty itemId - aborting metadata refresh request',
       );
     }
 

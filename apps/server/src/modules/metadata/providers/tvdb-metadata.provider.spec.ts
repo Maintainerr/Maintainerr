@@ -28,11 +28,11 @@ describe('TvdbMetadataProvider', () => {
     year: '2017',
     defaultSeasonType: 1,
     seasons: [
-      // Specials in the default ordering — should be filtered out.
+      // Specials in the default ordering - should be filtered out.
       { number: 0, type: { id: 1 } },
       { number: 1, type: { id: 1 } },
       { number: 2, type: { id: 1 } },
-      // Alternative orderings — should be filtered out by defaultSeasonType.
+      // Alternative orderings - should be filtered out by defaultSeasonType.
       { number: 1, type: { id: 2 } },
       { number: 2, type: { id: 2 } },
       { number: 3, type: { id: 3 } },
@@ -64,7 +64,7 @@ describe('TvdbMetadataProvider', () => {
 
     const details = await provider.getDetails(322399, 'tv');
 
-    // Only number > 0 in the default ordering (type.id === 1) — 2 seasons.
+    // Only number > 0 in the default ordering (type.id === 1) - 2 seasons.
     expect(details?.seasonCount).toBe(2);
   });
 

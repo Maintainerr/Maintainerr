@@ -159,7 +159,7 @@ export class OverlayProcessorService {
 
     // A failed existence check (network blip, 5xx, auth, or a media-server
     // switch in progress) leaves `exists` optimistically true so the upload
-    // still runs and any failure follows the existing retry path — we never
+    // still runs and any failure follows the existing retry path - we never
     // drop a backup on uncertainty. `getService()` is resolved inside the try
     // so its transient throws are caught here too.
     let exists = true;
@@ -334,7 +334,7 @@ export class OverlayProcessorService {
 
       if (shouldApply) {
         this.logger.log(
-          `Applying template overlay to item ${itemId} — ${daysLeft} day(s) left`,
+          `Applying template overlay to item ${itemId} - ${daysLeft} day(s) left`,
         );
         const success = await this.applyTemplateOverlay(
           itemId,
@@ -603,7 +603,7 @@ export class OverlayProcessorService {
       await this.saveOriginalPoster(itemId, posterBuf);
     }
 
-    // Build render context — raw data; per-element formatting is done by the render service
+    // Build render context - raw data; per-element formatting is done by the render service
     const daysLeft = this.getDaysLeft(deleteDate);
     const context: TemplateRenderContext = {
       deleteDate,

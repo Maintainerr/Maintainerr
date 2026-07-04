@@ -294,7 +294,7 @@ describe('StreamystatsApiService', () => {
       });
 
       expect(result.status).toBe('OK');
-      // The helper is constructed with url only — no apiKey leaks to a
+      // The helper is constructed with url only - no apiKey leaks to a
       // user-supplied URL via /api/settings/test/streamystats.
       const callArgs = StreamystatsApiMock.mock.calls.at(-1)?.[0];
       expect(callArgs?.url).toBe('http://streamystats');

@@ -283,7 +283,7 @@ export class MediaServerFactory {
       return adapter;
     }
 
-    // Connection is dead — force re-initialization
+    // Connection is dead - force re-initialization
     this.logger.debug(
       'Media server unreachable during pre-job check, attempting re-initialization',
     );

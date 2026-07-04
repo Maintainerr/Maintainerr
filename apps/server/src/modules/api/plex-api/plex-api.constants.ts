@@ -9,7 +9,7 @@ export const PLEX_PAGE_SIZE = {
 export const PLEX_REQUEST_TIMEOUT_MS = 30_000;
 
 // Key in the 'plexwatchhistory' cache for the leaf watch-history map built by
-// prefetchWatchHistory() — leaf items (movies + episodes) keyed by own
+// prefetchWatchHistory() - leaf items (movies + episodes) keyed by own
 // ratingKey. TTL and flush behaviour live on the cache definition in
 // lib/cache.ts.
 export const WATCH_HISTORY_BULK_CACHE_KEY = 'watch-history-bulk';

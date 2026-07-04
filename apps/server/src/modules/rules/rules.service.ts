@@ -282,7 +282,7 @@ export class RulesService {
 
       if (group) {
         if (group.collectionId) {
-          // Behavior A: deleting a tagging group makes every member "leave" — strip
+          // Behavior A: deleting a tagging group makes every member "leave" - strip
           // their *arr membership tags first (best-effort), while the collection
           // media rows still exist (deleteCollection removes them next).
           try {
@@ -500,7 +500,7 @@ export class RulesService {
         // Behavior A: if a tagging-enabled collection is about to have its members
         // wiped below (crucial-setting change) and tagInArr is being turned off in
         // the same save, capture the members first so the toggle reconcile can
-        // still untag them (otherwise the rows — and our only record of them — are
+        // still untag them (otherwise the rows - and our only record of them - are
         // gone before the reconcile runs).
         let preDeleteMembers: CollectionMedia[] | undefined;
 
@@ -537,7 +537,7 @@ export class RulesService {
           if (dbCollection.mediaServerId) {
             const mediaServer = await this.getMediaServer();
             try {
-              // Use the OLD library ID — we're cleaning up items that belonged
+              // Use the OLD library ID - we're cleaning up items that belonged
               // to the previous library, not the one the rule is moving to.
               await mediaServer.cleanupCollectionForLibrary(
                 dbCollection.mediaServerId,
@@ -595,7 +595,7 @@ export class RulesService {
           sonarrQualityProfileId: params.sonarrQualityProfileId ?? null,
           tagInArr: params.tagInArr ?? false,
           // If the collection block is left out of an update, keep the saved
-          // values instead of sending undefined — otherwise we'd unlink a manual
+          // values instead of sending undefined - otherwise we'd unlink a manual
           // collection or switch off Plex visibility.
           visibleOnRecommended:
             params.collection?.visibleOnRecommended ??
@@ -651,7 +651,7 @@ export class RulesService {
         }
 
         // Behavior A: one-time *arr membership-tag reconcile on a tagInArr toggle
-        // — enabling tags current members, disabling untags them (ongoing changes
+        // - enabling tags current members, disabling untags them (ongoing changes
         // are handled by the executor's per-run deltas). Best-effort; awaited so
         // the backfill completes before the save returns.
         if (
@@ -724,7 +724,7 @@ export class RulesService {
   // disabling untags them using the previous collection (still tagInArr=true, with
   // its old title) so the correct label is removed even if renamed in the same save.
   // `preDeleteMembers` covers the disable case where a crucial-setting change in the
-  // same save already wiped the rows — pass the snapshot taken before the wipe.
+  // same save already wiped the rows - pass the snapshot taken before the wipe.
   private async reconcileMembershipTagsOnToggle(
     previous: Collection | undefined,
     saved: Collection,
@@ -792,7 +792,7 @@ export class RulesService {
   // collection; a global one resolves the single configured instance. Removal is
   // conservative and must run AFTER the rows are deleted: it leaves the tag in
   // place if any exclusion for the item survives (another rule group or a global
-  // one), so a still-excluded item keeps its protection — last-exclusion-wins.
+  // one), so a still-excluded item keeps its protection - last-exclusion-wins.
   private async syncExclusionTag(
     mode: 'add' | 'remove',
     item: { mediaServerId: string; type: MediaItemType | undefined },
@@ -1113,7 +1113,7 @@ export class RulesService {
       }
 
       // Behavior B (https://features.maintainerr.info/posts/81): opt-in removal of
-      // the protective *arr tag on un-exclude — this is the POST /rules/exclusion
+      // the protective *arr tag on un-exclude - this is the POST /rules/exclusion
       // remove path used by the media modal. Untag the top-level item once, after
       // its rows are deleted so the shared-tag guard is accurate.
       if (this.servarrTagService.anyExclusionUntaggingEnabled()) {

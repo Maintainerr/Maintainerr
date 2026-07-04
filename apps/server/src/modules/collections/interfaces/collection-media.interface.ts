@@ -19,7 +19,9 @@ export interface CollectionMediaChange {
 }
 
 export interface AlterableMediaContext {
-  id: number;
+  // Numeric Plex ratingKey or hex-GUID Jellyfin/Emby id (#3185); consumers
+  // normalize with String() before use.
+  id: string | number;
   index?: number;
   parentIndex?: number;
   type: MediaItemType;

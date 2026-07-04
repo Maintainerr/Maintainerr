@@ -236,7 +236,7 @@ export class EmbyMapper {
       updatedAt: extras.DateLastSaved
         ? new Date(extras.DateLastSaved)
         : undefined,
-      // Emby has no native smart collections — only manual BoxSets and the
+      // Emby has no native smart collections - only manual BoxSets and the
       // TheMovieDb-driven "Automatic Creation of Collections" (movie franchise
       // grouping, not filter rules). Always false, matching the Jellyfin mapper.
       smart: false,

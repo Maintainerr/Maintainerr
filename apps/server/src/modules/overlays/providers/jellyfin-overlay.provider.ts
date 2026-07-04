@@ -16,7 +16,7 @@ import { IOverlayProvider } from './overlay-provider.interface';
  * Reads/writes only the `Primary` image: movies and shows have their poster
  * there, and episodes have their still there (Jellyfin's `Thumb` is mostly
  * unpopulated for episodes and shows a 16:9 series banner for
- * continue-watching fallback — neither is what an overlay should target).
+ * continue-watching fallback - neither is what an overlay should target).
  */
 @Injectable()
 export class JellyfinOverlayProvider implements IOverlayProvider {
@@ -54,7 +54,7 @@ export class JellyfinOverlayProvider implements IOverlayProvider {
     const ep = await this.jf.findRandomEpisode(sectionKeys);
     if (!ep?.Id) return null;
     const name = ep.Name ?? '';
-    const title = ep.SeriesName ? `${ep.SeriesName} — ${name}` : name;
+    const title = ep.SeriesName ? `${ep.SeriesName} - ${name}` : name;
     return { itemId: ep.Id, title };
   }
 

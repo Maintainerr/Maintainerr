@@ -12,8 +12,8 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
  * To change behaviour as little as possible, this migration writes back the
  * value each rule *already evaluates as today*, so no existing rule changes
  * how it matches:
- *   - first rule of a later section -> "0" (AND)  — the section-combine default
- *   - any other (within-section) rule -> "1" (OR) — the within-section default
+ *   - first rule of a later section -> "0" (AND)  - the section-combine default
+ *   - any other (within-section) rule -> "1" (OR) - the within-section default
  *   - the first rule of a group keeps null; its operator is forced to null at
  *     runtime regardless, so it is left untouched.
  * Making these explicit also stops the engine from re-inferring the value and
@@ -21,7 +21,7 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
  *
  * Rules are ordered by id, which is how they are (re)written on every save and
  * how the comparator iterates them, so the first id seen for a new section is
- * that section's first rule — the same boundary the comparator uses.
+ * that section's first rule - the same boundary the comparator uses.
  *
  * Operators are written as strings ("0"/"1") to match the values the UI
  * persists; the comparator coerces with `+`, so string and numeric operators

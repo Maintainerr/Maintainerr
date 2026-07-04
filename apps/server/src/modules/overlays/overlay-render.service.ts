@@ -16,8 +16,8 @@ import { format as dateFnsFormat, type Locale } from 'date-fns';
 import * as dateFnsLocales from 'date-fns/locale';
 import * as fs from 'fs';
 import * as path from 'path';
-import sharp from 'sharp';
 import { dataDir as configDataDir } from '../../app/config/dataDir';
+import { sharp } from '../../utils/sharp';
 import { MaintainerrLogger } from '../logging/logs.service';
 
 export interface TemplateRenderContext {
@@ -573,7 +573,7 @@ export class OverlayRenderService {
           layerBuf = await this.applyOpacity(layerBuf, el.opacity);
         }
 
-        // Clamp layer to poster bounds – sharp.composite() throws
+        // Clamp layer to poster bounds - sharp.composite() throws
         // when a composite layer extends beyond the base image.
         const layerMeta = await sharp(layerBuf).metadata();
         let lw = layerMeta.width ?? sw;

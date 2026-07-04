@@ -254,7 +254,7 @@ export abstract class ServarrApi<QueueItemAppendT> extends ExternalApiService {
 
   /**
    * Resolve a tag id for `label`, creating the tag if it doesn't exist yet.
-   * Matching is case-insensitive — *arr stores labels verbatim but treats them
+   * Matching is case-insensitive - *arr stores labels verbatim but treats them
    * case-insensitively, so we never create a duplicate that differs only in case.
    *
    * Race-tolerant: if the create fails (another caller created the same label in
@@ -277,7 +277,7 @@ export abstract class ServarrApi<QueueItemAppendT> extends ExternalApiService {
       return created.id;
     }
 
-    // Create failed (already exists from a concurrent caller, or errored) —
+    // Create failed (already exists from a concurrent caller, or errored) -
     // re-read and return the id if the label is now present.
     return match(await this.getTags());
   };

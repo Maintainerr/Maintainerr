@@ -8,7 +8,7 @@ import {
 } from '../../../utils/mediaTypeUtils'
 
 // Each entry is a request path key + resolved URL string (~200 bytes).
-// 500 entries ≈ 100KB — covers several pages of browsing before eviction.
+// 500 entries ≈ 100KB - covers several pages of browsing before eviction.
 const POSTER_CACHE_MAX_SIZE = 500
 const resolvedPosterImageCache = new Map<string, string>()
 const pendingPosterImageRequests = new Map<string, Promise<string | null>>()

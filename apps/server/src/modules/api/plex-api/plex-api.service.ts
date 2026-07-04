@@ -187,7 +187,7 @@ export class PlexApiService {
     this.plexClient = undefined;
     this.plexCommunityClient = undefined;
     this.plexTvClient = undefined;
-    // Drop the watch-history snapshot too — on a server/token switch it would
+    // Drop the watch-history snapshot too - on a server/token switch it would
     // otherwise serve the previous server's history for up to its TTL.
     this.watchHistoryPrefetch = undefined;
     cacheManager.getCache('plexguid').data.flushAll();
@@ -237,7 +237,7 @@ export class PlexApiService {
       if (settingsPlex.manualMode) {
         this.plexClient = undefined;
         this.logger.warn(
-          'Plex connection failed (manual mode active — skipping re-discovery)',
+          'Plex connection failed (manual mode active - skipping re-discovery)',
         );
         return;
       }
@@ -270,7 +270,7 @@ export class PlexApiService {
 
     if (!storedMachineId) {
       this.logger.debug(
-        'No stored machine ID — cannot identify server for re-discovery',
+        'No stored machine ID - cannot identify server for re-discovery',
       );
       return false;
     }
@@ -306,7 +306,7 @@ export class PlexApiService {
         const ok = await testClient.getStatus();
         if (!ok) continue;
 
-        // Found a working connection — promote it
+        // Found a working connection - promote it
         this.plexClient = new PlexApi({
           hostname: conn.address,
           port: conn.port,
@@ -708,11 +708,11 @@ export class PlexApiService {
    * Show/season history is intentionally NOT rolled up here: the bulk endpoint
    * keys each row by leaf ratingKey, and grouping to show/season would depend on
    * grandparentKey/parentKey, which are undocumented on this endpoint and absent
-   * over some Plex connections — a missing key would silently read as "never
+   * over some Plex connections - a missing key would silently read as "never
    * watched". Show/season queries therefore fall through to the per-item
    * metadataItemID query in getWatchHistory, which Plex rolls up server-side.
    *
-   * On failure the error is logged and swallowed — getWatchHistory falls back
+   * On failure the error is logged and swallowed - getWatchHistory falls back
    * to per-item queries automatically when the map is absent.
    */
   public prefetchWatchHistory(abortSignal?: AbortSignal): Promise<void> {
@@ -763,7 +763,7 @@ export class PlexApiService {
       if (typeof totalSize !== 'number' || records.length < totalSize) {
         this.logger.warn(
           `Watch history prefetch returned an unverifiable result ` +
-            `(received ${records.length}, totalSize ${totalSize ?? 'absent'}) — ` +
+            `(received ${records.length}, totalSize ${totalSize ?? 'absent'}) - ` +
             `falling back to per-item queries.`,
         );
         return;
@@ -784,7 +784,7 @@ export class PlexApiService {
         .data.set(WATCH_HISTORY_BULK_CACHE_KEY, leafMap);
 
       this.logger.log(
-        `Watch history prefetch complete: ${records.length} records — ` +
+        `Watch history prefetch complete: ${records.length} records - ` +
           `${leafMap.size} leaf items.`,
       );
     } catch (error) {
@@ -793,13 +793,13 @@ export class PlexApiService {
       }
 
       this.logger.warn(
-        `Watch history prefetch failed — falling back to per-item queries. Error: ${error}`,
+        `Watch history prefetch failed - falling back to per-item queries. Error: ${error}`,
       );
     }
   }
 
   // The 'plexwatchhistory' cache stores by reference (useClones: false), so
-  // always hand callers a copy — plex-getter sorts these arrays in place.
+  // always hand callers a copy - plex-getter sorts these arrays in place.
   private getBulkWatchHistory(
     mapKey: string,
     itemId: string,
@@ -842,7 +842,7 @@ export class PlexApiService {
           break;
         default: {
           // Untyped callers may pass any kind of ratingKey, so only a non-empty
-          // leaf hit is trusted — a miss falls through to the per-item query.
+          // leaf hit is trusted - a miss falls through to the per-item query.
           const records = this.getBulkWatchHistory(
             WATCH_HISTORY_BULK_CACHE_KEY,
             itemId,
@@ -872,7 +872,7 @@ export class PlexApiService {
    * Returns the items in every active play session. Plex's
    * `/status/sessions` returns only the `MediaContainer` (no `Metadata`) when
    * nothing is playing, so an empty array is the normal "idle" result. Never
-   * cached — sessions are live state. Best-effort: the plexClient retries
+   * cached - sessions are live state. Best-effort: the plexClient retries
    * transient failures (axios-retry, exponential backoff), and a persistent
    * failure returns [] so a session outage degrades to normal handling rather
    * than blocking the run.
@@ -1077,7 +1077,7 @@ export class PlexApiService {
     try {
       // Plex move is per-item. Omitting `after` puts the item at the front;
       // otherwise it lands immediately after `afterId`. Reordering a full
-      // collection is therefore O(n) sequential PUTs — acceptable for the
+      // collection is therefore O(n) sequential PUTs - acceptable for the
       // collection sizes Maintainerr manages.
       const afterQuery = afterId ? `?after=${afterId}` : '';
       await this.plexClient.putQuery({
@@ -1224,7 +1224,7 @@ export class PlexApiService {
     message: string;
   } {
     // lib/plexApi wraps Axios failures in a plain Error with the original
-    // attached as `cause` — unwrap it, or the status and response body
+    // attached as `cause` - unwrap it, or the status and response body
     // (Plex's actual rejection reason) never reach the logs.
     const cause = error instanceof Error ? error.cause : undefined;
     const axiosError = axios.isAxiosError(error)
@@ -1937,7 +1937,7 @@ export class PlexApiService {
    * Confirm a Plex item is still present.
    *
    * `getItemType` swallows every error as `null`, which conflates "gone"
-   * with "I couldn't ask right now" — fine for type lookup, dangerous for
+   * with "I couldn't ask right now" - fine for type lookup, dangerous for
    * cleanup decisions that delete the only restore-from-overlay backup.
    * This variant returns `false` only when Plex explicitly reports 404
    * and rethrows on auth / network / 5xx so callers preserve state.
@@ -2080,7 +2080,7 @@ export class PlexApiService {
 
       const episode = withThumb[Math.floor(Math.random() * withThumb.length)];
       const displayTitle = episode.grandparentTitle
-        ? `${episode.grandparentTitle} — ${episode.title ?? episode.ratingKey}`
+        ? `${episode.grandparentTitle} - ${episode.title ?? episode.ratingKey}`
         : (episode.title ?? String(episode.ratingKey));
 
       return { plexId: String(episode.ratingKey), title: displayTitle };

@@ -369,7 +369,7 @@ describe('PlexSettings', () => {
       valid: false,
       unreachable: true,
       errorMessage:
-        "Couldn't reach plex.tv to verify your credentials — retrying. Your saved token is still in use.",
+        "Couldn't reach plex.tv to verify your credentials - retrying. Your saved token is still in use.",
     }
 
     render(<PlexSettings />)
@@ -386,7 +386,7 @@ describe('PlexSettings', () => {
 
     expect(
       screen.getByText(
-        "Couldn't reach plex.tv to verify your credentials — retrying. Your saved token is still in use.",
+        "Couldn't reach plex.tv to verify your credentials - retrying. Your saved token is still in use.",
       ),
     ).toBeTruthy()
   })
@@ -396,7 +396,7 @@ describe('PlexSettings', () => {
       valid: false,
       unreachable: true,
       errorMessage:
-        "Couldn't reach plex.tv to verify your credentials — retrying. Your saved token is still in use.",
+        "Couldn't reach plex.tv to verify your credentials - retrying. Your saved token is still in use.",
     }
 
     const { rerender } = render(<PlexSettings />)
@@ -404,7 +404,7 @@ describe('PlexSettings', () => {
     await waitFor(() => {
       expect(
         screen.getByText(
-          "Couldn't reach plex.tv to verify your credentials — retrying. Your saved token is still in use.",
+          "Couldn't reach plex.tv to verify your credentials - retrying. Your saved token is still in use.",
         ),
       ).toBeTruthy()
     })
@@ -415,7 +415,7 @@ describe('PlexSettings', () => {
     await waitFor(() => {
       expect(
         screen.queryByText(
-          "Couldn't reach plex.tv to verify your credentials — retrying. Your saved token is still in use.",
+          "Couldn't reach plex.tv to verify your credentials - retrying. Your saved token is still in use.",
         ),
       ).toBeNull()
     })

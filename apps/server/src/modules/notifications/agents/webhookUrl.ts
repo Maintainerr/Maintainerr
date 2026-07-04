@@ -14,9 +14,9 @@ export interface WebhookUrlValidation {
  * notification agent into the way the server leaves the network. On success the
  * normalised URL string is returned for posting.
  *
- * Shared by every agent that posts to an operator-supplied URL — the
+ * Shared by every agent that posts to an operator-supplied URL - the
  * `webhookUrl` agents (webhook, slack, lunasea, discord) and ntfy's server
- * `url` — so the guard stays in one place.
+ * `url` - so the guard stays in one place.
  */
 export function validateWebhookUrl(
   url: string | undefined,

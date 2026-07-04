@@ -66,7 +66,7 @@ export interface Tag {
 }
 
 /**
- * A Radarr/Sonarr history record. `downloadId` is the download-client item id —
+ * A Radarr/Sonarr history record. `downloadId` is the download-client item id -
  * for a torrent client (e.g. qBittorrent) this is the torrent infohash. Only
  * the fields we consume are typed.
  *

@@ -523,7 +523,7 @@ describe('RuleMigrationService', () => {
       expect(result.skippedRules).toBe(1);
       const sectionOne = result.rules.filter((r) => r.section === 1);
       expect(sectionOne).toHaveLength(1);
-      // Inherits the dropped boundary's AND — does NOT keep its own OR.
+      // Inherits the dropped boundary's AND - does NOT keep its own OR.
       expect(sectionOne[0].operator).toBe(RuleOperators.AND);
       // Group's first rule still null.
       expect(result.rules[0].operator).toBeNull();

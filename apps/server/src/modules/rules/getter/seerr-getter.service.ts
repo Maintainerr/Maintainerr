@@ -70,7 +70,7 @@ export class SeerrGetterService {
 
       // releaseDate (movie releaseDate / tv firstAirDate / season|episode
       // airDate) is not carried by the /request list endpoint, so it keeps the
-      // per-item getMovie/getShow/getSeason fallback. Accepted limitation —
+      // per-item getMovie/getShow/getSeason fallback. Accepted limitation -
       // releaseDate rules were not part of #3152.
       if (prop?.name === 'releaseDate') {
         return await this.getReleaseDate(
@@ -83,7 +83,7 @@ export class SeerrGetterService {
 
       // Every other Seerr property derives from the request set. Read the
       // run-scoped request index (one bulk /request sweep, deduped + cached)
-      // instead of a per-item getMovie/getShow — the per-item path rate-limited
+      // instead of a per-item getMovie/getShow - the per-item path rate-limited
       // under whole-library runs and silently degraded matches to near-zero
       // (#3152).
       const requestsForMedia = await this.seerrApi.getRequestsForMedia(tmdbId);
@@ -97,7 +97,7 @@ export class SeerrGetterService {
       // Reconstruct the per-title view the property logic expects. When the
       // title has no request the synthetic mediaInfo carries an empty request
       // list, so the switch yields the definitive "not requested" values
-      // (0 / [] / null) — the core #3152 fix (these items previously
+      // (0 / [] / null) - the core #3152 fix (these items previously
       // rate-limited to null and were skipped).
       const mediaResponse = this.toMediaResponse(requestsForMedia);
       const tvMediaResponse =
@@ -238,7 +238,7 @@ export class SeerrGetterService {
   /**
    * Resolves the Seerr release/air date via the per-item getMovie/getShow/
    * getSeason endpoints. The bulk /request index carries request data, not the
-   * TMDB release/air dates, so this property keeps the per-item fallback —
+   * TMDB release/air dates, so this property keeps the per-item fallback -
    * releaseDate-seeded rules were not part of #3152. A communication failure
    * returns `undefined` (transient skip, mirrors #3125); an untracked title
    * (no mediaInfo) returns `null`, preserving the prior behavior.

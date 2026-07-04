@@ -801,7 +801,7 @@ describe('PlexApiService.prefetchWatchHistory', () => {
     const cacheManager = (await import('../lib/cache')).default;
 
     // A full-looking page with no totalSize: queryAll may have truncated, so the
-    // map must NOT be cached — callers fall back to the per-item query instead.
+    // map must NOT be cached - callers fall back to the per-item query instead.
     const queryAll = jest.fn().mockResolvedValue({
       MediaContainer: {
         Metadata: [
@@ -1076,7 +1076,7 @@ describe('PlexApiService.getWatchHistory bulk map', () => {
 
   it('falls through to per-item query for untyped callers on a leaf-map miss', async () => {
     // Untyped callers may pass show or season ratingKeys, which are never in
-    // the leaf map — a miss must not be reported as confirmed-empty history.
+    // the leaf map - a miss must not be reported as confirmed-empty history.
     const cacheManager = (await import('../lib/cache')).default;
     cacheManager
       .getCache('plexwatchhistory')

@@ -56,9 +56,7 @@ export function useMediaServerType() {
   const { data: settings, isLoading } = useSettings()
 
   const mediaServerType = settings?.media_server_type as
-    | MediaServerType
-    | null
-    | undefined
+    MediaServerType | null | undefined
   const isSetupComplete = hasCompletedMediaServerSetup(settings)
 
   return {

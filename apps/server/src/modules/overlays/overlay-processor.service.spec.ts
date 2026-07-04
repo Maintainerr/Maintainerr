@@ -991,9 +991,9 @@ describe('OverlayProcessorService', () => {
 
     await service.revertCollection(42);
 
-    // Backup file must not be deleted on failure — we still need it for retry.
+    // Backup file must not be deleted on failure - we still need it for retry.
     expect(deleteSpy).not.toHaveBeenCalled();
-    // State must not be cleared on failure — next run reattempts the revert.
+    // State must not be cleared on failure - next run reattempts the revert.
     expect(stateService.removeState).not.toHaveBeenCalled();
     // No reverted event should be emitted because nothing was actually reverted.
     expect(eventEmitter.emit).not.toHaveBeenCalled();
@@ -1038,10 +1038,10 @@ describe('OverlayProcessorService', () => {
     await service.revertCollection(42);
 
     expect(mediaServer.itemExists).toHaveBeenCalledWith('media-1');
-    // Skip the upload — Plex would close the connection mid-stream (EPIPE)
+    // Skip the upload - Plex would close the connection mid-stream (EPIPE)
     // for a deleted item.
     expect(provider.uploadImage).not.toHaveBeenCalled();
-    // Stale state and the backup are no longer useful — clear them so we
+    // Stale state and the backup are no longer useful - clear them so we
     // don't retry forever and pin a deleted item's bitmap on disk.
     expect(deleteSpy).toHaveBeenCalledWith('media-1');
     expect(stateService.removeState).toHaveBeenCalledWith(42, 'media-1');

@@ -5,7 +5,7 @@
 //
 // Idempotent: each Fider post embeds an HTML-comment marker tying it back to
 // the source issue. The next run scans every Fider post (any status, both
-// views) for those markers and skips anything already mirrored — even if the
+// views) for those markers and skips anything already mirrored - even if the
 // GitHub issue was reopened or relabelled in the meantime.
 //
 // DRY_RUN defaults to true for safety when invoked outside the workflow; the
@@ -58,7 +58,7 @@ const ghApi = async (path, init = {}) => {
   return text ? JSON.parse(text) : null;
 };
 
-// Same parser as fider-invite-codeowners.mjs — kept inline rather than shared
+// Same parser as fider-invite-codeowners.mjs - kept inline rather than shared
 // because this is a one-off and shouldn't add surface area to fider-shared.
 const parseCodeowners = () => {
   const text = readFileSync(CODEOWNERS_PATH, 'utf8');
@@ -127,7 +127,7 @@ const buildFiderDescription = (issue) => {
 };
 
 const buildClosingComment = (fiderUrl) =>
-  `Thanks for the request! Feature ideas now live on the Maintainerr feature board, which is the proper place for them:\n\n${fiderUrl}\n\nHead over to follow progress, vote, and join the discussion — community votes help us prioritise what to build next. Closing here; this request continues on Fider.`;
+  `Thanks for the request! Feature ideas now live on the Maintainerr feature board, which is the proper place for them:\n\n${fiderUrl}\n\nHead over to follow progress, vote, and join the discussion - community votes help us prioritise what to build next. Closing here; this request continues on Fider.`;
 
 const mirrorOne = async (issue) => {
   const issueRef = `${GITHUB_REPOSITORY}#${issue.number}`;
@@ -143,7 +143,7 @@ const mirrorOne = async (issue) => {
     body: JSON.stringify({ title: issue.title, description }),
   });
   // Fider returns at minimum { id }; some versions also include number/slug.
-  // Fall through gracefully — `/posts/N` redirects to the canonical URL so an
+  // Fall through gracefully - `/posts/N` redirects to the canonical URL so an
   // empty slug is fine.
   const postNumber = created?.number ?? created?.id;
   if (!postNumber) {

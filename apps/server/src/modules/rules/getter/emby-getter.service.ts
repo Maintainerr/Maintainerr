@@ -25,7 +25,7 @@ import {
  * Implements property getters for Emby media server.
  * Mirrors PlexGetterService functionality for Emby. Emby and Jellyfin share
  * the same .NET BoxSet backend, so the quirks below are inherited from that
- * lineage and largely match the Jellyfin getter — they're not Emby-specific.
+ * lineage and largely match the Jellyfin getter - they're not Emby-specific.
  *
  * Key differences from Plex:
  * - Watch history requires iterating over all users (no central endpoint)
@@ -290,7 +290,7 @@ export class EmbyGetterService {
         }
 
         // At season/show level this returns the UNION of users that watched
-        // any descendant episode — not the intersection. A user who watched
+        // any descendant episode - not the intersection. A user who watched
         // 3/6 episodes is included. This is the documented behaviour and is
         // covered by the #2559 regression test in
         // jellyfin-getter.service.spec.ts. Use `sw_allEpisodesSeenBy` when
@@ -421,7 +421,7 @@ export class EmbyGetterService {
           return communityRating?.value ?? null;
         }
 
-        // Smart collection properties — Emby has no native smart collections
+        // Smart collection properties - Emby has no native smart collections
         // (TheMovieDb-driven "Automatic Creation of Collections" is metadata
         // grouping, not filter rules; the third-party Smart Playlists plugin
         // is out of scope here). Fall back to normal collection count/names,
@@ -604,7 +604,7 @@ export class EmbyGetterService {
    * show or season, or null when nothing has been watched. Emby does not
    * expose a watched timestamp on the parent item, so the only way to derive
    * a "last watched" signal for shows/seasons is to walk the children and
-   * take the max. This is an aggregate — it is not the view date of the
+   * take the max. This is an aggregate - it is not the view date of the
    * highest-numbered episode, the way the Plex/Tautulli `sw_lastWatched`
    * getters compute it. Used by the `lastViewedAt` rule only.
    */

@@ -332,7 +332,7 @@ describe('SeerrApiService', () => {
       await expect(service.getRequestsForMedia(100)).resolves.toHaveLength(2);
       await expect(service.getRequestsForMedia(200)).resolves.toHaveLength(1);
       await expect(service.getRequestsForMedia(999)).resolves.toEqual([]);
-      // One sweep total — later lookups are served from the cached index.
+      // One sweep total - later lookups are served from the cached index.
       expect(getWithoutCache).toHaveBeenCalledTimes(1);
 
       // Returned values are deep copies: neither reshaping the array nor

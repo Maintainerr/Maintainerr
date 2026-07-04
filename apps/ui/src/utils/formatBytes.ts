@@ -47,6 +47,6 @@ export const getPercentValue = (
 
 export const formatPercent = (used: number, total: number): string => {
   const percent = getPercentValue(used, total)
-  if (percent === null) return '—'
+  if (percent === null) return '-'
   return `${percent.toFixed(1)}%`
 }

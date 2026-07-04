@@ -679,6 +679,20 @@ export class RuleConstants {
           mediaType: MediaType.MOVIE,
           type: RuleType.NUMBER,
         },
+        {
+          id: 25,
+          name: 'movieTitle',
+          humanName: 'Movie title',
+          mediaType: MediaType.MOVIE,
+          type: RuleType.TEXT,
+        },
+        {
+          id: 26,
+          name: 'movieId',
+          humanName: 'Movie ID',
+          mediaType: MediaType.MOVIE,
+          type: RuleType.NUMBER,
+        },
       ],
     },
     {
@@ -928,6 +942,38 @@ export class RuleConstants {
           mediaType: MediaType.SHOW,
           type: RuleType.NUMBER,
           showType: ['show', 'season', 'episode'],
+        },
+        {
+          id: 32,
+          name: 'episodeFileRank',
+          humanName: 'Episode position by air date (1 = latest)',
+          mediaType: MediaType.SHOW,
+          type: RuleType.NUMBER,
+          showType: ['episode'],
+        },
+        {
+          id: 33,
+          name: 'seriesTitle',
+          humanName: 'Series title',
+          mediaType: MediaType.SHOW,
+          type: RuleType.TEXT,
+          showType: ['show', 'season', 'episode'],
+        },
+        {
+          id: 34,
+          name: 'seriesId',
+          humanName: 'Series ID',
+          mediaType: MediaType.SHOW,
+          type: RuleType.NUMBER,
+          showType: ['show', 'season', 'episode'],
+        },
+        {
+          id: 35,
+          name: 'seasonFileRank',
+          humanName: 'Season position by air date (1 = latest)',
+          mediaType: MediaType.SHOW,
+          type: RuleType.NUMBER,
+          showType: ['season'],
         },
       ],
     },
@@ -1300,7 +1346,7 @@ export class RuleConstants {
           type: RuleType.NUMBER,
           showType: ['episode'],
         },
-        // Rating properties — sourced from Jellyfin's CommunityRating and CriticRating.
+        // Rating properties - sourced from Jellyfin's CommunityRating and CriticRating.
         // CommunityRating is provider-dependent, commonly TMDb and sometimes IMDb.
         // CriticRating is typically the Rotten Tomatoes Tomatometer via OMDb.
         // IDs match Plex so rules migrate without property ID remapping.
@@ -1415,7 +1461,7 @@ export class RuleConstants {
       // configured and Jellyfin is the active server (see RulesService).
       //
       // A Streamystats "watchlist" is a user-created curated list, and only
-      // PUBLIC lists are reachable with Maintainerr's Jellyfin API key — see
+      // PUBLIC lists are reachable with Maintainerr's Jellyfin API key - see
       // the StreamystatsWatchlistMembership contract for why. These properties
       // act as a "users curated this" protection signal.
       id: Application.STREAMYSTATS,
@@ -1439,7 +1485,7 @@ export class RuleConstants {
         // Parent-inclusive variants: a Streamystats list holds the show item ID,
         // not its seasons/episodes, so the item-only props above never match a
         // watchlisted show when evaluated below show level. These roll the
-        // parent show (and season) in. Show-only and season/episode-only — a
+        // parent show (and season) in. Show-only and season/episode-only - a
         // show is the top level (no parent) and a movie has no parent show.
         {
           id: 2,

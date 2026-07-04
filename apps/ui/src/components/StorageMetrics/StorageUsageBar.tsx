@@ -54,7 +54,7 @@ const StorageUsageBar: React.FC<StorageUsageBarProps> = ({
       </div>
       {!accurateTotalSpace ? (
         <p className="mt-1 text-[11px] text-zinc-500">
-          Total size not reported by this instance — only free space is
+          Total size not reported by this instance - only free space is
           accurate.
         </p>
       ) : null}

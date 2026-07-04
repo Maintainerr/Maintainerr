@@ -102,7 +102,7 @@ export class RadarrGetterService {
 
       if (movieResponse === undefined) {
         // The Radarr lookup itself failed (or every candidate's lookup
-        // returned undefined) — could be a transient outage. Fail closed
+        // returned undefined) - could be a transient outage. Fail closed
         // rather than returning null (definitive absence), which would drop
         // the item from the collection on a transient blip. (#3125)
         return undefined;
@@ -158,6 +158,12 @@ export class RadarrGetterService {
             return (await radarrApiClient.getTags())
               ?.filter((el) => movieTags.includes(el.id))
               .map((el) => el.label);
+          }
+          case 'movieTitle': {
+            return movieResponse.title ?? null;
+          }
+          case 'movieId': {
+            return movieResponse.id;
           }
           case 'profile': {
             const movieProfile = movieResponse.qualityProfileId;

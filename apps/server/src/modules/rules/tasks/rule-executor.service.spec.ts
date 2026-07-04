@@ -319,7 +319,7 @@ describe('RuleExecutorService', () => {
     expect(collectionService.addToCollection).not.toHaveBeenCalled();
     expect(collectionService.removeFromCollection).not.toHaveBeenCalled();
     expect(logger.debug).toHaveBeenCalledWith(
-      "Skipping media server sync for 'Test Collection' — no media server collection exists because no items currently match the rule.",
+      "Skipping media server sync for 'Test Collection' - no media server collection exists because no items currently match the rule.",
     );
   });
 
@@ -1331,7 +1331,7 @@ describe('RuleExecutorService', () => {
     collectionService.getCollectionMedia.mockResolvedValue([] as any);
     rulesService.getExclusions.mockResolvedValue([
       // parent=showId mirrors what setExclusion writes when the AddModal is
-      // opened from a show overview — the regression hinges on this shape.
+      // opened from a show overview - the regression hinges on this shape.
       { mediaServerId: 'ep-1', parent: 'show-1', type: 'episode' },
     ] as any);
 
@@ -1731,7 +1731,7 @@ describe('RuleExecutorService', () => {
         .mockResolvedValue(undefined);
 
       // Abort during the pre-evaluation cache reset, i.e. after the top-level
-      // abort check but before the prefetch — so only the pre-prefetch check
+      // abort check but before the prefetch - so only the pre-prefetch check
       // can stop the sweep.
       const abortController = new AbortController();
       rulesService.resetCacheIfGroupUsesRuleThatRequiresIt.mockImplementation(
