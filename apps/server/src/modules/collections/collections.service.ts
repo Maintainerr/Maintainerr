@@ -2012,7 +2012,16 @@ export class CollectionsService {
         // the collection. Only claim the library is gone when we positively
         // fetched the library list and it's absent; treat an empty/failed
         // fetch as inconclusive so a transient blip never mislabels it.
-        const libraries = (await mediaServer.getLibraries()) ?? [];
+        let libraries: Awaited<ReturnType<typeof mediaServer.getLibraries>> =
+          [];
+        try {
+          libraries = (await mediaServer.getLibraries()) ?? [];
+        } catch (error) {
+          // A throwing fetch is inconclusive too - never let a transient blip
+          // mislabel the library as missing; fall through to the neutral
+          // "will be recreated" message.
+          this.logger.debug(error);
+        }
         const libraryMissing =
           !!collection.libraryId &&
           libraries.length > 0 &&
