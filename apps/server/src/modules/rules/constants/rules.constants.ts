@@ -679,6 +679,20 @@ export class RuleConstants {
           mediaType: MediaType.MOVIE,
           type: RuleType.NUMBER,
         },
+        {
+          id: 25,
+          name: 'movieTitle',
+          humanName: 'Movie title',
+          mediaType: MediaType.MOVIE,
+          type: RuleType.TEXT,
+        },
+        {
+          id: 26,
+          name: 'movieId',
+          humanName: 'Movie ID',
+          mediaType: MediaType.MOVIE,
+          type: RuleType.NUMBER,
+        },
       ],
     },
     {
