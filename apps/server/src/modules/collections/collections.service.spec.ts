@@ -539,6 +539,33 @@ describe('CollectionsService', () => {
     );
   });
 
+  // A transient failure to fetch the library list must not abort the reconcile
+  // or mislabel the library as missing - clear the stale link with the neutral
+  // auto-create message, exactly like an empty-but-valid library.
+  it('treats a throwing library fetch as inconclusive and clears the link neutrally', async () => {
+    const collection = createCollection({
+      id: 31,
+      mediaServerId: null,
+      manualCollection: false,
+      title: 'Transient Library Blip',
+      libraryId: 'library-1',
+    });
+
+    mediaServer.getCollection.mockResolvedValue(undefined);
+    mediaServer.getLibraries.mockRejectedValue(new Error('network blip'));
+    collectionRepo.save.mockImplementation(async (c) => c as Collection);
+    jest
+      .spyOn(service as any, 'findMediaServerCollection')
+      .mockResolvedValue(undefined);
+
+    const result = await service.checkAutomaticMediaServerLink(collection);
+
+    expect(result.mediaServerId).toBeNull();
+    expect(logger.debug).not.toHaveBeenCalledWith(
+      expect.stringContaining('no longer exists on the media server'),
+    );
+  });
+
   it('repopulates a shared empty automatic collection from local rule-owned items', async () => {
     const collection = createCollection({
       id: 13,

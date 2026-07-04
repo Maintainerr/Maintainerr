@@ -17,7 +17,11 @@ import * as dateFnsLocales from 'date-fns/locale';
 import * as fs from 'fs';
 import * as path from 'path';
 import { dataDir as configDataDir } from '../../app/config/dataDir';
-import { sharp } from '../../utils/sharp';
+import {
+  isSharpAvailable,
+  sharp,
+  SHARP_UNAVAILABLE_MESSAGE,
+} from '../../utils/sharp';
 import { MaintainerrLogger } from '../logging/logs.service';
 
 export interface TemplateRenderContext {
@@ -330,6 +334,9 @@ export class OverlayRenderService {
     posterBuffer: Buffer,
     opts: OverlayRenderOptions,
   ): Promise<OverlayResult> {
+    if (!isSharpAvailable) {
+      throw new Error(SHARP_UNAVAILABLE_MESSAGE);
+    }
     const meta = await sharp(posterBuffer).metadata();
     const imgW = meta.width!;
     const imgH = meta.height!;
@@ -508,6 +515,9 @@ export class OverlayRenderService {
     canvasHeight: number,
     context: TemplateRenderContext,
   ): Promise<OverlayResult> {
+    if (!isSharpAvailable) {
+      throw new Error(SHARP_UNAVAILABLE_MESSAGE);
+    }
     const meta = await sharp(posterBuffer).metadata();
     const imgW = meta.width!;
     const imgH = meta.height!;
