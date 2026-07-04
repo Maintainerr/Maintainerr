@@ -440,11 +440,11 @@ function ImageProperties({
         onSelect={(name) => onChange({ ...el, imagePath: name })}
         onUpload={onUploadImage}
         accept={OVERLAY_IMAGE_ACCEPT}
-        uploadTitle={`Upload image (${formatList} — up to ${IMAGE_UPLOAD_MAX_LABEL})`}
+        uploadTitle={`Upload image (${formatList} - up to ${IMAGE_UPLOAD_MAX_LABEL})`}
         placeholder="Select image..."
       />
       <p className="text-[10px] text-zinc-500">
-        {formatList} — up to {IMAGE_UPLOAD_MAX_LABEL}.
+        {formatList} - up to {IMAGE_UPLOAD_MAX_LABEL}.
       </p>
     </FieldGroup>
   )

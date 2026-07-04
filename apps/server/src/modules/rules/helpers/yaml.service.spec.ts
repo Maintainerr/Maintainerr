@@ -19,7 +19,7 @@ describe('RuleYamlService', () => {
   });
 
   // A two-section rule whose section-1 boundary uses an explicit AND operator.
-  // YAML imports persist operators numerically, so AND is the number 0 — which
+  // YAML imports persist operators numerically, so AND is the number 0 - which
   // is falsy and used to be dropped on export.
   const twoSectionRules = (sectionOperator: RuleDto['operator']): RuleDto[] => [
     {

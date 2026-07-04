@@ -31,8 +31,8 @@ const dataDir =
     ? '/opt/data'
     : path.join(__dirname, '../../../../../data');
 
-const sanitizeLogFormat = winston.format(
-  (info): TransformableInfo => sanitizeLogInfo(info),
+const sanitizeLogFormat = winston.format((info): TransformableInfo =>
+  sanitizeLogInfo(info),
 );
 
 @Global()

@@ -109,8 +109,8 @@ const featCommits = () => {
 
 // A `fix:` commit is worth a docs second-look when it touches a doc-worthy
 // surface. Rather than an allowlist that silently misses newly added modules,
-// we flag everything under these roots — the whole UI and every server
-// module — and subtract a small denylist of internal-only surfaces below.
+// we flag everything under these roots - the whole UI and every server
+// module - and subtract a small denylist of internal-only surfaces below.
 const FIX_PATH_ROOTS = [
   "apps/ui/",
   "apps/server/src/modules/",
@@ -119,13 +119,13 @@ const FIX_PATH_ROOTS = [
 
 // Internal-only surfaces with no user- or API-facing behavior. Fixes that
 // touch *only* these would add noise, so they're subtracted from the roots
-// above. Keep this list tight — when in doubt, leave a module flaggable.
+// above. Keep this list tight - when in doubt, leave a module flaggable.
 const FIX_PATH_DENYLIST = [
   "apps/server/src/modules/events/",
   "apps/server/src/modules/logging/",
 ];
 
-// Controllers are an HTTP surface wherever they live — always doc-worthy,
+// Controllers are an HTTP surface wherever they live - always doc-worthy,
 // even under a denylisted directory.
 const USER_VISIBLE_FIX_PATH_SUFFIXES = [".controller.ts"];
 
@@ -170,7 +170,7 @@ const fixCommits = () => {
 
 // Items a human has explicitly tagged for documentation. Anyone can apply the
 // `documentation` label to an issue or PR; the drift flow then picks it up so
-// it isn't lost. Needs a GitHub token + `gh` on PATH — degrades gracefully
+// it isn't lost. Needs a GitHub token + `gh` on PATH - degrades gracefully
 // when run locally without either.
 const ghJson = (args) => {
   try {
@@ -237,7 +237,7 @@ lines.push("<!-- maintainerr-docs-drift -->");
 lines.push("## 📚 Docs drift report");
 lines.push("");
 lines.push(
-  `Comparing \`${baseRef}\` → \`HEAD\` against [Maintainerr_docs](https://github.com/Maintainerr/Maintainerr_docs). Informational only — maintainers decide what needs doc updates before release.`,
+  `Comparing \`${baseRef}\` → \`HEAD\` against [Maintainerr_docs](https://github.com/Maintainerr/Maintainerr_docs). Informational only - maintainers decide what needs doc updates before release.`,
 );
 lines.push("");
 
@@ -330,7 +330,7 @@ if (controllers.length) {
   for (const f of controllers) lines.push(`- [ ] \`${f}\``);
   lines.push("");
   lines.push(
-    "_New controllers almost always mean new routes — check `docs/API.md` and the OpenAPI spec._",
+    "_New controllers almost always mean new routes - check `docs/API.md` and the OpenAPI spec._",
   );
 } else {
   lines.push("_No new controllers._");
@@ -357,7 +357,7 @@ if (behavioralFixes.length) {
   }
   lines.push("");
   lines.push(
-    "_`fix:` commits that touched a doc-worthy surface — the UI, any server module except internal-only `events`/`logging`, any controller, or the README. Worth scanning to decide whether observable behavior changed enough to warrant a docs note._",
+    "_`fix:` commits that touched a doc-worthy surface - the UI, any server module except internal-only `events`/`logging`, any controller, or the README. Worth scanning to decide whether observable behavior changed enough to warrant a docs note._",
   );
 } else {
   lines.push("_No user-facing `fix:` commits detected._");
@@ -368,7 +368,7 @@ lines.push("### Documentation-labeled issues & PRs");
 lines.push("");
 if (!docLabeled.available) {
   lines.push(
-    "_Skipped — no GitHub token available to query the `documentation` label._",
+    "_Skipped - no GitHub token available to query the `documentation` label._",
   );
 } else if (!docLabeled.prs.length && !docLabeled.issues.length) {
   lines.push(
@@ -380,7 +380,7 @@ if (!docLabeled.available) {
       `**Merged PRs labeled \`documentation\` (${docLabeled.prs.length}):**`,
     );
     for (const pr of docLabeled.prs) {
-      lines.push(`- [ ] [#${pr.number}](${pr.url}) — ${pr.title}`);
+      lines.push(`- [ ] [#${pr.number}](${pr.url}) - ${pr.title}`);
     }
     lines.push("");
   }
@@ -389,12 +389,12 @@ if (!docLabeled.available) {
       `**Open issues labeled \`documentation\` (${docLabeled.issues.length}):**`,
     );
     for (const iss of docLabeled.issues) {
-      lines.push(`- [ ] [#${iss.number}](${iss.url}) — ${iss.title}`);
+      lines.push(`- [ ] [#${iss.number}](${iss.url}) - ${iss.title}`);
     }
     lines.push("");
   }
   lines.push(
-    "_Manually tagged with the `documentation` label — confirm each is reflected in Maintainerr_docs before release._",
+    "_Manually tagged with the `documentation` label - confirm each is reflected in Maintainerr_docs before release._",
   );
 }
 lines.push("");

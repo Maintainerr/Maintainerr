@@ -51,7 +51,7 @@ describe('PlexTvApi.validateToken', () => {
   });
 
   // plex.tv returns 422 {"error":"Invalid token"} for a bad token on this
-  // endpoint (verified live) — not 401 — so 422 must count as invalid too.
+  // endpoint (verified live) - not 401 - so 422 must count as invalid too.
   it.each([422, 401, 403])(
     'returns invalid when plex.tv answers %i',
     async (status) => {

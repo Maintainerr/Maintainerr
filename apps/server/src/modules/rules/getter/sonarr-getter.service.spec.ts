@@ -250,7 +250,7 @@ describe('SonarrGetterService', () => {
     // concurrently, all sharing ONE memoized `showResponse.seasons` array via the
     // run-scoped ArrLookupCache. The latest-aired-season scan must not mutate that
     // shared array, or evaluating one season corrupts the answer for the others.
-    // (Test Media passes no cache, so it never hit this — hence the run/test split.)
+    // (Test Media passes no cache, so it never hit this - hence the run/test split.)
     describe('shared ArrLookupCache across show seasons (#3153)', () => {
       it.each([
         { type: 'season', title: 'SEASONS' },
@@ -1068,11 +1068,701 @@ describe('SonarrGetterService', () => {
 
       const response = await callGet(7);
 
-      // Returns undefined (comparator skips) — must NOT serve metadata's
+      // Returns undefined (comparator skips) - must NOT serve metadata's
       // 'ended: true' while Sonarr is unreachable, since that would change
       // collection membership during an outage.
       expect(response).toBeUndefined();
       expect(metadataService.getDetails).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('seriesTitle', () => {
+    const callSeriesTitle = async (
+      series: SonarrSeries | undefined,
+      type: MediaItemType,
+    ) => {
+      const collectionMedia = createCollectionMedia(type);
+      collectionMedia.collection.sonarrSettingsId = 1;
+
+      mockMediaServer.getMetadata.mockResolvedValue(
+        createMediaItem({ type: 'show' }),
+      );
+
+      mockSonarrApi(series);
+
+      return sonarrGetterService.get(
+        33,
+        createMediaItem({
+          type,
+          ...(type === 'episode'
+            ? { grandparentId: 'show-1', parentIndex: 1, index: 1 }
+            : {}),
+        }),
+        type,
+        createRulesDto({
+          collection: collectionMedia.collection,
+          dataType: type,
+        }),
+      );
+    };
+
+    it.each(['show', 'season', 'episode'] as const)(
+      'returns the Sonarr series title for %s scope',
+      async (type) => {
+        const series = createSonarrSeries({ title: 'Sample Series' });
+        const response = await callSeriesTitle(series, type);
+        expect(response).toBe('Sample Series');
+      },
+    );
+
+    it('returns null when Sonarr confirms the series is not tracked', async () => {
+      // A series object without an id is the "confirmed not in Sonarr" shape
+      // that `resolveSeries` translates to a present-but-empty record; it
+      // routes the getter down the not-tracked path (no metadata fallback for
+      // seriesTitle), which should surface null, not undefined.
+      const response = await callSeriesTitle(
+        createSonarrSeries({ id: undefined as any, title: undefined as any }),
+        'episode',
+      );
+      expect(response).toBeNull();
+    });
+
+    it('returns null when the tracked series has no title', async () => {
+      const response = await callSeriesTitle(
+        createSonarrSeries({ title: undefined as any }),
+        'episode',
+      );
+      expect(response).toBeNull();
+    });
+  });
+
+  describe('seriesId', () => {
+    const callSeriesId = async (
+      series: SonarrSeries | undefined,
+      type: MediaItemType,
+    ) => {
+      const collectionMedia = createCollectionMedia(type);
+      collectionMedia.collection.sonarrSettingsId = 1;
+
+      mockMediaServer.getMetadata.mockResolvedValue(
+        createMediaItem({ type: 'show' }),
+      );
+
+      mockSonarrApi(series);
+
+      return sonarrGetterService.get(
+        34,
+        createMediaItem({
+          type,
+          ...(type === 'episode'
+            ? { grandparentId: 'show-1', parentIndex: 1, index: 1 }
+            : {}),
+        }),
+        type,
+        createRulesDto({
+          collection: collectionMedia.collection,
+          dataType: type,
+        }),
+      );
+    };
+
+    it.each(['show', 'season', 'episode'] as const)(
+      'returns the Sonarr series id for %s scope',
+      async (type) => {
+        const series = createSonarrSeries({ id: 12345 });
+        const response = await callSeriesId(series, type);
+        expect(response).toBe(12345);
+      },
+    );
+
+    it('returns null when Sonarr confirms the series is not tracked', async () => {
+      const response = await callSeriesId(
+        createSonarrSeries({ id: undefined as any }),
+        'episode',
+      );
+      expect(response).toBeNull();
+    });
+  });
+
+  describe('episodeFileRank', () => {
+    const callRank = async (
+      series: SonarrSeries,
+      episodes: ReturnType<typeof createSonarrEpisode>[],
+      target: { seasonNumber: number; episodeNumber: number },
+      options: { arrLookupCache?: ArrLookupCache } = {},
+    ) => {
+      const collectionMedia = createCollectionMedia('episode');
+      collectionMedia.collection.sonarrSettingsId = 1;
+
+      mockMediaServer.getMetadata.mockResolvedValue(
+        createMediaItem({ type: 'show' }),
+      );
+
+      const mockedSonarrApi = mockSonarrApi(series);
+      jest.spyOn(mockedSonarrApi, 'getEpisodes').mockResolvedValue(episodes);
+
+      const response = await sonarrGetterService.get(
+        32,
+        createMediaItem({
+          type: 'episode',
+          index: target.episodeNumber,
+          parentIndex: target.seasonNumber,
+          parentId: `season-${target.seasonNumber}`,
+          grandparentId: 'show-1',
+        }),
+        'episode',
+        createRulesDto({
+          collection: collectionMedia.collection,
+          dataType: 'episode',
+        }),
+        undefined,
+        options.arrLookupCache,
+      );
+
+      return { response, mockedSonarrApi };
+    };
+
+    it('ranks an aired episode within its show by air date (newest = 1)', async () => {
+      jest.useFakeTimers().setSystemTime(new Date('2026-06-13T12:00:00Z'));
+      const series = createSonarrSeries({ id: 7, seasons: [] });
+      const episodes = [
+        createSonarrEpisode({
+          seriesId: series.id,
+          seasonNumber: 1,
+          episodeNumber: 1,
+          airDateUtc: '2026-06-09T00:00:00Z',
+          hasFile: true,
+        }),
+        createSonarrEpisode({
+          seriesId: series.id,
+          seasonNumber: 1,
+          episodeNumber: 2,
+          airDateUtc: '2026-06-10T00:00:00Z',
+          hasFile: true,
+        }),
+        createSonarrEpisode({
+          seriesId: series.id,
+          seasonNumber: 1,
+          episodeNumber: 3,
+          airDateUtc: '2026-06-11T00:00:00Z',
+          hasFile: true,
+        }),
+        createSonarrEpisode({
+          seriesId: series.id,
+          seasonNumber: 1,
+          episodeNumber: 4,
+          airDateUtc: '2026-06-12T00:00:00Z',
+          hasFile: true,
+        }),
+      ];
+
+      const { response } = await callRank(series, episodes, {
+        seasonNumber: 1,
+        episodeNumber: 3,
+      });
+
+      // Episode 4 is rank 1, 3 is rank 2, 2 is rank 3, 1 is rank 4.
+      expect(response).toBe(2);
+    });
+
+    it('returns 1 for the only aired episode of a single-episode show', async () => {
+      jest.useFakeTimers().setSystemTime(new Date('2026-06-13T12:00:00Z'));
+      const series = createSonarrSeries({ id: 7, seasons: [] });
+      const episodes = [
+        createSonarrEpisode({
+          seriesId: series.id,
+          seasonNumber: 1,
+          episodeNumber: 1,
+          airDateUtc: '2026-06-12T00:00:00Z',
+          hasFile: true,
+        }),
+      ];
+
+      const { response } = await callRank(series, episodes, {
+        seasonNumber: 1,
+        episodeNumber: 1,
+      });
+
+      expect(response).toBe(1);
+    });
+
+    it('returns null when the rank pool is empty (new series with no aired episodes)', async () => {
+      jest.useFakeTimers().setSystemTime(new Date('2026-06-13T12:00:00Z'));
+      const series = createSonarrSeries({ id: 7, seasons: [] });
+
+      const { response } = await callRank(series, [], {
+        seasonNumber: 1,
+        episodeNumber: 1,
+      });
+
+      expect(response).toBeNull();
+    });
+
+    it('returns null when every episode is still unaired (airDateUtc in the future)', async () => {
+      jest.useFakeTimers().setSystemTime(new Date('2026-06-13T12:00:00Z'));
+      const series = createSonarrSeries({ id: 7, seasons: [] });
+      const episodes = [
+        createSonarrEpisode({
+          seriesId: series.id,
+          seasonNumber: 1,
+          episodeNumber: 1,
+          airDateUtc: '2026-07-01T00:00:00Z',
+          hasFile: true,
+        }),
+        createSonarrEpisode({
+          seriesId: series.id,
+          seasonNumber: 1,
+          episodeNumber: 2,
+          airDateUtc: '2026-07-02T00:00:00Z',
+          hasFile: true,
+        }),
+      ];
+
+      const { response } = await callRank(series, episodes, {
+        seasonNumber: 1,
+        episodeNumber: 1,
+      });
+
+      expect(response).toBeNull();
+    });
+
+    it('excludes episodes whose airDateUtc is the Sonarr null-date sentinel (0001-01-01T00:00:00Z)', async () => {
+      jest.useFakeTimers().setSystemTime(new Date('2026-06-13T12:00:00Z'));
+      const series = createSonarrSeries({ id: 7, seasons: [] });
+      const episodes = [
+        // The sentinel parses to a finite, very-negative epoch ms and would
+        // otherwise sneak into the pool with a bogus year-1 air date.
+        createSonarrEpisode({
+          seriesId: series.id,
+          seasonNumber: 1,
+          episodeNumber: 1,
+          airDateUtc: '0001-01-01T00:00:00Z',
+          hasFile: true,
+        }),
+        createSonarrEpisode({
+          seriesId: series.id,
+          seasonNumber: 1,
+          episodeNumber: 2,
+          airDateUtc: '2026-06-11T00:00:00Z',
+          hasFile: true,
+        }),
+      ];
+
+      const sentinel = await callRank(series, episodes, {
+        seasonNumber: 1,
+        episodeNumber: 1,
+      });
+      expect(sentinel.response).toBeNull();
+
+      const aired = await callRank(series, episodes, {
+        seasonNumber: 1,
+        episodeNumber: 2,
+      });
+      expect(aired.response).toBe(1);
+    });
+
+    it('returns null for an evaluated specials episode (season 0 excluded from pool)', async () => {
+      jest.useFakeTimers().setSystemTime(new Date('2026-06-13T12:00:00Z'));
+      const series = createSonarrSeries({ id: 7, seasons: [] });
+      const episodes = [
+        createSonarrEpisode({
+          seriesId: series.id,
+          seasonNumber: 0,
+          episodeNumber: 1,
+          airDateUtc: '2026-06-10T00:00:00Z',
+          hasFile: true,
+        }),
+        createSonarrEpisode({
+          seriesId: series.id,
+          seasonNumber: 0,
+          episodeNumber: 2,
+          airDateUtc: '2026-06-11T00:00:00Z',
+          hasFile: true,
+        }),
+      ];
+
+      const { response } = await callRank(series, episodes, {
+        seasonNumber: 0,
+        episodeNumber: 1,
+      });
+
+      expect(response).toBeNull();
+    });
+
+    it('tiebreaks same-day air dates by (seasonNumber, episodeNumber) descending', async () => {
+      jest.useFakeTimers().setSystemTime(new Date('2026-06-13T12:00:00Z'));
+      const series = createSonarrSeries({ id: 7, seasons: [] });
+      const sharedDate = '2026-06-12T00:00:00Z';
+      const episodes = [
+        createSonarrEpisode({
+          seriesId: series.id,
+          seasonNumber: 1,
+          episodeNumber: 9,
+          airDateUtc: sharedDate,
+          hasFile: true,
+        }),
+        createSonarrEpisode({
+          seriesId: series.id,
+          seasonNumber: 1,
+          episodeNumber: 10,
+          airDateUtc: sharedDate,
+          hasFile: true,
+        }),
+      ];
+
+      const resultE10 = await callRank(series, episodes, {
+        seasonNumber: 1,
+        episodeNumber: 10,
+      });
+      expect(resultE10.response).toBe(1);
+
+      const resultE9 = await callRank(series, episodes, {
+        seasonNumber: 1,
+        episodeNumber: 9,
+      });
+      expect(resultE9.response).toBe(2);
+    });
+
+    it('returns undefined when the Sonarr series lookup itself fails (transient)', async () => {
+      const collectionMedia = createCollectionMedia('episode');
+      collectionMedia.collection.sonarrSettingsId = 1;
+
+      mockMediaServer.getMetadata.mockResolvedValue(
+        createMediaItem({ type: 'show' }),
+      );
+
+      const mockedSonarrApi = mockSonarrApi();
+      jest
+        .spyOn(mockedSonarrApi, 'getSeriesByTvdbId')
+        .mockResolvedValue(undefined as any);
+
+      const response = await sonarrGetterService.get(
+        32,
+        createMediaItem({
+          type: 'episode',
+          index: 1,
+          parentIndex: 1,
+          parentId: 'season-1',
+          grandparentId: 'show-1',
+        }),
+        'episode',
+        createRulesDto({
+          collection: collectionMedia.collection,
+          dataType: 'episode',
+        }),
+      );
+
+      expect(response).toBeUndefined();
+    });
+
+    it('returns null when Sonarr confirms the series is not tracked', async () => {
+      const collectionMedia = createCollectionMedia('episode');
+      collectionMedia.collection.sonarrSettingsId = 1;
+
+      mockMediaServer.getMetadata.mockResolvedValue(
+        createMediaItem({ type: 'show' }),
+      );
+
+      const mockedSonarrApi = mockSonarrApi();
+      // Empty series object (no id) → Sonarr confirms not tracked.
+      jest
+        .spyOn(mockedSonarrApi, 'getSeriesByTvdbId')
+        .mockResolvedValue({} as any);
+
+      const response = await sonarrGetterService.get(
+        32,
+        createMediaItem({
+          type: 'episode',
+          index: 1,
+          parentIndex: 1,
+          parentId: 'season-1',
+          grandparentId: 'show-1',
+        }),
+        'episode',
+        createRulesDto({
+          collection: collectionMedia.collection,
+          dataType: 'episode',
+        }),
+      );
+
+      expect(response).toBeNull();
+    });
+
+    it('memoises the episode list across calls within the same run', async () => {
+      jest.useFakeTimers().setSystemTime(new Date('2026-06-13T12:00:00Z'));
+      const series = createSonarrSeries({ id: 7, seasons: [] });
+      const episodes = [
+        createSonarrEpisode({
+          seriesId: series.id,
+          seasonNumber: 1,
+          episodeNumber: 1,
+          airDateUtc: '2026-06-11T00:00:00Z',
+          hasFile: true,
+        }),
+        createSonarrEpisode({
+          seriesId: series.id,
+          seasonNumber: 1,
+          episodeNumber: 2,
+          airDateUtc: '2026-06-12T00:00:00Z',
+          hasFile: true,
+        }),
+      ];
+
+      const cache = new ArrLookupCache();
+      const first = await callRank(
+        series,
+        episodes,
+        { seasonNumber: 1, episodeNumber: 1 },
+        { arrLookupCache: cache },
+      );
+      const second = await callRank(
+        series,
+        episodes,
+        { seasonNumber: 1, episodeNumber: 2 },
+        { arrLookupCache: cache },
+      );
+
+      expect(first.response).toBe(2);
+      expect(second.response).toBe(1);
+      // The second invocation reuses the cached episode-list promise produced
+      // during the first invocation, so the second SonarrApi instance never
+      // sees a getEpisodes call.
+      expect(second.mockedSonarrApi.getEpisodes).not.toHaveBeenCalled();
+    });
+
+    it('excludes episodes with hasFile === false from the rank pool', async () => {
+      jest.useFakeTimers().setSystemTime(new Date('2026-06-13T12:00:00Z'));
+      const series = createSonarrSeries({ id: 7, seasons: [] });
+      const episodes = [
+        createSonarrEpisode({
+          seriesId: series.id,
+          seasonNumber: 1,
+          episodeNumber: 1,
+          airDateUtc: '2026-06-10T00:00:00Z',
+          hasFile: true,
+        }),
+        // Aired and tracked in Sonarr but not on disk - must not get a rank
+        // and must not push the downloaded episodes outside their own
+        // "newest = 1" window.
+        createSonarrEpisode({
+          seriesId: series.id,
+          seasonNumber: 1,
+          episodeNumber: 2,
+          airDateUtc: '2026-06-11T00:00:00Z',
+          hasFile: false,
+        }),
+        createSonarrEpisode({
+          seriesId: series.id,
+          seasonNumber: 1,
+          episodeNumber: 3,
+          airDateUtc: '2026-06-12T00:00:00Z',
+          hasFile: true,
+        }),
+      ];
+
+      const onDisk = await callRank(series, episodes, {
+        seasonNumber: 1,
+        episodeNumber: 3,
+      });
+      expect(onDisk.response).toBe(1);
+
+      const olderOnDisk = await callRank(series, episodes, {
+        seasonNumber: 1,
+        episodeNumber: 1,
+      });
+      expect(olderOnDisk.response).toBe(2);
+
+      const notOnDisk = await callRank(series, episodes, {
+        seasonNumber: 1,
+        episodeNumber: 2,
+      });
+      expect(notOnDisk.response).toBeNull();
+    });
+
+    const callDailyRank = async (
+      series: SonarrSeries,
+      episodes: ReturnType<typeof createSonarrEpisode>[],
+      target: { parentIndex: number; originallyAvailableAt?: Date },
+    ) => {
+      const collectionMedia = createCollectionMedia('episode');
+      collectionMedia.collection.sonarrSettingsId = 1;
+
+      mockMediaServer.getMetadata.mockResolvedValue(
+        createMediaItem({ type: 'show' }),
+      );
+
+      const mockedSonarrApi = mockSonarrApi(series);
+      jest.spyOn(mockedSonarrApi, 'getEpisodes').mockResolvedValue(episodes);
+
+      return sonarrGetterService.get(
+        32,
+        createMediaItem({
+          type: 'episode',
+          // Plex daily-series episodes carry parentIndex (year) but no
+          // index - explicitly clear the faker default.
+          index: undefined,
+          parentIndex: target.parentIndex,
+          parentId: `season-${target.parentIndex}`,
+          grandparentId: 'show-1',
+          originallyAvailableAt: target.originallyAvailableAt,
+        }),
+        'episode',
+        createRulesDto({
+          collection: collectionMedia.collection,
+          dataType: 'episode',
+        }),
+      );
+    };
+
+    it('falls back to airDate lookup for daily-series items with no episode number', async () => {
+      jest.useFakeTimers().setSystemTime(new Date('2026-06-13T12:00:00Z'));
+      const series = createSonarrSeries({ id: 7, seasons: [] });
+      const episodes = [
+        createSonarrEpisode({
+          seriesId: series.id,
+          seasonNumber: 2026,
+          episodeNumber: 100,
+          airDate: '2026-06-09',
+          airDateUtc: '2026-06-09T18:30:00Z',
+          hasFile: true,
+        }),
+        createSonarrEpisode({
+          seriesId: series.id,
+          seasonNumber: 2026,
+          episodeNumber: 101,
+          airDate: '2026-06-10',
+          airDateUtc: '2026-06-10T18:30:00Z',
+          hasFile: true,
+        }),
+        createSonarrEpisode({
+          seriesId: series.id,
+          seasonNumber: 2026,
+          episodeNumber: 102,
+          airDate: '2026-06-11',
+          airDateUtc: '2026-06-11T18:30:00Z',
+          hasFile: true,
+        }),
+      ];
+
+      // Newest=1, so 2026-06-11 is rank 1, 2026-06-10 is rank 2,
+      // 2026-06-09 is rank 3.
+      const middle = await callDailyRank(series, episodes, {
+        parentIndex: 2026,
+        originallyAvailableAt: new Date('2026-06-10T00:00:00Z'),
+      });
+      expect(middle).toBe(2);
+
+      const newest = await callDailyRank(series, episodes, {
+        parentIndex: 2026,
+        originallyAvailableAt: new Date('2026-06-11T00:00:00Z'),
+      });
+      expect(newest).toBe(1);
+    });
+
+    it('returns null when a daily-series item has no originallyAvailableAt', async () => {
+      jest.useFakeTimers().setSystemTime(new Date('2026-06-13T12:00:00Z'));
+      const series = createSonarrSeries({ id: 7, seasons: [] });
+      const episodes = [
+        createSonarrEpisode({
+          seriesId: series.id,
+          seasonNumber: 2026,
+          episodeNumber: 100,
+          airDate: '2026-06-09',
+          airDateUtc: '2026-06-09T18:30:00Z',
+          hasFile: true,
+        }),
+      ];
+
+      const response = await callDailyRank(series, episodes, {
+        parentIndex: 2026,
+        originallyAvailableAt: undefined,
+      });
+      expect(response).toBeNull();
+    });
+
+    it('returns null when a daily-series originallyAvailableAt is the .NET null sentinel', async () => {
+      jest.useFakeTimers().setSystemTime(new Date('2026-06-13T12:00:00Z'));
+      const series = createSonarrSeries({ id: 7, seasons: [] });
+      const episodes = [
+        createSonarrEpisode({
+          seriesId: series.id,
+          seasonNumber: 2026,
+          episodeNumber: 100,
+          airDate: '2026-06-09',
+          airDateUtc: '2026-06-09T18:30:00Z',
+          hasFile: true,
+        }),
+      ];
+
+      const response = await callDailyRank(series, episodes, {
+        parentIndex: 2026,
+        originallyAvailableAt: new Date('0001-01-01T00:00:00Z'),
+      });
+      expect(response).toBeNull();
+    });
+
+    it('uses first-wins on same-day collisions in the airDate fallback', async () => {
+      jest.useFakeTimers().setSystemTime(new Date('2026-06-13T12:00:00Z'));
+      const series = createSonarrSeries({ id: 7, seasons: [] });
+      const sameDay = '2026-06-10';
+      const episodes = [
+        // Same-day double - newer (E102) should win the airDate slot,
+        // matching the conservative-keep behaviour for ambiguous lookups.
+        createSonarrEpisode({
+          seriesId: series.id,
+          seasonNumber: 2026,
+          episodeNumber: 101,
+          airDate: sameDay,
+          airDateUtc: `${sameDay}T17:00:00Z`,
+          hasFile: true,
+        }),
+        createSonarrEpisode({
+          seriesId: series.id,
+          seasonNumber: 2026,
+          episodeNumber: 102,
+          airDate: sameDay,
+          airDateUtc: `${sameDay}T19:00:00Z`,
+          hasFile: true,
+        }),
+      ];
+
+      // Sort is desc by airMs then desc by S/E within ties, so the pool is
+      // [E102 (rank 1), E101 (rank 2)]. The airDate map locks in rank 1
+      // for the date.
+      const response = await callDailyRank(series, episodes, {
+        parentIndex: 2026,
+        originallyAvailableAt: new Date(`${sameDay}T00:00:00Z`),
+      });
+      expect(response).toBe(1);
+    });
+
+    it('matches by broadcast-date string when airDateUtc straddles UTC midnight (US primetime case)', async () => {
+      jest.useFakeTimers().setSystemTime(new Date('2026-06-13T12:00:00Z'));
+      const series = createSonarrSeries({ id: 7, seasons: [] });
+      // US primetime broadcast: 8pm Eastern on 2026-06-10 = 00:00 UTC
+      // on 2026-06-11. Sonarr's `airDate` carries the local broadcast
+      // date ('2026-06-10'); `airDateUtc` carries the UTC moment, which
+      // falls on the next UTC day. Plex's `originallyAvailableAt` for
+      // the same episode is the date-only string '2026-06-10' → parsed
+      // as 2026-06-10T00:00:00Z. The map key must agree on the broadcast
+      // date, not the UTC day of the moment.
+      const episodes = [
+        createSonarrEpisode({
+          seriesId: series.id,
+          seasonNumber: 2026,
+          episodeNumber: 161,
+          airDate: '2026-06-10',
+          airDateUtc: '2026-06-11T00:00:00Z',
+          hasFile: true,
+        }),
+      ];
+
+      const response = await callDailyRank(series, episodes, {
+        parentIndex: 2026,
+        originallyAvailableAt: new Date('2026-06-10T00:00:00Z'),
+      });
+
+      expect(response).toBe(1);
     });
   });
 

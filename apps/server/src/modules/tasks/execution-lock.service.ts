@@ -45,7 +45,7 @@ export class ExecutionLockService {
     // Store `current` directly so the release callback below can recognise
     // its own entry by reference and delete it on release. Storing the
     // chained promise (prior.then(() => current)) instead would leak the
-    // entry forever — `tryAcquire` checks `locks.has(key)` and would never
+    // entry forever - `tryAcquire` checks `locks.has(key)` and would never
     // return non-null again, which is the root cause of #2799.
     this.locks.set(key, current);
 

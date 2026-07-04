@@ -13,7 +13,7 @@ import { PlexOverlayProvider } from './plex-overlay.provider';
  * MediaServerModule exports MediaServerFactory (used by the overlay factory
  * to resolve the configured server type) and JellyfinAdapterService (used by
  * JellyfinOverlayProvider for overlay-specific Jellyfin methods).
- * PlexApiModule exports PlexApiService (used by PlexOverlayProvider — the
+ * PlexApiModule exports PlexApiService (used by PlexOverlayProvider - the
  * existing Plex overlay helpers live there unchanged).
  */
 @Module({

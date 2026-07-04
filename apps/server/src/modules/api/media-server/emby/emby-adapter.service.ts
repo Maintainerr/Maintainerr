@@ -89,7 +89,7 @@ export class EmbyAdapterService implements IMediaServerService {
 
     if (!url || !apiKey) {
       this.logger.debug(
-        'Emby settings incomplete — skipping initialize (url or api_key missing)',
+        'Emby settings incomplete - skipping initialize (url or api_key missing)',
       );
       this.initialized = false;
       this.http = undefined;
@@ -482,7 +482,7 @@ export class EmbyAdapterService implements IMediaServerService {
 
   /**
    * User IDs of every user with `IsFavorite=true` on this item. Mirrors
-   * `JellyfinAdapterService.getItemFavoritedBy` (per-user fan-out — Emby
+   * `JellyfinAdapterService.getItemFavoritedBy` (per-user fan-out - Emby
    * has no central favorites endpoint).
    */
   async getItemFavoritedBy(itemId: string): Promise<string[]> {
@@ -497,7 +497,7 @@ export class EmbyAdapterService implements IMediaServerService {
           );
           if (data.UserData?.IsFavorite) favoritedBy.push(user.id);
         } catch {
-          // user may lack visibility on this item — skip silently
+          // user may lack visibility on this item - skip silently
         }
       }
       return favoritedBy;
@@ -541,7 +541,7 @@ export class EmbyAdapterService implements IMediaServerService {
    * Users who watched at least one episode under `parentId` (season or show).
    * Mirrors `JellyfinAdapterService.getDescendantEpisodeWatchers`. One
    * /Items request per user, each scoped to that user with `IsPlayed=true`
-   * + `Limit=1` — we only need to know whether any played episode exists.
+   * + `Limit=1` - we only need to know whether any played episode exists.
    */
   async getDescendantEpisodeWatchers(parentId: string): Promise<string[]> {
     if (!this.http) return [];
@@ -608,7 +608,7 @@ export class EmbyAdapterService implements IMediaServerService {
     // documented path for Emby.
     if (!this.embyUserId) {
       this.logger.warn(
-        'Emby getRecentlyAdded requires a configured user ID — none set',
+        'Emby getRecentlyAdded requires a configured user ID - none set',
       );
       return [];
     }
@@ -728,7 +728,7 @@ export class EmbyAdapterService implements IMediaServerService {
   async prefetchWatchHistory(): Promise<void> {
     // Emby has no central watch-history endpoint (history is per-user), so
     // there is nothing to bulk prefetch. Gated by
-    // supportsFeature(CENTRAL_WATCH_HISTORY) which is false for Emby — callers
+    // supportsFeature(CENTRAL_WATCH_HISTORY) which is false for Emby - callers
     // shouldn't reach here.
     throw new Error(
       'Bulk watch-history prefetch is not supported on Emby (per-user history)',
@@ -765,7 +765,7 @@ export class EmbyAdapterService implements IMediaServerService {
           );
         }
       } catch {
-        // Some users may not have access to this item — skip silently.
+        // Some users may not have access to this item - skip silently.
       }
     }
 
@@ -798,7 +798,7 @@ export class EmbyAdapterService implements IMediaServerService {
         if (!item) continue;
         // A collection can track an episode at any level, so protect the
         // episode and its season and series. ParentId is intentionally
-        // omitted — for Emby movies it is the library folder, not a
+        // omitted - for Emby movies it is the library folder, not a
         // collectable ancestor. Movies only carry Id.
         if (item.Id) playing.add(item.Id);
         if (item.SeasonId) playing.add(item.SeasonId);
@@ -828,7 +828,7 @@ export class EmbyAdapterService implements IMediaServerService {
     try {
       // User-scoped read: Emby resolves the BoxSet query against a user's
       // library view, so an unscoped read can miss or 404. Pass the user via the
-      // UserId query param on the literal /Items path — functionally the same as
+      // UserId query param on the literal /Items path - functionally the same as
       // /Users/{id}/Items, and the param idiom already used elsewhere here. (A
       // user value interpolated into the request path is a CodeQL SSRF sink; a
       // query param is not.)
@@ -938,7 +938,7 @@ export class EmbyAdapterService implements IMediaServerService {
       // Create with one item: Emby's create-collection endpoint throws HTTP 500
       // ("Sequence contains no elements" in CollectionManager) when creating an
       // empty collection under a library folder, so it needs at least one item
-      // (#3075 — the regression from #3001's empty-create). The rest are added
+      // (#3075 - the regression from #3001's empty-create). The rest are added
       // afterwards via addBatchToCollection; re-adding this item there is an
       // idempotent no-op (collection membership is a set).
       const { data } = await this.http.post<EmbyBaseItemDto>(
@@ -1167,7 +1167,7 @@ export class EmbyAdapterService implements IMediaServerService {
     // Emby exposes DisplayOrder = PremiereDate | SortName on a BoxSet (via
     // ItemUpdateService) but no item-move/reorder endpoint, so an explicit
     // ordered list of item IDs can't be expressed. Gated by
-    // supportsFeature(COLLECTION_SORT) which is false for Emby — callers
+    // supportsFeature(COLLECTION_SORT) which is false for Emby - callers
     // shouldn't reach here.
     throw new Error(
       'Collection sort is not supported on Emby (no item-move API)',
@@ -1220,7 +1220,7 @@ export class EmbyAdapterService implements IMediaServerService {
         error,
         'Connection failed',
       );
-      // A 500 here is raised inside Emby's own image handler — most often the
+      // A 500 here is raised inside Emby's own image handler - most often the
       // library's "Save artwork into media folders" setting (per library, not
       // global) makes Emby write the poster next to the media file, and that
       // path is read-only (e.g. a movie library mounted read-only while the TV
@@ -1233,7 +1233,7 @@ export class EmbyAdapterService implements IMediaServerService {
           typeof error.response.data === 'string'
             ? error.response.data
             : JSON.stringify(error.response.data);
-        if (body) detail = ` — ${body.slice(0, 500)}`;
+        if (body) detail = ` - ${body.slice(0, 500)}`;
       }
       throw new Error(
         `Failed to upload Emby collection image: ${message}${detail}`,

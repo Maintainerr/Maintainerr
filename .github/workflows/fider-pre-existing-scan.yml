@@ -12,7 +12,7 @@ name: Fider - Pre-existing scan
 #     independently of the high-confidence possibly-completed flag.
 #   - Stricter model rubric (must quote a phrase that directly delivers the
 #     specific ask, not just touch the same area).
-#   - Manual workflow_dispatch only — no cron schedule. Run when you want a
+#   - Manual workflow_dispatch only - no cron schedule. Run when you want a
 #     periodic backlog sweep, not unattended.
 
 on:

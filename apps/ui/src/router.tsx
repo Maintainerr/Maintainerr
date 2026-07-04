@@ -5,7 +5,7 @@ import Layout, { LayoutErrorBoundary } from './components/Layout'
 import MediaServerSetupGuard from './components/Layout/MediaServerSetupGuard'
 import LoadingSpinner from './components/Common/LoadingSpinner'
 import Overview from './components/Overview'
-// Settings is kept eager because it wraps an <Outlet /> — making it lazy
+// Settings is kept eager because it wraps an <Outlet /> - making it lazy
 // would cause two sequential fetches (wrapper then child) on every settings navigation.
 import Overlays from './components/Overlays'
 import Settings from './components/Settings'
@@ -123,7 +123,7 @@ const overlayTemplateEditorRoute = createLazyRoute(
 )
 
 /**
- * Preloadable route definition — single source of truth for both
+ * Preloadable route definition - single source of truth for both
  * the React Router config and the prefetch system. Routes that use
  * createLazyRoute carry both `lazy` (for the router) and `preload`
  * (for hover-prefetching) from the same object, so they can't drift.
@@ -400,7 +400,7 @@ const collectPreloaders = (
 
       const rest = remaining.slice(routeSegments.length)
       if (rest.length === 0) {
-        // Exact match — also preload the index child if present
+        // Exact match - also preload the index child if present
         const indexChild = route.children?.find(
           (child): child is AppRoute => child.index === true,
         )

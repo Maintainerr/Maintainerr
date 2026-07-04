@@ -31,8 +31,7 @@ export enum ECollectionLogType {
 export const isMetaActionedByRule = (
   type: CollectionLogMeta,
 ): type is
-  | CollectionLogMetaMediaAddedByRule
-  | CollectionLogMetaMediaRemovedByRule => {
+  CollectionLogMetaMediaAddedByRule | CollectionLogMetaMediaRemovedByRule => {
   return (
     type.type === 'media_added_by_rule' || type.type === 'media_removed_by_rule'
   )

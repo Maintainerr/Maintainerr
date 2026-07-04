@@ -18,7 +18,7 @@ export const JELLYFIN_BATCH_SIZE = {
 } as const;
 
 /**
- * Default query options for every library-scoped getItems() call — i.e.
+ * Default query options for every library-scoped getItems() call - i.e.
  * any call whose parentId is a library (or no parentId for a global recursive
  * search) and that expects to surface real media items.
  *

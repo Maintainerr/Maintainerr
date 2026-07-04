@@ -570,7 +570,7 @@ describe('SeerrGetterService', () => {
       const { service, seerrApi } = createService();
 
       // SeerrApiService.buildRequestIndex normalises each title's list to
-      // oldest-first, so requestDate is the first (earliest) request — matching
+      // oldest-first, so requestDate is the first (earliest) request - matching
       // the pre-#3152 getMovie ordering, not the newest re-request (#3152).
       seerrApi.getRequestsForMedia.mockResolvedValue([
         movieRequest({ id: 1, createdAt: '2026-04-01' }),
@@ -720,7 +720,7 @@ describe('SeerrGetterService', () => {
     });
   });
 
-  describe('releaseDate (property id=2) — per-item fallback', () => {
+  describe('releaseDate (property id=2) - per-item fallback', () => {
     it('should resolve movie releaseDate via getMovie, not the request index', async () => {
       const { service, seerrApi } = createService();
 

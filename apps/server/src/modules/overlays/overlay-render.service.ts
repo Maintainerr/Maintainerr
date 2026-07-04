@@ -573,7 +573,7 @@ export class OverlayRenderService {
           layerBuf = await this.applyOpacity(layerBuf, el.opacity);
         }
 
-        // Clamp layer to poster bounds – sharp.composite() throws
+        // Clamp layer to poster bounds - sharp.composite() throws
         // when a composite layer extends beyond the base image.
         const layerMeta = await sharp(layerBuf).metadata();
         let lw = layerMeta.width ?? sw;

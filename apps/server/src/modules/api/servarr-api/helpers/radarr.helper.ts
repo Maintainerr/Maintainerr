@@ -48,7 +48,7 @@ export class RadarrApi extends ServarrApi<{ movieId: number }> {
   };
 
   // Intentionally uncached: this drives rule evaluation and resolves the
-  // movie that actions then mutate — both need Radarr's current truth, not a
+  // movie that actions then mutate - both need Radarr's current truth, not a
   // snapshot that can be up to DEFAULT_TTL stale.
   // Returns `null` when Radarr confirms the movie isn't tracked (empty
   // response) and `undefined` when the lookup itself failed (transport, auth,
@@ -99,7 +99,7 @@ export class RadarrApi extends ServarrApi<{ movieId: number }> {
 
   /**
    * Add or remove a single tag on a batch of movies via the movie editor.
-   * `applyTags: 'add' | 'remove'` only — never 'replace', which would wipe every
+   * `applyTags: 'add' | 'remove'` only - never 'replace', which would wipe every
    * other tag the user has on those movies. Best-effort: returns false on failure
    * (callers treat tagging as non-fatal). No-ops on an empty id list.
    */
@@ -217,7 +217,7 @@ export class RadarrApi extends ServarrApi<{ movieId: number }> {
    * "already added" 400 as success rather than failing the whole collection
    * action (its unmonitor/delete has already run) on every re-run. The validator
    * also enforces non-empty tmdbId/title and a non-negative year, so a 400 from
-   * one of those is a real failure — surface it instead of silently marking the
+   * one of those is a real failure - surface it instead of silently marking the
    * movie excluded when it isn't.
    *
    * Goes through the shared post() client (rethrowing so we can read the status)
@@ -259,7 +259,7 @@ export class RadarrApi extends ServarrApi<{ movieId: number }> {
   /**
    * True only for the exclusion validator's uniqueness failure. Radarr returns a
    * 400 with an array of `{ propertyName, errorMessage }`; the uniqueness rule is
-   * the one that means "already excluded — goal met". Any other validation
+   * the one that means "already excluded - goal met". Any other validation
    * failure (empty title, negative year, …) must stay a failure.
    */
   private isAlreadyExcludedError(body: unknown): boolean {

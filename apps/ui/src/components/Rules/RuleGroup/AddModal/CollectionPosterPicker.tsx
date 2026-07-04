@@ -135,7 +135,7 @@ export const CollectionPosterPicker = ({
       )
       setStatus({
         type: 'error',
-        title: 'Could not upload poster — check that the file is a valid image',
+        title: 'Could not upload poster - check that the file is a valid image',
       })
     } finally {
       setBusy(false)
@@ -154,8 +154,8 @@ export const CollectionPosterPicker = ({
       setStatus({
         type: 'info',
         title: refreshRequested
-          ? `Custom poster cleared. ${mediaServerName} metadata refresh requested — artwork may update depending on ${mediaServerName} behavior and configured agents.`
-          : `Custom poster cleared. The artwork on ${mediaServerName} is unchanged — refresh metadata there if you want the original back.`,
+          ? `Custom poster cleared. ${mediaServerName} metadata refresh requested - artwork may update depending on ${mediaServerName} behavior and configured agents.`
+          : `Custom poster cleared. The artwork on ${mediaServerName} is unchanged - refresh metadata there if you want the original back.`,
       })
     } catch (error) {
       void logClientError(

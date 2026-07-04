@@ -1,14 +1,14 @@
-# Emby Support — Follow-up Fixes
+# Emby Support - Follow-up Fixes
 
 Consolidated punch list for `emby-support` branch / PR #2911.
 
 Sources for each item:
-- **Tester** — production failure reported by Nomsplease in HOPS Discord
-- **Review** — GitHub Copilot agent PR review
-- **RE** — reverse engineering against a live Emby 4.9.3.0 install (decompiled `Emby.Api.dll` + the server's own `/openapi` spec)
+- **Tester** - production failure reported by Nomsplease in HOPS Discord
+- **Review** - GitHub Copilot agent PR review
+- **RE** - reverse engineering against a live Emby 4.9.3.0 install (decompiled `Emby.Api.dll` + the server's own `/openapi` spec)
 
 References that anchor every claim in this document:
-- `/openapi` and `/swagger` on a running Emby server return a 2.5 MB OpenAPI 2.0 spec titled *"Emby Server REST API 4.9.3.0"* — 422 endpoints.
+- `/openapi` and `/swagger` on a running Emby server return a 2.5 MB OpenAPI 2.0 spec titled *"Emby Server REST API 4.9.3.0"* - 422 endpoints.
 - `Emby.Api.dll` decompiled with `ilspycmd` (10,087 lines, 343 `[Route]` attributes) is the source-of-truth handler code.
 - `Emby.Server.Implementations.dll` decompiled (72,570 lines) contains the auth header parser at lines 53494-53557.
 
@@ -23,9 +23,9 @@ References that anchor every claim in this document:
 
 ---
 
-## HIGH — must fix before merge
+## HIGH - must fix before merge
 
-### H1. Auto-create flow produces 500 against real Emby — confirmed by tester
+### H1. Auto-create flow produces 500 against real Emby - confirmed by tester
 
 **Source**: Tester
 **Files**: [emby-adapter.service.ts:765-803](../apps/server/src/modules/api/media-server/emby/emby-adapter.service.ts#L765-L803), the upstream call site in `CollectionsService` (Maintainerr's shared `addToCollectionInternal`).
@@ -33,7 +33,7 @@ References that anchor every claim in this document:
 **Symptom (from the tester log)**:
 ```
 INFO  Adding 76 media items to 'Delete Watched TV Shows by Season'
-DEBUG [checkAutomaticMediaServerLink] No media server collection — will be created automatically when items match
+DEBUG [checkAutomaticMediaServerLink] No media server collection - will be created automatically when items match
 ERROR Failed to create Jellyfin collection
       Request failed with status code 500 (ERR_BAD_RESPONSE)
 ```
@@ -42,11 +42,11 @@ The tester is on the pre-PR Jellyfin-against-Emby workaround, but the failure mo
 
 **Fix options** (must verify against the live local Emby before picking):
 
-A. **Pass initial items at create time when known** — change `createCollection` to forward the first batch of `Ids` as a query param on `POST /Collections`. Add a regression test that asserts the request shape via a mocked HTTP layer, plus a smoke test that runs against the local Emby Server to confirm the response is 200 and the items land.
+A. **Pass initial items at create time when known** - change `createCollection` to forward the first batch of `Ids` as a query param on `POST /Collections`. Add a regression test that asserts the request shape via a mocked HTTP layer, plus a smoke test that runs against the local Emby Server to confirm the response is 200 and the items land.
 
-B. **Capability-aware fallback** — keep the abstraction (create empty, then add) and have the Emby adapter internally buffer the first add call so that, when called immediately after a create, it issues a single combined create-with-items. Less invasive at the call site, more state in the adapter.
+B. **Capability-aware fallback** - keep the abstraction (create empty, then add) and have the Emby adapter internally buffer the first add call so that, when called immediately after a create, it issues a single combined create-with-items. Less invasive at the call site, more state in the adapter.
 
-Recommendation: A. The Maintainerr abstraction does not promise "empty create" semantics — it promises "this collection ends up with these items". The Emby adapter is allowed to issue whichever wire calls accomplish that.
+Recommendation: A. The Maintainerr abstraction does not promise "empty create" semantics - it promises "this collection ends up with these items". The Emby adapter is allowed to issue whichever wire calls accomplish that.
 
 **Verification**:
 1. Reproduce the 500 against the local Emby in this Codespace by hand-curling `POST /Collections?Name=Foo&ParentId=<libraryId>` with no `Ids`. Capture the exact response body.
@@ -91,7 +91,7 @@ for (const season of seasons) {
 
 ---
 
-### H3. `cleanupCollectionForLibrary` filter is always empty on Emby — collection switching leaks items
+### H3. `cleanupCollectionForLibrary` filter is always empty on Emby - collection switching leaks items
 
 **Source**: Review
 **Files**: [emby-adapter.service.ts:820-839](../apps/server/src/modules/api/media-server/emby/emby-adapter.service.ts#L820-L839), data shape set by [emby.mapper.ts:150-152](../apps/server/src/modules/api/media-server/emby/emby.mapper.ts#L150-L152).
@@ -104,13 +104,13 @@ const fromLibrary = children.filter((c) => c.library?.id === libraryId);
 
 The mapper builds each `MediaItem.library.id` from the item's `ParentId`. For items returned by `/Items?ParentId=<collectionId>`, `ParentId` is **the collection itself**, not the source library. The filter is therefore always empty, so library-scoped cleanup never removes anything. Switching a rule group's library leaves stale items behind in shared collections.
 
-**Fix**: mirror the Jellyfin pattern at [jellyfin-adapter.service.ts:720-739, 1640-1665](../apps/server/src/modules/api/media-server/jellyfin/jellyfin-adapter.service.ts#L1640-L1665) — query Emby for each item's actual ancestors (the equivalent on Emby is `GET /Items/{id}/Ancestors` or `GET /Users/{userId}/Items/{id}` with the `Path`/`ParentId` chain) and check membership against `libraryId`. Encapsulate in a private `itemIsInLibrary(itemId, libraryId)` helper to match Jellyfin.
+**Fix**: mirror the Jellyfin pattern at [jellyfin-adapter.service.ts:720-739, 1640-1665](../apps/server/src/modules/api/media-server/jellyfin/jellyfin-adapter.service.ts#L1640-L1665) - query Emby for each item's actual ancestors (the equivalent on Emby is `GET /Items/{id}/Ancestors` or `GET /Users/{userId}/Items/{id}` with the `Path`/`ParentId` chain) and check membership against `libraryId`. Encapsulate in a private `itemIsInLibrary(itemId, libraryId)` helper to match Jellyfin.
 
 **Verification**: spec the helper directly with mocked ancestor responses, plus an integration test that exercises the rule-group switch path end-to-end against the local Emby.
 
 ---
 
-### H4. `getWatchHistory` collapses transient failures into "never watched" — can drive wrong removals
+### H4. `getWatchHistory` collapses transient failures into "never watched" - can drive wrong removals
 
 **Source**: Review
 **Files**: [emby-adapter.service.ts:670-700](../apps/server/src/modules/api/media-server/emby/emby-adapter.service.ts#L670-L700).
@@ -130,9 +130,9 @@ The reference Jellyfin implementation explicitly documents why this is wrong, at
 
 > Errors must propagate so callers can distinguish a real outage from a confirmed empty history. Returning `[]` here would misclassify failures as "never watched", which leaks into NOT_EXISTS checks and missing-value diagnostics in the rules layer.
 
-A rule that removes "watched media older than 30 days" would, during an Emby outage, evaluate every item as never watched and *delete nothing*. A rule that removes "never-watched media older than 30 days" would, during the same outage, evaluate every item as never watched and *delete everything*. The second is the dangerous case — and it's exactly the kind of rule community libraries use.
+A rule that removes "watched media older than 30 days" would, during an Emby outage, evaluate every item as never watched and *delete nothing*. A rule that removes "never-watched media older than 30 days" would, during the same outage, evaluate every item as never watched and *delete everything*. The second is the dangerous case - and it's exactly the kind of rule community libraries use.
 
-**Fix**: rethrow on the outer failure. Keep the inner per-user `try { ... } catch { /* skip */ }` — that pattern is correct because individual users may legitimately lack access to an item.
+**Fix**: rethrow on the outer failure. Keep the inner per-user `try { ... } catch { /* skip */ }` - that pattern is correct because individual users may legitimately lack access to an item.
 
 ```ts
 async getWatchHistory(itemId: string): Promise<WatchRecord[]> {
@@ -150,7 +150,7 @@ async getWatchHistory(itemId: string): Promise<WatchRecord[]> {
 
 ---
 
-### H5. Overlay `itemExists` can permanently delete the original poster backup — RESOLVED
+### H5. Overlay `itemExists` can permanently delete the original poster backup - RESOLVED
 
 **Source**: Review
 
@@ -158,7 +158,7 @@ async getWatchHistory(itemId: string): Promise<WatchRecord[]> {
 
 ---
 
-## MEDIUM — should fix before merge
+## MEDIUM - should fix before merge
 
 ### M1. `sortTitle` is silently dropped on create and update
 
@@ -194,7 +194,7 @@ const updated = {
 
 ---
 
-## LOW — nice to fix before merge
+## LOW - nice to fix before merge
 
 ### L1. Stale auth header comment claims things that aren't true
 
@@ -207,7 +207,7 @@ const updated = {
 Both claims are false, verified against the decompiled parser at `Emby.Server.Implementations:53494-53557`:
 
 - The header name we actually send is `X-Emby-Authorization` (also `Authorization` is accepted). `X-MediaBrowser-Authorization` is not the name we use anywhere.
-- There is no `Version` validation in Emby's parser. A live curl with `Version="999.999.999"` returns the same 401 as `Version="1.0.0"` — the parser stores the version on session info but never compares it to a required value. `grep -r '"1\.0\.0"'` across the entire decompiled `Emby.Api.dll` and `Emby.Server.Implementations.dll` returns zero matches.
+- There is no `Version` validation in Emby's parser. A live curl with `Version="999.999.999"` returns the same 401 as `Version="1.0.0"` - the parser stores the version on session info but never compares it to a required value. `grep -r '"1\.0\.0"'` across the entire decompiled `Emby.Api.dll` and `Emby.Server.Implementations.dll` returns zero matches.
 
 **Fix**: replace the comment with a one-liner that accurately describes what we send:
 
@@ -221,7 +221,7 @@ No code change.
 
 ---
 
-### L2. `GET /Users` is a hidden endpoint — switch to `/Users/Query`
+### L2. `GET /Users` is a hidden endpoint - switch to `/Users/Query`
 
 **Source**: RE
 **File**: [emby-adapter.service.ts:186](../apps/server/src/modules/api/media-server/emby/emby-adapter.service.ts#L186)
@@ -287,26 +287,26 @@ The script prints the generated API key but never assigns it to `$APIKEY`, then 
 
 ---
 
-## OPTIONAL — improvements to consider (not bugs)
+## OPTIONAL - improvements to consider (not bugs)
 
 ### O1. Set `IsLocked: true` on `createCollection`
 
-The Jellyfin adapter sets `isLocked: true` on collection creation with the comment *"enables composite image generation from collection items"*. Without it, Emby may not auto-generate the composite cover image when items are added. Worth a quick A/B against the local Emby — if the composite cover behaviour matches Jellyfin, set the flag. Independent of H1, but the changes can land together.
+The Jellyfin adapter sets `isLocked: true` on collection creation with the comment *"enables composite image generation from collection items"*. Without it, Emby may not auto-generate the composite cover image when items are added. Worth a quick A/B against the local Emby - if the composite cover behaviour matches Jellyfin, set the flag. Independent of H1, but the changes can land together.
 
 ### O2. Wire `POST /Playlists/{Id}/Items/{ItemId}/Move/{NewIndex}` for playlist reorder
 
-Confirmed implementable against a live Emby — but deliberately deferred because the call site doesn't exist in Maintainerr.
+Confirmed implementable against a live Emby - but deliberately deferred because the call site doesn't exist in Maintainerr.
 
 **What the source dig confirmed**:
 - The route is real (`Emby.Api:1841`) and the handler at `Emby.Api:1909-1919` delegates straight to `IPlaylistManager.MoveItem(playlist, request.ItemId, request.NewIndex)`.
-- The DTO declares `ItemId` as `long`, but the official Emby web client at `dashboard-ui/modules/emby-apiclient/apiclient.js` passes `items[i].PlaylistItemId` — a `string` field on `BaseItemDto` (`Emby.Api:6488`) returned by `GET /Playlists/{Id}/Items`. ServiceStack handles the string-to-long conversion at the path-binding layer. No client-side internal-ID mapping needed.
+- The DTO declares `ItemId` as `long`, but the official Emby web client at `dashboard-ui/modules/emby-apiclient/apiclient.js` passes `items[i].PlaylistItemId` - a `string` field on `BaseItemDto` (`Emby.Api:6488`) returned by `GET /Playlists/{Id}/Items`. ServiceStack handles the string-to-long conversion at the path-binding layer. No client-side internal-ID mapping needed.
 
 **Why we still defer**:
 - `IMediaServerService` only declares `reorderCollectionItems` ([media-server.interface.ts:280](../apps/server/src/modules/api/media-server/media-server.interface.ts#L280)).
 - The sole call site for that method is the Plex `COLLECTION_SORT` path at [collections.service.ts:849](../apps/server/src/modules/collections/collections.service.ts#L849).
 - No `reorderPlaylistItems` method exists, no Maintainerr rule action generates one, and no UI flow asks for it.
 
-Shipping the Emby impl would mean adding an interface method, three adapter implementations (Plex/Jellyfin/Emby), and a feature flag — all unreachable from any user flow. File as a follow-up issue if a real use case appears.
+Shipping the Emby impl would mean adding an interface method, three adapter implementations (Plex/Jellyfin/Emby), and a feature flag - all unreachable from any user flow. File as a follow-up issue if a real use case appears.
 
 Collection reorder remains genuinely unavailable on Emby (no equivalent `/Collections/{Id}/Items/{ItemId}/Move` route in either the swagger spec or the decompiled handler set). The current `COLLECTION_SORT = false` capability is correct.
 
@@ -316,7 +316,7 @@ The PR doc states up front that a wide Emby HTTP surface is scaffolded but unver
 
 ---
 
-## Dismissed — not a finding
+## Dismissed - not a finding
 
 ### D1. `release_pr.yml` removed the `environment: release-builds` gate
 
@@ -332,12 +332,12 @@ No action on this PR. If the gate should be re-added, that is a separate convers
 
 ## Suggested execution order
 
-1. **H1, H2, H3, H4** — wire bugs that produce wrong data. Land each as its own commit with a focused regression test.
-2. **H5** — overlay safety. Land with its own spec.
-3. **M1** — sortTitle plumbing.
-4. **L1, L2, L3, L4, L5, L6** — batch as a single "review nits" commit (small, low-risk).
-5. **O1** — verify against local Emby, land in the same commit if it works as expected.
-6. **O2, O3** — defer to follow-up issues.
+1. **H1, H2, H3, H4** - wire bugs that produce wrong data. Land each as its own commit with a focused regression test.
+2. **H5** - overlay safety. Land with its own spec.
+3. **M1** - sortTitle plumbing.
+4. **L1, L2, L3, L4, L5, L6** - batch as a single "review nits" commit (small, low-risk).
+5. **O1** - verify against local Emby, land in the same commit if it works as expected.
+6. **O2, O3** - defer to follow-up issues.
 
 After step 1-3 land, re-test the full Emby flow end-to-end against the local Codespace Emby AND request that Nomsplease re-runs his rule against the next pr-2911 image build.
 

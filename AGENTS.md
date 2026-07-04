@@ -22,15 +22,15 @@ For the broader system architecture map, see [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ## Documentation map
 
-**Standing rules — read before writing any code (they apply to all work):**
+**Standing rules - read before writing any code (they apply to all work):**
 
-- [implementation.instructions.md](.github/instructions/implementation.instructions.md) — implementation rules and API-doc references.
-- [project-notes.instructions.md](.github/instructions/project-notes.instructions.md) — non-obvious project knowledge, conventions, and gotchas (rule engine, Tailwind v4, migrations, naming) that isn't derivable from the code or git history.
+- [implementation.instructions.md](.github/instructions/implementation.instructions.md) - implementation rules and API-doc references.
+- [project-notes.instructions.md](.github/instructions/project-notes.instructions.md) - non-obvious project knowledge, conventions, and gotchas (rule engine, Tailwind v4, migrations, naming) that isn't derivable from the code or git history.
 
-**Task-specific — read only when the task calls for it (don't load them every session):**
+**Task-specific - read only when the task calls for it (don't load them every session):**
 
-- [release-review.instructions.md](.github/instructions/release-review.instructions.md) — when auditing a release candidate before tagging.
-- [ARCHITECTURE.md](ARCHITECTURE.md) — before changing cross-module boundaries.
+- [release-review.instructions.md](.github/instructions/release-review.instructions.md) - when auditing a release candidate before tagging.
+- [ARCHITECTURE.md](ARCHITECTURE.md) - before changing cross-module boundaries.
 
 When you add a doc, list it under the matching heading here. For how each agent
 (Claude, Copilot, Cursor, Codex) loads these docs, see [README_AGENTS.md](README_AGENTS.md).
@@ -78,11 +78,11 @@ This is a **TypeScript monorepo** managed with **Turborepo** and **Yarn workspac
 
 ## Development Environment
 
-The development environment runs inside **`devbox`** — a rootless Docker container
+The development environment runs inside **`devbox`** - a rootless Docker container
 managed by `~/infra/compose.yml` on the host. This IS the devcontainer for this project.
 
 - `devbox` mounts the repo at `/workspace` and has Node 26 + Yarn 4.11 pre-installed.
-  Work directly inside the container at `/workspace` — open your editor/agent here,
+  Work directly inside the container at `/workspace` - open your editor/agent here,
   run all `yarn` commands here. Node is only installed in the container, not the host.
 - Git works normally from `/workspace`: `git commit` and `git push` directly. The
   SSH key for GitHub is mounted into the container, so no host-side push relay is
@@ -102,22 +102,22 @@ in `~/dev-media.compose.yml`, reachable from inside `devbox` by hostname:
 
 Credentials are in `~/dev-media-creds.env` (not committed). Media lives on `/mnt/dev-media`.
 
-### Security model — you are L3, the confined devbox
+### Security model - you are L3, the confined devbox
 
 Three trust levels, privilege descending: **`root`@host** (everything) › **`maintainerr-dev`**
-(the SSH host — runs the dev media stack, holds its secrets, controls the devbox) ›
+(the SSH host - runs the dev media stack, holds its secrets, controls the devbox) ›
 **`devbox`** (you: dev/test only). You can reach the media/service stack by hostname
 (`dev-plex`, `dev-radarr`, …) to test and seed against it, but you **cannot break out** to
-the host — and that boundary is enforced from above you, so you can't disable it:
+the host - and that boundary is enforced from above you, so you can't disable it:
 
-- **Read-only Docker** — the socket-proxy allows `ps`/`logs`, never `start`/`stop`/`exec`/`create`.
-- **Host egress firewall** — outbound is default-deny to an allowlist (GitHub, npm, Anthropic,
+- **Read-only Docker** - the socket-proxy allows `ps`/`logs`, never `start`/`stop`/`exec`/`create`.
+- **Host egress firewall** - outbound is default-deny to an allowlist (GitHub, npm, Anthropic,
   Plex/TMDB) plus the internal docker network; `NET_ADMIN` is stripped from the container.
-- **Rootless + `cap_drop: ALL` + `no-new-privileges`** — even container-root is an unprivileged
+- **Rootless + `cap_drop: ALL` + `no-new-privileges`** - even container-root is an unprivileged
   subuid, never the host user.
 
 Don't fight these (e.g. trying to `exec` into another container, or reaching a non-allowlisted
-host) — they're intentional, not bugs. Operator-side detail lives in `~/infra/README.md`.
+host) - they're intentional, not bugs. Operator-side detail lives in `~/infra/README.md`.
 
 ## Development Workflow
 
@@ -147,11 +147,11 @@ yarn check-types
 ```
 
 > **`yarn test` / `yarn lint` fails with `command not found: <tool>` (exit 127)?**
-> Almost always a stale `node_modules` out of sync with `yarn.lock` — yarn can't
+> Almost always a stale `node_modules` out of sync with `yarn.lock` - yarn can't
 > resolve the binary (commonly `vitest`, which is the one test binary not hoisted
 > to the root `node_modules/.bin`). Run `yarn install` to resync, then retry. It
 > is **not** a PATH or workspace-config problem, so don't reach for explicit
-> `./node_modules/.bin/...` paths — fix the install instead.
+> `./node_modules/.bin/...` paths - fix the install instead.
 
 ### CI Workflow Commands
 
@@ -175,6 +175,11 @@ yarn turbo test
 
 The development Docker workflow builds the multi-stage `Dockerfile` for
 `linux/amd64` and `linux/arm64`.
+
+The built Docker image includes `/opt/app/healthcheck.sh` as its
+`HEALTHCHECK`. It probes `/api/health/ready` on `UI_PORT` and preserves
+`BASE_PATH`; use `/api/health/live` for process-only liveness checks and
+`/api/health/ready` for database readiness checks.
 
 ### Workspace MCP Servers
 
@@ -210,6 +215,7 @@ yarn workspace @maintainerr/contracts build
   - `BREAKING CHANGE` footer or `!` (e.g. `feat!:`) → major release
 - **Import Organization**: Prefer absolute imports, group by type (external, internal, relative)
 - **String Handling**: Avoid regex for simple prefix/suffix/substring checks or single-character trimming. Prefer string primitives such as `endsWith`, `startsWith`, `slice`, `substring`, or direct character inspection to reduce unnecessary regex risk; see [OWASP ReDoS guidance](https://owasp.org/www-community/attacks/Regular_expression_Denial_of_Service_-_ReDoS). Example: `fix: avoid regex backtracking in disk path normalization (#2526)`.
+- **Punctuation**: Never use em or en dashes in any committed artifact (code, comments, log/UI strings, tests, commit messages, docs). Always type a plain ASCII hyphen `-` (U+002D), never `—` (U+2014) or `–` (U+2013). See the convention in [project-notes.instructions.md](.github/instructions/project-notes.instructions.md).
 
 ### TypeScript Guidelines
 
@@ -354,19 +360,19 @@ These specifications provide comprehensive type definitions and endpoint documen
 
 For end-to-end checks of media-server-dependent flows (rules, collections,
 overview, calendar, storage) without a real Plex/Jellyfin, the `tools/dev/` folder
-has scripts that **complement Playwright** — Playwright drives the UI, these
+has scripts that **complement Playwright** - Playwright drives the UI, these
 provide the backend data:
 
-- `tools/dev/fake-jellyfin.mjs` — stateless mock Jellyfin (`:8096`).
-- `tools/dev/fake-plex.mjs` — stateless mock Plex (`:32400`); covers the Plex-only
+- `tools/dev/fake-jellyfin.mjs` - stateless mock Jellyfin (`:8096`).
+- `tools/dev/fake-plex.mjs` - stateless mock Plex (`:32400`); covers the Plex-only
   getter paths (smart collections, watch history, accounts, ratings,
   shows/seasons/episodes) that the Jellyfin mock can't.
-- `tools/dev/fake-radarr.mjs` — mock Radarr v3 (`:7878`); covers the
+- `tools/dev/fake-radarr.mjs` - mock Radarr v3 (`:7878`); covers the
   collection-handler → RadarrActionHandler flow (DELETE / UNMONITOR / "add import
   list exclusion") that the media-server mocks can't. Resolves any `tmdbId` to a
   movie, and replicates Radarr's exclusion semantics: `POST /exclusions/bulk`
   de-dupes (idempotent), singular `POST /exclusions` 400s on a duplicate.
-- `tools/dev/seed-db.mjs` — the **only** DB-touching script. Seeds settings,
+- `tools/dev/seed-db.mjs` - the **only** DB-touching script. Seeds settings,
   collections, and rule groups **with rules** covering ~all rule properties, plus
   notifications, cron, logs, exclusions, and overlays. The "Stale Movies"
   collection is seeded as UNMONITOR + listExclusions with `tmdbId`s set, so it
@@ -378,7 +384,7 @@ run the seed, restart `yarn dev`. Inspect a getter's live output with
 `POST /api/rules/test {"mediaId","rulegroupId"}`, run a rule with
 `POST /api/rules/:id/execute`, or run collection handling with
 `POST /api/collections/handle`. Note: after editing server code, **restart
-`yarn dev`** — a long-lived dev server can serve stale getter logic. Watchlist
+`yarn dev`** - a long-lived dev server can serve stale getter logic. Watchlist
 and plex.tv user enrichment can't be mocked locally (they hit plex.tv) and
 degrade gracefully.
 

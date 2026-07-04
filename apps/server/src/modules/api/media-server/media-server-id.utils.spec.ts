@@ -132,7 +132,7 @@ describe('media-server-id.utils', () => {
 
     // #2853: malformed strings used to slip through because the filter only
     // rejected the all-zero Guid and Plex-shaped numeric IDs. Anything else
-    // — truncated UUIDs, non-hex garbage, fully-dashed but wrong-length — must
+    // - truncated UUIDs, non-hex garbage, fully-dashed but wrong-length - must
     // now be rejected before Maintainerr sends it to Jellyfin's refresh queue.
     it.each([
       'abc',

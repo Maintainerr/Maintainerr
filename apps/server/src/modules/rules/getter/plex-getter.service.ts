@@ -306,7 +306,7 @@ export class PlexGetterService {
               season.ratingKey,
             );
             for (const episode of episodes) {
-              // Errors propagate to the outer catch — silently treating a
+              // Errors propagate to the outer catch - silently treating a
               // failed lookup as "no viewers" would drop genuine viewers from
               // `allViewers` and mark the show as unwatched-by-everyone.
               const viewers = await this.plexApi.getWatchHistory(
@@ -342,7 +342,7 @@ export class PlexGetterService {
           return [];
         }
         // At season/show level this returns the UNION of users that watched
-        // any descendant episode — not the intersection. Plex's per-show
+        // any descendant episode - not the intersection. Plex's per-show
         // watch history aggregates child views, so any account that watched
         // at least one episode appears here. Use `sw_allEpisodesSeenBy` when
         // you need "watched every episode" semantics instead.
@@ -820,8 +820,8 @@ export class PlexGetterService {
           // collection with this item, so one recently-watched sibling keeps
           // the whole set out of the delete pool.
           //
-          // We use getWatchHistory (/status/sessions/history/all) — not the
-          // per-child lastViewedAt field — because library metadata is scoped
+          // We use getWatchHistory (/status/sessions/history/all) - not the
+          // per-child lastViewedAt field - because library metadata is scoped
           // to the calling account (admin-only), while the history endpoint
           // returns every user's entries when called with an admin token.
           // Same pattern as the existing lastViewedAt rule (prop id 7).

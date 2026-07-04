@@ -43,7 +43,7 @@ const emptyValues: DownloadClientFormValues = {
 // qBittorrent is the only supported download client today, so this page shows
 // its connection fields directly. When a second client is added, introduce a
 // client-type selector and model the layout on the Metadata settings section
-// (src/components/Settings/Metadata) — a single selector plus the chosen
+// (src/components/Settings/Metadata) - a single selector plus the chosen
 // backend's fields is the clean reference for "pick one of several backends".
 const DownloadClientSettings = () => {
   const [testResult, setTestResult] = useState<{

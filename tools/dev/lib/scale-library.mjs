@@ -9,7 +9,7 @@
  * Why these exact ids:
  *  - tmdbIds are REAL. The metadata resolver (metadata.service) validates each
  *    direct id against TMDB before the Seerr lookup, so synthetic ids would 404
- *    and the item would be skipped. Items therefore also OMIT year — the
+ *    and the item would be skipped. Items therefore also OMIT year - the
  *    resolver accepts a direct id without a year cross-check when the item has
  *    no year (avoids false rejects on year drift).
  *  - MATCH_* ids are actually requested in the dev Seerr (seeded via the API),

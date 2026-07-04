@@ -25,13 +25,7 @@ export interface TautulliUser {
 
 export interface TautulliMetadata {
   media_type:
-    | 'season'
-    | 'episode'
-    | 'movie'
-    | 'track'
-    | 'album'
-    | 'artist'
-    | 'show';
+    'season' | 'episode' | 'movie' | 'track' | 'album' | 'artist' | 'show';
   rating_key: string;
   parent_rating_key: string;
   grandparent_rating_key: string;

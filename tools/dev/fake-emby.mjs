@@ -56,7 +56,7 @@ function show(id, name) {
 const SHOWS = [show('emby-show-1', 'Mock Show Alpha')];
 
 // The shared manual ("custom name") BoxSet. Server-global, but reported only under
-// libraries whose content it holds — and it holds movies only.
+// libraries whose content it holds - and it holds movies only.
 const SHARED_BOXSET = {
   Id: 'emby-boxset-shared',
   Name: 'Franchise A Collection',
@@ -71,7 +71,7 @@ const SHARED_BOXSET = {
 // Off unless FAKE_SCALE>0 (see lib/scale-library.mjs). Real tmdb ProviderId, no
 // ProductionYear (so the metadata resolver accepts the id without a year check).
 // Shared with fake-plex/fake-jellyfin so the item set is identical across
-// backends — note this is the only movie content this Emby mock serves.
+// backends - note this is the only movie content this Emby mock serves.
 const SCALE = buildScaleLibrary();
 const scaleMovie = (it) => ({
   Id: it.key,
@@ -168,7 +168,7 @@ const server = http.createServer((req, res) => {
     return send(res, 200, ITEMS_BY_ID.get(id) ?? show(id, `Mock item ${id}`));
   }
 
-  // Item list: /Items or /Users/{userId}/Items — Emby sends PascalCase params.
+  // Item list: /Items or /Users/{userId}/Items - Emby sends PascalCase params.
   if (
     req.method === 'GET' &&
     (path === '/Items' || /^\/Users\/[^/]+\/Items$/.test(path))
@@ -186,7 +186,7 @@ const server = http.createServer((req, res) => {
     const parentId = u.searchParams.get('ParentId');
     const itemTypes = u.searchParams.get('IncludeItemTypes');
     // BoxSet listing: server-global but surfaced only under libraries whose
-    // content the boxset holds. This one holds movies only — the #3026 condition.
+    // content the boxset holds. This one holds movies only - the #3026 condition.
     if (itemTypes && itemTypes.includes('BoxSet')) {
       if (parentId === 'emby-movies') {
         return send(res, 200, itemsResponse([SHARED_BOXSET]));

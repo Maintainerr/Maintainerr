@@ -37,7 +37,7 @@ export interface CompareMediaItemsOptions {
    */
   deleteSoonestDate?: (item: MediaItem) => Date | string | undefined | null
   /**
-   * Anchor for `daysLeft` bucketing — pass `now - deleteAfterDays * dayMs`.
+   * Anchor for `daysLeft` bucketing - pass `now - deleteAfterDays * dayMs`.
    * When set, items with the same overlay countdown tie even if they
    * straddle UTC midnight (e.g. addedAt 23:00 vs. 01:00 the next day with
    * the same "Leaves in 3 days" label). When omitted, items bucket by UTC
@@ -61,7 +61,7 @@ const getDeleteSoonestDayBucket = (
   const value = options?.deleteSoonestDate?.(item) ?? item.addedAt
   const referenceMs = toReferenceMs(options?.deleteSoonestReferenceTime)
   if (referenceMs === undefined) {
-    // No collection context — bucket by UTC midnight.
+    // No collection context - bucket by UTC midnight.
     return toDayBucket(value)
   }
   const ms = value instanceof Date ? value.getTime() : new Date(value).getTime()
@@ -90,7 +90,7 @@ const compareByDisplayHierarchy = (
 }
 
 // Numeric sort with two invariants: (1) items missing the value sort to the
-// end regardless of direction — sorting "oldest air date first" must not put
+// end regardless of direction - sorting "oldest air date first" must not put
 // an item with no air date ahead of one from 1995; and (2) within-group ties
 // fall back to the show-aware title order so the listing stays stable A→Z.
 const compareNumericWithTitleFallback = (

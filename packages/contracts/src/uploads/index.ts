@@ -1,5 +1,5 @@
 /**
- * Shared cap for user-uploaded image assets across the app — collection
+ * Shared cap for user-uploaded image assets across the app - collection
  * posters and overlay image elements both share this ceiling. 500 KB is a
  * pragmatic limit: real cover artwork at typical poster dimensions
  * (~1000×1500 JPEG) lands well under this, while anything larger is almost
@@ -10,7 +10,7 @@ export const IMAGE_UPLOAD_MAX_LABEL = '500 KB'
 
 /**
  * Accepted file types for the overlay-image upload pipeline. Single source
- * of truth — the server uses these to validate uploads and populate the
+ * of truth - the server uses these to validate uploads and populate the
  * Content-Type header on GET, the UI uses them to populate the file
  * picker's `accept` attribute and to render the helper text under the
  * picker. Add a new entry here and both sides pick it up.

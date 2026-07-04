@@ -31,7 +31,7 @@ describe('ServarrTagService', () => {
 
     // By default every media-server id resolves to a tmdb/tvdb candidate; the
     // *arr lookup (mocked per test) decides whether it matches an entity. The
-    // candidate id is irrelevant here — the lookup mock ignores it.
+    // candidate id is irrelevant here - the lookup mock ignores it.
     metadataService.resolveLookupCandidatesForService.mockImplementation(
       async (_mediaServerId, service) => [
         { providerKey: service === 'radarr' ? 'tmdb' : 'tvdb', id: 100 },
@@ -39,7 +39,7 @@ describe('ServarrTagService', () => {
     );
   });
 
-  describe('Behavior A — membership tagging', () => {
+  describe('Behavior A - membership tagging', () => {
     it('tags newly added movies in Radarr with the collection title', async () => {
       const radarr = mockRadarrApi(servarrService, logger);
       jest
@@ -71,7 +71,7 @@ describe('ServarrTagService', () => {
       );
     });
 
-    it('uses the current (renamed) group name as the tag — no stale old-label removal', async () => {
+    it('uses the current (renamed) group name as the tag - no stale old-label removal', async () => {
       const radarr = mockRadarrApi(servarrService, logger);
       jest
         .spyOn(radarr, 'getMovieByTmdbId')
@@ -92,7 +92,7 @@ describe('ServarrTagService', () => {
       );
 
       // Only the current name is ensured/applied; the old (renamed-from) label is
-      // intentionally not chased here (documented edge case — re-tagged on churn).
+      // intentionally not chased here (documented edge case - re-tagged on churn).
       expect(radarr.ensureTag).toHaveBeenCalledTimes(1);
       expect(radarr.ensureTag).toHaveBeenCalledWith('renamed-group');
       expect(radarr.setMovieTags).toHaveBeenCalledWith([10], 5, 'add');
@@ -135,7 +135,7 @@ describe('ServarrTagService', () => {
         [],
       );
 
-      // Both titles normalize to 'my-group', so both resolve to the same tag id —
+      // Both titles normalize to 'my-group', so both resolve to the same tag id -
       // an untag from one then a re-add from the other converges on the same tag.
       expect(ensureTag.mock.calls.every((c) => c[0] === 'my-group')).toBe(true);
       expect(radarr.setMovieTags).toHaveBeenCalledWith([10], 5, 'add');
@@ -249,7 +249,7 @@ describe('ServarrTagService', () => {
       expect(radarr.setMovieTags).not.toHaveBeenCalled();
     });
 
-    it('skips untaggable types (season/episode) — Sonarr has no per-season tag', async () => {
+    it('skips untaggable types (season/episode) - Sonarr has no per-season tag', async () => {
       const sonarr = mockSonarrApi(servarrService, logger);
       const collection = createCollection({
         type: 'season',
@@ -380,7 +380,7 @@ describe('ServarrTagService', () => {
 
       await service.syncMembershipTags(collection, added, []);
 
-      // Every distinct item is tagged exactly once — nothing dropped or doubled.
+      // Every distinct item is tagged exactly once - nothing dropped or doubled.
       const addCalls = setMovieTags.mock.calls.filter((c) => c[2] === 'add');
       const taggedIds = addCalls.flatMap((c) => c[0]);
       expect(taggedIds).toHaveLength(total);
@@ -395,7 +395,7 @@ describe('ServarrTagService', () => {
     }, 30_000);
   });
 
-  describe('Behavior B — exclusion tagging', () => {
+  describe('Behavior B - exclusion tagging', () => {
     const movieTarget = { mediaServerId: 'movie-1', type: 'movie' as const };
 
     it('does nothing when exclusion tagging is disabled', async () => {

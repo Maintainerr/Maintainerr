@@ -90,7 +90,7 @@ describe('RadarrApi', () => {
     });
 
     // A 400 from a different validation rule (e.g. an invalid year) is a real
-    // failure — it must not be silently reported as "already excluded".
+    // failure - it must not be silently reported as "already excluded".
     it('returns false on a non-duplicate validation 400', async () => {
       postSpy.mockRejectedValue({
         isAxiosError: true,

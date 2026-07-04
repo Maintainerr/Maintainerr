@@ -48,7 +48,7 @@ const defaults = (mode: OverlayTemplateMode) =>
 
 // Outer component remounts the inner editor whenever `id` changes. This keeps
 // useState initial values fresh on transitions (e.g. preset → /new) so we
-// don't need a reset effect — which the lint rule
+// don't need a reset effect - which the lint rule
 // `react-hooks/set-state-in-effect` correctly flags as cascading-render bait.
 const OverlayTemplateEditorPage = () => {
   const { id } = useParams<{ id: string }>()
@@ -102,7 +102,7 @@ const OverlayTemplateEditor = ({ routeId }: { routeId: string }) => {
 
   // Load existing template. The wrapper remounts this component when `id`
   // changes (see OverlayTemplateEditorPage above), so the new-template
-  // branch needs no manual state reset — useState initial values handle it.
+  // branch needs no manual state reset - useState initial values handle it.
   useEffect(() => {
     if (isNew) return
     const templateId = Number(id)
@@ -208,7 +208,7 @@ const OverlayTemplateEditor = ({ routeId }: { routeId: string }) => {
 
   const handleUploadImage = useCallback(
     async (file: File) => {
-      // The upload itself is the success boundary — once the server has
+      // The upload itself is the success boundary - once the server has
       // accepted and stored the file, refreshing the list is a separate,
       // non-fatal concern. A transient list-fetch failure must not roll
       // back the success message or prevent selecting the new asset.
@@ -258,7 +258,7 @@ const OverlayTemplateEditor = ({ routeId }: { routeId: string }) => {
     }
   }, [])
 
-  // Fetch a random poster only when section or mode actually changes — not
+  // Fetch a random poster only when section or mode actually changes - not
   // on every render that would create a new loadRandomPoster identity.
   useEffect(() => {
     if (!selectedSection) return
@@ -297,7 +297,7 @@ const OverlayTemplateEditor = ({ routeId }: { routeId: string }) => {
     return () => window.removeEventListener('keydown', handler)
   }, [undo, redo, selectedId, setElements])
 
-  // Saving a preset must not mutate it — the server rejects it and the
+  // Saving a preset must not mutate it - the server rejects it and the
   // shared presets are seeded once, so any "edit" of a preset is really
   // a fork. We open the copy modal pre-filled with a sensible default,
   // then create a fresh user-owned template on confirm.
@@ -324,7 +324,7 @@ const OverlayTemplateEditor = ({ routeId }: { routeId: string }) => {
         isDefault: false,
       } satisfies OverlayTemplateCreate)
       if (created) {
-        // No success alert here — the navigation to the new template's URL
+        // No success alert here - the navigation to the new template's URL
         // (with its name visible in the title field) is the confirmation.
         // Showing an inline alert just before unmount would flash visibly
         // for one frame and then disappear, which reads as a flicker.
@@ -420,7 +420,7 @@ const OverlayTemplateEditor = ({ routeId }: { routeId: string }) => {
           </h3>
           <p className="description">
             {isPreset
-              ? 'You’re editing a preset. Saving will create your own copy — the original preset is left unchanged.'
+              ? 'You’re editing a preset. Saving will create your own copy - the original preset is left unchanged.'
               : 'Design overlay elements on the canvas. Enter a valid template name in the Template Name field before saving your changes.'}
           </p>
         </div>
@@ -509,7 +509,7 @@ const OverlayTemplateEditor = ({ routeId }: { routeId: string }) => {
           controlsClassName="sm:w-auto"
         />
 
-        {/* Main editor area — desktop: 3 columns, mobile: stacked.
+        {/* Main editor area - desktop: 3 columns, mobile: stacked.
             Uses h-[60vh] with a hard min so it stays stable regardless of
             header/tab/control-row height changes above it. */}
         <div className="mt-4 flex h-[60vh] min-h-96 flex-col border-t border-zinc-700 lg:flex-row">
@@ -519,7 +519,7 @@ const OverlayTemplateEditor = ({ routeId }: { routeId: string }) => {
             </div>
           ) : (
             <>
-              {/* Left: Toolbox — desktop sidebar */}
+              {/* Left: Toolbox - desktop sidebar */}
               <div className="hidden w-48 shrink-0 overflow-y-auto border-r border-zinc-700 p-3 lg:block">
                 <ElementToolbox
                   mode={mode}
@@ -543,7 +543,7 @@ const OverlayTemplateEditor = ({ routeId }: { routeId: string }) => {
                 />
               </div>
 
-              {/* Right: Properties + Layers — desktop sidebar */}
+              {/* Right: Properties + Layers - desktop sidebar */}
               <div className="hidden w-72 shrink-0 overflow-y-auto border-l border-zinc-700 lg:block">
                 <div className="border-b border-zinc-700 p-3">
                   <LayerPanel
@@ -649,7 +649,7 @@ const OverlayTemplateEditor = ({ routeId }: { routeId: string }) => {
           }
         >
           <p className="mb-3">
-            Presets can&rsquo;t be modified. Enter a name for your copy — it
+            Presets can&rsquo;t be modified. Enter a name for your copy - it
             will start from the current canvas and become editable.
           </p>
           <Input

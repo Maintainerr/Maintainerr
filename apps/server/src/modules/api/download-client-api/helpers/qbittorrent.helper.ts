@@ -57,7 +57,7 @@ const toDownloadClientTorrent = (
 };
 
 /**
- * Thin client for the qBittorrent WebUI API (v2, qBittorrent 4.1+) — the
+ * Thin client for the qBittorrent WebUI API (v2, qBittorrent 4.1+) - the
  * qBittorrent implementation of the backend-agnostic `DownloadClient` contract.
  *
  * qBittorrent uses cookie/session auth: `POST /api/v2/auth/login` issues a `SID`
@@ -86,7 +86,7 @@ export class QbittorrentApi
     // qBittorrent's WebUI wants a `Referer` matching the host (its login is the
     // only CSRF-exempt endpoint). Deliberately do NOT send `Origin`: qBittorrent
     // treats a request whose Origin doesn't match its own as cross-site and
-    // rejects it with 403 on every endpoint except login — which breaks
+    // rejects it with 403 on every endpoint except login - which breaks
     // reverse-proxy / scheme-mismatch setups (the mature qbittorrent-api client
     // sends Referer only, for the same reason). The SID cookie carries the auth.
     super(`${url}/api/v2`, {}, logger, {
@@ -167,7 +167,7 @@ export class QbittorrentApi
     // On a normal login qBittorrent issues an SID cookie to use on subsequent
     // requests. When the WebUI bypasses authentication (e.g. "Bypass
     // authentication for clients on localhost"/whitelisted subnets) it returns
-    // "Ok." with no cookie — that is still a valid, authenticated session, so
+    // "Ok." with no cookie - that is still a valid, authenticated session, so
     // capture the cookie when present but never require it.
     const sid = this.extractSid(response.headers['set-cookie']);
     if (sid) {

@@ -863,7 +863,7 @@ export class NotificationService implements OnModuleInit {
     dayAmount?: number,
   ): Promise<string> {
     // Collection name and day count are plain string substitutions that don't
-    // need the media server — resolve them up front so an unavailable media
+    // need the media server - resolve them up front so an unavailable media
     // server (which only affects the media-title lookups below) can't leave
     // their placeholders raw. Strip the collection clause entirely when there's
     // no collection context (e.g. an infrastructure-level failure) so we never
@@ -942,7 +942,7 @@ export class NotificationService implements OnModuleInit {
   private getTitle(item: MediaItem): string {
     // Branch on the server-agnostic item type, not on parentId/grandparentId
     // presence. Plex leaves a movie's parent empty, but Emby/Jellyfin set
-    // parentId to the containing library folder — so keying off parentId
+    // parentId to the containing library folder - so keying off parentId
     // misclassified Emby movies as seasons and rendered them as
     // "undefined - season undefined".
     switch (item.type) {
@@ -985,7 +985,7 @@ export class NotificationService implements OnModuleInit {
   private ruleQueueStatusChanged(event: RuleHandlerQueueStatusUpdatedEventDto) {
     const nowActive = !!event.data?.processingQueue;
     if (nowActive === this.batchActive) {
-      // Mid-batch progress update — nothing to do.
+      // Mid-batch progress update - nothing to do.
       return;
     }
     // Reset on every transition (in either direction). Clearing on the

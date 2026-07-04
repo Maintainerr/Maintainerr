@@ -12,13 +12,13 @@ import { RulesService } from './rules.service';
 // Deterministic, real-DB integration test for cross-group exclusion scoping.
 //
 // This composes the two real pieces the rule executor uses:
-//   1. RulesService.getExclusions(rulegroupId)  — against a real SQLite repo
+//   1. RulesService.getExclusions(rulegroupId)  - against a real SQLite repo
 //   2. the executor's gate: `if (!isMediaItemExcluded(cascade, item)) add(item)`
 //      (rule-executor.service.ts handleCollection)
 //
 // It proves end-to-end that an item excluded *in another group* IS added to a
 // group that didn't exclude it, while global exclusions still apply everywhere.
-// No cron/scheduler/media-server — fully reproducible (unlike a live dev run).
+// No cron/scheduler/media-server - fully reproducible (unlike a live dev run).
 
 // EntitySchema mirror of the Exclusion entity (avoids decorator/metadata setup).
 const ExclusionSchema = new EntitySchema<any>({
@@ -38,7 +38,7 @@ const GROUP_B = 169; // a different group
 const MOVIE_X = 'movie-x'; // scoped-excluded in A only
 const MOVIE_G = 'movie-global'; // globally excluded
 
-describe('Exclusion scoping (real DB) — excluded-in-A item is added in B', () => {
+describe('Exclusion scoping (real DB) - excluded-in-A item is added in B', () => {
   let ds: DataSource;
   let repo: Repository<any>;
   let service: RulesService;
@@ -91,7 +91,7 @@ describe('Exclusion scoping (real DB) — excluded-in-A item is added in B', () 
     return !isMediaItemExcluded(cascade, { id: itemId });
   };
 
-  it('group B (no own exclusion for MOVIE_X) ADDS it — the A-scoped exclusion does not leak', async () => {
+  it('group B (no own exclusion for MOVIE_X) ADDS it - the A-scoped exclusion does not leak', async () => {
     expect(await isAddedTo(GROUP_B, MOVIE_X)).toBe(true);
   });
 

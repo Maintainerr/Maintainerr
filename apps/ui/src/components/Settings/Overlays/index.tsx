@@ -81,7 +81,7 @@ const OverlaySettings = () => {
     showError,
   } = useSettingsFeedback('Overlay settings')
 
-  // Persisted (server) enabled state — distinct from the form's in-flight
+  // Persisted (server) enabled state - distinct from the form's in-flight
   // value. Run Now / Reset operate against the server, so they must reflect
   // what the server has, not unsaved toggle changes. The cron is needed
   // only to detect the moment overlays go enabled with no schedule set, so

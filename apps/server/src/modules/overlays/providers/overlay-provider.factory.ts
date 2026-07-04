@@ -11,7 +11,7 @@ import { PlexOverlayProvider } from './plex-overlay.provider';
  *
  * Delegates server-type resolution to MediaServerFactory so the inferred-type
  * fallback (Plex credentials present but media_server_type unset → infer Plex)
- * stays a single source of truth. Returns null when no server is configured —
+ * stays a single source of truth. Returns null when no server is configured -
  * callers (processor, controller) log and skip.
  *
  * Runtime server switches are guarded at MediaServerFactory.getService(); the

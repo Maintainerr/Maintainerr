@@ -34,10 +34,4 @@ export interface IRuleComparisonResult {
 }
 
 export type RuleValueType =
-  | number
-  | Date
-  | string
-  | boolean
-  | number[]
-  | string[]
-  | null
+  number | Date | string | boolean | number[] | string[] | null

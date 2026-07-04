@@ -235,7 +235,7 @@ export class CollectionsService {
    * automatic collection sharing this collection's media server collection.
    *
    * Throws on repository failure. Callers must treat a thrown error as
-   * "ownership unknown" — silently defaulting to an empty set would
+   * "ownership unknown" - silently defaulting to an empty set would
    * re-introduce the cross-rule contamination this method exists to prevent
    * (sibling-owned children would be imported as `manual` into the wrong
    * rule's collection_media).
@@ -321,7 +321,7 @@ export class CollectionsService {
       );
       this.logger.debug(error);
       // An exception is not evidence the server rejected the adds, so
-      // report nothing attempted — callers must not heal on this.
+      // report nothing attempted - callers must not heal on this.
       return { attempted: 0, rejected: 0 };
     }
   }
@@ -329,7 +329,7 @@ export class CollectionsService {
   /**
    * Collections healed once already (per process). A second total
    * rejection without an accepted add in between means recreation didn't
-   * fix the cause — stop churning delete/recreate and leave the loud log.
+   * fix the cause - stop churning delete/recreate and leave the loud log.
    */
   private readonly healedCollectionIds = new Set<number>();
 
@@ -359,7 +359,7 @@ export class CollectionsService {
 
     if (this.healedCollectionIds.has(collection.id)) {
       this.logger.error(
-        `Media server collection for "${collection.title}" still rejects every add after being recreated — leaving it in place. Check the Plex response body logged above for the rejection reason.`,
+        `Media server collection for "${collection.title}" still rejects every add after being recreated - leaving it in place. Check the Plex response body logged above for the rejection reason.`,
       );
       return false;
     }
@@ -374,7 +374,7 @@ export class CollectionsService {
       }
 
       this.logger.warn(
-        `Media server collection ${collection.mediaServerId} for "${collection.title}" is empty and rejected every add — deleting it so it can be recreated`,
+        `Media server collection ${collection.mediaServerId} for "${collection.title}" is empty and rejected every add - deleting it so it can be recreated`,
       );
       await mediaServer.deleteCollection(serverColl.id);
       this.healedCollectionIds.add(collection.id);
@@ -694,7 +694,7 @@ export class CollectionsService {
           );
         } catch (verificationError) {
           this.logger.warn(
-            `Failed to verify collection "${collection.title}" after getCollectionChildren error — keeping link`,
+            `Failed to verify collection "${collection.title}" after getCollectionChildren error - keeping link`,
           );
           this.logger.debug(error);
           this.logger.debug(verificationError);
@@ -703,13 +703,13 @@ export class CollectionsService {
 
         if (!stillExists) {
           this.logger.warn(
-            `Collection "${collection.title}" references a media server collection that no longer exists — clearing stale link`,
+            `Collection "${collection.title}" references a media server collection that no longer exists - clearing stale link`,
           );
           collection.mediaServerId = null;
           await this.saveCollection(collection);
         } else {
           this.logger.warn(
-            `getCollectionChildren failed for "${collection.title}" but collection still exists on server — keeping link`,
+            `getCollectionChildren failed for "${collection.title}" but collection still exists on server - keeping link`,
           );
           this.logger.debug(error);
         }
@@ -906,7 +906,7 @@ export class CollectionsService {
     }
 
     try {
-      // Plex rejects move/prefs on smart collections — skip defensively even
+      // Plex rejects move/prefs on smart collections - skip defensively even
       // though Maintainerr-managed collections are non-smart.
       const serverCollection = await mediaServer.getCollection(
         collection.mediaServerId,
@@ -1018,7 +1018,7 @@ export class CollectionsService {
       if (!sort || sort === 'deleteSoonest') {
         // SQL-paginate by `collection_media.addDate`. `deleteSoonest` is
         // equivalent to `addDate` ordering because `deleteAfterDays` is
-        // constant for every item in a collection — so the only sort key
+        // constant for every item in a collection - so the only sort key
         // that actually matters lives on the `collection_media` row and the
         // database can paginate it directly without hydrating MediaItem
         // metadata for every row in the collection. This keeps page loads
@@ -1029,7 +1029,7 @@ export class CollectionsService {
         // so the polished alphabetical-within-day order is what users see
         // when browsing the actual Plex/Jellyfin collection. The Maintainerr
         // UI page may show same-day items in a slightly different order
-        // (by `addDate, id` instead of by title) — acceptable because the
+        // (by `addDate, id` instead of by title) - acceptable because the
         // primary sort key is correct and Maintainerr's DB remains the
         // source of truth driving the next push.
         const direction =
@@ -1052,7 +1052,7 @@ export class CollectionsService {
       }
 
       // Explicit sort on a MediaItem-side key (airDate / rating / watchCount /
-      // title) — the sort value isn't on `collection_media`, so we have to
+      // title) - the sort value isn't on `collection_media`, so we have to
       // hydrate the whole collection before paginating. Acceptable because
       // these sorts are rarely used compared to `deleteSoonest` and the
       // default load.
@@ -1122,7 +1122,7 @@ export class CollectionsService {
       // Only remove a row when the media server *confirms* the item is gone.
       // `itemExists` returns false solely on a 404/empty result and throws on
       // an inconclusive check (network / 5xx / auth), unlike `getMetadata`
-      // which returns undefined for both absent and failed reads — so a
+      // which returns undefined for both absent and failed reads - so a
       // transient blip can no longer delete a still-present item's row.
       let exists = true;
       try {
@@ -1918,7 +1918,7 @@ export class CollectionsService {
               .filter((childId): childId is string => Boolean(childId)),
           );
           this.logger.debug(
-            `[checkAutomaticMediaServerLink] Shared collection ${serverColl.id} has ${serverChildIds.size} children — checking for local rule-owned drift`,
+            `[checkAutomaticMediaServerLink] Shared collection ${serverColl.id} has ${serverChildIds.size} children - checking for local rule-owned drift`,
           );
           const resyncResult =
             await this.resyncRuleOwnedItemsToMediaServerCollection(
@@ -1934,7 +1934,7 @@ export class CollectionsService {
           }
 
           // An empty shared collection that rejected every resynced item
-          // can't be repaired in place — fall back to delete-and-recreate.
+          // can't be repaired in place - fall back to delete-and-recreate.
           // The sibling rule group loses nothing: the collection has no
           // children, and its link re-establishes via the title relink.
           if (
@@ -1977,8 +1977,8 @@ export class CollectionsService {
         collection.mediaServerId !== null &&
         originalMediaServerId !== null
       ) {
-        // Jellyfin/Emby: a BoxSet can drain — its items re-imported with new
-        // ids, or a one-time add that didn't fully land — and sit on the server
+        // Jellyfin/Emby: a BoxSet can drain - its items re-imported with new
+        // ids, or a one-time add that didn't fully land - and sit on the server
         // under-populated while the DB still lists its rule-owned items. Re-add
         // the missing ones: empty BoxSets accept adds, so this repopulates in
         // place, the BoxSet id (with its overlays/poster) stays stable, and
@@ -2004,10 +2004,26 @@ export class CollectionsService {
       }
 
       if (!serverColl) {
+        // A missing server collection has two very different causes: the
+        // library is fine and simply has no matching items yet (auto-create
+        // will kick in), or the library the collection targets no longer
+        // exists on the server (removed, or recreated with a new id) - in
+        // which case nothing will ever be created and the user must re-point
+        // the collection. Only claim the library is gone when we positively
+        // fetched the library list and it's absent; treat an empty/failed
+        // fetch as inconclusive so a transient blip never mislabels it.
+        const libraries = (await mediaServer.getLibraries()) ?? [];
+        const libraryMissing =
+          !!collection.libraryId &&
+          libraries.length > 0 &&
+          !libraries.some((library) => library.id === collection.libraryId);
+
         this.logger.debug(
-          originalMediaServerId
-            ? `[checkAutomaticMediaServerLink] Media server collection for "${collection.title}" no longer exists — clearing link. It will be recreated automatically when items match the rule.`
-            : `[checkAutomaticMediaServerLink] No media server collection for "${collection.title}" — collection is empty and will be created automatically when items match the rule.`,
+          libraryMissing
+            ? `[checkAutomaticMediaServerLink] Library ${collection.libraryId} for "${collection.title}" no longer exists on the media server - clearing link. Re-point the collection at an existing library.`
+            : originalMediaServerId
+              ? `[checkAutomaticMediaServerLink] Media server collection for "${collection.title}" no longer exists - clearing link. It will be recreated automatically when items match the rule.`
+              : `[checkAutomaticMediaServerLink] No media server collection for "${collection.title}" - collection is empty and will be created automatically when items match the rule.`,
         );
         collection.mediaServerId = null;
         collection = await this.saveCollection(collection);
@@ -2306,7 +2322,7 @@ export class CollectionsService {
               manualMembershipSource,
             );
 
-          // Only notify for items whose membership was persisted — both
+          // Only notify for items whose membership was persisted - both
           // server-rejected items and locally-rolled-back items never
           // entered the collection and will be retried (and re-notified)
           // on a later run.
@@ -2331,7 +2347,7 @@ export class CollectionsService {
           }
 
           // Every add rejected by the server: if the collection is also
-          // empty it is unpopulatable in place — heal by delete so the
+          // empty it is unpopulatable in place - heal by delete so the
           // next pass recreates it fresh. Keyed to server rejections only;
           // local persistence failures must never delete the collection.
           if (serverRejectedIds.size >= newMedia.length) {
@@ -2410,7 +2426,7 @@ export class CollectionsService {
    *
    * Called after a delete-style action frees the underlying file. The item
    * still resolves on the media server at this point, so removing it from the
-   * sibling BoxSets now — while we still have a valid id to remove — keeps the
+   * sibling BoxSets now - while we still have a valid id to remove - keeps the
    * media server from holding unresolved linked-item paths once the library
    * drops the item on its next scan. Those dead links are what Jellyfin
    * re-resolves on every rule run, producing the "Unable to find linked item
@@ -2419,7 +2435,7 @@ export class CollectionsService {
    * the sibling memberships.
    *
    * Returns the ids of the sibling collections it pruned, so the caller can
-   * mark the item recently-handled for each of them — otherwise the rule
+   * mark the item recently-handled for each of them - otherwise the rule
    * executor's next pass re-adds it (the id still resolves and conditions like
    * `isWatched` stay true), recreating the membership this just removed.
    */
@@ -3247,7 +3263,7 @@ export class CollectionsService {
     try {
       await this.collectionRepo.delete(collection.id);
 
-      // Drop any stored poster bytes; the media-server side is left alone —
+      // Drop any stored poster bytes; the media-server side is left alone -
       // Plex/Jellyfin will recompute a thumb from member items as usual.
       try {
         this.collectionPosterService.removeStoredPoster(collection.id);
@@ -3319,7 +3335,7 @@ export class CollectionsService {
       // movie<->show crossover is intentional and required: a BoxSet is one
       // server-global container that can hold both, and this fallback exists
       // precisely to let a show rule find a BoxSet currently populated with
-      // movies only. Do not narrow this to the collection's own type — that
+      // movies only. Do not narrow this to the collection's own type - that
       // would reintroduce the bug. Matching reuses matchCollectionInLibrary so
       // the primary and fallback share one comparison; the name match only
       // bootstraps the first link, after which the stored mediaServerId is used.

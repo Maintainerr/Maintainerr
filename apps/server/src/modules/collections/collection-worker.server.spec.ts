@@ -256,7 +256,7 @@ describe('CollectionWorkerService', () => {
 
     await collectionWorkerService.execute();
 
-    // The item was already gone — nothing on disk changed, so no sync and
+    // The item was already gone - nothing on disk changed, so no sync and
     // neither the handled nor the failed notification fires.
     expect(seerrApi.api.post).not.toHaveBeenCalled();
     expect(eventEmitter.emit).not.toHaveBeenCalledWith(

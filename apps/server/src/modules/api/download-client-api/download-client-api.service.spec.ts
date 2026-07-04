@@ -12,7 +12,7 @@ const apiMock = {
 };
 
 // The service builds its client through the factory, which constructs a
-// QbittorrentApi — mock that so the factory returns our stub.
+// QbittorrentApi - mock that so the factory returns our stub.
 jest.mock('./helpers/qbittorrent.helper', () => ({
   QbittorrentApi: jest.fn().mockImplementation(() => apiMock),
 }));

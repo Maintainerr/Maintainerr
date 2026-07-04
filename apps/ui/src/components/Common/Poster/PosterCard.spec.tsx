@@ -185,8 +185,7 @@ describe('PosterCard', () => {
 
   it('reuses the same in-flight metadata image request across poster cards', async () => {
     let resolveRequest:
-      | ((value: { url: string } | undefined) => void)
-      | undefined
+      ((value: { url: string } | undefined) => void) | undefined
 
     getApiHandlerMock.mockImplementation(
       () =>

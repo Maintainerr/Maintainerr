@@ -3,8 +3,8 @@
  *
  * sharp ships prebuilt native binaries. Since libvips 8.18 (sharp 0.35) the
  * prebuilt Linux x64 binary requires a CPU with the x86-64-v2 microarchitecture
- * (SSE4.2, POPCNT, …). On older CPUs — or minimal VM CPU models such as QEMU
- * `kvm64`, which do not expose those features to the guest — sharp throws
+ * (SSE4.2, POPCNT, …). On older CPUs - or minimal VM CPU models such as QEMU
+ * `kvm64`, which do not expose those features to the guest - sharp throws
  * "Unsupported CPU" while loading its addon at `require()` time.
  *
  * Both consumers (overlay rendering and collection posters) import sharp at

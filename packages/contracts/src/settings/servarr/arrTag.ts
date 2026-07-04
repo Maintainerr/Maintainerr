@@ -1,5 +1,5 @@
 /**
- * Radarr and Sonarr restrict tag labels to `^[a-z0-9-]+$` — lowercase letters,
+ * Radarr and Sonarr restrict tag labels to `^[a-z0-9-]+$` - lowercase letters,
  * digits and hyphens only. `POST /api/v3/tag` returns HTTP 400
  * ("Allowed characters a-z, 0-9 and -") for anything else.
  *
@@ -17,7 +17,7 @@ export const ARR_TAG_LABEL_HINT =
  * True when `label` is a valid *arr tag label the server applies verbatim: it's
  * non-empty and already in normalized form. `normalizeArrTagLabel` lowercases and
  * collapses/strips every disallowed character, so a label it leaves unchanged
- * contains only `a-z0-9-` with no leading/trailing/doubled hyphens — exactly what
+ * contains only `a-z0-9-` with no leading/trailing/doubled hyphens - exactly what
  * Radarr/Sonarr accept. This rejects e.g. `Tag`, `my--tag`, `-dnd`, `dnd-`, `--`.
  */
 export function isValidArrTagLabel(label: string): boolean {

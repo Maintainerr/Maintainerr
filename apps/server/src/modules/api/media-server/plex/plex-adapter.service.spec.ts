@@ -120,7 +120,7 @@ describe('PlexAdapterService', () => {
 
     it('should reject blank item ids before calling PlexApiService', async () => {
       await expect(service.refreshItemMetadata('   ')).rejects.toThrow(
-        'refreshItemMetadata called with empty itemId — aborting metadata refresh request',
+        'refreshItemMetadata called with empty itemId - aborting metadata refresh request',
       );
 
       expect(plexApi.refreshMediaMetadata).not.toHaveBeenCalled();

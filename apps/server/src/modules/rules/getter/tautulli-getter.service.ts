@@ -52,7 +52,7 @@ export class TautulliGetterService {
 
       switch (prop.name) {
         // At season/show level `sw_watchers` returns the UNION of users that
-        // watched any descendant episode — not the intersection. Tautulli's
+        // watched any descendant episode - not the intersection. Tautulli's
         // history aggregates child views via grandparent_rating_key /
         // parent_rating_key, so any account that watched at least one
         // episode appears here. Use `sw_allEpisodesSeenBy` when you need

@@ -30,7 +30,7 @@ vi.mock('../../utils/ApiHandler', () => ({
   PostApiHandler: vi.fn(),
 }))
 
-describe('AddModal — global exclusion warning', () => {
+describe('AddModal - global exclusion warning', () => {
   const getApiHandlerMock = vi.mocked(GetApiHandler)
   const postApiHandlerMock = vi.mocked(PostApiHandler)
 
@@ -82,14 +82,14 @@ describe('AddModal — global exclusion warning', () => {
   })
   afterEach(() => cleanup())
 
-  it('Add + all collections, item has scoped exclusions: warns with item — rule-group links, then Proceed submits a global exclusion', async () => {
+  it('Add + all collections, item has scoped exclusions: warns with item - rule-group links, then Proceed submits a global exclusion', async () => {
     stubApi(scopedStatus)
     renderExclude()
 
     fireEvent.click(await screen.findByRole('button', { name: 'Submit' }))
 
     await screen.findByText('Confirmation Required')
-    // each scoped exclusion is listed as "<item> — <linked rule group>"
+    // each scoped exclusion is listed as "<item> - <linked rule group>"
     expect(screen.getByRole('button', { name: 'Archive Queue' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Stale Movies' })).toBeTruthy()
     expect(screen.getAllByText(/Mock Charlie/).length).toBeGreaterThan(0)

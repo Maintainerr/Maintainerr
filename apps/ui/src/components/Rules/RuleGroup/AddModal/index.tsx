@@ -414,7 +414,7 @@ const notifySkippedRules = (skipped: number) => {
   if (skipped <= 0) return
   const plural = skipped !== 1
   toast.warn(
-    `${skipped} rule${plural ? 's' : ''} ${plural ? 'were' : 'was'} skipped — ${
+    `${skipped} rule${plural ? 's' : ''} ${plural ? 'were' : 'was'} skipped - ${
       plural
         ? "they use properties that aren't available"
         : "it uses a property that isn't available"
@@ -482,16 +482,11 @@ const AddModal = (props: AddModal) => {
   }) as number | null | undefined
   const useRulesEnabled = useWatch({ control, name: 'useRules' })
   const arrActionValue = useWatch({ control, name: 'arrAction' }) as
-    | number
-    | undefined
+    number | undefined
   const radarrSettingsId = useWatch({ control, name: 'radarrSettingsId' }) as
-    | number
-    | null
-    | undefined
+    number | null | undefined
   const sonarrSettingsId = useWatch({ control, name: 'sonarrSettingsId' }) as
-    | number
-    | null
-    | undefined
+    number | null | undefined
   const radarrQualityProfileId = useWatch({
     control,
     name: 'radarrQualityProfileId',
@@ -785,7 +780,7 @@ const AddModal = (props: AddModal) => {
     setFormIncomplete(false)
 
     // Disabling an active rule group freezes its tracked items rather than
-    // clearing them — confirm so users don't expect the linked collection to
+    // clearing them - confirm so users don't expect the linked collection to
     // drain on its own.
     const isDisablingActiveGroup =
       props.editData &&
@@ -871,7 +866,7 @@ const AddModal = (props: AddModal) => {
 
   // Only hard-block on rule constants: the form can't render its applications,
   // rule operators, or field options without them. Libraries are allowed to
-  // stream in later — when editing, the stored library is surfaced via
+  // stream in later - when editing, the stored library is surfaced via
   // `storedLibraryMissing` so the form remains usable even if the media
   // server is offline. For brand-new rule groups we still wait for libraries
   // because there's no fallback selection to preserve.
@@ -1004,7 +999,7 @@ const AddModal = (props: AddModal) => {
                       {(librariesError || storedLibraryMissing) && (
                         <p className="mt-1 text-xs text-warning-500">
                           {librariesError
-                            ? `Could not load libraries from ${mediaServerName}. The saved library selection is preserved — cancel editing to avoid losing rules.`
+                            ? `Could not load libraries from ${mediaServerName}. The saved library selection is preserved - cancel editing to avoid losing rules.`
                             : 'The saved library could not be found in the current library list. Re-select it once your media server is reachable.'}
                         </p>
                       )}
@@ -1350,7 +1345,7 @@ const AddModal = (props: AddModal) => {
 
                     {/* Strict 'show' (not selectedLibraryType) on purpose:
                         Sonarr tags are series-level, so season/episode
-                        collections — which map to 'show' — are excluded. */}
+                        collections - which map to 'show' - are excluded. */}
                     {((selectedLibraryType === 'movie' &&
                       hasSelectedRadarrServer) ||
                       (selectedType === 'show' && hasSelectedSonarrServer)) && (
@@ -1567,7 +1562,7 @@ const AddModal = (props: AddModal) => {
                           <p className="text-xs font-normal">
                             Automatically sort items inside the {collectionTerm}{' '}
                             on {mediaServerName}. Disabling later does not
-                            restore the default order — change it in{' '}
+                            restore the default order - change it in{' '}
                             {mediaServerName} if needed.
                           </p>
                         </label>
