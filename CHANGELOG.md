@@ -1,3 +1,38 @@
+# [3.17.0](https://github.com/Maintainerr/Maintainerr/compare/v3.16.0...v3.17.0) (2026-07-05)
+
+
+## Highlights
+- Added new rule properties for Sonarr and Radarr, enabling advanced filtering and scoping capabilities for media management (#3095, #3222, #3223).
+- Fixed server startup issue on older CPUs or minimal VM models by handling `sharp` library compatibility (#3184).
+- Improved library reconciliation to handle transient errors and clarified error messaging for unavailable libraries (#3226).
+
+## Features
+- Added `seasonFileRank` rule property for Sonarr, enabling season-level rolling windows (#3223).
+- Added `movieTitle` and `movieId` rule properties for Radarr, allowing movie-specific scoping (#3222).
+- Added `episodeFileRank` rule property for Sonarr with `seriesTitle` and `seriesId` scoping (#3095).
+
+## Fixes
+- Hardened library reconciliation against transient errors and clarified error messaging for unavailable libraries (#3226).
+- Fixed manual "Add to collection" for Jellyfin by supporting hex-GUID `context.id` (#3225).
+- Updated rule-builder labels for rank properties to improve clarity and readability (#3224).
+- Resolved issue where missing libraries were misinterpreted as empty during automatic collection creation (#3203, #3211).
+- Addressed server crash during startup on pre-x86-64-v2 CPUs by handling `sharp` library loading (#3184).
+
+## Performance
+- Improved defense against potential code scanning alert related to untrusted checkout in GitHub Actions (#3209).
+
+## Database migrations
+- Backfilled the `operator` field in stored rules to ensure explicit values for section and within-section operators, preventing unintended behavior changes.
+
+## Internal
+- Documented `LOG_LEVEL` environment override and health probe endpoints (#3210).
+
+## Dependencies
+- Updated 28 dependencies, including `sharp`, `typescript-eslint`, `eslint`, and `prettier`.
+
+## New Contributors
+* @jackemcpherson made their first contribution in https://github.com/Maintainerr/Maintainerr/pull/3095
+
 # [3.16.0](https://github.com/Maintainerr/Maintainerr/compare/v3.15.3...v3.16.0) (2026-06-28)
 
 
