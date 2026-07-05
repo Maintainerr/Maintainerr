@@ -280,24 +280,36 @@ export class SonarrApi extends ServarrApi<{
         } episode(s) from show with ID ${seriesId} from Sonarr.`,
       );
 
+      let success = true;
+
       for (const e of matchedEpisodes) {
-        if (
-          !(await this.runPut(
-            `episode/${e.id}`,
-            JSON.stringify({ ...e, monitored: false }),
-          ))
-        ) {
-          return false;
+        const unmonitored = await this.runPut(
+          `episode/${e.id}`,
+          JSON.stringify({ ...e, monitored: false }),
+        );
+
+        // runPut reports failure on a slow response Sonarr may have already
+        // applied (issue #3228). Before skipping the file delete, confirm the
+        // episode's live state: if Sonarr shows it unmonitored the PUT landed
+        // and we should still delete the file. Only an episode we cannot
+        // confirm as unmonitored is left in place - deleting a still-monitored
+        // episode's file would trigger a re-download.
+        if (!unmonitored && !(await this.isEpisodeUnmonitored(e.id))) {
+          this.logger.warn(
+            `Could not confirm episode ${e.id} was unmonitored; leaving its file in place.`,
+          );
+          success = false;
+          continue;
         }
 
         if (deleteFiles && e.episodeFileId) {
           if (!(await this.runDelete(`episodefile/${e.episodeFileId}`))) {
-            return false;
+            success = false;
           }
         }
       }
 
-      return true;
+      return success;
     } catch (error) {
       this.logger.warn(
         `Couldn't remove/unmonitor episodes: ${this.formatEpisodeLookup(validEpisodeIds, airDate)} for series ID: ${seriesId}`,
@@ -398,6 +410,18 @@ export class SonarrApi extends ServarrApi<{
       this.logger.debug(error);
       return null;
     }
+  }
+
+  // Re-fetch a single episode's live monitored flag straight from Sonarr,
+  // bypassing the cache so a change our own PUT just made is visible (same
+  // post-mutation reasoning as getSeriesByTvdbId). Returns true only when
+  // Sonarr confirms monitored === false; any lookup failure (undefined)
+  // returns false so we fail closed and keep the file.
+  private async isEpisodeUnmonitored(episodeId: number): Promise<boolean> {
+    const episode = await this.getWithoutCache<SonarrEpisode>(
+      `/episode/${episodeId}`,
+    );
+    return episode?.monitored === false;
   }
 
   private normalizeAirDate(airDate?: string | Date): string | undefined {
