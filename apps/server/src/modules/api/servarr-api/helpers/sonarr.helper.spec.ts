@@ -181,6 +181,32 @@ describe('SonarrApi', () => {
     expect(runDeleteSpy).toHaveBeenCalledWith('episodefile/700');
   });
 
+  it('should skip file deletes when the season unmonitor fails (#3228)', async () => {
+    const episode = createSonarrEpisode({
+      id: 99,
+      seasonNumber: 3,
+      episodeNumber: 7,
+      episodeFileId: 700,
+    });
+    const series = createSonarrSeries({
+      id: 1,
+      seasons: [{ seasonNumber: 3, monitored: true }],
+    });
+
+    jest.spyOn(sonarrApi, 'getEpisodes').mockResolvedValue([episode]);
+    jest.spyOn(sonarrApi as any, 'runPut').mockResolvedValue(false);
+    const runDeleteSpy = jest
+      .spyOn(sonarrApi as any, 'runDelete')
+      .mockResolvedValue(true);
+    jest.spyOn((sonarrApi as any).axios, 'get').mockResolvedValue({
+      data: series,
+    });
+
+    await expect(sonarrApi.unmonitorSeasons(1, 3)).resolves.toBeUndefined();
+
+    expect(runDeleteSpy).not.toHaveBeenCalled();
+  });
+
   describe('cache coherency (issue #2757 / #2891)', () => {
     it('getSeriesByTvdbId reads uncached so post-mutation state is never stale', async () => {
       const series = createSonarrSeries({ id: 1, tvdbId: 555 });
@@ -463,6 +489,287 @@ describe('SonarrApi', () => {
 
       await expect(sonarrApi.setSeriesTags([], 7, 'add')).resolves.toBe(true);
       expect(runPut).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('UnmonitorDeleteEpisodes slow-PUT race condition (#3228)', () => {
+    it('deletes the episode file when PUT timed out but Sonarr confirms unmonitored (timeout race)', async () => {
+      const episode = createSonarrEpisode({
+        id: 101,
+        seasonNumber: 2026,
+        episodeNumber: 5,
+        airDate: '2026-01-05',
+        episodeFileId: 501,
+        monitored: true,
+      });
+      jest.spyOn(sonarrApi as any, 'get').mockResolvedValue([episode]);
+      jest.spyOn(sonarrApi as any, 'runPut').mockResolvedValue(false);
+      const getWithoutCacheSpy = jest
+        .spyOn(sonarrApi as any, 'getWithoutCache')
+        .mockResolvedValue({
+          ...episode,
+          monitored: false,
+          episodeFileId: 601,
+        });
+      const runDeleteSpy = jest
+        .spyOn(sonarrApi as any, 'runDelete')
+        .mockResolvedValue(true);
+
+      const result = await sonarrApi.UnmonitorDeleteEpisodes(
+        1,
+        2026,
+        [],
+        true,
+        new Date('2026-01-05T00:00:00.000Z'),
+      );
+
+      // Same slow-Sonarr headroom as getSeriesByTvdbId (#3181), and the delete
+      // uses the live file id, not the possibly stale cached one.
+      expect(getWithoutCacheSpy).toHaveBeenCalledWith('/episode/101', {
+        timeout: 20000,
+      });
+      expect(runDeleteSpy).toHaveBeenCalledWith('episodefile/601');
+      expect(result).toBe(true);
+    });
+
+    it('performs no verification read when the PUT succeeds', async () => {
+      const episode = createSonarrEpisode({
+        id: 101,
+        seasonNumber: 2026,
+        episodeNumber: 5,
+        airDate: '2026-01-05',
+        episodeFileId: 501,
+        monitored: true,
+      });
+      jest.spyOn(sonarrApi as any, 'get').mockResolvedValue([episode]);
+      jest.spyOn(sonarrApi as any, 'runPut').mockResolvedValue(true);
+      const getWithoutCacheSpy = jest
+        .spyOn(sonarrApi as any, 'getWithoutCache')
+        .mockResolvedValue(undefined);
+      jest.spyOn(sonarrApi as any, 'runDelete').mockResolvedValue(true);
+
+      const result = await sonarrApi.UnmonitorDeleteEpisodes(
+        1,
+        2026,
+        [],
+        true,
+        new Date('2026-01-05T00:00:00.000Z'),
+      );
+
+      expect(getWithoutCacheSpy).not.toHaveBeenCalled();
+      expect(result).toBe(true);
+    });
+
+    it('reports success without deleting when PUT timed out but Sonarr confirms unmonitored (deleteFiles=false)', async () => {
+      const episode = createSonarrEpisode({
+        id: 101,
+        seasonNumber: 2026,
+        episodeNumber: 5,
+        airDate: '2026-01-05',
+        episodeFileId: 501,
+        monitored: true,
+      });
+      jest.spyOn(sonarrApi as any, 'get').mockResolvedValue([episode]);
+      jest.spyOn(sonarrApi as any, 'runPut').mockResolvedValue(false);
+      jest
+        .spyOn(sonarrApi as any, 'getWithoutCache')
+        .mockResolvedValue({ ...episode, monitored: false });
+      const runDeleteSpy = jest
+        .spyOn(sonarrApi as any, 'runDelete')
+        .mockResolvedValue(true);
+
+      const result = await sonarrApi.UnmonitorDeleteEpisodes(
+        1,
+        2026,
+        [],
+        false,
+        new Date('2026-01-05T00:00:00.000Z'),
+      );
+
+      expect(runDeleteSpy).not.toHaveBeenCalled();
+      expect(result).toBe(true);
+    });
+
+    it('warns without the file clause when unconfirmed and no delete was requested (deleteFiles=false)', async () => {
+      const episode = createSonarrEpisode({
+        id: 101,
+        seasonNumber: 2026,
+        episodeNumber: 5,
+        airDate: '2026-01-05',
+        episodeFileId: 501,
+        monitored: true,
+      });
+      jest.spyOn(sonarrApi as any, 'get').mockResolvedValue([episode]);
+      jest.spyOn(sonarrApi as any, 'runPut').mockResolvedValue(false);
+      jest
+        .spyOn(sonarrApi as any, 'getWithoutCache')
+        .mockResolvedValue({ ...episode, monitored: true });
+      const runDeleteSpy = jest
+        .spyOn(sonarrApi as any, 'runDelete')
+        .mockResolvedValue(true);
+
+      const result = await sonarrApi.UnmonitorDeleteEpisodes(
+        1,
+        2026,
+        [],
+        false,
+        new Date('2026-01-05T00:00:00.000Z'),
+      );
+
+      expect(runDeleteSpy).not.toHaveBeenCalled();
+      expect(logger.warn).toHaveBeenCalledWith(
+        'Could not confirm episode 101 was unmonitored.',
+      );
+      expect(result).toBe(false);
+    });
+
+    it('skips the file delete and warns when PUT failed and Sonarr confirms still monitored (genuine failure)', async () => {
+      const episode = createSonarrEpisode({
+        id: 101,
+        seasonNumber: 2026,
+        episodeNumber: 5,
+        airDate: '2026-01-05',
+        episodeFileId: 501,
+        monitored: true,
+      });
+      jest.spyOn(sonarrApi as any, 'get').mockResolvedValue([episode]);
+      jest.spyOn(sonarrApi as any, 'runPut').mockResolvedValue(false);
+      jest
+        .spyOn(sonarrApi as any, 'getWithoutCache')
+        .mockResolvedValue({ ...episode, monitored: true });
+      const runDeleteSpy = jest
+        .spyOn(sonarrApi as any, 'runDelete')
+        .mockResolvedValue(true);
+
+      const result = await sonarrApi.UnmonitorDeleteEpisodes(
+        1,
+        2026,
+        [],
+        true,
+        new Date('2026-01-05T00:00:00.000Z'),
+      );
+
+      expect(runDeleteSpy).not.toHaveBeenCalled();
+      expect(logger.warn).toHaveBeenCalledWith(
+        'Could not confirm episode 101 was unmonitored; leaving its file in place.',
+      );
+      expect(result).toBe(false);
+    });
+
+    it('skips the file delete when PUT failed and the verification lookup returns undefined (fail closed)', async () => {
+      const episode = createSonarrEpisode({
+        id: 101,
+        seasonNumber: 2026,
+        episodeNumber: 5,
+        airDate: '2026-01-05',
+        episodeFileId: 501,
+        monitored: true,
+      });
+      jest.spyOn(sonarrApi as any, 'get').mockResolvedValue([episode]);
+      jest.spyOn(sonarrApi as any, 'runPut').mockResolvedValue(false);
+      jest
+        .spyOn(sonarrApi as any, 'getWithoutCache')
+        .mockResolvedValue(undefined);
+      const runDeleteSpy = jest
+        .spyOn(sonarrApi as any, 'runDelete')
+        .mockResolvedValue(true);
+
+      const result = await sonarrApi.UnmonitorDeleteEpisodes(
+        1,
+        2026,
+        [],
+        true,
+        new Date('2026-01-05T00:00:00.000Z'),
+      );
+
+      expect(runDeleteSpy).not.toHaveBeenCalled();
+      expect(result).toBe(false);
+    });
+
+    it('processes remaining episodes after a single failure (batch no longer aborts)', async () => {
+      const firstEpisode = createSonarrEpisode({
+        id: 101,
+        seasonNumber: 2026,
+        episodeNumber: 5,
+        airDate: '2026-07-01',
+        episodeFileId: 501,
+        monitored: true,
+      });
+      const secondEpisode = createSonarrEpisode({
+        id: 102,
+        seasonNumber: 2026,
+        episodeNumber: 6,
+        airDate: '2026-07-01',
+        episodeFileId: 502,
+        monitored: true,
+      });
+
+      jest
+        .spyOn(sonarrApi as any, 'get')
+        .mockResolvedValue([firstEpisode, secondEpisode]);
+      jest
+        .spyOn(sonarrApi as any, 'runPut')
+        .mockResolvedValueOnce(false)
+        .mockResolvedValueOnce(true);
+      jest
+        .spyOn(sonarrApi as any, 'getWithoutCache')
+        .mockResolvedValue({ ...firstEpisode, monitored: true });
+      const runDeleteSpy = jest
+        .spyOn(sonarrApi as any, 'runDelete')
+        .mockResolvedValue(true);
+
+      const result = await sonarrApi.UnmonitorDeleteEpisodes(
+        1,
+        2026,
+        [],
+        true,
+        new Date('2026-07-01T00:00:00.000Z'),
+      );
+
+      expect(runDeleteSpy).toHaveBeenCalledWith('episodefile/502');
+      expect(runDeleteSpy).not.toHaveBeenCalledWith('episodefile/501');
+      expect(result).toBe(false);
+    });
+
+    it('continues deleting remaining files after one file delete fails (delete failure no longer aborts)', async () => {
+      const firstEpisode = createSonarrEpisode({
+        id: 101,
+        seasonNumber: 2026,
+        episodeNumber: 5,
+        airDate: '2026-07-01',
+        episodeFileId: 501,
+        monitored: true,
+      });
+      const secondEpisode = createSonarrEpisode({
+        id: 102,
+        seasonNumber: 2026,
+        episodeNumber: 6,
+        airDate: '2026-07-01',
+        episodeFileId: 502,
+        monitored: true,
+      });
+
+      jest
+        .spyOn(sonarrApi as any, 'get')
+        .mockResolvedValue([firstEpisode, secondEpisode]);
+      jest.spyOn(sonarrApi as any, 'runPut').mockResolvedValue(true);
+      const runDeleteSpy = jest
+        .spyOn(sonarrApi as any, 'runDelete')
+        .mockResolvedValueOnce(false)
+        .mockResolvedValueOnce(true);
+
+      const result = await sonarrApi.UnmonitorDeleteEpisodes(
+        1,
+        2026,
+        [],
+        true,
+        new Date('2026-07-01T00:00:00.000Z'),
+      );
+
+      expect(runDeleteSpy).toHaveBeenCalledWith('episodefile/501');
+      expect(runDeleteSpy).toHaveBeenCalledWith('episodefile/502');
+      expect(runDeleteSpy).toHaveBeenCalledTimes(2);
+      expect(result).toBe(false);
     });
   });
 });

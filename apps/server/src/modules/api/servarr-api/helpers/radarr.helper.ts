@@ -1,7 +1,10 @@
 import { isAxiosError } from 'axios';
 import { CONNECTION_TEST_TIMEOUT_MS } from '../../../../utils/connection-error';
 import { MaintainerrLogger } from '../../../logging/logs.service';
-import { ServarrApi } from '../common/servarr-api.service';
+import {
+  ServarrApi,
+  SLOW_INSTANCE_TIMEOUT_MS,
+} from '../common/servarr-api.service';
 import {
   RadarrImportListExclusion,
   RadarrInfo,
@@ -23,7 +26,7 @@ export class RadarrApi extends ServarrApi<{ movieId: number }> {
     protected readonly logger: MaintainerrLogger,
   ) {
     super({ url, apiKey, cacheName }, logger);
-    this.logger.setContext(ServarrApi.name);
+    this.logger.setContext(RadarrApi.name);
   }
 
   public getMovies = async (): Promise<RadarrMovie[]> => {
@@ -61,9 +64,7 @@ export class RadarrApi extends ServarrApi<{ movieId: number }> {
     try {
       const response = await this.getWithoutCache<RadarrMovie[]>(
         `/movie?tmdbId=${id}`,
-        // Slow/underpowered Radarr can take >10s to resolve a tmdbId; allow more
-        // headroom than the shared default before aborting (#3181).
-        { timeout: 20000 },
+        { timeout: SLOW_INSTANCE_TIMEOUT_MS },
       );
 
       // getWithoutCache swallows transport/auth/5xx into `undefined` (it never
@@ -172,14 +173,47 @@ export class RadarrApi extends ServarrApi<{ movieId: number }> {
         movieData.qualityProfileId = options.qualityProfileId;
       }
       if (!(await this.runPut(`movie/${movieId}`, JSON.stringify(movieData)))) {
-        return false;
+        // A slow PUT can time out client-side even though Radarr applied it
+        // (#3228): re-read the live state before deciding. Fail closed -
+        // deleting a still-monitored movie's files would trigger a
+        // re-download.
+        const live: RadarrMovie = await this.getWithoutCache(
+          `movie/${movieId}`,
+          { timeout: SLOW_INSTANCE_TIMEOUT_MS },
+        );
+
+        if (
+          !live ||
+          (options?.monitored !== undefined &&
+            live.monitored !== options.monitored) ||
+          (options?.qualityProfileId !== undefined &&
+            live.qualityProfileId !== options.qualityProfileId)
+        ) {
+          this.logger.warn(
+            `Could not confirm movie ${movieId} was updated${
+              options?.deleteFiles ? '; leaving its files in place' : ''
+            }.`,
+          );
+          return false;
+        }
       }
 
       if (options?.deleteFiles) {
         const movieFiles: RadarrMovieFile[] = await this.getWithoutCache(
           `moviefile?movieId=${movieId}`,
+          { timeout: SLOW_INSTANCE_TIMEOUT_MS },
         );
-        for (const movieFile of movieFiles ?? []) {
+
+        // undefined = the listing failed; [] = confirmed no files. Fail closed
+        // instead of reporting success without having deleted anything.
+        if (!movieFiles) {
+          this.logger.warn(
+            `Could not list movie ${movieId}'s files; leaving them in place.`,
+          );
+          return false;
+        }
+
+        for (const movieFile of movieFiles) {
           if (!(await this.runDelete(`moviefile/${movieFile.id}`))) {
             return false;
           }
