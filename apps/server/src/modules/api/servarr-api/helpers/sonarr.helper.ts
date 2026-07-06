@@ -281,32 +281,9 @@ export class SonarrApi extends ServarrApi<{
       );
 
       let success = true;
-
       for (const e of matchedEpisodes) {
-        const unmonitored = await this.runPut(
-          `episode/${e.id}`,
-          JSON.stringify({ ...e, monitored: false }),
-        );
-
-        // runPut reports failure on a slow response Sonarr may have already
-        // applied (issue #3228). Before skipping the file delete, confirm the
-        // episode's live state: if Sonarr shows it unmonitored the PUT landed
-        // and we should still delete the file. Only an episode we cannot
-        // confirm as unmonitored is left in place - deleting a still-monitored
-        // episode's file would trigger a re-download.
-        if (!unmonitored && !(await this.isEpisodeUnmonitored(e.id))) {
-          this.logger.warn(
-            `Could not confirm episode ${e.id} was unmonitored; leaving its file in place.`,
-          );
-          success = false;
-          continue;
-        }
-
-        if (deleteFiles && e.episodeFileId) {
-          if (!(await this.runDelete(`episodefile/${e.episodeFileId}`))) {
-            success = false;
-          }
-        }
+        success =
+          (await this.unmonitorAndDeleteEpisode(e, deleteFiles)) && success;
       }
 
       return success;
@@ -410,6 +387,37 @@ export class SonarrApi extends ServarrApi<{
       this.logger.debug(error);
       return null;
     }
+  }
+
+  // Unmonitor one episode and, when requested, delete its file. Returns whether
+  // this episode fully succeeded. A slow/timed-out unmonitor PUT that Sonarr
+  // actually applied is confirmed via a live re-fetch (issue #3228) so the file
+  // is still deleted; only an episode we cannot confirm as unmonitored is left
+  // in place, since deleting a still-monitored episode's file would trigger a
+  // re-download.
+  private async unmonitorAndDeleteEpisode(
+    e: SonarrEpisode,
+    deleteFiles: boolean,
+  ): Promise<boolean> {
+    const unmonitored = await this.runPut(
+      `episode/${e.id}`,
+      JSON.stringify({ ...e, monitored: false }),
+    );
+
+    if (!unmonitored && !(await this.isEpisodeUnmonitored(e.id))) {
+      this.logger.warn(
+        `Could not confirm episode ${e.id} was unmonitored; leaving its file in place.`,
+      );
+      return false;
+    }
+
+    if (deleteFiles && e.episodeFileId) {
+      if (!(await this.runDelete(`episodefile/${e.episodeFileId}`))) {
+        return false;
+      }
+    }
+
+    return true;
   }
 
   // Re-fetch a single episode's live monitored flag straight from Sonarr,
