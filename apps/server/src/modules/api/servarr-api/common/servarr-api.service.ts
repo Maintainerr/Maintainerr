@@ -13,6 +13,12 @@ import {
   Tag,
 } from '../interfaces/servarr.interface';
 
+// Slow/underpowered *arr instances can take >10s to answer even simple reads;
+// allow more headroom than the shared 10s axios default before aborting
+// (#3181). Used for uncached reads whose failure would change action or rule
+// behavior.
+export const SLOW_INSTANCE_TIMEOUT_MS = 20000;
+
 export abstract class ServarrApi<QueueItemAppendT> extends ExternalApiService {
   static buildUrl(settings: DVRSettings, path?: string): string {
     return `${settings.useSsl ? 'https' : 'http'}://${settings.hostname}:${settings.port}${settings.baseUrl ?? ''}${path}`;

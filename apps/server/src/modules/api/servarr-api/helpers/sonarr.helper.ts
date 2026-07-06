@@ -1,6 +1,9 @@
 import { CONNECTION_TEST_TIMEOUT_MS } from '../../../../utils/connection-error';
 import { MaintainerrLogger } from '../../../logging/logs.service';
-import { ServarrApi } from '../common/servarr-api.service';
+import {
+  ServarrApi,
+  SLOW_INSTANCE_TIMEOUT_MS,
+} from '../common/servarr-api.service';
 import {
   DownloadHistoryItem,
   SonarrEpisode,
@@ -120,9 +123,7 @@ export class SonarrApi extends ServarrApi<{
     try {
       const response = await this.getWithoutCache<SonarrSeries[]>(
         `/series?tvdbId=${id}`,
-        // Slow/underpowered Sonarr can take >10s to resolve a tvdbId; allow more
-        // headroom than the shared default before aborting (#3181).
-        { timeout: 20000 },
+        { timeout: SLOW_INSTANCE_TIMEOUT_MS },
       );
 
       // getWithoutCache swallows transport/auth/5xx into `undefined` (it never
@@ -405,12 +406,11 @@ export class SonarrApi extends ServarrApi<{
       ))
     ) {
       // A slow PUT can time out client-side even though Sonarr applied it
-      // (#3228): re-read the live state (uncached, with the same slow-Sonarr
-      // headroom as #3181) before deciding. Fail closed - deleting a
-      // still-monitored episode's file would trigger a re-download.
+      // (#3228): re-read the live state before deciding. Fail closed -
+      // deleting a still-monitored episode's file would trigger a re-download.
       const live = await this.getWithoutCache<SonarrEpisode>(
         `/episode/${episode.id}`,
-        { timeout: 20000 },
+        { timeout: SLOW_INSTANCE_TIMEOUT_MS },
       );
 
       if (live?.monitored !== false) {
