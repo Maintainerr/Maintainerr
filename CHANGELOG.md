@@ -1,3 +1,12 @@
+# [3.17.1](https://github.com/Maintainerr/Maintainerr/compare/v3.17.0...v3.17.1) (2026-07-08)
+
+
+## Fixes
+- Fix Sonarr episode file deletion logic to handle slow or timed-out unmonitor PUT responses, ensuring files are deleted only after confirmation (#3229).
+
+## Dependencies
+- Updated 14 dependencies, including @types/node, @typescript-eslint/eslint-plugin, and react-hook-form.
+
 # [3.17.0](https://github.com/Maintainerr/Maintainerr/compare/v3.16.0...v3.17.0) (2026-07-05)
 
 
