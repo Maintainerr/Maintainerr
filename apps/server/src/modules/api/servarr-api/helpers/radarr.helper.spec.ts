@@ -1,5 +1,8 @@
 import { Mocked } from '@suites/doubles.jest';
-import { createRadarrMovie } from '../../../../../test/utils/data';
+import {
+  createRadarrMovie,
+  createRadarrMovieFile,
+} from '../../../../../test/utils/data';
 import { MaintainerrLogger } from '../../../logging/logs.service';
 import { RadarrImportListExclusion } from '../interfaces/radarr.interface';
 import { RadarrApi } from './radarr.helper';
@@ -154,6 +157,118 @@ describe('RadarrApi', () => {
       expect(runPutSpy).toHaveBeenCalledWith(
         'movie/5',
         JSON.stringify({ ...movie, monitored: false }),
+      );
+    });
+  });
+
+  describe('updateMovie slow-PUT race condition (#3228)', () => {
+    const movie = createRadarrMovie({ id: 5, monitored: true });
+
+    it('deletes the movie files when PUT timed out but Radarr confirms the update (timeout race)', async () => {
+      const getWithoutCacheSpy = jest
+        .spyOn(api, 'getWithoutCache')
+        .mockResolvedValueOnce(movie)
+        .mockResolvedValueOnce({ ...movie, monitored: false })
+        .mockResolvedValueOnce([createRadarrMovieFile({ id: 900 })]);
+      jest.spyOn(api as any, 'runPut').mockResolvedValue(false);
+      const runDeleteSpy = jest
+        .spyOn(api as any, 'runDelete')
+        .mockResolvedValue(true);
+
+      await expect(
+        api.updateMovie(5, { monitored: false, deleteFiles: true }),
+      ).resolves.toBe(true);
+
+      // Same slow-instance headroom as getMovieByTmdbId (#3181).
+      expect(getWithoutCacheSpy).toHaveBeenNthCalledWith(2, 'movie/5', {
+        timeout: 20000,
+      });
+      expect(runDeleteSpy).toHaveBeenCalledWith('moviefile/900');
+    });
+
+    it('fails closed and warns when PUT failed and Radarr still shows the movie monitored', async () => {
+      jest
+        .spyOn(api, 'getWithoutCache')
+        .mockResolvedValueOnce(movie)
+        .mockResolvedValueOnce({ ...movie, monitored: true });
+      jest.spyOn(api as any, 'runPut').mockResolvedValue(false);
+      const runDeleteSpy = jest
+        .spyOn(api as any, 'runDelete')
+        .mockResolvedValue(true);
+
+      await expect(
+        api.updateMovie(5, { monitored: false, deleteFiles: true }),
+      ).resolves.toBe(false);
+
+      expect(runDeleteSpy).not.toHaveBeenCalled();
+      expect(logger.warn).toHaveBeenCalledWith(
+        'Could not confirm movie 5 was updated; leaving its files in place.',
+      );
+    });
+
+    it('fails closed when the verification lookup fails', async () => {
+      jest
+        .spyOn(api, 'getWithoutCache')
+        .mockResolvedValueOnce(movie)
+        .mockResolvedValueOnce(undefined);
+      jest.spyOn(api as any, 'runPut').mockResolvedValue(false);
+      const runDeleteSpy = jest
+        .spyOn(api as any, 'runDelete')
+        .mockResolvedValue(true);
+
+      await expect(
+        api.updateMovie(5, { monitored: false, deleteFiles: true }),
+      ).resolves.toBe(false);
+
+      expect(runDeleteSpy).not.toHaveBeenCalled();
+    });
+
+    it('fails closed when a quality profile change is not reflected', async () => {
+      jest
+        .spyOn(api, 'getWithoutCache')
+        .mockResolvedValueOnce({ ...movie, qualityProfileId: 4 })
+        .mockResolvedValueOnce({ ...movie, qualityProfileId: 4 });
+      jest.spyOn(api as any, 'runPut').mockResolvedValue(false);
+
+      await expect(api.updateMovie(5, { qualityProfileId: 9 })).resolves.toBe(
+        false,
+      );
+
+      expect(logger.warn).toHaveBeenCalledWith(
+        'Could not confirm movie 5 was updated.',
+      );
+    });
+
+    it('performs no verification read when the PUT succeeds', async () => {
+      const getWithoutCacheSpy = jest
+        .spyOn(api, 'getWithoutCache')
+        .mockResolvedValue(movie);
+      jest.spyOn(api as any, 'runPut').mockResolvedValue(true);
+
+      await expect(api.updateMovie(5, { monitored: false })).resolves.toBe(
+        true,
+      );
+
+      expect(getWithoutCacheSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it('fails closed when the movie file listing fails instead of reporting success', async () => {
+      jest
+        .spyOn(api, 'getWithoutCache')
+        .mockResolvedValueOnce(movie)
+        .mockResolvedValueOnce(undefined);
+      jest.spyOn(api as any, 'runPut').mockResolvedValue(true);
+      const runDeleteSpy = jest
+        .spyOn(api as any, 'runDelete')
+        .mockResolvedValue(true);
+
+      await expect(
+        api.updateMovie(5, { monitored: false, deleteFiles: true }),
+      ).resolves.toBe(false);
+
+      expect(runDeleteSpy).not.toHaveBeenCalled();
+      expect(logger.warn).toHaveBeenCalledWith(
+        "Could not list movie 5's files; leaving them in place.",
       );
     });
   });

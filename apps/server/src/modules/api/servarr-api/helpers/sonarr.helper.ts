@@ -1,6 +1,9 @@
 import { CONNECTION_TEST_TIMEOUT_MS } from '../../../../utils/connection-error';
 import { MaintainerrLogger } from '../../../logging/logs.service';
-import { ServarrApi } from '../common/servarr-api.service';
+import {
+  ServarrApi,
+  SLOW_INSTANCE_TIMEOUT_MS,
+} from '../common/servarr-api.service';
 import {
   DownloadHistoryItem,
   SonarrEpisode,
@@ -120,9 +123,7 @@ export class SonarrApi extends ServarrApi<{
     try {
       const response = await this.getWithoutCache<SonarrSeries[]>(
         `/series?tvdbId=${id}`,
-        // Slow/underpowered Sonarr can take >10s to resolve a tvdbId; allow more
-        // headroom than the shared default before aborting (#3181).
-        { timeout: 20000 },
+        { timeout: SLOW_INSTANCE_TIMEOUT_MS },
       );
 
       // getWithoutCache swallows transport/auth/5xx into `undefined` (it never
@@ -280,24 +281,13 @@ export class SonarrApi extends ServarrApi<{
         } episode(s) from show with ID ${seriesId} from Sonarr.`,
       );
 
+      let success = true;
       for (const e of matchedEpisodes) {
-        if (
-          !(await this.runPut(
-            `episode/${e.id}`,
-            JSON.stringify({ ...e, monitored: false }),
-          ))
-        ) {
-          return false;
-        }
-
-        if (deleteFiles && e.episodeFileId) {
-          if (!(await this.runDelete(`episodefile/${e.episodeFileId}`))) {
-            return false;
-          }
-        }
+        success =
+          (await this.unmonitorAndDeleteEpisode(e, deleteFiles)) && success;
       }
 
-      return true;
+      return success;
     } catch (error) {
       this.logger.warn(
         `Couldn't remove/unmonitor episodes: ${this.formatEpisodeLookup(validEpisodeIds, airDate)} for series ID: ${seriesId}`,
@@ -349,7 +339,10 @@ export class SonarrApi extends ServarrApi<{
       );
       success = (await this.runPut(`series/`, JSON.stringify(data))) && success;
 
-      if (deleteFiles) {
+      // Skip the file deletes when an unmonitor failed: the content may still
+      // be monitored and Sonarr would re-download it (#3228). The action
+      // reports failure and is retried next run.
+      if (deleteFiles && success) {
         for (const e of episodes) {
           if (typeof type === 'number') {
             if (e.seasonNumber === type && e.episodeFileId) {
@@ -398,6 +391,47 @@ export class SonarrApi extends ServarrApi<{
       this.logger.debug(error);
       return null;
     }
+  }
+
+  private async unmonitorAndDeleteEpisode(
+    episode: SonarrEpisode,
+    deleteFiles: boolean,
+  ): Promise<boolean> {
+    let episodeFileId = episode.episodeFileId;
+
+    if (
+      !(await this.runPut(
+        `episode/${episode.id}`,
+        JSON.stringify({ ...episode, monitored: false }),
+      ))
+    ) {
+      // A slow PUT can time out client-side even though Sonarr applied it
+      // (#3228): re-read the live state before deciding. Fail closed -
+      // deleting a still-monitored episode's file would trigger a re-download.
+      const live = await this.getWithoutCache<SonarrEpisode>(
+        `/episode/${episode.id}`,
+        { timeout: SLOW_INSTANCE_TIMEOUT_MS },
+      );
+
+      if (live?.monitored !== false) {
+        this.logger.warn(
+          `Could not confirm episode ${episode.id} was unmonitored${
+            deleteFiles ? '; leaving its file in place' : ''
+          }.`,
+        );
+        return false;
+      }
+
+      episodeFileId = live.episodeFileId;
+    }
+
+    if (deleteFiles && episodeFileId) {
+      if (!(await this.runDelete(`episodefile/${episodeFileId}`))) {
+        return false;
+      }
+    }
+
+    return true;
   }
 
   private normalizeAirDate(airDate?: string | Date): string | undefined {
