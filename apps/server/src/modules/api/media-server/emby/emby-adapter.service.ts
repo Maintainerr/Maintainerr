@@ -1033,7 +1033,9 @@ export class EmbyAdapterService implements IMediaServerService {
   }
 
   async getCollectionChildren(collectionId: string): Promise<MediaItem[]> {
-    if (!this.http) return [];
+    if (!this.http) {
+      throw new Error('Emby not initialized');
+    }
     try {
       // User-scoped read for the same reason as getCollections; Jellyfin's
       // adapter likewise requires a userId to enumerate BoxSet children. UserId
@@ -1050,10 +1052,13 @@ export class EmbyAdapterService implements IMediaServerService {
       });
       return (data.Items ?? []).map(EmbyMapper.toMediaItem);
     } catch (error) {
-      this.logger.debug(
+      this.logger.error(
         `Emby getCollectionChildren(${collectionId}) failed: ${formatConnectionFailureMessage(error, 'Connection failed')}`,
       );
-      return [];
+      // A swallowed enumeration failure reads as "the collection is empty"
+      // downstream, which mass-resyncs rule-owned items and adopts stale
+      // server children as ghost manual members.
+      throw error;
     }
   }
 

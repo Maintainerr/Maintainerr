@@ -263,8 +263,13 @@ export interface IMediaServerService {
   ): Promise<void>;
 
   /**
-   * Get items in a collection.
-   * Returns empty array if collection not found or on error.
+   * Get items in a collection. An empty array means the server confirmed
+   * the collection has no children - never "the lookup failed".
+   *
+   * @throws Error on any failure to enumerate (connection, 4xx/5xx).
+   * Callers must treat a throw as "children unknown" and skip membership
+   * reconciliation instead of acting on an empty list; like itemExists,
+   * uncertainty must never add or remove anything.
    */
   getCollectionChildren(collectionId: string): Promise<MediaItem[]>;
 

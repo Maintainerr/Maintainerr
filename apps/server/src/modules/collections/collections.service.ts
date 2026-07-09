@@ -1847,6 +1847,27 @@ export class CollectionsService {
     return collection;
   }
 
+  /**
+   * Children for reconciliation decisions: a confirmed list, or undefined
+   * when enumeration failed. A failed read is not an empty collection -
+   * callers must skip membership changes (resync, delete) on undefined.
+   */
+  private async getConfirmedCollectionChildren(
+    collection: Pick<Collection, 'title'>,
+    mediaServer: IMediaServerService,
+    mediaServerCollectionId: string,
+  ): Promise<MediaItem[] | undefined> {
+    try {
+      return await mediaServer.getCollectionChildren(mediaServerCollectionId);
+    } catch (error) {
+      this.logger.warn(
+        `[checkAutomaticMediaServerLink] Could not enumerate media server collection ${mediaServerCollectionId} for "${collection.title}" - skipping membership reconciliation this run`,
+      );
+      this.logger.debug(error);
+      return undefined;
+    }
+  }
+
   public async checkAutomaticMediaServerLink(
     collection: Collection,
   ): Promise<Collection> {
@@ -1910,42 +1931,48 @@ export class CollectionsService {
           // items not among them (partial drift, e.g. items stripped by
           // exclude/unexclude flows), the rule executor's local-DB-only
           // delta can't recover them. Fetch actual children and resync.
-          const serverChildren =
-            (await mediaServer.getCollectionChildren(serverColl.id)) ?? [];
-          const serverChildIds = new Set(
-            serverChildren
-              .map((child) => child?.id?.toString())
-              .filter((childId): childId is string => Boolean(childId)),
+          const serverChildren = await this.getConfirmedCollectionChildren(
+            collection,
+            mediaServer,
+            serverColl.id,
           );
-          this.logger.debug(
-            `[checkAutomaticMediaServerLink] Shared collection ${serverColl.id} has ${serverChildIds.size} children - checking for local rule-owned drift`,
-          );
-          const resyncResult =
-            await this.resyncRuleOwnedItemsToMediaServerCollection(
-              collection,
-              serverChildIds,
+
+          if (serverChildren !== undefined) {
+            const serverChildIds = new Set(
+              serverChildren
+                .map((child) => child?.id?.toString())
+                .filter((childId): childId is string => Boolean(childId)),
             );
+            this.logger.debug(
+              `[checkAutomaticMediaServerLink] Shared collection ${serverColl.id} has ${serverChildIds.size} children - checking for local rule-owned drift`,
+            );
+            const resyncResult =
+              await this.resyncRuleOwnedItemsToMediaServerCollection(
+                collection,
+                serverChildIds,
+              );
 
-          if (
-            resyncResult.attempted > 0 &&
-            resyncResult.rejected < resyncResult.attempted
-          ) {
-            this.healedCollectionIds.delete(collection.id);
-          }
+            if (
+              resyncResult.attempted > 0 &&
+              resyncResult.rejected < resyncResult.attempted
+            ) {
+              this.healedCollectionIds.delete(collection.id);
+            }
 
-          // An empty shared collection that rejected every resynced item
-          // can't be repaired in place - fall back to delete-and-recreate.
-          // The sibling rule group loses nothing: the collection has no
-          // children, and its link re-establishes via the title relink.
-          if (
-            serverChildIds.size === 0 &&
-            resyncResult.attempted > 0 &&
-            resyncResult.rejected >= resyncResult.attempted
-          ) {
-            const deleted =
-              await this.deleteEmptyCollectionRejectingAdds(collection);
-            if (deleted) {
-              serverColl = undefined;
+            // An empty shared collection that rejected every resynced item
+            // can't be repaired in place - fall back to delete-and-recreate.
+            // The sibling rule group loses nothing: the collection has no
+            // children, and its link re-establishes via the title relink.
+            if (
+              serverChildIds.size === 0 &&
+              resyncResult.attempted > 0 &&
+              resyncResult.rejected >= resyncResult.attempted
+            ) {
+              const deleted =
+                await this.deleteEmptyCollectionRejectingAdds(collection);
+              if (deleted) {
+                serverColl = undefined;
+              }
             }
           }
         } else {
@@ -1953,12 +1980,24 @@ export class CollectionsService {
             ? serverColl.childCount
             : undefined;
 
+          // Only a confirmed count may drive the empty-delete below; when
+          // both the metadata count and the children read are inconclusive,
+          // keep the collection.
           const actualChildCount =
             metadataChildCount ??
-            (await mediaServer.getCollectionChildren(serverColl.id))?.length ??
-            0;
+            (
+              await this.getConfirmedCollectionChildren(
+                collection,
+                mediaServer,
+                serverColl.id,
+              )
+            )?.length;
 
-          if (actualChildCount <= 0) {
+          if (actualChildCount === undefined) {
+            this.logger.debug(
+              `[checkAutomaticMediaServerLink] Child count for collection ${serverColl.id} is unknown - keeping it`,
+            );
+          } else if (actualChildCount <= 0) {
             this.logger.debug(
               `[checkAutomaticMediaServerLink] Deleting empty collection ${serverColl.id} (${metadataChildCount !== undefined ? `metadataChildCount=${metadataChildCount}` : `actualChildCount=${actualChildCount}`})`,
             );
@@ -1990,17 +2029,27 @@ export class CollectionsService {
         // sibling rule group shares it), and the (!serverColl) clear-link path
         // below recovers a collection whose BoxSet is already gone. This branch
         // only ever re-adds, never deletes.
-        const serverChildren =
-          (await mediaServer.getCollectionChildren(serverColl.id)) ?? [];
-        const serverChildIds = new Set(
-          serverChildren
-            .map((child) => child?.id?.toString())
-            .filter((childId): childId is string => Boolean(childId)),
-        );
-        await this.resyncRuleOwnedItemsToMediaServerCollection(
+        //
+        // The resync only runs against a confirmed children read: a failed
+        // read is not an empty BoxSet, and re-adding everything on every
+        // failing run churns the server while masking the outage.
+        const serverChildren = await this.getConfirmedCollectionChildren(
           collection,
-          serverChildIds,
+          mediaServer,
+          serverColl.id,
         );
+
+        if (serverChildren !== undefined) {
+          const serverChildIds = new Set(
+            serverChildren
+              .map((child) => child?.id?.toString())
+              .filter((childId): childId is string => Boolean(childId)),
+          );
+          await this.resyncRuleOwnedItemsToMediaServerCollection(
+            collection,
+            serverChildIds,
+          );
+        }
       }
 
       if (!serverColl) {
@@ -2285,10 +2334,16 @@ export class CollectionsService {
           (await this.isMediaServerCollectionShared(collection));
 
         if (isSharedManualCollection && newMedia.length > 0) {
-          const sharedCollectionChildren =
-            (await mediaServer.getCollectionChildren(
+          // Unknown children just skip the already-on-server shortcut; the
+          // regular add flow below handles every item (adds are idempotent).
+          let sharedCollectionChildren: MediaItem[] = [];
+          try {
+            sharedCollectionChildren = await mediaServer.getCollectionChildren(
               collection.mediaServerId,
-            )) ?? [];
+            );
+          } catch (error) {
+            this.logger.debug(error);
+          }
           const sharedCollectionChildIds = new Set(
             sharedCollectionChildren
               .map((child) => child?.id?.toString())

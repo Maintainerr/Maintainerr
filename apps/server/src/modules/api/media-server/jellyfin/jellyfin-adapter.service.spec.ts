@@ -1476,13 +1476,18 @@ describe('JellyfinAdapterService', () => {
       ).rejects.toThrow(axiosError);
     });
 
-    it('returns empty array for non-400/404 errors', async () => {
-      jellyfinApiMocks.getItems.mockRejectedValueOnce(
-        new Error('random failure'),
-      );
+    it('re-throws non-400/404 errors so callers never mistake a failed read for an empty collection', async () => {
+      const serverError = createResponseError(500);
+      jellyfinApiMocks.getItems.mockRejectedValue(serverError);
 
-      const result = await service.getCollectionChildren('collection-1');
-      expect(result).toEqual([]);
+      await expect(
+        service.getCollectionChildren('collection-1'),
+      ).rejects.toThrow(serverError);
+
+      expect(logger.error).toHaveBeenCalledWith(
+        'Failed to get collection children for collection-1',
+        serverError,
+      );
     });
 
     it('should create a collection without initial item ids', async () => {

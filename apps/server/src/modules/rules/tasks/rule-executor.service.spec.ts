@@ -849,6 +849,113 @@ describe('RuleExecutorService', () => {
     expect(collectionService.addToCollection).not.toHaveBeenCalled();
   });
 
+  it('leaves existing members untouched when child enumeration fails on Plex', async () => {
+    const { service, mediaServer, collectionService } = createService(
+      MediaServerType.PLEX,
+    );
+
+    // A pure-manual member. Plex has no empty-children removal guard, so a
+    // failed read collapsing to [] would flag it as "removed manually".
+    collectionService.getCollectionMedia.mockResolvedValue([
+      {
+        mediaServerId: 'm-manual',
+        includedByRule: false,
+        manualMembershipSource: 'local',
+      },
+    ] as any);
+    mediaServer.getCollectionChildren.mockRejectedValue(new Error('boom'));
+
+    await (
+      service as unknown as {
+        syncManualMediaServerToCollectionDB: (
+          ruleGroup: {
+            id: number;
+            collectionId: number;
+          },
+          collectionSyncChanges: {
+            addedMediaServerIds: Set<string>;
+            removedMediaServerIds: Set<string>;
+          },
+        ) => Promise<void>;
+      }
+    ).syncManualMediaServerToCollectionDB(
+      { id: 10, collectionId: 1 },
+      {
+        addedMediaServerIds: new Set(),
+        removedMediaServerIds: new Set(),
+      },
+    );
+
+    expect(collectionService.removeFromCollection).not.toHaveBeenCalled();
+    expect(
+      collectionService.syncMediaServerChildrenToCollection,
+    ).not.toHaveBeenCalled();
+  });
+
+  it('adopts only children matching the rule media type as manual members', async () => {
+    const { service, mediaServer, collectionService, logger } = createService(
+      MediaServerType.JELLYFIN,
+    );
+
+    collectionService.getCollectionMedia.mockResolvedValue([]);
+    mediaServer.getCollectionChildren.mockResolvedValue([
+      {
+        id: 'm-season',
+        type: 'season',
+        title: 'Season 2',
+        parentTitle: 'Sample Series',
+      },
+      {
+        id: 'm-episode',
+        type: 'episode',
+        title: 'Sample Episode',
+        grandparentTitle: 'Sample Series',
+      },
+      { id: 'm-series', type: 'show', title: 'Sample Series' },
+    ]);
+
+    await (
+      service as unknown as {
+        syncManualMediaServerToCollectionDB: (
+          ruleGroup: {
+            id: number;
+            collectionId: number;
+            dataType: string;
+          },
+          collectionSyncChanges: {
+            addedMediaServerIds: Set<string>;
+            removedMediaServerIds: Set<string>;
+          },
+        ) => Promise<void>;
+      }
+    ).syncManualMediaServerToCollectionDB(
+      { id: 10, collectionId: 1, dataType: 'season' },
+      {
+        addedMediaServerIds: new Set(),
+        removedMediaServerIds: new Set(),
+      },
+    );
+
+    expect(
+      collectionService.syncMediaServerChildrenToCollection,
+    ).toHaveBeenCalledTimes(1);
+    expect(
+      collectionService.syncMediaServerChildrenToCollection,
+    ).toHaveBeenCalledWith(
+      expect.anything(),
+      [expect.objectContaining({ mediaServerId: 'm-season' })],
+      'local',
+    );
+    expect(logger.log).toHaveBeenCalledWith(
+      expect.stringContaining(
+        "Importing 1 item(s) present in the media server collection for 'Test Collection'",
+      ),
+    );
+    expect(logger.log).toHaveBeenCalledWith(
+      expect.stringContaining("'Sample Series - Season 2' (m-season)"),
+    );
+  });
+
   it('does not re-run addToCollection with no additions after resyncing a stale link', async () => {
     const { service, collectionService } = createService(
       MediaServerType.JELLYFIN,

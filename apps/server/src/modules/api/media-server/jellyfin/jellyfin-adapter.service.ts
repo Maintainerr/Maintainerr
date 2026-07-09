@@ -1502,7 +1502,9 @@ export class JellyfinAdapterService implements IMediaServerService {
   }
 
   async getCollectionChildren(collectionId: string): Promise<MediaItem[]> {
-    if (!this.api) return [];
+    if (!this.api) {
+      throw new Error('Jellyfin API not initialized');
+    }
 
     const cacheKey = `${JELLYFIN_CACHE_KEYS.COLLECTIONS}:children:${collectionId}`;
     let allCollectionChildren = this.cache.data.get<MediaItem[]>(cacheKey);
@@ -1586,7 +1588,10 @@ export class JellyfinAdapterService implements IMediaServerService {
           `Failed to get collection children for ${collectionId}`,
           error,
         );
-        return [];
+        // A swallowed enumeration failure reads as "the collection is empty"
+        // downstream, which mass-resyncs rule-owned items and adopts stale
+        // server children as ghost manual members.
+        throw error;
       }
     }
 

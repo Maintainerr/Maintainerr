@@ -629,6 +629,14 @@ describe('PlexAdapterService', () => {
       expect(children[0].providerIds.tvdb).toEqual([]);
       expect(children[0].providerIds.imdb).toEqual([]);
     });
+
+    it('propagates enumeration failures so callers never mistake a failed read for an empty collection', async () => {
+      plexApi.getCollectionChildren.mockRejectedValue(new Error('boom'));
+
+      await expect(service.getCollectionChildren('col123')).rejects.toThrow(
+        'boom',
+      );
+    });
   });
 
   describe('searchContent', () => {
@@ -885,6 +893,21 @@ describe('PlexAdapterService', () => {
       expect(plexApi.getCollectionChildren).not.toHaveBeenCalled();
       expect(plexApi.setCollectionCustomSort).not.toHaveBeenCalled();
       expect(plexApi.moveCollectionItem).not.toHaveBeenCalled();
+    });
+
+    it('should proceed with the reorder when the current-order read fails', async () => {
+      plexApi.getCollectionChildren.mockRejectedValue(new Error('boom'));
+      plexApi.setCollectionCustomSort.mockResolvedValue(undefined);
+      plexApi.moveCollectionItem.mockResolvedValue(undefined);
+
+      await service.reorderCollectionItems('col123', ['a']);
+
+      expect(plexApi.setCollectionCustomSort).toHaveBeenCalledWith('col123');
+      expect(plexApi.moveCollectionItem).toHaveBeenCalledWith(
+        'col123',
+        'a',
+        undefined,
+      );
     });
 
     it('should short-circuit without writing when current order already matches', async () => {

@@ -183,6 +183,26 @@ describe('PlexApiService.getMetadata', () => {
     expect(await service.getActiveSessions()).toEqual([]);
   });
 
+  it('returns a confirmed empty list when a collection has no children', async () => {
+    const queryAll = jest.fn().mockResolvedValue({
+      MediaContainer: { size: 0 },
+    });
+
+    (service as any).plexClient = { queryAll };
+
+    expect(await service.getCollectionChildren('col-1')).toEqual([]);
+  });
+
+  it('re-throws children query failures instead of reporting an empty collection', async () => {
+    const queryAll = jest.fn().mockRejectedValue(new Error('boom'));
+
+    (service as any).plexClient = { queryAll };
+
+    await expect(service.getCollectionChildren('col-1')).rejects.toThrow(
+      'boom',
+    );
+  });
+
   it('builds a single encoded collection uri when adding multiple children', async () => {
     const putQuery = jest.fn().mockResolvedValue({
       MediaContainer: { Metadata: [{ ratingKey: '123' }] },
