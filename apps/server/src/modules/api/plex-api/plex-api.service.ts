@@ -1145,7 +1145,9 @@ export class PlexApiService {
         'Plex api communication failure.. Is the application running?',
       );
       this.logger.debug(error);
-      return undefined;
+      // A swallowed enumeration failure reads as "the collection is empty"
+      // downstream; [] is reserved for a confirmed empty collection.
+      throw error;
     }
   }
 

@@ -468,6 +468,7 @@ export class RuleExecutorService {
             );
             const exclusionCascade = buildExclusionCascadeSets(exclusions);
             const missingManualChildren: CollectionMediaChange[] = [];
+            const adoptedChildLabels: string[] = [];
 
             for (const child of children) {
               if (child && child.id) {
@@ -479,6 +480,21 @@ export class RuleExecutorService {
                   collectionSyncChanges.addedMediaServerIds.has(childId) ||
                   collectionSyncChanges.removedMediaServerIds.has(childId)
                 ) {
+                  continue;
+                }
+
+                // A media server collection can hold any item type (a user
+                // can drop a movie into a seasons BoxSet, and Jellyfin's
+                // recursive child fallback can surface episodes). Only adopt
+                // children of the rule's own media type.
+                if (
+                  rulegroup.dataType &&
+                  child.type &&
+                  child.type !== rulegroup.dataType
+                ) {
+                  this.logger.debug(
+                    `Not importing '${this.describeMediaItemForLog(child)}' from the media server collection for '${collection.title}' - it is a ${child.type} while the rule manages ${rulegroup.dataType} items.`,
+                  );
                   continue;
                 }
 
@@ -499,11 +515,27 @@ export class RuleExecutorService {
                       type: 'media_added_manually',
                     },
                   });
+                  adoptedChildLabels.push(
+                    `'${this.describeMediaItemForLog(child)}' (${childId})`,
+                  );
                 }
               }
             }
 
             if (missingManualChildren.length > 0) {
+              // Name the adopted items: a member that appears with the
+              // "manual" tag without the user having added it is otherwise
+              // undiagnosable from the logs.
+              const maxNamedChildren = 10;
+              const overflowCount =
+                adoptedChildLabels.length - maxNamedChildren;
+              this.logger.log(
+                `Importing ${missingManualChildren.length} item(s) present in the media server collection for '${collection.title}' but not owned by its rule as manual member(s): ${adoptedChildLabels
+                  .slice(0, maxNamedChildren)
+                  .join(
+                    ', ',
+                  )}${overflowCount > 0 ? ` and ${overflowCount} more` : ''}`,
+              );
               await this.collectionService.syncMediaServerChildrenToCollection(
                 collection,
                 missingManualChildren,
@@ -666,6 +698,16 @@ export class RuleExecutorService {
 
       return undefined;
     }
+  }
+
+  private describeMediaItemForLog(item: MediaItem): string {
+    if (item.type === 'season' && item.parentTitle) {
+      return `${item.parentTitle} - ${item.title}`;
+    }
+    if (item.type === 'episode' && item.grandparentTitle) {
+      return `${item.grandparentTitle} - ${item.title}`;
+    }
+    return item.title || item.id;
   }
 
   private async handleCollection(

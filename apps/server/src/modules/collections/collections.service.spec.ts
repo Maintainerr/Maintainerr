@@ -1052,6 +1052,109 @@ describe('CollectionsService', () => {
     expect(mediaServer.deleteCollection).not.toHaveBeenCalled();
   });
 
+  it('skips the drift resync and keeps the link when Jellyfin children cannot be enumerated', async () => {
+    settingsDataService.media_server_type = MediaServerType.JELLYFIN;
+    const collection = createCollection({
+      id: 43,
+      mediaServerId: 'remote-collection',
+      manualCollection: false,
+      title: 'Jellyfin Unreadable',
+      libraryId: 'library-1',
+    });
+
+    mediaServer.getCollection.mockResolvedValue({
+      id: 'remote-collection',
+      title: 'Jellyfin Unreadable',
+      childCount: 117,
+    } as any);
+    mediaServer.getCollectionChildren.mockRejectedValue(
+      new Error('Request failed with status code 500'),
+    );
+    collectionMediaRepo.find.mockResolvedValue([
+      createCollectionMedia(collection, {
+        mediaServerId: 'rule-owned-1',
+        includedByRule: true,
+        manualMembershipSource: null,
+      }),
+    ]);
+
+    const result = await service.checkAutomaticMediaServerLink(collection);
+
+    // A failed read is not an empty BoxSet - no blind re-add, link intact.
+    expect(mediaServer.addBatchToCollection).not.toHaveBeenCalled();
+    expect(mediaServer.deleteCollection).not.toHaveBeenCalled();
+    expect(result.mediaServerId).toBe('remote-collection');
+    expect(logger.warn).toHaveBeenCalledWith(
+      expect.stringContaining(
+        'Could not enumerate media server collection remote-collection',
+      ),
+    );
+  });
+
+  it('skips the shared-collection drift resync when Plex children cannot be enumerated', async () => {
+    const collection = createCollection({
+      id: 17,
+      mediaServerId: 'remote-collection',
+      manualCollection: false,
+      title: 'Shared Unreadable',
+      libraryId: 'library-1',
+    });
+
+    mediaServer.getCollection.mockResolvedValue({
+      id: 'remote-collection',
+      title: 'Shared Unreadable',
+      childCount: 3,
+    } as any);
+    mediaServer.getCollectionChildren.mockRejectedValue(
+      new Error('Plex api communication failure'),
+    );
+    collectionMediaRepo.find.mockResolvedValue([
+      createCollectionMedia(collection, {
+        mediaServerId: 'rule-owned-1',
+        includedByRule: true,
+        manualMembershipSource: null,
+      }),
+    ]);
+    jest
+      .spyOn(service, 'isMediaServerCollectionShared')
+      .mockResolvedValue(true);
+
+    const result = await service.checkAutomaticMediaServerLink(collection);
+
+    expect(mediaServer.addBatchToCollection).not.toHaveBeenCalled();
+    expect(mediaServer.deleteCollection).not.toHaveBeenCalled();
+    expect(result.mediaServerId).toBe('remote-collection');
+  });
+
+  it('keeps a Plex collection when both its child count and children read are inconclusive', async () => {
+    const collection = createCollection({
+      id: 18,
+      mediaServerId: 'remote-collection',
+      manualCollection: false,
+      title: 'Unknown Count',
+      libraryId: 'library-1',
+    });
+
+    // No usable childCount metadata, and the children read fails: the
+    // empty-delete must not run on an unconfirmed 0.
+    mediaServer.getCollection.mockResolvedValue({
+      id: 'remote-collection',
+      title: 'Unknown Count',
+      childCount: undefined,
+    } as any);
+    mediaServer.getCollectionChildren.mockRejectedValue(
+      new Error('Plex api communication failure'),
+    );
+    jest
+      .spyOn(service, 'isMediaServerCollectionShared')
+      .mockResolvedValue(false);
+
+    const result = await service.checkAutomaticMediaServerLink(collection);
+
+    expect(mediaServer.deleteCollection).not.toHaveBeenCalled();
+    expect(result.mediaServerId).toBe('remote-collection');
+  });
+
   it.each([
     { serverType: MediaServerType.JELLYFIN, name: 'Jellyfin' },
     { serverType: MediaServerType.EMBY, name: 'Emby' },
