@@ -28,7 +28,7 @@ RUN for f in /etc/apt/sources.list /etc/apt/sources.list.d/debian.sources; do \
 
 # Enable corepack for Yarn 4.x support
 # Node 26+ no longer bundles corepack, so install it explicitly first
-RUN npm install -g corepack@latest && corepack enable && corepack prepare yarn@4.11.0 --activate
+RUN npm install -g corepack@latest && corepack enable && corepack prepare yarn@4.17.1 --activate
 
 # Use the non-root node user that exists in the base image
 ARG USERNAME=node
