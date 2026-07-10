@@ -14,4 +14,7 @@ if ! find "$UI_DIST_DIR" -type f -not -path '*/node_modules/*' -print0 | xargs -
 	exit 1
 fi
 
-exec npm run --prefix /opt/app/apps/server start
+# Run node directly. `npm run start` only wraps `node dist/main` and leaks
+# npm's update-notifier banner into the logs; cd preserves npm's --prefix cwd.
+cd /opt/app/apps/server || exit 1
+exec node dist/main
