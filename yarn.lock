@@ -2985,7 +2985,7 @@ __metadata:
     "@faker-js/faker": "npm:^10.5.0"
     "@jellyfin/sdk": "npm:^0.13.0"
     "@maintainerr/contracts": "workspace:^"
-    "@nestjs/cli": "npm:^11.0.23"
+    "@nestjs/cli": "npm:^11.0.24"
     "@nestjs/common": "npm:^11.1.28"
     "@nestjs/core": "npm:^11.1.28"
     "@nestjs/event-emitter": "npm:^3.1.0"
@@ -3233,9 +3233,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@nestjs/cli@npm:^11.0.23":
-  version: 11.0.23
-  resolution: "@nestjs/cli@npm:11.0.23"
+"@nestjs/cli@npm:^11.0.24":
+  version: 11.0.24
+  resolution: "@nestjs/cli@npm:11.0.24"
   dependencies:
     "@angular-devkit/core": "npm:19.2.27"
     "@angular-devkit/schematics": "npm:19.2.27"
@@ -3265,7 +3265,7 @@ __metadata:
       optional: true
   bin:
     nest: bin/nest.js
-  checksum: 10c0/8dbb014eda22e4275b030becd2441a2026fe596963a37fe63b48d5be4c4d89c5a7697bd113adb8bce9cd939e8d21e6c0652427e56b94c78870e522ac37ac36c7
+  checksum: 10c0/c73de32f8641b2e61f9e9d977aabcce28ea6e0c88cbc1acca44780c4af5b9bffd72557acfdc060e0763a71985f340e6b5faeefd6eacb5e912e594ad458dd79a9
   languageName: node
   linkType: hard
 
