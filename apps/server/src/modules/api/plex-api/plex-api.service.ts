@@ -738,16 +738,40 @@ export class PlexApiService {
       const historyQuery = {
         uri: '/status/sessions/history/all?sort=viewedAt:desc',
       };
-      const response = abortSignal
-        ? await this.plexClient.queryAll<PlexLibraryResponse>(
-            historyQuery,
-            false,
-            abortSignal,
-          )
-        : await this.plexClient.queryAll<PlexLibraryResponse>(
-            historyQuery,
-            false,
+
+      // The sweep is one sequential Plex request per 120-record page, so a big
+      // watch history can take minutes with no output - which reads as a hang
+      // (users reported the run "stuck" at the single start line). Log each 10%
+      // it crosses so progress is visible without flooding the log. The final
+      // page (fetched == totalSize) is skipped so it never prints a misleading
+      // partial percentage; the completion line below reports the total. A
+      // history that fits in one page stays silent here for the same reason.
+      let loggedDecile = 0;
+      const onProgress = ({
+        fetched,
+        totalSize,
+      }: {
+        fetched: number;
+        totalSize: number;
+      }): void => {
+        if (totalSize <= 0 || fetched >= totalSize) {
+          return;
+        }
+        const decile = Math.floor((fetched / totalSize) * 10) * 10;
+        if (decile > loggedDecile) {
+          loggedDecile = decile;
+          this.logger.log(
+            `Prefetching watch history: ${fetched} of ${totalSize} records (${decile}%)...`,
           );
+        }
+      };
+
+      const response = await this.plexClient.queryAll<PlexLibraryResponse>(
+        historyQuery,
+        false,
+        abortSignal,
+        onProgress,
+      );
 
       const container = response?.MediaContainer;
       const records = (container?.Metadata as PlexSeenBy[]) ?? [];
