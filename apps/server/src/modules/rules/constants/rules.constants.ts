@@ -1106,6 +1106,36 @@ export class RuleConstants {
           type: RuleType.TEXT_LIST, // return usernames []
           showType: ['show', 'season', 'episode'],
         },
+        {
+          id: 9,
+          name: 'playedBy',
+          humanName: '[list] Played by (username)',
+          mediaType: MediaType.MOVIE,
+          type: RuleType.TEXT_LIST, // returns usernames []
+        },
+        {
+          id: 10,
+          name: 'lastPlayedAt',
+          humanName: 'Last played date',
+          mediaType: MediaType.BOTH,
+          type: RuleType.DATE,
+        },
+        {
+          id: 11,
+          name: 'sw_playedBy',
+          humanName: '[list] Users that played at least one episode',
+          mediaType: MediaType.SHOW,
+          type: RuleType.TEXT_LIST, // return usernames []
+          showType: ['show', 'season', 'episode'],
+        },
+        {
+          id: 12,
+          name: 'sw_lastPlayedAt',
+          humanName: 'Newest episode played date',
+          mediaType: MediaType.SHOW,
+          type: RuleType.DATE,
+          showType: ['show', 'season'],
+        },
       ],
     },
     {

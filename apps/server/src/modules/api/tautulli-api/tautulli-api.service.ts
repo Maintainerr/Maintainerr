@@ -46,7 +46,7 @@ interface TautulliHistory {
   total_duration: string;
 }
 
-interface TautulliHistoryItem {
+export interface TautulliHistoryItem {
   user_id: number;
   user: string;
   watched_status: number;

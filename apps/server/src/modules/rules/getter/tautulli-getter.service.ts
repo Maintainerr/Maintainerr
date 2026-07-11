@@ -43,6 +43,9 @@ export class TautulliGetterService {
   ) {
     try {
       const prop = this.appProperties.find((el) => el.id === id);
+      if (!prop) {
+        return null;
+      }
       const metadata = await this.tautulliApi.getMetadata(libItem.id);
       const collection = await this.collectionRepository.findOne({
         where: { id: ruleGroup.collection.id },
@@ -196,6 +199,81 @@ export class TautulliGetterService {
           newestSeason.sort((a, b) => b.media_index - a.media_index);
 
           return new Date(newestSeason[0].stopped * 1000);
+        }
+        case 'playedBy': {
+          const history = await this.getHistoryForMetadata(metadata);
+          if (history.length > 0) {
+            const viewerIds = history.map((el) => el.user_id);
+            const uniqueViewerIds = [...new Set(viewerIds)];
+            return this.getPlexUsernamesForIds(uniqueViewerIds);
+          }
+          return [];
+        }
+        case 'lastPlayedAt': {
+          const history = await this.getHistoryForMetadata(metadata);
+          const sortedHistory = history
+            .map((el) => el.stopped)
+            .sort()
+            .reverse();
+          return sortedHistory.length > 0
+            ? new Date(sortedHistory[0] * 1000)
+            : null;
+        }
+        case 'sw_playedBy': {
+          const users = await this.tautulliApi.getUsers();
+          let seasons: TautulliMetadata[];
+
+          if (metadata.media_type !== 'season') {
+            seasons = await this.tautulliApi.getChildrenMetadata(
+              metadata.rating_key,
+            );
+          } else {
+            seasons = [metadata];
+          }
+
+          const allPlayerIds = new Set<number>();
+
+          for (const season of seasons) {
+            const episodes = await this.tautulliApi.getChildrenMetadata(
+              season.rating_key,
+            );
+
+            for (const episode of episodes) {
+              const players = await this.tautulliApi.getHistory({
+                rating_key: episode.rating_key,
+              });
+
+              players?.forEach((playEl) => {
+                allPlayerIds.add(playEl.user_id);
+              });
+            }
+          }
+
+          if (allPlayerIds.size > 0) {
+            const allPlayers = users.filter((u) => allPlayerIds.has(u.user_id));
+            const plexUsernames = await this.getPlexUsernamesForIds(
+              allPlayers.map((x) => x.user_id),
+            );
+            return plexUsernames;
+          }
+
+          return [];
+        }
+        case 'sw_lastPlayedAt': {
+          let history = await this.getHistoryForMetadata(metadata);
+
+          history
+            .sort((a, b) => a.parent_media_index - b.parent_media_index)
+            .reverse();
+
+          history = history.filter(
+            (el) => el.parent_media_index === history[0].parent_media_index,
+          );
+          history.sort((a, b) => a.media_index - b.media_index).reverse();
+
+          return history.length > 0
+            ? new Date(history[0].stopped * 1000)
+            : null;
         }
         default: {
           return null;
