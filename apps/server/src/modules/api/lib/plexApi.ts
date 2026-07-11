@@ -67,17 +67,23 @@ class PlexApi {
    *
    * @param {RequestOptions} options - The options for the query.
    * @param {boolean} [useCache=true] - Whether to use the cache for the query.
+   * @param {AbortSignal} [signal] - Aborts the paginated sweep between pages.
+   * @param {function} [onProgress] - Called after each page with the running
+   *   count of items fetched so far and Plex's reported totalSize, so callers
+   *   can surface progress on long sweeps. Not invoked when totalSize is absent.
    * @return {Promise<T[]>} - A promise that resolves to an array of T.
    */
   async queryAll<T>(
     options: RequestOptions,
     useCache: boolean = true,
     signal?: AbortSignal,
+    onProgress?: (progress: { fetched: number; totalSize: number }) => void,
   ): Promise<T> {
     // vars
     let result = undefined;
     let next = true;
     let page = 0;
+    let fetched = 0;
     const size = 120;
     const requestSignal = signal ?? options.signal;
     options = {
@@ -94,17 +100,22 @@ class PlexApi {
     while (next) {
       requestSignal?.throwIfAborted();
       const query: PlexLibraryResponse = await this.query(options, useCache);
+      const items = query?.MediaContainer
+        ? this.getDataValue(query.MediaContainer)
+        : undefined;
+
       if (result === undefined) {
         // if first response, replace result
         result = query;
-      } else {
+      } else if (items) {
         // if next response, add to previous result
-        const items = this.getDataValue(query.MediaContainer);
+        this.appendToData(result.MediaContainer, items as any[]);
+      }
 
-        // if response is an array
-        if (items) {
-          this.appendToData(result.MediaContainer, items as any[]);
-        }
+      fetched += Array.isArray(items) ? items.length : 0;
+      const totalSize = query?.MediaContainer?.totalSize;
+      if (onProgress && typeof totalSize === 'number') {
+        onProgress({ fetched, totalSize });
       }
 
       // fetch all if more than 120

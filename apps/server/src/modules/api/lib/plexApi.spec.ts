@@ -59,4 +59,47 @@ describe('PlexApi', () => {
       expect.objectContaining({ timeout: 30000 }),
     );
   });
+
+  it('paginates queryAll and reports fetched/totalSize progress after each page', async () => {
+    const request = jest.fn();
+    (axios.create as jest.Mock).mockReturnValue({ request });
+
+    const api = new PlexApi({
+      hostname: 'plex.local',
+      port: 32400,
+      token: 'token',
+    });
+
+    const totalSize = 250;
+    const page = (start: number, count: number) => ({
+      data: {
+        MediaContainer: {
+          totalSize,
+          Metadata: Array.from({ length: count }, (_v, i) => ({
+            ratingKey: String(start + i),
+          })),
+        },
+      },
+    });
+    // Two full 120-record pages then a short final page.
+    request
+      .mockResolvedValueOnce(page(0, 120))
+      .mockResolvedValueOnce(page(120, 120))
+      .mockResolvedValueOnce(page(240, 10));
+
+    const progress: Array<{ fetched: number; totalSize: number }> = [];
+    const result = await api.queryAll<{
+      MediaContainer: { Metadata: unknown[] };
+    }>({ uri: '/status/sessions/history/all' }, false, undefined, (p) =>
+      progress.push(p),
+    );
+
+    expect(request).toHaveBeenCalledTimes(3);
+    expect(result.MediaContainer.Metadata).toHaveLength(totalSize);
+    expect(progress).toEqual([
+      { fetched: 120, totalSize },
+      { fetched: 240, totalSize },
+      { fetched: 250, totalSize },
+    ]);
+  });
 });
