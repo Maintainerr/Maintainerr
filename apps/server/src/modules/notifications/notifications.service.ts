@@ -21,6 +21,7 @@ import {
   CollectionMediaAddedDto,
   CollectionMediaHandledDto,
   CollectionMediaRemovedDto,
+  NotificationMediaItem,
   OverlayAppliedDto,
   OverlayRevertedDto,
   RuleHandlerFailedDto,
@@ -682,7 +683,7 @@ export class NotificationService implements OnModuleInit {
 
   public async handleNotification(
     type: NotificationType,
-    mediaItems?: { mediaServerId: string }[],
+    mediaItems?: NotificationMediaItem[],
     collectionName?: string,
     dayAmount?: number,
     agent?: NotificationAgent,
@@ -711,7 +712,11 @@ export class NotificationService implements OnModuleInit {
     payload.extra.push({ name: 'dayAmount', value: dayAmount?.toString() });
     payload.extra.push({
       name: 'mediaItems',
-      value: JSON.stringify(mediaItems),
+      // Keep the wire shape lean; the pre-resolved metadata snapshot is only
+      // for internal title rendering, not the webhook payload.
+      value: JSON.stringify(
+        mediaItems?.map((item) => ({ mediaServerId: item.mediaServerId })),
+      ),
     });
 
     // get the rulegroup when available
@@ -858,7 +863,7 @@ export class NotificationService implements OnModuleInit {
 
   private async transformMessageContent(
     message: string,
-    items?: { mediaServerId: string }[],
+    items?: NotificationMediaItem[],
     collectionName?: string,
     dayAmount?: number,
   ): Promise<string> {
@@ -889,7 +894,11 @@ export class NotificationService implements OnModuleInit {
         let numUnknownItems = 0;
 
         for (const i of items) {
-          const item = await mediaServer.getMetadata(i.mediaServerId);
+          // Prefer the snapshot captured before handling; a handled item is
+          // often already gone from the media server, so a live lookup would
+          // come back empty (#3249).
+          const item =
+            i.metadata ?? (await mediaServer.getMetadata(i.mediaServerId));
 
           if (item) {
             titles.push(this.getTitle(item));
@@ -913,7 +922,9 @@ export class NotificationService implements OnModuleInit {
         message = message.replace('{media_items}', result);
       } else {
         // if 1 item
-        const item = await mediaServer.getMetadata(items[0].mediaServerId);
+        const item =
+          items[0].metadata ??
+          (await mediaServer.getMetadata(items[0].mediaServerId));
         message = message.replace(
           '{media_title}',
           item

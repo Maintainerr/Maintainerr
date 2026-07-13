@@ -136,6 +136,48 @@ describe('CollectionWorkerService', () => {
     expect(seerrApi.api.post).toHaveBeenCalled();
   });
 
+  it('captures the media title before handling and carries it on the handled event (#3249)', async () => {
+    const collection = createCollection({
+      arrAction: ServarrAction.DELETE,
+      type: 'movie',
+    });
+    const collectionMedia = createCollectionMedia(collection, {
+      mediaServerId: 'gone-after-delete',
+    });
+
+    // getMetadata resolves before handling, then reports the item gone once the
+    // delete action has run - the pre-handling snapshot is what the handled
+    // notification relies on.
+    const snapshot = { title: 'A Sample Movie', type: 'movie' };
+    const getMetadata = jest
+      .fn()
+      .mockResolvedValueOnce(snapshot)
+      .mockResolvedValue(undefined);
+    mediaServerFactory.verifyConnection.mockResolvedValue({
+      supportsFeature: jest.fn().mockReturnValue(false),
+      getActiveSessions: jest.fn().mockResolvedValue(new Set<string>()),
+      getMetadata,
+    } as any);
+
+    collectionRepository.find.mockResolvedValue([collection]);
+    collectionMediaRepository.find.mockResolvedValue([collectionMedia]);
+    collectionHandler.handleMedia.mockResolvedValue('handled');
+
+    await collectionWorkerService.execute();
+
+    expect(getMetadata).toHaveBeenCalledWith('gone-after-delete');
+    expect(eventEmitter.emit).toHaveBeenCalledWith(
+      MaintainerrEvent.CollectionMedia_Handled,
+      expect.objectContaining({
+        collectionName: collection.title,
+        mediaItems: [
+          { mediaServerId: 'gone-after-delete', metadata: snapshot },
+        ],
+        identifier: { type: 'collection', value: collection.id },
+      }),
+    );
+  });
+
   it('skips flagged rule-owned media but still handles flagged manual media', async () => {
     const collection = createCollection({
       arrAction: ServarrAction.DELETE,
