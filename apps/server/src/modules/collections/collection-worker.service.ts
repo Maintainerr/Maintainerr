@@ -3,6 +3,7 @@ import {
   CollectionHandlerProgressedEventDto,
   CollectionHandlerStartedEventDto,
   MaintainerrEvent,
+  MediaItem,
 } from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -15,6 +16,7 @@ import { SeerrApiService } from '../api/seerr-api/seerr-api.service';
 import {
   CollectionHandlerFailedDto,
   CollectionMediaHandledDto,
+  NotificationMediaItem,
 } from '../events/events.dto';
 import { MaintainerrLogger } from '../logging/logs.service';
 import { SettingsDataService } from '../settings/settings-data.service';
@@ -221,10 +223,22 @@ export class CollectionWorkerService extends TaskBase {
         }
 
         this.logger.log(`Handling collection '${collection.title}'`);
-        const handledMediaForNotification = [];
+        const handledMediaForNotification: NotificationMediaItem[] = [];
         const failedMediaForNotification: { mediaServerId: string }[] = [];
 
         for (const media of collectionMedia) {
+          // Snapshot the metadata before handling: a delete-style action removes
+          // the item from the media server, so the handled notification's own
+          // title lookup would come back empty and fall back to a generic
+          // "no longer exists" message (#3249). Best-effort - an unresolved
+          // snapshot just defers to that lookup, preserving prior behaviour.
+          let mediaData: MediaItem | undefined;
+          try {
+            mediaData = await mediaServer.getMetadata(media.mediaServerId);
+          } catch (error) {
+            this.logger.debug(error);
+          }
+
           let result: HandleMediaResult = 'failed';
           let handlingError: unknown;
 
@@ -241,6 +255,7 @@ export class CollectionWorkerService extends TaskBase {
             handledCollectionMedia++;
             handledMediaForNotification.push({
               mediaServerId: media.mediaServerId,
+              metadata: mediaData,
             });
           } else if (result === 'removed-missing') {
             // The item was already gone from the media server and has been
