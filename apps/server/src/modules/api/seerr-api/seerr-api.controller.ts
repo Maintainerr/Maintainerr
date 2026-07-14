@@ -1,4 +1,11 @@
-import { Controller, Delete, Get, Param } from '@nestjs/common';
+import {
+  Controller,
+  Delete,
+  Get,
+  Param,
+  ParseIntPipe,
+  Query,
+} from '@nestjs/common';
 import { SeerrApiService } from './seerr-api.service';
 
 @Controller(['api/seerr', 'api/overseerr', 'api/jellyseerr'])
@@ -8,6 +15,15 @@ export class SeerrApiController {
   @Get('movie/:id')
   getMovie(@Param('id') id: string) {
     return this.seerrApi.getMovie(id);
+  }
+
+  /** Who requested a title; `season` narrows it to one season of a show. */
+  @Get('requests/:tmdbId/users')
+  getRequestedByUsernames(
+    @Param('tmdbId', ParseIntPipe) tmdbId: number,
+    @Query('season', new ParseIntPipe({ optional: true })) season?: number,
+  ): Promise<string[]> {
+    return this.seerrApi.getRequestedByUsernames(tmdbId, season);
   }
 
   @Get('show/:id')

@@ -1,5 +1,10 @@
+import { MediaItem } from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
+import { MediaServerFactory } from '../api/media-server/media-server.factory';
+import { SeerrApiService } from '../api/seerr-api/seerr-api.service';
 import { CollectionsService } from '../collections/collections.service';
+import { CollectionMedia } from '../collections/entities/collection_media.entities';
+import { NotificationMediaItem } from '../events/events.dto';
 import { MaintainerrLogger } from '../logging/logs.service';
 import { TaskBase } from '../tasks/task.base';
 import { TasksService } from '../tasks/tasks.service';
@@ -21,6 +26,8 @@ export class NotificationTimerService extends TaskBase {
     protected readonly logger: MaintainerrLogger,
     protected readonly collectionService: CollectionsService,
     private readonly notificationService: NotificationService,
+    private readonly mediaServerFactory: MediaServerFactory,
+    private readonly seerrApi: SeerrApiService,
   ) {
     logger.setContext(NotificationTimerService.name);
     super(taskService, logger);
@@ -35,6 +42,17 @@ export class NotificationTimerService extends TaskBase {
     const activeAgents = this.notificationService.getActiveAgents();
     const allNotificationConfigurations =
       await this.notificationService.getNotificationConfigurations(true);
+
+    // Agents run concurrently and can share a rule group, so memoise the
+    // in-flight promise to keep each item at one media-server + Seerr lookup.
+    const enriched = new Map<string, Promise<NotificationMediaItem>>();
+    const enrich = (media: CollectionMedia): Promise<NotificationMediaItem> => {
+      const pending =
+        enriched.get(media.mediaServerId) ??
+        this.toNotificationMediaItem(media);
+      enriched.set(media.mediaServerId, pending);
+      return pending;
+    };
 
     await Promise.allSettled(
       activeAgents.map(async (agent) => {
@@ -73,15 +91,11 @@ export class NotificationTimerService extends TaskBase {
           )
         ).flat();
 
-        const transformedItems = itemsToNotify.map((i) => ({
-          mediaServerId: i.mediaServerId,
-        }));
-
         // send the notification if required
-        if (transformedItems.length > 0) {
+        if (itemsToNotify.length > 0) {
           await this.notificationService.handleNotification(
             this.type,
-            transformedItems,
+            await Promise.all(itemsToNotify.map(enrich)),
             undefined,
             notification.aboutScale,
             agent,
@@ -89,5 +103,49 @@ export class NotificationTimerService extends TaskBase {
         }
       }),
     );
+  }
+
+  /**
+   * Title snapshot + requesters, both best-effort: a warning that can't name
+   * the item or the requester still beats no warning.
+   */
+  private async toNotificationMediaItem(
+    media: CollectionMedia,
+  ): Promise<NotificationMediaItem> {
+    let metadata: MediaItem | undefined;
+    try {
+      const mediaServer = await this.mediaServerFactory.getService();
+      metadata = await mediaServer.getMetadata(media.mediaServerId);
+    } catch (error) {
+      this.logger.debug(error);
+    }
+
+    const requestedBy = await this.resolveRequesters(media, metadata);
+
+    return {
+      mediaServerId: media.mediaServerId,
+      metadata,
+      ...(requestedBy.length > 0 ? { requestedBy } : {}),
+    };
+  }
+
+  private async resolveRequesters(
+    media: CollectionMedia,
+    metadata: MediaItem | undefined,
+  ): Promise<string[]> {
+    if (!media.tmdbId) {
+      return [];
+    }
+
+    // Switch on `type`, not parentId presence: Emby/Jellyfin set a movie's
+    // parentId to its library folder, which would misread it as a season.
+    const season =
+      metadata?.type === 'season'
+        ? metadata.index
+        : metadata?.type === 'episode'
+          ? metadata.parentIndex
+          : undefined;
+
+    return this.seerrApi.getRequestedByUsernames(media.tmdbId, season);
   }
 }

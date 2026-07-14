@@ -90,6 +90,149 @@ describe('NotificationService', () => {
     );
   });
 
+  describe('requester in the pre-deletion warning', () => {
+    const aboutToBeHandled = (service: NotificationService) =>
+      (service as any).getContent(
+        NotificationType.MEDIA_ABOUT_TO_BE_HANDLED,
+        false,
+      ).message as string;
+
+    it('names the requester on a single item', async () => {
+      const { service } = createService();
+
+      const content = await (service as any).transformMessageContent(
+        aboutToBeHandled(service),
+        [{ mediaServerId: '1', requestedBy: ['alice'] }],
+        undefined,
+        3,
+      );
+
+      expect(content).toContain("'Test Media' (requested by alice)");
+      expect(content).toContain('will be handled in 3 days');
+    });
+
+    it('joins multiple requesters of the same item', async () => {
+      const { service } = createService();
+
+      const content = await (service as any).transformMessageContent(
+        aboutToBeHandled(service),
+        [{ mediaServerId: '1', requestedBy: ['alice', 'bob'] }],
+        undefined,
+        3,
+      );
+
+      expect(content).toContain("'Test Media' (requested by alice, bob)");
+    });
+
+    it('drops the clause entirely when nobody requested the item', async () => {
+      const { service } = createService();
+
+      const content = await (service as any).transformMessageContent(
+        aboutToBeHandled(service),
+        [{ mediaServerId: '1' }],
+        undefined,
+        3,
+      );
+
+      expect(content).toContain("'Test Media' will be handled in 3 days");
+      // A raw placeholder must never reach a user.
+      expect(content).not.toContain('{requested_by}');
+      expect(content).not.toContain('requested by');
+    });
+
+    it('attributes each item separately in a batch', async () => {
+      const getMetadata = jest
+        .fn()
+        .mockResolvedValueOnce({ title: 'First Title', type: 'movie' })
+        .mockResolvedValueOnce({ title: 'Second Title', type: 'movie' });
+      const mediaServerFactory = {
+        getService: jest.fn().mockResolvedValue({ getMetadata }),
+      };
+      const service = new NotificationService(
+        { find: jest.fn().mockResolvedValue([]) } as any,
+        { findOne: jest.fn().mockResolvedValue(null) } as any,
+        {} as any,
+        {} as any,
+        mediaServerFactory as any,
+        createMockLogger() as any,
+        { createLogger: jest.fn().mockReturnValue(createMockLogger()) } as any,
+      );
+
+      const content = await (service as any).transformMessageContent(
+        (service as any).getContent(
+          NotificationType.MEDIA_ABOUT_TO_BE_HANDLED,
+          true,
+        ).message,
+        [
+          { mediaServerId: '1', requestedBy: ['alice'] },
+          { mediaServerId: '2' },
+        ],
+        undefined,
+        3,
+      );
+
+      expect(content).toContain('* First Title (requested by alice)');
+      expect(content).toContain('* Second Title');
+      expect(content).not.toContain('Second Title (requested by');
+      expect(content).not.toContain('{requested_by}');
+    });
+
+    it('still names the requester when the media server is unavailable', async () => {
+      // The requester came from Seerr, so an outage must not leak a raw token.
+      const mediaServerFactory = {
+        getService: jest
+          .fn()
+          .mockRejectedValue(new ServiceUnavailableException()),
+      };
+      const service = new NotificationService(
+        { find: jest.fn().mockResolvedValue([]) } as any,
+        { findOne: jest.fn().mockResolvedValue(null) } as any,
+        {} as any,
+        {} as any,
+        mediaServerFactory as any,
+        createMockLogger() as any,
+        { createLogger: jest.fn().mockReturnValue(createMockLogger()) } as any,
+      );
+
+      const content = await (service as any).transformMessageContent(
+        aboutToBeHandled(service),
+        [{ mediaServerId: '1', requestedBy: ['alice'] }],
+        undefined,
+        3,
+      );
+
+      expect(content).toContain('(requested by alice)');
+      expect(content).not.toContain('{requested_by}');
+    });
+
+    it('puts the requester on the wire for external approval workflows', async () => {
+      const { service } = createService();
+      const sendNotification = jest
+        .spyOn(service, 'sendNotification')
+        .mockResolvedValue(undefined);
+
+      await service.handleNotification(
+        NotificationType.MEDIA_ABOUT_TO_BE_HANDLED,
+        [
+          { mediaServerId: '1', requestedBy: ['alice'] },
+          { mediaServerId: '2' },
+        ],
+        undefined,
+        3,
+      );
+
+      const payload = sendNotification.mock.calls[0][1];
+      const mediaItems = JSON.parse(
+        payload.extra!.find((e) => e.name === 'mediaItems')!.value,
+      );
+
+      expect(mediaItems).toEqual([
+        { mediaServerId: '1', requestedBy: ['alice'] },
+        { mediaServerId: '2' },
+      ]);
+    });
+  });
+
   describe('media handled title snapshot (#3249)', () => {
     it('renders the pre-resolved title without a live lookup when the item is gone', async () => {
       // A delete action removes the item from the media server, so a live
