@@ -7,6 +7,7 @@ import { Injectable } from '@nestjs/common';
 import _ from 'lodash';
 import { MediaServerFactory } from '../../api/media-server/media-server.factory';
 import {
+  resolveRequestUsername,
   SeerrApiService,
   SeerrMovieResponse,
   SeerrRequest,
@@ -130,7 +131,7 @@ export class SeerrGetterService {
                     continue;
                   }
 
-                  const username = this.resolveRequestUsername(request);
+                  const username = resolveRequestUsername(request);
                   if (username) {
                     userNames.push(username);
                   }
@@ -350,32 +351,5 @@ export class SeerrGetterService {
       (season) => season.seasonNumber === seasonNumber,
     );
     return season !== undefined;
-  }
-
-  /**
-   * Resolves the username from a Seerr request.
-   *
-   * Uses the username fields directly from the Seerr API response
-   * rather than looking up users by ID on the media server, because
-   * media server user IDs don't match Seerr's plexId (Plex.tv ID).
-   *
-   * Seerr user types store their name in different fields:
-   * - Plex (1): plexUsername
-   * - Local (2): username
-   * - Jellyfin (3) / Emby (4): jellyfinUsername
-   */
-  private resolveRequestUsername(request: {
-    requestedBy?: {
-      plexUsername?: string;
-      jellyfinUsername?: string;
-      username?: string;
-    };
-  }): string | undefined {
-    const user = request.requestedBy;
-    if (!user) return undefined;
-
-    return (
-      user.plexUsername || user.jellyfinUsername || user.username || undefined
-    );
   }
 }

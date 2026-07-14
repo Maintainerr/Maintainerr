@@ -421,4 +421,91 @@ describe('SeerrApiService', () => {
       expect(getWithoutCache).toHaveBeenCalledTimes(2);
     });
   });
+
+  describe('getRequestedByUsernames', () => {
+    const requestedBy = (
+      id: number,
+      user: Record<string, string>,
+      seasons?: number[],
+    ): SeerrRequest =>
+      ({
+        ...requestWithTmdb(id, 100),
+        ...(seasons
+          ? {
+              type: 'tv',
+              seasons: seasons.map((seasonNumber) => ({
+                id: seasonNumber,
+                name: `Season ${seasonNumber}`,
+                seasonNumber,
+              })),
+            }
+          : {}),
+        requestedBy: user,
+      }) as unknown as SeerrRequest;
+
+    it('resolves the username per Seerr user type and dedupes', async () => {
+      jest.spyOn(service, 'getRequestsForMedia').mockResolvedValue([
+        requestedBy(1, { plexUsername: 'alice' }),
+        requestedBy(2, { jellyfinUsername: 'bob' }),
+        requestedBy(3, { username: 'carol' }),
+        // Plex username wins over the others on the same user.
+        requestedBy(4, { plexUsername: 'alice', username: 'alice-local' }),
+      ]);
+
+      await expect(service.getRequestedByUsernames(100)).resolves.toEqual([
+        'alice',
+        'bob',
+        'carol',
+      ]);
+    });
+
+    it('credits only the users who requested the given season', async () => {
+      jest
+        .spyOn(service, 'getRequestsForMedia')
+        .mockResolvedValue([
+          requestedBy(1, { plexUsername: 'alice' }, [1]),
+          requestedBy(2, { plexUsername: 'bob' }, [2]),
+          requestedBy(3, { plexUsername: 'carol' }, [2, 3]),
+        ]);
+
+      await expect(service.getRequestedByUsernames(100, 2)).resolves.toEqual([
+        'bob',
+        'carol',
+      ]);
+      // Without a season, every requester of the show is credited.
+      await expect(service.getRequestedByUsernames(100)).resolves.toEqual([
+        'alice',
+        'bob',
+        'carol',
+      ]);
+    });
+
+    it('returns [] when Seerr is unreachable, so the notification still sends', async () => {
+      // The opposite of the rule getter's contract, deliberately.
+      jest.spyOn(service, 'getRequestsForMedia').mockResolvedValue(undefined);
+
+      await expect(service.getRequestedByUsernames(100)).resolves.toEqual([]);
+    });
+
+    it('returns [] without calling Seerr when it is not configured', async () => {
+      settings.seerrConfigured.mockReturnValue(false);
+      const getRequestsForMedia = jest.spyOn(service, 'getRequestsForMedia');
+
+      await expect(service.getRequestedByUsernames(100)).resolves.toEqual([]);
+      expect(getRequestsForMedia).not.toHaveBeenCalled();
+    });
+
+    it('skips requests with no resolvable username', async () => {
+      jest
+        .spyOn(service, 'getRequestsForMedia')
+        .mockResolvedValue([
+          requestedBy(1, {}),
+          requestedBy(2, { plexUsername: 'alice' }),
+        ]);
+
+      await expect(service.getRequestedByUsernames(100)).resolves.toEqual([
+        'alice',
+      ]);
+    });
+  });
 });
