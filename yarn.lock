@@ -3087,7 +3087,7 @@ __metadata:
     lodash-es: "npm:^4.18.1"
     monaco-editor: "npm:0.55.1"
     prettier: "npm:^3.9.5"
-    prettier-plugin-tailwindcss: "npm:^0.8.0"
+    prettier-plugin-tailwindcss: "npm:^0.8.1"
     react: "npm:^19.2.7"
     react-dom: "npm:^19.2.7"
     react-hook-form: "npm:^7.81.0"
@@ -15791,9 +15791,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"prettier-plugin-tailwindcss@npm:^0.8.0":
-  version: 0.8.0
-  resolution: "prettier-plugin-tailwindcss@npm:0.8.0"
+"prettier-plugin-tailwindcss@npm:^0.8.1":
+  version: 0.8.1
+  resolution: "prettier-plugin-tailwindcss@npm:0.8.1"
   peerDependencies:
     "@ianvs/prettier-plugin-sort-imports": "*"
     "@prettier/plugin-hermes": "*"
@@ -15845,7 +15845,7 @@ __metadata:
       optional: true
     prettier-plugin-svelte:
       optional: true
-  checksum: 10c0/03315d1d5d4c425e3f090bd49fcc59159035839931ee8dcaa771720159f8209dd663aa78abc77473b68a425b4ad0b3dd02d79df149edf36a557ef9d43624c098
+  checksum: 10c0/45b8d8686e6b27f06f710063b24c4b5fba4d201aaee7ed85dfdd6cb8e68b6d8f9cea2d8497999c4f72e4c3a8b93b078fb3b6ab35567b3bfaef4bf9ec43482a6f
   languageName: node
   linkType: hard
 
