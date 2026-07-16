@@ -3120,7 +3120,7 @@ __metadata:
     rolldown: "npm:^1.2.0"
     tailwindcss: "npm:^4.3.0"
     typescript: "npm:^6.0.3"
-    vite: "npm:^8.1.4"
+    vite: "npm:^8.1.5"
     vitest: "npm:^4.1.10"
     yaml: "npm:^2.9.0"
     zod: "npm:^4.4.3"
@@ -16881,7 +16881,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"rolldown@npm:~1.1.4":
+"rolldown@npm:~1.1.5":
   version: 1.1.5
   resolution: "rolldown@npm:1.1.5"
   dependencies:
@@ -19354,15 +19354,15 @@ __metadata:
   languageName: node
   linkType: hard
 
-"vite@npm:^8.1.4":
-  version: 8.1.4
-  resolution: "vite@npm:8.1.4"
+"vite@npm:^8.1.5":
+  version: 8.1.5
+  resolution: "vite@npm:8.1.5"
   dependencies:
     fsevents: "npm:~2.3.3"
     lightningcss: "npm:^1.32.0"
     picomatch: "npm:^4.0.5"
-    postcss: "npm:^8.5.16"
-    rolldown: "npm:~1.1.4"
+    postcss: "npm:^8.5.17"
+    rolldown: "npm:~1.1.5"
     tinyglobby: "npm:^0.2.17"
   peerDependencies:
     "@types/node": ^20.19.0 || >=22.12.0
@@ -19407,7 +19407,7 @@ __metadata:
       optional: true
   bin:
     vite: bin/vite.js
-  checksum: 10c0/4262cdd0dd00ca99b00a8aef91fc00e58b66e80b54adbef49353bfbbae7342c2d6ddf1180351956086ff53ad186bec03784f57b96e36ab4dad1246547236d79b
+  checksum: 10c0/3231e24dd4394d0bc8b4f0f5d6d6a2eda8737e5053042892b4163564456a03d67f953c4c7498621f9517eebc30a492ea136c728a767a122eb84bf6d7cf60e1e6
   languageName: node
   linkType: hard
 
