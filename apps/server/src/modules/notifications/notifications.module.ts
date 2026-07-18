@@ -9,6 +9,7 @@ import { NotificationTimerService } from './notifications-timer.service';
 import { TasksModule } from '../tasks/tasks.module';
 import { CollectionsModule } from '../collections/collections.module';
 import { MediaServerModule } from '../api/media-server/media-server.module';
+import { SeerrApiModule } from '../api/seerr-api/seerr-api.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { MediaServerModule } from '../api/media-server/media-server.module';
     CollectionsModule,
     TasksModule,
     MediaServerModule,
+    SeerrApiModule,
     TypeOrmModule.forFeature([Notification, RuleGroup]),
   ],
   providers: [NotificationService, NotificationTimerService],

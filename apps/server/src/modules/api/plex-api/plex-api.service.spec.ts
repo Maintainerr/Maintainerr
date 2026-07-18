@@ -183,6 +183,26 @@ describe('PlexApiService.getMetadata', () => {
     expect(await service.getActiveSessions()).toEqual([]);
   });
 
+  it('returns a confirmed empty list when a collection has no children', async () => {
+    const queryAll = jest.fn().mockResolvedValue({
+      MediaContainer: { size: 0 },
+    });
+
+    (service as any).plexClient = { queryAll };
+
+    expect(await service.getCollectionChildren('col-1')).toEqual([]);
+  });
+
+  it('re-throws children query failures instead of reporting an empty collection', async () => {
+    const queryAll = jest.fn().mockRejectedValue(new Error('boom'));
+
+    (service as any).plexClient = { queryAll };
+
+    await expect(service.getCollectionChildren('col-1')).rejects.toThrow(
+      'boom',
+    );
+  });
+
   it('builds a single encoded collection uri when adding multiple children', async () => {
     const putQuery = jest.fn().mockResolvedValue({
       MediaContainer: { Metadata: [{ ratingKey: '123' }] },
@@ -731,6 +751,8 @@ describe('PlexApiService.prefetchWatchHistory', () => {
     expect(queryAll).toHaveBeenCalledWith(
       { uri: '/status/sessions/history/all?sort=viewedAt:desc' },
       false,
+      undefined,
+      expect.any(Function),
     );
 
     const cacheManager = (await import('../lib/cache')).default;
@@ -741,6 +763,102 @@ describe('PlexApiService.prefetchWatchHistory', () => {
     expect(leafMap).toBeDefined();
     expect(leafMap?.get('1')).toHaveLength(2);
     expect(leafMap?.get('2')).toHaveLength(1);
+  });
+
+  it('logs watch-history prefetch progress in 10% steps as pages arrive', async () => {
+    const totalSize = 1000;
+    const queryAll = jest
+      .fn()
+      .mockImplementation(
+        async (
+          _query: unknown,
+          _useCache: unknown,
+          _signal: unknown,
+          onProgress?: (p: { fetched: number; totalSize: number }) => void,
+        ) => {
+          // Drive the callback the way queryAll does, one page at a time.
+          for (let fetched = 100; fetched <= totalSize; fetched += 100) {
+            onProgress?.({ fetched, totalSize });
+          }
+          return {
+            MediaContainer: {
+              Metadata: Array.from({ length: totalSize }, (_v, i) => ({
+                ratingKey: String(i % 3),
+                type: 'movie',
+                accountID: 1,
+                viewedAt: i,
+              })),
+              totalSize,
+            },
+          };
+        },
+      );
+
+    (service as any).plexClient = { queryAll };
+
+    await service.prefetchWatchHistory();
+
+    const progressLogs = (logger.log as jest.Mock).mock.calls
+      .map((call) => call[0])
+      .filter(
+        (message) =>
+          typeof message === 'string' &&
+          message.startsWith('Prefetching watch history:'),
+      );
+
+    // Deciles 10..90 each logged once; the terminal 100% is left to the
+    // "prefetch complete" line, so it is never emitted as progress.
+    expect(progressLogs).toHaveLength(9);
+    expect(progressLogs[0]).toBe(
+      'Prefetching watch history: 100 of 1000 records (10%)...',
+    );
+    expect(progressLogs[8]).toBe(
+      'Prefetching watch history: 900 of 1000 records (90%)...',
+    );
+  });
+
+  it('emits no progress line when the whole history fits in one page', async () => {
+    // The single (final) page reports fetched == totalSize; logging it would
+    // print a misleading partial percentage, so it must stay silent and let the
+    // completion line report the total.
+    const totalSize = 42;
+    const queryAll = jest
+      .fn()
+      .mockImplementation(
+        async (
+          _query: unknown,
+          _useCache: unknown,
+          _signal: unknown,
+          onProgress?: (p: { fetched: number; totalSize: number }) => void,
+        ) => {
+          onProgress?.({ fetched: totalSize, totalSize });
+          return {
+            MediaContainer: {
+              Metadata: Array.from({ length: totalSize }, (_v, i) => ({
+                ratingKey: String(i),
+                type: 'movie',
+                accountID: 1,
+                viewedAt: i,
+              })),
+              totalSize,
+            },
+          };
+        },
+      );
+
+    (service as any).plexClient = { queryAll };
+
+    await service.prefetchWatchHistory();
+
+    const progressLogs = (logger.log as jest.Mock).mock.calls
+      .map((call) => call[0])
+      .filter(
+        (message) =>
+          typeof message === 'string' &&
+          message.startsWith('Prefetching watch history:'),
+      );
+
+    expect(progressLogs).toEqual([]);
   });
 
   it('indexes episode records in the leaf map by ratingKey', async () => {
@@ -859,6 +977,7 @@ describe('PlexApiService.prefetchWatchHistory', () => {
       { uri: '/status/sessions/history/all?sort=viewedAt:desc' },
       false,
       abortController.signal,
+      expect.any(Function),
     );
     expect(logger.warn).not.toHaveBeenCalled();
 

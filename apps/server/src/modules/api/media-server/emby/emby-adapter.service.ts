@@ -1033,7 +1033,9 @@ export class EmbyAdapterService implements IMediaServerService {
   }
 
   async getCollectionChildren(collectionId: string): Promise<MediaItem[]> {
-    if (!this.http) return [];
+    if (!this.http) {
+      throw new Error('Emby not initialized');
+    }
     try {
       // User-scoped read for the same reason as getCollections; Jellyfin's
       // adapter likewise requires a userId to enumerate BoxSet children. UserId
@@ -1050,10 +1052,13 @@ export class EmbyAdapterService implements IMediaServerService {
       });
       return (data.Items ?? []).map(EmbyMapper.toMediaItem);
     } catch (error) {
-      this.logger.debug(
+      this.logger.error(
         `Emby getCollectionChildren(${collectionId}) failed: ${formatConnectionFailureMessage(error, 'Connection failed')}`,
       );
-      return [];
+      // A swallowed enumeration failure reads as "the collection is empty"
+      // downstream, which mass-resyncs rule-owned items and adopts stale
+      // server children as ghost manual members.
+      throw error;
     }
   }
 
@@ -1320,9 +1325,9 @@ export class EmbyAdapterService implements IMediaServerService {
   // ============================================================================
 
   resetMetadataCache(_itemId?: string): void {
-    // The Emby cache only stores library/server-wide aggregates, never
-    // per-item entries, so per-item invalidation collapses to a full flush.
-    // Mirrors the Jellyfin adapter, which keeps the same cache shape.
+    // The Emby cache only stores server-wide aggregates (users/libraries/status/
+    // collections), never per-item watch entries (getWatchHistory hits the API
+    // fresh), so a full flush is the simplest correct reset.
     void _itemId;
     this.cache.flush();
   }

@@ -103,6 +103,27 @@ export type SeerrMovieRequest = SeerrBaseRequest & {
 
 export type SeerrRequest = SeerrMovieRequest | SeerrTVRequest;
 
+/**
+ * Reads the name off the request rather than looking the user up on the media
+ * server: media server user IDs don't match Seerr's plexId. Seerr stores the
+ * name per user type - Plex in plexUsername, local in username, Jellyfin/Emby
+ * in jellyfinUsername.
+ */
+export const resolveRequestUsername = (request: {
+  requestedBy?: {
+    plexUsername?: string;
+    jellyfinUsername?: string;
+    username?: string;
+  };
+}): string | undefined => {
+  const user = request.requestedBy;
+  if (!user) return undefined;
+
+  return (
+    user.plexUsername || user.jellyfinUsername || user.username || undefined
+  );
+};
+
 interface SeerrUser {
   id: number;
   email: string;
@@ -382,6 +403,40 @@ export class SeerrApiService {
     // cloneDeep, not structuredClone: it never throws on an unexpected
     // non-cloneable value (which would surface as a per-item warn + skip).
     return requests ? cloneDeep(requests) : [];
+  }
+
+  /**
+   * Usernames of everyone who requested a title. Unlike the rule getter's
+   * contract, an unreachable Seerr yields `[]` rather than `undefined`: failing
+   * to name the requester must never suppress the pre-deletion warning itself.
+   *
+   * `season` is required for TV, since Seerr tracks requests per season -
+   * without it a season-level item credits whoever requested a different season.
+   */
+  public async getRequestedByUsernames(
+    tmdbId: number,
+    season?: number,
+  ): Promise<string[]> {
+    if (!this.isConfigured() || !tmdbId) {
+      return [];
+    }
+
+    const requests = await this.getRequestsForMedia(tmdbId);
+    if (!requests?.length) {
+      return [];
+    }
+
+    const usernames = requests
+      .filter(
+        (request) =>
+          season === undefined ||
+          request.type !== 'tv' ||
+          request.seasons?.some((s) => Number(s.seasonNumber) === season),
+      )
+      .map((request) => resolveRequestUsername(request))
+      .filter((username): username is string => username !== undefined);
+
+    return [...new Set(usernames)];
   }
 
   private async getRequestIndex(): Promise<

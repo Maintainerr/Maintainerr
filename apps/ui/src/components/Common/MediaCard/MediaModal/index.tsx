@@ -164,6 +164,8 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
       string | null
     >(null)
     const [metadata, setMetadata] = useState<MediaItem | null>(null)
+    const [seerrConfigured, setSeerrConfigured] = useState<boolean>(false)
+    const [requestedBy, setRequestedBy] = useState<string[]>([])
     const [maintainerrDetailsState, setMaintainerrDetailsState] = useState<{
       key: string
       details: MaintainerrMediaStatusDetails
@@ -217,6 +219,25 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
       () => mergeProviderIds(metadata?.providerIds, fallbackProviderIds),
       [metadata?.providerIds, fallbackProviderIds],
     )
+    // Seerr tracks TV requests per season, so ask for this item's own season or
+    // the show's other requesters get credited here too.
+    const seerrRequestersPath = useMemo(() => {
+      const tmdbId = providerIds?.tmdb?.[0]
+      if (!seerrConfigured || !tmdbId) {
+        return null
+      }
+
+      const season =
+        metadata?.type === 'season'
+          ? metadata.index
+          : metadata?.type === 'episode'
+            ? metadata.parentIndex
+            : undefined
+
+      const base = `/seerr/requests/${tmdbId}/users`
+      return season != null ? `${base}?season=${season}` : base
+    }, [seerrConfigured, providerIds, metadata])
+
     const backdropRequestPath = buildMetadataImagePath(
       'backdrop',
       mediaType,
@@ -308,6 +329,7 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
         .then((resp) => {
           if (!active) return
           setTautulliModalUrl(resp?.tautulli_url || null)
+          setSeerrConfigured(!!resp?.seerr_url)
         })
         .catch(() => {})
       // Streamystats is Jellyfin-only (Emby is unsupported upstream), so only
@@ -340,6 +362,26 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
         active = false
       }
     }, [id, isJellyfin])
+
+    useEffect(() => {
+      if (!seerrRequestersPath) {
+        setRequestedBy([])
+        return
+      }
+
+      let active = true
+
+      GetApiHandler<string[]>(seerrRequestersPath)
+        .then((users) => {
+          if (!active) return
+          setRequestedBy(users ?? [])
+        })
+        .catch(() => {})
+
+      return () => {
+        active = false
+      }
+    }, [seerrRequestersPath])
 
     useEffect(() => {
       if (!backdropRequestPath) {
@@ -661,6 +703,13 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
             <div className="mt-2 text-gray-300">
               <p>{metadata?.summary || summary || 'No summary available.'}</p>
             </div>
+
+            {requestedBy.length > 0 ? (
+              <div className="mt-2 text-sm text-zinc-400">
+                Requested by{' '}
+                <span className="text-zinc-200">{requestedBy.join(', ')}</span>
+              </div>
+            ) : null}
 
             {isJellyfin && streamystatsItemUrl ? (
               <StreamystatsStatsPanel

@@ -43,6 +43,7 @@ describe('EmbyAdapterService', () => {
     debug: jest.Mock;
     log: jest.Mock;
     warn: jest.Mock;
+    error: jest.Mock;
   };
 
   const createResponseError = (status: number): AxiosError => {
@@ -73,6 +74,7 @@ describe('EmbyAdapterService', () => {
       debug: jest.fn(),
       log: jest.fn(),
       warn: jest.fn(),
+      error: jest.fn(),
     };
     http = {
       get: jest.fn(),
@@ -309,6 +311,16 @@ describe('EmbyAdapterService', () => {
         'emby:collections:library-1',
         'emby:collections:library-2',
       ]);
+    });
+  });
+
+  describe('getCollectionChildren', () => {
+    it('re-throws enumeration failures so callers never mistake a failed read for an empty collection', async () => {
+      http.get.mockRejectedValueOnce(new Error('boom'));
+
+      await expect(service.getCollectionChildren('box-1')).rejects.toThrow(
+        'boom',
+      );
     });
   });
 

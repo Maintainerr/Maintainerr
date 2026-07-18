@@ -1,11 +1,15 @@
+// TTLs are in SECONDS - node-cache takes ttl in seconds, not milliseconds (see
+// api/lib/cache.ts, DEFAULT_TTL = 300). These were previously written in
+// milliseconds, so watch history lived ~83h instead of 5min and a season's
+// watched-state stayed stale for hours after a manual mark in Jellyfin (#3274).
 export const JELLYFIN_CACHE_TTL = {
-  WATCH_HISTORY: 300000,
-  USER_DATA: 300000,
-  PLAYED_THRESHOLD: 300000,
-  USERS: 1800000,
-  LIBRARIES: 1800000,
-  STATUS: 60000,
-  COLLECTIONS: 600,
+  WATCH_HISTORY: 300, // 5 min
+  USER_DATA: 300, // 5 min
+  PLAYED_THRESHOLD: 300, // 5 min
+  USERS: 1800, // 30 min
+  LIBRARIES: 1800, // 30 min
+  STATUS: 60, // 1 min
+  COLLECTIONS: 600, // 10 min
 } as const;
 
 export const JELLYFIN_BATCH_SIZE = {

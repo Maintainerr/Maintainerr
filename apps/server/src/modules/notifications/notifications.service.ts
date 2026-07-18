@@ -21,6 +21,7 @@ import {
   CollectionMediaAddedDto,
   CollectionMediaHandledDto,
   CollectionMediaRemovedDto,
+  NotificationMediaItem,
   OverlayAppliedDto,
   OverlayRevertedDto,
   RuleHandlerFailedDto,
@@ -682,7 +683,7 @@ export class NotificationService implements OnModuleInit {
 
   public async handleNotification(
     type: NotificationType,
-    mediaItems?: { mediaServerId: string }[],
+    mediaItems?: NotificationMediaItem[],
     collectionName?: string,
     dayAmount?: number,
     agent?: NotificationAgent,
@@ -711,7 +712,17 @@ export class NotificationService implements OnModuleInit {
     payload.extra.push({ name: 'dayAmount', value: dayAmount?.toString() });
     payload.extra.push({
       name: 'mediaItems',
-      value: JSON.stringify(mediaItems),
+      // Keep the wire shape lean; the metadata snapshot is only for internal
+      // title rendering. `requestedBy` is the exception: an external workflow
+      // needs it to know who to ask before the item is deleted.
+      value: JSON.stringify(
+        mediaItems?.map((item) => ({
+          mediaServerId: item.mediaServerId,
+          ...(item.requestedBy?.length
+            ? { requestedBy: item.requestedBy }
+            : {}),
+        })),
+      ),
     });
 
     // get the rulegroup when available
@@ -773,7 +784,7 @@ export class NotificationService implements OnModuleInit {
         case NotificationType.MEDIA_ABOUT_TO_BE_HANDLED:
           subject = 'Media About to be Handled';
           message =
-            "⏰ Reminder: '{media_title}' will be handled in {days} days. If you want to keep it, make sure to take action before it's gone. Don’t miss out!";
+            "⏰ Reminder: '{media_title}'{requested_by} will be handled in {days} days. If you want to keep it, make sure to take action before it's gone. Don’t miss out!";
           break;
         case NotificationType.MEDIA_ADDED_TO_COLLECTION:
           subject = 'Media Added to Collection';
@@ -858,7 +869,7 @@ export class NotificationService implements OnModuleInit {
 
   private async transformMessageContent(
     message: string,
-    items?: { mediaServerId: string }[],
+    items?: NotificationMediaItem[],
     collectionName?: string,
     dayAmount?: number,
   ): Promise<string> {
@@ -878,7 +889,7 @@ export class NotificationService implements OnModuleInit {
         : message;
 
     if (!items) {
-      return message;
+      return this.applyRequestedBy(message);
     }
 
     try {
@@ -889,10 +900,15 @@ export class NotificationService implements OnModuleInit {
         let numUnknownItems = 0;
 
         for (const i of items) {
-          const item = await mediaServer.getMetadata(i.mediaServerId);
+          // Prefer the snapshot captured before handling; a handled item is
+          // often already gone from the media server, so a live lookup would
+          // come back empty (#3249).
+          const item =
+            i.metadata ?? (await mediaServer.getMetadata(i.mediaServerId));
 
           if (item) {
-            titles.push(this.getTitle(item));
+            // Per line, not per message: a batch can mix requesters.
+            titles.push(`${this.getTitle(item)}${this.formatRequestedBy(i)}`);
           } else {
             numUnknownItems++;
           }
@@ -911,15 +927,19 @@ export class NotificationService implements OnModuleInit {
           .join(' \n');
 
         message = message.replace('{media_items}', result);
+        message = this.applyRequestedBy(message);
       } else {
         // if 1 item
-        const item = await mediaServer.getMetadata(items[0].mediaServerId);
+        const item =
+          items[0].metadata ??
+          (await mediaServer.getMetadata(items[0].mediaServerId));
         message = message.replace(
           '{media_title}',
           item
             ? this.getTitle(item)
             : '1 item that no longer exists in the media server',
         );
+        message = this.applyRequestedBy(message, items[0]);
       }
 
       return message;
@@ -927,16 +947,38 @@ export class NotificationService implements OnModuleInit {
       if (error instanceof ServiceUnavailableException) {
         // Media server in transition (switched but not yet configured, or
         // mid-switch). Leave the message untransformed; downstream handlers
-        // will still see the raw template.
+        // will still see the raw template. The requester came from Seerr, so it
+        // still resolves.
         this.logger.debug(
           'Skipping notification message transformation; media server not ready',
         );
         this.logger.debug(error);
-        return message;
+        return this.applyRequestedBy(
+          message,
+          items.length === 1 ? items[0] : undefined,
+        );
       }
       this.logger.error("Couldn't transform notification message");
       this.logger.debug(error);
     }
+  }
+
+  /**
+   * The `{requested_by}` placeholder carries its own punctuation so this single
+   * replace always fires, collapsing to '' when nobody requested the item. A
+   * raw token can therefore never reach a user.
+   */
+  private applyRequestedBy(
+    message: string,
+    item?: NotificationMediaItem,
+  ): string {
+    return message.replace('{requested_by}', this.formatRequestedBy(item));
+  }
+
+  private formatRequestedBy(item?: NotificationMediaItem): string {
+    return item?.requestedBy?.length
+      ? ` (requested by ${item.requestedBy.join(', ')})`
+      : '';
   }
 
   private getTitle(item: MediaItem): string {

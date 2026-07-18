@@ -178,25 +178,24 @@ export class TautulliGetterService {
           return uniqueEpisodes.length;
         }
         case 'sw_lastWatched': {
-          let history = await this.getHistoryForMetadata(metadata);
-
-          history
-            .filter((x) =>
+          const history = (await this.getHistoryForMetadata(metadata)).filter(
+            (x) =>
               tautulliWatchedPercentOverride != null
                 ? x.percent_complete >= tautulliWatchedPercentOverride
                 : x.watched_status == 1,
-            )
-            .sort((a, b) => a.parent_media_index - b.parent_media_index)
-            .reverse();
+          );
 
-          history = history.filter(
+          if (history.length === 0) {
+            return null;
+          }
+
+          history.sort((a, b) => b.parent_media_index - a.parent_media_index);
+          const newestSeason = history.filter(
             (el) => el.parent_media_index === history[0].parent_media_index,
           );
-          history.sort((a, b) => a.media_index - b.media_index).reverse();
+          newestSeason.sort((a, b) => b.media_index - a.media_index);
 
-          return history.length > 0
-            ? new Date(history[0].stopped * 1000)
-            : null;
+          return new Date(newestSeason[0].stopped * 1000);
         }
         default: {
           return null;

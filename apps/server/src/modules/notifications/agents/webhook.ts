@@ -46,10 +46,11 @@ class WebhookAgent implements NotificationAgent {
     finalPayload: Record<string, unknown>,
     payload: NotificationPayload,
     type: NotificationType,
+    extra: NonNullable<NotificationPayload['extra']>,
   ): Record<string, unknown> {
     Object.keys(finalPayload).forEach((key) => {
       if (key === '{{extra}}') {
-        finalPayload.extra = payload.extra ?? [];
+        finalPayload.extra = extra;
         delete finalPayload[key];
         key = 'extra';
       }
@@ -69,6 +70,7 @@ class WebhookAgent implements NotificationAgent {
           finalPayload[key] as Record<string, unknown>,
           payload,
           type,
+          extra,
         );
       }
     });
@@ -77,17 +79,23 @@ class WebhookAgent implements NotificationAgent {
   }
 
   private buildPayload(type: NotificationType, payload: NotificationPayload) {
-    payload.extra?.forEach((el) => {
-      payload[el.name] = el.value;
-    });
-    delete payload.extra;
+    const extra = payload.extra ?? [];
+
+    // Flatten onto a copy: `sendNotification` hands the same payload object to
+    // every agent, so deleting `extra` here stripped it from any agent that ran
+    // after us (email and LunaSea both forward it) and left `{{extra}}` empty.
+    const flattened: Record<string, unknown> = { ...payload };
+    delete flattened.extra;
+    for (const el of extra) {
+      flattened[el.name] = el.value;
+    }
 
     const payloadString = this.getSettings().options.jsonPayload;
     const parsedJSON = JSON.parse(JSON.stringify(payloadString));
 
-    Object.assign(parsedJSON, payload);
+    Object.assign(parsedJSON, flattened);
 
-    return this.parseKeys(parsedJSON, payload, type);
+    return this.parseKeys(parsedJSON, payload, type, extra);
   }
 
   public shouldSend(): boolean {

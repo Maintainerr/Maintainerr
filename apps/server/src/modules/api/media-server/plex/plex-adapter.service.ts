@@ -467,8 +467,9 @@ export class PlexAdapterService implements IMediaServerService {
   }
 
   async getCollectionChildren(collectionId: string): Promise<MediaItem[]> {
+    // Throws on enumeration failure (plexApi rethrows) - [] would read as a
+    // confirmed-empty collection downstream.
     const children = await this.plexApi.getCollectionChildren(collectionId);
-    if (!children) return [];
 
     const mappedChildren = children.map(PlexMapper.toMediaItem);
     const incompleteChildren = mappedChildren.filter(
@@ -722,9 +723,14 @@ export class PlexAdapterService implements IMediaServerService {
     }
 
     // Short-circuit when the collection is already in the requested order:
-    // skip both the prefs PUT and every move PUT.
-    const currentChildren =
-      await this.plexApi.getCollectionChildren(collectionId);
+    // skip both the prefs PUT and every move PUT. A failed read only skips
+    // the short-circuit; the reorder itself still proceeds.
+    let currentChildren: PlexLibraryItem[] = [];
+    try {
+      currentChildren = await this.plexApi.getCollectionChildren(collectionId);
+    } catch (error) {
+      this.logger.debug(error);
+    }
     const currentOrder =
       currentChildren?.map((child) => child.ratingKey?.toString() ?? '') ?? [];
     if (
