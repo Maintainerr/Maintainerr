@@ -1,14 +1,15 @@
 // Emby cache and batching tuning. Values mirror Jellyfin defaults until tuned
-// against a live Emby server.
+// against a live Emby server. TTLs are in SECONDS - node-cache takes ttl in
+// seconds, not milliseconds (see api/lib/cache.ts and #3274).
 
 export const EMBY_CACHE_TTL = {
-  WATCH_HISTORY: 300000,
-  USER_DATA: 300000,
-  PLAYED_THRESHOLD: 300000,
-  USERS: 1800000,
-  LIBRARIES: 1800000,
-  STATUS: 60000,
-  COLLECTIONS: 600,
+  WATCH_HISTORY: 300, // 5 min
+  USER_DATA: 300, // 5 min
+  PLAYED_THRESHOLD: 300, // 5 min
+  USERS: 1800, // 30 min
+  LIBRARIES: 1800, // 30 min
+  STATUS: 60, // 1 min
+  COLLECTIONS: 600, // 10 min
 } as const;
 
 export const EMBY_BATCH_SIZE = {

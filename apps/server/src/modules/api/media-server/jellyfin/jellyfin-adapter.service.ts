@@ -2067,12 +2067,20 @@ export class JellyfinAdapterService implements IMediaServerService {
 
   resetMetadataCache(itemId?: string): void {
     if (itemId) {
+      // Watch-history entries are keyed per item. Season/show getters
+      // (e.g. sw_allEpisodesSeenBy) aggregate their DESCENDANT episodes' entries,
+      // which carry the episode id - not the season/show id passed here - so
+      // scoping the watch invalidation to `:${itemId}` left them stale: a season
+      // stayed "not watched by everyone" for hours after a manual mark in
+      // Jellyfin (#3274). Clear the whole watch-history namespace instead (cheap,
+      // and flushed each run anyway). The item's favourite/play-count entries and
+      // the server-wide aggregate caches (users/libraries/status/collections) are
+      // invalidated exactly as before.
       this.cache.data
         .keys()
         .filter(
           (key) =>
-            (key.startsWith(`${JELLYFIN_CACHE_KEYS.WATCH_HISTORY}:`) &&
-              key.endsWith(`:${itemId}`)) ||
+            key.startsWith(`${JELLYFIN_CACHE_KEYS.WATCH_HISTORY}:`) ||
             key === `${JELLYFIN_CACHE_KEYS.FAVORITED_BY}:${itemId}` ||
             key === `${JELLYFIN_CACHE_KEYS.TOTAL_PLAY_COUNT}:${itemId}`,
         )

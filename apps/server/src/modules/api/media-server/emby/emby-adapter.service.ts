@@ -1325,9 +1325,9 @@ export class EmbyAdapterService implements IMediaServerService {
   // ============================================================================
 
   resetMetadataCache(_itemId?: string): void {
-    // The Emby cache only stores library/server-wide aggregates, never
-    // per-item entries, so per-item invalidation collapses to a full flush.
-    // Mirrors the Jellyfin adapter, which keeps the same cache shape.
+    // The Emby cache only stores server-wide aggregates (users/libraries/status/
+    // collections), never per-item watch entries (getWatchHistory hits the API
+    // fresh), so a full flush is the simplest correct reset.
     void _itemId;
     this.cache.flush();
   }

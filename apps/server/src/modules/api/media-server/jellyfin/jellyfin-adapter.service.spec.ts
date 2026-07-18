@@ -10,7 +10,7 @@ import { delay } from '../../../../utils/delay';
 import { MaintainerrLogger } from '../../../logging/logs.service';
 import { SettingsDataService } from '../../../settings/settings-data.service';
 import { JellyfinAdapterService } from './jellyfin-adapter.service';
-import { JELLYFIN_BATCH_SIZE } from './jellyfin.constants';
+import { JELLYFIN_BATCH_SIZE, JELLYFIN_CACHE_TTL } from './jellyfin.constants';
 
 const jellyfinApiMocks = {
   getPublicSystemInfo: jest.fn(),
@@ -896,7 +896,7 @@ describe('JellyfinAdapterService', () => {
       expect(jellyfinCacheMocks.data.set).toHaveBeenCalledWith(
         'jellyfin:watch:95:item123',
         history,
-        300000,
+        JELLYFIN_CACHE_TTL.WATCH_HISTORY,
       );
       expect(jellyfinApiMocks.getItems).toHaveBeenCalledWith({
         userId: 'user-1',
@@ -1215,7 +1215,7 @@ describe('JellyfinAdapterService', () => {
       expect(jellyfinCacheMocks.data.set).toHaveBeenCalledWith(
         'jellyfin:favorited-by:item123',
         ['user-2'],
-        300000,
+        JELLYFIN_CACHE_TTL.USER_DATA,
       );
       expect(jellyfinApiMocks.getItems).toHaveBeenCalledWith({
         userId: 'user-1',
@@ -1284,7 +1284,7 @@ describe('JellyfinAdapterService', () => {
       expect(jellyfinCacheMocks.data.set).toHaveBeenCalledWith(
         'jellyfin:total-play-count:item123',
         4,
-        300000,
+        JELLYFIN_CACHE_TTL.USER_DATA,
       );
     });
 
@@ -1304,17 +1304,23 @@ describe('JellyfinAdapterService', () => {
   });
 
   describe('resetMetadataCache', () => {
-    it('should remove threshold-specific watch history entries for one item', () => {
+    it('clears every watch-history entry (incl. descendant episodes) plus this item’s favorite/play-count, keeping aggregates', () => {
       jellyfinCacheMocks.data.keys.mockReturnValue([
-        'jellyfin:watch:90:item123',
-        'jellyfin:watch:95:item123',
+        'jellyfin:watch:90:item123', // this item's watch history
+        'jellyfin:watch:95:item123', // ...at another played threshold
+        'jellyfin:watch:90:episode-999', // a DESCENDANT episode (#3274) - different id
+        'jellyfin:watch:90:episode-watchers:item123', // descendant-watchers rollup
         'jellyfin:favorited-by:item123',
         'jellyfin:total-play-count:item123',
-        'jellyfin:watch:90:item999',
+        'jellyfin:favorited-by:other-item', // unrelated item - must be kept
+        'jellyfin:users', // server-wide aggregate - must be kept
+        'jellyfin:libraries', // server-wide aggregate - must be kept
       ]);
 
       service.resetMetadataCache('item123');
 
+      // Every watch-history key is cleared, including the descendant episode
+      // whose id != itemId - the regression that caused #3274.
       expect(jellyfinCacheMocks.data.del).toHaveBeenCalledWith(
         'jellyfin:watch:90:item123',
       );
@@ -1322,14 +1328,34 @@ describe('JellyfinAdapterService', () => {
         'jellyfin:watch:95:item123',
       );
       expect(jellyfinCacheMocks.data.del).toHaveBeenCalledWith(
+        'jellyfin:watch:90:episode-999',
+      );
+      expect(jellyfinCacheMocks.data.del).toHaveBeenCalledWith(
+        'jellyfin:watch:90:episode-watchers:item123',
+      );
+      // This item's per-item favorite/play-count entries still cleared as before.
+      expect(jellyfinCacheMocks.data.del).toHaveBeenCalledWith(
         'jellyfin:favorited-by:item123',
       );
       expect(jellyfinCacheMocks.data.del).toHaveBeenCalledWith(
         'jellyfin:total-play-count:item123',
       );
+      // Unrelated per-item and server-wide aggregate caches are preserved.
       expect(jellyfinCacheMocks.data.del).not.toHaveBeenCalledWith(
-        'jellyfin:watch:90:item999',
+        'jellyfin:favorited-by:other-item',
       );
+      expect(jellyfinCacheMocks.data.del).not.toHaveBeenCalledWith(
+        'jellyfin:users',
+      );
+      expect(jellyfinCacheMocks.data.del).not.toHaveBeenCalledWith(
+        'jellyfin:libraries',
+      );
+    });
+
+    it('flushes the whole cache when called without an item id', () => {
+      service.resetMetadataCache();
+
+      expect(jellyfinCacheMocks.data.flushAll).toHaveBeenCalledTimes(1);
     });
   });
 
