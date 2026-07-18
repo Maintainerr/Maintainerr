@@ -1,6 +1,6 @@
 {
   "name": "maintainerr",
-  "version": "3.17.1",
+  "version": "3.18.0",
   "private": true,
   "packageManager": "yarn@4.17.1",
   "repository": {

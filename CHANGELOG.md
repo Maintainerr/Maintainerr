@@ -1,3 +1,25 @@
+# [3.18.0](https://github.com/Maintainerr/Maintainerr/compare/v3.17.1...v3.18.0) (2026-07-18)
+
+
+## Highlights
+- Fixed Jellyfin season-level watch marks propagating to rule getters, resolving staleness in the watch cache (#3281).
+- Added Seerr requester names to the "Media About to be Handled" notification (#3270).
+- Improved Plex watch-history prefetching by showing progress updates during long sweeps (#3255).
+
+## Features
+- Added Seerr requester names to the "Media About to be Handled" notification (#3270).
+
+## Fixes
+- Fixed Jellyfin season-level watch marks propagating to rule getters, resolving staleness in the watch cache (#3281).
+- Applied the watched threshold in Tautulli `sw_lastWatched` rule filters (#3264).
+- Fixed "Media Handled" notifications to display the media title instead of a generic message (#3263).
+- Improved Plex watch-history prefetching by showing progress updates during long sweeps (#3255).
+- Fixed collection membership reconciliation to fail closed on collection-children read failures across all media servers (#3248).
+- Updated Docker container to launch the server directly via `node` instead of `npm run start` to avoid unnecessary processes and log noise.
+
+## Dependencies
+- Updated 25 dependencies, including @nestjs/swagger, typescript-eslint, and prettier.
+
 # [3.17.1](https://github.com/Maintainerr/Maintainerr/compare/v3.17.0...v3.17.1) (2026-07-08)
 
 
