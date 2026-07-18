@@ -17,4 +17,11 @@ fi
 # Run node directly. `npm run start` only wraps `node dist/main` and leaks
 # npm's update-notifier banner into the logs; cd preserves npm's --prefix cwd.
 cd /opt/app/apps/server || exit 1
+
+# `npm run` used to export npm_package_version, which the app reads to report its
+# version. Launching node directly drops it, so populate it from package.json to
+# keep the reported version accurate (otherwise it falls back to 0.0.1).
+npm_package_version="$(node -p "require('./package.json').version" 2>/dev/null)"
+export npm_package_version
+
 exec node dist/main
