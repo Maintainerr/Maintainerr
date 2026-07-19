@@ -1027,6 +1027,71 @@ describe('SonarrGetterService', () => {
         }),
       );
 
+    // The tv-detail resolution behind this fallback ran once per rule condition;
+    // the run-scoped ArrLookupCache now memoizes it per show (#3285), mirroring
+    // the candidate memo. A distinct key ('metadata:sonarr:details:') keeps it
+    // from colliding with the {tvdb}-policy candidate resolution.
+    describe('tv-detail resolution memoization (#3285)', () => {
+      const callEnded = (arrLookupCache?: ArrLookupCache) =>
+        sonarrGetterService.get(
+          7, // 'ended' - reaches tryMetadataFallback's resolveIdsFromMediaItem
+          mediaItem,
+          'show',
+          createRulesDto({
+            collection: collectionMedia.collection,
+            dataType: 'show',
+          }),
+          undefined,
+          arrLookupCache,
+        );
+
+      beforeEach(() => {
+        metadataService.resolveIdsFromMediaItem.mockResolvedValue({
+          type: 'tv',
+          tvdb: 322399,
+        } as any);
+        metadataService.getDetails.mockResolvedValue({
+          type: 'tv',
+          ended: true,
+        } as any);
+      });
+
+      it('resolves tv ids once per show across conditions sharing a run cache', async () => {
+        const cache = new ArrLookupCache();
+
+        await callEnded(cache);
+        await callEnded(cache); // second condition, same show + same run cache
+
+        expect(metadataService.resolveIdsFromMediaItem).toHaveBeenCalledTimes(
+          1,
+        );
+      });
+
+      it('re-resolves per call when no run cache is provided (unchanged behaviour)', async () => {
+        await callEnded();
+        await callEnded();
+
+        expect(metadataService.resolveIdsFromMediaItem).toHaveBeenCalledTimes(
+          2,
+        );
+      });
+
+      it('evicts a non-tv resolution so a later condition retries (transient safety)', async () => {
+        metadataService.resolveIdsFromMediaItem
+          .mockResolvedValueOnce(undefined) // transient: nothing resolved
+          .mockResolvedValue({ type: 'tv', tvdb: 322399 } as any);
+        const cache = new ArrLookupCache();
+
+        await callEnded(cache); // non-tv/undefined -> evicted from the memo
+        await flushMicrotasks();
+        await callEnded(cache); // retries instead of serving the stale result
+
+        expect(metadataService.resolveIdsFromMediaItem).toHaveBeenCalledTimes(
+          2,
+        );
+      });
+    });
+
     it('returns 1 for ended when metadata says the show ended', async () => {
       metadataService.resolveIdsFromMediaItem.mockResolvedValue({
         type: 'tv',

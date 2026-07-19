@@ -10,6 +10,10 @@ import {
 } from '../../api/seerr-api/seerr-api.service';
 import { MetadataService } from '../../metadata/metadata.service';
 import { SeerrGetterService } from './seerr-getter.service';
+import { ArrLookupCache } from '../helpers/arr-lookup-cache';
+
+// Let the memo's eviction callback (chained on the resolved promise) run.
+const flushMicrotasks = () => new Promise((resolve) => setImmediate(resolve));
 
 describe('SeerrGetterService', () => {
   const ADD_USER_PROP_ID = 0;
@@ -119,6 +123,64 @@ describe('SeerrGetterService', () => {
       })),
       ...overrides,
     }) as unknown as SeerrRequest;
+
+  // The id-resolution (media item -> tmdb) preceding every Seerr query ran once
+  // per rule condition; the run-scoped ArrLookupCache now memoizes it so it runs
+  // once per item (#3285). Mirrors the Radarr/Sonarr candidate memo.
+  describe('id-resolution memoization (#3285)', () => {
+    const call = (
+      service: SeerrGetterService,
+      arrLookupCache?: ArrLookupCache,
+    ) =>
+      service.get(
+        IS_REQUESTED_PROP_ID,
+        movieLibItem,
+        undefined,
+        arrLookupCache,
+      );
+
+    it('resolves ids once per item across conditions sharing a run cache', async () => {
+      const { service, seerrApi, metadataService } = createService();
+      seerrApi.getRequestsForMedia.mockResolvedValue([]);
+      const cache = new ArrLookupCache();
+
+      await call(service, cache);
+      await call(service, cache); // second condition, same item + same run cache
+
+      expect(
+        metadataService.resolveIdsFromMediaItemForService,
+      ).toHaveBeenCalledTimes(1);
+    });
+
+    it('re-resolves per call when no run cache is provided (unchanged behaviour)', async () => {
+      const { service, seerrApi, metadataService } = createService();
+      seerrApi.getRequestsForMedia.mockResolvedValue([]);
+
+      await call(service);
+      await call(service);
+
+      expect(
+        metadataService.resolveIdsFromMediaItemForService,
+      ).toHaveBeenCalledTimes(2);
+    });
+
+    it('evicts a no-tmdb resolution so a later condition retries (transient safety, #3125)', async () => {
+      const { service, seerrApi, metadataService } = createService();
+      seerrApi.getRequestsForMedia.mockResolvedValue([]);
+      metadataService.resolveIdsFromMediaItemForService
+        .mockResolvedValueOnce(undefined) // transient: nothing resolved
+        .mockResolvedValue({ tmdb: 12345, type: 'movie' });
+      const cache = new ArrLookupCache();
+
+      await call(service, cache); // no tmdb -> evicted from the memo
+      await flushMicrotasks();
+      await call(service, cache); // retries instead of serving the stale result
+
+      expect(
+        metadataService.resolveIdsFromMediaItemForService,
+      ).toHaveBeenCalledTimes(2);
+    });
+  });
 
   describe('addUser (property id=0)', () => {
     it('should return Plex username using plexUsername field from Seerr', async () => {
