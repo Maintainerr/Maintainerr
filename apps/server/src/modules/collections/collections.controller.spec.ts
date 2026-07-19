@@ -40,6 +40,7 @@ describe('CollectionsController', () => {
     getCollectionRecord: jest.fn(),
     getCollectionMediaRecord: jest.fn(),
     MediaCollectionActionWithContext: jest.fn(),
+    postponeCollectionMedia: jest.fn(),
   } as unknown as jest.Mocked<CollectionsService>;
 
   const collectionWorkerService = {
@@ -407,6 +408,57 @@ describe('CollectionsController', () => {
         mediaId: media.mediaServerId,
       }),
     ).resolves.not.toThrow();
+  });
+
+  describe('postponeCollectionMedia', () => {
+    const body = { collectionId: 3, mediaId: '5', days: 14 };
+
+    it('postpones under the execution lock and returns the result', async () => {
+      const release = jest.fn();
+      executionLock.tryAcquire.mockReturnValue(release);
+      const result = {
+        collectionId: 3,
+        mediaServerId: '5',
+        addDate: new Date(2026, 6, 8),
+        deleteAfterDays: 30,
+        deletionDate: new Date(2026, 7, 7),
+      };
+      (
+        collectionsService.postponeCollectionMedia as jest.Mock
+      ).mockResolvedValue(result);
+
+      await expect(controller.postponeCollectionMedia(body)).resolves.toBe(
+        result,
+      );
+      expect(collectionsService.postponeCollectionMedia).toHaveBeenCalledWith(
+        3,
+        '5',
+        14,
+      );
+      expect(release).toHaveBeenCalled();
+    });
+
+    it('throws ConflictException when the execution lock is held', async () => {
+      executionLock.tryAcquire.mockReturnValue(null);
+
+      await expect(controller.postponeCollectionMedia(body)).rejects.toThrow(
+        ConflictException,
+      );
+      expect(collectionsService.postponeCollectionMedia).not.toHaveBeenCalled();
+    });
+
+    it('throws NotFoundException and releases the lock when the item is missing', async () => {
+      const release = jest.fn();
+      executionLock.tryAcquire.mockReturnValue(release);
+      (
+        collectionsService.postponeCollectionMedia as jest.Mock
+      ).mockResolvedValue(undefined);
+
+      await expect(controller.postponeCollectionMedia(body)).rejects.toThrow(
+        NotFoundException,
+      );
+      expect(release).toHaveBeenCalled();
+    });
   });
 
   describe('uploadCollectionPoster', () => {

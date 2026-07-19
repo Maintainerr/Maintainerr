@@ -79,6 +79,26 @@ describe('NotificationTimerService', () => {
     handleNotification: jest.Mock,
   ): NotificationMediaItem[] => handleNotification.mock.calls[0][1];
 
+  it('stops warning once the item has been postponed past its notify day', async () => {
+    // The timer warns on the single day an item sits `aboutScale` days before
+    // deletion. Postpone pushes addDate forward, so a previously-due item no
+    // longer matches that day and drops out of the pre-deletion warning - the
+    // requester "kept" it, so they should stop being nagged.
+    const postponedAddDate = new Date(
+      new Date(dueAddDate()).getTime() + 5 * 86400000,
+    ).toISOString();
+
+    const { service, handleNotification } = createService({
+      media: [{ mediaServerId: '1', tmdbId: 500, addDate: postponedAddDate }],
+      metadata: { title: 'Sample Movie', type: 'movie' },
+      requestedBy: ['alice'],
+    });
+
+    await (service as never as { executeTask(): Promise<void> }).executeTask();
+
+    expect(handleNotification).not.toHaveBeenCalled();
+  });
+
   it('attaches the Seerr requesters to a due item', async () => {
     const { service, handleNotification, getRequestedByUsernames } =
       createService({

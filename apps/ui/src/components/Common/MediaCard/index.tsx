@@ -53,6 +53,7 @@ interface IMediaCard {
   collection?: ICollection
   isManual?: boolean
   onRemove?: (id: string) => void
+  onItemPostponed?: (id: string, addDate: string) => void
 }
 
 const MediaCard: React.FC<IMediaCard> = ({
@@ -72,6 +73,7 @@ const MediaCard: React.FC<IMediaCard> = ({
   collection = undefined,
   isManual = false,
   onRemove = () => {},
+  onItemPostponed,
 }) => {
   const navigate = useNavigate()
   const [showDetail, setShowDetail] = useState(false)
@@ -289,6 +291,9 @@ const MediaCard: React.FC<IMediaCard> = ({
             onRemove(id.toString())
             setShowMediaModal(false)
           }}
+          onCollectionItemPostponed={(addDate) =>
+            onItemPostponed?.(id.toString(), addDate)
+          }
         />
       )}
     </div>

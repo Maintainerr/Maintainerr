@@ -24,6 +24,7 @@ import {
   rememberMaintainerrStatusDetails,
 } from '../maintainerrStatus'
 import type { ICollection } from '../../../Collection'
+import PostponeButton from '../../../Collection/CollectionDetail/PostponeButton'
 import TriggerRuleButton from '../../../Collection/CollectionDetail/TriggerRuleActionButton'
 
 interface ModalContentProps {
@@ -40,6 +41,7 @@ interface ModalContentProps {
   forceStatusLoad?: boolean
   onStatusLink?: (targetPath: string) => void
   onCollectionItemRemoved?: () => void
+  onCollectionItemPostponed?: (addDate: string) => void
 }
 
 const mergeProviderIds = (
@@ -148,6 +150,7 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
     forceStatusLoad = false,
     onStatusLink,
     onCollectionItemRemoved,
+    onCollectionItemPostponed,
   }) => {
     useLockBodyScroll(true)
 
@@ -214,6 +217,14 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
       collection != null &&
       collection.arrAction !== ServarrAction.DO_NOTHING &&
       !isManual &&
+      exclusionType == null
+    // Postpone only makes sense when the item is actually on a deletion
+    // countdown: the collection has a grace period and an action to run, and the
+    // item isn't excluded from it.
+    const canPostpone =
+      collection != null &&
+      collection.deleteAfterDays != null &&
+      collection.arrAction !== ServarrAction.DO_NOTHING &&
       exclusionType == null
     const providerIds = useMemo(
       () => mergeProviderIds(metadata?.providerIds, fallbackProviderIds),
@@ -823,6 +834,13 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
                   </div>
                 )}
               <div className="ml-auto flex space-x-3">
+                {canPostpone ? (
+                  <PostponeButton
+                    collection={collection}
+                    mediaServerId={id}
+                    onPostponed={onCollectionItemPostponed}
+                  />
+                ) : null}
                 {canTriggerRuleAction ? (
                   <TriggerRuleButton
                     collection={collection}
