@@ -22,10 +22,13 @@ const DEFAULT_CHECK_PERIOD = 120; // 2 min
 // Default hard ceiling on distinct keys per cache. A bulk rule sweep caches one
 // response per library item, and the metadata TTLs (up to 6h) far outlast a run,
 // so without a count bound the caches grow to library size and can OOM a small
-// container (#3284). 1000 keeps the dominant tmdb cache to roughly a quarter of a
-// 512MB heap while staying far above any paginated/working-set flow, so normal
-// use never evicts.
-export const DEFAULT_MAX_KEYS = 1000;
+// container (#3284). A full 15k-library sweep at --max-old-space-size=536 was
+// measured to peak ~430MB at 1000; each +100 keys per cache adds only ~10-20MB,
+// so 1200 stays comfortably under a 512MB heap (~65MB margin) while keeping a
+// little more of the persistent tmdb/tvdb set warm across rule groups in a cron
+// window. It stays far above any paginated/working-set flow, so normal use never
+// evicts.
+export const DEFAULT_MAX_KEYS = 1200;
 
 type CacheOptions = {
   stdTtl?: number;
