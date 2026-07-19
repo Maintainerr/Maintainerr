@@ -216,6 +216,14 @@ export const handleCollectionMediaBodySchema = z.object({
   collectionId: z.number().int(),
   mediaId: z.string().min(1),
 });
+export const postponeCollectionMediaBodySchema = z.object({
+  collectionId: z.number().int(),
+  mediaId: z.string().min(1),
+  // Omit to reset the full grace window; provide to push the deadline out by
+  // this many days. Upper bound mirrors the UI (PostponeButton) and keeps the
+  // resulting date well within Date range.
+  days: z.coerce.number().int().positive().max(3650).optional(),
+});
 
 type CreateCollectionBody = z.infer<typeof createCollectionBodySchema>;
 type AddToCollectionBody = z.infer<typeof addToCollectionBodySchema>;
@@ -228,6 +236,9 @@ type ManualCollectionActionBody = z.infer<
 >;
 type HandleCollectionMediaBody = z.infer<
   typeof handleCollectionMediaBodySchema
+>;
+type PostponeCollectionMediaBody = z.infer<
+  typeof postponeCollectionMediaBodySchema
 >;
 
 @Controller('api/collections')
@@ -442,6 +453,50 @@ export class CollectionsController {
           'The collection action could not be executed for this item',
         );
       }
+    } finally {
+      release();
+    }
+  }
+
+  @Post('/media/postpone')
+  @ApiOperation({
+    summary: 'Postpone (or reset) the deletion timer for one collection item',
+  })
+  @ApiResponse({
+    status: 200,
+    description:
+      'Returns the new addDate, the collection deleteAfterDays, and the resulting deletionDate.',
+  })
+  async postponeCollectionMedia(
+    @Body(new ZodValidationPipe(postponeCollectionMediaBodySchema))
+    request: PostponeCollectionMediaBody,
+  ) {
+    // Share the collection/rule execution lock: a worker run that has already
+    // selected this item for deletion would otherwise delete it despite the
+    // postpone. Fail fast so the caller retries once the run finishes, rather
+    // than silently losing the "keep" (the worker re-reads addDate next pass).
+    const release = this.executionLock.tryAcquire(
+      RULES_COLLECTIONS_EXECUTION_LOCK_KEY,
+    );
+
+    if (!release) {
+      throw new ConflictException(
+        'Collection handling is already running. Try again when the current collection or rule execution finishes.',
+      );
+    }
+
+    try {
+      const result = await this.collectionService.postponeCollectionMedia(
+        request.collectionId,
+        request.mediaId,
+        request.days,
+      );
+
+      if (!result) {
+        throw new NotFoundException('Media not found in collection');
+      }
+
+      return result;
     } finally {
       release();
     }

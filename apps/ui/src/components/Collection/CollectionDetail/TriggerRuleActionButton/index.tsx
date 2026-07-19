@@ -2,7 +2,10 @@ import { PlayIcon } from '@heroicons/react/solid'
 import { ServarrAction } from '@maintainerr/contracts'
 import { useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
-import { triggerCollectionItemAction } from '../../../../api/collections'
+import {
+  invalidateCollectionQueries,
+  triggerCollectionItemAction,
+} from '../../../../api/collections'
 import { getApiErrorMessage } from '../../../../utils/ApiError'
 import { logClientError } from '../../../../utils/ClientLogger'
 import Alert from '../../../Common/Alert'
@@ -69,11 +72,7 @@ const TriggerRuleActionButton = ({
     try {
       await triggerCollectionItemAction(collection.id, mediaServerId)
 
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['collections'] }),
-        queryClient.invalidateQueries({ queryKey: ['calendar'] }),
-        queryClient.invalidateQueries({ queryKey: ['overlay-data'] }),
-      ])
+      await invalidateCollectionQueries(queryClient)
 
       setExecuting(false)
       setConfirmOpen(false)

@@ -85,6 +85,14 @@ interface SharedManualCollectionReconciliationOptions {
   serverChildren?: MediaItem[];
 }
 
+export interface PostponeCollectionMediaResult {
+  collectionId: number;
+  mediaServerId: string;
+  addDate: Date;
+  deleteAfterDays: number | null;
+  deletionDate: Date | null;
+}
+
 @Injectable()
 export class CollectionsService {
   constructor(
@@ -162,6 +170,70 @@ export class CollectionsService {
         mediaServerId,
       },
     });
+  }
+
+  /**
+   * Postpone the deletion timer for one collection-media item by moving its
+   * `addDate` - the worker deletes once `addDate + deleteAfterDays` has passed,
+   * so no schema or worker change is needed. `days` pushes the deadline out;
+   * omitting it restarts the full window. For external automation (Home
+   * Assistant, Ombi, Seerr) - Maintainerr never contacts the requester itself.
+   */
+  async postponeCollectionMedia(
+    collectionId: number,
+    mediaServerId: string,
+    days?: number,
+  ): Promise<PostponeCollectionMediaResult | undefined> {
+    const collection = await this.getCollectionRecord(collectionId);
+    if (!collection) {
+      return undefined;
+    }
+
+    const media = await this.getCollectionMediaRecord(
+      collectionId,
+      mediaServerId,
+    );
+    if (!media) {
+      return undefined;
+    }
+
+    // Add whole calendar days (DST-safe, unlike ms arithmetic) and store at
+    // date granularity to match insertCollectionMediaMembership - every other
+    // addDate is a midnight value, so "days left" stays stable regardless of
+    // the time of day this call arrives.
+    const newAddDate = days != null ? new Date(media.addDate) : new Date();
+    if (days != null) {
+      newAddDate.setDate(newAddDate.getDate() + days);
+    }
+    newAddDate.setHours(0, 0, 0, 0);
+
+    await this.CollectionMediaRepo.update(media.id, { addDate: newAddDate });
+
+    await this.addLogRecord(
+      collection,
+      days != null
+        ? `Postponed deletion of media ${mediaServerId} by ${days} day(s)`
+        : `Reset deletion timer for media ${mediaServerId}`,
+      ECollectionLogType.MEDIA,
+    );
+
+    // Surface the resulting deadline (addDate + deleteAfterDays) so the caller
+    // can confirm it. Null when the collection has no deletion window.
+    let deletionDate: Date | null = null;
+    if (collection.deleteAfterDays != null) {
+      deletionDate = new Date(newAddDate);
+      deletionDate.setDate(
+        deletionDate.getDate() + +collection.deleteAfterDays,
+      );
+    }
+
+    return {
+      collectionId,
+      mediaServerId,
+      addDate: newAddDate,
+      deleteAfterDays: collection.deleteAfterDays ?? null,
+      deletionDate,
+    };
   }
 
   async setCollectionMediaRuleEvaluationFailed(

@@ -19,6 +19,7 @@ interface IOverviewContent {
   extrasLoading?: boolean
   fetchData: () => void
   onRemove?: (id: string) => void
+  onItemPostponed?: (id: string, addDate: string) => void
   libraryId: string
   collectionPage?: boolean
   collectionInfo?: ICollectionMedia[]
@@ -174,6 +175,7 @@ const OverviewContent = (props: IOverviewContent) => {
                   }
                   exclusionType={el.maintainerrExclusionType}
                   onRemove={props.onRemove}
+                  onItemPostponed={props.onItemPostponed}
                   collectionId={props.collectionId}
                   collection={
                     props.collection ??
