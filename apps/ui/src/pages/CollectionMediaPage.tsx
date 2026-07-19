@@ -151,6 +151,17 @@ const CollectionMediaPage = () => {
             currentMedia.filter((item) => item.mediaServerId !== id),
           )
         }}
+        onItemPostponed={(id: string, addDate: string) => {
+          // Patch the local addDate so the "days left" badge reflects the new
+          // deletion date immediately, without refetching the page.
+          updateMedia((currentMedia) =>
+            currentMedia.map((item) =>
+              item.mediaServerId === id
+                ? { ...item, addDate: new Date(addDate) }
+                : item,
+            ),
+          )
+        }}
         collectionInfo={media}
       />
     </div>
