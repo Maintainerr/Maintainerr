@@ -21,6 +21,9 @@ import { MetadataService } from '../../metadata/metadata.service';
 import { ArrLookupCache } from '../helpers/arr-lookup-cache';
 import { SonarrGetterService } from './sonarr-getter.service';
 
+// Let the memo's eviction callback (chained on the resolved promise) run.
+const flushMicrotasks = () => new Promise((resolve) => setImmediate(resolve));
+
 describe('SonarrGetterService', () => {
   let sonarrGetterService: SonarrGetterService;
   let servarrService: Mocked<ServarrService>;
@@ -327,6 +330,70 @@ describe('SonarrGetterService', () => {
           expect(s2).toBe(true);
         },
       );
+    });
+
+    // Candidate resolution preceding the series lookup ran once per rule
+    // condition; the run-scoped ArrLookupCache now memoizes it so it runs once
+    // per show (#3285). Mirrors the arr identity lookup's run-scoped dedup (#2897).
+    describe('candidate resolution memoization (#3285)', () => {
+      let collectionMedia: CollectionMedia;
+      let showItem: MediaItem;
+
+      beforeEach(() => {
+        collectionMedia = createCollectionMedia('show');
+        collectionMedia.collection.sonarrSettingsId = 1;
+        showItem = createMediaItem({ type: 'show' });
+        mockSonarrApi(createSonarrSeries());
+      });
+
+      // id 0 = addDate - a plain show lookup that goes through candidate resolution.
+      const call = (arrLookupCache?: ArrLookupCache) =>
+        sonarrGetterService.get(
+          0,
+          showItem,
+          'show',
+          createRulesDto({
+            collection: collectionMedia.collection,
+            dataType: 'show',
+          }),
+          undefined,
+          arrLookupCache,
+        );
+
+      it('resolves candidates once per show across conditions sharing a run cache', async () => {
+        const cache = new ArrLookupCache();
+
+        await call(cache);
+        await call(cache); // second condition, same show + same run cache
+
+        expect(
+          metadataService.resolveLookupCandidatesFromMediaItemForService,
+        ).toHaveBeenCalledTimes(1);
+      });
+
+      it('re-resolves per call when no run cache is provided (unchanged behaviour)', async () => {
+        await call();
+        await call();
+
+        expect(
+          metadataService.resolveLookupCandidatesFromMediaItemForService,
+        ).toHaveBeenCalledTimes(2);
+      });
+
+      it('evicts an empty resolution so a later condition retries (transient safety, #3125)', async () => {
+        metadataService.resolveLookupCandidatesFromMediaItemForService
+          .mockResolvedValueOnce([]) // transient: nothing resolved
+          .mockResolvedValue([{ providerKey: 'tvdb', id: 1 }] as any);
+        const cache = new ArrLookupCache();
+
+        await call(cache); // empty -> evicted from the memo
+        await flushMicrotasks();
+        await call(cache); // retries instead of serving the stale empty result
+
+        expect(
+          metadataService.resolveLookupCandidatesFromMediaItemForService,
+        ).toHaveBeenCalledTimes(2);
+      });
     });
   });
 
