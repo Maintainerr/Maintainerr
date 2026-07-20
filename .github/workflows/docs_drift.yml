@@ -84,7 +84,7 @@ jobs:
           token: ${{ steps.docs-app-token.outputs.token }}
 
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version: 22
 
