@@ -100,8 +100,10 @@ export class SonarrGetterService {
         );
       }
 
-      const lookupCandidates =
-        await this.findLookupCandidatesFromMediaItem(libItem);
+      const lookupCandidates = await this.findLookupCandidatesFromMediaItem(
+        libItem,
+        arrLookupCache,
+      );
 
       if (lookupCandidates.length === 0) {
         this.logger.warn(
@@ -155,6 +157,7 @@ export class SonarrGetterService {
           libItem,
           prop?.name,
           dataType,
+          arrLookupCache,
         );
         if (fallback.handled) {
           this.logger.debug(
@@ -729,11 +732,30 @@ export class SonarrGetterService {
 
   public async findLookupCandidatesFromMediaItem(
     libItem: MediaItem,
+    arrLookupCache?: ArrLookupCache,
   ): Promise<MetadataLookupCandidate[]> {
-    return this.metadataService.resolveLookupCandidatesFromMediaItemForService(
-      libItem,
-      'sonarr',
-    );
+    // Candidate resolution (media-server ids -> validated provider ids) is
+    // identical for an item across every condition in a run, yet ran once per
+    // condition - redundant CPU, response cloning and duplicate logs (#3285).
+    // Dedupe it through the same run-scoped memo the arr identity lookup uses.
+    // libItem here is already the parent show (season/episode items are resolved
+    // up to it above), so the key collapses every season/episode of a show onto
+    // one entry. Evict an empty result so a transient metadata-provider failure
+    // retries next condition instead of sticking (mirrors resolveSeries's
+    // evict-on-failure and keeps the #3125 fail-closed behaviour).
+    const resolve = () =>
+      this.metadataService.resolveLookupCandidatesFromMediaItemForService(
+        libItem,
+        'sonarr',
+      );
+
+    return arrLookupCache
+      ? arrLookupCache.memoize(
+          `metadata:sonarr:${libItem.id}`,
+          resolve,
+          (candidates) => candidates.length === 0,
+        )
+      : resolve();
   }
 
   // Sonarr properties whose semantics match cleanly across Sonarr / TMDB /
@@ -752,6 +774,7 @@ export class SonarrGetterService {
     libItem: MediaItem,
     propName: string | undefined,
     dataType: MediaItemType | undefined,
+    arrLookupCache?: ArrLookupCache,
   ): Promise<
     { handled: false } | { handled: true; value: number | string | Date | null }
   > {
@@ -771,7 +794,21 @@ export class SonarrGetterService {
       return { handled: false };
     }
 
-    const ids = await this.metadataService.resolveIdsFromMediaItem(libItem);
+    // Same per-condition redundancy as findLookupCandidatesFromMediaItem
+    // (#3285): dedupe this resolution through the run-scoped memo. A DISTINCT key
+    // from the candidate memo - this fallback resolves under the default
+    // (all-provider) policy, not the Sonarr {tvdb} policy, so it can produce a
+    // different result for the same show id. Evict an unresolved / non-tv result
+    // so a transient metadata-provider failure retries next condition.
+    const resolveTvIds = () =>
+      this.metadataService.resolveIdsFromMediaItem(libItem);
+    const ids = await (arrLookupCache
+      ? arrLookupCache.memoize(
+          `metadata:sonarr:details:${libItem.id}`,
+          resolveTvIds,
+          (resolved) => !resolved || resolved.type !== 'tv',
+        )
+      : resolveTvIds());
     if (!ids || ids.type !== 'tv') {
       return { handled: false };
     }

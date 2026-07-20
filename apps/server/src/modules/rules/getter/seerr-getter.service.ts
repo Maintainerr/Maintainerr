@@ -23,6 +23,7 @@ import {
   Property,
   RuleConstants,
 } from '../constants/rules.constants';
+import { ArrLookupCache } from '../helpers/arr-lookup-cache';
 
 @Injectable()
 export class SeerrGetterService {
@@ -41,7 +42,12 @@ export class SeerrGetterService {
     ).props;
   }
 
-  async get(id: number, libItem: MediaItem, dataType?: MediaItemType) {
+  async get(
+    id: number,
+    libItem: MediaItem,
+    dataType?: MediaItemType,
+    arrLookupCache?: ArrLookupCache,
+  ) {
     try {
       let origLibItem: MediaItem = undefined;
 
@@ -55,11 +61,26 @@ export class SeerrGetterService {
       }
 
       const prop = this.appProperties.find((el) => el.id === id);
-      const resolvedIds =
-        await this.metadataService.resolveIdsFromMediaItemForService(
+      // The id-resolution (media item -> tmdb) is identical for an item across
+      // every Seerr condition in a run, yet ran once per condition - redundant
+      // CPU, response cloning and duplicate logs (#3285, the same redundancy the
+      // Radarr/Sonarr candidate memo already dedupes). Route it through the same
+      // run-scoped memo. libItem is already lifted to the parent show for
+      // season/episode above, so the key collapses them onto one entry. Evict a
+      // result with no tmdb so a transient metadata-provider failure retries next
+      // condition instead of sticking for the run.
+      const resolveIds = () =>
+        this.metadataService.resolveIdsFromMediaItemForService(
           libItem,
           'seerr',
         );
+      const resolvedIds = await (arrLookupCache
+        ? arrLookupCache.memoize(
+            `metadata:seerr:${libItem.id}`,
+            resolveIds,
+            (ids) => !ids?.tmdb,
+          )
+        : resolveIds());
       const tmdbId = resolvedIds?.tmdb as number | undefined;
 
       if (!tmdbId) {
