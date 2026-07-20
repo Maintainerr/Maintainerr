@@ -157,6 +157,7 @@ export class SonarrGetterService {
           libItem,
           prop?.name,
           dataType,
+          arrLookupCache,
         );
         if (fallback.handled) {
           this.logger.debug(
@@ -773,6 +774,7 @@ export class SonarrGetterService {
     libItem: MediaItem,
     propName: string | undefined,
     dataType: MediaItemType | undefined,
+    arrLookupCache?: ArrLookupCache,
   ): Promise<
     { handled: false } | { handled: true; value: number | string | Date | null }
   > {
@@ -792,7 +794,21 @@ export class SonarrGetterService {
       return { handled: false };
     }
 
-    const ids = await this.metadataService.resolveIdsFromMediaItem(libItem);
+    // Same per-condition redundancy as findLookupCandidatesFromMediaItem
+    // (#3285): dedupe this resolution through the run-scoped memo. A DISTINCT key
+    // from the candidate memo - this fallback resolves under the default
+    // (all-provider) policy, not the Sonarr {tvdb} policy, so it can produce a
+    // different result for the same show id. Evict an unresolved / non-tv result
+    // so a transient metadata-provider failure retries next condition.
+    const resolveTvIds = () =>
+      this.metadataService.resolveIdsFromMediaItem(libItem);
+    const ids = await (arrLookupCache
+      ? arrLookupCache.memoize(
+          `metadata:sonarr:details:${libItem.id}`,
+          resolveTvIds,
+          (resolved) => !resolved || resolved.type !== 'tv',
+        )
+      : resolveTvIds());
     if (!ids || ids.type !== 'tv') {
       return { handled: false };
     }
