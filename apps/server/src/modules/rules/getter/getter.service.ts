@@ -83,7 +83,12 @@ export class ValueGetterService {
         );
       }
       case Application.SEERR: {
-        return await this.seerrGetter.get(val2, libItem, dataType);
+        return await this.seerrGetter.get(
+          val2,
+          libItem,
+          dataType,
+          arrLookupCache,
+        );
       }
       case Application.TAUTULLI: {
         return await this.tautulliGetter.get(

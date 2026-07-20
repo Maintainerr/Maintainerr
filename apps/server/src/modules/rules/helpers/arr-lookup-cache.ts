@@ -14,9 +14,16 @@
  * the collection-sync / action phase, so it is gone before any deletion runs
  * and the cleanup still reads Sonarr/Radarr fresh.
  *
- * It is intentionally NOT used by the Tautulli / Seerr / Plex / Jellyfin / Emby
- * getters - those already cache at the API layer, so routing them through here
- * would just be redundant double-caching.
+ * It also memoizes the MetadataService id/candidate resolution that precedes
+ * those arr lookups (media-server ids -> validated provider ids). That resolution
+ * is identical for an item across every rule condition but otherwise re-runs each
+ * time - redundant CPU, response cloning and duplicate logs (#3285). The Radarr,
+ * Sonarr and Seerr getters route their resolution through here.
+ *
+ * The Plex / Jellyfin / Emby / Tautulli getters do not use it: they don't run the
+ * MetadataService resolution, and their per-item reads are served from their own
+ * API-layer caches. (Seerr's own request lookups are API-cached too - only the
+ * id-resolution that feeds them is deduped here.)
  */
 export class ArrLookupCache {
   private readonly entries = new Map<string, Promise<unknown>>();
