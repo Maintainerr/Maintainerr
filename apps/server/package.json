@@ -84,7 +84,7 @@
     "@types/mime-types": "^3",
     "@types/node": "^26",
     "@types/xml2js": "^0.4.14",
-    "@typescript-eslint/eslint-plugin": "^8.64.0",
+    "@typescript-eslint/eslint-plugin": "^8.65.0",
     "@typescript-eslint/parser": "^8.64.0",
     "eslint": "^10.7.0",
     "eslint-config-prettier": "^10.1.8",
