@@ -264,6 +264,104 @@ describe('SonarrApi', () => {
     });
   });
 
+  // Same null/undefined contract as getSeriesByTvdbId, plus the safety rules
+  // that make a title-based fallback acceptable at all: tracked-only, exact
+  // match, unambiguous. Anything less resolves to null.
+  describe('getTrackedSeriesByExactTitle', () => {
+    it('returns undefined when the lookup fails transiently (getWithoutCache → undefined)', async () => {
+      jest
+        .spyOn(sonarrApi as any, 'getWithoutCache')
+        .mockResolvedValue(undefined);
+
+      await expect(
+        sonarrApi.getTrackedSeriesByExactTitle('Formula 1'),
+      ).resolves.toBeUndefined();
+      expect(logger.warn).toHaveBeenCalledWith(
+        "Error looking up series by title 'Formula 1'",
+      );
+    });
+
+    it('returns the series on an unambiguous exact tracked match', async () => {
+      const tracked = createSonarrSeries({ id: 7, title: 'Formula 1' });
+      const untrackedLookupResult = createSonarrSeries({
+        id: 0,
+        title: 'Formula 1',
+      });
+      jest
+        .spyOn(sonarrApi as any, 'getWithoutCache')
+        .mockResolvedValue([untrackedLookupResult, tracked]);
+
+      await expect(
+        sonarrApi.getTrackedSeriesByExactTitle('Formula 1'),
+      ).resolves.toEqual(expect.objectContaining({ id: 7 }));
+    });
+
+    it('matches case-insensitively and trims the term', async () => {
+      const tracked = createSonarrSeries({ id: 7, title: 'Formula 1' });
+      const getWithoutCacheSpy = jest
+        .spyOn(sonarrApi as any, 'getWithoutCache')
+        .mockResolvedValue([tracked]);
+
+      await expect(
+        sonarrApi.getTrackedSeriesByExactTitle('  formula 1  '),
+      ).resolves.toEqual(expect.objectContaining({ id: 7 }));
+      expect(getWithoutCacheSpy).toHaveBeenCalledWith('/series/lookup', {
+        params: { term: 'formula 1' },
+        timeout: 20000,
+      });
+    });
+
+    it('returns null when only untracked lookup results match', async () => {
+      // /series/lookup merges remote results (id 0/absent) with library
+      // entries; a fallback must never act on a series the instance does
+      // not track.
+      jest
+        .spyOn(sonarrApi as any, 'getWithoutCache')
+        .mockResolvedValue([createSonarrSeries({ id: 0, title: 'Formula 1' })]);
+
+      await expect(
+        sonarrApi.getTrackedSeriesByExactTitle('Formula 1'),
+      ).resolves.toBeNull();
+    });
+
+    it('returns null when the exact match is ambiguous', async () => {
+      jest
+        .spyOn(sonarrApi as any, 'getWithoutCache')
+        .mockResolvedValue([
+          createSonarrSeries({ id: 7, title: 'Formula 1' }),
+          createSonarrSeries({ id: 8, title: 'Formula 1' }),
+        ]);
+
+      await expect(
+        sonarrApi.getTrackedSeriesByExactTitle('Formula 1'),
+      ).resolves.toBeNull();
+    });
+
+    it('ignores partial title matches', async () => {
+      jest
+        .spyOn(sonarrApi as any, 'getWithoutCache')
+        .mockResolvedValue([
+          createSonarrSeries({ id: 7, title: 'Formula 1: Drive to Survive' }),
+        ]);
+
+      await expect(
+        sonarrApi.getTrackedSeriesByExactTitle('Formula 1'),
+      ).resolves.toBeNull();
+    });
+
+    it('returns null without calling Sonarr when the title is blank', async () => {
+      const getWithoutCacheSpy = jest.spyOn(
+        sonarrApi as any,
+        'getWithoutCache',
+      );
+
+      await expect(
+        sonarrApi.getTrackedSeriesByExactTitle('   '),
+      ).resolves.toBeNull();
+      expect(getWithoutCacheSpy).not.toHaveBeenCalled();
+    });
+  });
+
   describe('runPut / runDelete failure contract', () => {
     it('should return false when PUT returns undefined (API failure)', async () => {
       jest.spyOn(sonarrApi as any, 'put').mockResolvedValue(undefined);

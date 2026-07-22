@@ -1268,6 +1268,91 @@ describe('SonarrGetterService', () => {
     });
   });
 
+  // Custom-agent libraries (sports, home video) emit no usable Guids, so no
+  // external IDs resolve at all. The exact-title fallback lets rule
+  // evaluation still reach the instance's own library, with the same
+  // null/undefined fail-closed contract as the id path.
+  describe('exact-title fallback (no resolvable external IDs)', () => {
+    const callSeriesTitleWithoutIds = async (
+      titleResult: SonarrSeries | null | undefined,
+    ) => {
+      const collectionMedia = createCollectionMedia('show');
+      collectionMedia.collection.sonarrSettingsId = 1;
+      metadataService.resolveLookupCandidatesFromMediaItemForService.mockResolvedValue(
+        [],
+      );
+
+      const mockedSonarrApi = mockSonarrApi();
+      jest
+        .spyOn(mockedSonarrApi, 'getTrackedSeriesByExactTitle')
+        .mockResolvedValue(titleResult);
+
+      const response = await sonarrGetterService.get(
+        33, // seriesTitle
+        createMediaItem({ type: 'show', title: 'Formula 1' }),
+        'show',
+        createRulesDto({
+          collection: collectionMedia.collection,
+          dataType: 'show',
+        }),
+      );
+
+      return { response, mockedSonarrApi };
+    };
+
+    it('resolves the series via an unambiguous exact-title match', async () => {
+      const { response, mockedSonarrApi } = await callSeriesTitleWithoutIds(
+        createSonarrSeries({ title: 'Formula 1' }),
+      );
+
+      expect(response).toBe('Formula 1');
+      expect(mockedSonarrApi.getTrackedSeriesByExactTitle).toHaveBeenCalledWith(
+        'Formula 1',
+      );
+      expect(mockedSonarrApi.getSeriesByTvdbId).not.toHaveBeenCalled();
+    });
+
+    it('returns null when no unambiguous tracked title match exists', async () => {
+      const { response } = await callSeriesTitleWithoutIds(null);
+
+      expect(response).toBeNull();
+      expect(logger.warn).toHaveBeenCalledWith(
+        expect.stringContaining('no unambiguous exact-title match'),
+      );
+    });
+
+    it('fails closed when the title lookup itself errors', async () => {
+      const { response } = await callSeriesTitleWithoutIds(undefined);
+
+      expect(response).toBeUndefined();
+    });
+
+    it('prefers the title fallback over the metadata fallback when resolved IDs match nothing tracked', async () => {
+      const collectionMedia = createCollectionMedia('show');
+      collectionMedia.collection.sonarrSettingsId = 1;
+
+      const mockedSonarrApi = mockSonarrApi();
+      jest
+        .spyOn(mockedSonarrApi, 'getSeriesByTvdbId')
+        .mockResolvedValue(null as any);
+      jest
+        .spyOn(mockedSonarrApi, 'getTrackedSeriesByExactTitle')
+        .mockResolvedValue(createSonarrSeries({ title: 'Formula 1' }));
+
+      const response = await sonarrGetterService.get(
+        33, // seriesTitle
+        createMediaItem({ type: 'show', title: 'Formula 1' }),
+        'show',
+        createRulesDto({
+          collection: collectionMedia.collection,
+          dataType: 'show',
+        }),
+      );
+
+      expect(response).toBe('Formula 1');
+    });
+  });
+
   describe('seriesId', () => {
     const callSeriesId = async (
       series: SonarrSeries | undefined,
@@ -2104,6 +2189,12 @@ describe('SonarrGetterService', () => {
         .spyOn(mockedSonarrApi, 'getSeriesByTvdbId')
         .mockImplementation(jest.fn());
     }
+
+    // Default: no unambiguous exact-title match. Tests exercising the
+    // title fallback override this.
+    jest
+      .spyOn(mockedSonarrApi, 'getTrackedSeriesByExactTitle')
+      .mockResolvedValue(null);
 
     servarrService.getSonarrApiClient.mockResolvedValue(mockedSonarrApi);
 

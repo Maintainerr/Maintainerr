@@ -42,6 +42,9 @@ export const mockSonarrApi = (
   );
 
   jest.spyOn(api, 'getSeriesByTvdbId').mockResolvedValue(undefined);
+  // Default: no unambiguous exact-title match. Tests exercising the
+  // title fallback override this.
+  jest.spyOn(api, 'getTrackedSeriesByExactTitle').mockResolvedValue(null);
   jest.spyOn(api, 'unmonitorSeasons').mockImplementation(jest.fn());
   jest.spyOn(api, 'UnmonitorDeleteEpisodes').mockResolvedValue(true);
   jest.spyOn(api, 'deleteShow').mockResolvedValue(true);

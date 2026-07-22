@@ -105,13 +105,6 @@ export class SonarrGetterService {
         arrLookupCache,
       );
 
-      if (lookupCandidates.length === 0) {
-        this.logger.warn(
-          `Failed to resolve external IDs for '${libItem.title}' (media server ID '${libItem.id}'). As a result, no Sonarr query could be made.`,
-        );
-        return null;
-      }
-
       const sonarrApiClient = await this.servarrService.getSonarrApiClient(
         ruleGroup.collection.sonarrSettingsId,
       );
@@ -132,14 +125,48 @@ export class SonarrGetterService {
             )
           : sonarrApiClient.getSeriesByTvdbId(lookupId);
 
-      const matchedResult = await findMetadataLookupMatch<SonarrSeries | null>(
-        lookupCandidates,
-        {
-          tvdb: (lookupId) => resolveSeries(lookupId),
-        },
-      );
-      const showResponse: SonarrSeries | null | undefined =
-        matchedResult?.result;
+      // Exact-title fallback for items whose external IDs resolve to nothing
+      // (custom-agent libraries emit no usable Guids). Memoized per show like
+      // resolveSeries so season/episode fan-out doesn't repeat the lookup.
+      const titleKey = libItem.title?.trim().toLowerCase();
+      const resolveSeriesByTitle = () =>
+        arrLookupCache
+          ? arrLookupCache.memoize(
+              `sonarr:${settingsId}:series-title:${titleKey}`,
+              () => sonarrApiClient.getTrackedSeriesByExactTitle(libItem.title),
+              (series) => series === undefined,
+            )
+          : sonarrApiClient.getTrackedSeriesByExactTitle(libItem.title);
+
+      let showResponse: SonarrSeries | null | undefined;
+
+      if (lookupCandidates.length === 0) {
+        // No external IDs at all. Fall back to an unambiguous exact-title
+        // match against the instance's own library before giving up, with
+        // the same fail-closed semantics as the id path.
+        showResponse = await resolveSeriesByTitle();
+
+        if (showResponse === undefined) {
+          return undefined;
+        }
+
+        if (!showResponse?.id) {
+          this.logger.warn(
+            `Failed to resolve external IDs for '${libItem.title}' (media server ID '${libItem.id}'), and no unambiguous exact-title match was tracked in Sonarr. As a result, no Sonarr query could be made.`,
+          );
+          return null;
+        }
+
+        this.logger.debug(
+          `Sonarr-Getter - resolved '${libItem.title}' via exact-title fallback (no external IDs were available).`,
+        );
+      } else {
+        const matchedResult =
+          await findMetadataLookupMatch<SonarrSeries | null>(lookupCandidates, {
+            tvdb: (lookupId) => resolveSeries(lookupId),
+          });
+        showResponse = matchedResult?.result;
+      }
 
       if (showResponse === undefined) {
         // The Sonarr lookup itself failed (or every candidate's lookup
@@ -147,6 +174,19 @@ export class SonarrGetterService {
         // rather than substituting metadata-provider values, which would
         // silently change rule evaluation while Sonarr is down.
         return undefined;
+      }
+
+      if (!showResponse?.id) {
+        // The resolved IDs matched no tracked series. Try the exact-title
+        // fallback before the metadata-provider fallback so Sonarr-local
+        // truth wins when the series is tracked under different IDs.
+        const titleMatch = await resolveSeriesByTitle();
+        if (titleMatch?.id) {
+          this.logger.debug(
+            `Sonarr-Getter - resolved '${libItem.title}' via exact-title fallback (external IDs matched no tracked series).`,
+          );
+          showResponse = titleMatch;
+        }
       }
 
       if (!showResponse?.id) {

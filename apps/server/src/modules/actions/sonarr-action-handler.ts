@@ -15,6 +15,7 @@ import { MaintainerrLogger } from '../logging/logs.service';
 import {
   findMetadataLookupMatch,
   formatMetadataLookupCandidates,
+  MetadataLookupCandidate,
 } from '../metadata/metadata-lookup.util';
 import { MetadataService } from '../metadata/metadata.service';
 import { SettingsDataService } from '../settings/settings-data.service';
@@ -58,17 +59,53 @@ export class SonarrActionHandler {
         },
       );
 
-    if (lookupCandidates.length === 0) {
-      this.logger.log(
-        `Couldn't resolve any supported external IDs for media server item ${media.mediaServerId}. No action was taken. Please check this show manually.`,
-      );
-      return false;
-    }
+    let sonarrMedia: SonarrSeries | null | undefined;
+    let matchedResult:
+      | {
+          candidate: MetadataLookupCandidate;
+          result: SonarrSeries | null | undefined;
+        }
+      | undefined;
 
-    const matchedResult = await findMetadataLookupMatch(lookupCandidates, {
-      tvdb: (id) => sonarrApiClient.getSeriesByTvdbId(id),
-    });
-    let sonarrMedia = matchedResult?.result;
+    if (lookupCandidates.length === 0) {
+      // No external IDs at all (custom-agent libraries emit no usable
+      // Guids). Fall back to an unambiguous exact-title match against the
+      // instance's own library before giving up, with the same fail-closed
+      // semantics as the id path.
+      sonarrMedia = await this.resolveTrackedSeriesByTitle(
+        mediaServer,
+        media,
+        mediaData,
+        sonarrApiClient,
+      );
+
+      if (sonarrMedia === undefined) {
+        this.logger.log(
+          `Couldn't reach Sonarr to resolve a series for media server item ${media.mediaServerId}. No action was taken; will retry next run.`,
+        );
+        return false;
+      }
+
+      if (!sonarrMedia?.id) {
+        this.logger.log(
+          `Couldn't resolve any supported external IDs for media server item ${media.mediaServerId}, and no unambiguous exact-title match was tracked in Sonarr. No action was taken. Please check this show manually.`,
+        );
+        return false;
+      }
+
+      this.logger.log(
+        `Resolved series '${sonarrMedia.title}' for media server item ${media.mediaServerId} via exact-title fallback (no external IDs were available).`,
+      );
+      matchedResult = {
+        candidate: { providerKey: 'tvdb', id: sonarrMedia.tvdbId },
+        result: sonarrMedia,
+      };
+    } else {
+      matchedResult = await findMetadataLookupMatch(lookupCandidates, {
+        tvdb: (id) => sonarrApiClient.getSeriesByTvdbId(id),
+      });
+      sonarrMedia = matchedResult?.result;
+    }
 
     if (sonarrMedia === undefined) {
       // Transient Sonarr lookup failure (vs. null = confirmed not tracked):
@@ -78,6 +115,29 @@ export class SonarrActionHandler {
         `Couldn't reach Sonarr to resolve a series for media server item ${media.mediaServerId}. No action was taken; will retry next run.`,
       );
       return false;
+    }
+
+    if (!sonarrMedia?.id && lookupCandidates.length > 0) {
+      // The resolved IDs matched no tracked series. Try the exact-title
+      // fallback before falling through to a raw media-server disk delete,
+      // so a Sonarr-managed action wins when the series is tracked under
+      // different IDs.
+      const titleMatch = await this.resolveTrackedSeriesByTitle(
+        mediaServer,
+        media,
+        mediaData,
+        sonarrApiClient,
+      );
+      if (titleMatch?.id) {
+        this.logger.log(
+          `Resolved series '${titleMatch.title}' for media server item ${media.mediaServerId} via exact-title fallback (external IDs matched no tracked series).`,
+        );
+        sonarrMedia = titleMatch;
+        matchedResult = {
+          candidate: { providerKey: 'tvdb', id: titleMatch.tvdbId },
+          result: titleMatch,
+        };
+      }
     }
 
     if (!sonarrMedia?.id) {
@@ -432,6 +492,40 @@ export class SonarrActionHandler {
     }
 
     return false;
+  }
+
+  /**
+   * Exact-title fallback used when external IDs can't be resolved for a media
+   * server item, or resolve to nothing tracked (custom-agent libraries emit no
+   * usable Guids). Resolves the parent show's title for season/episode items
+   * before asking Sonarr. Same null/undefined contract as getSeriesByTvdbId:
+   * null = confirmed no safe match, undefined = the lookup itself failed and
+   * callers must fail closed.
+   */
+  private async resolveTrackedSeriesByTitle(
+    mediaServer: Awaited<ReturnType<MediaServerFactory['getService']>>,
+    media: CollectionMedia,
+    mediaData: MediaItem | undefined,
+    sonarrApiClient: Awaited<ReturnType<ServarrService['getSonarrApiClient']>>,
+  ): Promise<SonarrSeries | null | undefined> {
+    let showTitle: string | undefined;
+
+    if (mediaData) {
+      const showId = mediaData.grandparentId ?? mediaData.parentId;
+      showTitle = showId
+        ? (await mediaServer.getMetadata(showId))?.title
+        : mediaData.title;
+    } else {
+      showTitle = (await mediaServer.getMetadata(media.mediaServerId))?.title;
+    }
+
+    if (!showTitle) {
+      // Without a title there is nothing safe to match on. Treat as a
+      // confirmed miss, not a transient failure.
+      return null;
+    }
+
+    return sonarrApiClient.getTrackedSeriesByExactTitle(showTitle);
   }
 
   /**

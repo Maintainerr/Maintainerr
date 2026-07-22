@@ -131,6 +131,123 @@ describe('SonarrActionHandler', () => {
     },
   );
 
+  // Custom-agent libraries (sports, home video) emit no usable Guids, so no
+  // external IDs resolve. The exact-title fallback lets the action still run
+  // through Sonarr instead of silently skipping the item forever.
+  it('falls back to an unambiguous exact-title match when no external IDs resolve', async () => {
+    const collection = createCollection({
+      arrAction: ServarrAction.DELETE,
+      sonarrSettingsId: 1,
+      type: 'show' as MediaItemType,
+    });
+    const collectionMedia = createCollectionMediaWithMetadata(collection, {
+      tmdbId: undefined,
+    });
+
+    mockMediaServerMetadata(collectionMedia.mediaData);
+
+    const series = createSonarrSeries({
+      id: 42,
+      title: collectionMedia.mediaData.title,
+    });
+    const mockedSonarrApi = mockSonarrApi(servarrService, logger);
+    jest
+      .spyOn(mockedSonarrApi, 'getTrackedSeriesByExactTitle')
+      .mockResolvedValue(series);
+    jest.spyOn(mockedSonarrApi, 'getSeriesByTvdbId');
+
+    mediaIdFinder.findTvdbId.mockResolvedValue(undefined);
+
+    const result = await sonarrActionHandler.handleAction(
+      collection,
+      collectionMedia,
+    );
+
+    expect(result).toBe(true);
+    expect(mockedSonarrApi.getSeriesByTvdbId).not.toHaveBeenCalled();
+    expect(mockedSonarrApi.getTrackedSeriesByExactTitle).toHaveBeenCalledWith(
+      collectionMedia.mediaData.title,
+    );
+    expect(mockedSonarrApi.deleteShow).toHaveBeenCalledWith(
+      series.id,
+      true,
+      collection.listExclusions,
+    );
+    expect(mediaServer.deleteFromDisk).not.toHaveBeenCalled();
+  });
+
+  it('fails closed when the exact-title fallback lookup errors', async () => {
+    const collection = createCollection({
+      arrAction: ServarrAction.DELETE,
+      sonarrSettingsId: 1,
+      type: 'show' as MediaItemType,
+    });
+    const collectionMedia = createCollectionMediaWithMetadata(collection, {
+      tmdbId: undefined,
+    });
+
+    mockMediaServerMetadata(collectionMedia.mediaData);
+
+    const mockedSonarrApi = mockSonarrApi(servarrService, logger);
+    jest
+      .spyOn(mockedSonarrApi, 'getTrackedSeriesByExactTitle')
+      .mockResolvedValue(undefined);
+
+    mediaIdFinder.findTvdbId.mockResolvedValue(undefined);
+
+    const result = await sonarrActionHandler.handleAction(
+      collection,
+      collectionMedia,
+    );
+
+    expect(result).toBe(false);
+    expect(mediaServer.deleteFromDisk).not.toHaveBeenCalled();
+    validateNoSonarrActionsTaken(mockedSonarrApi);
+  });
+
+  // Previously this path fell through to a raw media-server disk delete.
+  // A tracked exact-title match should win so the action stays
+  // Sonarr-managed (history, exclusion lists, download-client cleanup).
+  it('prefers a title match over a media-server disk delete when resolved IDs match nothing tracked', async () => {
+    const collection = createCollection({
+      arrAction: ServarrAction.DELETE,
+      sonarrSettingsId: 1,
+      type: 'show' as MediaItemType,
+    });
+    const collectionMedia = createCollectionMediaWithMetadata(collection, {
+      tmdbId: undefined,
+    });
+
+    mockMediaServerMetadata(collectionMedia.mediaData);
+
+    const series = createSonarrSeries({
+      id: 42,
+      title: collectionMedia.mediaData.title,
+    });
+    const mockedSonarrApi = mockSonarrApi(servarrService, logger);
+    jest
+      .spyOn(mockedSonarrApi, 'getSeriesByTvdbId')
+      .mockResolvedValue(null as any);
+    jest
+      .spyOn(mockedSonarrApi, 'getTrackedSeriesByExactTitle')
+      .mockResolvedValue(series);
+
+    mediaIdFinder.findTvdbId.mockResolvedValue(555);
+
+    const result = await sonarrActionHandler.handleAction(
+      collection,
+      collectionMedia,
+    );
+
+    expect(result).toBe(true);
+    expect(mockedSonarrApi.deleteShow).toHaveBeenCalledWith(
+      series.id,
+      true,
+      collection.listExclusions,
+    );
+    expect(mediaServer.deleteFromDisk).not.toHaveBeenCalled();
+  });
+
   it.each([
     { type: 'season', title: 'SEASONS' },
     {
