@@ -89,6 +89,54 @@ export class SonarrApi extends ServarrApi<{
     }
   }
 
+  // Title-based fallback for media server items whose external IDs can't be
+  // resolved (custom-agent libraries: sports, home video, anime with
+  // non-standard agents). Deliberately strict so a fallback can never act on
+  // the wrong series: only series tracked by this instance count (id > 0),
+  // the title must match exactly (case-insensitive), and the match must be
+  // unambiguous - anything else resolves to null. Same null/undefined
+  // contract as getSeriesByTvdbId: null = confirmed no safe match,
+  // undefined = the lookup itself failed and callers must fail closed.
+  public async getTrackedSeriesByExactTitle(
+    title: string,
+  ): Promise<SonarrSeries | null | undefined> {
+    const term = title?.trim();
+    if (!term) {
+      return null;
+    }
+
+    try {
+      const response = await this.getWithoutCache<SonarrSeries[]>(
+        '/series/lookup',
+        {
+          params: { term },
+          timeout: SLOW_INSTANCE_TIMEOUT_MS,
+        },
+      );
+
+      // getWithoutCache swallows transport/auth/5xx into `undefined` (it
+      // never throws), so distinguish a failed lookup from a confirmed miss
+      // here, mirroring getSeriesByTvdbId. (#3125)
+      if (response === undefined) {
+        this.logger.warn(`Error looking up series by title '${term}'`);
+        return undefined;
+      }
+
+      const normalizedTerm = term.toLowerCase();
+      const tracked = response.filter(
+        (series) =>
+          series?.id > 0 &&
+          series.title?.trim().toLowerCase() === normalizedTerm,
+      );
+
+      return tracked.length === 1 ? tracked[0] : null;
+    } catch (error) {
+      this.logger.warn(`Error looking up series by title '${term}'`);
+      this.logger.debug(error);
+      return undefined;
+    }
+  }
+
   public async getSeriesByTitle(title: string): Promise<SonarrSeries[]> {
     try {
       const response = await this.get<SonarrSeries[]>('/series/lookup', {
