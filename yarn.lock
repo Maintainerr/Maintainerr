@@ -5046,21 +5046,21 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@semantic-release/git@npm:^11.0.0":
-  version: 11.0.0
-  resolution: "@semantic-release/git@npm:11.0.0"
+"@semantic-release/git@npm:^11.0.1":
+  version: 11.0.1
+  resolution: "@semantic-release/git@npm:11.0.1"
   dependencies:
     "@semantic-release/error": "npm:^4.0.0"
     aggregate-error: "npm:^5.0.0"
     debug: "npm:^4.0.0"
     dir-glob: "npm:^3.0.0"
-    execa: "npm:^9.0.0"
+    execa: "npm:^10.0.0"
     lodash-es: "npm:^4.17.21"
     micromatch: "npm:^4.0.0"
     p-reduce: "npm:^3.0.0"
   peerDependencies:
     semantic-release: ">=20.1.0"
-  checksum: 10c0/b2bcf3f9aec5d38bdff4ca7432687398e7b009c092dfaa78fb07ab9e47e86b7f474f79e1a36dcb997c005944f0f438d235adf82792dfcb913c14751cc67d4e31
+  checksum: 10c0/a94d2f4c2bf4e0521f87648618e3b081bef9679cf64a805323a86dabc7be26446358f9b0735756396832db4994d0114f6171931f5f3bb061e258fea982ca9ec4
   languageName: node
   linkType: hard
 
@@ -10247,6 +10247,27 @@ __metadata:
   languageName: node
   linkType: hard
 
+"execa@npm:^10.0.0":
+  version: 10.0.0
+  resolution: "execa@npm:10.0.0"
+  dependencies:
+    "@sindresorhus/merge-streams": "npm:^4.0.0"
+    figures: "npm:^6.1.0"
+    get-stream: "npm:^9.0.1"
+    human-signals: "npm:^8.0.1"
+    is-plain-obj: "npm:^4.1.0"
+    is-stream: "npm:^4.0.1"
+    npm-run-path: "npm:^6.0.0"
+    path-key: "npm:^4.0.0"
+    pretty-ms: "npm:^9.3.0"
+    signal-exit: "npm:^4.1.0"
+    strip-final-newline: "npm:^4.0.0"
+    which-command: "npm:^0.1.0"
+    yoctocolors: "npm:^2.1.2"
+  checksum: 10c0/975722f1005c84b9a35efc816e26d1bfee87ce42ab5f3328c2b9966cc180db31644e101b10005c2cde8525a1e4c834e8eba9bfb32432f39f79bf2e6c327221ea
+  languageName: node
+  linkType: hard
+
 "execa@npm:^5.1.1":
   version: 5.1.1
   resolution: "execa@npm:5.1.1"
@@ -10966,7 +10987,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"get-stream@npm:^9.0.0":
+"get-stream@npm:^9.0.0, get-stream@npm:^9.0.1":
   version: 9.0.1
   resolution: "get-stream@npm:9.0.1"
   dependencies:
@@ -11469,6 +11490,13 @@ __metadata:
   version: 7.0.0
   resolution: "human-signals@npm:7.0.0"
   checksum: 10c0/ce0c6d62d2e9bfe529d48f7c7fdf4b8c70fce950eef7850719b4e3f5bc71795ae7d61a3699ce13262bed7847705822601cc81f1921ea6a2906852e16228a94ab
+  languageName: node
+  linkType: hard
+
+"human-signals@npm:^8.0.1":
+  version: 8.0.1
+  resolution: "human-signals@npm:8.0.1"
+  checksum: 10c0/195ac607108c56253757717242e17cd2e21b29f06c5d2dad362e86c672bf2d096e8a3bbb2601841c376c2301c4ae7cff129e87f740aa4ebff1390c163114c7c4
   languageName: node
   linkType: hard
 
@@ -13583,7 +13611,7 @@ __metadata:
     "@semantic-release/changelog": "npm:^7.0.0"
     "@semantic-release/commit-analyzer": "npm:^13.0.1"
     "@semantic-release/exec": "npm:^7.1.0"
-    "@semantic-release/git": "npm:^11.0.0"
+    "@semantic-release/git": "npm:^11.0.1"
     "@types/node": "npm:^26.1.1"
     knip: "npm:^6.29.0"
     semantic-release: "npm:^25.0.8"
@@ -14931,6 +14959,16 @@ __metadata:
   languageName: node
   linkType: hard
 
+"npm-run-path@npm:^6.0.0":
+  version: 6.0.0
+  resolution: "npm-run-path@npm:6.0.0"
+  dependencies:
+    path-key: "npm:^4.0.0"
+    unicorn-magic: "npm:^0.3.0"
+  checksum: 10c0/b223c8a0dcd608abf95363ea5c3c0ccc3cd877daf0102eaf1b0f2390d6858d8337fbb7c443af2403b067a7d2c116d10691ecd22ab3c5273c44da1ff8d07753bd
+  languageName: node
+  linkType: hard
+
 "npm-user-validate@npm:^3.0.0":
   version: 3.0.0
   resolution: "npm-user-validate@npm:3.0.0"
@@ -15996,6 +16034,15 @@ __metadata:
   dependencies:
     parse-ms: "npm:^4.0.0"
   checksum: 10c0/ba4a2acd1fe92a1c629e5cdeb555d7fa344ae9920e20fa00e8ac1db61b8d3dff8638ffc70c7569f681e375df68c9f31291c2c1912cefd02ef1b1bdd0861a4aed
+  languageName: node
+  linkType: hard
+
+"pretty-ms@npm:^9.3.0":
+  version: 9.3.0
+  resolution: "pretty-ms@npm:9.3.0"
+  dependencies:
+    parse-ms: "npm:^4.0.0"
+  checksum: 10c0/555ea39a1de48a30601938aedb76d682871d33b6dee015281c37108921514b11e1792928b1648c2e5589acc73c8ef0fb5e585fb4c718e340a28b86799e90fb34
   languageName: node
   linkType: hard
 
@@ -19772,6 +19819,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"which-command@npm:^0.1.0":
+  version: 0.1.0
+  resolution: "which-command@npm:0.1.0"
+  bin:
+    which-command: cli.js
+  checksum: 10c0/15b3952b466961ce147de197ef2d40d0f6242dac7d07785936541f7b8f6dba632bd6eab0abac362b80efc0029c536d044717c10aa96562831b0d0a7d548a0029
+  languageName: node
+  linkType: hard
+
 "which@npm:^1.2.9":
   version: 1.3.1
   resolution: "which@npm:1.3.1"
@@ -20141,6 +20197,13 @@ __metadata:
   version: 2.0.0
   resolution: "yoctocolors@npm:2.0.0"
   checksum: 10c0/994f5d99e7647a1b333331ffecbbf7c4463d9c2823e371b44e21146a4496cad0f14fbe2f73f44383312a6f843d93523f830f1360009f0ac93027b167ef5c63be
+  languageName: node
+  linkType: hard
+
+"yoctocolors@npm:^2.1.2":
+  version: 2.1.2
+  resolution: "yoctocolors@npm:2.1.2"
+  checksum: 10c0/b220f30f53ebc2167330c3adc86a3c7f158bcba0236f6c67e25644c3188e2571a6014ffc1321943bb619460259d3d27eb4c9cc58c2d884c1b195805883ec7066
   languageName: node
   linkType: hard
 
