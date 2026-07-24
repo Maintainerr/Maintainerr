@@ -350,7 +350,10 @@ export class EmbyAdapterService implements IMediaServerService {
       this.logger.warn(
         `Emby getLibraryContents(${libraryId}) failed: ${formatConnectionFailureMessage(error, 'Connection failed')}`,
       );
-      return { items: [], totalSize: 0, offset, limit };
+      // A fabricated empty page reads as end-of-library downstream, which
+      // truncates rule evaluation and mass-removes the unevaluated tail from
+      // collections (#3307). Fail closed like getCollectionChildren.
+      throw error;
     }
   }
 

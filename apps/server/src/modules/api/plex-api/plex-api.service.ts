@@ -520,8 +520,9 @@ export class PlexApiService {
       );
 
       if (!response?.MediaContainer) {
-        this.logLibrarySectionError(id);
-        return undefined;
+        throw new Error(
+          `Plex library section ${id} returned no MediaContainer`,
+        );
       }
 
       return {
@@ -530,7 +531,10 @@ export class PlexApiService {
       };
     } catch (error) {
       this.logLibrarySectionError(id, error);
-      return undefined;
+      // A swallowed page read looks like the end of the library downstream,
+      // which truncates rule evaluation and mass-removes the unevaluated
+      // tail from collections (#3307). Same contract as getCollectionChildren.
+      throw error;
     }
   }
 

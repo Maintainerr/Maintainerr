@@ -715,6 +715,60 @@ describe('PlexGetterService', () => {
       );
     });
 
+    it('returns undefined for watchlist properties when no user has a plex.tv uuid (ids 28 and 30)', async () => {
+      // plex.tv unreachable: getCorrectedUsers falls back to local accounts
+      // without uuids. Must be transient (undefined), not a confirmed
+      // empty/false answer (#3307).
+      plexApi.getMetadata.mockResolvedValue(
+        makeMetadata({
+          ratingKey: 'movie-1',
+          type: 'movie',
+          guid: 'plex://movie/movieuuid',
+        }),
+      );
+      plexApi.getCorrectedUsers.mockResolvedValue([
+        makePlexUser({ plexId: 1, username: 'alice' }),
+        makePlexUser({ plexId: 2, username: 'bob' }),
+      ]);
+
+      const libItem = createMediaItem({ id: 'movie-1', type: 'movie' });
+      const ruleGroup = createRulesDto({ dataType: 'movie' });
+
+      await expect(
+        service.get(28, libItem, 'movie', ruleGroup),
+      ).resolves.toBeUndefined();
+      await expect(
+        service.get(30, libItem, 'movie', ruleGroup),
+      ).resolves.toBeUndefined();
+      expect(plexApi.getWatchlistIdsForUser).not.toHaveBeenCalled();
+    });
+
+    it('returns undefined for watchlist properties when a watchlist read fails (ids 28 and 30)', async () => {
+      // getWatchlistIdsForUser resolves undefined on a failed community API
+      // fetch; that must not collapse into "not watchlisted" (#3307).
+      plexApi.getMetadata.mockResolvedValue(
+        makeMetadata({
+          ratingKey: 'movie-1',
+          type: 'movie',
+          guid: 'plex://movie/movieuuid',
+        }),
+      );
+      plexApi.getCorrectedUsers.mockResolvedValue([
+        makePlexUser({ plexId: 1, username: 'alice', uuid: 'uuid-a' }),
+      ]);
+      plexApi.getWatchlistIdsForUser.mockResolvedValue(undefined);
+
+      const libItem = createMediaItem({ id: 'movie-1', type: 'movie' });
+      const ruleGroup = createRulesDto({ dataType: 'movie' });
+
+      await expect(
+        service.get(28, libItem, 'movie', ruleGroup),
+      ).resolves.toBeUndefined();
+      await expect(
+        service.get(30, libItem, 'movie', ruleGroup),
+      ).resolves.toBeUndefined();
+    });
+
     it.each([
       { id: 31, name: 'rating_imdb', expected: 7.8 },
       { id: 32, name: 'rating_rottenTomatoesCritic', expected: 6.6 },

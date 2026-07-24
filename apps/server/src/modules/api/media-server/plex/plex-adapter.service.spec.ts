@@ -429,6 +429,14 @@ describe('PlexAdapterService', () => {
       await service.getLibraryContents('1', { offset: 0, limit: 50 });
       expect(plexApi.getLibraryContents).toHaveBeenCalled();
     });
+
+    it('propagates page read failures so callers never mistake a failed read for an empty library', async () => {
+      plexApi.getLibraryContents.mockRejectedValue(new Error('boom'));
+
+      await expect(
+        service.getLibraryContents('1', { offset: 0, limit: 50 }),
+      ).rejects.toThrow('boom');
+    });
   });
 
   describe('prefetchWatchHistory', () => {

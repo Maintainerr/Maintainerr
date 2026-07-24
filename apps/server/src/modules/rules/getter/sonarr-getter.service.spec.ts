@@ -380,6 +380,16 @@ describe('SonarrGetterService', () => {
         ).toHaveBeenCalledTimes(2);
       });
 
+      it('returns undefined (fail closed) when no external ids resolve', async () => {
+        // Empty resolution also covers a transient TMDB/TVDB validation
+        // failure, so it must stay transient (#3307).
+        metadataService.resolveLookupCandidatesFromMediaItemForService.mockResolvedValue(
+          [],
+        );
+
+        await expect(call()).resolves.toBeUndefined();
+      });
+
       it('evicts an empty resolution so a later condition retries (transient safety, #3125)', async () => {
         metadataService.resolveLookupCandidatesFromMediaItemForService
           .mockResolvedValueOnce([]) // transient: nothing resolved

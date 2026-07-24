@@ -109,7 +109,11 @@ export class SonarrGetterService {
         this.logger.warn(
           `Failed to resolve external IDs for '${libItem.title}' (media server ID '${libItem.id}'). As a result, no Sonarr query could be made.`,
         );
-        return null;
+        // An empty resolution cannot distinguish "item has no provider ids"
+        // from a transient TMDB/TVDB failure (validation runs online), so it
+        // must stay `undefined` - `null` would defeat the transient-removal
+        // guard and wipe collections during an internet outage (#3307).
+        return undefined;
       }
 
       const sonarrApiClient = await this.servarrService.getSonarrApiClient(

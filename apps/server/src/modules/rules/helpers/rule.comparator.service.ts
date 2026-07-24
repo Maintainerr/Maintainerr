@@ -178,6 +178,11 @@ export class RuleComparatorService {
         `Something went wrong while running rule ${rulegroup.name}`,
         error,
       );
+      // Swallowing here returned `undefined` for the whole chunk: the
+      // executor then saw none of these items as matching or transiently
+      // failed and removed them from the collection. Fail the run instead
+      // (#3307).
+      throw error;
     }
   }
 

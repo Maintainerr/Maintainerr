@@ -87,7 +87,11 @@ export class SeerrGetterService {
         this.logger.debug(
           `Couldn't find tmdb id for media '${libItem.title}' with id '${libItem.id}'. As a result, no Seerr query could be made.`,
         );
-        return null;
+        // An empty resolution cannot distinguish "item has no tmdb id" from a
+        // transient TMDB failure (validation runs online), so it must stay
+        // `undefined` - `null` would defeat the transient-removal guard and
+        // wipe collections during an internet outage (#3307).
+        return undefined;
       }
 
       // releaseDate (movie releaseDate / tv firstAirDate / season|episode

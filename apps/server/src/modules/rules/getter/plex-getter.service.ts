@@ -516,8 +516,10 @@ export class PlexGetterService {
           const plexUsers: SimplePlexUser[] =
             await this.plexApi.getCorrectedUsers();
 
-          // When plex.tv is unreachable, no users will have UUIDs.
-          // Return null to skip the rule rather than falsely report an empty watchlist.
+          // When plex.tv is unreachable, no users will have UUIDs. This is a
+          // transient transport failure, so return `undefined` - `null` would
+          // read as "confirmed absent" and let the executor remove protected
+          // items (#3307).
           if (
             plexUsers.length > 0 &&
             !plexUsers.some((u) => u.uuid !== undefined)
@@ -525,7 +527,7 @@ export class PlexGetterService {
             this.logger.warn(
               'Unable to check watchlists: no user UUIDs available (plex.tv may be unreachable)',
             );
-            return null;
+            return undefined;
           }
 
           const usernames: string[] = [];
@@ -536,7 +538,12 @@ export class PlexGetterService {
               u.uuid,
               u.username,
             );
-            if (watchlist?.find((i) => i.id === media_uuid[1]) !== undefined) {
+            // A failed fetch would silently understate the list, so surface
+            // it as transient instead of a confirmed answer.
+            if (watchlist === undefined) {
+              return undefined;
+            }
+            if (watchlist.find((i) => i.id === media_uuid[1]) !== undefined) {
               usernames.push(u.username);
             }
           }
@@ -556,8 +563,10 @@ export class PlexGetterService {
           const plexUsers: SimplePlexUser[] =
             await this.plexApi.getCorrectedUsers();
 
-          // When plex.tv is unreachable, no users will have UUIDs.
-          // Return null to skip the rule rather than falsely report an empty watchlist.
+          // When plex.tv is unreachable, no users will have UUIDs. This is a
+          // transient transport failure, so return `undefined` - `null` would
+          // read as "confirmed absent" and let the executor remove protected
+          // items (#3307).
           if (
             plexUsers.length > 0 &&
             !plexUsers.some((u) => u.uuid !== undefined)
@@ -565,7 +574,7 @@ export class PlexGetterService {
             this.logger.warn(
               'Unable to check watchlists: no user UUIDs available (plex.tv may be unreachable)',
             );
-            return null;
+            return undefined;
           }
 
           for (const u of plexUsers.filter(
@@ -575,7 +584,12 @@ export class PlexGetterService {
               u.uuid,
               u.username,
             );
-            if (watchlist?.find((i) => i.id === media_uuid[1]) !== undefined) {
+            // A failed fetch cannot confirm "not watchlisted", so surface it
+            // as transient instead of a false negative.
+            if (watchlist === undefined) {
+              return undefined;
+            }
+            if (watchlist.find((i) => i.id === media_uuid[1]) !== undefined) {
               return true;
             }
           }

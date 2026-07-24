@@ -524,18 +524,33 @@ describe('JellyfinAdapterService', () => {
       });
     });
 
-    it('does not retry non-transient library-content failures', async () => {
+    it('does not retry non-transient library-content failures and rethrows', async () => {
       jellyfinApiMocks.getItems.mockRejectedValueOnce(createResponseError(401));
 
-      const result = await service.getLibraryContents('library-1', {
-        offset: 0,
-        limit: 30,
-        type: 'movie',
-      });
+      await expect(
+        service.getLibraryContents('library-1', {
+          offset: 0,
+          limit: 30,
+          type: 'movie',
+        }),
+      ).rejects.toThrow('request failed with status 401');
 
       expect(delay).not.toHaveBeenCalled();
       expect(jellyfinApiMocks.getItems).toHaveBeenCalledTimes(1);
-      expect(result).toEqual({ items: [], totalSize: 0, offset: 0, limit: 50 });
+    });
+
+    it('rethrows when the transient retry is exhausted instead of fabricating an empty page', async () => {
+      jellyfinApiMocks.getItems.mockRejectedValue(createResponseError(503));
+
+      await expect(
+        service.getLibraryContents('library-1', {
+          offset: 0,
+          limit: 30,
+          type: 'movie',
+        }),
+      ).rejects.toThrow('request failed with status 503');
+
+      expect(jellyfinApiMocks.getItems).toHaveBeenCalledTimes(2);
     });
   });
 

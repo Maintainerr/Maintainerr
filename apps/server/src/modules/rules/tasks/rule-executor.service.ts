@@ -313,12 +313,13 @@ export class RuleExecutorService {
             arrLookupCache,
           );
 
-          if (ruleResult) {
-            this.statisticsData.push(...ruleResult.stats);
-            this.resultData.push(...ruleResult.data);
-            for (const id of ruleResult.transientFailureMediaIds) {
-              this.transientFailureMediaIds.add(id);
-            }
+          // executeRulesWithData throws on evaluation failure; a silently
+          // skipped chunk would be removed from the collection as
+          // "no longer matching" (#3307).
+          this.statisticsData.push(...ruleResult.stats);
+          this.resultData.push(...ruleResult.data);
+          for (const id of ruleResult.transientFailureMediaIds) {
+            this.transientFailureMediaIds.add(id);
           }
         }
 

@@ -203,6 +203,37 @@ describe('PlexApiService.getMetadata', () => {
     );
   });
 
+  it('returns a confirmed empty page when a library section has no items', async () => {
+    const query = jest.fn().mockResolvedValue({
+      MediaContainer: { totalSize: 0 },
+    });
+
+    (service as any).plexClient = { query };
+
+    expect(await service.getLibraryContents('1')).toEqual({
+      totalSize: 0,
+      items: [],
+    });
+  });
+
+  it('re-throws library page read failures instead of reporting an empty page', async () => {
+    const query = jest.fn().mockRejectedValue(new Error('boom'));
+
+    (service as any).plexClient = { query };
+
+    await expect(service.getLibraryContents('1')).rejects.toThrow('boom');
+  });
+
+  it('throws on a library page response without a MediaContainer', async () => {
+    const query = jest.fn().mockResolvedValue(undefined);
+
+    (service as any).plexClient = { query };
+
+    await expect(service.getLibraryContents('1')).rejects.toThrow(
+      'no MediaContainer',
+    );
+  });
+
   it('builds a single encoded collection uri when adding multiple children', async () => {
     const putQuery = jest.fn().mockResolvedValue({
       MediaContainer: { Metadata: [{ ratingKey: '123' }] },
