@@ -30,10 +30,10 @@
     "node": "^22.13.0 || >=24.11.0"
   },
   "devDependencies": {
-    "@semantic-release/changelog": "^6.0.3",
+    "@semantic-release/changelog": "^7.0.0",
     "@semantic-release/commit-analyzer": "^13.0.1",
     "@semantic-release/exec": "^7.1.0",
-    "@semantic-release/git": "^10.0.1",
+    "@semantic-release/git": "^11.0.0",
     "@types/node": "^26.1.1",
     "knip": "^6.27.0",
     "semantic-release": "^25.0.8",
@@ -85,7 +85,7 @@
     ]
   },
   "resolutions": {
-    "dompurify": ">=3.4.11",
+    "dompurify": ">=3.4.12",
     "picomatch": ">=4.0.4",
     "postcss": ">=8.5.10",
     "lodash": ">=4.18.0",
