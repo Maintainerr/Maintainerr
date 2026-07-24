@@ -33,7 +33,7 @@
     "@semantic-release/changelog": "^7.0.0",
     "@semantic-release/commit-analyzer": "^13.0.1",
     "@semantic-release/exec": "^7.1.0",
-    "@semantic-release/git": "^11.0.0",
+    "@semantic-release/git": "^11.0.1",
     "@types/node": "^26.1.1",
     "knip": "^6.29.0",
     "semantic-release": "^25.0.8",
