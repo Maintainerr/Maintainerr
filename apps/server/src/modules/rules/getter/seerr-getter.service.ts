@@ -167,7 +167,9 @@ export class SeerrGetterService {
             } catch (error) {
               this.logger.warn("Couldn't get addUser from Seerr");
               this.logger.debug(error);
-              return null;
+              // undefined (transient) per the getter contract - null reads as
+              // a confirmed answer and lifts the removal guard.
+              return undefined;
             }
           }
           case 'amountRequested': {

@@ -55,15 +55,22 @@ export class RuleMaintenanceService extends TaskBase {
   }
 
   private async removeLeftoverExclusions() {
-    // get all exclusions
     const exclusions = await this.rulesService.getAllExclusions();
     const mediaServer = await this.mediaServerFactory.getService();
-    // loop through exclusions
     for (const exclusion of exclusions) {
-      // check if media still exists
-      const resp = await mediaServer.getMetadata(exclusion.mediaServerId);
-      // remove when not
-      if (!resp?.id) {
+      // Only drop an exclusion when the media server *confirms* the item is
+      // gone. `itemExists` returns false solely on a 404/empty result and
+      // throws on an inconclusive check, unlike `getMetadata` which returns
+      // undefined for both absent and failed reads - a transient blip must
+      // not delete the protection an exclusion provides.
+      let exists = true;
+      try {
+        exists = await mediaServer.itemExists(exclusion.mediaServerId);
+      } catch (error) {
+        this.logger.debug(error);
+      }
+
+      if (!exists) {
         await this.rulesService.removeExclusion(exclusion.id);
       }
     }

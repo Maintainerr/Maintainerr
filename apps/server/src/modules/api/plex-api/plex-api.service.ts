@@ -484,14 +484,17 @@ export class PlexApiService {
       });
 
       if (!response?.MediaContainer) {
-        this.logLibrarySectionError(id);
-        return undefined;
+        throw new Error(
+          `Plex library section ${id} returned no MediaContainer`,
+        );
       }
 
       return response.MediaContainer.totalSize;
     } catch (error) {
       this.logLibrarySectionError(id, error);
-      return undefined;
+      // Same contract as getLibraryContents: a fabricated count masks a
+      // failed read from callers that gate work on it.
+      throw error;
     }
   }
 
@@ -638,7 +641,10 @@ export class PlexApiService {
   public async getUserDataFromPlexTv(): Promise<PlexTvUser[] | undefined> {
     try {
       const response = await this.plexTvClient.getUsers();
-      return response.MediaContainer.User;
+      // xml2js leaves `User` undefined when the account simply has no shared
+      // users - that is a confirmed empty list, not a failure. Reserve
+      // `undefined` for a failed fetch so callers can tell them apart.
+      return response.MediaContainer.User ?? [];
     } catch (error) {
       this.logger.error(
         "Outbound call to plex.tv failed. Couldn't fetch users",
@@ -648,7 +654,7 @@ export class PlexApiService {
     }
   }
 
-  public async getOwnerDataFromPlexTv(): Promise<PlexUser> {
+  public async getOwnerDataFromPlexTv(): Promise<PlexUser | undefined> {
     try {
       return await this.plexTvClient.getUser();
     } catch (error) {
@@ -1671,6 +1677,19 @@ export class PlexApiService {
   ): Promise<SimplePlexUser[]> {
     const plexTvUsers = await this.getUserDataFromPlexTv();
     const owner = await this.getOwnerDataFromPlexTv();
+
+    // The whole point of this method is the plex.tv enrichment: usernames
+    // that match Seerr's (#1240, #1339) and the uuids the watchlist getters
+    // key on. When plex.tv is unreachable a silent fallback to local account
+    // names produced plausible-but-wrong lists that rules then acted on
+    // (#3307). Throw instead - rule getters catch this and return the
+    // transient `undefined`, pausing evaluation for the item. The per-user
+    // local fallback below stays for accounts plex.tv genuinely doesn't know.
+    if (plexTvUsers === undefined || owner === undefined) {
+      throw new Error(
+        'plex.tv user data unavailable; cannot resolve Plex usernames',
+      );
+    }
 
     return (await this.getUsers()).map((el) => {
       const plextv = plexTvUsers?.find((tvEl) => Number(tvEl.$?.id) === el.id);

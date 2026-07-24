@@ -1418,6 +1418,23 @@ describe('PlexGetterService', () => {
 
       expect(result).toBeUndefined();
     });
+
+    it('returns undefined when the plex.tv username enrichment fails so degraded names never mis-evaluate rules (#3307)', async () => {
+      plexApi.getMetadata.mockResolvedValue(makeMetadata());
+      plexApi.getCorrectedUsers.mockRejectedValue(
+        new Error('plex.tv user data unavailable'),
+      );
+      plexApi.getWatchHistory.mockResolvedValue([
+        makeWatchEntry({ accountID: 1 }),
+      ]);
+
+      const result = await service.get(
+        SEEN_BY_PROP_ID,
+        createMediaItem({ type: 'movie' }),
+      );
+
+      expect(result).toBeUndefined();
+    });
   });
 
   describe('sw_lastWatched (id 13) - Newest episode view date', () => {

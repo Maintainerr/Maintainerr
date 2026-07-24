@@ -143,20 +143,34 @@ export class ExclusionTypeCorrectorService implements OnModuleInit {
 
     const mediaServer = await this.mediaServerFactory.getService();
 
-    // correct the type
+    const corrected: typeof exclusionsWithoutType = [];
     for (const el of exclusionsWithoutType) {
       const metaData = await mediaServer.getMetadata(el.mediaServerId);
-      if (!metaData) {
-        // remove record if not in media server
+      if (metaData) {
+        el.type = metaData.type;
+        corrected.push(el);
+        continue;
+      }
+
+      // getMetadata is undefined for both a gone item and a failed read.
+      // Only remove on a confirmed 404 via itemExists; on an inconclusive
+      // check leave the row untyped so the next startup retries - a
+      // transient blip must not delete the protection an exclusion provides.
+      let exists = true;
+      try {
+        exists = await mediaServer.itemExists(el.mediaServerId);
+      } catch (error) {
+        this.logger.debug(error);
+      }
+
+      if (!exists) {
         await this.rulesService.removeExclusion(el.id);
-      } else {
-        // Assign MediaItemType string directly
-        el.type = metaData?.type;
       }
     }
 
-    // save edited data
-    await this.exclusionRepo.save(exclusionsWithoutType);
+    // Save only the rows that received a type: saving the full list would
+    // re-insert the exclusions removed above.
+    await this.exclusionRepo.save(corrected);
 
     this.logger.log('Exclusion type backfill complete');
   }

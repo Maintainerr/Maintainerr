@@ -388,7 +388,7 @@ describe('PlexApiService.getMetadata', () => {
         name: 'owner',
       } as any,
     ]);
-    jest.spyOn(service, 'getUserDataFromPlexTv').mockResolvedValue(undefined);
+    jest.spyOn(service, 'getUserDataFromPlexTv').mockResolvedValue([]);
     jest.spyOn(service, 'getOwnerDataFromPlexTv').mockResolvedValue({
       id: '42',
       username: 'owner',
@@ -404,7 +404,10 @@ describe('PlexApiService.getMetadata', () => {
     ]);
   });
 
-  it('ignores avatar urls that do not match the expected plex shape', async () => {
+  it('throws from getCorrectedUsers when plex.tv user data is unavailable', async () => {
+    // A silent fallback to local account names produced plausible-but-wrong
+    // lists that rules acted on (#3307). Getters catch this and return the
+    // transient `undefined`.
     jest.spyOn(service, 'getUsers').mockResolvedValue([
       {
         id: 1,
@@ -412,6 +415,64 @@ describe('PlexApiService.getMetadata', () => {
       } as any,
     ]);
     jest.spyOn(service, 'getUserDataFromPlexTv').mockResolvedValue(undefined);
+    jest.spyOn(service, 'getOwnerDataFromPlexTv').mockResolvedValue({
+      id: '42',
+      username: 'owner',
+      thumb: 'https://plex.tv/users/abc123/avatar?c=123456',
+    } as any);
+
+    await expect(service.getCorrectedUsers()).rejects.toThrow(
+      'plex.tv user data unavailable',
+    );
+  });
+
+  it('throws from getCorrectedUsers when the plex.tv owner fetch fails', async () => {
+    jest.spyOn(service, 'getUsers').mockResolvedValue([
+      {
+        id: 1,
+        name: 'owner',
+      } as any,
+    ]);
+    jest.spyOn(service, 'getUserDataFromPlexTv').mockResolvedValue([]);
+    jest.spyOn(service, 'getOwnerDataFromPlexTv').mockResolvedValue(undefined);
+
+    await expect(service.getCorrectedUsers()).rejects.toThrow(
+      'plex.tv user data unavailable',
+    );
+  });
+
+  it('returns a confirmed empty list from getUserDataFromPlexTv when the account has no shared users', async () => {
+    (service as any).plexTvClient = {
+      getUsers: jest.fn().mockResolvedValue({ MediaContainer: {} }),
+    };
+
+    await expect(service.getUserDataFromPlexTv()).resolves.toEqual([]);
+  });
+
+  it('returns undefined from getUserDataFromPlexTv when the plex.tv fetch fails', async () => {
+    (service as any).plexTvClient = {
+      getUsers: jest.fn().mockRejectedValue(new Error('boom')),
+    };
+
+    await expect(service.getUserDataFromPlexTv()).resolves.toBeUndefined();
+  });
+
+  it('re-throws library count read failures instead of reporting zero', async () => {
+    const query = jest.fn().mockRejectedValue(new Error('boom'));
+
+    (service as any).plexClient = { query };
+
+    await expect(service.getLibraryContentCount('1')).rejects.toThrow('boom');
+  });
+
+  it('ignores avatar urls that do not match the expected plex shape', async () => {
+    jest.spyOn(service, 'getUsers').mockResolvedValue([
+      {
+        id: 1,
+        name: 'owner',
+      } as any,
+    ]);
+    jest.spyOn(service, 'getUserDataFromPlexTv').mockResolvedValue([]);
     jest.spyOn(service, 'getOwnerDataFromPlexTv').mockResolvedValue({
       id: '42',
       username: 'owner',

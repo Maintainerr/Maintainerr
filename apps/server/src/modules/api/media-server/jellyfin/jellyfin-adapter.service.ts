@@ -820,7 +820,9 @@ export class JellyfinAdapterService implements IMediaServerService {
       return response.data.TotalRecordCount || 0;
     } catch (error) {
       this.logLibraryError(libraryId, 'get library count', error);
-      return 0;
+      // Same contract as getLibraryContents: a fabricated count masks a
+      // failed read from callers that gate work on it.
+      throw error;
     }
   }
 

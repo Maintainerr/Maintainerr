@@ -332,6 +332,14 @@ describe('EmbyAdapterService', () => {
         service.getLibraryContents('library-1', { offset: 0, limit: 50 }),
       ).rejects.toThrow('boom');
     });
+
+    it('re-throws library count read failures instead of reporting zero', async () => {
+      http.get.mockRejectedValueOnce(new Error('boom'));
+
+      await expect(
+        service.getLibraryContentCount('library-1', 'movie'),
+      ).rejects.toThrow('boom');
+    });
   });
 
   // Collection reads must be user-scoped: Emby resolves the BoxSet query

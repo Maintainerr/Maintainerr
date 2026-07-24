@@ -379,7 +379,9 @@ export class EmbyAdapterService implements IMediaServerService {
       this.logger.debug(
         `Emby getLibraryContentCount(${libraryId}) failed: ${formatConnectionFailureMessage(error, 'Connection failed')}`,
       );
-      return 0;
+      // Same contract as getLibraryContents: a fabricated count masks a
+      // failed read from callers that gate work on it.
+      throw error;
     }
   }
 

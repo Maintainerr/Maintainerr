@@ -117,6 +117,9 @@ export interface IMediaServerService {
 
   /**
    * Get total count of items in a library, optionally filtered by type.
+   *
+   * @throws Error on a failed read - a fabricated 0 masks the failure from
+   * callers that gate work on the count.
    */
   getLibraryContentCount(
     libraryId: string,

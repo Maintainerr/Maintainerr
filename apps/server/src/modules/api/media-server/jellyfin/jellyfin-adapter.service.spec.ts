@@ -539,6 +539,14 @@ describe('JellyfinAdapterService', () => {
       expect(jellyfinApiMocks.getItems).toHaveBeenCalledTimes(1);
     });
 
+    it('rethrows library count read failures instead of reporting zero', async () => {
+      jellyfinApiMocks.getItems.mockRejectedValueOnce(createResponseError(500));
+
+      await expect(
+        service.getLibraryContentCount('library-1', 'movie'),
+      ).rejects.toThrow('request failed with status 500');
+    });
+
     it('rethrows when the transient retry is exhausted instead of fabricating an empty page', async () => {
       jellyfinApiMocks.getItems.mockRejectedValue(createResponseError(503));
 
