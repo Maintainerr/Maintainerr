@@ -21,6 +21,7 @@ import { CollectionsController } from './collections.controller';
 import { CollectionsService } from './collections.service';
 import { Collection } from './entities/collection.entities';
 import { CollectionMedia } from './entities/collection_media.entities';
+import { CollectionMediaRuleRemoval } from './entities/collection_media_rule_removal.entities';
 import { RecentlyHandledMediaService } from './recently-handled-media.service';
 
 @Module({
@@ -31,6 +32,7 @@ import { RecentlyHandledMediaService } from './recently-handled-media.service';
     TypeOrmModule.forFeature([
       Collection,
       CollectionMedia,
+      CollectionMediaRuleRemoval,
       CollectionLog,
       RuleGroup,
       Exclusion,

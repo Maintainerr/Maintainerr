@@ -428,6 +428,13 @@ export class RuleExecutorService {
           return;
         }
 
+        // An empty child list is a trustworthy "empty" snapshot for Plex, but
+        // Jellyfin/Emby can transiently return [] during sync delays, so their
+        // empty result is treated as ambiguous (see the removal sweep below).
+        const isJellyfin =
+          this.settings.media_server_type === MediaServerType.JELLYFIN;
+        const isEmby = this.settings.media_server_type === MediaServerType.EMBY;
+
         // Handle manually added
         if (syncContext.skipManualChildImport) {
           this.logger.debug(
@@ -455,6 +462,33 @@ export class RuleExecutorService {
           }
 
           if (siblingRuleOwnedIds !== undefined) {
+            // Heal items a rule removed that the media server never dropped: an
+            // active marker means the item is our orphan, not a user's manual
+            // add, so remove it from the server rather than re-adopt it below.
+            // Sibling-owned ids are excluded so a shared collection's items are
+            // never removed out from under the rule group that still owns them.
+            // Best-effort, like the sibling lookup above: a DB error here must
+            // not fail an otherwise-successful rule run. On failure we skip the
+            // manual adoption below (rather than adopt a possibly-unremoved
+            // orphan as a permanent manual member) and retry next run.
+            let orphanIds = new Set<string>();
+            let reconciled = true;
+            try {
+              orphanIds =
+                await this.collectionService.reconcileRuleRemovedOrphans(
+                  collection,
+                  children,
+                  siblingRuleOwnedIds,
+                  true, // a non-empty child read is a trustworthy snapshot
+                );
+            } catch (error) {
+              reconciled = false;
+              this.logger.warn(
+                `Could not reconcile rule-removed orphans for '${collection.title}'; skipping manual import this run.`,
+              );
+              this.logger.debug(error);
+            }
+
             // Fetch exclusions to avoid re-adding excluded items as manual
             const exclusions = await this.rulesService.getExclusions(
               rulegroup.id,
@@ -507,6 +541,12 @@ export class RuleExecutorService {
                   continue;
                 }
 
+                // A rule-removal orphan the media server retained: it is being
+                // self-healed above, so never re-adopt it as a manual member.
+                if (orphanIds.has(childId)) {
+                  continue;
+                }
+
                 if (!collectionMediaIds.has(childId)) {
                   collectionMediaIds.add(childId);
                   missingManualChildren.push({
@@ -522,7 +562,7 @@ export class RuleExecutorService {
               }
             }
 
-            if (missingManualChildren.length > 0) {
+            if (reconciled && missingManualChildren.length > 0) {
               // Name the adopted items: a member that appears with the
               // "manual" tag without the user having added it is otherwise
               // undiagnosable from the logs.
@@ -543,6 +583,24 @@ export class RuleExecutorService {
               );
             }
           }
+        } else {
+          // Empty child snapshot: still reconcile so a propagated removal's
+          // marker clears and the table stays bounded. Nothing is present, so
+          // there is no self-heal or sibling concern; an empty read is only a
+          // trustworthy "gone" signal for Plex, not Jellyfin/Emby.
+          try {
+            await this.collectionService.reconcileRuleRemovedOrphans(
+              collection,
+              children ?? [],
+              new Set(),
+              !(isJellyfin || isEmby),
+            );
+          } catch (error) {
+            this.logger.warn(
+              `Could not reconcile rule-removed orphans for '${collection.title}'.`,
+            );
+            this.logger.debug(error);
+          }
         }
 
         // Handle manually removed items from collections
@@ -552,9 +610,6 @@ export class RuleExecutorService {
         // positives where valid items would be incorrectly flagged as "manually
         // removed". This workaround can be removed if the upstream improves
         // collection sync consistency.
-        const isJellyfin =
-          this.settings.media_server_type === MediaServerType.JELLYFIN;
-        const isEmby = this.settings.media_server_type === MediaServerType.EMBY;
         const shouldCheckRemovals =
           isJellyfin || isEmby ? children && children.length > 0 : true;
 
