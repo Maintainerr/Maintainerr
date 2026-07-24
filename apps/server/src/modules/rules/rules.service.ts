@@ -1749,14 +1749,14 @@ export class RulesService {
     if (mediaResp) {
       group.rules = await this.getRules(group.id);
       const ruleComparator = this.ruleComparatorServiceFactory.create();
-      const result = await ruleComparator.executeRulesWithData(
-        group as RulesDto,
-        [mediaResp],
-      );
-
-      if (result) {
+      try {
+        const result = await ruleComparator.executeRulesWithData(
+          group as RulesDto,
+          [mediaResp],
+        );
         return { code: 1, result: result.stats };
-      } else {
+      } catch (error) {
+        this.logger.debug(error);
         return { code: 0, result: 'An error occurred executing rules' };
       }
     }

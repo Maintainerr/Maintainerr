@@ -11,6 +11,7 @@ import { Collection } from '../../collections/entities/collection.entities';
 import { RulesDto } from '../dtos/rules.dto';
 import { TautulliGetterService } from './tautulli-getter.service';
 
+const SEEN_BY = 0;
 const SW_LAST_WATCHED = 7;
 
 // Tautulli grades watched_status as 0 | 0.25 | 0.5 | 0.75 | 1; only 1 means the
@@ -26,6 +27,7 @@ const historyItem = (props: {
 const createService = (
   history: ReturnType<typeof historyItem>[],
   tautulliWatchedPercentOverride: number | null = null,
+  plexApi: Partial<jest.Mocked<PlexApiService>> = {},
 ) => {
   const tautulliApi = {
     getMetadata: jest
@@ -42,7 +44,7 @@ const createService = (
 
   return new TautulliGetterService(
     tautulliApi,
-    {} as jest.Mocked<PlexApiService>,
+    plexApi as jest.Mocked<PlexApiService>,
     collectionRepository,
     createMockLogger(),
   );
@@ -52,6 +54,42 @@ const showItem: MediaItem = createMediaItem({ type: 'show', id: '1' });
 const ruleGroup = { collection: { id: 1 } } as RulesDto;
 
 describe('TautulliGetterService', () => {
+  describe('seenBy', () => {
+    const watchedPlay = historyItem({
+      watched_status: 1,
+      percent_complete: 100,
+      parent_media_index: 1,
+      media_index: 1,
+      stopped: 1_700_000_000,
+    });
+
+    it('maps Tautulli viewer ids to plex.tv usernames', async () => {
+      const service = createService([watchedPlay], null, {
+        getCorrectedUsers: jest
+          .fn()
+          .mockResolvedValue([{ plexId: 1, username: 'alice' }]),
+      } as Partial<jest.Mocked<PlexApiService>>);
+
+      await expect(
+        service.get(SEEN_BY, showItem, undefined, ruleGroup),
+      ).resolves.toEqual(['alice']);
+    });
+
+    it('returns undefined when the plex.tv username enrichment fails so degraded names never mis-evaluate rules (#3307)', async () => {
+      // Before, a failed plex.tv fetch degraded to local account ids/names,
+      // silently dropping viewers from the list.
+      const service = createService([watchedPlay], null, {
+        getCorrectedUsers: jest
+          .fn()
+          .mockRejectedValue(new Error('plex.tv user data unavailable')),
+      } as Partial<jest.Mocked<PlexApiService>>);
+
+      await expect(
+        service.get(SEEN_BY, showItem, undefined, ruleGroup),
+      ).resolves.toBeUndefined();
+    });
+  });
+
   describe('sw_lastWatched', () => {
     it('returns null when no episode crossed the watched threshold', async () => {
       const service = createService([

@@ -138,6 +138,31 @@ describe('RuleComparatorService.executeRulesWithData', () => {
     } as never);
   });
 
+  it('rethrows evaluation failures instead of returning undefined for the chunk (#3307)', async () => {
+    // A swallowed chunk error left every item in it unmatched and
+    // unprotected, so the executor removed them as "no longer matching".
+    const mediaItem = createSingleMedia();
+    const rules = [
+      createStoredRule(1, {
+        operator: null,
+        action: RulePossibility.SMALLER,
+        firstVal: [Application.PLEX, 31],
+        customVal: { ruleTypeId: +RuleType.NUMBER, value: '6' },
+        section: 0,
+      }),
+    ];
+
+    valueGetterService.get.mockReset();
+    valueGetterService.get.mockRejectedValue(new Error('boom'));
+
+    await expect(
+      ruleComparatorService.executeRulesWithData(
+        createRulesDto({ dataType: 'movie', rules }),
+        [mediaItem],
+      ),
+    ).rejects.toThrow('boom');
+  });
+
   it('fails closed when the first value is missing for a custom comparison', async () => {
     const mediaItem = createSingleMedia();
     const rules = [
