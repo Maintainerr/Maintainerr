@@ -36,9 +36,15 @@ import {
   SonarrSettingRawDto,
   SonarrSettingResponseDto,
 } from "./dto's/sonarr-setting.dto";
+import {
+  DeleteSportarrSettingResponseDto,
+  SportarrSettingRawDto,
+  SportarrSettingResponseDto,
+} from "./dto's/sportarr-setting.dto";
 import { RadarrSettings } from './entities/radarr_settings.entities';
 import { Settings } from './entities/settings.entities';
 import { SonarrSettings } from './entities/sonarr_settings.entities';
+import { SportarrSettings } from './entities/sportarr_settings.entities';
 
 @Injectable()
 export class SettingsOperationsService {
@@ -58,6 +64,8 @@ export class SettingsOperationsService {
     private readonly radarrSettingsRepo: Repository<RadarrSettings>,
     @InjectRepository(SonarrSettings)
     private readonly sonarrSettingsRepo: Repository<SonarrSettings>,
+    @InjectRepository(SportarrSettings)
+    private readonly sportarrSettingsRepo: Repository<SportarrSettings>,
     private readonly logger: MaintainerrLogger,
   ) {
     logger.setContext(SettingsOperationsService.name);
@@ -113,6 +121,18 @@ export class SettingsOperationsService {
 
   public getSonarrSettingsCount(): Promise<number> {
     return this.settingsDataService.getSonarrSettingsCount();
+  }
+
+  public getSportarrSettings() {
+    return this.settingsDataService.getSportarrSettings();
+  }
+
+  public getSportarrSetting(id: number) {
+    return this.settingsDataService.getSportarrSetting(id);
+  }
+
+  public getSportarrSettingsCount(): Promise<number> {
+    return this.settingsDataService.getSportarrSettingsCount();
   }
 
   public generateApiKey(): string {
@@ -884,6 +904,90 @@ export class SettingsOperationsService {
     }
   }
 
+  public async addSportarrSetting(
+    settings: Omit<SportarrSettings, 'id' | 'collections'>,
+  ): Promise<SportarrSettingResponseDto> {
+    try {
+      settings.url = settings.url.toLowerCase();
+
+      const savedSetting = await this.sportarrSettingsRepo.save(settings);
+
+      this.logger.log('Sportarr setting added');
+      return {
+        data: savedSetting,
+        status: 'OK',
+        code: 1,
+        message: 'Success',
+      };
+    } catch (error) {
+      this.logger.error('Error while adding Sportarr setting');
+      this.logger.debug(error);
+      return { status: 'NOK', code: 0, message: 'Failure' };
+    }
+  }
+
+  public async updateSportarrSetting(
+    settings: Omit<SportarrSettings, 'collections'>,
+  ): Promise<SportarrSettingResponseDto> {
+    try {
+      settings.url = settings.url.toLowerCase();
+
+      const settingsDb = await this.sportarrSettingsRepo.findOne({
+        where: { id: settings.id },
+      });
+
+      const data = {
+        ...settingsDb,
+        ...settings,
+      };
+
+      await this.sportarrSettingsRepo.save(data);
+
+      this.servarr.deleteCachedSportarrApiClient(settings.id);
+
+      this.logger.log('Sportarr settings updated');
+      return { data, status: 'OK', code: 1, message: 'Success' };
+    } catch (error) {
+      this.logger.error('Error while updating Sportarr settings');
+      this.logger.debug(error);
+      return { status: 'NOK', code: 0, message: 'Failure' };
+    }
+  }
+
+  public async deleteSportarrSetting(
+    id: number,
+  ): Promise<DeleteSportarrSettingResponseDto> {
+    try {
+      const settingsDb = await this.sportarrSettingsRepo.findOne({
+        where: { id: id },
+        relations: { collections: true },
+      });
+
+      if (settingsDb.collections.length > 0) {
+        return {
+          status: 'NOK',
+          code: 0,
+          message: 'Cannot delete setting with associated collections',
+          data: {
+            collectionsInUse: settingsDb.collections,
+          },
+        };
+      }
+
+      await this.sportarrSettingsRepo.delete({
+        id,
+      });
+      this.servarr.deleteCachedSportarrApiClient(id);
+
+      this.logger.log('Sportarr settings deleted');
+      return { status: 'OK', code: 1, message: 'Success' };
+    } catch (error) {
+      this.logger.error('Error while deleting Sportarr setting');
+      this.logger.debug(error);
+      return { status: 'NOK', code: 0, message: 'Failure', data: null };
+    }
+  }
+
   public async deletePlexApiAuth(): Promise<BasicResponseDto> {
     try {
       const settingsDb = await this.settingsRepo.findOne({ where: {} });
@@ -1270,6 +1374,37 @@ export class SettingsOperationsService {
         message: formatConnectionFailureMessage(
           error,
           'Failed to connect to Sonarr. Verify URL and API key.',
+        ),
+      };
+    }
+  }
+
+  public async testSportarr(
+    id: number | SportarrSettingRawDto,
+  ): Promise<BasicResponseDto> {
+    try {
+      const apiClient = await this.servarr.getSportarrApiClient(id);
+
+      const resp = await apiClient.info();
+      // Make sure it's actually Sportarr and not another *arr behind the URL
+      if (resp?.appName && resp.appName.toLowerCase() !== 'sportarr') {
+        return {
+          status: 'NOK',
+          code: 0,
+          message: `Unexpected application name returned: ${resp.appName}`,
+        };
+      }
+      return resp?.version != null
+        ? { status: 'OK', code: 1, message: resp.version }
+        : { status: 'NOK', code: 0, message: 'Failure' };
+    } catch (error) {
+      logConnectionTestError(this.logger, 'Sportarr');
+      return {
+        status: 'NOK',
+        code: 0,
+        message: formatConnectionFailureMessage(
+          error,
+          'Failed to connect to Sportarr. Verify URL and API key.',
         ),
       };
     }

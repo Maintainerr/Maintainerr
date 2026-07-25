@@ -203,6 +203,86 @@ describe('RuleInput', () => {
     expect(onCommit).not.toHaveBeenCalled()
   })
 
+  describe('application filtering', () => {
+    // The rule builder must only offer an arr's properties when the collection
+    // has a server of that arr selected; an entry for an unbound arr saves
+    // into a hard validation failure on the server.
+    const showConstants = {
+      applications: [
+        {
+          id: Application.SONARR,
+          name: 'Sonarr',
+          mediaType: MediaType.SHOW,
+          props: [
+            {
+              id: 0,
+              name: 'addDate',
+              humanName: 'Date added',
+              mediaType: MediaType.SHOW,
+              type: {
+                key: '0',
+                possibilities: [RulePossibility.EXISTS],
+              },
+            },
+          ],
+        },
+        {
+          id: Application.SPORTARR,
+          name: 'Sportarr',
+          mediaType: MediaType.SHOW,
+          props: [
+            {
+              id: 0,
+              name: 'addDate',
+              humanName: 'Date added',
+              mediaType: MediaType.SHOW,
+              type: {
+                key: '0',
+                possibilities: [RulePossibility.EXISTS],
+              },
+            },
+          ],
+        },
+      ],
+    }
+
+    const renderShowRuleInput = (settings: {
+      sonarrSettingsId?: number | null
+      sportarrSettingsId?: number | null
+    }) => {
+      useRuleConstantsMock.mockReturnValue({
+        data: showConstants,
+        isLoading: false,
+      })
+      return render(
+        <RuleInput
+          id={1}
+          mediaType={MediaType.SHOW}
+          dataType="show"
+          sonarrSettingsId={settings.sonarrSettingsId}
+          sportarrSettingsId={settings.sportarrSettingsId}
+          onCommit={onCommit}
+          onIncomplete={onIncomplete}
+          onDelete={onDelete}
+        />,
+      )
+    }
+
+    it('hides Sportarr properties when no Sportarr server is selected', () => {
+      renderShowRuleInput({ sonarrSettingsId: 1, sportarrSettingsId: null })
+
+      expect(screen.getByText('Sonarr - Date added')).toBeDefined()
+      expect(screen.queryByText('Sportarr - Date added')).toBeNull()
+    })
+
+    it('offers Sportarr and hides Sonarr for a Sportarr-managed collection', () => {
+      renderShowRuleInput({ sonarrSettingsId: null, sportarrSettingsId: 1 })
+
+      expect(screen.getByText('Sportarr - Date added')).toBeDefined()
+      expect(screen.queryByText('Sonarr - Date added')).toBeNull()
+    })
+  })
+
   it('commits a non-first rule once an operator is selected', async () => {
     render(
       <RuleInput

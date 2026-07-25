@@ -1,0 +1,233 @@
+import { Mocked, TestBed } from '@suites/unit';
+import { createMediaItem, createRulesDto } from '../../../../test/utils/data';
+import { MediaServerFactory } from '../../api/media-server/media-server.factory';
+import { IMediaServerService } from '../../api/media-server/media-server.interface';
+import { ServarrService } from '../../api/servarr-api/servarr.service';
+import { SportarrGetterService } from './sportarr-getter.service';
+
+// The F1 league from the docs: external id lg-000278, so the Plex item carries
+// the tvdb alias 900000278.
+const F1_ALIAS = '900000278';
+const F1_EXTERNAL_ID = 'lg-000278';
+
+describe('SportarrGetterService', () => {
+  let service: SportarrGetterService;
+  let servarrService: Mocked<ServarrService>;
+  let mediaServerFactory: Mocked<MediaServerFactory>;
+  let mockClient: {
+    getLeagueByExternalId: jest.Mock;
+    getLeagueEvents: jest.Mock;
+    getQualityProfiles: jest.Mock;
+  };
+  let mockMediaServer: { getMetadata: jest.Mock };
+
+  beforeEach(async () => {
+    const { unit, unitRef } = await TestBed.solitary(
+      SportarrGetterService,
+    ).compile();
+    service = unit;
+    servarrService = unitRef.get(ServarrService);
+    mediaServerFactory = unitRef.get(MediaServerFactory);
+
+    mockClient = {
+      getLeagueByExternalId: jest.fn(),
+      getLeagueEvents: jest.fn(),
+      getQualityProfiles: jest.fn(),
+    };
+    servarrService.getSportarrApiClient.mockResolvedValue(mockClient as any);
+
+    mockMediaServer = { getMetadata: jest.fn() };
+    mediaServerFactory.getService.mockResolvedValue(
+      mockMediaServer as unknown as IMediaServerService,
+    );
+  });
+
+  const showItem = (overrides = {}) =>
+    createMediaItem({
+      type: 'show',
+      title: 'Formula 1',
+      providerIds: { tvdb: [F1_ALIAS] },
+      ...overrides,
+    });
+
+  const ruleGroup = () =>
+    createRulesDto({
+      dataType: 'show',
+      collection: { title: 'F1', sportarrSettingsId: 1 } as any,
+    });
+
+  it('errors and returns null when no Sportarr server is configured', async () => {
+    const result = await service.get(
+      0,
+      showItem(),
+      'show',
+      createRulesDto({ collection: {} as any }),
+    );
+    expect(result).toBeNull();
+  });
+
+  it('fails closed (undefined) when no Sportarr id can be resolved', async () => {
+    // An empty resolution can't distinguish "no alias on the item" from a
+    // transient media-server failure, so it must not read as definitive
+    // absence (same reasoning as the Sonarr getter, #3307).
+    const result = await service.get(
+      0,
+      createMediaItem({ type: 'show', providerIds: { tvdb: ['342040'] } }),
+      'show',
+      ruleGroup(),
+    );
+    expect(result).toBeUndefined();
+    expect(mockClient.getLeagueByExternalId).not.toHaveBeenCalled();
+  });
+
+  it('finds the alias when it is not the first tvdb provider id', async () => {
+    mockClient.getLeagueByExternalId.mockResolvedValue({
+      id: 3,
+      externalId: F1_EXTERNAL_ID,
+      name: 'Formula 1',
+      monitored: true,
+      added: '2025-12-04T02:29:15.000Z',
+    });
+
+    // An agent-matched item can carry a real TVDB id ahead of the alias.
+    const result = await service.get(
+      1,
+      showItem({ providerIds: { tvdb: ['342040', F1_ALIAS] } }),
+      'show',
+      ruleGroup(),
+    );
+
+    expect(mockClient.getLeagueByExternalId).toHaveBeenCalledWith(
+      F1_EXTERNAL_ID,
+    );
+    expect(result).toBe(true);
+  });
+
+  it('resolves the league by the reversed alias and returns addDate', async () => {
+    mockClient.getLeagueByExternalId.mockResolvedValue({
+      id: 3,
+      externalId: F1_EXTERNAL_ID,
+      name: 'Formula 1',
+      monitored: true,
+      added: '2025-12-04T02:29:15.000Z',
+    });
+
+    const result = await service.get(0, showItem(), 'show', ruleGroup());
+
+    expect(mockClient.getLeagueByExternalId).toHaveBeenCalledWith(
+      F1_EXTERNAL_ID,
+    );
+    expect(result).toBeInstanceOf(Date);
+    expect((result as Date).toISOString()).toBe('2025-12-04T02:29:15.000Z');
+  });
+
+  it('returns the league monitored flag at show scope', async () => {
+    mockClient.getLeagueByExternalId.mockResolvedValue({
+      id: 3,
+      externalId: F1_EXTERNAL_ID,
+      name: 'Formula 1',
+      monitored: false,
+      added: '2025-12-04T02:29:15.000Z',
+    });
+
+    const result = await service.get(1, showItem(), 'show', ruleGroup());
+    expect(result).toBe(false);
+  });
+
+  it('returns null when the league is not tracked in Sportarr', async () => {
+    mockClient.getLeagueByExternalId.mockResolvedValue(null);
+    const result = await service.get(1, showItem(), 'show', ruleGroup());
+    expect(result).toBeNull();
+  });
+
+  it('fails closed (undefined) when the league lookup errors transiently', async () => {
+    mockClient.getLeagueByExternalId.mockResolvedValue(undefined);
+    const result = await service.get(1, showItem(), 'show', ruleGroup());
+    expect(result).toBeUndefined();
+  });
+
+  it('resolves an episode-scope hasFile via the parent show + event index', async () => {
+    // Episode item: grandparent is the show, parentIndex is the season year,
+    // index is the event position in that season.
+    const episode = createMediaItem({
+      type: 'episode',
+      grandparentId: 'show-1',
+      parentIndex: 2026,
+      index: 5,
+      providerIds: {},
+    });
+    mockMediaServer.getMetadata.mockResolvedValue(showItem());
+    mockClient.getLeagueByExternalId.mockResolvedValue({
+      id: 3,
+      externalId: F1_EXTERNAL_ID,
+      name: 'Formula 1',
+      monitored: true,
+      added: '2025-12-04T02:29:15.000Z',
+    });
+    mockClient.getLeagueEvents.mockResolvedValue([
+      { id: 10, seasonNumber: 2026, episodeNumber: 5, hasFile: true },
+      { id: 11, seasonNumber: 2026, episodeNumber: 6, hasFile: false },
+    ]);
+
+    const result = await service.get(12, episode, 'episode', {
+      ...ruleGroup(),
+      dataType: 'episode',
+    } as any);
+
+    expect(mockMediaServer.getMetadata).toHaveBeenCalledWith('show-1');
+    expect(result).toBe(true);
+  });
+
+  describe('fail-closed on transient fetch failures', () => {
+    beforeEach(() => {
+      mockClient.getLeagueByExternalId.mockResolvedValue({
+        id: 3,
+        externalId: F1_EXTERNAL_ID,
+        name: 'Formula 1',
+        monitored: true,
+        added: '2025-12-04T02:29:15.000Z',
+        qualityProfileId: 7,
+      });
+    });
+
+    it('returns undefined for downloadedEvents when the events fetch fails', async () => {
+      // A failed fetch must not read as "0 downloaded events": that's the
+      // value removal rules match on, so it would fail open during an outage.
+      mockClient.getLeagueEvents.mockResolvedValue(undefined);
+
+      const result = await service.get(8, showItem(), 'show', ruleGroup());
+      expect(result).toBeUndefined();
+    });
+
+    it('returns undefined for the events count when the events fetch fails', async () => {
+      mockClient.getLeagueEvents.mockResolvedValue(undefined);
+
+      const result = await service.get(7, showItem(), 'show', ruleGroup());
+      expect(result).toBeUndefined();
+    });
+
+    it('returns undefined for qualityProfileName when the profile fetch fails', async () => {
+      mockClient.getQualityProfiles.mockResolvedValue(undefined);
+
+      const result = await service.get(6, showItem(), 'show', ruleGroup());
+      expect(result).toBeUndefined();
+    });
+
+    it('still returns real values when the fetches succeed', async () => {
+      mockClient.getLeagueEvents.mockResolvedValue([
+        { id: 10, seasonNumber: 2026, episodeNumber: 5, hasFile: true },
+        { id: 11, seasonNumber: 2026, episodeNumber: 6, hasFile: false },
+      ]);
+      mockClient.getQualityProfiles.mockResolvedValue([
+        { id: 7, name: 'HD-1080p', isDefault: true },
+      ]);
+
+      await expect(
+        service.get(8, showItem(), 'show', ruleGroup()),
+      ).resolves.toBe(1);
+      await expect(
+        service.get(6, showItem(), 'show', ruleGroup()),
+      ).resolves.toBe('HD-1080p');
+    });
+  });
+});

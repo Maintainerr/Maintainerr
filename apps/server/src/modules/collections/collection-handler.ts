@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { RadarrActionHandler } from '../actions/radarr-action-handler';
 import { SonarrActionHandler } from '../actions/sonarr-action-handler';
+import { SportarrActionHandler } from '../actions/sportarr-action-handler';
 import { MediaServerFactory } from '../api/media-server/media-server.factory';
 import { IMediaServerService } from '../api/media-server/media-server.interface';
 import { SeerrApiService } from '../api/seerr-api/seerr-api.service';
@@ -32,6 +33,7 @@ export class CollectionHandler {
     private readonly metadataService: MetadataService,
     private readonly radarrActionHandler: RadarrActionHandler,
     private readonly sonarrActionHandler: SonarrActionHandler,
+    private readonly sportarrActionHandler: SportarrActionHandler,
     private readonly logger: MaintainerrLogger,
     private readonly recentlyHandledMedia: RecentlyHandledMediaService,
   ) {
@@ -92,7 +94,16 @@ export class CollectionHandler {
         collection,
         media,
       );
-    } else if (!collection.radarrSettingsId && !collection.sonarrSettingsId) {
+    } else if (library?.type == 'show' && collection.sportarrSettingsId) {
+      actionHandled = await this.sportarrActionHandler.handleAction(
+        collection,
+        media,
+      );
+    } else if (
+      !collection.radarrSettingsId &&
+      !collection.sonarrSettingsId &&
+      !collection.sportarrSettingsId
+    ) {
       if (
         collection.arrAction !== ServarrAction.UNMONITOR &&
         collection.arrAction !== ServarrAction.UNMONITOR_SHOW_IF_EMPTY &&

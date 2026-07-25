@@ -19,6 +19,8 @@ import {
   seerrSettingSchema,
   SonarrSetting,
   sonarrSettingSchema,
+  SportarrSetting,
+  sportarrSettingSchema,
   StreamystatsSetting,
   streamystatsSettingSchema,
   SwitchMediaServerRequest,
@@ -85,6 +87,11 @@ export class SettingsController {
   @Get('/sonarr')
   getSonarrSettings() {
     return this.settingsOperationsService.getSonarrSettings();
+  }
+
+  @Get('/sportarr')
+  getSportarrSettings() {
+    return this.settingsOperationsService.getSportarrSettings();
   }
   @Get('/version')
   getVersion() {
@@ -190,6 +197,34 @@ export class SettingsController {
     payload: SonarrSetting,
   ) {
     return await this.settingsOperationsService.updateSonarrSetting({
+      id,
+      ...payload,
+    });
+  }
+
+  @Post('/test/sportarr')
+  testSportarr(
+    @Body(new ZodValidationPipe(sportarrSettingSchema))
+    payload: SportarrSetting,
+  ) {
+    return this.settingsOperationsService.testSportarr(payload);
+  }
+
+  @Post('/sportarr')
+  async addSportarrSetting(
+    @Body(new ZodValidationPipe(sportarrSettingSchema))
+    payload: SportarrSetting,
+  ) {
+    return await this.settingsOperationsService.addSportarrSetting(payload);
+  }
+
+  @Put('/sportarr/:id')
+  async updateSportarrSetting(
+    @Param('id', new ParseIntPipe()) id: number,
+    @Body(new ZodValidationPipe(sportarrSettingSchema))
+    payload: SportarrSetting,
+  ) {
+    return await this.settingsOperationsService.updateSportarrSetting({
       id,
       ...payload,
     });
@@ -560,6 +595,11 @@ export class SettingsController {
   @Delete('/sonarr/:id')
   async deleteSonarrSetting(@Param('id', new ParseIntPipe()) id: number) {
     return await this.settingsOperationsService.deleteSonarrSetting(id);
+  }
+
+  @Delete('/sportarr/:id')
+  async deleteSportarrSetting(@Param('id', new ParseIntPipe()) id: number) {
+    return await this.settingsOperationsService.deleteSportarrSetting(id);
   }
 
   @Get('/test/plex')

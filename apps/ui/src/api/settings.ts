@@ -20,6 +20,7 @@ import {
 import axios from 'axios'
 import type { IRadarrSetting } from '../components/Settings/Radarr'
 import type { ISonarrSetting } from '../components/Settings/Sonarr'
+import type { ISportarrSetting } from '../components/Settings/Sportarr'
 import GetApiHandler, {
   API_BASE_PATH,
   DeleteApiHandler,
@@ -154,7 +155,11 @@ export type UsePatchSettingsResult = ReturnType<typeof usePatchSettings>
 
 type UsePlexServersQueryKey = ['settings', 'plexServers']
 type UsePlexAuthValidationQueryKey = ['settings', 'plexAuthValidation']
-type UseServarrSettingsQueryKey = ['settings', 'servarr', 'radarr' | 'sonarr']
+type UseServarrSettingsQueryKey = [
+  'settings',
+  'servarr',
+  'radarr' | 'sonarr' | 'sportarr',
+]
 
 export interface PlexAuthValidationResult {
   valid: boolean
@@ -372,9 +377,9 @@ type UseServarrSettingsOptions<TSetting> = Omit<
 >
 
 export const useServarrSettings = <
-  TSetting extends IRadarrSetting | ISonarrSetting,
+  TSetting extends IRadarrSetting | ISonarrSetting | ISportarrSetting,
 >(
-  type: 'radarr' | 'sonarr',
+  type: 'radarr' | 'sonarr' | 'sportarr',
   options?: UseServarrSettingsOptions<TSetting>,
 ) => {
   return useQuery<TSetting[], Error, TSetting[], UseServarrSettingsQueryKey>({

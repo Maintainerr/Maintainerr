@@ -265,6 +265,13 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
         backdropResult.providerId?.toString() ??
         providerIds?.[cfg.providerIdKey]?.[0]
       if (!linkId) return null
+      // Sportarr stamps numeric aliases (900,000,000-999,999,999) in the tvdb
+      // namespace on its items; no real TVDB page exists for those, so don't
+      // render a dead external link.
+      if (cfg.providerIdKey === 'tvdb') {
+        const numericId = Number(linkId)
+        if (numericId >= 900_000_000 && numericId < 1_000_000_000) return null
+      }
       return { ...cfg, linkId }
     }, [isCurrentBackdrop, backdropResult, providerIds])
 

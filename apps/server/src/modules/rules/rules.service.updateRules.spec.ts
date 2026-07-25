@@ -22,6 +22,7 @@ describe('RulesService.updateRules', () => {
       settingsRepo: unknown;
       radarrSettingsRepo: unknown;
       sonarrSettingsRepo: unknown;
+      sportarrSettingsRepo: unknown;
       collectionService: unknown;
       mediaServerFactory: unknown;
       connection: unknown;
@@ -41,6 +42,7 @@ describe('RulesService.updateRules', () => {
       (overrides.settingsRepo ?? {}) as any,
       (overrides.radarrSettingsRepo ?? {}) as any,
       (overrides.sonarrSettingsRepo ?? {}) as any,
+      (overrides.sportarrSettingsRepo ?? {}) as any,
       (overrides.collectionService ?? {}) as any,
       (overrides.mediaServerFactory ?? {}) as any,
       (overrides.connection ?? {}) as any,

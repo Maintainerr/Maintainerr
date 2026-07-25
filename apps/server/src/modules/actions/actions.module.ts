@@ -7,6 +7,7 @@ import { MetadataModule } from '../metadata/metadata.module';
 import { RadarrActionHandler } from './radarr-action-handler';
 import { ServarrTagService } from './servarr-tag.service';
 import { SonarrActionHandler } from './sonarr-action-handler';
+import { SportarrActionHandler } from './sportarr-action-handler';
 
 @Module({
   imports: [
@@ -16,8 +17,18 @@ import { SonarrActionHandler } from './sonarr-action-handler';
     DownloadClientApiModule,
     MetadataModule,
   ],
-  providers: [RadarrActionHandler, SonarrActionHandler, ServarrTagService],
-  exports: [RadarrActionHandler, SonarrActionHandler, ServarrTagService],
+  providers: [
+    RadarrActionHandler,
+    SonarrActionHandler,
+    SportarrActionHandler,
+    ServarrTagService,
+  ],
+  exports: [
+    RadarrActionHandler,
+    SonarrActionHandler,
+    SportarrActionHandler,
+    ServarrTagService,
+  ],
   controllers: [],
 })
 export class ActionsModule {}

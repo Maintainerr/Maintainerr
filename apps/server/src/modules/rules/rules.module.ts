@@ -14,6 +14,7 @@ import { MetadataModule } from '../metadata/metadata.module';
 import { RadarrSettings } from '../settings/entities/radarr_settings.entities';
 import { Settings } from '../settings/entities/settings.entities';
 import { SonarrSettings } from '../settings/entities/sonarr_settings.entities';
+import { SportarrSettings } from '../settings/entities/sportarr_settings.entities';
 import { TasksModule } from '../tasks/tasks.module';
 import { RuleConstanstService } from './constants/constants.service';
 import { CommunityRuleKarma } from './entities/community-rule-karma.entities';
@@ -27,6 +28,7 @@ import { SeerrGetterService } from './getter/seerr-getter.service';
 import { PlexGetterService } from './getter/plex-getter.service';
 import { RadarrGetterService } from './getter/radarr-getter.service';
 import { SonarrGetterService } from './getter/sonarr-getter.service';
+import { SportarrGetterService } from './getter/sportarr-getter.service';
 import { StreamystatsGetterService } from './getter/streamystats-getter.service';
 import { TautulliGetterService } from './getter/tautulli-getter.service';
 import {
@@ -58,6 +60,7 @@ import { RuleMaintenanceService } from './tasks/rule-maintenance.service';
       Settings,
       RadarrSettings,
       SonarrSettings,
+      SportarrSettings,
     ]),
     SeerrApiModule,
     TautulliApiModule,
@@ -80,6 +83,7 @@ import { RuleMaintenanceService } from './tasks/rule-maintenance.service';
     EmbyGetterService,
     RadarrGetterService,
     SonarrGetterService,
+    SportarrGetterService,
     SeerrGetterService,
     TautulliGetterService,
     StreamystatsGetterService,
