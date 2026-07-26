@@ -56,6 +56,9 @@ describe('RuleExecutorService', () => {
       getSiblingRuleOwnedMediaServerIds: jest
         .fn()
         .mockResolvedValue(new Set<string>()),
+      reconcileRuleRemovedOrphans: jest
+        .fn()
+        .mockResolvedValue(new Set<string>()),
       reconcileSharedManualCollectionState: jest
         .fn()
         .mockResolvedValue(undefined),
@@ -196,6 +199,70 @@ describe('RuleExecutorService', () => {
     );
 
     expect(collectionService.removeFromCollection).not.toHaveBeenCalled();
+  });
+
+  it('reconciles rule-removed markers even when the collection enumerates empty (Plex: trustworthy)', async () => {
+    const { service, mediaServer, collectionService } = createService(
+      MediaServerType.PLEX,
+    );
+    mediaServer.getCollectionChildren.mockResolvedValue([]); // empty snapshot
+    collectionService.getCollectionMedia.mockResolvedValue([]);
+
+    await (
+      service as unknown as {
+        syncManualMediaServerToCollectionDB: (
+          ruleGroup: { id: number; collectionId: number },
+          collectionSyncChanges: {
+            addedMediaServerIds: Set<string>;
+            removedMediaServerIds: Set<string>;
+          },
+        ) => Promise<void>;
+      }
+    ).syncManualMediaServerToCollectionDB(
+      { id: 10, collectionId: 1 },
+      { addedMediaServerIds: new Set(), removedMediaServerIds: new Set() },
+    );
+
+    // A propagated removal's marker must still be reconcilable on an empty
+    // child list; for Plex an empty read is a trustworthy "gone" signal.
+    expect(collectionService.reconcileRuleRemovedOrphans).toHaveBeenCalledTimes(
+      1,
+    );
+    const [, childrenArg, , trustworthy] =
+      collectionService.reconcileRuleRemovedOrphans.mock.calls[0];
+    expect(childrenArg).toEqual([]);
+    expect(trustworthy).toBe(true);
+  });
+
+  it('reconciles on empty children but marks the read untrustworthy for Jellyfin', async () => {
+    const { service, mediaServer, collectionService } = createService(
+      MediaServerType.JELLYFIN,
+    );
+    mediaServer.getCollectionChildren.mockResolvedValue([]);
+    collectionService.getCollectionMedia.mockResolvedValue([]);
+
+    await (
+      service as unknown as {
+        syncManualMediaServerToCollectionDB: (
+          ruleGroup: { id: number; collectionId: number },
+          collectionSyncChanges: {
+            addedMediaServerIds: Set<string>;
+            removedMediaServerIds: Set<string>;
+          },
+        ) => Promise<void>;
+      }
+    ).syncManualMediaServerToCollectionDB(
+      { id: 10, collectionId: 1 },
+      { addedMediaServerIds: new Set(), removedMediaServerIds: new Set() },
+    );
+
+    expect(collectionService.reconcileRuleRemovedOrphans).toHaveBeenCalledTimes(
+      1,
+    );
+    // Jellyfin's transient empty read must not be trusted to clear markers.
+    expect(collectionService.reconcileRuleRemovedOrphans.mock.calls[0][3]).toBe(
+      false,
+    );
   });
 
   it('does not emit a failed rule notification when a rule group finishes successfully', async () => {
@@ -847,6 +914,43 @@ describe('RuleExecutorService', () => {
 
     // Should NOT be re-added as manual
     expect(collectionService.addToCollection).not.toHaveBeenCalled();
+  });
+
+  it('does not re-adopt a confirmed rule-removal orphan as a manual member (cross-run marker)', async () => {
+    const { service, mediaServer, collectionService } = createService(
+      MediaServerType.JELLYFIN,
+    );
+
+    // The media server still lists the item and the DB no longer has it, but a
+    // persisted marker (surfaced by reconcileRuleRemovedOrphans) proves this
+    // instance's rule removed it - so it must not be adopted as manual.
+    mediaServer.getCollectionChildren.mockResolvedValue([{ id: 'm-orphan' }]);
+    collectionService.getCollectionMedia.mockResolvedValue([]);
+    collectionService.reconcileRuleRemovedOrphans.mockResolvedValue(
+      new Set(['m-orphan']),
+    );
+
+    await (
+      service as unknown as {
+        syncManualMediaServerToCollectionDB: (
+          ruleGroup: { id: number; collectionId: number },
+          collectionSyncChanges: {
+            addedMediaServerIds: Set<string>;
+            removedMediaServerIds: Set<string>;
+          },
+        ) => Promise<void>;
+      }
+    ).syncManualMediaServerToCollectionDB(
+      { id: 10, collectionId: 1 },
+      { addedMediaServerIds: new Set(), removedMediaServerIds: new Set() },
+    );
+
+    expect(collectionService.reconcileRuleRemovedOrphans).toHaveBeenCalledTimes(
+      1,
+    );
+    expect(
+      collectionService.syncMediaServerChildrenToCollection,
+    ).not.toHaveBeenCalled();
   });
 
   it('leaves existing members untouched when child enumeration fails on Plex', async () => {

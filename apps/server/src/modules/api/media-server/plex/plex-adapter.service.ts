@@ -144,13 +144,14 @@ export class PlexAdapterService implements IMediaServerService {
       plexType,
     );
 
-    const items = response?.items
-      ? response.items.map(PlexMapper.toMediaItem)
-      : [];
+    // plexApi.getLibraryContents throws on a failed read; a fabricated empty
+    // page here would truncate rule evaluation and mass-remove the
+    // unevaluated tail from collections (#3307).
+    const items = response.items.map(PlexMapper.toMediaItem);
 
     return {
       items,
-      totalSize: response?.totalSize ?? items.length,
+      totalSize: response.totalSize ?? items.length,
       offset: options?.offset ?? 0,
       limit: options?.limit ?? PLEX_PAGE_SIZE.DEFAULT,
     };

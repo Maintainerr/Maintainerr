@@ -25,6 +25,7 @@ import { CollectionPosterService } from './collection-poster.service';
 import { CollectionsService } from './collections.service';
 import { Collection } from './entities/collection.entities';
 import { CollectionLog } from './entities/collection_log.entities';
+import { CollectionMediaRuleRemoval } from './entities/collection_media_rule_removal.entities';
 import {
   CollectionMedia,
   CollectionMediaManualMembershipSource,
@@ -40,6 +41,7 @@ describe('CollectionsService', () => {
   let ruleGroupRepo: Mocked<Repository<RuleGroup>>;
   let exclusionRepo: Mocked<Repository<Exclusion>>;
   let collectionLogRepo: Mocked<Repository<CollectionLog>>;
+  let ruleRemovalRepo: Mocked<Repository<CollectionMediaRuleRemoval>>;
   let metadataService: Mocked<MetadataService>;
   let settingsDataService: Mocked<SettingsDataService>;
   let collectionPosterService: Mocked<CollectionPosterService>;
@@ -61,6 +63,9 @@ describe('CollectionsService', () => {
     exclusionRepo = unitRef.get(getRepositoryToken(Exclusion) as string);
     collectionLogRepo = unitRef.get(
       getRepositoryToken(CollectionLog) as string,
+    );
+    ruleRemovalRepo = unitRef.get(
+      getRepositoryToken(CollectionMediaRuleRemoval) as string,
     );
     metadataService = unitRef.get(MetadataService);
     settingsDataService = unitRef.get(SettingsDataService);
@@ -975,6 +980,169 @@ describe('CollectionsService', () => {
     await expect(
       service.getSiblingRuleOwnedMediaServerIds(collection),
     ).rejects.toThrow('db down');
+  });
+
+  const makeRuleRemovalQb = (markers: { mediaServerId: string }[]) => ({
+    select: jest.fn().mockReturnThis(),
+    where: jest.fn().mockReturnThis(),
+    andWhere: jest.fn().mockReturnThis(),
+    getRawMany: jest.fn().mockResolvedValue(markers),
+    delete: jest.fn().mockReturnThis(),
+    execute: jest.fn().mockResolvedValue({ affected: 0 }),
+  });
+
+  it('reconcileRuleRemovedOrphans skips manual collections', async () => {
+    const result = await service.reconcileRuleRemovedOrphans(
+      createCollection({
+        id: 5,
+        mediaServerId: 'coll',
+        manualCollection: true,
+      }),
+      [{ id: 'x' }] as any,
+      new Set(),
+      true,
+    );
+
+    expect(result).toEqual(new Set());
+    expect(ruleRemovalRepo.createQueryBuilder).not.toHaveBeenCalled();
+  });
+
+  it('reconcileRuleRemovedOrphans self-heals a lingering orphan and keeps its marker', async () => {
+    const qb = makeRuleRemovalQb([{ mediaServerId: 'orphan' }]);
+    ruleRemovalRepo.createQueryBuilder.mockReturnValue(qb as any);
+    collectionMediaRepo.find.mockResolvedValue([]); // no current members
+    mediaServer.removeBatchFromCollection.mockResolvedValue([]); // removed ok
+
+    const result = await service.reconcileRuleRemovedOrphans(
+      createCollection({
+        id: 5,
+        mediaServerId: 'coll',
+        manualCollection: false,
+      }),
+      [{ id: 'orphan' }] as any,
+      new Set(),
+      true,
+    );
+
+    expect(result).toEqual(new Set(['orphan']));
+    expect(mediaServer.removeBatchFromCollection).toHaveBeenCalledWith('coll', [
+      'orphan',
+    ]);
+    // Marker kept until the item is confirmed gone (no delete execute).
+    expect(qb.delete).not.toHaveBeenCalled();
+  });
+
+  it('reconcileRuleRemovedOrphans still returns the orphan when self-heal removal throws', async () => {
+    const qb = makeRuleRemovalQb([{ mediaServerId: 'orphan' }]);
+    ruleRemovalRepo.createQueryBuilder.mockReturnValue(qb as any);
+    collectionMediaRepo.find.mockResolvedValue([]); // no current members
+    // A side-effect failure must not drop orphanIds - otherwise a just-removed
+    // orphan would be re-adopted as a manual member by the caller.
+    mediaServer.removeBatchFromCollection.mockRejectedValue(new Error('boom'));
+
+    const result = await service.reconcileRuleRemovedOrphans(
+      createCollection({
+        id: 5,
+        mediaServerId: 'coll',
+        manualCollection: false,
+      }),
+      [{ id: 'orphan' }] as any,
+      new Set(),
+      true,
+    );
+
+    expect(result).toEqual(new Set(['orphan']));
+  });
+
+  it('reconcileRuleRemovedOrphans does not self-heal an item that is a current member (stale marker)', async () => {
+    const qb = makeRuleRemovalQb([{ mediaServerId: 'member' }]);
+    ruleRemovalRepo.createQueryBuilder.mockReturnValue(qb as any);
+    // The marked item is back as a collection member (a stale marker whose
+    // clear-on-add didn't land): it must not be removed from the server.
+    collectionMediaRepo.find.mockResolvedValue([
+      { mediaServerId: 'member' },
+    ] as any);
+
+    const result = await service.reconcileRuleRemovedOrphans(
+      createCollection({
+        id: 5,
+        mediaServerId: 'coll',
+        manualCollection: false,
+      }),
+      [{ id: 'member' }] as any,
+      new Set(),
+      true,
+    );
+
+    expect(result).toEqual(new Set());
+    expect(mediaServer.removeBatchFromCollection).not.toHaveBeenCalled();
+    expect(qb.delete).toHaveBeenCalled(); // stale marker cleared
+  });
+
+  it('reconcileRuleRemovedOrphans leaves a sibling-owned item in place and clears its marker', async () => {
+    const qb = makeRuleRemovalQb([{ mediaServerId: 'shared' }]);
+    ruleRemovalRepo.createQueryBuilder.mockReturnValue(qb as any);
+    collectionMediaRepo.find.mockResolvedValue([]); // no current members
+
+    const result = await service.reconcileRuleRemovedOrphans(
+      createCollection({
+        id: 5,
+        mediaServerId: 'coll',
+        manualCollection: false,
+      }),
+      [{ id: 'shared' }] as any,
+      new Set(['shared']), // owned by a sibling rule group
+      true,
+    );
+
+    // Not an orphan: never removed from the server, marker cleared.
+    expect(result).toEqual(new Set());
+    expect(mediaServer.removeBatchFromCollection).not.toHaveBeenCalled();
+    expect(qb.delete).toHaveBeenCalled();
+  });
+
+  it('reconcileRuleRemovedOrphans clears the marker once the item is gone from the server', async () => {
+    const qb = makeRuleRemovalQb([{ mediaServerId: 'gone' }]);
+    ruleRemovalRepo.createQueryBuilder.mockReturnValue(qb as any);
+    collectionMediaRepo.find.mockResolvedValue([]); // no current members
+
+    const result = await service.reconcileRuleRemovedOrphans(
+      createCollection({
+        id: 5,
+        mediaServerId: 'coll',
+        manualCollection: false,
+      }),
+      [{ id: 'other' }] as any,
+      new Set(),
+      true,
+    );
+
+    expect(result).toEqual(new Set());
+    expect(mediaServer.removeBatchFromCollection).not.toHaveBeenCalled();
+    expect(qb.delete).toHaveBeenCalled();
+    expect(qb.execute).toHaveBeenCalled();
+  });
+
+  it('reconcileRuleRemovedOrphans keeps a marker when the child read is not trustworthy (ambiguous empty)', async () => {
+    const qb = makeRuleRemovalQb([{ mediaServerId: 'maybe-gone' }]);
+    ruleRemovalRepo.createQueryBuilder.mockReturnValue(qb as any);
+    collectionMediaRepo.find.mockResolvedValue([]);
+
+    const result = await service.reconcileRuleRemovedOrphans(
+      createCollection({
+        id: 5,
+        mediaServerId: 'coll',
+        manualCollection: false,
+      }),
+      [] as any, // empty snapshot...
+      new Set(),
+      false, // ...that is NOT trustworthy (e.g. Jellyfin/Emby transient [])
+    );
+
+    // Absent under an untrustworthy read: neither self-healed nor cleared.
+    expect(result).toEqual(new Set());
+    expect(mediaServer.removeBatchFromCollection).not.toHaveBeenCalled();
+    expect(qb.delete).not.toHaveBeenCalled();
   });
 
   it('isMediaServerCollectionShared filters siblings by manualCollection', async () => {

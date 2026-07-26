@@ -887,7 +887,7 @@ describe('SeerrGetterService', () => {
   });
 
   describe('no resolvable tmdb id', () => {
-    it('should return null without querying Seerr', async () => {
+    it('should return undefined (transient) without querying Seerr', async () => {
       const { service, seerrApi, metadataService } = createService();
       (
         metadataService.resolveIdsFromMediaItemForService as jest.Mock
@@ -895,7 +895,7 @@ describe('SeerrGetterService', () => {
 
       await expect(
         service.get(IS_REQUESTED_PROP_ID, movieLibItem, undefined),
-      ).resolves.toBeNull();
+      ).resolves.toBeUndefined();
       expect(seerrApi.getRequestsForMedia).not.toHaveBeenCalled();
       expect(seerrApi.getMovie).not.toHaveBeenCalled();
     });

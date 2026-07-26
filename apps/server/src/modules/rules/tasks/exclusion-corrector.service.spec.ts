@@ -14,6 +14,7 @@ describe('ExclusionTypeCorrectorService', () => {
     collections?: any[];
     ruleGroups?: any[];
     isSetup?: boolean;
+    mediaServer?: { getMetadata?: jest.Mock; itemExists?: jest.Mock };
   }) => {
     const {
       exclusions = [],
@@ -43,10 +44,14 @@ describe('ExclusionTypeCorrectorService', () => {
       save: jest.fn().mockResolvedValue(undefined),
     };
 
+    const mediaServer = {
+      getMetadata: jest.fn().mockResolvedValue(null),
+      itemExists: jest.fn().mockResolvedValue(true),
+      ...options?.mediaServer,
+    };
+
     const mediaServerFactory = {
-      getService: jest.fn().mockResolvedValue({
-        getMetadata: jest.fn().mockResolvedValue(null),
-      }),
+      getService: jest.fn().mockResolvedValue(mediaServer),
     };
 
     const settings = {
@@ -74,6 +79,7 @@ describe('ExclusionTypeCorrectorService', () => {
       ruleGroupRepo,
       settings,
       mediaServerFactory,
+      mediaServer,
       rulesService,
     };
   };
@@ -193,6 +199,59 @@ describe('ExclusionTypeCorrectorService', () => {
       expect(logger.debug).toHaveBeenCalledWith(
         expect.objectContaining({ message: 'connection refused' }),
       );
+    });
+  });
+
+  describe('correctExclusionTypes - stale vs unreachable media (#3307 follow-up)', () => {
+    it('backfills the type and saves only corrected rows', async () => {
+      const exclusions = [{ id: 1, type: null, mediaServerId: '11' }];
+      const { service, exclusionRepo, rulesService } = createService({
+        exclusions,
+        isSetup: true,
+        mediaServer: {
+          getMetadata: jest.fn().mockResolvedValue({ id: '11', type: 'movie' }),
+        },
+      });
+
+      await service.onModuleInit();
+
+      expect(exclusions[0].type).toBe('movie');
+      expect(rulesService.removeExclusion).not.toHaveBeenCalled();
+      expect(exclusionRepo.save).toHaveBeenLastCalledWith([exclusions[0]]);
+    });
+
+    it('removes an exclusion only on a confirmed 404 and does not re-save the removed row', async () => {
+      const exclusions = [{ id: 1, type: null, mediaServerId: '11' }];
+      const { service, exclusionRepo, rulesService } = createService({
+        exclusions,
+        isSetup: true,
+        mediaServer: {
+          getMetadata: jest.fn().mockResolvedValue(undefined),
+          itemExists: jest.fn().mockResolvedValue(false),
+        },
+      });
+
+      await service.onModuleInit();
+
+      expect(rulesService.removeExclusion).toHaveBeenCalledWith(1);
+      // Saving the full list would re-insert the row removed above.
+      expect(exclusionRepo.save).toHaveBeenLastCalledWith([]);
+    });
+
+    it('keeps the exclusion when the existence check is inconclusive', async () => {
+      const exclusions = [{ id: 1, type: null, mediaServerId: '11' }];
+      const { service, rulesService } = createService({
+        exclusions,
+        isSetup: true,
+        mediaServer: {
+          getMetadata: jest.fn().mockResolvedValue(undefined),
+          itemExists: jest.fn().mockRejectedValue(new Error('unreachable')),
+        },
+      });
+
+      await service.onModuleInit();
+
+      expect(rulesService.removeExclusion).not.toHaveBeenCalled();
     });
   });
 

@@ -42,6 +42,7 @@ import {
   hasCollectionMediaManualMembership,
   hasCollectionMediaRuleMembership,
 } from './entities/collection_media.entities';
+import { CollectionMediaRuleRemoval } from './entities/collection_media_rule_removal.entities';
 import {
   AlterableMediaContext,
   CollectionMediaChange,
@@ -100,6 +101,8 @@ export class CollectionsService {
     private readonly collectionRepo: Repository<Collection>,
     @InjectRepository(CollectionMedia)
     private readonly CollectionMediaRepo: Repository<CollectionMedia>,
+    @InjectRepository(CollectionMediaRuleRemoval)
+    private readonly CollectionMediaRuleRemovalRepo: Repository<CollectionMediaRuleRemoval>,
     @InjectRepository(CollectionLog)
     private readonly CollectionLogRepo: Repository<CollectionLog>,
     @InjectRepository(RuleGroup)
@@ -340,6 +343,182 @@ export class CollectionsService {
         .filter((entry) => hasCollectionMediaRuleMembership(entry))
         .map((entry) => entry.mediaServerId),
     );
+  }
+
+  /**
+   * Record that a rule removed these items from an automatic collection. The
+   * collection_media row is deleted on removal, so this marker is the persistent
+   * source of truth that lets a later run tell a rule-removal orphan (which the
+   * media server may still list) from a genuine manual addition. Idempotent.
+   */
+  public async markRuleRemoved(
+    collectionId: number,
+    mediaServerIds: string[],
+  ): Promise<void> {
+    if (mediaServerIds.length === 0) {
+      return;
+    }
+
+    await this.CollectionMediaRuleRemovalRepo.createQueryBuilder()
+      .insert()
+      .orIgnore()
+      .into(CollectionMediaRuleRemoval)
+      .values(
+        mediaServerIds.map((mediaServerId) => ({
+          collectionId,
+          mediaServerId,
+        })),
+      )
+      .execute();
+  }
+
+  /**
+   * Drop the rule-removed marker for an item that is (re-)added to the
+   * collection - by rule or manually - so it is never treated as an orphan.
+   */
+  public async clearRuleRemovedMarker(
+    collectionId: number,
+    mediaServerId: string,
+  ): Promise<void> {
+    await this.CollectionMediaRuleRemovalRepo.createQueryBuilder()
+      .delete()
+      .where(
+        'collectionId = :collectionId AND mediaServerId = :mediaServerId',
+        {
+          collectionId,
+          mediaServerId,
+        },
+      )
+      .execute();
+  }
+
+  /**
+   * Reconciles an automatic collection's rule-removed markers against the media
+   * server's current children, and returns the ids that are confirmed orphans
+   * this run (so the executor skips re-adopting them as manual members):
+   *  - marked and still on the server (and not sibling-owned/a member): a
+   *    removal that did not propagate. Remove it from the server (self-heal) but
+   *    keep the marker so a failed removal is retried next run.
+   *  - marked and legitimately present via a sibling rule group or as a current
+   *    member: resolved, so the marker is cleared and the item is left in place.
+   *  - marked and no longer on the server: resolved (cleared) only when the
+   *    child read is trustworthy. An empty/ambiguous read (e.g. Jellyfin/Emby
+   *    returning [] transiently) leaves the marker for a later run.
+   */
+  public async reconcileRuleRemovedOrphans(
+    collection: Pick<
+      Collection,
+      'id' | 'title' | 'mediaServerId' | 'manualCollection'
+    >,
+    serverChildren: MediaItem[],
+    siblingRuleOwnedIds: Set<string>,
+    childrenReadTrustworthy: boolean,
+  ): Promise<Set<string>> {
+    const orphanIds = new Set<string>();
+    if (collection.manualCollection || !collection.mediaServerId) {
+      return orphanIds;
+    }
+
+    const markers =
+      await this.CollectionMediaRuleRemovalRepo.createQueryBuilder('marker')
+        .select('marker.mediaServerId', 'mediaServerId')
+        .where('marker.collectionId = :collectionId', {
+          collectionId: collection.id,
+        })
+        .getRawMany<{ mediaServerId: string }>();
+    if (markers.length === 0) {
+      return orphanIds;
+    }
+
+    const serverChildIds = new Set(
+      serverChildren
+        .map((child) => child?.id?.toString())
+        .filter((id): id is string => Boolean(id)),
+    );
+
+    // Items that are members again (re-added by rule or manually) are not
+    // orphans; guard against a stale marker whose clear-on-add didn't land so a
+    // legitimate member is never self-heal-removed.
+    const currentMemberIds = new Set(
+      (
+        await this.CollectionMediaRepo.find({
+          where: { collectionId: collection.id },
+          select: { mediaServerId: true },
+        })
+      ).map((row) => row.mediaServerId),
+    );
+
+    const lingering: string[] = [];
+    const resolved: string[] = [];
+    for (const marker of markers) {
+      const present = serverChildIds.has(marker.mediaServerId);
+      const memberOrSibling =
+        currentMemberIds.has(marker.mediaServerId) ||
+        siblingRuleOwnedIds.has(marker.mediaServerId);
+      if (present && !memberOrSibling) {
+        // Present, ours, and not a current member: a lingering orphan the
+        // server never dropped - self-heal it.
+        lingering.push(marker.mediaServerId);
+        orphanIds.add(marker.mediaServerId);
+      } else if (memberOrSibling || present || childrenReadTrustworthy) {
+        // A member/sibling item (clear the stale marker), or an item genuinely
+        // gone under a trustworthy read. Not our orphan - clear the marker.
+        resolved.push(marker.mediaServerId);
+      }
+      // else: absent under an ambiguous (untrustworthy) read - keep the marker
+      // and retry next run rather than clear it on a possibly-stale [] read.
+    }
+
+    // orphanIds is the critical output the caller uses to skip re-adoption.
+    // The self-heal removal and marker cleanup below are best-effort side
+    // effects; a failure in either must not drop orphanIds (which would let a
+    // just-removed orphan be re-adopted as a manual member) - they simply
+    // retry next run.
+    try {
+      if (lingering.length > 0) {
+        const mediaServer = await this.getMediaServer();
+        const failed = new Set(
+          await mediaServer.removeBatchFromCollection(
+            collection.mediaServerId,
+            lingering,
+          ),
+        );
+        const removed = lingering.filter((id) => !failed.has(id));
+        if (removed.length > 0) {
+          this.logger.log(
+            `Removed ${removed.length} orphaned item(s) from the media server collection for '${collection.title}' that a rule removed but the server had retained.`,
+          );
+        }
+        if (failed.size > 0) {
+          this.logger.warn(
+            `Couldn't remove ${failed.size} orphaned item(s) from the media server collection for '${collection.title}'; will retry next run.`,
+          );
+        }
+      }
+
+      // Chunk the id list so a collection with very many resolved markers can
+      // never exceed SQLite's bound-parameter limit (which would otherwise
+      // throw and re-churn the same oversized list every run).
+      const RESOLVE_CHUNK = 500;
+      for (let i = 0; i < resolved.length; i += RESOLVE_CHUNK) {
+        await this.CollectionMediaRuleRemovalRepo.createQueryBuilder()
+          .delete()
+          .where('collectionId = :collectionId', {
+            collectionId: collection.id,
+          })
+          .andWhere('mediaServerId IN (:...ids)', {
+            ids: resolved.slice(i, i + RESOLVE_CHUNK),
+          })
+          .execute();
+      }
+    } catch (error) {
+      this.logger.warn(
+        `Best-effort orphan self-heal/cleanup failed for '${collection.title}'; will retry next run.`,
+      );
+      this.logger.debug(error);
+    }
+
+    return orphanIds;
   }
 
   private async resyncRuleOwnedItemsToMediaServerCollection(
@@ -2714,6 +2893,7 @@ export class CollectionsService {
                   {
                     mediaServerId: collection.mediaServerId,
                     dbId: collection.id,
+                    manualCollection: collection.manualCollection,
                   },
                   childrenMedia,
                   skipMediaServerRemove,
@@ -3003,6 +3183,9 @@ export class CollectionsService {
       'add',
       reason,
     );
+
+    // The item is a member again, so it is no longer a rule-removal orphan.
+    await this.clearRuleRemovedMarker(collectionId, mediaServerId);
   }
 
   async removeFromAllCollections(media: CollectionMediaChange[]) {
@@ -3077,6 +3260,12 @@ export class CollectionsService {
       }
 
       await this.CollectionMediaRepo.delete({ collectionId: collection.id });
+      // Deactivation tears down the media-server collection but keeps the
+      // collection row, so the FK cascade won't fire - drop the rule-removal
+      // markers here too, mirroring the collection_media wipe above.
+      await this.CollectionMediaRuleRemovalRepo.delete({
+        collectionId: collection.id,
+      });
       await this.saveCollection({
         ...collection,
         isActive: false,
@@ -3249,7 +3438,11 @@ export class CollectionsService {
   }
 
   private async removeChildrenFromCollection(
-    collectionIds: { mediaServerId: string | null; dbId: number },
+    collectionIds: {
+      mediaServerId: string | null;
+      dbId: number;
+      manualCollection: boolean;
+    },
     childrenMedia: CollectionMediaChange[],
     skipMediaServerRemove = false,
   ): Promise<string[]> {
@@ -3305,6 +3498,30 @@ export class CollectionsService {
         );
         this.logger.debug(error);
       }
+    }
+
+    // Persist a marker for rule-driven removals from an AUTOMATIC collection so
+    // a later run can tell an orphan the media server never dropped from a
+    // genuine manual addition. Manual collections never reconcile markers, so
+    // writing them there would only accumulate dead rows.
+    // Best-effort: a marker write must never fail an already-committed removal.
+    const removedIdSet = new Set(removedItemIds);
+    const removedByRuleIds = collectionIds.manualCollection
+      ? []
+      : childrenMedia
+          .filter(
+            (childMedia) =>
+              childMedia.reason?.type === 'media_removed_by_rule' &&
+              removedIdSet.has(childMedia.mediaServerId),
+          )
+          .map((childMedia) => childMedia.mediaServerId);
+    try {
+      await this.markRuleRemoved(collectionIds.dbId, removedByRuleIds);
+    } catch (error) {
+      this.logger.warn(
+        `Failed to record rule-removal markers for collection ${collectionIds.dbId}`,
+      );
+      this.logger.debug(error);
     }
 
     return removedItemIds;

@@ -102,6 +102,13 @@ export interface IMediaServerService {
 
   /**
    * Get contents of a specific library with optional pagination and filtering.
+   * An empty page means the server confirmed there are no (more) items -
+   * never "the read failed".
+   *
+   * @throws Error on any failure to read the page (connection, 4xx/5xx).
+   * Like getCollectionChildren: a fabricated empty page would read as
+   * end-of-library and let rule evaluation truncate silently, mass-removing
+   * the unevaluated tail from collections.
    */
   getLibraryContents(
     libraryId: string,
@@ -110,6 +117,9 @@ export interface IMediaServerService {
 
   /**
    * Get total count of items in a library, optionally filtered by type.
+   *
+   * @throws Error on a failed read - a fabricated 0 masks the failure from
+   * callers that gate work on the count.
    */
   getLibraryContentCount(
     libraryId: string,

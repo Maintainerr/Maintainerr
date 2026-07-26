@@ -324,6 +324,24 @@ describe('EmbyAdapterService', () => {
     });
   });
 
+  describe('getLibraryContents', () => {
+    it('re-throws page read failures so callers never mistake a failed read for an empty library', async () => {
+      http.get.mockRejectedValueOnce(new Error('boom'));
+
+      await expect(
+        service.getLibraryContents('library-1', { offset: 0, limit: 50 }),
+      ).rejects.toThrow('boom');
+    });
+
+    it('re-throws library count read failures instead of reporting zero', async () => {
+      http.get.mockRejectedValueOnce(new Error('boom'));
+
+      await expect(
+        service.getLibraryContentCount('library-1', 'movie'),
+      ).rejects.toThrow('boom');
+    });
+  });
+
   // Collection reads must be user-scoped: Emby resolves the BoxSet query
   // against a user's library view, so the plain /Items path can miss or 404,
   // which would break the manual-collection bootstrap (incl. the cross-library

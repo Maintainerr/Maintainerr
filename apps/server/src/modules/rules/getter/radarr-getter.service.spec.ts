@@ -327,6 +327,17 @@ describe('RadarrGetterService', () => {
 
       await expect(callAddDate()).resolves.toBeNull();
     });
+
+    it('returns undefined (fail closed) when no external ids resolve', async () => {
+      // Empty resolution also covers a transient TMDB/TVDB validation
+      // failure, so it must stay transient (#3307).
+      mockRadarrApi();
+      metadataService.resolveLookupCandidatesFromMediaItemForService.mockResolvedValue(
+        [],
+      );
+
+      await expect(callAddDate()).resolves.toBeUndefined();
+    });
   });
 
   // Scope handles mirroring Sonarr's seriesTitle/seriesId (#3220).

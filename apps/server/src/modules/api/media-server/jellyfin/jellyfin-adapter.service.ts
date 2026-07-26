@@ -791,7 +791,10 @@ export class JellyfinAdapterService implements IMediaServerService {
       };
     } catch (error) {
       this.logLibraryError(libraryId, 'get library contents', error);
-      return { items: [], totalSize: 0, offset: 0, limit: 50 };
+      // A fabricated empty page reads as end-of-library downstream, which
+      // truncates rule evaluation and mass-removes the unevaluated tail from
+      // collections (#3307). Fail closed like getCollectionChildren.
+      throw error;
     }
   }
 
@@ -817,7 +820,9 @@ export class JellyfinAdapterService implements IMediaServerService {
       return response.data.TotalRecordCount || 0;
     } catch (error) {
       this.logLibraryError(libraryId, 'get library count', error);
-      return 0;
+      // Same contract as getLibraryContents: a fabricated count masks a
+      // failed read from callers that gate work on it.
+      throw error;
     }
   }
 
