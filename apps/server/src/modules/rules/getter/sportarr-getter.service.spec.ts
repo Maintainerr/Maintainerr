@@ -145,6 +145,59 @@ describe('SportarrGetterService', () => {
     expect(result).toBe(false);
   });
 
+  describe('hasFutureEvents (property 14)', () => {
+    const trackedLeague = {
+      id: 3,
+      externalId: F1_EXTERNAL_ID,
+      name: 'Formula 1',
+      monitored: true,
+    };
+
+    it('returns true when a scheduled event is still upcoming', async () => {
+      mockClient.getLeagueByExternalId.mockResolvedValue(trackedLeague);
+      mockClient.getLeagueEvents.mockResolvedValue([
+        { id: 10, seasonNumber: 2026, eventDate: '2000-01-01T00:00:00.000Z' },
+        { id: 11, seasonNumber: 2026, eventDate: '2099-01-01T00:00:00.000Z' },
+      ]);
+
+      const result = await service.get(14, showItem(), 'show', ruleGroup());
+      expect(result).toBe(true);
+    });
+
+    it('prefers broadcastDate over eventDate', async () => {
+      mockClient.getLeagueByExternalId.mockResolvedValue(trackedLeague);
+      mockClient.getLeagueEvents.mockResolvedValue([
+        {
+          id: 10,
+          seasonNumber: 2026,
+          eventDate: '2000-01-01T00:00:00.000Z',
+          broadcastDate: '2099-01-01T00:00:00.000Z',
+        },
+      ]);
+
+      const result = await service.get(14, showItem(), 'show', ruleGroup());
+      expect(result).toBe(true);
+    });
+
+    it('returns false when every event is in the past', async () => {
+      mockClient.getLeagueByExternalId.mockResolvedValue(trackedLeague);
+      mockClient.getLeagueEvents.mockResolvedValue([
+        { id: 10, seasonNumber: 2026, eventDate: '2000-01-01T00:00:00.000Z' },
+      ]);
+
+      const result = await service.get(14, showItem(), 'show', ruleGroup());
+      expect(result).toBe(false);
+    });
+
+    it('fails closed (undefined) when the events fetch fails', async () => {
+      mockClient.getLeagueByExternalId.mockResolvedValue(trackedLeague);
+      mockClient.getLeagueEvents.mockResolvedValue(undefined);
+
+      const result = await service.get(14, showItem(), 'show', ruleGroup());
+      expect(result).toBeUndefined();
+    });
+  });
+
   it('returns null when the league is not tracked in Sportarr', async () => {
     mockClient.getLeagueByExternalId.mockResolvedValue(null);
     const result = await service.get(1, showItem(), 'show', ruleGroup());

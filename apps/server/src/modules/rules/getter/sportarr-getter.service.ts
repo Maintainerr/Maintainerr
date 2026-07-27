@@ -242,6 +242,23 @@ export class SportarrGetterService {
               : events;
           return scoped.filter((e) => e.hasFile).length;
         }
+        case 'hasFutureEvents': {
+          // True when the league (or scoped season) still has an event dated in
+          // the future - i.e. it is still ongoing rather than a wrapped-up
+          // season. Lets retention rules keep in-progress leagues and only act
+          // on ended ones. Any scheduled event counts, monitored or not.
+          const events = await resolveEvents();
+          if (events === undefined) return undefined;
+          const scoped =
+            dataType === 'season'
+              ? this.seasonEvents(events, seasonNumber)
+              : events;
+          const now = new Date();
+          return scoped.some((e) => {
+            const date = e.broadcastDate ?? e.eventDate;
+            return date != null && new Date(date) > now;
+          });
+        }
         case 'seasonNumber': {
           if (dataType === 'episode') {
             const events = await resolveEvents();
