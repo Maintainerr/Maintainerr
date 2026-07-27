@@ -167,7 +167,7 @@ spec:
 
 # Features
 
-- Build rules from properties across Plex, Jellyfin, Emby, Radarr, Sonarr, Seerr, Tautulli and Streamystats, combined with AND/OR logic.
+- Build rules from properties across Plex, Jellyfin, Emby, Radarr, Sonarr, Sportarr, Seerr, Tautulli and Streamystats, combined with AND/OR logic.
 - Use Plex, Jellyfin or Emby as your media server.
 - Switch between media server types with rule migration.
 - Deploy separate Maintainerr instances for separate media servers, each with isolated rules, collections and data.
@@ -177,7 +177,7 @@ spec:
 - Run automatic collections, or manual ones you manage; add or exclude individual items even when they match a rule.
 - Delete items from your download client.
 - Manage collection membership from within your media server - Maintainerr syncs manual changes back.
-- On handling: delete files from disk, unmonitor or delete in Radarr/Sonarr, change quality profile, and clear requests in Seerr.
+- On handling: delete files from disk, unmonitor or delete in Radarr/Sonarr/Sportarr, change quality profile, and clear requests in Seerr.
 - Render configurable overlays (text, countdown, shapes, images) onto posters and title cards on your media server(s).
 - Set a custom collection poster that survives recreation.
 - Send notifications via Discord, Slack, Telegram, Pushover, Gotify, ntfy, Pushbullet, LunaSea, email or webhook.
@@ -196,10 +196,11 @@ Maintainerr builds rules from data across these apps:
 [![Seerr](https://img.shields.io/badge/Seerr-5969F8?style=for-the-badge)](https://seerr.dev/)
 [![Radarr](https://img.shields.io/badge/Radarr-FFC230?style=for-the-badge&logo=radarr&logoColor=white)](https://radarr.video/)
 [![Sonarr](https://img.shields.io/badge/Sonarr-2596BE?style=for-the-badge&logo=sonarr&logoColor=white)](https://sonarr.tv/)
+[![Sportarr](https://img.shields.io/badge/Sportarr-E4572E?style=for-the-badge)](https://sportarr.net/)
 [![Tautulli](https://img.shields.io/badge/Tautulli-DBA81A?style=for-the-badge)](https://tautulli.com/)
 [![Streamystats](https://img.shields.io/badge/Streamystats-8A4FBE?style=for-the-badge)](https://github.com/fredrikburmester/streamystats)
 
-<sub>Tautulli is Plex-only; Streamystats is Jellyfin-only.</sub>
+<sub>Tautulli is Plex-only; Streamystats is Jellyfin-only; Sportarr manages sports libraries.</sub>
 
 # API
 
