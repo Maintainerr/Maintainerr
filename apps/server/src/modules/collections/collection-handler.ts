@@ -239,6 +239,26 @@ export class CollectionHandler {
       collection = updatedCollection;
     }
 
+    // The collection's configured action retired this item, so record a
+    // rule-removal marker - the same protection #3298 gives the rule executor's
+    // own removals, extended to the handler path. For actions that leave the
+    // file in place (UNMONITOR / quality change) the item stays on the media
+    // server, so if the BoxSet removal above silently no-ops it lingers there;
+    // without a marker the next run would re-adopt it as a spurious manual
+    // member. The marker lets that run self-heal it instead. Automatic,
+    // still-linked collections only (a manual collection has no rule to reclaim
+    // it; an emptied collection was unlinked above so nothing can linger).
+    // Best-effort: a marker write must never fail an already-applied action.
+    if (!collection.manualCollection && collection.mediaServerId) {
+      try {
+        await this.collectionService.markRuleRemoved(collection.id, [
+          media.mediaServerId,
+        ]);
+      } catch (error) {
+        this.logger.debug(error);
+      }
+    }
+
     // The file is gone after a disk-freeing action (DELETE, DELETE_SHOW_IF_EMPTY,
     // and the UNMONITOR_DELETE_* variants all delete files), but the item still
     // resolves on the media server until its next library scan. Prune it from

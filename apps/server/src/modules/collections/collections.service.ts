@@ -212,11 +212,26 @@ export class CollectionsService {
 
     await this.CollectionMediaRepo.update(media.id, { addDate: newAddDate });
 
+    // Prefer the item's title in the log; fall back to its id if the media
+    // server can't resolve it (transient error / already gone) - never fail the
+    // postpone over a cosmetic label.
+    let mediaLabel = mediaServerId;
+    try {
+      const mediaData = await (
+        await this.getMediaServer()
+      ).getMetadata(mediaServerId);
+      if (mediaData) {
+        mediaLabel = this.describeMediaForLog(mediaData);
+      }
+    } catch (error) {
+      this.logger.debug(error);
+    }
+
     await this.addLogRecord(
       collection,
       days != null
-        ? `Postponed deletion of media ${mediaServerId} by ${days} day(s)`
-        : `Reset deletion timer for media ${mediaServerId}`,
+        ? `Postponed deletion of "${mediaLabel}" by ${days} day(s)`
+        : `Reset deletion timer for "${mediaLabel}"`,
       ECollectionLogType.MEDIA,
     );
 
@@ -3413,6 +3428,18 @@ export class CollectionsService {
     return { serverRejectedIds: failedItemIds, persistedIds };
   }
 
+  /**
+   * Human-readable name for a media item in collection log messages: the title,
+   * or a "Show - season N - episode M" composite for seasons/episodes.
+   */
+  private describeMediaForLog(mediaData: MediaItem): string {
+    return isMediaType(mediaData.type, 'episode')
+      ? `${mediaData.grandparentTitle} - season ${mediaData.parentIndex} - episode ${mediaData.index}`
+      : isMediaType(mediaData.type, 'season')
+        ? `${mediaData.parentTitle} - season ${mediaData.index}`
+        : mediaData.title;
+  }
+
   public async CollectionLogRecordForChild(
     mediaServerId: string,
     collectionId: number,
@@ -3423,11 +3450,7 @@ export class CollectionsService {
     const mediaData = await mediaServer.getMetadata(mediaServerId);
 
     if (mediaData) {
-      const subject = isMediaType(mediaData.type, 'episode')
-        ? `${mediaData.grandparentTitle} - season ${mediaData.parentIndex} - episode ${mediaData.index}`
-        : isMediaType(mediaData.type, 'season')
-          ? `${mediaData.parentTitle} - season ${mediaData.index}`
-          : mediaData.title;
+      const subject = this.describeMediaForLog(mediaData);
       await this.addLogRecord(
         { id: collectionId } as Collection,
         `${type === 'add' ? 'Added' : type === 'handle' ? 'Successfully handled' : type === 'exclude' ? 'Added a specific exclusion for' : type === 'include' ? 'Removed specific exclusion of' : 'Removed'} "${subject}"`,
