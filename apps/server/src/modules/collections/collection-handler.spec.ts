@@ -195,6 +195,57 @@ describe('CollectionHandler', () => {
     ).not.toHaveBeenCalled();
   });
 
+  it('records a rule-removal marker when handling an item in an automatic collection', async () => {
+    // UNMONITOR leaves the file (and the media-server item) in place, so if the
+    // BoxSet removal silently no-ops the item lingers there. The marker is what
+    // lets the next run self-heal it instead of re-adopting it as manual (#3298,
+    // extended to the handler path).
+    const collection = createCollection({
+      arrAction: ServarrAction.UNMONITOR,
+      sonarrSettingsId: 1,
+      type: 'show',
+      manualCollection: false,
+    });
+    const collectionMedia = createCollectionMedia(collection);
+
+    mediaServer.getLibraries.mockResolvedValue(
+      createMediaLibraries({
+        id: collection.libraryId.toString(),
+        type: 'show',
+      }),
+    );
+    sonarrActionHandler.handleAction.mockResolvedValue(true);
+
+    await collectionHandler.handleMedia(collection, collectionMedia);
+
+    expect(collectionsService.markRuleRemoved).toHaveBeenCalledWith(
+      collection.id,
+      [collectionMedia.mediaServerId],
+    );
+  });
+
+  it('does not record a rule-removal marker for a manual collection (no rule to reclaim it)', async () => {
+    const collection = createCollection({
+      arrAction: ServarrAction.UNMONITOR,
+      sonarrSettingsId: 1,
+      type: 'show',
+      manualCollection: true,
+    });
+    const collectionMedia = createCollectionMedia(collection);
+
+    mediaServer.getLibraries.mockResolvedValue(
+      createMediaLibraries({
+        id: collection.libraryId.toString(),
+        type: 'show',
+      }),
+    );
+    sonarrActionHandler.handleAction.mockResolvedValue(true);
+
+    await collectionHandler.handleMedia(collection, collectionMedia);
+
+    expect(collectionsService.markRuleRemoved).not.toHaveBeenCalled();
+  });
+
   it('should call Radarr action handler', async () => {
     const collection = createCollection({
       arrAction: ServarrAction.DELETE,
