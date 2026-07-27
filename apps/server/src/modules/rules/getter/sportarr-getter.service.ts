@@ -282,9 +282,7 @@ export class SportarrGetterService {
         }
       }
     } catch (e) {
-      this.logger.warn(
-        `Sportarr-Getter - Action failed : ${e instanceof Error ? e.message : e}`,
-      );
+      this.logger.warn('Sportarr-Getter - Action failed');
       this.logger.debug(e);
       return undefined;
     }

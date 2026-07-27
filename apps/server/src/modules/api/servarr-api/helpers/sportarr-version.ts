@@ -5,12 +5,13 @@ export function isBelowMinimumVersion(
   version: string,
   minimum: string,
 ): boolean {
-  const parse = (v: string) =>
-    v
-      .trim()
-      .replace(/^v/i, '')
-      .split('.')
-      .map((s) => Number.parseInt(s, 10));
+  const parse = (v: string) => {
+    const trimmed = v.trim();
+    // Strip a leading "v"/"V" prefix without a regex (project convention).
+    const digits =
+      trimmed[0] === 'v' || trimmed[0] === 'V' ? trimmed.slice(1) : trimmed;
+    return digits.split('.').map((s) => Number.parseInt(s, 10));
+  };
   const current = parse(version);
   const required = parse(minimum);
   if (current.some(Number.isNaN) || required.some(Number.isNaN)) {
