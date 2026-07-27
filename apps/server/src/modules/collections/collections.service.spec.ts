@@ -142,7 +142,33 @@ describe('CollectionsService', () => {
       });
       expect(logSpy).toHaveBeenCalledWith(
         collection,
-        'Postponed deletion of media item-5 by 14 day(s)',
+        'Postponed deletion of "item-5" by 14 day(s)',
+        ECollectionLogType.MEDIA,
+      );
+    });
+
+    it('logs the resolved media title when the media server can supply it', async () => {
+      const collection = createCollection({ id: 1, deleteAfterDays: 30 });
+      const media = createCollectionMedia(collection, {
+        id: 5,
+        mediaServerId: 'item-5',
+        addDate: new Date(2026, 5, 24),
+      });
+      collectionRepo.findOne.mockResolvedValue(collection);
+      collectionMediaRepo.findOne.mockResolvedValue(media);
+      mediaServer.getMetadata.mockResolvedValue({
+        type: 'movie',
+        title: 'Sample Movie',
+      } as never);
+      const logSpy = jest
+        .spyOn(service, 'addLogRecord')
+        .mockResolvedValue(undefined);
+
+      await service.postponeCollectionMedia(1, 'item-5', 7);
+
+      expect(logSpy).toHaveBeenCalledWith(
+        collection,
+        'Postponed deletion of "Sample Movie" by 7 day(s)',
         ECollectionLogType.MEDIA,
       );
     });
@@ -172,7 +198,7 @@ describe('CollectionsService', () => {
         expect(result?.deletionDate).toEqual(new Date(2026, 7, 18));
         expect(logSpy).toHaveBeenCalledWith(
           collection,
-          'Reset deletion timer for media item-5',
+          'Reset deletion timer for "item-5"',
           ECollectionLogType.MEDIA,
         );
       } finally {
