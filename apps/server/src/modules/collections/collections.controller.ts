@@ -10,6 +10,8 @@ import {
   MediaItemTypes,
   MediaLibrarySortField,
   MediaSortOrder,
+  POSTPONE_MAX_DAYS,
+  POSTPONE_MIN_DAYS,
   ServarrAction,
   collectionMediaSortFields,
   mediaLibrarySortFields,
@@ -54,7 +56,15 @@ import {
   InvalidCollectionPosterError,
 } from './collection-poster.service';
 import { CollectionWorkerService } from './collection-worker.service';
-import { CollectionsService } from './collections.service';
+import {
+  CollectionsService,
+  PostponeCollectionMediaResult,
+} from './collections.service';
+
+// How long a postpone waits for an in-flight collection or rule run before
+// giving up. Long enough to ride out a run that is finishing, short enough to
+// stay within a browser's patience.
+const POSTPONE_LOCK_WAIT_MS = 30000;
 
 const collectionMediaSortQuerySchema = z
   .enum(collectionMediaSortFields)
@@ -219,12 +229,18 @@ export const handleCollectionMediaBodySchema = z.object({
   mediaId: z.string().min(1),
 });
 export const postponeCollectionMediaBodySchema = z.object({
-  collectionId: z.number().int(),
+  // Coerced like the other collection endpoints: this one is called by
+  // external automation, which routinely sends ids as strings.
+  collectionId: z.coerce.number().int(),
   mediaId: z.string().min(1),
   // Omit to reset the full grace window; provide to push the deadline out by
-  // this many days. Upper bound mirrors the UI (PostponeButton) and keeps the
-  // resulting date well within Date range.
-  days: z.coerce.number().int().positive().max(3650).optional(),
+  // this many days.
+  days: z.coerce
+    .number()
+    .int()
+    .min(POSTPONE_MIN_DAYS)
+    .max(POSTPONE_MAX_DAYS)
+    .optional(),
 });
 
 type CreateCollectionBody = z.infer<typeof createCollectionBodySchema>;
@@ -475,10 +491,13 @@ export class CollectionsController {
   ) {
     // Share the collection/rule execution lock: a worker run that has already
     // selected this item for deletion would otherwise delete it despite the
-    // postpone. Fail fast so the caller retries once the run finishes, rather
-    // than silently losing the "keep" (the worker re-reads addDate next pass).
-    const release = this.executionLock.tryAcquire(
+    // postpone. Queue behind a run that is about to finish rather than
+    // dropping the caller's "keep" outright - nothing retries a 409, and once
+    // the run ends the answer is definite either way (postponed, or a 404
+    // because the item was handled).
+    const release = await this.executionLock.acquireWithin(
       RULES_COLLECTIONS_EXECUTION_LOCK_KEY,
+      POSTPONE_LOCK_WAIT_MS,
     );
 
     if (!release) {
@@ -487,21 +506,30 @@ export class CollectionsController {
       );
     }
 
+    let result: PostponeCollectionMediaResult | undefined;
     try {
-      const result = await this.collectionService.postponeCollectionMedia(
+      result = await this.collectionService.postponeCollectionMedia(
         request.collectionId,
         request.mediaId,
         request.days,
       );
-
-      if (!result) {
-        throw new NotFoundException('Media not found in collection');
-      }
-
-      return result;
     } finally {
       release();
     }
+
+    if (!result) {
+      throw new NotFoundException('Media not found in collection');
+    }
+
+    // Outside the lock: resolving the item's title hits the media server, and
+    // a slow one must not stall every queued rule or collection run.
+    await this.collectionService.logPostponedCollectionMedia(
+      request.collectionId,
+      request.mediaId,
+      request.days,
+    );
+
+    return result;
   }
 
   @Delete('/media')

@@ -113,38 +113,69 @@ describe('CollectionsService', () => {
 
   describe('postponeCollectionMedia', () => {
     it('pushes the deadline out by whole days and normalises addDate to midnight', async () => {
-      const collection = createCollection({ id: 1, deleteAfterDays: 30 });
-      const media = createCollectionMedia(collection, {
-        id: 5,
-        mediaServerId: 'item-5',
-        // deliberately mid-day, to prove normalisation to midnight
-        addDate: new Date(2026, 5, 24, 16, 12, 49),
-      });
-      collectionRepo.findOne.mockResolvedValue(collection);
-      collectionMediaRepo.findOne.mockResolvedValue(media);
-      const logSpy = jest
-        .spyOn(service, 'addLogRecord')
-        .mockResolvedValue(undefined);
+      jest.useFakeTimers().setSystemTime(new Date(2026, 6, 1, 9, 0, 0));
+      try {
+        const collection = createCollection({ id: 1, deleteAfterDays: 30 });
+        const media = createCollectionMedia(collection, {
+          id: 5,
+          mediaServerId: 'item-5',
+          // deliberately mid-day, to prove normalisation to midnight
+          addDate: new Date(2026, 5, 24, 16, 12, 49),
+        });
+        collectionRepo.findOne.mockResolvedValue(collection);
+        collectionMediaRepo.findOne.mockResolvedValue(media);
+        const logSpy = jest
+          .spyOn(service, 'addLogRecord')
+          .mockResolvedValue(undefined);
 
-      const result = await service.postponeCollectionMedia(1, 'item-5', 14);
+        const result = await service.postponeCollectionMedia(1, 'item-5', 14);
 
-      // June 24 + 14 days = July 8 2026, at local midnight
-      expect(collectionMediaRepo.update).toHaveBeenCalledWith(5, {
-        addDate: new Date(2026, 6, 8),
-      });
-      expect(result).toEqual({
-        collectionId: 1,
-        mediaServerId: 'item-5',
-        addDate: new Date(2026, 6, 8),
-        deleteAfterDays: 30,
-        // July 8 + 30 days = Aug 7 2026
-        deletionDate: new Date(2026, 7, 7),
-      });
-      expect(logSpy).toHaveBeenCalledWith(
-        collection,
-        'Postponed deletion of "item-5" by 14 day(s)',
-        ECollectionLogType.MEDIA,
-      );
+        // The log is the caller's second step, outside the execution lock.
+        expect(logSpy).not.toHaveBeenCalled();
+
+        // June 24 + 14 days = July 8 2026, at local midnight
+        expect(collectionMediaRepo.update).toHaveBeenCalledWith(5, {
+          addDate: new Date(2026, 6, 8),
+        });
+        expect(result).toEqual({
+          collectionId: 1,
+          mediaServerId: 'item-5',
+          addDate: new Date(2026, 6, 8),
+          deleteAfterDays: 30,
+          // July 8 + 30 days = Aug 7 2026
+          deletionDate: new Date(2026, 7, 7),
+        });
+      } finally {
+        jest.useRealTimers();
+      }
+    });
+
+    it('counts the days from today when the deadline has already passed', async () => {
+      jest.useFakeTimers().setSystemTime(new Date(2026, 6, 27, 15, 30, 0));
+      try {
+        const collection = createCollection({ id: 1, deleteAfterDays: 30 });
+        const media = createCollectionMedia(collection, {
+          id: 5,
+          mediaServerId: 'item-5',
+          // due on May 31, so 57 days overdue by now
+          addDate: new Date(2026, 4, 1),
+        });
+        collectionRepo.findOne.mockResolvedValue(collection);
+        collectionMediaRepo.findOne.mockResolvedValue(media);
+        jest.spyOn(service, 'addLogRecord').mockResolvedValue(undefined);
+
+        const result = await service.postponeCollectionMedia(1, 'item-5', 2);
+
+        // Shifting the stored May 1 addDate would land the deadline back in
+        // June and the next handler run would delete the item regardless.
+        expect(collectionMediaRepo.update).toHaveBeenCalledWith(5, {
+          addDate: new Date(2026, 5, 29),
+        });
+        // June 29 + 30 days = July 29, two days from today
+        expect(result?.deletionDate).toEqual(new Date(2026, 6, 29));
+      } finally {
+        jest.useRealTimers();
+      }
     });
 
     it('logs the resolved media title when the media server can supply it', async () => {
@@ -164,13 +195,42 @@ describe('CollectionsService', () => {
         .spyOn(service, 'addLogRecord')
         .mockResolvedValue(undefined);
 
-      await service.postponeCollectionMedia(1, 'item-5', 7);
+      await service.logPostponedCollectionMedia(1, 'item-5', 7);
 
       expect(logSpy).toHaveBeenCalledWith(
         collection,
         'Postponed deletion of "Sample Movie" by 7 day(s)',
         ECollectionLogType.MEDIA,
       );
+    });
+
+    it('falls back to the media id when the title cannot be resolved', async () => {
+      const collection = createCollection({ id: 1, deleteAfterDays: 30 });
+      collectionRepo.findOne.mockResolvedValue(collection);
+      mediaServer.getMetadata.mockRejectedValue(new Error('unreachable'));
+      const logSpy = jest
+        .spyOn(service, 'addLogRecord')
+        .mockResolvedValue(undefined);
+
+      await service.logPostponedCollectionMedia(1, 'item-5');
+
+      expect(logSpy).toHaveBeenCalledWith(
+        collection,
+        'Reset deletion timer for "item-5"',
+        ECollectionLogType.MEDIA,
+      );
+    });
+
+    it('never throws when the log record cannot be written', async () => {
+      const collection = createCollection({ id: 1, deleteAfterDays: 30 });
+      collectionRepo.findOne.mockResolvedValue(collection);
+      jest
+        .spyOn(service, 'addLogRecord')
+        .mockRejectedValue(new Error('database is locked'));
+
+      await expect(
+        service.logPostponedCollectionMedia(1, 'item-5', 7),
+      ).resolves.toBeUndefined();
     });
 
     it('resets the full window to today at midnight when days is omitted', async () => {
@@ -184,9 +244,6 @@ describe('CollectionsService', () => {
         });
         collectionRepo.findOne.mockResolvedValue(collection);
         collectionMediaRepo.findOne.mockResolvedValue(media);
-        const logSpy = jest
-          .spyOn(service, 'addLogRecord')
-          .mockResolvedValue(undefined);
 
         const result = await service.postponeCollectionMedia(1, 'item-5');
 
@@ -196,11 +253,6 @@ describe('CollectionsService', () => {
         expect(result?.addDate).toEqual(new Date(2026, 6, 19));
         // today + 30 days = Aug 18 2026
         expect(result?.deletionDate).toEqual(new Date(2026, 7, 18));
-        expect(logSpy).toHaveBeenCalledWith(
-          collection,
-          'Reset deletion timer for "item-5"',
-          ECollectionLogType.MEDIA,
-        );
       } finally {
         jest.useRealTimers();
       }

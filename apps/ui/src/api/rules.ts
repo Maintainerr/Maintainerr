@@ -18,6 +18,7 @@ import type { IRule } from '../components/Rules/Rule/RuleCreator'
 import type { IRuleGroup } from '../components/Rules/RuleGroup'
 import type { AgentConfiguration } from '../components/Settings/Notifications/CreateNotificationModal'
 import { IConstants } from '../contexts/constants-context'
+import { invalidateCollectionQueries } from './collections'
 import GetApiHandler, {
   PostApiHandler,
   PutApiHandler,
@@ -268,9 +269,7 @@ export const useCreateRuleGroup = (options?: UseCreateRuleGroupOptions) => {
       return response
     },
     onSuccess: async (data, variables, context, mutation) => {
-      await queryClient.invalidateQueries({
-        queryKey: ['calendar', 'collections', 'overlay-data'],
-      })
+      await invalidateCollectionQueries(queryClient)
 
       if (onSuccess) {
         await onSuccess(data, variables, context, mutation)
@@ -311,9 +310,7 @@ export const useUpdateRuleGroup = (options?: UseUpdateRuleGroupOptions) => {
         ] satisfies UseRuleGroupQueryKey,
       })
 
-      await queryClient.invalidateQueries({
-        queryKey: ['calendar', 'collections', 'overlay-data'],
-      })
+      await invalidateCollectionQueries(queryClient)
 
       if (onSuccess) {
         await onSuccess(data, variables, context, mutation)
