@@ -50,7 +50,7 @@
     "http-terminator": "^3.2.0",
     "lodash": "^4.18.1",
     "mime-types": "^3.0.2",
-    "nestjs-zod": "^5.4.0",
+    "nestjs-zod": "^5.5.0",
     "node-cache": "^5.1.2",
     "nodemailer": "9.0.3",
     "octokit": "^3.2.2",
