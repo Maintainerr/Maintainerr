@@ -17,6 +17,7 @@ import { SettingDto } from "./dto's/setting.dto";
 import { RadarrSettings } from './entities/radarr_settings.entities';
 import { Settings } from './entities/settings.entities';
 import { SonarrSettings } from './entities/sonarr_settings.entities';
+import { SportarrSettings } from './entities/sportarr_settings.entities';
 
 type PlexConnectionSettingsUpdate = Partial<
   Pick<
@@ -134,6 +135,8 @@ export class SettingsDataService implements SettingDto {
     private readonly radarrSettingsRepo: Repository<RadarrSettings>,
     @InjectRepository(SonarrSettings)
     private readonly sonarrSettingsRepo: Repository<SonarrSettings>,
+    @InjectRepository(SportarrSettings)
+    private readonly sportarrSettingsRepo: Repository<SportarrSettings>,
     private readonly eventEmitter: EventEmitter2,
     private readonly logger: MaintainerrLogger,
   ) {
@@ -437,6 +440,42 @@ export class SettingsDataService implements SettingDto {
    */
   public async getSonarrSettingsCount(): Promise<number> {
     return this.sonarrSettingsRepo.count();
+  }
+
+  public async getSportarrSettings() {
+    try {
+      return this.sportarrSettingsRepo.find();
+    } catch (error) {
+      this.logger.error(
+        'Something went wrong while getting sportarr settings. Is the database file locked?',
+      );
+      this.logger.debug(error);
+      return {
+        status: 'NOK',
+        code: 0,
+        message: getErrorMessage(error, 'Failed to get Sportarr settings'),
+      } as BasicResponseDto;
+    }
+  }
+
+  public async getSportarrSetting(id: number) {
+    try {
+      return this.sportarrSettingsRepo.findOne({ where: { id: id } });
+    } catch (error) {
+      this.logger.error(
+        `Something went wrong while getting sportarr setting ${id}. Is the database file locked?`,
+      );
+      this.logger.debug(error);
+      return {
+        status: 'NOK',
+        code: 0,
+        message: getErrorMessage(error, 'Failed to get Sportarr setting'),
+      } as BasicResponseDto;
+    }
+  }
+
+  public async getSportarrSettingsCount(): Promise<number> {
+    return this.sportarrSettingsRepo.count();
   }
 
   public generateApiKey(): string {

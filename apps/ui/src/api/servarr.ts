@@ -5,7 +5,7 @@ import GetApiHandler from '../utils/ApiHandler'
 type UseQualityProfilesQueryKey = [
   'servarr',
   'qualityProfiles',
-  'radarr' | 'sonarr',
+  'radarr' | 'sonarr' | 'sportarr',
   number,
 ]
 
@@ -20,7 +20,7 @@ type UseQualityProfilesOptions = Omit<
 >
 
 export const useQualityProfiles = (
-  type: 'radarr' | 'sonarr',
+  type: 'radarr' | 'sonarr' | 'sportarr',
   settingId?: number | null,
   options?: UseQualityProfilesOptions,
 ) => {

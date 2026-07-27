@@ -41,6 +41,7 @@ interface iRuleCreator {
   onCancel: () => void
   radarrSettingsId?: number | null
   sonarrSettingsId?: number | null
+  sportarrSettingsId?: number | null
 }
 
 type RuleSlot = { uid: string; rule: IRule | null }
@@ -307,6 +308,7 @@ const RuleCreator = (props: iRuleCreator) => {
                               dataType={props.dataType}
                               radarrSettingsId={props.radarrSettingsId}
                               sonarrSettingsId={props.sonarrSettingsId}
+                              sportarrSettingsId={props.sportarrSettingsId}
                               onCommit={handleCommit(slot.uid)}
                               onIncomplete={handleIncomplete(slot.uid)}
                               onDelete={handleDelete(section.uid, slot.uid)}

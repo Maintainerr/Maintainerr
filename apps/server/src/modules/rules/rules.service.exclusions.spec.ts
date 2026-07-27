@@ -58,6 +58,7 @@ describe('RulesService exclusions - global (null ruleGroupId) handling', () => {
       {} as any, // settingsRepo
       radarrSettingsRepo as any,
       sonarrSettingsRepo as any,
+      {} as any, // sportarrSettingsRepo
       collectionService as any,
       mediaServerFactory as any,
       {} as any, // connection

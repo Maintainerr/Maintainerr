@@ -4,8 +4,9 @@ import { useServarrSettings } from '../../../../../api/settings'
 import { Select } from '../../../../Forms/Select'
 import { IRadarrSetting } from '../../../../Settings/Radarr'
 import { ISonarrSetting } from '../../../../Settings/Sonarr'
+import { ISportarrSetting } from '../../../../Settings/Sportarr'
 
-type ArrType = 'Radarr' | 'Sonarr'
+type ArrType = 'Radarr' | 'Sonarr' | 'Sportarr'
 
 interface ArrActionProps {
   type: ArrType
@@ -39,8 +40,8 @@ const ArrAction = (props: ArrActionProps) => {
     data: settings,
     isLoading: loading,
     isFetching,
-  } = useServarrSettings<IRadarrSetting | ISonarrSetting>(
-    type.toLowerCase() as 'radarr' | 'sonarr',
+  } = useServarrSettings<IRadarrSetting | ISonarrSetting | ISportarrSetting>(
+    type.toLowerCase() as 'radarr' | 'sonarr' | 'sportarr',
   )
   const settingsList = settings ?? []
   const action = arrAction ?? 0

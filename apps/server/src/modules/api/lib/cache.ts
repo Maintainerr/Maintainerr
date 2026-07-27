@@ -15,7 +15,7 @@ type AvailableCacheIds =
   | 'jellyfin'
   | 'emby';
 
-type CacheType = AvailableCacheIds | 'radarr' | 'sonarr';
+type CacheType = AvailableCacheIds | 'radarr' | 'sonarr' | 'sportarr';
 
 const DEFAULT_TTL = 300; // 5 min
 const DEFAULT_CHECK_PERIOD = 120; // 2 min

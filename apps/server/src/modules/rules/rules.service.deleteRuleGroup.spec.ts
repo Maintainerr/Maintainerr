@@ -47,6 +47,7 @@ describe('RulesService.deleteRuleGroup', () => {
       {} as any, // settingsRepo
       {} as any, // radarrSettingsRepo
       {} as any, // sonarrSettingsRepo
+      {} as any, // sportarrSettingsRepo
       collectionService as any,
       {} as any, // mediaServerFactory
       {} as any, // connection
@@ -283,6 +284,7 @@ describe('RulesService.removeExclusion', () => {
       {} as any, // settingsRepo
       {} as any, // radarrSettingsRepo
       {} as any, // sonarrSettingsRepo
+      {} as any, // sportarrSettingsRepo
       collectionService as any,
       {} as any, // mediaServerFactory
       {} as any, // connection

@@ -2,7 +2,7 @@ import { useQualityProfiles } from '../../../../api/servarr'
 import { Select } from '../../../Forms/Select'
 
 interface QualityProfileSelectorProps {
-  type: 'Radarr' | 'Sonarr'
+  type: 'Radarr' | 'Sonarr' | 'Sportarr'
   settingId?: number | null
   qualityProfileId?: number | null
   onUpdate: (qualityProfileId?: number) => void
@@ -11,7 +11,7 @@ interface QualityProfileSelectorProps {
 
 const QualityProfileSelector = (props: QualityProfileSelectorProps) => {
   const { data: profiles = [], isLoading } = useQualityProfiles(
-    props.type.toLowerCase() as 'radarr' | 'sonarr',
+    props.type.toLowerCase() as 'radarr' | 'sonarr' | 'sportarr',
     props.settingId,
   )
 

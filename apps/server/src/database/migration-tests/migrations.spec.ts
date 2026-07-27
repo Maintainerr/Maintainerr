@@ -99,6 +99,8 @@ describe('database migrations', () => {
       // drifted (wrong type/default/nullability) would not.
       const bool = { type: 'boolean', notnull: 1, dflt_value: '0' };
       const dnd = { type: 'varchar', notnull: 1, dflt_value: "'dnd'" };
+      // SQLite reports INTEGER affinity uppercased via PRAGMA table_info.
+      const intNullable = { type: 'INTEGER', notnull: 0, dflt_value: null };
       expect(collection.tagInArr).toMatchObject(bool);
       expect(settings.radarr_tag_exclusions).toMatchObject(bool);
       expect(settings.radarr_exclusion_tag).toMatchObject(dnd);
@@ -107,7 +109,7 @@ describe('database migrations', () => {
       expect(settings.sonarr_exclusion_tag).toMatchObject(dnd);
       expect(settings.sonarr_untag_on_unexclude).toMatchObject(bool);
 
-      // This PR's migration: the rule-removal marker table columns.
+      // AddCollectionMediaRuleRemoval: the rule-removal marker table columns.
       const ruleRemoval = byName(
         await columns(ds, 'collection_media_rule_removal'),
       );
@@ -121,6 +123,23 @@ describe('database migrations', () => {
         type: 'varchar',
         notnull: 1,
       });
+
+      // Columns added by the newest migration (AddSportarrSettings).
+      expect(collection.sportarrSettingsId).toMatchObject(intNullable);
+      expect(collection.sportarrQualityProfileId).toMatchObject(intNullable);
+      const sportarrSettings = byName(await columns(ds, 'sportarr_settings'));
+      expect(sportarrSettings.serverName).toMatchObject({
+        type: 'varchar',
+        notnull: 1,
+      });
+      expect(sportarrSettings.url).toMatchObject({
+        type: 'varchar',
+        notnull: 0,
+      });
+      expect(sportarrSettings.apiKey).toMatchObject({
+        type: 'varchar',
+        notnull: 0,
+      });
     } finally {
       await ds.destroy();
     }
@@ -129,14 +148,11 @@ describe('database migrations', () => {
   it('emit the SQLite create-temporary-table rebuild (generated, not hand-waived)', () => {
     const newest = all[all.length - 1];
     const src = fs.readFileSync(path.join(MIGRATIONS_DIR, newest.file), 'utf8');
-    // The new table's FK can't be added in place, so `migration:generate` emits
-    // the full create-temporary-table / copy / drop / rename rebuild. A
-    // hand-written CREATE TABLE shortcut lacks it - the cheapest signal the
-    // migration was generated rather than authored.
-    expect(src).toContain(
-      'CREATE TABLE "temporary_collection_media_rule_removal"',
-    );
-    expect(src).toContain('FOREIGN KEY ("collectionId")');
+    // SQLite can't ALTER most columns in place, so `migration:generate` always
+    // emits a full create-temporary-table / copy / drop / rename rebuild for the
+    // changed tables. A hand-written ALTER shortcut lacks it - this is the
+    // cheapest signal the migration was generated rather than authored.
+    expect(src).toContain('CREATE TABLE "temporary_collection"');
   });
 
   // We don't revert the whole chain: several pre-existing migrations have
@@ -147,17 +163,15 @@ describe('database migrations', () => {
     const ds = await makeDS(all.map((m) => m.cls)).initialize();
     try {
       await ds.runMigrations();
-      const hasTable = async () =>
-        (
-          await ds.query(
-            `SELECT name FROM sqlite_master WHERE type='table' AND name='collection_media_rule_removal'`,
-          )
-        ).length > 0;
-      expect(await hasTable()).toBe(true);
+      const has = async () =>
+        (await columns(ds, 'collection')).some(
+          (c) => c.name === 'sportarrSettingsId',
+        );
+      expect(await has()).toBe(true);
 
       await ds.undoLastMigration();
 
-      expect(await hasTable()).toBe(false);
+      expect(await has()).toBe(false);
       const [{ c }] = await ds.query(`SELECT COUNT(*) AS c FROM migrations`);
       expect(Number(c)).toBe(all.length - 1);
     } finally {

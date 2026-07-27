@@ -16,10 +16,14 @@ interface TriggerRuleActionButtonProps {
 }
 
 const getActionSummary = (collection: ICollection) => {
+  // Sportarr-managed collections hold leagues/events rather than shows.
+  const isSportarr = collection.sportarrSettingsId != null
   switch (collection.arrAction as ServarrAction) {
     case ServarrAction.DELETE:
       return collection.type === 'show'
-        ? 'Delete this show'
+        ? isSportarr
+          ? 'Delete this league'
+          : 'Delete this show'
         : collection.type === 'movie'
           ? 'Delete this movie'
           : 'Delete this item'
@@ -30,13 +34,17 @@ const getActionSummary = (collection: ICollection) => {
         ? 'Unmonitor this movie and delete its files'
         : 'Unmonitor and delete existing files'
     case ServarrAction.UNMONITOR:
-      return `Unmonitor this ${collection.type}`
+      return isSportarr && collection.type === 'show'
+        ? 'Unmonitor this league'
+        : `Unmonitor this ${collection.type}`
     case ServarrAction.DELETE_SHOW_IF_EMPTY:
       return 'Delete this season and remove the show if it becomes empty'
     case ServarrAction.UNMONITOR_SHOW_IF_EMPTY:
       return 'Unmonitor this season and unmonitor the show if it becomes empty'
     case ServarrAction.CHANGE_QUALITY_PROFILE:
-      return 'Change the quality profile and trigger a search'
+      return isSportarr
+        ? 'Change the quality profile'
+        : 'Change the quality profile and trigger a search'
     default:
       return 'Run the collection action'
   }

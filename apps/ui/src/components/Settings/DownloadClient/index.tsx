@@ -257,11 +257,12 @@ const DownloadClientSettings = () => {
             </span>
           </h3>
           <p className="description">
-            When media is removed through Radarr or Sonarr, Maintainerr can
-            remove the completed download (and optionally its data) from your
-            download client. The download is matched via the Radarr/Sonarr
-            download history, so media removed without Radarr/Sonarr is left
-            untouched. qBittorrent is currently the only supported client.
+            When media is removed through Radarr, Sonarr or Sportarr,
+            Maintainerr can remove the completed download (and optionally its
+            data) from your download client. The download is matched via that
+            service&apos;s download history, so media removed without one of
+            them is left untouched. qBittorrent is currently the only supported
+            client.
           </p>
         </div>
 

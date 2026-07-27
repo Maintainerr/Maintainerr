@@ -94,8 +94,10 @@ export interface RuleGroupCreatePayload {
   tautulliWatchedPercentOverride?: number
   radarrSettingsId?: number
   sonarrSettingsId?: number
+  sportarrSettingsId?: number
   radarrQualityProfileId?: number
   sonarrQualityProfileId?: number
+  sportarrQualityProfileId?: number
   tagInArr?: boolean
   collection: RuleGroupCollectionPayload
   rules: IRule[]

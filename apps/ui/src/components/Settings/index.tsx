@@ -122,16 +122,21 @@ const SettingsWrapper = () => {
   const [hasDismissedSetupWelcome, setHasDismissedSetupWelcome] =
     useState(false)
 
-  // The download client tab is only relevant when Radarr/Sonarr is configured
-  // (it cleans up downloads for media those services delete).
+  // The download client tab is only relevant when Radarr/Sonarr/Sportarr is
+  // configured (it cleans up downloads for media those services delete).
   const { data: radarrSettings } = useServarrSettings('radarr', {
     enabled: !!settings,
   })
   const { data: sonarrSettings } = useServarrSettings('sonarr', {
     enabled: !!settings,
   })
+  const { data: sportarrSettings } = useServarrSettings('sportarr', {
+    enabled: !!settings,
+  })
   const hasArrConfigured =
-    (radarrSettings?.length ?? 0) > 0 || (sonarrSettings?.length ?? 0) > 0
+    (radarrSettings?.length ?? 0) > 0 ||
+    (sonarrSettings?.length ?? 0) > 0 ||
+    (sportarrSettings?.length ?? 0) > 0
 
   // Determine which media server tab to show based on settings
   const mediaServerType =
@@ -170,6 +175,11 @@ const SettingsWrapper = () => {
         regex: /^\/settings\/sonarr$/,
       },
       {
+        text: 'Sportarr',
+        route: '/settings/sportarr',
+        regex: /^\/settings\/sportarr$/,
+      },
+      {
         text: 'Metadata',
         route: '/settings/metadata',
         regex: /^\/settings\/metadata$/,
@@ -195,7 +205,8 @@ const SettingsWrapper = () => {
     }
 
     // The download client only cleans up downloads for media deleted through
-    // Radarr/Sonarr, so the tab is only shown when at least one is configured.
+    // Radarr/Sonarr/Sportarr, so the tab is only shown when at least one is
+    // configured.
     if (hasArrConfigured) {
       baseRoutes.push({
         text: 'Download client',
