@@ -43,31 +43,25 @@ export class ExecutionLockService {
     key: string,
     timeoutMs: number,
   ): Promise<(() => void) | null> {
-    const release = this.tryAcquire(key);
-    if (release) {
-      return release;
-    }
-
     // `acquire` claims its place in the chain synchronously, so abandoning it
     // on timeout would block every later waiter. Keep the promise and release
     // its turn the moment it comes up instead.
     const queued = this.acquire(key);
 
     let timer: NodeJS.Timeout | undefined;
-    const expired = Symbol('expired');
-    const waited = await Promise.race([
+    const release = await Promise.race([
       queued,
-      new Promise<typeof expired>((resolve) => {
-        timer = setTimeout(() => resolve(expired), timeoutMs);
+      new Promise<null>((resolve) => {
+        timer = setTimeout(() => resolve(null), timeoutMs);
       }),
     ]);
     clearTimeout(timer);
 
-    if (waited !== expired) {
-      return waited;
+    if (release) {
+      return release;
     }
 
-    void queued.then((release) => release());
+    void queued.then((late) => late());
     return null;
   }
 

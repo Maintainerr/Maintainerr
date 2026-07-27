@@ -1,0 +1,111 @@
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import ConfirmActionButton from './ConfirmActionButton'
+
+vi.mock('../../utils/ClientLogger', () => ({
+  logClientError: vi.fn(),
+}))
+
+const renderButton = (
+  onConfirm: () => Promise<void>,
+  props?: { confirmDisabled?: boolean },
+) =>
+  render(
+    <ConfirmActionButton
+      buttonLabel="Do it"
+      buttonIcon={null}
+      modalTitle="Are you sure?"
+      confirmLabel="Confirm"
+      pendingLabel="Working..."
+      errorMessage="The action failed."
+      errorContext="spec"
+      onConfirm={onConfirm}
+      {...props}
+    >
+      <p>Body copy</p>
+    </ConfirmActionButton>,
+  )
+
+const openDialog = () =>
+  fireEvent.click(screen.getByRole('button', { name: 'Do it' }))
+
+describe('ConfirmActionButton', () => {
+  afterEach(() => {
+    cleanup()
+  })
+
+  it('runs the action and closes the dialog once it resolves', async () => {
+    const onConfirm = vi.fn().mockResolvedValue(undefined)
+
+    renderButton(onConfirm)
+    openDialog()
+    expect(screen.getByText('Body copy')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm' }))
+
+    await vi.waitFor(() => {
+      expect(screen.queryByText('Are you sure?')).toBeNull()
+    })
+    expect(onConfirm).toHaveBeenCalledTimes(1)
+  })
+
+  it('keeps the dialog open and reports the failure when the action throws', async () => {
+    const onConfirm = vi.fn().mockRejectedValue(new Error('nope'))
+
+    renderButton(onConfirm)
+    openDialog()
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm' }))
+
+    expect(await screen.findByText('nope')).toBeTruthy()
+    expect(screen.getByText('Are you sure?')).toBeTruthy()
+  })
+
+  it('drops a previous failure when the dialog is cancelled and reopened', async () => {
+    const onConfirm = vi.fn().mockRejectedValue(new Error('nope'))
+
+    renderButton(onConfirm)
+    openDialog()
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm' }))
+    await screen.findByText('nope')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    openDialog()
+
+    expect(screen.queryByText('nope')).toBeNull()
+  })
+
+  it('does not run a disabled action', () => {
+    const onConfirm = vi.fn().mockResolvedValue(undefined)
+
+    renderButton(onConfirm, { confirmDisabled: true })
+    openDialog()
+    const confirm = screen.getByRole('button', { name: 'Confirm' })
+
+    expect(confirm.hasAttribute('disabled')).toBe(true)
+    fireEvent.click(confirm)
+    expect(onConfirm).not.toHaveBeenCalled()
+  })
+
+  it('shows the pending label while the action is in flight', async () => {
+    let resolveAction!: () => void
+    const onConfirm = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveAction = resolve
+        }),
+    )
+
+    renderButton(onConfirm)
+    openDialog()
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm' }))
+
+    // PendingButtonContent also renders an invisible copy of the label to
+    // reserve the button's width, so both spans carry the pending text.
+    const confirm = await screen.findByRole('button', { name: /Working\.\.\./ })
+    expect(confirm.hasAttribute('disabled')).toBe(true)
+
+    resolveAction()
+    await vi.waitFor(() => {
+      expect(screen.queryByText('Are you sure?')).toBeNull()
+    })
+  })
+})

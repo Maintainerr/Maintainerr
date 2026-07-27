@@ -95,8 +95,7 @@ interface SharedManualCollectionReconciliationOptions {
  */
 export const getCollectionDangerDate = (
   deleteAfterDays: number | null | undefined,
-  now: Date = new Date(),
-): Date => new Date(now.getTime() - +(deleteAfterDays ?? 0) * 86400000);
+): Date => new Date(Date.now() - +(deleteAfterDays ?? 0) * 86400000);
 
 export interface PostponeCollectionMediaResult {
   collectionId: number;

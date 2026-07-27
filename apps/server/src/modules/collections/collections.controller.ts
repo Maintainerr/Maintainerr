@@ -56,7 +56,10 @@ import {
   InvalidCollectionPosterError,
 } from './collection-poster.service';
 import { CollectionWorkerService } from './collection-worker.service';
-import { CollectionsService } from './collections.service';
+import {
+  CollectionsService,
+  PostponeCollectionMediaResult,
+} from './collections.service';
 
 // How long a postpone waits for an in-flight collection or rule run before
 // giving up. Long enough to ride out a run that is finishing, short enough to
@@ -501,9 +504,7 @@ export class CollectionsController {
       );
     }
 
-    let result: Awaited<
-      ReturnType<CollectionsService['postponeCollectionMedia']>
-    >;
+    let result: PostponeCollectionMediaResult | undefined;
     try {
       result = await this.collectionService.postponeCollectionMedia(
         request.collectionId,
