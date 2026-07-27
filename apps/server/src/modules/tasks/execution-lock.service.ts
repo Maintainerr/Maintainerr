@@ -34,6 +34,43 @@ export class ExecutionLockService {
     };
   }
 
+  /**
+   * Queue behind the current holder, but give up after `timeoutMs` and return
+   * null. For request-scoped callers that would rather wait out a short run
+   * than fail immediately, without hanging on a run that lasts hours.
+   */
+  public async acquireWithin(
+    key: string,
+    timeoutMs: number,
+  ): Promise<(() => void) | null> {
+    const release = this.tryAcquire(key);
+    if (release) {
+      return release;
+    }
+
+    // `acquire` claims its place in the chain synchronously, so abandoning it
+    // on timeout would block every later waiter. Keep the promise and release
+    // its turn the moment it comes up instead.
+    const queued = this.acquire(key);
+
+    let timer: NodeJS.Timeout | undefined;
+    const expired = Symbol('expired');
+    const waited = await Promise.race([
+      queued,
+      new Promise<typeof expired>((resolve) => {
+        timer = setTimeout(() => resolve(expired), timeoutMs);
+      }),
+    ]);
+    clearTimeout(timer);
+
+    if (waited !== expired) {
+      return waited;
+    }
+
+    void queued.then((release) => release());
+    return null;
+  }
+
   public async acquire(key: string): Promise<() => void> {
     const prior = this.locks.get(key);
 

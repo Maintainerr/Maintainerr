@@ -193,6 +193,10 @@ export class CollectionsService {
    * so no schema or worker change is needed. `days` pushes the deadline out;
    * omitting it restarts the full window. For external automation (Home
    * Assistant, Ombi, Seerr) - Maintainerr never contacts the requester itself.
+   *
+   * Writes the timer only. The caller logs the change afterwards via
+   * `logPostponedCollectionMedia`, so resolving the item's title cannot hold
+   * the shared execution lock while a slow media server answers.
    */
   async postponeCollectionMedia(
     collectionId: number,
@@ -232,29 +236,6 @@ export class CollectionsService {
 
     await this.CollectionMediaRepo.update(media.id, { addDate: newAddDate });
 
-    // Prefer the item's title in the log; fall back to its id if the media
-    // server can't resolve it (transient error / already gone) - never fail the
-    // postpone over a cosmetic label.
-    let mediaLabel = mediaServerId;
-    try {
-      const mediaData = await (
-        await this.getMediaServer()
-      ).getMetadata(mediaServerId);
-      if (mediaData) {
-        mediaLabel = this.describeMediaForLog(mediaData);
-      }
-    } catch (error) {
-      this.logger.debug(error);
-    }
-
-    await this.addLogRecord(
-      collection,
-      days != null
-        ? `Postponed deletion of "${mediaLabel}" by ${days} day(s)`
-        : `Reset deletion timer for "${mediaLabel}"`,
-      ECollectionLogType.MEDIA,
-    );
-
     // Surface the resulting deadline (addDate + deleteAfterDays) so the caller
     // can confirm it. Null when the collection has no deletion window.
     let deletionDate: Date | null = null;
@@ -272,6 +253,49 @@ export class CollectionsService {
       deleteAfterDays: collection.deleteAfterDays ?? null,
       deletionDate,
     };
+  }
+
+  /**
+   * Best-effort collection-log entry for a postpone that already happened.
+   * Nothing here may throw: the timer is written, and failing the caller now
+   * would invite a retry that postpones the item a second time.
+   */
+  async logPostponedCollectionMedia(
+    collectionId: number,
+    mediaServerId: string,
+    days?: number,
+  ): Promise<void> {
+    try {
+      const collection = await this.getCollectionRecord(collectionId);
+      if (!collection) {
+        return;
+      }
+
+      // Prefer the item's title; fall back to its id if the media server
+      // can't resolve it (transient error / already gone).
+      let mediaLabel = mediaServerId;
+      try {
+        const mediaData = await (
+          await this.getMediaServer()
+        ).getMetadata(mediaServerId);
+        if (mediaData) {
+          mediaLabel = this.describeMediaForLog(mediaData);
+        }
+      } catch (error) {
+        this.logger.debug(error);
+      }
+
+      await this.addLogRecord(
+        collection,
+        days != null
+          ? `Postponed deletion of "${mediaLabel}" by ${days} day(s)`
+          : `Reset deletion timer for "${mediaLabel}"`,
+        ECollectionLogType.MEDIA,
+      );
+    } catch (error) {
+      this.logger.warn('Failed to log a postponed collection media item');
+      this.logger.debug(error);
+    }
   }
 
   async setCollectionMediaRuleEvaluationFailed(

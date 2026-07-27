@@ -258,7 +258,7 @@ type UseCalendarScheduleOptions = Omit<
     ICollection[],
     Error,
     CalendarDay[],
-    ['calendar', 'collections', 'overlay-data']
+    ['collections', 'overlay-data']
   >,
   'queryKey' | 'queryFn'
 >
@@ -268,7 +268,7 @@ type UseCalendarOverlayDataOptions = Omit<
     ICollection[],
     Error,
     ICollection[],
-    ['calendar', 'collections', 'overlay-data']
+    ['collections', 'overlay-data']
   >,
   'queryKey' | 'queryFn'
 >
@@ -280,9 +280,9 @@ export const useCalendarOverlayData = (
     ICollection[],
     Error,
     ICollection[],
-    ['calendar', 'collections', 'overlay-data']
+    ['collections', 'overlay-data']
   >({
-    queryKey: ['calendar', 'collections', 'overlay-data'],
+    queryKey: ['collections', 'overlay-data'],
     queryFn: async () => {
       return await GetApiHandler<ICollection[]>('/collections/overlay-data')
     },
@@ -296,9 +296,9 @@ export const useCalendarSchedule = (options?: UseCalendarScheduleOptions) => {
     ICollection[],
     Error,
     CalendarDay[],
-    ['calendar', 'collections', 'overlay-data']
+    ['collections', 'overlay-data']
   >({
-    queryKey: ['calendar', 'collections', 'overlay-data'],
+    queryKey: ['collections', 'overlay-data'],
     queryFn: async () => {
       return await GetApiHandler<ICollection[]>('/collections/overlay-data')
     },

@@ -41,6 +41,7 @@ describe('CollectionsController', () => {
     getCollectionMediaRecord: jest.fn(),
     MediaCollectionActionWithContext: jest.fn(),
     postponeCollectionMedia: jest.fn(),
+    logPostponedCollectionMedia: jest.fn(),
   } as unknown as jest.Mocked<CollectionsService>;
 
   const collectionWorkerService = {
@@ -54,6 +55,7 @@ describe('CollectionsController', () => {
 
   const executionLock = {
     tryAcquire: jest.fn(),
+    acquireWithin: jest.fn(),
   } as unknown as jest.Mocked<ExecutionLockService>;
 
   const collectionHandler = {
@@ -415,7 +417,7 @@ describe('CollectionsController', () => {
 
     it('postpones under the execution lock and returns the result', async () => {
       const release = jest.fn();
-      executionLock.tryAcquire.mockReturnValue(release);
+      executionLock.acquireWithin.mockResolvedValue(release);
       const result = {
         collectionId: 3,
         mediaServerId: '5',
@@ -438,8 +440,29 @@ describe('CollectionsController', () => {
       expect(release).toHaveBeenCalled();
     });
 
-    it('throws ConflictException when the execution lock is held', async () => {
-      executionLock.tryAcquire.mockReturnValue(null);
+    it('logs the postpone only after the lock is released', async () => {
+      const releaseOrder: string[] = [];
+      const release = jest.fn(() => releaseOrder.push('release'));
+      executionLock.acquireWithin.mockResolvedValue(release);
+      (
+        collectionsService.postponeCollectionMedia as jest.Mock
+      ).mockResolvedValue({ collectionId: 3, mediaServerId: '5' });
+      (
+        collectionsService.logPostponedCollectionMedia as jest.Mock
+      ).mockImplementation(async () => {
+        releaseOrder.push('log');
+      });
+
+      await controller.postponeCollectionMedia(body);
+
+      expect(releaseOrder).toEqual(['release', 'log']);
+      expect(
+        collectionsService.logPostponedCollectionMedia,
+      ).toHaveBeenCalledWith(3, '5', 14);
+    });
+
+    it('throws ConflictException when the execution lock stays held', async () => {
+      executionLock.acquireWithin.mockResolvedValue(null);
 
       await expect(controller.postponeCollectionMedia(body)).rejects.toThrow(
         ConflictException,
@@ -449,7 +472,7 @@ describe('CollectionsController', () => {
 
     it('throws NotFoundException and releases the lock when the item is missing', async () => {
       const release = jest.fn();
-      executionLock.tryAcquire.mockReturnValue(release);
+      executionLock.acquireWithin.mockResolvedValue(release);
       (
         collectionsService.postponeCollectionMedia as jest.Mock
       ).mockResolvedValue(undefined);
@@ -458,6 +481,9 @@ describe('CollectionsController', () => {
         NotFoundException,
       );
       expect(release).toHaveBeenCalled();
+      expect(
+        collectionsService.logPostponedCollectionMedia,
+      ).not.toHaveBeenCalled();
     });
   });
 

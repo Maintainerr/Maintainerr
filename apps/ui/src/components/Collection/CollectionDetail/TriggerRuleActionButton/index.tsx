@@ -1,17 +1,11 @@
 import { PlayIcon } from '@heroicons/react/solid'
 import { ServarrAction } from '@maintainerr/contracts'
 import { useQueryClient } from '@tanstack/react-query'
-import { useState } from 'react'
 import {
   invalidateCollectionQueries,
   triggerCollectionItemAction,
 } from '../../../../api/collections'
-import { getApiErrorMessage } from '../../../../utils/ApiError'
-import { logClientError } from '../../../../utils/ClientLogger'
-import Alert from '../../../Common/Alert'
-import Button from '../../../Common/Button'
-import Modal from '../../../Common/Modal'
-import PendingButton from '../../../Common/PendingButton'
+import ConfirmActionButton from '../../../Common/ConfirmActionButton'
 import type { ICollection } from '../../index'
 
 interface TriggerRuleActionButtonProps {
@@ -55,95 +49,43 @@ const TriggerRuleActionButton = ({
   buttonLabel = 'Trigger Rule Action',
 }: TriggerRuleActionButtonProps) => {
   const queryClient = useQueryClient()
-  const [confirmOpen, setConfirmOpen] = useState(false)
-  const [executing, setExecuting] = useState(false)
-  const [error, setError] = useState<string | undefined>()
 
   const actionSummary = getActionSummary(collection)
 
   const handleTriggerAction = async () => {
-    if (!collection.id || executing) {
+    if (!collection.id) {
       return
     }
 
-    setExecuting(true)
-    setError(undefined)
+    await triggerCollectionItemAction(collection.id, mediaServerId)
 
-    try {
-      await triggerCollectionItemAction(collection.id, mediaServerId)
+    await invalidateCollectionQueries(queryClient)
 
-      await invalidateCollectionQueries(queryClient)
-
-      setExecuting(false)
-      setConfirmOpen(false)
-      onHandled?.()
-    } catch (error) {
-      void logClientError(
-        'Failed to trigger the collection action for this item.',
-        error,
-        'TriggerRuleActionButton.handleTriggerAction',
-      )
-
-      setError(
-        getApiErrorMessage(
-          error,
-          'Failed to trigger the collection action for this item.',
-        ),
-      )
-      setExecuting(false)
-    }
+    onHandled?.()
   }
 
   return (
-    <>
-      <Button buttonType="primary" onClick={() => setConfirmOpen(true)}>
-        <PlayIcon className="mr-2 h-4 w-4" />
-        {buttonLabel}
-      </Button>
-
-      {confirmOpen ? (
-        <Modal
-          title="Trigger Rule Action"
-          onCancel={() => {
-            if (!executing) {
-              setConfirmOpen(false)
-            }
-          }}
-          backgroundClickable={!executing}
-          footerActions={
-            <PendingButton
-              buttonType="primary"
-              className="ml-3"
-              disabled={executing}
-              isPending={executing}
-              idleLabel="Trigger now"
-              pendingLabel="Triggering..."
-              onClick={() => {
-                void handleTriggerAction()
-              }}
-            />
-          }
-        >
-          <p>
-            This will immediately run the collection action for this item:
-            <span className="font-semibold text-zinc-100">
-              {' '}
-              {actionSummary}
-            </span>
-            .
-          </p>
-          <p className="mt-3">
-            If the action succeeds, the item will be removed from the collection
-            right away instead of waiting for the normal schedule.
-          </p>
-          {error ? (
-            <div className="mt-3">
-              <Alert type="error" title={error} />
-            </div>
-          ) : null}
-        </Modal>
-      ) : null}
-    </>
+    <ConfirmActionButton
+      buttonLabel={buttonLabel}
+      buttonIcon={<PlayIcon className="mr-2 h-4 w-4" />}
+      buttonType="primary"
+      modalTitle="Trigger Rule Action"
+      confirmLabel="Trigger now"
+      pendingLabel="Triggering..."
+      confirmDisabled={!collection.id}
+      errorMessage="Failed to trigger the collection action for this item."
+      errorContext="TriggerRuleActionButton.handleTriggerAction"
+      onConfirm={handleTriggerAction}
+    >
+      <p>
+        This will immediately run the collection action for this item:
+        <span className="font-semibold text-zinc-100"> {actionSummary}</span>.
+      </p>
+      <p className="mt-3">
+        If the action succeeds, the item will be removed from the collection
+        right away instead of waiting for the normal schedule.
+      </p>
+    </ConfirmActionButton>
   )
 }
 
