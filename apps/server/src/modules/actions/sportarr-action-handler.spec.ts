@@ -104,6 +104,123 @@ describe('SportarrActionHandler', () => {
     expect(mockClient.deleteLeague).not.toHaveBeenCalled();
   });
 
+  it('resolves a show from its own provider ids without walking to its parent', async () => {
+    // On Jellyfin/Emby a show's parentId is the id-less library folder, so
+    // walking up from a show resolves nothing (the #3065 trap). A show must
+    // read its providerIds directly; only season/episode items walk up.
+    const collection = createCollection({
+      arrAction: ServarrAction.DELETE,
+      type: 'show' as MediaItemType,
+      sportarrSettingsId: 1,
+    });
+    const media = createCollectionMediaWithMetadata(collection, {
+      tvdbId: undefined,
+    });
+    mockMediaServer.getMetadata.mockResolvedValue(
+      createMediaItem({
+        type: 'show',
+        parentId: 'library-folder',
+        providerIds: { tvdb: [String(F1_ALIAS)] },
+      }),
+    );
+
+    await expect(handler.handleAction(collection, media)).resolves.toBe(true);
+    expect(mockClient.deleteLeague).toHaveBeenCalledWith(3, true);
+    expect(mockMediaServer.getMetadata).toHaveBeenCalledTimes(1);
+    expect(mockMediaServer.getMetadata).not.toHaveBeenCalledWith(
+      'library-folder',
+    );
+  });
+
+  it('resolves an index-less event by its air date', async () => {
+    const collection = createCollection({
+      arrAction: ServarrAction.DELETE,
+      type: 'episode' as MediaItemType,
+      sportarrSettingsId: 1,
+    });
+    const media = createCollectionMediaWithMetadata(collection, {
+      tvdbId: F1_ALIAS,
+    });
+    // Some servers expose sports events without episode numbering; the date
+    // is the only handle left.
+    mockMediaServer.getMetadata.mockResolvedValue(
+      createMediaItem({
+        type: 'episode',
+        grandparentId: 'show-1',
+        index: undefined,
+        parentIndex: undefined,
+        originallyAvailableAt: new Date('2026-07-12T00:00:00.000Z'),
+      }),
+    );
+    mockClient.getLeagueEvents.mockResolvedValue([
+      {
+        id: 30,
+        seasonNumber: 2026,
+        episodeNumber: 12,
+        title: 'British Grand Prix',
+        eventDate: '2026-07-12T15:00:00.000Z',
+        hasFile: true,
+      },
+      {
+        id: 31,
+        seasonNumber: 2026,
+        episodeNumber: 13,
+        title: 'Hungarian Grand Prix',
+        eventDate: '2026-07-26T14:00:00.000Z',
+        hasFile: true,
+      },
+    ]);
+
+    await expect(handler.handleAction(collection, media)).resolves.toBe(true);
+    expect(mockClient.setEventMonitored).toHaveBeenCalledWith(30, false);
+    expect(mockClient.deleteEventFiles).toHaveBeenCalledWith(30);
+    expect(mockClient.deleteEventFiles).not.toHaveBeenCalledWith(31);
+  });
+
+  it('fails closed when the air date matches more than one event', async () => {
+    const collection = createCollection({
+      arrAction: ServarrAction.DELETE,
+      type: 'episode' as MediaItemType,
+      sportarrSettingsId: 1,
+    });
+    const media = createCollectionMediaWithMetadata(collection, {
+      tvdbId: F1_ALIAS,
+    });
+    mockMediaServer.getMetadata.mockResolvedValue(
+      createMediaItem({
+        type: 'episode',
+        grandparentId: 'show-1',
+        index: undefined,
+        parentIndex: undefined,
+        originallyAvailableAt: new Date('2026-07-12T00:00:00.000Z'),
+      }),
+    );
+    // A doubleheader: two events on the same day cannot be told apart by
+    // date alone, so nothing may be deleted.
+    mockClient.getLeagueEvents.mockResolvedValue([
+      {
+        id: 30,
+        seasonNumber: 2026,
+        episodeNumber: 12,
+        title: 'Game 1',
+        eventDate: '2026-07-12T15:00:00.000Z',
+        hasFile: true,
+      },
+      {
+        id: 31,
+        seasonNumber: 2026,
+        episodeNumber: 13,
+        title: 'Game 2',
+        eventDate: '2026-07-12T20:00:00.000Z',
+        hasFile: true,
+      },
+    ]);
+
+    await expect(handler.handleAction(collection, media)).resolves.toBe(false);
+    expect(mockClient.deleteEventFiles).not.toHaveBeenCalled();
+    expect(mockClient.setEventMonitored).not.toHaveBeenCalled();
+  });
+
   it('does nothing and reports failure when the id cannot be resolved', async () => {
     const collection = createCollection({
       arrAction: ServarrAction.DELETE,

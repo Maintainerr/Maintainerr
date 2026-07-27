@@ -21,6 +21,10 @@ import { MediaServerFactory } from '../api/media-server/media-server.factory';
 import { DownloadClientApiService } from '../api/download-client-api/download-client-api.service';
 import { PlexApiService } from '../api/plex-api/plex-api.service';
 import { SeerrApiService } from '../api/seerr-api/seerr-api.service';
+import {
+  MINIMUM_SPORTARR_VERSION,
+  isBelowMinimumVersion,
+} from '../api/servarr-api/helpers/sportarr-version';
 import { ServarrService } from '../api/servarr-api/servarr.service';
 import { StreamystatsApiService } from '../api/streamystats-api/streamystats-api.service';
 import { TautulliApiService } from '../api/tautulli-api/tautulli-api.service';
@@ -1392,6 +1396,16 @@ export class SettingsOperationsService {
           status: 'NOK',
           code: 0,
           message: `Unexpected application name returned: ${resp.appName}`,
+        };
+      }
+      if (
+        resp?.version != null &&
+        isBelowMinimumVersion(resp.version, MINIMUM_SPORTARR_VERSION)
+      ) {
+        return {
+          status: 'NOK',
+          code: 0,
+          message: `Sportarr ${resp.version} is below the minimum supported version ${MINIMUM_SPORTARR_VERSION}. Please update Sportarr.`,
         };
       }
       return resp?.version != null

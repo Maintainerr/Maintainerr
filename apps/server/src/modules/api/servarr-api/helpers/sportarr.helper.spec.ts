@@ -51,6 +51,28 @@ describe('SportarrApi', () => {
       ).resolves.toBeNull();
     });
 
+    it('skips the list fetch when a pre-fetched list is supplied', async () => {
+      const detail = {
+        id: 3,
+        externalId: 'lg-000278',
+        name: 'Formula 1',
+        monitored: true,
+      };
+      const getSpy = jest
+        .spyOn(sportarrApi as any, 'getWithoutCache')
+        .mockResolvedValue(detail);
+
+      await expect(
+        sportarrApi.getLeagueByExternalId('lg-000278', [
+          { id: 3, externalId: 'lg-000278', name: 'Formula 1' } as any,
+        ]),
+      ).resolves.toEqual(expect.objectContaining({ id: 3 }));
+
+      // Only the detail endpoint is hit; the /leagues list is not re-pulled.
+      expect(getSpy).toHaveBeenCalledTimes(1);
+      expect(getSpy).toHaveBeenCalledWith('/leagues/3', expect.anything());
+    });
+
     it('resolves the matching league via its detail endpoint', async () => {
       const detail = {
         id: 3,
@@ -138,6 +160,16 @@ describe('SportarrApi', () => {
 
       await expect(sportarrApi.deleteEventFiles(999)).resolves.toBe(true);
       expect(del).toHaveBeenCalledWith('/events/999/files', expect.anything());
+    });
+  });
+
+  describe('getLeagues', () => {
+    it('returns undefined (not an empty list) when the fetch fails', async () => {
+      jest
+        .spyOn(sportarrApi as any, 'getWithoutCache')
+        .mockResolvedValue(undefined);
+
+      await expect(sportarrApi.getLeagues()).resolves.toBeUndefined();
     });
   });
 

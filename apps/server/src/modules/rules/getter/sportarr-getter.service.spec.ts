@@ -3,6 +3,7 @@ import { createMediaItem, createRulesDto } from '../../../../test/utils/data';
 import { MediaServerFactory } from '../../api/media-server/media-server.factory';
 import { IMediaServerService } from '../../api/media-server/media-server.interface';
 import { ServarrService } from '../../api/servarr-api/servarr.service';
+import { ArrLookupCache } from '../helpers/arr-lookup-cache';
 import { SportarrGetterService } from './sportarr-getter.service';
 
 // The F1 league from the docs: external id lg-000278, so the Plex item carries
@@ -15,6 +16,7 @@ describe('SportarrGetterService', () => {
   let servarrService: Mocked<ServarrService>;
   let mediaServerFactory: Mocked<MediaServerFactory>;
   let mockClient: {
+    getLeagues: jest.Mock;
     getLeagueByExternalId: jest.Mock;
     getLeagueEvents: jest.Mock;
     getQualityProfiles: jest.Mock;
@@ -30,6 +32,13 @@ describe('SportarrGetterService', () => {
     mediaServerFactory = unitRef.get(MediaServerFactory);
 
     mockClient = {
+      // The resolver reads the memoized /leagues list before matching, so a
+      // non-failing list is part of the default fixture.
+      getLeagues: jest
+        .fn()
+        .mockResolvedValue([
+          { id: 3, externalId: F1_EXTERNAL_ID, name: 'Formula 1' },
+        ]),
       getLeagueByExternalId: jest.fn(),
       getLeagueEvents: jest.fn(),
       getQualityProfiles: jest.fn(),
@@ -99,6 +108,7 @@ describe('SportarrGetterService', () => {
 
     expect(mockClient.getLeagueByExternalId).toHaveBeenCalledWith(
       F1_EXTERNAL_ID,
+      expect.any(Array),
     );
     expect(result).toBe(true);
   });
@@ -116,6 +126,7 @@ describe('SportarrGetterService', () => {
 
     expect(mockClient.getLeagueByExternalId).toHaveBeenCalledWith(
       F1_EXTERNAL_ID,
+      expect.any(Array),
     );
     expect(result).toBeInstanceOf(Date);
     expect((result as Date).toISOString()).toBe('2025-12-04T02:29:15.000Z');
@@ -144,6 +155,53 @@ describe('SportarrGetterService', () => {
     mockClient.getLeagueByExternalId.mockResolvedValue(undefined);
     const result = await service.get(1, showItem(), 'show', ruleGroup());
     expect(result).toBeUndefined();
+  });
+
+  it('fails closed (undefined) when the leagues list fetch fails', async () => {
+    mockClient.getLeagues.mockResolvedValue(undefined);
+    const result = await service.get(1, showItem(), 'show', ruleGroup());
+    expect(result).toBeUndefined();
+    expect(mockClient.getLeagueByExternalId).not.toHaveBeenCalled();
+  });
+
+  it('pulls the leagues list once per run through the lookup cache', async () => {
+    mockClient.getLeagueByExternalId.mockResolvedValue({
+      id: 3,
+      externalId: F1_EXTERNAL_ID,
+      name: 'Formula 1',
+      monitored: true,
+      added: '2025-12-04T02:29:15.000Z',
+    });
+    const cache = new ArrLookupCache();
+
+    await service.get(1, showItem(), 'show', ruleGroup(), undefined, cache);
+    await service.get(0, showItem(), 'show', ruleGroup(), undefined, cache);
+
+    expect(mockClient.getLeagues).toHaveBeenCalledTimes(1);
+  });
+
+  it('memoizes the full-metadata fallback fetch per run', async () => {
+    mockClient.getLeagueByExternalId.mockResolvedValue({
+      id: 3,
+      externalId: F1_EXTERNAL_ID,
+      name: 'Formula 1',
+      monitored: true,
+      added: '2025-12-04T02:29:15.000Z',
+    });
+    // A lightweight item without providerIds forces the metadata re-fetch;
+    // evaluating several properties must not re-fetch the same show (#3285).
+    mockMediaServer.getMetadata.mockResolvedValue(showItem());
+    const bare = createMediaItem({
+      type: 'show',
+      id: 'show-9',
+      providerIds: {},
+    });
+    const cache = new ArrLookupCache();
+
+    await service.get(1, bare, 'show', ruleGroup(), undefined, cache);
+    await service.get(0, bare, 'show', ruleGroup(), undefined, cache);
+
+    expect(mockMediaServer.getMetadata).toHaveBeenCalledTimes(1);
   });
 
   it('resolves an episode-scope hasFile via the parent show + event index', async () => {

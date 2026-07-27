@@ -53,15 +53,15 @@ export class SportarrApi extends ServarrApi<{
     }
   }
 
-  public async getLeagues(): Promise<SportarrLeague[]> {
-    try {
-      return await this.getWithoutCache<SportarrLeague[]>('/leagues', {
-        timeout: SLOW_INSTANCE_TIMEOUT_MS,
-      });
-    } catch (error) {
+  // undefined = the fetch itself failed; callers fail closed.
+  public async getLeagues(): Promise<SportarrLeague[] | undefined> {
+    const response = await this.getWithoutCache<SportarrLeague[]>('/leagues', {
+      timeout: SLOW_INSTANCE_TIMEOUT_MS,
+    });
+    if (response === undefined) {
       this.logger.warn('Failed to retrieve leagues');
-      this.logger.debug(error);
     }
+    return response;
   }
 
   // Full detail for one league (the list omits monitored/counts). Uncached so
@@ -83,21 +83,24 @@ export class SportarrApi extends ServarrApi<{
   // Resolve a league by its Sportarr external id (e.g. lg-000278), the id
   // carried in the Plex item's guid. Same null/undefined contract as the
   // Sonarr resolver: undefined = the lookup itself failed (fail closed),
-  // null = Sportarr is reachable but tracks no league with that id.
+  // null = Sportarr is reachable but tracks no league with that id. Callers
+  // resolving many leagues in one pass can hand in a pre-fetched list so the
+  // whole /leagues pull isn't repeated per league.
   public async getLeagueByExternalId(
     externalId: string,
+    leagues?: SportarrLeague[],
   ): Promise<SportarrLeague | null | undefined> {
     const needle = externalId?.trim().toLowerCase();
     if (!needle) {
       return null;
     }
 
-    const leagues = await this.getLeagues();
-    if (leagues === undefined) {
+    const list = leagues ?? (await this.getLeagues());
+    if (list === undefined) {
       return undefined;
     }
 
-    const match = leagues.find(
+    const match = list.find(
       (l) => (l.externalId ?? '').toLowerCase() === needle,
     );
     if (!match) {

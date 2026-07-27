@@ -86,9 +86,20 @@ export class SportarrGetterService {
       if (!externalId) {
         // The rule executor can pass a lightweight library item whose
         // providerIds aren't populated. Re-fetch the show's full metadata to
-        // read its Sportarr id from the guids before giving up.
+        // read its Sportarr id from the guids before giving up. Memoized per
+        // run (the same per-condition redundancy as #3285): every property of
+        // every episode of a league would otherwise re-fetch the same show.
+        // Evict an empty result so a transient media-server failure retries
+        // next condition.
         const mediaServer = await this.getMediaServer();
-        const fullShow = await mediaServer.getMetadata(showItem?.id);
+        const fetchShow = () => mediaServer.getMetadata(showItem?.id);
+        const fullShow = await (arrLookupCache
+          ? arrLookupCache.memoize(
+              `metadata:sportarr:show:${showItem?.id}`,
+              fetchShow,
+              (item) => item === undefined,
+            )
+          : fetchShow());
         externalId = sportarrLeagueExternalIdFromProviderIds(
           fullShow?.providerIds?.tvdb,
         );
@@ -105,17 +116,36 @@ export class SportarrGetterService {
         return undefined;
       }
 
+      // The /leagues list is identical for every item in the run, so pull it
+      // once through the run-scoped memo and hand it to the resolver instead
+      // of re-fetching it per league. Evict a failed (undefined) fetch.
+      const resolveLeagues = () =>
+        arrLookupCache
+          ? arrLookupCache.memoize(
+              `sportarr:${settingsId}:leagues`,
+              () => client.getLeagues(),
+              (leagues) => leagues === undefined,
+            )
+          : client.getLeagues();
+
       // League resolution is identical for every season/episode of a league,
       // so dedupe it through the run-scoped memo (evicting a failed lookup so
       // a transient error doesn't mark the league unresolved for the run).
+      const lookupLeague = async () => {
+        const leagues = await resolveLeagues();
+        if (leagues === undefined) {
+          return undefined;
+        }
+        return client.getLeagueByExternalId(externalId, leagues);
+      };
       const resolveLeague = () =>
         arrLookupCache
           ? arrLookupCache.memoize(
               `sportarr:${settingsId}:league:${externalId}`,
-              () => client.getLeagueByExternalId(externalId),
+              lookupLeague,
               (league) => league === undefined,
             )
-          : client.getLeagueByExternalId(externalId);
+          : lookupLeague();
 
       const league = await resolveLeague();
       if (league === undefined) {

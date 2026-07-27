@@ -57,12 +57,16 @@ export class SportarrActionHandler {
     let externalId = sportarrLeagueExternalIdFromTvdbAlias(media.tvdbId);
     if (!externalId) {
       // The alias lives on the show's guid, so follow a season/episode member
-      // up to its show before reading it.
+      // up to its show before reading it. Only season/episode items walk up:
+      // on Jellyfin/Emby a show's own parent is the id-less library folder
+      // (the #3065 trap), so a show reads its providerIds directly.
       let showItem =
         mediaData ?? (await mediaServer.getMetadata(media.mediaServerId));
-      const showId = showItem?.grandparentId ?? showItem?.parentId;
-      if (showId) {
-        showItem = await mediaServer.getMetadata(showId);
+      if (showItem?.type === 'season' || showItem?.type === 'episode') {
+        const showId = showItem.grandparentId ?? showItem.parentId;
+        if (showId) {
+          showItem = await mediaServer.getMetadata(showId);
+        }
       }
       externalId = sportarrLeagueExternalIdFromProviderIds(
         showItem?.providerIds?.tvdb,
@@ -387,19 +391,39 @@ export class SportarrActionHandler {
     league: SportarrLeague,
     mediaData: MediaItem | undefined,
   ): Promise<SportarrEvent | undefined> {
-    if (
-      mediaData?.index === undefined ||
-      mediaData?.parentIndex === undefined
-    ) {
+    if (!mediaData) {
       return undefined;
     }
     // A failed events fetch yields undefined, which callers treat the same as
     // "event not identified": fail closed, retry next run.
     const events = await client.getLeagueEvents(league.id);
-    return events?.find(
+    if (events === undefined) {
+      return undefined;
+    }
+    if (mediaData.index !== undefined && mediaData.parentIndex !== undefined) {
+      return events.find(
+        (e) =>
+          e.seasonNumber === mediaData.parentIndex &&
+          e.episodeNumber === mediaData.index,
+      );
+    }
+    // Date fallback: some servers expose sports events without an episode
+    // index. Match on the air date instead, scoped to the season when one is
+    // known, and only when exactly one event matches - an ambiguous day
+    // (doubleheaders, multi-game slates) fails closed.
+    if (!mediaData.originallyAvailableAt) {
+      return undefined;
+    }
+    const day = new Date(mediaData.originallyAvailableAt)
+      .toISOString()
+      .slice(0, 10);
+    const candidates = events.filter(
       (e) =>
-        e.seasonNumber === mediaData.parentIndex &&
-        e.episodeNumber === mediaData.index,
+        (mediaData.parentIndex === undefined ||
+          e.seasonNumber === mediaData.parentIndex) &&
+        ((e.eventDate ?? '').slice(0, 10) === day ||
+          (e.broadcastDate ?? '').slice(0, 10) === day),
     );
+    return candidates.length === 1 ? candidates[0] : undefined;
   }
 }
