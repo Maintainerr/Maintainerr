@@ -27,7 +27,10 @@ import {
 import { TaskBase } from '../tasks/task.base';
 import { TasksService } from '../tasks/tasks.service';
 import { CollectionHandler, HandleMediaResult } from './collection-handler';
-import { CollectionsService } from './collections.service';
+import {
+  CollectionsService,
+  getCollectionDangerDate,
+} from './collections.service';
 import { Collection } from './entities/collection.entities';
 import {
   CollectionMedia,
@@ -133,9 +136,7 @@ export class CollectionWorkerService extends TaskBase {
       }[] = [];
 
       for (const collection of collectionsToHandle) {
-        const dangerDate = new Date(
-          new Date().getTime() - +collection.deleteAfterDays * 86400000,
-        );
+        const dangerDate = getCollectionDangerDate(collection.deleteAfterDays);
 
         const eligibleMedia = (
           await this.collectionMediaRepo.find({

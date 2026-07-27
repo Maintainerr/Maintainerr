@@ -217,7 +217,9 @@ export const handleCollectionMediaBodySchema = z.object({
   mediaId: z.string().min(1),
 });
 export const postponeCollectionMediaBodySchema = z.object({
-  collectionId: z.number().int(),
+  // Coerced like the other collection endpoints: this one is called by
+  // external automation, which routinely sends ids as strings.
+  collectionId: z.coerce.number().int(),
   mediaId: z.string().min(1),
   // Omit to reset the full grace window; provide to push the deadline out by
   // this many days. Upper bound mirrors the UI (PostponeButton) and keeps the

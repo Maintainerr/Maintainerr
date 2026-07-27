@@ -90,10 +90,13 @@ export const postponeCollectionItem = async (
 // Refresh every view whose data depends on collection membership or deletion
 // timing after an item-level action (handle, postpone, ...).
 export const invalidateCollectionQueries = async (queryClient: QueryClient) => {
+  // Two keys, not three: the calendar/overlay views share the single key
+  // ['calendar', 'collections', 'overlay-data'], which the 'calendar' prefix
+  // already matches. Invalidation matches from the start of the key, so
+  // 'overlay-data' on its own never matched anything.
   await Promise.all([
     queryClient.invalidateQueries({ queryKey: ['collections'] }),
     queryClient.invalidateQueries({ queryKey: ['calendar'] }),
-    queryClient.invalidateQueries({ queryKey: ['overlay-data'] }),
   ])
 }
 

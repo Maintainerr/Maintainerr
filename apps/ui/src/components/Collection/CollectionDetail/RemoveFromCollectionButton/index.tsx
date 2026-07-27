@@ -1,6 +1,7 @@
 import { DocumentRemoveIcon, TrashIcon } from '@heroicons/react/solid'
 import { useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
+import { invalidateCollectionQueries } from '../../../../api/collections'
 import { DeleteApiHandler, PostApiHandler } from '../../../../utils/ApiHandler'
 import Button from '../../../Common/Button'
 import Modal from '../../../Common/Modal'
@@ -47,9 +48,7 @@ const RemoveFromCollectionButton = (props: IRemoveFromCollectionButton) => {
           }),
         ])
 
-        await queryClient.invalidateQueries({
-          queryKey: ['calendar', 'collections', 'overlay-data'],
-        })
+        await invalidateCollectionQueries(queryClient)
       } else {
         await DeleteApiHandler(`/rules/exclusion/${props.exclusionId}`)
       }

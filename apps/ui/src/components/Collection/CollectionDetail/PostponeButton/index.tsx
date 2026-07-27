@@ -90,9 +90,13 @@ const PostponeButton = ({
       {confirmOpen ? (
         <Modal
           title="Postpone deletion"
+          size="md"
           onCancel={() => {
             if (!executing) {
               setConfirmOpen(false)
+              // Drop a failed attempt's message, so reopening doesn't warn
+              // about an action that was never retried.
+              setError(undefined)
             }
           }}
           backgroundClickable={!executing}
@@ -111,30 +115,32 @@ const PostponeButton = ({
           }
         >
           <p>
-            Push this item&apos;s deletion further out. Its current deletion
-            date moves later by the number of days below.
+            Push this item&apos;s deletion further out by the number of days
+            below. An item already past its deletion date is counted from today.
           </p>
-          <div className="form-input mt-3">
-            <label className="text-sm font-semibold" htmlFor="postpone_days">
+          <div className="form-row mt-3 mb-0!">
+            <label className="text-label" htmlFor="postpone_days">
               Days to postpone
             </label>
-            <div className="form-input-field mt-1">
-              <Input
-                type="number"
-                name="postpone_days"
-                id="postpone_days"
-                min={MIN_DAYS}
-                max={MAX_DAYS}
-                error={daysInvalid}
-                value={Number.isNaN(days) ? '' : days}
-                onChange={(e) => setDays(e.target.valueAsNumber)}
-              />
+            <div className="form-input">
+              <div className="form-input-field flex w-32 flex-col">
+                <Input
+                  type="number"
+                  name="postpone_days"
+                  id="postpone_days"
+                  min={MIN_DAYS}
+                  max={MAX_DAYS}
+                  error={daysInvalid}
+                  value={Number.isNaN(days) ? '' : days}
+                  onChange={(e) => setDays(e.target.valueAsNumber)}
+                />
+              </div>
+              {daysInvalid ? (
+                <p className="mt-1 text-xs text-error-400">
+                  Enter a whole number between {MIN_DAYS} and {MAX_DAYS}.
+                </p>
+              ) : null}
             </div>
-            {daysInvalid ? (
-              <p className="mt-1 text-xs text-error-400">
-                Enter a whole number between {MIN_DAYS} and {MAX_DAYS}.
-              </p>
-            ) : null}
           </div>
           {error ? (
             <div className="mt-3">

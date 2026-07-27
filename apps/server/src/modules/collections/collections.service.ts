@@ -86,6 +86,18 @@ interface SharedManualCollectionReconciliationOptions {
   serverChildren?: MediaItem[];
 }
 
+/**
+ * The `addDate` cutoff at which a collection item is due for handling: the
+ * worker acts once `addDate <= now - deleteAfterDays`. Fixed-ms rather than
+ * calendar arithmetic so every caller agrees with that predicate exactly,
+ * including across a DST boundary. An unset window resolves to `now` - no
+ * window means everything is immediately due.
+ */
+export const getCollectionDangerDate = (
+  deleteAfterDays: number | null | undefined,
+  now: Date = new Date(),
+): Date => new Date(now.getTime() - +(deleteAfterDays ?? 0) * 86400000);
+
 export interface PostponeCollectionMediaResult {
   collectionId: number;
   mediaServerId: string;
@@ -206,6 +218,14 @@ export class CollectionsService {
     // the time of day this call arrives.
     const newAddDate = days != null ? new Date(media.addDate) : new Date();
     if (days != null) {
+      // Shift from the worker's own cutoff when the item's deadline has
+      // already passed: shifting an overdue addDate can land the deadline in
+      // the past again, so the next run deletes the item anyway - a postpone
+      // that keeps nothing.
+      const dangerDate = getCollectionDangerDate(collection.deleteAfterDays);
+      if (newAddDate < dangerDate) {
+        newAddDate.setTime(dangerDate.getTime());
+      }
       newAddDate.setDate(newAddDate.getDate() + days);
     }
     newAddDate.setHours(0, 0, 0, 0);
@@ -1148,7 +1168,7 @@ export class CollectionsService {
     };
     if (deleteAfterDays != null) {
       options.deleteSoonestReferenceTime =
-        Date.now() - deleteAfterDays * 86400000;
+        getCollectionDangerDate(deleteAfterDays).getTime();
     }
     return options;
   }
