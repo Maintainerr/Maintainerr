@@ -1,3 +1,32 @@
+# [3.19.0](https://github.com/Maintainerr/Maintainerr/compare/v3.18.0...v3.19.0) (2026-07-27)
+
+
+## Highlights
+- Added per-item postpone deletion capability for collections, enabling external tools to manage media retention without disabling automatic deletion (#3289).
+- Fixed transient internet lookup failures that previously emptied collections and reset deletion countdowns (#3318).
+- Improved rule evaluation performance by memoizing metadata id-resolution across multiple services (#3287, #3290).
+
+## Features
+- Added per-item postpone deletion capability for collections, including an authenticated API endpoint and admin-UI control (#3289).
+
+## Fixes
+- Prevented transient internet lookup failures from emptying collections and resetting deletion countdowns (#3318).
+- Stopped re-adopting rule-removed orphans as manual members in collections (#3298).
+- Removed orphaned `@semantic-release/error@^3.0.0` from the lockfile (#3317).
+
+## Performance
+- Memoized metadata id-resolution during rule evaluation to reduce redundant calls across multiple services (#3287, #3290).
+- Raised default cache key ceiling to 1200 for improved API response caching during rule sweeps (#3284, #3286).
+
+## Database migrations
+- Added `collection_media_rule_removal` table with unique indexing to track rule-based media removal from collections.
+
+## Internal
+- Bounded external API response cache key counts to prevent memory exhaustion during bulk rule sweeps (#3284, #3286).
+
+## Dependencies
+- 27 dependency updates, including major bumps for `@semantic-release/git`, `@typescript-eslint/parser`, and `@semantic-release/changelog`.
+
 # [3.18.0](https://github.com/Maintainerr/Maintainerr/compare/v3.17.1...v3.18.0) (2026-07-18)
 
 
