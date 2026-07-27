@@ -53,6 +53,7 @@ describe('Exclusion scoping (real DB) - excluded-in-A item is added in B', () =>
       {} as any, // settingsRepo
       {} as any, // radarrSettingsRepo
       {} as any, // sonarrSettingsRepo
+      {} as any, // sportarrSettingsRepo
       {} as any, // collectionService
       {} as any, // mediaServerFactory
       {} as any, // connection

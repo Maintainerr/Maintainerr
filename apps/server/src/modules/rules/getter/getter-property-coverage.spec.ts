@@ -12,6 +12,7 @@ import { PlexGetterService } from './plex-getter.service';
 import { RadarrGetterService } from './radarr-getter.service';
 import { SeerrGetterService } from './seerr-getter.service';
 import { SonarrGetterService } from './sonarr-getter.service';
+import { SportarrGetterService } from './sportarr-getter.service';
 import { StreamystatsGetterService } from './streamystats-getter.service';
 import { TautulliGetterService } from './tautulli-getter.service';
 
@@ -82,6 +83,21 @@ const apps: Array<{
     build: async () => {
       const g = await buildGetter(SonarrGetterService);
       return { get: (id) => g.get(id, libItem, undefined, ruleGroup) };
+    },
+  },
+  {
+    app: Application.SPORTARR,
+    build: async () => {
+      const g = await buildGetter(SportarrGetterService);
+      // The sportarr getter needs a collection bound to a Sportarr server;
+      // without it the getter short-circuits before any property dispatch.
+      return {
+        get: (id) =>
+          g.get(id, libItem, undefined, {
+            ...ruleGroup,
+            collection: { id: 1, sportarrSettingsId: 1 },
+          }),
+      };
     },
   },
   {

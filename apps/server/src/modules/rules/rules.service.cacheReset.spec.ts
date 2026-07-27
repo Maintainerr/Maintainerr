@@ -31,6 +31,7 @@ describe('RulesService.resetCacheIfGroupUsesRuleThatRequiresIt', () => {
       {} as any,
       {} as any,
       {} as any,
+      {} as any,
       factory as any,
       {} as any,
       {} as any,

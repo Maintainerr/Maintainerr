@@ -18,6 +18,7 @@ describe('RulesService.setRules', () => {
       settingsRepo: unknown;
       radarrSettingsRepo: unknown;
       sonarrSettingsRepo: unknown;
+      sportarrSettingsRepo: unknown;
       collectionService: unknown;
       mediaServerFactory: unknown;
       connection: unknown;
@@ -36,6 +37,7 @@ describe('RulesService.setRules', () => {
       (overrides.settingsRepo ?? {}) as any,
       (overrides.radarrSettingsRepo ?? {}) as any,
       (overrides.sonarrSettingsRepo ?? {}) as any,
+      (overrides.sportarrSettingsRepo ?? {}) as any,
       (overrides.collectionService ?? {}) as any,
       (overrides.mediaServerFactory ?? {}) as any,
       (overrides.connection ?? {}) as any,
@@ -100,6 +102,32 @@ describe('RulesService.setRules', () => {
       result: 'Success',
       message: 'Success',
     });
+  });
+
+  it('rejects a payload that binds both Sonarr and Sportarr', async () => {
+    // A show-library collection is managed by exactly one arr; the UI
+    // enforces this, so the guard exists for raw API payloads.
+    const createCollection = jest.fn();
+    const service = createRulesService({
+      collectionService: { createCollection },
+      mediaServerFactory: createMediaServerFactory(),
+    });
+
+    const result = await service.setRules({
+      libraryId: '1',
+      name: 'Both managers',
+      description: '',
+      useRules: true,
+      isActive: true,
+      rules: validRules,
+      collection: { keepLogsForMonths: 6 },
+      sonarrSettingsId: 1,
+      sportarrSettingsId: 2,
+    } as any);
+
+    expect(result.code).toBe(0);
+    expect(result.result).toContain('either Sonarr or Sportarr');
+    expect(createCollection).not.toHaveBeenCalled();
   });
 
   // Regression for #3044: an incomplete payload that omits the `collection`

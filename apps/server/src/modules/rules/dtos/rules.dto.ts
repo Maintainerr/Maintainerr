@@ -24,7 +24,9 @@ export class RulesDto {
   notifications?: Notification[];
   radarrSettingsId?: number;
   sonarrSettingsId?: number;
+  sportarrSettingsId?: number;
   radarrQualityProfileId?: number;
   sonarrQualityProfileId?: number;
+  sportarrQualityProfileId?: number;
   tagInArr?: boolean;
 }

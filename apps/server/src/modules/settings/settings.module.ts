@@ -20,6 +20,7 @@ import { DatabaseDownloadService } from './database-download.service';
 import { RadarrSettings } from './entities/radarr_settings.entities';
 import { Settings } from './entities/settings.entities';
 import { SonarrSettings } from './entities/sonarr_settings.entities';
+import { SportarrSettings } from './entities/sportarr_settings.entities';
 import { MediaServerSwitchService } from './media-server-switch.service';
 import { MetadataSettingsService } from './metadata-settings.service';
 import { RuleMigrationService } from './rule-migration.service';
@@ -44,6 +45,7 @@ import { SettingsDataService } from './settings-data.service';
       Settings,
       RadarrSettings,
       SonarrSettings,
+      SportarrSettings,
       Collection,
       CollectionMedia,
       CollectionLog,

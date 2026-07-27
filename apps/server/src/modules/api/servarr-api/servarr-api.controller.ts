@@ -37,4 +37,12 @@ export class ServarrApiController {
     const client = await this.servarrService.getSonarrApiClient(id);
     return (await client.getProfiles()) ?? [];
   }
+
+  @Get('sportarr/:id/profiles')
+  async getSportarrProfiles(
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<QualityProfile[]> {
+    const client = await this.servarrService.getSportarrApiClient(id);
+    return (await client.getQualityProfiles()) ?? [];
+  }
 }

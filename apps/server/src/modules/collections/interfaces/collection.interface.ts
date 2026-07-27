@@ -30,8 +30,10 @@ export interface ICollection {
   tautulliWatchedPercentOverride?: number;
   radarrSettingsId?: number;
   sonarrSettingsId?: number;
+  sportarrSettingsId?: number;
   radarrQualityProfileId?: number;
   sonarrQualityProfileId?: number;
+  sportarrQualityProfileId?: number;
   tagInArr?: boolean;
   sortTitle?: string;
   mediaServerSort?: MediaServerCollectionSort | null;
