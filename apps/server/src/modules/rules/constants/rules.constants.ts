@@ -1053,6 +1053,14 @@ export class RuleConstants {
           showType: ['show', 'season'],
         },
         {
+          id: 14,
+          name: 'hasFutureEvents',
+          humanName: 'Has upcoming events',
+          mediaType: MediaType.SHOW,
+          type: RuleType.BOOL,
+          showType: ['show', 'season'],
+        },
+        {
           id: 9,
           name: 'seasonNumber',
           humanName: 'Season number (year)',

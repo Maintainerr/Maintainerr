@@ -383,7 +383,9 @@ export class SportarrActionHandler {
   // the event's seasonNumber; the display label is derived from the matched
   // events where needed.
   private seasonIndex(mediaData: MediaItem | undefined): number | undefined {
-    return mediaData?.grandparentId ? mediaData?.parentIndex : mediaData?.index;
+    // Only ever called on a season item, whose own index is the season number
+    // on every server. Don't infer scope from grandparentId presence (#3065).
+    return mediaData?.index;
   }
 
   private async resolveEvent(
