@@ -4,6 +4,7 @@ import {
   JellyfinSetting,
   DownloadClientSetting,
   MediaServerType,
+  MINIMUM_SPORTARR_VERSION,
   SeerrSetting,
   StreamystatsSetting,
   TautulliSetting,
@@ -21,10 +22,7 @@ import { MediaServerFactory } from '../api/media-server/media-server.factory';
 import { DownloadClientApiService } from '../api/download-client-api/download-client-api.service';
 import { PlexApiService } from '../api/plex-api/plex-api.service';
 import { SeerrApiService } from '../api/seerr-api/seerr-api.service';
-import {
-  MINIMUM_SPORTARR_VERSION,
-  isBelowMinimumVersion,
-} from '../api/servarr-api/helpers/sportarr-version';
+import { isBelowMinimumVersion } from '../api/servarr-api/helpers/sportarr-version';
 import { ServarrService } from '../api/servarr-api/servarr.service';
 import { StreamystatsApiService } from '../api/streamystats-api/streamystats-api.service';
 import { TautulliApiService } from '../api/tautulli-api/tautulli-api.service';

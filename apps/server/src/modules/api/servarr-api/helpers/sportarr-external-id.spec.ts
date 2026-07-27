@@ -1,5 +1,5 @@
+import { SPORTARR_TVDB_ALIAS_LEAGUE_OFFSET } from '@maintainerr/contracts';
 import {
-  SPORTARR_TVDB_ALIAS_LEAGUE_OFFSET,
   sportarrLeagueExternalIdFromProviderIds,
   sportarrLeagueExternalIdFromTvdbAlias,
 } from './sportarr-external-id';

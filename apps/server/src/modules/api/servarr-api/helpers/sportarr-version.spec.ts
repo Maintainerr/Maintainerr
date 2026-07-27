@@ -1,7 +1,5 @@
-import {
-  MINIMUM_SPORTARR_VERSION,
-  isBelowMinimumVersion,
-} from './sportarr-version';
+import { MINIMUM_SPORTARR_VERSION } from '@maintainerr/contracts';
+import { isBelowMinimumVersion } from './sportarr-version';
 
 describe('sportarr version pin', () => {
   it('pins the minimum to the release that shipped the native surface', () => {
