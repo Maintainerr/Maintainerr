@@ -93,4 +93,80 @@ describe('ExecutionLockService', () => {
 
     expect(acquiredAfterRelease).toBe(true);
   });
+
+  describe('acquireWithin', () => {
+    it('takes a free lock without waiting', async () => {
+      const release = await service.acquireWithin('shared', 50);
+
+      expect(release).not.toBeNull();
+      release?.();
+    });
+
+    it('acquires once the current holder releases within the timeout', async () => {
+      const releaseFirst = await service.acquire('shared');
+      const waiting = service.acquireWithin('shared', 1000);
+
+      releaseFirst();
+      const release = await waiting;
+
+      expect(release).not.toBeNull();
+      release?.();
+    });
+
+    it('gives up when the holder outlasts the timeout', async () => {
+      const releaseFirst = await service.acquire('shared');
+
+      await expect(service.acquireWithin('shared', 10)).resolves.toBeNull();
+
+      releaseFirst();
+    });
+
+    it('does not starve a later waiter when several give up in a row', async () => {
+      const releaseFirst = await service.acquire('shared');
+
+      const abandoned = [
+        service.acquireWithin('shared', 10),
+        service.acquireWithin('shared', 10),
+      ];
+      // A caller that queued before the timeouts fired and is still waiting.
+      const patient = service.acquireWithin('shared', 5000);
+
+      await expect(Promise.all(abandoned)).resolves.toEqual([null, null]);
+
+      releaseFirst();
+      const release = await patient;
+
+      expect(release).not.toBeNull();
+      release?.();
+      expect(service.tryAcquire('shared')).not.toBeNull();
+    });
+
+    it('hands the lock to a fresh acquirer after a timeout, not to the abandoned waiter', async () => {
+      const releaseFirst = await service.acquire('shared');
+      await service.acquireWithin('shared', 10);
+
+      releaseFirst();
+
+      // Drain the abandoned waiter's turn, then the key must be free rather
+      // than held by a releaser nobody is holding.
+      const release = await service.acquire('shared');
+      release();
+
+      expect(service.tryAcquire('shared')).not.toBeNull();
+    });
+
+    it('leaves the lock usable after giving up', async () => {
+      const releaseFirst = await service.acquire('shared');
+      await service.acquireWithin('shared', 10);
+
+      // The abandoned waiter still owns its place in the queue, so it has to
+      // release its own turn or every later caller blocks behind it forever.
+      releaseFirst();
+      const release = await service.acquireWithin('shared', 1000);
+
+      expect(release).not.toBeNull();
+      release?.();
+      expect(service.tryAcquire('shared')).not.toBeNull();
+    });
+  });
 });

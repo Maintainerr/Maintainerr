@@ -86,6 +86,17 @@ interface SharedManualCollectionReconciliationOptions {
   serverChildren?: MediaItem[];
 }
 
+/**
+ * The `addDate` cutoff at which a collection item is due for handling: the
+ * worker acts once `addDate <= now - deleteAfterDays`. Fixed-ms rather than
+ * calendar arithmetic so every caller agrees with that predicate exactly,
+ * including across a DST boundary. An unset window resolves to `now` - no
+ * window means everything is immediately due.
+ */
+export const getCollectionDangerDate = (
+  deleteAfterDays: number | null | undefined,
+): Date => new Date(Date.now() - +(deleteAfterDays ?? 0) * 86400000);
+
 export interface PostponeCollectionMediaResult {
   collectionId: number;
   mediaServerId: string;
@@ -181,6 +192,10 @@ export class CollectionsService {
    * so no schema or worker change is needed. `days` pushes the deadline out;
    * omitting it restarts the full window. For external automation (Home
    * Assistant, Ombi, Seerr) - Maintainerr never contacts the requester itself.
+   *
+   * Writes the timer only. The caller logs the change afterwards via
+   * `logPostponedCollectionMedia`, so resolving the item's title cannot hold
+   * the shared execution lock while a slow media server answers.
    */
   async postponeCollectionMedia(
     collectionId: number,
@@ -206,19 +221,19 @@ export class CollectionsService {
     // the time of day this call arrives.
     const newAddDate = days != null ? new Date(media.addDate) : new Date();
     if (days != null) {
+      // Shift from the worker's own cutoff when the item's deadline has
+      // already passed: shifting an overdue addDate can land the deadline in
+      // the past again, so the next run deletes the item anyway - a postpone
+      // that keeps nothing.
+      const dangerDate = getCollectionDangerDate(collection.deleteAfterDays);
+      if (newAddDate < dangerDate) {
+        newAddDate.setTime(dangerDate.getTime());
+      }
       newAddDate.setDate(newAddDate.getDate() + days);
     }
     newAddDate.setHours(0, 0, 0, 0);
 
     await this.CollectionMediaRepo.update(media.id, { addDate: newAddDate });
-
-    await this.addLogRecord(
-      collection,
-      days != null
-        ? `Postponed deletion of media ${mediaServerId} by ${days} day(s)`
-        : `Reset deletion timer for media ${mediaServerId}`,
-      ECollectionLogType.MEDIA,
-    );
 
     // Surface the resulting deadline (addDate + deleteAfterDays) so the caller
     // can confirm it. Null when the collection has no deletion window.
@@ -237,6 +252,49 @@ export class CollectionsService {
       deleteAfterDays: collection.deleteAfterDays ?? null,
       deletionDate,
     };
+  }
+
+  /**
+   * Best-effort collection-log entry for a postpone that already happened.
+   * Nothing here may throw: the timer is written, and failing the caller now
+   * would invite a retry that postpones the item a second time.
+   */
+  async logPostponedCollectionMedia(
+    collectionId: number,
+    mediaServerId: string,
+    days?: number,
+  ): Promise<void> {
+    try {
+      const collection = await this.getCollectionRecord(collectionId);
+      if (!collection) {
+        return;
+      }
+
+      // Prefer the item's title; fall back to its id if the media server
+      // can't resolve it (transient error / already gone).
+      let mediaLabel = mediaServerId;
+      try {
+        const mediaData = await (
+          await this.getMediaServer()
+        ).getMetadata(mediaServerId);
+        if (mediaData) {
+          mediaLabel = this.describeMediaForLog(mediaData);
+        }
+      } catch (error) {
+        this.logger.debug(error);
+      }
+
+      await this.addLogRecord(
+        collection,
+        days != null
+          ? `Postponed deletion of "${mediaLabel}" by ${days} day(s)`
+          : `Reset deletion timer for "${mediaLabel}"`,
+        ECollectionLogType.MEDIA,
+      );
+    } catch (error) {
+      this.logger.warn('Failed to log a postponed collection media item');
+      this.logger.debug(error);
+    }
   }
 
   async setCollectionMediaRuleEvaluationFailed(
@@ -1133,7 +1191,7 @@ export class CollectionsService {
     };
     if (deleteAfterDays != null) {
       options.deleteSoonestReferenceTime =
-        Date.now() - deleteAfterDays * 86400000;
+        getCollectionDangerDate(deleteAfterDays).getTime();
     }
     return options;
   }
@@ -3413,6 +3471,18 @@ export class CollectionsService {
     return { serverRejectedIds: failedItemIds, persistedIds };
   }
 
+  /**
+   * Human-readable name for a media item in collection log messages: the title,
+   * or a "Show - season N - episode M" composite for seasons/episodes.
+   */
+  private describeMediaForLog(mediaData: MediaItem): string {
+    return isMediaType(mediaData.type, 'episode')
+      ? `${mediaData.grandparentTitle} - season ${mediaData.parentIndex} - episode ${mediaData.index}`
+      : isMediaType(mediaData.type, 'season')
+        ? `${mediaData.parentTitle} - season ${mediaData.index}`
+        : mediaData.title;
+  }
+
   public async CollectionLogRecordForChild(
     mediaServerId: string,
     collectionId: number,
@@ -3423,11 +3493,7 @@ export class CollectionsService {
     const mediaData = await mediaServer.getMetadata(mediaServerId);
 
     if (mediaData) {
-      const subject = isMediaType(mediaData.type, 'episode')
-        ? `${mediaData.grandparentTitle} - season ${mediaData.parentIndex} - episode ${mediaData.index}`
-        : isMediaType(mediaData.type, 'season')
-          ? `${mediaData.parentTitle} - season ${mediaData.index}`
-          : mediaData.title;
+      const subject = this.describeMediaForLog(mediaData);
       await this.addLogRecord(
         { id: collectionId } as Collection,
         `${type === 'add' ? 'Added' : type === 'handle' ? 'Successfully handled' : type === 'exclude' ? 'Added a specific exclusion for' : type === 'include' ? 'Removed specific exclusion of' : 'Removed'} "${subject}"`,
@@ -3566,12 +3632,15 @@ export class CollectionsService {
                 : '',
             sonarrSettingsId: collection.sonarrSettingsId,
             radarrSettingsId: collection.radarrSettingsId,
+            sportarrSettingsId: collection.sportarrSettingsId,
             // These were previously persisted only on update (updateCollection
             // spreads the whole ICollection); the create path listed columns
             // explicitly and dropped them, so a profile/tag chosen at create
             // time was silently lost until the first edit.
             radarrQualityProfileId: collection.radarrQualityProfileId ?? null,
             sonarrQualityProfileId: collection.sonarrQualityProfileId ?? null,
+            sportarrQualityProfileId:
+              collection.sportarrQualityProfileId ?? null,
             tagInArr: collection.tagInArr ?? false,
             sortTitle: collection.sortTitle,
             mediaServerSort: collection.mediaServerSort ?? null,

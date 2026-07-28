@@ -23,6 +23,7 @@ import { Notification } from '../notifications/entities/notification.entities';
 import { RadarrSettings } from '../settings/entities/radarr_settings.entities';
 import { Settings } from '../settings/entities/settings.entities';
 import { SonarrSettings } from '../settings/entities/sonarr_settings.entities';
+import { SportarrSettings } from '../settings/entities/sportarr_settings.entities';
 import { RuleMigrationService } from '../settings/rule-migration.service';
 import {
   Application,
@@ -72,6 +73,8 @@ export class RulesService {
     private readonly radarrSettingsRepo: Repository<RadarrSettings>,
     @InjectRepository(SonarrSettings)
     private readonly sonarrSettingsRepo: Repository<SonarrSettings>,
+    @InjectRepository(SportarrSettings)
+    private readonly sportarrSettingsRepo: Repository<SportarrSettings>,
     private readonly collectionService: CollectionsService,
     private readonly mediaServerFactory: MediaServerFactory,
     private readonly connection: DataSource,
@@ -94,6 +97,7 @@ export class RulesService {
     const settings = await this.settingsRepo.findOne({ where: {} });
     const radarrSettingsExist = await this.radarrSettingsRepo.exists();
     const sonarrSettingsExist = await this.sonarrSettingsRepo.exists();
+    const sportarrSettingsExist = await this.sportarrSettingsRepo.exists();
 
     const localConstants = _.cloneDeep(this.ruleConstants);
     if (settings) {
@@ -115,6 +119,13 @@ export class RulesService {
       if (!sonarrSettingsExist) {
         localConstants.applications = localConstants.applications.filter(
           (el) => el.id !== Application.SONARR,
+        );
+      }
+
+      // remove sportarr if not configured
+      if (!sportarrSettingsExist) {
+        localConstants.applications = localConstants.applications.filter(
+          (el) => el.id !== Application.SPORTARR,
         );
       }
 
@@ -349,6 +360,10 @@ export class RulesService {
 
   async setRules(params: RulesDto) {
     try {
+      const managerState = this.validateSingleShowManager(params);
+      if (managerState.code !== 1) {
+        return managerState;
+      }
       let state: ReturnStatus = this.createReturnStatus(true, 'Success');
       for (const [index, rule] of (params.rules as RuleDto[]).entries()) {
         if (state.code === 1 && index > 0 && rule.operator == null) {
@@ -366,6 +381,7 @@ export class RulesService {
             rule,
             params.radarrSettingsId,
             params.sonarrSettingsId,
+            params.sportarrSettingsId,
           );
         }
         if (state.code === 1) {
@@ -401,8 +417,10 @@ export class RulesService {
             params.tautulliWatchedPercentOverride ?? null,
           radarrSettingsId: params.radarrSettingsId ?? null,
           sonarrSettingsId: params.sonarrSettingsId ?? null,
+          sportarrSettingsId: params.sportarrSettingsId ?? null,
           radarrQualityProfileId: params.radarrQualityProfileId ?? null,
           sonarrQualityProfileId: params.sonarrQualityProfileId ?? null,
+          sportarrQualityProfileId: params.sportarrQualityProfileId ?? null,
           tagInArr: params.tagInArr ?? false,
           visibleOnRecommended: params.collection?.visibleOnRecommended,
           visibleOnHome: params.collection?.visibleOnHome,
@@ -459,6 +477,10 @@ export class RulesService {
 
   async updateRules(params: RulesDto) {
     try {
+      const managerState = this.validateSingleShowManager(params);
+      if (managerState.code !== 1) {
+        return managerState;
+      }
       let state: ReturnStatus = this.createReturnStatus(true, 'Success');
       for (const [index, rule] of (params.rules as RuleDto[]).entries()) {
         if (state.code === 1 && index > 0 && rule.operator == null) {
@@ -476,6 +498,7 @@ export class RulesService {
             rule,
             params.radarrSettingsId,
             params.sonarrSettingsId,
+            params.sportarrSettingsId,
           );
         }
         if (state.code === 1) {
@@ -591,8 +614,10 @@ export class RulesService {
             params.tautulliWatchedPercentOverride ?? null,
           radarrSettingsId: params.radarrSettingsId ?? null,
           sonarrSettingsId: params.sonarrSettingsId ?? null,
+          sportarrSettingsId: params.sportarrSettingsId ?? null,
           radarrQualityProfileId: params.radarrQualityProfileId ?? null,
           sonarrQualityProfileId: params.sonarrQualityProfileId ?? null,
+          sportarrQualityProfileId: params.sportarrQualityProfileId ?? null,
           tagInArr: params.tagInArr ?? false,
           // If the collection block is left out of an update, keep the saved
           // values instead of sending undefined - otherwise we'd unlink a manual
@@ -1330,6 +1355,7 @@ export class RulesService {
     appId: number,
     radarrSettingsId: number | undefined,
     sonarrSettingsId: number | undefined,
+    sportarrSettingsId: number | undefined,
   ): ReturnStatus | null {
     // Check if rule references Radarr without a server
     if (
@@ -1353,19 +1379,46 @@ export class RulesService {
       );
     }
 
+    // Check if rule references Sportarr without a server
+    if (
+      appId === Application.SPORTARR &&
+      (sportarrSettingsId === undefined || sportarrSettingsId === null)
+    ) {
+      return this.createReturnStatus(
+        false,
+        'Sportarr rules require a Sportarr server to be selected',
+      );
+    }
+
     return null;
+  }
+
+  // A show-library collection is managed by exactly one of Sonarr/Sportarr.
+  // The UI enforces this via the "Managed by" selector; this guards the raw
+  // API path, where a payload with both set would otherwise dispatch the
+  // Sonarr handler against a sports library.
+  private validateSingleShowManager(params: RulesDto): ReturnStatus {
+    if (params.sonarrSettingsId != null && params.sportarrSettingsId != null) {
+      return this.createReturnStatus(
+        false,
+        'A collection can be managed by either Sonarr or Sportarr, not both',
+      );
+    }
+    return this.createReturnStatus(true, 'Success');
   }
 
   private validateRuleServerSelection(
     rule: RuleDto,
     radarrSettingsId?: number,
     sonarrSettingsId?: number,
+    sportarrSettingsId?: number,
   ): ReturnStatus {
     // Check first value
     const firstValResult = this.validateApplicationServerSelection(
       rule.firstVal[0],
       radarrSettingsId,
       sonarrSettingsId,
+      sportarrSettingsId,
     );
     if (firstValResult) {
       return firstValResult;
@@ -1377,6 +1430,7 @@ export class RulesService {
         rule.lastVal[0],
         radarrSettingsId,
         sonarrSettingsId,
+        sportarrSettingsId,
       );
       if (lastValResult) {
         return lastValResult;
@@ -1742,6 +1796,9 @@ export class RulesService {
       .forEach((cache) => cache.data.flushAll());
     cacheManager
       .getCachesByType('sonarr')
+      .forEach((cache) => cache.data.flushAll());
+    cacheManager
+      .getCachesByType('sportarr')
       .forEach((cache) => cache.data.flushAll());
 
     const mediaResp = await mediaServer.getMetadata(mediaId);

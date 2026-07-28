@@ -60,6 +60,7 @@ interface IRuleInput {
   allowDelete?: boolean
   radarrSettingsId?: number | null
   sonarrSettingsId?: number | null
+  sportarrSettingsId?: number | null
 }
 
 /**
@@ -70,6 +71,7 @@ const shouldFilterApplication = (
   appId: number,
   radarrSettingsId: number | null | undefined,
   sonarrSettingsId: number | null | undefined,
+  sportarrSettingsId: number | null | undefined,
   isPlex: boolean,
   isJellyfin: boolean,
   isEmby: boolean = false,
@@ -85,6 +87,13 @@ const shouldFilterApplication = (
   if (
     appId === Application.SONARR &&
     (sonarrSettingsId === undefined || sonarrSettingsId === null)
+  ) {
+    return true
+  }
+  // Filter out Sportarr if no Sportarr server is selected
+  if (
+    appId === Application.SPORTARR &&
+    (sportarrSettingsId === undefined || sportarrSettingsId === null)
   ) {
     return true
   }
@@ -299,6 +308,7 @@ const RuleInput = (props: IRuleInput) => {
               app.id,
               props.radarrSettingsId,
               props.sonarrSettingsId,
+              props.sportarrSettingsId,
               isPlex,
               isJellyfin,
               isEmby,
@@ -327,6 +337,7 @@ const RuleInput = (props: IRuleInput) => {
     props.mediaType,
     props.radarrSettingsId,
     props.sonarrSettingsId,
+    props.sportarrSettingsId,
   ])
 
   const validFirstVal = useMemo(() => {

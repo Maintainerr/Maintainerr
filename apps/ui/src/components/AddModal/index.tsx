@@ -2,6 +2,7 @@ import { MediaItemType } from '@maintainerr/contracts'
 import { useQueryClient } from '@tanstack/react-query'
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { invalidateCollectionQueries } from '../../api/collections'
 import GetApiHandler, { PostApiHandler } from '../../utils/ApiHandler'
 import Alert from '../Common/Alert'
 import {
@@ -103,9 +104,7 @@ const AddModal = (props: IAddModal) => {
           action: selectedAction,
         })
 
-        await queryClient.invalidateQueries({
-          queryKey: ['calendar', 'collections', 'overlay-data'],
-        })
+        await invalidateCollectionQueries(queryClient)
       } else {
         await PostApiHandler('/rules/exclusion', {
           mediaId: props.mediaServerId,
@@ -185,9 +184,7 @@ const AddModal = (props: IAddModal) => {
           action: 1,
         })
 
-        await queryClient.invalidateQueries({
-          queryKey: ['calendar', 'collections', 'overlay-data'],
-        })
+        await invalidateCollectionQueries(queryClient)
       }
       props.onSubmit()
     } catch {

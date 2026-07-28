@@ -85,6 +85,8 @@ export class MediaServerSwitchService {
         generalSettings: true,
         radarrSettings: await this.settingsDataService.getRadarrSettingsCount(),
         sonarrSettings: await this.settingsDataService.getSonarrSettingsCount(),
+        sportarrSettings:
+          await this.settingsDataService.getSportarrSettingsCount(),
         seerrSettings: this.settingsDataService.seerrConfigured(),
         // Tautulli is Plex-specific and gets cleared when switching away from Plex
         tautulliSettings:

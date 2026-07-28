@@ -82,6 +82,9 @@ const settingsEmbyRoute = createLazyRoute(
 const settingsSonarrRoute = createLazyRoute(
   () => import('./components/Settings/Sonarr'),
 )
+const settingsSportarrRoute = createLazyRoute(
+  () => import('./components/Settings/Sportarr'),
+)
 const settingsMetadataRoute = createLazyRoute(
   () => import('./components/Settings/Metadata'),
 )
@@ -273,6 +276,11 @@ const appRoutes: AppRoute[] = [
         path: 'sonarr',
         lazy: settingsSonarrRoute.lazy,
         preload: settingsSonarrRoute.preload,
+      },
+      {
+        path: 'sportarr',
+        lazy: settingsSportarrRoute.lazy,
+        preload: settingsSportarrRoute.preload,
       },
       {
         path: 'metadata',

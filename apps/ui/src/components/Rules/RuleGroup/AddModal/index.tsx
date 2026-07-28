@@ -27,6 +27,7 @@ import { z } from 'zod'
 import { IRuleGroup } from '..'
 import { useMediaServerLibraries } from '../../../../api/media-server'
 import { getOverlayTemplates } from '../../../../api/overlays'
+import { useServarrSettings } from '../../../../api/settings'
 import {
   RuleGroupCreatePayload,
   useCreateRuleGroup,
@@ -93,6 +94,7 @@ const shouldFilterApp = (
   appId: number,
   radarrId: number | null | undefined,
   sonarrId: number | null | undefined,
+  sportarrId: number | null | undefined,
 ): boolean => {
   if (
     appId === Application.RADARR &&
@@ -106,6 +108,12 @@ const shouldFilterApp = (
   ) {
     return true
   }
+  if (
+    appId === Application.SPORTARR &&
+    (sportarrId === undefined || sportarrId === null)
+  ) {
+    return true
+  }
   return false
 }
 
@@ -114,13 +122,15 @@ const filterRulesForArrSettings = (
   rules: IRule[],
   radarrId: number | null | undefined,
   sonarrId: number | null | undefined,
+  sportarrId: number | null | undefined,
 ): IRule[] => {
   return rules.filter((rule) => {
-    if (shouldFilterApp(+rule.firstVal[0], radarrId, sonarrId)) return false
+    if (shouldFilterApp(+rule.firstVal[0], radarrId, sonarrId, sportarrId))
+      return false
     if (
       rule.lastVal &&
       Array.isArray(rule.lastVal) &&
-      shouldFilterApp(+rule.lastVal[0], radarrId, sonarrId)
+      shouldFilterApp(+rule.lastVal[0], radarrId, sonarrId, sportarrId)
     ) {
       return false
     }
@@ -252,6 +262,55 @@ const SONARR_EPISODE_ACTION_OPTIONS = sortActionOptions([
   },
 ])
 
+const SPORTARR_SHOW_ACTION_OPTIONS = sortActionOptions([
+  {
+    id: ServarrAction.DELETE,
+    name: 'Delete entire league',
+  },
+  {
+    id: ServarrAction.UNMONITOR,
+    name: 'Unmonitor league, keep files',
+  },
+  {
+    id: ServarrAction.DO_NOTHING,
+    name: 'Do nothing',
+  },
+  {
+    id: ServarrAction.CHANGE_QUALITY_PROFILE,
+    name: 'Change quality profile',
+  },
+])
+
+const SPORTARR_SEASON_ACTION_OPTIONS = sortActionOptions([
+  {
+    id: ServarrAction.DELETE,
+    name: 'Unmonitor season, delete event files',
+  },
+  {
+    id: ServarrAction.UNMONITOR,
+    name: 'Unmonitor season, keep files',
+  },
+  {
+    id: ServarrAction.DO_NOTHING,
+    name: 'Do nothing',
+  },
+])
+
+const SPORTARR_EPISODE_ACTION_OPTIONS = sortActionOptions([
+  {
+    id: ServarrAction.DELETE,
+    name: 'Delete event file',
+  },
+  {
+    id: ServarrAction.UNMONITOR,
+    name: 'Unmonitor event, keep file',
+  },
+  {
+    id: ServarrAction.DO_NOTHING,
+    name: 'Do nothing',
+  },
+])
+
 export const ruleGroupFormSchema = z
   .object({
     name: z.string().trim().min(1, 'Name is required'),
@@ -306,8 +365,10 @@ export const ruleGroupFormSchema = z
     useRules: z.boolean(),
     radarrSettingsId: z.number().int().nullable().optional(),
     sonarrSettingsId: z.number().int().nullable().optional(),
+    sportarrSettingsId: z.number().int().nullable().optional(),
     radarrQualityProfileId: z.number().int().nullable().optional(),
     sonarrQualityProfileId: z.number().int().nullable().optional(),
+    sportarrQualityProfileId: z.number().int().nullable().optional(),
     tagInArr: z.boolean().optional(),
     ruleHandlerCronSchedule: z.preprocess(
       (val) => (val === '' ? null : val),
@@ -352,7 +413,17 @@ export const ruleGroupFormSchema = z
         })
       }
 
-      if (isShow && data.sonarrQualityProfileId == null) {
+      // A show library is managed by exactly one of Sonarr/Sportarr; require
+      // the profile of whichever manager the collection is bound to.
+      if (isShow && data.sportarrSettingsId != null) {
+        if (data.sportarrQualityProfileId == null) {
+          ctx.addIssue({
+            code: 'custom',
+            path: ['sportarrQualityProfileId'],
+            message: 'Quality profile is required for this action',
+          })
+        }
+      } else if (isShow && data.sonarrQualityProfileId == null) {
         ctx.addIssue({
           code: 'custom',
           path: ['sonarrQualityProfileId'],
@@ -394,11 +465,17 @@ const buildFormDefaults = (editData?: IRuleGroup): RuleGroupFormValues => ({
   sonarrSettingsId: editData
     ? (editData.collection?.sonarrSettingsId ?? null)
     : undefined,
+  sportarrSettingsId: editData
+    ? (editData.collection?.sportarrSettingsId ?? null)
+    : undefined,
   radarrQualityProfileId: editData
     ? (editData.collection?.radarrQualityProfileId ?? undefined)
     : undefined,
   sonarrQualityProfileId: editData
     ? (editData.collection?.sonarrQualityProfileId ?? undefined)
+    : undefined,
+  sportarrQualityProfileId: editData
+    ? (editData.collection?.sportarrQualityProfileId ?? undefined)
     : undefined,
   tagInArr: editData?.collection?.tagInArr ?? false,
   ruleHandlerCronSchedule: editData?.ruleHandlerCronSchedule ?? null,
@@ -487,6 +564,10 @@ const AddModal = (props: AddModal) => {
     number | null | undefined
   const sonarrSettingsId = useWatch({ control, name: 'sonarrSettingsId' }) as
     number | null | undefined
+  const sportarrSettingsId = useWatch({
+    control,
+    name: 'sportarrSettingsId',
+  }) as number | null | undefined
   const radarrQualityProfileId = useWatch({
     control,
     name: 'radarrQualityProfileId',
@@ -495,8 +576,13 @@ const AddModal = (props: AddModal) => {
     control,
     name: 'sonarrQualityProfileId',
   }) as number | null | undefined
+  const sportarrQualityProfileId = useWatch({
+    control,
+    name: 'sportarrQualityProfileId',
+  }) as number | null | undefined
   const hasSelectedRadarrServer = radarrSettingsId != null
   const hasSelectedSonarrServer = sonarrSettingsId != null
+  const hasSelectedSportarrServer = sportarrSettingsId != null
   const [showCommunityModal, setShowCommunityModal] = useState(false)
   const [yamlImporterModal, setYamlImporterModal] = useState(false)
   const [configureNotificationModal, setConfigureNotificationModal] =
@@ -516,6 +602,16 @@ const AddModal = (props: AddModal) => {
   )
   const [formIncomplete, setFormIncomplete] = useState<boolean>(false)
   const [ruleCreatorVersion, setRuleCreatorVersion] = useState<number>(1)
+  // Which *arr manages a show-library collection. A Plex "show" library can be
+  // a TV library (Sonarr) or a sports library (Sportarr), so the user picks one
+  // per collection. Only surfaced when a Sportarr server exists.
+  const [showLibraryManager, setShowLibraryManager] = useState<
+    'Sonarr' | 'Sportarr'
+  >(
+    props.editData?.collection?.sportarrSettingsId != null
+      ? 'Sportarr'
+      : 'Sonarr',
+  )
   const [overlayTemplates, setOverlayTemplates] = useState<OverlayTemplate[]>(
     [],
   )
@@ -588,6 +684,11 @@ const AddModal = (props: AddModal) => {
   const seerrEnabled =
     constants?.applications?.some((x) => x.id == Application.SEERR) ?? false
 
+  // Only surface the Sportarr manager option once a Sportarr server exists, so
+  // the existing Sonarr/Radarr collection flow is unchanged for everyone else.
+  const { data: sportarrSettingsList } = useServarrSettings('sportarr')
+  const hasSportarrConfigured = (sportarrSettingsList?.length ?? 0) > 0
+
   function updateLibraryId(value: string) {
     // Selecting the unresolved stored-library fallback keeps the original
     // library type intact instead of resetting dependent state based on an
@@ -612,13 +713,44 @@ const AddModal = (props: AddModal) => {
 
     setValue('radarrSettingsId', undefined)
     setValue('sonarrSettingsId', undefined)
+    setValue('sportarrSettingsId', undefined)
     setValue('radarrQualityProfileId', undefined)
     setValue('sonarrQualityProfileId', undefined)
+    setValue('sportarrQualityProfileId', undefined)
     setValue('tagInArr', false)
+    setShowLibraryManager('Sonarr')
     updateArrOption(ServarrAction.DELETE)
 
     // Clear rules that reference *arr servers since we're resetting them
-    const filtered = filterRulesForArrSettings(rules, undefined, undefined)
+    const filtered = filterRulesForArrSettings(
+      rules,
+      undefined,
+      undefined,
+      undefined,
+    )
+    if (filtered.length !== rules.length) {
+      setRules(filtered)
+      setRuleCreatorVersion((v) => v + 1)
+    }
+  }
+
+  // Switch which *arr manages a show-library collection. Clears the other
+  // manager's selection so only one is ever set, and resets the action.
+  const handleShowManagerChange = (manager: 'Sonarr' | 'Sportarr') => {
+    setShowLibraryManager(manager)
+    setValue('sonarrSettingsId', undefined)
+    setValue('sportarrSettingsId', undefined)
+    setValue('sonarrQualityProfileId', undefined)
+    setValue('sportarrQualityProfileId', undefined)
+    setValue('tagInArr', false)
+    updateArrOption(ServarrAction.DELETE)
+
+    const filtered = filterRulesForArrSettings(
+      rules,
+      radarrSettingsId,
+      undefined,
+      undefined,
+    )
     if (filtered.length !== rules.length) {
       setRules(filtered)
       setRuleCreatorVersion((v) => v + 1)
@@ -642,11 +774,12 @@ const AddModal = (props: AddModal) => {
     if (value !== ServarrAction.CHANGE_QUALITY_PROFILE) {
       setValue('radarrQualityProfileId', undefined)
       setValue('sonarrQualityProfileId', undefined)
+      setValue('sportarrQualityProfileId', undefined)
     }
   }
 
   const handleUpdateArrAction = (
-    type: 'Radarr' | 'Sonarr',
+    type: 'Radarr' | 'Sonarr' | 'Sportarr',
     arrAction: number,
     settingId?: number | null,
   ) => {
@@ -660,20 +793,33 @@ const AddModal = (props: AddModal) => {
       setValue('sonarrQualityProfileId', undefined)
     }
 
+    if (type === 'Sportarr' && settingId !== sportarrSettingsId) {
+      setValue('sportarrQualityProfileId', undefined)
+    }
+
     // Drop the membership-tag opt-in if the matching *arr server is deselected;
     // the checkbox hides with the server, so don't leave a stale enabled flag.
     if (settingId == null) {
       setValue('tagInArr', false)
     }
 
+    // A collection is managed by exactly one *arr, so selecting a server for one
+    // clears the other two.
     const newRadarrId = type === 'Radarr' ? settingId : undefined
     const newSonarrId = type === 'Sonarr' ? settingId : undefined
+    const newSportarrId = type === 'Sportarr' ? settingId : undefined
 
     setValue('radarrSettingsId', newRadarrId)
     setValue('sonarrSettingsId', newSonarrId)
+    setValue('sportarrSettingsId', newSportarrId)
 
     // Filter out rules that reference the deselected *arr server
-    const filtered = filterRulesForArrSettings(rules, newRadarrId, newSonarrId)
+    const filtered = filterRulesForArrSettings(
+      rules,
+      newRadarrId,
+      newSonarrId,
+      newSportarrId,
+    )
     if (filtered.length !== rules.length) {
       setRules(filtered)
       setRuleCreatorVersion((v) => v + 1)
@@ -810,8 +956,10 @@ const AddModal = (props: AddModal) => {
       tautulliWatchedPercentOverride: data.tautulliWatchedPercentOverride,
       radarrSettingsId: data.radarrSettingsId ?? undefined,
       sonarrSettingsId: data.sonarrSettingsId ?? undefined,
+      sportarrSettingsId: data.sportarrSettingsId ?? undefined,
       radarrQualityProfileId: data.radarrQualityProfileId ?? undefined,
       sonarrQualityProfileId: data.sonarrQualityProfileId ?? undefined,
+      sportarrQualityProfileId: data.sportarrQualityProfileId ?? undefined,
       tagInArr: data.tagInArr ?? false,
       collection: {
         visibleOnRecommended: data.showRecommended,
@@ -1081,44 +1229,134 @@ const AddModal = (props: AddModal) => {
                         </div>
                       </div>
 
-                      <ArrAction
-                        type="Sonarr"
-                        mediaServerName={mediaServerName}
-                        arrAction={arrActionValue}
-                        settingId={sonarrSettingsId}
-                        onUpdate={(e: number, settingId?: number | null) => {
-                          handleUpdateArrAction('Sonarr', e, settingId)
-                        }}
-                        options={
-                          selectedType === 'show'
-                            ? SONARR_SHOW_ACTION_OPTIONS
-                            : selectedType === 'season'
-                              ? SONARR_SEASON_ACTION_OPTIONS
-                              : // episodes
-                                SONARR_EPISODE_ACTION_OPTIONS
-                        }
-                      />
-                      {errors.sonarrSettingsId && (
-                        <p className="mt-1 text-xs text-error-400">
-                          {errors.sonarrSettingsId.message}
-                        </p>
+                      {/* A "show" library can be TV (Sonarr) or sports
+                          (Sportarr); let the user pick which manages this
+                          collection. Only shown when Sportarr is configured,
+                          so the Sonarr-only flow is unchanged otherwise. */}
+                      {hasSportarrConfigured && (
+                        <div className="form-row items-center">
+                          <label
+                            htmlFor="show-library-manager"
+                            className="text-label"
+                          >
+                            Managed by
+                          </label>
+                          <div className="form-input">
+                            <div className="form-input-field">
+                              <Select
+                                name="show-library-manager"
+                                id="show-library-manager"
+                                value={showLibraryManager}
+                                onChange={(e) =>
+                                  handleShowManagerChange(
+                                    e.target.value as 'Sonarr' | 'Sportarr',
+                                  )
+                                }
+                              >
+                                <option value="Sonarr">Sonarr</option>
+                                <option value="Sportarr">Sportarr</option>
+                              </Select>
+                            </div>
+                          </div>
+                        </div>
                       )}
 
-                      {hasSelectedSonarrServer &&
-                        arrActionValue ===
-                          ServarrAction.CHANGE_QUALITY_PROFILE && (
-                          <QualityProfileSelector
+                      {(!hasSportarrConfigured ||
+                        showLibraryManager === 'Sonarr') && (
+                        <>
+                          <ArrAction
                             type="Sonarr"
+                            mediaServerName={mediaServerName}
+                            arrAction={arrActionValue}
                             settingId={sonarrSettingsId}
-                            qualityProfileId={sonarrQualityProfileId}
-                            onUpdate={(qualityProfileId) => {
-                              setValue(
-                                'sonarrQualityProfileId',
-                                qualityProfileId,
-                              )
+                            onUpdate={(
+                              e: number,
+                              settingId?: number | null,
+                            ) => {
+                              handleUpdateArrAction('Sonarr', e, settingId)
                             }}
-                            error={errors.sonarrQualityProfileId?.message}
+                            options={
+                              selectedType === 'show'
+                                ? SONARR_SHOW_ACTION_OPTIONS
+                                : selectedType === 'season'
+                                  ? SONARR_SEASON_ACTION_OPTIONS
+                                  : // episodes
+                                    SONARR_EPISODE_ACTION_OPTIONS
+                            }
                           />
+                          {errors.sonarrSettingsId && (
+                            <p className="mt-1 text-xs text-error-400">
+                              {errors.sonarrSettingsId.message}
+                            </p>
+                          )}
+
+                          {hasSelectedSonarrServer &&
+                            arrActionValue ===
+                              ServarrAction.CHANGE_QUALITY_PROFILE && (
+                              <QualityProfileSelector
+                                type="Sonarr"
+                                settingId={sonarrSettingsId}
+                                qualityProfileId={sonarrQualityProfileId}
+                                onUpdate={(qualityProfileId) => {
+                                  setValue(
+                                    'sonarrQualityProfileId',
+                                    qualityProfileId,
+                                  )
+                                }}
+                                error={errors.sonarrQualityProfileId?.message}
+                              />
+                            )}
+                        </>
+                      )}
+
+                      {hasSportarrConfigured &&
+                        showLibraryManager === 'Sportarr' && (
+                          <>
+                            <ArrAction
+                              type="Sportarr"
+                              mediaServerName={mediaServerName}
+                              arrAction={arrActionValue}
+                              settingId={sportarrSettingsId}
+                              onUpdate={(
+                                e: number,
+                                settingId?: number | null,
+                              ) => {
+                                handleUpdateArrAction('Sportarr', e, settingId)
+                              }}
+                              options={
+                                selectedType === 'show'
+                                  ? SPORTARR_SHOW_ACTION_OPTIONS
+                                  : selectedType === 'season'
+                                    ? SPORTARR_SEASON_ACTION_OPTIONS
+                                    : // episodes
+                                      SPORTARR_EPISODE_ACTION_OPTIONS
+                              }
+                            />
+                            {errors.sportarrSettingsId && (
+                              <p className="mt-1 text-xs text-error-400">
+                                {errors.sportarrSettingsId.message}
+                              </p>
+                            )}
+
+                            {hasSelectedSportarrServer &&
+                              arrActionValue ===
+                                ServarrAction.CHANGE_QUALITY_PROFILE && (
+                                <QualityProfileSelector
+                                  type="Sportarr"
+                                  settingId={sportarrSettingsId}
+                                  qualityProfileId={sportarrQualityProfileId}
+                                  onUpdate={(qualityProfileId) => {
+                                    setValue(
+                                      'sportarrQualityProfileId',
+                                      qualityProfileId,
+                                    )
+                                  }}
+                                  error={
+                                    errors.sportarrQualityProfileId?.message
+                                  }
+                                />
+                              )}
+                          </>
                         )}
                     </>
                   )}
@@ -1786,6 +2024,7 @@ const AddModal = (props: AddModal) => {
                   editData={{ rules: rules }}
                   radarrSettingsId={radarrSettingsId}
                   sonarrSettingsId={sonarrSettingsId}
+                  sportarrSettingsId={sportarrSettingsId}
                   onCancel={cancel}
                   onUpdate={updateRules}
                 />

@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { RadarrActionHandler } from '../actions/radarr-action-handler';
 import { SonarrActionHandler } from '../actions/sonarr-action-handler';
+import { SportarrActionHandler } from '../actions/sportarr-action-handler';
 import { MediaServerFactory } from '../api/media-server/media-server.factory';
 import { IMediaServerService } from '../api/media-server/media-server.interface';
 import { SeerrApiService } from '../api/seerr-api/seerr-api.service';
@@ -32,6 +33,7 @@ export class CollectionHandler {
     private readonly metadataService: MetadataService,
     private readonly radarrActionHandler: RadarrActionHandler,
     private readonly sonarrActionHandler: SonarrActionHandler,
+    private readonly sportarrActionHandler: SportarrActionHandler,
     private readonly logger: MaintainerrLogger,
     private readonly recentlyHandledMedia: RecentlyHandledMediaService,
   ) {
@@ -92,7 +94,16 @@ export class CollectionHandler {
         collection,
         media,
       );
-    } else if (!collection.radarrSettingsId && !collection.sonarrSettingsId) {
+    } else if (library?.type == 'show' && collection.sportarrSettingsId) {
+      actionHandled = await this.sportarrActionHandler.handleAction(
+        collection,
+        media,
+      );
+    } else if (
+      !collection.radarrSettingsId &&
+      !collection.sonarrSettingsId &&
+      !collection.sportarrSettingsId
+    ) {
       if (
         collection.arrAction !== ServarrAction.UNMONITOR &&
         collection.arrAction !== ServarrAction.UNMONITOR_SHOW_IF_EMPTY &&
@@ -226,6 +237,26 @@ export class CollectionHandler {
     );
     if (updatedCollection) {
       collection = updatedCollection;
+    }
+
+    // The collection's configured action retired this item, so record a
+    // rule-removal marker - the same protection #3298 gives the rule executor's
+    // own removals, extended to the handler path. For actions that leave the
+    // file in place (UNMONITOR / quality change) the item stays on the media
+    // server, so if the BoxSet removal above silently no-ops it lingers there;
+    // without a marker the next run would re-adopt it as a spurious manual
+    // member. The marker lets that run self-heal it instead. Automatic,
+    // still-linked collections only (a manual collection has no rule to reclaim
+    // it; an emptied collection was unlinked above so nothing can linger).
+    // Best-effort: a marker write must never fail an already-applied action.
+    if (!collection.manualCollection && collection.mediaServerId) {
+      try {
+        await this.collectionService.markRuleRemoved(collection.id, [
+          media.mediaServerId,
+        ]);
+      } catch (error) {
+        this.logger.debug(error);
+      }
     }
 
     // The file is gone after a disk-freeing action (DELETE, DELETE_SHOW_IF_EMPTY,

@@ -18,6 +18,7 @@ import { OverlayTemplateEntity } from '../../overlays/entities/overlay-template.
 import { RuleGroup } from '../../rules/entities/rule-group.entities';
 import { RadarrSettings } from '../../settings/entities/radarr_settings.entities';
 import { SonarrSettings } from '../../settings/entities/sonarr_settings.entities';
+import { SportarrSettings } from '../../settings/entities/sportarr_settings.entities';
 import { CollectionMedia } from './collection_media.entities';
 
 @Entity()
@@ -103,6 +104,13 @@ export class Collection {
   sonarrSettings: Relation<SonarrSettings>;
 
   @Column({ nullable: true })
+  sportarrSettingsId: number;
+
+  @ManyToOne(() => SportarrSettings, { nullable: true })
+  @JoinColumn({ name: 'sportarrSettingsId', referencedColumnName: 'id' })
+  sportarrSettings: Relation<SportarrSettings>;
+
+  @Column({ nullable: true })
   sortTitle: string;
 
   @Column({ type: 'varchar', nullable: true, default: null })
@@ -132,6 +140,9 @@ export class Collection {
 
   @Column({ nullable: true })
   sonarrQualityProfileId: number;
+
+  @Column({ nullable: true })
+  sportarrQualityProfileId: number;
 
   // When true, Maintainerr keeps a Radarr/Sonarr tag (label = this collection's
   // title / rule group name) on the *arr entity for as long as the item is a

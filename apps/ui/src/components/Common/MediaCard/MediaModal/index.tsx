@@ -1,6 +1,8 @@
 import {
   MediaItem,
   ServarrAction,
+  SPORTARR_TVDB_ALIAS_LEAGUE_OFFSET,
+  SPORTARR_TVDB_ALIAS_RANGE,
   type MaintainerrMediaStatusDetails,
   type MaintainerrMediaStatusEntry,
   type MediaProviderIds,
@@ -265,6 +267,17 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
         backdropResult.providerId?.toString() ??
         providerIds?.[cfg.providerIdKey]?.[0]
       if (!linkId) return null
+      // Sportarr stamps numeric aliases in the tvdb namespace on its items;
+      // no real TVDB page exists for those, so don't render a dead link.
+      if (cfg.providerIdKey === 'tvdb') {
+        const numericId = Number(linkId)
+        if (
+          numericId >= SPORTARR_TVDB_ALIAS_LEAGUE_OFFSET &&
+          numericId <
+            SPORTARR_TVDB_ALIAS_LEAGUE_OFFSET + SPORTARR_TVDB_ALIAS_RANGE
+        )
+          return null
+      }
       return { ...cfg, linkId }
     }, [isCurrentBackdrop, backdropResult, providerIds])
 
