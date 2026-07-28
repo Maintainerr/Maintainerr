@@ -11,6 +11,7 @@ import { EventEmitter } from 'events';
 import * as fs from 'fs';
 import { lstat, realpath } from 'fs/promises';
 import { IncomingMessage } from 'http';
+import readLastLines from 'read-last-lines';
 import { PassThrough } from 'stream';
 import { createMockLogger } from '../../../test/utils/data';
 import { LogSettingsService } from './logs.service';
@@ -35,6 +36,11 @@ jest.mock('fs', () => {
   };
 });
 
+jest.mock('read-last-lines', () => ({
+  __esModule: true,
+  default: { read: jest.fn() },
+}));
+
 jest.mock('fs/promises', () => {
   const actual = jest.requireActual('fs/promises');
   return {
@@ -52,6 +58,8 @@ const createReadStreamMock = fs.createReadStream as jest.MockedFunction<
 
 const lstatMock = jest.mocked(lstat);
 const realpathMock = jest.mocked(realpath);
+const readdirMock = fs.readdir as unknown as jest.Mock;
+const readLastLinesMock = jest.mocked(readLastLines.read);
 
 class MockSocket extends EventEmitter {
   setKeepAlive = jest.fn();
@@ -77,6 +85,16 @@ class MockResponse extends EventEmitter {
     },
   );
 }
+
+// The file replay resolves through promises, so let them settle before asserting.
+const flushAsync = () => new Promise(setImmediate);
+
+const readReplayedEvents = (response: MockResponse) =>
+  response.write.mock.calls
+    .map(([chunk]) => chunk)
+    .filter((chunk) => chunk.startsWith('data: '))
+    .map((chunk) => JSON.parse(chunk.slice('data: '.length)))
+    .map(({ level, message }) => ({ level, message }));
 
 const buildRequest = (): RawBodyRequest<IncomingMessage> =>
   ({
@@ -120,6 +138,33 @@ describe('LogsController', () => {
 
     expect(() => controller.sendDataToClient(clientId, message)).not.toThrow();
     expect(controller.connectedClients.size).toBe(0);
+  });
+
+  it('replays every log file entry, including the newest one', async () => {
+    const controller = createController();
+    const response = new MockResponse();
+    readdirMock.mockImplementationOnce(
+      (_dir: string, callback: (error: null, files: string[]) => void) => {
+        callback(null, ['maintainerr-2026-07-28.log']);
+      },
+    );
+    readLastLinesMock.mockResolvedValue(
+      '[maintainerr]  |  28/07/2026 10:00:00  [INFO] [Server] Startup complete\n' +
+        '[maintainerr]  |  28/07/2026 10:00:01  [WARN] [Rules] Zero items matched\n' +
+        '[maintainerr]  |  28/07/2026 10:00:02  [INFO] [Collections] Handling finished\n',
+    );
+
+    await controller.stream(response as unknown as Response, buildRequest());
+    await flushAsync();
+    // Closes the client so the keep-alive interval does not outlive the test.
+    await controller.beforeApplicationShutdown();
+
+    expect(readReplayedEvents(response)).toEqual([
+      { level: 'INFO', message: 'Startup complete\n' },
+      // A capital "Z" used to terminate the entry early.
+      { level: 'WARN', message: 'Zero items matched\n' },
+      { level: 'INFO', message: 'Handling finished\n' },
+    ]);
   });
 
   it('rejects filenames that only contain a valid log filename as a substring', async () => {
