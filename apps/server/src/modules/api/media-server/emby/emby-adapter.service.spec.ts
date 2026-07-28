@@ -655,6 +655,116 @@ describe('EmbyAdapterService', () => {
     });
   });
 
+  describe('getDescendantEpisodeWatchHistory', () => {
+    const stubSweep = (
+      itemsByUser: Record<string, unknown[]>,
+      totalRecordCount?: number,
+    ) => {
+      http.get.mockImplementation(
+        async (path: string, config?: { params?: { UserId?: string } }) => {
+          if (path === '/Users/Query') {
+            return {
+              data: Object.keys(itemsByUser).map((id) => ({
+                Id: id,
+                Name: id,
+              })),
+            };
+          }
+          if (path === '/Items') {
+            const userId = config?.params?.UserId ?? '';
+            const items = itemsByUser[userId];
+            if (!items) throw new Error(`Unexpected user ${userId}`);
+            return {
+              data: { Items: items, TotalRecordCount: totalRecordCount },
+            };
+          }
+          throw new Error(`Unexpected path ${path}`);
+        },
+      );
+    };
+
+    it('keys watch records by episode id from one request per user', async () => {
+      stubSweep({
+        'user-1': [
+          {
+            Id: 'ep-1',
+            UserData: { Played: true, LastPlayedDate: '2024-01-01T00:00:00Z' },
+          },
+          { Id: 'ep-2', UserData: { Played: false } },
+        ],
+        'user-2': [
+          { Id: 'ep-1', UserData: { Played: false } },
+          { Id: 'ep-2', UserData: { Played: true } },
+        ],
+      });
+
+      const result = await service.getDescendantEpisodeWatchHistory('show-1');
+
+      expect(result['ep-1'].map((r) => r.userId)).toEqual(['user-1']);
+      expect(result['ep-2'].map((r) => r.userId)).toEqual(['user-2']);
+      expect(result['ep-1'][0].watchedAt).toEqual(
+        new Date('2024-01-01T00:00:00Z'),
+      );
+      // /Users/Query plus one /Items sweep per user.
+      expect(http.get).toHaveBeenCalledTimes(3);
+      expect(http.get).toHaveBeenCalledWith(
+        '/Items',
+        expect.objectContaining({
+          params: expect.objectContaining({
+            ParentId: 'show-1',
+            Recursive: true,
+            IncludeItemTypes: 'Episode',
+            EnableUserData: true,
+          }),
+        }),
+      );
+    });
+
+    it('records an empty history for an episode nobody watched', async () => {
+      stubSweep({
+        'user-1': [{ Id: 'ep-1', UserData: { Played: false } }],
+      });
+
+      await expect(
+        service.getDescendantEpisodeWatchHistory('show-1'),
+      ).resolves.toEqual({ 'ep-1': [] });
+    });
+
+    it('throws instead of answering when a user sweep fails', async () => {
+      http.get.mockImplementation(async (path: string) => {
+        if (path === '/Users/Query') {
+          return { data: [{ Id: 'user-1' }, { Id: 'user-2' }] };
+        }
+        throw new Error('boom');
+      });
+
+      await expect(
+        service.getDescendantEpisodeWatchHistory('show-1'),
+      ).rejects.toThrow('boom');
+      expect(embyCacheMocks.data.set).not.toHaveBeenCalled();
+    });
+
+    it('throws instead of answering when a sweep returns a short page', async () => {
+      stubSweep({ 'user-1': [{ Id: 'ep-1', UserData: { Played: true } }] }, 12);
+
+      await expect(
+        service.getDescendantEpisodeWatchHistory('show-1'),
+      ).rejects.toThrow('1 of 12 episodes');
+      expect(embyCacheMocks.data.set).not.toHaveBeenCalled();
+    });
+
+    it('derives watchers from the sweep and caches it per parent id', async () => {
+      embyCacheMocks.data.get.mockReturnValue({
+        'ep-1': [{ userId: 'user-9', itemId: 'ep-1', progress: 100 }],
+      });
+
+      await expect(
+        service.getDescendantEpisodeWatchers('show-1'),
+      ).resolves.toEqual(['user-9']);
+      expect(http.get).not.toHaveBeenCalled();
+    });
+  });
+
   describe('itemExists', () => {
     it('returns true when Emby returns the item, scoped to the user', async () => {
       http.get.mockResolvedValueOnce({ data: { Id: '42' } });

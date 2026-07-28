@@ -49,6 +49,18 @@ const createWatchRecord = (
   ...overrides,
 });
 
+// Helper to build the per-show descendant watch map the adapter returns:
+// one entry per episode found, empty array = confirmed never watched.
+const createDescendantWatchHistory = (
+  watchedBy: Record<string, Array<Partial<WatchRecord>>>,
+): Record<string, WatchRecord[]> =>
+  Object.fromEntries(
+    Object.entries(watchedBy).map(([itemId, records]) => [
+      itemId,
+      records.map((record) => createWatchRecord({ itemId, ...record })),
+    ]),
+  );
+
 describe('EmbyGetterService', () => {
   let embyGetterService: EmbyGetterService;
   let embyAdapter: Mocked<EmbyAdapterService>;
@@ -90,6 +102,166 @@ describe('EmbyGetterService', () => {
       );
 
       expect(response).toEqual(['blank-user', 'missing-user', 'Alice']);
+    });
+  });
+
+  // Show/season watch rules resolve every descendant episode from one sweep
+  // (getDescendantEpisodeWatchHistory), not one lookup per episode (#3337).
+  describe('show and season watch rules', () => {
+    const showItem = createMediaItem({
+      id: 'show-1',
+      type: 'show' as MediaItemType,
+    });
+
+    const stubShowTree = () => {
+      embyAdapter.getMetadata.mockResolvedValue(showItem);
+      embyAdapter.getChildrenMetadata.mockImplementation(
+        async (parentId: string, childType?: MediaItemType) => {
+          if (parentId === 'show-1' && childType === 'season') {
+            return [
+              createMediaItem({
+                id: 'season-1',
+                type: 'season' as MediaItemType,
+                index: 1,
+              }),
+            ];
+          }
+          if (parentId === 'season-1' && childType === 'episode') {
+            return [
+              createMediaItem({
+                id: 'ep-1',
+                type: 'episode' as MediaItemType,
+                index: 1,
+                parentIndex: 1,
+              }),
+              createMediaItem({
+                id: 'ep-2',
+                type: 'episode' as MediaItemType,
+                index: 2,
+                parentIndex: 1,
+              }),
+            ];
+          }
+          return [];
+        },
+      );
+    };
+
+    it('sw_lastWatched (id: 13) takes the newest watched episode from the sweep', async () => {
+      stubShowTree();
+      embyAdapter.getDescendantEpisodeWatchHistory.mockResolvedValue(
+        createDescendantWatchHistory({
+          // ep-1 was rewatched later, but ep-2 is the newest episode watched
+          'ep-1': [{ watchedAt: new Date('2026-04-20') }],
+          'ep-2': [{ watchedAt: new Date('2026-03-06') }],
+        }),
+      );
+
+      const response = await embyGetterService.get(
+        13,
+        showItem,
+        'show',
+        createRulesDto({ dataType: 'show' }),
+      );
+
+      expect(response).toEqual(new Date('2026-03-06'));
+      expect(embyAdapter.getWatchHistory).not.toHaveBeenCalled();
+    });
+
+    it('sw_viewedEpisodes (id: 15) counts only episodes with a watcher', async () => {
+      stubShowTree();
+      embyAdapter.getDescendantEpisodeWatchHistory.mockResolvedValue(
+        createDescendantWatchHistory({
+          'ep-1': [{ userId: 'user-1' }],
+          'ep-2': [],
+        }),
+      );
+
+      const response = await embyGetterService.get(
+        15,
+        showItem,
+        'show',
+        createRulesDto({ dataType: 'show' }),
+      );
+
+      expect(response).toBe(1);
+    });
+
+    it('sw_amountOfViews (id: 17) sums every watch record under the show', async () => {
+      stubShowTree();
+      embyAdapter.getDescendantEpisodeWatchHistory.mockResolvedValue(
+        createDescendantWatchHistory({
+          'ep-1': [{ userId: 'user-1' }, { userId: 'user-2' }],
+          'ep-2': [{ userId: 'user-1' }],
+        }),
+      );
+
+      const response = await embyGetterService.get(
+        17,
+        showItem,
+        'show',
+        createRulesDto({ dataType: 'show' }),
+      );
+
+      expect(response).toBe(3);
+    });
+
+    it('sw_allEpisodesSeenBy (id: 12) returns only users present on every episode', async () => {
+      stubShowTree();
+      embyAdapter.getUsers.mockResolvedValue([
+        createMediaUser({ id: 'user-1', name: 'Alice' }),
+        createMediaUser({ id: 'user-2', name: 'Bob' }),
+      ]);
+      embyAdapter.getDescendantEpisodeWatchHistory.mockResolvedValue(
+        createDescendantWatchHistory({
+          'ep-1': [{ userId: 'user-1' }, { userId: 'user-2' }],
+          'ep-2': [{ userId: 'user-2' }],
+        }),
+      );
+
+      const response = await embyGetterService.get(
+        12,
+        showItem,
+        'show',
+        createRulesDto({ dataType: 'show' }),
+      );
+
+      expect(response).toEqual(['Bob']);
+    });
+
+    it('lastViewedAt (id: 7) aggregates the newest descendant watch date', async () => {
+      stubShowTree();
+      embyAdapter.getDescendantEpisodeWatchHistory.mockResolvedValue(
+        createDescendantWatchHistory({
+          'ep-1': [{ watchedAt: new Date('2026-03-01') }],
+          'ep-2': [{ watchedAt: new Date('2026-03-06') }],
+        }),
+      );
+
+      const response = await embyGetterService.get(
+        7,
+        showItem,
+        'show',
+        createRulesDto({ dataType: 'show' }),
+      );
+
+      expect(response).toEqual(new Date('2026-03-06'));
+    });
+
+    it('skips the item when the sweep fails rather than reporting never watched', async () => {
+      stubShowTree();
+      embyAdapter.getDescendantEpisodeWatchHistory.mockRejectedValue(
+        new Error('sweep failed'),
+      );
+
+      const response = await embyGetterService.get(
+        15,
+        showItem,
+        'show',
+        createRulesDto({ dataType: 'show' }),
+      );
+
+      expect(response).toBeUndefined();
     });
   });
 
