@@ -198,7 +198,10 @@ export class JellyfinGetterService {
             isMediaType(metadata.type, 'show') ||
             isMediaType(metadata.type, 'season')
           ) {
-            return await this.getLastWatchedShowDate(metadata.id);
+            return await this.getLastWatchedShowDate(
+              metadata.id,
+              metadata.type,
+            );
           }
           return await this.getLastViewedAt(metadata.id);
         }
@@ -228,7 +231,7 @@ export class JellyfinGetterService {
         }
 
         case 'sw_allEpisodesSeenBy': {
-          return await this.getAllEpisodesSeenBy(metadata.id);
+          return await this.getAllEpisodesSeenBy(metadata.id, metadata.type);
         }
 
         case 'sw_lastWatched': {
@@ -243,7 +246,7 @@ export class JellyfinGetterService {
         }
 
         case 'sw_viewedEpisodes': {
-          return await this.getViewedEpisodeCount(metadata.id);
+          return await this.getViewedEpisodeCount(metadata.id, metadata.type);
         }
 
         case 'sw_lastEpisodeAddedAt': {
@@ -477,6 +480,23 @@ export class JellyfinGetterService {
     }
   }
 
+  /**
+   * Jellyfin resolves a parentId that is not a container by falling back to the
+   * whole library, so an episode or movie id would silently answer for every
+   * episode on the server. Only a show or a season may be swept; anything else
+   * has no episode descendants and answers empty, as the per-episode walk did.
+   */
+  private async descendantWatchHistory(
+    itemId: string,
+    type: MediaItemType,
+  ): Promise<Record<string, WatchRecord[]>> {
+    if (!isMediaType(type, 'show') && !isMediaType(type, 'season')) {
+      return {};
+    }
+
+    return this.jellyfinAdapter.getDescendantEpisodeWatchHistory(itemId);
+  }
+
   private newestWatchedAt(records: WatchRecord[]): Date | null {
     const times = records
       .map((r) => r.watchedAt)
@@ -492,10 +512,13 @@ export class JellyfinGetterService {
     );
   }
 
-  private async getAllEpisodesSeenBy(itemId: string): Promise<string[]> {
+  private async getAllEpisodesSeenBy(
+    itemId: string,
+    type: MediaItemType,
+  ): Promise<string[]> {
     const users = await this.jellyfinAdapter.getUsers();
     const episodeWatchers = Object.values(
-      await this.jellyfinAdapter.getDescendantEpisodeWatchHistory(itemId),
+      await this.descendantWatchHistory(itemId, type),
     );
 
     if (episodeWatchers.length === 0) return [];
@@ -538,8 +561,7 @@ export class JellyfinGetterService {
       viewedAt: Date;
     }> = [];
 
-    const watchHistory =
-      await this.jellyfinAdapter.getDescendantEpisodeWatchHistory(itemId);
+    const watchHistory = await this.descendantWatchHistory(itemId, type);
 
     for (const season of seasons) {
       const episodes = await this.jellyfinAdapter.getChildrenMetadata(
@@ -582,9 +604,11 @@ export class JellyfinGetterService {
    * highest-numbered episode, the way the Plex/Tautulli `sw_lastWatched`
    * getters compute it. Used by the `lastViewedAt` rule only.
    */
-  private async getLastWatchedShowDate(itemId: string): Promise<Date | null> {
-    const watchHistory =
-      await this.jellyfinAdapter.getDescendantEpisodeWatchHistory(itemId);
+  private async getLastWatchedShowDate(
+    itemId: string,
+    type: MediaItemType,
+  ): Promise<Date | null> {
+    const watchHistory = await this.descendantWatchHistory(itemId, type);
 
     return this.newestWatchedAt(Object.values(watchHistory).flat());
   }
@@ -617,9 +641,11 @@ export class JellyfinGetterService {
     return count;
   }
 
-  private async getViewedEpisodeCount(itemId: string): Promise<number> {
-    const watchHistory =
-      await this.jellyfinAdapter.getDescendantEpisodeWatchHistory(itemId);
+  private async getViewedEpisodeCount(
+    itemId: string,
+    type: MediaItemType,
+  ): Promise<number> {
+    const watchHistory = await this.descendantWatchHistory(itemId, type);
 
     return Object.values(watchHistory).filter((records) => records.length > 0)
       .length;
@@ -663,8 +689,7 @@ export class JellyfinGetterService {
       return history.length;
     }
 
-    const watchHistory =
-      await this.jellyfinAdapter.getDescendantEpisodeWatchHistory(itemId);
+    const watchHistory = await this.descendantWatchHistory(itemId, type);
 
     return Object.values(watchHistory).reduce(
       (total, records) => total + records.length,
@@ -676,6 +701,7 @@ export class JellyfinGetterService {
     itemId: string,
     type: MediaItemType,
   ): Promise<string[]> {
+    const users = await this.jellyfinAdapter.getUsers();
     let watcherIds: string[];
 
     switch (type) {
@@ -684,10 +710,24 @@ export class JellyfinGetterService {
         break;
       }
 
+      // Union of everyone who watched ANY episode - not the intersection
+      // (#2559). sw_allEpisodesSeenBy is the "watched every episode" one.
       case 'season':
       case 'show': {
-        watcherIds =
-          await this.jellyfinAdapter.getDescendantEpisodeWatchers(itemId);
+        const watchHistory = await this.descendantWatchHistory(itemId, type);
+        const watched = new Set(
+          Object.values(watchHistory).flatMap((records) =>
+            records.map((record) => record.userId),
+          ),
+        );
+        // Ordered by user, not by episode, so the list reads the same as the
+        // per-episode walk it replaces. Watchers with no user record (a
+        // deleted account) sort last rather than being dropped.
+        const order = new Map(users.map((user, index) => [user.id, index]));
+        watcherIds = [...watched].sort(
+          (a, b) =>
+            (order.get(a) ?? users.length) - (order.get(b) ?? users.length),
+        );
         break;
       }
 
@@ -696,7 +736,6 @@ export class JellyfinGetterService {
       }
     }
 
-    const users = await this.jellyfinAdapter.getUsers();
     return mapRuleUserIdsToNames(
       watcherIds,
       users,

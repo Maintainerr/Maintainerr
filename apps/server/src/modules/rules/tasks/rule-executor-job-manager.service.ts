@@ -206,11 +206,12 @@ export class RuleExecutorJobManagerService implements OnApplicationShutdown {
       } finally {
         this.processingQueue = false;
         this.processQueuePromise = null;
-        // Drop the run-scoped Plex watch-history snapshot at batch end so the
-        // next batch rebuilds it fresh (it is persistent, so the per-group
-        // flushAll() never clears it). Groups within a batch still share one
+        // Drop the run-scoped watch-history snapshots at batch end so the next
+        // batch rebuilds them fresh (they are persistent, so the per-group
+        // flushAll() never clears them). Groups within a batch still share one
         // sweep; the 1 h TTL is only a backstop for an unusually long batch.
         cacheManager.getCache('plexwatchhistory')?.data.flushAll();
+        cacheManager.getCache('jellyfinwatchhistory')?.data.flushAll();
         // Broadcast the false transition so listeners that scope work to a
         // single batch (e.g. notification dedupe) can observe batch end.
         this.emitStatusUpdate();
