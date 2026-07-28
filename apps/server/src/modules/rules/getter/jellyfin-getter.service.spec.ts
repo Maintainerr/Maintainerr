@@ -63,6 +63,18 @@ const createWatchRecord = (
   ...overrides,
 });
 
+// Helper to build the per-show descendant watch map the adapter returns:
+// one entry per episode found, empty array = confirmed never watched.
+const createDescendantWatchHistory = (
+  watchedBy: Record<string, Array<Partial<WatchRecord>>>,
+): Record<string, WatchRecord[]> =>
+  Object.fromEntries(
+    Object.entries(watchedBy).map(([itemId, records]) => [
+      itemId,
+      records.map((record) => createWatchRecord({ itemId, ...record })),
+    ]),
+  );
+
 const createMediaCollection = (
   overrides: Partial<MediaCollection> = {},
 ): MediaCollection => ({
@@ -896,20 +908,11 @@ describe('JellyfinGetterService', () => {
           return [];
         },
       );
-      jellyfinAdapter.getWatchHistory.mockImplementation(
-        async (itemId: string) => {
-          if (itemId === 'ep-1') {
-            return [
-              createWatchRecord({ itemId, watchedAt: new Date('2026-03-01') }),
-            ];
-          }
-          if (itemId === 'ep-2') {
-            return [
-              createWatchRecord({ itemId, watchedAt: new Date('2026-03-06') }),
-            ];
-          }
-          return [];
-        },
+      jellyfinAdapter.getDescendantEpisodeWatchHistory.mockResolvedValue(
+        createDescendantWatchHistory({
+          'ep-1': [{ watchedAt: new Date('2026-03-01') }],
+          'ep-2': [{ watchedAt: new Date('2026-03-06') }],
+        }),
       );
 
       const response = await jellyfinGetterService.get(
@@ -945,20 +948,11 @@ describe('JellyfinGetterService', () => {
           return [];
         },
       );
-      jellyfinAdapter.getWatchHistory.mockImplementation(
-        async (itemId: string) => {
-          if (itemId === 'ep-1') {
-            return [
-              createWatchRecord({ itemId, watchedAt: new Date('2026-03-01') }),
-            ];
-          }
-          if (itemId === 'ep-2') {
-            return [
-              createWatchRecord({ itemId, watchedAt: new Date('2026-03-04') }),
-            ];
-          }
-          return [];
-        },
+      jellyfinAdapter.getDescendantEpisodeWatchHistory.mockResolvedValue(
+        createDescendantWatchHistory({
+          'ep-1': [{ watchedAt: new Date('2026-03-01') }],
+          'ep-2': [{ watchedAt: new Date('2026-03-04') }],
+        }),
       );
 
       const response = await jellyfinGetterService.get(
@@ -1008,12 +1002,11 @@ describe('JellyfinGetterService', () => {
           return [];
         },
       );
-      jellyfinAdapter.getItemSeenBy.mockImplementation(
-        async (itemId: string) => {
-          if (itemId === 'episode-all-seen-1') return ['user-1', 'user-2'];
-          if (itemId === 'episode-all-seen-2') return ['user-2', 'user-3'];
-          return [];
-        },
+      jellyfinAdapter.getDescendantEpisodeWatchHistory.mockResolvedValue(
+        createDescendantWatchHistory({
+          'episode-all-seen-1': [{ userId: 'user-1' }, { userId: 'user-2' }],
+          'episode-all-seen-2': [{ userId: 'user-2' }, { userId: 'user-3' }],
+        }),
       );
 
       const response = await jellyfinGetterService.get(
@@ -1025,6 +1018,40 @@ describe('JellyfinGetterService', () => {
 
       expect(response).toEqual(['Bob']);
     });
+
+    // A failed sweep must never read as "never watched" - the item is skipped
+    // (undefined) so a transient Jellyfin failure can't drive a deletion.
+    it.each([
+      [12, 'sw_allEpisodesSeenBy'],
+      [13, 'sw_lastWatched'],
+      [15, 'sw_viewedEpisodes'],
+      [17, 'sw_amountOfViews'],
+      [7, 'lastViewedAt'],
+    ])(
+      'skips the item when the descendant watch sweep fails (%i - %s)',
+      async (propertyId) => {
+        const showItem = createMediaItem({
+          id: 'show-sweep-failure',
+          type: 'show' as MediaItemType,
+        });
+
+        jellyfinAdapter.getMetadata.mockResolvedValue(showItem);
+        jellyfinAdapter.getUsers.mockResolvedValue([createMediaUser()]);
+        jellyfinAdapter.getChildrenMetadata.mockResolvedValue([]);
+        jellyfinAdapter.getDescendantEpisodeWatchHistory.mockRejectedValue(
+          new Error('sweep failed'),
+        );
+
+        const response = await jellyfinGetterService.get(
+          propertyId,
+          showItem,
+          'show',
+          createRulesDto({ dataType: 'show' }),
+        );
+
+        expect(response).toBeUndefined();
+      },
+    );
 
     it('sw_episodes (id: 14) counts all episodes under a show', async () => {
       const showItem = createMediaItem({
@@ -1241,26 +1268,13 @@ describe('JellyfinGetterService', () => {
           return [];
         },
       );
-      jellyfinAdapter.getWatchHistory.mockImplementation(
-        async (itemId: string) => {
-          // S1E1 rewatched most recently, but we should still prefer S2E2
-          if (itemId === 'ep-s1e1') {
-            return [
-              createWatchRecord({ itemId, watchedAt: new Date('2026-04-20') }),
-            ];
-          }
-          if (itemId === 'ep-s2e1') {
-            return [
-              createWatchRecord({ itemId, watchedAt: new Date('2026-03-01') }),
-            ];
-          }
-          if (itemId === 'ep-s2e2') {
-            return [
-              createWatchRecord({ itemId, watchedAt: new Date('2026-03-06') }),
-            ];
-          }
-          return [];
-        },
+      // S1E1 rewatched most recently, but we should still prefer S2E2
+      jellyfinAdapter.getDescendantEpisodeWatchHistory.mockResolvedValue(
+        createDescendantWatchHistory({
+          'ep-s1e1': [{ watchedAt: new Date('2026-04-20') }],
+          'ep-s2e1': [{ watchedAt: new Date('2026-03-01') }],
+          'ep-s2e2': [{ watchedAt: new Date('2026-03-06') }],
+        }),
       );
 
       const response = await jellyfinGetterService.get(
@@ -1307,21 +1321,13 @@ describe('JellyfinGetterService', () => {
           return [];
         },
       );
-      jellyfinAdapter.getWatchHistory.mockImplementation(
-        async (itemId: string) => {
-          if (itemId === 'ep-1') {
-            return [
-              createWatchRecord({ itemId, watchedAt: new Date('2026-04-10') }),
-            ];
-          }
-          if (itemId === 'ep-2') {
-            return [
-              createWatchRecord({ itemId, watchedAt: new Date('2026-03-01') }),
-            ];
-          }
+      jellyfinAdapter.getDescendantEpisodeWatchHistory.mockResolvedValue(
+        createDescendantWatchHistory({
+          'ep-1': [{ watchedAt: new Date('2026-04-10') }],
+          'ep-2': [{ watchedAt: new Date('2026-03-01') }],
           // ep-3 (the latest episode) has never been watched
-          return [];
-        },
+          'ep-3': [],
+        }),
       );
 
       const response = await jellyfinGetterService.get(
@@ -1357,7 +1363,9 @@ describe('JellyfinGetterService', () => {
           return [];
         },
       );
-      jellyfinAdapter.getWatchHistory.mockResolvedValue([]);
+      jellyfinAdapter.getDescendantEpisodeWatchHistory.mockResolvedValue(
+        createDescendantWatchHistory({ 'ep-1': [] }),
+      );
 
       const response = await jellyfinGetterService.get(
         13,
@@ -1391,12 +1399,11 @@ describe('JellyfinGetterService', () => {
           return [];
         },
       );
-      jellyfinAdapter.getWatchHistory.mockResolvedValue([
-        createWatchRecord({
-          itemId: 'ep-special-1',
-          watchedAt: new Date('2026-02-01'),
+      jellyfinAdapter.getDescendantEpisodeWatchHistory.mockResolvedValue(
+        createDescendantWatchHistory({
+          'ep-special-1': [{ watchedAt: new Date('2026-02-01') }],
         }),
-      ]);
+      );
 
       const response = await jellyfinGetterService.get(
         13,
@@ -1437,20 +1444,11 @@ describe('JellyfinGetterService', () => {
           return [];
         },
       );
-      jellyfinAdapter.getWatchHistory.mockImplementation(
-        async (itemId: string) => {
-          if (itemId === 'ep-1') {
-            return [
-              createWatchRecord({ itemId, watchedAt: new Date('2026-04-10') }),
-            ];
-          }
-          if (itemId === 'ep-1-2') {
-            return [
-              createWatchRecord({ itemId, watchedAt: new Date('2026-03-01') }),
-            ];
-          }
-          return [];
-        },
+      jellyfinAdapter.getDescendantEpisodeWatchHistory.mockResolvedValue(
+        createDescendantWatchHistory({
+          'ep-1': [{ watchedAt: new Date('2026-04-10') }],
+          'ep-1-2': [{ watchedAt: new Date('2026-03-01') }],
+        }),
       );
 
       const response = await jellyfinGetterService.get(
@@ -1499,12 +1497,12 @@ describe('JellyfinGetterService', () => {
         },
       );
       // ep-1 and ep-3 are watched, ep-2 is not
-      jellyfinAdapter.getItemSeenBy.mockImplementation(
-        async (itemId: string) => {
-          if (itemId === 'ep-1') return ['user-1'];
-          if (itemId === 'ep-3') return ['user-2', 'user-3'];
-          return [];
-        },
+      jellyfinAdapter.getDescendantEpisodeWatchHistory.mockResolvedValue(
+        createDescendantWatchHistory({
+          'ep-1': [{ userId: 'user-1' }],
+          'ep-2': [],
+          'ep-3': [{ userId: 'user-2' }, { userId: 'user-3' }],
+        }),
       );
 
       const response = await jellyfinGetterService.get(
@@ -1536,7 +1534,9 @@ describe('JellyfinGetterService', () => {
           return [];
         },
       );
-      jellyfinAdapter.getItemSeenBy.mockResolvedValue([]);
+      jellyfinAdapter.getDescendantEpisodeWatchHistory.mockResolvedValue(
+        createDescendantWatchHistory({ 'ep-1': [] }),
+      );
 
       const response = await jellyfinGetterService.get(
         15,
@@ -1574,21 +1574,15 @@ describe('JellyfinGetterService', () => {
         },
       );
       // ep-1 watched 3 times, ep-2 watched 2 times
-      jellyfinAdapter.getWatchHistory.mockImplementation(
-        async (itemId: string) => {
-          if (itemId === 'ep-1')
-            return [
-              createWatchRecord({ userId: 'user-1', itemId: 'ep-1' }),
-              createWatchRecord({ userId: 'user-2', itemId: 'ep-1' }),
-              createWatchRecord({ userId: 'user-1', itemId: 'ep-1' }), // re-watch
-            ];
-          if (itemId === 'ep-2')
-            return [
-              createWatchRecord({ userId: 'user-1', itemId: 'ep-2' }),
-              createWatchRecord({ userId: 'user-3', itemId: 'ep-2' }),
-            ];
-          return [];
-        },
+      jellyfinAdapter.getDescendantEpisodeWatchHistory.mockResolvedValue(
+        createDescendantWatchHistory({
+          'ep-1': [
+            { userId: 'user-1' },
+            { userId: 'user-2' },
+            { userId: 'user-1' }, // re-watch
+          ],
+          'ep-2': [{ userId: 'user-1' }, { userId: 'user-3' }],
+        }),
       );
 
       const response = await jellyfinGetterService.get(
@@ -1620,7 +1614,9 @@ describe('JellyfinGetterService', () => {
           return [];
         },
       );
-      jellyfinAdapter.getWatchHistory.mockResolvedValue([]);
+      jellyfinAdapter.getDescendantEpisodeWatchHistory.mockResolvedValue(
+        createDescendantWatchHistory({ 'ep-1': [] }),
+      );
 
       const response = await jellyfinGetterService.get(
         17,
