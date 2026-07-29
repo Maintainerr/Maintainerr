@@ -11,6 +11,7 @@ import {
   MaintainerrLogger,
   MaintainerrLoggerFactory,
 } from '../../logging/logs.service';
+import { createPrefetchProgressReporter } from '../../../utils/prefetch-progress';
 import cacheManager from '../lib/cache';
 import {
   SEERR_REQUESTS_CACHE_ID,
@@ -341,6 +342,11 @@ export class SeerrApiService {
       let skip = 0;
 
       const requests: SeerrRequest[] = [];
+      const reportProgress = createPrefetchProgressReporter(
+        (message) => this.logger.log(message),
+        'Prefetching Seerr requests',
+        'requests',
+      );
 
       while (hasNext) {
         // Seerr has no `added` sort value (only `modified` → request.updatedAt;
@@ -359,6 +365,7 @@ export class SeerrApiService {
         }
 
         requests.push(...(resp.results ?? []));
+        reportProgress(requests.length, resp.pageInfo.results);
 
         if (resp.pageInfo.page < resp.pageInfo.pages) {
           skip = skip + size;

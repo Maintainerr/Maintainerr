@@ -50,6 +50,7 @@ import { formatConnectionFailureMessage } from '../../../../utils/connection-err
 import { delay } from '../../../../utils/delay';
 import { MaintainerrLogger } from '../../../logging/logs.service';
 import { SettingsDataService } from '../../../settings/settings-data.service';
+import { createPrefetchProgressReporter } from '../../../../utils/prefetch-progress';
 import cacheManager, { type Cache } from '../../lib/cache';
 import { applyHttpRetry } from '../../lib/httpRetry';
 import {
@@ -1114,24 +1115,12 @@ export class JellyfinAdapterService implements IMediaServerService {
       // in batches, so overshoot is bounded to the batch that trips it.
       let exceededCeiling = false;
 
-      // The sweep is one request per page per user, so a big server can take
-      // minutes with nothing in the log - which reads as a hang (#3255 added
-      // the same output on the Plex side for exactly that reason). Log each
-      // 10% of users it crosses. The last user is skipped so it never prints a
-      // misleading partial percentage; the completion line below has the total.
       let sweptUsers = 0;
-      let loggedDecile = 0;
-      const reportProgress = () => {
-        sweptUsers += 1;
-        if (sweptUsers >= users.length) return;
-        const decile = Math.floor((sweptUsers / users.length) * 10) * 10;
-        if (decile > loggedDecile) {
-          loggedDecile = decile;
-          this.logger.log(
-            `Prefetching Jellyfin watch history: ${sweptUsers} of ${users.length} users (${decile}%)...`,
-          );
-        }
-      };
+      const reportProgress = createPrefetchProgressReporter(
+        (message) => this.logger.log(message),
+        'Prefetching Jellyfin watch history',
+        'users',
+      );
 
       const entries = await this.mapUsersBatched(async (user) => {
         if (exceededCeiling) {
@@ -1203,7 +1192,8 @@ export class JellyfinAdapterService implements IMediaServerService {
           }
         });
 
-        reportProgress();
+        sweptUsers += 1;
+        reportProgress(sweptUsers, users.length);
         return user.id;
       }, true);
 

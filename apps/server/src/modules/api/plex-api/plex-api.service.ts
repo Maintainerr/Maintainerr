@@ -6,6 +6,7 @@ import {
   CONNECTION_TEST_TIMEOUT_MS,
   getErrorMessage,
 } from '../../../utils/connection-error';
+import { createPrefetchProgressReporter } from '../../../utils/prefetch-progress';
 import cacheManager from '../../api/lib/cache';
 import PlexCommunityApi, {
   PlexCommunityErrorResponse,
@@ -756,25 +757,18 @@ export class PlexApiService {
       // page (fetched == totalSize) is skipped so it never prints a misleading
       // partial percentage; the completion line below reports the total. A
       // history that fits in one page stays silent here for the same reason.
-      let loggedDecile = 0;
+      const reportProgress = createPrefetchProgressReporter(
+        (message) => this.logger.log(message),
+        'Prefetching watch history',
+        'records',
+      );
       const onProgress = ({
         fetched,
         totalSize,
       }: {
         fetched: number;
         totalSize: number;
-      }): void => {
-        if (totalSize <= 0 || fetched >= totalSize) {
-          return;
-        }
-        const decile = Math.floor((fetched / totalSize) * 10) * 10;
-        if (decile > loggedDecile) {
-          loggedDecile = decile;
-          this.logger.log(
-            `Prefetching watch history: ${fetched} of ${totalSize} records (${decile}%)...`,
-          );
-        }
-      };
+      }): void => reportProgress(fetched, totalSize);
 
       const response = await this.plexClient.queryAll<PlexLibraryResponse>(
         historyQuery,
