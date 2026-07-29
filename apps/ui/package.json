@@ -39,7 +39,7 @@
     "react-konva": "^19.2.5",
     "react-markdown": "10.1.0",
     "react-movable": "^3.4.1",
-    "react-router-dom": "^7.18.1",
+    "react-router-dom": "^7.18.2",
     "react-select": "^5.10.2",
     "react-toastify": "^11.1.0",
     "reconnecting-eventsource": "^1.6.5",
@@ -79,6 +79,6 @@
     "vitest": "^4.1.10"
   },
   "optionalDependencies": {
-    "rolldown": "^1.2.0"
+    "rolldown": "^1.2.1"
   }
 }

@@ -176,7 +176,7 @@ const SportarrSettings = () => {
       {settingsModalActive && (
         <ServarrSettingsModal
           title="Sportarr Settings"
-          docsPage="Configuration"
+          docsPage="Configuration/#sportarr"
           settingsPath="/settings/sportarr"
           testPath="/settings/test/sportarr"
           serviceName="Sportarr"
