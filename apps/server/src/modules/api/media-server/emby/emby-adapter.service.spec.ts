@@ -322,6 +322,51 @@ describe('EmbyAdapterService', () => {
         'boom',
       );
     });
+
+    // A bare Limit truncated at MAX_PAGE_SIZE while callers treat a non-empty
+    // children list as a complete snapshot, so everything past the cap looked
+    // absent - clearing rule-removal markers and mis-reconciling membership.
+    it('pages past the batch limit instead of truncating', async () => {
+      const page = (start: number, count: number) => ({
+        data: {
+          Items: Array.from({ length: count }, (_, i) => ({
+            Id: `item-${start + i}`,
+            Name: `Item ${start + i}`,
+            Type: 'Movie',
+          })),
+          TotalRecordCount: 501,
+        },
+      });
+      http.get
+        .mockResolvedValueOnce(page(0, 500))
+        .mockResolvedValueOnce(page(500, 1));
+
+      const children = await service.getCollectionChildren('box-1');
+
+      expect(children).toHaveLength(501);
+      expect(children[500].id).toBe('item-500');
+      expect(http.get).toHaveBeenNthCalledWith(
+        2,
+        '/Items',
+        expect.objectContaining({
+          params: expect.objectContaining({ StartIndex: 500 }),
+        }),
+      );
+    });
+
+    it('stops paging when the server reports no more items', async () => {
+      http.get.mockResolvedValueOnce({
+        data: {
+          Items: [{ Id: 'only', Name: 'Only', Type: 'Movie' }],
+          TotalRecordCount: 1,
+        },
+      });
+
+      const children = await service.getCollectionChildren('box-1');
+
+      expect(children).toHaveLength(1);
+      expect(http.get).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe('getLibraryContents', () => {

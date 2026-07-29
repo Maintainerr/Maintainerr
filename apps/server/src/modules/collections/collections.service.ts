@@ -380,6 +380,37 @@ export class CollectionsService {
       return new Set();
     }
 
+    return new Set(
+      (await this.getSiblingMedia(collection))
+        .filter((entry) => hasCollectionMediaRuleMembership(entry))
+        .map((entry) => entry.mediaServerId),
+    );
+  }
+
+  /**
+   * Every member of a sibling collection sharing this media server collection,
+   * whatever its membership type. The self-heal below must not remove an item a
+   * sibling still holds - #3298 scoped that protection to rule-owned ids, which
+   * leaves a sibling's manual-only members unprotected even though the same
+   * reasoning covers them.
+   */
+  private async getSiblingMemberMediaServerIds(
+    collection: Pick<Collection, 'id' | 'mediaServerId'>,
+  ): Promise<Set<string>> {
+    return new Set(
+      (await this.getSiblingMedia(collection)).map(
+        (entry) => entry.mediaServerId,
+      ),
+    );
+  }
+
+  private async getSiblingMedia(
+    collection: Pick<Collection, 'id' | 'mediaServerId'>,
+  ): Promise<CollectionMedia[]> {
+    if (!collection.mediaServerId) {
+      return [];
+    }
+
     const siblings = await this.collectionRepo.find({
       where: {
         mediaServerId: collection.mediaServerId,
@@ -389,18 +420,12 @@ export class CollectionsService {
     });
 
     if (siblings.length === 0) {
-      return new Set();
+      return [];
     }
 
-    const siblingMedia = await this.CollectionMediaRepo.find({
+    return this.CollectionMediaRepo.find({
       where: { collectionId: In(siblings.map((sibling) => sibling.id)) },
     });
-
-    return new Set(
-      siblingMedia
-        .filter((entry) => hasCollectionMediaRuleMembership(entry))
-        .map((entry) => entry.mediaServerId),
-    );
   }
 
   /**
@@ -506,13 +531,19 @@ export class CollectionsService {
       ).map((row) => row.mediaServerId),
     );
 
+    // Any membership in a sibling collection protects the item, not just a
+    // rule-owned one: removing it would strip a member the sibling still lists.
+    const siblingMemberIds =
+      await this.getSiblingMemberMediaServerIds(collection);
+
     const lingering: string[] = [];
     const resolved: string[] = [];
     for (const marker of markers) {
       const present = serverChildIds.has(marker.mediaServerId);
       const memberOrSibling =
         currentMemberIds.has(marker.mediaServerId) ||
-        siblingRuleOwnedIds.has(marker.mediaServerId);
+        siblingRuleOwnedIds.has(marker.mediaServerId) ||
+        siblingMemberIds.has(marker.mediaServerId);
       if (present && !memberOrSibling) {
         // Present, ours, and not a current member: a lingering orphan the
         // server never dropped - self-heal it.
@@ -546,6 +577,11 @@ export class CollectionsService {
           this.logger.log(
             `Removed ${removed.length} orphaned item(s) from the media server collection for '${collection.title}' that a rule removed but the server had retained.`,
           );
+          // The marker is only kept to retry a FAILED removal. Carrying a
+          // succeeded one into the next run means a user who re-adds the item
+          // by hand has it silently removed again, instead of adopted as the
+          // manual member #3298 says a manual re-add should produce.
+          resolved.push(...removed);
         }
         if (failed.size > 0) {
           this.logger.warn(

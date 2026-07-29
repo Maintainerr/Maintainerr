@@ -1062,15 +1062,36 @@ export class EmbyAdapterService implements IMediaServerService {
       // goes in the query param (not the path) to stay clear of CodeQL's SSRF
       // sink while keeping the read user-scoped.
       const userId = await this.resolveUserId();
-      const { data } = await this.http.get<EmbyItemsQueryResponse>('/Items', {
-        params: {
-          ...(userId ? { UserId: userId } : {}),
-          ParentId: collectionId,
-          Fields: 'ProviderIds,DateCreated,Overview',
-          Limit: EMBY_BATCH_SIZE.MAX_PAGE_SIZE,
-        },
-      });
-      return (data.Items ?? []).map(EmbyMapper.toMediaItem);
+      // Paged, using the StartIndex/TotalRecordCount idiom this file already
+      // uses for library sweeps. A bare Limit silently truncated at
+      // MAX_PAGE_SIZE, and callers treat a non-empty children list as a
+      // complete snapshot - so a collection over one page wide looked like it
+      // had lost every item past the cap, clearing rule-removal markers and
+      // mis-reconciling membership.
+      const children: MediaItem[] = [];
+      let offset = 0;
+      let hasMore = true;
+
+      while (hasMore) {
+        const { data } = await this.http.get<EmbyItemsQueryResponse>('/Items', {
+          params: {
+            ...(userId ? { UserId: userId } : {}),
+            ParentId: collectionId,
+            Fields: 'ProviderIds,DateCreated,Overview',
+            Limit: EMBY_BATCH_SIZE.MAX_PAGE_SIZE,
+            StartIndex: offset,
+            EnableTotalRecordCount: true,
+          },
+        });
+
+        const items = data.Items ?? [];
+        children.push(...items.map(EmbyMapper.toMediaItem));
+        offset += items.length;
+        hasMore =
+          items.length > 0 && offset < (data.TotalRecordCount ?? offset);
+      }
+
+      return children;
     } catch (error) {
       this.logger.error(
         `Emby getCollectionChildren(${collectionId}) failed: ${formatConnectionFailureMessage(error, 'Connection failed')}`,
