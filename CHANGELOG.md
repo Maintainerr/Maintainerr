@@ -1,3 +1,37 @@
+# [3.20.0](https://github.com/Maintainerr/Maintainerr/compare/v3.19.0...v3.20.0) (2026-07-29)
+
+
+## Highlights
+- Added Sportarr as a native application connection, enabling direct integration with its API and introducing a "Has upcoming events" rule property for shows (#3306, #3335).
+- Improved Jellyfin watch state resolution, reducing API calls and improving performance for show-level watch properties (#3337, #3345, #3346).
+
+## Features
+- Added Sportarr as a native application connection (#3306).
+- Introduced a "Has upcoming events" rule property for shows in Sportarr (#3335).
+
+## Fixes
+- Linked the Sportarr docs button to its specific section in the settings modal.
+- Ensured the newest entry is displayed in the log viewer (#3343).
+- Fixed overdue items being deleted despite postponed deletion dates (#3334).
+- Prevented handler-removed items from being re-adopted as manual collection members (#3327).
+- Updated postpone logs to display media titles instead of raw IDs (#3326).
+
+## Performance
+- Optimized Jellyfin watch state resolution to reduce API calls for show-level watch properties (#3337, #3345, #3346).
+
+## Database migrations
+- Added a new `sportarr_settings` table for Sportarr configuration.
+- Updated the `collection` table to include `sportarrSettingsId` and `sportarrQualityProfileId` columns.
+
+## Internal
+- Minor follow-up fixes and improvements for Sportarr integration (#3335).
+
+## Dependencies
+- Updated 13 dependencies, including notable packages like `@types/node`, `react-router-dom`, and `better-sqlite3`.
+
+## New Contributors
+* @Sportarr made their first contribution in https://github.com/Maintainerr/Maintainerr/pull/3306
+
 # [3.19.0](https://github.com/Maintainerr/Maintainerr/compare/v3.18.0...v3.19.0) (2026-07-27)
 
 
