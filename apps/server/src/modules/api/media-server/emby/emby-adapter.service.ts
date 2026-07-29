@@ -544,44 +544,37 @@ export class EmbyAdapterService implements IMediaServerService {
 
   /**
    * Users who watched at least one episode under `parentId` (season or show).
-   * Mirrors `JellyfinAdapterService.getDescendantEpisodeWatchers`. One
-   * /Items request per user, each scoped to that user with `IsPlayed=true`
+   * One /Items request per user, each scoped to that user with `IsPlayed=true`
    * + `Limit=1` - we only need to know whether any played episode exists.
+   *
+   * Errors propagate for the same reason they do in getWatchHistory: an empty
+   * watcher list is indistinguishable from "nobody watched this", which would
+   * make a failed lookup a deletion candidate. The Jellyfin adapter answers the
+   * same question from its prefetched snapshot instead, because Emby omits the
+   * watch dates a bulk sweep would need (see getWatchHistory).
    */
   async getDescendantEpisodeWatchers(parentId: string): Promise<string[]> {
     if (!this.http) return [];
-    try {
-      const users = await this.getUsers();
-      const watchers = new Set<string>();
-      for (const user of users) {
-        try {
-          const { data } = await this.http.get<EmbyItemsQueryResponse>(
-            '/Items',
-            {
-              params: {
-                UserId: user.id,
-                ParentId: parentId,
-                Recursive: true,
-                IncludeItemTypes: 'Episode',
-                ExcludeLocationTypes: 'Virtual',
-                IsPlayed: true,
-                Limit: 1,
-                EnableUserData: true,
-              },
-            },
-          );
-          if ((data.Items ?? []).length > 0) watchers.add(user.id);
-        } catch {
-          // skip users without visibility
-        }
-      }
-      return [...watchers];
-    } catch (error) {
-      this.logger.debug(
-        `Emby getDescendantEpisodeWatchers(${parentId}) failed: ${formatConnectionFailureMessage(error, 'Connection failed')}`,
-      );
-      return [];
+
+    const users = await this.fetchUsersQuery(this.http);
+    const watchers = new Set<string>();
+    for (const user of users) {
+      const { data } = await this.http.get<EmbyItemsQueryResponse>('/Items', {
+        params: {
+          UserId: user.Id,
+          ParentId: parentId,
+          Recursive: true,
+          IncludeItemTypes: 'Episode',
+          ExcludeLocationTypes: 'Virtual',
+          IsPlayed: true,
+          Limit: 1,
+          EnableUserData: true,
+        },
+      });
+      if ((data.Items ?? []).length > 0) watchers.add(user.Id);
     }
+
+    return [...watchers];
   }
 
   /**
@@ -731,8 +724,9 @@ export class EmbyAdapterService implements IMediaServerService {
   // adapter's shape but use Emby endpoint paths.
 
   async prefetchWatchHistory(): Promise<void> {
-    // Emby has no central watch-history endpoint (history is per-user), so
-    // there is nothing to bulk prefetch. Gated by
+    // Emby cannot do what the Jellyfin adapter does here: it omits
+    // LastPlayedDate and PlayCount from every bulk /Items listing shape, so a
+    // sweep would report watched items as having no watch date. Gated by
     // supportsFeature(CENTRAL_WATCH_HISTORY) which is false for Emby - callers
     // shouldn't reach here.
     throw new Error(
@@ -740,6 +734,13 @@ export class EmbyAdapterService implements IMediaServerService {
     );
   }
 
+  /**
+   * Stays per item, unlike the Jellyfin twin's descendant sweep (#3337): Emby
+   * omits LastPlayedDate and PlayCount from every bulk /Items listing shape
+   * (verified on 4.9.5 with and without UserId scoping and Fields=UserData)
+   * and returns them only from /Users/{userId}/Items/{itemId}. A bulk sweep
+   * would therefore report every watched episode as having no watch date.
+   */
   async getWatchHistory(itemId: string): Promise<WatchRecord[]> {
     if (!this.http) return [];
     let users: EmbyUserDto[];

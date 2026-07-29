@@ -1868,6 +1868,7 @@ export class RulesService {
 
         if (serverType === MediaServerType.JELLYFIN) {
           cacheManager.getCache('jellyfin').flush();
+          cacheManager.getCache('jellyfinwatchhistory').flush();
           this.logger.log(
             `Flushed Jellyfin cache because a rule in the group required it`,
           );

@@ -50,6 +50,7 @@ import { formatConnectionFailureMessage } from '../../../../utils/connection-err
 import { delay } from '../../../../utils/delay';
 import { MaintainerrLogger } from '../../../logging/logs.service';
 import { SettingsDataService } from '../../../settings/settings-data.service';
+import { createPrefetchProgressReporter } from '../../../../utils/prefetch-progress';
 import cacheManager, { type Cache } from '../../lib/cache';
 import { applyHttpRetry } from '../../lib/httpRetry';
 import {
@@ -65,6 +66,8 @@ import {
   JELLYFIN_BATCH_SIZE,
   JELLYFIN_CACHE_KEYS,
   JELLYFIN_CACHE_TTL,
+  JELLYFIN_WATCH_SNAPSHOT_CACHE_KEY,
+  JELLYFIN_WATCH_SNAPSHOT_MAX_RECORDS,
   JELLYFIN_CLIENT_INFO,
   JELLYFIN_DEVICE_INFO,
   JELLYFIN_LIBRARY_QUERY_DEFAULTS,
@@ -73,6 +76,7 @@ import {
   JELLYFIN_RETRYABLE_LIBRARY_STATUS_CODES,
 } from './jellyfin.constants';
 import { JellyfinMapper } from './jellyfin.mapper';
+import type { JellyfinWatchSnapshot } from './jellyfin.types';
 
 const toJellyfinSortBy = (sort?: MediaLibrarySortField): ItemSortBy => {
   // The Jellyfin SDK enum does not expose every server-supported sort key,
@@ -118,6 +122,8 @@ export class JellyfinAdapterService implements IMediaServerService {
   private initialized = false;
   private jellyfinUserId: string | undefined;
   private readonly cache: Cache;
+  // Shared in-flight prefetch, so concurrent rule groups sweep once.
+  private watchHistoryPrefetch: Promise<void> | undefined;
 
   constructor(
     private readonly settingsDataService: SettingsDataService,
@@ -245,6 +251,7 @@ export class JellyfinAdapterService implements IMediaServerService {
     this.jellyfinUserId = undefined;
     // Clear the cache when uninitializing
     this.cache.flush();
+    cacheManager.getCache('jellyfinwatchhistory').data.flushAll();
   }
 
   isSetup(): boolean {
@@ -1047,17 +1054,270 @@ export class JellyfinAdapterService implements IMediaServerService {
     }
   }
 
-  async prefetchWatchHistory(): Promise<void> {
-    // Jellyfin has no central watch-history endpoint (history is per-user), so
-    // there is nothing to bulk prefetch. Gated by
-    // supportsFeature(CENTRAL_WATCH_HISTORY) which is false for Jellyfin -
-    // callers shouldn't reach here.
-    throw new Error(
-      'Bulk watch-history prefetch is not supported on Jellyfin (per-user history)',
+  async prefetchWatchHistory(abortSignal?: AbortSignal): Promise<void> {
+    if (!this.api) return;
+
+    if (
+      cacheManager
+        .getCache('jellyfinwatchhistory')
+        .data.has(JELLYFIN_WATCH_SNAPSHOT_CACHE_KEY)
+    ) {
+      return;
+    }
+
+    // Deduplicate concurrent callers onto one in-flight sweep.
+    this.watchHistoryPrefetch ??= this.buildWatchSnapshot(abortSignal).finally(
+      () => {
+        this.watchHistoryPrefetch = undefined;
+      },
     );
+    return this.watchHistoryPrefetch;
   }
 
-  async getWatchHistory(itemId: string): Promise<WatchRecord[]> {
+  /**
+   * Capture every user's watch state for the whole server in one paginated
+   * sweep per user, so rule evaluation reads it from memory instead of asking
+   * per item (#3337). Jellyfin has no central history endpoint, but /Items
+   * answers "all leaf items with this user's UserData" in bulk, and that is the
+   * same payload the per-item path reads.
+   *
+   * Episode rows carry SeriesId and SeasonId, so the show/season -> episode
+   * index comes free from the same response. Plex could not do this - its
+   * history rows key on an undocumented grandparentKey - which is why the
+   * descendant lookup here needs no extra request.
+   *
+   * Best-effort by contract: on any failure the snapshot is simply not cached
+   * and every caller falls back to a live read, so a failed prefetch can never
+   * be mistaken for "nobody watched anything".
+   */
+  private async buildWatchSnapshot(abortSignal?: AbortSignal): Promise<void> {
+    try {
+      abortSignal?.throwIfAborted();
+      this.logger.log('Prefetching Jellyfin watch history for all users...');
+
+      const playedCompletionThreshold =
+        await this.getPlayedCompletionThreshold(true);
+      const users = await this.getUsers(true);
+      if (users.length === 0) {
+        this.logger.warn(
+          'Watch history prefetch found no Jellyfin users - falling back to per-item reads.',
+        );
+        return;
+      }
+
+      const watchHistory = new Map<string, WatchRecord[]>();
+      const descendants = new Map<string, string[]>();
+      const favoritedBy = new Map<string, string[]>();
+      const playCount = new Map<string, number>();
+      let records = 0;
+      // Checked while accumulating, not at the end: the point of the ceiling
+      // is to stop before the snapshot grows large enough to matter. Users run
+      // in batches, so overshoot is bounded to the batch that trips it.
+      let exceededCeiling = false;
+
+      let sweptUsers = 0;
+      const reportProgress = createPrefetchProgressReporter(
+        (message) => this.logger.log(message),
+        'Prefetching Jellyfin watch history',
+        'users',
+      );
+
+      const entries = await this.mapUsersBatched(async (user) => {
+        if (exceededCeiling) {
+          throw new Error('watch snapshot ceiling exceeded');
+        }
+
+        // Pages are folded in as they arrive rather than collected first, so
+        // the transient cost is one page, not one copy of the library.
+        const seenThisUser = new Set<string>();
+        await this.sweepUserLeafItems(user.id, abortSignal, (items) => {
+          for (const item of items) {
+            if (!item.Id) continue;
+            // Paging is not transactional, so a library changing under the sweep
+            // can repeat a row on the next page; counting it twice would inflate
+            // playCount and duplicate watch records.
+            if (seenThisUser.has(item.Id)) continue;
+            seenThisUser.add(item.Id);
+
+            let itemRecords = watchHistory.get(item.Id);
+            if (!itemRecords) {
+              itemRecords = [];
+              watchHistory.set(item.Id, itemRecords);
+              // Index each episode under its season and series exactly once.
+              for (const parentId of [item.SeriesId, item.SeasonId]) {
+                if (!parentId) continue;
+                const siblings = descendants.get(parentId);
+                if (siblings) siblings.push(item.Id);
+                else descendants.set(parentId, [item.Id]);
+              }
+            }
+
+            const userData = item.UserData ?? undefined;
+
+            // Favourites and play counts are raw UserData, already in this
+            // response - they cost nothing extra and are not gated on the
+            // watch threshold (favouriting or starting something is not
+            // finishing it).
+            if (userData?.IsFavorite) {
+              const fans = favoritedBy.get(item.Id);
+              if (fans) fans.push(user.id);
+              else favoritedBy.set(item.Id, [user.id]);
+            }
+            if (userData?.PlayCount) {
+              playCount.set(
+                item.Id,
+                (playCount.get(item.Id) ?? 0) + userData.PlayCount,
+              );
+            }
+
+            if (!this.isCompletedWatch(userData, playedCompletionThreshold)) {
+              continue;
+            }
+
+            itemRecords.push(
+              JellyfinMapper.toWatchRecord(
+                user.id,
+                item.Id,
+                userData?.LastPlayedDate
+                  ? new Date(userData.LastPlayedDate)
+                  : undefined,
+                userData?.PlayedPercentage ?? undefined,
+              ),
+            );
+            records += 1;
+            if (records > JELLYFIN_WATCH_SNAPSHOT_MAX_RECORDS) {
+              exceededCeiling = true;
+              throw new Error('watch snapshot ceiling exceeded');
+            }
+          }
+        });
+
+        sweptUsers += 1;
+        reportProgress(sweptUsers, users.length);
+        return user.id;
+      }, true);
+
+      if (exceededCeiling) {
+        this.logger.warn(
+          `Watch history prefetch passed ${JELLYFIN_WATCH_SNAPSHOT_MAX_RECORDS} watch records - falling back to per-item reads.`,
+        );
+        return;
+      }
+
+      // A user whose sweep failed would read as having watched nothing across
+      // the whole library, so an incomplete snapshot is discarded outright.
+      if (entries.length !== users.length) {
+        this.logger.warn(
+          `Watch history prefetch covered ${entries.length} of ${users.length} users - falling back to per-item reads.`,
+        );
+        return;
+      }
+
+      cacheManager
+        .getCache('jellyfinwatchhistory')
+        .data.set(JELLYFIN_WATCH_SNAPSHOT_CACHE_KEY, {
+          watchHistory,
+          descendants,
+          favoritedBy,
+          playCount,
+          playedCompletionThreshold,
+        } satisfies JellyfinWatchSnapshot);
+
+      this.logger.log(
+        `Watch history prefetch complete: ${watchHistory.size} items across ${users.length} users - ${records} watch records.`,
+      );
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        throw error;
+      }
+
+      this.logger.warn(
+        'Watch history prefetch failed - falling back to per-item reads.',
+      );
+      this.logger.debug(error);
+    }
+  }
+
+  /**
+   * Hands each page of one user's movies and episodes to `onPage` as it
+   * arrives. Throws on a short or uncountable page so a truncated sweep is
+   * never mistaken for a small library.
+   */
+  private async sweepUserLeafItems(
+    userId: string,
+    abortSignal: AbortSignal | undefined,
+    onPage: (items: BaseItemDto[]) => void,
+  ): Promise<void> {
+    const pageSize = JELLYFIN_BATCH_SIZE.MAX_PAGE_SIZE;
+    let fetched = 0;
+    let total = 0;
+
+    do {
+      abortSignal?.throwIfAborted();
+      const response = await getItemsApi(this.api!).getItems({
+        // Include BoxSet members: libraries with "Group films into
+        // collections" hide them by default, which would leave those items
+        // out of the snapshot entirely (#2554).
+        ...JELLYFIN_LIBRARY_QUERY_DEFAULTS,
+        userId,
+        recursive: true,
+        includeItemTypes: [BaseItemKind.Movie, BaseItemKind.Episode],
+        // Ignore unaired placeholders (mirrors #2624).
+        excludeLocationTypes: [LocationType.Virtual],
+        enableUserData: true,
+        // Minimize payload - we only need UserData and the parent ids.
+        fields: [],
+        // Jellyfin exposes no unique sort key; SortName is at least a stable
+        // order for a library that is not changing under the sweep.
+        sortBy: [ItemSortBy.SortName],
+        sortOrder: [SortOrder.Ascending],
+        startIndex: fetched,
+        limit: pageSize,
+      });
+
+      const items = response.data.Items;
+      if (!Array.isArray(items)) {
+        throw new Error(`Jellyfin returned no item list for user ${userId}`);
+      }
+      if (typeof response.data.TotalRecordCount !== 'number') {
+        throw new Error(`Jellyfin reported no item count for user ${userId}`);
+      }
+
+      total = response.data.TotalRecordCount;
+      fetched += items.length;
+      onPage(items);
+
+      // Jellyfin fills every page but the last, so anything shorter before the
+      // total is reached is a truncated read, not a small library.
+      if (fetched < total && items.length < pageSize) {
+        throw new Error(
+          `Jellyfin returned ${fetched} of ${total} items for user ${userId}`,
+        );
+      }
+    } while (fetched < total);
+  }
+
+  /**
+   * The prefetched snapshot, or undefined when there is none to use. One built
+   * under a different PlayedPercentage threshold is ignored: that threshold is
+   * what decided which plays count as watched.
+   */
+  private getWatchSnapshot(
+    playedCompletionThreshold: number | undefined,
+  ): JellyfinWatchSnapshot | undefined {
+    const snapshot = cacheManager
+      .getCache('jellyfinwatchhistory')
+      .data.get<JellyfinWatchSnapshot>(JELLYFIN_WATCH_SNAPSHOT_CACHE_KEY);
+
+    return snapshot?.playedCompletionThreshold === playedCompletionThreshold
+      ? snapshot
+      : undefined;
+  }
+
+  async getWatchHistory(
+    itemId: string,
+    useSnapshot = true,
+  ): Promise<WatchRecord[]> {
     if (!this.api) return [];
 
     // Errors must propagate so callers can distinguish a real outage from a
@@ -1066,6 +1326,18 @@ export class JellyfinAdapterService implements IMediaServerService {
     // diagnostics in the rules layer.
     const playedCompletionThreshold =
       await this.getPlayedCompletionThreshold(true);
+
+    if (useSnapshot) {
+      // Only a present key is authoritative - an absent one means the item was
+      // not swept (a show/season id, a new item), so fall through to a live
+      // read rather than answering "never watched".
+      const records = this.getWatchSnapshot(
+        playedCompletionThreshold,
+      )?.watchHistory.get(itemId);
+      // The snapshot cache stores by reference, so hand callers a copy.
+      if (records) return [...records];
+    }
+
     const cacheKey = `${JELLYFIN_CACHE_KEYS.WATCH_HISTORY}:${playedCompletionThreshold ?? 'played'}:${itemId}`;
     if (this.cache.data.has(cacheKey)) {
       return this.cache.data.get<WatchRecord[]>(cacheKey) || [];
@@ -1098,7 +1370,11 @@ export class JellyfinAdapterService implements IMediaServerService {
   }
 
   async getWatchState(itemId: string): Promise<MediaWatchState> {
-    const history = await this.getWatchHistory(itemId);
+    // Deliberately bypasses the prefetched snapshot: this is the is-watched /
+    // viewCount read that feeds deletions, so it asks Jellyfin live and
+    // something just watched can never be deleted off a stale snapshot. Mirrors
+    // PlexAdapterService.getWatchState passing useCache: false.
+    const history = await this.getWatchHistory(itemId, false);
 
     return {
       viewCount: history.length,
@@ -1136,62 +1412,110 @@ export class JellyfinAdapterService implements IMediaServerService {
   }
 
   /**
-   * Users who watched ≥1 Episode descendant of `parentId` (show or season),
-   * honouring the configured PlayedPercentage threshold via isCompletedWatch.
-   * Jellyfin's Series Played flag is an all-or-nothing aggregate, so the
-   * show-level watch history degenerates to sw_allEpisodesSeenBy (#2559).
-   * One getItems call per user (batched via mapUsersBatched, shared with
-   * getAllUserItemData) - O(users), not O(users × episodes).
+   * Watch records for every Episode descendant of `parentId` (show or season),
+   * keyed by episode id, with an entry for every episode the sweep saw (an
+   * empty array means confirmed never watched). One getItems call per user
+   * (batched via mapUsersBatched) - O(users), not the O(users × episodes) a
+   * per-episode getWatchHistory walk costs (#3337).
+   *
+   * This reads the same /Items + enableUserData payload the per-item path
+   * reads, so the records it builds are identical; only the request count
+   * changes. The sweep is deliberately unfiltered: Jellyfin's isPlayed filter
+   * tests the Played flag alone, so it would drop episodes that are only
+   * watched by crossing the PlayedPercentage threshold (#2466).
+   *
+   * All-or-nothing. A user whose sweep failed, or a short page, would read as
+   * "watched nothing" for every episode of the show, so an incomplete sweep
+   * throws rather than answering with a partial map (#2744).
    */
-  async getDescendantEpisodeWatchers(parentId: string): Promise<string[]> {
-    if (!this.api) return [];
+  async getDescendantEpisodeWatchHistory(
+    parentId: string,
+  ): Promise<Record<string, WatchRecord[]>> {
+    if (!this.api) return {};
 
-    try {
-      const playedCompletionThreshold =
-        await this.getPlayedCompletionThreshold();
-      const cacheKey = `${JELLYFIN_CACHE_KEYS.WATCH_HISTORY}:${playedCompletionThreshold ?? 'played'}:episode-watchers:${parentId}`;
-      const cached = this.cache.data.get<string[]>(cacheKey);
-      if (cached !== undefined) return cached;
+    const playedCompletionThreshold =
+      await this.getPlayedCompletionThreshold(true);
 
-      const entries = await this.mapUsersBatched(async (user) => ({
+    // A parent the prefetch indexed is answered from memory. An unindexed one
+    // (no snapshot, or a show added since) falls through to the per-show sweep
+    // below, which is still one request per user rather than per episode.
+    const snapshot = this.getWatchSnapshot(playedCompletionThreshold);
+    const sweptEpisodeIds = snapshot?.descendants.get(parentId);
+    if (sweptEpisodeIds) {
+      const fromSnapshot: Record<string, WatchRecord[]> = {};
+      for (const episodeId of sweptEpisodeIds) {
+        fromSnapshot[episodeId] = [
+          ...(snapshot.watchHistory.get(episodeId) ?? []),
+        ];
+      }
+      return fromSnapshot;
+    }
+
+    const users = await this.getUsers(true);
+    const entries = await this.mapUsersBatched(async (user) => {
+      const response = await getItemsApi(this.api!).getItems({
         userId: user.id,
-        items:
-          (
-            await getItemsApi(this.api!).getItems({
-              userId: user.id,
-              parentId,
-              recursive: true,
-              includeItemTypes: [BaseItemKind.Episode],
-              // Ignore unaired placeholders (mirrors #2624).
-              excludeLocationTypes: [LocationType.Virtual],
-              enableUserData: true,
-              // Minimize payload - we only need UserData per episode.
-              fields: [],
-            })
-          ).data.Items ?? [],
-      }));
+        parentId,
+        recursive: true,
+        includeItemTypes: [BaseItemKind.Episode],
+        // Ignore unaired placeholders (mirrors #2624).
+        excludeLocationTypes: [LocationType.Virtual],
+        enableUserData: true,
+        // Minimize payload - we only need UserData per episode.
+        fields: [],
+      });
 
-      const watcherIds = new Set<string>();
-      for (const { userId, items } of entries) {
-        const hasWatched = items.some((item) =>
-          this.isCompletedWatch(
-            item.UserData ?? undefined,
-            playedCompletionThreshold,
-          ),
-        );
-        if (hasWatched) watcherIds.add(userId);
+      // Jellyfin always returns an Items array here, so a response without one
+      // is a broken read (proxy error page, auth interstitial), not an empty
+      // show - and treating it as empty would read as "nobody watched".
+      const items = response.data.Items;
+      if (!Array.isArray(items)) {
+        throw new Error(`Jellyfin returned no episode list under ${parentId}`);
       }
 
-      const watchers = [...watcherIds];
-      this.cache.data.set(cacheKey, watchers, JELLYFIN_CACHE_TTL.WATCH_HISTORY);
-      return watchers;
-    } catch (error) {
-      this.logger.error(
-        `Failed to get descendant episode watchers for ${parentId}`,
+      const total = response.data.TotalRecordCount;
+      if (typeof total === 'number' && items.length < total) {
+        throw new Error(
+          `Jellyfin returned ${items.length} of ${total} episodes under ${parentId}`,
+        );
+      }
+
+      return { userId: user.id, items };
+    }, true);
+
+    // mapUsersBatched drops users whose request failed, which here would read
+    // as "this user watched nothing" for the whole show.
+    if (entries.length !== users.length) {
+      throw new Error(
+        `Jellyfin watch-history sweep for ${parentId} covered ${entries.length} of ${users.length} users`,
       );
-      this.logger.debug(error);
-      return [];
     }
+
+    const watchHistory: Record<string, WatchRecord[]> = {};
+    for (const { userId, items } of entries) {
+      for (const item of items) {
+        if (!item.Id) continue;
+
+        watchHistory[item.Id] ??= [];
+        const userData = item.UserData ?? undefined;
+        if (!this.isCompletedWatch(userData, playedCompletionThreshold)) {
+          continue;
+        }
+
+        watchHistory[item.Id].push(
+          JellyfinMapper.toWatchRecord(
+            userId,
+            item.Id,
+            userData?.LastPlayedDate
+              ? new Date(userData.LastPlayedDate)
+              : undefined,
+            userData?.PlayedPercentage ?? undefined,
+          ),
+        );
+      }
+    }
+
+    return watchHistory;
   }
 
   /**
@@ -1202,6 +1526,16 @@ export class JellyfinAdapterService implements IMediaServerService {
     if (!this.api) return [];
 
     try {
+      // The prefetch indexes every leaf item, so a swept id answers from
+      // memory; an unswept one (a show/season, or an item added since) falls
+      // through to the per-user read below.
+      const snapshot = this.getWatchSnapshot(
+        await this.getPlayedCompletionThreshold(),
+      );
+      if (snapshot?.watchHistory.has(itemId)) {
+        return [...(snapshot.favoritedBy.get(itemId) ?? [])];
+      }
+
       const cacheKey = `${JELLYFIN_CACHE_KEYS.FAVORITED_BY}:${itemId}`;
       if (this.cache.data.has(cacheKey)) {
         return this.cache.data.get<string[]>(cacheKey) || [];
@@ -1231,6 +1565,13 @@ export class JellyfinAdapterService implements IMediaServerService {
     if (!this.api) return 0;
 
     try {
+      const snapshot = this.getWatchSnapshot(
+        await this.getPlayedCompletionThreshold(),
+      );
+      if (snapshot?.watchHistory.has(itemId)) {
+        return snapshot.playCount.get(itemId) ?? 0;
+      }
+
       const cacheKey = `${JELLYFIN_CACHE_KEYS.TOTAL_PLAY_COUNT}:${itemId}`;
       if (this.cache.data.has(cacheKey)) {
         return this.cache.data.get<number>(cacheKey) || 0;
@@ -2071,6 +2412,11 @@ export class JellyfinAdapterService implements IMediaServerService {
   }
 
   resetMetadataCache(itemId?: string): void {
+    // The prefetched snapshot is a point-in-time copy of every item's watch
+    // state, so it has to go too - otherwise a manual mark-watched would stay
+    // invisible for the rest of the batch, which is exactly #3274.
+    cacheManager.getCache('jellyfinwatchhistory').data.flushAll();
+
     if (itemId) {
       // Watch-history entries are keyed per item. Season/show getters
       // (e.g. sw_allEpisodesSeenBy) aggregate their DESCENDANT episodes' entries,

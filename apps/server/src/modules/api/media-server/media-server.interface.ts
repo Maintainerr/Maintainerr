@@ -175,9 +175,14 @@ export interface IMediaServerService {
    * getWatchState calls can be served from memory instead of making individual
    * HTTP requests.
    *
-   * Gated by MediaServerFeature.CENTRAL_WATCH_HISTORY (a centrally queryable
-   * history endpoint). Throws if not supported - callers must check
-   * supportsFeature() first; when unsupported, evaluation uses per-item queries.
+   * Gated by MediaServerFeature.CENTRAL_WATCH_HISTORY (watch history is
+   * fetchable in bulk, whether from one central endpoint or one sweep per
+   * user). Throws if not supported - callers must check supportsFeature()
+   * first; when unsupported, evaluation uses per-item queries.
+   *
+   * Best-effort: implementations swallow their own failures and leave no
+   * cached result, so getWatchHistory falls back to live per-item reads. A
+   * failed prefetch must never surface as "nothing was watched".
    */
   prefetchWatchHistory(abortSignal?: AbortSignal): Promise<void>;
 

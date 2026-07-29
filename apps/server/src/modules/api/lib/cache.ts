@@ -13,6 +13,7 @@ type AvailableCacheIds =
   | 'streamystats'
   | 'github'
   | 'jellyfin'
+  | 'jellyfinwatchhistory'
   | 'emby';
 
 type CacheType = AvailableCacheIds | 'radarr' | 'sonarr' | 'sportarr';
@@ -186,6 +187,27 @@ class CacheManager {
       checkPeriod: 60 * 60, // Check every hour
     }),
     jellyfin: new Cache('jellyfin', 'Jellyfin API', 'jellyfin'),
+    // Holds the library-wide watch snapshot built by
+    // JellyfinAdapterService.prefetchWatchHistory (leaf watch records plus a
+    // show/season -> episode index). Configured exactly like plexwatchhistory:
+    // persistent so rule groups in one batch share a single sweep, dropped at
+    // batch end by the job manager, and useClones off because the value holds
+    // Maps - getWatchHistory hands out copies of the per-item arrays instead.
+    // resetMetadataCache also drops it, so a manual mark-watched is visible
+    // immediately rather than for the rest of the batch (#3274).
+    jellyfinwatchhistory: new Cache(
+      'jellyfinwatchhistory',
+      'Jellyfin watch history',
+      'jellyfinwatchhistory',
+      {
+        stdTtl: 3600, // 1 hour
+        persistent: true,
+        useClones: false,
+        // One prefetched snapshot, not one entry per item - exempt from the
+        // key-count bound so it is never evicted mid-run.
+        maxKeys: 0,
+      },
+    ),
     emby: new Cache('emby', 'Emby API', 'emby'),
   };
 

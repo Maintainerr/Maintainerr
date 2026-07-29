@@ -48,7 +48,7 @@ export enum MediaServerFeature {
   COLLECTION_VISIBILITY = 'collection_visibility',
   /** Watchlist functionality via external API (Plex.tv) */
   WATCHLIST = 'watchlist',
-  /** Central watch history endpoint (vs per-user iteration) */
+  /** Watch history can be fetched in bulk up front, rather than per item */
   CENTRAL_WATCH_HISTORY = 'central_watch_history',
   /** Support for labels/tags on media items */
   LABELS = 'labels',
