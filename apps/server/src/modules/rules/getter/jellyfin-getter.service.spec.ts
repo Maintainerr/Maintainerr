@@ -1873,10 +1873,12 @@ describe('JellyfinGetterService', () => {
       });
 
       jellyfinAdapter.getMetadata.mockResolvedValue(showItem);
-      jellyfinAdapter.getDescendantEpisodeWatchers.mockResolvedValue([
-        'user-1',
-        'user-2',
-      ]);
+      jellyfinAdapter.getDescendantEpisodeWatchHistory.mockResolvedValue(
+        createDescendantWatchHistory({
+          'ep-1': [{ userId: 'user-1' }, { userId: 'user-2' }],
+          'ep-2': [{ userId: 'user-1' }],
+        }),
+      );
       jellyfinAdapter.getUsers.mockResolvedValue([
         createMediaUser({ id: 'user-1', name: 'Alice' }),
         createMediaUser({ id: 'user-2', name: 'Bob' }),
@@ -1891,9 +1893,9 @@ describe('JellyfinGetterService', () => {
       );
 
       expect(response).toEqual(['Alice', 'Bob']);
-      expect(jellyfinAdapter.getDescendantEpisodeWatchers).toHaveBeenCalledWith(
-        'show-1',
-      );
+      expect(
+        jellyfinAdapter.getDescendantEpisodeWatchHistory,
+      ).toHaveBeenCalledWith('show-1');
     });
 
     it('returns an empty list when no user has watched any episode', async () => {
@@ -1903,7 +1905,9 @@ describe('JellyfinGetterService', () => {
       });
 
       jellyfinAdapter.getMetadata.mockResolvedValue(showItem);
-      jellyfinAdapter.getDescendantEpisodeWatchers.mockResolvedValue([]);
+      jellyfinAdapter.getDescendantEpisodeWatchHistory.mockResolvedValue(
+        createDescendantWatchHistory({ 'ep-1': [] }),
+      );
       jellyfinAdapter.getUsers.mockResolvedValue([
         createMediaUser({ id: 'user-1', name: 'Alice' }),
       ]);
@@ -1925,9 +1929,9 @@ describe('JellyfinGetterService', () => {
       });
 
       jellyfinAdapter.getMetadata.mockResolvedValue(seasonItem);
-      jellyfinAdapter.getDescendantEpisodeWatchers.mockResolvedValue([
-        'user-2',
-      ]);
+      jellyfinAdapter.getDescendantEpisodeWatchHistory.mockResolvedValue(
+        createDescendantWatchHistory({ 'ep-1': [{ userId: 'user-2' }] }),
+      );
       jellyfinAdapter.getUsers.mockResolvedValue([
         createMediaUser({ id: 'user-1', name: 'Alice' }),
         createMediaUser({ id: 'user-2', name: 'Bob' }),
@@ -1941,9 +1945,9 @@ describe('JellyfinGetterService', () => {
       );
 
       expect(response).toEqual(['Bob']);
-      expect(jellyfinAdapter.getDescendantEpisodeWatchers).toHaveBeenCalledWith(
-        'season-1',
-      );
+      expect(
+        jellyfinAdapter.getDescendantEpisodeWatchHistory,
+      ).toHaveBeenCalledWith('season-1');
     });
 
     it('keeps episode watcher lookups on direct watch history', async () => {
@@ -1969,7 +1973,7 @@ describe('JellyfinGetterService', () => {
       expect(response).toEqual(['Bob']);
       expect(jellyfinAdapter.getItemSeenBy).toHaveBeenCalledWith('episode-1');
       expect(
-        jellyfinAdapter.getDescendantEpisodeWatchers,
+        jellyfinAdapter.getDescendantEpisodeWatchHistory,
       ).not.toHaveBeenCalled();
     });
 
@@ -1980,9 +1984,9 @@ describe('JellyfinGetterService', () => {
       });
 
       jellyfinAdapter.getMetadata.mockResolvedValue(showItem);
-      jellyfinAdapter.getDescendantEpisodeWatchers.mockResolvedValue([
-        'user-ghost',
-      ]);
+      jellyfinAdapter.getDescendantEpisodeWatchHistory.mockResolvedValue(
+        createDescendantWatchHistory({ 'ep-1': [{ userId: 'user-ghost' }] }),
+      );
       jellyfinAdapter.getUsers.mockResolvedValue([
         createMediaUser({ id: 'user-1', name: 'Alice' }),
       ]);
@@ -2176,6 +2180,59 @@ describe('JellyfinGetterService', () => {
       expect(jellyfinAdapter.getCollectionChildren).not.toHaveBeenCalledWith(
         'coll-own',
       );
+    });
+  });
+
+  // A non-container parentId makes the server fall back to the whole library,
+  // so an episode/movie id must never reach the descendant sweep.
+  describe('descendant sweep is limited to shows and seasons', () => {
+    it.each([
+      [12, 'sw_allEpisodesSeenBy', [] as unknown],
+      [15, 'sw_viewedEpisodes', 0],
+      [17, 'sw_amountOfViews', 0],
+    ])(
+      'answers empty for an episode item without sweeping (%i - %s)',
+      async (propertyId, _name, expected) => {
+        const episodeItem = createMediaItem({
+          id: 'episode-not-a-container',
+          type: 'episode' as MediaItemType,
+        });
+
+        jellyfinAdapter.getMetadata.mockResolvedValue(episodeItem);
+        jellyfinAdapter.getUsers.mockResolvedValue([createMediaUser()]);
+        jellyfinAdapter.getWatchHistory.mockResolvedValue([]);
+
+        const response = await jellyfinGetterService.get(
+          propertyId,
+          episodeItem,
+          'episode',
+          createRulesDto({ dataType: 'episode' }),
+        );
+
+        expect(response).toEqual(expected);
+        expect(
+          jellyfinAdapter.getDescendantEpisodeWatchHistory,
+        ).not.toHaveBeenCalled();
+      },
+    );
+
+    it('answers null for lastViewedAt on a movie without sweeping', async () => {
+      const movieItem = createMediaItem({ id: 'movie-1', type: 'movie' });
+
+      jellyfinAdapter.getMetadata.mockResolvedValue(movieItem);
+      jellyfinAdapter.getWatchHistory.mockResolvedValue([]);
+
+      const response = await jellyfinGetterService.get(
+        7,
+        movieItem,
+        'movie',
+        createRulesDto({ dataType: 'movie' }),
+      );
+
+      expect(response).toBeNull();
+      expect(
+        jellyfinAdapter.getDescendantEpisodeWatchHistory,
+      ).not.toHaveBeenCalled();
     });
   });
 });

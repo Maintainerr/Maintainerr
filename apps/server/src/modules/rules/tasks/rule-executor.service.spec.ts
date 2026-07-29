@@ -38,6 +38,9 @@ describe('RuleExecutorService', () => {
       supportsFeature: jest.fn((feature: MediaServerFeature) =>
         serverSupportsFeature(mediaServerType, feature),
       ),
+      // Both Plex and Jellyfin support the bulk prefetch, so the default mock
+      // has to answer it; individual tests override to assert on the calls.
+      prefetchWatchHistory: jest.fn().mockResolvedValue(undefined),
     };
 
     const mediaServerFactory = {
@@ -1917,9 +1920,27 @@ describe('RuleExecutorService', () => {
       );
     });
 
-    it('does not prefetch when the server lacks central watch history (e.g. Jellyfin)', async () => {
+    it('prefetches on Jellyfin, which sweeps watch state per user', async () => {
       const { service, rulesService, mediaServer } = createService(
         MediaServerType.JELLYFIN,
+      );
+      rulesService.getRuleGroup.mockResolvedValue(ruleGroup as any);
+      rulesService.getRuleGroupById.mockResolvedValue(ruleGroup as any);
+      (mediaServer as any).prefetchWatchHistory = jest
+        .fn()
+        .mockResolvedValue(undefined);
+
+      await expect(
+        service.executeForRuleGroups(10, new AbortController().signal),
+      ).resolves.toEqual({ status: 'success' });
+      expect((mediaServer as any).prefetchWatchHistory).toHaveBeenCalledTimes(
+        1,
+      );
+    });
+
+    it('does not prefetch when the server lacks bulk watch history (e.g. Emby)', async () => {
+      const { service, rulesService, mediaServer } = createService(
+        MediaServerType.EMBY,
       );
       rulesService.getRuleGroup.mockResolvedValue(ruleGroup as any);
       rulesService.getRuleGroupById.mockResolvedValue(ruleGroup as any);

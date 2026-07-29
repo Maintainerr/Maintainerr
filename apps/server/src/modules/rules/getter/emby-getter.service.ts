@@ -3,7 +3,6 @@ import {
   MediaItem,
   MediaItemType,
   RuleValueType,
-  WatchRecord,
 } from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
 import cacheManager, { Cache } from '../../api/lib/cache';
@@ -195,7 +194,10 @@ export class EmbyGetterService {
             isMediaType(metadata.type, 'show') ||
             isMediaType(metadata.type, 'season')
           ) {
-            return await this.getLastWatchedShowDate(metadata.id);
+            return await this.getLastWatchedShowDate(
+              metadata.id,
+              metadata.type,
+            );
           }
           return await this.getLastViewedAt(metadata.id);
         }
@@ -226,7 +228,7 @@ export class EmbyGetterService {
         }
 
         case 'sw_allEpisodesSeenBy': {
-          return await this.getAllEpisodesSeenBy(metadata.id);
+          return await this.getAllEpisodesSeenBy(metadata.id, metadata.type);
         }
 
         case 'sw_lastWatched': {
@@ -241,7 +243,7 @@ export class EmbyGetterService {
         }
 
         case 'sw_viewedEpisodes': {
-          return await this.getViewedEpisodeCount(metadata.id);
+          return await this.getViewedEpisodeCount(metadata.id, metadata.type);
         }
 
         case 'sw_lastEpisodeAddedAt': {
@@ -478,35 +480,63 @@ export class EmbyGetterService {
     }
   }
 
-  private newestWatchedAt(records: WatchRecord[]): Date | null {
-    const times = records
-      .map((r) => r.watchedAt)
-      .filter((d): d is Date => d !== undefined)
-      .map((d) => d.getTime());
-
-    return times.length > 0 ? new Date(Math.max(...times)) : null;
-  }
-
   private async getLastViewedAt(itemId: string): Promise<Date | null> {
-    return this.newestWatchedAt(await this.embyAdapter.getWatchHistory(itemId));
+    const watchHistory = await this.embyAdapter.getWatchHistory(itemId);
+    if (!watchHistory.length) {
+      return null;
+    }
+
+    const dates = watchHistory
+      .map((r) => r.watchedAt)
+      .filter((d): d is Date => d !== undefined);
+
+    return dates.length > 0
+      ? new Date(Math.max(...dates.map((d) => d.getTime())))
+      : null;
   }
 
-  private async getAllEpisodesSeenBy(itemId: string): Promise<string[]> {
+  private async getAllEpisodesSeenBy(
+    itemId: string,
+    type: MediaItemType,
+  ): Promise<string[]> {
     const users = await this.embyAdapter.getUsers();
-    const episodeWatchers = Object.values(
-      await this.embyAdapter.getDescendantEpisodeWatchHistory(itemId),
+
+    // Get all episodes - handle both shows and seasons
+    const allEpisodes: string[] = [];
+    if (type === 'season') {
+      // For seasons, get episodes directly (children of season)
+      const episodes = await this.embyAdapter.getChildrenMetadata(
+        itemId,
+        'episode',
+      );
+      allEpisodes.push(...episodes.map((e) => e.id));
+    } else {
+      // For shows, get seasons first, then episodes from each season
+      const seasons = await this.embyAdapter.getChildrenMetadata(
+        itemId,
+        'season',
+      );
+      for (const season of seasons) {
+        const episodes = await this.embyAdapter.getChildrenMetadata(
+          season.id,
+          'episode',
+        );
+        allEpisodes.push(...episodes.map((e) => e.id));
+      }
+    }
+
+    if (allEpisodes.length === 0) return [];
+
+    // Get watch status for each episode
+    const episodeWatchers = await Promise.all(
+      allEpisodes.map((epId) => this.embyAdapter.getItemSeenBy(epId)),
     );
 
-    if (episodeWatchers.length === 0) return [];
-
-    // Users who appear in EVERY episode's watch list
-    const usersWhoWatchedAll = users
-      .map((user) => user.id)
-      .filter((userId) =>
-        episodeWatchers.every((records) =>
-          records.some((record) => record.userId === userId),
-        ),
-      );
+    // Find users who appear in ALL episode watch lists
+    const allUserIds = new Set(users.map((u) => u.id));
+    const usersWhoWatchedAll = [...allUserIds].filter((userId) =>
+      episodeWatchers.every((watchers) => watchers.includes(userId)),
+    );
 
     return mapRuleUserIdsToNames(
       usersWhoWatchedAll,
@@ -537,9 +567,6 @@ export class EmbyGetterService {
       viewedAt: Date;
     }> = [];
 
-    const watchHistory =
-      await this.embyAdapter.getDescendantEpisodeWatchHistory(itemId);
-
     for (const season of seasons) {
       const episodes = await this.embyAdapter.getChildrenMetadata(
         season.id,
@@ -551,7 +578,7 @@ export class EmbyGetterService {
         if (episodeOrder === undefined || episode.parentIndex === undefined) {
           continue;
         }
-        const viewedAt = this.newestWatchedAt(watchHistory[episode.id] ?? []);
+        const viewedAt = await this.getLastViewedAt(episode.id);
         if (!viewedAt) continue;
         watched.push({
           parentIndex: episode.parentIndex,
@@ -581,11 +608,45 @@ export class EmbyGetterService {
    * highest-numbered episode, the way the Plex/Tautulli `sw_lastWatched`
    * getters compute it. Used by the `lastViewedAt` rule only.
    */
-  private async getLastWatchedShowDate(itemId: string): Promise<Date | null> {
-    const watchHistory =
-      await this.embyAdapter.getDescendantEpisodeWatchHistory(itemId);
+  private async getLastWatchedShowDate(
+    itemId: string,
+    type: MediaItemType,
+  ): Promise<Date | null> {
+    let latestDate: Date | null = null;
 
-    return this.newestWatchedAt(Object.values(watchHistory).flat());
+    if (type === 'season') {
+      // For seasons, get episodes directly
+      const episodes = await this.embyAdapter.getChildrenMetadata(
+        itemId,
+        'episode',
+      );
+      for (const episode of episodes) {
+        const lastViewed = await this.getLastViewedAt(episode.id);
+        if (lastViewed && (!latestDate || lastViewed > latestDate)) {
+          latestDate = lastViewed;
+        }
+      }
+    } else {
+      // For shows, iterate through seasons first
+      const seasons = await this.embyAdapter.getChildrenMetadata(
+        itemId,
+        'season',
+      );
+      for (const season of seasons) {
+        const episodes = await this.embyAdapter.getChildrenMetadata(
+          season.id,
+          'episode',
+        );
+        for (const episode of episodes) {
+          const lastViewed = await this.getLastViewedAt(episode.id);
+          if (lastViewed && (!latestDate || lastViewed > latestDate)) {
+            latestDate = lastViewed;
+          }
+        }
+      }
+    }
+
+    return latestDate;
   }
 
   private async getEpisodeCount(
@@ -616,12 +677,27 @@ export class EmbyGetterService {
     return count;
   }
 
-  private async getViewedEpisodeCount(itemId: string): Promise<number> {
-    const watchHistory =
-      await this.embyAdapter.getDescendantEpisodeWatchHistory(itemId);
+  private async getViewedEpisodeCount(
+    itemId: string,
+    type: MediaItemType,
+  ): Promise<number> {
+    const seasons =
+      type === 'season'
+        ? [{ id: itemId }]
+        : await this.embyAdapter.getChildrenMetadata(itemId, 'season');
 
-    return Object.values(watchHistory).filter((records) => records.length > 0)
-      .length;
+    let viewedCount = 0;
+    for (const season of seasons) {
+      const episodes = await this.embyAdapter.getChildrenMetadata(
+        season.id,
+        'episode',
+      );
+      for (const episode of episodes) {
+        const seenBy = await this.embyAdapter.getItemSeenBy(episode.id);
+        if (seenBy.length > 0) viewedCount++;
+      }
+    }
+    return viewedCount;
   }
 
   private async getLastEpisodeAddedAt(
@@ -662,13 +738,23 @@ export class EmbyGetterService {
       return history.length;
     }
 
-    const watchHistory =
-      await this.embyAdapter.getDescendantEpisodeWatchHistory(itemId);
+    const seasons =
+      type === 'season'
+        ? [{ id: itemId }]
+        : await this.embyAdapter.getChildrenMetadata(itemId, 'season');
 
-    return Object.values(watchHistory).reduce(
-      (total, records) => total + records.length,
-      0,
-    );
+    let totalViews = 0;
+    for (const season of seasons) {
+      const episodes = await this.embyAdapter.getChildrenMetadata(
+        season.id,
+        'episode',
+      );
+      for (const episode of episodes) {
+        const history = await this.embyAdapter.getWatchHistory(episode.id);
+        totalViews += history.length;
+      }
+    }
+    return totalViews;
   }
 
   private async getSwWatchers(

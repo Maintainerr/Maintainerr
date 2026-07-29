@@ -48,6 +48,18 @@ export const JELLYFIN_RETRYABLE_LIBRARY_ERROR_CODES = new Set([
 
 export const JELLYFIN_RETRYABLE_LIBRARY_STATUS_CODES = new Set([502, 503, 504]);
 
+// Key in the 'jellyfinwatchhistory' cache for the library-wide snapshot built
+// by prefetchWatchHistory(). TTL and flush behaviour live on the cache
+// definition in lib/cache.ts.
+export const JELLYFIN_WATCH_SNAPSHOT_CACHE_KEY = 'watch-snapshot';
+
+// Ceiling on watch records held in that snapshot. The snapshot lives for a
+// whole run, and a (item x user) matrix grows with both; 500k records measured
+// ~60MB, which stays clear of the 512MB heap the key-count bound protects
+// (#3284). Above it the prefetch is abandoned and callers fall back to the
+// per-show sweep, which is bounded by one show at a time.
+export const JELLYFIN_WATCH_SNAPSHOT_MAX_RECORDS = 500_000;
+
 export const JELLYFIN_CACHE_KEYS = {
   WATCH_HISTORY: 'jellyfin:watch',
   FAVORITED_BY: 'jellyfin:favorited-by',

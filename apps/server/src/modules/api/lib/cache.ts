@@ -13,9 +13,8 @@ type AvailableCacheIds =
   | 'streamystats'
   | 'github'
   | 'jellyfin'
-  | 'jellyfinwatchsweep'
-  | 'emby'
-  | 'embywatchsweep';
+  | 'jellyfinwatchhistory'
+  | 'emby';
 
 type CacheType = AvailableCacheIds | 'radarr' | 'sonarr' | 'sportarr';
 
@@ -31,10 +30,6 @@ const DEFAULT_CHECK_PERIOD = 120; // 2 min
 // window. It stays far above any paginated/working-set flow, so normal use never
 // evicts.
 export const DEFAULT_MAX_KEYS = 1200;
-// Key ceiling for the Jellyfin/Emby per-show watch sweeps. Sized to the rule
-// executor's 50-item chunk (rule evaluation is rule-major, so only the current
-// chunk's sweeps need to survive from one rule to the next) with headroom.
-const WATCH_SWEEP_MAX_KEYS = 100;
 
 type CacheOptions = {
   stdTtl?: number;
@@ -192,27 +187,28 @@ class CacheManager {
       checkPeriod: 60 * 60, // Check every hour
     }),
     jellyfin: new Cache('jellyfin', 'Jellyfin API', 'jellyfin'),
-    // Holds the per-show descendant watch sweeps built by
-    // getDescendantEpisodeWatchHistory - one entry per show/season, each
-    // covering all of its episodes across all users. useClones is off because
-    // those values are large (a 500-episode show across 20 users measured
-    // ~48ms to clone per read) and every consumer only reads them. The key
-    // ceiling is small on purpose: the executor evaluates 50 items per chunk,
-    // so only that chunk's sweeps need to survive between rules, and each
-    // entry is far bigger than a normal cached response.
-    jellyfinwatchsweep: new Cache(
-      'jellyfinwatchsweep',
-      'Jellyfin watch sweep',
-      'jellyfinwatchsweep',
-      { useClones: false, maxKeys: WATCH_SWEEP_MAX_KEYS },
+    // Holds the library-wide watch snapshot built by
+    // JellyfinAdapterService.prefetchWatchHistory (leaf watch records plus a
+    // show/season -> episode index). Configured exactly like plexwatchhistory:
+    // persistent so rule groups in one batch share a single sweep, dropped at
+    // batch end by the job manager, and useClones off because the value holds
+    // Maps - getWatchHistory hands out copies of the per-item arrays instead.
+    // resetMetadataCache also drops it, so a manual mark-watched is visible
+    // immediately rather than for the rest of the batch (#3274).
+    jellyfinwatchhistory: new Cache(
+      'jellyfinwatchhistory',
+      'Jellyfin watch history',
+      'jellyfinwatchhistory',
+      {
+        stdTtl: 3600, // 1 hour
+        persistent: true,
+        useClones: false,
+        // One prefetched snapshot, not one entry per item - exempt from the
+        // key-count bound so it is never evicted mid-run.
+        maxKeys: 0,
+      },
     ),
     emby: new Cache('emby', 'Emby API', 'emby'),
-    embywatchsweep: new Cache(
-      'embywatchsweep',
-      'Emby watch sweep',
-      'embywatchsweep',
-      { useClones: false, maxKeys: WATCH_SWEEP_MAX_KEYS },
-    ),
   };
 
   public createCache(
