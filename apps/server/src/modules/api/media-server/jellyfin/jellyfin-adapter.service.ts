@@ -1114,68 +1114,96 @@ export class JellyfinAdapterService implements IMediaServerService {
       // in batches, so overshoot is bounded to the batch that trips it.
       let exceededCeiling = false;
 
+      // The sweep is one request per page per user, so a big server can take
+      // minutes with nothing in the log - which reads as a hang (#3255 added
+      // the same output on the Plex side for exactly that reason). Log each
+      // 10% of users it crosses. The last user is skipped so it never prints a
+      // misleading partial percentage; the completion line below has the total.
+      let sweptUsers = 0;
+      let loggedDecile = 0;
+      const reportProgress = () => {
+        sweptUsers += 1;
+        if (sweptUsers >= users.length) return;
+        const decile = Math.floor((sweptUsers / users.length) * 10) * 10;
+        if (decile > loggedDecile) {
+          loggedDecile = decile;
+          this.logger.log(
+            `Prefetching Jellyfin watch history: ${sweptUsers} of ${users.length} users (${decile}%)...`,
+          );
+        }
+      };
+
       const entries = await this.mapUsersBatched(async (user) => {
         if (exceededCeiling) {
           throw new Error('watch snapshot ceiling exceeded');
         }
 
-        const items = await this.sweepUserLeafItems(user.id, abortSignal);
+        // Pages are folded in as they arrive rather than collected first, so
+        // the transient cost is one page, not one copy of the library.
+        const seenThisUser = new Set<string>();
+        await this.sweepUserLeafItems(user.id, abortSignal, (items) => {
+          for (const item of items) {
+            if (!item.Id) continue;
+            // Paging is not transactional, so a library changing under the sweep
+            // can repeat a row on the next page; counting it twice would inflate
+            // playCount and duplicate watch records.
+            if (seenThisUser.has(item.Id)) continue;
+            seenThisUser.add(item.Id);
 
-        for (const item of items) {
-          if (!item.Id) continue;
+            let itemRecords = watchHistory.get(item.Id);
+            if (!itemRecords) {
+              itemRecords = [];
+              watchHistory.set(item.Id, itemRecords);
+              // Index each episode under its season and series exactly once.
+              for (const parentId of [item.SeriesId, item.SeasonId]) {
+                if (!parentId) continue;
+                const siblings = descendants.get(parentId);
+                if (siblings) siblings.push(item.Id);
+                else descendants.set(parentId, [item.Id]);
+              }
+            }
 
-          let itemRecords = watchHistory.get(item.Id);
-          if (!itemRecords) {
-            itemRecords = [];
-            watchHistory.set(item.Id, itemRecords);
-            // Index each episode under its season and series exactly once.
-            for (const parentId of [item.SeriesId, item.SeasonId]) {
-              if (!parentId) continue;
-              const siblings = descendants.get(parentId);
-              if (siblings) siblings.push(item.Id);
-              else descendants.set(parentId, [item.Id]);
+            const userData = item.UserData ?? undefined;
+
+            // Favourites and play counts are raw UserData, already in this
+            // response - they cost nothing extra and are not gated on the
+            // watch threshold (favouriting or starting something is not
+            // finishing it).
+            if (userData?.IsFavorite) {
+              const fans = favoritedBy.get(item.Id);
+              if (fans) fans.push(user.id);
+              else favoritedBy.set(item.Id, [user.id]);
+            }
+            if (userData?.PlayCount) {
+              playCount.set(
+                item.Id,
+                (playCount.get(item.Id) ?? 0) + userData.PlayCount,
+              );
+            }
+
+            if (!this.isCompletedWatch(userData, playedCompletionThreshold)) {
+              continue;
+            }
+
+            itemRecords.push(
+              JellyfinMapper.toWatchRecord(
+                user.id,
+                item.Id,
+                userData?.LastPlayedDate
+                  ? new Date(userData.LastPlayedDate)
+                  : undefined,
+                userData?.PlayedPercentage ?? undefined,
+              ),
+            );
+            records += 1;
+            if (records > JELLYFIN_WATCH_SNAPSHOT_MAX_RECORDS) {
+              exceededCeiling = true;
+              throw new Error('watch snapshot ceiling exceeded');
             }
           }
+        });
 
-          const userData = item.UserData ?? undefined;
-
-          // Favourites and play counts are raw UserData, already in this
-          // response - they cost nothing extra and are not gated on the
-          // watch threshold (favouriting or starting something is not
-          // finishing it).
-          if (userData?.IsFavorite) {
-            const fans = favoritedBy.get(item.Id);
-            if (fans) fans.push(user.id);
-            else favoritedBy.set(item.Id, [user.id]);
-          }
-          if (userData?.PlayCount) {
-            playCount.set(
-              item.Id,
-              (playCount.get(item.Id) ?? 0) + userData.PlayCount,
-            );
-          }
-
-          if (!this.isCompletedWatch(userData, playedCompletionThreshold)) {
-            continue;
-          }
-
-          itemRecords.push(
-            JellyfinMapper.toWatchRecord(
-              user.id,
-              item.Id,
-              userData?.LastPlayedDate
-                ? new Date(userData.LastPlayedDate)
-                : undefined,
-              userData?.PlayedPercentage ?? undefined,
-            ),
-          );
-          records += 1;
-          if (records > JELLYFIN_WATCH_SNAPSHOT_MAX_RECORDS) {
-            exceededCeiling = true;
-            throw new Error('watch snapshot ceiling exceeded');
-          }
-        }
-
+        reportProgress();
         return user.id;
       }, true);
 
@@ -1221,21 +1249,26 @@ export class JellyfinAdapterService implements IMediaServerService {
   }
 
   /**
-   * Every movie and episode visible to one user, paged. Throws on a short or
-   * uncountable page so a truncated sweep is never mistaken for a small
-   * library.
+   * Hands each page of one user's movies and episodes to `onPage` as it
+   * arrives. Throws on a short or uncountable page so a truncated sweep is
+   * never mistaken for a small library.
    */
   private async sweepUserLeafItems(
     userId: string,
-    abortSignal?: AbortSignal,
-  ): Promise<BaseItemDto[]> {
-    const collected: BaseItemDto[] = [];
+    abortSignal: AbortSignal | undefined,
+    onPage: (items: BaseItemDto[]) => void,
+  ): Promise<void> {
     const pageSize = JELLYFIN_BATCH_SIZE.MAX_PAGE_SIZE;
+    let fetched = 0;
     let total = 0;
 
     do {
       abortSignal?.throwIfAborted();
       const response = await getItemsApi(this.api!).getItems({
+        // Include BoxSet members: libraries with "Group films into
+        // collections" hide them by default, which would leave those items
+        // out of the snapshot entirely (#2554).
+        ...JELLYFIN_LIBRARY_QUERY_DEFAULTS,
         userId,
         recursive: true,
         includeItemTypes: [BaseItemKind.Movie, BaseItemKind.Episode],
@@ -1248,7 +1281,7 @@ export class JellyfinAdapterService implements IMediaServerService {
         // order for a library that is not changing under the sweep.
         sortBy: [ItemSortBy.SortName],
         sortOrder: [SortOrder.Ascending],
-        startIndex: collected.length,
+        startIndex: fetched,
         limit: pageSize,
       });
 
@@ -1261,18 +1294,17 @@ export class JellyfinAdapterService implements IMediaServerService {
       }
 
       total = response.data.TotalRecordCount;
-      collected.push(...items);
+      fetched += items.length;
+      onPage(items);
 
       // Jellyfin fills every page but the last, so anything shorter before the
       // total is reached is a truncated read, not a small library.
-      if (collected.length < total && items.length < pageSize) {
+      if (fetched < total && items.length < pageSize) {
         throw new Error(
-          `Jellyfin returned ${collected.length} of ${total} items for user ${userId}`,
+          `Jellyfin returned ${fetched} of ${total} items for user ${userId}`,
         );
       }
-    } while (collected.length < total);
-
-    return collected;
+    } while (fetched < total);
   }
 
   /**

@@ -1276,6 +1276,51 @@ describe('JellyfinAdapterService', () => {
       expect(snapshot()).toBeUndefined();
     });
 
+    it('includes BoxSet members in the sweep (#2554)', async () => {
+      jellyfinApiMocks.getUsers.mockResolvedValue({
+        data: [{ Id: 'user-1', Name: 'Alice' }],
+      });
+      jellyfinApiMocks.getItems.mockImplementation(
+        ({ userId }: { userId: string }) => Promise.resolve(leafPage(userId)),
+      );
+
+      await service.prefetchWatchHistory();
+
+      // Libraries with "Group films into collections" hide BoxSet members by
+      // default, which would silently drop those items from the snapshot.
+      expect(jellyfinApiMocks.getItems).toHaveBeenCalledWith(
+        expect.objectContaining({ collapseBoxSetItems: false }),
+      );
+    });
+
+    it('counts a row repeated across pages only once', async () => {
+      jellyfinApiMocks.getUsers.mockResolvedValue({
+        data: [{ Id: 'user-1', Name: 'Alice' }],
+      });
+      // Paging is not transactional: a library changing under the sweep can
+      // hand back the same row on the next page.
+      const row = {
+        Id: 'ep-1',
+        Type: 'Episode',
+        SeriesId: 'show-1',
+        UserData: { Played: true, PlayCount: 2 },
+      };
+      jellyfinApiMocks.getItems.mockResolvedValue({
+        data: { Items: [row, row], TotalRecordCount: 2 },
+      });
+
+      await service.prefetchWatchHistory();
+
+      const cached = snapshot() as unknown as {
+        watchHistory: Map<string, unknown[]>;
+        playCount: Map<string, number>;
+        descendants: Map<string, string[]>;
+      };
+      expect(cached.watchHistory.get('ep-1')).toHaveLength(1);
+      expect(cached.playCount.get('ep-1')).toBe(2);
+      expect(cached.descendants.get('show-1')).toEqual(['ep-1']);
+    });
+
     it('does not sweep again once a snapshot is cached', async () => {
       jellyfinApiMocks.getUsers.mockResolvedValue({
         data: [{ Id: 'user-1', Name: 'Alice' }],

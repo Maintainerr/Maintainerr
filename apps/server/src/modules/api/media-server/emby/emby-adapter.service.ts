@@ -544,44 +544,37 @@ export class EmbyAdapterService implements IMediaServerService {
 
   /**
    * Users who watched at least one episode under `parentId` (season or show).
-   * Mirrors `JellyfinAdapterService.getDescendantEpisodeWatchers`. One
-   * /Items request per user, each scoped to that user with `IsPlayed=true`
+   * One /Items request per user, each scoped to that user with `IsPlayed=true`
    * + `Limit=1` - we only need to know whether any played episode exists.
+   *
+   * Errors propagate for the same reason they do in getWatchHistory: an empty
+   * watcher list is indistinguishable from "nobody watched this", which would
+   * make a failed lookup a deletion candidate. The Jellyfin adapter answers the
+   * same question from its prefetched snapshot instead, because Emby omits the
+   * watch dates a bulk sweep would need (see getWatchHistory).
    */
   async getDescendantEpisodeWatchers(parentId: string): Promise<string[]> {
     if (!this.http) return [];
-    try {
-      const users = await this.getUsers();
-      const watchers = new Set<string>();
-      for (const user of users) {
-        try {
-          const { data } = await this.http.get<EmbyItemsQueryResponse>(
-            '/Items',
-            {
-              params: {
-                UserId: user.id,
-                ParentId: parentId,
-                Recursive: true,
-                IncludeItemTypes: 'Episode',
-                ExcludeLocationTypes: 'Virtual',
-                IsPlayed: true,
-                Limit: 1,
-                EnableUserData: true,
-              },
-            },
-          );
-          if ((data.Items ?? []).length > 0) watchers.add(user.id);
-        } catch {
-          // skip users without visibility
-        }
-      }
-      return [...watchers];
-    } catch (error) {
-      this.logger.debug(
-        `Emby getDescendantEpisodeWatchers(${parentId}) failed: ${formatConnectionFailureMessage(error, 'Connection failed')}`,
-      );
-      return [];
+
+    const users = await this.fetchUsersQuery(this.http);
+    const watchers = new Set<string>();
+    for (const user of users) {
+      const { data } = await this.http.get<EmbyItemsQueryResponse>('/Items', {
+        params: {
+          UserId: user.Id,
+          ParentId: parentId,
+          Recursive: true,
+          IncludeItemTypes: 'Episode',
+          ExcludeLocationTypes: 'Virtual',
+          IsPlayed: true,
+          Limit: 1,
+          EnableUserData: true,
+        },
+      });
+      if ((data.Items ?? []).length > 0) watchers.add(user.Id);
     }
+
+    return [...watchers];
   }
 
   /**
