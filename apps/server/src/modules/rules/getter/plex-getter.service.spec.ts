@@ -177,12 +177,7 @@ describe('PlexGetterService', () => {
       const result = await service.get(VIEWCOUNT_PROP_ID, libItem);
 
       expect(result).toBe(7);
-      expect(plexAdapter.getWatchState).toHaveBeenCalledWith(
-        '12345',
-        0,
-        libItem.title,
-        'movie',
-      );
+      expect(plexAdapter.getWatchState).toHaveBeenCalledWith('12345', 0);
     });
 
     it('should return the adapter watched state for the isWatched rule', async () => {
@@ -194,12 +189,7 @@ describe('PlexGetterService', () => {
       const result = await service.get(ISWATCHED_PROP_ID, libItem);
 
       expect(result).toBe(false);
-      expect(plexAdapter.getWatchState).toHaveBeenCalledWith(
-        '12345',
-        0,
-        libItem.title,
-        'movie',
-      );
+      expect(plexAdapter.getWatchState).toHaveBeenCalledWith('12345', 0);
     });
   });
 
@@ -276,6 +266,39 @@ describe('PlexGetterService', () => {
       expect(plexApi.getMetadata).toHaveBeenCalledWith(metadata.ratingKey, {
         includeExternalMedia: true,
       });
+    });
+
+    it('returns the library item lastViewedAt for lastViewedAt (id 7)', async () => {
+      const lastViewedAt = new Date(1_730_000_000 * 1000);
+      plexApi.getMetadata.mockResolvedValue(
+        makeMetadata({ lastViewedAt: 1_720_000_000 }),
+      );
+
+      const result = await service.get(
+        7,
+        createMediaItem({ type: 'movie', lastViewedAt }),
+        'movie',
+        createRulesDto({ dataType: 'movie' }),
+      );
+
+      expect(result).toEqual(lastViewedAt);
+      expect(plexApi.getWatchHistory).not.toHaveBeenCalled();
+    });
+
+    it('returns metadata lastViewedAt for lastViewedAt (id 7)', async () => {
+      plexApi.getMetadata.mockResolvedValue(
+        makeMetadata({ lastViewedAt: 1_720_000_000 }),
+      );
+
+      const result = await service.get(
+        7,
+        createMediaItem({ type: 'movie' }),
+        'movie',
+        createRulesDto({ dataType: 'movie' }),
+      );
+
+      expect(result).toEqual(new Date(1_720_000_000 * 1000));
+      expect(plexApi.getWatchHistory).not.toHaveBeenCalled();
     });
 
     it('returns the newest direct watch-history date for lastViewedAt (id 7)', async () => {

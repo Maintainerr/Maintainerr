@@ -95,6 +95,18 @@ describe('PlexMapper', () => {
       expect(result.tvdb).toEqual(['67890']);
     });
 
+    it('should extract provider ids from legacy Plex agent guids', () => {
+      const guids = [
+        { id: 'com.plexapp.agents.imdb://tt1234567?lang=en' },
+        { id: 'com.plexapp.agents.themoviedb://12345?lang=en' },
+        { id: 'com.plexapp.agents.thetvdb://67890?lang=en' },
+      ];
+      const result = PlexMapper.extractProviderIds(guids);
+      expect(result.imdb).toEqual(['tt1234567']);
+      expect(result.tmdb).toEqual(['12345']);
+      expect(result.tvdb).toEqual(['67890']);
+    });
+
     it('should ignore plex:// guids', () => {
       const guids = [{ id: 'plex://movie/5d776830880197001ec7f3eb' }];
       const result = PlexMapper.extractProviderIds(guids);
@@ -207,6 +219,16 @@ describe('PlexMapper', () => {
 
       expect(result.providerIds.imdb).toEqual(['tt1234567']);
       expect(result.providerIds.tmdb).toEqual(['12345']);
+    });
+
+    it('should extract provider IDs from the top-level guid', () => {
+      const result = PlexMapper.toMediaItem({
+        ...basePlexItem,
+        guid: 'com.plexapp.agents.imdb://tt7654321?lang=en',
+        Guid: [],
+      });
+
+      expect(result.providerIds.imdb).toEqual(['tt7654321']);
     });
 
     it('should convert media sources correctly', () => {

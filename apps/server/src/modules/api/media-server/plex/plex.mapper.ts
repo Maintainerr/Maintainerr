@@ -116,6 +116,7 @@ export class PlexMapper {
    * - "tmdb://12345"
    * - "tvdb://12345"
    * - "plex://movie/5d776830880197001ec7f3eb"
+   * - "com.plexapp.agents.imdb://tt1234567" (legacy top-level guid)
    */
   static extractProviderIds(
     guids: { id: string }[] | undefined,
@@ -133,19 +134,34 @@ export class PlexMapper {
     for (const guid of guids) {
       if (!guid.id) continue;
 
-      const match = guid.id.match(/^(\w+):\/\/(.+)$/);
-      if (!match) continue;
+      let provider: string;
+      let id: string;
+      const modernMatch = guid.id.match(/^(\w+):\/\/(.+)$/);
 
-      const [, provider, id] = match;
+      if (modernMatch) {
+        [, provider, id] = modernMatch;
+      } else {
+        const legacyMatch = guid.id.match(
+          /^com\.plexapp\.agents\.(imdb|themoviedb|thetvdb):\/\/([^?]+)/i,
+        );
+
+        if (!legacyMatch) continue;
+
+        [, provider, id] = legacyMatch;
+      }
+
+      id = id.split('?', 1)[0];
 
       switch (provider.toLowerCase()) {
         case 'imdb':
           providerIds.imdb.push(id);
           break;
         case 'tmdb':
+        case 'themoviedb':
           providerIds.tmdb.push(id);
           break;
         case 'tvdb':
+        case 'thetvdb':
           providerIds.tvdb.push(id);
           break;
         // Ignore plex:// and other unknown providers
@@ -172,7 +188,10 @@ export class PlexMapper {
       type: PlexMapper.toMediaItemType(plex.type),
       addedAt: new Date(plex.addedAt * 1000),
       updatedAt: plex.updatedAt ? new Date(plex.updatedAt * 1000) : undefined,
-      providerIds: PlexMapper.extractProviderIds(plex.Guid),
+      providerIds: PlexMapper.extractProviderIds([
+        ...(plex.Guid ?? []),
+        { id: plex.guid },
+      ]),
       mediaSources: PlexMapper.toMediaSources(plex.Media),
       library: {
         id: plex.librarySectionID?.toString(),
@@ -221,7 +240,10 @@ export class PlexMapper {
       type: PlexMapper.toMediaItemType(plex.type),
       addedAt: new Date(plex.addedAt * 1000),
       updatedAt: plex.updatedAt ? new Date(plex.updatedAt * 1000) : undefined,
-      providerIds: PlexMapper.extractProviderIds(plex.Guid),
+      providerIds: PlexMapper.extractProviderIds([
+        ...(plex.Guid ?? []),
+        { id: plex.guid },
+      ]),
       mediaSources: PlexMapper.toMediaSources(plex.Media || plex.media),
       library: {
         id: '', // Not available on PlexMetadata

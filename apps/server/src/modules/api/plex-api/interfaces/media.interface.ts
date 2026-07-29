@@ -23,6 +23,8 @@ export interface PlexMetadata {
   viewedLeafCount: number;
   addedAt: number;
   updatedAt: number;
+  viewCount?: number;
+  lastViewedAt?: number;
   media: Media[];
   parentData?: PlexMetadata;
   Label?: { tag: string }[];

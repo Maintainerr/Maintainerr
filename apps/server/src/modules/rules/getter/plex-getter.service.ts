@@ -123,8 +123,6 @@ export class PlexGetterService {
           const watchState = await this.plexAdapter.getWatchState(
             metadata.ratingKey,
             libItem.viewCount,
-            libItem.title,
-            metadata.type,
           );
           return watchState.viewCount;
         }
@@ -132,8 +130,6 @@ export class PlexGetterService {
           const watchState = await this.plexAdapter.getWatchState(
             metadata.ratingKey,
             libItem.viewCount,
-            libItem.title,
-            metadata.type,
           );
           return watchState.isWatched;
         }
@@ -253,6 +249,14 @@ export class PlexGetterService {
           ]);
         }
         case 'lastViewedAt': {
+          if (libItem.lastViewedAt) {
+            return libItem.lastViewedAt;
+          }
+
+          if (metadata.lastViewedAt) {
+            return new Date(+metadata.lastViewedAt * 1000);
+          }
+
           // Errors must surface so the outer catch returns `undefined` for an
           // unknown watch state instead of collapsing the failure into a
           // confirmed never-watched `null`.

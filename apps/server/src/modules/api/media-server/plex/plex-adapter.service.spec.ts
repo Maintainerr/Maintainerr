@@ -478,47 +478,45 @@ describe('PlexAdapterService', () => {
   });
 
   describe('getWatchState', () => {
-    it('should derive watched state from watch history when entries exist', async () => {
+    it('should use native Plex viewCount even when watch-history entries exist', async () => {
       plexApi.getWatchHistory.mockResolvedValue([createPlexSeenBy()]);
 
-      const watchState = await service.getWatchState('item123');
-
-      expect(watchState).toEqual({
-        viewCount: 1,
-        isWatched: true,
-      });
-      expect(plexApi.getWatchHistory).toHaveBeenCalledWith(
-        'item123',
-        false,
-        undefined,
-      );
-    });
-
-    it('should return unwatched state when history is empty', async () => {
-      plexApi.getWatchHistory.mockResolvedValue([]);
-
-      const watchState = await service.getWatchState('item123');
+      const watchState = await service.getWatchState('item123', 0);
 
       expect(watchState).toEqual({
         viewCount: 0,
         isWatched: false,
       });
-      expect(plexApi.getWatchHistory).toHaveBeenCalledWith(
-        'item123',
-        false,
-        undefined,
-      );
+      expect(plexApi.getWatchHistory).not.toHaveBeenCalled();
     });
 
-    it('should fall back to nativeViewCount for isWatched when history is empty', async () => {
+    it('should fetch metadata when nativeViewCount is missing', async () => {
+      plexApi.getWatchHistory.mockResolvedValue([]);
+      plexApi.getMetadata.mockResolvedValue(
+        createPlexMetadata({ viewCount: 3 }),
+      );
+
+      const watchState = await service.getWatchState('item123');
+
+      expect(watchState).toEqual({
+        viewCount: 3,
+        isWatched: true,
+      });
+      expect(plexApi.getWatchHistory).not.toHaveBeenCalled();
+      expect(plexApi.getMetadata).toHaveBeenCalledWith('item123');
+    });
+
+    it('should use nativeViewCount for watched state and view count', async () => {
       plexApi.getWatchHistory.mockResolvedValue([]);
 
       const watchState = await service.getWatchState('item123', 2);
 
       expect(watchState).toEqual({
-        viewCount: 0,
+        viewCount: 2,
         isWatched: true,
       });
+      expect(plexApi.getWatchHistory).not.toHaveBeenCalled();
+      expect(plexApi.getMetadata).not.toHaveBeenCalled();
     });
 
     it('should not mark as watched when nativeViewCount is 0 and history is empty', async () => {
