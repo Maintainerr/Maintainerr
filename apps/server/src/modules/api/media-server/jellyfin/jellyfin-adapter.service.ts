@@ -118,12 +118,16 @@ export class JellyfinAdapterService implements IMediaServerService {
   private initialized = false;
   private jellyfinUserId: string | undefined;
   private readonly cache: Cache;
+  // Separate cache: the per-show sweeps are large, read-only values, so they
+  // are held uncloned under their own small key ceiling (see api/lib/cache.ts).
+  private readonly watchSweepCache: Cache;
 
   constructor(
     private readonly settingsDataService: SettingsDataService,
     private readonly logger: MaintainerrLogger,
   ) {
     this.cache = cacheManager.getCache('jellyfin');
+    this.watchSweepCache = cacheManager.getCache('jellyfinwatchsweep');
     this.logger.setContext(JellyfinAdapterService.name);
   }
 
@@ -245,6 +249,7 @@ export class JellyfinAdapterService implements IMediaServerService {
     this.jellyfinUserId = undefined;
     // Clear the cache when uninitializing
     this.cache.flush();
+    this.watchSweepCache.flush();
   }
 
   isSetup(): boolean {
@@ -1136,62 +1141,121 @@ export class JellyfinAdapterService implements IMediaServerService {
   }
 
   /**
+   * Watch records for every Episode descendant of `parentId` (show or season),
+   * keyed by episode id, with an entry for every episode the sweep saw (an
+   * empty array means confirmed never watched). One getItems call per user
+   * (batched via mapUsersBatched) - O(users), not the O(users × episodes) a
+   * per-episode getWatchHistory walk costs (#3337).
+   *
+   * This reads the same /Items + enableUserData payload the per-item path
+   * reads, so the records it builds are identical; only the request count
+   * changes. The sweep is deliberately unfiltered: Jellyfin's isPlayed filter
+   * tests the Played flag alone, so it would drop episodes that are only
+   * watched by crossing the PlayedPercentage threshold (#2466).
+   *
+   * All-or-nothing. A user whose sweep failed, or a short page, would read as
+   * "watched nothing" for every episode of the show, so an incomplete sweep
+   * throws rather than answering with a partial map (#2744).
+   */
+  async getDescendantEpisodeWatchHistory(
+    parentId: string,
+  ): Promise<Record<string, WatchRecord[]>> {
+    if (!this.api) return {};
+
+    const playedCompletionThreshold =
+      await this.getPlayedCompletionThreshold(true);
+    const cacheKey = `${JELLYFIN_CACHE_KEYS.WATCH_HISTORY}:${playedCompletionThreshold ?? 'played'}:descendants:${parentId}`;
+    const cached =
+      this.watchSweepCache.data.get<Record<string, WatchRecord[]>>(cacheKey);
+    if (cached !== undefined) return cached;
+
+    const users = await this.getUsers(true);
+    const entries = await this.mapUsersBatched(async (user) => {
+      const response = await getItemsApi(this.api!).getItems({
+        userId: user.id,
+        parentId,
+        recursive: true,
+        includeItemTypes: [BaseItemKind.Episode],
+        // Ignore unaired placeholders (mirrors #2624).
+        excludeLocationTypes: [LocationType.Virtual],
+        enableUserData: true,
+        // Minimize payload - we only need UserData per episode.
+        fields: [],
+      });
+
+      const items = response.data.Items ?? [];
+      const total = response.data.TotalRecordCount;
+      if (typeof total === 'number' && items.length < total) {
+        throw new Error(
+          `Jellyfin returned ${items.length} of ${total} episodes under ${parentId}`,
+        );
+      }
+
+      return { userId: user.id, items };
+    }, true);
+
+    // mapUsersBatched drops users whose request failed, which here would read
+    // as "this user watched nothing" for the whole show.
+    if (entries.length !== users.length) {
+      throw new Error(
+        `Jellyfin watch-history sweep for ${parentId} covered ${entries.length} of ${users.length} users`,
+      );
+    }
+
+    const watchHistory: Record<string, WatchRecord[]> = {};
+    for (const { userId, items } of entries) {
+      for (const item of items) {
+        if (!item.Id) continue;
+
+        watchHistory[item.Id] ??= [];
+        const userData = item.UserData ?? undefined;
+        if (!this.isCompletedWatch(userData, playedCompletionThreshold)) {
+          continue;
+        }
+
+        watchHistory[item.Id].push(
+          JellyfinMapper.toWatchRecord(
+            userId,
+            item.Id,
+            userData?.LastPlayedDate
+              ? new Date(userData.LastPlayedDate)
+              : undefined,
+            userData?.PlayedPercentage ?? undefined,
+          ),
+        );
+      }
+    }
+
+    this.watchSweepCache.data.set(
+      cacheKey,
+      watchHistory,
+      JELLYFIN_CACHE_TTL.WATCH_HISTORY,
+    );
+    return watchHistory;
+  }
+
+  /**
    * Users who watched ≥1 Episode descendant of `parentId` (show or season),
    * honouring the configured PlayedPercentage threshold via isCompletedWatch.
    * Jellyfin's Series Played flag is an all-or-nothing aggregate, so the
    * show-level watch history degenerates to sw_allEpisodesSeenBy (#2559).
-   * One getItems call per user (batched via mapUsersBatched, shared with
-   * getAllUserItemData) - O(users), not O(users × episodes).
+   *
+   * Errors propagate for the same reason they do in getWatchHistory: an empty
+   * watcher list is indistinguishable from "nobody watched this", which would
+   * make a failed lookup a deletion candidate.
    */
   async getDescendantEpisodeWatchers(parentId: string): Promise<string[]> {
     if (!this.api) return [];
 
-    try {
-      const playedCompletionThreshold =
-        await this.getPlayedCompletionThreshold();
-      const cacheKey = `${JELLYFIN_CACHE_KEYS.WATCH_HISTORY}:${playedCompletionThreshold ?? 'played'}:episode-watchers:${parentId}`;
-      const cached = this.cache.data.get<string[]>(cacheKey);
-      if (cached !== undefined) return cached;
-
-      const entries = await this.mapUsersBatched(async (user) => ({
-        userId: user.id,
-        items:
-          (
-            await getItemsApi(this.api!).getItems({
-              userId: user.id,
-              parentId,
-              recursive: true,
-              includeItemTypes: [BaseItemKind.Episode],
-              // Ignore unaired placeholders (mirrors #2624).
-              excludeLocationTypes: [LocationType.Virtual],
-              enableUserData: true,
-              // Minimize payload - we only need UserData per episode.
-              fields: [],
-            })
-          ).data.Items ?? [],
-      }));
-
-      const watcherIds = new Set<string>();
-      for (const { userId, items } of entries) {
-        const hasWatched = items.some((item) =>
-          this.isCompletedWatch(
-            item.UserData ?? undefined,
-            playedCompletionThreshold,
-          ),
-        );
-        if (hasWatched) watcherIds.add(userId);
+    const watchHistory = await this.getDescendantEpisodeWatchHistory(parentId);
+    const watcherIds = new Set<string>();
+    for (const records of Object.values(watchHistory)) {
+      for (const record of records) {
+        watcherIds.add(record.userId);
       }
-
-      const watchers = [...watcherIds];
-      this.cache.data.set(cacheKey, watchers, JELLYFIN_CACHE_TTL.WATCH_HISTORY);
-      return watchers;
-    } catch (error) {
-      this.logger.error(
-        `Failed to get descendant episode watchers for ${parentId}`,
-      );
-      this.logger.debug(error);
-      return [];
     }
+
+    return [...watcherIds];
   }
 
   /**
@@ -2071,6 +2135,11 @@ export class JellyfinAdapterService implements IMediaServerService {
   }
 
   resetMetadataCache(itemId?: string): void {
+    // Descendant sweeps are keyed by show/season, so an episode-level change
+    // has no key of its own to clear - drop them all, exactly as the watch
+    // namespace below does (#3274).
+    this.watchSweepCache.flush();
+
     if (itemId) {
       // Watch-history entries are keyed per item. Season/show getters
       // (e.g. sw_allEpisodesSeenBy) aggregate their DESCENDANT episodes' entries,

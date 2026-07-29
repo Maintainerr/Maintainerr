@@ -200,7 +200,9 @@ export class LogsController implements BeforeApplicationShutdown {
       from(currentLogFileRecentLines).pipe(
         filter((x) => x !== ''),
         mergeMap((data: string) => {
-          const logFileRegex = /\[maintainerr\].*?(?=\[maintainerr\]|\Z)/gs;
+          // No `m` flag, so `$` is end-of-input. JS has no `\Z` anchor - it
+          // matches a literal "Z", which dropped or truncated the last entry.
+          const logFileRegex = /\[maintainerr\].*?(?=\[maintainerr\]|$)/gs;
           const matches = data.match(logFileRegex) ?? [];
           const events: MessageEvent[] = [];
 

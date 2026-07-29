@@ -90,6 +90,24 @@ describe('Cache key-count bound (#3284)', () => {
         cache.data.flushAll();
       }
     });
+
+    // Each entry covers a whole show's episodes across every user, so these
+    // hold far fewer keys than the shared per-item caches and are never cloned.
+    it('bounds the watch-sweep caches well below DEFAULT_MAX_KEYS and skips cloning', () => {
+      for (const id of ['jellyfinwatchsweep', 'embywatchsweep'] as const) {
+        const cache = cacheManager.getCache(id);
+        cache.data.flushAll();
+
+        const value = { 'ep-1': [] };
+        cache.data.set('sweep', value);
+        expect(cache.data.get('sweep')).toBe(value);
+
+        fill(cache, DEFAULT_MAX_KEYS);
+        expect(cache.data.keys().length).toBeLessThan(DEFAULT_MAX_KEYS);
+        expect(cache.persistent).toBe(false);
+        cache.data.flushAll();
+      }
+    });
   });
 
   describe('existing behaviour is preserved', () => {

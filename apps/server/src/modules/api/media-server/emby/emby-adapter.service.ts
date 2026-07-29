@@ -68,6 +68,9 @@ export class EmbyAdapterService implements IMediaServerService {
   private embyUserId: string | undefined;
   private deviceId: string;
   private readonly cache: Cache;
+  // Separate cache: the per-show sweeps are large, read-only values, so they
+  // are held uncloned under their own small key ceiling (see api/lib/cache.ts).
+  private readonly watchSweepCache: Cache;
 
   constructor(
     private readonly settings: SettingsDataService,
@@ -75,6 +78,7 @@ export class EmbyAdapterService implements IMediaServerService {
   ) {
     this.logger.setContext(EmbyAdapterService.name);
     this.cache = cacheManager.getCache('emby');
+    this.watchSweepCache = cacheManager.getCache('embywatchsweep');
     this.deviceId = `${EMBY_DEVICE_INFO.idPrefix}-${this.randomToken(12)}`;
   }
 
@@ -129,6 +133,7 @@ export class EmbyAdapterService implements IMediaServerService {
     this.embyApiKey = undefined;
     this.embyUserId = undefined;
     this.cache.flush();
+    this.watchSweepCache.flush();
   }
 
   isSetup(): boolean {
@@ -543,45 +548,101 @@ export class EmbyAdapterService implements IMediaServerService {
   }
 
   /**
+   * Watch records for every Episode descendant of `parentId` (show or season),
+   * keyed by episode id, with an entry for every episode the sweep saw (an
+   * empty array means confirmed never watched). Mirrors
+   * `JellyfinAdapterService.getDescendantEpisodeWatchHistory`: one /Items
+   * request per user - O(users), not the O(users × episodes) a per-episode
+   * getWatchHistory walk costs (#3337).
+   *
+   * The sweep is unfiltered rather than using `IsPlayed=true`, so the records
+   * are built from the same UserData the per-item path reads.
+   *
+   * All-or-nothing. A user whose sweep failed, or a short page, would read as
+   * "watched nothing" for every episode of the show, so an incomplete sweep
+   * throws rather than answering with a partial map.
+   */
+  async getDescendantEpisodeWatchHistory(
+    parentId: string,
+  ): Promise<Record<string, WatchRecord[]>> {
+    if (!this.http) return {};
+
+    const cacheKey = `${EMBY_CACHE_KEYS.WATCH_HISTORY}:descendants:${parentId}`;
+    const cached =
+      this.watchSweepCache.data.get<Record<string, WatchRecord[]>>(cacheKey);
+    if (cached !== undefined) return cached;
+
+    const users = await this.fetchUsersQuery(this.http);
+    const watchHistory: Record<string, WatchRecord[]> = {};
+
+    for (const user of users) {
+      const { data } = await this.http.get<EmbyItemsQueryResponse>('/Items', {
+        params: {
+          UserId: user.Id,
+          ParentId: parentId,
+          Recursive: true,
+          IncludeItemTypes: 'Episode',
+          ExcludeLocationTypes: 'Virtual',
+          EnableUserData: true,
+          // No Fields: the default set already carries UserData, and this is
+          // the request shape getDescendantEpisodeWatchers already used.
+        },
+      });
+
+      const items = data.Items ?? [];
+      if (
+        typeof data.TotalRecordCount === 'number' &&
+        items.length < data.TotalRecordCount
+      ) {
+        throw new Error(
+          `Emby returned ${items.length} of ${data.TotalRecordCount} episodes under ${parentId}`,
+        );
+      }
+
+      for (const item of items) {
+        watchHistory[item.Id] ??= [];
+        if (!item.UserData?.Played) continue;
+
+        watchHistory[item.Id].push(
+          EmbyMapper.toWatchRecord(
+            user.Id,
+            item.Id,
+            item.UserData.LastPlayedDate
+              ? new Date(item.UserData.LastPlayedDate)
+              : undefined,
+          ),
+        );
+      }
+    }
+
+    this.watchSweepCache.data.set(
+      cacheKey,
+      watchHistory,
+      EMBY_CACHE_TTL.WATCH_HISTORY,
+    );
+    return watchHistory;
+  }
+
+  /**
    * Users who watched at least one episode under `parentId` (season or show).
-   * Mirrors `JellyfinAdapterService.getDescendantEpisodeWatchers`. One
-   * /Items request per user, each scoped to that user with `IsPlayed=true`
-   * + `Limit=1` - we only need to know whether any played episode exists.
+   * Mirrors `JellyfinAdapterService.getDescendantEpisodeWatchers`.
+   *
+   * Errors propagate for the same reason they do in getWatchHistory: an empty
+   * watcher list is indistinguishable from "nobody watched this", which would
+   * make a failed lookup a deletion candidate.
    */
   async getDescendantEpisodeWatchers(parentId: string): Promise<string[]> {
     if (!this.http) return [];
-    try {
-      const users = await this.getUsers();
-      const watchers = new Set<string>();
-      for (const user of users) {
-        try {
-          const { data } = await this.http.get<EmbyItemsQueryResponse>(
-            '/Items',
-            {
-              params: {
-                UserId: user.id,
-                ParentId: parentId,
-                Recursive: true,
-                IncludeItemTypes: 'Episode',
-                ExcludeLocationTypes: 'Virtual',
-                IsPlayed: true,
-                Limit: 1,
-                EnableUserData: true,
-              },
-            },
-          );
-          if ((data.Items ?? []).length > 0) watchers.add(user.id);
-        } catch {
-          // skip users without visibility
-        }
+
+    const watchHistory = await this.getDescendantEpisodeWatchHistory(parentId);
+    const watchers = new Set<string>();
+    for (const records of Object.values(watchHistory)) {
+      for (const record of records) {
+        watchers.add(record.userId);
       }
-      return [...watchers];
-    } catch (error) {
-      this.logger.debug(
-        `Emby getDescendantEpisodeWatchers(${parentId}) failed: ${formatConnectionFailureMessage(error, 'Connection failed')}`,
-      );
-      return [];
     }
+
+    return [...watchers];
   }
 
   /**
@@ -1332,9 +1393,12 @@ export class EmbyAdapterService implements IMediaServerService {
   resetMetadataCache(_itemId?: string): void {
     // The Emby cache only stores server-wide aggregates (users/libraries/status/
     // collections), never per-item watch entries (getWatchHistory hits the API
-    // fresh), so a full flush is the simplest correct reset.
+    // fresh), so a full flush is the simplest correct reset. Descendant sweeps
+    // are keyed by show/season, so an episode-level change has no key of its
+    // own to clear - drop them all.
     void _itemId;
     this.cache.flush();
+    this.watchSweepCache.flush();
   }
 
   // ============================================================================

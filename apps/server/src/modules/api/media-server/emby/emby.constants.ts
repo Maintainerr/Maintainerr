@@ -20,6 +20,7 @@ export const EMBY_BATCH_SIZE = {
 } as const;
 
 export const EMBY_CACHE_KEYS = {
+  WATCH_HISTORY: 'emby:watch',
   USERS: 'emby:users',
   LIBRARIES: 'emby:libraries',
   STATUS: 'emby:status',
