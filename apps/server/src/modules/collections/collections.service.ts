@@ -2007,11 +2007,20 @@ export class CollectionsService {
           ? collection.sortTitle
           : null;
 
-      if (dbCollection?.mediaServerId) {
-        // Verify the media server collection still exists before updating
-        const serverColl = await mediaServer.getCollection(
-          dbCollection.mediaServerId,
-        );
+      // Verify the media server collection still exists before updating. A
+      // collection that could not be verified keeps its link and its metadata
+      // untouched - the next save reapplies both.
+      const probe = dbCollection?.mediaServerId
+        ? await this.probeMediaServerCollection(
+            dbCollection,
+            mediaServer,
+            '[updateCollection]',
+          )
+        : undefined;
+
+      if (probe && probe.status !== 'unknown') {
+        const serverColl =
+          probe.status === 'found' ? probe.collection : undefined;
 
         if (!serverColl) {
           // Collection was deleted from media server - clear the stale link
@@ -2128,11 +2137,24 @@ export class CollectionsService {
   ): Promise<Collection> {
     // refetch manual collection, in case it's ID changed
     if (collection.manualCollection) {
-      const foundColl = await this.findMediaServerCollection(
-        collection.manualCollectionName,
-        collection.libraryId,
-        true,
-      );
+      let foundColl: MediaCollection | undefined;
+      try {
+        foundColl = await this.findMediaServerCollection(
+          collection.manualCollectionName,
+          collection.libraryId,
+          true,
+        );
+      } catch (error) {
+        // "Could not look" must not be reported as "does not exist" - that
+        // message sent users hunting for a typo in a collection that was
+        // there all along.
+        this.logger.warn(
+          `Could not verify manual collection '${collection.manualCollectionName}' - keeping the current link`,
+        );
+        this.logger.debug(error);
+        return collection;
+      }
+
       if (foundColl) {
         collection.mediaServerId = foundColl.id;
         collection = await this.saveCollection(collection);
@@ -2154,6 +2176,38 @@ export class CollectionsService {
       }
     }
     return collection;
+  }
+
+  /**
+   * Existence probe for link decisions. 'missing' is the server confirming the
+   * collection is gone; 'unknown' is a failed lookup. Unlinking on 'unknown'
+   * makes the next add create a duplicate beside the real collection and
+   * orphans it - poster, sort and members included (#3344).
+   */
+  private async probeMediaServerCollection(
+    collection: Pick<Collection, 'title' | 'mediaServerId'>,
+    mediaServer: IMediaServerService,
+    context: string,
+  ): Promise<
+    | { status: 'found'; collection: MediaCollection }
+    | { status: 'missing' }
+    | { status: 'unknown' }
+  > {
+    try {
+      const serverColl = await mediaServer.getCollection(
+        collection.mediaServerId,
+        true,
+      );
+      return serverColl
+        ? { status: 'found', collection: serverColl }
+        : { status: 'missing' };
+    } catch (error) {
+      this.logger.warn(
+        `${context} Could not verify media server collection ${collection.mediaServerId} for "${collection.title}" - keeping the link`,
+      );
+      this.logger.debug(error);
+      return { status: 'unknown' };
+    }
   }
 
   /**
@@ -2191,17 +2245,43 @@ export class CollectionsService {
       );
 
       if (collection.mediaServerId) {
-        serverColl = await mediaServer.getCollection(collection.mediaServerId);
+        const probe = await this.probeMediaServerCollection(
+          collection,
+          mediaServer,
+          '[checkAutomaticMediaServerLink]',
+        );
+
+        if (probe.status === 'unknown') {
+          // Nothing is known about the server collection this run, so neither
+          // reconciliation nor unlinking is safe.
+          return collection;
+        }
+
+        if (probe.status === 'found') {
+          serverColl = probe.collection;
+        }
         this.logger.debug(
           `[checkAutomaticMediaServerLink] getCollection(${collection.mediaServerId}) returned: ${serverColl ? `id=${serverColl.id}, childCount=${serverColl.childCount}` : 'undefined'}`,
         );
       }
 
       if (!serverColl) {
-        const foundColl = await this.findMediaServerCollection(
-          collection.title,
-          collection.libraryId,
-        );
+        let foundColl: MediaCollection | undefined;
+        try {
+          foundColl = await this.findMediaServerCollection(
+            collection.title,
+            collection.libraryId,
+          );
+        } catch (error) {
+          // The library could not be enumerated, so we cannot tell whether a
+          // collection with this title exists. Clearing the link here would
+          // make the next add create a second one beside it (#3344).
+          this.logger.warn(
+            `[checkAutomaticMediaServerLink] Could not search for "${collection.title}" in library ${collection.libraryId} - leaving the link untouched`,
+          );
+          this.logger.debug(error);
+          return collection;
+        }
 
         // Only log if we expected to find it (had a previous link) or if we actually found one
         if (foundColl || collection.mediaServerId) {
@@ -2531,19 +2611,36 @@ export class CollectionsService {
         // Create media server collection if needed
         if (needsMediaServerCollection) {
           let newColl: MediaCollection | undefined = undefined;
-          if (collection.manualCollection) {
-            newColl = await this.findMediaServerCollection(
-              collection.manualCollectionName,
-              collection.libraryId,
-              true,
-            );
-          } else {
-            newColl = await this.findMediaServerCollection(
-              collection.title,
-              collection.libraryId,
-            );
+          // A search that could not complete must not fall through to create:
+          // the collection it failed to see would end up duplicated (#3344).
+          // Skip this run and retry on the next one.
+          let searchCompleted = true;
+          const findExisting = async (
+            name: string,
+            searchAllLibraries = false,
+          ): Promise<MediaCollection | undefined> => {
+            try {
+              return await this.findMediaServerCollection(
+                name,
+                collection.libraryId,
+                searchAllLibraries,
+              );
+            } catch (error) {
+              searchCompleted = false;
+              this.logger.warn(
+                `Could not search library ${collection.libraryId} for "${name}" - not creating a media server collection this run`,
+              );
+              this.logger.debug(error);
+              return undefined;
+            }
+          };
 
-            if (!newColl) {
+          if (collection.manualCollection) {
+            newColl = await findExisting(collection.manualCollectionName, true);
+          } else {
+            newColl = await findExisting(collection.title);
+
+            if (!newColl && searchCompleted) {
               newColl = await mediaServer.createCollection({
                 libraryId: collection.libraryId,
                 title: collection.title,
@@ -3308,11 +3405,20 @@ export class CollectionsService {
         where: { id: collectionDbId },
       });
 
+      // Deactivating must never be blocked by an unreachable media server, but
+      // dropping the link on a failed delete leaves a collection behind that
+      // Maintainerr no longer tracks (#3344). Keep the link instead: the
+      // collection stays deactivated locally and the stale media server
+      // collection is still ours to clean up.
+      let mediaServerCollectionRemoved = true;
       if (!collection.manualCollection && collection.mediaServerId) {
         try {
           await mediaServer.deleteCollection(collection.mediaServerId);
         } catch (error) {
-          this.logger.warn('Failed to delete collection from media server');
+          mediaServerCollectionRemoved = false;
+          this.logger.warn(
+            `Failed to delete media server collection ${collection.mediaServerId} for '${collection.title}' - deactivating anyway and keeping the link`,
+          );
           this.logger.debug(error);
         }
       }
@@ -3327,7 +3433,9 @@ export class CollectionsService {
       await this.saveCollection({
         ...collection,
         isActive: false,
-        mediaServerId: null,
+        mediaServerId: mediaServerCollectionRemoved
+          ? null
+          : collection.mediaServerId,
       });
 
       await this.addLogRecord(
@@ -3715,7 +3823,11 @@ export class CollectionsService {
   }
 
   /**
-   * Find a collection in the media server by name
+   * Find a collection in the media server by name. Undefined means the search
+   * completed and nothing matched.
+   *
+   * @throws Error when the library could not be enumerated - callers must treat
+   * that as "unknown" and neither unlink nor create.
    */
   public async findMediaServerCollection(
     name: string,
@@ -3786,10 +3898,12 @@ export class CollectionsService {
       return undefined;
     } catch (error) {
       this.logger.warn(
-        'An error occurred while searching for a specific collection.',
+        `Could not search library ${libraryId} for a collection named "${name}"`,
       );
       this.logger.debug(error);
-      return undefined;
+      // undefined is reserved for a confirmed miss. Reporting a failed search
+      // as "not there" is what relinks nothing and creates a duplicate (#3344).
+      throw error;
     }
   }
 

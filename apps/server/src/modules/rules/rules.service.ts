@@ -568,11 +568,13 @@ export class RulesService {
                 !!dbCollection.manualCollection,
               );
             } catch (error) {
-              // Collection may already be deleted, ignore errors
-              this.logger.debug(
-                'Failed to clean up media server collection',
-                error,
+              // The link is dropped below either way, so a failure here leaves
+              // a collection behind that Maintainerr no longer tracks. Say so:
+              // it has to be removed by hand.
+              this.logger.warn(
+                `Failed to clean up media server collection ${dbCollection.mediaServerId} for '${dbCollection.title}' - it may need to be removed manually`,
               );
+              this.logger.debug(error);
             }
           }
           await this.collectionService.saveCollection({

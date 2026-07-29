@@ -238,12 +238,26 @@ export interface IMediaServerService {
   getActiveSessions(): Promise<Set<string>>;
 
   /**
-   * Get all collections in a library.
+   * Get all collections in a library. An empty array means the server confirmed
+   * the library holds no collections - never "the lookup failed".
+   *
+   * @throws Error on any failure to enumerate (connection, 4xx/5xx, an
+   * uninitialized client). Callers must treat a throw as "collections unknown":
+   * reporting a failed listing as "no collection with that title" is what makes
+   * the link lookup create a duplicate beside the real one (#3344). The rule
+   * getters already do the right thing - their outer catch turns it into an
+   * undefined rule value, which the comparator skips.
    */
   getCollections(libraryId: string): Promise<MediaCollection[]>;
 
   /**
-   * Get a specific collection by ID.
+   * Get a specific collection by ID. Undefined means the server confirmed the
+   * collection is gone (404) - never "the lookup failed".
+   *
+   * @param throwOnError - When true, a failed lookup throws instead of
+   * returning undefined, so callers that unlink or recreate on "missing" can
+   * tell a deleted collection from an unreachable server. Uncertainty must
+   * never unlink: the next add would create a duplicate beside the real one.
    */
   getCollection(
     collectionId: string,

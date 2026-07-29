@@ -347,6 +347,27 @@ describe('EmbyAdapterService', () => {
   // which would break the manual-collection bootstrap (incl. the cross-library
   // lookup). Maintainerr only ever operates as an admin, so when no user is
   // configured we resolve one rather than degrade to /Items.
+  // #3344: undefined must mean "the server says it is gone", so callers that
+  // unlink on a missing collection never act on an unreachable server.
+  describe('getCollection missing vs unreachable', () => {
+    it('returns undefined on 404 even when asked to throw', async () => {
+      setHttp();
+      http.get.mockRejectedValueOnce(createResponseError(404));
+
+      await expect(
+        service.getCollection('box-1', true),
+      ).resolves.toBeUndefined();
+    });
+
+    it('throws on any other failure when asked to throw', async () => {
+      setHttp();
+      const error = createResponseError(502);
+      http.get.mockRejectedValueOnce(error);
+
+      await expect(service.getCollection('box-1', true)).rejects.toBe(error);
+    });
+  });
+
   describe('user-scoped collection reads', () => {
     const clearConfiguredUser = () => {
       // Clear the user directly: setHttp(undefined) would hit its default param.

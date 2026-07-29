@@ -89,12 +89,14 @@ describe('CollectionsService', () => {
       addBatchToCollection: jest.fn().mockResolvedValue([]),
       removeBatchFromCollection: jest.fn().mockResolvedValue([]),
       getCollection: jest.fn().mockResolvedValue(undefined),
+      getCollections: jest.fn().mockResolvedValue([]),
       getCollectionChildren: jest.fn().mockResolvedValue([]),
       getLibraries: jest.fn().mockResolvedValue([{ id: 'library-1' }]),
       getMetadata: jest.fn().mockResolvedValue(undefined),
       itemExists: jest.fn().mockResolvedValue(true),
       removeFromCollection: jest.fn().mockResolvedValue(undefined),
       deleteCollection: jest.fn().mockResolvedValue(undefined),
+      updateCollection: jest.fn().mockResolvedValue(undefined),
     } as unknown as Mocked<IMediaServerService>;
 
     collectionMediaRepo.create.mockImplementation((entityLike) =>
@@ -650,6 +652,68 @@ describe('CollectionsService', () => {
     expect(collectionRepo.save).toHaveBeenCalledWith(
       expect.objectContaining({ id: 28, mediaServerId: null }),
     );
+    expect(mediaServer.deleteCollection).not.toHaveBeenCalled();
+  });
+
+  // #3344 on the save path: a media server hiccup while a rule group is saved
+  // must not drop the link or delete the collection either.
+  it('keeps the link and skips the media server update when the save-time lookup fails', async () => {
+    const dbCollection = createCollection({
+      id: 32,
+      mediaServerId: 'live-collection',
+      manualCollection: false,
+      title: 'Old Title',
+      libraryId: 'library-1',
+      type: 'movie',
+    });
+
+    const logQueryBuilder = {
+      insert: jest.fn(),
+      into: jest.fn(),
+      values: jest.fn(),
+      execute: jest.fn().mockResolvedValue({ generatedMaps: [{ id: 1 }] }),
+    };
+    logQueryBuilder.insert.mockReturnValue(logQueryBuilder);
+    logQueryBuilder.into.mockReturnValue(logQueryBuilder);
+    logQueryBuilder.values.mockReturnValue(logQueryBuilder);
+    dataSource.createQueryBuilder.mockReturnValue(logQueryBuilder as any);
+
+    collectionRepo.findOne.mockResolvedValue(dbCollection);
+    collectionRepo.save.mockImplementation(async (c) => c as Collection);
+    mediaServer.getCollection.mockRejectedValue(new Error('Plex unreachable'));
+
+    const result = await service.updateCollection({
+      ...dbCollection,
+      title: 'New Title',
+    });
+
+    expect(mediaServer.updateCollection).not.toHaveBeenCalled();
+    expect(mediaServer.deleteCollection).not.toHaveBeenCalled();
+    expect(result?.dbCollection?.mediaServerId).toBe('live-collection');
+  });
+
+  // #3344: unlinking on a failed lookup orphans the real collection - the next
+  // add creates a second one beside it, with the same title and the same media.
+  it('keeps the automatic link when the collection cannot be verified', async () => {
+    const collection = createCollection({
+      id: 31,
+      mediaServerId: 'live-collection',
+      manualCollection: false,
+      title: 'Unverifiable',
+      libraryId: 'library-1',
+    });
+
+    mediaServer.getCollection.mockRejectedValue(new Error('Plex unreachable'));
+    const findMediaServerCollection = jest.spyOn(
+      service as any,
+      'findMediaServerCollection',
+    );
+
+    const result = await service.checkAutomaticMediaServerLink(collection);
+
+    expect(result.mediaServerId).toBe('live-collection');
+    expect(findMediaServerCollection).not.toHaveBeenCalled();
+    expect(collectionRepo.save).not.toHaveBeenCalled();
     expect(mediaServer.deleteCollection).not.toHaveBeenCalled();
   });
 

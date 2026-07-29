@@ -919,25 +919,47 @@ export class PlexApiService {
     }
   }
 
+  /**
+   * @param useCache - Rule getters read this per item, so the listing is cached
+   * by default. Callers that decide whether a collection exists must pass
+   * false: a listing up to the cache TTL old reports a just-created collection
+   * as missing, which reads as "manual collection doesn't exist" and makes the
+   * automatic link create a second collection beside the real one (#3344).
+   *
+   * @throws Error on any failure to enumerate. An empty array means the section
+   * genuinely holds no collections.
+   */
   public async getCollections(
     libraryId: string | number,
     subType?: 'movie' | 'show' | 'season' | 'episode',
+    useCache = true,
   ): Promise<PlexCollection[]> {
+    let response: PlexLibraryResponse;
     try {
-      const response = await this.plexClient.queryAll<PlexLibraryResponse>({
-        uri: `/library/sections/${libraryId}/collections?${subType ? `subtype=${subType}` : ''}`,
-      });
-
-      if (!response?.MediaContainer) {
-        this.logLibrarySectionError(libraryId);
-        return undefined;
-      }
-
-      return response.MediaContainer.Metadata as PlexCollection[];
+      response = await this.plexClient.queryAll<PlexLibraryResponse>(
+        {
+          uri: `/library/sections/${libraryId}/collections?${subType ? `subtype=${subType}` : ''}`,
+        },
+        useCache,
+      );
     } catch (error) {
       this.logLibrarySectionError(libraryId, error);
-      return undefined;
+      // A swallowed enumeration failure reads as "this library has no
+      // collections" downstream, so the link lookup misses an existing
+      // collection and a duplicate is created beside it (#3344).
+      throw error;
     }
+
+    // Validated outside the catch above so this throw isn't re-logged by it as
+    // a communication failure.
+    if (!response?.MediaContainer) {
+      this.logLibrarySectionError(libraryId);
+      throw new Error(
+        `Plex library section '${libraryId}' returned no MediaContainer`,
+      );
+    }
+
+    return (response.MediaContainer.Metadata ?? []) as PlexCollection[];
   }
 
   /**
@@ -1029,6 +1051,14 @@ export class PlexApiService {
 
       return collection;
     } catch (error) {
+      // Only a 404 proves the collection is gone. Every other failure
+      // (timeout, 5xx, auth) means "couldn't ask" and must propagate, or
+      // callers unlink a collection that still exists and create a duplicate
+      // beside it (#3344).
+      if (this.responseStatus(error) !== 404) {
+        throw error;
+      }
+
       this.logger.debug(`Couldn't find collection with id ${+collectionId}`);
       this.logger.debug(error);
       return undefined;
@@ -1289,16 +1319,24 @@ export class PlexApiService {
     };
   }
 
+  /**
+   * HTTP status behind a lib/plexApi failure, which wraps the Axios error as
+   * `cause`. Undefined when the request never got a response (timeout, DNS,
+   * connection refused) - i.e. when nothing about the server is known.
+   */
+  private responseStatus(error: unknown): number | undefined {
+    return error instanceof Error
+      ? (error.cause as { response?: { status?: number } } | undefined)
+          ?.response?.status
+      : undefined;
+  }
+
   private logLibrarySectionError(id: string | number, error?: unknown): void {
     // Only 404 indicates a missing/renamed section. 401 and 403 share the
     // same wrapper in lib/plexApi.ts but mean auth/permission failures, so
     // those must fall through to the generic communication-failure log.
-    const status =
-      error instanceof Error
-        ? (error.cause as { response?: { status?: number } } | undefined)
-            ?.response?.status
-        : undefined;
-    const isInvalidSection = error === undefined || status === 404;
+    const isInvalidSection =
+      error === undefined || this.responseStatus(error) === 404;
 
     if (isInvalidSection) {
       this.logger.warn(

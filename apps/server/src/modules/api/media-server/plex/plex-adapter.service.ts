@@ -289,8 +289,14 @@ export class PlexAdapterService implements IMediaServerService {
   }
 
   async getCollections(libraryId: string): Promise<MediaCollection[]> {
-    const collections = await this.plexApi.getCollections(libraryId);
-    if (!collections) return [];
+    // Uncached: the abstraction layer's callers decide whether a collection
+    // exists (link/relink lookups, the collections UI), and a cached listing
+    // hides one created since the last read.
+    const collections = await this.plexApi.getCollections(
+      libraryId,
+      undefined,
+      false,
+    );
     return collections.map(PlexMapper.toMediaCollection);
   }
 
@@ -340,11 +346,37 @@ export class PlexAdapterService implements IMediaServerService {
 
   async deleteCollection(collectionId: string): Promise<void> {
     try {
-      await this.plexApi.deleteCollection(collectionId);
+      // plexApi reports a refused delete as a NOK result rather than throwing
+      // (Plex answers 403 when "allow media deletion" is off, and 5xx on a
+      // blip). Resolving anyway told every caller the collection was gone, so
+      // they dropped the link and orphaned a live collection (#3344).
+      this.ensureMutationSucceeded(
+        await this.plexApi.deleteCollection(collectionId),
+        `Failed to delete collection ${collectionId}`,
+      );
     } catch (error) {
+      // A delete that failed because the collection is already gone is the
+      // outcome the caller wanted. Only a confirmed 404 reads as gone here -
+      // getCollection throws when it cannot tell - so an unreachable server
+      // still propagates. Mirrors the Jellyfin adapter.
+      if (!(await this.collectionStillExists(collectionId))) {
+        this.logger.debug(`Plex collection ${collectionId} is already gone`);
+        return;
+      }
+
       this.logger.error(`Failed to delete collection ${collectionId}`);
       this.logger.debug(error);
       throw error;
+    }
+  }
+
+  private async collectionStillExists(collectionId: string): Promise<boolean> {
+    try {
+      return Boolean(await this.plexApi.getCollection(collectionId));
+    } catch {
+      // Existence unknown: assume it is still there so the delete failure is
+      // reported rather than silently swallowed.
+      return true;
     }
   }
 
@@ -619,7 +651,13 @@ export class PlexAdapterService implements IMediaServerService {
     isManualCollection: boolean,
   ): Promise<void> {
     void libraryId;
-    void isManualCollection;
+
+    // A manual collection belongs to the user, not to Maintainerr - the rule
+    // group only points at it, so moving the rule group away must leave it
+    // standing. Mirrors the manual guard in updateCollection/deleteCollection.
+    if (isManualCollection) {
+      return;
+    }
 
     // Plex collections are per-library, so no cross-library sharing occurs.
     await this.deleteCollection(collectionId);

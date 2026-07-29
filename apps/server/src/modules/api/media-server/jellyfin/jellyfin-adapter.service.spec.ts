@@ -5,7 +5,7 @@ import {
   MediaServerType,
 } from '@maintainerr/contracts';
 import { Mocked, TestBed } from '@suites/unit';
-import { AxiosError } from 'axios';
+import type { AxiosError } from 'axios';
 import { delay } from '../../../../utils/delay';
 import { MaintainerrLogger } from '../../../logging/logs.service';
 import { SettingsDataService } from '../../../settings/settings-data.service';
@@ -287,15 +287,29 @@ describe('JellyfinAdapterService', () => {
     logger = unitRef.get(MaintainerrLogger);
   });
 
-  const createRetryableError = (code: string): AxiosError => {
-    const error = new AxiosError(`temporary failure (${code})`);
-    error.code = code;
-    return error;
-  };
+  // Model what @jellyfin/sdk actually throws. The SDK is ESM-only and carries
+  // its own axios build, so its AxiosError is a different class from the one
+  // this CommonJS test imports - only the `isAxiosError` flag survives the
+  // boundary. Constructing a local `new AxiosError()` here would let an
+  // `instanceof AxiosError` check pass in tests while never matching in
+  // production.
+  const createSdkAxiosError = (
+    message: string,
+    extra: Record<string, unknown>,
+  ): AxiosError =>
+    Object.assign(new Error(message), {
+      name: 'AxiosError',
+      isAxiosError: true,
+      toJSON: () => ({}),
+      ...extra,
+    }) as unknown as AxiosError;
 
-  const createResponseError = (status: number): AxiosError => {
-    const error = new AxiosError(`request failed with status ${status}`);
-    Object.assign(error, {
+  const createRetryableError = (code: string): AxiosError =>
+    createSdkAxiosError(`temporary failure (${code})`, { code });
+
+  const createResponseError = (status: number): AxiosError =>
+    createSdkAxiosError(`request failed with status ${status}`, {
+      code: 'ERR_BAD_REQUEST',
       response: {
         status,
         statusText: status === 401 ? 'Unauthorized' : 'Bad Gateway',
@@ -304,8 +318,6 @@ describe('JellyfinAdapterService', () => {
         config: {},
       },
     });
-    return error;
-  };
 
   describe('lifecycle', () => {
     it('should not be setup initially', () => {
@@ -831,7 +843,6 @@ describe('JellyfinAdapterService', () => {
       ['getUsers', [], () => service.getUsers()],
       ['getLibraries', [], () => service.getLibraries()],
       ['getWatchHistory', [], () => service.getWatchHistory('item123')],
-      ['getCollections', [], () => service.getCollections('lib123')],
       ['searchContent', [], () => service.searchContent('test')],
     ] as [string, unknown, () => Promise<unknown>][])(
       '%s returns %j when not initialized',
@@ -844,6 +855,15 @@ describe('JellyfinAdapterService', () => {
         }
       },
     );
+
+    // #3344: an uninitialized client is "collections unknown", not "this
+    // library has no collections" - fabricating [] lets the link lookup
+    // create a duplicate.
+    it('getCollections throws when not initialized', async () => {
+      await expect(service.getCollections('lib123')).rejects.toThrow(
+        'Jellyfin not initialized',
+      );
+    });
   });
 
   describe('getActiveSessions', () => {

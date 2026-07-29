@@ -1,4 +1,7 @@
-import { AxiosError } from 'axios';
+// isAxiosError, not `instanceof AxiosError`: errors raised inside ESM-only
+// SDKs (e.g. @jellyfin/sdk) come from a second axios module instance, so an
+// instanceof check against this CommonJS build never matches them.
+import { isAxiosError } from 'axios';
 import type { MaintainerrLogger } from '../modules/logging/logs.service';
 
 export const CONNECTION_TEST_TIMEOUT_MS = 5000;
@@ -48,7 +51,7 @@ export const formatConnectionFailureMessage = (
   error: unknown,
   fallbackMessage: string,
 ): string => {
-  if (error instanceof AxiosError) {
+  if (isAxiosError(error)) {
     if (error.response?.status === 401 || error.response?.status === 403) {
       return 'Invalid API key';
     }

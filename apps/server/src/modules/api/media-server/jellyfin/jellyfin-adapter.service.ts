@@ -45,7 +45,12 @@ import {
   type WatchRecord,
 } from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
-import { AxiosError } from 'axios';
+// isAxiosError duck-types on the error's own flag, so it also matches errors
+// thrown by @jellyfin/sdk. The SDK is ESM-only and pulls axios's ESM build,
+// while this server compiles to CommonJS and gets axios's CJS build - two
+// module instances, two error classes, so an instanceof check against the
+// imported class silently never matches an SDK failure.
+import { isAxiosError } from 'axios';
 import { formatConnectionFailureMessage } from '../../../../utils/connection-error';
 import { delay } from '../../../../utils/delay';
 import { MaintainerrLogger } from '../../../logging/logs.service';
@@ -482,7 +487,7 @@ export class JellyfinAdapterService implements IMediaServerService {
       );
       return Buffer.from(response.data as unknown as ArrayBuffer);
     } catch (error) {
-      if (error instanceof AxiosError && error.response?.status === 404) {
+      if (isAxiosError(error) && error.response?.status === 404) {
         return null;
       }
       this.logger.warn(
@@ -657,8 +662,7 @@ export class JellyfinAdapterService implements IMediaServerService {
         }
       }
     } catch (error) {
-      const status =
-        error instanceof AxiosError ? error.response?.status : undefined;
+      const status = isAxiosError(error) ? error.response?.status : undefined;
       if (status === 404) {
         this.logger.debug(
           'Jellyfin /System/Info/Storage not available - server is older than 10.11',
@@ -920,7 +924,7 @@ export class JellyfinAdapterService implements IMediaServerService {
       });
       return Boolean(response.data.Items?.[0]);
     } catch (error) {
-      if (error instanceof AxiosError && error.response?.status === 404) {
+      if (isAxiosError(error) && error.response?.status === 404) {
         return false;
       }
       throw error;
@@ -1696,7 +1700,9 @@ export class JellyfinAdapterService implements IMediaServerService {
   }
 
   async getCollections(libraryId: string): Promise<MediaCollection[]> {
-    if (!this.api) return [];
+    if (!this.api) {
+      throw new Error('Jellyfin not initialized');
+    }
 
     const cacheKey = `${JELLYFIN_CACHE_KEYS.COLLECTIONS}:${libraryId}`;
     let allCollections = this.cache.data.get<MediaCollection[]>(cacheKey);
@@ -1738,7 +1744,9 @@ export class JellyfinAdapterService implements IMediaServerService {
       } catch (error) {
         this.logger.error(`Failed to get collections for ${libraryId}`);
         this.logger.debug(error);
-        return [];
+        // [] is reserved for a confirmed-empty library; a failed enumeration
+        // must not read as "no collection with that title" (#3344).
+        throw error;
       }
     }
 
@@ -1762,7 +1770,7 @@ export class JellyfinAdapterService implements IMediaServerService {
         ? JellyfinMapper.toMediaCollection(response.data)
         : undefined;
     } catch (error) {
-      if (error instanceof AxiosError && error.response?.status === 404) {
+      if (isAxiosError(error) && error.response?.status === 404) {
         this.logger.debug(
           `Jellyfin collection ${collectionId} not found; treating it as missing`,
         );
@@ -1925,7 +1933,7 @@ export class JellyfinAdapterService implements IMediaServerService {
         }
       } catch (error) {
         if (
-          error instanceof AxiosError &&
+          isAxiosError(error) &&
           (error.response?.status === 400 || error.response?.status === 404)
         ) {
           throw error;
@@ -2510,14 +2518,13 @@ export class JellyfinAdapterService implements IMediaServerService {
   }
 
   private isRetryableLibraryError(error: unknown): boolean {
-    const errorCode =
-      error instanceof AxiosError
-        ? error.code
-        : error && typeof error === 'object' && 'code' in error
-          ? typeof error.code === 'string'
-            ? error.code
-            : undefined
-          : undefined;
+    const errorCode = isAxiosError(error)
+      ? error.code
+      : error && typeof error === 'object' && 'code' in error
+        ? typeof error.code === 'string'
+          ? error.code
+          : undefined
+        : undefined;
 
     if (
       errorCode &&
@@ -2526,8 +2533,7 @@ export class JellyfinAdapterService implements IMediaServerService {
       return true;
     }
 
-    const statusCode =
-      error instanceof AxiosError ? error.response?.status : undefined;
+    const statusCode = isAxiosError(error) ? error.response?.status : undefined;
 
     if (
       statusCode !== undefined &&

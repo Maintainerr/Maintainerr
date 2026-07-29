@@ -823,7 +823,9 @@ export class EmbyAdapterService implements IMediaServerService {
   // ============================================================================
 
   async getCollections(libraryId: string): Promise<MediaCollection[]> {
-    if (!this.http) return [];
+    if (!this.http) {
+      throw new Error('Emby not initialized');
+    }
 
     const cacheKey = `${EMBY_CACHE_KEYS.COLLECTIONS}:${libraryId}`;
     const cached = this.cache.data.get<MediaCollection[]>(cacheKey);
@@ -857,10 +859,12 @@ export class EmbyAdapterService implements IMediaServerService {
       }
       return collections;
     } catch (error) {
-      this.logger.debug(
+      this.logger.error(
         `Emby getCollections(${libraryId}) failed: ${formatConnectionFailureMessage(error, 'Connection failed')}`,
       );
-      return [];
+      // [] is reserved for a confirmed-empty library; a failed enumeration
+      // must not read as "no collection with that title" (#3344).
+      throw error;
     }
   }
 
@@ -928,6 +932,16 @@ export class EmbyAdapterService implements IMediaServerService {
       const { data } = await this.http.get<EmbyBaseItemDto>(path);
       return EmbyMapper.toMediaCollection(data);
     } catch (error) {
+      // A 404 is the server confirming the collection is gone; anything else
+      // leaves its existence unknown, so throwOnError callers must not read it
+      // as "missing".
+      if (error instanceof AxiosError && error.response?.status === 404) {
+        this.logger.debug(
+          `Emby collection ${collectionId} not found; treating it as missing`,
+        );
+        return undefined;
+      }
+
       if (throwOnError) throw error;
       this.logger.debug(
         `Emby getCollection(${collectionId}) failed: ${formatConnectionFailureMessage(error, 'Connection failed')}`,
