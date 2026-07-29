@@ -2399,6 +2399,27 @@ describe('JellyfinAdapterService', () => {
           serverError,
         );
       });
+
+      // #3344: the swallow above must only fire on a CONFIRMED 404. While the
+      // re-check itself could not reach the server, a refused delete resolved
+      // as success and the caller dropped the link, orphaning a live BoxSet.
+      it('rethrows deleteCollection failure when the re-check cannot reach the server', async () => {
+        const outage = createRetryableError('ECONNREFUSED');
+        jellyfinApiMocks.deleteItem.mockRejectedValueOnce(outage);
+        jellyfinApiMocks.getItem.mockRejectedValueOnce(outage);
+
+        await expect(service.deleteCollection('collection-1')).rejects.toBe(
+          outage,
+        );
+      });
+
+      it('throws instead of resolving when the client is not initialized', async () => {
+        (service as unknown as { api: unknown }).api = undefined;
+
+        await expect(service.deleteCollection('collection-1')).rejects.toThrow(
+          'Jellyfin not initialized',
+        );
+      });
     });
   });
 

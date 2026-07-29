@@ -358,7 +358,7 @@ export class PlexAdapterService implements IMediaServerService {
       // A delete that failed because the collection is already gone is the
       // outcome the caller wanted. Only a confirmed 404 reads as gone here -
       // getCollection throws when it cannot tell - so an unreachable server
-      // still propagates. Mirrors the Jellyfin adapter.
+      // still propagates.
       if (!(await this.collectionStillExists(collectionId))) {
         this.logger.debug(`Plex collection ${collectionId} is already gone`);
         return;

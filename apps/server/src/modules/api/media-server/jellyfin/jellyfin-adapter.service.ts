@@ -1832,7 +1832,11 @@ export class JellyfinAdapterService implements IMediaServerService {
   }
 
   async deleteCollection(collectionId: string): Promise<void> {
-    if (!this.api) return;
+    // Resolving here would tell the caller the BoxSet is gone, and the caller
+    // drops the link on that (#3344). An uninitialized client knows nothing.
+    if (!this.api) {
+      throw new Error('Jellyfin not initialized');
+    }
 
     try {
       await getLibraryApi(this.api).deleteItem({ itemId: collectionId });
@@ -1840,7 +1844,7 @@ export class JellyfinAdapterService implements IMediaServerService {
       // The BoxSet may already be gone (a concurrent delete, or the user
       // removed it in Jellyfin), which 404/500s here. Re-check and swallow if
       // so. Note: Jellyfin does NOT auto-delete BoxSets that merely go empty.
-      if (await this.getCollection(collectionId).then(Boolean)) {
+      if (await this.collectionStillExists(collectionId)) {
         this.logger.error(`Failed to delete collection ${collectionId}`);
         this.logger.debug(error);
         // Throw before the cache invalidation below - the collection still
@@ -1853,6 +1857,20 @@ export class JellyfinAdapterService implements IMediaServerService {
     // libraryId not known here; clear all per-library entries.
     this.invalidateCollectionsCache();
     this.invalidateCollectionChildrenCache(collectionId);
+  }
+
+  /**
+   * Whether the BoxSet is still on the server. Only a confirmed 404 reads as
+   * gone: `getCollection(id, true)` throws when it cannot tell, and an
+   * unverifiable re-check must not turn a failed delete into a silent success
+   * (#3344). Mirrors the Plex adapter's helper of the same name.
+   */
+  private async collectionStillExists(collectionId: string): Promise<boolean> {
+    try {
+      return Boolean(await this.getCollection(collectionId, true));
+    } catch {
+      return true;
+    }
   }
 
   async getCollectionChildren(collectionId: string): Promise<MediaItem[]> {
