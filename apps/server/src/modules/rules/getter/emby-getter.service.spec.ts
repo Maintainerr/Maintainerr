@@ -93,6 +93,24 @@ describe('EmbyGetterService', () => {
     });
   });
 
+  describe('error handling', () => {
+    it('returns undefined when metadata cannot be read', async () => {
+      // getMetadata answers undefined for a failed read as well as a missing
+      // item, so this must stay the transient signal - null would let
+      // NOT_EXISTS match on a blip.
+      embyAdapter.getMetadata.mockResolvedValue(undefined);
+
+      const response = await embyGetterService.get(
+        0,
+        createMediaItem(),
+        'movie',
+        createRulesDto({ dataType: 'movie' }),
+      );
+
+      expect(response).toBeUndefined();
+    });
+  });
+
   describe('collection rules', () => {
     it('trims collection names and excludes the rule and manual collections', async () => {
       const mediaItem = createMediaItem({
