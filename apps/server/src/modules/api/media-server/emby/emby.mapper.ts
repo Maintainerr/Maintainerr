@@ -13,6 +13,7 @@ import {
   type MediaUser,
   type WatchRecord,
 } from '@maintainerr/contracts';
+import { addProviderId, emptyProviderIds } from '../media-provider-ids.utils';
 import { EMBY_TICKS_PER_MS } from './emby.constants';
 import type {
   EmbyBaseItemDto,
@@ -71,24 +72,10 @@ export class EmbyMapper {
   static extractProviderIds(
     providerIds?: EmbyProviderIds | null,
   ): MediaProviderIds {
-    const result: MediaProviderIds = {
-      imdb: [],
-      tmdb: [],
-      tvdb: [],
-    };
+    const result = emptyProviderIds();
 
-    if (!providerIds) {
-      return result;
-    }
-
-    if (providerIds.Imdb) {
-      result.imdb.push(providerIds.Imdb);
-    }
-    if (providerIds.Tmdb) {
-      result.tmdb.push(providerIds.Tmdb);
-    }
-    if (providerIds.Tvdb) {
-      result.tvdb.push(providerIds.Tvdb);
+    for (const [provider, id] of Object.entries(providerIds ?? {})) {
+      addProviderId(result, provider, id);
     }
 
     return result;

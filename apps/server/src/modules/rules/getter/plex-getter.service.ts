@@ -123,8 +123,6 @@ export class PlexGetterService {
           const watchState = await this.plexAdapter.getWatchState(
             metadata.ratingKey,
             libItem.viewCount,
-            libItem.title,
-            metadata.type,
           );
           return watchState.viewCount;
         }
@@ -132,8 +130,6 @@ export class PlexGetterService {
           const watchState = await this.plexAdapter.getWatchState(
             metadata.ratingKey,
             libItem.viewCount,
-            libItem.title,
-            metadata.type,
           );
           return watchState.isWatched;
         }
@@ -261,15 +257,14 @@ export class PlexGetterService {
             true,
             metadata.type,
           );
-          if (seenby && seenby.length > 0) {
-            return new Date(
-              +seenby
-                .map((el) => el.viewedAt)
-                .sort()
-                .reverse()[0] * 1000,
-            );
-          }
-          return null;
+          // Marking something played by hand, or a scrobble from an external
+          // tracker, moves the item's own lastViewedAt without writing a
+          // history row - so start from that and let any newer view win.
+          const newest = (seenby ?? []).reduce(
+            (latest, el) => Math.max(latest, el.viewedAt * 1000),
+            libItem.lastViewedAt?.getTime() ?? 0,
+          );
+          return newest > 0 ? new Date(newest) : null;
         }
         case 'fileVideoResolution': {
           return metadata.Media[0].videoResolution

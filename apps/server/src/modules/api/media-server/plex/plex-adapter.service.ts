@@ -235,38 +235,20 @@ export class PlexAdapterService implements IMediaServerService {
   async getWatchState(
     itemId: string,
     nativeViewCount?: number,
-    itemTitle?: string,
-    itemType?: PlexLibraryItem['type'],
   ): Promise<MediaWatchState> {
-    const history = await this.plexApi.getWatchHistory(itemId, false, itemType);
+    // Read live: something watched moments ago must not be judged from a
+    // stale snapshot, and a failed read has to throw rather than pass for a
+    // confirmed never-watched.
+    const history = await this.plexApi.getWatchHistory(itemId, false);
 
-    if (history.length > 0) {
-      return {
-        viewCount: history.length,
-        isWatched: true,
-      };
-    }
+    // Plex writes no history row when an item is marked watched without a
+    // play event (a "mark as played", a Trakt scrobble), so the item's own
+    // count is the only record of those views. History stays the floor: it
+    // covers every account on the server, while the item's count only covers
+    // the account whose token Maintainerr holds.
+    const viewCount = Math.max(history.length, nativeViewCount ?? 0);
 
-    // When watch history is empty (purged or item was marked watched without
-    // a play event), fall back to the native Plex viewCount for the boolean
-    // only.  This value is per-user (admin token) so we do not use it for
-    // the numeric viewCount to avoid misrepresenting server-wide counts.
-    const watchedByNative =
-      nativeViewCount !== undefined && nativeViewCount > 0;
-
-    if (watchedByNative) {
-      this.logger.log(
-        `Media '${itemTitle ?? 'unknown'}' (ratingKey=${itemId}) is marked watched in Plex ` +
-          `but has no watch history. viewCount will be 0. This can happen when ` +
-          `history is purged or the item was marked watched without a play event ` +
-          `(e.g. Trakt/API scrobble).`,
-      );
-    }
-
-    return {
-      viewCount: 0,
-      isWatched: watchedByNative,
-    };
+    return { viewCount, isWatched: viewCount > 0 };
   }
 
   async getItemSeenBy(itemId: string): Promise<string[]> {
