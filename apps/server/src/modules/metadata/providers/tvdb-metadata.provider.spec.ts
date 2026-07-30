@@ -68,6 +68,35 @@ describe('TvdbMetadataProvider', () => {
     expect(details?.seasonCount).toBe(2);
   });
 
+  it('returns the season image from the default ordering', async () => {
+    tvdbApi.getSeries.mockResolvedValue({
+      ...baseSeriesRecord,
+      seasons: [
+        { number: 2, type: { id: 1 }, image: 'https://tvdb/aired-s2.jpg' },
+        { number: 2, type: { id: 2 }, image: 'https://tvdb/dvd-s2.jpg' },
+      ],
+    } as any);
+
+    await expect(
+      provider.getPosterUrl(322399, 'tv', { ref: { seasonNumber: 2 } }),
+    ).resolves.toBe('https://tvdb/aired-s2.jpg');
+  });
+
+  it('falls back to the series poster when the season has no image', async () => {
+    tvdbApi.getPosterUrl.mockReturnValue('https://tvdb/series.jpg');
+    tvdbApi.getSeries.mockResolvedValue({
+      ...baseSeriesRecord,
+      seasons: [{ number: 2, type: { id: 1 } }],
+    } as any);
+
+    await expect(
+      provider.getPosterUrl(322399, 'tv', { ref: { seasonNumber: 2 } }),
+    ).resolves.toBe('https://tvdb/series.jpg');
+    await expect(
+      provider.getPosterUrl(322399, 'tv', { ref: { seasonNumber: 9 } }),
+    ).resolves.toBe('https://tvdb/series.jpg');
+  });
+
   it('does not derive ended or season count for movie details', async () => {
     tvdbApi.getMovie.mockResolvedValue({
       id: 1,

@@ -1,11 +1,11 @@
-import { type MediaProviderIds } from '@maintainerr/contracts'
+import {
+  type MediaItemType,
+  type MediaProviderIds,
+} from '@maintainerr/contracts'
 import type { ComponentPropsWithoutRef, ReactNode } from 'react'
 import { useEffect, useRef, useState } from 'react'
 import GetApiHandler from '../../../utils/ApiHandler'
-import {
-  buildMetadataImagePath,
-  isAbsoluteUrl,
-} from '../../../utils/mediaTypeUtils'
+import { buildMetadataPath, isAbsoluteUrl } from '../../../utils/mediaTypeUtils'
 
 // Each entry is a request path key + resolved URL string (~200 bytes).
 // 500 entries ≈ 100KB - covers several pages of browsing before eviction.
@@ -15,7 +15,7 @@ const pendingPosterImageRequests = new Map<string, Promise<string | null>>()
 
 type PosterCardProps = Omit<ComponentPropsWithoutRef<'div'>, 'children'> & {
   imagePath?: string | null
-  mediaType: 'movie' | 'show' | 'season' | 'episode'
+  mediaType: MediaItemType
   providerIds?: MediaProviderIds
   itemId?: string | number
   imageClassName?: string
@@ -81,7 +81,7 @@ const PosterCard = ({
 }: PosterCardProps) => {
   const cardRef = useRef<HTMLDivElement | null>(null)
   const isDirectImage = isAbsoluteUrl(imagePath)
-  const imageRequestPath = buildMetadataImagePath(
+  const imageRequestPath = buildMetadataPath(
     'image',
     mediaType,
     providerIds,

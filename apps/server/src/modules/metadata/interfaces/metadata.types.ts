@@ -7,6 +7,21 @@ export interface ExternalIdSearchResult {
   tvShowId?: number;
 }
 
+/**
+ * Addresses a season, or one episode inside it, within a tv lookup. Providers
+ * answer for the most specific thing they hold and fall back to the show.
+ */
+export interface TvHierarchyRef {
+  seasonNumber: number;
+  episodeNumber?: number;
+}
+
+export interface MetadataImageOptions {
+  /** Preferred image width. Providers serving fixed URLs ignore it. */
+  sizeHint?: string;
+  ref?: TvHierarchyRef;
+}
+
 export interface PersonDetails {
   id: number;
   name: string;
