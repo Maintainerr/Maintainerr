@@ -126,6 +126,44 @@ describe('EmbyAdapterService', () => {
     });
   });
 
+  describe('getChildrenMetadata caching (#3355)', () => {
+    it('keys seasons and episodes of one parent separately', async () => {
+      http.get.mockResolvedValue({ data: { Items: [{ Id: 'child-1' }] } });
+
+      await service.getChildrenMetadata('show-1', 'season');
+      await service.getChildrenMetadata('show-1', 'episode');
+
+      expect(embyCacheMocks.data.set).toHaveBeenCalledWith(
+        'emby:children:show-1:season',
+        [expect.objectContaining({ id: 'child-1' })],
+        EMBY_CACHE_TTL.METADATA,
+      );
+      expect(embyCacheMocks.data.set).toHaveBeenCalledWith(
+        'emby:children:show-1:episode',
+        [expect.objectContaining({ id: 'child-1' })],
+        EMBY_CACHE_TTL.METADATA,
+      );
+    });
+
+    it('serves a cached list without touching the API', async () => {
+      embyCacheMocks.data.get.mockReturnValueOnce([{ id: 'ep-1' }]);
+
+      await expect(
+        service.getChildrenMetadata('season-1', 'episode'),
+      ).resolves.toEqual([{ id: 'ep-1' }]);
+      expect(http.get).not.toHaveBeenCalled();
+    });
+
+    it('does not cache a failed read', async () => {
+      http.get.mockRejectedValue(new Error('boom'));
+
+      await expect(
+        service.getChildrenMetadata('season-1', 'episode'),
+      ).resolves.toEqual([]);
+      expect(embyCacheMocks.data.set).not.toHaveBeenCalled();
+    });
+  });
+
   describe('getActiveSessions', () => {
     it('collects the playing item plus its season and series ids', async () => {
       http.get.mockResolvedValue({

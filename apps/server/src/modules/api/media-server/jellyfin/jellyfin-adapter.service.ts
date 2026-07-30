@@ -962,11 +962,22 @@ export class JellyfinAdapterService implements IMediaServerService {
     }
   }
 
+  /**
+   * Cached for the same reason as getMetadata (#3355): the show and season
+   * getters walk the tree on every condition, so an uncached read costs
+   * 1 + seasons requests per condition per item. Plex has always served these
+   * from its API-layer cache. Only a completed read is stored - the catch below
+   * answers [] for a failed one, and caching that would read as "no episodes".
+   */
   async getChildrenMetadata(
     parentId: string,
     childType?: MediaItemType,
   ): Promise<MediaItem[]> {
     if (!this.api) return [];
+
+    const cacheKey = `${JELLYFIN_CACHE_KEYS.CHILDREN}:${parentId}:${childType ?? 'any'}`;
+    const cached = this.cache.data.get<MediaItem[]>(cacheKey);
+    if (cached !== undefined) return cached;
 
     try {
       const userId = await this.getUserId();
@@ -987,7 +998,10 @@ export class JellyfinAdapterService implements IMediaServerService {
           enableUserData: true,
         });
 
-        return (response.data.Items || []).map(JellyfinMapper.toMediaItem);
+        return this.cacheChildren(
+          cacheKey,
+          (response.data.Items || []).map(JellyfinMapper.toMediaItem),
+        );
       }
 
       // For episodes and other types, parentId works correctly
@@ -1014,12 +1028,20 @@ export class JellyfinAdapterService implements IMediaServerService {
           childType === 'episode' ? [LocationType.Virtual] : undefined,
       });
 
-      return (response.data.Items || []).map(JellyfinMapper.toMediaItem);
+      return this.cacheChildren(
+        cacheKey,
+        (response.data.Items || []).map(JellyfinMapper.toMediaItem),
+      );
     } catch (error) {
       this.logger.error(`Failed to get children for ${parentId}`);
       this.logger.debug(error);
       return [];
     }
+  }
+
+  private cacheChildren(cacheKey: string, children: MediaItem[]): MediaItem[] {
+    this.cache.data.set(cacheKey, children, JELLYFIN_CACHE_TTL.METADATA);
+    return children;
   }
 
   async getRecentlyAdded(
@@ -2408,14 +2430,17 @@ export class JellyfinAdapterService implements IMediaServerService {
       // scoping the watch invalidation to `:${itemId}` left them stale: a season
       // stayed "not watched by everyone" for hours after a manual mark in
       // Jellyfin (#3274). Clear the whole watch-history namespace instead (cheap,
-      // and flushed each run anyway). The item's favourite/play-count entries and
-      // the server-wide aggregate caches (users/libraries/status/collections) are
-      // invalidated exactly as before.
+      // and flushed each run anyway). Children entries are keyed the same way -
+      // a show's episode lists hang off its season ids, not the id passed here -
+      // so that namespace goes wholesale too. The item's favourite/play-count
+      // entries and the server-wide aggregate caches (users/libraries/status/
+      // collections) are invalidated exactly as before.
       this.cache.data
         .keys()
         .filter(
           (key) =>
             key.startsWith(`${JELLYFIN_CACHE_KEYS.WATCH_HISTORY}:`) ||
+            key.startsWith(`${JELLYFIN_CACHE_KEYS.CHILDREN}:`) ||
             key === `${JELLYFIN_CACHE_KEYS.FAVORITED_BY}:${itemId}` ||
             key === `${JELLYFIN_CACHE_KEYS.TOTAL_PLAY_COUNT}:${itemId}` ||
             key === `${JELLYFIN_CACHE_KEYS.METADATA}:${itemId}`,

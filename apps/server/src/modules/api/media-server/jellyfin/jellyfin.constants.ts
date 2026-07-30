@@ -64,6 +64,7 @@ export const JELLYFIN_WATCH_SNAPSHOT_MAX_RECORDS = 500_000;
 export const JELLYFIN_CACHE_KEYS = {
   WATCH_HISTORY: 'jellyfin:watch',
   METADATA: 'jellyfin:metadata',
+  CHILDREN: 'jellyfin:children',
   FAVORITED_BY: 'jellyfin:favorited-by',
   TOTAL_PLAY_COUNT: 'jellyfin:total-play-count',
   PLAYED_THRESHOLD: 'jellyfin:played-threshold',

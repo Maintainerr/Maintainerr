@@ -22,6 +22,7 @@ export const EMBY_BATCH_SIZE = {
 
 export const EMBY_CACHE_KEYS = {
   METADATA: 'emby:metadata',
+  CHILDREN: 'emby:children',
   USERS: 'emby:users',
   LIBRARIES: 'emby:libraries',
   STATUS: 'emby:status',

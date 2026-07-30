@@ -455,11 +455,20 @@ export class EmbyAdapterService implements IMediaServerService {
     }
   }
 
+  /**
+   * Cached like the Jellyfin adapter's (#3355) - see there for why only a
+   * completed read is stored.
+   */
   async getChildrenMetadata(
     parentId: string,
     childType?: MediaItemType,
   ): Promise<MediaItem[]> {
     if (!this.http) return [];
+
+    const cacheKey = `${EMBY_CACHE_KEYS.CHILDREN}:${parentId}:${childType ?? 'any'}`;
+    const cached = this.cache.data.get<MediaItem[]>(cacheKey);
+    if (cached !== undefined) return cached;
+
     try {
       // Seasons of a series live under /Shows/{seriesId}/Seasons, not under
       // /Items?ParentId= (ParentId of a season points to the library folder,
@@ -475,7 +484,10 @@ export class EmbyAdapterService implements IMediaServerService {
             },
           },
         );
-        return (data.Items ?? []).map(EmbyMapper.toMediaItem);
+        return this.cacheChildren(
+          cacheKey,
+          (data.Items ?? []).map(EmbyMapper.toMediaItem),
+        );
       }
 
       const { data } = await this.http.get<EmbyItemsQueryResponse>('/Items', {
@@ -491,13 +503,21 @@ export class EmbyAdapterService implements IMediaServerService {
           Limit: EMBY_BATCH_SIZE.MAX_PAGE_SIZE,
         },
       });
-      return (data.Items ?? []).map(EmbyMapper.toMediaItem);
+      return this.cacheChildren(
+        cacheKey,
+        (data.Items ?? []).map(EmbyMapper.toMediaItem),
+      );
     } catch (error) {
       this.logger.debug(
         `Emby getChildrenMetadata(${parentId}) failed: ${formatConnectionFailureMessage(error, 'Connection failed')}`,
       );
       return [];
     }
+  }
+
+  private cacheChildren(cacheKey: string, children: MediaItem[]): MediaItem[] {
+    this.cache.data.set(cacheKey, children, EMBY_CACHE_TTL.METADATA);
+    return children;
   }
 
   /**
