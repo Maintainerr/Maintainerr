@@ -177,12 +177,7 @@ describe('PlexGetterService', () => {
       const result = await service.get(VIEWCOUNT_PROP_ID, libItem);
 
       expect(result).toBe(7);
-      expect(plexAdapter.getWatchState).toHaveBeenCalledWith(
-        '12345',
-        0,
-        libItem.title,
-        'movie',
-      );
+      expect(plexAdapter.getWatchState).toHaveBeenCalledWith('12345', 0);
     });
 
     it('should return the adapter watched state for the isWatched rule', async () => {
@@ -194,12 +189,7 @@ describe('PlexGetterService', () => {
       const result = await service.get(ISWATCHED_PROP_ID, libItem);
 
       expect(result).toBe(false);
-      expect(plexAdapter.getWatchState).toHaveBeenCalledWith(
-        '12345',
-        0,
-        libItem.title,
-        'movie',
-      );
+      expect(plexAdapter.getWatchState).toHaveBeenCalledWith('12345', 0);
     });
   });
 
@@ -276,6 +266,40 @@ describe('PlexGetterService', () => {
       expect(plexApi.getMetadata).toHaveBeenCalledWith(metadata.ratingKey, {
         includeExternalMedia: true,
       });
+    });
+
+    it('returns the item lastViewedAt when no history row records that view (id 7)', async () => {
+      const lastViewedAt = new Date(1_730_000_000 * 1000);
+      plexApi.getMetadata.mockResolvedValue(makeMetadata());
+      plexApi.getWatchHistory.mockResolvedValue([]);
+
+      const result = await service.get(
+        7,
+        createMediaItem({ type: 'movie', lastViewedAt }),
+        'movie',
+        createRulesDto({ dataType: 'movie' }),
+      );
+
+      expect(result).toEqual(lastViewedAt);
+    });
+
+    it('prefers a newer history date over the item lastViewedAt (id 7)', async () => {
+      plexApi.getMetadata.mockResolvedValue(makeMetadata());
+      plexApi.getWatchHistory.mockResolvedValue([
+        makeWatchEntry({ viewedAt: 1_740_000_000 }),
+      ]);
+
+      const result = await service.get(
+        7,
+        createMediaItem({
+          type: 'movie',
+          lastViewedAt: new Date(1_730_000_000 * 1000),
+        }),
+        'movie',
+        createRulesDto({ dataType: 'movie' }),
+      );
+
+      expect(result).toEqual(new Date(1_740_000_000 * 1000));
     });
 
     it('returns the newest direct watch-history date for lastViewedAt (id 7)', async () => {

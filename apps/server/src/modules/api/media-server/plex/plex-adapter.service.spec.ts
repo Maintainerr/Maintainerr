@@ -487,38 +487,40 @@ describe('PlexAdapterService', () => {
         viewCount: 1,
         isWatched: true,
       });
-      expect(plexApi.getWatchHistory).toHaveBeenCalledWith(
-        'item123',
-        false,
-        undefined,
-      );
+      expect(plexApi.getWatchHistory).toHaveBeenCalledWith('item123', false);
     });
 
-    it('should return unwatched state when history is empty', async () => {
-      plexApi.getWatchHistory.mockResolvedValue([]);
+    it('should keep the server-wide history count when a single account has fewer native views', async () => {
+      plexApi.getWatchHistory.mockResolvedValue([
+        createPlexSeenBy(),
+        createPlexSeenBy(),
+      ]);
 
-      const watchState = await service.getWatchState('item123');
+      const watchState = await service.getWatchState('item123', 1);
 
       expect(watchState).toEqual({
-        viewCount: 0,
-        isWatched: false,
+        viewCount: 2,
+        isWatched: true,
       });
-      expect(plexApi.getWatchHistory).toHaveBeenCalledWith(
-        'item123',
-        false,
-        undefined,
-      );
     });
 
-    it('should fall back to nativeViewCount for isWatched when history is empty', async () => {
+    it('should count native views that left no history row', async () => {
       plexApi.getWatchHistory.mockResolvedValue([]);
 
       const watchState = await service.getWatchState('item123', 2);
 
       expect(watchState).toEqual({
-        viewCount: 0,
+        viewCount: 2,
         isWatched: true,
       });
+    });
+
+    it('should propagate a failed history read instead of reporting never watched', async () => {
+      plexApi.getWatchHistory.mockRejectedValue(new Error('Plex unreachable'));
+
+      await expect(service.getWatchState('item123', 0)).rejects.toThrow(
+        'Plex unreachable',
+      );
     });
 
     it('should not mark as watched when nativeViewCount is 0 and history is empty', async () => {
