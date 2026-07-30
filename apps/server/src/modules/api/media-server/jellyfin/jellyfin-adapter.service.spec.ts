@@ -836,6 +836,72 @@ describe('JellyfinAdapterService', () => {
     });
   });
 
+  describe('getMetadata caching (#3355)', () => {
+    beforeEach(async () => {
+      settingsDataService.getSettings.mockResolvedValue(
+        mockSettings as unknown as Awaited<
+          ReturnType<SettingsDataService['getSettings']>
+        >,
+      );
+      await service.initialize();
+      jellyfinApiMocks.getItems.mockResolvedValue({
+        data: { Items: [{ Id: 'series-1', Type: 'Series', Name: 'A Show' }] },
+      });
+    });
+
+    it('caches a resolved item so repeat conditions do not re-read it', async () => {
+      const item = await service.getMetadata('series-1');
+
+      expect(item?.id).toBe('series-1');
+      expect(jellyfinCacheMocks.data.set).toHaveBeenCalledWith(
+        'jellyfin:metadata:series-1',
+        expect.objectContaining({ id: 'series-1' }),
+        JELLYFIN_CACHE_TTL.METADATA,
+      );
+    });
+
+    it('serves a cached item without touching the API', async () => {
+      jellyfinCacheMocks.data.get.mockReturnValueOnce({ id: 'series-1' });
+
+      await expect(service.getMetadata('series-1')).resolves.toEqual({
+        id: 'series-1',
+      });
+      expect(jellyfinApiMocks.getItems).not.toHaveBeenCalled();
+    });
+
+    it('does not cache a missing item', async () => {
+      jellyfinApiMocks.getItems.mockResolvedValue({ data: { Items: [] } });
+
+      await expect(service.getMetadata('gone')).resolves.toBeUndefined();
+      expect(jellyfinCacheMocks.data.set).not.toHaveBeenCalled();
+    });
+
+    it('does not cache a failed read', async () => {
+      // undefined means both "missing" and "could not read", so persisting it
+      // would turn a blip into "item is gone" for the whole TTL (#3307).
+      jellyfinApiMocks.getItems.mockRejectedValue(new Error('boom'));
+
+      await expect(service.getMetadata('item-1')).resolves.toBeUndefined();
+      expect(jellyfinCacheMocks.data.set).not.toHaveBeenCalled();
+    });
+
+    it('drops the item entry on resetMetadataCache', async () => {
+      jellyfinCacheMocks.data.keys.mockReturnValue([
+        'jellyfin:metadata:item-1',
+        'jellyfin:metadata:other',
+      ]);
+
+      service.resetMetadataCache('item-1');
+
+      expect(jellyfinCacheMocks.data.del).toHaveBeenCalledWith(
+        'jellyfin:metadata:item-1',
+      );
+      expect(jellyfinCacheMocks.data.del).not.toHaveBeenCalledWith(
+        'jellyfin:metadata:other',
+      );
+    });
+  });
+
   describe('uninitialized state', () => {
     it.each([
       ['getStatus', undefined, () => service.getStatus()],

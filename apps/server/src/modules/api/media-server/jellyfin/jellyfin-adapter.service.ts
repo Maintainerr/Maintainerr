@@ -877,8 +877,26 @@ export class JellyfinAdapterService implements IMediaServerService {
     }
   }
 
+  /**
+   * Every rule condition re-reads the evaluated item (and its parents) through
+   * here, so an uncached read costs one wide request per condition per item
+   * (#3355). Cached like the Plex path, which has always served these from its
+   * API-layer cache - the whole-cache flush at the start of each rule group
+   * bounds staleness to a single group run.
+   *
+   * A MediaItem carries UserData-derived fields (viewCount, lastViewedAt,
+   * userRating), so anything that feeds a watch or deletion decision must read
+   * the library page's own item rather than this - see how PlexGetterService
+   * passes `libItem.viewCount` into getWatchState (#3352), not `metadata`.
+   */
   async getMetadata(itemId: string): Promise<MediaItem | undefined> {
     if (!this.api) return undefined;
+
+    const cacheKey = `${JELLYFIN_CACHE_KEYS.METADATA}:${itemId}`;
+    // Read once rather than has()-then-get(): an entry expiring between the two
+    // would return undefined, which callers read as "item is gone".
+    const cached = this.cache.data.get<MediaItem>(cacheKey);
+    if (cached !== undefined) return cached;
 
     try {
       const userId = await this.getUserId();
@@ -899,7 +917,14 @@ export class JellyfinAdapterService implements IMediaServerService {
       });
 
       const item = response.data.Items?.[0];
-      return item ? JellyfinMapper.toMediaItem(item) : undefined;
+      if (!item) return undefined;
+
+      // Only a resolved item is cached. This method answers undefined for both
+      // a missing item and a failed read, so persisting that would turn a
+      // transient blip into "item is gone" for the whole TTL (#3307).
+      const mediaItem = JellyfinMapper.toMediaItem(item);
+      this.cache.data.set(cacheKey, mediaItem, JELLYFIN_CACHE_TTL.METADATA);
+      return mediaItem;
     } catch (error) {
       this.logger.warn(`Failed to get metadata for ${itemId}`);
       this.logger.debug(error);
@@ -2392,7 +2417,8 @@ export class JellyfinAdapterService implements IMediaServerService {
           (key) =>
             key.startsWith(`${JELLYFIN_CACHE_KEYS.WATCH_HISTORY}:`) ||
             key === `${JELLYFIN_CACHE_KEYS.FAVORITED_BY}:${itemId}` ||
-            key === `${JELLYFIN_CACHE_KEYS.TOTAL_PLAY_COUNT}:${itemId}`,
+            key === `${JELLYFIN_CACHE_KEYS.TOTAL_PLAY_COUNT}:${itemId}` ||
+            key === `${JELLYFIN_CACHE_KEYS.METADATA}:${itemId}`,
         )
         .forEach((key) => this.cache.data.del(key));
     } else {

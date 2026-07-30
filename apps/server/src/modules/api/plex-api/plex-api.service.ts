@@ -632,11 +632,30 @@ export class PlexApiService {
   }
 
   public resetMetadataCache(mediaId: string) {
-    cacheManager.getCache('plexguid').data.del(
-      JSON.stringify({
-        uri: `/library/metadata/${mediaId}`,
-      }),
-    );
+    // getMetadata appends the caller's options to the uri, and the rule getter
+    // always passes includeExternalMedia - so its entries are cached under
+    // `?includeExternalMedia=1&asyncAugmentMetadata=1`, which the bare-uri
+    // delete this used to do never matched. Rules testing flushed nothing on
+    // the one path that caches, and served pre-change metadata for the TTL.
+    // Drop every option variant for this id instead.
+    const cache = cacheManager.getCache('plexguid').data;
+    const uri = `/library/metadata/${mediaId}`;
+
+    for (const key of cache.keys()) {
+      // Keys are the serialized request options, so read the uri back out
+      // rather than matching on the raw key - options other than the uri end up
+      // in there too. The `?` boundary keeps id 12 from matching id 123.
+      let cachedUri: string | undefined;
+      try {
+        cachedUri = (JSON.parse(key) as { uri?: string }).uri;
+      } catch {
+        continue;
+      }
+
+      if (cachedUri === uri || cachedUri?.startsWith(`${uri}?`)) {
+        cache.del(key);
+      }
+    }
   }
 
   public async getUserDataFromPlexTv(): Promise<PlexTvUser[] | undefined> {

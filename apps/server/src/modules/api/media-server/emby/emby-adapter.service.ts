@@ -418,8 +418,20 @@ export class EmbyAdapterService implements IMediaServerService {
   // Metadata
   // ============================================================================
 
+  /**
+   * Cached for the same reason as the Jellyfin adapter's: every rule condition
+   * re-reads the evaluated item and its parents through here, so an uncached
+   * read costs one wide request per condition per item (#3355). See there for
+   * why only a resolved item is stored, and why a MediaItem's UserData-derived
+   * fields must not feed a watch or deletion decision.
+   */
   async getMetadata(itemId: string): Promise<MediaItem | undefined> {
     if (!this.http) return undefined;
+
+    const cacheKey = `${EMBY_CACHE_KEYS.METADATA}:${itemId}`;
+    const cached = this.cache.data.get<MediaItem>(cacheKey);
+    if (cached !== undefined) return cached;
+
     try {
       // Emby's /Users/{userId}/Items/{itemId} returns user-specific data.
       // When no user context, fall back to /Items/{itemId}.
@@ -432,7 +444,9 @@ export class EmbyAdapterService implements IMediaServerService {
             'ProviderIds,DateCreated,Overview,Tags,MediaSources,Genres,People',
         },
       });
-      return EmbyMapper.toMediaItem(data);
+      const mediaItem = EmbyMapper.toMediaItem(data);
+      this.cache.data.set(cacheKey, mediaItem, EMBY_CACHE_TTL.METADATA);
+      return mediaItem;
     } catch (error) {
       this.logger.debug(
         `Emby getMetadata(${itemId}) failed: ${formatConnectionFailureMessage(error, 'Connection failed')}`,
@@ -1397,9 +1411,9 @@ export class EmbyAdapterService implements IMediaServerService {
   // ============================================================================
 
   resetMetadataCache(_itemId?: string): void {
-    // The Emby cache only stores server-wide aggregates (users/libraries/status/
-    // collections), never per-item watch entries (getWatchHistory hits the API
-    // fresh), so a full flush is the simplest correct reset.
+    // Besides the server-wide aggregates (users/libraries/status/collections)
+    // the only per-item entries are getMetadata's; watch reads still hit the
+    // API fresh. A full flush is the simplest correct reset.
     void _itemId;
     this.cache.flush();
   }

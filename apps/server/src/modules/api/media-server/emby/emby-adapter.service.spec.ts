@@ -93,6 +93,39 @@ describe('EmbyAdapterService', () => {
     setHttp();
   });
 
+  describe('getMetadata caching (#3355)', () => {
+    it('caches a resolved item so repeat conditions do not re-read it', async () => {
+      http.get.mockResolvedValue({
+        data: { Id: 'series-1', Type: 'Series', Name: 'A Show' },
+      });
+
+      const item = await service.getMetadata('series-1');
+
+      expect(item?.id).toBe('series-1');
+      expect(embyCacheMocks.data.set).toHaveBeenCalledWith(
+        'emby:metadata:series-1',
+        expect.objectContaining({ id: 'series-1' }),
+        EMBY_CACHE_TTL.METADATA,
+      );
+    });
+
+    it('serves a cached item without touching the API', async () => {
+      embyCacheMocks.data.get.mockReturnValueOnce({ id: 'series-1' });
+
+      await expect(service.getMetadata('series-1')).resolves.toEqual({
+        id: 'series-1',
+      });
+      expect(http.get).not.toHaveBeenCalled();
+    });
+
+    it('does not cache a failed read', async () => {
+      http.get.mockRejectedValue(new Error('boom'));
+
+      await expect(service.getMetadata('item-1')).resolves.toBeUndefined();
+      expect(embyCacheMocks.data.set).not.toHaveBeenCalled();
+    });
+  });
+
   describe('getActiveSessions', () => {
     it('collects the playing item plus its season and series ids', async () => {
       http.get.mockResolvedValue({
