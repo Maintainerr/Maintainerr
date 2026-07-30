@@ -288,14 +288,14 @@ export class PlexAdapterService implements IMediaServerService {
     return playing;
   }
 
-  async getCollections(libraryId: string): Promise<MediaCollection[]> {
-    // Uncached: the abstraction layer's callers decide whether a collection
-    // exists (link/relink lookups, the collections UI), and a cached listing
-    // hides one created since the last read.
+  async getCollections(
+    libraryId: string,
+    useCache = true,
+  ): Promise<MediaCollection[]> {
     const collections = await this.plexApi.getCollections(
       libraryId,
       undefined,
-      false,
+      useCache,
     );
     return collections.map(PlexMapper.toMediaCollection);
   }

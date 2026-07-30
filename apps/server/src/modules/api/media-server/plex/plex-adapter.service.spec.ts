@@ -544,14 +544,19 @@ describe('PlexAdapterService', () => {
       await expect(service.getCollections('lib123')).rejects.toBe(failure);
     });
 
-    // #3344: link lookups run through this method, and a cached listing reports
-    // a collection created since the last read as missing.
-    it('should read the listing uncached', async () => {
+    // #3344: existence decisions must read live; per-item rule reads stay cached.
+    it('should forward the cache preference', async () => {
       plexApi.getCollections.mockResolvedValue([]);
 
       await service.getCollections('lib123');
-
       expect(plexApi.getCollections).toHaveBeenCalledWith(
+        'lib123',
+        undefined,
+        true,
+      );
+
+      await service.getCollections('lib123', false);
+      expect(plexApi.getCollections).toHaveBeenLastCalledWith(
         'lib123',
         undefined,
         false,

@@ -316,6 +316,23 @@ describe('EmbyAdapterService', () => {
 
   // A truncated page is an HTTP 200, so the fail-closed contract cannot catch
   // it - the link lookup would read a partial listing as a confirmed miss.
+  describe('getCollections cache preference', () => {
+    it('bypasses the cached listing when the caller needs a live answer', async () => {
+      embyCacheMocks.data.get.mockReturnValue([
+        { id: 'stale', title: 'Stale', childCount: 1 },
+      ]);
+      http.get.mockResolvedValueOnce({
+        data: { Items: [{ Id: 'fresh', Name: 'Fresh', ChildCount: 1 }] },
+      });
+
+      // Cached by default (per-item rule reads), live when asked.
+      expect((await service.getCollections('library-1'))[0].id).toBe('stale');
+      expect((await service.getCollections('library-1', false))[0].id).toBe(
+        'fresh',
+      );
+    });
+  });
+
   describe('getCollections paging', () => {
     it('pages past the batch limit instead of truncating', async () => {
       const page = (start: number, count: number) => ({

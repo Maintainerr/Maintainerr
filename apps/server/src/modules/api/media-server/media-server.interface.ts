@@ -247,8 +247,17 @@ export interface IMediaServerService {
    * the link lookup create a duplicate beside the real one (#3344). The rule
    * getters already do the right thing - their outer catch turns it into an
    * undefined rule value, which the comparator skips.
+   *
+   * @param useCache - Rule evaluation reads this per item, so it is cached by
+   * default. Callers deciding whether a collection EXISTS must pass false: a
+   * listing up to the TTL old reports a collection created since the last read
+   * as missing, which is what makes the link lookup create a duplicate beside
+   * the real one (#3344).
    */
-  getCollections(libraryId: string): Promise<MediaCollection[]>;
+  getCollections(
+    libraryId: string,
+    useCache?: boolean,
+  ): Promise<MediaCollection[]>;
 
   /**
    * Get a specific collection by ID. Undefined means the server confirmed the

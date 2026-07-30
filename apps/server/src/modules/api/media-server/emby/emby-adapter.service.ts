@@ -824,13 +824,22 @@ export class EmbyAdapterService implements IMediaServerService {
   // Collections
   // ============================================================================
 
-  async getCollections(libraryId: string): Promise<MediaCollection[]> {
+  async getCollections(
+    libraryId: string,
+    useCache = true,
+  ): Promise<MediaCollection[]> {
     if (!this.http) {
       throw new Error('Emby not initialized');
     }
 
     const cacheKey = `${EMBY_CACHE_KEYS.COLLECTIONS}:${libraryId}`;
-    const cached = this.cache.data.get<MediaCollection[]>(cacheKey);
+    // Existence decisions pass useCache=false: a listing up to the TTL old
+    // reports a collection created since the last read as missing, and the
+    // caller creates a duplicate. The result is still written back, so the
+    // per-item rule reads stay warm and get the fresher copy.
+    const cached = useCache
+      ? this.cache.data.get<MediaCollection[]>(cacheKey)
+      : undefined;
     if (cached) {
       return cached;
     }
@@ -1006,6 +1015,10 @@ export class EmbyAdapterService implements IMediaServerService {
       if (!collection.id) {
         throw new Error('Collection created but no ID returned');
       }
+      // Invalidate here, not after the refetch/metadata follow-up below: those
+      // can throw, and the collection already exists on the server. Leaving the
+      // stale listing behind makes the next attempt create a second BoxSet.
+      this.invalidateCollectionsCache(params.libraryId);
       if (!collection.title) {
         const refreshed = await this.getCollection(collection.id, true);
         if (!refreshed) {
@@ -1027,7 +1040,6 @@ export class EmbyAdapterService implements IMediaServerService {
           );
         }
       }
-      this.invalidateCollectionsCache(params.libraryId);
       return collection;
     } catch (error) {
       const message = formatConnectionFailureMessage(

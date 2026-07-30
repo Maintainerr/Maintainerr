@@ -3978,7 +3978,9 @@ export class CollectionsService {
     name: string,
     libraryId: string,
   ): Promise<MediaCollection | undefined> {
-    const collections = await mediaServer.getCollections(libraryId);
+    // Live read, never the cache: this is the "does a collection with this
+    // title already exist?" decision, and a stale miss creates a duplicate.
+    const collections = await mediaServer.getCollections(libraryId, false);
     if (!collections) {
       return undefined;
     }

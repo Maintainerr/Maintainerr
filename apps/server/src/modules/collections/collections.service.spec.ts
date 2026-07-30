@@ -3353,7 +3353,9 @@ describe('CollectionsService', () => {
 
       expect(found?.id).toBe('box-1');
       expect(mediaServer.getCollections).toHaveBeenCalledTimes(1);
-      expect(mediaServer.getCollections).toHaveBeenCalledWith('shows');
+      // useCache=false: this is an existence decision, and a stale miss makes
+      // the caller create a duplicate (#3344).
+      expect(mediaServer.getCollections).toHaveBeenCalledWith('shows', false);
       expect(mediaServer.getLibraries).not.toHaveBeenCalled();
     });
 
@@ -3386,8 +3388,8 @@ describe('CollectionsService', () => {
 
       expect(found?.id).toBe('box-1');
       // Own library searched first, then the other one - never re-searching it.
-      expect(mediaServer.getCollections).toHaveBeenCalledWith('shows');
-      expect(mediaServer.getCollections).toHaveBeenCalledWith('movies');
+      expect(mediaServer.getCollections).toHaveBeenCalledWith('shows', false);
+      expect(mediaServer.getCollections).toHaveBeenCalledWith('movies', false);
       expect(mediaServer.getCollections).toHaveBeenCalledTimes(2);
     });
 

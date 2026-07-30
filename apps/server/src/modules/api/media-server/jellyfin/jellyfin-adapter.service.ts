@@ -1701,13 +1701,22 @@ export class JellyfinAdapterService implements IMediaServerService {
     return this.jellyfinUserId;
   }
 
-  async getCollections(libraryId: string): Promise<MediaCollection[]> {
+  async getCollections(
+    libraryId: string,
+    useCache = true,
+  ): Promise<MediaCollection[]> {
     if (!this.api) {
       throw new Error('Jellyfin not initialized');
     }
 
     const cacheKey = `${JELLYFIN_CACHE_KEYS.COLLECTIONS}:${libraryId}`;
-    let allCollections = this.cache.data.get<MediaCollection[]>(cacheKey);
+    // Existence decisions pass useCache=false: a listing up to the TTL old
+    // reports a collection created since the last read as missing, and the
+    // caller creates a duplicate. The result is still written back, so the
+    // per-item rule reads stay warm and get the fresher copy.
+    let allCollections = useCache
+      ? this.cache.data.get<MediaCollection[]>(cacheKey)
+      : undefined;
 
     if (!allCollections) {
       allCollections = [];
