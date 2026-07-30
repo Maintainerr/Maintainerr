@@ -640,6 +640,11 @@ export class PlexApiService {
     // Drop every option variant for this id instead.
     const cache = cacheManager.getCache('plexguid').data;
     const uri = `/library/metadata/${mediaId}`;
+    // Watch state goes too, like the Jellyfin and Emby resets already do.
+    // History entries are keyed by leaf ratingKey - a show or season test
+    // reads its episodes' entries, not the id passed here - so the whole
+    // history namespace is dropped rather than one id's key.
+    const historyUri = '/status/sessions/history/all';
 
     for (const key of cache.keys()) {
       // Keys are the serialized request options, so read the uri back out
@@ -652,10 +657,19 @@ export class PlexApiService {
         continue;
       }
 
-      if (cachedUri === uri || cachedUri?.startsWith(`${uri}?`)) {
+      if (
+        cachedUri === uri ||
+        cachedUri?.startsWith(`${uri}?`) ||
+        cachedUri?.startsWith(historyUri)
+      ) {
         cache.del(key);
       }
     }
+
+    // The prefetched snapshot is a point-in-time copy of every item's watch
+    // state, so a just-watched change would stay invisible to a rules test
+    // for up to its TTL.
+    cacheManager.getCache('plexwatchhistory').data.flushAll();
   }
 
   public async getUserDataFromPlexTv(): Promise<PlexTvUser[] | undefined> {

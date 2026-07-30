@@ -1491,4 +1491,28 @@ describe('PlexApiService.resetMetadataCache', () => {
       ].sort(),
     );
   });
+
+  // Jellyfin and Emby both drop watch state on reset; Plex did not, so a
+  // just-watched item kept testing stale. History entries are keyed by leaf
+  // ratingKey - not the id passed in - so the whole namespace goes.
+  it('drops watch history entries and the bulk snapshot too', async () => {
+    const cacheManager = (await import('../lib/cache')).default;
+    const watchCache = cacheManager.getCache('plexwatchhistory').data;
+
+    cache.set(
+      key('/status/sessions/history/all?sort=viewedAt:desc&metadataItemID=99'),
+      'another item',
+    );
+    cache.set(
+      key('/status/sessions/history/all?sort=viewedAt:desc'),
+      'bulk page',
+    );
+    cache.set(key('/library/sections'), 'sections listing');
+    watchCache.set('watch-history-bulk', 'snapshot');
+
+    service.resetMetadataCache('12');
+
+    expect(cache.keys()).toEqual([key('/library/sections')]);
+    expect(watchCache.keys()).toEqual([]);
+  });
 });
