@@ -1,3 +1,26 @@
+# [3.20.1](https://github.com/Maintainerr/Maintainerr/compare/v3.20.0...v3.20.1) (2026-07-30)
+
+
+## Highlights
+- Fixed Jellyfin and Emby metadata handling to prevent incorrect rule matches when metadata reads fail (#3364).
+- Improved performance for Jellyfin and Emby by caching per-item metadata reads, reducing redundant requests (#3355, #3363).
+- Resolved issues with Plex collections being duplicated or orphaned, ensuring accurate synchronization (#3344, #3353).
+
+## Fixes
+- Fixed Jellyfin and Emby metadata handling to fail closed when metadata reads fail, preventing incorrect rule matches (#3364).
+- Fixed Plex watched-state rules to use native watched state, resolving inaccuracies in rule matching (#3352).
+- Fixed issues with media server collections being duplicated or orphaned, and resolved errors with manual collections not being recognized (#3344, #3353).
+
+## Performance
+- Improved Jellyfin performance by serving container favorites from the watch snapshot, reducing redundant requests (#3356, #3357).
+- Improved Jellyfin and Emby performance by caching per-item metadata reads, significantly reducing redundant metadata requests (#3355, #3363).
+
+## Dependencies
+- Updated 5 dependencies, including notable packages: jsdom, @eslint-react/eslint-plugin, vite, @vitejs/plugin-react, and @swc/core.
+
+## New Contributors
+* @noahphex made their first contribution in https://github.com/Maintainerr/Maintainerr/pull/3352
+
 # [3.20.0](https://github.com/Maintainerr/Maintainerr/compare/v3.19.0...v3.20.0) (2026-07-29)
 
 
