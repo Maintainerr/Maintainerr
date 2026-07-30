@@ -984,6 +984,59 @@ describe('JellyfinAdapterService', () => {
     });
   });
 
+  describe('getMetadata in-flight dedupe (#3356)', () => {
+    beforeEach(async () => {
+      settingsDataService.getSettings.mockResolvedValue(
+        mockSettings as unknown as Awaited<
+          ReturnType<SettingsDataService['getSettings']>
+        >,
+      );
+      await service.initialize();
+    });
+
+    it('shares one request between concurrent reads of the same id', async () => {
+      let resolvePage: (value: unknown) => void = () => {};
+      jellyfinApiMocks.getItems.mockReturnValue(
+        new Promise((resolve) => {
+          resolvePage = resolve;
+        }),
+      );
+
+      // Sibling items are evaluated in parallel and each resolves the same
+      // parent, and they all miss the cold cache key together - so without
+      // this the cache cannot stop the first read fanning out per child.
+      const reads = Promise.all([
+        service.getMetadata('series-1'),
+        service.getMetadata('series-1'),
+        service.getMetadata('series-1'),
+      ]);
+      resolvePage({ data: { Items: [{ Id: 'series-1', Type: 'Series' }] } });
+
+      const results = await reads;
+      expect(results.map((item) => item?.id)).toEqual([
+        'series-1',
+        'series-1',
+        'series-1',
+      ]);
+      expect(jellyfinApiMocks.getItems).toHaveBeenCalledTimes(1);
+    });
+
+    it('drops the in-flight entry once the request settles', async () => {
+      jellyfinApiMocks.getItems.mockResolvedValue({
+        data: { Items: [{ Id: 'series-1', Type: 'Series' }] },
+      });
+
+      await service.getMetadata('series-1');
+      await service.getMetadata('series-1');
+
+      // The map only ever holds an unsettled request - a later read is served
+      // by the cache above it, never by a retained promise. The cache is
+      // mocked to always miss here, so the second read reaching the API is
+      // what proves the entry was released.
+      expect(jellyfinApiMocks.getItems).toHaveBeenCalledTimes(2);
+    });
+  });
+
   describe('uninitialized state', () => {
     it.each([
       ['getStatus', undefined, () => service.getStatus()],

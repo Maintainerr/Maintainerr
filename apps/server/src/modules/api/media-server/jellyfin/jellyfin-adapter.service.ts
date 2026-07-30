@@ -130,6 +130,11 @@ export class JellyfinAdapterService implements IMediaServerService {
   private readonly cache: Cache;
   // Shared in-flight prefetch, so concurrent rule groups sweep once.
   private watchHistoryPrefetch: Promise<void> | undefined;
+  // Shared in-flight metadata reads, keyed by item id. See getMetadata.
+  private readonly metadataRequests = new Map<
+    string,
+    Promise<MediaItem | undefined>
+  >();
 
   constructor(
     private readonly settingsDataService: SettingsDataService,
@@ -884,6 +889,13 @@ export class JellyfinAdapterService implements IMediaServerService {
    * API-layer cache - the whole-cache flush at the start of each rule group
    * bounds staleness to a single group run.
    *
+   * The cache cannot collapse the first read of an id, though: sibling items
+   * are evaluated concurrently (RULE_EVALUATION_CONCURRENCY) and each resolves
+   * the same parent and grandparent, so they all miss together and all fetch.
+   * Concurrent callers therefore share one in-flight request, whose entry is
+   * dropped the moment it settles - every later read goes through the cache
+   * above. No caller mutates what it gets back, so sharing is safe.
+   *
    * A MediaItem carries UserData-derived fields (viewCount, lastViewedAt,
    * userRating), so anything that feeds a watch or deletion decision must read
    * the library page's own item rather than this - see how PlexGetterService
@@ -898,6 +910,21 @@ export class JellyfinAdapterService implements IMediaServerService {
     const cached = this.cache.data.get<MediaItem>(cacheKey);
     if (cached !== undefined) return cached;
 
+    const inFlight = this.metadataRequests.get(itemId);
+    if (inFlight !== undefined) return inFlight;
+
+    const pending = this.fetchMetadata(itemId, cacheKey).finally(() => {
+      this.metadataRequests.delete(itemId);
+    });
+    this.metadataRequests.set(itemId, pending);
+
+    return pending;
+  }
+
+  private async fetchMetadata(
+    itemId: string,
+    cacheKey: string,
+  ): Promise<MediaItem | undefined> {
     try {
       const userId = await this.getUserId();
       const response = await getItemsApi(this.api).getItems({
