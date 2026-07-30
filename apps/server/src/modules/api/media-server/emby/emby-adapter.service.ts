@@ -23,6 +23,7 @@ import { MaintainerrLogger } from '../../../logging/logs.service';
 import { SettingsDataService } from '../../../settings/settings-data.service';
 import { EmbyApi } from '../../emby-api/emby-api.helper';
 import cacheManager, { type Cache } from '../../lib/cache';
+import { resolveContextActionIds } from '../context-action.util';
 import { supportsFeature } from '../media-server.constants';
 import type {
   IMediaServerService,
@@ -1067,21 +1068,36 @@ export class EmbyAdapterService implements IMediaServerService {
     if (!this.http) return;
     const children = await this.getCollectionChildren(collectionId);
     const fromLibrary: MediaItem[] = [];
+    let membershipUnknown = false;
 
     for (const child of children) {
-      if (await this.itemIsInLibrary(child.id, libraryId)) {
+      const inLibrary = await this.itemIsInLibrary(child.id, libraryId);
+      if (inLibrary === undefined) {
+        membershipUnknown = true;
+      } else if (inLibrary) {
         fromLibrary.push(child);
       }
     }
 
-    if (fromLibrary.length === 0) return;
-    await this.removeBatchFromCollection(
-      collectionId,
-      fromLibrary.map((c) => c.id),
-    );
+    if (fromLibrary.length > 0) {
+      await this.removeBatchFromCollection(
+        collectionId,
+        fromLibrary.map((c) => c.id),
+      );
+    }
+
+    // Guard only the removal, not the delete: an automatic collection that is
+    // already empty still has to go, which the old "nothing to remove" early
+    // return skipped - leaving it behind while the caller dropped the link.
     const remaining = await this.getCollectionChildren(collectionId);
     if (remaining.length === 0 && !isManualCollection) {
       await this.deleteCollection(collectionId);
+    }
+
+    if (membershipUnknown) {
+      throw new Error(
+        `Could not determine library membership for every child of collection ${collectionId}`,
+      );
     }
   }
 
@@ -1367,27 +1383,13 @@ export class EmbyAdapterService implements IMediaServerService {
     context: { type: MediaItemType; id: string },
     mediaId: string,
   ): Promise<string[]> {
-    // Match Jellyfin's semantics: when the collection type matches the context
-    // type, return [mediaId]. Otherwise traverse parent/child relationships
-    // appropriately. Episodes vs. shows are the most common case.
-    if (!collectionType || collectionType === context.type) {
-      return [mediaId];
-    }
-    if (collectionType === 'show' && context.type === 'episode') {
-      const ep = await this.getMetadata(context.id);
-      const seriesId = ep?.grandparentId;
-      return seriesId ? [seriesId] : [];
-    }
-    if (collectionType === 'episode' && context.type === 'show') {
-      const seasons = await this.getChildrenMetadata(context.id, 'season');
-      const episodeIds: string[] = [];
-      for (const season of seasons) {
-        const eps = await this.getChildrenMetadata(season.id, 'episode');
-        episodeIds.push(...eps.map((e) => e.id));
-      }
-      return episodeIds;
-    }
-    return [mediaId];
+    return resolveContextActionIds(
+      collectionType,
+      context,
+      mediaId,
+      (parentId, type) => this.getChildrenMetadata(parentId, type),
+      (message) => this.logger.warn(message),
+    );
   }
 
   // ============================================================================
@@ -1552,8 +1554,8 @@ export class EmbyAdapterService implements IMediaServerService {
   private async itemIsInLibrary(
     itemId: string,
     libraryId: string,
-  ): Promise<boolean> {
-    if (!this.http) return false;
+  ): Promise<boolean | undefined> {
+    if (!this.http) return undefined;
 
     try {
       const { data } = await this.http.get<EmbyBaseItemDto[]>(
@@ -1565,7 +1567,7 @@ export class EmbyAdapterService implements IMediaServerService {
       this.logger.debug(
         `Emby itemIsInLibrary(${itemId}, ${libraryId}) failed: ${formatConnectionFailureMessage(error, 'Connection failed')}`,
       );
-      return false;
+      return undefined;
     }
   }
 

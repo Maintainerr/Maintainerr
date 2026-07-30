@@ -62,6 +62,7 @@ import {
   isBlankMediaServerId,
   isForeignServerId,
 } from '../media-server-id.utils';
+import { resolveContextActionIds } from '../context-action.util';
 import { supportsFeature } from '../media-server.constants';
 import type {
   IMediaServerService,
@@ -736,10 +737,16 @@ export class JellyfinAdapterService implements IMediaServerService {
     return total;
   }
 
+  /**
+   * True/false when the server answered, undefined when the lookup failed.
+   * A failed check must not read as "not in this library" (1bf6c8e9 pins that
+   * a partial failure still removes what it can and keeps the collection), but
+   * the caller has to know cleanup was incomplete rather than report success.
+   */
   private async itemIsInLibrary(
     itemId: string,
     libraryId: string,
-  ): Promise<boolean> {
+  ): Promise<boolean | undefined> {
     try {
       const userId = await this.getUserId();
       const ancestors = (
@@ -752,7 +759,7 @@ export class JellyfinAdapterService implements IMediaServerService {
         `Failed to check library membership for item ${itemId}`,
       );
       this.logger.debug(error);
-      return false;
+      return undefined;
     }
   }
 
@@ -2076,8 +2083,12 @@ export class JellyfinAdapterService implements IMediaServerService {
     const childIds = children.map((item) => item.id);
 
     const itemsToRemove: string[] = [];
+    let membershipUnknown = false;
     for (const id of childIds) {
-      if (await this.itemIsInLibrary(id, libraryId)) {
+      const inLibrary = await this.itemIsInLibrary(id, libraryId);
+      if (inLibrary === undefined) {
+        membershipUnknown = true;
+      } else if (inLibrary) {
         itemsToRemove.push(id);
       }
     }
@@ -2099,6 +2110,15 @@ export class JellyfinAdapterService implements IMediaServerService {
     // this explicit delete is what removes it.
     if (childIds.length === itemsToRemove.length && !isManualCollection) {
       await this.deleteCollection(collectionId);
+    }
+
+    // Removals above still stand; this only tells the caller the sweep was
+    // incomplete, so it logs that the collection may need removing by hand
+    // instead of silently dropping the link on an apparent success.
+    if (membershipUnknown) {
+      throw new Error(
+        `Could not determine library membership for every child of collection ${collectionId}`,
+      );
     }
   }
 
@@ -2318,109 +2338,13 @@ export class JellyfinAdapterService implements IMediaServerService {
     context: { type: MediaItemType; id: string },
     mediaId: string,
   ): Promise<string[]> {
-    // Handle -1 sentinel value (meaning "all" from UI) - just return the mediaId
-    if (context.id === '-1') {
-      return [mediaId];
-    }
-
-    const handleMedia: string[] = [];
-
-    // If we have a collection type, use it to determine what IDs to return
-    if (collectionType) {
-      switch (collectionType) {
-        // When collection type is seasons
-        case 'season':
-          switch (context.type) {
-            // and context type is seasons - return just the season
-            case 'season':
-              handleMedia.push(context.id);
-              break;
-            // and context type is episodes - not allowed
-            case 'episode':
-              this.logger.warn(
-                'Tried to add episodes to a collection of type season. This is not allowed.',
-              );
-              break;
-            // and context type is show - return all seasons
-            default:
-              const seasons = await this.getChildrenMetadata(mediaId, 'season');
-              handleMedia.push(...seasons.map((s) => s.id));
-              break;
-          }
-          break;
-
-        // When collection type is episodes
-        case 'episode':
-          switch (context.type) {
-            // and context type is seasons - return all episodes in season
-            case 'season':
-              const eps = await this.getChildrenMetadata(context.id, 'episode');
-              handleMedia.push(...eps.map((ep) => ep.id));
-              break;
-            // and context type is episodes - return just the episode
-            case 'episode':
-              handleMedia.push(context.id);
-              break;
-            // and context type is show - return all episodes in show
-            default:
-              const allSeasons = await this.getChildrenMetadata(
-                mediaId,
-                'season',
-              );
-              for (const season of allSeasons) {
-                const episodes = await this.getChildrenMetadata(
-                  season.id,
-                  'episode',
-                );
-                handleMedia.push(...episodes.map((ep) => ep.id));
-              }
-              break;
-          }
-          break;
-
-        // When collection type is show or movie - just return the media item
-        default:
-          handleMedia.push(mediaId);
-          break;
-      }
-    }
-    // For global exclusions (no collection type), return hierarchically
-    else {
-      switch (context.type) {
-        case 'show':
-          // For shows, add the show + all seasons + all episodes
-          handleMedia.push(mediaId);
-          const showSeasons = await this.getChildrenMetadata(mediaId, 'season');
-          for (const season of showSeasons) {
-            handleMedia.push(season.id);
-            const episodes = await this.getChildrenMetadata(
-              season.id,
-              'episode',
-            );
-            handleMedia.push(...episodes.map((ep) => ep.id));
-          }
-          break;
-        case 'season':
-          // For seasons, add the season + all its episodes
-          handleMedia.push(context.id);
-          const seasonEps = await this.getChildrenMetadata(
-            context.id,
-            'episode',
-          );
-          handleMedia.push(...seasonEps.map((ep) => ep.id));
-          break;
-        case 'episode':
-          // Just the episode
-          handleMedia.push(context.id);
-          break;
-        default:
-          // Movies or unknown - just the item
-          handleMedia.push(mediaId);
-          break;
-      }
-    }
-
-    return handleMedia;
+    return resolveContextActionIds(
+      collectionType,
+      context,
+      mediaId,
+      (parentId, type) => this.getChildrenMetadata(parentId, type),
+      (message) => this.logger.warn(message),
+    );
   }
 
   async deleteFromDisk(itemId: string): Promise<void> {

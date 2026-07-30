@@ -2162,11 +2162,17 @@ describe('JellyfinAdapterService', () => {
         return Promise.reject(new Error('ancestor lookup failed'));
       });
 
-      await service.cleanupCollectionForLibrary(
-        'collection-1',
-        'old-library',
-        false,
-      );
+      // The partial sweep still stands (1bf6c8e9): what could be resolved is
+      // removed and the collection is kept. It now also reports that it could
+      // not finish, so the caller logs that instead of dropping the link on an
+      // apparent success (#3344).
+      await expect(
+        service.cleanupCollectionForLibrary(
+          'collection-1',
+          'old-library',
+          false,
+        ),
+      ).rejects.toThrow('Could not determine library membership');
 
       expect(collectionApiMocks.removeFromCollection).toHaveBeenCalledWith({
         collectionId: 'collection-1',
