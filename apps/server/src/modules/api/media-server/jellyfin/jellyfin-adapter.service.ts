@@ -130,6 +130,11 @@ export class JellyfinAdapterService implements IMediaServerService {
   private readonly cache: Cache;
   // Shared in-flight prefetch, so concurrent rule groups sweep once.
   private watchHistoryPrefetch: Promise<void> | undefined;
+  // Shared in-flight metadata reads, keyed by item id. See getMetadata.
+  private readonly metadataRequests = new Map<
+    string,
+    Promise<MediaItem | undefined>
+  >();
 
   constructor(
     private readonly settingsDataService: SettingsDataService,
@@ -884,6 +889,13 @@ export class JellyfinAdapterService implements IMediaServerService {
    * API-layer cache - the whole-cache flush at the start of each rule group
    * bounds staleness to a single group run.
    *
+   * The cache cannot collapse the first read of an id, though: sibling items
+   * are evaluated concurrently (RULE_EVALUATION_CONCURRENCY) and each resolves
+   * the same parent and grandparent, so they all miss together and all fetch.
+   * Concurrent callers therefore share one in-flight request, whose entry is
+   * dropped the moment it settles - every later read goes through the cache
+   * above. No caller mutates what it gets back, so sharing is safe.
+   *
    * A MediaItem carries UserData-derived fields (viewCount, lastViewedAt,
    * userRating), so anything that feeds a watch or deletion decision must read
    * the library page's own item rather than this - see how PlexGetterService
@@ -898,6 +910,21 @@ export class JellyfinAdapterService implements IMediaServerService {
     const cached = this.cache.data.get<MediaItem>(cacheKey);
     if (cached !== undefined) return cached;
 
+    const inFlight = this.metadataRequests.get(itemId);
+    if (inFlight !== undefined) return inFlight;
+
+    const pending = this.fetchMetadata(itemId, cacheKey).finally(() => {
+      this.metadataRequests.delete(itemId);
+    });
+    this.metadataRequests.set(itemId, pending);
+
+    return pending;
+  }
+
+  private async fetchMetadata(
+    itemId: string,
+    cacheKey: string,
+  ): Promise<MediaItem | undefined> {
     try {
       const userId = await this.getUserId();
       const response = await getItemsApi(this.api).getItems({
@@ -1135,8 +1162,16 @@ export class JellyfinAdapterService implements IMediaServerService {
    * Capture every user's watch state for the whole server in one paginated
    * sweep per user, so rule evaluation reads it from memory instead of asking
    * per item (#3337). Jellyfin has no central history endpoint, but /Items
-   * answers "all leaf items with this user's UserData" in bulk, and that is the
+   * answers "all items with this user's UserData" in bulk, and that is the
    * same payload the per-item path reads.
+   *
+   * Series and seasons are swept alongside movies and episodes: their
+   * favourite state is independent of their episodes' - a favourited season
+   * says nothing about the episodes under it - so it can only come from the
+   * container's own UserData (#3356). Jellyfin answers a container id from
+   * that same UserData live, so a swept container is identical to a live read.
+   * Plex's map stays leaf-only for the opposite reason: there a container id
+   * means a server-side rollup its bulk rows cannot reproduce.
    *
    * Episode rows carry SeriesId and SeasonId, so the show/season -> episode
    * index comes free from the same response. Plex could not do this - its
@@ -1187,7 +1222,7 @@ export class JellyfinAdapterService implements IMediaServerService {
         // Pages are folded in as they arrive rather than collected first, so
         // the transient cost is one page, not one copy of the library.
         const seenThisUser = new Set<string>();
-        await this.sweepUserLeafItems(user.id, abortSignal, (items) => {
+        await this.sweepUserItems(user.id, abortSignal, (items) => {
           for (const item of items) {
             if (!item.Id) continue;
             // Paging is not transactional, so a library changing under the sweep
@@ -1201,11 +1236,15 @@ export class JellyfinAdapterService implements IMediaServerService {
               itemRecords = [];
               watchHistory.set(item.Id, itemRecords);
               // Index each episode under its season and series exactly once.
-              for (const parentId of [item.SeriesId, item.SeasonId]) {
-                if (!parentId) continue;
-                const siblings = descendants.get(parentId);
-                if (siblings) siblings.push(item.Id);
-                else descendants.set(parentId, [item.Id]);
+              // Seasons also carry SeriesId, so this is gated on the type -
+              // indexing one would list seasons as episodes of their series.
+              if (item.Type === BaseItemKind.Episode) {
+                for (const parentId of [item.SeriesId, item.SeasonId]) {
+                  if (!parentId) continue;
+                  const siblings = descendants.get(parentId);
+                  if (siblings) siblings.push(item.Id);
+                  else descendants.set(parentId, [item.Id]);
+                }
               }
             }
 
@@ -1296,11 +1335,11 @@ export class JellyfinAdapterService implements IMediaServerService {
   }
 
   /**
-   * Hands each page of one user's movies and episodes to `onPage` as it
-   * arrives. Throws on a short or uncountable page so a truncated sweep is
-   * never mistaken for a small library.
+   * Hands each page of one user's movies, episodes, series and seasons to
+   * `onPage` as it arrives. Throws on a short or uncountable page so a
+   * truncated sweep is never mistaken for a small library.
    */
-  private async sweepUserLeafItems(
+  private async sweepUserItems(
     userId: string,
     abortSignal: AbortSignal | undefined,
     onPage: (items: BaseItemDto[]) => void,
@@ -1318,7 +1357,15 @@ export class JellyfinAdapterService implements IMediaServerService {
         ...JELLYFIN_LIBRARY_QUERY_DEFAULTS,
         userId,
         recursive: true,
-        includeItemTypes: [BaseItemKind.Movie, BaseItemKind.Episode],
+        // Series and Season carry their own UserData (IsFavorite, Played), so
+        // sweeping them costs a couple of extra pages per user and spares
+        // container properties a per-user fan-out each (#3356).
+        includeItemTypes: [
+          BaseItemKind.Movie,
+          BaseItemKind.Episode,
+          BaseItemKind.Series,
+          BaseItemKind.Season,
+        ],
         // Ignore unaired placeholders (mirrors #2624).
         excludeLocationTypes: [LocationType.Virtual],
         enableUserData: true,
@@ -1386,8 +1433,8 @@ export class JellyfinAdapterService implements IMediaServerService {
 
     if (useSnapshot) {
       // Only a present key is authoritative - an absent one means the item was
-      // not swept (a show/season id, a new item), so fall through to a live
-      // read rather than answering "never watched".
+      // not swept (an item added since), so fall through to a live read rather
+      // than answering "never watched".
       const records = this.getWatchSnapshot(
         playedCompletionThreshold,
       )?.watchHistory.get(itemId);
@@ -1583,8 +1630,8 @@ export class JellyfinAdapterService implements IMediaServerService {
     if (!this.api) return [];
 
     try {
-      // The prefetch indexes every leaf item, so a swept id answers from
-      // memory; an unswept one (a show/season, or an item added since) falls
+      // The prefetch indexes movies, episodes, series and seasons, so a swept
+      // id answers from memory; an unswept one (an item added since) falls
       // through to the per-user read below.
       const snapshot = this.getWatchSnapshot(
         await this.getPlayedCompletionThreshold(),

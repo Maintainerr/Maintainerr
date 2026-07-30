@@ -164,6 +164,42 @@ describe('EmbyAdapterService', () => {
     });
   });
 
+  describe('getMetadata in-flight dedupe (#3356)', () => {
+    it('shares one request between concurrent reads of the same id', async () => {
+      let resolveItem: (value: unknown) => void = () => {};
+      http.get.mockReturnValue(
+        new Promise((resolve) => {
+          resolveItem = resolve;
+        }),
+      );
+
+      // Concurrently evaluated siblings all miss the cold cache key together,
+      // so the cache alone cannot stop the first read fanning out.
+      const reads = Promise.all([
+        service.getMetadata('series-1'),
+        service.getMetadata('series-1'),
+      ]);
+      resolveItem({ data: { Id: 'series-1', Type: 'Series' } });
+
+      const results = await reads;
+      expect(results.map((item) => item?.id)).toEqual(['series-1', 'series-1']);
+      expect(http.get).toHaveBeenCalledTimes(1);
+    });
+
+    it('drops the in-flight entry once the request settles', async () => {
+      http.get.mockResolvedValue({ data: { Id: 'series-1', Type: 'Series' } });
+
+      await service.getMetadata('series-1');
+      await service.getMetadata('series-1');
+
+      // The map only ever holds an unsettled request - a later read is served
+      // by the cache above it, never by a retained promise. The cache is
+      // mocked to always miss here, so the second read reaching the API is
+      // what proves the entry was released.
+      expect(http.get).toHaveBeenCalledTimes(2);
+    });
+  });
+
   describe('getActiveSessions', () => {
     it('collects the playing item plus its season and series ids', async () => {
       http.get.mockResolvedValue({

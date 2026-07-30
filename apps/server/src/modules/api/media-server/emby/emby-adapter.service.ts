@@ -69,6 +69,11 @@ export class EmbyAdapterService implements IMediaServerService {
   private embyUserId: string | undefined;
   private deviceId: string;
   private readonly cache: Cache;
+  // Shared in-flight metadata reads, keyed by item id. See getMetadata.
+  private readonly metadataRequests = new Map<
+    string,
+    Promise<MediaItem | undefined>
+  >();
 
   constructor(
     private readonly settings: SettingsDataService,
@@ -421,9 +426,11 @@ export class EmbyAdapterService implements IMediaServerService {
   /**
    * Cached for the same reason as the Jellyfin adapter's: every rule condition
    * re-reads the evaluated item and its parents through here, so an uncached
-   * read costs one wide request per condition per item (#3355). See there for
-   * why only a resolved item is stored, and why a MediaItem's UserData-derived
-   * fields must not feed a watch or deletion decision.
+   * read costs one wide request per condition per item (#3355), and
+   * concurrently evaluated siblings all miss the cold key together so they
+   * share the in-flight read. See there for why only a resolved item is
+   * stored, and why a MediaItem's UserData-derived fields must not feed a
+   * watch or deletion decision.
    */
   async getMetadata(itemId: string): Promise<MediaItem | undefined> {
     if (!this.http) return undefined;
@@ -432,6 +439,21 @@ export class EmbyAdapterService implements IMediaServerService {
     const cached = this.cache.data.get<MediaItem>(cacheKey);
     if (cached !== undefined) return cached;
 
+    const inFlight = this.metadataRequests.get(itemId);
+    if (inFlight !== undefined) return inFlight;
+
+    const pending = this.fetchMetadata(itemId, cacheKey).finally(() => {
+      this.metadataRequests.delete(itemId);
+    });
+    this.metadataRequests.set(itemId, pending);
+
+    return pending;
+  }
+
+  private async fetchMetadata(
+    itemId: string,
+    cacheKey: string,
+  ): Promise<MediaItem | undefined> {
     try {
       // Emby's /Users/{userId}/Items/{itemId} returns user-specific data.
       // When no user context, fall back to /Items/{itemId}.

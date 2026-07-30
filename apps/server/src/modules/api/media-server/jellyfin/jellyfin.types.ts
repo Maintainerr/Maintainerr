@@ -16,17 +16,17 @@ import type {
  */
 export interface JellyfinWatchSnapshot {
   /**
-   * Leaf item id (movie or episode) -> completed-watch records. The sweep is
-   * unfiltered, so an entry exists for every item it saw: a present-but-empty
-   * array is a confirmed "never watched", while an absent key means "not
-   * swept" and must fall back to a live read.
+   * Item id (movie, episode, series or season) -> completed-watch records. The
+   * sweep is unfiltered, so an entry exists for every item it saw: a
+   * present-but-empty array is a confirmed "never watched", while an absent key
+   * means "not swept" and must fall back to a live read.
    */
   watchHistory: Map<string, WatchRecord[]>;
   /** Series and season id -> the episode ids beneath it, from the same sweep. */
   descendants: Map<string, string[]>;
-  /** Leaf item id -> ids of the users who favourited it. */
+  /** Item id -> ids of the users who favourited it. */
   favoritedBy: Map<string, string[]>;
-  /** Leaf item id -> PlayCount summed across users (includes partial plays). */
+  /** Item id -> PlayCount summed across users (includes partial plays). */
   playCount: Map<string, number>;
   /**
    * PlayedPercentage threshold the records were built with. isCompletedWatch

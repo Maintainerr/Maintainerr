@@ -984,6 +984,59 @@ describe('JellyfinAdapterService', () => {
     });
   });
 
+  describe('getMetadata in-flight dedupe (#3356)', () => {
+    beforeEach(async () => {
+      settingsDataService.getSettings.mockResolvedValue(
+        mockSettings as unknown as Awaited<
+          ReturnType<SettingsDataService['getSettings']>
+        >,
+      );
+      await service.initialize();
+    });
+
+    it('shares one request between concurrent reads of the same id', async () => {
+      let resolvePage: (value: unknown) => void = () => {};
+      jellyfinApiMocks.getItems.mockReturnValue(
+        new Promise((resolve) => {
+          resolvePage = resolve;
+        }),
+      );
+
+      // Sibling items are evaluated in parallel and each resolves the same
+      // parent, and they all miss the cold cache key together - so without
+      // this the cache cannot stop the first read fanning out per child.
+      const reads = Promise.all([
+        service.getMetadata('series-1'),
+        service.getMetadata('series-1'),
+        service.getMetadata('series-1'),
+      ]);
+      resolvePage({ data: { Items: [{ Id: 'series-1', Type: 'Series' }] } });
+
+      const results = await reads;
+      expect(results.map((item) => item?.id)).toEqual([
+        'series-1',
+        'series-1',
+        'series-1',
+      ]);
+      expect(jellyfinApiMocks.getItems).toHaveBeenCalledTimes(1);
+    });
+
+    it('drops the in-flight entry once the request settles', async () => {
+      jellyfinApiMocks.getItems.mockResolvedValue({
+        data: { Items: [{ Id: 'series-1', Type: 'Series' }] },
+      });
+
+      await service.getMetadata('series-1');
+      await service.getMetadata('series-1');
+
+      // The map only ever holds an unsettled request - a later read is served
+      // by the cache above it, never by a retained promise. The cache is
+      // mocked to always miss here, so the second read reaching the API is
+      // what proves the entry was released.
+      expect(jellyfinApiMocks.getItems).toHaveBeenCalledTimes(2);
+    });
+  });
+
   describe('uninitialized state', () => {
     it.each([
       ['getStatus', undefined, () => service.getStatus()],
@@ -1277,12 +1330,23 @@ describe('JellyfinAdapterService', () => {
             UserData: { Played: userId === 'user-1' },
           },
           { Id: 'movie-1', Type: 'Movie', UserData: { Played: false } },
+          {
+            Id: 'season-1',
+            Type: 'Season',
+            SeriesId: 'show-1',
+            UserData: { Played: false, IsFavorite: userId === 'user-2' },
+          },
+          {
+            Id: 'show-1',
+            Type: 'Series',
+            UserData: { Played: false, IsFavorite: userId === 'user-1' },
+          },
         ],
-        TotalRecordCount: 3,
+        TotalRecordCount: 5,
       },
     });
 
-    it('indexes leaf watch records and the show/season tree from one sweep per user', async () => {
+    it('indexes watch records and the show/season tree from one sweep per user', async () => {
       jellyfinApiMocks.getUsers.mockResolvedValue({
         data: [
           { Id: 'user-1', Name: 'Alice' },
@@ -1301,12 +1365,46 @@ describe('JellyfinAdapterService', () => {
         'ep-1',
         'ep-2',
         'movie-1',
+        'season-1',
+        'show-1',
       ]);
-      // Both parents index the same episodes, each exactly once.
+      // Both parents index the same episodes, each exactly once. A season
+      // carries SeriesId too, so it must not land here as an episode.
       expect(cached!.descendants.get('show-1')).toEqual(['ep-1', 'ep-2']);
       expect(cached!.descendants.get('season-1')).toEqual(['ep-1', 'ep-2']);
       // One request per user, not one per item.
       expect(jellyfinApiMocks.getItems).toHaveBeenCalledTimes(2);
+      expect(jellyfinApiMocks.getItems).toHaveBeenCalledWith(
+        expect.objectContaining({
+          includeItemTypes: ['Movie', 'Episode', 'Series', 'Season'],
+        }),
+      );
+    });
+
+    it('answers container favourites from the snapshot without a per-user fan-out (#3356)', async () => {
+      jellyfinApiMocks.getUsers.mockResolvedValue({
+        data: [
+          { Id: 'user-1', Name: 'Alice' },
+          { Id: 'user-2', Name: 'Bob' },
+        ],
+      });
+      jellyfinApiMocks.getItems.mockImplementation(
+        ({ userId }: { userId: string }) => Promise.resolve(leafPage(userId)),
+      );
+      await service.prefetchWatchHistory();
+      jellyfinApiMocks.getItems.mockClear();
+
+      // A season's IsFavorite is independent of its episodes', so this can
+      // only come from the container's own swept UserData.
+      await expect(service.getItemFavoritedBy('season-1')).resolves.toEqual([
+        'user-2',
+      ]);
+      await expect(service.getItemFavoritedBy('show-1')).resolves.toEqual([
+        'user-1',
+      ]);
+      // A swept container nobody favourited is a confirmed empty list.
+      await expect(service.getItemFavoritedBy('movie-1')).resolves.toEqual([]);
+      expect(jellyfinApiMocks.getItems).not.toHaveBeenCalled();
     });
 
     it('serves getDescendantEpisodeWatchHistory from the snapshot without new requests', async () => {
