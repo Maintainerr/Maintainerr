@@ -318,8 +318,6 @@ export class EmbyAdapterService implements IMediaServerService {
     libraryId: string,
     options?: LibraryQueryOptions,
   ): Promise<PagedResult<MediaItem>> {
-    // A fabricated empty page reads as end-of-library, which truncates rule
-    // evaluation and mass-removes the unevaluated tail (#3307).
     if (!this.http) {
       throw new Error('Emby not initialized');
     }
@@ -833,10 +831,7 @@ export class EmbyAdapterService implements IMediaServerService {
     }
 
     const cacheKey = `${EMBY_CACHE_KEYS.COLLECTIONS}:${libraryId}`;
-    // Existence decisions pass useCache=false: a listing up to the TTL old
-    // reports a collection created since the last read as missing, and the
-    // caller creates a duplicate. The result is still written back, so the
-    // per-item rule reads stay warm and get the fresher copy.
+    // Still written back on a live read, so per-item reads stay warm.
     const cached = useCache
       ? this.cache.data.get<MediaCollection[]>(cacheKey)
       : undefined;
@@ -852,10 +847,7 @@ export class EmbyAdapterService implements IMediaServerService {
       // user value interpolated into the request path is a CodeQL SSRF sink; a
       // query param is not.)
       const userId = await this.resolveUserId();
-      // Paged like getCollectionChildren: a bare Limit truncates at
-      // MAX_PAGE_SIZE and the truncated page is an HTTP 200, so the
-      // fail-closed contract cannot catch it - the link lookup would read a
-      // partial listing as a confirmed miss and create a duplicate BoxSet.
+      // A truncated page is an HTTP 200, so failing closed cannot catch it.
       const collections: MediaCollection[] = [];
       let offset = 0;
       let hasMore = true;
@@ -890,8 +882,6 @@ export class EmbyAdapterService implements IMediaServerService {
       this.logger.error(
         `Emby getCollections(${libraryId}) failed: ${formatConnectionFailureMessage(error, 'Connection failed')}`,
       );
-      // [] is reserved for a confirmed-empty library; a failed enumeration
-      // must not read as "no collection with that title" (#3344).
       throw error;
     }
   }
@@ -952,9 +942,7 @@ export class EmbyAdapterService implements IMediaServerService {
     collectionId: string,
     throwOnError = false,
   ): Promise<MediaCollection | undefined> {
-    // undefined means "the server confirmed a 404". An uninitialized client
-    // knows nothing, so it must not answer that question - callers unlink on
-    // a confirmed-missing collection (#3344). Guard predates throwOnError.
+    // Guard predates throwOnError, and answered "confirmed 404" without it.
     if (!this.http) {
       if (throwOnError) {
         throw new Error('Emby not initialized');
@@ -1101,12 +1089,8 @@ export class EmbyAdapterService implements IMediaServerService {
       // goes in the query param (not the path) to stay clear of CodeQL's SSRF
       // sink while keeping the read user-scoped.
       const userId = await this.resolveUserId();
-      // Paged, using the StartIndex/TotalRecordCount idiom this file already
-      // uses for library sweeps. A bare Limit silently truncated at
-      // MAX_PAGE_SIZE, and callers treat a non-empty children list as a
-      // complete snapshot - so a collection over one page wide looked like it
-      // had lost every item past the cap, clearing rule-removal markers and
-      // mis-reconciling membership.
+      // Callers treat a non-empty list as a complete snapshot, so a bare
+      // Limit made everything past the cap look absent.
       const children: MediaItem[] = [];
       let offset = 0;
       let hasMore = true;

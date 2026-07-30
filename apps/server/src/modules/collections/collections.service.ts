@@ -388,11 +388,9 @@ export class CollectionsService {
   }
 
   /**
-   * Every member of a sibling collection sharing this media server collection,
-   * whatever its membership type. The self-heal below must not remove an item a
-   * sibling still holds - #3298 scoped that protection to rule-owned ids, which
-   * leaves a sibling's manual-only members unprotected even though the same
-   * reasoning covers them.
+   * Every member of a sibling collection, whatever its membership type. #3298
+   * scoped the self-heal's protection to rule-owned ids, leaving a sibling's
+   * manual-only members exposed to removal.
    */
   public async getSiblingMemberMediaServerIds(
     collection: Pick<Collection, 'id' | 'mediaServerId'>,
@@ -531,8 +529,6 @@ export class CollectionsService {
       ).map((row) => row.mediaServerId),
     );
 
-    // Any membership in a sibling collection protects the item, not just a
-    // rule-owned one: removing it would strip a member the sibling still lists.
     const siblingMemberIds =
       await this.getSiblingMemberMediaServerIds(collection);
 
@@ -577,10 +573,8 @@ export class CollectionsService {
           this.logger.log(
             `Removed ${removed.length} orphaned item(s) from the media server collection for '${collection.title}' that a rule removed but the server had retained.`,
           );
-          // The marker is only kept to retry a FAILED removal. Carrying a
-          // succeeded one into the next run means a user who re-adds the item
-          // by hand has it silently removed again, instead of adopted as the
-          // manual member #3298 says a manual re-add should produce.
+          // Markers exist to retry a FAILED removal; carrying a succeeded
+          // one means a hand re-add is removed again instead of adopted.
           resolved.push(...removed);
         }
         if (failed.size > 0) {
@@ -2181,9 +2175,7 @@ export class CollectionsService {
           true,
         );
       } catch (error) {
-        // "Could not look" must not be reported as "does not exist" - that
-        // message sent users hunting for a typo in a collection that was
-        // there all along.
+        // "Could not look" is not "does not exist".
         this.logger.warn(
           `Could not verify manual collection '${collection.manualCollectionName}' - keeping the current link`,
         );
@@ -2216,9 +2208,8 @@ export class CollectionsService {
 
   /**
    * Existence probe for link decisions. 'missing' is the server confirming the
-   * collection is gone; 'unknown' is a failed lookup. Unlinking on 'unknown'
-   * makes the next add create a duplicate beside the real collection and
-   * orphans it - poster, sort and members included (#3344).
+   * collection is gone, 'unknown' is a failed lookup. Unlinking on 'unknown'
+   * orphans the real collection and duplicates it on the next add (#3344).
    */
   private async probeMediaServerCollection(
     collection: Pick<Collection, 'title' | 'mediaServerId'>,
@@ -2430,12 +2421,9 @@ export class CollectionsService {
               await mediaServer.deleteCollection(serverColl.id);
               serverColl = undefined;
             } catch (error) {
-              // Pruning an empty collection is an optimisation - an empty Plex
-              // collection rejects adds - not a step the run depends on. This
-              // call could not fail before the delete result was made
-              // throwable, and letting it escape fails the whole rule group
-              // every run on a Plex with "allow media deletion" off. Keep the
-              // link and retry next run.
+              // An optimisation (an empty Plex collection rejects adds), not a
+              // step the run depends on - letting it escape fails the whole
+              // rule group every run when Plex refuses deletes.
               this.logger.warn(
                 `[checkAutomaticMediaServerLink] Could not delete empty media server collection ${serverColl.id} for "${collection.title}" - keeping the link`,
               );
@@ -3456,11 +3444,8 @@ export class CollectionsService {
         where: { id: collectionDbId },
       });
 
-      // Deactivating must never be blocked by an unreachable media server, but
-      // dropping the link on a failed delete leaves a collection behind that
-      // Maintainerr no longer tracks (#3344). Keep the link instead: the
-      // collection stays deactivated locally and the stale media server
-      // collection is still ours to clean up.
+      // Deactivating must not be blocked by an unreachable server, but
+      // dropping the link on a failed delete orphans the collection (#3344).
       let mediaServerCollectionRemoved = true;
       if (!collection.manualCollection && collection.mediaServerId) {
         try {
@@ -3967,8 +3952,6 @@ export class CollectionsService {
         `Could not search library ${libraryId} for a collection named "${name}"`,
       );
       this.logger.debug(error);
-      // undefined is reserved for a confirmed miss. Reporting a failed search
-      // as "not there" is what relinks nothing and creates a duplicate (#3344).
       throw error;
     }
   }
@@ -3978,8 +3961,7 @@ export class CollectionsService {
     name: string,
     libraryId: string,
   ): Promise<MediaCollection | undefined> {
-    // Live read, never the cache: this is the "does a collection with this
-    // title already exist?" decision, and a stale miss creates a duplicate.
+    // Live read: a stale miss here creates a duplicate.
     const collections = await mediaServer.getCollections(libraryId, false);
     if (!collections) {
       return undefined;

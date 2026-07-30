@@ -241,18 +241,13 @@ export interface IMediaServerService {
    * Get all collections in a library. An empty array means the server confirmed
    * the library holds no collections - never "the lookup failed".
    *
-   * @throws Error on any failure to enumerate (connection, 4xx/5xx, an
-   * uninitialized client). Callers must treat a throw as "collections unknown":
-   * reporting a failed listing as "no collection with that title" is what makes
-   * the link lookup create a duplicate beside the real one (#3344). The rule
-   * getters already do the right thing - their outer catch turns it into an
-   * undefined rule value, which the comparator skips.
+   * @throws Error on any failure to enumerate, including an uninitialized
+   * client. A failed listing read as "no collection with that title" is what
+   * makes the link lookup create a duplicate beside the real one (#3344).
    *
-   * @param useCache - Rule evaluation reads this per item, so it is cached by
-   * default. Callers deciding whether a collection EXISTS must pass false: a
-   * listing up to the TTL old reports a collection created since the last read
-   * as missing, which is what makes the link lookup create a duplicate beside
-   * the real one (#3344).
+   * @param useCache - Cached by default for the per-item rule reads. Callers
+   * deciding whether a collection EXISTS must pass false; a stale listing
+   * reports one created since the last read as missing.
    */
   getCollections(
     libraryId: string,
@@ -263,10 +258,9 @@ export interface IMediaServerService {
    * Get a specific collection by ID. Undefined means the server confirmed the
    * collection is gone (404) - never "the lookup failed".
    *
-   * @param throwOnError - When true, a failed lookup throws instead of
-   * returning undefined, so callers that unlink or recreate on "missing" can
-   * tell a deleted collection from an unreachable server. Uncertainty must
-   * never unlink: the next add would create a duplicate beside the real one.
+   * @param throwOnError - When true a failed lookup throws, so callers that
+   * unlink on "missing" can tell a deleted collection from an unreachable
+   * server. Uncertainty must never unlink.
    */
   getCollection(
     collectionId: string,

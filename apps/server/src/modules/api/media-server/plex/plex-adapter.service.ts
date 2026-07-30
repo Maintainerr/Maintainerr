@@ -346,10 +346,9 @@ export class PlexAdapterService implements IMediaServerService {
 
   async deleteCollection(collectionId: string): Promise<void> {
     try {
-      // plexApi reports a refused delete as a NOK result rather than throwing
-      // (Plex answers 403 when "allow media deletion" is off, and 5xx on a
-      // blip). Resolving anyway told every caller the collection was gone, so
-      // they dropped the link and orphaned a live collection (#3344).
+      // plexApi reports a refused delete as a NOK result, not a throw (Plex
+      // answers 403 when "allow media deletion" is off). Resolving anyway told
+      // callers the collection was gone and they dropped the link (#3344).
       this.ensureMutationSucceeded(
         await this.plexApi.deleteCollection(collectionId),
         `Failed to delete collection ${collectionId}`,

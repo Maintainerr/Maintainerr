@@ -158,10 +158,8 @@ describe('RulesService.deleteRuleGroup', () => {
 
       const result = await service.deleteRuleGroup(42);
 
-      // The reason has to reach the user. A refused media-server delete is now
-      // reported instead of silently orphaning the collection, and on Plex
-      // "allow media deletion" is a persistent setting - an opaque
-      // "Delete Failed" would leave the group undeletable with no clue why.
+      // The reason has to reach the user: an opaque "Delete Failed" leaves
+      // the group undeletable with no clue why.
       expect(result).toEqual({
         code: 0,
         result: 'Failed to delete collection from media server',

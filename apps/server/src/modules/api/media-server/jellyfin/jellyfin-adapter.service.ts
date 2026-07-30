@@ -760,9 +760,6 @@ export class JellyfinAdapterService implements IMediaServerService {
     libraryId: string,
     options?: LibraryQueryOptions,
   ): Promise<PagedResult<MediaItem>> {
-    // A fabricated empty page reads as end-of-library, which truncates rule
-    // evaluation and mass-removes the unevaluated tail (#3307) - the same
-    // outcome this method's catch was rewritten to prevent.
     if (!this.api) {
       throw new Error('Jellyfin not initialized');
     }
@@ -1710,10 +1707,7 @@ export class JellyfinAdapterService implements IMediaServerService {
     }
 
     const cacheKey = `${JELLYFIN_CACHE_KEYS.COLLECTIONS}:${libraryId}`;
-    // Existence decisions pass useCache=false: a listing up to the TTL old
-    // reports a collection created since the last read as missing, and the
-    // caller creates a duplicate. The result is still written back, so the
-    // per-item rule reads stay warm and get the fresher copy.
+    // Still written back on a live read, so per-item reads stay warm.
     let allCollections = useCache
       ? this.cache.data.get<MediaCollection[]>(cacheKey)
       : undefined;
@@ -1755,8 +1749,6 @@ export class JellyfinAdapterService implements IMediaServerService {
       } catch (error) {
         this.logger.error(`Failed to get collections for ${libraryId}`);
         this.logger.debug(error);
-        // [] is reserved for a confirmed-empty library; a failed enumeration
-        // must not read as "no collection with that title" (#3344).
         throw error;
       }
     }
@@ -1768,9 +1760,7 @@ export class JellyfinAdapterService implements IMediaServerService {
     collectionId: string,
     throwOnError = false,
   ): Promise<MediaCollection | undefined> {
-    // undefined means "the server confirmed a 404". An uninitialized client
-    // knows nothing, so it must not answer that question - callers unlink on
-    // a confirmed-missing collection (#3344). Guard predates throwOnError.
+    // Guard predates throwOnError, and answered "confirmed 404" without it.
     if (!this.api) {
       if (throwOnError) {
         throw new Error('Jellyfin not initialized');
