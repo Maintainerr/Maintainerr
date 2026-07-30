@@ -887,7 +887,7 @@ export class JellyfinAdapterService implements IMediaServerService {
    * A MediaItem carries UserData-derived fields (viewCount, lastViewedAt,
    * userRating), so anything that feeds a watch or deletion decision must read
    * the library page's own item rather than this - see how PlexGetterService
-   * passes `libItem.viewCount` into getWatchState (#3352), not `metadata`.
+   * passes `libItem.viewCount` into getWatchState (#2570), not `metadata`.
    */
   async getMetadata(itemId: string): Promise<MediaItem | undefined> {
     if (!this.api) return undefined;
