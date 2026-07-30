@@ -5,6 +5,7 @@
 export const JELLYFIN_CACHE_TTL = {
   WATCH_HISTORY: 300, // 5 min
   USER_DATA: 300, // 5 min
+  METADATA: 300, // 5 min
   PLAYED_THRESHOLD: 300, // 5 min
   USERS: 1800, // 30 min
   LIBRARIES: 1800, // 30 min
@@ -62,6 +63,8 @@ export const JELLYFIN_WATCH_SNAPSHOT_MAX_RECORDS = 500_000;
 
 export const JELLYFIN_CACHE_KEYS = {
   WATCH_HISTORY: 'jellyfin:watch',
+  METADATA: 'jellyfin:metadata',
+  CHILDREN: 'jellyfin:children',
   FAVORITED_BY: 'jellyfin:favorited-by',
   TOTAL_PLAY_COUNT: 'jellyfin:total-play-count',
   PLAYED_THRESHOLD: 'jellyfin:played-threshold',

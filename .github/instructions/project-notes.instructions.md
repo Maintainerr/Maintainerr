@@ -328,6 +328,23 @@ Quick checks (Jellyfin server configured):
   uncertainty never deletes. It's the single existence primitive on the shared
   interface - consumed by the collection handler, `removeStaleCollectionMedia`,
   and the overlay processor - so don't reintroduce a per-subsystem copy.
+- **"Is this _collection_ gone?" → `getCollection(id, true)`.** Same rule one
+  level up: `undefined` means the server answered 404, a throw means the lookup
+  failed. Unlinking on a failed lookup is what produces a duplicate collection
+  beside the real one, because the next add recreates it and the original is
+  orphaned with its poster, sort and members (#3344). All three adapters
+  implement it that way; `CollectionsService.probeMediaServerCollection` is the
+  single caller-side helper.
+- **`instanceof AxiosError` never matches errors thrown by `@jellyfin/sdk`.**
+  The SDK is ESM-only and resolves axios's ESM build, while the compiled server
+  is CommonJS and resolves axios's CJS build - two module instances, two
+  `AxiosError` classes. Use `isAxiosError(error)` (duck-types on the error's own
+  flag) anywhere an SDK failure can arrive: the Jellyfin adapter and
+  `utils/connection-error.ts`. A spec that builds a local `new AxiosError()`
+  will pass while production silently takes the wrong branch, so
+  `jellyfin-adapter.service.spec.ts` fabricates SDK-shaped errors instead
+  (`createSdkAxiosError`). Emby is unaffected - its axios instance comes from
+  the server's own import.
 
 ---
 

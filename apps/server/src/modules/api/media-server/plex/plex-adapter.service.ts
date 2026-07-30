@@ -26,6 +26,7 @@ import {
   isBlankMediaServerId,
   isForeignServerId,
 } from '../media-server-id.utils';
+import { resolveContextActionIds } from '../context-action.util';
 import { supportsFeature } from '../media-server.constants';
 import {
   IMediaServerService,
@@ -234,38 +235,20 @@ export class PlexAdapterService implements IMediaServerService {
   async getWatchState(
     itemId: string,
     nativeViewCount?: number,
-    itemTitle?: string,
-    itemType?: PlexLibraryItem['type'],
   ): Promise<MediaWatchState> {
-    const history = await this.plexApi.getWatchHistory(itemId, false, itemType);
+    // Read live: something watched moments ago must not be judged from a
+    // stale snapshot, and a failed read has to throw rather than pass for a
+    // confirmed never-watched.
+    const history = await this.plexApi.getWatchHistory(itemId, false);
 
-    if (history.length > 0) {
-      return {
-        viewCount: history.length,
-        isWatched: true,
-      };
-    }
+    // Plex writes no history row when an item is marked watched without a
+    // play event (a "mark as played", a Trakt scrobble), so the item's own
+    // count is the only record of those views. History stays the floor: it
+    // covers every account on the server, while the item's count only covers
+    // the account whose token Maintainerr holds.
+    const viewCount = Math.max(history.length, nativeViewCount ?? 0);
 
-    // When watch history is empty (purged or item was marked watched without
-    // a play event), fall back to the native Plex viewCount for the boolean
-    // only.  This value is per-user (admin token) so we do not use it for
-    // the numeric viewCount to avoid misrepresenting server-wide counts.
-    const watchedByNative =
-      nativeViewCount !== undefined && nativeViewCount > 0;
-
-    if (watchedByNative) {
-      this.logger.log(
-        `Media '${itemTitle ?? 'unknown'}' (ratingKey=${itemId}) is marked watched in Plex ` +
-          `but has no watch history. viewCount will be 0. This can happen when ` +
-          `history is purged or the item was marked watched without a play event ` +
-          `(e.g. Trakt/API scrobble).`,
-      );
-    }
-
-    return {
-      viewCount: 0,
-      isWatched: watchedByNative,
-    };
+    return { viewCount, isWatched: viewCount > 0 };
   }
 
   async getItemSeenBy(itemId: string): Promise<string[]> {
@@ -288,9 +271,15 @@ export class PlexAdapterService implements IMediaServerService {
     return playing;
   }
 
-  async getCollections(libraryId: string): Promise<MediaCollection[]> {
-    const collections = await this.plexApi.getCollections(libraryId);
-    if (!collections) return [];
+  async getCollections(
+    libraryId: string,
+    useCache = true,
+  ): Promise<MediaCollection[]> {
+    const collections = await this.plexApi.getCollections(
+      libraryId,
+      undefined,
+      useCache,
+    );
     return collections.map(PlexMapper.toMediaCollection);
   }
 
@@ -340,11 +329,36 @@ export class PlexAdapterService implements IMediaServerService {
 
   async deleteCollection(collectionId: string): Promise<void> {
     try {
-      await this.plexApi.deleteCollection(collectionId);
+      // plexApi reports a refused delete as a NOK result, not a throw (Plex
+      // answers 403 when "allow media deletion" is off). Resolving anyway told
+      // callers the collection was gone and they dropped the link (#3344).
+      this.ensureMutationSucceeded(
+        await this.plexApi.deleteCollection(collectionId),
+        `Failed to delete collection ${collectionId}`,
+      );
     } catch (error) {
+      // A delete that failed because the collection is already gone is the
+      // outcome the caller wanted. Only a confirmed 404 reads as gone here -
+      // getCollection throws when it cannot tell - so an unreachable server
+      // still propagates.
+      if (!(await this.collectionStillExists(collectionId))) {
+        this.logger.debug(`Plex collection ${collectionId} is already gone`);
+        return;
+      }
+
       this.logger.error(`Failed to delete collection ${collectionId}`);
       this.logger.debug(error);
       throw error;
+    }
+  }
+
+  private async collectionStillExists(collectionId: string): Promise<boolean> {
+    try {
+      return Boolean(await this.plexApi.getCollection(collectionId));
+    } catch {
+      // Existence unknown: assume it is still there so the delete failure is
+      // reported rather than silently swallowed.
+      return true;
     }
   }
 
@@ -619,7 +633,13 @@ export class PlexAdapterService implements IMediaServerService {
     isManualCollection: boolean,
   ): Promise<void> {
     void libraryId;
-    void isManualCollection;
+
+    // A manual collection belongs to the user, not to Maintainerr - the rule
+    // group only points at it, so moving the rule group away must leave it
+    // standing. Mirrors the manual guard in updateCollection/deleteCollection.
+    if (isManualCollection) {
+      return;
+    }
 
     // Plex collections are per-library, so no cross-library sharing occurs.
     await this.deleteCollection(collectionId);
@@ -803,12 +823,15 @@ export class PlexAdapterService implements IMediaServerService {
     context: { type: MediaItemType; id: string },
     mediaId: string,
   ): Promise<string[]> {
-    const result = await this.plexApi.getAllIdsForContextAction(
-      collectionType ? PlexMapper.toPlexDataType(collectionType) : undefined,
-      { type: PlexMapper.toPlexDataType(context.type), id: Number(context.id) },
-      { plexId: Number(mediaId) },
+    // Plex children are unambiguous - a show's are seasons, a season's are
+    // episodes - so the type argument is not needed here.
+    return resolveContextActionIds(
+      collectionType,
+      context,
+      mediaId,
+      (parentId) => this.getChildrenMetadata(parentId),
+      (message) => this.logger.warn(message),
     );
-    return result.map((r) => String(r.plexId));
   }
 
   resetMetadataCache(itemId?: string): void {

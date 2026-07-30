@@ -45,7 +45,12 @@ import {
   type WatchRecord,
 } from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
-import { AxiosError } from 'axios';
+// isAxiosError duck-types on the error's own flag, so it also matches errors
+// thrown by @jellyfin/sdk. The SDK is ESM-only and pulls axios's ESM build,
+// while this server compiles to CommonJS and gets axios's CJS build - two
+// module instances, two error classes, so an instanceof check against the
+// imported class silently never matches an SDK failure.
+import { isAxiosError } from 'axios';
 import { formatConnectionFailureMessage } from '../../../../utils/connection-error';
 import { delay } from '../../../../utils/delay';
 import { MaintainerrLogger } from '../../../logging/logs.service';
@@ -57,6 +62,7 @@ import {
   isBlankMediaServerId,
   isForeignServerId,
 } from '../media-server-id.utils';
+import { resolveContextActionIds } from '../context-action.util';
 import { supportsFeature } from '../media-server.constants';
 import type {
   IMediaServerService,
@@ -124,6 +130,11 @@ export class JellyfinAdapterService implements IMediaServerService {
   private readonly cache: Cache;
   // Shared in-flight prefetch, so concurrent rule groups sweep once.
   private watchHistoryPrefetch: Promise<void> | undefined;
+  // Shared in-flight metadata reads, keyed by item id. See getMetadata.
+  private readonly metadataRequests = new Map<
+    string,
+    Promise<MediaItem | undefined>
+  >();
 
   constructor(
     private readonly settingsDataService: SettingsDataService,
@@ -482,7 +493,7 @@ export class JellyfinAdapterService implements IMediaServerService {
       );
       return Buffer.from(response.data as unknown as ArrayBuffer);
     } catch (error) {
-      if (error instanceof AxiosError && error.response?.status === 404) {
+      if (isAxiosError(error) && error.response?.status === 404) {
         return null;
       }
       this.logger.warn(
@@ -657,8 +668,7 @@ export class JellyfinAdapterService implements IMediaServerService {
         }
       }
     } catch (error) {
-      const status =
-        error instanceof AxiosError ? error.response?.status : undefined;
+      const status = isAxiosError(error) ? error.response?.status : undefined;
       if (status === 404) {
         this.logger.debug(
           'Jellyfin /System/Info/Storage not available - server is older than 10.11',
@@ -732,10 +742,16 @@ export class JellyfinAdapterService implements IMediaServerService {
     return total;
   }
 
+  /**
+   * True/false when the server answered, undefined when the lookup failed.
+   * A failed check must not read as "not in this library" (1bf6c8e9 pins that
+   * a partial failure still removes what it can and keeps the collection), but
+   * the caller has to know cleanup was incomplete rather than report success.
+   */
   private async itemIsInLibrary(
     itemId: string,
     libraryId: string,
-  ): Promise<boolean> {
+  ): Promise<boolean | undefined> {
     try {
       const userId = await this.getUserId();
       const ancestors = (
@@ -748,7 +764,7 @@ export class JellyfinAdapterService implements IMediaServerService {
         `Failed to check library membership for item ${itemId}`,
       );
       this.logger.debug(error);
-      return false;
+      return undefined;
     }
   }
 
@@ -757,8 +773,7 @@ export class JellyfinAdapterService implements IMediaServerService {
     options?: LibraryQueryOptions,
   ): Promise<PagedResult<MediaItem>> {
     if (!this.api) {
-      this.logger.warn('getLibraryContents() - API not initialized');
-      return { items: [], totalSize: 0, offset: 0, limit: 50 };
+      throw new Error('Jellyfin not initialized');
     }
 
     try {
@@ -867,9 +882,49 @@ export class JellyfinAdapterService implements IMediaServerService {
     }
   }
 
+  /**
+   * Every rule condition re-reads the evaluated item (and its parents) through
+   * here, so an uncached read costs one wide request per condition per item
+   * (#3355). Cached like the Plex path, which has always served these from its
+   * API-layer cache - the whole-cache flush at the start of each rule group
+   * bounds staleness to a single group run.
+   *
+   * The cache cannot collapse the first read of an id, though: sibling items
+   * are evaluated concurrently (RULE_EVALUATION_CONCURRENCY) and each resolves
+   * the same parent and grandparent, so they all miss together and all fetch.
+   * Concurrent callers therefore share one in-flight request, whose entry is
+   * dropped the moment it settles - every later read goes through the cache
+   * above. No caller mutates what it gets back, so sharing is safe.
+   *
+   * A MediaItem carries UserData-derived fields (viewCount, lastViewedAt,
+   * userRating), so anything that feeds a watch or deletion decision must read
+   * the library page's own item rather than this - see how PlexGetterService
+   * passes `libItem.viewCount` into getWatchState (#2570), not `metadata`.
+   */
   async getMetadata(itemId: string): Promise<MediaItem | undefined> {
     if (!this.api) return undefined;
 
+    const cacheKey = `${JELLYFIN_CACHE_KEYS.METADATA}:${itemId}`;
+    // Read once rather than has()-then-get(): an entry expiring between the two
+    // would return undefined, which callers read as "item is gone".
+    const cached = this.cache.data.get<MediaItem>(cacheKey);
+    if (cached !== undefined) return cached;
+
+    const inFlight = this.metadataRequests.get(itemId);
+    if (inFlight !== undefined) return inFlight;
+
+    const pending = this.fetchMetadata(itemId, cacheKey).finally(() => {
+      this.metadataRequests.delete(itemId);
+    });
+    this.metadataRequests.set(itemId, pending);
+
+    return pending;
+  }
+
+  private async fetchMetadata(
+    itemId: string,
+    cacheKey: string,
+  ): Promise<MediaItem | undefined> {
     try {
       const userId = await this.getUserId();
       const response = await getItemsApi(this.api).getItems({
@@ -889,7 +944,14 @@ export class JellyfinAdapterService implements IMediaServerService {
       });
 
       const item = response.data.Items?.[0];
-      return item ? JellyfinMapper.toMediaItem(item) : undefined;
+      if (!item) return undefined;
+
+      // Only a resolved item is cached. This method answers undefined for both
+      // a missing item and a failed read, so persisting that would turn a
+      // transient blip into "item is gone" for the whole TTL (#3307).
+      const mediaItem = JellyfinMapper.toMediaItem(item);
+      this.cache.data.set(cacheKey, mediaItem, JELLYFIN_CACHE_TTL.METADATA);
+      return mediaItem;
     } catch (error) {
       this.logger.warn(`Failed to get metadata for ${itemId}`);
       this.logger.debug(error);
@@ -920,18 +982,29 @@ export class JellyfinAdapterService implements IMediaServerService {
       });
       return Boolean(response.data.Items?.[0]);
     } catch (error) {
-      if (error instanceof AxiosError && error.response?.status === 404) {
+      if (isAxiosError(error) && error.response?.status === 404) {
         return false;
       }
       throw error;
     }
   }
 
+  /**
+   * Cached for the same reason as getMetadata (#3355): the show and season
+   * getters walk the tree on every condition, so an uncached read costs
+   * 1 + seasons requests per condition per item. Plex has always served these
+   * from its API-layer cache. Only a completed read is stored - the catch below
+   * answers [] for a failed one, and caching that would read as "no episodes".
+   */
   async getChildrenMetadata(
     parentId: string,
     childType?: MediaItemType,
   ): Promise<MediaItem[]> {
     if (!this.api) return [];
+
+    const cacheKey = `${JELLYFIN_CACHE_KEYS.CHILDREN}:${parentId}:${childType ?? 'any'}`;
+    const cached = this.cache.data.get<MediaItem[]>(cacheKey);
+    if (cached !== undefined) return cached;
 
     try {
       const userId = await this.getUserId();
@@ -952,7 +1025,10 @@ export class JellyfinAdapterService implements IMediaServerService {
           enableUserData: true,
         });
 
-        return (response.data.Items || []).map(JellyfinMapper.toMediaItem);
+        return this.cacheChildren(
+          cacheKey,
+          (response.data.Items || []).map(JellyfinMapper.toMediaItem),
+        );
       }
 
       // For episodes and other types, parentId works correctly
@@ -979,12 +1055,20 @@ export class JellyfinAdapterService implements IMediaServerService {
           childType === 'episode' ? [LocationType.Virtual] : undefined,
       });
 
-      return (response.data.Items || []).map(JellyfinMapper.toMediaItem);
+      return this.cacheChildren(
+        cacheKey,
+        (response.data.Items || []).map(JellyfinMapper.toMediaItem),
+      );
     } catch (error) {
       this.logger.error(`Failed to get children for ${parentId}`);
       this.logger.debug(error);
       return [];
     }
+  }
+
+  private cacheChildren(cacheKey: string, children: MediaItem[]): MediaItem[] {
+    this.cache.data.set(cacheKey, children, JELLYFIN_CACHE_TTL.METADATA);
+    return children;
   }
 
   async getRecentlyAdded(
@@ -1078,8 +1162,16 @@ export class JellyfinAdapterService implements IMediaServerService {
    * Capture every user's watch state for the whole server in one paginated
    * sweep per user, so rule evaluation reads it from memory instead of asking
    * per item (#3337). Jellyfin has no central history endpoint, but /Items
-   * answers "all leaf items with this user's UserData" in bulk, and that is the
+   * answers "all items with this user's UserData" in bulk, and that is the
    * same payload the per-item path reads.
+   *
+   * Series and seasons are swept alongside movies and episodes: their
+   * favourite state is independent of their episodes' - a favourited season
+   * says nothing about the episodes under it - so it can only come from the
+   * container's own UserData (#3356). Jellyfin answers a container id from
+   * that same UserData live, so a swept container is identical to a live read.
+   * Plex's map stays leaf-only for the opposite reason: there a container id
+   * means a server-side rollup its bulk rows cannot reproduce.
    *
    * Episode rows carry SeriesId and SeasonId, so the show/season -> episode
    * index comes free from the same response. Plex could not do this - its
@@ -1130,7 +1222,7 @@ export class JellyfinAdapterService implements IMediaServerService {
         // Pages are folded in as they arrive rather than collected first, so
         // the transient cost is one page, not one copy of the library.
         const seenThisUser = new Set<string>();
-        await this.sweepUserLeafItems(user.id, abortSignal, (items) => {
+        await this.sweepUserItems(user.id, abortSignal, (items) => {
           for (const item of items) {
             if (!item.Id) continue;
             // Paging is not transactional, so a library changing under the sweep
@@ -1144,11 +1236,15 @@ export class JellyfinAdapterService implements IMediaServerService {
               itemRecords = [];
               watchHistory.set(item.Id, itemRecords);
               // Index each episode under its season and series exactly once.
-              for (const parentId of [item.SeriesId, item.SeasonId]) {
-                if (!parentId) continue;
-                const siblings = descendants.get(parentId);
-                if (siblings) siblings.push(item.Id);
-                else descendants.set(parentId, [item.Id]);
+              // Seasons also carry SeriesId, so this is gated on the type -
+              // indexing one would list seasons as episodes of their series.
+              if (item.Type === BaseItemKind.Episode) {
+                for (const parentId of [item.SeriesId, item.SeasonId]) {
+                  if (!parentId) continue;
+                  const siblings = descendants.get(parentId);
+                  if (siblings) siblings.push(item.Id);
+                  else descendants.set(parentId, [item.Id]);
+                }
               }
             }
 
@@ -1239,11 +1335,11 @@ export class JellyfinAdapterService implements IMediaServerService {
   }
 
   /**
-   * Hands each page of one user's movies and episodes to `onPage` as it
-   * arrives. Throws on a short or uncountable page so a truncated sweep is
-   * never mistaken for a small library.
+   * Hands each page of one user's movies, episodes, series and seasons to
+   * `onPage` as it arrives. Throws on a short or uncountable page so a
+   * truncated sweep is never mistaken for a small library.
    */
-  private async sweepUserLeafItems(
+  private async sweepUserItems(
     userId: string,
     abortSignal: AbortSignal | undefined,
     onPage: (items: BaseItemDto[]) => void,
@@ -1261,7 +1357,15 @@ export class JellyfinAdapterService implements IMediaServerService {
         ...JELLYFIN_LIBRARY_QUERY_DEFAULTS,
         userId,
         recursive: true,
-        includeItemTypes: [BaseItemKind.Movie, BaseItemKind.Episode],
+        // Series and Season carry their own UserData (IsFavorite, Played), so
+        // sweeping them costs a couple of extra pages per user and spares
+        // container properties a per-user fan-out each (#3356).
+        includeItemTypes: [
+          BaseItemKind.Movie,
+          BaseItemKind.Episode,
+          BaseItemKind.Series,
+          BaseItemKind.Season,
+        ],
         // Ignore unaired placeholders (mirrors #2624).
         excludeLocationTypes: [LocationType.Virtual],
         enableUserData: true,
@@ -1329,8 +1433,8 @@ export class JellyfinAdapterService implements IMediaServerService {
 
     if (useSnapshot) {
       // Only a present key is authoritative - an absent one means the item was
-      // not swept (a show/season id, a new item), so fall through to a live
-      // read rather than answering "never watched".
+      // not swept (an item added since), so fall through to a live read rather
+      // than answering "never watched".
       const records = this.getWatchSnapshot(
         playedCompletionThreshold,
       )?.watchHistory.get(itemId);
@@ -1526,8 +1630,8 @@ export class JellyfinAdapterService implements IMediaServerService {
     if (!this.api) return [];
 
     try {
-      // The prefetch indexes every leaf item, so a swept id answers from
-      // memory; an unswept one (a show/season, or an item added since) falls
+      // The prefetch indexes movies, episodes, series and seasons, so a swept
+      // id answers from memory; an unswept one (an item added since) falls
       // through to the per-user read below.
       const snapshot = this.getWatchSnapshot(
         await this.getPlayedCompletionThreshold(),
@@ -1695,11 +1799,19 @@ export class JellyfinAdapterService implements IMediaServerService {
     return this.jellyfinUserId;
   }
 
-  async getCollections(libraryId: string): Promise<MediaCollection[]> {
-    if (!this.api) return [];
+  async getCollections(
+    libraryId: string,
+    useCache = true,
+  ): Promise<MediaCollection[]> {
+    if (!this.api) {
+      throw new Error('Jellyfin not initialized');
+    }
 
     const cacheKey = `${JELLYFIN_CACHE_KEYS.COLLECTIONS}:${libraryId}`;
-    let allCollections = this.cache.data.get<MediaCollection[]>(cacheKey);
+    // Still written back on a live read, so per-item reads stay warm.
+    let allCollections = useCache
+      ? this.cache.data.get<MediaCollection[]>(cacheKey)
+      : undefined;
 
     if (!allCollections) {
       allCollections = [];
@@ -1738,7 +1850,7 @@ export class JellyfinAdapterService implements IMediaServerService {
       } catch (error) {
         this.logger.error(`Failed to get collections for ${libraryId}`);
         this.logger.debug(error);
-        return [];
+        throw error;
       }
     }
 
@@ -1749,7 +1861,13 @@ export class JellyfinAdapterService implements IMediaServerService {
     collectionId: string,
     throwOnError = false,
   ): Promise<MediaCollection | undefined> {
-    if (!this.api) return undefined;
+    // Guard predates throwOnError, and answered "confirmed 404" without it.
+    if (!this.api) {
+      if (throwOnError) {
+        throw new Error('Jellyfin not initialized');
+      }
+      return undefined;
+    }
 
     try {
       const userId = await this.getUserId();
@@ -1762,7 +1880,7 @@ export class JellyfinAdapterService implements IMediaServerService {
         ? JellyfinMapper.toMediaCollection(response.data)
         : undefined;
     } catch (error) {
-      if (error instanceof AxiosError && error.response?.status === 404) {
+      if (isAxiosError(error) && error.response?.status === 404) {
         this.logger.debug(
           `Jellyfin collection ${collectionId} not found; treating it as missing`,
         );
@@ -1824,7 +1942,11 @@ export class JellyfinAdapterService implements IMediaServerService {
   }
 
   async deleteCollection(collectionId: string): Promise<void> {
-    if (!this.api) return;
+    // Resolving here would tell the caller the BoxSet is gone, and the caller
+    // drops the link on that (#3344). An uninitialized client knows nothing.
+    if (!this.api) {
+      throw new Error('Jellyfin not initialized');
+    }
 
     try {
       await getLibraryApi(this.api).deleteItem({ itemId: collectionId });
@@ -1832,7 +1954,7 @@ export class JellyfinAdapterService implements IMediaServerService {
       // The BoxSet may already be gone (a concurrent delete, or the user
       // removed it in Jellyfin), which 404/500s here. Re-check and swallow if
       // so. Note: Jellyfin does NOT auto-delete BoxSets that merely go empty.
-      if (await this.getCollection(collectionId).then(Boolean)) {
+      if (await this.collectionStillExists(collectionId)) {
         this.logger.error(`Failed to delete collection ${collectionId}`);
         this.logger.debug(error);
         // Throw before the cache invalidation below - the collection still
@@ -1845,6 +1967,20 @@ export class JellyfinAdapterService implements IMediaServerService {
     // libraryId not known here; clear all per-library entries.
     this.invalidateCollectionsCache();
     this.invalidateCollectionChildrenCache(collectionId);
+  }
+
+  /**
+   * Whether the BoxSet is still on the server. Only a confirmed 404 reads as
+   * gone: `getCollection(id, true)` throws when it cannot tell, and an
+   * unverifiable re-check must not turn a failed delete into a silent success
+   * (#3344). Mirrors the Plex adapter's helper of the same name.
+   */
+  private async collectionStillExists(collectionId: string): Promise<boolean> {
+    try {
+      return Boolean(await this.getCollection(collectionId, true));
+    } catch {
+      return true;
+    }
   }
 
   async getCollectionChildren(collectionId: string): Promise<MediaItem[]> {
@@ -1925,7 +2061,7 @@ export class JellyfinAdapterService implements IMediaServerService {
         }
       } catch (error) {
         if (
-          error instanceof AxiosError &&
+          isAxiosError(error) &&
           (error.response?.status === 400 || error.response?.status === 404)
         ) {
           throw error;
@@ -2041,8 +2177,12 @@ export class JellyfinAdapterService implements IMediaServerService {
     const childIds = children.map((item) => item.id);
 
     const itemsToRemove: string[] = [];
+    let membershipUnknown = false;
     for (const id of childIds) {
-      if (await this.itemIsInLibrary(id, libraryId)) {
+      const inLibrary = await this.itemIsInLibrary(id, libraryId);
+      if (inLibrary === undefined) {
+        membershipUnknown = true;
+      } else if (inLibrary) {
         itemsToRemove.push(id);
       }
     }
@@ -2064,6 +2204,15 @@ export class JellyfinAdapterService implements IMediaServerService {
     // this explicit delete is what removes it.
     if (childIds.length === itemsToRemove.length && !isManualCollection) {
       await this.deleteCollection(collectionId);
+    }
+
+    // Removals above still stand; this only tells the caller the sweep was
+    // incomplete, so it logs that the collection may need removing by hand
+    // instead of silently dropping the link on an apparent success.
+    if (membershipUnknown) {
+      throw new Error(
+        `Could not determine library membership for every child of collection ${collectionId}`,
+      );
     }
   }
 
@@ -2283,109 +2432,13 @@ export class JellyfinAdapterService implements IMediaServerService {
     context: { type: MediaItemType; id: string },
     mediaId: string,
   ): Promise<string[]> {
-    // Handle -1 sentinel value (meaning "all" from UI) - just return the mediaId
-    if (context.id === '-1') {
-      return [mediaId];
-    }
-
-    const handleMedia: string[] = [];
-
-    // If we have a collection type, use it to determine what IDs to return
-    if (collectionType) {
-      switch (collectionType) {
-        // When collection type is seasons
-        case 'season':
-          switch (context.type) {
-            // and context type is seasons - return just the season
-            case 'season':
-              handleMedia.push(context.id);
-              break;
-            // and context type is episodes - not allowed
-            case 'episode':
-              this.logger.warn(
-                'Tried to add episodes to a collection of type season. This is not allowed.',
-              );
-              break;
-            // and context type is show - return all seasons
-            default:
-              const seasons = await this.getChildrenMetadata(mediaId, 'season');
-              handleMedia.push(...seasons.map((s) => s.id));
-              break;
-          }
-          break;
-
-        // When collection type is episodes
-        case 'episode':
-          switch (context.type) {
-            // and context type is seasons - return all episodes in season
-            case 'season':
-              const eps = await this.getChildrenMetadata(context.id, 'episode');
-              handleMedia.push(...eps.map((ep) => ep.id));
-              break;
-            // and context type is episodes - return just the episode
-            case 'episode':
-              handleMedia.push(context.id);
-              break;
-            // and context type is show - return all episodes in show
-            default:
-              const allSeasons = await this.getChildrenMetadata(
-                mediaId,
-                'season',
-              );
-              for (const season of allSeasons) {
-                const episodes = await this.getChildrenMetadata(
-                  season.id,
-                  'episode',
-                );
-                handleMedia.push(...episodes.map((ep) => ep.id));
-              }
-              break;
-          }
-          break;
-
-        // When collection type is show or movie - just return the media item
-        default:
-          handleMedia.push(mediaId);
-          break;
-      }
-    }
-    // For global exclusions (no collection type), return hierarchically
-    else {
-      switch (context.type) {
-        case 'show':
-          // For shows, add the show + all seasons + all episodes
-          handleMedia.push(mediaId);
-          const showSeasons = await this.getChildrenMetadata(mediaId, 'season');
-          for (const season of showSeasons) {
-            handleMedia.push(season.id);
-            const episodes = await this.getChildrenMetadata(
-              season.id,
-              'episode',
-            );
-            handleMedia.push(...episodes.map((ep) => ep.id));
-          }
-          break;
-        case 'season':
-          // For seasons, add the season + all its episodes
-          handleMedia.push(context.id);
-          const seasonEps = await this.getChildrenMetadata(
-            context.id,
-            'episode',
-          );
-          handleMedia.push(...seasonEps.map((ep) => ep.id));
-          break;
-        case 'episode':
-          // Just the episode
-          handleMedia.push(context.id);
-          break;
-        default:
-          // Movies or unknown - just the item
-          handleMedia.push(mediaId);
-          break;
-      }
-    }
-
-    return handleMedia;
+    return resolveContextActionIds(
+      collectionType,
+      context,
+      mediaId,
+      (parentId, type) => this.getChildrenMetadata(parentId, type),
+      (message) => this.logger.warn(message),
+    );
   }
 
   async deleteFromDisk(itemId: string): Promise<void> {
@@ -2424,16 +2477,20 @@ export class JellyfinAdapterService implements IMediaServerService {
       // scoping the watch invalidation to `:${itemId}` left them stale: a season
       // stayed "not watched by everyone" for hours after a manual mark in
       // Jellyfin (#3274). Clear the whole watch-history namespace instead (cheap,
-      // and flushed each run anyway). The item's favourite/play-count entries and
-      // the server-wide aggregate caches (users/libraries/status/collections) are
-      // invalidated exactly as before.
+      // and flushed each run anyway). Children entries are keyed the same way -
+      // a show's episode lists hang off its season ids, not the id passed here -
+      // so that namespace goes wholesale too. The item's favourite/play-count
+      // entries and the server-wide aggregate caches (users/libraries/status/
+      // collections) are invalidated exactly as before.
       this.cache.data
         .keys()
         .filter(
           (key) =>
             key.startsWith(`${JELLYFIN_CACHE_KEYS.WATCH_HISTORY}:`) ||
+            key.startsWith(`${JELLYFIN_CACHE_KEYS.CHILDREN}:`) ||
             key === `${JELLYFIN_CACHE_KEYS.FAVORITED_BY}:${itemId}` ||
-            key === `${JELLYFIN_CACHE_KEYS.TOTAL_PLAY_COUNT}:${itemId}`,
+            key === `${JELLYFIN_CACHE_KEYS.TOTAL_PLAY_COUNT}:${itemId}` ||
+            key === `${JELLYFIN_CACHE_KEYS.METADATA}:${itemId}`,
         )
         .forEach((key) => this.cache.data.del(key));
     } else {
@@ -2510,14 +2567,13 @@ export class JellyfinAdapterService implements IMediaServerService {
   }
 
   private isRetryableLibraryError(error: unknown): boolean {
-    const errorCode =
-      error instanceof AxiosError
-        ? error.code
-        : error && typeof error === 'object' && 'code' in error
-          ? typeof error.code === 'string'
-            ? error.code
-            : undefined
-          : undefined;
+    const errorCode = isAxiosError(error)
+      ? error.code
+      : error && typeof error === 'object' && 'code' in error
+        ? typeof error.code === 'string'
+          ? error.code
+          : undefined
+        : undefined;
 
     if (
       errorCode &&
@@ -2526,8 +2582,7 @@ export class JellyfinAdapterService implements IMediaServerService {
       return true;
     }
 
-    const statusCode =
-      error instanceof AxiosError ? error.response?.status : undefined;
+    const statusCode = isAxiosError(error) ? error.response?.status : undefined;
 
     if (
       statusCode !== undefined &&

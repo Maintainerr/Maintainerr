@@ -27,6 +27,10 @@ import {
   PlexUserAccount,
 } from '../../plex-api/interfaces/library.interfaces';
 import { Media, PlexMetadata } from '../../plex-api/interfaces/media.interface';
+import { addProviderId, emptyProviderIds } from '../media-provider-ids.utils';
+
+const GUID_SCHEME_SEPARATOR = '://';
+const LEGACY_AGENT_PREFIX = 'com.plexapp.agents.';
 
 /**
  * Mapper for converting Plex-specific types to server-agnostic MediaItem types.
@@ -116,41 +120,43 @@ export class PlexMapper {
    * - "tmdb://12345"
    * - "tvdb://12345"
    * - "plex://movie/5d776830880197001ec7f3eb"
+   * - "com.plexapp.agents.thetvdb://73141/1/1?lang=en" (legacy agent)
+   *
+   * @param fallbackGuid - The item's own `guid`. A library still matched by a
+   *   legacy agent carries no `Guid[]`, and keeps the provider id here.
    */
   static extractProviderIds(
     guids: { id: string }[] | undefined,
+    fallbackGuid?: string,
   ): MediaProviderIds {
-    const providerIds: MediaProviderIds = {
-      imdb: [],
-      tmdb: [],
-      tvdb: [],
+    const providerIds = emptyProviderIds();
+
+    const collect = (guid: string | undefined) => {
+      const schemeEnd = guid?.indexOf(GUID_SCHEME_SEPARATOR) ?? -1;
+      if (schemeEnd < 1) return;
+
+      // A legacy agent names the provider in the scheme
+      // (com.plexapp.agents.thetvdb://), and appends the season and episode to
+      // the series id with a language on the end: 73141/1/1?lang=en.
+      const scheme = guid.slice(0, schemeEnd).toLowerCase();
+      const id = guid
+        .slice(schemeEnd + GUID_SCHEME_SEPARATOR.length)
+        .split('/', 1)[0]
+        .split('?', 1)[0];
+
+      addProviderId(
+        providerIds,
+        scheme.startsWith(LEGACY_AGENT_PREFIX)
+          ? scheme.slice(LEGACY_AGENT_PREFIX.length)
+          : scheme,
+        id,
+      );
     };
 
-    if (!guids || !Array.isArray(guids)) {
-      return providerIds;
+    for (const guid of Array.isArray(guids) ? guids : []) {
+      collect(guid?.id);
     }
-
-    for (const guid of guids) {
-      if (!guid.id) continue;
-
-      const match = guid.id.match(/^(\w+):\/\/(.+)$/);
-      if (!match) continue;
-
-      const [, provider, id] = match;
-
-      switch (provider.toLowerCase()) {
-        case 'imdb':
-          providerIds.imdb.push(id);
-          break;
-        case 'tmdb':
-          providerIds.tmdb.push(id);
-          break;
-        case 'tvdb':
-          providerIds.tvdb.push(id);
-          break;
-        // Ignore plex:// and other unknown providers
-      }
-    }
+    collect(fallbackGuid);
 
     return providerIds;
   }
@@ -172,7 +178,7 @@ export class PlexMapper {
       type: PlexMapper.toMediaItemType(plex.type),
       addedAt: new Date(plex.addedAt * 1000),
       updatedAt: plex.updatedAt ? new Date(plex.updatedAt * 1000) : undefined,
-      providerIds: PlexMapper.extractProviderIds(plex.Guid),
+      providerIds: PlexMapper.extractProviderIds(plex.Guid, plex.guid),
       mediaSources: PlexMapper.toMediaSources(plex.Media),
       library: {
         id: plex.librarySectionID?.toString(),
@@ -221,16 +227,18 @@ export class PlexMapper {
       type: PlexMapper.toMediaItemType(plex.type),
       addedAt: new Date(plex.addedAt * 1000),
       updatedAt: plex.updatedAt ? new Date(plex.updatedAt * 1000) : undefined,
-      providerIds: PlexMapper.extractProviderIds(plex.Guid),
+      providerIds: PlexMapper.extractProviderIds(plex.Guid, plex.guid),
       mediaSources: PlexMapper.toMediaSources(plex.Media || plex.media),
       library: {
         id: '', // Not available on PlexMetadata
         title: '',
       },
       summary: plex.summary,
-      viewCount: undefined,
+      viewCount: plex.viewCount,
       skipCount: undefined,
-      lastViewedAt: undefined,
+      lastViewedAt: plex.lastViewedAt
+        ? new Date(plex.lastViewedAt * 1000)
+        : undefined,
       year: plex.year,
       durationMs: plex.media?.[0]?.duration,
       originallyAvailableAt: plex.originallyAvailableAt

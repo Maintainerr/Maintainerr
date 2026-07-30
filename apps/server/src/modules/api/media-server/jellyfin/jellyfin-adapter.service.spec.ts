@@ -5,7 +5,7 @@ import {
   MediaServerType,
 } from '@maintainerr/contracts';
 import { Mocked, TestBed } from '@suites/unit';
-import { AxiosError } from 'axios';
+import type { AxiosError } from 'axios';
 import { delay } from '../../../../utils/delay';
 import { MaintainerrLogger } from '../../../logging/logs.service';
 import { SettingsDataService } from '../../../settings/settings-data.service';
@@ -30,6 +30,7 @@ const jellyfinApiMocks = {
   getItemImage: jest.fn(),
   setItemImage: jest.fn(),
   getSessions: jest.fn(),
+  getSeasons: jest.fn(),
 };
 
 const collectionApiMocks = {
@@ -137,6 +138,9 @@ jest.mock('@jellyfin/sdk/lib/utils/api/index.js', () => ({
     getItems: (...args: unknown[]) => jellyfinApiMocks.getItems(...args),
     getItemUserData: (...args: unknown[]) =>
       jellyfinApiMocks.getItemUserData(...args),
+  })),
+  getTvShowsApi: jest.fn().mockImplementation(() => ({
+    getSeasons: (...args: unknown[]) => jellyfinApiMocks.getSeasons(...args),
   })),
   getLibraryApi: jest.fn().mockImplementation(() => ({
     getMediaFolders: (...args: unknown[]) =>
@@ -287,15 +291,29 @@ describe('JellyfinAdapterService', () => {
     logger = unitRef.get(MaintainerrLogger);
   });
 
-  const createRetryableError = (code: string): AxiosError => {
-    const error = new AxiosError(`temporary failure (${code})`);
-    error.code = code;
-    return error;
-  };
+  // Model what @jellyfin/sdk actually throws. The SDK is ESM-only and carries
+  // its own axios build, so its AxiosError is a different class from the one
+  // this CommonJS test imports - only the `isAxiosError` flag survives the
+  // boundary. Constructing a local `new AxiosError()` here would let an
+  // `instanceof AxiosError` check pass in tests while never matching in
+  // production.
+  const createSdkAxiosError = (
+    message: string,
+    extra: Record<string, unknown>,
+  ): AxiosError =>
+    Object.assign(new Error(message), {
+      name: 'AxiosError',
+      isAxiosError: true,
+      toJSON: () => ({}),
+      ...extra,
+    }) as unknown as AxiosError;
 
-  const createResponseError = (status: number): AxiosError => {
-    const error = new AxiosError(`request failed with status ${status}`);
-    Object.assign(error, {
+  const createRetryableError = (code: string): AxiosError =>
+    createSdkAxiosError(`temporary failure (${code})`, { code });
+
+  const createResponseError = (status: number): AxiosError =>
+    createSdkAxiosError(`request failed with status ${status}`, {
+      code: 'ERR_BAD_REQUEST',
       response: {
         status,
         statusText: status === 401 ? 'Unauthorized' : 'Bad Gateway',
@@ -304,8 +322,6 @@ describe('JellyfinAdapterService', () => {
         config: {},
       },
     });
-    return error;
-  };
 
   describe('lifecycle', () => {
     it('should not be setup initially', () => {
@@ -824,6 +840,203 @@ describe('JellyfinAdapterService', () => {
     });
   });
 
+  describe('getMetadata caching (#3355)', () => {
+    beforeEach(async () => {
+      settingsDataService.getSettings.mockResolvedValue(
+        mockSettings as unknown as Awaited<
+          ReturnType<SettingsDataService['getSettings']>
+        >,
+      );
+      await service.initialize();
+      jellyfinApiMocks.getItems.mockResolvedValue({
+        data: { Items: [{ Id: 'series-1', Type: 'Series', Name: 'A Show' }] },
+      });
+    });
+
+    it('caches a resolved item so repeat conditions do not re-read it', async () => {
+      const item = await service.getMetadata('series-1');
+
+      expect(item?.id).toBe('series-1');
+      expect(jellyfinCacheMocks.data.set).toHaveBeenCalledWith(
+        'jellyfin:metadata:series-1',
+        expect.objectContaining({ id: 'series-1' }),
+        JELLYFIN_CACHE_TTL.METADATA,
+      );
+    });
+
+    it('serves a cached item without touching the API', async () => {
+      jellyfinCacheMocks.data.get.mockReturnValueOnce({ id: 'series-1' });
+
+      await expect(service.getMetadata('series-1')).resolves.toEqual({
+        id: 'series-1',
+      });
+      expect(jellyfinApiMocks.getItems).not.toHaveBeenCalled();
+    });
+
+    it('does not cache a missing item', async () => {
+      jellyfinApiMocks.getItems.mockResolvedValue({ data: { Items: [] } });
+
+      await expect(service.getMetadata('gone')).resolves.toBeUndefined();
+      expect(jellyfinCacheMocks.data.set).not.toHaveBeenCalled();
+    });
+
+    it('does not cache a failed read', async () => {
+      // undefined means both "missing" and "could not read", so persisting it
+      // would turn a blip into "item is gone" for the whole TTL (#3307).
+      jellyfinApiMocks.getItems.mockRejectedValue(new Error('boom'));
+
+      await expect(service.getMetadata('item-1')).resolves.toBeUndefined();
+      expect(jellyfinCacheMocks.data.set).not.toHaveBeenCalled();
+    });
+
+    it('drops the item entry on resetMetadataCache', async () => {
+      jellyfinCacheMocks.data.keys.mockReturnValue([
+        'jellyfin:metadata:item-1',
+        'jellyfin:metadata:other',
+      ]);
+
+      service.resetMetadataCache('item-1');
+
+      expect(jellyfinCacheMocks.data.del).toHaveBeenCalledWith(
+        'jellyfin:metadata:item-1',
+      );
+      expect(jellyfinCacheMocks.data.del).not.toHaveBeenCalledWith(
+        'jellyfin:metadata:other',
+      );
+    });
+  });
+
+  describe('getChildrenMetadata caching (#3355)', () => {
+    beforeEach(async () => {
+      settingsDataService.getSettings.mockResolvedValue(
+        mockSettings as unknown as Awaited<
+          ReturnType<SettingsDataService['getSettings']>
+        >,
+      );
+      await service.initialize();
+    });
+
+    it('caches episodes and seasons under separate keys', async () => {
+      jellyfinApiMocks.getItems.mockResolvedValue({
+        data: { Items: [{ Id: 'ep-1', Type: 'Episode' }] },
+      });
+      jellyfinApiMocks.getSeasons.mockResolvedValue({
+        data: { Items: [{ Id: 'season-1', Type: 'Season' }] },
+      });
+
+      await service.getChildrenMetadata('show-1', 'episode');
+      await service.getChildrenMetadata('show-1', 'season');
+
+      // Same parent, different child type - one key each, or the season walk
+      // would answer with episodes.
+      expect(jellyfinCacheMocks.data.set).toHaveBeenCalledWith(
+        'jellyfin:children:show-1:episode',
+        [expect.objectContaining({ id: 'ep-1' })],
+        JELLYFIN_CACHE_TTL.METADATA,
+      );
+      expect(jellyfinCacheMocks.data.set).toHaveBeenCalledWith(
+        'jellyfin:children:show-1:season',
+        [expect.objectContaining({ id: 'season-1' })],
+        JELLYFIN_CACHE_TTL.METADATA,
+      );
+    });
+
+    it('serves a cached list without touching the API', async () => {
+      jellyfinCacheMocks.data.get.mockReturnValueOnce([{ id: 'ep-1' }]);
+
+      await expect(
+        service.getChildrenMetadata('season-1', 'episode'),
+      ).resolves.toEqual([{ id: 'ep-1' }]);
+      expect(jellyfinApiMocks.getItems).not.toHaveBeenCalled();
+    });
+
+    it('does not cache a failed read', async () => {
+      // The catch answers [], which is indistinguishable from "no episodes" -
+      // persisting it would read as an empty show for the whole TTL.
+      jellyfinApiMocks.getItems.mockRejectedValue(new Error('boom'));
+
+      await expect(
+        service.getChildrenMetadata('season-1', 'episode'),
+      ).resolves.toEqual([]);
+      expect(jellyfinCacheMocks.data.set).not.toHaveBeenCalled();
+    });
+
+    it('drops the whole children namespace on resetMetadataCache', async () => {
+      // A show's episode lists hang off its season ids, not the id passed in,
+      // so scoping the delete to that id would leave them stale (#3274).
+      jellyfinCacheMocks.data.keys.mockReturnValue([
+        'jellyfin:children:show-1:season',
+        'jellyfin:children:season-9:episode',
+        'jellyfin:users',
+      ]);
+
+      service.resetMetadataCache('show-1');
+
+      expect(jellyfinCacheMocks.data.del).toHaveBeenCalledWith(
+        'jellyfin:children:show-1:season',
+      );
+      expect(jellyfinCacheMocks.data.del).toHaveBeenCalledWith(
+        'jellyfin:children:season-9:episode',
+      );
+      expect(jellyfinCacheMocks.data.del).not.toHaveBeenCalledWith(
+        'jellyfin:users',
+      );
+    });
+  });
+
+  describe('getMetadata in-flight dedupe (#3356)', () => {
+    beforeEach(async () => {
+      settingsDataService.getSettings.mockResolvedValue(
+        mockSettings as unknown as Awaited<
+          ReturnType<SettingsDataService['getSettings']>
+        >,
+      );
+      await service.initialize();
+    });
+
+    it('shares one request between concurrent reads of the same id', async () => {
+      let resolvePage: (value: unknown) => void = () => {};
+      jellyfinApiMocks.getItems.mockReturnValue(
+        new Promise((resolve) => {
+          resolvePage = resolve;
+        }),
+      );
+
+      // Sibling items are evaluated in parallel and each resolves the same
+      // parent, and they all miss the cold cache key together - so without
+      // this the cache cannot stop the first read fanning out per child.
+      const reads = Promise.all([
+        service.getMetadata('series-1'),
+        service.getMetadata('series-1'),
+        service.getMetadata('series-1'),
+      ]);
+      resolvePage({ data: { Items: [{ Id: 'series-1', Type: 'Series' }] } });
+
+      const results = await reads;
+      expect(results.map((item) => item?.id)).toEqual([
+        'series-1',
+        'series-1',
+        'series-1',
+      ]);
+      expect(jellyfinApiMocks.getItems).toHaveBeenCalledTimes(1);
+    });
+
+    it('drops the in-flight entry once the request settles', async () => {
+      jellyfinApiMocks.getItems.mockResolvedValue({
+        data: { Items: [{ Id: 'series-1', Type: 'Series' }] },
+      });
+
+      await service.getMetadata('series-1');
+      await service.getMetadata('series-1');
+
+      // The map only ever holds an unsettled request - a later read is served
+      // by the cache above it, never by a retained promise. The cache is
+      // mocked to always miss here, so the second read reaching the API is
+      // what proves the entry was released.
+      expect(jellyfinApiMocks.getItems).toHaveBeenCalledTimes(2);
+    });
+  });
+
   describe('uninitialized state', () => {
     it.each([
       ['getStatus', undefined, () => service.getStatus()],
@@ -831,7 +1044,6 @@ describe('JellyfinAdapterService', () => {
       ['getUsers', [], () => service.getUsers()],
       ['getLibraries', [], () => service.getLibraries()],
       ['getWatchHistory', [], () => service.getWatchHistory('item123')],
-      ['getCollections', [], () => service.getCollections('lib123')],
       ['searchContent', [], () => service.searchContent('test')],
     ] as [string, unknown, () => Promise<unknown>][])(
       '%s returns %j when not initialized',
@@ -844,6 +1056,31 @@ describe('JellyfinAdapterService', () => {
         }
       },
     );
+
+    // #3344: an uninitialized client is "collections unknown", not "this
+    // library has no collections" - fabricating [] lets the link lookup
+    // create a duplicate.
+    it('getCollections throws when not initialized', async () => {
+      await expect(service.getCollections('lib123')).rejects.toThrow(
+        'Jellyfin not initialized',
+      );
+    });
+
+    // #3344: these guards sit above the try, so they used to answer
+    // "confirmed absent" for "adapter not ready" - which is what callers
+    // unlink and truncate on.
+    it('getCollection honours throwOnError when not initialized', async () => {
+      await expect(service.getCollection('col-1', true)).rejects.toThrow(
+        'Jellyfin not initialized',
+      );
+      await expect(service.getCollection('col-1')).resolves.toBeUndefined();
+    });
+
+    it('getLibraryContents throws when not initialized instead of an empty page', async () => {
+      await expect(service.getLibraryContents('lib123')).rejects.toThrow(
+        'Jellyfin not initialized',
+      );
+    });
   });
 
   describe('getActiveSessions', () => {
@@ -1093,12 +1330,23 @@ describe('JellyfinAdapterService', () => {
             UserData: { Played: userId === 'user-1' },
           },
           { Id: 'movie-1', Type: 'Movie', UserData: { Played: false } },
+          {
+            Id: 'season-1',
+            Type: 'Season',
+            SeriesId: 'show-1',
+            UserData: { Played: false, IsFavorite: userId === 'user-2' },
+          },
+          {
+            Id: 'show-1',
+            Type: 'Series',
+            UserData: { Played: false, IsFavorite: userId === 'user-1' },
+          },
         ],
-        TotalRecordCount: 3,
+        TotalRecordCount: 5,
       },
     });
 
-    it('indexes leaf watch records and the show/season tree from one sweep per user', async () => {
+    it('indexes watch records and the show/season tree from one sweep per user', async () => {
       jellyfinApiMocks.getUsers.mockResolvedValue({
         data: [
           { Id: 'user-1', Name: 'Alice' },
@@ -1117,12 +1365,46 @@ describe('JellyfinAdapterService', () => {
         'ep-1',
         'ep-2',
         'movie-1',
+        'season-1',
+        'show-1',
       ]);
-      // Both parents index the same episodes, each exactly once.
+      // Both parents index the same episodes, each exactly once. A season
+      // carries SeriesId too, so it must not land here as an episode.
       expect(cached!.descendants.get('show-1')).toEqual(['ep-1', 'ep-2']);
       expect(cached!.descendants.get('season-1')).toEqual(['ep-1', 'ep-2']);
       // One request per user, not one per item.
       expect(jellyfinApiMocks.getItems).toHaveBeenCalledTimes(2);
+      expect(jellyfinApiMocks.getItems).toHaveBeenCalledWith(
+        expect.objectContaining({
+          includeItemTypes: ['Movie', 'Episode', 'Series', 'Season'],
+        }),
+      );
+    });
+
+    it('answers container favourites from the snapshot without a per-user fan-out (#3356)', async () => {
+      jellyfinApiMocks.getUsers.mockResolvedValue({
+        data: [
+          { Id: 'user-1', Name: 'Alice' },
+          { Id: 'user-2', Name: 'Bob' },
+        ],
+      });
+      jellyfinApiMocks.getItems.mockImplementation(
+        ({ userId }: { userId: string }) => Promise.resolve(leafPage(userId)),
+      );
+      await service.prefetchWatchHistory();
+      jellyfinApiMocks.getItems.mockClear();
+
+      // A season's IsFavorite is independent of its episodes', so this can
+      // only come from the container's own swept UserData.
+      await expect(service.getItemFavoritedBy('season-1')).resolves.toEqual([
+        'user-2',
+      ]);
+      await expect(service.getItemFavoritedBy('show-1')).resolves.toEqual([
+        'user-1',
+      ]);
+      // A swept container nobody favourited is a confirmed empty list.
+      await expect(service.getItemFavoritedBy('movie-1')).resolves.toEqual([]);
+      expect(jellyfinApiMocks.getItems).not.toHaveBeenCalled();
     });
 
     it('serves getDescendantEpisodeWatchHistory from the snapshot without new requests', async () => {
@@ -2126,11 +2408,17 @@ describe('JellyfinAdapterService', () => {
         return Promise.reject(new Error('ancestor lookup failed'));
       });
 
-      await service.cleanupCollectionForLibrary(
-        'collection-1',
-        'old-library',
-        false,
-      );
+      // The partial sweep still stands (1bf6c8e9): what could be resolved is
+      // removed and the collection is kept. It now also reports that it could
+      // not finish, so the caller logs that instead of dropping the link on an
+      // apparent success (#3344).
+      await expect(
+        service.cleanupCollectionForLibrary(
+          'collection-1',
+          'old-library',
+          false,
+        ),
+      ).rejects.toThrow('Could not determine library membership');
 
       expect(collectionApiMocks.removeFromCollection).toHaveBeenCalledWith({
         collectionId: 'collection-1',
@@ -2377,6 +2665,27 @@ describe('JellyfinAdapterService', () => {
 
         await expect(service.deleteCollection('collection-1')).rejects.toBe(
           serverError,
+        );
+      });
+
+      // #3344: the swallow above must only fire on a CONFIRMED 404. While the
+      // re-check itself could not reach the server, a refused delete resolved
+      // as success and the caller dropped the link, orphaning a live BoxSet.
+      it('rethrows deleteCollection failure when the re-check cannot reach the server', async () => {
+        const outage = createRetryableError('ECONNREFUSED');
+        jellyfinApiMocks.deleteItem.mockRejectedValueOnce(outage);
+        jellyfinApiMocks.getItem.mockRejectedValueOnce(outage);
+
+        await expect(service.deleteCollection('collection-1')).rejects.toBe(
+          outage,
+        );
+      });
+
+      it('throws instead of resolving when the client is not initialized', async () => {
+        (service as unknown as { api: unknown }).api = undefined;
+
+        await expect(service.deleteCollection('collection-1')).rejects.toThrow(
+          'Jellyfin not initialized',
         );
       });
     });

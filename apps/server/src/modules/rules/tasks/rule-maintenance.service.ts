@@ -40,13 +40,18 @@ export class RuleMaintenanceService extends TaskBase {
         await this.removeLeftoverExclusions();
         // remove collection media entries for items deleted from media server
         await this.collectionsService.removeStaleCollectionMedia();
+        // Only prune orphaned collection rows against a reachable server. This
+        // drops the row without touching the media server (by design since
+        // f5826cc1), so running it during an outage can strand a collection
+        // whose delete had just failed. The guard was lost when the task moved
+        // to the media-server abstraction (174a5cb2).
+        await this.removeCollectionsWithoutRule();
       } else {
         this.logger.warn(
           'Skipping media server cleanup; media server was not reachable.',
         );
       }
 
-      await this.removeCollectionsWithoutRule();
       this.logger.log('Maintenance done');
     } catch (error) {
       this.logger.error('Rule Maintenance failed');

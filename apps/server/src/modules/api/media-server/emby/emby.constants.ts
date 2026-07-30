@@ -6,6 +6,7 @@ export const EMBY_CACHE_TTL = {
   WATCH_HISTORY: 300, // 5 min
   USER_DATA: 300, // 5 min
   PLAYED_THRESHOLD: 300, // 5 min
+  METADATA: 300, // 5 min
   USERS: 1800, // 30 min
   LIBRARIES: 1800, // 30 min
   STATUS: 60, // 1 min
@@ -20,6 +21,8 @@ export const EMBY_BATCH_SIZE = {
 } as const;
 
 export const EMBY_CACHE_KEYS = {
+  METADATA: 'emby:metadata',
+  CHILDREN: 'emby:children',
   USERS: 'emby:users',
   LIBRARIES: 'emby:libraries',
   STATUS: 'emby:status',

@@ -2017,7 +2017,10 @@ describe('JellyfinGetterService', () => {
       expect(response).toBeUndefined();
     });
 
-    it('should return null when metadata is not found', async () => {
+    it('should return undefined when metadata cannot be read', async () => {
+      // getMetadata answers undefined for a failed read as well as a missing
+      // item, so this must stay the transient signal - null would let
+      // NOT_EXISTS match on a blip.
       const mediaItem = createMediaItem({ type: 'movie' });
       jellyfinAdapter.getMetadata.mockResolvedValue(undefined);
 
@@ -2028,7 +2031,7 @@ describe('JellyfinGetterService', () => {
         createRulesDto({ dataType: 'movie' }),
       );
 
-      expect(response).toBeNull();
+      expect(response).toBeUndefined();
     });
   });
 
