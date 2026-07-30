@@ -320,7 +320,15 @@ export class RulesService {
             await this.collectionService.deleteCollection(group.collectionId);
 
           if (collectionDeleteResult.code !== 1) {
-            return this.createReturnStatus(false, 'Delete Failed');
+            // Plex refusing deletes is a persistent setting, so an opaque
+            // failure leaves the group undeletable with no clue why.
+            this.logger.warn(
+              `Rulegroup ${ruleGroupId} was not deleted: ${collectionDeleteResult.message}`,
+            );
+            return this.createReturnStatus(
+              false,
+              collectionDeleteResult.message || 'Delete Failed',
+            );
           }
         }
       }
@@ -568,11 +576,13 @@ export class RulesService {
                 !!dbCollection.manualCollection,
               );
             } catch (error) {
-              // Collection may already be deleted, ignore errors
-              this.logger.debug(
-                'Failed to clean up media server collection',
-                error,
+              // The link is dropped below either way, so a failure here leaves
+              // a collection behind that Maintainerr no longer tracks. Say so:
+              // it has to be removed by hand.
+              this.logger.warn(
+                `Failed to clean up media server collection ${dbCollection.mediaServerId} for '${dbCollection.title}' - it may need to be removed manually`,
               );
+              this.logger.debug(error);
             }
           }
           await this.collectionService.saveCollection({

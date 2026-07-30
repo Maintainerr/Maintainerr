@@ -463,6 +463,19 @@ export class RuleExecutorService {
             this.logger.debug(error);
           }
 
+          // Members a sibling collection holds under any membership type. The
+          // rule-owned set above drives reconcile; this wider one guards
+          // adoption, because a sibling's manual-only member is still theirs.
+          let siblingMemberIds = new Set<string>();
+          try {
+            siblingMemberIds =
+              await this.collectionService.getSiblingMemberMediaServerIds(
+                collection,
+              );
+          } catch (error) {
+            this.logger.debug(error);
+          }
+
           if (siblingRuleOwnedIds !== undefined) {
             // Heal items a rule removed that the media server never dropped: an
             // active marker means the item is our orphan, not a user's manual
@@ -540,6 +553,14 @@ export class RuleExecutorService {
                 }
 
                 if (siblingRuleOwnedIds.has(childId)) {
+                  continue;
+                }
+
+                // A sibling's manual member is the sibling's, not ours. The
+                // self-heal stopped removing these from the shared collection,
+                // so without this they fall through and get adopted here -
+                // becoming arrAction-eligible under OUR deleteAfterDays.
+                if (siblingMemberIds.has(childId)) {
                   continue;
                 }
 

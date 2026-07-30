@@ -919,25 +919,47 @@ export class PlexApiService {
     }
   }
 
+  /**
+   * @param useCache - Rule getters read this per item, so the listing is cached
+   * by default. Callers that decide whether a collection exists must pass
+   * false: a listing up to the cache TTL old reports a just-created collection
+   * as missing, which reads as "manual collection doesn't exist" and makes the
+   * automatic link create a second collection beside the real one (#3344).
+   *
+   * @throws Error on any failure to enumerate. An empty array means the section
+   * genuinely holds no collections.
+   */
   public async getCollections(
     libraryId: string | number,
     subType?: 'movie' | 'show' | 'season' | 'episode',
+    useCache = true,
   ): Promise<PlexCollection[]> {
+    let response: PlexLibraryResponse;
     try {
-      const response = await this.plexClient.queryAll<PlexLibraryResponse>({
-        uri: `/library/sections/${libraryId}/collections?${subType ? `subtype=${subType}` : ''}`,
-      });
-
-      if (!response?.MediaContainer) {
-        this.logLibrarySectionError(libraryId);
-        return undefined;
-      }
-
-      return response.MediaContainer.Metadata as PlexCollection[];
+      response = await this.plexClient.queryAll<PlexLibraryResponse>(
+        {
+          uri: `/library/sections/${libraryId}/collections?${subType ? `subtype=${subType}` : ''}`,
+        },
+        useCache,
+      );
     } catch (error) {
       this.logLibrarySectionError(libraryId, error);
-      return undefined;
+      // A swallowed enumeration failure reads as "this library has no
+      // collections" downstream, so the link lookup misses an existing
+      // collection and a duplicate is created beside it (#3344).
+      throw error;
     }
+
+    // Validated outside the catch above so this throw isn't re-logged by it as
+    // a communication failure.
+    if (!response?.MediaContainer) {
+      this.logLibrarySectionError(libraryId);
+      throw new Error(
+        `Plex library section '${libraryId}' returned no MediaContainer`,
+      );
+    }
+
+    return (response.MediaContainer.Metadata ?? []) as PlexCollection[];
   }
 
   /**
@@ -1029,6 +1051,14 @@ export class PlexApiService {
 
       return collection;
     } catch (error) {
+      // Only a 404 proves the collection is gone. Every other failure
+      // (timeout, 5xx, auth) means "couldn't ask" and must propagate, or
+      // callers unlink a collection that still exists and create a duplicate
+      // beside it (#3344).
+      if (this.responseStatus(error) !== 404) {
+        throw error;
+      }
+
       this.logger.debug(`Couldn't find collection with id ${+collectionId}`);
       this.logger.debug(error);
       return undefined;
@@ -1289,16 +1319,24 @@ export class PlexApiService {
     };
   }
 
+  /**
+   * HTTP status behind a lib/plexApi failure, which wraps the Axios error as
+   * `cause`. Undefined when the request never got a response (timeout, DNS,
+   * connection refused) - i.e. when nothing about the server is known.
+   */
+  private responseStatus(error: unknown): number | undefined {
+    return error instanceof Error
+      ? (error.cause as { response?: { status?: number } } | undefined)
+          ?.response?.status
+      : undefined;
+  }
+
   private logLibrarySectionError(id: string | number, error?: unknown): void {
     // Only 404 indicates a missing/renamed section. 401 and 403 share the
     // same wrapper in lib/plexApi.ts but mean auth/permission failures, so
     // those must fall through to the generic communication-failure log.
-    const status =
-      error instanceof Error
-        ? (error.cause as { response?: { status?: number } } | undefined)
-            ?.response?.status
-        : undefined;
-    const isInvalidSection = error === undefined || status === 404;
+    const isInvalidSection =
+      error === undefined || this.responseStatus(error) === 404;
 
     if (isInvalidSection) {
       this.logger.warn(
@@ -1514,156 +1552,6 @@ export class PlexApiService {
       );
       this.logger.debug(error);
     }
-  }
-
-  public async getAllIdsForContextAction(
-    collectionType: EPlexDataType,
-    context: { type: EPlexDataType; id: number },
-    media: { plexId: number },
-  ) {
-    const handleMedia: { plexId: number }[] = [];
-
-    if (collectionType && media) {
-      // switch based on collection type
-      switch (collectionType) {
-        // when collection type is seasons
-        case EPlexDataType.SEASONS:
-          switch (context.type) {
-            // and context type is seasons
-            case EPlexDataType.SEASONS:
-              handleMedia.push({ plexId: context.id });
-              break;
-            // and content type is episodes
-            case EPlexDataType.EPISODES:
-              // this is not allowed
-              this.logger.warn(
-                'Tried to add episodes to a collection of type season. This is not allowed.',
-              );
-              break;
-            // and context type is full show
-            default:
-              const data = await this.getChildrenMetadata(
-                media.plexId.toString(),
-              );
-              // transform & add season
-              data.forEach((el) => {
-                handleMedia.push({
-                  plexId: +el.ratingKey,
-                });
-              });
-              break;
-          }
-          break;
-
-        // when collection type is episodes
-        case EPlexDataType.EPISODES:
-          switch (context.type) {
-            // and context type is seasons
-            case EPlexDataType.SEASONS:
-              const eps = await this.getChildrenMetadata(context.id.toString());
-              // transform & add episodes
-              eps.forEach((el) => {
-                handleMedia.push({
-                  plexId: +el.ratingKey,
-                });
-              });
-              break;
-            // and context type is episodes
-            case EPlexDataType.EPISODES:
-              handleMedia.push({ plexId: context.id });
-              break;
-            // and context type is full show
-            default:
-              // get all seasons
-              const seasons = await this.getChildrenMetadata(
-                media.plexId.toString(),
-              );
-              // get and add all episodes for each season
-              for (const season of seasons) {
-                const eps = await this.getChildrenMetadata(season.ratingKey);
-                eps.forEach((ep) => {
-                  handleMedia.push({
-                    plexId: +ep.ratingKey,
-                  });
-                });
-              }
-              break;
-          }
-          break;
-        // when collection type is SHOW or MOVIE
-        default:
-          // just add media item
-          handleMedia.push({ plexId: media.plexId });
-          break;
-      }
-    }
-    // for all collections
-    else {
-      switch (context.type) {
-        case EPlexDataType.SEASONS:
-          // for seasons, add all episode ID's + the season media item
-          handleMedia.push({ plexId: context.id });
-
-          // get all episodes
-          const data = await this.getChildrenMetadata(context.id.toString());
-
-          // transform & add eps
-          if (data) {
-            handleMedia.push(
-              ...data.map((el) => {
-                return {
-                  plexId: +el.ratingKey,
-                };
-              }),
-            );
-          }
-          break;
-        case EPlexDataType.EPISODES:
-          // transform & push episode
-          handleMedia.push({
-            plexId: +context.id,
-          });
-          break;
-        case EPlexDataType.SHOWS:
-          // add show id
-          handleMedia.push({
-            plexId: +media.plexId,
-          });
-
-          // get all seasons
-          const seasons = await this.getChildrenMetadata(
-            media.plexId.toString(),
-          );
-
-          for (const season of seasons) {
-            // transform & add season
-            handleMedia.push({
-              plexId: +season.ratingKey,
-            });
-
-            // get all eps of season
-            const eps = await this.getChildrenMetadata(
-              season.ratingKey.toString(),
-            );
-            // transform & add eps
-            if (eps) {
-              handleMedia.push(
-                ...eps.map((el) => {
-                  return {
-                    plexId: +el.ratingKey,
-                  };
-                }),
-              );
-            }
-          }
-          break;
-        case EPlexDataType.MOVIES:
-          handleMedia.push({
-            plexId: +media.plexId,
-          });
-      }
-    }
-    return handleMedia;
   }
 
   public async getCorrectedUsers(

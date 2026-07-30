@@ -314,6 +314,73 @@ describe('EmbyAdapterService', () => {
     });
   });
 
+  // A truncated page is an HTTP 200, so the fail-closed contract cannot catch
+  // it - the link lookup would read a partial listing as a confirmed miss.
+  // Plex and Jellyfin throw here; #2594's verify-and-retry-with-a-corrected-id
+  // path only runs on a rejection, so swallowing left it dead on Emby.
+  describe('refreshItemMetadata', () => {
+    it('propagates a failed refresh so the retry path can run', async () => {
+      const failure = new Error('boom');
+      http.post.mockRejectedValueOnce(failure);
+
+      await expect(service.refreshItemMetadata('item-1')).rejects.toBe(failure);
+    });
+
+    it('throws when not initialized', async () => {
+      (service as unknown as { http?: unknown }).http = undefined;
+      await expect(service.refreshItemMetadata('item-1')).rejects.toThrow(
+        'Emby not initialized',
+      );
+    });
+  });
+
+  describe('getCollections cache preference', () => {
+    it('bypasses the cached listing when the caller needs a live answer', async () => {
+      embyCacheMocks.data.get.mockReturnValue([
+        { id: 'stale', title: 'Stale', childCount: 1 },
+      ]);
+      http.get.mockResolvedValueOnce({
+        data: { Items: [{ Id: 'fresh', Name: 'Fresh', ChildCount: 1 }] },
+      });
+
+      // Cached by default (per-item rule reads), live when asked.
+      expect((await service.getCollections('library-1'))[0].id).toBe('stale');
+      expect((await service.getCollections('library-1', false))[0].id).toBe(
+        'fresh',
+      );
+    });
+  });
+
+  describe('getCollections paging', () => {
+    it('pages past the batch limit instead of truncating', async () => {
+      const page = (start: number, count: number) => ({
+        data: {
+          Items: Array.from({ length: count }, (_, i) => ({
+            Id: `box-${start + i}`,
+            Name: `Box ${start + i}`,
+            ChildCount: 1,
+          })),
+          TotalRecordCount: 501,
+        },
+      });
+      embyCacheMocks.data.get.mockReturnValue(undefined);
+      http.get
+        .mockResolvedValueOnce(page(0, 500))
+        .mockResolvedValueOnce(page(500, 1));
+
+      const collections = await service.getCollections('library-1');
+
+      expect(collections).toHaveLength(501);
+      expect(http.get).toHaveBeenNthCalledWith(
+        2,
+        '/Items',
+        expect.objectContaining({
+          params: expect.objectContaining({ StartIndex: 500 }),
+        }),
+      );
+    });
+  });
+
   describe('getCollectionChildren', () => {
     it('re-throws enumeration failures so callers never mistake a failed read for an empty collection', async () => {
       http.get.mockRejectedValueOnce(new Error('boom'));
@@ -321,6 +388,51 @@ describe('EmbyAdapterService', () => {
       await expect(service.getCollectionChildren('box-1')).rejects.toThrow(
         'boom',
       );
+    });
+
+    // A bare Limit truncated at MAX_PAGE_SIZE while callers treat a non-empty
+    // children list as a complete snapshot, so everything past the cap looked
+    // absent - clearing rule-removal markers and mis-reconciling membership.
+    it('pages past the batch limit instead of truncating', async () => {
+      const page = (start: number, count: number) => ({
+        data: {
+          Items: Array.from({ length: count }, (_, i) => ({
+            Id: `item-${start + i}`,
+            Name: `Item ${start + i}`,
+            Type: 'Movie',
+          })),
+          TotalRecordCount: 501,
+        },
+      });
+      http.get
+        .mockResolvedValueOnce(page(0, 500))
+        .mockResolvedValueOnce(page(500, 1));
+
+      const children = await service.getCollectionChildren('box-1');
+
+      expect(children).toHaveLength(501);
+      expect(children[500].id).toBe('item-500');
+      expect(http.get).toHaveBeenNthCalledWith(
+        2,
+        '/Items',
+        expect.objectContaining({
+          params: expect.objectContaining({ StartIndex: 500 }),
+        }),
+      );
+    });
+
+    it('stops paging when the server reports no more items', async () => {
+      http.get.mockResolvedValueOnce({
+        data: {
+          Items: [{ Id: 'only', Name: 'Only', Type: 'Movie' }],
+          TotalRecordCount: 1,
+        },
+      });
+
+      const children = await service.getCollectionChildren('box-1');
+
+      expect(children).toHaveLength(1);
+      expect(http.get).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -347,6 +459,50 @@ describe('EmbyAdapterService', () => {
   // which would break the manual-collection bootstrap (incl. the cross-library
   // lookup). Maintainerr only ever operates as an admin, so when no user is
   // configured we resolve one rather than degrade to /Items.
+  // #3344: undefined must mean "the server says it is gone", so callers that
+  // unlink on a missing collection never act on an unreachable server.
+  // #3344: these guards sit above the try, so they answered "confirmed
+  // absent" for "adapter not ready" - what callers unlink and truncate on.
+  describe('uninitialized client', () => {
+    const clearHttp = () => {
+      (service as unknown as { http?: unknown }).http = undefined;
+    };
+
+    it('getCollection honours throwOnError', async () => {
+      clearHttp();
+      await expect(service.getCollection('box-1', true)).rejects.toThrow(
+        'Emby not initialized',
+      );
+      await expect(service.getCollection('box-1')).resolves.toBeUndefined();
+    });
+
+    it('getLibraryContents throws instead of returning an empty page', async () => {
+      clearHttp();
+      await expect(service.getLibraryContents('library-1')).rejects.toThrow(
+        'Emby not initialized',
+      );
+    });
+  });
+
+  describe('getCollection missing vs unreachable', () => {
+    it('returns undefined on 404 even when asked to throw', async () => {
+      setHttp();
+      http.get.mockRejectedValueOnce(createResponseError(404));
+
+      await expect(
+        service.getCollection('box-1', true),
+      ).resolves.toBeUndefined();
+    });
+
+    it('throws on any other failure when asked to throw', async () => {
+      setHttp();
+      const error = createResponseError(502);
+      http.get.mockRejectedValueOnce(error);
+
+      await expect(service.getCollection('box-1', true)).rejects.toBe(error);
+    });
+  });
+
   describe('user-scoped collection reads', () => {
     const clearConfiguredUser = () => {
       // Clear the user directly: setHttp(undefined) would hit its default param.

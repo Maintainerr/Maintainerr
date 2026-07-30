@@ -562,6 +562,9 @@ describe('PlexApiService.getMetadata', () => {
   });
 });
 
+// The diagnostic still distinguishes a missing section from an auth failure;
+// #3344 only changed the outcome - every failure now propagates instead of
+// reading downstream as "this library has no collections".
 describe('PlexApiService.getCollections (invalid section vs auth)', () => {
   let service: PlexApiService;
   let settingsDataService: PlexApiSettingsStub;
@@ -596,7 +599,7 @@ describe('PlexApiService.getCollections (invalid section vs auth)', () => {
       queryAll: jest.fn().mockResolvedValue({}),
     };
 
-    await expect(service.getCollections('42')).resolves.toBeUndefined();
+    await expect(service.getCollections('42')).rejects.toThrow();
 
     expect(logger.warn).toHaveBeenCalledWith(
       expect.stringContaining("Plex library section '42' returned no data"),
@@ -613,7 +616,7 @@ describe('PlexApiService.getCollections (invalid section vs auth)', () => {
       queryAll: jest.fn().mockRejectedValue(wrapped),
     };
 
-    await expect(service.getCollections('42')).resolves.toBeUndefined();
+    await expect(service.getCollections('42')).rejects.toThrow();
 
     expect(logger.warn).toHaveBeenCalledWith(
       expect.stringContaining("Plex library section '42' returned no data"),
@@ -630,7 +633,7 @@ describe('PlexApiService.getCollections (invalid section vs auth)', () => {
       queryAll: jest.fn().mockRejectedValue(wrapped),
     };
 
-    await expect(service.getCollections('42')).resolves.toBeUndefined();
+    await expect(service.getCollections('42')).rejects.toThrow();
 
     expect(logger.error).toHaveBeenCalledWith(
       'Plex api communication failure.. Is the application running?',
@@ -647,7 +650,7 @@ describe('PlexApiService.getCollections (invalid section vs auth)', () => {
       queryAll: jest.fn().mockRejectedValue(wrapped),
     };
 
-    await expect(service.getCollections('42')).resolves.toBeUndefined();
+    await expect(service.getCollections('42')).rejects.toThrow();
 
     expect(logger.error).toHaveBeenCalledWith(
       'Plex api communication failure.. Is the application running?',
@@ -661,12 +664,73 @@ describe('PlexApiService.getCollections (invalid section vs auth)', () => {
       queryAll: jest.fn().mockRejectedValue(wrapped),
     };
 
-    await expect(service.getCollections('42')).resolves.toBeUndefined();
+    await expect(service.getCollections('42')).rejects.toThrow();
 
     expect(logger.error).toHaveBeenCalledWith(
       'Plex api communication failure.. Is the application running?',
     );
     expect(logger.warn).not.toHaveBeenCalled();
+  });
+
+  // #3344: link lookups pass useCache=false, so a collection created since the
+  // last read is not reported as missing.
+  it('forwards the cache preference to the client', async () => {
+    const queryAll = jest.fn().mockResolvedValue({ MediaContainer: {} });
+    (service as any).plexClient = { queryAll };
+
+    await service.getCollections('42');
+    expect(queryAll).toHaveBeenCalledWith(expect.anything(), true);
+
+    await service.getCollections('42', undefined, false);
+    expect(queryAll).toHaveBeenLastCalledWith(expect.anything(), false);
+  });
+});
+
+// #3344: a duplicate collection appears beside the real one when a failed
+// lookup is read as "deleted". Only a 404 may mean deleted.
+describe('PlexApiService.getCollection (missing vs unreachable)', () => {
+  let service: PlexApiService;
+  let loggerFactory: Mocked<MaintainerrLoggerFactory>;
+
+  beforeEach(async () => {
+    const { unit, unitRef } = await TestBed.solitary(PlexApiService).compile();
+
+    service = unit;
+    loggerFactory = unitRef.get(MaintainerrLoggerFactory);
+    loggerFactory.createLogger.mockReturnValue({
+      setContext: jest.fn(),
+      log: jest.fn(),
+      warn: jest.fn(),
+      error: jest.fn(),
+      debug: jest.fn(),
+    } as any);
+  });
+
+  it('returns undefined when Plex answers 404', async () => {
+    (service as any).plexClient = {
+      query: jest.fn().mockRejectedValue(
+        new Error('GET /library/collections/7 failed: not found', {
+          cause: { response: { status: 404 } } as any,
+        }),
+      ),
+    };
+
+    await expect(service.getCollection(7)).resolves.toBeUndefined();
+  });
+
+  it.each([
+    ['a 500 response', { response: { status: 500 } }],
+    ['an auth failure', { response: { status: 401 } }],
+    ['a transport failure', undefined],
+  ])('rethrows on %s', async (_label, cause) => {
+    const wrapped = new Error('GET /library/collections/7 failed', {
+      cause: cause as any,
+    });
+    (service as any).plexClient = {
+      query: jest.fn().mockRejectedValue(wrapped),
+    };
+
+    await expect(service.getCollection(7)).rejects.toBe(wrapped);
   });
 });
 

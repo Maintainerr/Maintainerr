@@ -89,17 +89,22 @@ describe('CollectionsService', () => {
       addBatchToCollection: jest.fn().mockResolvedValue([]),
       removeBatchFromCollection: jest.fn().mockResolvedValue([]),
       getCollection: jest.fn().mockResolvedValue(undefined),
+      getCollections: jest.fn().mockResolvedValue([]),
       getCollectionChildren: jest.fn().mockResolvedValue([]),
       getLibraries: jest.fn().mockResolvedValue([{ id: 'library-1' }]),
       getMetadata: jest.fn().mockResolvedValue(undefined),
       itemExists: jest.fn().mockResolvedValue(true),
       removeFromCollection: jest.fn().mockResolvedValue(undefined),
       deleteCollection: jest.fn().mockResolvedValue(undefined),
+      updateCollection: jest.fn().mockResolvedValue(undefined),
     } as unknown as Mocked<IMediaServerService>;
 
     collectionMediaRepo.create.mockImplementation((entityLike) =>
       Object.assign(new CollectionMedia(), entityLike),
     );
+    // TypeORM's find always resolves an array; without a default the sibling
+    // lookups read undefined and fail in a way production never can.
+    collectionRepo.find.mockResolvedValue([]);
 
     mediaServerFactory.getService.mockResolvedValue(mediaServer);
     mediaServerFactory.getConfiguredServerType.mockResolvedValue(
@@ -653,6 +658,68 @@ describe('CollectionsService', () => {
     expect(mediaServer.deleteCollection).not.toHaveBeenCalled();
   });
 
+  // #3344 on the save path: a media server hiccup while a rule group is saved
+  // must not drop the link or delete the collection either.
+  it('keeps the link and skips the media server update when the save-time lookup fails', async () => {
+    const dbCollection = createCollection({
+      id: 32,
+      mediaServerId: 'live-collection',
+      manualCollection: false,
+      title: 'Old Title',
+      libraryId: 'library-1',
+      type: 'movie',
+    });
+
+    const logQueryBuilder = {
+      insert: jest.fn(),
+      into: jest.fn(),
+      values: jest.fn(),
+      execute: jest.fn().mockResolvedValue({ generatedMaps: [{ id: 1 }] }),
+    };
+    logQueryBuilder.insert.mockReturnValue(logQueryBuilder);
+    logQueryBuilder.into.mockReturnValue(logQueryBuilder);
+    logQueryBuilder.values.mockReturnValue(logQueryBuilder);
+    dataSource.createQueryBuilder.mockReturnValue(logQueryBuilder as any);
+
+    collectionRepo.findOne.mockResolvedValue(dbCollection);
+    collectionRepo.save.mockImplementation(async (c) => c as Collection);
+    mediaServer.getCollection.mockRejectedValue(new Error('Plex unreachable'));
+
+    const result = await service.updateCollection({
+      ...dbCollection,
+      title: 'New Title',
+    });
+
+    expect(mediaServer.updateCollection).not.toHaveBeenCalled();
+    expect(mediaServer.deleteCollection).not.toHaveBeenCalled();
+    expect(result?.dbCollection?.mediaServerId).toBe('live-collection');
+  });
+
+  // #3344: unlinking on a failed lookup orphans the real collection - the next
+  // add creates a second one beside it, with the same title and the same media.
+  it('keeps the automatic link when the collection cannot be verified', async () => {
+    const collection = createCollection({
+      id: 31,
+      mediaServerId: 'live-collection',
+      manualCollection: false,
+      title: 'Unverifiable',
+      libraryId: 'library-1',
+    });
+
+    mediaServer.getCollection.mockRejectedValue(new Error('Plex unreachable'));
+    const findMediaServerCollection = jest.spyOn(
+      service as any,
+      'findMediaServerCollection',
+    );
+
+    const result = await service.checkAutomaticMediaServerLink(collection);
+
+    expect(result.mediaServerId).toBe('live-collection');
+    expect(findMediaServerCollection).not.toHaveBeenCalled();
+    expect(collectionRepo.save).not.toHaveBeenCalled();
+    expect(mediaServer.deleteCollection).not.toHaveBeenCalled();
+  });
+
   // #3203: a 404 on the collections lookup means the target library is gone,
   // not that the collection is merely empty. The cleared-link log must say so
   // rather than falsely promising automatic recreation.
@@ -1085,7 +1152,7 @@ describe('CollectionsService', () => {
     expect(ruleRemovalRepo.createQueryBuilder).not.toHaveBeenCalled();
   });
 
-  it('reconcileRuleRemovedOrphans self-heals a lingering orphan and keeps its marker', async () => {
+  it('reconcileRuleRemovedOrphans self-heals a lingering orphan and clears its marker once removed', async () => {
     const qb = makeRuleRemovalQb([{ mediaServerId: 'orphan' }]);
     ruleRemovalRepo.createQueryBuilder.mockReturnValue(qb as any);
     collectionMediaRepo.find.mockResolvedValue([]); // no current members
@@ -1106,8 +1173,49 @@ describe('CollectionsService', () => {
     expect(mediaServer.removeBatchFromCollection).toHaveBeenCalledWith('coll', [
       'orphan',
     ]);
-    // Marker kept until the item is confirmed gone (no delete execute).
-    expect(qb.delete).not.toHaveBeenCalled();
+    // The marker exists to retry a FAILED removal. Carrying a succeeded one
+    // into the next run means a hand re-add is removed again instead of
+    // adopted as the manual member #3298 says a manual re-add should produce.
+    expect(qb.delete).toHaveBeenCalled();
+  });
+
+  // #3298 scoped the shared-collection protection to rule-owned sibling ids, so
+  // a sibling's manual-only member was unprotected - the self-heal deleted it
+  // out of the shared collection the sibling still lists it in.
+  it('reconcileRuleRemovedOrphans leaves an item a sibling holds as a manual member', async () => {
+    const qb = makeRuleRemovalQb([{ mediaServerId: 'sibling-manual' }]);
+    ruleRemovalRepo.createQueryBuilder.mockReturnValue(qb as any);
+    collectionRepo.find.mockResolvedValue([
+      createCollection({ id: 9, mediaServerId: 'coll' }),
+    ]);
+    // Keyed on the query rather than call order: this collection has no
+    // members, the sibling holds the item.
+    collectionMediaRepo.find.mockImplementation(async (options?: any) =>
+      options?.where?.collectionId === 5
+        ? []
+        : [
+            createCollectionMedia(undefined, {
+              collectionId: 9,
+              mediaServerId: 'sibling-manual',
+              isManual: true,
+              includedByRule: false,
+            }),
+          ],
+    );
+
+    const result = await service.reconcileRuleRemovedOrphans(
+      createCollection({
+        id: 5,
+        mediaServerId: 'coll',
+        manualCollection: false,
+      }),
+      [{ id: 'sibling-manual' }] as any,
+      new Set(), // not rule-owned by the sibling - manual only
+      true,
+    );
+
+    expect(result).toEqual(new Set());
+    expect(mediaServer.removeBatchFromCollection).not.toHaveBeenCalled();
   });
 
   it('reconcileRuleRemovedOrphans still returns the orphan when self-heal removal throws', async () => {
@@ -3245,7 +3353,9 @@ describe('CollectionsService', () => {
 
       expect(found?.id).toBe('box-1');
       expect(mediaServer.getCollections).toHaveBeenCalledTimes(1);
-      expect(mediaServer.getCollections).toHaveBeenCalledWith('shows');
+      // useCache=false: this is an existence decision, and a stale miss makes
+      // the caller create a duplicate (#3344).
+      expect(mediaServer.getCollections).toHaveBeenCalledWith('shows', false);
       expect(mediaServer.getLibraries).not.toHaveBeenCalled();
     });
 
@@ -3278,8 +3388,8 @@ describe('CollectionsService', () => {
 
       expect(found?.id).toBe('box-1');
       // Own library searched first, then the other one - never re-searching it.
-      expect(mediaServer.getCollections).toHaveBeenCalledWith('shows');
-      expect(mediaServer.getCollections).toHaveBeenCalledWith('movies');
+      expect(mediaServer.getCollections).toHaveBeenCalledWith('shows', false);
+      expect(mediaServer.getCollections).toHaveBeenCalledWith('movies', false);
       expect(mediaServer.getCollections).toHaveBeenCalledTimes(2);
     });
 
