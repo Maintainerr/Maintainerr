@@ -3,6 +3,7 @@ import { DocumentAddIcon, DocumentRemoveIcon } from '@heroicons/react/solid'
 import { MediaItemType, type MediaProviderIds } from '@maintainerr/contracts'
 import React, { memo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { mediaTypeLabel } from '../../../utils/mediaTypeUtils'
 import AddModal from '../../AddModal'
 import type { ICollection } from '../../Collection'
 import RemoveFromCollectionButton from '../../Collection/CollectionDetail/RemoveFromCollectionButton'
@@ -40,8 +41,11 @@ interface IMediaCard {
   id: number | string
   summary?: string
   year?: string
-  mediaType: 'movie' | 'show' | 'season' | 'episode'
+  mediaType: MediaItemType
   title: string
+  seasonNumber?: number
+  episodeNumber?: number
+  episodeTitle?: string
   providerIds?: MediaProviderIds
   libraryId?: string
   type?: MediaItemType
@@ -62,6 +66,9 @@ const MediaCard: React.FC<IMediaCard> = ({
   year,
   mediaType,
   title,
+  seasonNumber,
+  episodeNumber,
+  episodeTitle,
   libraryId,
   type,
   collectionId = 0,
@@ -143,7 +150,10 @@ const MediaCard: React.FC<IMediaCard> = ({
         {(image) => (
           <>
             <div className="absolute right-0 left-0 flex items-center justify-between p-2">
-              {renderBadge(mediaType, mediaType)}
+              {renderBadge(
+                mediaTypeLabel(mediaType, { seasonNumber, episodeNumber }),
+                mediaType,
+              )}
               {!collectionPage && exclusionType === 'global'
                 ? renderBadge('EXCL', mediaType)
                 : undefined}
@@ -211,7 +221,7 @@ const MediaCard: React.FC<IMediaCard> = ({
                     >
                       {title}
                     </h1>
-                    {mediaType == 'episode' && (
+                    {mediaType == 'episode' && episodeTitle && (
                       <div
                         className="text-xs whitespace-normal text-shadow-sm"
                         style={{
@@ -222,7 +232,7 @@ const MediaCard: React.FC<IMediaCard> = ({
                           wordBreak: 'break-word',
                         }}
                       >
-                        {summary}
+                        {episodeTitle}
                       </div>
                     )}
 
@@ -278,8 +288,10 @@ const MediaCard: React.FC<IMediaCard> = ({
           id={id}
           onClose={() => setShowMediaModal(false)}
           title={title}
-          summary={summary || 'No description available.'}
+          summary={summary}
           mediaType={mediaType}
+          seasonNumber={seasonNumber}
+          episodeNumber={episodeNumber}
           providerIds={providerIds}
           year={displayYear}
           exclusionType={exclusionType}

@@ -177,6 +177,20 @@ export interface TmdbTvSeasonResult {
   season_number: number;
 }
 
+/**
+ * `/tv/{id}/season/{n}`. Unlike the season entries embedded in the show record,
+ * this carries every episode of the season, so one request covers them all.
+ */
+export interface TmdbTvSeasonDetails {
+  id: number;
+  air_date: string;
+  name: string;
+  overview: string;
+  poster_path?: string;
+  season_number: number;
+  episodes: TmdbTvEpisodeResult[];
+}
+
 export interface TmdbTvDetails {
   id: number;
   backdrop_path?: string;

@@ -57,6 +57,25 @@ export class MetadataController {
     );
   }
 
+  @Get('/overview/:type')
+  async getOverview(
+    @Param('type') type: MediaLibrary['type'],
+    @Query() query: Record<string, string>,
+  ): Promise<{ overview: string } | undefined> {
+    const ids = this.parseIds(query);
+    if (!ids) {
+      return undefined;
+    }
+
+    const overview = await this.metadata.getOverview(
+      ids,
+      this.resolveMetadataType(type),
+      query.itemId,
+    );
+
+    return overview ? { overview } : undefined;
+  }
+
   @Get('/image/:type')
   async getImage(
     @Param('type') type: MediaLibrary['type'],

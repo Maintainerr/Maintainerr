@@ -5,15 +5,18 @@ import {
   SPORTARR_TVDB_ALIAS_RANGE,
   type MaintainerrMediaStatusDetails,
   type MaintainerrMediaStatusEntry,
+  type MediaItemType,
   type MediaProviderIds,
 } from '@maintainerr/contracts'
 import React, { memo, useEffect, useMemo, useState } from 'react'
+import { useMetadataOverview } from '../../../../api/metadata'
 import { useLockBodyScroll } from '../../../../hooks/useLockBodyScroll'
 import { useMediaServerType } from '../../../../hooks/useMediaServerType'
 import GetApiHandler from '../../../../utils/ApiHandler'
 import { logClientError } from '../../../../utils/ClientLogger'
 import {
-  buildMetadataImagePath,
+  buildMetadataPath,
+  mediaTypeLabel,
   toApiMediaType,
 } from '../../../../utils/mediaTypeUtils'
 import Button from '../../Button'
@@ -34,8 +37,10 @@ interface ModalContentProps {
   id: number | string
   summary?: string
   year?: string
-  mediaType: 'movie' | 'show' | 'season' | 'episode'
+  mediaType: MediaItemType
   title: string
+  seasonNumber?: number
+  episodeNumber?: number
   providerIds?: MediaProviderIds
   exclusionType?: 'global' | 'specific'
   collection?: ICollection
@@ -145,6 +150,8 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
     summary,
     year,
     title,
+    seasonNumber,
+    episodeNumber,
     providerIds: fallbackProviderIds,
     exclusionType,
     collection,
@@ -251,7 +258,7 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
       return season != null ? `${base}?season=${season}` : base
     }, [seerrConfigured, providerIds, metadata])
 
-    const backdropRequestPath = buildMetadataImagePath(
+    const backdropRequestPath = buildMetadataPath(
       'backdrop',
       mediaType,
       providerIds,
@@ -259,6 +266,22 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
     )
     const isCurrentBackdrop = backdropResult.requestKey === backdropRequestPath
     const resolvedBackdrop = isCurrentBackdrop ? backdropResult.url : null
+    const mediaServerSummary = metadata?.summary || summary
+    // Media servers rarely fill in a season description, so ask the metadata
+    // provider for one instead of leaving the season with no text at all.
+    const overviewRequestPath =
+      loading || mediaServerSummary
+        ? undefined
+        : buildMetadataPath('overview', mediaType, providerIds, id)
+    const { data: providerOverview, isPending: overviewRequestPending } =
+      useMetadataOverview(overviewRequestPath)
+    const isOverviewPending = !!overviewRequestPath && overviewRequestPending
+    // Nothing rather than a placeholder while a description is still in flight,
+    // so the text does not swap out from under the reader.
+    const summaryText =
+      mediaServerSummary ||
+      providerOverview ||
+      (loading || isOverviewPending ? '' : 'No summary available.')
     const providerLogo = useMemo(() => {
       if (!isCurrentBackdrop || !backdropResult.provider) return null
       const cfg = metadataProviderLogos[backdropResult.provider]
@@ -549,7 +572,7 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
                             : 'bg-rose-900/70'
                     }`}
                   >
-                    {mediaType}
+                    {mediaTypeLabel(mediaType, { seasonNumber, episodeNumber })}
                   </div>
                   {metadata?.contentRating && (
                     <div className="pointer-events-none mt-1 rounded-lg bg-black/70 p-2 text-xs font-medium text-zinc-200 uppercase">
@@ -725,7 +748,7 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
             </div>
 
             <div className="mt-2 text-gray-300">
-              <p>{metadata?.summary || summary || 'No summary available.'}</p>
+              <p>{summaryText}</p>
             </div>
 
             {requestedBy.length > 0 ? (

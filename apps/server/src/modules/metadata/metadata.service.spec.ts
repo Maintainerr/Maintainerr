@@ -142,18 +142,20 @@ describe('MetadataService', () => {
       'tt0099785',
       'imdb',
     );
-    expect(tvdbProvider.getPosterUrl).toHaveBeenCalledWith(
-      202,
-      'movie',
-      'w500',
-    );
+    expect(tvdbProvider.getPosterUrl).toHaveBeenCalledWith(202, 'movie', {
+      sizeHint: 'w500',
+      ref: undefined,
+    });
     expect(tmdbProvider.getPosterUrl).not.toHaveBeenCalled();
   });
 
-  it('resolves parent show IDs when a season mediaServerItemId is provided', async () => {
+  // Season 3 of a show, where the season carries provider IDs of its own that
+  // must not be used for the lookup (#2649).
+  const createSeasonMediaServerMock = () => {
     const seasonItem = createMediaItem({
       id: 'season-42',
       type: 'season',
+      index: 3,
       parentId: 'show-1',
       providerIds: { tmdb: ['9999'], tvdb: ['8888'] },
     });
@@ -162,13 +164,18 @@ describe('MetadataService', () => {
       type: 'show',
       providerIds: { tmdb: ['100'], tvdb: ['200'] },
     });
-    const mediaServer = {
+
+    return {
       getMetadata: jest
         .fn()
         .mockImplementation((id: string) =>
           Promise.resolve(id === 'season-42' ? seasonItem : showItem),
         ),
     };
+  };
+
+  it('resolves parent show IDs and the season number for a season poster', async () => {
+    const mediaServer = createSeasonMediaServerMock();
     const { service, tvdbProvider } = createService({ mediaServer });
 
     const result = await service.getPosterUrl(
@@ -181,13 +188,115 @@ describe('MetadataService', () => {
     expect(mediaServer.getMetadata).toHaveBeenCalledWith('season-42');
     expect(mediaServer.getMetadata).toHaveBeenCalledWith('show-1');
     expect(result).toBeDefined();
-    expect(tvdbProvider.getPosterUrl).toHaveBeenCalledWith(200, 'tv', 'w500');
+    expect(tvdbProvider.getPosterUrl).toHaveBeenCalledWith(200, 'tv', {
+      sizeHint: 'w500',
+      ref: { seasonNumber: 3 },
+    });
+  });
+
+  it('addresses a season, never an episode, on a season backdrop', async () => {
+    const { service, tvdbProvider } = createService({
+      mediaServer: createSeasonMediaServerMock(),
+    });
+
+    const result = await service.getBackdropUrl(
+      { tmdb: 9999, tvdb: 8888 },
+      'tv',
+      'w1280',
+      'season-42',
+    );
+
+    expect(result).toBeDefined();
+    // No episodeNumber, so providers have nothing below the show to offer.
+    expect(tvdbProvider.getBackdropUrl).toHaveBeenCalledWith(200, 'tv', {
+      sizeHint: 'w1280',
+      ref: { seasonNumber: 3 },
+    });
+  });
+
+  it('reads a season description from the metadata provider', async () => {
+    const { service, tvdbProvider, tmdbProvider } = createService({
+      mediaServer: createSeasonMediaServerMock(),
+      providerMocks: [
+        { name: 'TVDB', idKey: 'tvdb' },
+        { name: 'TMDB', idKey: 'tmdb', hierarchyOverview: 'The third season.' },
+      ],
+    });
+
+    const overview = await service.getOverview(
+      { tmdb: 9999, tvdb: 8888 },
+      'tv',
+      'season-42',
+    );
+
+    expect(overview).toBe('The third season.');
+    // The show's IDs, not the season's, and only for the season it addresses.
+    expect(tvdbProvider.getHierarchyOverview).toHaveBeenCalledWith(200, {
+      seasonNumber: 3,
+    });
+    expect(tmdbProvider.getHierarchyOverview).toHaveBeenCalledWith(100, {
+      seasonNumber: 3,
+    });
+  });
+
+  it('falls back to the show description when no provider describes the season', async () => {
+    const { service } = createService({
+      mediaServer: createSeasonMediaServerMock(),
+      providerMocks: [
+        {
+          name: 'TVDB',
+          idKey: 'tvdb',
+          detailsId: 200,
+          details: {
+            type: 'tv',
+            overview: 'The whole series.',
+            externalIds: { tvdb: 200, type: 'tv' },
+          },
+        },
+        { name: 'TMDB', idKey: 'tmdb' },
+      ],
+    });
+
+    const overview = await service.getOverview(
+      { tmdb: 9999, tvdb: 8888 },
+      'tv',
+      'season-42',
+    );
+
+    expect(overview).toBe('The whole series.');
+  });
+
+  it('does not consult the media server for a movie description', async () => {
+    const mediaServer = { getMetadata: jest.fn() };
+    const { service, tvdbProvider } = createService({
+      mediaServer,
+      providerMocks: [
+        {
+          name: 'TVDB',
+          idKey: 'tvdb',
+          detailsId: 200,
+          details: {
+            type: 'movie',
+            overview: 'The movie.',
+            externalIds: { tvdb: 200, type: 'movie' },
+          },
+        },
+      ],
+    });
+
+    const overview = await service.getOverview({ tvdb: 200 }, 'movie');
+
+    expect(overview).toBe('The movie.');
+    expect(mediaServer.getMetadata).not.toHaveBeenCalled();
+    expect(tvdbProvider.getHierarchyOverview).not.toHaveBeenCalled();
   });
 
   it('resolves parent show IDs when an episode mediaServerItemId is provided', async () => {
     const episodeItem = createMediaItem({
       id: 'episode-7',
       type: 'episode',
+      index: 7,
+      parentIndex: 3,
       parentId: 'season-3',
       grandparentId: 'show-1',
       providerIds: { tmdb: ['5555'] },
@@ -216,11 +325,89 @@ describe('MetadataService', () => {
     expect(mediaServer.getMetadata).toHaveBeenCalledWith('episode-7');
     expect(mediaServer.getMetadata).toHaveBeenCalledWith('show-1');
     expect(result).toBeDefined();
-    expect(tvdbProvider.getBackdropUrl).toHaveBeenCalledWith(
-      200,
+    expect(tvdbProvider.getBackdropUrl).toHaveBeenCalledWith(200, 'tv', {
+      sizeHint: 'w1280',
+      ref: { seasonNumber: 3, episodeNumber: 7 },
+    });
+  });
+
+  it('gives an episode its season poster and asks for its own description', async () => {
+    const episodeItem = createMediaItem({
+      id: 'episode-7',
+      type: 'episode',
+      index: 7,
+      parentIndex: 3,
+      parentId: 'season-3',
+      grandparentId: 'show-1',
+      providerIds: { tmdb: ['5555'] },
+    });
+    const showItem = createMediaItem({
+      id: 'show-1',
+      type: 'show',
+      providerIds: { tmdb: ['100'], tvdb: ['200'] },
+    });
+    const mediaServer = {
+      getMetadata: jest
+        .fn()
+        .mockImplementation((id: string) =>
+          Promise.resolve(id === 'episode-7' ? episodeItem : showItem),
+        ),
+    };
+    const { service, tvdbProvider, tmdbProvider } = createService({
+      mediaServer,
+      providerMocks: [
+        { name: 'TVDB', idKey: 'tvdb' },
+        { name: 'TMDB', idKey: 'tmdb', hierarchyOverview: 'The seventh one.' },
+      ],
+    });
+
+    await service.getPosterUrl({ tmdb: 5555 }, 'tv', 'w500', 'episode-7');
+    const overview = await service.getOverview(
+      { tmdb: 5555 },
       'tv',
-      'w1280',
+      'episode-7',
     );
+
+    expect(tvdbProvider.getPosterUrl).toHaveBeenCalledWith(200, 'tv', {
+      sizeHint: 'w500',
+      ref: { seasonNumber: 3, episodeNumber: 7 },
+    });
+    expect(overview).toBe('The seventh one.');
+    expect(tmdbProvider.getHierarchyOverview).toHaveBeenCalledWith(100, {
+      seasonNumber: 3,
+      episodeNumber: 7,
+    });
+  });
+
+  it('leaves an episode with no season number on the show artwork', async () => {
+    const episodeItem = createMediaItem({
+      id: 'episode-8',
+      type: 'episode',
+      index: 8,
+      parentIndex: undefined,
+      grandparentId: 'show-1',
+      providerIds: { tmdb: ['5555'] },
+    });
+    const showItem = createMediaItem({
+      id: 'show-1',
+      type: 'show',
+      providerIds: { tmdb: ['100'], tvdb: ['200'] },
+    });
+    const mediaServer = {
+      getMetadata: jest
+        .fn()
+        .mockImplementation((id: string) =>
+          Promise.resolve(id === 'episode-8' ? episodeItem : showItem),
+        ),
+    };
+    const { service, tvdbProvider } = createService({ mediaServer });
+
+    await service.getPosterUrl({ tmdb: 5555 }, 'tv', 'w500', 'episode-8');
+
+    expect(tvdbProvider.getPosterUrl).toHaveBeenCalledWith(200, 'tv', {
+      sizeHint: 'w500',
+      ref: undefined,
+    });
   });
 
   it('falls back to original IDs when mediaServer lookup fails', async () => {
@@ -237,7 +424,10 @@ describe('MetadataService', () => {
     );
 
     expect(result).toBeDefined();
-    expect(tvdbProvider.getPosterUrl).toHaveBeenCalledWith(200, 'tv', 'w500');
+    expect(tvdbProvider.getPosterUrl).toHaveBeenCalledWith(200, 'tv', {
+      sizeHint: 'w500',
+      ref: undefined,
+    });
   });
 
   it('skips show ID resolution for movies even when mediaServerItemId is provided', async () => {
@@ -249,11 +439,10 @@ describe('MetadataService', () => {
     await service.getPosterUrl({ tvdb: 200 }, 'movie', 'w500', 'movie-1');
 
     expect(mediaServer.getMetadata).not.toHaveBeenCalled();
-    expect(tvdbProvider.getPosterUrl).toHaveBeenCalledWith(
-      200,
-      'movie',
-      'w500',
-    );
+    expect(tvdbProvider.getPosterUrl).toHaveBeenCalledWith(200, 'movie', {
+      sizeHint: 'w500',
+      ref: undefined,
+    });
   });
 
   it.each(metadataLookupServiceTestCases)(
