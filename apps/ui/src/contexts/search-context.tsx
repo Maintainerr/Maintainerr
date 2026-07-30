@@ -12,7 +12,7 @@ interface SearchContextType {
 
 const SearchContext = createContext<SearchContextType>({
   search: {} as ISearch,
-  addText: (_input: string) => {},
+  addText: () => {},
   removeText: () => {},
 })
 SearchContext.displayName = 'SearchContext'

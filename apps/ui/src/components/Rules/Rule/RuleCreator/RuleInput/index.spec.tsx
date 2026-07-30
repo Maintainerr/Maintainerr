@@ -164,7 +164,7 @@ describe('RuleInput', () => {
     })
 
     await waitFor(() => {
-      const committedRule = onCommit.mock.calls.at(-1)?.[1]
+      const committedRule = onCommit.mock.calls.at(-1)?.[0]
       expect(committedRule).toMatchObject({
         firstVal: [Application.RADARR, listPropertyId],
         action: RulePossibility.EXISTS,
@@ -309,7 +309,7 @@ describe('RuleInput', () => {
     })
 
     await waitFor(() => {
-      const committedRule = onCommit.mock.calls.at(-1)?.[1]
+      const committedRule = onCommit.mock.calls.at(-1)?.[0]
       expect(committedRule).toMatchObject({
         firstVal: [Application.RADARR, listPropertyId],
         action: RulePossibility.EXISTS,

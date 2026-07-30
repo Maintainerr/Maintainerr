@@ -41,7 +41,7 @@ describe('RadarrActionHandler', () => {
     logger = unitRef.get(MaintainerrLogger);
 
     metadataService.resolveLookupCandidatesForService.mockImplementation(
-      async (_mediaServerId, _service, fallbackIds) => {
+      async (mediaServerId, service, fallbackIds) => {
         const tmdbId =
           typeof fallbackIds?.tmdb === 'number' ? fallbackIds.tmdb : undefined;
 

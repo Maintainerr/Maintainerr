@@ -130,19 +130,19 @@ class PlexApi {
   }
 
   private getQuery<T>(options: RequestOptions) {
-    return this._request<T>('GET', options);
+    return this.request<T>('GET', options);
   }
 
   deleteQuery(options: RequestOptions) {
-    return this._request('DELETE', options);
+    return this.request('DELETE', options);
   }
 
   postQuery<T>(options: RequestOptions) {
-    return this._request<T>('POST', options);
+    return this.request<T>('POST', options);
   }
 
   putQuery<T>(options: RequestOptions) {
-    return this._request<T>('PUT', options);
+    return this.request<T>('PUT', options);
   }
 
   private getServerScheme() {
@@ -152,7 +152,7 @@ class PlexApi {
     return this.options.port === 443 ? 'https://' : 'http://';
   }
 
-  private async _request<T>(method: string, options: RequestOptions) {
+  private async request<T>(method: string, options: RequestOptions) {
     const requestConfig: AxiosRequestConfig = {
       url: options.uri,
       method,

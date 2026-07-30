@@ -27,7 +27,7 @@ class MockResponse extends EventEmitter {
   flushHeaders = jest.fn();
   set = jest.fn();
   write = jest.fn(
-    (_chunk: string, callback?: (error?: Error | null) => void) => {
+    (chunk: string, callback?: (error?: Error | null) => void) => {
       callback?.(null);
       return true;
     },

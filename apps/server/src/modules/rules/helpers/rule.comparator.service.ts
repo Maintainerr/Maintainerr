@@ -669,7 +669,7 @@ export class RuleComparatorService {
             return false;
           }
         }
-      } catch (_err) {
+      } catch {
         return null;
       }
     }
@@ -709,7 +709,7 @@ export class RuleComparatorService {
             return false;
           }
         }
-      } catch (_err) {
+      } catch {
         return null;
       }
     }
@@ -727,7 +727,7 @@ export class RuleComparatorService {
             return false;
           }
         }
-      } catch (_err) {
+      } catch {
         return null;
       }
     }

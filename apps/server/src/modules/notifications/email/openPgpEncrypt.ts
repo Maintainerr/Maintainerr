@@ -13,40 +13,43 @@ interface EncryptorOptions {
 class PGPEncryptor extends Transform {
   private readonly logger = new Logger(PGPEncryptor.name);
 
-  private _messageChunks: Uint8Array[] = [];
-  private _messageLength = 0;
-  private _signingKey?: string;
-  private _password?: string;
+  private messageChunks: Uint8Array[] = [];
+  private messageLength = 0;
+  private signingKey?: string;
+  private password?: string;
 
-  private _encryptionKeys: string[];
+  private encryptionKeys: string[];
 
   constructor(options: EncryptorOptions) {
     super();
-    this._signingKey = options.signingKey;
-    this._password = options.password;
-    this._encryptionKeys = options.encryptionKeys;
+    this.signingKey = options.signingKey;
+    this.password = options.password;
+    this.encryptionKeys = options.encryptionKeys;
   }
+
+  // `_transform` and `_flush` are Node's Transform contract, not a private
+  // naming choice: the stream machinery calls them by these exact names.
 
   // just save the whole message
   _transform = (
     chunk: Uint8Array,
-    _encoding: BufferEncoding,
+    encoding: BufferEncoding,
     callback: TransformCallback,
   ): void => {
-    this._messageChunks.push(chunk);
-    this._messageLength += chunk.length;
+    this.messageChunks.push(chunk);
+    this.messageLength += chunk.length;
     callback();
   };
 
   // Actually do stuff
   // eslint-disable-next-line @typescript-eslint/no-misused-promises
   _flush = async (callback: TransformCallback): Promise<void> => {
-    const message = Buffer.concat(this._messageChunks, this._messageLength);
+    const message = Buffer.concat(this.messageChunks, this.messageLength);
 
     try {
       // Reconstruct message as buffer
       const validPublicKeys = await Promise.all(
-        this._encryptionKeys.map((armoredKey) =>
+        this.encryptionKeys.map((armoredKey) =>
           openpgp.readKey({ armoredKey }),
         ),
       );
@@ -59,12 +62,12 @@ class PGPEncryptor extends Transform {
       }
 
       // Only sign the message if private key and password exist
-      if (this._signingKey && this._password) {
+      if (this.signingKey && this.password) {
         privateKey = await openpgp.decryptKey({
           privateKey: await openpgp.readPrivateKey({
-            armoredKey: this._signingKey,
+            armoredKey: this.signingKey,
           }),
-          passphrase: this._password,
+          passphrase: this.password,
         });
       }
 

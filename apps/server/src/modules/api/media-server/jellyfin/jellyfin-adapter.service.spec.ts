@@ -1047,7 +1047,7 @@ describe('JellyfinAdapterService', () => {
       ['searchContent', [], () => service.searchContent('test')],
     ] as [string, unknown, () => Promise<unknown>][])(
       '%s returns %j when not initialized',
-      async (_method, expected, call) => {
+      async (method, expected, call) => {
         const result = await call();
         if (expected === undefined) {
           expect(result).toBeUndefined();

@@ -113,7 +113,7 @@ const RuleCreator = (props: iRuleCreator) => {
     emitUpdate()
   }, [sections])
 
-  const handleCommit = (uid: string) => (_id: number, rule: IRule) => {
+  const handleCommit = (uid: string) => (rule: IRule) => {
     setSections((prev) => {
       let changed = false
       const next = prev.map((section) => ({
@@ -227,7 +227,7 @@ const RuleCreator = (props: iRuleCreator) => {
         )}
         renderItem={({ value: section, props: itemProps, index }) => {
           const sectionNumber = (index ?? 0) + 1
-          const { key: _itemKey, style: itemStyle, ...itemRest } = itemProps
+          const { key: itemKey, style: itemStyle, ...itemRest } = itemProps
           return (
             <div
               key={section.uid}
@@ -273,7 +273,7 @@ const RuleCreator = (props: iRuleCreator) => {
                     const tagId = (ruleIndex ?? 0) + 1
                     const absoluteId = ++absoluteCounter
                     const {
-                      key: _ruleKey,
+                      key: ruleKey,
                       style: ruleStyle,
                       onKeyDown: ruleOnKeyDown,
                       ...ruleRest

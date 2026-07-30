@@ -54,7 +54,7 @@ interface IRuleInput {
   dataType?: MediaItemType
   section?: number
   editData?: { rule: IRule }
-  onCommit: (id: number, rule: IRule) => void
+  onCommit: (rule: IRule) => void
   onIncomplete: (id: number) => void
   onDelete: (section: number, id: number) => void
   allowDelete?: boolean
@@ -566,9 +566,9 @@ const RuleInput = (props: IRuleInput) => {
         ...(isSelectedArrDiskspaceRule && arrDiskPath ? { arrDiskPath } : {}),
       }
       if (!requiresSecondValue) {
-        props.onCommit(props.id ? props.id : 0, ruleValues)
+        props.onCommit(ruleValues)
       } else if (customVal) {
-        props.onCommit(props.id ? props.id : 0, {
+        props.onCommit({
           customVal: {
             ruleTypeId: customValActive
               ? customValType === RuleType.DATE
@@ -591,7 +591,7 @@ const RuleInput = (props: IRuleInput) => {
           ...ruleValues,
         })
       } else {
-        props.onCommit(props.id ? props.id : 0, {
+        props.onCommit({
           lastVal: JSON.parse(secondVal!),
           ...ruleValues,
         })

@@ -2195,7 +2195,7 @@ describe('JellyfinGetterService', () => {
       [17, 'sw_amountOfViews', 0],
     ])(
       'answers empty for an episode item without sweeping (%i - %s)',
-      async (propertyId, _name, expected) => {
+      async (propertyId, name, expected) => {
         const episodeItem = createMediaItem({
           id: 'episode-not-a-container',
           type: 'episode' as MediaItemType,
