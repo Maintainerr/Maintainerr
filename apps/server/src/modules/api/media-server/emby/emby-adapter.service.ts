@@ -697,7 +697,9 @@ export class EmbyAdapterService implements IMediaServerService {
   }
 
   async refreshItemMetadata(itemId: string): Promise<void> {
-    if (!this.http) return;
+    if (!this.http) {
+      throw new Error('Emby not initialized');
+    }
     try {
       await this.http.post(`/Items/${itemId}/Refresh`, null, {
         params: {
@@ -709,9 +711,13 @@ export class EmbyAdapterService implements IMediaServerService {
         },
       });
     } catch (error) {
-      this.logger.debug(
+      // Plex and Jellyfin throw here, and #2594's verify-and-retry-with-a-
+      // corrected-id path only runs on a rejection - swallowing left that
+      // dead on Emby and every refresh reported as queued.
+      this.logger.error(
         `Emby refreshItemMetadata(${itemId}) failed: ${formatConnectionFailureMessage(error, 'Connection failed')}`,
       );
+      throw error;
     }
   }
 

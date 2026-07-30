@@ -316,6 +316,24 @@ describe('EmbyAdapterService', () => {
 
   // A truncated page is an HTTP 200, so the fail-closed contract cannot catch
   // it - the link lookup would read a partial listing as a confirmed miss.
+  // Plex and Jellyfin throw here; #2594's verify-and-retry-with-a-corrected-id
+  // path only runs on a rejection, so swallowing left it dead on Emby.
+  describe('refreshItemMetadata', () => {
+    it('propagates a failed refresh so the retry path can run', async () => {
+      const failure = new Error('boom');
+      http.post.mockRejectedValueOnce(failure);
+
+      await expect(service.refreshItemMetadata('item-1')).rejects.toBe(failure);
+    });
+
+    it('throws when not initialized', async () => {
+      (service as unknown as { http?: unknown }).http = undefined;
+      await expect(service.refreshItemMetadata('item-1')).rejects.toThrow(
+        'Emby not initialized',
+      );
+    });
+  });
+
   describe('getCollections cache preference', () => {
     it('bypasses the cached listing when the caller needs a live answer', async () => {
       embyCacheMocks.data.get.mockReturnValue([
