@@ -75,7 +75,11 @@ export class EmbyGetterService {
 
       if (!metadata) {
         this.logger.warn(`Failed to get Emby metadata for item ${libItem.id}`);
-        return null;
+        // undefined, not null: getMetadata answers undefined for both a
+        // missing item and a failed read, and null is the comparator's
+        // "confirmed absent" signal - it would let NOT_EXISTS match on a
+        // transient blip. Mirrors the arr getter contract (#3125).
+        return undefined;
       }
 
       // Get parent/grandparent metadata lazily (like Plex getter)
