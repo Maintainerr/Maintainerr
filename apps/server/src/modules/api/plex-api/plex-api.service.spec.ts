@@ -1446,3 +1446,73 @@ describe('PlexApiService overlay helpers', () => {
     await expect(service.getOverlayLibrarySections()).resolves.toEqual([]);
   });
 });
+
+describe('PlexApiService.resetMetadataCache', () => {
+  let service: PlexApiService;
+  let cache: { set: (k: string, v: unknown) => void; keys: () => string[] };
+
+  const key = (uri: string) => JSON.stringify({ uri });
+
+  beforeEach(async () => {
+    const { unit, unitRef } = await TestBed.solitary(PlexApiService).compile();
+    service = unit;
+
+    unitRef.get(MaintainerrLoggerFactory).createLogger.mockReturnValue({
+      setContext: jest.fn(),
+      log: jest.fn(),
+      warn: jest.fn(),
+      error: jest.fn(),
+      debug: jest.fn(),
+    } as any);
+
+    const cacheManager = (await import('../lib/cache')).default;
+    cache = cacheManager.getCache('plexguid').data as unknown as typeof cache;
+    (cache as unknown as { flushAll: () => void }).flushAll();
+  });
+
+  // The rule getter always passes includeExternalMedia, so its entries land
+  // under a query-string uri. Deleting only the bare uri invalidated nothing on
+  // the one path that caches, and rules testing kept serving stale metadata.
+  it('drops every option variant for the item, and nothing else', () => {
+    const withOptions = key(
+      '/library/metadata/12?includeExternalMedia=1&asyncAugmentMetadata=1',
+    );
+    cache.set(key('/library/metadata/12'), 'bare');
+    cache.set(withOptions, 'from the rule getter');
+    cache.set(key('/library/metadata/12/children'), 'children');
+    cache.set(key('/library/metadata/123'), 'a different item');
+
+    service.resetMetadataCache('12');
+
+    expect(cache.keys().sort()).toEqual(
+      [
+        key('/library/metadata/12/children'),
+        key('/library/metadata/123'),
+      ].sort(),
+    );
+  });
+
+  // Jellyfin and Emby both drop watch state on reset; Plex did not, so a
+  // just-watched item kept testing stale. History entries are keyed by leaf
+  // ratingKey - not the id passed in - so the whole namespace goes.
+  it('drops watch history entries and the bulk snapshot too', async () => {
+    const cacheManager = (await import('../lib/cache')).default;
+    const watchCache = cacheManager.getCache('plexwatchhistory').data;
+
+    cache.set(
+      key('/status/sessions/history/all?sort=viewedAt:desc&metadataItemID=99'),
+      'another item',
+    );
+    cache.set(
+      key('/status/sessions/history/all?sort=viewedAt:desc'),
+      'bulk page',
+    );
+    cache.set(key('/library/sections'), 'sections listing');
+    watchCache.set('watch-history-bulk', 'snapshot');
+
+    service.resetMetadataCache('12');
+
+    expect(cache.keys()).toEqual([key('/library/sections')]);
+    expect(watchCache.keys()).toEqual([]);
+  });
+});

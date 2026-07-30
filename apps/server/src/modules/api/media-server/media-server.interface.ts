@@ -416,7 +416,10 @@ export interface IMediaServerService {
 
   /**
    * Reset metadata cache.
-   * @param itemId - If provided, only reset cache for this item. Otherwise reset all.
+   * @param itemId - If provided, invalidate at least this item's cached
+   * metadata; implementations may drop more (Jellyfin also clears its
+   * children and watch namespaces, Emby flushes everything). Otherwise
+   * reset all.
    */
   resetMetadataCache(itemId?: string): void;
 

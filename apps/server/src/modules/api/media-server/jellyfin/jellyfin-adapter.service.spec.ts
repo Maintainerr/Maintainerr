@@ -30,6 +30,7 @@ const jellyfinApiMocks = {
   getItemImage: jest.fn(),
   setItemImage: jest.fn(),
   getSessions: jest.fn(),
+  getSeasons: jest.fn(),
 };
 
 const collectionApiMocks = {
@@ -137,6 +138,9 @@ jest.mock('@jellyfin/sdk/lib/utils/api/index.js', () => ({
     getItems: (...args: unknown[]) => jellyfinApiMocks.getItems(...args),
     getItemUserData: (...args: unknown[]) =>
       jellyfinApiMocks.getItemUserData(...args),
+  })),
+  getTvShowsApi: jest.fn().mockImplementation(() => ({
+    getSeasons: (...args: unknown[]) => jellyfinApiMocks.getSeasons(...args),
   })),
   getLibraryApi: jest.fn().mockImplementation(() => ({
     getMediaFolders: (...args: unknown[]) =>
@@ -833,6 +837,150 @@ describe('JellyfinAdapterService', () => {
       );
 
       expect(jellyfinApiMocks.refreshItem).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('getMetadata caching (#3355)', () => {
+    beforeEach(async () => {
+      settingsDataService.getSettings.mockResolvedValue(
+        mockSettings as unknown as Awaited<
+          ReturnType<SettingsDataService['getSettings']>
+        >,
+      );
+      await service.initialize();
+      jellyfinApiMocks.getItems.mockResolvedValue({
+        data: { Items: [{ Id: 'series-1', Type: 'Series', Name: 'A Show' }] },
+      });
+    });
+
+    it('caches a resolved item so repeat conditions do not re-read it', async () => {
+      const item = await service.getMetadata('series-1');
+
+      expect(item?.id).toBe('series-1');
+      expect(jellyfinCacheMocks.data.set).toHaveBeenCalledWith(
+        'jellyfin:metadata:series-1',
+        expect.objectContaining({ id: 'series-1' }),
+        JELLYFIN_CACHE_TTL.METADATA,
+      );
+    });
+
+    it('serves a cached item without touching the API', async () => {
+      jellyfinCacheMocks.data.get.mockReturnValueOnce({ id: 'series-1' });
+
+      await expect(service.getMetadata('series-1')).resolves.toEqual({
+        id: 'series-1',
+      });
+      expect(jellyfinApiMocks.getItems).not.toHaveBeenCalled();
+    });
+
+    it('does not cache a missing item', async () => {
+      jellyfinApiMocks.getItems.mockResolvedValue({ data: { Items: [] } });
+
+      await expect(service.getMetadata('gone')).resolves.toBeUndefined();
+      expect(jellyfinCacheMocks.data.set).not.toHaveBeenCalled();
+    });
+
+    it('does not cache a failed read', async () => {
+      // undefined means both "missing" and "could not read", so persisting it
+      // would turn a blip into "item is gone" for the whole TTL (#3307).
+      jellyfinApiMocks.getItems.mockRejectedValue(new Error('boom'));
+
+      await expect(service.getMetadata('item-1')).resolves.toBeUndefined();
+      expect(jellyfinCacheMocks.data.set).not.toHaveBeenCalled();
+    });
+
+    it('drops the item entry on resetMetadataCache', async () => {
+      jellyfinCacheMocks.data.keys.mockReturnValue([
+        'jellyfin:metadata:item-1',
+        'jellyfin:metadata:other',
+      ]);
+
+      service.resetMetadataCache('item-1');
+
+      expect(jellyfinCacheMocks.data.del).toHaveBeenCalledWith(
+        'jellyfin:metadata:item-1',
+      );
+      expect(jellyfinCacheMocks.data.del).not.toHaveBeenCalledWith(
+        'jellyfin:metadata:other',
+      );
+    });
+  });
+
+  describe('getChildrenMetadata caching (#3355)', () => {
+    beforeEach(async () => {
+      settingsDataService.getSettings.mockResolvedValue(
+        mockSettings as unknown as Awaited<
+          ReturnType<SettingsDataService['getSettings']>
+        >,
+      );
+      await service.initialize();
+    });
+
+    it('caches episodes and seasons under separate keys', async () => {
+      jellyfinApiMocks.getItems.mockResolvedValue({
+        data: { Items: [{ Id: 'ep-1', Type: 'Episode' }] },
+      });
+      jellyfinApiMocks.getSeasons.mockResolvedValue({
+        data: { Items: [{ Id: 'season-1', Type: 'Season' }] },
+      });
+
+      await service.getChildrenMetadata('show-1', 'episode');
+      await service.getChildrenMetadata('show-1', 'season');
+
+      // Same parent, different child type - one key each, or the season walk
+      // would answer with episodes.
+      expect(jellyfinCacheMocks.data.set).toHaveBeenCalledWith(
+        'jellyfin:children:show-1:episode',
+        [expect.objectContaining({ id: 'ep-1' })],
+        JELLYFIN_CACHE_TTL.METADATA,
+      );
+      expect(jellyfinCacheMocks.data.set).toHaveBeenCalledWith(
+        'jellyfin:children:show-1:season',
+        [expect.objectContaining({ id: 'season-1' })],
+        JELLYFIN_CACHE_TTL.METADATA,
+      );
+    });
+
+    it('serves a cached list without touching the API', async () => {
+      jellyfinCacheMocks.data.get.mockReturnValueOnce([{ id: 'ep-1' }]);
+
+      await expect(
+        service.getChildrenMetadata('season-1', 'episode'),
+      ).resolves.toEqual([{ id: 'ep-1' }]);
+      expect(jellyfinApiMocks.getItems).not.toHaveBeenCalled();
+    });
+
+    it('does not cache a failed read', async () => {
+      // The catch answers [], which is indistinguishable from "no episodes" -
+      // persisting it would read as an empty show for the whole TTL.
+      jellyfinApiMocks.getItems.mockRejectedValue(new Error('boom'));
+
+      await expect(
+        service.getChildrenMetadata('season-1', 'episode'),
+      ).resolves.toEqual([]);
+      expect(jellyfinCacheMocks.data.set).not.toHaveBeenCalled();
+    });
+
+    it('drops the whole children namespace on resetMetadataCache', async () => {
+      // A show's episode lists hang off its season ids, not the id passed in,
+      // so scoping the delete to that id would leave them stale (#3274).
+      jellyfinCacheMocks.data.keys.mockReturnValue([
+        'jellyfin:children:show-1:season',
+        'jellyfin:children:season-9:episode',
+        'jellyfin:users',
+      ]);
+
+      service.resetMetadataCache('show-1');
+
+      expect(jellyfinCacheMocks.data.del).toHaveBeenCalledWith(
+        'jellyfin:children:show-1:season',
+      );
+      expect(jellyfinCacheMocks.data.del).toHaveBeenCalledWith(
+        'jellyfin:children:season-9:episode',
+      );
+      expect(jellyfinCacheMocks.data.del).not.toHaveBeenCalledWith(
+        'jellyfin:users',
+      );
     });
   });
 
