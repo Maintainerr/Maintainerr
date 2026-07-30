@@ -44,7 +44,7 @@ export class SportarrGetterService {
     libItem: MediaItem,
     dataType?: MediaItemType,
     ruleGroup?: RulesDto,
-    _rule?: RuleDto,
+    rule?: RuleDto,
     arrLookupCache?: ArrLookupCache,
   ) {
     if (!ruleGroup.collection?.sportarrSettingsId) {

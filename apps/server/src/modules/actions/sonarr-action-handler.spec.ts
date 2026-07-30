@@ -53,7 +53,7 @@ describe('SonarrActionHandler', () => {
     };
 
     metadataService.resolveLookupCandidatesForService.mockImplementation(
-      async (_mediaServerId, _service, fallbackIds) => {
+      async (mediaServerId, service, fallbackIds) => {
         const tvdbId = await mediaIdFinder.findTvdbId();
         const resolvedTvdbId =
           tvdbId ??

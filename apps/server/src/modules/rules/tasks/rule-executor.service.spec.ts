@@ -77,7 +77,7 @@ describe('RuleExecutorService', () => {
       setCollectionMediaRuleEvaluationFailed: jest
         .fn()
         .mockResolvedValue(undefined),
-      addToCollection: jest.fn().mockImplementation(async (_id, items) => {
+      addToCollection: jest.fn().mockImplementation(async (id, items) => {
         return {
           id: 1,
           mediaServerId: 'coll-1',
@@ -87,7 +87,7 @@ describe('RuleExecutorService', () => {
       }),
       addToCollectionWithResolvedLink: jest
         .fn()
-        .mockImplementation(async (_collection, items) => {
+        .mockImplementation(async (collection, items) => {
           return {
             id: 1,
             mediaServerId: 'coll-1',
@@ -97,7 +97,7 @@ describe('RuleExecutorService', () => {
         }),
       syncMediaServerChildrenToCollection: jest
         .fn()
-        .mockImplementation(async (_collection, items) => {
+        .mockImplementation(async (collection, items) => {
           return {
             id: 1,
             mediaServerId: 'coll-1',

@@ -24,7 +24,7 @@ jest.mock('fs', () => {
     createReadStream: jest.fn(),
     readdir: jest.fn(
       (
-        _dir: string,
+        dir: string,
         callback: (
           error: NodeJS.ErrnoException | null,
           files: string[],
@@ -79,7 +79,7 @@ class MockResponse extends EventEmitter {
   flushHeaders = jest.fn();
   set = jest.fn();
   write = jest.fn(
-    (_chunk: string, callback?: (error?: Error | null) => void) => {
+    (chunk: string, callback?: (error?: Error | null) => void) => {
       callback?.(null);
       return true;
     },
@@ -144,7 +144,7 @@ describe('LogsController', () => {
     const controller = createController();
     const response = new MockResponse();
     readdirMock.mockImplementationOnce(
-      (_dir: string, callback: (error: null, files: string[]) => void) => {
+      (dir: string, callback: (error: null, files: string[]) => void) => {
         callback(null, ['maintainerr-2026-07-28.log']);
       },
     );

@@ -304,7 +304,7 @@ const ServarrSettingsModal = <TSetting extends ServarrSettingShape>({
 
     const values = getValues()
     const { payload, port } = buildServarrPayload(values, settings)
-    const { id: _ignoredId, ...testPayload } = payload
+    const { id: ignoredId, ...testPayload } = payload
 
     setTesting(true)
 

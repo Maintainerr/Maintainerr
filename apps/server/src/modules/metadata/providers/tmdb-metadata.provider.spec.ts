@@ -35,7 +35,7 @@ describe('TmdbMetadataProvider', () => {
     ['Pilot', undefined, 'status Pilot (unknown)', undefined],
   ])(
     'maps %s to ended=%s (%s)',
-    async (status, inProduction, _label, expected) => {
+    async (status, inProduction, label, expected) => {
       tmdbApi.getTvShow.mockResolvedValue({
         ...baseTvRecord,
         status,

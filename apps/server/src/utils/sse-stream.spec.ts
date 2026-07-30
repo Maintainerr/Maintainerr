@@ -15,7 +15,7 @@ class MockResponse extends EventEmitter {
     this.writableEnded = true;
   });
 
-  write = jest.fn((_chunk: string, callback?: WriteCallback) => {
+  write = jest.fn((chunk: string, callback?: WriteCallback) => {
     callback?.(null);
     return true;
   });
@@ -42,7 +42,7 @@ describe('createSseStreamClient', () => {
     const epipeError = makeEpipeError();
 
     response.write.mockImplementation(
-      (_chunk: string, callback?: WriteCallback) => {
+      (chunk: string, callback?: WriteCallback) => {
         setImmediate(() => callback?.(epipeError));
         return true;
       },

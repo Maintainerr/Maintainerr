@@ -885,7 +885,7 @@ describe('PlexAdapterService', () => {
         message: 'batch failed',
       } as any);
       plexApi.addChildToCollection.mockImplementation(
-        async (_collectionId, itemId) => {
+        async (collectionId, itemId) => {
           if (itemId === 'bad') {
             throw new Error('boom');
           }
@@ -930,7 +930,7 @@ describe('PlexAdapterService', () => {
 
     it('should treat 404 removes as successful in batch remove', async () => {
       plexApi.deleteChildFromCollection.mockImplementation(
-        async (_collectionId, itemId) => {
+        async (collectionId, itemId) => {
           if (itemId === 'missing') {
             throw new Error('404 Not Found');
           }
@@ -1028,7 +1028,7 @@ describe('PlexAdapterService', () => {
       ]);
       plexApi.setCollectionCustomSort.mockResolvedValue(undefined);
       plexApi.moveCollectionItem.mockImplementation(
-        async (_collectionId, itemId) => {
+        async (collectionId, itemId) => {
           if (itemId === 'b') {
             throw new Error('plex move 409');
           }

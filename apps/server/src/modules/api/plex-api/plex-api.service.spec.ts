@@ -722,7 +722,7 @@ describe('PlexApiService.getCollection (missing vs unreachable)', () => {
     ['a 500 response', { response: { status: 500 } }],
     ['an auth failure', { response: { status: 401 } }],
     ['a transport failure', undefined],
-  ])('rethrows on %s', async (_label, cause) => {
+  ])('rethrows on %s', async (label, cause) => {
     const wrapped = new Error('GET /library/collections/7 failed', {
       cause: cause as any,
     });
@@ -927,9 +927,9 @@ describe('PlexApiService.prefetchWatchHistory', () => {
       .fn()
       .mockImplementation(
         async (
-          _query: unknown,
-          _useCache: unknown,
-          _signal: unknown,
+          query: unknown,
+          useCache: unknown,
+          signal: unknown,
           onProgress?: (p: { fetched: number; totalSize: number }) => void,
         ) => {
           // Drive the callback the way queryAll does, one page at a time.
@@ -938,7 +938,7 @@ describe('PlexApiService.prefetchWatchHistory', () => {
           }
           return {
             MediaContainer: {
-              Metadata: Array.from({ length: totalSize }, (_v, i) => ({
+              Metadata: Array.from({ length: totalSize }, (v, i) => ({
                 ratingKey: String(i % 3),
                 type: 'movie',
                 accountID: 1,
@@ -982,15 +982,15 @@ describe('PlexApiService.prefetchWatchHistory', () => {
       .fn()
       .mockImplementation(
         async (
-          _query: unknown,
-          _useCache: unknown,
-          _signal: unknown,
+          query: unknown,
+          useCache: unknown,
+          signal: unknown,
           onProgress?: (p: { fetched: number; totalSize: number }) => void,
         ) => {
           onProgress?.({ fetched: totalSize, totalSize });
           return {
             MediaContainer: {
-              Metadata: Array.from({ length: totalSize }, (_v, i) => ({
+              Metadata: Array.from({ length: totalSize }, (v, i) => ({
                 ratingKey: String(i),
                 type: 'movie',
                 accountID: 1,
@@ -1113,7 +1113,7 @@ describe('PlexApiService.prefetchWatchHistory', () => {
     const requestStarted = createDeferred();
     const queryAll = jest.fn().mockImplementation(async () => {
       requestStarted.resolve();
-      await new Promise((_resolve, reject) => {
+      await new Promise((resolve, reject) => {
         abortController.signal.addEventListener(
           'abort',
           () => reject(abortController.signal.reason),

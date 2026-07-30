@@ -1452,11 +1452,11 @@ export class EmbyAdapterService implements IMediaServerService {
   // Cache management
   // ============================================================================
 
-  resetMetadataCache(_itemId?: string): void {
-    // Besides the server-wide aggregates (users/libraries/status/collections)
-    // the only per-item entries are getMetadata's; watch reads still hit the
-    // API fresh. A full flush is the simplest correct reset.
-    void _itemId;
+  // The item id is ignored: besides the server-wide aggregates
+  // (users/libraries/status/collections) the only per-item entries are
+  // getMetadata's, and watch reads still hit the API fresh, so a full flush is
+  // the simplest correct reset.
+  resetMetadataCache(): void {
     this.cache.flush();
   }
 

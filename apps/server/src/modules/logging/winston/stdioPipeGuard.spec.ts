@@ -30,7 +30,7 @@ describe('stdioPipeGuard', () => {
       ['no code', new Error('boom')],
       ['null', null],
       ['string', 'EPIPE'],
-    ])('rejects %s as a non-broken-pipe error', (_label, value) => {
+    ])('rejects %s as a non-broken-pipe error', (label, value) => {
       expect(__testing.isBrokenPipeError(value)).toBe(false);
     });
   });
