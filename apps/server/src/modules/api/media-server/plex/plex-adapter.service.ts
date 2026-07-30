@@ -26,6 +26,7 @@ import {
   isBlankMediaServerId,
   isForeignServerId,
 } from '../media-server-id.utils';
+import { resolveContextActionIds } from '../context-action.util';
 import { supportsFeature } from '../media-server.constants';
 import {
   IMediaServerService,
@@ -840,12 +841,15 @@ export class PlexAdapterService implements IMediaServerService {
     context: { type: MediaItemType; id: string },
     mediaId: string,
   ): Promise<string[]> {
-    const result = await this.plexApi.getAllIdsForContextAction(
-      collectionType ? PlexMapper.toPlexDataType(collectionType) : undefined,
-      { type: PlexMapper.toPlexDataType(context.type), id: Number(context.id) },
-      { plexId: Number(mediaId) },
+    // Plex children are unambiguous - a show's are seasons, a season's are
+    // episodes - so the type argument is not needed here.
+    return resolveContextActionIds(
+      collectionType,
+      context,
+      mediaId,
+      (parentId) => this.getChildrenMetadata(parentId),
+      (message) => this.logger.warn(message),
     );
-    return result.map((r) => String(r.plexId));
   }
 
   resetMetadataCache(itemId?: string): void {
