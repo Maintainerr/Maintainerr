@@ -21,6 +21,7 @@ import {
   PersonDetails,
   ProviderIds,
   ResolvedMediaIds,
+  TvHierarchyRef,
 } from './interfaces/metadata.types';
 import { MetadataLookupCandidate } from './metadata-lookup.util';
 
@@ -703,43 +704,86 @@ export class MetadataService {
     size = 'w500',
     mediaServerItemId?: string,
   ): Promise<{ url: string; provider: string; id: number } | undefined> {
-    const resolvedIds = await this.resolveShowIdsForImage(
+    const { ids: resolvedIds, hierarchy } = await this.resolveShowLookup(
       ids,
       type,
       mediaServerItemId,
     );
     return this.resolveImageUrl(resolvedIds, type, (provider, id) =>
-      provider.getPosterUrl(id, type, size),
+      provider.getPosterUrl(id, type, { sizeHint: size, ref: hierarchy }),
     );
   }
 
+  /**
+   * Episodes resolve to their own still. Seasons keep the show's backdrop -
+   * TMDB's season image set is posters-only, and TVDB's series record carries
+   * a single image per season, so neither offers a season background to use.
+   */
   async getBackdropUrl(
     ids: ProviderIds,
     type: 'movie' | 'tv',
     size = 'w1280',
     mediaServerItemId?: string,
   ): Promise<{ url: string; provider: string; id: number } | undefined> {
-    const resolvedIds = await this.resolveShowIdsForImage(
+    const { ids: resolvedIds, hierarchy } = await this.resolveShowLookup(
       ids,
       type,
       mediaServerItemId,
     );
     return this.resolveImageUrl(resolvedIds, type, (provider, id) =>
-      provider.getBackdropUrl(id, type, size),
+      provider.getBackdropUrl(id, type, { sizeHint: size, ref: hierarchy }),
     );
   }
 
   /**
-   * For season/episode items, resolve the parent show's provider IDs so that
-   * image lookups use show-level IDs instead of season-specific ones.
+   * Provider description for an item, used where the media server has none of
+   * its own. Seasons and episodes resolve to their own description and fall
+   * back to the show's when the provider only describes the series.
    */
-  private async resolveShowIdsForImage(
+  async getOverview(
     ids: ProviderIds,
     type: 'movie' | 'tv',
     mediaServerItemId?: string,
-  ): Promise<ProviderIds> {
+  ): Promise<string | undefined> {
+    const { ids: resolvedIds, hierarchy } = await this.resolveShowLookup(
+      ids,
+      type,
+      mediaServerItemId,
+    );
+
+    // Same ID resolution the image lookups run, so an item the media server
+    // only tagged with one provider's ID still reaches a configured provider.
+    const providerIds: ResolvedMediaIds = { ...resolvedIds, type };
+    await this.resolveAllIds(providerIds, this.getOrderedProviderKeys());
+
+    if (hierarchy) {
+      const hierarchyOverview = await this.withProviderFallback(
+        providerIds,
+        (provider, id) => provider.getHierarchyOverview(id, hierarchy),
+      );
+
+      if (hierarchyOverview) {
+        return hierarchyOverview;
+      }
+    }
+
+    const details = await this.getDetails(providerIds, type);
+    return details?.overview || undefined;
+  }
+
+  /**
+   * For season/episode items, resolve the parent show's provider IDs so that
+   * lookups use show-level IDs instead of season-specific ones, and report
+   * which season/episode the item is so providers can answer for it rather
+   * than for the show.
+   */
+  private async resolveShowLookup(
+    ids: ProviderIds,
+    type: 'movie' | 'tv',
+    mediaServerItemId?: string,
+  ): Promise<{ ids: ProviderIds; hierarchy?: TvHierarchyRef }> {
     if (!mediaServerItemId || type !== 'tv') {
-      return ids;
+      return { ids };
     }
 
     try {
@@ -747,20 +791,21 @@ export class MetadataService {
       const item = await mediaServer.getMetadata(mediaServerItemId);
 
       if (!item || (item.type !== 'season' && item.type !== 'episode')) {
-        return ids;
+        return { ids };
       }
 
+      const hierarchy = this.readHierarchyRef(item);
       const showId =
         item.type === 'episode' ? item.grandparentId : item.parentId;
 
       if (!showId) {
-        return ids;
+        return { ids, hierarchy };
       }
 
       const show = await mediaServer.getMetadata(showId);
 
       if (!show) {
-        return ids;
+        return { ids, hierarchy };
       }
 
       const showIds = this.extractDirectIds(show);
@@ -772,13 +817,31 @@ export class MetadataService {
         }
       }
 
-      return merged;
+      return { ids: merged, hierarchy };
     } catch (err) {
       this.logger.warn(
         `Failed to resolve show IDs for item ${mediaServerItemId}: ${err}`,
       );
-      return ids;
+      return { ids };
     }
+  }
+
+  /**
+   * A season is its own `index`; an episode is its `index` inside `parentIndex`.
+   * Season 0 (specials) is a real season, so guard on null, not truthiness.
+   */
+  private readHierarchyRef(item: MediaItem): TvHierarchyRef | undefined {
+    if (item.type === 'season') {
+      return item.index != null ? { seasonNumber: item.index } : undefined;
+    }
+
+    if (item.type === 'episode') {
+      return item.parentIndex != null
+        ? { seasonNumber: item.parentIndex, episodeNumber: item.index }
+        : undefined;
+    }
+
+    return undefined;
   }
 
   private hasRequiredIds(
