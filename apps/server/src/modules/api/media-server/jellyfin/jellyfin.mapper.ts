@@ -19,6 +19,7 @@ import {
   type MediaUser,
   type WatchRecord,
 } from '@maintainerr/contracts';
+import { addProviderId, emptyProviderIds } from '../media-provider-ids.utils';
 import { JELLYFIN_TICKS_PER_MS } from './jellyfin.constants';
 
 /**
@@ -91,25 +92,10 @@ export class JellyfinMapper {
   static extractProviderIds(
     providerIds?: Record<string, string | null> | null,
   ): MediaProviderIds {
-    const result: MediaProviderIds = {
-      imdb: [],
-      tmdb: [],
-      tvdb: [],
-    };
+    const result = emptyProviderIds();
 
-    if (!providerIds) {
-      return result;
-    }
-
-    // Jellyfin uses capitalized keys
-    if (providerIds.Imdb) {
-      result.imdb.push(providerIds.Imdb);
-    }
-    if (providerIds.Tmdb) {
-      result.tmdb.push(providerIds.Tmdb);
-    }
-    if (providerIds.Tvdb) {
-      result.tvdb.push(providerIds.Tvdb);
+    for (const [provider, id] of Object.entries(providerIds ?? {})) {
+      addProviderId(result, provider, id);
     }
 
     return result;

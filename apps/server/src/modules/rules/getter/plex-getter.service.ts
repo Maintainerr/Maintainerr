@@ -249,14 +249,6 @@ export class PlexGetterService {
           ]);
         }
         case 'lastViewedAt': {
-          if (libItem.lastViewedAt) {
-            return libItem.lastViewedAt;
-          }
-
-          if (metadata.lastViewedAt) {
-            return new Date(+metadata.lastViewedAt * 1000);
-          }
-
           // Errors must surface so the outer catch returns `undefined` for an
           // unknown watch state instead of collapsing the failure into a
           // confirmed never-watched `null`.
@@ -265,15 +257,14 @@ export class PlexGetterService {
             true,
             metadata.type,
           );
-          if (seenby && seenby.length > 0) {
-            return new Date(
-              +seenby
-                .map((el) => el.viewedAt)
-                .sort()
-                .reverse()[0] * 1000,
-            );
-          }
-          return null;
+          // Marking something played by hand, or a scrobble from an external
+          // tracker, moves the item's own lastViewedAt without writing a
+          // history row - so start from that and let any newer view win.
+          const newest = (seenby ?? []).reduce(
+            (latest, el) => Math.max(latest, el.viewedAt * 1000),
+            libItem.lastViewedAt?.getTime() ?? 0,
+          );
+          return newest > 0 ? new Date(newest) : null;
         }
         case 'fileVideoResolution': {
           return metadata.Media[0].videoResolution

@@ -268,11 +268,10 @@ describe('PlexGetterService', () => {
       });
     });
 
-    it('returns the library item lastViewedAt for lastViewedAt (id 7)', async () => {
+    it('returns the item lastViewedAt when no history row records that view (id 7)', async () => {
       const lastViewedAt = new Date(1_730_000_000 * 1000);
-      plexApi.getMetadata.mockResolvedValue(
-        makeMetadata({ lastViewedAt: 1_720_000_000 }),
-      );
+      plexApi.getMetadata.mockResolvedValue(makeMetadata());
+      plexApi.getWatchHistory.mockResolvedValue([]);
 
       const result = await service.get(
         7,
@@ -282,23 +281,25 @@ describe('PlexGetterService', () => {
       );
 
       expect(result).toEqual(lastViewedAt);
-      expect(plexApi.getWatchHistory).not.toHaveBeenCalled();
     });
 
-    it('returns metadata lastViewedAt for lastViewedAt (id 7)', async () => {
-      plexApi.getMetadata.mockResolvedValue(
-        makeMetadata({ lastViewedAt: 1_720_000_000 }),
-      );
+    it('prefers a newer history date over the item lastViewedAt (id 7)', async () => {
+      plexApi.getMetadata.mockResolvedValue(makeMetadata());
+      plexApi.getWatchHistory.mockResolvedValue([
+        makeWatchEntry({ viewedAt: 1_740_000_000 }),
+      ]);
 
       const result = await service.get(
         7,
-        createMediaItem({ type: 'movie' }),
+        createMediaItem({
+          type: 'movie',
+          lastViewedAt: new Date(1_730_000_000 * 1000),
+        }),
         'movie',
         createRulesDto({ dataType: 'movie' }),
       );
 
-      expect(result).toEqual(new Date(1_720_000_000 * 1000));
-      expect(plexApi.getWatchHistory).not.toHaveBeenCalled();
+      expect(result).toEqual(new Date(1_740_000_000 * 1000));
     });
 
     it('returns the newest direct watch-history date for lastViewedAt (id 7)', async () => {

@@ -107,6 +107,28 @@ describe('PlexMapper', () => {
       expect(result.tvdb).toEqual(['67890']);
     });
 
+    it('should drop the season and episode a legacy agent appends to the series id', () => {
+      const guids = [{ id: 'com.plexapp.agents.thetvdb://73141/1/1?lang=en' }];
+      const result = PlexMapper.extractProviderIds(guids);
+      expect(result.tvdb).toEqual(['73141']);
+    });
+
+    it('should read the fallback guid when the item carries no Guid list', () => {
+      const result = PlexMapper.extractProviderIds(
+        undefined,
+        'com.plexapp.agents.imdb://tt1234567?lang=en',
+      );
+      expect(result.imdb).toEqual(['tt1234567']);
+    });
+
+    it('should ignore a fallback guid the agent owns rather than a provider', () => {
+      const result = PlexMapper.extractProviderIds(
+        [{ id: 'tvdb://900000278' }],
+        'tv.plex.agents.nfo.series://show/tvdb_900000278',
+      );
+      expect(result).toEqual({ imdb: [], tmdb: [], tvdb: ['900000278'] });
+    });
+
     it('should ignore plex:// guids', () => {
       const guids = [{ id: 'plex://movie/5d776830880197001ec7f3eb' }];
       const result = PlexMapper.extractProviderIds(guids);

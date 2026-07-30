@@ -235,17 +235,19 @@ export class PlexAdapterService implements IMediaServerService {
     itemId: string,
     nativeViewCount?: number,
   ): Promise<MediaWatchState> {
-    const metadata =
-      nativeViewCount === undefined
-        ? await this.plexApi.getMetadata(itemId)
-        : undefined;
+    // Read live: something watched moments ago must not be judged from a
+    // stale snapshot, and a failed read has to throw rather than pass for a
+    // confirmed never-watched.
+    const history = await this.plexApi.getWatchHistory(itemId, false);
 
-    const nativeCount = Number(nativeViewCount ?? metadata?.viewCount ?? 0);
+    // Plex writes no history row when an item is marked watched without a
+    // play event (a "mark as played", a Trakt scrobble), so the item's own
+    // count is the only record of those views. History stays the floor: it
+    // covers every account on the server, while the item's count only covers
+    // the account whose token Maintainerr holds.
+    const viewCount = Math.max(history.length, nativeViewCount ?? 0);
 
-    return {
-      viewCount: nativeCount > 0 ? nativeCount : 0,
-      isWatched: nativeCount > 0,
-    };
+    return { viewCount, isWatched: viewCount > 0 };
   }
 
   async getItemSeenBy(itemId: string): Promise<string[]> {
