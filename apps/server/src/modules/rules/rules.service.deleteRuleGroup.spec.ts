@@ -158,13 +158,33 @@ describe('RulesService.deleteRuleGroup', () => {
 
       const result = await service.deleteRuleGroup(42);
 
+      // The reason has to reach the user. A refused media-server delete is now
+      // reported instead of silently orphaning the collection, and on Plex
+      // "allow media deletion" is a persistent setting - an opaque
+      // "Delete Failed" would leave the group undeletable with no clue why.
       expect(result).toEqual({
+        code: 0,
+        result: 'Failed to delete collection from media server',
+        message: 'Failed to delete collection from media server',
+      });
+      expect(exclusionRepo.delete).not.toHaveBeenCalled();
+      expect(ruleGroupRepository.delete).not.toHaveBeenCalled();
+    });
+
+    it('falls back to a generic message when the collection delete gives no reason', async () => {
+      const group = { id: 42, collectionId: 100 };
+      const { service, collectionService } = createRulesService({ group });
+
+      collectionService.deleteCollection.mockResolvedValue({
+        status: 'NOK',
+        code: 0,
+      } as never);
+
+      expect(await service.deleteRuleGroup(42)).toEqual({
         code: 0,
         result: 'Delete Failed',
         message: 'Delete Failed',
       });
-      expect(exclusionRepo.delete).not.toHaveBeenCalled();
-      expect(ruleGroupRepository.delete).not.toHaveBeenCalled();
     });
 
     it('does not delete collection when group has no collectionId', async () => {

@@ -394,7 +394,7 @@ export class CollectionsService {
    * leaves a sibling's manual-only members unprotected even though the same
    * reasoning covers them.
    */
-  private async getSiblingMemberMediaServerIds(
+  public async getSiblingMemberMediaServerIds(
     collection: Pick<Collection, 'id' | 'mediaServerId'>,
   ): Promise<Set<string>> {
     return new Set(
@@ -2426,8 +2426,21 @@ export class CollectionsService {
             this.logger.debug(
               `[checkAutomaticMediaServerLink] Deleting empty collection ${serverColl.id} (${metadataChildCount !== undefined ? `metadataChildCount=${metadataChildCount}` : `actualChildCount=${actualChildCount}`})`,
             );
-            await mediaServer.deleteCollection(serverColl.id);
-            serverColl = undefined;
+            try {
+              await mediaServer.deleteCollection(serverColl.id);
+              serverColl = undefined;
+            } catch (error) {
+              // Pruning an empty collection is an optimisation - an empty Plex
+              // collection rejects adds - not a step the run depends on. This
+              // call could not fail before the delete result was made
+              // throwable, and letting it escape fails the whole rule group
+              // every run on a Plex with "allow media deletion" off. Keep the
+              // link and retry next run.
+              this.logger.warn(
+                `[checkAutomaticMediaServerLink] Could not delete empty media server collection ${serverColl.id} for "${collection.title}" - keeping the link`,
+              );
+              this.logger.debug(error);
+            }
           } else {
             this.logger.debug(
               metadataChildCount !== undefined
@@ -2754,7 +2767,9 @@ export class CollectionsService {
           } else {
             if (collection.manualCollection) {
               this.logger.warn(
-                `Manual Collection '${collection.manualCollectionName}' doesn't exist in media server..`,
+                searchCompleted
+                  ? `Manual Collection '${collection.manualCollectionName}' doesn't exist in media server..`
+                  : `Could not verify manual collection '${collection.manualCollectionName}' - deferring the link to the next run`,
               );
             }
           }
@@ -3916,18 +3931,33 @@ export class CollectionsService {
         )
       ) {
         const libraries = await mediaServer.getLibraries();
+        let anyLibraryUnreadable = false;
         for (const library of libraries) {
           if (library.id === libraryId) {
             continue;
           }
-          const crossLibraryMatch = await this.matchCollectionInLibrary(
-            mediaServer,
-            name,
-            library.id,
-          );
-          if (crossLibraryMatch) {
-            return crossLibraryMatch;
+          // Per-library guard: this scan is deliberately exhaustive, so one
+          // unreadable library must not stop the others from being searched.
+          // Only report "unknown" if nothing matched anywhere.
+          try {
+            const crossLibraryMatch = await this.matchCollectionInLibrary(
+              mediaServer,
+              name,
+              library.id,
+            );
+            if (crossLibraryMatch) {
+              return crossLibraryMatch;
+            }
+          } catch (error) {
+            anyLibraryUnreadable = true;
+            this.logger.debug(error);
           }
+        }
+
+        if (anyLibraryUnreadable) {
+          throw new Error(
+            `Could not search every library for a collection named "${name}"`,
+          );
         }
       }
 

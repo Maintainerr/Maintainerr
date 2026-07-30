@@ -864,6 +864,22 @@ describe('JellyfinAdapterService', () => {
         'Jellyfin not initialized',
       );
     });
+
+    // #3344: these guards sit above the try, so they used to answer
+    // "confirmed absent" for "adapter not ready" - which is what callers
+    // unlink and truncate on.
+    it('getCollection honours throwOnError when not initialized', async () => {
+      await expect(service.getCollection('col-1', true)).rejects.toThrow(
+        'Jellyfin not initialized',
+      );
+      await expect(service.getCollection('col-1')).resolves.toBeUndefined();
+    });
+
+    it('getLibraryContents throws when not initialized instead of an empty page', async () => {
+      await expect(service.getLibraryContents('lib123')).rejects.toThrow(
+        'Jellyfin not initialized',
+      );
+    });
   });
 
   describe('getActiveSessions', () => {

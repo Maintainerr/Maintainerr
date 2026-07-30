@@ -318,8 +318,10 @@ export class EmbyAdapterService implements IMediaServerService {
     libraryId: string,
     options?: LibraryQueryOptions,
   ): Promise<PagedResult<MediaItem>> {
+    // A fabricated empty page reads as end-of-library, which truncates rule
+    // evaluation and mass-removes the unevaluated tail (#3307).
     if (!this.http) {
-      return { items: [], totalSize: 0, offset: 0, limit: 0 };
+      throw new Error('Emby not initialized');
     }
     const limit = options?.limit ?? EMBY_BATCH_SIZE.DEFAULT_PAGE_SIZE;
     const offset = options?.offset ?? 0;
@@ -841,17 +843,34 @@ export class EmbyAdapterService implements IMediaServerService {
       // user value interpolated into the request path is a CodeQL SSRF sink; a
       // query param is not.)
       const userId = await this.resolveUserId();
-      const { data } = await this.http.get<EmbyItemsQueryResponse>('/Items', {
-        params: {
-          ...(userId ? { UserId: userId } : {}),
-          ParentId: libraryId,
-          IncludeItemTypes: 'BoxSet',
-          Recursive: true,
-          Fields: 'DateCreated,Overview,ChildCount',
-          Limit: EMBY_BATCH_SIZE.MAX_PAGE_SIZE,
-        },
-      });
-      const collections = (data.Items ?? []).map(EmbyMapper.toMediaCollection);
+      // Paged like getCollectionChildren: a bare Limit truncates at
+      // MAX_PAGE_SIZE and the truncated page is an HTTP 200, so the
+      // fail-closed contract cannot catch it - the link lookup would read a
+      // partial listing as a confirmed miss and create a duplicate BoxSet.
+      const collections: MediaCollection[] = [];
+      let offset = 0;
+      let hasMore = true;
+
+      while (hasMore) {
+        const { data } = await this.http.get<EmbyItemsQueryResponse>('/Items', {
+          params: {
+            ...(userId ? { UserId: userId } : {}),
+            ParentId: libraryId,
+            IncludeItemTypes: 'BoxSet',
+            Recursive: true,
+            Fields: 'DateCreated,Overview,ChildCount',
+            Limit: EMBY_BATCH_SIZE.MAX_PAGE_SIZE,
+            StartIndex: offset,
+            EnableTotalRecordCount: true,
+          },
+        });
+
+        const items = data.Items ?? [];
+        collections.push(...items.map(EmbyMapper.toMediaCollection));
+        offset += items.length;
+        hasMore =
+          items.length > 0 && offset < (data.TotalRecordCount ?? offset);
+      }
       // Skip caching empty results so a transient zero-collection response
       // (e.g. mid-library-scan) can't mask a just-created entry.
       if (collections.length > 0) {
@@ -924,7 +943,15 @@ export class EmbyAdapterService implements IMediaServerService {
     collectionId: string,
     throwOnError = false,
   ): Promise<MediaCollection | undefined> {
-    if (!this.http) return undefined;
+    // undefined means "the server confirmed a 404". An uninitialized client
+    // knows nothing, so it must not answer that question - callers unlink on
+    // a confirmed-missing collection (#3344). Guard predates throwOnError.
+    if (!this.http) {
+      if (throwOnError) {
+        throw new Error('Emby not initialized');
+      }
+      return undefined;
+    }
     try {
       const path = this.embyUserId
         ? `/Users/${this.embyUserId}/Items/${collectionId}`

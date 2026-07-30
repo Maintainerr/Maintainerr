@@ -320,7 +320,17 @@ export class RulesService {
             await this.collectionService.deleteCollection(group.collectionId);
 
           if (collectionDeleteResult.code !== 1) {
-            return this.createReturnStatus(false, 'Delete Failed');
+            // Surface the reason. A refused media-server delete is now reported
+            // rather than silently orphaning the collection, and on Plex "allow
+            // media deletion" is a persistent setting - an opaque failure would
+            // leave the user unable to delete the group with no idea why.
+            this.logger.warn(
+              `Rulegroup ${ruleGroupId} was not deleted: ${collectionDeleteResult.message}`,
+            );
+            return this.createReturnStatus(
+              false,
+              collectionDeleteResult.message || 'Delete Failed',
+            );
           }
         }
       }

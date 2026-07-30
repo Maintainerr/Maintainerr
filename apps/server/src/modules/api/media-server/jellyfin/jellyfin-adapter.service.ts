@@ -760,9 +760,11 @@ export class JellyfinAdapterService implements IMediaServerService {
     libraryId: string,
     options?: LibraryQueryOptions,
   ): Promise<PagedResult<MediaItem>> {
+    // A fabricated empty page reads as end-of-library, which truncates rule
+    // evaluation and mass-removes the unevaluated tail (#3307) - the same
+    // outcome this method's catch was rewritten to prevent.
     if (!this.api) {
-      this.logger.warn('getLibraryContents() - API not initialized');
-      return { items: [], totalSize: 0, offset: 0, limit: 50 };
+      throw new Error('Jellyfin not initialized');
     }
 
     try {
@@ -1757,7 +1759,15 @@ export class JellyfinAdapterService implements IMediaServerService {
     collectionId: string,
     throwOnError = false,
   ): Promise<MediaCollection | undefined> {
-    if (!this.api) return undefined;
+    // undefined means "the server confirmed a 404". An uninitialized client
+    // knows nothing, so it must not answer that question - callers unlink on
+    // a confirmed-missing collection (#3344). Guard predates throwOnError.
+    if (!this.api) {
+      if (throwOnError) {
+        throw new Error('Jellyfin not initialized');
+      }
+      return undefined;
+    }
 
     try {
       const userId = await this.getUserId();

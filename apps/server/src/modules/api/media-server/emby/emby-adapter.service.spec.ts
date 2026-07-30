@@ -314,6 +314,38 @@ describe('EmbyAdapterService', () => {
     });
   });
 
+  // A truncated page is an HTTP 200, so the fail-closed contract cannot catch
+  // it - the link lookup would read a partial listing as a confirmed miss.
+  describe('getCollections paging', () => {
+    it('pages past the batch limit instead of truncating', async () => {
+      const page = (start: number, count: number) => ({
+        data: {
+          Items: Array.from({ length: count }, (_, i) => ({
+            Id: `box-${start + i}`,
+            Name: `Box ${start + i}`,
+            ChildCount: 1,
+          })),
+          TotalRecordCount: 501,
+        },
+      });
+      embyCacheMocks.data.get.mockReturnValue(undefined);
+      http.get
+        .mockResolvedValueOnce(page(0, 500))
+        .mockResolvedValueOnce(page(500, 1));
+
+      const collections = await service.getCollections('library-1');
+
+      expect(collections).toHaveLength(501);
+      expect(http.get).toHaveBeenNthCalledWith(
+        2,
+        '/Items',
+        expect.objectContaining({
+          params: expect.objectContaining({ StartIndex: 500 }),
+        }),
+      );
+    });
+  });
+
   describe('getCollectionChildren', () => {
     it('re-throws enumeration failures so callers never mistake a failed read for an empty collection', async () => {
       http.get.mockRejectedValueOnce(new Error('boom'));
@@ -394,6 +426,29 @@ describe('EmbyAdapterService', () => {
   // configured we resolve one rather than degrade to /Items.
   // #3344: undefined must mean "the server says it is gone", so callers that
   // unlink on a missing collection never act on an unreachable server.
+  // #3344: these guards sit above the try, so they answered "confirmed
+  // absent" for "adapter not ready" - what callers unlink and truncate on.
+  describe('uninitialized client', () => {
+    const clearHttp = () => {
+      (service as unknown as { http?: unknown }).http = undefined;
+    };
+
+    it('getCollection honours throwOnError', async () => {
+      clearHttp();
+      await expect(service.getCollection('box-1', true)).rejects.toThrow(
+        'Emby not initialized',
+      );
+      await expect(service.getCollection('box-1')).resolves.toBeUndefined();
+    });
+
+    it('getLibraryContents throws instead of returning an empty page', async () => {
+      clearHttp();
+      await expect(service.getLibraryContents('library-1')).rejects.toThrow(
+        'Emby not initialized',
+      );
+    });
+  });
+
   describe('getCollection missing vs unreachable', () => {
     it('returns undefined on 404 even when asked to throw', async () => {
       setHttp();
