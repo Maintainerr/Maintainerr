@@ -51,6 +51,11 @@ export class PlexGetterService {
     try {
       const prop = this.plexProperties.find((el) => el.id === id);
 
+      // Which library's prefetched watch-history snapshot may answer the reads
+      // below. Absent (a single-item rule test) means every watch read goes
+      // live rather than risk another library's snapshot.
+      const libraryId = ruleGroup?.libraryId;
+
       // fetch metadata, parent & grandparent from cache, this data is more complete
       // libItem.id maps to Plex's ratingKey
       const metadata: PlexMetadata = await this.plexApi.getMetadata(
@@ -93,6 +98,7 @@ export class PlexGetterService {
             metadata.ratingKey,
             true,
             metadata.type,
+            libraryId,
           );
           const viewerIds = viewers.map((el) => +el.accountID);
           return mapMatchingRuleUsersToNames(
@@ -256,6 +262,7 @@ export class PlexGetterService {
             metadata.ratingKey,
             true,
             metadata.type,
+            libraryId,
           );
           // Marking something played by hand, or a scrobble from an external
           // tracker, moves the item's own lastViewedAt without writing a
@@ -308,6 +315,7 @@ export class PlexGetterService {
                 episode.ratingKey,
                 true,
                 'episode',
+                libraryId,
               );
 
               const arrLength = allViewers.length - 1;
@@ -348,6 +356,7 @@ export class PlexGetterService {
             metadata.ratingKey,
             true,
             metadata.type,
+            libraryId,
           );
 
           const viewers = watchHistory
@@ -370,6 +379,7 @@ export class PlexGetterService {
             metadata.ratingKey,
             true,
             metadata.type,
+            libraryId,
           );
           // getWatchHistory returns [] for a confirmed-empty history (it throws
           // on a real outage). [] is truthy and the sort/filter below index
@@ -410,6 +420,7 @@ export class PlexGetterService {
                 episode.ratingKey,
                 true,
                 'episode',
+                libraryId,
               );
               if (views?.length > 0) {
                 viewCount++;
@@ -434,6 +445,7 @@ export class PlexGetterService {
               metadata.ratingKey,
               true,
               metadata.type,
+              libraryId,
             );
             viewCount =
               views?.length > 0 ? viewCount + views.length : viewCount;
@@ -452,6 +464,7 @@ export class PlexGetterService {
                   episode.ratingKey,
                   true,
                   'episode',
+                  libraryId,
                 );
                 viewCount =
                   views?.length > 0 ? viewCount + views.length : viewCount;
@@ -865,6 +878,7 @@ export class PlexGetterService {
                 child.ratingKey,
                 true,
                 child.type,
+                libraryId,
               );
               for (const entry of history) {
                 if (entry.viewedAt && +entry.viewedAt > latest) {

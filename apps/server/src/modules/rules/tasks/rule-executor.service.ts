@@ -268,18 +268,22 @@ export class RuleExecutorService {
         );
 
         // Prefetch watch history so per-item getWatchHistory calls during
-        // evaluation are served from an in-memory map instead of individual
-        // HTTP requests. Reused across rule groups within a scheduler batch;
-        // rebuilt here when the reset above flushed it. Gated on the server
-        // being able to answer watch history in bulk - Plex from one central
-        // endpoint, Jellyfin from one sweep per user; Emby cannot and keeps its
-        // per-item path. Abort-checked first so a cancellation that lands just
-        // before evaluation doesn't kick off a long history sweep.
+        // evaluation are served from an in-memory snapshot instead of
+        // individual HTTP requests. Scoped to this group's library, since that
+        // is the only library it evaluates. Reused across rule groups within a
+        // scheduler batch; rebuilt here when the reset above flushed it. Gated
+        // on the server being able to answer watch history in bulk - Plex from
+        // one central endpoint, Jellyfin from one sweep per user; Emby cannot
+        // and keeps its per-item path. Abort-checked first so a cancellation
+        // that lands just before evaluation doesn't kick off a long sweep.
         abortSignal.throwIfAborted();
         if (
           mediaServer.supportsFeature(MediaServerFeature.CENTRAL_WATCH_HISTORY)
         ) {
-          await mediaServer.prefetchWatchHistory(abortSignal);
+          await mediaServer.prefetchWatchHistory({
+            libraryId: ruleGroup.libraryId,
+            abortSignal,
+          });
         }
 
         // prepare

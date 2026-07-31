@@ -35,6 +35,15 @@ export class ValueGetterService {
     private readonly mediaServerFactory: MediaServerFactory,
   ) {}
 
+  /**
+   * The media server every media-server rule value is actually read from.
+   * Exposed so callers that describe a value (rule statistics, missing-value
+   * diagnostics) can name the same property `get` resolved it against.
+   */
+  async getConfiguredServerType(): Promise<MediaServerType | null> {
+    return this.mediaServerFactory.getConfiguredServerType();
+  }
+
   async get(
     [val1, val2]: [number, number],
     libItem: MediaItem,

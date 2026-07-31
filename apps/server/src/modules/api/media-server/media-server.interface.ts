@@ -170,10 +170,13 @@ export interface IMediaServerService {
   searchContent(query: string): Promise<MediaItem[]>;
 
   /**
-   * Prefetch watch history for all library items in a single bulk request,
-   * caching the result so that subsequent per-item getWatchHistory /
-   * getWatchState calls can be served from memory instead of making individual
-   * HTTP requests.
+   * Prefetch watch history in bulk, caching the result so that subsequent
+   * per-item getWatchHistory / getWatchState calls can be served from memory
+   * instead of making individual HTTP requests.
+   *
+   * @param libraryId - The library about to be evaluated. Sweeps are scoped to
+   *   it and cached per library: a rule group only ever evaluates its own
+   *   library, and an unscoped sweep pays for every other one on the server.
    *
    * Gated by MediaServerFeature.CENTRAL_WATCH_HISTORY (watch history is
    * fetchable in bulk, whether from one central endpoint or one sweep per
@@ -184,7 +187,10 @@ export interface IMediaServerService {
    * cached result, so getWatchHistory falls back to live per-item reads. A
    * failed prefetch must never surface as "nothing was watched".
    */
-  prefetchWatchHistory(abortSignal?: AbortSignal): Promise<void>;
+  prefetchWatchHistory(options: {
+    libraryId: string;
+    abortSignal?: AbortSignal;
+  }): Promise<void>;
 
   /**
    * Get watch history for a specific item.

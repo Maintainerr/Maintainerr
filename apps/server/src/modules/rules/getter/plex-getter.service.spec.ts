@@ -174,9 +174,16 @@ describe('PlexGetterService', () => {
         isWatched: true,
       });
 
-      const result = await service.get(VIEWCOUNT_PROP_ID, libItem);
+      const result = await service.get(
+        VIEWCOUNT_PROP_ID,
+        libItem,
+        'movie',
+        createRulesDto({ dataType: 'movie' }),
+      );
 
       expect(result).toBe(7);
+      // Watch state is never served from the run snapshot (#3352) - it is the
+      // current-state read that feeds deletions.
       expect(plexAdapter.getWatchState).toHaveBeenCalledWith('12345', 0);
     });
 
@@ -186,7 +193,12 @@ describe('PlexGetterService', () => {
         isWatched: false,
       });
 
-      const result = await service.get(ISWATCHED_PROP_ID, libItem);
+      const result = await service.get(
+        ISWATCHED_PROP_ID,
+        libItem,
+        'movie',
+        createRulesDto({ dataType: 'movie' }),
+      );
 
       expect(result).toBe(false);
       expect(plexAdapter.getWatchState).toHaveBeenCalledWith('12345', 0);
@@ -310,11 +322,12 @@ describe('PlexGetterService', () => {
         makeWatchEntry({ viewedAt: 1_710_000_000 }),
       ]);
 
+      const ruleGroup = createRulesDto({ dataType: 'movie' });
       const result = await service.get(
         7,
         createMediaItem({ type: 'movie' }),
         'movie',
-        createRulesDto({ dataType: 'movie' }),
+        ruleGroup,
       );
 
       expect(result).toEqual(new Date(1_720_000_000 * 1000));
@@ -322,6 +335,7 @@ describe('PlexGetterService', () => {
         '12345',
         true,
         'movie',
+        ruleGroup.libraryId,
       );
     });
 
@@ -469,11 +483,12 @@ describe('PlexGetterService', () => {
         }),
       ]);
 
+      const ruleGroup = createRulesDto({ dataType: 'show' });
       const result = await service.get(
         13,
         createMediaItem({ type: 'show' }),
         'show',
-        createRulesDto({ dataType: 'show' }),
+        ruleGroup,
       );
 
       expect(result).toEqual(new Date(1_710_000_000 * 1000));
@@ -481,6 +496,7 @@ describe('PlexGetterService', () => {
         'show-1',
         true,
         'show',
+        ruleGroup.libraryId,
       );
     });
 
@@ -614,11 +630,12 @@ describe('PlexGetterService', () => {
         makeWatchEntry({ accountID: 1 }),
       ]);
 
+      const ruleGroup = createRulesDto({ dataType: 'show' });
       const result = await service.get(
         18,
         createMediaItem({ type: 'show' }),
         'show',
-        createRulesDto({ dataType: 'show' }),
+        ruleGroup,
       );
 
       expect(result).toEqual(['bob', 'alice']);
@@ -626,6 +643,7 @@ describe('PlexGetterService', () => {
         'show-1',
         true,
         'show',
+        ruleGroup.libraryId,
       );
     });
 
@@ -1246,16 +1264,19 @@ describe('PlexGetterService', () => {
         '12345',
         true,
         'movie',
+        'lib-1',
       );
       expect(plexApi.getWatchHistory).toHaveBeenCalledWith(
         'sibling-a',
         true,
         'movie',
+        'lib-1',
       );
       expect(plexApi.getWatchHistory).toHaveBeenCalledWith(
         'sibling-b',
         true,
         'movie',
+        'lib-1',
       );
     });
 
@@ -1400,9 +1421,12 @@ describe('PlexGetterService', () => {
         makeWatchEntry({ accountID: 2 }),
       ]);
 
+      const ruleGroup = createRulesDto({ dataType: 'movie' });
       const result = await service.get(
         SEEN_BY_PROP_ID,
         createMediaItem({ type: 'movie' }),
+        'movie',
+        ruleGroup,
       );
 
       expect(result).toEqual(['bob', 'alice']);
@@ -1410,6 +1434,7 @@ describe('PlexGetterService', () => {
         '12345',
         true,
         'movie',
+        ruleGroup.libraryId,
       );
     });
 

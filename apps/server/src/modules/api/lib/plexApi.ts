@@ -1,5 +1,6 @@
 import axios, { AxiosError, AxiosInstance, AxiosRequestConfig } from 'axios';
 import { PlexLibraryResponse } from '../plex-api/interfaces/library.interfaces';
+import { PLEX_PAGE_SIZE } from '../plex-api/plex-api.constants';
 import cacheManager, { Cache } from './cache';
 import { applyHttpRetry } from './httpRetry';
 import { describeRequestTarget } from './requestLogging';
@@ -71,6 +72,9 @@ class PlexApi {
    * @param {function} [onProgress] - Called after each page with the running
    *   count of items fetched so far and Plex's reported totalSize, so callers
    *   can surface progress on long sweeps. Not invoked when totalSize is absent.
+   * @param {number} [pageSize] - Rows to request per page. Raise it on long
+   *   sweeps to cut round trips; Plex is free to return fewer and the loop
+   *   corrects for that.
    * @return {Promise<T[]>} - A promise that resolves to an array of T.
    */
   async queryAll<T>(
@@ -78,20 +82,20 @@ class PlexApi {
     useCache: boolean = true,
     signal?: AbortSignal,
     onProgress?: (progress: { fetched: number; totalSize: number }) => void,
+    pageSize: number = PLEX_PAGE_SIZE.QUERY_ALL,
   ): Promise<T> {
     // vars
     let result = undefined;
     let next = true;
-    let page = 0;
+    let offset = 0;
     let fetched = 0;
-    const size = 120;
     const requestSignal = signal ?? options.signal;
     options = {
       ...options,
       extraHeaders: {
         ...options.extraHeaders,
-        'X-Plex-Container-Start': `${page}`,
-        'X-Plex-Container-Size': `${size}`,
+        'X-Plex-Container-Start': `${offset}`,
+        'X-Plex-Container-Size': `${pageSize}`,
       },
       signal: requestSignal,
     };
@@ -112,16 +116,26 @@ class PlexApi {
         this.appendToData(result.MediaContainer, items as any[]);
       }
 
-      fetched += Array.isArray(items) ? items.length : 0;
+      const received = Array.isArray(items) ? items.length : 0;
+      fetched += received;
       const totalSize = query?.MediaContainer?.totalSize;
       if (onProgress && typeof totalSize === 'number') {
         onProgress({ fetched, totalSize });
       }
 
-      // fetch all if more than 120
-      if (query?.MediaContainer?.totalSize > size * (page + 1)) {
-        options.extraHeaders['X-Plex-Container-Start'] = `${size * (page + 1)}`;
-        page++;
+      // Advance by what Plex actually returned, never by what we asked for.
+      // Plex may hand back a shorter page than X-Plex-Container-Size, and
+      // stepping by the requested size would skip every row it withheld - a
+      // silent truncation for callers that have no totalSize check of their
+      // own. Stepping by `received` also makes an empty page terminate the
+      // sweep instead of looping to the end of totalSize.
+      if (
+        received > 0 &&
+        typeof totalSize === 'number' &&
+        fetched < totalSize
+      ) {
+        offset += received;
+        options.extraHeaders['X-Plex-Container-Start'] = `${offset}`;
       } else {
         next = false;
       }
