@@ -2,6 +2,34 @@
 // `relations`/`select` ({ rel: true }) and IsNull() to match SQL NULL - see
 // project-notes.instructions.md.
 
+// FIRST: the CLI needs a tsconfig override to run at all.
+//
+// The commands below fail out of the box with:
+//   error TS2591: Cannot find name 'process'. Do you need to install type
+//   definitions for node?
+// ts-node compiles with apps/server/tsconfig.json, which sets declaration/outDir
+// with no explicit rootDir and no node types. Create a throwaway override next to
+// it (gitignored, safe to delete afterwards):
+//
+//   // apps/server/tsconfig.migrate.json
+//   {
+//     "extends": "./tsconfig.json",
+//     "compilerOptions": {
+//       "declaration": false,
+//       "declarationMap": false,
+//       "composite": false,
+//       "incremental": false,
+//       "sourceMap": false,
+//       "rootDir": "./",
+//       "types": ["node"]
+//     }
+//   }
+//
+// then prefix every command below with TS_NODE_PROJECT, run from apps/server:
+//
+//   cd apps/server
+//   TS_NODE_PROJECT=./tsconfig.migrate.json yarn migration:run
+//
 // Generate migration after entity changes
 yarn workspace @maintainerr/server migration:generate src/database/migrations/<migr_name>
 
@@ -43,4 +71,24 @@ yarn workspace @maintainerr/server migration:create src/database/migrations/<mig
 //    - "No changes in database schema were found" - schema is in sync, no migration needed.
 //    - A migration file is generated - review it, the changes are real schema drift.
 //
-// 4. Clean up: remove or empty data/maintainerr.sqlite so it doesn't get committed.
+// 4. Clean up: remove or empty data/maintainerr.sqlite so it doesn't get committed,
+//    and delete apps/server/tsconfig.migrate.json.
+//
+// ---
+// Adding a migration on a feature branch
+//
+// Same rule, one extra trap: the database must have every migration applied
+// EXCEPT the one you are generating. If a previous attempt of your own migration
+// is already applied, the generated file will also contain the diff against that
+// attempt - typically a spurious rebuild of an unrelated table.
+//
+// So when regenerating after changing your entity:
+//
+//   rm apps/server/src/database/migrations/<your-migration>.ts
+//   rm data/maintainerr.sqlite
+//   (stop yarn dev first - it recreates and migrates the database on boot)
+//   TS_NODE_PROJECT=./tsconfig.migrate.json yarn migration:run      # existing migrations only
+//   TS_NODE_PROJECT=./tsconfig.migrate.json yarn migration:generate src/database/migrations/<Name>
+//
+// Then verify: rebuild from empty and generate again - it must report
+// "No changes in database schema were found".
