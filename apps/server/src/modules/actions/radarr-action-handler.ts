@@ -89,11 +89,12 @@ export class RadarrActionHandler {
         // it removes the files one by one, whereas deleteMovie removes the whole
         // movie folder in Radarr itself. Only fetched when the feature is on, to
         // keep the common path free of extra calls.
-        const cleanupInputs =
-          collection.cleanupLeftoverFolders &&
-          leftoverCleanupScope(collection.type, collection.arrAction)
-            ? await this.collectCleanupInputs(radarrApiClient, radarrMedia)
-            : undefined;
+        const cleanupScope = collection.cleanupLeftoverFolders
+          ? leftoverCleanupScope(collection.type, collection.arrAction)
+          : undefined;
+        const cleanupInputs = cleanupScope
+          ? await this.collectCleanupInputs(radarrApiClient, radarrMedia)
+          : undefined;
 
         switch (collection.arrAction) {
           case ServarrAction.DELETE:
@@ -139,11 +140,11 @@ export class RadarrActionHandler {
               `Unmonitored movie with ${matchedProvider} ID ${matchedId}${collection.listExclusions ? ', added to import exclusion list' : ''} & removed files from filesystem in Radarr`,
             );
             await this.downloadClient.removeDownloads(downloadIds);
-            if (cleanupInputs) {
+            if (cleanupScope && cleanupInputs) {
               await this.folderCleanup.cleanupAfterDelete({
                 ...cleanupInputs,
                 folderPath: radarrMedia.path,
-                scope: 'movie',
+                scope: cleanupScope,
                 label: radarrMedia.title,
               });
             }
@@ -225,26 +226,38 @@ export class RadarrActionHandler {
    * The fences the leftover-folder cleanup needs, read before the delete: the
    * root folders it may act inside, the file paths that prove the folder is the
    * one just emptied, and the other movie folders it must not touch.
+   *
+   * Every read here is uncached: these fence a filesystem delete, and a movie
+   * that the cached snapshot predates would leave the fence blind to it.
    */
   private async collectCleanupInputs(
     radarrApiClient: Awaited<ReturnType<ServarrService['getRadarrApiClient']>>,
     radarrMedia: RadarrMovie,
-  ): Promise<Pick<
-    LeftoverCleanupInput,
-    'rootFolderPaths' | 'deletedFilePaths' | 'otherItemPaths'
-  > | null> {
+  ): Promise<
+    | Pick<
+        LeftoverCleanupInput,
+        'rootFolderPaths' | 'deletedFilePaths' | 'otherItemPaths'
+      >
+    | undefined
+  > {
     try {
       const [rootFolders, movieFiles, movies] = await Promise.all([
-        radarrApiClient.getRootFolders(),
+        radarrApiClient.getRootFolders({ fresh: true }),
         radarrApiClient.getMovieFiles(radarrMedia.id),
         radarrApiClient.getMovies(),
       ]);
+
+      // undefined = the listing failed, so which files are about to be deleted
+      // is unknown - not "none". Skip rather than fence on a guess.
+      if (movieFiles === undefined) {
+        return undefined;
+      }
 
       return {
         rootFolderPaths: (rootFolders ?? [])
           .map((folder) => folder.path)
           .filter((p): p is string => !!p),
-        deletedFilePaths: (movieFiles ?? [])
+        deletedFilePaths: movieFiles
           .map((file) => file.path)
           .filter((p): p is string => !!p),
         otherItemPaths: (movies ?? [])
@@ -254,7 +267,7 @@ export class RadarrActionHandler {
       };
     } catch (error) {
       this.logger.debug(error);
-      return null;
+      return undefined;
     }
   }
 }

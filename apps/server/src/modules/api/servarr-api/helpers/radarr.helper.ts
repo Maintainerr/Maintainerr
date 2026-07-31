@@ -29,9 +29,16 @@ export class RadarrApi extends ServarrApi<{ movieId: number }> {
     this.logger.setContext(RadarrApi.name);
   }
 
+  /**
+   * Every tracked movie. Uncached: its only caller fences a filesystem delete
+   * on the other movies' folders, and a movie added since the last read would
+   * be missing from a cached snapshot - so the fence would not see it.
+   */
   public getMovies = async (): Promise<RadarrMovie[]> => {
     try {
-      const response = await this.get<RadarrMovie[]>('/movie');
+      const response = await this.getWithoutCache<RadarrMovie[]>('/movie', {
+        timeout: SLOW_INSTANCE_TIMEOUT_MS,
+      });
 
       return response;
     } catch (error) {

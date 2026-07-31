@@ -1,4 +1,8 @@
-import { leftoverCleanupScope, MediaItem } from '@maintainerr/contracts';
+import {
+  LeftoverCleanupScope,
+  leftoverCleanupScope,
+  MediaItem,
+} from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
 import { dirname } from 'path';
 import { DownloadClientApiService } from '../api/download-client-api/download-client-api.service';
@@ -202,7 +206,8 @@ export class SonarrActionHandler {
           // Skipped when the show itself was deleted: Sonarr removes the whole
           // series folder in that case, season folders included.
           if (!showDeleted) {
-            await this.cleanupSeasonFolder(
+            await this.cleanupLeftoverFolder(
+              cleanupScope,
               cleanupInputs,
               seriesFolderPath,
               sonarrMedia.title,
@@ -227,7 +232,8 @@ export class SonarrActionHandler {
               `[Sonarr] Removed season ${mediaData?.index} from show '${sonarrMedia.title}'`,
             );
             await this.downloadClient.removeDownloads(downloadIds);
-            await this.cleanupSeasonFolder(
+            await this.cleanupLeftoverFolder(
+              cleanupScope,
               cleanupInputs,
               seriesFolderPath,
               sonarrMedia.title,
@@ -383,7 +389,8 @@ export class SonarrActionHandler {
                 `[Sonarr] Unmonitored show '${sonarrMedia.title}' and removed all episodes`,
               );
               await this.downloadClient.removeDownloads(downloadIds);
-              await this.cleanupSeriesFolder(
+              await this.cleanupLeftoverFolder(
+                cleanupScope,
                 cleanupInputs,
                 seriesFolderPath,
                 sonarrMedia.title,
@@ -416,7 +423,8 @@ export class SonarrActionHandler {
               `[Sonarr] Removed existing episodes from season ${mediaData?.index} from show '${sonarrMedia.title}'`,
             );
             await this.downloadClient.removeDownloads(downloadIds);
-            await this.cleanupSeasonFolder(
+            await this.cleanupLeftoverFolder(
+              cleanupScope,
               cleanupInputs,
               seriesFolderPath,
               sonarrMedia.title,
@@ -438,7 +446,8 @@ export class SonarrActionHandler {
                 `[Sonarr] Unmonitored show '${sonarrMedia.title}' and removed existing episodes`,
               );
               await this.downloadClient.removeDownloads(downloadIds);
-              await this.cleanupSeriesFolder(
+              await this.cleanupLeftoverFolder(
+                cleanupScope,
                 cleanupInputs,
                 seriesFolderPath,
                 sonarrMedia.title,
@@ -602,11 +611,15 @@ export class SonarrActionHandler {
    * the file paths that prove the folder is the one just emptied, the other
    * series folders it must not touch, and - for a season - the folder itself.
    *
-   * The season folder is the parent of one downloaded episode's file path;
-   * Sonarr's season-folder naming is configurable, so it is read, never derived.
-   * It stays undefined when the series has no season folders (episodes live in
-   * the series root, shared across seasons) or no episode file is found, which
-   * skips the cleanup.
+   * Every read here is uncached: these fence a filesystem delete, and a series
+   * or a moved file that the cached snapshot predates would leave the fence
+   * blind to it.
+   *
+   * The season folder is read from the episode files themselves - Sonarr's
+   * season-folder naming is configurable, so it is never derived from the
+   * season number. It stays undefined when the series has no season folders
+   * (episodes live in the series root, shared across seasons) or when the
+   * season's files do not all sit in one folder, which skips the cleanup.
    */
   private async collectCleanupInputs(
     sonarrApiClient: Awaited<ReturnType<ServarrService['getSonarrApiClient']>>,
@@ -614,38 +627,43 @@ export class SonarrActionHandler {
     seasonNumber: number | undefined,
   ): Promise<SonarrCleanupInputs | undefined> {
     try {
-      const isSeasonScope = seasonNumber !== undefined && seasonNumber !== null;
-      const [rootFolders, allSeries, episodes] = await Promise.all([
-        sonarrApiClient.getRootFolders(),
+      const [rootFolders, allSeries, episodeFiles] = await Promise.all([
+        sonarrApiClient.getRootFolders({ fresh: true }),
         sonarrApiClient.getSeries(),
-        sonarrApiClient.getEpisodes(
-          sonarrMedia.id,
-          isSeasonScope ? seasonNumber : undefined,
-        ),
+        sonarrApiClient.getEpisodeFiles(sonarrMedia.id),
       ]);
 
-      const withFile = (episodes ?? []).find((e) => e.episodeFileId);
-      const file = withFile
-        ? await sonarrApiClient.getEpisodeFile(withFile.episodeFileId)
-        : undefined;
-      if (!file?.path) {
+      // undefined = the listing failed, so which files are about to be deleted
+      // is unknown - not "none". Skip rather than fence on a guess.
+      if (episodeFiles === undefined) {
         return undefined;
       }
+
+      const isSeasonScope = seasonNumber !== undefined && seasonNumber !== null;
+      const deletedFilePaths = episodeFiles
+        .filter((file) => !isSeasonScope || file.seasonNumber === seasonNumber)
+        .map((file) => file.path)
+        .filter((p): p is string => !!p);
+      if (deletedFilePaths.length === 0) {
+        return undefined;
+      }
+
+      const seasonFolders = new Set(deletedFilePaths.map((p) => dirname(p)));
 
       return {
         fences: {
           rootFolderPaths: (rootFolders ?? [])
             .map((folder) => folder.path)
             .filter((p): p is string => !!p),
-          deletedFilePaths: [file.path],
+          deletedFilePaths,
           otherItemPaths: (allSeries ?? [])
             .filter((series) => series.id !== sonarrMedia.id)
             .map((series) => series.path)
             .filter((p): p is string => !!p),
         },
         seasonFolderPath:
-          isSeasonScope && sonarrMedia.seasonFolder
-            ? dirname(file.path)
+          isSeasonScope && sonarrMedia.seasonFolder && seasonFolders.size === 1
+            ? [...seasonFolders][0]
             : undefined,
       };
     } catch (error) {
@@ -656,7 +674,13 @@ export class SonarrActionHandler {
     }
   }
 
-  private async cleanupSeriesFolder(
+  /**
+   * Removes the folder the delete just stranded. Which folder that is comes
+   * from the `leftoverCleanupScope` captured before the delete, so the option
+   * the UI offered and the folder the handler removes cannot drift apart.
+   */
+  private async cleanupLeftoverFolder(
+    scope: LeftoverCleanupScope | undefined,
     inputs: SonarrCleanupInputs | undefined,
     seriesFolderPath: string | undefined,
     label: string | undefined,
@@ -664,29 +688,33 @@ export class SonarrActionHandler {
     if (!inputs) {
       return;
     }
-    await this.folderCleanup.cleanupAfterDelete({
-      ...inputs.fences,
-      folderPath: seriesFolderPath,
-      scope: 'series',
-      label,
-    });
-  }
 
-  private async cleanupSeasonFolder(
-    inputs: SonarrCleanupInputs | undefined,
-    seriesFolderPath: string | undefined,
-    label: string | undefined,
-  ): Promise<void> {
-    if (!inputs?.seasonFolderPath) {
-      return;
+    switch (scope) {
+      case 'series':
+        await this.folderCleanup.cleanupAfterDelete({
+          ...inputs.fences,
+          folderPath: seriesFolderPath,
+          scope,
+          label,
+        });
+        return;
+      case 'season':
+        if (!inputs.seasonFolderPath) {
+          return;
+        }
+        await this.folderCleanup.cleanupAfterDelete({
+          ...inputs.fences,
+          folderPath: inputs.seasonFolderPath,
+          scope,
+          parentPath: seriesFolderPath,
+          label,
+        });
+        return;
+      default:
+        // 'movie' is Radarr's scope and undefined means nothing is stranded;
+        // neither is reachable for a Sonarr collection type.
+        return;
     }
-    await this.folderCleanup.cleanupAfterDelete({
-      ...inputs.fences,
-      folderPath: inputs.seasonFolderPath,
-      scope: 'season',
-      parentPath: seriesFolderPath,
-      label,
-    });
   }
 
   private getEpisodeLookup(mediaData?: MediaItem):

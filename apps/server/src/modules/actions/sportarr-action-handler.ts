@@ -23,10 +23,11 @@ import { SettingsDataService } from '../settings/settings-data.service';
 // event files / a single event's file; unmonitor; change quality profile).
 // Nothing here touches the Sonarr/Radarr handlers.
 //
-// The leftover-folder cleanup deliberately does not cover Sportarr: its API
-// reports no league folder (a league carries only a `rootFolderId`), so the
-// containment proof that cleanup requires cannot be read, only guessed at from
-// an event's file path. See docs/leftover-folder-cleanup.md.
+// The leftover-folder cleanup deliberately does not cover Sportarr: a
+// `SportarrLeague` carries no folder path at all, so there is no item folder to
+// prove a candidate sits inside - unlike Radarr's `movie.path` and Sonarr's
+// `series.path`, which are what fence the delete. See
+// docs/leftover-folder-cleanup.md.
 @Injectable()
 export class SportarrActionHandler {
   constructor(

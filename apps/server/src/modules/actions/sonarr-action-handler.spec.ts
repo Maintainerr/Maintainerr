@@ -114,11 +114,10 @@ describe('SonarrActionHandler', () => {
           { id: 99, path: '/data/tv/Other Series' },
         ] as never);
       jest
-        .spyOn(api, 'getEpisodes')
-        .mockResolvedValue([{ id: 1, episodeFileId: 7 }] as never);
-      jest
-        .spyOn(api, 'getEpisodeFile')
-        .mockResolvedValue({ id: 7, path: episodeFilePath } as never);
+        .spyOn(api, 'getEpisodeFiles')
+        .mockResolvedValue([
+          { id: 7, seasonNumber: 1, path: episodeFilePath },
+        ] as never);
       mediaIdFinder.findTvdbId.mockResolvedValue(1);
       return api;
     };

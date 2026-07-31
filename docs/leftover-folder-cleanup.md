@@ -38,9 +38,9 @@ Not covered:
   series folder goes with it in Sonarr.
 - **Episode-level** deletes. The season folder is shared with the episodes that
   are kept.
-- **Sportarr**. Its API reports no league folder (a league carries only a
-  `rootFolderId`), so the folder would have to be guessed from an event's file
-  path rather than read.
+- **Sportarr**. A league carries no folder path in its API, so there is no item
+  folder to fence a delete against - unlike Radarr's `movie.path` and Sonarr's
+  `series.path`.
 - Deletes performed directly through the media server (Plex/Jellyfin/Emby, when
   no \*arr is configured).
 

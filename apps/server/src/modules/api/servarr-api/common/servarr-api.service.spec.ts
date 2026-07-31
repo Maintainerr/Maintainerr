@@ -78,4 +78,32 @@ describe('ServarrApi', () => {
       await expect(api.ensureTag('dnd')).resolves.toBeUndefined();
     });
   });
+
+  describe('getRootFolders caching', () => {
+    it('serves the rolling cache by default', async () => {
+      const rolling = jest
+        .spyOn(api as any, 'getRolling')
+        .mockResolvedValue([{ id: 1, path: '/movies' }]);
+      const uncached = jest.spyOn(api as any, 'getWithoutCache');
+
+      await api.getRootFolders();
+
+      expect(rolling).toHaveBeenCalledWith('/rootfolder', undefined, 3600);
+      expect(uncached).not.toHaveBeenCalled();
+    });
+
+    // The leftover-folder cleanup only deletes inside a root folder, so it asks
+    // for a fresh list: an hour-old fence is not a fence.
+    it('bypasses the cache when the caller asks for a fresh read', async () => {
+      const rolling = jest.spyOn(api as any, 'getRolling');
+      const uncached = jest
+        .spyOn(api as any, 'getWithoutCache')
+        .mockResolvedValue([{ id: 1, path: '/movies' }]);
+
+      await api.getRootFolders({ fresh: true });
+
+      expect(uncached).toHaveBeenCalledWith('/rootfolder', expect.any(Object));
+      expect(rolling).not.toHaveBeenCalled();
+    });
+  });
 });

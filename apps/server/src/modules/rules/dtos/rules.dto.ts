@@ -15,6 +15,7 @@ export class RulesDto {
   ruleHandlerCronSchedule?: string | null;
   collection?: ICollection;
   listExclusions?: boolean;
+  cleanupLeftoverFolders?: boolean;
   forceSeerr?: boolean;
   rules: RuleDto[] | RuleDbDto[];
   manualCollection?: boolean;

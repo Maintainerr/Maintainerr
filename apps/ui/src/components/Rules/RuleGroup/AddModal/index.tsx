@@ -10,6 +10,7 @@ import {
 import { zodResolver } from '@hookform/resolvers/zod'
 import {
   Application,
+  isValidMediaItemType,
   leftoverCleanupScope,
   MediaItemType,
   MediaLibrary,
@@ -585,9 +586,16 @@ const AddModal = (props: AddModal) => {
   }) as number | null | undefined
   const hasSelectedRadarrServer = radarrSettingsId != null
   const hasSelectedSonarrServer = sonarrSettingsId != null
+  // Which folder the chosen action strands, or undefined when it strands none.
+  // leftoverCleanupScope is shared with the server, so the checkbox is offered
+  // for exactly the actions the handlers act on.
+  const cleanupScope =
+    arrActionValue !== undefined && isValidMediaItemType(selectedType)
+      ? leftoverCleanupScope(selectedType, arrActionValue)
+      : undefined
   // Which *arr owns this collection: movie libraries are Radarr's, every other
   // type (show, season, episode) is Sonarr's.
-  const cleanupArrName = selectedLibraryType === 'movie' ? 'Radarr' : 'Sonarr'
+  const cleanupArrName = selectedType === 'movie' ? 'Radarr' : 'Sonarr'
   const hasSelectedSportarrServer = sportarrSettingsId != null
   const [showCommunityModal, setShowCommunityModal] = useState(false)
   const [yamlImporterModal, setYamlImporterModal] = useState(false)
@@ -724,6 +732,7 @@ const AddModal = (props: AddModal) => {
     setValue('sonarrQualityProfileId', undefined)
     setValue('sportarrQualityProfileId', undefined)
     setValue('tagInArr', false)
+    setValue('cleanupLeftoverFolders', false)
     setShowLibraryManager('Sonarr')
     updateArrOption(ServarrAction.DELETE)
 
@@ -749,6 +758,7 @@ const AddModal = (props: AddModal) => {
     setValue('sonarrQualityProfileId', undefined)
     setValue('sportarrQualityProfileId', undefined)
     setValue('tagInArr', false)
+    setValue('cleanupLeftoverFolders', false)
     updateArrOption(ServarrAction.DELETE)
 
     const filtered = filterRulesForArrSettings(
@@ -782,6 +792,18 @@ const AddModal = (props: AddModal) => {
       setValue('sonarrQualityProfileId', undefined)
       setValue('sportarrQualityProfileId', undefined)
     }
+
+    // Drop the leftover-folder cleanup opt-in when the new action strands no
+    // folder; the checkbox hides with it, so don't leave a destructive option
+    // enabled out of sight. The server clamps the same way on save.
+    const dataType = getValues('dataType')
+    if (
+      value === undefined ||
+      !isValidMediaItemType(dataType) ||
+      leftoverCleanupScope(dataType, value) === undefined
+    ) {
+      setValue('cleanupLeftoverFolders', false)
+    }
   }
 
   const handleUpdateArrAction = (
@@ -803,10 +825,12 @@ const AddModal = (props: AddModal) => {
       setValue('sportarrQualityProfileId', undefined)
     }
 
-    // Drop the membership-tag opt-in if the matching *arr server is deselected;
-    // the checkbox hides with the server, so don't leave a stale enabled flag.
+    // Drop the membership-tag and leftover-cleanup opt-ins if the matching *arr
+    // server is deselected; both checkboxes hide with the server, so don't
+    // leave a stale enabled flag.
     if (settingId == null) {
       setValue('tagInArr', false)
+      setValue('cleanupLeftoverFolders', false)
     }
 
     // A collection is managed by exactly one *arr, so selecting a server for one
@@ -1590,12 +1614,10 @@ const AddModal = (props: AddModal) => {
                     {/* Only the actions that delete an item's files one at a
                         time strand a folder; leftoverCleanupScope is the one
                         definition of which those are, shared with the server. */}
-                    {(hasSelectedRadarrServer || hasSelectedSonarrServer) &&
-                      arrActionValue !== undefined &&
-                      leftoverCleanupScope(
-                        selectedType as MediaItemType,
-                        arrActionValue,
-                      ) !== undefined && (
+                    {cleanupScope !== undefined &&
+                      ((selectedType === 'movie' && hasSelectedRadarrServer) ||
+                        (selectedType !== 'movie' &&
+                          hasSelectedSonarrServer)) && (
                         <div className="flex flex-row items-center justify-between py-4">
                           <label
                             htmlFor="cleanup_leftover_folders"

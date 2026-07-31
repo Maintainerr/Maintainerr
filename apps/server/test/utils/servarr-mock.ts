@@ -62,7 +62,7 @@ export const mockSonarrApi = (
   // don't enable the feature never hit the network.
   jest.spyOn(api, 'getRootFolders').mockResolvedValue([]);
   jest.spyOn(api, 'getSeries').mockResolvedValue([]);
-  jest.spyOn(api, 'getEpisodeFile').mockResolvedValue(undefined);
+  jest.spyOn(api, 'getEpisodeFiles').mockResolvedValue([]);
 
   servarrService.getSonarrApiClient.mockResolvedValue(api);
 
