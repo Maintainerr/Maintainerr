@@ -49,16 +49,23 @@ export const JELLYFIN_RETRYABLE_LIBRARY_ERROR_CODES = new Set([
 
 export const JELLYFIN_RETRYABLE_LIBRARY_STATUS_CODES = new Set([502, 503, 504]);
 
-// Key in the 'jellyfinwatchhistory' cache for the library-wide snapshot built
-// by prefetchWatchHistory(). TTL and flush behaviour live on the cache
+// Key prefix in the 'jellyfinwatchhistory' cache for the per-library snapshots
+// built by prefetchWatchHistory(). TTL and flush behaviour live on the cache
 // definition in lib/cache.ts.
-export const JELLYFIN_WATCH_SNAPSHOT_CACHE_KEY = 'watch-snapshot';
+//
+// Keyed per library so each rule group's library gets its own sweep. A single
+// shared key would let the first group's snapshot satisfy the cache check for
+// every later group, leaving their items to miss it and read live one by one.
+const JELLYFIN_WATCH_SNAPSHOT_KEY_PREFIX = 'watch-snapshot';
+export const jellyfinWatchSnapshotCacheKey = (libraryId: string): string =>
+  `${JELLYFIN_WATCH_SNAPSHOT_KEY_PREFIX}:${libraryId}`;
 
-// Ceiling on watch records held in that snapshot. The snapshot lives for a
-// whole run, and a (item x user) matrix grows with both; 500k records measured
-// ~60MB, which stays clear of the 512MB heap the key-count bound protects
-// (#3284). Above it the prefetch is abandoned and callers fall back to the
-// per-show sweep, which is bounded by one show at a time.
+// Ceiling on watch records held in one library's snapshot. The snapshot lives
+// for a whole run, and a (item x user) matrix grows with both; 500k records
+// measured ~60MB, which stays clear of the 512MB heap the key-count bound
+// protects (#3284). Above it the prefetch is abandoned and callers fall back to
+// the per-show sweep, which is bounded by one show at a time. Sweeping per
+// library rather than per server keeps large multi-library servers under it.
 export const JELLYFIN_WATCH_SNAPSHOT_MAX_RECORDS = 500_000;
 
 export const JELLYFIN_CACHE_KEYS = {

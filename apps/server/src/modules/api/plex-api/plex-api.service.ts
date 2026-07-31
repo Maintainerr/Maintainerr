@@ -53,8 +53,45 @@ import {
 import {
   PLEX_PAGE_SIZE,
   PLEX_REQUEST_TIMEOUT_MS,
-  WATCH_HISTORY_BULK_CACHE_KEY,
+  WATCH_HISTORY_EXCLUDE_FIELDS,
+  WATCH_HISTORY_MAX_ENTRIES,
+  watchHistoryCacheKey,
 } from './plex-api.constants';
+
+/**
+ * One library's swept watch history. `leaf` holds every row keyed by its own
+ * ratingKey (movies and episodes).
+ *
+ * `rollup` groups episode rows by show and season so container queries skip the
+ * per-item round trip. It is only ever present once proven: `grandparentKey`/
+ * `parentKey` are undocumented on this endpoint and were observed absent over
+ * some Plex connections (#3082), where a missing key would read as "nobody
+ * watched this" and delete a watched show. It is therefore built all-or-nothing
+ * and then checked against Plex's own server-side rollup before being kept -
+ * see buildWatchHistorySnapshot and verifyRollup. Absent, container queries fall
+ * back to the per-item metadataItemID query exactly as they did before.
+ */
+interface PlexWatchHistorySnapshot {
+  leaf: Map<string, PlexSeenBy[]>;
+  rollup?: {
+    show: Map<string, PlexSeenBy[]>;
+    season: Map<string, PlexSeenBy[]>;
+  };
+}
+
+/** `/library/metadata/1234` -> `1234`. Undefined for an absent or empty key. */
+const ratingKeyFromPath = (path?: string): string | undefined => {
+  if (!path) return undefined;
+  const key = path.slice(path.lastIndexOf('/') + 1);
+  return key.length > 0 ? key : undefined;
+};
+
+/** Identity of a history row, for comparing two sources of the same history. */
+const historyFingerprint = (records: PlexSeenBy[]): string =>
+  records
+    .map((record) => `${record.ratingKey}:${record.viewedAt}`)
+    .sort()
+    .join('|');
 
 @Injectable()
 export class PlexApiService {
@@ -62,7 +99,7 @@ export class PlexApiService {
   private plexTvClient: PlexTvApi;
   private plexCommunityClient: PlexCommunityApi;
   private machineId: string;
-  private watchHistoryPrefetch?: Promise<void>;
+  private watchHistoryPrefetches = new Map<string, Promise<void>>();
 
   constructor(
     private readonly settings: SettingsDataService,
@@ -188,9 +225,9 @@ export class PlexApiService {
     this.plexClient = undefined;
     this.plexCommunityClient = undefined;
     this.plexTvClient = undefined;
-    // Drop the watch-history snapshot too - on a server/token switch it would
-    // otherwise serve the previous server's history for up to its TTL.
-    this.watchHistoryPrefetch = undefined;
+    // Drop the watch-history snapshots too - on a server/token switch they
+    // would otherwise serve the previous server's history for up to their TTL.
+    this.watchHistoryPrefetches.clear();
     cacheManager.getCache('plexguid').data.flushAll();
     cacheManager.getCache('plextv').data.flushAll();
     cacheManager.getCache('plexcommunity').data.flushAll();
@@ -742,58 +779,81 @@ export class PlexApiService {
   }
 
   /**
-   * Fetches the complete watch history in a single paginated sweep and stores
-   * a leaf lookup map (movies + episodes keyed by their own ratingKey) in the
-   * 'plexwatchhistory' cache (1 hour TTL). Subsequent getWatchHistory calls for
-   * leaf items are served from this map instead of issuing one HTTP request per
-   * item. Returns immediately when the map is already cached, so it is safe to
-   * call at the start of every rule group.
+   * Sweeps one library's watch history in a single paginated pass and stores a
+   * snapshot in the 'plexwatchhistory' cache (1 hour TTL). Subsequent
+   * getWatchHistory calls for items in that library are served from the
+   * snapshot instead of issuing one HTTP request per item. Returns immediately
+   * when the library is already cached, so it is safe to call at the start of
+   * every rule group.
    *
-   * Show/season history is intentionally NOT rolled up here: the bulk endpoint
-   * keys each row by leaf ratingKey, and grouping to show/season would depend on
-   * grandparentKey/parentKey, which are undocumented on this endpoint and absent
-   * over some Plex connections - a missing key would silently read as "never
-   * watched". Show/season queries therefore fall through to the per-item
-   * metadataItemID query in getWatchHistory, which Plex rolls up server-side.
+   * Scoped to one library via `librarySectionID`: a rule group only evaluates
+   * items from its own library, and the endpoint otherwise returns every view
+   * event on the server - every library, every user, every rewatch.
    *
    * On failure the error is logged and swallowed - getWatchHistory falls back
-   * to per-item queries automatically when the map is absent.
+   * to per-item queries automatically when the snapshot is absent.
    */
-  public prefetchWatchHistory(abortSignal?: AbortSignal): Promise<void> {
+  public prefetchWatchHistory(
+    libraryId: string,
+    abortSignal?: AbortSignal,
+  ): Promise<void> {
     const cache = cacheManager.getCache('plexwatchhistory').data;
-    if (cache.has(WATCH_HISTORY_BULK_CACHE_KEY)) {
+    if (cache.has(watchHistoryCacheKey(libraryId))) {
       return Promise.resolve();
     }
 
-    // Deduplicate concurrent callers onto one in-flight fetch.
-    this.watchHistoryPrefetch ??= this.fetchWatchHistoryMap(
-      abortSignal,
-    ).finally(() => {
-      this.watchHistoryPrefetch = undefined;
-    });
-    return this.watchHistoryPrefetch;
+    // Deduplicate concurrent callers onto one in-flight fetch per library.
+    const existing = this.watchHistoryPrefetches.get(libraryId);
+    if (existing !== undefined) {
+      return existing;
+    }
+
+    const inFlight = this.fetchWatchHistorySnapshot(libraryId, abortSignal).finally(
+      () => {
+        this.watchHistoryPrefetches.delete(libraryId);
+      },
+    );
+    this.watchHistoryPrefetches.set(libraryId, inFlight);
+    return inFlight;
   }
 
-  private async fetchWatchHistoryMap(abortSignal?: AbortSignal): Promise<void> {
-    this.logger.log('Prefetching watch history for all library items...');
+  private async fetchWatchHistorySnapshot(
+    libraryId: string,
+    abortSignal?: AbortSignal,
+  ): Promise<void> {
+    // Spell out what the count means: one entry per view event across all
+    // users, so the total has no relation to how many items the library holds.
+    this.logger.log(
+      `Prefetching watch history for library ${libraryId} ` +
+        `(one entry per view event, across all users)...`,
+    );
+
+    // Plex reports totalSize on the first page, so an oversized history is
+    // abandoned one request in rather than paged through in full. queryAll
+    // materialises every row before returning, so unlike the Jellyfin sweep
+    // there is no way to fold pages in and stop partway.
+    let exceededCeiling = false;
 
     try {
       abortSignal?.throwIfAborted();
       const historyQuery = {
-        uri: '/status/sessions/history/all?sort=viewedAt:desc',
+        uri:
+          `/status/sessions/history/all?sort=viewedAt:desc` +
+          `&librarySectionID=${libraryId}` +
+          `&excludeFields=${WATCH_HISTORY_EXCLUDE_FIELDS}`,
       };
 
-      // The sweep is one sequential Plex request per 120-record page, so a big
-      // watch history can take minutes with no output - which reads as a hang
-      // (users reported the run "stuck" at the single start line). Log each 10%
-      // it crosses so progress is visible without flooding the log. The final
-      // page (fetched == totalSize) is skipped so it never prints a misleading
+      // The sweep is one sequential Plex request per page, so a big watch
+      // history can take minutes with no output - which reads as a hang (users
+      // reported the run "stuck" at the single start line). Log each 10% it
+      // crosses so progress is visible without flooding the log. The final page
+      // (fetched == totalSize) is skipped so it never prints a misleading
       // partial percentage; the completion line below reports the total. A
       // history that fits in one page stays silent here for the same reason.
       const reportProgress = createPrefetchProgressReporter(
         (message) => this.logger.log(message),
-        'Prefetching watch history',
-        'records',
+        `Prefetching watch history for library ${libraryId}`,
+        'entries',
       );
       const onProgress = ({
         fetched,
@@ -801,76 +861,174 @@ export class PlexApiService {
       }: {
         fetched: number;
         totalSize: number;
-      }): void => reportProgress(fetched, totalSize);
+      }): void => {
+        if (totalSize > WATCH_HISTORY_MAX_ENTRIES) {
+          exceededCeiling = true;
+          throw new Error('watch history ceiling exceeded');
+        }
+        reportProgress(fetched, totalSize);
+      };
 
       const response = await this.plexClient.queryAll<PlexLibraryResponse>(
         historyQuery,
         false,
         abortSignal,
         onProgress,
+        PLEX_PAGE_SIZE.MAX_PAGE_SIZE,
       );
 
       const container = response?.MediaContainer;
       const records = (container?.Metadata as PlexSeenBy[]) ?? [];
 
-      // The leaf map is authoritative for "never watched": a movie/episode
-      // absent from it is read as empty history with NO per-item fallback. So
-      // only cache a sweep we can prove is complete. Plex reports totalSize on
-      // this endpoint; queryAll stops paging once totalSize is reached, but a
-      // missing/short totalSize would make it stop early and silently truncate.
-      // Treat that as a failed prefetch so callers fall back to per-item queries
-      // rather than trusting a partial map.
+      // The snapshot is authoritative for "never watched": an item absent from
+      // it is read as empty history with NO per-item fallback. So only cache a
+      // sweep we can prove is complete. Plex reports totalSize on this endpoint;
+      // queryAll stops paging once totalSize is reached, but a missing/short
+      // totalSize would make it stop early and silently truncate. Treat that as
+      // a failed prefetch so callers fall back to per-item queries rather than
+      // trusting a partial snapshot.
       const totalSize = container?.totalSize;
       if (typeof totalSize !== 'number' || records.length < totalSize) {
         this.logger.warn(
-          `Watch history prefetch returned an unverifiable result ` +
-            `(received ${records.length}, totalSize ${totalSize ?? 'absent'}) - ` +
-            `falling back to per-item queries.`,
+          `Watch history prefetch for library ${libraryId} returned an ` +
+            `unverifiable result (received ${records.length}, totalSize ` +
+            `${totalSize ?? 'absent'}) - falling back to per-item reads.`,
         );
         return;
       }
 
-      const leafMap = new Map<string, PlexSeenBy[]>();
-      for (const record of records) {
-        const existing = leafMap.get(record.ratingKey);
-        if (existing) {
-          existing.push(record);
-        } else {
-          leafMap.set(record.ratingKey, [record]);
-        }
+      const snapshot = this.buildWatchHistorySnapshot(records);
+      if (snapshot.rollup && !(await this.verifyRollup(snapshot, libraryId))) {
+        snapshot.rollup = undefined;
       }
 
       cacheManager
         .getCache('plexwatchhistory')
-        .data.set(WATCH_HISTORY_BULK_CACHE_KEY, leafMap);
+        .data.set(watchHistoryCacheKey(libraryId), snapshot);
 
       this.logger.log(
-        `Watch history prefetch complete: ${records.length} records - ` +
-          `${leafMap.size} leaf items.`,
+        `Watch history prefetch for library ${libraryId} complete: ` +
+          `${records.length} entries - ${snapshot.leaf.size} items` +
+          `${snapshot.rollup ? ` across ${snapshot.rollup.show.size} shows` : ''}.`,
       );
     } catch (error) {
       if (error instanceof DOMException && error.name === 'AbortError') {
         throw error;
       }
 
+      if (exceededCeiling) {
+        this.logger.warn(
+          `Watch history for library ${libraryId} passed ` +
+            `${WATCH_HISTORY_MAX_ENTRIES} entries - falling back to per-item reads.`,
+        );
+        return;
+      }
+
       this.logger.warn(
-        `Watch history prefetch failed - falling back to per-item queries. Error: ${error}`,
+        `Watch history prefetch for library ${libraryId} failed - falling back to per-item reads. Error: ${error}`,
       );
     }
   }
 
+  /**
+   * One episode row missing its parent keys disables the rollup for the whole
+   * library: dropping just that row would under-report its show's history,
+   * which is the false "never watched" #3082 avoided by skipping the rollup
+   * altogether. Movies legitimately carry no parent keys and never gate it.
+   */
+  private buildWatchHistorySnapshot(
+    records: PlexSeenBy[],
+  ): PlexWatchHistorySnapshot {
+    const leaf = new Map<string, PlexSeenBy[]>();
+    const show = new Map<string, PlexSeenBy[]>();
+    const season = new Map<string, PlexSeenBy[]>();
+    let rollupComplete = true;
+
+    const add = (
+      map: Map<string, PlexSeenBy[]>,
+      key: string,
+      record: PlexSeenBy,
+    ): void => {
+      const existing = map.get(key);
+      if (existing) {
+        existing.push(record);
+      } else {
+        map.set(key, [record]);
+      }
+    };
+
+    for (const record of records) {
+      add(leaf, record.ratingKey, record);
+
+      if (record.type !== 'episode') continue;
+
+      const showKey = ratingKeyFromPath(record.grandparentKey);
+      const seasonKey = ratingKeyFromPath(record.parentKey);
+      if (!showKey || !seasonKey) {
+        rollupComplete = false;
+        continue;
+      }
+
+      add(show, showKey, record);
+      add(season, seasonKey, record);
+    }
+
+    return { leaf, rollup: rollupComplete ? { show, season } : undefined };
+  }
+
+  /**
+   * Proves the rollup against Plex before anything reads it: takes one show it
+   * claims history for and compares it with the same question asked of Plex's
+   * own server-side rollup. That turns a dependency on an undocumented field
+   * into a checked one - if this connection reports the parent keys in a shape
+   * `ratingKeyFromPath` mis-reads, the two answers disagree and the rollup is
+   * dropped rather than silently under-reporting a show.
+   *
+   * Costs one request per sweep, and only for libraries with episode history.
+   * A failed check drops the rollup, never the snapshot: the leaf map is what
+   * the expensive per-episode walks read and it is unaffected.
+   */
+  private async verifyRollup(
+    snapshot: PlexWatchHistorySnapshot,
+    libraryId: string,
+  ): Promise<boolean> {
+    const sample = snapshot.rollup?.show.entries().next();
+    if (!sample || sample.done) return false;
+
+    const [showKey, expected] = sample.value;
+    try {
+      const live = await this.getWatchHistory(showKey, false, 'show');
+      if (historyFingerprint(live) === historyFingerprint(expected)) {
+        return true;
+      }
+      this.logger.warn(
+        `Watch history rollup for library ${libraryId} disagreed with Plex on ` +
+          `show ${showKey} (${expected.length} entries vs ${live.length}) - ` +
+          `show and season reads stay per-item.`,
+      );
+    } catch (error) {
+      this.logger.warn(
+        `Could not verify the watch history rollup for library ${libraryId} - ` +
+          `show and season reads stay per-item. Error: ${error}`,
+      );
+    }
+    return false;
+  }
+
+  private getWatchHistorySnapshot(
+    libraryId: string,
+  ): PlexWatchHistorySnapshot | undefined {
+    return cacheManager
+      .getCache('plexwatchhistory')
+      .data.get<PlexWatchHistorySnapshot>(watchHistoryCacheKey(libraryId));
+  }
+
   // The 'plexwatchhistory' cache stores by reference (useClones: false), so
   // always hand callers a copy - plex-getter sorts these arrays in place.
-  private getBulkWatchHistory(
-    mapKey: string,
+  private copyRecords(
+    map: Map<string, PlexSeenBy[]>,
     itemId: string,
-  ): PlexSeenBy[] | undefined {
-    const map = cacheManager
-      .getCache('plexwatchhistory')
-      .data.get<Map<string, PlexSeenBy[]>>(mapKey);
-    if (map === undefined) {
-      return undefined;
-    }
+  ): PlexSeenBy[] {
     const records = map.get(itemId);
     return records ? [...records] : [];
   }
@@ -879,36 +1037,39 @@ export class PlexApiService {
     itemId: string,
     useCache: boolean = true,
     itemType?: PlexLibraryItem['type'],
+    libraryId?: string,
   ): Promise<PlexSeenBy[]> {
-    // Serve leaf items (movies, episodes) from the bulk map when caching is
-    // allowed. The map is a point-in-time snapshot taken at prefetch time;
-    // callers that pass useCache: false intentionally bypass it and read the
-    // per-item endpoint instead.
-    if (useCache) {
+    // Serve from the library's snapshot when caching is allowed. The snapshot
+    // is a point-in-time picture taken at prefetch time; callers that pass
+    // useCache: false intentionally bypass it and read the per-item endpoint.
+    // Without a libraryId there is no snapshot we can safely attribute the item
+    // to, so the read falls through rather than risk another library's answer.
+    const snapshot =
+      useCache && libraryId ? this.getWatchHistorySnapshot(libraryId) : undefined;
+
+    if (snapshot) {
       switch (itemType) {
         case 'movie':
-        case 'episode': {
-          const records = this.getBulkWatchHistory(
-            WATCH_HISTORY_BULK_CACHE_KEY,
-            itemId,
-          );
-          if (records !== undefined) return records;
-          break;
-        }
+        case 'episode':
+          return this.copyRecords(snapshot.leaf, itemId);
         case 'show':
+          // Only from a rollup this sweep proved against Plex; otherwise fall
+          // through to the per-item metadataItemID query, which Plex rolls up
+          // server-side.
+          if (snapshot.rollup) {
+            return this.copyRecords(snapshot.rollup.show, itemId);
+          }
+          break;
         case 'season':
-          // The bulk map holds no show/season rollups (see
-          // prefetchWatchHistory); fall through to the per-item metadataItemID
-          // query, which Plex rolls up server-side.
+          if (snapshot.rollup) {
+            return this.copyRecords(snapshot.rollup.season, itemId);
+          }
           break;
         default: {
           // Untyped callers may pass any kind of ratingKey, so only a non-empty
           // leaf hit is trusted - a miss falls through to the per-item query.
-          const records = this.getBulkWatchHistory(
-            WATCH_HISTORY_BULK_CACHE_KEY,
-            itemId,
-          );
-          if (records !== undefined && records.length > 0) return records;
+          const records = this.copyRecords(snapshot.leaf, itemId);
+          if (records.length > 0) return records;
           break;
         }
       }

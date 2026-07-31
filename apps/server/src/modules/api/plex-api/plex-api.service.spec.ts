@@ -5,7 +5,12 @@ import {
 } from '../../logging/logs.service';
 import { Settings } from '../../settings/entities/settings.entities';
 import { SettingsDataService } from '../../settings/settings-data.service';
-import { WATCH_HISTORY_BULK_CACHE_KEY } from './plex-api.constants';
+import {
+  PLEX_PAGE_SIZE,
+  WATCH_HISTORY_EXCLUDE_FIELDS,
+  WATCH_HISTORY_MAX_ENTRIES,
+  watchHistoryCacheKey,
+} from './plex-api.constants';
 import { PlexConnection } from './interfaces/server.interface';
 import { PlexApiService } from './plex-api.service';
 
@@ -774,12 +779,12 @@ describe('PlexApiService.initialize', () => {
   it('flushes the watch-history snapshot on uninitialize (server/token switch)', async () => {
     const cacheManager = (await import('../lib/cache')).default;
     const bulkCache = cacheManager.getCache('plexwatchhistory').data;
-    bulkCache.set(WATCH_HISTORY_BULK_CACHE_KEY, new Map([['1', [{}]]]));
+    bulkCache.set(watchHistoryCacheKey('1'), { leaf: new Map([['1', [{}]]]) });
 
     service.uninitialize();
 
-    expect(bulkCache.has(WATCH_HISTORY_BULK_CACHE_KEY)).toBe(false);
-    expect((service as any).watchHistoryPrefetch).toBeUndefined();
+    expect(bulkCache.has(watchHistoryCacheKey('1'))).toBe(false);
+    expect((service as any).watchHistoryPrefetches.size).toBe(0);
   });
 
   it('clears plexClient when primary connection and rediscovery both fail', async () => {
@@ -846,11 +851,44 @@ describe('PlexApiService.initialize', () => {
     expect(status).toEqual({ machineIdentifier: 'm1', version: '1.43.2' });
   });
 });
-
 describe('PlexApiService.prefetchWatchHistory', () => {
   let service: PlexApiService;
   let logger: Mocked<MaintainerrLogger>;
   let loggerFactory: Mocked<MaintainerrLoggerFactory>;
+
+  const LIBRARY = '3';
+
+  const historyRow = (over: Record<string, unknown> = {}) => ({
+    ratingKey: '1',
+    type: 'movie',
+    accountID: 1,
+    viewedAt: 1700000000,
+    ...over,
+  });
+
+  const episodeRow = (over: Record<string, unknown> = {}) =>
+    historyRow({
+      type: 'episode',
+      parentKey: '/library/metadata/900',
+      grandparentKey: '/library/metadata/800',
+      ...over,
+    });
+
+  // The sweep proves its rollup with one live per-item read; unless a test says
+  // otherwise, have that read agree with what the rollup claims.
+  const agreeingVerification = (rows: Record<string, unknown>[]) =>
+    jest.fn().mockImplementation(async (query: { uri: string }) =>
+      query.uri.includes('metadataItemID')
+        ? { MediaContainer: { Metadata: rows } }
+        : { MediaContainer: { Metadata: rows, totalSize: rows.length } },
+    );
+
+  const snapshotFor = async (libraryId: string) => {
+    const cacheManager = (await import('../lib/cache')).default;
+    return cacheManager
+      .getCache('plexwatchhistory')
+      .data.get<any>(watchHistoryCacheKey(libraryId));
+  };
 
   beforeEach(async () => {
     const { unit, unitRef } = await TestBed.solitary(PlexApiService).compile();
@@ -867,58 +905,188 @@ describe('PlexApiService.prefetchWatchHistory', () => {
       debug: jest.fn(),
     } as any);
 
-    // Clear the bulk watch-history cache entries between tests
     const cacheManager = (await import('../lib/cache')).default;
-    const bulkCache = cacheManager.getCache('plexwatchhistory')?.data;
-    bulkCache?.del(WATCH_HISTORY_BULK_CACHE_KEY);
+    cacheManager.getCache('plexwatchhistory')?.data.flushAll();
   });
 
-  it('indexes movie records in the leaf map by ratingKey', async () => {
+  it('sweeps only the requested library, trimmed and paged for a long sweep', async () => {
+    const queryAll = jest.fn().mockResolvedValue({
+      MediaContainer: { Metadata: [historyRow()], totalSize: 1 },
+    });
+    (service as any).plexClient = { queryAll };
+
+    await service.prefetchWatchHistory(LIBRARY);
+
+    const [request, useCache, signal, onProgress, pageSize] =
+      queryAll.mock.calls[0];
+    expect(request.uri).toContain(`librarySectionID=${LIBRARY}`);
+    expect(request.uri).toContain(
+      `excludeFields=${WATCH_HISTORY_EXCLUDE_FIELDS}`,
+    );
+    // Fields the getters read must never be excluded.
+    for (const kept of ['ratingKey', 'viewedAt', 'accountID', 'parentIndex']) {
+      expect(WATCH_HISTORY_EXCLUDE_FIELDS.split(',')).not.toContain(kept);
+    }
+    expect(useCache).toBe(false);
+    expect(signal).toBeUndefined();
+    expect(onProgress).toEqual(expect.any(Function));
+    expect(pageSize).toBe(PLEX_PAGE_SIZE.MAX_PAGE_SIZE);
+  });
+
+  it('rolls episodes up to their show and season once Plex confirms the rollup', async () => {
+    const rows = [
+      episodeRow({ ratingKey: '101', viewedAt: 1 }),
+      episodeRow({ ratingKey: '102', viewedAt: 2 }),
+      episodeRow({
+        ratingKey: '201',
+        viewedAt: 3,
+        parentKey: '/library/metadata/901',
+      }),
+    ];
+    const queryAll = agreeingVerification(rows);
+    (service as any).plexClient = { queryAll };
+
+    await service.prefetchWatchHistory(LIBRARY);
+
+    const snapshot = await snapshotFor(LIBRARY);
+    expect(snapshot?.rollup?.show.get('800')).toHaveLength(3);
+    expect(snapshot?.rollup?.season.get('900')).toHaveLength(2);
+    expect(snapshot?.rollup?.season.get('901')).toHaveLength(1);
+  });
+
+  it('drops the rollup when Plex disagrees with what it claims for a show', async () => {
+    // A connection whose parent keys parse to the wrong id would build a
+    // plausible-looking rollup that under-reports the show. The sweep asks
+    // Plex the same question and throws the rollup away when it differs.
+    const rows = [episodeRow({ ratingKey: '101', viewedAt: 1 })];
+    const queryAll = jest.fn().mockImplementation(async (query: { uri: string }) =>
+      query.uri.includes('metadataItemID')
+        ? { MediaContainer: { Metadata: [...rows, episodeRow({ ratingKey: '102', viewedAt: 2 })] } }
+        : { MediaContainer: { Metadata: rows, totalSize: rows.length } },
+    );
+    (service as any).plexClient = { queryAll };
+
+    await service.prefetchWatchHistory(LIBRARY);
+
+    const snapshot = await snapshotFor(LIBRARY);
+    expect(snapshot?.leaf.get('101')).toHaveLength(1);
+    expect(snapshot?.rollup).toBeUndefined();
+    expect(logger.warn).toHaveBeenCalledWith(
+      expect.stringContaining('disagreed with Plex'),
+    );
+  });
+
+  it('drops the rollup when the verification read fails', async () => {
+    const rows = [episodeRow({ ratingKey: '101', viewedAt: 1 })];
+    const queryAll = jest.fn().mockImplementation(async (query: { uri: string }) => {
+      if (query.uri.includes('metadataItemID')) throw new Error('network');
+      return { MediaContainer: { Metadata: rows, totalSize: rows.length } };
+    });
+    (service as any).plexClient = { queryAll };
+
+    await service.prefetchWatchHistory(LIBRARY);
+
+    const snapshot = await snapshotFor(LIBRARY);
+    expect(snapshot?.leaf.get('101')).toHaveLength(1);
+    expect(snapshot?.rollup).toBeUndefined();
+  });
+
+  it('stands the rollup down when any episode row lacks its parent keys', async () => {
+    const rows = [
+      episodeRow({ ratingKey: '101', viewedAt: 1 }),
+      episodeRow({ ratingKey: '102', viewedAt: 2, grandparentKey: undefined }),
+    ];
+    const queryAll = agreeingVerification(rows);
+    (service as any).plexClient = { queryAll };
+
+    await service.prefetchWatchHistory(LIBRARY);
+
+    const snapshot = await snapshotFor(LIBRARY);
+    expect(snapshot?.leaf.get('101')).toHaveLength(1);
+    expect(snapshot?.rollup).toBeUndefined();
+    // No rollup to prove, so no verification request was spent on it.
+    expect(
+      queryAll.mock.calls.filter((c: any[]) => c[0].uri.includes('metadataItemID')),
+    ).toHaveLength(0);
+  });
+
+  it('never verifies a movie-only library', async () => {
+    const rows = [historyRow({ ratingKey: '5' })];
+    const queryAll = agreeingVerification(rows);
+    (service as any).plexClient = { queryAll };
+
+    await service.prefetchWatchHistory(LIBRARY);
+
+    expect(
+      queryAll.mock.calls.filter((c: any[]) => c[0].uri.includes('metadataItemID')),
+    ).toHaveLength(0);
+    expect((await snapshotFor(LIBRARY))?.rollup?.show.size ?? 0).toBe(0);
+  });
+
+  it('abandons an oversized history after one request instead of paging it all', async () => {
+    // Nothing else bounds this map, and queryAll materialises every row before
+    // returning, so the only place to stop is the totalSize on page one.
+    const queryAll = jest
+      .fn()
+      .mockImplementation(
+        async (
+          query: unknown,
+          useCache: unknown,
+          signal: unknown,
+          onProgress?: (p: { fetched: number; totalSize: number }) => void,
+        ) => {
+          onProgress?.({
+            fetched: 500,
+            totalSize: WATCH_HISTORY_MAX_ENTRIES + 1,
+          });
+          return { MediaContainer: { Metadata: [], totalSize: 0 } };
+        },
+      );
+    (service as any).plexClient = { queryAll };
+
+    await service.prefetchWatchHistory(LIBRARY);
+
+    expect(queryAll).toHaveBeenCalledTimes(1);
+    expect(await snapshotFor(LIBRARY)).toBeUndefined();
+    expect(logger.warn).toHaveBeenCalledWith(
+      expect.stringContaining(`passed ${WATCH_HISTORY_MAX_ENTRIES} entries`),
+    );
+  });
+
+  it('indexes movie records in the snapshot by ratingKey', async () => {
     const queryAll = jest.fn().mockResolvedValue({
       MediaContainer: {
         Metadata: [
-          {
-            ratingKey: '1',
-            type: 'movie',
-            accountID: 10,
-            viewedAt: 1700000000,
-          },
-          {
-            ratingKey: '2',
-            type: 'movie',
-            accountID: 11,
-            viewedAt: 1710000000,
-          },
-          {
-            ratingKey: '1',
-            type: 'movie',
-            accountID: 12,
-            viewedAt: 1720000000,
-          },
+          historyRow({ ratingKey: '1', accountID: 10 }),
+          historyRow({ ratingKey: '2', accountID: 11 }),
+          historyRow({ ratingKey: '1', accountID: 12 }),
         ],
         totalSize: 3,
       },
     });
-
     (service as any).plexClient = { queryAll };
 
-    await service.prefetchWatchHistory();
+    await service.prefetchWatchHistory(LIBRARY);
 
-    expect(queryAll).toHaveBeenCalledWith(
-      { uri: '/status/sessions/history/all?sort=viewedAt:desc' },
-      false,
-      undefined,
-      expect.any(Function),
-    );
+    const snapshot = await snapshotFor(LIBRARY);
+    expect(snapshot?.leaf.get('1')).toHaveLength(2);
+    expect(snapshot?.leaf.get('2')).toHaveLength(1);
+  });
 
-    const cacheManager = (await import('../lib/cache')).default;
-    const leafMap = cacheManager
-      .getCache('plexwatchhistory')
-      .data.get<Map<string, unknown[]>>(WATCH_HISTORY_BULK_CACHE_KEY);
+  it('caches per library, so one library does not answer for another', async () => {
+    const queryAll = jest.fn().mockResolvedValue({
+      MediaContainer: { Metadata: [historyRow()], totalSize: 1 },
+    });
+    (service as any).plexClient = { queryAll };
 
-    expect(leafMap).toBeDefined();
-    expect(leafMap?.get('1')).toHaveLength(2);
-    expect(leafMap?.get('2')).toHaveLength(1);
+    await service.prefetchWatchHistory('1');
+
+    expect(await snapshotFor('1')).toBeDefined();
+    expect(await snapshotFor('2')).toBeUndefined();
+
+    await service.prefetchWatchHistory('2');
+    expect(queryAll).toHaveBeenCalledTimes(2);
+    expect(queryAll.mock.calls[1][0].uri).toContain('librarySectionID=2');
   });
 
   it('logs watch-history prefetch progress in 10% steps as pages arrive', async () => {
@@ -938,12 +1106,9 @@ describe('PlexApiService.prefetchWatchHistory', () => {
           }
           return {
             MediaContainer: {
-              Metadata: Array.from({ length: totalSize }, (v, i) => ({
-                ratingKey: String(i % 3),
-                type: 'movie',
-                accountID: 1,
-                viewedAt: i,
-              })),
+              Metadata: Array.from({ length: totalSize }, (v, i) =>
+                historyRow({ ratingKey: String(i % 3), viewedAt: i }),
+              ),
               totalSize,
             },
           };
@@ -952,24 +1117,34 @@ describe('PlexApiService.prefetchWatchHistory', () => {
 
     (service as any).plexClient = { queryAll };
 
-    await service.prefetchWatchHistory();
+    await service.prefetchWatchHistory(LIBRARY);
 
+    const prefix = `Prefetching watch history for library ${LIBRARY}:`;
     const progressLogs = (logger.log as jest.Mock).mock.calls
       .map((call) => call[0])
       .filter(
-        (message) =>
-          typeof message === 'string' &&
-          message.startsWith('Prefetching watch history:'),
+        (message) => typeof message === 'string' && message.startsWith(prefix),
       );
 
     // Deciles 10..90 each logged once; the terminal 100% is left to the
     // "prefetch complete" line, so it is never emitted as progress.
     expect(progressLogs).toHaveLength(9);
-    expect(progressLogs[0]).toBe(
-      'Prefetching watch history: 100 of 1000 records (10%)...',
-    );
-    expect(progressLogs[8]).toBe(
-      'Prefetching watch history: 900 of 1000 records (90%)...',
+    expect(progressLogs[0]).toBe(`${prefix} 100 of 1000 entries (10%)...`);
+    expect(progressLogs[8]).toBe(`${prefix} 900 of 1000 entries (90%)...`);
+  });
+
+  it('says what the entry count means on the opening line', async () => {
+    // A user compared an 88k entry count against a 6.5k-episode library and
+    // read it as a bug; the line has to say it counts view events.
+    const queryAll = jest.fn().mockResolvedValue({
+      MediaContainer: { Metadata: [historyRow()], totalSize: 1 },
+    });
+    (service as any).plexClient = { queryAll };
+
+    await service.prefetchWatchHistory(LIBRARY);
+
+    expect(logger.log).toHaveBeenCalledWith(
+      expect.stringContaining('one entry per view event, across all users'),
     );
   });
 
@@ -990,12 +1165,9 @@ describe('PlexApiService.prefetchWatchHistory', () => {
           onProgress?.({ fetched: totalSize, totalSize });
           return {
             MediaContainer: {
-              Metadata: Array.from({ length: totalSize }, (v, i) => ({
-                ratingKey: String(i),
-                type: 'movie',
-                accountID: 1,
-                viewedAt: i,
-              })),
+              Metadata: Array.from({ length: totalSize }, (v, i) =>
+                historyRow({ ratingKey: String(i), viewedAt: i }),
+              ),
               totalSize,
             },
           };
@@ -1004,59 +1176,22 @@ describe('PlexApiService.prefetchWatchHistory', () => {
 
     (service as any).plexClient = { queryAll };
 
-    await service.prefetchWatchHistory();
+    await service.prefetchWatchHistory(LIBRARY);
 
     const progressLogs = (logger.log as jest.Mock).mock.calls
       .map((call) => call[0])
       .filter(
         (message) =>
           typeof message === 'string' &&
-          message.startsWith('Prefetching watch history:'),
+          message.startsWith(
+            `Prefetching watch history for library ${LIBRARY}:`,
+          ),
       );
 
     expect(progressLogs).toEqual([]);
   });
 
-  it('indexes episode records in the leaf map by ratingKey', async () => {
-    const queryAll = jest.fn().mockResolvedValue({
-      MediaContainer: {
-        Metadata: [
-          {
-            ratingKey: '101',
-            type: 'episode',
-            accountID: 1,
-            viewedAt: 1700000001,
-          },
-          {
-            ratingKey: '101',
-            type: 'episode',
-            accountID: 2,
-            viewedAt: 1700000002,
-          },
-          {
-            ratingKey: '103',
-            type: 'episode',
-            accountID: 2,
-            viewedAt: 1700000003,
-          },
-        ],
-        totalSize: 3,
-      },
-    });
-
-    (service as any).plexClient = { queryAll };
-    await service.prefetchWatchHistory();
-
-    const cacheManager = (await import('../lib/cache')).default;
-    const leafMap = cacheManager
-      .getCache('plexwatchhistory')
-      .data.get<Map<string, unknown[]>>(WATCH_HISTORY_BULK_CACHE_KEY);
-
-    expect(leafMap?.get('101')).toHaveLength(2);
-    expect(leafMap?.get('103')).toHaveLength(1);
-  });
-
-  it('skips the fetch when the bulk map is already cached', async () => {
+  it('skips the fetch when the library is already cached', async () => {
     const queryAll = jest.fn().mockResolvedValue({
       MediaContainer: { Metadata: [], totalSize: 0 },
     });
@@ -1064,34 +1199,24 @@ describe('PlexApiService.prefetchWatchHistory', () => {
     (service as any).plexClient = { queryAll };
 
     // First call populates the cache
-    await service.prefetchWatchHistory();
+    await service.prefetchWatchHistory(LIBRARY);
     // Second call should not hit the API again
-    await service.prefetchWatchHistory();
+    await service.prefetchWatchHistory(LIBRARY);
 
     expect(queryAll).toHaveBeenCalledTimes(1);
   });
 
-  it('does not cache the map when the sweep is unverifiable (missing/short totalSize)', async () => {
-    const cacheManager = (await import('../lib/cache')).default;
-
+  it('does not cache the snapshot when the sweep is unverifiable (missing/short totalSize)', async () => {
     // A full-looking page with no totalSize: queryAll may have truncated, so the
-    // map must NOT be cached - callers fall back to the per-item query instead.
+    // snapshot must NOT be cached - callers fall back to the per-item query.
     const queryAll = jest.fn().mockResolvedValue({
-      MediaContainer: {
-        Metadata: [
-          { ratingKey: '1', type: 'movie', accountID: 1, viewedAt: 1 },
-        ],
-      },
+      MediaContainer: { Metadata: [historyRow()] },
     });
     (service as any).plexClient = { queryAll };
 
-    await service.prefetchWatchHistory();
+    await service.prefetchWatchHistory(LIBRARY);
 
-    expect(
-      cacheManager
-        .getCache('plexwatchhistory')
-        .data.has(WATCH_HISTORY_BULK_CACHE_KEY),
-    ).toBe(false);
+    expect(await snapshotFor(LIBRARY)).toBeUndefined();
     expect(logger.warn).toHaveBeenCalledWith(
       expect.stringContaining('unverifiable result'),
     );
@@ -1102,13 +1227,15 @@ describe('PlexApiService.prefetchWatchHistory', () => {
 
     (service as any).plexClient = { queryAll };
 
-    await expect(service.prefetchWatchHistory()).resolves.toBeUndefined();
+    await expect(
+      service.prefetchWatchHistory(LIBRARY),
+    ).resolves.toBeUndefined();
     expect(logger.warn).toHaveBeenCalledWith(
-      expect.stringContaining('Watch history prefetch failed'),
+      expect.stringContaining('Watch history prefetch'),
     );
   });
 
-  it('propagates aborts while the bulk watch-history fetch is in flight', async () => {
+  it('propagates aborts while the watch-history sweep is in flight', async () => {
     const abortController = new AbortController();
     const requestStarted = createDeferred();
     const queryAll = jest.fn().mockImplementation(async () => {
@@ -1124,31 +1251,32 @@ describe('PlexApiService.prefetchWatchHistory', () => {
 
     (service as any).plexClient = { queryAll };
 
-    const prefetch = service.prefetchWatchHistory(abortController.signal);
+    const prefetch = service.prefetchWatchHistory(
+      LIBRARY,
+      abortController.signal,
+    );
     await requestStarted.promise;
     abortController.abort();
 
     await expect(prefetch).rejects.toMatchObject({ name: 'AbortError' });
-    expect(queryAll).toHaveBeenCalledWith(
-      { uri: '/status/sessions/history/all?sort=viewedAt:desc' },
-      false,
-      abortController.signal,
-      expect.any(Function),
-    );
+    expect(queryAll.mock.calls[0][2]).toBe(abortController.signal);
     expect(logger.warn).not.toHaveBeenCalled();
-
-    const cacheManager = (await import('../lib/cache')).default;
-    expect(
-      cacheManager
-        .getCache('plexwatchhistory')
-        .data.has(WATCH_HISTORY_BULK_CACHE_KEY),
-    ).toBe(false);
+    expect(await snapshotFor(LIBRARY)).toBeUndefined();
   });
 });
 
-describe('PlexApiService.getWatchHistory bulk map', () => {
+describe('PlexApiService.getWatchHistory snapshot', () => {
   let service: PlexApiService;
   let loggerFactory: Mocked<MaintainerrLoggerFactory>;
+
+  const LIBRARY = '3';
+
+  const setSnapshot = async (libraryId: string, snapshot: unknown) => {
+    const cacheManager = (await import('../lib/cache')).default;
+    cacheManager
+      .getCache('plexwatchhistory')
+      .data.set(watchHistoryCacheKey(libraryId), snapshot);
+  };
 
   beforeEach(async () => {
     const { unit, unitRef } = await TestBed.solitary(PlexApiService).compile();
@@ -1164,58 +1292,124 @@ describe('PlexApiService.getWatchHistory bulk map', () => {
       debug: jest.fn(),
     } as any);
 
-    // Clear the bulk watch-history cache entries between tests
     const cacheManager = (await import('../lib/cache')).default;
-    const bulkCache = cacheManager.getCache('plexwatchhistory')?.data;
-    bulkCache?.del(WATCH_HISTORY_BULK_CACHE_KEY);
+    cacheManager.getCache('plexwatchhistory')?.data.flushAll();
   });
 
-  it('returns results from the bulk map for movie items when the map is populated', async () => {
-    const cacheManager = (await import('../lib/cache')).default;
-    const bulkMap = new Map([
-      ['42', [{ ratingKey: '42', accountID: 10, viewedAt: 1700000000 }]],
-    ]);
-    cacheManager
-      .getCache('plexwatchhistory')
-      .data.set(WATCH_HISTORY_BULK_CACHE_KEY, bulkMap);
+  it('returns results from the snapshot for movie items', async () => {
+    await setSnapshot(LIBRARY, {
+      leaf: new Map([
+        ['42', [{ ratingKey: '42', accountID: 10, viewedAt: 1700000000 }]],
+      ]),
+    });
 
     const queryAll = jest.fn();
     (service as any).plexClient = { queryAll };
 
-    const result = await service.getWatchHistory('42', true, 'movie');
+    const result = await service.getWatchHistory('42', true, 'movie', LIBRARY);
 
     expect(result).toHaveLength(1);
     expect((result[0] as any).ratingKey).toBe('42');
-    // Should NOT have hit the network
     expect(queryAll).not.toHaveBeenCalled();
   });
 
-  it('returns an empty array for a movie not in the bulk map', async () => {
-    const cacheManager = (await import('../lib/cache')).default;
-    const bulkMap = new Map<string, unknown[]>();
-    cacheManager
-      .getCache('plexwatchhistory')
-      .data.set(WATCH_HISTORY_BULK_CACHE_KEY, bulkMap);
+  it('returns an empty array for a movie missing from a swept library', async () => {
+    await setSnapshot(LIBRARY, { leaf: new Map<string, unknown[]>() });
 
     const queryAll = jest.fn();
     (service as any).plexClient = { queryAll };
 
-    const result = await service.getWatchHistory('99', true, 'movie');
+    const result = await service.getWatchHistory('99', true, 'movie', LIBRARY);
 
     expect(result).toEqual([]);
     expect(queryAll).not.toHaveBeenCalled();
   });
 
-  it('always rolls up show queries server-side via the per-item query, even when the leaf map is populated', async () => {
-    // Show/season history is not in the bulk (leaf) map; it must come from the
-    // per-item metadataItemID query so Plex rolls up descendant episodes.
-    const cacheManager = (await import('../lib/cache')).default;
-    cacheManager
-      .getCache('plexwatchhistory')
-      .data.set(
-        WATCH_HISTORY_BULK_CACHE_KEY,
-        new Map([['10', [{ ratingKey: '10' }]]]),
-      );
+  it('reads live when the item belongs to a library we never swept', async () => {
+    // The snapshot is authoritative for "never watched" only inside its own
+    // library. Answering library 4 from library 3's snapshot would report a
+    // false never-watched and delete a watched item.
+    await setSnapshot('3', {
+      leaf: new Map<string, unknown[]>(),
+    });
+
+    const queryAll = jest.fn().mockResolvedValue({
+      MediaContainer: {
+        Metadata: [{ ratingKey: '99', accountID: 7, viewedAt: 1700000000 }],
+      },
+    });
+    (service as any).plexClient = { queryAll };
+
+    const result = await service.getWatchHistory('99', true, 'movie', '4');
+
+    expect(result).toHaveLength(1);
+    expect(queryAll).toHaveBeenCalledWith(
+      expect.objectContaining({
+        uri: expect.stringContaining('metadataItemID=99'),
+      }),
+      true,
+    );
+  });
+
+  it('reads live when the caller names no library at all', async () => {
+    await setSnapshot(LIBRARY, {
+      leaf: new Map([['42', [{ ratingKey: '42' }]]]),
+    });
+
+    const queryAll = jest.fn().mockResolvedValue({
+      MediaContainer: { Metadata: [] },
+    });
+    (service as any).plexClient = { queryAll };
+
+    await service.getWatchHistory('42', true, 'movie');
+
+    expect(queryAll).toHaveBeenCalledWith(
+      expect.objectContaining({
+        uri: expect.stringContaining('metadataItemID=42'),
+      }),
+      true,
+    );
+  });
+
+  it('serves show and season queries from a proven rollup', async () => {
+    await setSnapshot(LIBRARY, {
+      leaf: new Map(),
+      rollup: {
+        show: new Map([['10', [{ ratingKey: '101', viewedAt: 1 }]]]),
+        season: new Map([['20', [{ ratingKey: '201', viewedAt: 2 }]]]),
+      },
+    });
+
+    const queryAll = jest.fn();
+    (service as any).plexClient = { queryAll };
+
+    expect(
+      await service.getWatchHistory('10', true, 'show', LIBRARY),
+    ).toHaveLength(1);
+    expect(
+      await service.getWatchHistory('20', true, 'season', LIBRARY),
+    ).toHaveLength(1);
+    expect(queryAll).not.toHaveBeenCalled();
+  });
+
+  it('returns a copy of rollup entries so in-place sorts cannot corrupt them', async () => {
+    const records = [
+      { ratingKey: '101', viewedAt: 2 },
+      { ratingKey: '102', viewedAt: 1 },
+    ];
+    await setSnapshot(LIBRARY, {
+      leaf: new Map(),
+      rollup: { show: new Map([['10', records]]), season: new Map() },
+    });
+    (service as any).plexClient = { queryAll: jest.fn() };
+
+    (await service.getWatchHistory('10', true, 'show', LIBRARY)).pop();
+
+    expect(await service.getWatchHistory('10', true, 'show', LIBRARY)).toHaveLength(2);
+  });
+
+  it('always rolls show queries up server-side via the per-item query', async () => {
+    await setSnapshot(LIBRARY, { leaf: new Map([['10', [{ ratingKey: '10' }]]]) });
 
     const queryAll = jest.fn().mockResolvedValue({
       MediaContainer: {
@@ -1224,7 +1418,7 @@ describe('PlexApiService.getWatchHistory bulk map', () => {
     });
     (service as any).plexClient = { queryAll };
 
-    const result = await service.getWatchHistory('10', true, 'show');
+    const result = await service.getWatchHistory('10', true, 'show', LIBRARY);
 
     expect(result).toHaveLength(1);
     expect(result[0].ratingKey).toBe('101');
@@ -1236,14 +1430,8 @@ describe('PlexApiService.getWatchHistory bulk map', () => {
     );
   });
 
-  it('always rolls up season queries server-side via the per-item query, even when the leaf map is populated', async () => {
-    const cacheManager = (await import('../lib/cache')).default;
-    cacheManager
-      .getCache('plexwatchhistory')
-      .data.set(
-        WATCH_HISTORY_BULK_CACHE_KEY,
-        new Map([['20', [{ ratingKey: '20' }]]]),
-      );
+  it('always rolls season queries up server-side via the per-item query', async () => {
+    await setSnapshot(LIBRARY, { leaf: new Map([['20', [{ ratingKey: '20' }]]]) });
 
     const queryAll = jest.fn().mockResolvedValue({
       MediaContainer: {
@@ -1252,7 +1440,7 @@ describe('PlexApiService.getWatchHistory bulk map', () => {
     });
     (service as any).plexClient = { queryAll };
 
-    const result = await service.getWatchHistory('20', true, 'season');
+    const result = await service.getWatchHistory('20', true, 'season', LIBRARY);
 
     expect(result).toHaveLength(1);
     expect(queryAll).toHaveBeenCalledWith(
@@ -1263,39 +1451,46 @@ describe('PlexApiService.getWatchHistory bulk map', () => {
     );
   });
 
-  it('serves episode queries from the leaf map without a per-item call', async () => {
-    const cacheManager = (await import('../lib/cache')).default;
-    const epRecord = {
-      ratingKey: '301',
-      type: 'episode',
-      accountID: 5,
-      viewedAt: 1700000002,
-    };
-    const leafMap = new Map([['301', [epRecord]]]);
-    cacheManager
-      .getCache('plexwatchhistory')
-      .data.set(WATCH_HISTORY_BULK_CACHE_KEY, leafMap);
+  it('serves episode queries from the snapshot without a per-item call', async () => {
+    await setSnapshot(LIBRARY, {
+      leaf: new Map([
+        [
+          '301',
+          [
+            {
+              ratingKey: '301',
+              type: 'episode',
+              accountID: 5,
+              viewedAt: 1700000002,
+            },
+          ],
+        ],
+      ]),
+    });
 
     const queryAll = jest.fn();
     (service as any).plexClient = { queryAll };
 
-    const result = await service.getWatchHistory('301', true, 'episode');
+    const result = await service.getWatchHistory(
+      '301',
+      true,
+      'episode',
+      LIBRARY,
+    );
 
     expect(result).toHaveLength(1);
     expect(result[0].ratingKey).toBe('301');
     expect(queryAll).not.toHaveBeenCalled();
   });
 
-  it('bypasses the bulk snapshot for explicit useCache: false callers and reads per-item', async () => {
+  it('bypasses the snapshot for explicit useCache: false callers and reads per-item', async () => {
     // Keep an escape hatch for callers that explicitly need a live per-item
     // read; rule evaluation uses useCache: true to share the run snapshot.
-    const cacheManager = (await import('../lib/cache')).default;
-    const bulkMap = new Map([
-      ['42', [{ ratingKey: '42', accountID: 10, viewedAt: 1700000000 }]],
-    ]);
-    cacheManager
-      .getCache('plexwatchhistory')
-      .data.set(WATCH_HISTORY_BULK_CACHE_KEY, bulkMap);
+    await setSnapshot(LIBRARY, {
+      leaf: new Map([
+        ['42', [{ ratingKey: '42', accountID: 10, viewedAt: 1700000000 }]],
+      ]),
+    });
 
     const queryAll = jest.fn().mockResolvedValue({
       MediaContainer: {
@@ -1304,7 +1499,7 @@ describe('PlexApiService.getWatchHistory bulk map', () => {
     });
     (service as any).plexClient = { queryAll };
 
-    const result = await service.getWatchHistory('42', false, 'movie');
+    const result = await service.getWatchHistory('42', false, 'movie', LIBRARY);
 
     expect(queryAll).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -1315,13 +1510,13 @@ describe('PlexApiService.getWatchHistory bulk map', () => {
     expect(result[0].accountID).toBe(99);
   });
 
-  it('passes useCache: false through to the per-item query when the bulk map is absent', async () => {
+  it('passes useCache: false through to the per-item query when no snapshot exists', async () => {
     const queryAll = jest.fn().mockResolvedValue({
       MediaContainer: { Metadata: [] },
     });
     (service as any).plexClient = { queryAll };
 
-    await service.getWatchHistory('42', false, 'movie');
+    await service.getWatchHistory('42', false, 'movie', LIBRARY);
 
     expect(queryAll).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -1331,31 +1526,26 @@ describe('PlexApiService.getWatchHistory bulk map', () => {
     );
   });
 
-  it('serves untyped callers from the leaf map on a hit', async () => {
-    const cacheManager = (await import('../lib/cache')).default;
-    const bulkMap = new Map([
-      ['42', [{ ratingKey: '42', accountID: 10, viewedAt: 1700000000 }]],
-    ]);
-    cacheManager
-      .getCache('plexwatchhistory')
-      .data.set(WATCH_HISTORY_BULK_CACHE_KEY, bulkMap);
+  it('serves untyped callers from the snapshot on a hit', async () => {
+    await setSnapshot(LIBRARY, {
+      leaf: new Map([
+        ['42', [{ ratingKey: '42', accountID: 10, viewedAt: 1700000000 }]],
+      ]),
+    });
 
     const queryAll = jest.fn();
     (service as any).plexClient = { queryAll };
 
-    const result = await service.getWatchHistory('42');
+    const result = await service.getWatchHistory('42', true, undefined, LIBRARY);
 
     expect(result).toHaveLength(1);
     expect(queryAll).not.toHaveBeenCalled();
   });
 
-  it('falls through to per-item query for untyped callers on a leaf-map miss', async () => {
-    // Untyped callers may pass show or season ratingKeys, which are never in
-    // the leaf map - a miss must not be reported as confirmed-empty history.
-    const cacheManager = (await import('../lib/cache')).default;
-    cacheManager
-      .getCache('plexwatchhistory')
-      .data.set(WATCH_HISTORY_BULK_CACHE_KEY, new Map());
+  it('falls through to per-item query for untyped callers on a miss', async () => {
+    // Untyped callers may pass show or season ratingKeys, which are not leaf
+    // entries - a miss must not be reported as confirmed-empty history.
+    await setSnapshot(LIBRARY, { leaf: new Map() });
 
     const queryAll = jest.fn().mockResolvedValue({
       MediaContainer: {
@@ -1364,7 +1554,7 @@ describe('PlexApiService.getWatchHistory bulk map', () => {
     });
     (service as any).plexClient = { queryAll };
 
-    const result = await service.getWatchHistory('10');
+    const result = await service.getWatchHistory('10', true, undefined, LIBRARY);
 
     expect(result).toHaveLength(1);
     expect(queryAll).toHaveBeenCalledWith(
@@ -1376,37 +1566,36 @@ describe('PlexApiService.getWatchHistory bulk map', () => {
   });
 
   it('returns a copy so callers sorting in place do not mutate the cached array', async () => {
-    const cacheManager = (await import('../lib/cache')).default;
     const records = [
       { ratingKey: '42', accountID: 10, viewedAt: 2 },
       { ratingKey: '42', accountID: 11, viewedAt: 1 },
     ];
-    const bulkMap = new Map([['42', records]]);
-    cacheManager
-      .getCache('plexwatchhistory')
-      .data.set(WATCH_HISTORY_BULK_CACHE_KEY, bulkMap);
+    await setSnapshot(LIBRARY, { leaf: new Map([['42', records]]) });
 
     (service as any).plexClient = { queryAll: jest.fn() };
 
-    const first = await service.getWatchHistory('42', true, 'movie');
+    const first = await service.getWatchHistory('42', true, 'movie', LIBRARY);
     first.sort((a: any, b: any) => a.viewedAt - b.viewedAt);
     first.pop();
 
-    const second = await service.getWatchHistory('42', true, 'movie');
+    const second = await service.getWatchHistory('42', true, 'movie', LIBRARY);
     expect(second.map((r: any) => r.accountID)).toEqual([10, 11]);
   });
 
-  it('falls through to per-item query when the bulk map is absent', async () => {
+  it('falls through to per-item query when no snapshot exists at all', async () => {
     const queryAll = jest.fn().mockResolvedValue({
-      MediaContainer: { Metadata: [] },
+      MediaContainer: {
+        Metadata: [{ ratingKey: '42', accountID: 1, viewedAt: 1 }],
+      },
     });
     (service as any).plexClient = { queryAll };
 
-    await service.getWatchHistory('5', true, 'movie');
+    const result = await service.getWatchHistory('42', true, 'movie', LIBRARY);
 
+    expect(result).toHaveLength(1);
     expect(queryAll).toHaveBeenCalledWith(
       expect.objectContaining({
-        uri: expect.stringContaining('metadataItemID=5'),
+        uri: expect.stringContaining('metadataItemID=42'),
       }),
       true,
     );
