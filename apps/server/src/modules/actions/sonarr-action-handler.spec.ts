@@ -206,6 +206,94 @@ describe('SonarrActionHandler', () => {
       expect(folderCleanup.cleanupAfterDelete).not.toHaveBeenCalled();
     });
 
+    // Which folder to remove has to be unambiguous. A season whose files are
+    // spread over more than one folder gives no single answer, so it is skipped
+    // rather than picking one.
+    it('does not clean a season whose files do not all sit in one folder', async () => {
+      const collection = createCollection({
+        arrAction: ServarrAction.DELETE,
+        sonarrSettingsId: 1,
+        cleanupLeftoverFolders: true,
+        type: 'season',
+      });
+      const collectionMedia = createCollectionMediaWithMetadata(collection, {
+        tmdbId: 1,
+      });
+      mockMediaServerMetadata({ index: 1 } as MediaItem);
+      const api = arrangeCleanup(seriesFixture());
+      jest.spyOn(api, 'getEpisodeFiles').mockResolvedValue([
+        { id: 7, seasonNumber: 1, path: '/data/tv/Sample Series/S01E01.mkv' },
+        {
+          id: 8,
+          seasonNumber: 1,
+          path: '/data/tv/Sample Series/Season 01/S01E02.mkv',
+        },
+      ] as never);
+
+      await sonarrActionHandler.handleAction(collection, collectionMedia);
+
+      expect(folderCleanup.cleanupAfterDelete).not.toHaveBeenCalled();
+    });
+
+    // The fences must cover every file the delete removes, not just the first
+    // one found - a series folder holds each season's files in its own subfolder.
+    it('passes every deleted episode file to the series cleanup', async () => {
+      const collection = createCollection({
+        arrAction: ServarrAction.UNMONITOR_DELETE_ALL,
+        sonarrSettingsId: 1,
+        cleanupLeftoverFolders: true,
+        type: 'show',
+      });
+      const collectionMedia = createCollectionMediaWithMetadata(collection, {
+        tmdbId: 1,
+      });
+      const api = arrangeCleanup(seriesFixture());
+      jest.spyOn(api, 'getEpisodeFiles').mockResolvedValue([
+        {
+          id: 7,
+          seasonNumber: 1,
+          path: '/data/tv/Sample Series/Season 01/S01E01.mkv',
+        },
+        {
+          id: 8,
+          seasonNumber: 2,
+          path: '/data/tv/Sample Series/Season 02/S02E01.mkv',
+        },
+      ] as never);
+
+      await sonarrActionHandler.handleAction(collection, collectionMedia);
+
+      expect(folderCleanup.cleanupAfterDelete).toHaveBeenCalledWith(
+        expect.objectContaining({
+          scope: 'series',
+          deletedFilePaths: [
+            '/data/tv/Sample Series/Season 01/S01E01.mkv',
+            '/data/tv/Sample Series/Season 02/S02E01.mkv',
+          ],
+        }),
+      );
+    });
+
+    // A failed listing is not "no files": fencing on an empty deleted-file list
+    // would drop the proof that this is the folder the delete just emptied.
+    it('skips the cleanup when the episode-file listing failed', async () => {
+      const collection = createCollection({
+        arrAction: ServarrAction.UNMONITOR_DELETE_ALL,
+        sonarrSettingsId: 1,
+        cleanupLeftoverFolders: true,
+        type: 'show',
+      });
+      const collectionMedia = createCollectionMediaWithMetadata(collection, {
+        tmdbId: 1,
+      });
+      const api = arrangeCleanup(seriesFixture());
+      jest.spyOn(api, 'getEpisodeFiles').mockResolvedValue(undefined as never);
+
+      await sonarrActionHandler.handleAction(collection, collectionMedia);
+
+      expect(folderCleanup.cleanupAfterDelete).not.toHaveBeenCalled();
+    });
+
     it('does not clean a season when the series has no season folders', async () => {
       const collection = createCollection({
         arrAction: ServarrAction.DELETE,
