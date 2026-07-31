@@ -426,7 +426,9 @@ describe('JellyfinAdapterService', () => {
     });
 
     it('prefetchWatchHistory is a no-op when the adapter is not initialised', async () => {
-      await expect(service.prefetchWatchHistory({ libraryId: 'lib-1' })).resolves.toBeUndefined();
+      await expect(
+        service.prefetchWatchHistory({ libraryId: 'lib-1' }),
+      ).resolves.toBeUndefined();
     });
   });
 
@@ -1486,7 +1488,9 @@ describe('JellyfinAdapterService', () => {
             : Promise.resolve(leafPage(userId)),
       );
 
-      await expect(service.prefetchWatchHistory({ libraryId: 'lib-1' })).resolves.toBeUndefined();
+      await expect(
+        service.prefetchWatchHistory({ libraryId: 'lib-1' }),
+      ).resolves.toBeUndefined();
       expect(snapshot()).toBeUndefined();
     });
 

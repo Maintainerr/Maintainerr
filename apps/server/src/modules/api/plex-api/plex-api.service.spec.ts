@@ -877,11 +877,13 @@ describe('PlexApiService.prefetchWatchHistory', () => {
   // The sweep proves its rollup with one live per-item read; unless a test says
   // otherwise, have that read agree with what the rollup claims.
   const agreeingVerification = (rows: Record<string, unknown>[]) =>
-    jest.fn().mockImplementation(async (query: { uri: string }) =>
-      query.uri.includes('metadataItemID')
-        ? { MediaContainer: { Metadata: rows } }
-        : { MediaContainer: { Metadata: rows, totalSize: rows.length } },
-    );
+    jest
+      .fn()
+      .mockImplementation(async (query: { uri: string }) =>
+        query.uri.includes('metadataItemID')
+          ? { MediaContainer: { Metadata: rows } }
+          : { MediaContainer: { Metadata: rows, totalSize: rows.length } },
+      );
 
   const snapshotFor = async (libraryId: string) => {
     const cacheManager = (await import('../lib/cache')).default;
@@ -959,11 +961,20 @@ describe('PlexApiService.prefetchWatchHistory', () => {
     // plausible-looking rollup that under-reports the show. The sweep asks
     // Plex the same question and throws the rollup away when it differs.
     const rows = [episodeRow({ ratingKey: '101', viewedAt: 1 })];
-    const queryAll = jest.fn().mockImplementation(async (query: { uri: string }) =>
-      query.uri.includes('metadataItemID')
-        ? { MediaContainer: { Metadata: [...rows, episodeRow({ ratingKey: '102', viewedAt: 2 })] } }
-        : { MediaContainer: { Metadata: rows, totalSize: rows.length } },
-    );
+    const queryAll = jest
+      .fn()
+      .mockImplementation(async (query: { uri: string }) =>
+        query.uri.includes('metadataItemID')
+          ? {
+              MediaContainer: {
+                Metadata: [
+                  ...rows,
+                  episodeRow({ ratingKey: '102', viewedAt: 2 }),
+                ],
+              },
+            }
+          : { MediaContainer: { Metadata: rows, totalSize: rows.length } },
+      );
     (service as any).plexClient = { queryAll };
 
     await service.prefetchWatchHistory(LIBRARY);
@@ -978,10 +989,12 @@ describe('PlexApiService.prefetchWatchHistory', () => {
 
   it('drops the rollup when the verification read fails', async () => {
     const rows = [episodeRow({ ratingKey: '101', viewedAt: 1 })];
-    const queryAll = jest.fn().mockImplementation(async (query: { uri: string }) => {
-      if (query.uri.includes('metadataItemID')) throw new Error('network');
-      return { MediaContainer: { Metadata: rows, totalSize: rows.length } };
-    });
+    const queryAll = jest
+      .fn()
+      .mockImplementation(async (query: { uri: string }) => {
+        if (query.uri.includes('metadataItemID')) throw new Error('network');
+        return { MediaContainer: { Metadata: rows, totalSize: rows.length } };
+      });
     (service as any).plexClient = { queryAll };
 
     await service.prefetchWatchHistory(LIBRARY);
@@ -1006,7 +1019,9 @@ describe('PlexApiService.prefetchWatchHistory', () => {
     expect(snapshot?.rollup).toBeUndefined();
     // No rollup to prove, so no verification request was spent on it.
     expect(
-      queryAll.mock.calls.filter((c: any[]) => c[0].uri.includes('metadataItemID')),
+      queryAll.mock.calls.filter((c: any[]) =>
+        c[0].uri.includes('metadataItemID'),
+      ),
     ).toHaveLength(0);
   });
 
@@ -1018,7 +1033,9 @@ describe('PlexApiService.prefetchWatchHistory', () => {
     await service.prefetchWatchHistory(LIBRARY);
 
     expect(
-      queryAll.mock.calls.filter((c: any[]) => c[0].uri.includes('metadataItemID')),
+      queryAll.mock.calls.filter((c: any[]) =>
+        c[0].uri.includes('metadataItemID'),
+      ),
     ).toHaveLength(0);
     expect((await snapshotFor(LIBRARY))?.rollup?.show.size ?? 0).toBe(0);
   });
@@ -1405,11 +1422,15 @@ describe('PlexApiService.getWatchHistory snapshot', () => {
 
     (await service.getWatchHistory('10', true, 'show', LIBRARY)).pop();
 
-    expect(await service.getWatchHistory('10', true, 'show', LIBRARY)).toHaveLength(2);
+    expect(
+      await service.getWatchHistory('10', true, 'show', LIBRARY),
+    ).toHaveLength(2);
   });
 
   it('always rolls show queries up server-side via the per-item query', async () => {
-    await setSnapshot(LIBRARY, { leaf: new Map([['10', [{ ratingKey: '10' }]]]) });
+    await setSnapshot(LIBRARY, {
+      leaf: new Map([['10', [{ ratingKey: '10' }]]]),
+    });
 
     const queryAll = jest.fn().mockResolvedValue({
       MediaContainer: {
@@ -1431,7 +1452,9 @@ describe('PlexApiService.getWatchHistory snapshot', () => {
   });
 
   it('always rolls season queries up server-side via the per-item query', async () => {
-    await setSnapshot(LIBRARY, { leaf: new Map([['20', [{ ratingKey: '20' }]]]) });
+    await setSnapshot(LIBRARY, {
+      leaf: new Map([['20', [{ ratingKey: '20' }]]]),
+    });
 
     const queryAll = jest.fn().mockResolvedValue({
       MediaContainer: {
@@ -1536,7 +1559,12 @@ describe('PlexApiService.getWatchHistory snapshot', () => {
     const queryAll = jest.fn();
     (service as any).plexClient = { queryAll };
 
-    const result = await service.getWatchHistory('42', true, undefined, LIBRARY);
+    const result = await service.getWatchHistory(
+      '42',
+      true,
+      undefined,
+      LIBRARY,
+    );
 
     expect(result).toHaveLength(1);
     expect(queryAll).not.toHaveBeenCalled();
@@ -1554,7 +1582,12 @@ describe('PlexApiService.getWatchHistory snapshot', () => {
     });
     (service as any).plexClient = { queryAll };
 
-    const result = await service.getWatchHistory('10', true, undefined, LIBRARY);
+    const result = await service.getWatchHistory(
+      '10',
+      true,
+      undefined,
+      LIBRARY,
+    );
 
     expect(result).toHaveLength(1);
     expect(queryAll).toHaveBeenCalledWith(

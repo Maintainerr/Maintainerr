@@ -25,7 +25,6 @@ import { Rules } from '../rules/entities/rules.entities';
 /** Singleton instance - avoids re-creating the constant data on every call. */
 const RULE_CONSTANTS = new RuleConstants();
 
-
 /**
  * Outcome of checking whether a single rule can be migrated.
  */

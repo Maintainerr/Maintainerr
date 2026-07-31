@@ -791,10 +791,10 @@ export class JellyfinGetterService {
       case 'season':
       case 'show': {
         const watchHistory = await this.descendantWatchHistory(
-      itemId,
-      type,
-      libraryId,
-    );
+          itemId,
+          type,
+          libraryId,
+        );
         const watched = new Set(
           Object.values(watchHistory).flatMap((records) =>
             records.map((record) => record.userId),

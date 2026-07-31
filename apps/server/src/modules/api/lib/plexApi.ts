@@ -129,7 +129,11 @@ class PlexApi {
       // silent truncation for callers that have no totalSize check of their
       // own. Stepping by `received` also makes an empty page terminate the
       // sweep instead of looping to the end of totalSize.
-      if (received > 0 && typeof totalSize === 'number' && fetched < totalSize) {
+      if (
+        received > 0 &&
+        typeof totalSize === 'number' &&
+        fetched < totalSize
+      ) {
         offset += received;
         options.extraHeaders['X-Plex-Container-Start'] = `${offset}`;
       } else {

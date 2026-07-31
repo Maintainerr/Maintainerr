@@ -1442,7 +1442,9 @@ export class JellyfinAdapterService implements IMediaServerService {
 
     const snapshot = cacheManager
       .getCache('jellyfinwatchhistory')
-      .data.get<JellyfinWatchSnapshot>(jellyfinWatchSnapshotCacheKey(libraryId));
+      .data.get<JellyfinWatchSnapshot>(
+        jellyfinWatchSnapshotCacheKey(libraryId),
+      );
 
     return snapshot?.playedCompletionThreshold === playedCompletionThreshold
       ? snapshot

@@ -2,10 +2,13 @@ import { MediaServerType } from '@maintainerr/contracts';
 import { Application } from '../constants/rules.constants';
 
 /**
- * Maps a configured media server onto the `Application` whose properties
- * describe it. The `Record<MediaServerType, …>` type is exhaustive - adding a
- * new media server to `MediaServerType` is a compile error until it is mapped
+ * Single source of truth mapping each supported media server to its rule
+ * `Application` id. The `Record<MediaServerType, …>` type is exhaustive - adding
+ * a new media server to `MediaServerType` is a compile error until it is mapped
  * here, which keeps every consumer in step with the supported-server list.
+ *
+ * Lives here rather than beside its first consumer (RuleMigrationService) so
+ * the rules layer can use it without importing from settings.
  */
 export const MEDIA_SERVER_TYPE_TO_APP: Record<MediaServerType, Application> = {
   [MediaServerType.PLEX]: Application.PLEX,

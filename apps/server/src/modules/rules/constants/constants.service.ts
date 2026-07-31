@@ -124,7 +124,8 @@ export class RuleConstanstService {
     configuredServerType?: MediaServerType | null,
   ): string {
     const application = this.ruleConstants.applications.find(
-      (el) => el.id === resolveValueApplication(location[0], configuredServerType),
+      (el) =>
+        el.id === resolveValueApplication(location[0], configuredServerType),
     );
     const prop = application?.props.find((el) => el.id === location[1]);
     if (!prop) return 'Value unavailable';

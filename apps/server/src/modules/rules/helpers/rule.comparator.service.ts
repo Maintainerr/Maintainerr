@@ -98,7 +98,8 @@ export class RuleComparatorService {
       this.resultIds = new Set<string>();
       this.statsById = new Map<string, IComparisonStatistics>();
       this.transientFailureIds = new Set<string>();
-      this.configuredServerType = await this.valueGetter.getConfiguredServerType();
+      this.configuredServerType =
+        await this.valueGetter.getConfiguredServerType();
 
       // run rules
       let currentSection = 0;

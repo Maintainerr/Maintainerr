@@ -808,11 +808,12 @@ export class PlexApiService {
       return existing;
     }
 
-    const inFlight = this.fetchWatchHistorySnapshot(libraryId, abortSignal).finally(
-      () => {
-        this.watchHistoryPrefetches.delete(libraryId);
-      },
-    );
+    const inFlight = this.fetchWatchHistorySnapshot(
+      libraryId,
+      abortSignal,
+    ).finally(() => {
+      this.watchHistoryPrefetches.delete(libraryId);
+    });
     this.watchHistoryPrefetches.set(libraryId, inFlight);
     return inFlight;
   }
@@ -1045,7 +1046,9 @@ export class PlexApiService {
     // Without a libraryId there is no snapshot we can safely attribute the item
     // to, so the read falls through rather than risk another library's answer.
     const snapshot =
-      useCache && libraryId ? this.getWatchHistorySnapshot(libraryId) : undefined;
+      useCache && libraryId
+        ? this.getWatchHistorySnapshot(libraryId)
+        : undefined;
 
     if (snapshot) {
       switch (itemType) {
