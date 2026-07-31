@@ -1372,8 +1372,7 @@ const AddModal = (props: AddModal) => {
                           Take action after days*
                           <p className="text-xs font-normal">
                             Duration of days media remains in the{' '}
-                            {collectionTerm}
-                            before deletion/unmonitor
+                            {collectionTerm} before deletion/unmonitor
                           </p>
                         </label>
                         <div className="form-input">
