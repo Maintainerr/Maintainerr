@@ -1,6 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { DownloadClientApiService } from '../api/download-client-api/download-client-api.service';
+import { leftoverCleanupScope } from '@maintainerr/contracts';
 import { MediaServerFactory } from '../api/media-server/media-server.factory';
+import { RadarrMovie } from '../api/servarr-api/interfaces/radarr.interface';
 import { ServarrService } from '../api/servarr-api/servarr.service';
 import { Collection } from '../collections/entities/collection.entities';
 import { CollectionMedia } from '../collections/entities/collection_media.entities';
@@ -12,6 +14,10 @@ import {
 } from '../metadata/metadata-lookup.util';
 import { MetadataService } from '../metadata/metadata.service';
 import { SettingsDataService } from '../settings/settings-data.service';
+import {
+  LeftoverCleanupInput,
+  LeftoverFolderCleanupService,
+} from './leftover-folder-cleanup.service';
 
 @Injectable()
 export class RadarrActionHandler {
@@ -21,6 +27,7 @@ export class RadarrActionHandler {
     private readonly metadataService: MetadataService,
     private readonly settings: SettingsDataService,
     private readonly downloadClient: DownloadClientApiService,
+    private readonly folderCleanup: LeftoverFolderCleanupService,
     private readonly logger: MaintainerrLogger,
   ) {
     logger.setContext(RadarrActionHandler.name);
@@ -77,6 +84,17 @@ export class RadarrActionHandler {
             ? await radarrApiClient.getDownloadIdsForMovie(radarrMedia.id)
             : [];
 
+        // Leftover-folder cleanup inputs, captured before the delete (the file
+        // list is gone afterwards). Only UNMONITOR_DELETE_ALL strands a folder:
+        // it removes the files one by one, whereas deleteMovie removes the whole
+        // movie folder in Radarr itself. Only fetched when the feature is on, to
+        // keep the common path free of extra calls.
+        const cleanupInputs =
+          collection.cleanupLeftoverFolders &&
+          leftoverCleanupScope(collection.type, collection.arrAction)
+            ? await this.collectCleanupInputs(radarrApiClient, radarrMedia)
+            : undefined;
+
         switch (collection.arrAction) {
           case ServarrAction.DELETE:
           case ServarrAction.UNMONITOR_DELETE_EXISTING:
@@ -121,6 +139,14 @@ export class RadarrActionHandler {
               `Unmonitored movie with ${matchedProvider} ID ${matchedId}${collection.listExclusions ? ', added to import exclusion list' : ''} & removed files from filesystem in Radarr`,
             );
             await this.downloadClient.removeDownloads(downloadIds);
+            if (cleanupInputs) {
+              await this.folderCleanup.cleanupAfterDelete({
+                ...cleanupInputs,
+                folderPath: radarrMedia.path,
+                scope: 'movie',
+                label: radarrMedia.title,
+              });
+            }
             return true;
           case ServarrAction.CHANGE_QUALITY_PROFILE: {
             const targetProfileId = collection.radarrQualityProfileId;
@@ -193,5 +219,42 @@ export class RadarrActionHandler {
     }
 
     return false;
+  }
+
+  /**
+   * The fences the leftover-folder cleanup needs, read before the delete: the
+   * root folders it may act inside, the file paths that prove the folder is the
+   * one just emptied, and the other movie folders it must not touch.
+   */
+  private async collectCleanupInputs(
+    radarrApiClient: Awaited<ReturnType<ServarrService['getRadarrApiClient']>>,
+    radarrMedia: RadarrMovie,
+  ): Promise<Pick<
+    LeftoverCleanupInput,
+    'rootFolderPaths' | 'deletedFilePaths' | 'otherItemPaths'
+  > | null> {
+    try {
+      const [rootFolders, movieFiles, movies] = await Promise.all([
+        radarrApiClient.getRootFolders(),
+        radarrApiClient.getMovieFiles(radarrMedia.id),
+        radarrApiClient.getMovies(),
+      ]);
+
+      return {
+        rootFolderPaths: (rootFolders ?? [])
+          .map((folder) => folder.path)
+          .filter((p): p is string => !!p),
+        deletedFilePaths: (movieFiles ?? [])
+          .map((file) => file.path)
+          .filter((p): p is string => !!p),
+        otherItemPaths: (movies ?? [])
+          .filter((movie) => movie.id !== radarrMedia.id)
+          .map((movie) => movie.path)
+          .filter((p): p is string => !!p),
+      };
+    } catch (error) {
+      this.logger.debug(error);
+      return null;
+    }
   }
 }

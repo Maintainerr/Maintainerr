@@ -21,6 +21,7 @@ export interface ICollection {
   visibleOnRecommended?: boolean;
   visibleOnHome?: boolean;
   listExclusions?: boolean;
+  cleanupLeftoverFolders?: boolean;
   forceSeerr?: boolean;
   deleteAfterDays?: number; // amount of days after add
   media?: CollectionMedia[];

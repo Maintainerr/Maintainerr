@@ -65,6 +65,13 @@ export class Collection {
   @Column({ nullable: false, default: false })
   listExclusions: boolean;
 
+  // Opt-in: after this collection's action deletes the item's files one at a
+  // time, remove the folder the *arr strands and the sidecars left in it.
+  // Off by default - it deletes from disk, and only the actions that strand a
+  // folder offer it (see leftoverCleanupScope in @maintainerr/contracts).
+  @Column({ nullable: false, default: false })
+  cleanupLeftoverFolders: boolean;
+
   @Column({ nullable: false, default: false })
   forceSeerr: boolean;
 

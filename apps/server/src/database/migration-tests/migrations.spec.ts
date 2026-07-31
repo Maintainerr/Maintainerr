@@ -124,7 +124,7 @@ describe('database migrations', () => {
         notnull: 1,
       });
 
-      // Columns added by the newest migration (AddSportarrSettings).
+      // AddSportarrSettings: the Sportarr connection columns.
       expect(collection.sportarrSettingsId).toMatchObject(intNullable);
       expect(collection.sportarrQualityProfileId).toMatchObject(intNullable);
       const sportarrSettings = byName(await columns(ds, 'sportarr_settings'));
@@ -140,6 +140,9 @@ describe('database migrations', () => {
         type: 'varchar',
         notnull: 0,
       });
+
+      // Column added by the newest migration (AddCollectionLeftoverCleanup).
+      expect(collection.cleanupLeftoverFolders).toMatchObject(bool);
     } finally {
       await ds.destroy();
     }
@@ -151,7 +154,8 @@ describe('database migrations', () => {
     // SQLite can't ALTER most columns in place, so `migration:generate` always
     // emits a full create-temporary-table / copy / drop / rename rebuild for the
     // changed tables. A hand-written ALTER shortcut lacks it - this is the
-    // cheapest signal the migration was generated rather than authored.
+    // cheapest signal the migration was generated rather than authored. The
+    // newest migration adds a `collection` column, so it rebuilds that table.
     expect(src).toContain('CREATE TABLE "temporary_collection"');
   });
 
@@ -165,7 +169,7 @@ describe('database migrations', () => {
       await ds.runMigrations();
       const has = async () =>
         (await columns(ds, 'collection')).some(
-          (c) => c.name === 'sportarrSettingsId',
+          (c) => c.name === 'cleanupLeftoverFolders',
         );
       expect(await has()).toBe(true);
 

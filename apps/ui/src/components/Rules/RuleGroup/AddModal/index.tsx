@@ -10,6 +10,7 @@ import {
 import { zodResolver } from '@hookform/resolvers/zod'
 import {
   Application,
+  leftoverCleanupScope,
   MediaItemType,
   MediaLibrary,
   MediaServerFeature,
@@ -356,6 +357,7 @@ export const ruleGroupFormSchema = z
     overlayEnabled: z.boolean(),
     overlayTemplateId: z.number().int().nullable().optional(),
     listExclusions: z.boolean(),
+    cleanupLeftoverFolders: z.boolean(),
     forceSeerr: z.boolean(),
     manualCollection: z.boolean(),
     manualCollectionName: z.string().optional(),
@@ -452,6 +454,7 @@ const buildFormDefaults = (editData?: IRuleGroup): RuleGroupFormValues => ({
   overlayEnabled: editData?.collection?.overlayEnabled ?? false,
   overlayTemplateId: editData?.collection?.overlayTemplateId ?? null,
   listExclusions: editData?.collection?.listExclusions ?? true,
+  cleanupLeftoverFolders: editData?.collection?.cleanupLeftoverFolders ?? false,
   forceSeerr: editData?.collection?.forceSeerr ?? false,
   manualCollection: editData?.collection?.manualCollection ?? false,
   manualCollectionName: editData?.collection?.manualCollectionName ?? '',
@@ -582,6 +585,9 @@ const AddModal = (props: AddModal) => {
   }) as number | null | undefined
   const hasSelectedRadarrServer = radarrSettingsId != null
   const hasSelectedSonarrServer = sonarrSettingsId != null
+  // Which *arr owns this collection: movie libraries are Radarr's, every other
+  // type (show, season, episode) is Sonarr's.
+  const cleanupArrName = selectedLibraryType === 'movie' ? 'Radarr' : 'Sonarr'
   const hasSelectedSportarrServer = sportarrSettingsId != null
   const [showCommunityModal, setShowCommunityModal] = useState(false)
   const [yamlImporterModal, setYamlImporterModal] = useState(false)
@@ -952,6 +958,7 @@ const AddModal = (props: AddModal) => {
       isActive: data.active,
       useRules: data.useRules,
       listExclusions: data.listExclusions,
+      cleanupLeftoverFolders: data.cleanupLeftoverFolders,
       forceSeerr: data.forceSeerr,
       tautulliWatchedPercentOverride: data.tautulliWatchedPercentOverride,
       radarrSettingsId: data.radarrSettingsId ?? undefined,
@@ -1579,6 +1586,44 @@ const AddModal = (props: AddModal) => {
                         </div>
                       </div>
                     )}
+
+                    {/* Only the actions that delete an item's files one at a
+                        time strand a folder; leftoverCleanupScope is the one
+                        definition of which those are, shared with the server. */}
+                    {(hasSelectedRadarrServer || hasSelectedSonarrServer) &&
+                      arrActionValue !== undefined &&
+                      leftoverCleanupScope(
+                        selectedType as MediaItemType,
+                        arrActionValue,
+                      ) !== undefined && (
+                        <div className="flex flex-row items-center justify-between py-4">
+                          <label
+                            htmlFor="cleanup_leftover_folders"
+                            className="text-label"
+                          >
+                            Clean up leftover folders
+                            <span className="ml-1.5 rounded-full bg-maintainerr-600 px-3 text-sm font-medium text-white">
+                              BETA
+                            </span>
+                            <p className="text-xs font-normal">
+                              Delete the folder {cleanupArrName} leaves behind
+                              and its sidecars (subtitles, .nfo, artwork).
+                              Requires the library mounted at the same path{' '}
+                              {cleanupArrName} uses
+                            </p>
+                          </label>
+                          <div className="form-input">
+                            <div className="form-input-field">
+                              <input
+                                type="checkbox"
+                                id="cleanup_leftover_folders"
+                                className="checkbox"
+                                {...register('cleanupLeftoverFolders')}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      )}
 
                     {/* Strict 'show' (not selectedLibraryType) on purpose:
                         Sonarr tags are series-level, so season/episode

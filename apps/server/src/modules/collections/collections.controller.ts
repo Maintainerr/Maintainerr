@@ -150,6 +150,7 @@ const collectionBaseShape = {
   visibleOnRecommended: z.boolean().optional(),
   visibleOnHome: z.boolean().optional(),
   listExclusions: z.boolean().optional(),
+  cleanupLeftoverFolders: z.boolean().optional(),
   forceSeerr: z.boolean().optional(),
   deleteAfterDays: z.coerce.number().int().optional(),
   manualCollection: z.boolean().optional(),

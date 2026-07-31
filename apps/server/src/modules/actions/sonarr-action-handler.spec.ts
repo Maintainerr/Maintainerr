@@ -19,6 +19,7 @@ import { ServarrAction } from '../collections/interfaces/collection.interface';
 import { MaintainerrLogger } from '../logging/logs.service';
 import { MetadataService } from '../metadata/metadata.service';
 import { SettingsDataService } from '../settings/settings-data.service';
+import { LeftoverFolderCleanupService } from './leftover-folder-cleanup.service';
 import { SonarrActionHandler } from './sonarr-action-handler';
 
 describe('SonarrActionHandler', () => {
@@ -30,6 +31,7 @@ describe('SonarrActionHandler', () => {
   let metadataService: Mocked<MetadataService>;
   let settings: Mocked<SettingsDataService>;
   let downloadClient: Mocked<DownloadClientApiService>;
+  let folderCleanup: Mocked<LeftoverFolderCleanupService>;
   let mediaIdFinder: {
     findTvdbId: jest.Mock<Promise<number | undefined>, []>;
   };
@@ -46,6 +48,7 @@ describe('SonarrActionHandler', () => {
     metadataService = unitRef.get(MetadataService);
     settings = unitRef.get(SettingsDataService);
     downloadClient = unitRef.get(DownloadClientApiService);
+    folderCleanup = unitRef.get(LeftoverFolderCleanupService);
     logger = unitRef.get(MaintainerrLogger);
 
     mediaIdFinder = {
@@ -91,6 +94,186 @@ describe('SonarrActionHandler', () => {
     sizeOnDisk: 0,
     percentOfEpisodes: 0,
     ...overrides,
+  });
+
+  describe('leftover-folder cleanup', () => {
+    const arrangeCleanup = (
+      series: ReturnType<typeof createSonarrSeries>,
+      episodeFilePath = '/data/tv/Sample Series/Season 01/S01E01.mkv',
+    ) => {
+      const api = mockSonarrApi(servarrService, logger);
+      jest.spyOn(api, 'getSeriesByTvdbId').mockResolvedValue(series);
+      jest.spyOn(api, 'unmonitorSeasons').mockResolvedValue(series);
+      jest
+        .spyOn(api, 'getRootFolders')
+        .mockResolvedValue([{ path: '/data/tv' }] as never);
+      jest
+        .spyOn(api, 'getSeries')
+        .mockResolvedValue([
+          series,
+          { id: 99, path: '/data/tv/Other Series' },
+        ] as never);
+      jest
+        .spyOn(api, 'getEpisodes')
+        .mockResolvedValue([{ id: 1, episodeFileId: 7 }] as never);
+      jest
+        .spyOn(api, 'getEpisodeFile')
+        .mockResolvedValue({ id: 7, path: episodeFilePath } as never);
+      mediaIdFinder.findTvdbId.mockResolvedValue(1);
+      return api;
+    };
+
+    const seriesFixture = (overrides = {}) =>
+      createSonarrSeries({
+        id: 42,
+        path: '/data/tv/Sample Series',
+        seasonFolder: true,
+        ...overrides,
+      });
+
+    it('cleans the season folder after a season DELETE, which deletes episode files one by one', async () => {
+      const collection = createCollection({
+        arrAction: ServarrAction.DELETE,
+        sonarrSettingsId: 1,
+        cleanupLeftoverFolders: true,
+        type: 'season',
+      });
+      const collectionMedia = createCollectionMediaWithMetadata(collection, {
+        tmdbId: 1,
+      });
+      mockMediaServerMetadata({ index: 1 } as MediaItem);
+      arrangeCleanup(seriesFixture());
+
+      await sonarrActionHandler.handleAction(collection, collectionMedia);
+
+      expect(folderCleanup.cleanupAfterDelete).toHaveBeenCalledWith({
+        folderPath: '/data/tv/Sample Series/Season 01',
+        parentPath: '/data/tv/Sample Series',
+        rootFolderPaths: ['/data/tv'],
+        deletedFilePaths: ['/data/tv/Sample Series/Season 01/S01E01.mkv'],
+        otherItemPaths: ['/data/tv/Other Series'],
+        scope: 'season',
+        label: expect.any(String),
+      });
+    });
+
+    it('cleans the series folder after UNMONITOR_DELETE_EXISTING on a show', async () => {
+      const collection = createCollection({
+        arrAction: ServarrAction.UNMONITOR_DELETE_EXISTING,
+        sonarrSettingsId: 1,
+        cleanupLeftoverFolders: true,
+        type: 'show',
+      });
+      const collectionMedia = createCollectionMediaWithMetadata(collection, {
+        tmdbId: 1,
+      });
+      arrangeCleanup(seriesFixture());
+
+      await sonarrActionHandler.handleAction(collection, collectionMedia);
+
+      expect(folderCleanup.cleanupAfterDelete).toHaveBeenCalledWith(
+        expect.objectContaining({
+          folderPath: '/data/tv/Sample Series',
+          rootFolderPaths: ['/data/tv'],
+          deletedFilePaths: ['/data/tv/Sample Series/Season 01/S01E01.mkv'],
+          scope: 'series',
+        }),
+      );
+    });
+
+    it('does not clean after a whole-show DELETE: Sonarr removes the series folder itself', async () => {
+      const collection = createCollection({
+        arrAction: ServarrAction.DELETE,
+        sonarrSettingsId: 1,
+        cleanupLeftoverFolders: true,
+        type: 'show',
+      });
+      const collectionMedia = createCollectionMediaWithMetadata(collection, {
+        tmdbId: 1,
+      });
+      const api = arrangeCleanup(seriesFixture());
+
+      const result = await sonarrActionHandler.handleAction(
+        collection,
+        collectionMedia,
+      );
+
+      expect(result).toBe(true);
+      expect(api.deleteShow).toHaveBeenCalledWith(
+        42,
+        true,
+        collection.listExclusions,
+      );
+      expect(folderCleanup.cleanupAfterDelete).not.toHaveBeenCalled();
+    });
+
+    it('does not clean a season when the series has no season folders', async () => {
+      const collection = createCollection({
+        arrAction: ServarrAction.DELETE,
+        sonarrSettingsId: 1,
+        cleanupLeftoverFolders: true,
+        type: 'season',
+      });
+      const collectionMedia = createCollectionMediaWithMetadata(collection, {
+        tmdbId: 1,
+      });
+      mockMediaServerMetadata({ index: 1 } as MediaItem);
+      arrangeCleanup(seriesFixture({ seasonFolder: false }));
+
+      await sonarrActionHandler.handleAction(collection, collectionMedia);
+
+      expect(folderCleanup.cleanupAfterDelete).not.toHaveBeenCalled();
+    });
+
+    it('does not clean the season folder when DELETE_SHOW_IF_EMPTY deleted the whole show', async () => {
+      const collection = createCollection({
+        arrAction: ServarrAction.DELETE_SHOW_IF_EMPTY,
+        sonarrSettingsId: 1,
+        cleanupLeftoverFolders: true,
+        type: 'season',
+      });
+      const collectionMedia = createCollectionMediaWithMetadata(collection, {
+        tmdbId: 1,
+      });
+      mockMediaServerMetadata({ index: 1 } as MediaItem);
+      const emptyEndedSeries = seriesFixture({
+        status: 'ended',
+        statistics: { episodeFileCount: 0 },
+        seasons: [],
+      });
+      arrangeCleanup(emptyEndedSeries);
+      seerrApi.isConfigured.mockReturnValue(false);
+
+      await sonarrActionHandler.handleAction(collection, collectionMedia);
+
+      expect(folderCleanup.cleanupAfterDelete).not.toHaveBeenCalled();
+    });
+
+    it('cleans the season folder when DELETE_SHOW_IF_EMPTY kept the show', async () => {
+      const collection = createCollection({
+        arrAction: ServarrAction.DELETE_SHOW_IF_EMPTY,
+        sonarrSettingsId: 1,
+        cleanupLeftoverFolders: true,
+        type: 'season',
+      });
+      const collectionMedia = createCollectionMediaWithMetadata(collection, {
+        tmdbId: 1,
+      });
+      mockMediaServerMetadata({ index: 1 } as MediaItem);
+      arrangeCleanup(
+        seriesFixture({
+          status: 'continuing',
+          statistics: { episodeFileCount: 3 },
+        }),
+      );
+      seerrApi.isConfigured.mockReturnValue(false);
+
+      await sonarrActionHandler.handleAction(collection, collectionMedia);
+
+      expect(folderCleanup.cleanupAfterDelete).toHaveBeenCalledWith(
+        expect.objectContaining({ scope: 'season' }),
+      );
+    });
   });
 
   it.each([
