@@ -22,6 +22,11 @@ export const mockRadarrApi = (
   jest.spyOn(api, 'updateMovie').mockResolvedValue(true);
   jest.spyOn(api, 'ensureTag').mockResolvedValue(1);
   jest.spyOn(api, 'setMovieTags').mockResolvedValue(true);
+  // Leftover-folder cleanup inputs; default to "nothing known" so tests that
+  // don't enable the feature never hit the network.
+  jest.spyOn(api, 'getRootFolders').mockResolvedValue([]);
+  jest.spyOn(api, 'getMovieFiles').mockResolvedValue([]);
+  jest.spyOn(api, 'getMovies').mockResolvedValue([]);
 
   servarrService.getRadarrApiClient.mockResolvedValue(api);
 
@@ -53,6 +58,11 @@ export const mockSonarrApi = (
   jest.spyOn(api, 'getSeriesDownloadHistory').mockResolvedValue([]);
   jest.spyOn(api, 'ensureTag').mockResolvedValue(1);
   jest.spyOn(api, 'setSeriesTags').mockResolvedValue(true);
+  // Leftover-folder cleanup inputs; default to "nothing known" so tests that
+  // don't enable the feature never hit the network.
+  jest.spyOn(api, 'getRootFolders').mockResolvedValue([]);
+  jest.spyOn(api, 'getSeries').mockResolvedValue([]);
+  jest.spyOn(api, 'getEpisodeFiles').mockResolvedValue([]);
 
   servarrService.getSonarrApiClient.mockResolvedValue(api);
 

@@ -67,12 +67,15 @@ services:
           - type: bind
             source: ./data
             target: /opt/data
+#          - type: bind # uncomment for the leftover-folder cleanup: your library, at the same path Radarr/Sonarr report it at
+#            source: /path/to/media
+#            target: /path/to/media
         environment:
           - TZ=Europe/Brussels
-#      - BASE_PATH=/maintainerr # uncomment if you're serving maintainerr from a subdirectory
-#      - UI_HOSTNAME=:: # uncomment if you want to listen on IPv6 instead (default 0.0.0.0)
-#      - UI_PORT=6247 # uncomment to change the UI port (default 6246)
-#      - GITHUB_TOKEN=ghp_yourtoken # Optional: GitHub Personal Access Token for higher API rate limits (60/hr without, 5000/hr with token)
+#          - BASE_PATH=/maintainerr # uncomment if you're serving maintainerr from a subdirectory
+#          - UI_HOSTNAME=:: # uncomment if you want to listen on IPv6 instead (default 0.0.0.0)
+#          - UI_PORT=6247 # uncomment to change the UI port (default 6246)
+#          - GITHUB_TOKEN=ghp_yourtoken # Optional: GitHub Personal Access Token for higher API rate limits (60/hr without, 5000/hr with token)
         ports:
           - 6246:6246
         restart: unless-stopped

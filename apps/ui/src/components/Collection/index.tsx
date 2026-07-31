@@ -17,6 +17,7 @@ export interface ICollection {
   overlayTemplateId?: number | null
   deleteAfterDays?: number
   listExclusions?: boolean
+  cleanupLeftoverFolders?: boolean
   forceSeerr?: boolean
   type: MediaItemType
   arrAction: number

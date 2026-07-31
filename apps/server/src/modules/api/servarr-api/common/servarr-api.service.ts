@@ -76,13 +76,21 @@ export abstract class ServarrApi<QueueItemAppendT> extends ExternalApiService {
     }
   };
 
-  public getRootFolders = async (): Promise<RootFolder[]> => {
+  /**
+   * The *arr's root folders. Cached for an hour by default - they change
+   * rarely and rule evaluation reads them often. Pass `fresh` where they fence
+   * a destructive operation: the leftover-folder cleanup only deletes inside a
+   * root, and a stale fence is not a fence.
+   */
+  public getRootFolders = async (options?: {
+    fresh?: boolean;
+  }): Promise<RootFolder[]> => {
     try {
-      const data = await this.getRolling<RootFolder[]>(
-        `/rootfolder`,
-        undefined,
-        3600,
-      );
+      const data = options?.fresh
+        ? await this.getWithoutCache<RootFolder[]>(`/rootfolder`, {
+            timeout: SLOW_INSTANCE_TIMEOUT_MS,
+          })
+        : await this.getRolling<RootFolder[]>(`/rootfolder`, undefined, 3600);
 
       return data;
     } catch (error) {

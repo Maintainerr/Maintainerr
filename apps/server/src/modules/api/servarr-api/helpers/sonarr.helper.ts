@@ -32,9 +32,16 @@ export class SonarrApi extends ServarrApi<{
     this.logger.setContext(SonarrApi.name);
   }
 
+  /**
+   * Every tracked series. Uncached: its only caller fences a filesystem delete
+   * on the other series' folders, and a series added since the last read would
+   * be missing from a cached snapshot - so the fence would not see it.
+   */
   public async getSeries(): Promise<SonarrSeries[]> {
     try {
-      const response = await this.get<SonarrSeries[]>('/series');
+      const response = await this.getWithoutCache<SonarrSeries[]>('/series', {
+        timeout: SLOW_INSTANCE_TIMEOUT_MS,
+      });
 
       return response;
     } catch (error) {
@@ -74,6 +81,22 @@ export class SonarrApi extends ServarrApi<{
       throw error;
     }
   }
+  /**
+   * The series' episode files, each carrying its `seasonNumber` and on-disk
+   * `path`. Uncached, and the Sonarr counterpart of {@link RadarrApi.getMovieFiles}:
+   * callers read it right before deleting those files, so a stale snapshot
+   * would point at paths that have since moved. Returns undefined when the
+   * listing itself failed, which callers must treat as "unknown", not "none".
+   */
+  public async getEpisodeFiles(
+    seriesId: number,
+  ): Promise<SonarrEpisodeFile[] | undefined> {
+    return this.getWithoutCache<SonarrEpisodeFile[]>(
+      `/episodefile?seriesId=${seriesId}`,
+      { timeout: SLOW_INSTANCE_TIMEOUT_MS },
+    );
+  }
+
   public async getEpisodeFile(
     episodeFileId: number,
   ): Promise<SonarrEpisodeFile> {

@@ -379,4 +379,21 @@ describe('RadarrApi', () => {
       expect(runPut).not.toHaveBeenCalled();
     });
   });
+
+  // The leftover-folder cleanup fences a filesystem delete on this read. A
+  // cached snapshot predating a newly added movie would leave the fence blind
+  // to it, so the listing must bypass the cache.
+  describe('reads that fence a destructive operation', () => {
+    it('lists every movie uncached', async () => {
+      const cached = jest.spyOn(api as any, 'get');
+      const uncached = jest
+        .spyOn(api as any, 'getWithoutCache')
+        .mockResolvedValue([createRadarrMovie({ id: 5 })]);
+
+      await api.getMovies();
+
+      expect(uncached).toHaveBeenCalledWith('/movie', expect.any(Object));
+      expect(cached).not.toHaveBeenCalled();
+    });
+  });
 });
