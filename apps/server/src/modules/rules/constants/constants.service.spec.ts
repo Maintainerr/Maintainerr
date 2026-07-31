@@ -1,4 +1,8 @@
-import { Application, MediaType } from '@maintainerr/contracts';
+import {
+  Application,
+  MediaServerType,
+  MediaType,
+} from '@maintainerr/contracts';
 import { RuleConstanstService } from './constants.service';
 import { RuleConstants, RuleType } from './rules.constants';
 
@@ -80,6 +84,77 @@ describe('RuleConstanstService', () => {
     expect(service.getValueNullReason([Application.PLEX, 999])).toBe(
       'Value unavailable',
     );
+  });
+
+  describe('naming a value after the server it was read from', () => {
+    // The getter routes every media-server app to the configured server and
+    // looks the property id up there, so a rule left unmigrated after a server
+    // switch reads a different property than the one it stores. Property ids
+    // do not line up across servers, so the label has to follow the value.
+    beforeEach(() => {
+      service.ruleConstants = {
+        applications: [
+          {
+            id: Application.PLEX,
+            name: 'Plex',
+            mediaType: MediaType.BOTH,
+            props: [
+              {
+                id: 39,
+                name: 'collectionsIncludingSmart',
+                humanName: 'Present in amount of other collections',
+                mediaType: MediaType.BOTH,
+                type: RuleType.NUMBER,
+              },
+            ],
+          },
+          {
+            id: Application.JELLYFIN,
+            name: 'Jellyfin',
+            mediaType: MediaType.BOTH,
+            props: [
+              {
+                id: 39,
+                name: 'favoritedBy',
+                humanName: '[list] Favorited by (username)',
+                mediaType: MediaType.BOTH,
+                type: RuleType.TEXT_LIST,
+              },
+            ],
+          },
+        ],
+      } as RuleConstants;
+    });
+
+    it('names a media-server value after the configured server, not the stored app', () => {
+      expect(
+        service.getValueHumanName(
+          [Application.PLEX, 39],
+          MediaServerType.JELLYFIN,
+        ),
+      ).toBe('Jellyfin - [list] Favorited by (username)');
+    });
+
+    it('explains a missing value with the configured server property too', () => {
+      expect(
+        service.getValueNullReason(
+          [Application.PLEX, 39],
+          MediaServerType.JELLYFIN,
+        ),
+      ).toBe('Jellyfin Favorited by (username) has no entries for this item');
+    });
+
+    it('leaves the stored app alone when it already matches the server', () => {
+      expect(
+        service.getValueHumanName([Application.PLEX, 39], MediaServerType.PLEX),
+      ).toBe('Plex - Present in amount of other collections');
+    });
+
+    it('leaves the stored app alone when the server is unknown', () => {
+      expect(service.getValueHumanName([Application.PLEX, 39])).toBe(
+        'Plex - Present in amount of other collections',
+      );
+    });
   });
 
   describe('getCustomValueFromIdentifier', () => {

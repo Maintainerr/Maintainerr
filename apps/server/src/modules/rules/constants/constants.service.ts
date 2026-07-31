@@ -1,4 +1,6 @@
+import { MediaServerType } from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
+import { resolveValueApplication } from '../helpers/media-server-application.helper';
 import { Property, RuleConstants, RuleType } from './rules.constants';
 
 /**
@@ -85,13 +87,27 @@ export class RuleConstanstService {
     return application.name + '.' + rule.name;
   }
 
-  public getValueHumanName(location: [number, number]) {
-    return `${
-      this.ruleConstants.applications.find((el) => el.id === location[0])?.name
-    } - ${
-      this.ruleConstants.applications
-        .find((el) => el.id === location[0])
-        ?.props.find((el) => el.id === location[1])?.humanName
+  /**
+   * @param configuredServerType - Names the value after the server that will
+   *   actually be read. A rule stores the app it was authored against, but the
+   *   getter routes every media-server app to the configured server and looks
+   *   the property id up there; property ids do not line up across servers, so
+   *   naming it from the stored app can describe a different property than the
+   *   one that produced the value. Omit to name it exactly as stored.
+   */
+  public getValueHumanName(
+    location: [number, number],
+    configuredServerType?: MediaServerType | null,
+  ) {
+    const applicationId = resolveValueApplication(
+      location[0],
+      configuredServerType,
+    );
+    const application = this.ruleConstants.applications.find(
+      (el) => el.id === applicationId,
+    );
+    return `${application?.name} - ${
+      application?.props.find((el) => el.id === location[1])?.humanName
     }`;
   }
 
@@ -103,9 +119,12 @@ export class RuleConstanstService {
    * static table to maintain. Rules comparisons still fail closed; this is
    * purely diagnostic.
    */
-  public getValueNullReason(location: [number, number]): string {
+  public getValueNullReason(
+    location: [number, number],
+    configuredServerType?: MediaServerType | null,
+  ): string {
     const application = this.ruleConstants.applications.find(
-      (el) => el.id === location[0],
+      (el) => el.id === resolveValueApplication(location[0], configuredServerType),
     );
     const prop = application?.props.find((el) => el.id === location[1]);
     if (!prop) return 'Value unavailable';
