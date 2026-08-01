@@ -202,6 +202,12 @@ export class RadarrActionHandler {
           this.logger.log(
             `Couldn't find movie in Radarr using resolved external IDs [${attemptedIds}] for media server ID ${media.mediaServerId}. Attempting to remove from the filesystem via media server.`,
           );
+          if (
+            collection.cleanupLeftoverFolders &&
+            leftoverCleanupScope(collection.type, collection.arrAction)
+          ) {
+            this.folderCleanup.logSkippedForUntrackedItem(media.mediaServerId);
+          }
           const mediaServer = await this.mediaServerFactory.getService();
           await mediaServer.deleteFromDisk(media.mediaServerId);
           return true;
