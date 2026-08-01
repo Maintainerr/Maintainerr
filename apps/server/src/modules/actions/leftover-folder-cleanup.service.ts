@@ -11,9 +11,11 @@ import { MaintainerrLogger } from '../logging/logs.service';
  * The master safety gate is an allowlist, not a media denylist, on purpose: a
  * destructive delete must fail safe. Only a plain file whose extension is a
  * recognized sidecar may be removed; anything else - a media file, an unknown
- * extension, a symlink, a socket - keeps the whole folder. A missing entry here
- * therefore only ever leaves a folder uncleaned, never deletes real data.
- * Matched on the lower-cased extension.
+ * extension, a live symlink, a socket - keeps the whole folder. (A dangling
+ * symlink is removed regardless of extension: its target is already gone, so
+ * there is nothing left to protect.) A missing entry here therefore only ever
+ * leaves a folder uncleaned, never deletes real data. Matched on the
+ * lower-cased extension.
  *
  * Kept deliberately narrow: generic extensions (txt, log, md, ...) carry no
  * *arr-sidecar signal and would only widen the blast radius.
@@ -199,19 +201,19 @@ export class LeftoverFolderCleanupService {
       }
 
       // Master net: collect every file to remove and abort on anything that is
-      // not a plain sidecar. Only the collected paths are deleted, so a file
-      // that appears after this walk is never removed unseen.
+      // not a plain sidecar or a dead link. Only the collected paths are
+      // deleted, so a file that appears after this walk is never removed unseen.
       const companions = await this.collectCompanionFiles(candidate);
       if (companions === undefined) {
         this.logger.log(
-          `Keeping ${input.scope} folder${label}: it still holds a non-sidecar entry (media, an unrecognized extension or a link) at ${candidate}.`,
+          `Keeping ${input.scope} folder${label}: it still holds a non-sidecar entry (media, an unrecognized extension or a live link) at ${candidate}.`,
         );
         return;
       }
 
       await this.removeVerified(candidate, companions);
       this.logger.log(
-        `Removed leftover ${input.scope} folder${label} and ${companions.length} sidecar file(s): ${candidate}`,
+        `Removed leftover ${input.scope} folder${label} and ${companions.length} leftover file(s): ${candidate}`,
       );
     } catch (error) {
       // Cleanup is best-effort; the delete already succeeded.
@@ -357,9 +359,14 @@ export class LeftoverFolderCleanupService {
 
   /**
    * Every file under `dir`, or undefined when the folder must be kept. Anything
-   * that is not a plain directory or a plain sidecar file aborts the walk -
-   * notably symlinks, which `readdir` reports as neither a file nor a directory
-   * and which a recursive remove would silently unlink.
+   * that is not a plain directory, a plain sidecar file or a dangling symlink
+   * aborts the walk.
+   *
+   * A symlink whose target still resolves keeps the folder: in a symlinked
+   * library the media file is a link to the seeded copy, and removing it would
+   * drop a watchable item. A *dangling* one is the opposite - the *arr already
+   * deleted its target, so the link is the leftover. Extension is not checked
+   * for those: a dead `.mkv` link is exactly what a per-file delete strands.
    */
   private async collectCompanionFiles(
     dir: string,
@@ -376,11 +383,31 @@ export class LeftoverFolderCleanupService {
         files.push(...nested);
       } else if (entry.isFile() && this.isCompanionFile(entry.name)) {
         files.push(full);
+      } else if (entry.isSymbolicLink() && (await this.isDangling(full))) {
+        files.push(full);
       } else {
         return undefined;
       }
     }
     return files;
+  }
+
+  /**
+   * True only when the link's target is confirmed absent. Any other stat error
+   * (a permission problem, a symlink loop) is inconclusive, so the link counts
+   * as live and the folder is kept.
+   *
+   * Caveat: an unmounted target reads as absent, so an unreachable mount can
+   * cost the link. That removes a pointer, never data - the target reappears
+   * with its mount and the item can be re-imported.
+   */
+  private async isDangling(linkPath: string): Promise<boolean> {
+    try {
+      await stat(linkPath);
+      return false;
+    } catch (error) {
+      return this.isENOENT(error);
+    }
   }
 
   /**

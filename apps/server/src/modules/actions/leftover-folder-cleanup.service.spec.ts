@@ -133,6 +133,57 @@ describe('LeftoverFolderCleanupService', () => {
     expect(await exists(link)).toBe(true);
   });
 
+  // The other half of the symlinked-library case: once the *arr has deleted the
+  // target, the link is the leftover. Extension is deliberately not checked -
+  // a dead media link is the normal outcome of a per-file delete.
+  it('removes a folder whose only media link is dangling', async () => {
+    const root = join(tmp, 'movies');
+    const store = join(tmp, 'remote-store');
+    await mkdir(root, { recursive: true });
+    await mkdir(store, { recursive: true });
+    const { folder, deletedFilePaths } = await makeItemFolder(
+      root,
+      'Sample Movie',
+      ['poster.jpg'],
+    );
+    // Never created in the store, so the link is born dangling.
+    await symlink(join(store, 'gone.mkv'), join(folder, 'Sample Movie.mkv'));
+
+    await service.cleanupAfterDelete({
+      folderPath: folder,
+      rootFolderPaths: [root],
+      deletedFilePaths,
+      scope: 'movie',
+    });
+
+    expect(await exists(folder)).toBe(false);
+    // The store itself is never touched - only the pointer is removed.
+    expect(await exists(store)).toBe(true);
+  });
+
+  it('keeps a folder whose symlink cannot be resolved', async () => {
+    const root = join(tmp, 'movies');
+    await mkdir(root, { recursive: true });
+    const { folder, deletedFilePaths } = await makeItemFolder(
+      root,
+      'Sample Movie',
+      ['poster.jpg'],
+    );
+    // A loop stats as ELOOP, not ENOENT: inconclusive, so it must not count as
+    // dangling and must keep the folder.
+    await symlink(join(folder, 'b.mkv'), join(folder, 'a.mkv'));
+    await symlink(join(folder, 'a.mkv'), join(folder, 'b.mkv'));
+
+    await service.cleanupAfterDelete({
+      folderPath: folder,
+      rootFolderPaths: [root],
+      deletedFilePaths,
+      scope: 'movie',
+    });
+
+    expect(await exists(folder)).toBe(true);
+  });
+
   it('refuses to remove a root folder itself', async () => {
     const root = join(tmp, 'movies');
     await mkdir(root, { recursive: true });
