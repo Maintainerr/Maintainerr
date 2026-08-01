@@ -259,9 +259,10 @@ See `CONTRIBUTING.md` for setup, branching, and pull request expectations.
 
 ## Feature References
 
-User-facing feature documentation lives in the `Maintainerr_docs` repository and
-is published at <https://docs.maintainerr.info>. It is the single source of
-truth: describe a feature there, not here, so the two cannot drift.
+Feature documentation lives in the `Maintainerr_docs` repository and is published
+at <https://docs.maintainerr.info>. It is the single source of truth: describe a
+feature there, not here, so the two cannot drift. This repository documents
+architecture and intent only; for how the code works, read the code.
 
 - <https://docs.maintainerr.info/collections/> covers custom collection posters
   and the per-collection opt-in post-delete folder cleanup, including which
@@ -269,9 +270,6 @@ truth: describe a feature there, not here, so the two cannot drift.
   guardrails.
 - <https://docs.maintainerr.info/overlays/> covers overlay templates, settings,
   and processing behaviour.
-- `.github/notes/overlay-feature.md` is the contributor-facing counterpart:
-  contracts, database schema, and the service layer behind overlays. See
-  `.github/notes/README.md` for what that directory is for.
 - `README.md` describes product capabilities, installation, API compatibility,
   and supported services.
 
