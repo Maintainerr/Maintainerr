@@ -63,13 +63,15 @@ const AddModal = (props: IAddModal) => {
     [props.modalType],
   )
 
+  // The context is the narrowest thing picked; with no season or episode
+  // selected that is the item itself. Same shape as TestMediaItem.
   const selectedMediaId = useMemo(() => {
-    return props.type === 'movie'
-      ? -1
-      : selectedEpisodes !== -1
-        ? selectedEpisodes
-        : selectedSeasons
-  }, [selectedSeasons, selectedEpisodes, props.type])
+    return selectedEpisodes !== -1
+      ? selectedEpisodes
+      : selectedSeasons !== -1
+        ? selectedSeasons
+        : props.mediaServerId
+  }, [selectedSeasons, selectedEpisodes, props.mediaServerId])
 
   const selectedContext = useMemo((): MediaItemType => {
     return props.type === 'show'
@@ -179,7 +181,7 @@ const AddModal = (props: IAddModal) => {
       if (props.modalType === 'add') {
         await PostApiHandler(`/collections/media/add`, {
           mediaId: props.mediaServerId,
-          context: { id: -1, type: props.type },
+          context: { id: props.mediaServerId, type: props.type },
           collectionId: undefined,
           action: 1,
         })

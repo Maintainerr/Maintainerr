@@ -166,3 +166,50 @@ describe('AddModal - global exclusion warning', () => {
     expect(screen.queryByText('Confirmation Required')).toBeNull()
   })
 })
+
+describe('AddModal - context payload', () => {
+  const getApiHandlerMock = vi.mocked(GetApiHandler)
+  const postApiHandlerMock = vi.mocked(PostApiHandler)
+
+  beforeEach(() => {
+    getApiHandlerMock.mockReset()
+    postApiHandlerMock.mockReset()
+    getApiHandlerMock.mockImplementation(((url: string) => {
+      if (url.startsWith('/media-server/meta/')) return Promise.resolve([])
+      if (url === '/collections?typeId=season')
+        return Promise.resolve([{ id: 4, title: 'Season cleanup' }])
+      if (url.startsWith('/collections')) return Promise.resolve([])
+      return Promise.resolve(undefined)
+    }) as typeof GetApiHandler)
+    postApiHandlerMock.mockResolvedValue(undefined as never)
+  })
+  afterEach(() => cleanup())
+
+  // A -1 context id let the server act on the show itself, so a season
+  // collection received a show id and Plex answered 400 (#3381).
+  it('identifies "all seasons" by the show id rather than a sentinel', async () => {
+    render(
+      <AddModal
+        mediaServerId="show-1"
+        type="show"
+        modalType="add"
+        onCancel={vi.fn()}
+        onSubmit={vi.fn()}
+      />,
+    )
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Submit' }))
+
+    await waitFor(() =>
+      expect(postApiHandlerMock).toHaveBeenCalledWith(
+        '/collections/media/add',
+        {
+          mediaId: 'show-1',
+          context: { id: 'show-1', type: 'show' },
+          collectionId: 4,
+          action: 0,
+        },
+      ),
+    )
+  })
+})
