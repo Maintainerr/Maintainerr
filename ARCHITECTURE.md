@@ -259,15 +259,18 @@ See `CONTRIBUTING.md` for setup, branching, and pull request expectations.
 
 ## Feature References
 
-- `docs/collection-poster.md` describes custom collection poster storage,
-  media-server support, and switch behaviour.
-- `docs/overlay-feature.md` describes overlay templates, rendering, storage,
-  scheduling, and provider integration.
-- <https://docs.maintainerr.info/collections/> describes the per-collection
-  opt-in post-delete folder cleanup, which \*arr actions strand a folder, the
-  same-path mount requirement, and the guardrails. It is maintained in the
-  `Maintainerr_docs` repository, which is the single source of truth for
-  user-facing feature documentation.
+User-facing feature documentation lives in the `Maintainerr_docs` repository and
+is published at <https://docs.maintainerr.info>. It is the single source of
+truth: describe a feature there, not here, so the two cannot drift.
+
+- <https://docs.maintainerr.info/collections/> covers custom collection posters
+  and the per-collection opt-in post-delete folder cleanup, including which
+  \*arr actions strand a folder, the same-path mount requirement, and the
+  guardrails.
+- <https://docs.maintainerr.info/overlays/> covers overlay templates, settings,
+  and processing behaviour.
+- `docs/overlay-feature.md` is the contributor-facing counterpart: contracts,
+  database schema, and the service layer behind overlays.
 - `README.md` describes product capabilities, installation, API compatibility,
   and supported services.
 
