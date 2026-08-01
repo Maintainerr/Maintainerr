@@ -100,7 +100,15 @@ const AddModal = (props: IAddModal) => {
     }
   }, [selectedContext])
 
-  const currentCollectionId = selectedCollection ?? collectionOptions[0]?.id
+  // Derived, not synced: narrowing to a season or episode drops the wider
+  // collection types, so a selection made before that is no longer offered and
+  // falls back to the first option. Keeping the state lets it come back if the
+  // user widens the selection again.
+  const currentCollectionId = collectionOptions.some(
+    (option) => option.id === selectedCollection,
+  )
+    ? selectedCollection
+    : collectionOptions[0]?.id
   // Nothing in this library holds what the current selection resolves to, so
   // there is no choice to make and submitting cannot do anything.
   const noCollectionsAvailable = !loading && collectionOptions.length === 0
@@ -317,15 +325,7 @@ const AddModal = (props: IAddModal) => {
     )
       .then((responses) => {
         if (!current) return
-        const options = [...origCollectionOptions, ...responses.flat()]
-        setCollectionOptions(options)
-        // Narrowing to a season or episode drops the wider collection types,
-        // so a selection made before that can no longer be submitted.
-        setSelectedCollection((selected) =>
-          options.some((option) => option.id === selected)
-            ? selected
-            : undefined,
-        )
+        setCollectionOptions([...origCollectionOptions, ...responses.flat()])
       })
       .catch((error) => {
         if (current)
