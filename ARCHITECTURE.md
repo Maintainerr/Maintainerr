@@ -263,9 +263,11 @@ See `CONTRIBUTING.md` for setup, branching, and pull request expectations.
   media-server support, and switch behaviour.
 - `docs/overlay-feature.md` describes overlay templates, rendering, storage,
   scheduling, and provider integration.
-- `docs/leftover-folder-cleanup.md` describes the per-collection opt-in
-  post-delete folder cleanup, which \*arr actions strand a folder, the same-path
-  mount requirement, and the guardrails.
+- <https://docs.maintainerr.info/collections/> describes the per-collection
+  opt-in post-delete folder cleanup, which \*arr actions strand a folder, the
+  same-path mount requirement, and the guardrails. It is maintained in the
+  `Maintainerr_docs` repository, which is the single source of truth for
+  user-facing feature documentation.
 - `README.md` describes product capabilities, installation, API compatibility,
   and supported services.
 

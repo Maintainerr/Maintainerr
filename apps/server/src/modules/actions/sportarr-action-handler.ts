@@ -27,7 +27,7 @@ import { SettingsDataService } from '../settings/settings-data.service';
 // `SportarrLeague` carries no folder path at all, so there is no item folder to
 // prove a candidate sits inside - unlike Radarr's `movie.path` and Sonarr's
 // `series.path`, which are what fence the delete. See
-// docs/leftover-folder-cleanup.md.
+// https://docs.maintainerr.info/collections/.
 @Injectable()
 export class SportarrActionHandler {
   constructor(

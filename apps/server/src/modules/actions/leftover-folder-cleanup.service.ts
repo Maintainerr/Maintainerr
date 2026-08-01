@@ -101,7 +101,7 @@ export class LeftoverFolderCleanupService {
    */
   public logNotApplicableForUntrackedItem(label?: string): void {
     this.logger.log(
-      `Leftover-folder cleanup does not apply${label ? ` to '${label}'` : ''}: the item is not tracked in the *arr, so the media server deleted it directly - see docs/leftover-folder-cleanup.md.`,
+      `Leftover-folder cleanup does not apply${label ? ` to '${label}'` : ''}: the item is not tracked in the *arr, so the media server deleted it directly - see https://docs.maintainerr.info/collections/.`,
     );
   }
 
