@@ -185,6 +185,63 @@ describe('AddModal - context payload', () => {
   })
   afterEach(() => cleanup())
 
+  // Every failure used to be swallowed by a bare catch, so a refused add
+  // looked identical to a successful one (#3381).
+  it('shows why the server refused the action', async () => {
+    postApiHandlerMock.mockRejectedValue(
+      Object.assign(new Error('Request failed with status code 502'), {
+        isAxiosError: true,
+        response: {
+          data: { message: 'The media server refused 1 of 1 item(s)' },
+        },
+      }),
+    )
+    const onSubmit = vi.fn()
+
+    render(
+      <AddModal
+        mediaServerId="show-1"
+        type="show"
+        modalType="add"
+        onCancel={vi.fn()}
+        onSubmit={onSubmit}
+      />,
+    )
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Submit' }))
+
+    expect(
+      await screen.findByText('The media server refused 1 of 1 item(s)'),
+    ).toBeTruthy()
+    expect(onSubmit).not.toHaveBeenCalled()
+  })
+
+  // A season or episode can only go into a collection of that type, and the
+  // list is refetched as the picker narrows.
+  it('offers only the collection types the current selection can produce', async () => {
+    render(
+      <AddModal
+        mediaServerId="show-1"
+        type="show"
+        modalType="add"
+        onCancel={vi.fn()}
+        onSubmit={vi.fn()}
+      />,
+    )
+
+    await screen.findByRole('button', { name: 'Submit' })
+
+    const requested = getApiHandlerMock.mock.calls
+      .map((call) => String(call[0]))
+      .filter((url) => url.startsWith('/collections'))
+
+    expect(requested).toEqual([
+      '/collections?typeId=show',
+      '/collections?typeId=season',
+      '/collections?typeId=episode',
+    ])
+  })
+
   // A -1 context id let the server act on the show itself, so a season
   // collection received a show id and Plex answered 400 (#3381).
   it('identifies "all seasons" by the show id rather than a sentinel', async () => {

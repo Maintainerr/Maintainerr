@@ -3332,6 +3332,35 @@ describe('CollectionsService', () => {
     });
   });
 
+  // A library id used to discard the type filter, so the add modal listed the
+  // same collection once per type it asked for.
+  describe('getCollections filtering', () => {
+    it.each([
+      [
+        'both filters',
+        '2',
+        'season' as const,
+        { libraryId: '2', type: 'season' },
+      ],
+      ['a library only', '2', undefined, { libraryId: '2' }],
+      ['a type only', undefined, 'season' as const, { type: 'season' }],
+    ])('applies %s', async (label, libraryId, typeId, expected) => {
+      collectionRepo.find.mockResolvedValue([]);
+
+      await service.getCollections(libraryId, typeId);
+
+      expect(collectionRepo.find).toHaveBeenCalledWith({ where: expected });
+    });
+
+    it('reads every collection when neither filter is given', async () => {
+      collectionRepo.find.mockResolvedValue([]);
+
+      await service.getCollections();
+
+      expect(collectionRepo.find).toHaveBeenCalledWith(undefined);
+    });
+  });
+
   describe('findMediaServerCollection', () => {
     const boxset = (props: Partial<MediaCollection>): MediaCollection =>
       ({ id: 'box-1', title: 'Shared', smart: false, ...props }) as never;
@@ -3367,6 +3396,40 @@ describe('CollectionsService', () => {
       const found = await service.findMediaServerCollection('Shared', 'shows');
 
       expect(found).toBeUndefined();
+    });
+
+    // Adopting a show collection for a season rule group made every later add
+    // a 400 on Plex, which fixes a collection's media type at creation.
+    it('leaves a same-named collection of another media type alone', async () => {
+      mediaServer.getCollections.mockResolvedValue([
+        boxset({ title: 'Shared', type: 'show' }),
+      ]);
+
+      await expect(
+        service.findMediaServerCollection('Shared', 'shows', false, 'season'),
+      ).resolves.toBeUndefined();
+    });
+
+    it('adopts a same-named collection of the expected media type', async () => {
+      mediaServer.getCollections.mockResolvedValue([
+        boxset({ title: 'Shared', type: 'season' }),
+      ]);
+
+      await expect(
+        service.findMediaServerCollection('Shared', 'shows', false, 'season'),
+      ).resolves.toMatchObject({ id: 'box-1' });
+    });
+
+    // A false miss creates a second collection beside the real one (#3344),
+    // so an unknown type on either side still matches.
+    it('adopts a same-named collection whose media type the server omits', async () => {
+      mediaServer.getCollections.mockResolvedValue([
+        boxset({ title: 'Shared', type: undefined }),
+      ]);
+
+      await expect(
+        service.findMediaServerCollection('Shared', 'shows', false, 'season'),
+      ).resolves.toMatchObject({ id: 'box-1' });
     });
 
     it('falls back to other libraries for a cross-library server when opted in', async () => {

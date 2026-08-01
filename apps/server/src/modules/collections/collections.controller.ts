@@ -18,6 +18,7 @@ import {
   mediaSortOrders,
 } from '@maintainerr/contracts';
 import {
+  BadGatewayException,
   BadRequestException,
   Body,
   ConflictException,
@@ -404,16 +405,33 @@ export class CollectionsController {
   }
 
   @Post('/media/add')
-  ManualActionOnCollection(
+  async ManualActionOnCollection(
     @Body(new ZodValidationPipe(manualCollectionActionBodySchema))
     request: ManualCollectionActionBody,
   ) {
-    return this.collectionService.MediaCollectionActionWithContext(
-      request.collectionId,
-      request.context,
-      { mediaServerId: request.mediaId },
-      request.action === 0 ? 'add' : 'remove',
-    );
+    const result =
+      await this.collectionService.MediaCollectionActionWithContext(
+        request.collectionId,
+        request.context,
+        { mediaServerId: request.mediaId },
+        request.action === 0 ? 'add' : 'remove',
+      );
+
+    // A rejected item and an item the context resolved to nothing both used to
+    // answer 201, so the modal closed as though the action had worked.
+    if (result.resolvedCount === 0) {
+      throw new BadRequestException(
+        'This item cannot be applied to the selected collection',
+      );
+    }
+
+    if (result.serverRejectedIds.length > 0) {
+      throw new BadGatewayException(
+        `The media server refused ${result.serverRejectedIds.length} of ${result.resolvedCount} item(s)`,
+      );
+    }
+
+    return result.collection;
   }
 
   @Post('/media/handle')

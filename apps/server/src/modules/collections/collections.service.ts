@@ -22,6 +22,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Brackets, DataSource, In, LessThan, Not, Repository } from 'typeorm';
 import { CollectionLog } from '../../modules/collections/entities/collection_log.entities';
+import { getErrorMessage } from '../../utils/connection-error';
 import { MediaServerFactory } from '../api/media-server/media-server.factory';
 import { IMediaServerService } from '../api/media-server/media-server.interface';
 import {
@@ -103,6 +104,15 @@ export interface PostponeCollectionMediaResult {
   addDate: Date;
   deleteAfterDays: number | null;
   deletionDate: Date | null;
+}
+
+/**
+ * Adds report which ids the media server refused, so a caller acting on a
+ * user's behalf can say so instead of reporting a silent success.
+ */
+export interface CollectionAddResult {
+  collection?: Collection;
+  serverRejectedIds: string[];
 }
 
 @Injectable()
@@ -1796,12 +1806,16 @@ export class CollectionsService {
   }
 
   private async findCollections(libraryId?: string, typeId?: MediaItemType) {
+    // Both filters apply together. A library id used to discard the type
+    // filter, so asking for one library's season collections returned every
+    // collection it holds.
+    const where = {
+      ...(libraryId ? { libraryId } : {}),
+      ...(typeId ? { type: typeId } : {}),
+    };
+
     return await this.collectionRepo.find(
-      libraryId
-        ? { where: { libraryId: libraryId } }
-        : typeId
-          ? { where: { type: typeId } }
-          : undefined,
+      Object.keys(where).length > 0 ? { where } : undefined,
     );
   }
 
@@ -1921,6 +1935,7 @@ export class CollectionsService {
           collection.manualCollectionName,
           collection.libraryId,
           true,
+          collection.type,
         );
         if (foundCollection) {
           // Handle visibility settings (Plex-only feature)
@@ -2173,6 +2188,7 @@ export class CollectionsService {
           collection.manualCollectionName,
           collection.libraryId,
           true,
+          collection.type,
         );
       } catch (error) {
         // "Could not look" is not "does not exist".
@@ -2298,6 +2314,8 @@ export class CollectionsService {
           foundColl = await this.findMediaServerCollection(
             collection.title,
             collection.libraryId,
+            false,
+            collection.type,
           );
         } catch (error) {
           // The library could not be enumerated, so we cannot tell whether a
@@ -2516,12 +2534,17 @@ export class CollectionsService {
     return collection;
   }
 
+  /**
+   * Drives the manual add/remove modal. Reports what the media server refused
+   * so the caller can tell the user, rather than answering "done" to an action
+   * that changed nothing.
+   */
   async MediaCollectionActionWithContext(
     collectionDbId: number | undefined,
     context: AlterableMediaContext,
     media: CollectionMediaChange,
     action: 'add' | 'remove',
-  ): Promise<Collection | undefined> {
+  ): Promise<CollectionAddResult & { resolvedCount: number }> {
     const mediaServer = await this.getMediaServer();
     const collection =
       collectionDbId !== -1 && collectionDbId !== undefined
@@ -2540,17 +2563,25 @@ export class CollectionsService {
       mediaServerId: id,
     }));
 
-    if (handleMedia) {
-      if (action === 'add') {
-        return this.addToCollection(collectionDbId, handleMedia, true);
-      } else if (action === 'remove') {
-        if (collectionDbId) {
-          return this.removeFromCollection(collectionDbId, handleMedia);
-        } else {
-          await this.removeFromAllCollections(handleMedia);
-        }
-      }
+    if (action === 'add') {
+      const result = await this.addToCollectionInternal(
+        collectionDbId,
+        handleMedia,
+        true,
+      );
+      return { ...result, resolvedCount: handleMedia.length };
     }
+
+    if (!collectionDbId) {
+      await this.removeFromAllCollections(handleMedia);
+      return { serverRejectedIds: [], resolvedCount: handleMedia.length };
+    }
+
+    return {
+      collection: await this.removeFromCollection(collectionDbId, handleMedia),
+      serverRejectedIds: [],
+      resolvedCount: handleMedia.length,
+    };
   }
 
   async addToCollection(
@@ -2559,14 +2590,16 @@ export class CollectionsService {
     manual = false,
     manualMembershipSource = CollectionMediaManualMembershipSource.LOCAL,
   ): Promise<Collection> {
-    return this.addToCollectionInternal(
-      collectionDbId,
-      media,
-      manual,
-      false,
-      false,
-      manualMembershipSource,
-    );
+    return (
+      await this.addToCollectionInternal(
+        collectionDbId,
+        media,
+        manual,
+        false,
+        false,
+        manualMembershipSource,
+      )
+    ).collection;
   }
 
   async addToCollectionWithResolvedLink(
@@ -2576,14 +2609,16 @@ export class CollectionsService {
     manualMembershipSource = CollectionMediaManualMembershipSource.LOCAL,
   ): Promise<Collection> {
     if (!collection) return undefined;
-    return this.addToCollectionInternal(
-      collection.id,
-      media,
-      manual,
-      true,
-      false,
-      manualMembershipSource,
-    );
+    return (
+      await this.addToCollectionInternal(
+        collection.id,
+        media,
+        manual,
+        true,
+        false,
+        manualMembershipSource,
+      )
+    ).collection;
   }
 
   async syncMediaServerChildrenToCollection(
@@ -2592,14 +2627,16 @@ export class CollectionsService {
     manualMembershipSource = CollectionMediaManualMembershipSource.LOCAL,
   ): Promise<Collection> {
     if (!collection) return undefined;
-    return this.addToCollectionInternal(
-      collection.id,
-      media,
-      true,
-      true,
-      true,
-      manualMembershipSource,
-    );
+    return (
+      await this.addToCollectionInternal(
+        collection.id,
+        media,
+        true,
+        true,
+        true,
+        manualMembershipSource,
+      )
+    ).collection;
   }
 
   private async addToCollectionInternal(
@@ -2609,7 +2646,7 @@ export class CollectionsService {
     skipAutomaticLinkCheck = false,
     skipMediaServerAdd = false,
     manualMembershipSource = CollectionMediaManualMembershipSource.LOCAL,
-  ): Promise<Collection> {
+  ): Promise<CollectionAddResult> {
     try {
       const mediaServer = await this.getMediaServer();
       let collection = await this.collectionRepo.findOne({
@@ -2633,6 +2670,7 @@ export class CollectionsService {
         (m) =>
           !collectionMedia.find((el) => el.mediaServerId === m.mediaServerId),
       );
+      let rejectedByServer: string[] = [];
 
       if (collection) {
         if (!skipAutomaticLinkCheck) {
@@ -2661,6 +2699,7 @@ export class CollectionsService {
                 name,
                 collection.libraryId,
                 searchAllLibraries,
+                collection.type,
               );
             } catch (error) {
               searchCompleted = false;
@@ -2830,6 +2869,7 @@ export class CollectionsService {
               skipMediaServerAdd,
               manualMembershipSource,
             );
+          rejectedByServer = [...serverRejectedIds];
 
           // Only notify for items whose membership was persisted - both
           // server-rejected items and locally-rolled-back items never
@@ -2889,7 +2929,7 @@ export class CollectionsService {
         // Update cached total size (non-blocking)
         this.updateCollectionTotalSize(collectionDbId).catch(() => {});
 
-        return collection;
+        return { collection, serverRejectedIds: rejectedByServer };
       } else {
         this.logger.warn("Collection doesn't exist.");
       }
@@ -2898,8 +2938,9 @@ export class CollectionsService {
         'An error occurred while performing collection actions.',
       );
       this.logger.debug(error);
-      return undefined;
     }
+
+    return { collection: undefined, serverRejectedIds: [] };
   }
 
   async removeFromCollection(
@@ -3418,12 +3459,19 @@ export class CollectionsService {
         try {
           await mediaServer.deleteCollection(collection.mediaServerId);
         } catch (error) {
-          this.logger.warn('Failed to delete collection from media server');
+          // The media server says why it refused - Plex names its own
+          // "allow media deletion" setting - and this is a dead end until the
+          // user acts on it, so the reason has to reach them.
+          const reason = getErrorMessage(
+            error,
+            'Failed to delete collection from media server',
+          );
+          this.logger.warn(`Failed to delete collection: ${reason}`);
           this.logger.debug(error);
           return {
             status: 'NOK',
             code: 0,
-            message: 'Failed to delete collection from media server',
+            message: reason,
           };
         }
       }
@@ -3870,6 +3918,7 @@ export class CollectionsService {
     name: string,
     libraryId: string,
     searchAllLibraries = false,
+    expectedType?: MediaItemType,
   ): Promise<MediaCollection | undefined> {
     // Cannot search for collections without a valid library ID
     if (!libraryId || libraryId === '') {
@@ -3887,6 +3936,7 @@ export class CollectionsService {
         mediaServer,
         name,
         libraryId,
+        expectedType,
       );
       if (found) {
         return found;
@@ -3930,6 +3980,7 @@ export class CollectionsService {
               mediaServer,
               name,
               library.id,
+              expectedType,
             );
             if (crossLibraryMatch) {
               return crossLibraryMatch;
@@ -3961,6 +4012,7 @@ export class CollectionsService {
     mediaServer: IMediaServerService,
     name: string,
     libraryId: string,
+    expectedType?: MediaItemType,
   ): Promise<MediaCollection | undefined> {
     // Live read: a stale miss here creates a duplicate.
     const collections = await mediaServer.getCollections(libraryId, false);
@@ -3968,9 +4020,27 @@ export class CollectionsService {
       return undefined;
     }
     const target = name.trim();
-    return collections.find(
+    const named = collections.filter(
       (coll) => coll.title.trim() === target && !coll.smart,
     );
+
+    // An unknown type on either side matches: a false miss makes the caller
+    // create a second collection beside the real one, which is the #3344 class
+    // of bug and worse than adopting a mismatched one.
+    const match = named.find(
+      (coll) =>
+        coll.type === undefined ||
+        expectedType === undefined ||
+        coll.type === expectedType,
+    );
+
+    if (!match && named.length > 0) {
+      this.logger.warn(
+        `A collection named "${target}" exists in library ${libraryId} but holds ${named[0].type} items, not ${expectedType} - leaving it alone.`,
+      );
+    }
+
+    return match;
   }
 
   async getCollectionLogsWithPaging(

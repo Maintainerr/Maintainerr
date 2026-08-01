@@ -221,9 +221,11 @@ describe('CollectionsController', () => {
   });
 
   it('allows manual removal actions without a collection id', async () => {
-    collectionsService.MediaCollectionActionWithContext.mockResolvedValue(
-      createCollection(),
-    );
+    collectionsService.MediaCollectionActionWithContext.mockResolvedValue({
+      collection: createCollection(),
+      serverRejectedIds: [],
+      resolvedCount: 1,
+    });
 
     await controller.ManualActionOnCollection({
       mediaId: '10',
@@ -245,6 +247,54 @@ describe('CollectionsController', () => {
       { mediaServerId: '10' },
       'remove',
     );
+  });
+
+  // A rejected add used to answer 201, so the modal closed as though it had
+  // worked and the 400 only appeared in the debug log (#3381).
+  describe('manual add failures', () => {
+    const addRequest = {
+      mediaId: '10',
+      context: { id: '10', type: 'show' as const },
+      collectionId: 7,
+      action: 0 as const,
+    };
+
+    it('reports the items the media server refused', async () => {
+      collectionsService.MediaCollectionActionWithContext.mockResolvedValue({
+        collection: createCollection(),
+        serverRejectedIds: ['10'],
+        resolvedCount: 1,
+      });
+
+      await expect(
+        controller.ManualActionOnCollection(addRequest),
+      ).rejects.toThrow('refused 1 of 1');
+    });
+
+    it('reports a context that resolves to nothing', async () => {
+      collectionsService.MediaCollectionActionWithContext.mockResolvedValue({
+        collection: createCollection(),
+        serverRejectedIds: [],
+        resolvedCount: 0,
+      });
+
+      await expect(
+        controller.ManualActionOnCollection(addRequest),
+      ).rejects.toThrow('cannot be applied');
+    });
+
+    it('returns the collection when every item lands', async () => {
+      const collection = createCollection();
+      collectionsService.MediaCollectionActionWithContext.mockResolvedValue({
+        collection,
+        serverRejectedIds: [],
+        resolvedCount: 1,
+      });
+
+      await expect(
+        controller.ManualActionOnCollection(addRequest),
+      ).resolves.toBe(collection);
+    });
   });
 
   it('accepts a hex-GUID context.id for manual season/episode actions (Jellyfin/Emby, #3185)', () => {
