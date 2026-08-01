@@ -12,6 +12,13 @@ import {
   RadarrMovieFile,
 } from '../interfaces/radarr.interface';
 
+export interface RadarrMovieUpdateResult {
+  /** Every requested change was applied. */
+  ok: boolean;
+  /** Files this call removed. Zero when none were requested or none existed. */
+  deletedFileCount: number;
+}
+
 export class RadarrApi extends ServarrApi<{ movieId: number }> {
   constructor(
     {
@@ -167,6 +174,12 @@ export class RadarrApi extends ServarrApi<{ movieId: number }> {
     }
   }
 
+  /**
+   * Applies the requested changes and reports how many files it removed, so the
+   * caller can say what actually happened. A movie Radarr holds no file records
+   * for deletes nothing, and reporting that as "files removed" makes a later
+   * "it did not delete my file" report impossible to falsify from the log.
+   */
   public async updateMovie(
     movieId: number,
     options: {
@@ -175,14 +188,15 @@ export class RadarrApi extends ServarrApi<{ movieId: number }> {
       addImportExclusion?: boolean;
       qualityProfileId?: number;
     },
-  ): Promise<boolean> {
+  ): Promise<RadarrMovieUpdateResult> {
+    let deletedFileCount = 0;
     try {
       const movieData: RadarrMovie = await this.getWithoutCache(
         `movie/${movieId}`,
       );
 
       if (!movieData) {
-        return false;
+        return { ok: false, deletedFileCount };
       }
 
       if (options?.monitored !== undefined) {
@@ -213,7 +227,7 @@ export class RadarrApi extends ServarrApi<{ movieId: number }> {
               options?.deleteFiles ? '; leaving its files in place' : ''
             }.`,
           );
-          return false;
+          return { ok: false, deletedFileCount };
         }
       }
 
@@ -226,27 +240,28 @@ export class RadarrApi extends ServarrApi<{ movieId: number }> {
           this.logger.warn(
             `Could not list movie ${movieId}'s files; leaving them in place.`,
           );
-          return false;
+          return { ok: false, deletedFileCount };
         }
 
         for (const movieFile of movieFiles) {
           if (!(await this.runDelete(`moviefile/${movieFile.id}`))) {
-            return false;
+            return { ok: false, deletedFileCount };
           }
+          deletedFileCount++;
         }
       }
 
       if (options?.addImportExclusion) {
         if (!(await this.addImportExclusion(movieData))) {
-          return false;
+          return { ok: false, deletedFileCount };
         }
       }
 
-      return true;
+      return { ok: true, deletedFileCount };
     } catch (error) {
       this.logger.warn("Couldn't unmonitor movie. Does it exist in radarr?");
       this.logger.debug(error);
-      return false;
+      return { ok: false, deletedFileCount };
     }
   }
 

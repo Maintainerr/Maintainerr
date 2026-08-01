@@ -377,9 +377,9 @@ export class SeerrApiService {
           hasNext = false;
         }
       }
-      this.logger.log(
-        `Seerr request prefetch complete: ${requests.length} requests.`,
-      );
+      // The completion line belongs to buildRequestIndex, this method's only
+      // caller: it reports the same sweep plus the title count, so logging it
+      // here too reads as two prefetches.
       return requests;
     } catch (error) {
       this.logger.warn(

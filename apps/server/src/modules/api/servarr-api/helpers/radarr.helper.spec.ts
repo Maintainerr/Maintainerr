@@ -62,7 +62,10 @@ describe('RadarrApi', () => {
     it('adds the exclusion via the de-duping bulk endpoint', async () => {
       postSpy.mockResolvedValue([exclusionFor(movie)]);
 
-      await expect(unmonitorWithExclusion()).resolves.toBe(true);
+      await expect(unmonitorWithExclusion()).resolves.toEqual({
+        ok: true,
+        deletedFileCount: 0,
+      });
       expect(postSpy).toHaveBeenCalledWith(
         '/exclusions/bulk',
         [exclusionFor(movie)],
@@ -89,7 +92,10 @@ describe('RadarrApi', () => {
         },
       });
 
-      await expect(unmonitorWithExclusion()).resolves.toBe(true);
+      await expect(unmonitorWithExclusion()).resolves.toEqual({
+        ok: true,
+        deletedFileCount: 0,
+      });
     });
 
     // A 400 from a different validation rule (e.g. an invalid year) is a real
@@ -108,7 +114,10 @@ describe('RadarrApi', () => {
         },
       });
 
-      await expect(unmonitorWithExclusion()).resolves.toBe(false);
+      await expect(unmonitorWithExclusion()).resolves.toEqual({
+        ok: false,
+        deletedFileCount: 0,
+      });
     });
 
     it('returns false when the exclusion request fails for another reason', async () => {
@@ -117,7 +126,10 @@ describe('RadarrApi', () => {
         response: { status: 500 },
       });
 
-      await expect(unmonitorWithExclusion()).resolves.toBe(false);
+      await expect(unmonitorWithExclusion()).resolves.toEqual({
+        ok: false,
+        deletedFileCount: 0,
+      });
     });
   });
 
@@ -149,9 +161,10 @@ describe('RadarrApi', () => {
         .spyOn(api as any, 'runPut')
         .mockResolvedValue(true);
 
-      await expect(api.updateMovie(5, { monitored: false })).resolves.toBe(
-        true,
-      );
+      await expect(api.updateMovie(5, { monitored: false })).resolves.toEqual({
+        ok: true,
+        deletedFileCount: 0,
+      });
 
       expect(getSpy).not.toHaveBeenCalled();
       expect(runPutSpy).toHaveBeenCalledWith(
@@ -177,7 +190,7 @@ describe('RadarrApi', () => {
 
       await expect(
         api.updateMovie(5, { monitored: false, deleteFiles: true }),
-      ).resolves.toBe(true);
+      ).resolves.toEqual({ ok: true, deletedFileCount: 1 });
 
       // Same slow-instance headroom as getMovieByTmdbId (#3181).
       expect(getWithoutCacheSpy).toHaveBeenNthCalledWith(2, 'movie/5', {
@@ -198,7 +211,7 @@ describe('RadarrApi', () => {
 
       await expect(
         api.updateMovie(5, { monitored: false, deleteFiles: true }),
-      ).resolves.toBe(false);
+      ).resolves.toEqual({ ok: false, deletedFileCount: 0 });
 
       expect(runDeleteSpy).not.toHaveBeenCalled();
       expect(logger.warn).toHaveBeenCalledWith(
@@ -218,7 +231,7 @@ describe('RadarrApi', () => {
 
       await expect(
         api.updateMovie(5, { monitored: false, deleteFiles: true }),
-      ).resolves.toBe(false);
+      ).resolves.toEqual({ ok: false, deletedFileCount: 0 });
 
       expect(runDeleteSpy).not.toHaveBeenCalled();
     });
@@ -230,9 +243,9 @@ describe('RadarrApi', () => {
         .mockResolvedValueOnce({ ...movie, qualityProfileId: 4 });
       jest.spyOn(api as any, 'runPut').mockResolvedValue(false);
 
-      await expect(api.updateMovie(5, { qualityProfileId: 9 })).resolves.toBe(
-        false,
-      );
+      await expect(
+        api.updateMovie(5, { qualityProfileId: 9 }),
+      ).resolves.toEqual({ ok: false, deletedFileCount: 0 });
 
       expect(logger.warn).toHaveBeenCalledWith(
         'Could not confirm movie 5 was updated.',
@@ -245,9 +258,10 @@ describe('RadarrApi', () => {
         .mockResolvedValue(movie);
       jest.spyOn(api as any, 'runPut').mockResolvedValue(true);
 
-      await expect(api.updateMovie(5, { monitored: false })).resolves.toBe(
-        true,
-      );
+      await expect(api.updateMovie(5, { monitored: false })).resolves.toEqual({
+        ok: true,
+        deletedFileCount: 0,
+      });
 
       expect(getWithoutCacheSpy).toHaveBeenCalledTimes(1);
     });
@@ -264,12 +278,48 @@ describe('RadarrApi', () => {
 
       await expect(
         api.updateMovie(5, { monitored: false, deleteFiles: true }),
-      ).resolves.toBe(false);
+      ).resolves.toEqual({ ok: false, deletedFileCount: 0 });
 
       expect(runDeleteSpy).not.toHaveBeenCalled();
       expect(logger.warn).toHaveBeenCalledWith(
         "Could not list movie 5's files; leaving them in place.",
       );
+    });
+
+    // A confirmed-empty file list is not a failure - the update applied - but it
+    // deleted nothing, and the caller has to be able to tell that apart from a
+    // real deletion when a user reports a surviving file.
+    it('reports zero deleted files when Radarr holds no file records for the movie', async () => {
+      jest
+        .spyOn(api, 'getWithoutCache')
+        .mockResolvedValueOnce(movie)
+        .mockResolvedValueOnce([]);
+      jest.spyOn(api as any, 'runPut').mockResolvedValue(true);
+      const runDeleteSpy = jest
+        .spyOn(api as any, 'runDelete')
+        .mockResolvedValue(true);
+
+      await expect(
+        api.updateMovie(5, { monitored: false, deleteFiles: true }),
+      ).resolves.toEqual({ ok: true, deletedFileCount: 0 });
+
+      expect(runDeleteSpy).not.toHaveBeenCalled();
+    });
+
+    it('counts every file it removed', async () => {
+      jest
+        .spyOn(api, 'getWithoutCache')
+        .mockResolvedValueOnce(movie)
+        .mockResolvedValueOnce([
+          createRadarrMovieFile({ id: 900 }),
+          createRadarrMovieFile({ id: 901 }),
+        ]);
+      jest.spyOn(api as any, 'runPut').mockResolvedValue(true);
+      jest.spyOn(api as any, 'runDelete').mockResolvedValue(true);
+
+      await expect(
+        api.updateMovie(5, { monitored: false, deleteFiles: true }),
+      ).resolves.toEqual({ ok: true, deletedFileCount: 2 });
     });
   });
 
