@@ -484,8 +484,14 @@ export class EmbyAdapterService implements IMediaServerService {
   async getChildrenMetadata(
     parentId: string,
     childType?: MediaItemType,
+    throwOnError = false,
   ): Promise<MediaItem[]> {
-    if (!this.http) return [];
+    if (!this.http) {
+      if (throwOnError) {
+        throw new Error('Emby API not initialized');
+      }
+      return [];
+    }
 
     const cacheKey = `${EMBY_CACHE_KEYS.CHILDREN}:${parentId}:${childType ?? 'any'}`;
     const cached = this.cache.data.get<MediaItem[]>(cacheKey);
@@ -530,6 +536,10 @@ export class EmbyAdapterService implements IMediaServerService {
         (data.Items ?? []).map(EmbyMapper.toMediaItem),
       );
     } catch (error) {
+      if (throwOnError) {
+        throw error;
+      }
+
       this.logger.debug(
         `Emby getChildrenMetadata(${parentId}) failed: ${formatConnectionFailureMessage(error, 'Connection failed')}`,
       );
@@ -1443,7 +1453,9 @@ export class EmbyAdapterService implements IMediaServerService {
       collectionType,
       context,
       mediaId,
-      (parentId, type) => this.getChildrenMetadata(parentId, type),
+      // Throwing: a swallowed read reads as "no children", which silently
+      // drops the expansion and reports the action as done.
+      (parentId, type) => this.getChildrenMetadata(parentId, type, true),
       (message) => this.logger.warn(message),
     );
   }

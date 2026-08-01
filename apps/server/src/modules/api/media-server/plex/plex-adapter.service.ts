@@ -197,9 +197,22 @@ export class PlexAdapterService implements IMediaServerService {
     return this.plexApi.itemExists(itemId);
   }
 
-  async getChildrenMetadata(parentId: string): Promise<MediaItem[]> {
+  async getChildrenMetadata(
+    parentId: string,
+    childType?: MediaItemType,
+    throwOnError = false,
+  ): Promise<MediaItem[]> {
+    // Plex children are unambiguous - a show's are seasons, a season's are
+    // episodes - so childType is not needed to pick an endpoint.
+    void childType;
+
     const children = await this.plexApi.getChildrenMetadata(parentId);
-    if (!children) return [];
+    if (!children) {
+      if (throwOnError) {
+        throw new Error(`Could not read the children of Plex item ${parentId}`);
+      }
+      return [];
+    }
     return children.map(PlexMapper.metadataToMediaItem);
   }
 
@@ -685,7 +698,13 @@ export class PlexAdapterService implements IMediaServerService {
       try {
         await this.removeFromCollection(collectionId, itemId);
       } catch (error) {
-        if (error instanceof Error && error.message.includes('404')) {
+        // An item Plex no longer holds is the outcome the caller wanted. Match
+        // the status the message ends with, not "404" anywhere in it - the
+        // message carries the request URL, so a ratingKey like 1404 matched.
+        if (
+          error instanceof Error &&
+          error.message.endsWith('response code: 404')
+        ) {
           continue;
         }
 
@@ -837,7 +856,9 @@ export class PlexAdapterService implements IMediaServerService {
       collectionType,
       context,
       mediaId,
-      (parentId) => this.getChildrenMetadata(parentId),
+      // Throwing: a swallowed read reads as "no children", which silently
+      // drops the expansion and reports the action as done.
+      (parentId) => this.getChildrenMetadata(parentId, undefined, true),
       (message) => this.logger.warn(message),
     );
   }

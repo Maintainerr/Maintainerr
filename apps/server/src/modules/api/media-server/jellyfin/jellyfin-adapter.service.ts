@@ -999,8 +999,14 @@ export class JellyfinAdapterService implements IMediaServerService {
   async getChildrenMetadata(
     parentId: string,
     childType?: MediaItemType,
+    throwOnError = false,
   ): Promise<MediaItem[]> {
-    if (!this.api) return [];
+    if (!this.api) {
+      if (throwOnError) {
+        throw new Error('Jellyfin API not initialized');
+      }
+      return [];
+    }
 
     const cacheKey = `${JELLYFIN_CACHE_KEYS.CHILDREN}:${parentId}:${childType ?? 'any'}`;
     const cached = this.cache.data.get<MediaItem[]>(cacheKey);
@@ -1060,6 +1066,10 @@ export class JellyfinAdapterService implements IMediaServerService {
         (response.data.Items || []).map(JellyfinMapper.toMediaItem),
       );
     } catch (error) {
+      if (throwOnError) {
+        throw error;
+      }
+
       this.logger.error(`Failed to get children for ${parentId}`);
       this.logger.debug(error);
       return [];
@@ -2480,7 +2490,9 @@ export class JellyfinAdapterService implements IMediaServerService {
       collectionType,
       context,
       mediaId,
-      (parentId, type) => this.getChildrenMetadata(parentId, type),
+      // Throwing: a swallowed read reads as "no children", which silently
+      // drops the expansion and reports the action as done.
+      (parentId, type) => this.getChildrenMetadata(parentId, type, true),
       (message) => this.logger.warn(message),
     );
   }
