@@ -269,8 +269,9 @@ truth: describe a feature there, not here, so the two cannot drift.
   guardrails.
 - <https://docs.maintainerr.info/overlays/> covers overlay templates, settings,
   and processing behaviour.
-- `docs/overlay-feature.md` is the contributor-facing counterpart: contracts,
-  database schema, and the service layer behind overlays.
+- `.github/notes/overlay-feature.md` is the contributor-facing counterpart:
+  contracts, database schema, and the service layer behind overlays. See
+  `.github/notes/README.md` for what that directory is for.
 - `README.md` describes product capabilities, installation, API compatibility,
   and supported services.
 

@@ -276,7 +276,7 @@ The first-time-user welcome screen still tells users to "Choose Plex or Jellyfin
 
 ---
 
-### L6. Broken verification script in `docs/emby-support.md`
+### L6. Broken verification script in `.github/notes/emby-support.md`
 
 **Source**: Review
 **File**: [emby-support.md:378-395](emby-support.md#L378-L395)
