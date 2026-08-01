@@ -3,13 +3,17 @@ import { MediaProviderIds } from '@maintainerr/contracts';
 // Every name a media server may use for the providers Maintainerr tracks:
 // the bare ones, the capitalised keys Jellyfin and Emby send, and the
 // spelled-out ones a legacy Plex agent carries. Matched lowercased.
-const PROVIDER_BY_NAME: Record<string, keyof MediaProviderIds> = {
-  imdb: 'imdb',
-  tmdb: 'tmdb',
-  themoviedb: 'tmdb',
-  tvdb: 'tvdb',
-  thetvdb: 'tvdb',
-};
+//
+// A Map, not an object literal: the name comes from the server's own metadata,
+// and `constructor` / `__proto__` resolve on an object literal's prototype
+// chain - a truthy hit that then throws when the id is pushed.
+const PROVIDER_BY_NAME = new Map<string, keyof MediaProviderIds>([
+  ['imdb', 'imdb'],
+  ['tmdb', 'tmdb'],
+  ['themoviedb', 'tmdb'],
+  ['tvdb', 'tvdb'],
+  ['thetvdb', 'tvdb'],
+]);
 
 export const emptyProviderIds = (): MediaProviderIds => ({
   imdb: [],
@@ -26,7 +30,7 @@ export const addProviderId = (
   name: string | undefined | null,
   id: string | undefined | null,
 ): void => {
-  const provider = PROVIDER_BY_NAME[name?.toLowerCase()];
+  const provider = PROVIDER_BY_NAME.get(name?.toLowerCase() ?? '');
   if (provider && id) {
     providerIds[provider].push(id);
   }

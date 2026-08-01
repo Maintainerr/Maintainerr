@@ -270,9 +270,12 @@ export class RadarrActionHandler {
         radarrApiClient.getMovies(),
       ]);
 
-      // undefined = the listing failed, so which files are about to be deleted
-      // is unknown - not "none". Skip rather than fence on a guess.
-      if (movieFiles === undefined) {
+      // undefined = the listing failed, so what it would have fenced is
+      // unknown - not "nothing". Skip rather than fence on a guess: an empty
+      // deleted-file list drops the proof that this is the folder the delete
+      // emptied, and an empty movie list drops the fence that keeps the
+      // cleanup off another tracked item's folder.
+      if (movieFiles === undefined || movies === undefined) {
         return undefined;
       }
 
@@ -283,7 +286,7 @@ export class RadarrActionHandler {
         deletedFilePaths: movieFiles
           .map((file) => file.path)
           .filter((p): p is string => !!p),
-        otherItemPaths: (movies ?? [])
+        otherItemPaths: movies
           .filter((movie) => movie.id !== radarrMedia.id)
           .map((movie) => movie.path)
           .filter((p): p is string => !!p),
