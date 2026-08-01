@@ -513,6 +513,33 @@ describe('SonarrActionHandler', () => {
     },
   );
 
+  it('reports the skip when the show is not tracked in Sonarr, so an enabled cleanup is not silent', async () => {
+    const collection = createCollection({
+      arrAction: ServarrAction.DELETE,
+      sonarrSettingsId: 1,
+      type: 'season',
+      cleanupLeftoverFolders: true,
+    });
+    const collectionMedia = createCollectionMediaWithMetadata(collection, {
+      tmdbId: 1,
+    });
+
+    mockMediaServerMetadata(collectionMedia.mediaData);
+
+    const mockedSonarrApi = mockSonarrApi(servarrService, logger);
+    jest.spyOn(mockedSonarrApi, 'getSeriesByTvdbId').mockResolvedValue(null);
+
+    mediaIdFinder.findTvdbId.mockResolvedValue(1);
+
+    await sonarrActionHandler.handleAction(collection, collectionMedia);
+
+    expect(folderCleanup.logNotApplicableForUntrackedItem).toHaveBeenCalledWith(
+      collectionMedia.mediaServerId,
+    );
+    expect(folderCleanup.cleanupAfterDelete).not.toHaveBeenCalled();
+    expect(mediaServer.deleteFromDisk).toHaveBeenCalled();
+  });
+
   // A transient Sonarr lookup failure (getSeriesByTvdbId → undefined) must NOT
   // be read as "not in Sonarr" and trigger a media-server delete - fail closed
   // so the item stays in the collection and is retried next run. (#3125)

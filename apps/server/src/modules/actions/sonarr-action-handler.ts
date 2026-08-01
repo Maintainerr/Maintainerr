@@ -116,6 +116,14 @@ export class SonarrActionHandler {
         this.logger.log(
           `Couldn't find show in Sonarr using resolved external IDs [${attemptedIds}] for media server item ${media.mediaServerId}. Attempting to remove from the filesystem via media server.`,
         );
+        if (
+          collection.cleanupLeftoverFolders &&
+          leftoverCleanupScope(collection.type, collection.arrAction)
+        ) {
+          this.folderCleanup.logNotApplicableForUntrackedItem(
+            media.mediaServerId,
+          );
+        }
         await mediaServer.deleteFromDisk(media.mediaServerId);
         return true;
       } else {

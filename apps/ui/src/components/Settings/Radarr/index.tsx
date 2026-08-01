@@ -209,14 +209,12 @@ const RadarrSettings = () => {
             </Button>
           }
         >
-          <p className="mb-4">
-            This server is currently being used by the following rules:
-            <ul className="list-inside list-disc">
-              {collectionsInUseWarning.map((x) => (
-                <li key={x.id}>{x.title}</li>
-              ))}
-            </ul>
-          </p>
+          <p>This server is currently being used by the following rules:</p>
+          <ul className="mb-4 list-inside list-disc">
+            {collectionsInUseWarning.map((x) => (
+              <li key={x.id}>{x.title}</li>
+            ))}
+          </ul>
           <p>
             You must re-assign these rules to a different server before
             deleting.

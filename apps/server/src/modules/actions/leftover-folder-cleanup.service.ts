@@ -91,6 +91,20 @@ export class LeftoverFolderCleanupService {
     logger.setContext(LeftoverFolderCleanupService.name);
   }
 
+  /**
+   * The media-server delete fallback runs when the *arr does not track the item,
+   * which is also where every fence comes from - so this cleanup cannot run
+   * there. It is not needed there either: Jellyfin and Emby delete the item's
+   * own folder along with it, so nothing is stranded to clean up. Report it as
+   * "does not apply" rather than a skipped cleanup, and keep the per-server
+   * detail in the docs instead of naming servers here (#3370).
+   */
+  public logNotApplicableForUntrackedItem(label?: string): void {
+    this.logger.log(
+      `Leftover-folder cleanup does not apply${label ? ` to '${label}'` : ''}: the item is not tracked in the *arr, so the media server deleted it directly - see docs/leftover-folder-cleanup.md.`,
+    );
+  }
+
   public async cleanupAfterDelete(input: LeftoverCleanupInput): Promise<void> {
     const label = input.label ? ` for '${input.label}'` : '';
     try {
