@@ -115,6 +115,11 @@ export interface CollectionAddResult {
   serverRejectedIds: string[];
 }
 
+export interface ContextActionResult extends CollectionAddResult {
+  /** Ids the context resolved to. Zero means it cannot apply to this collection. */
+  resolvedCount: number;
+}
+
 @Injectable()
 export class CollectionsService {
   constructor(
@@ -2544,7 +2549,7 @@ export class CollectionsService {
     context: AlterableMediaContext,
     media: CollectionMediaChange,
     action: 'add' | 'remove',
-  ): Promise<CollectionAddResult & { resolvedCount: number }> {
+  ): Promise<ContextActionResult> {
     const mediaServer = await this.getMediaServer();
     const collection =
       collectionDbId !== -1 && collectionDbId !== undefined

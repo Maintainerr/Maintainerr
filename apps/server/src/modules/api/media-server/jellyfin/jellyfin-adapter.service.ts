@@ -2490,8 +2490,6 @@ export class JellyfinAdapterService implements IMediaServerService {
       collectionType,
       context,
       mediaId,
-      // Throwing: a swallowed read reads as "no children", which silently
-      // drops the expansion and reports the action as done.
       (parentId, type) => this.getChildrenMetadata(parentId, type, true),
       (message) => this.logger.warn(message),
     );

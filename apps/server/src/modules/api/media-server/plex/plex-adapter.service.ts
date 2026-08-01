@@ -856,8 +856,6 @@ export class PlexAdapterService implements IMediaServerService {
       collectionType,
       context,
       mediaId,
-      // Throwing: a swallowed read reads as "no children", which silently
-      // drops the expansion and reports the action as done.
       (parentId) => this.getChildrenMetadata(parentId, undefined, true),
       (message) => this.logger.warn(message),
     );
