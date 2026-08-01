@@ -1,3 +1,41 @@
+# [3.21.0](https://github.com/Maintainerr/Maintainerr/compare/v3.20.1...v3.21.0) (2026-08-01)
+
+
+### Database migrations
+
+- `1785498159951-AddCollectionLeftoverCleanup.ts`
+
+### Features
+
+- feat(actions): clean up dangling symlinks left by a per-file *arr delete (#3377)
+- feat: clean up leftover media folder after a per-file *arr delete (#3200)
+- feat(metadata): number season and episode posters and resolve their metadata (#3366)
+
+### Fixes
+
+- fix(actions): keep the leftover-cleanup fences intact on a failed listing (#3375)
+- fix(actions): stop claiming a media-server delete strands the folder (#3373)
+- fix: make the delete and prefetch logs report what actually happened (#3372)
+- fix(actions): report the leftover-cleanup skip for items not tracked in the *arr (#3371)
+- fix(ui): stop nesting the in-use rule list inside a paragraph
+- fix: add missing space in the take-action-after-days hint
+
+### Performance
+
+- perf(media-server): scope the watch-history prefetch to the library being evaluated (#3368)
+
+### Refactors
+
+- refactor: drop underscore-prefixed identifiers (#3367)
+
+### Other
+
+- docs: drop the contributor notes; the code is the reference
+- docs: move contributor notes out of docs/ into .github/notes
+- docs: drop the duplicated collection-poster page for the docs site
+- docs: drop the in-repo leftover-cleanup page for the docs site
+- docs: make the TypeORM migration commands actually runnable
+
 # [3.20.1](https://github.com/Maintainerr/Maintainerr/compare/v3.20.0...v3.20.1) (2026-07-30)
 
 

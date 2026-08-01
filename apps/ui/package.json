@@ -1,6 +1,6 @@
 {
   "name": "@maintainerr/ui",
-  "version": "3.20.1",
+  "version": "3.21.0",
   "private": true,
   "scripts": {
     "dev": "vite",
