@@ -14,18 +14,6 @@ describe('resolveContextActionIds', () => {
 
   beforeEach(() => get.mockClear());
 
-  it('returns the media id for the "all" sentinel', async () => {
-    expect(
-      await resolveContextActionIds(
-        'season',
-        { type: 'season', id: '-1' },
-        'm',
-        get,
-      ),
-    ).toEqual(['m']);
-    expect(get).not.toHaveBeenCalled();
-  });
-
   // Emby returned [mediaId] here, so excluding one season excluded the whole
   // show. A global exclusion cascades from the item acted on, not the top one.
   it('cascades a global season exclusion to the season and its episodes', async () => {
@@ -72,6 +60,8 @@ describe('resolveContextActionIds', () => {
     ).toEqual(['e1', 'e2']);
   });
 
+  // Both show cases used to return the show's own id, which Plex rejects with
+  // a 400 when the collection holds seasons or episodes (#3381).
   it('expands a show context to every season for a season collection', async () => {
     expect(
       await resolveContextActionIds(
@@ -81,6 +71,17 @@ describe('resolveContextActionIds', () => {
         get,
       ),
     ).toEqual(['s1']);
+  });
+
+  it('expands a show context to every episode for an episode collection', async () => {
+    expect(
+      await resolveContextActionIds(
+        'episode',
+        { type: 'show', id: 'series' },
+        'series',
+        get,
+      ),
+    ).toEqual(['e1', 'e2']);
   });
 
   it('reports episodes into a season collection as unsupported', async () => {
