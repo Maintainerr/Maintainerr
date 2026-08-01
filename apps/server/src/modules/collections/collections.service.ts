@@ -1964,8 +1964,10 @@ export class CollectionsService {
 
           collection.mediaServerId = foundCollection.id;
         } else {
+          // The name is only one of the reasons it can miss: a collection of
+          // the wrong media type is left alone too, and says so a line above.
           this.logger.error(
-            `Manual collection not found.. Is the spelling correct? `,
+            `Could not link the manual collection '${collection.manualCollectionName}'. Check the name, and that its media type matches the rule.`,
           );
           return undefined;
         }
@@ -2219,7 +2221,7 @@ export class CollectionsService {
         );
       } else {
         this.logger.error(
-          'Manual collection not found.. Is it still available in the media server?',
+          `Could not relink the manual collection '${collection.manualCollectionName}'. Check that it still exists and that its media type matches the rule.`,
         );
         await this.addLogRecord(
           { id: collection.id } as Collection,
