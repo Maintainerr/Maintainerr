@@ -32,22 +32,23 @@ const AddModal = (props: IAddModal) => {
   >([])
   const [submitting, setSubmitting] = useState(false)
   const [selectedAction, setSelectedAction] = useState<number>(0)
-  // For show only
-  const [selectedSeasons, setSelectedSeasons] = useState<number | string>(-1)
-  const [selectedEpisodes, setSelectedEpisodes] = useState<number | string>(-1)
+  // For show only. Undefined is "all", so the picker never carries a value the
+  // media server would have to interpret.
+  const [selectedSeasons, setSelectedSeasons] = useState<string>()
+  const [selectedEpisodes, setSelectedEpisodes] = useState<string>()
 
   const [collectionOptions, setCollectionOptions] = useState<
     ICollectionMedia[]
   >([])
   const [seasonOptions, setSeasonOptions] = useState<ICollectionMedia[]>([
     {
-      id: -1,
+      id: '',
       title: 'All seasons',
     },
   ])
   const [episodeOptions, setEpisodeOptions] = useState<ICollectionMedia[]>([
     {
-      id: -1,
+      id: '',
       title: 'All episodes',
     },
   ])
@@ -67,13 +68,10 @@ const AddModal = (props: IAddModal) => {
 
   // The context is the narrowest thing picked; with no season or episode
   // selected that is the item itself. Same shape as TestMediaItem.
-  const selectedMediaId = useMemo(() => {
-    return selectedEpisodes !== -1
-      ? selectedEpisodes
-      : selectedSeasons !== -1
-        ? selectedSeasons
-        : props.mediaServerId
-  }, [selectedSeasons, selectedEpisodes, props.mediaServerId])
+  const selectedMediaId = useMemo(
+    () => selectedEpisodes ?? selectedSeasons ?? props.mediaServerId,
+    [selectedSeasons, selectedEpisodes, props.mediaServerId],
+  )
 
   // Only a show narrows through the season and episode pickers; every other
   // item is its own context. Reporting a season or episode as a movie offered
@@ -83,11 +81,9 @@ const AddModal = (props: IAddModal) => {
       return props.type ?? 'movie'
     }
 
-    return selectedEpisodes !== -1
-      ? 'episode'
-      : selectedSeasons !== -1
-        ? 'season'
-        : 'show'
+    if (selectedEpisodes) return 'episode'
+    if (selectedSeasons) return 'season'
+    return 'show'
   }, [selectedSeasons, selectedEpisodes, props.type])
 
   // A context resolves down the hierarchy but never up, so offer exactly the
@@ -245,7 +241,7 @@ const AddModal = (props: IAddModal) => {
         .then((resp: { id: string; title: string }[]) => {
           setSeasonOptions([
             {
-              id: -1,
+              id: '',
               title: 'All seasons',
             },
             ...resp.map((el) => {
@@ -266,7 +262,7 @@ const AddModal = (props: IAddModal) => {
   }, [props.mediaServerId, props.type])
 
   useEffect(() => {
-    if (selectedSeasons === -1) return
+    if (!selectedSeasons) return
 
     // A slower read for the season the user just moved off would otherwise
     // land last and list the wrong season's episodes.
@@ -277,7 +273,7 @@ const AddModal = (props: IAddModal) => {
         if (!current) return
         setEpisodeOptions([
           {
-            id: -1,
+            id: '',
             title: 'All episodes',
           },
           ...resp.map((el) => {
@@ -476,18 +472,18 @@ const AddModal = (props: IAddModal) => {
               <Select
                 name={`Seasons-field`}
                 id={`Seasons-field`}
-                value={selectedSeasons}
+                value={selectedSeasons ?? ''}
                 onChange={(e: { target: { value: string } }) => {
                   const value = e.target.value
                   setLoading(true)
-                  setSelectedEpisodes(-1)
+                  setSelectedEpisodes(undefined)
                   setEpisodeOptions([
                     {
-                      id: -1,
+                      id: '',
                       title: 'All episodes',
                     },
                   ])
-                  setSelectedSeasons(value === '-1' ? -1 : value)
+                  setSelectedSeasons(value || undefined)
                 }}
               >
                 {seasonOptions.map((e: ICollectionMedia) => {
@@ -501,16 +497,16 @@ const AddModal = (props: IAddModal) => {
             </FormItem>
           ) : undefined}
           {/* For shows and specific seasons */}
-          {props.type === 'show' && selectedSeasons !== -1 ? (
+          {props.type === 'show' && selectedSeasons ? (
             <FormItem label="Episodes">
               <Select
                 name={`Episodes-field`}
                 id={`Episodes-field`}
-                value={selectedEpisodes}
+                value={selectedEpisodes ?? ''}
                 onChange={(e: { target: { value: string } }) => {
                   const value = e.target.value
                   setLoading(true)
-                  setSelectedEpisodes(value === '-1' ? -1 : value)
+                  setSelectedEpisodes(value || undefined)
                 }}
               >
                 {episodeOptions.map((e: ICollectionMedia) => {
