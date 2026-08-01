@@ -294,9 +294,9 @@ describe('RadarrActionHandler', () => {
 
       await radarrActionHandler.handleAction(collection, collectionMedia);
 
-      expect(folderCleanup.logSkippedForUntrackedItem).toHaveBeenCalledWith(
-        collectionMedia.mediaServerId,
-      );
+      expect(
+        folderCleanup.logNotApplicableForUntrackedItem,
+      ).toHaveBeenCalledWith(collectionMedia.mediaServerId);
       expect(folderCleanup.cleanupAfterDelete).not.toHaveBeenCalled();
       expect(mediaServer.deleteFromDisk).toHaveBeenCalledWith(
         collectionMedia.mediaServerId,
@@ -316,7 +316,9 @@ describe('RadarrActionHandler', () => {
 
       await radarrActionHandler.handleAction(collection, collectionMedia);
 
-      expect(folderCleanup.logSkippedForUntrackedItem).not.toHaveBeenCalled();
+      expect(
+        folderCleanup.logNotApplicableForUntrackedItem,
+      ).not.toHaveBeenCalled();
     });
 
     it('does not claim a file removal when Radarr held no files for the movie', async () => {

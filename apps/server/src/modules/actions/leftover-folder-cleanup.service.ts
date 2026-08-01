@@ -92,15 +92,16 @@ export class LeftoverFolderCleanupService {
   }
 
   /**
-   * The media-server delete fallback runs when the item is not tracked in the
-   * *arr, which is also where every fence comes from: no root folders, no
-   * sibling item paths, nothing to prove the folder is the one just emptied. So
-   * the cleanup cannot run there. Say so, otherwise an enabled cleanup appears
-   * to do nothing at all (#3370).
+   * The media-server delete fallback runs when the *arr does not track the item,
+   * which is also where every fence comes from - so this cleanup cannot run
+   * there. It is not needed there either: Jellyfin and Emby delete the item's
+   * own folder along with it, so nothing is stranded to clean up. Report it as
+   * "does not apply" rather than a skipped cleanup, and keep the per-server
+   * detail in the docs instead of naming servers here (#3370).
    */
-  public logSkippedForUntrackedItem(label?: string): void {
-    this.logger.warn(
-      `Leftover-folder cleanup skipped${label ? ` for '${label}'` : ''}: the item is not tracked in the *arr, so there are no root folders to fence the delete against. Only the media file was removed; its folder was left in place.`,
+  public logNotApplicableForUntrackedItem(label?: string): void {
+    this.logger.log(
+      `Leftover-folder cleanup does not apply${label ? ` to '${label}'` : ''}: the item is not tracked in the *arr, so the media server deleted it directly - see docs/leftover-folder-cleanup.md.`,
     );
   }
 

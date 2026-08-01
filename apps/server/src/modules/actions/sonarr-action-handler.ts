@@ -120,7 +120,9 @@ export class SonarrActionHandler {
           collection.cleanupLeftoverFolders &&
           leftoverCleanupScope(collection.type, collection.arrAction)
         ) {
-          this.folderCleanup.logSkippedForUntrackedItem(media.mediaServerId);
+          this.folderCleanup.logNotApplicableForUntrackedItem(
+            media.mediaServerId,
+          );
         }
         await mediaServer.deleteFromDisk(media.mediaServerId);
         return true;
