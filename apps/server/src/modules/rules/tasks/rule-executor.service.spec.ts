@@ -59,6 +59,9 @@ describe('RuleExecutorService', () => {
       getSiblingRuleOwnedMediaServerIds: jest
         .fn()
         .mockResolvedValue(new Set<string>()),
+      getSiblingMemberMediaServerIds: jest
+        .fn()
+        .mockResolvedValue(new Set<string>()),
       reconcileRuleRemovedOrphans: jest
         .fn()
         .mockResolvedValue(new Set<string>()),
@@ -603,6 +606,110 @@ describe('RuleExecutorService', () => {
     ).not.toHaveBeenCalled();
     expect(logger.warn).toHaveBeenCalledWith(
       expect.stringContaining('Could not determine sibling rule ownership'),
+    );
+  });
+
+  it('skips importing items a sibling collection holds as manual members', async () => {
+    const { service, mediaServer, collectionService } = createService(
+      MediaServerType.PLEX,
+    );
+
+    collectionService.getCollection.mockResolvedValue({
+      id: 1,
+      title: 'Shared Title',
+      mediaServerId: 'coll-1',
+      manualCollection: false,
+    } as any);
+    collectionService.checkAutomaticMediaServerLink.mockResolvedValue({
+      id: 1,
+      title: 'Shared Title',
+      mediaServerId: 'coll-1',
+      manualCollection: false,
+    } as any);
+    collectionService.getCollectionMedia.mockResolvedValue([]);
+    collectionService.getSiblingMemberMediaServerIds.mockResolvedValue(
+      new Set(['m-sibling-manual']),
+    );
+    mediaServer.getCollectionChildren.mockResolvedValue([
+      { id: 'm-sibling-manual' },
+      { id: 'm-truly-manual' },
+    ]);
+
+    await (
+      service as unknown as {
+        syncManualMediaServerToCollectionDB: (
+          ruleGroup: { id: number; collectionId: number },
+          collectionSyncChanges: {
+            addedMediaServerIds: Set<string>;
+            removedMediaServerIds: Set<string>;
+          },
+        ) => Promise<void>;
+      }
+    ).syncManualMediaServerToCollectionDB(
+      { id: 10, collectionId: 1 },
+      {
+        addedMediaServerIds: new Set(),
+        removedMediaServerIds: new Set(),
+      },
+    );
+
+    expect(
+      collectionService.syncMediaServerChildrenToCollection,
+    ).toHaveBeenCalledWith(
+      expect.anything(),
+      [expect.objectContaining({ mediaServerId: 'm-truly-manual' })],
+      'local',
+    );
+  });
+
+  it('skips manual child import when sibling membership lookup fails', async () => {
+    const { service, mediaServer, collectionService, logger } = createService(
+      MediaServerType.PLEX,
+    );
+
+    collectionService.getCollection.mockResolvedValue({
+      id: 1,
+      title: 'Shared Title',
+      mediaServerId: 'coll-1',
+      manualCollection: false,
+    } as any);
+    collectionService.checkAutomaticMediaServerLink.mockResolvedValue({
+      id: 1,
+      title: 'Shared Title',
+      mediaServerId: 'coll-1',
+      manualCollection: false,
+    } as any);
+    collectionService.getCollectionMedia.mockResolvedValue([]);
+    collectionService.getSiblingMemberMediaServerIds.mockRejectedValue(
+      new Error('db down'),
+    );
+    mediaServer.getCollectionChildren.mockResolvedValue([
+      { id: 'm-truly-manual' },
+    ]);
+
+    await (
+      service as unknown as {
+        syncManualMediaServerToCollectionDB: (
+          ruleGroup: { id: number; collectionId: number },
+          collectionSyncChanges: {
+            addedMediaServerIds: Set<string>;
+            removedMediaServerIds: Set<string>;
+          },
+        ) => Promise<void>;
+      }
+    ).syncManualMediaServerToCollectionDB(
+      { id: 10, collectionId: 1 },
+      {
+        addedMediaServerIds: new Set(),
+        removedMediaServerIds: new Set(),
+      },
+    );
+
+    expect(
+      collectionService.syncMediaServerChildrenToCollection,
+    ).not.toHaveBeenCalled();
+    expect(logger.warn).toHaveBeenCalledWith(
+      expect.stringContaining('Could not determine sibling membership'),
     );
   });
 
