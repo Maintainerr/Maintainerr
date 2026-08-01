@@ -264,6 +264,28 @@ describe('RadarrActionHandler', () => {
       });
     });
 
+    // A failed listing is not "no other movies": fencing on an empty list drops
+    // the guard that keeps the cleanup off another tracked item's folder.
+    it('skips the cleanup when the movie listing failed', async () => {
+      const collection = createCollection({
+        arrAction: ServarrAction.UNMONITOR_DELETE_ALL,
+        radarrSettingsId: 1,
+        type: 'movie',
+        cleanupLeftoverFolders: true,
+      });
+      const collectionMedia = createCollectionMedia(collection, { tmdbId: 1 });
+      const mockedRadarrApi = arrangeCleanup(
+        createRadarrMovie({ id: 5, path: '/data/movies/Sample Movie (2024)' }),
+      );
+      jest
+        .spyOn(mockedRadarrApi, 'getMovies')
+        .mockResolvedValue(undefined as never);
+
+      await radarrActionHandler.handleAction(collection, collectionMedia);
+
+      expect(folderCleanup.cleanupAfterDelete).not.toHaveBeenCalled();
+    });
+
     it('does not clean after a DELETE: Radarr removes the movie folder itself', async () => {
       const collection = createCollection({
         arrAction: ServarrAction.DELETE,

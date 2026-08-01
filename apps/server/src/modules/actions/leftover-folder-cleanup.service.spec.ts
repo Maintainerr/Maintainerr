@@ -9,7 +9,7 @@ import {
   writeFile,
 } from 'fs/promises';
 import { tmpdir } from 'os';
-import { dirname, join } from 'path';
+import { dirname, join, sep } from 'path';
 import { LeftoverFolderCleanupService } from './leftover-folder-cleanup.service';
 
 // Exercises the destructive guardrail pipeline against a real temp filesystem.
@@ -131,6 +131,57 @@ describe('LeftoverFolderCleanupService', () => {
     // block removal rather than be silently unlinked.
     expect(await exists(folder)).toBe(true);
     expect(await exists(link)).toBe(true);
+  });
+
+  // The other half of the symlinked-library case: once the *arr has deleted the
+  // target, the link is the leftover. Extension is deliberately not checked -
+  // a dead media link is the normal outcome of a per-file delete.
+  it('removes a folder whose only media link is dangling', async () => {
+    const root = join(tmp, 'movies');
+    const store = join(tmp, 'remote-store');
+    await mkdir(root, { recursive: true });
+    await mkdir(store, { recursive: true });
+    const { folder, deletedFilePaths } = await makeItemFolder(
+      root,
+      'Sample Movie',
+      ['poster.jpg'],
+    );
+    // Never created in the store, so the link is born dangling.
+    await symlink(join(store, 'gone.mkv'), join(folder, 'Sample Movie.mkv'));
+
+    await service.cleanupAfterDelete({
+      folderPath: folder,
+      rootFolderPaths: [root],
+      deletedFilePaths,
+      scope: 'movie',
+    });
+
+    expect(await exists(folder)).toBe(false);
+    // The store itself is never touched - only the pointer is removed.
+    expect(await exists(store)).toBe(true);
+  });
+
+  it('keeps a folder whose symlink cannot be resolved', async () => {
+    const root = join(tmp, 'movies');
+    await mkdir(root, { recursive: true });
+    const { folder, deletedFilePaths } = await makeItemFolder(
+      root,
+      'Sample Movie',
+      ['poster.jpg'],
+    );
+    // A loop stats as ELOOP, not ENOENT: inconclusive, so it must not count as
+    // dangling and must keep the folder.
+    await symlink(join(folder, 'b.mkv'), join(folder, 'a.mkv'));
+    await symlink(join(folder, 'a.mkv'), join(folder, 'b.mkv'));
+
+    await service.cleanupAfterDelete({
+      folderPath: folder,
+      rootFolderPaths: [root],
+      deletedFilePaths,
+      scope: 'movie',
+    });
+
+    expect(await exists(folder)).toBe(true);
   });
 
   it('refuses to remove a root folder itself', async () => {
@@ -261,6 +312,29 @@ describe('LeftoverFolderCleanupService', () => {
       scope: 'movie',
     });
 
+    expect(await exists(realTarget)).toBe(true);
+    expect(await exists(link)).toBe(true);
+  });
+
+  // lstat resolves a trailing separator, so statting the raw path would report
+  // the target and clear the leaf-symlink gate. The target sits inside the root
+  // here, so containment would not catch it either.
+  it('refuses a symlinked folder reported with a trailing separator', async () => {
+    const root = join(tmp, 'movies');
+    const realTarget = join(root, 'Actual Folder');
+    await mkdir(realTarget, { recursive: true });
+    await writeFile(join(realTarget, 'a.srt'), 'x');
+    const link = join(root, 'Sample Movie');
+    await symlink(realTarget, link);
+
+    await service.cleanupAfterDelete({
+      folderPath: link + sep,
+      rootFolderPaths: [root],
+      deletedFilePaths: [join(link, 'deleted.mkv')],
+      scope: 'movie',
+    });
+
+    expect(await exists(join(realTarget, 'a.srt'))).toBe(true);
     expect(await exists(realTarget)).toBe(true);
     expect(await exists(link)).toBe(true);
   });
