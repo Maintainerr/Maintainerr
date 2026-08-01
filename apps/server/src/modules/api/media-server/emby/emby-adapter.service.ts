@@ -537,7 +537,12 @@ export class EmbyAdapterService implements IMediaServerService {
       );
     } catch (error) {
       if (throwOnError) {
-        throw error;
+        // Worded like the Plex adapter's: the raw client error reaches the user
+        // as "Request failed with status code 404", which names nothing.
+        throw new Error(
+          `Could not read the children of Emby item ${parentId}`,
+          { cause: error },
+        );
       }
 
       this.logger.debug(

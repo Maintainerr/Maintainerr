@@ -1067,7 +1067,12 @@ export class JellyfinAdapterService implements IMediaServerService {
       );
     } catch (error) {
       if (throwOnError) {
-        throw error;
+        // Worded like the Plex adapter's: the raw client error reaches the user
+        // as "Request failed with status code 404", which names nothing.
+        throw new Error(
+          `Could not read the children of Jellyfin item ${parentId}`,
+          { cause: error },
+        );
       }
 
       this.logger.error(`Failed to get children for ${parentId}`);
