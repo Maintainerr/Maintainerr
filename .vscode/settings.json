@@ -12,7 +12,15 @@
   },
   "typescript.tsdk": "node_modules/typescript/lib",
   "typescript.enablePromptUseWorkspaceTsdk": true,
-  "typescript.tsserver.experimental.enableProjectDiagnostics": true,
+  // Bound the language server. VS Code defaults each tsserver to a 3 GB heap
+  // and spawns a pair per window, so a few open windows can reserve more than
+  // the devbox has. 1.5 GB sits well above the ~1.2 GB a full load of this
+  // monorepo actually uses. Raise it if the server starts recycling.
+  //
+  // experimental.enableProjectDiagnostics is deliberately left unset: it keeps
+  // diagnostics for the whole monorepo resident in every server, and CI already
+  // covers project-wide errors via `yarn check-types`.
+  "typescript.tsserver.maxTsServerMemory": 1536,
   "typescript.tsserver.experimental.useVsCodeWatcher": false,
   "sqltools.connections": [
     {
