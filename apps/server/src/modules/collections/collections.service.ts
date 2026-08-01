@@ -17,7 +17,11 @@ import {
   MediaSortOrder,
   parseCollectionSortKey,
 } from '@maintainerr/contracts';
-import { Injectable } from '@nestjs/common';
+import {
+  BadGatewayException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Brackets, DataSource, In, LessThan, Not, Repository } from 'typeorm';
@@ -2558,12 +2562,32 @@ export class CollectionsService {
           })
         : undefined;
 
+    // An add names its collection, so a missing one is the caller's mistake
+    // rather than an empty result to report as done.
+    if (action === 'add' && !collection) {
+      throw new NotFoundException(`Collection ${collectionDbId} not found`);
+    }
+
     // get media - traverse show -> seasons -> episodes if needed
-    const ids = await mediaServer.getAllIdsForContextAction(
-      collection?.type,
-      { type: context.type, id: String(context.id) },
-      media.mediaServerId,
-    );
+    let ids: string[];
+    try {
+      ids = await mediaServer.getAllIdsForContextAction(
+        collection?.type,
+        { type: context.type, id: String(context.id) },
+        media.mediaServerId,
+      );
+    } catch (error) {
+      // The hierarchy walk reads the media server, so a failure here means we
+      // do not know what to act on - which is not the same as "nothing to do".
+      this.logger.debug(error);
+      throw new BadGatewayException(
+        getErrorMessage(
+          error,
+          `The media server could not resolve ${media.mediaServerId}`,
+        ),
+      );
+    }
+
     const handleMedia: CollectionMediaChange[] = ids.map((id) => ({
       mediaServerId: id,
     }));

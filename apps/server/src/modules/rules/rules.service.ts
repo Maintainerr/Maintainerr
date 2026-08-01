@@ -915,6 +915,33 @@ export class RulesService {
     }
   }
 
+  /**
+   * Ids a context action applies to. The walk reads the media server, so a
+   * failure means we do not know what to act on - reported as a failed status
+   * rather than swallowed into "nothing to do".
+   */
+  private async resolveContextActionIdsOrFail(
+    mediaServer: IMediaServerService,
+    collectionType: MediaItemType | undefined,
+    context: { type: MediaItemType; id: string },
+    mediaId: string,
+  ): Promise<CollectionMediaChange[] | undefined> {
+    try {
+      const ids = await mediaServer.getAllIdsForContextAction(
+        collectionType,
+        context,
+        mediaId,
+      );
+      return ids.map((id) => ({ mediaServerId: id }));
+    } catch (error) {
+      this.logger.warn(
+        `Could not resolve which items to act on for media ${mediaId}`,
+      );
+      this.logger.debug(error);
+      return undefined;
+    }
+  }
+
   async setExclusion(data: ExclusionContextDto) {
     const mediaServer = await this.getMediaServer();
     let handleMedia: CollectionMediaChange[] = [];
@@ -928,14 +955,21 @@ export class RulesService {
         },
       });
       // get media - traverse show -> seasons -> episodes if needed
-      const ids = await mediaServer.getAllIdsForContextAction(
+      const resolved = await this.resolveContextActionIdsOrFail(
+        mediaServer,
         group?.dataType,
         data.context
           ? { type: data.context.type, id: String(data.context.id) }
           : { type: group.dataType, id: String(data.mediaId) },
         String(data.mediaId),
       );
-      handleMedia = ids.map((id) => ({ mediaServerId: id }));
+      if (!resolved) {
+        return this.createReturnStatus(
+          false,
+          'Failed - media server unreadable',
+        );
+      }
+      handleMedia = resolved;
       data.ruleGroupId = group.id;
       topLevelType = group?.dataType;
     } else {
@@ -949,14 +983,21 @@ export class RulesService {
       }
 
       // get media - traverse show -> seasons -> episodes if needed
-      const ids = await mediaServer.getAllIdsForContextAction(
+      const resolved = await this.resolveContextActionIdsOrFail(
+        mediaServer,
         undefined,
         data.context
           ? { type: data.context.type, id: String(data.context.id) }
           : { type: metaData.type, id: String(data.mediaId) },
         String(data.mediaId),
       );
-      handleMedia = ids.map((id) => ({ mediaServerId: id }));
+      if (!resolved) {
+        return this.createReturnStatus(
+          false,
+          'Failed - media server unreadable',
+        );
+      }
+      handleMedia = resolved;
       topLevelType = metaData.type;
     }
     try {
@@ -1135,22 +1176,36 @@ export class RulesService {
       data.ruleGroupId = group.id;
       topLevelType = group?.dataType;
       // get media - traverse show -> seasons -> episodes if needed
-      const ids = await mediaServer.getAllIdsForContextAction(
+      const resolved = await this.resolveContextActionIdsOrFail(
+        mediaServer,
         group?.dataType,
         data.context
           ? { type: data.context.type, id: String(data.context.id) }
           : { type: group.dataType, id: String(data.mediaId) },
         String(data.mediaId),
       );
-      handleMedia = ids.map((id) => ({ mediaServerId: id }));
+      if (!resolved) {
+        return this.createReturnStatus(
+          false,
+          'Failed - media server unreadable',
+        );
+      }
+      handleMedia = resolved;
     } else {
       // get media - traverse show -> seasons -> episodes if needed
-      const ids = await mediaServer.getAllIdsForContextAction(
+      const resolved = await this.resolveContextActionIdsOrFail(
+        mediaServer,
         undefined,
         { type: data.context.type, id: String(data.context.id) },
         String(data.mediaId),
       );
-      handleMedia = ids.map((id) => ({ mediaServerId: id }));
+      if (!resolved) {
+        return this.createReturnStatus(
+          false,
+          'Failed - media server unreadable',
+        );
+      }
+      handleMedia = resolved;
     }
 
     try {

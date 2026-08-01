@@ -91,6 +91,7 @@ describe('CollectionsService', () => {
       getCollection: jest.fn().mockResolvedValue(undefined),
       getCollections: jest.fn().mockResolvedValue([]),
       getCollectionChildren: jest.fn().mockResolvedValue([]),
+      getAllIdsForContextAction: jest.fn().mockResolvedValue([]),
       getLibraries: jest.fn().mockResolvedValue([{ id: 'library-1' }]),
       getMetadata: jest.fn().mockResolvedValue(undefined),
       itemExists: jest.fn().mockResolvedValue(true),
@@ -3329,6 +3330,35 @@ describe('CollectionsService', () => {
       await service.removeStaleCollectionMedia();
 
       expect(collectionMediaRepo.delete).not.toHaveBeenCalled();
+    });
+  });
+
+  // Both used to answer 201 with an empty body, which is the same silent
+  // success the manual add was reporting for a rejected item.
+  describe('MediaCollectionActionWithContext failures', () => {
+    const context = { type: 'show' as const, id: '7' };
+    const media = { mediaServerId: '7' };
+
+    it('reports an add naming a collection that does not exist', async () => {
+      collectionRepo.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.MediaCollectionActionWithContext(999, context, media, 'add'),
+      ).rejects.toThrow('Collection 999 not found');
+    });
+
+    it('reports a context the media server could not resolve', async () => {
+      collectionRepo.findOne.mockResolvedValue({
+        id: 1,
+        type: 'season',
+      } as any);
+      mediaServer.getAllIdsForContextAction.mockRejectedValue(
+        new Error('plex unreachable'),
+      );
+
+      await expect(
+        service.MediaCollectionActionWithContext(1, context, media, 'add'),
+      ).rejects.toThrow('plex unreachable');
     });
   });
 

@@ -242,6 +242,59 @@ describe('AddModal - context payload', () => {
     ])
   })
 
+  // A slow read for the wider selection used to land last and re-offer
+  // collection types the current selection cannot fill.
+  it('ignores a collection read the selection has moved past', async () => {
+    let releaseWide: (value: unknown) => void = () => {}
+    const wide = new Promise((resolve) => {
+      releaseWide = resolve
+    })
+
+    getApiHandlerMock.mockImplementation(((url: string) => {
+      if (url.startsWith('/media-server/meta/'))
+        return Promise.resolve([
+          { id: 'season-1', title: 'Season 1', index: 1 },
+        ])
+      // The show read only happens for the wider "all seasons" selection.
+      if (url.startsWith('/collections?typeId=show'))
+        return wide.then(() => [{ id: 1, title: 'Show collection' }])
+      if (url.startsWith('/collections?typeId=season'))
+        return Promise.resolve([{ id: 2, title: 'Season collection' }])
+      if (url.startsWith('/collections?typeId=episode'))
+        return Promise.resolve([{ id: 3, title: 'Episode collection' }])
+      return Promise.resolve(undefined)
+    }) as typeof GetApiHandler)
+
+    render(
+      <AddModal
+        mediaServerId="show-1"
+        type="show"
+        modalType="add"
+        onCancel={vi.fn()}
+        onSubmit={vi.fn()}
+      />,
+    )
+
+    // Narrow to a season while the wider read is still outstanding.
+    fireEvent.change(await screen.findByRole('combobox', { name: 'Seasons' }), {
+      target: { value: 'season-1' },
+    })
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('option', { name: 'Show collection' }),
+      ).toBeNull(),
+    )
+
+    releaseWide(undefined)
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole('option', { name: 'Season collection' }),
+      ).toBeTruthy(),
+    )
+    expect(screen.queryByRole('option', { name: 'Show collection' })).toBeNull()
+  })
+
   // A -1 context id let the server act on the show itself, so a season
   // collection received a show id and Plex answered 400 (#3381).
   it('identifies "all seasons" by the show id rather than a sentinel', async () => {

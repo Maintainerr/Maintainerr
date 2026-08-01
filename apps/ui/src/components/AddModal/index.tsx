@@ -266,28 +266,40 @@ const AddModal = (props: IAddModal) => {
   }, [props.mediaServerId, props.type])
 
   useEffect(() => {
-    if (selectedSeasons !== -1) {
-      GetApiHandler(`/media-server/meta/${selectedSeasons}/children`)
-        .then((resp: { id: string; index: number }[]) => {
-          setEpisodeOptions([
-            {
-              id: -1,
-              title: 'All episodes',
-            },
-            ...resp.map((el) => {
-              return {
-                id: el.id,
-                title: `Episode ${el.index}`,
-              } as ICollectionMedia
-            }),
-          ])
-        })
-        .catch((error) =>
+    if (selectedSeasons === -1) return
+
+    // A slower read for the season the user just moved off would otherwise
+    // land last and list the wrong season's episodes.
+    let current = true
+
+    GetApiHandler(`/media-server/meta/${selectedSeasons}/children`)
+      .then((resp: { id: string; index: number }[]) => {
+        if (!current) return
+        setEpisodeOptions([
+          {
+            id: -1,
+            title: 'All episodes',
+          },
+          ...resp.map((el) => {
+            return {
+              id: el.id,
+              title: `Episode ${el.index}`,
+            } as ICollectionMedia
+          }),
+        ])
+      })
+      .catch((error) => {
+        if (current)
           setErrorMessage(
             getApiErrorMessage(error, 'Could not load the episodes'),
-          ),
-        )
-        .finally(() => setLoading(false))
+          )
+      })
+      .finally(() => {
+        if (current) setLoading(false)
+      })
+
+    return () => {
+      current = false
     }
   }, [selectedSeasons])
 
@@ -298,6 +310,10 @@ const AddModal = (props: IAddModal) => {
       ? `&libraryId=${encodeURIComponent(props.libraryId)}`
       : ''
 
+    // A slower read for the wider selection the user just moved off would
+    // otherwise land last and re-offer collection types this one cannot fill.
+    let current = true
+
     Promise.all(
       collectionTypes.map((type) =>
         GetApiHandler<ICollectionMedia[]>(
@@ -306,20 +322,30 @@ const AddModal = (props: IAddModal) => {
       ),
     )
       .then((responses) => {
+        if (!current) return
         const options = [...origCollectionOptions, ...responses.flat()]
         setCollectionOptions(options)
         // Narrowing to a season or episode drops the wider collection types,
         // so a selection made before that can no longer be submitted.
-        setSelectedCollection((current) =>
-          options.some((option) => option.id === current) ? current : undefined,
+        setSelectedCollection((selected) =>
+          options.some((option) => option.id === selected)
+            ? selected
+            : undefined,
         )
       })
-      .catch((error) =>
-        setErrorMessage(
-          getApiErrorMessage(error, 'Could not load the collections'),
-        ),
-      )
-      .finally(() => setLoading(false))
+      .catch((error) => {
+        if (current)
+          setErrorMessage(
+            getApiErrorMessage(error, 'Could not load the collections'),
+          )
+      })
+      .finally(() => {
+        if (current) setLoading(false)
+      })
+
+    return () => {
+      current = false
+    }
   }, [origCollectionOptions, collectionTypes, props.libraryId])
 
   return (
