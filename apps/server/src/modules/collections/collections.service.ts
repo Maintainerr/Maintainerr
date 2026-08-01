@@ -2564,9 +2564,12 @@ export class CollectionsService {
           })
         : undefined;
 
-    // An add names its collection, so a missing one is the caller's mistake
-    // rather than an empty result to report as done.
-    if (action === 'add' && !collection) {
+    // Any action naming a collection needs it to exist. Without this a remove
+    // resolved its ids as a global action and then removed nothing, and an add
+    // had no collection to add to - both reported as done.
+    const namesCollection =
+      collectionDbId !== undefined && collectionDbId !== -1;
+    if ((namesCollection || action === 'add') && !collection) {
       throw new NotFoundException(`Collection ${collectionDbId} not found`);
     }
 
@@ -2594,13 +2597,29 @@ export class CollectionsService {
       mediaServerId: id,
     }));
 
+    // Both helpers swallow their own failures and answer undefined, so one bad
+    // collection cannot abort a rule run. A user waiting on the modal has to be
+    // told instead of watching it close on nothing.
+    const orFail = (collection: Collection | undefined): Collection => {
+      if (!collection) {
+        throw new BadGatewayException(
+          `The collection could not be updated. Check the logs for what failed.`,
+        );
+      }
+      return collection;
+    };
+
     if (action === 'add') {
       const result = await this.addToCollectionInternal(
         collectionDbId,
         handleMedia,
         true,
       );
-      return { ...result, resolvedCount: handleMedia.length };
+      return {
+        ...result,
+        collection: orFail(result.collection),
+        resolvedCount: handleMedia.length,
+      };
     }
 
     if (!collectionDbId) {
@@ -2609,7 +2628,9 @@ export class CollectionsService {
     }
 
     return {
-      collection: await this.removeFromCollection(collectionDbId, handleMedia),
+      collection: orFail(
+        await this.removeFromCollection(collectionDbId, handleMedia),
+      ),
       serverRejectedIds: [],
       resolvedCount: handleMedia.length,
     };

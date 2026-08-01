@@ -3347,6 +3347,55 @@ describe('CollectionsService', () => {
       ).rejects.toThrow('Collection 999 not found');
     });
 
+    it('reports a remove naming a collection that does not exist', async () => {
+      collectionRepo.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.MediaCollectionActionWithContext(999, context, media, 'remove'),
+      ).rejects.toThrow('Collection 999 not found');
+    });
+
+    // addToCollectionInternal swallows its own failures so a rule run survives
+    // one bad collection; the interactive path must not read that as done.
+    it('reports an add whose internal work failed', async () => {
+      collectionRepo.findOne.mockResolvedValue({ id: 1, type: 'show' } as any);
+      mediaServer.getAllIdsForContextAction.mockResolvedValue(['7']);
+      jest
+        .spyOn(service as any, 'addToCollectionInternal')
+        .mockResolvedValue({ collection: undefined, serverRejectedIds: [] });
+
+      await expect(
+        service.MediaCollectionActionWithContext(1, context, media, 'add'),
+      ).rejects.toThrow('could not be updated');
+    });
+
+    it('reports a remove whose internal work failed', async () => {
+      collectionRepo.findOne.mockResolvedValue({ id: 1, type: 'show' } as any);
+      mediaServer.getAllIdsForContextAction.mockResolvedValue(['7']);
+      jest.spyOn(service, 'removeFromCollection').mockResolvedValue(undefined);
+
+      await expect(
+        service.MediaCollectionActionWithContext(1, context, media, 'remove'),
+      ).rejects.toThrow('could not be updated');
+    });
+
+    it('still allows a global remove, which names no collection', async () => {
+      mediaServer.getAllIdsForContextAction.mockResolvedValue(['7']);
+      const removeAll = jest
+        .spyOn(service, 'removeFromAllCollections')
+        .mockResolvedValue(undefined as never);
+
+      await expect(
+        service.MediaCollectionActionWithContext(
+          undefined,
+          context,
+          media,
+          'remove',
+        ),
+      ).resolves.toMatchObject({ resolvedCount: 1 });
+      expect(removeAll).toHaveBeenCalled();
+    });
+
     it('reports a context the media server could not resolve', async () => {
       collectionRepo.findOne.mockResolvedValue({
         id: 1,
