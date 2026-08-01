@@ -41,8 +41,32 @@ Not covered:
 - **Sportarr**. A league carries no folder path in its API, so there is no item
   folder to fence a delete against - unlike Radarr's `movie.path` and Sonarr's
   `series.path`.
-- Deletes performed directly through the media server (Plex/Jellyfin/Emby, when
-  no \*arr is configured).
+- Deletes performed directly through the media server - see below.
+
+## Deletes that go through the media server
+
+Maintainerr deletes through the media server in two cases: when no \*arr is
+configured for the collection, and when an \*arr is configured but does not track
+the item (a TMDB/TVDB id it cannot resolve). Either way it calls the server's own
+delete endpoint, and this cleanup does not run - every fence it needs
+(root folders, the paths just deleted, the other tracked items' folders) comes
+from the \*arr. When the option is on, a log line says so rather than leaving you
+to wonder.
+
+That is not a gap for Jellyfin and Emby, because they already remove the folder
+themselves. Deleting an item deletes its **containing folder**, recursively,
+sidecars and extras included - not just the media file. Jellyfin implements this
+in `Video.GetDeletePaths()`, which returns `ContainingFolderPath` as a directory
+whenever the item is not in a mixed folder, and `LibraryManager` then calls
+`Directory.Delete(path, recursive: true)`. Emby behaves the same way. It is
+observable: point either server at a read-only library and the delete fails with
+`Access to the path '/media/movies/Some Movie (2024)' is denied` - the folder, not
+the file. In a mixed-folder library (several movies sharing one folder) they
+delete only the file, which is also correct, since the folder still holds the
+other movies.
+
+Plex is not covered: Maintainerr does not clean up after a Plex media-server
+delete, and makes no claim about what Plex leaves behind.
 
 ## Requirement: same-path mount
 

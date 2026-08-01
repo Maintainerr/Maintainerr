@@ -221,7 +221,9 @@ export class RadarrActionHandler {
             collection.cleanupLeftoverFolders &&
             leftoverCleanupScope(collection.type, collection.arrAction)
           ) {
-            this.folderCleanup.logSkippedForUntrackedItem(media.mediaServerId);
+            this.folderCleanup.logNotApplicableForUntrackedItem(
+              media.mediaServerId,
+            );
           }
           const mediaServer = await this.mediaServerFactory.getService();
           await mediaServer.deleteFromDisk(media.mediaServerId);

@@ -533,7 +533,7 @@ describe('SonarrActionHandler', () => {
 
     await sonarrActionHandler.handleAction(collection, collectionMedia);
 
-    expect(folderCleanup.logSkippedForUntrackedItem).toHaveBeenCalledWith(
+    expect(folderCleanup.logNotApplicableForUntrackedItem).toHaveBeenCalledWith(
       collectionMedia.mediaServerId,
     );
     expect(folderCleanup.cleanupAfterDelete).not.toHaveBeenCalled();
