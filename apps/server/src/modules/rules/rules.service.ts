@@ -11,7 +11,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import axios from 'axios';
 import _ from 'lodash';
 import { DataSource, IsNull, Not, Repository } from 'typeorm';
-import { ServarrTagService } from '../actions/servarr-tag.service';
+import { ArrTagItem, ServarrTagService } from '../actions/servarr-tag.service';
 import cacheManager from '../api/lib/cache';
 import { MediaServerFactory } from '../api/media-server/media-server.factory';
 import { IMediaServerService } from '../api/media-server/media-server.interface';
@@ -294,9 +294,13 @@ export class RulesService {
 
       if (group) {
         if (group.collectionId) {
-          // Behavior A: deleting a tagging group makes every member "leave" - strip
-          // their *arr membership tags first (best-effort), while the collection
-          // media rows still exist (deleteCollection removes them next).
+          // Behavior A: deleting a tagging group makes every member "leave" -
+          // strip their *arr membership tags. The rows this needs are removed
+          // by deleteCollection, so read them first but only write to the *arr
+          // once the delete has gone through: a refused delete leaves the group
+          // standing, and untagging it anyway is damage nothing undoes.
+          let leavingMembers:
+            { collection: Collection; items: ArrTagItem[] } | undefined;
           try {
             const collection = await this.collectionService.getCollection(
               group.collectionId,
@@ -306,11 +310,10 @@ export class RulesService {
                 (await this.collectionService.getCollectionMedia(
                   group.collectionId,
                 )) ?? [];
-              await this.servarrTagService.syncMembershipTags(
+              leavingMembers = {
                 collection,
-                [],
-                members.map((m) => this.toArrTagItem(m)),
-              );
+                items: members.map((m) => this.toArrTagItem(m)),
+              };
             }
           } catch (error) {
             this.logger.debug(error);
@@ -330,6 +333,18 @@ export class RulesService {
               false,
               collectionDeleteResult.message || 'Delete Failed',
             );
+          }
+
+          if (leavingMembers) {
+            try {
+              await this.servarrTagService.syncMembershipTags(
+                leavingMembers.collection,
+                [],
+                leavingMembers.items,
+              );
+            } catch (error) {
+              this.logger.debug(error);
+            }
           }
         }
       }
