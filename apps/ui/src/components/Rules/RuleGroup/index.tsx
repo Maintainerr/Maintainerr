@@ -82,7 +82,9 @@ const RuleGroup = (props: {
     DeleteApiHandler(`/rules/${props.group.id}`)
       .then((resp) => {
         if (resp.code === 1) props.onDelete()
-        else toast.error('Failed to delete rule group.')
+        // The media server explains a refused delete, and it stays refused
+        // until the user acts on the reason.
+        else toast.error(resp.message || 'Failed to delete rule group.')
       })
       .catch((error: unknown) => {
         void logClientError(

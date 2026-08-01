@@ -8,6 +8,10 @@ import { MediaItem, MediaItemType } from '@maintainerr/contracts';
  * Shared by every media server: the traversal is the same show -> season ->
  * episode walk, only the `getChildren` lookup behind it differs.
  *
+ * `getChildren` must throw on a failed read rather than answer an empty list:
+ * the walk cannot tell the two apart, so a swallowed failure silently drops the
+ * expansion and the action is reported as done.
+ *
  * `context.id` is always a real media server id. Do not add a "whole item"
  * sentinel case: short-circuiting on one is what handed a show's id to a season
  * collection for Plex to reject with a 400 (#3381). A context that names no

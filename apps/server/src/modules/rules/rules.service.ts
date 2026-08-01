@@ -11,7 +11,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import axios from 'axios';
 import _ from 'lodash';
 import { DataSource, IsNull, Not, Repository } from 'typeorm';
-import { ServarrTagService } from '../actions/servarr-tag.service';
+import { ArrTagItem, ServarrTagService } from '../actions/servarr-tag.service';
 import cacheManager from '../api/lib/cache';
 import { MediaServerFactory } from '../api/media-server/media-server.factory';
 import { IMediaServerService } from '../api/media-server/media-server.interface';
@@ -294,9 +294,13 @@ export class RulesService {
 
       if (group) {
         if (group.collectionId) {
-          // Behavior A: deleting a tagging group makes every member "leave" - strip
-          // their *arr membership tags first (best-effort), while the collection
-          // media rows still exist (deleteCollection removes them next).
+          // Behavior A: deleting a tagging group makes every member "leave" -
+          // strip their *arr membership tags. The rows this needs are removed
+          // by deleteCollection, so read them first but only write to the *arr
+          // once the delete has gone through: a refused delete leaves the group
+          // standing, and untagging it anyway is damage nothing undoes.
+          let leavingMembers:
+            { collection: Collection; items: ArrTagItem[] } | undefined;
           try {
             const collection = await this.collectionService.getCollection(
               group.collectionId,
@@ -306,11 +310,10 @@ export class RulesService {
                 (await this.collectionService.getCollectionMedia(
                   group.collectionId,
                 )) ?? [];
-              await this.servarrTagService.syncMembershipTags(
+              leavingMembers = {
                 collection,
-                [],
-                members.map((m) => this.toArrTagItem(m)),
-              );
+                items: members.map((m) => this.toArrTagItem(m)),
+              };
             }
           } catch (error) {
             this.logger.debug(error);
@@ -330,6 +333,18 @@ export class RulesService {
               false,
               collectionDeleteResult.message || 'Delete Failed',
             );
+          }
+
+          if (leavingMembers) {
+            try {
+              await this.servarrTagService.syncMembershipTags(
+                leavingMembers.collection,
+                [],
+                leavingMembers.items,
+              );
+            } catch (error) {
+              this.logger.debug(error);
+            }
           }
         }
       }
@@ -900,6 +915,33 @@ export class RulesService {
     }
   }
 
+  /**
+   * Ids a context action applies to. The walk reads the media server, so a
+   * failure means we do not know what to act on - reported as a failed status
+   * rather than swallowed into "nothing to do".
+   */
+  private async resolveContextActionIdsOrFail(
+    mediaServer: IMediaServerService,
+    collectionType: MediaItemType | undefined,
+    context: { type: MediaItemType; id: string },
+    mediaId: string,
+  ): Promise<CollectionMediaChange[] | undefined> {
+    try {
+      const ids = await mediaServer.getAllIdsForContextAction(
+        collectionType,
+        context,
+        mediaId,
+      );
+      return ids.map((id) => ({ mediaServerId: id }));
+    } catch (error) {
+      this.logger.warn(
+        `Could not resolve which items to act on for media ${mediaId}`,
+      );
+      this.logger.debug(error);
+      return undefined;
+    }
+  }
+
   async setExclusion(data: ExclusionContextDto) {
     const mediaServer = await this.getMediaServer();
     let handleMedia: CollectionMediaChange[] = [];
@@ -913,14 +955,21 @@ export class RulesService {
         },
       });
       // get media - traverse show -> seasons -> episodes if needed
-      const ids = await mediaServer.getAllIdsForContextAction(
+      const resolved = await this.resolveContextActionIdsOrFail(
+        mediaServer,
         group?.dataType,
         data.context
           ? { type: data.context.type, id: String(data.context.id) }
           : { type: group.dataType, id: String(data.mediaId) },
         String(data.mediaId),
       );
-      handleMedia = ids.map((id) => ({ mediaServerId: id }));
+      if (!resolved) {
+        return this.createReturnStatus(
+          false,
+          'Failed - media server unreadable',
+        );
+      }
+      handleMedia = resolved;
       data.ruleGroupId = group.id;
       topLevelType = group?.dataType;
     } else {
@@ -934,14 +983,21 @@ export class RulesService {
       }
 
       // get media - traverse show -> seasons -> episodes if needed
-      const ids = await mediaServer.getAllIdsForContextAction(
+      const resolved = await this.resolveContextActionIdsOrFail(
+        mediaServer,
         undefined,
         data.context
           ? { type: data.context.type, id: String(data.context.id) }
           : { type: metaData.type, id: String(data.mediaId) },
         String(data.mediaId),
       );
-      handleMedia = ids.map((id) => ({ mediaServerId: id }));
+      if (!resolved) {
+        return this.createReturnStatus(
+          false,
+          'Failed - media server unreadable',
+        );
+      }
+      handleMedia = resolved;
       topLevelType = metaData.type;
     }
     try {
@@ -1120,22 +1176,36 @@ export class RulesService {
       data.ruleGroupId = group.id;
       topLevelType = group?.dataType;
       // get media - traverse show -> seasons -> episodes if needed
-      const ids = await mediaServer.getAllIdsForContextAction(
+      const resolved = await this.resolveContextActionIdsOrFail(
+        mediaServer,
         group?.dataType,
         data.context
           ? { type: data.context.type, id: String(data.context.id) }
           : { type: group.dataType, id: String(data.mediaId) },
         String(data.mediaId),
       );
-      handleMedia = ids.map((id) => ({ mediaServerId: id }));
+      if (!resolved) {
+        return this.createReturnStatus(
+          false,
+          'Failed - media server unreadable',
+        );
+      }
+      handleMedia = resolved;
     } else {
       // get media - traverse show -> seasons -> episodes if needed
-      const ids = await mediaServer.getAllIdsForContextAction(
+      const resolved = await this.resolveContextActionIdsOrFail(
+        mediaServer,
         undefined,
         { type: data.context.type, id: String(data.context.id) },
         String(data.mediaId),
       );
-      handleMedia = ids.map((id) => ({ mediaServerId: id }));
+      if (!resolved) {
+        return this.createReturnStatus(
+          false,
+          'Failed - media server unreadable',
+        );
+      }
+      handleMedia = resolved;
     }
 
     try {

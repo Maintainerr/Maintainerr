@@ -12,6 +12,7 @@ import {
   MediaSource,
   MediaUser,
   WatchRecord,
+  isValidMediaItemType,
 } from '@maintainerr/contracts';
 import { EPlexDataType } from '../../plex-api/enums/plex-data-type-enum';
 import {
@@ -308,6 +309,10 @@ export class PlexMapper {
       addedAt: plex.addedAt ? new Date(plex.addedAt * 1000) : undefined,
       updatedAt: plex.updatedAt ? new Date(plex.updatedAt * 1000) : undefined,
       smart: plex.smart,
+      // Deliberately not toMediaItemType: that defaults to 'movie', which would
+      // turn an unrecognised subtype into a confident wrong answer, and callers
+      // read undefined as "unknown" rather than as a mismatch.
+      type: isValidMediaItemType(plex.subtype) ? plex.subtype : undefined,
       libraryId: undefined, // Not available on PlexCollection directly
     };
   }

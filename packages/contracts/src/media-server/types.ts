@@ -155,6 +155,12 @@ export interface WatchRecord {
 export interface MediaCollection {
   id: string
   title: string
+  /**
+   * Media type the collection holds, where the server has the concept. Plex
+   * fixes it at creation and rejects anything else; Jellyfin and Emby BoxSets
+   * have no subtype, so it stays undefined there.
+   */
+  type?: MediaItemType
   summary?: string
   thumb?: string
   childCount: number

@@ -1,8 +1,9 @@
-import { MediaItemType } from '@maintainerr/contracts'
+import { BasicResponseDto, MediaItemType } from '@maintainerr/contracts'
 import { useQueryClient } from '@tanstack/react-query'
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { invalidateCollectionQueries } from '../../api/collections'
+import { getApiErrorMessage } from '../../utils/ApiError'
 import GetApiHandler, { PostApiHandler } from '../../utils/ApiHandler'
 import Alert from '../Common/Alert'
 import {
@@ -22,7 +23,7 @@ const AddModal = (props: IAddModal) => {
     number | string
   >()
   const [loading, setLoading] = useState(true)
-  const [alert, setAlert] = useState(false)
+  const [errorMessage, setErrorMessage] = useState<string>()
   const [forceRemovalCheck, setForceRemovalCheck] = useState(false)
   const [globalWarning, setGlobalWarning] = useState(false)
   const [affectedExclusions, setAffectedExclusions] = useState<
@@ -30,22 +31,23 @@ const AddModal = (props: IAddModal) => {
   >([])
   const [submitting, setSubmitting] = useState(false)
   const [selectedAction, setSelectedAction] = useState<number>(0)
-  // For show only
-  const [selectedSeasons, setSelectedSeasons] = useState<number | string>(-1)
-  const [selectedEpisodes, setSelectedEpisodes] = useState<number | string>(-1)
+  // For show only. Undefined is "all", so the picker never carries a value the
+  // media server would have to interpret.
+  const [selectedSeasons, setSelectedSeasons] = useState<string>()
+  const [selectedEpisodes, setSelectedEpisodes] = useState<string>()
 
   const [collectionOptions, setCollectionOptions] = useState<
     ICollectionMedia[]
   >([])
   const [seasonOptions, setSeasonOptions] = useState<ICollectionMedia[]>([
     {
-      id: -1,
+      id: '',
       title: 'All seasons',
     },
   ])
   const [episodeOptions, setEpisodeOptions] = useState<ICollectionMedia[]>([
     {
-      id: -1,
+      id: '',
       title: 'All episodes',
     },
   ])
@@ -65,25 +67,51 @@ const AddModal = (props: IAddModal) => {
 
   // The context is the narrowest thing picked; with no season or episode
   // selected that is the item itself. Same shape as TestMediaItem.
-  const selectedMediaId = useMemo(() => {
-    return selectedEpisodes !== -1
-      ? selectedEpisodes
-      : selectedSeasons !== -1
-        ? selectedSeasons
-        : props.mediaServerId
-  }, [selectedSeasons, selectedEpisodes, props.mediaServerId])
+  const selectedMediaId = useMemo(
+    () => selectedEpisodes ?? selectedSeasons ?? props.mediaServerId,
+    [selectedSeasons, selectedEpisodes, props.mediaServerId],
+  )
 
+  // Only a show narrows through the season and episode pickers; every other
+  // item is its own context. Reporting a season or episode as a movie offered
+  // it movie collections, which no media server accepts it into.
   const selectedContext = useMemo((): MediaItemType => {
-    return props.type === 'show'
-      ? selectedEpisodes !== -1
-        ? 'episode'
-        : selectedSeasons !== -1
-          ? 'season'
-          : 'show'
-      : 'movie'
+    if (props.type !== 'show') {
+      return props.type ?? 'movie'
+    }
+
+    if (selectedEpisodes) return 'episode'
+    if (selectedSeasons) return 'season'
+    return 'show'
   }, [selectedSeasons, selectedEpisodes, props.type])
 
-  const currentCollectionId = selectedCollection ?? collectionOptions[0]?.id
+  // A context resolves down the hierarchy but never up, so offer exactly the
+  // collection types the current selection can produce.
+  const collectionTypes = useMemo((): MediaItemType[] => {
+    switch (selectedContext) {
+      case 'show':
+        return ['show', 'season', 'episode']
+      case 'season':
+        return ['season', 'episode']
+      case 'episode':
+        return ['episode']
+      default:
+        return ['movie']
+    }
+  }, [selectedContext])
+
+  // Derived, not synced: narrowing to a season or episode drops the wider
+  // collection types, so a selection made before that is no longer offered and
+  // falls back to the first option. Keeping the state lets it come back if the
+  // user widens the selection again.
+  const currentCollectionId = collectionOptions.some(
+    (option) => option.id === selectedCollection,
+  )
+    ? selectedCollection
+    : collectionOptions[0]?.id
+  // Nothing in this library holds what the current selection resolves to, so
+  // there is no choice to make and submitting cannot do anything.
+  const noCollectionsAvailable = !loading && collectionOptions.length === 0
 
   const handleCancel = () => {
     props.onCancel()
@@ -108,27 +136,40 @@ const AddModal = (props: IAddModal) => {
 
         await invalidateCollectionQueries(queryClient)
       } else {
-        await PostApiHandler('/rules/exclusion', {
-          mediaId: props.mediaServerId,
-          context: mediaDto,
-          collectionId:
-            currentCollectionId !== -1 ? currentCollectionId : undefined,
-          action: selectedAction,
-        })
+        // The exclusion endpoint reports its own failures in the body rather
+        // than the status code, so a rejected exclusion looked successful.
+        const result = await PostApiHandler<BasicResponseDto>(
+          '/rules/exclusion',
+          {
+            mediaId: props.mediaServerId,
+            context: mediaDto,
+            collectionId:
+              currentCollectionId !== -1 ? currentCollectionId : undefined,
+            action: selectedAction,
+          },
+        )
+
+        if (result?.code !== 1) {
+          throw new Error(result?.message ?? 'The exclusion could not be saved')
+        }
       }
 
       props.onSubmit()
-    } catch {
+    } catch (error) {
       setSubmitting(false)
+      setErrorMessage(
+        getApiErrorMessage(
+          error,
+          props.modalType === 'add'
+            ? 'The collection could not be updated'
+            : 'The exclusion could not be updated',
+        ),
+      )
     }
   }
 
   const handleOk = async () => {
-    if (submitting) return
-    if (currentCollectionId === undefined) {
-      setAlert(true)
-      return
-    }
+    if (submitting || noCollectionsAvailable) return
 
     // Only ADDING a global exclusion clears the item's rule-group exclusions.
     // If it has any, warn and list each as "item - rule group", reusing the
@@ -189,18 +230,24 @@ const AddModal = (props: IAddModal) => {
         await invalidateCollectionQueries(queryClient)
       }
       props.onSubmit()
-    } catch {
+    } catch (error) {
       setSubmitting(false)
+      setErrorMessage(
+        getApiErrorMessage(
+          error,
+          'The media could not be removed from all collections',
+        ),
+      )
     }
   }
 
   useEffect(() => {
     if (props.type && props.type === 'show') {
-      GetApiHandler(`/media-server/meta/${props.mediaServerId}/children`).then(
-        (resp: { id: string; title: string }[]) => {
+      GetApiHandler(`/media-server/meta/${props.mediaServerId}/children`)
+        .then((resp: { id: string; title: string }[]) => {
           setSeasonOptions([
             {
-              id: -1,
+              id: '',
               title: 'All seasons',
             },
             ...resp.map((el) => {
@@ -210,70 +257,90 @@ const AddModal = (props: IAddModal) => {
               } as ICollectionMedia
             }),
           ])
-          setLoading(false)
-        },
-      )
+        })
+        .catch((error) =>
+          setErrorMessage(
+            getApiErrorMessage(error, 'Could not load the seasons'),
+          ),
+        )
+        .finally(() => setLoading(false))
     }
   }, [props.mediaServerId, props.type])
 
   useEffect(() => {
-    if (selectedSeasons !== -1) {
-      GetApiHandler(`/media-server/meta/${selectedSeasons}/children`).then(
-        (resp: { id: string; index: number }[]) => {
-          setEpisodeOptions([
-            {
-              id: -1,
-              title: 'All episodes',
-            },
-            ...resp.map((el) => {
-              return {
-                id: el.id,
-                title: `Episode ${el.index}`,
-              } as ICollectionMedia
-            }),
-          ])
-          setLoading(false)
-        },
-      )
+    if (!selectedSeasons) return
+
+    // A slower read for the season the user just moved off would otherwise
+    // land last and list the wrong season's episodes.
+    let current = true
+
+    GetApiHandler(`/media-server/meta/${selectedSeasons}/children`)
+      .then((resp: { id: string; index: number }[]) => {
+        if (!current) return
+        setEpisodeOptions([
+          {
+            id: '',
+            title: 'All episodes',
+          },
+          ...resp.map((el) => {
+            return {
+              id: el.id,
+              title: `Episode ${el.index}`,
+            } as ICollectionMedia
+          }),
+        ])
+      })
+      .catch((error) => {
+        if (current)
+          setErrorMessage(
+            getApiErrorMessage(error, 'Could not load the episodes'),
+          )
+      })
+      .finally(() => {
+        if (current) setLoading(false)
+      })
+
+    return () => {
+      current = false
     }
   }, [selectedSeasons])
 
   useEffect(() => {
-    if (props.type === 'show') {
-      if (selectedEpisodes !== -1) {
-        GetApiHandler(`/collections?typeId=episode`).then((resp) => {
-          setCollectionOptions([...origCollectionOptions, ...resp])
-          setLoading(false)
-        })
-      } else if (selectedSeasons !== -1) {
-        GetApiHandler(`/collections?typeId=season`).then((resp) => {
-          GetApiHandler(`/collections?typeId=episode`).then((resp2) => {
-            setCollectionOptions([...origCollectionOptions, ...resp, ...resp2])
-            setLoading(false)
-          })
-        })
-      } else {
-        GetApiHandler(`/collections?typeId=show`).then((resp) => {
-          GetApiHandler(`/collections?typeId=season`).then((resp2) => {
-            GetApiHandler(`/collections?typeId=episode`).then((resp3) => {
-              setCollectionOptions([
-                ...origCollectionOptions,
-                ...resp,
-                ...resp2,
-                ...resp3,
-              ])
-              setLoading(false)
-            })
-          })
-        })
-      }
-    } else {
-      GetApiHandler(`/collections?typeId=movie`).then((resp) => {
-        setCollectionOptions([...origCollectionOptions, ...resp])
-        setLoading(false)
+    // A collection only accepts items from its own library, so offering the
+    // other libraries' collections only produces a rejected add.
+    const libraryQuery = props.libraryId
+      ? `&libraryId=${encodeURIComponent(props.libraryId)}`
+      : ''
+
+    // A slower read for the wider selection the user just moved off would
+    // otherwise land last and re-offer collection types this one cannot fill.
+    let current = true
+
+    Promise.all(
+      collectionTypes.map((type) =>
+        GetApiHandler<ICollectionMedia[]>(
+          `/collections?typeId=${type}${libraryQuery}`,
+        ),
+      ),
+    )
+      .then((responses) => {
+        if (!current) return
+        setCollectionOptions([...origCollectionOptions, ...responses.flat()])
       })
+      .catch((error) => {
+        if (current)
+          setErrorMessage(
+            getApiErrorMessage(error, 'Could not load the collections'),
+          )
+      })
+      .finally(() => {
+        if (current) setLoading(false)
+      })
+
+    return () => {
+      current = false
     }
-  }, [origCollectionOptions, props.type, selectedEpisodes, selectedSeasons])
+  }, [origCollectionOptions, collectionTypes, props.libraryId])
 
   return (
     <>
@@ -288,7 +355,7 @@ const AddModal = (props: IAddModal) => {
           <Button
             buttonType="primary"
             className="ml-3"
-            disabled={submitting}
+            disabled={submitting || noCollectionsAvailable}
             onClick={handleOk}
           >
             {submitting ? 'Submitting...' : 'Submit'}
@@ -368,9 +435,14 @@ const AddModal = (props: IAddModal) => {
           </Modal>
         ) : undefined}
 
-        {alert ? (
-          <Alert title="Please select a collection" type="warning" />
+        {noCollectionsAvailable ? (
+          <Alert
+            title="No collection in this library can take this item. Create one from a rule first."
+            type="warning"
+          />
         ) : undefined}
+
+        {errorMessage ? <Alert title={errorMessage} type="error" /> : undefined}
 
         <div className="mt-6">
           <FormItem label="Action">
@@ -401,18 +473,18 @@ const AddModal = (props: IAddModal) => {
               <Select
                 name={`Seasons-field`}
                 id={`Seasons-field`}
-                value={selectedSeasons}
+                value={selectedSeasons ?? ''}
                 onChange={(e: { target: { value: string } }) => {
                   const value = e.target.value
                   setLoading(true)
-                  setSelectedEpisodes(-1)
+                  setSelectedEpisodes(undefined)
                   setEpisodeOptions([
                     {
-                      id: -1,
+                      id: '',
                       title: 'All episodes',
                     },
                   ])
-                  setSelectedSeasons(value === '-1' ? -1 : value)
+                  setSelectedSeasons(value || undefined)
                 }}
               >
                 {seasonOptions.map((e: ICollectionMedia) => {
@@ -426,16 +498,16 @@ const AddModal = (props: IAddModal) => {
             </FormItem>
           ) : undefined}
           {/* For shows and specific seasons */}
-          {props.type === 'show' && selectedSeasons !== -1 ? (
+          {props.type === 'show' && selectedSeasons ? (
             <FormItem label="Episodes">
               <Select
                 name={`Episodes-field`}
                 id={`Episodes-field`}
-                value={selectedEpisodes}
+                value={selectedEpisodes ?? ''}
                 onChange={(e: { target: { value: string } }) => {
                   const value = e.target.value
                   setLoading(true)
-                  setSelectedEpisodes(value === '-1' ? -1 : value)
+                  setSelectedEpisodes(value || undefined)
                 }}
               >
                 {episodeOptions.map((e: ICollectionMedia) => {

@@ -820,16 +820,34 @@ describe('EmbyAdapterService', () => {
         ),
       ).resolves.toEqual(['episode-1', 'episode-2']);
 
+      // Throwing reads: an expansion that silently resolved to nothing
+      // reported the action as done (#3381).
       expect(getChildrenMetadata).toHaveBeenNthCalledWith(
         1,
         'show-1',
         'season',
+        true,
       );
       expect(getChildrenMetadata).toHaveBeenNthCalledWith(
         2,
         'season-1',
         'episode',
+        true,
       );
+    });
+
+    it('propagates a failed children read instead of resolving to nothing', async () => {
+      jest
+        .spyOn(service, 'getChildrenMetadata')
+        .mockRejectedValue(new Error('emby down'));
+
+      await expect(
+        service.getAllIdsForContextAction(
+          'season',
+          { type: 'show', id: 'show-1' },
+          'show-1',
+        ),
+      ).rejects.toThrow('emby down');
     });
   });
 

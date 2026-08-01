@@ -484,8 +484,14 @@ export class EmbyAdapterService implements IMediaServerService {
   async getChildrenMetadata(
     parentId: string,
     childType?: MediaItemType,
+    throwOnError = false,
   ): Promise<MediaItem[]> {
-    if (!this.http) return [];
+    if (!this.http) {
+      if (throwOnError) {
+        throw new Error('Emby API not initialized');
+      }
+      return [];
+    }
 
     const cacheKey = `${EMBY_CACHE_KEYS.CHILDREN}:${parentId}:${childType ?? 'any'}`;
     const cached = this.cache.data.get<MediaItem[]>(cacheKey);
@@ -530,6 +536,15 @@ export class EmbyAdapterService implements IMediaServerService {
         (data.Items ?? []).map(EmbyMapper.toMediaItem),
       );
     } catch (error) {
+      if (throwOnError) {
+        // Worded like the Plex adapter's: the raw client error reaches the user
+        // as "Request failed with status code 404", which names nothing.
+        throw new Error(
+          `Could not read the children of Emby item ${parentId}`,
+          { cause: error },
+        );
+      }
+
       this.logger.debug(
         `Emby getChildrenMetadata(${parentId}) failed: ${formatConnectionFailureMessage(error, 'Connection failed')}`,
       );
@@ -1443,7 +1458,7 @@ export class EmbyAdapterService implements IMediaServerService {
       collectionType,
       context,
       mediaId,
-      (parentId, type) => this.getChildrenMetadata(parentId, type),
+      (parentId, type) => this.getChildrenMetadata(parentId, type, true),
       (message) => this.logger.warn(message),
     );
   }

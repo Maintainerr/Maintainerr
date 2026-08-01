@@ -470,17 +470,25 @@ export class RuleExecutorService {
           // Members a sibling collection holds under any membership type. The
           // rule-owned set above drives reconcile; this wider one guards
           // adoption, because a sibling's manual-only member is still theirs.
-          let siblingMemberIds = new Set<string>();
+          // Unknown membership refuses the import for the same reason unknown
+          // ownership does.
+          let siblingMemberIds: Set<string> | undefined;
           try {
             siblingMemberIds =
               await this.collectionService.getSiblingMemberMediaServerIds(
                 collection,
               );
           } catch (error) {
+            this.logger.warn(
+              `Could not determine sibling membership for '${collection.title}'. Skipping manual child import to avoid cross-rule contamination.`,
+            );
             this.logger.debug(error);
           }
 
-          if (siblingRuleOwnedIds !== undefined) {
+          if (
+            siblingRuleOwnedIds !== undefined &&
+            siblingMemberIds !== undefined
+          ) {
             // Heal items a rule removed that the media server never dropped: an
             // active marker means the item is our orphan, not a user's manual
             // add, so remove it from the server rather than re-adopt it below.
