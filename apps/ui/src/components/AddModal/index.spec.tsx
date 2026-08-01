@@ -242,6 +242,35 @@ describe('AddModal - context payload', () => {
     ])
   })
 
+  // The empty list used to say "Please select a collection" with nothing to
+  // select, and left Submit enabled.
+  it('explains an empty collection list instead of asking for a choice', async () => {
+    getApiHandlerMock.mockImplementation(((url: string) => {
+      if (url.startsWith('/media-server/meta/')) return Promise.resolve([])
+      if (url.startsWith('/collections')) return Promise.resolve([])
+      return Promise.resolve(undefined)
+    }) as typeof GetApiHandler)
+
+    render(
+      <AddModal
+        mediaServerId="show-1"
+        type="show"
+        modalType="add"
+        onCancel={vi.fn()}
+        onSubmit={vi.fn()}
+      />,
+    )
+
+    const submit = (await screen.findByRole('button', {
+      name: 'Submit',
+    })) as HTMLButtonElement
+    await waitFor(() => expect(submit.disabled).toBe(true))
+    expect(
+      screen.getByText(/No collection in this library can take this item/),
+    ).toBeTruthy()
+    expect(screen.queryByText('Please select a collection')).toBeNull()
+  })
+
   // A slow read for the wider selection used to land last and re-offer
   // collection types the current selection cannot fill.
   it('ignores a collection read the selection has moved past', async () => {

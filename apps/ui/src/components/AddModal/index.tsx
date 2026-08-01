@@ -23,7 +23,6 @@ const AddModal = (props: IAddModal) => {
     number | string
   >()
   const [loading, setLoading] = useState(true)
-  const [alert, setAlert] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string>()
   const [forceRemovalCheck, setForceRemovalCheck] = useState(false)
   const [globalWarning, setGlobalWarning] = useState(false)
@@ -102,6 +101,9 @@ const AddModal = (props: IAddModal) => {
   }, [selectedContext])
 
   const currentCollectionId = selectedCollection ?? collectionOptions[0]?.id
+  // Nothing in this library holds what the current selection resolves to, so
+  // there is no choice to make and submitting cannot do anything.
+  const noCollectionsAvailable = !loading && collectionOptions.length === 0
 
   const handleCancel = () => {
     props.onCancel()
@@ -159,11 +161,7 @@ const AddModal = (props: IAddModal) => {
   }
 
   const handleOk = async () => {
-    if (submitting) return
-    if (currentCollectionId === undefined) {
-      setAlert(true)
-      return
-    }
+    if (submitting || noCollectionsAvailable) return
 
     // Only ADDING a global exclusion clears the item's rule-group exclusions.
     // If it has any, warn and list each as "item - rule group", reusing the
@@ -357,7 +355,7 @@ const AddModal = (props: IAddModal) => {
           <Button
             buttonType="primary"
             className="ml-3"
-            disabled={submitting}
+            disabled={submitting || noCollectionsAvailable}
             onClick={handleOk}
           >
             {submitting ? 'Submitting...' : 'Submit'}
@@ -437,8 +435,11 @@ const AddModal = (props: IAddModal) => {
           </Modal>
         ) : undefined}
 
-        {alert ? (
-          <Alert title="Please select a collection" type="warning" />
+        {noCollectionsAvailable ? (
+          <Alert
+            title="No collection in this library can take this item. Create one from a rule first."
+            type="warning"
+          />
         ) : undefined}
 
         {errorMessage ? <Alert title={errorMessage} type="error" /> : undefined}
