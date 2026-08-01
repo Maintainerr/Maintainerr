@@ -442,8 +442,12 @@ describe('PlexAdapterService', () => {
   describe('prefetchWatchHistory', () => {
     it('delegates to plexApi.prefetchWatchHistory', async () => {
       plexApi.prefetchWatchHistory = jest.fn().mockResolvedValue(undefined);
-      await service.prefetchWatchHistory();
-      expect(plexApi.prefetchWatchHistory).toHaveBeenCalledTimes(1);
+      const abortSignal = new AbortController().signal;
+      await service.prefetchWatchHistory({ libraryId: '7', abortSignal });
+      expect(plexApi.prefetchWatchHistory).toHaveBeenCalledWith(
+        '7',
+        abortSignal,
+      );
     });
   });
 
@@ -487,7 +491,18 @@ describe('PlexAdapterService', () => {
         viewCount: 1,
         isWatched: true,
       });
+      // Never served from the run snapshot (#3352): this is the current-state
+      // read that feeds deletions.
       expect(plexApi.getWatchHistory).toHaveBeenCalledWith('item123', false);
+    });
+
+    it('keeps the native view count as a floor when history is empty', async () => {
+      // Plex writes no history row for a manual "mark as played" or a scrobble.
+      plexApi.getWatchHistory.mockResolvedValue([]);
+
+      const watchState = await service.getWatchState('item123', 3);
+
+      expect(watchState).toEqual({ viewCount: 3, isWatched: true });
     });
 
     it('should keep the server-wide history count when a single account has fewer native views', async () => {
@@ -885,7 +900,7 @@ describe('PlexAdapterService', () => {
         message: 'batch failed',
       } as any);
       plexApi.addChildToCollection.mockImplementation(
-        async (_collectionId, itemId) => {
+        async (collectionId, itemId) => {
           if (itemId === 'bad') {
             throw new Error('boom');
           }
@@ -930,7 +945,7 @@ describe('PlexAdapterService', () => {
 
     it('should treat 404 removes as successful in batch remove', async () => {
       plexApi.deleteChildFromCollection.mockImplementation(
-        async (_collectionId, itemId) => {
+        async (collectionId, itemId) => {
           if (itemId === 'missing') {
             throw new Error('404 Not Found');
           }
@@ -1028,7 +1043,7 @@ describe('PlexAdapterService', () => {
       ]);
       plexApi.setCollectionCustomSort.mockResolvedValue(undefined);
       plexApi.moveCollectionItem.mockImplementation(
-        async (_collectionId, itemId) => {
+        async (collectionId, itemId) => {
           if (itemId === 'b') {
             throw new Error('plex move 409');
           }

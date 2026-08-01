@@ -5,7 +5,7 @@ import { useLibraryDisplay } from '../../../hooks/useLibraryDisplay'
 import GetApiHandler from '../../../utils/ApiHandler'
 import { formatSizeCompact } from '../../../utils/formatBytes'
 import {
-  buildMetadataImagePath,
+  buildMetadataPath,
   isAbsoluteUrl,
   toProviderIds,
 } from '../../../utils/mediaTypeUtils'
@@ -47,7 +47,7 @@ const CollectionItem = (props: ICollectionItem) => {
 
           // Pass 'season' for TV collections so the backend can resolve
           // parent show IDs when the preview item's own IDs differ.
-          const imageRequestPath = buildMetadataImagePath(
+          const imageRequestPath = buildMetadataPath(
             'image',
             props.collection.type === 'movie' ? 'movie' : 'season',
             toProviderIds({

@@ -18,7 +18,7 @@
     "format:check": "turbo format:check",
     "knip": "knip",
     "check-types": "turbo check-types",
-    "test": "turbo test --",
+    "test": "turbo test --concurrency=1 --",
     "test:watch": "turbo test:watch"
   },
   "workspaces": [

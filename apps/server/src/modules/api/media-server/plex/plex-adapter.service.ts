@@ -223,8 +223,14 @@ export class PlexAdapterService implements IMediaServerService {
     return results.map(PlexMapper.metadataToMediaItem);
   }
 
-  async prefetchWatchHistory(abortSignal?: AbortSignal): Promise<void> {
-    await this.plexApi.prefetchWatchHistory(abortSignal);
+  async prefetchWatchHistory({
+    libraryId,
+    abortSignal,
+  }: {
+    libraryId: string;
+    abortSignal?: AbortSignal;
+  }): Promise<void> {
+    await this.plexApi.prefetchWatchHistory(libraryId, abortSignal);
   }
 
   async getWatchHistory(itemId: string): Promise<WatchRecord[]> {
@@ -238,7 +244,9 @@ export class PlexAdapterService implements IMediaServerService {
   ): Promise<MediaWatchState> {
     // Read live: something watched moments ago must not be judged from a
     // stale snapshot, and a failed read has to throw rather than pass for a
-    // confirmed never-watched.
+    // confirmed never-watched. Deliberately not served from the run's
+    // watch-history snapshot (#3352) - this is the current-state read that
+    // feeds deletions, and stale watched state was the defect that PR fixed.
     const history = await this.plexApi.getWatchHistory(itemId, false);
 
     // Plex writes no history row when an item is marked watched without a

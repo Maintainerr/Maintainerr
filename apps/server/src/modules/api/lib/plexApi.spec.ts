@@ -75,7 +75,7 @@ describe('PlexApi', () => {
       data: {
         MediaContainer: {
           totalSize,
-          Metadata: Array.from({ length: count }, (_v, i) => ({
+          Metadata: Array.from({ length: count }, (v, i) => ({
             ratingKey: String(start + i),
           })),
         },

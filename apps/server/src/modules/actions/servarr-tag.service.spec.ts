@@ -33,7 +33,7 @@ describe('ServarrTagService', () => {
     // *arr lookup (mocked per test) decides whether it matches an entity. The
     // candidate id is irrelevant here - the lookup mock ignores it.
     metadataService.resolveLookupCandidatesForService.mockImplementation(
-      async (_mediaServerId, service) => [
+      async (mediaServerId, service) => [
         { providerKey: service === 'radarr' ? 'tmdb' : 'tvdb', id: 100 },
       ],
     );

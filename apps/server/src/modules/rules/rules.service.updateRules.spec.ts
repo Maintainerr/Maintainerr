@@ -2,6 +2,7 @@ import {
   createMockLogger,
   createMockServarrTagService,
 } from '../../../test/utils/data';
+import { ServarrAction } from '../collections/interfaces/collection.interface';
 import {
   Application,
   RulePossibility,
@@ -414,6 +415,71 @@ describe('RulesService.updateRules', () => {
       result: 'Success',
       message: 'Success',
     });
+  });
+
+  // The rule-group payload is the only way the UI can turn the leftover-folder
+  // cleanup off again; updateRules used to drop the field, so an enabled
+  // collection could never be switched back.
+  it('round-trips the leftover-folder cleanup opt-in, clamped to the chosen action', async () => {
+    const runUpdate = async (arrAction: number) => {
+      const group = { id: 5, collectionId: 42, dataType: 'movie' };
+      const collectionService = {
+        getCollection: jest.fn().mockResolvedValue({ id: 42 }),
+        saveCollection: jest.fn().mockResolvedValue(undefined),
+        addLogRecord: jest.fn().mockResolvedValue(undefined),
+        updateCollection: jest
+          .fn()
+          .mockResolvedValue({ dbCollection: { id: 42 } }),
+      };
+
+      const service = createRulesService({
+        rulesRepository: { delete: jest.fn(), save: jest.fn() },
+        ruleGroupRepository: { findOne: jest.fn().mockResolvedValue(group) },
+        collectionMediaRepository: { delete: jest.fn() },
+        exclusionRepo: { delete: jest.fn() },
+        collectionService,
+        mediaServerFactory: {
+          getService: jest.fn().mockReturnValue({
+            cleanupCollectionForLibrary: jest.fn().mockResolvedValue(undefined),
+            getLibraries: jest
+              .fn()
+              .mockResolvedValue([
+                { id: 'lib-1', title: 'Movies', type: 'movie' },
+              ]),
+          }),
+        },
+      });
+
+      jest
+        .spyOn(service as any, 'createOrUpdateGroup')
+        .mockResolvedValue(group.id);
+
+      await service.updateRules({
+        id: group.id,
+        libraryId: 'lib-1',
+        dataType: 'movie',
+        name: 'Cleanup toggle',
+        description: '',
+        rules: [],
+        useRules: true,
+        isActive: true,
+        arrAction,
+        cleanupLeftoverFolders: true,
+      } as any);
+
+      return collectionService.updateCollection;
+    };
+
+    // Per-file delete: the folder is stranded, so the opt-in is honoured.
+    expect(
+      await runUpdate(ServarrAction.UNMONITOR_DELETE_ALL),
+    ).toHaveBeenCalledWith(
+      expect.objectContaining({ cleanupLeftoverFolders: true }),
+    );
+    // Whole-entity delete: Radarr removes the folder itself, so it is cleared.
+    expect(await runUpdate(ServarrAction.DELETE)).toHaveBeenCalledWith(
+      expect.objectContaining({ cleanupLeftoverFolders: false }),
+    );
   });
 
   const buildSortTransitionFixture = (options: {

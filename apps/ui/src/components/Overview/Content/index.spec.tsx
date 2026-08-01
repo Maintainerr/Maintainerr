@@ -18,15 +18,29 @@ vi.mock('../../Common/MediaCard', () => ({
   default: ({
     title,
     exclusionId,
+    seasonNumber,
+    episodeNumber,
+    episodeTitle,
+    summary,
   }: {
     title: string
     exclusionId?: number
+    seasonNumber?: number
+    episodeNumber?: number
+    episodeTitle?: string
+    summary?: string
   }) => (
     <div>
       <span>{title}</span>
       {exclusionId ? (
         <span data-testid={`excluded-${title}`}>excluded</span>
       ) : null}
+      <span data-testid={`season-${title}`}>{seasonNumber ?? 'none'}</span>
+      <span data-testid={`episode-${title}`}>{episodeNumber ?? 'none'}</span>
+      <span data-testid={`episode-title-${title}`}>
+        {episodeTitle ?? 'none'}
+      </span>
+      <span data-testid={`summary-${title}`}>{summary ?? 'none'}</span>
     </div>
   ),
 }))
@@ -153,5 +167,89 @@ describe('OverviewContent', () => {
     )
 
     expect(screen.getByTestId('excluded-Item One')).toBeTruthy()
+  })
+
+  it('gives season cards their season number and the season description', () => {
+    render(
+      <OverviewContent
+        data={[
+          {
+            id: '1',
+            title: 'Season 2',
+            parentTitle: 'Sample Series',
+            type: 'season',
+            index: 2,
+            summary: 'What happens in the second season.',
+          } as any,
+        ]}
+        dataFinished={true}
+        loading={false}
+        extrasLoading={false}
+        fetchData={vi.fn()}
+        libraryId="library-1"
+      />,
+    )
+
+    expect(screen.getByTestId('season-Sample Series').textContent).toBe('2')
+    expect(screen.getByTestId('summary-Sample Series').textContent).toBe(
+      'What happens in the second season.',
+    )
+  })
+
+  it('gives episode cards their episode number, title and description', () => {
+    render(
+      <OverviewContent
+        data={[
+          {
+            id: '1',
+            title: 'A Quiet Arrival',
+            grandparentTitle: 'Sample Series',
+            type: 'episode',
+            index: 4,
+            parentIndex: 2,
+            summary: 'What happens in the fourth episode.',
+          } as any,
+        ]}
+        dataFinished={true}
+        loading={false}
+        extrasLoading={false}
+        fetchData={vi.fn()}
+        libraryId="library-1"
+      />,
+    )
+
+    expect(screen.getByTestId('episode-Sample Series').textContent).toBe('4')
+    // The episode's season, so its poster and still resolve to the right one.
+    expect(screen.getByTestId('season-Sample Series').textContent).toBe('2')
+    expect(screen.getByTestId('episode-title-Sample Series').textContent).toBe(
+      'A Quiet Arrival',
+    )
+    expect(screen.getByTestId('summary-Sample Series').textContent).toBe(
+      'What happens in the fourth episode.',
+    )
+  })
+
+  it('does not number movie cards', () => {
+    render(
+      <OverviewContent
+        data={[
+          {
+            id: '1',
+            title: 'Item One',
+            type: 'movie',
+            index: 4,
+            summary: 'Movie description.',
+          } as any,
+        ]}
+        dataFinished={true}
+        loading={false}
+        extrasLoading={false}
+        fetchData={vi.fn()}
+        libraryId="library-1"
+      />,
+    )
+
+    expect(screen.getByTestId('season-Item One').textContent).toBe('none')
+    expect(screen.getByTestId('episode-Item One').textContent).toBe('none')
   })
 })

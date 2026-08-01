@@ -1,5 +1,6 @@
 import {
   ECollectionLogType,
+  leftoverCleanupScope,
   MaintainerrEvent,
   MediaItemType,
   MediaServerType,
@@ -415,6 +416,15 @@ export class RulesService {
           arrAction: params.arrAction ? params.arrAction : 0,
           isActive: params.isActive,
           listExclusions: params.listExclusions ? params.listExclusions : false,
+          // Only persist the leftover-folder cleanup opt-in for an action that
+          // actually strands a folder. The UI hides the checkbox otherwise, so
+          // this drops a value left behind by switching action after ticking
+          // it - a destructive option must never end up enabled unseen.
+          cleanupLeftoverFolders:
+            leftoverCleanupScope(collectionType, params.arrAction ?? 0) !==
+              undefined && params.cleanupLeftoverFolders
+              ? true
+              : false,
           // Force Seerr is unsupported for episode rules (Seerr has no
           // per-episode request granularity), so never persist it enabled. The
           // UI hides the toggle; this also clears the flag on re-save for rules
@@ -614,6 +624,15 @@ export class RulesService {
           arrAction: params.arrAction ? params.arrAction : 0,
           isActive: params.isActive,
           listExclusions: params.listExclusions ? params.listExclusions : false,
+          // Only persist the leftover-folder cleanup opt-in for an action that
+          // actually strands a folder. The UI hides the checkbox otherwise, so
+          // this drops a value left behind by switching action after ticking
+          // it - a destructive option must never end up enabled unseen.
+          cleanupLeftoverFolders:
+            leftoverCleanupScope(collectionType, params.arrAction ?? 0) !==
+              undefined && params.cleanupLeftoverFolders
+              ? true
+              : false,
           // Force Seerr is unsupported for episode rules (Seerr has no
           // per-episode request granularity), so never persist it enabled. The
           // UI hides the toggle; this also clears the flag on re-save for rules

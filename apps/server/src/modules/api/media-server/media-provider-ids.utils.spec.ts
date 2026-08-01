@@ -32,7 +32,7 @@ describe('media provider ids', () => {
     ['a missing provider', undefined, '12345'],
     ['a missing id', 'imdb', undefined],
     ['an empty id', 'imdb', ''],
-  ])('ignores %s', (_case, name, id) => {
+  ])('ignores %s', (scenario, name, id) => {
     const providerIds = emptyProviderIds();
     addProviderId(providerIds, name, id);
     expect(providerIds).toEqual({ imdb: [], tmdb: [], tvdb: [] });

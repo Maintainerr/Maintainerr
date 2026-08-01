@@ -342,6 +342,10 @@ export class SeerrApiService {
       let skip = 0;
 
       const requests: SeerrRequest[] = [];
+      // Bracket the sweep like the media-server ones do: with only the decile
+      // lines, a sweep that fits in one page said nothing at all, and a slow
+      // one had no line to attribute the wait to.
+      this.logger.log('Prefetching Seerr requests...');
       const reportProgress = createPrefetchProgressReporter(
         (message) => this.logger.log(message),
         'Prefetching Seerr requests',
@@ -373,6 +377,9 @@ export class SeerrApiService {
           hasNext = false;
         }
       }
+      this.logger.log(
+        `Seerr request prefetch complete: ${requests.length} requests.`,
+      );
       return requests;
     } catch (error) {
       this.logger.warn(

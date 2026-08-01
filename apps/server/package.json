@@ -11,7 +11,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "check-types": "tsc --noEmit -p tsconfig.json",
-    "test": "yarn test:runtime:jellyfin-sdk && jest",
+    "test": "yarn test:runtime:jellyfin-sdk && jest --shard=1/3 && jest --shard=2/3 && jest --shard=3/3",
     "test:runtime:jellyfin-sdk": "node ./test/jellyfin-sdk-runtime-smoke.cjs",
     "test:clear": "jest --clearCache",
     "test:watch": "jest --watch",

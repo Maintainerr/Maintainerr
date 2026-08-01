@@ -84,6 +84,7 @@ export const createCollection = (
     sportarrQualityProfileId: undefined,
     tagInArr: false,
     listExclusions: false,
+    cleanupLeftoverFolders: false,
     ruleGroup: undefined,
     visibleOnHome: false,
     visibleOnRecommended: false,
@@ -670,6 +671,7 @@ export interface MetadataProviderMockConfig {
   detailsId?: number;
   posterUrl?: string;
   backdropUrl?: string;
+  hierarchyOverview?: string;
   findByExternalId?: (
     externalId: string | number,
     type: string,
@@ -710,6 +712,7 @@ export const createMetadataProviderMock = ({
   detailsId,
   posterUrl,
   backdropUrl,
+  hierarchyOverview,
   findByExternalId,
 }: MetadataProviderMockConfig): jest.Mocked<IMetadataProvider> => {
   const resolvedDetails = details
@@ -736,6 +739,7 @@ export const createMetadataProviderMock = ({
     getBackdropUrl: jest
       .fn()
       .mockResolvedValue(backdropUrl ?? `https://${idKey}/backdrop.jpg`),
+    getHierarchyOverview: jest.fn().mockResolvedValue(hierarchyOverview),
     getPersonDetails: jest.fn(),
     findByExternalId: jest
       .fn()

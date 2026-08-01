@@ -16,7 +16,7 @@ describe('media-server-id.utils', () => {
     it.each([
       ['blank', ''],
       ['Jellyfin id', 'a852a27afe324084ae66db579ee3ee18'],
-    ])('returns false for %s', (_label, value) => {
+    ])('returns false for %s', (label, value) => {
       expect(isLikelyPlexId(value)).toBe(false);
     });
   });
@@ -33,7 +33,7 @@ describe('media-server-id.utils', () => {
       ['blank', ''],
       ['wrong length', 'a852a27afe324084ae66db579ee3ee1'],
       ['dash at wrong position', 'e9b2dcaa529c-426e-9433-5e9981f27f2e'],
-    ])('returns false for %s', (_label, value) => {
+    ])('returns false for %s', (label, value) => {
       expect(isLikelyJellyfinId(value)).toBe(false);
     });
   });

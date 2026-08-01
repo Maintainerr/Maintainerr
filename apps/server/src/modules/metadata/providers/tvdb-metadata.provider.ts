@@ -1,9 +1,14 @@
 import { Injectable } from '@nestjs/common';
+import {
+  TvdbMovieBase,
+  TvdbSeriesBase,
+} from '../../api/tvdb-api/interfaces/tvdb.interface';
 import { TvdbApiService } from '../../api/tvdb-api/tvdb.service';
 import { IMetadataProvider } from '../interfaces/metadata-provider.interface';
 import {
   ExternalIdSearchResult,
   MetadataDetails,
+  MetadataImageOptions,
   PersonDetails,
   ProviderIds,
 } from '../interfaces/metadata.types';
@@ -103,12 +108,55 @@ export class TvdbMetadataProvider implements IMetadataProvider {
     return count;
   }
 
+  /**
+   * The series record lists a season per alternative ordering (Aired / DVD /
+   * ...), so the series' default ordering decides which entry is "season N".
+   * `season.image` is the one image TVDB attaches to the season itself.
+   */
+  private findSeasonImage(
+    record: TvdbSeriesBase | TvdbMovieBase | undefined,
+    seasonNumber: number,
+  ): string | undefined {
+    if (!record || !('seasons' in record) || !Array.isArray(record.seasons)) {
+      return undefined;
+    }
+
+    return record.seasons.find(
+      (season) =>
+        season.type?.id === record.defaultSeasonType &&
+        season.number === seasonNumber,
+    )?.image;
+  }
+
+  // TVDB serves one fixed artwork URL per image, so there is no size to apply.
   async getPosterUrl(
     tvdbId: number,
     type: 'movie' | 'tv',
+    options: MetadataImageOptions = {},
   ): Promise<string | undefined> {
     const record = await this.getRecord(tvdbId, type);
+
+    if (options.ref) {
+      const seasonImage = this.findSeasonImage(
+        record,
+        options.ref.seasonNumber,
+      );
+
+      if (seasonImage) {
+        return seasonImage;
+      }
+    }
+
     return this.tvdbApi.getPosterUrl(record, type);
+  }
+
+  /**
+   * The series record holds no episode entries and only reports which languages
+   * a season overview is translated into, never the text, so TVDB has no
+   * description below show level to read without per-episode requests.
+   */
+  async getHierarchyOverview(): Promise<string | undefined> {
+    return undefined;
   }
 
   async getBackdropUrl(

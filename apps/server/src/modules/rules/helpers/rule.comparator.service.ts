@@ -1,5 +1,6 @@
 import {
   IComparisonStatistics,
+  MediaServerType,
   IRuleComparisonResult,
   MediaItem,
   MediaItemType,
@@ -58,6 +59,9 @@ export class RuleComparatorService {
   private statsById: Map<string, IComparisonStatistics>;
   private transientFailureIds: Set<string>;
   private arrLookupCache?: ArrLookupCache;
+  // Resolved once per run: names every value after the server it was read
+  // from, rather than the one the rule was authored against.
+  private configuredServerType?: MediaServerType | null;
 
   private static readonly UNARY_RULE_ACTIONS = new Set<RulePossibility>([
     RulePossibility.EXISTS,
@@ -94,6 +98,8 @@ export class RuleComparatorService {
       this.resultIds = new Set<string>();
       this.statsById = new Map<string, IComparisonStatistics>();
       this.transientFailureIds = new Set<string>();
+      this.configuredServerType =
+        await this.valueGetter.getConfiguredServerType();
 
       // run rules
       let currentSection = 0;
@@ -364,11 +370,13 @@ export class RuleComparatorService {
     if (firstVal == null) {
       reasons.firstValueReason = this.ruleConstanstService.getValueNullReason(
         rule.firstVal,
+        this.configuredServerType,
       );
     }
     if (secondVal == null && rule.lastVal) {
       reasons.secondValueReason = this.ruleConstanstService.getValueNullReason(
         rule.lastVal,
+        this.configuredServerType,
       );
     }
     return reasons;
@@ -500,6 +508,7 @@ export class RuleComparatorService {
       action: RulePossibility[rule.action].toLowerCase(),
       firstValueName: this.ruleConstanstService.getValueHumanName(
         rule.firstVal,
+        this.configuredServerType,
       ),
       firstValue: firstVal,
       ...(reasons?.firstValueReason
@@ -519,6 +528,7 @@ export class RuleComparatorService {
   ): void {
     const firstValueName = this.ruleConstanstService.getValueHumanName(
       rule.firstVal,
+      this.configuredServerType,
     );
 
     this.logger.debug(
@@ -532,7 +542,10 @@ export class RuleComparatorService {
 
   private getSecondValueName(rule: RuleDto): string {
     if (rule.lastVal) {
-      return this.ruleConstanstService.getValueHumanName(rule.lastVal);
+      return this.ruleConstanstService.getValueHumanName(
+        rule.lastVal,
+        this.configuredServerType,
+      );
     }
     // Unary actions (EXISTS / NOT_EXISTS) have neither a second value nor a
     // custom value. Guard against it so this diagnostic-only helper never
@@ -669,7 +682,7 @@ export class RuleComparatorService {
             return false;
           }
         }
-      } catch (_err) {
+      } catch {
         return null;
       }
     }
@@ -709,7 +722,7 @@ export class RuleComparatorService {
             return false;
           }
         }
-      } catch (_err) {
+      } catch {
         return null;
       }
     }
@@ -727,7 +740,7 @@ export class RuleComparatorService {
             return false;
           }
         }
-      } catch (_err) {
+      } catch {
         return null;
       }
     }

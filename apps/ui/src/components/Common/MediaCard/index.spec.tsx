@@ -67,6 +67,51 @@ describe('MediaCard', () => {
     expect(screen.queryByText('EXCL')).toBeNull()
   })
 
+  it('numbers the season badge so seasons of one show stay distinguishable', () => {
+    render(
+      <MediaCard
+        id="season-1"
+        title="Sample Series"
+        mediaType="season"
+        seasonNumber={2}
+        collectionPage={true}
+      />,
+    )
+
+    expect(screen.getByText('season 2')).toBeTruthy()
+  })
+
+  it('falls back to the plain type badge when the season number is unknown', () => {
+    render(
+      <MediaCard
+        id="season-1"
+        title="Sample Series"
+        mediaType="season"
+        collectionPage={true}
+      />,
+    )
+
+    expect(screen.getByText('season')).toBeTruthy()
+  })
+
+  it('numbers the episode badge and shows the episode title', () => {
+    render(
+      <MediaCard
+        id="episode-1"
+        title="Sample Series"
+        mediaType="episode"
+        seasonNumber={2}
+        episodeNumber={4}
+        episodeTitle="A Quiet Arrival"
+        summary="What happens in the fourth episode."
+        collectionPage={true}
+      />,
+    )
+
+    expect(screen.getByText('episode 4')).toBeTruthy()
+    expect(screen.getByText('A Quiet Arrival')).toBeTruthy()
+  })
+
   it('keeps the collection page manual badge without an overview include badge', () => {
     render(
       <MediaCard

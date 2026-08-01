@@ -208,7 +208,7 @@ describe('CollectionsController', () => {
         action: 0,
       },
     ],
-  ])('rejects invalid %s payloads', (_name, schema, payload) => {
+  ])('rejects invalid %s payloads', (name, schema, payload) => {
     const pipe = new ZodValidationPipe(schema);
 
     expect(() =>

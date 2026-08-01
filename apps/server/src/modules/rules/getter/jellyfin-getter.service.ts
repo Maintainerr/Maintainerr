@@ -68,6 +68,10 @@ export class JellyfinGetterService {
         return null;
       }
 
+      // Which library's prefetched watch snapshot may answer the reads below.
+      // Absent (a single-item rule test) simply means every read goes live.
+      const libraryId = ruleGroup?.libraryId;
+
       // Fetch full metadata from Jellyfin
       // Note: libItem.id maps to Jellyfin item ID
       const metadata = await this.jellyfinAdapter.getMetadata(libItem.id);
@@ -109,6 +113,7 @@ export class JellyfinGetterService {
           // Get users who have watched this item
           const seenByUserIds = await this.jellyfinAdapter.getItemSeenBy(
             metadata.id,
+            libraryId,
           );
           const users = await this.jellyfinAdapter.getUsers();
           return mapRuleUserIdsToNames(
@@ -121,7 +126,10 @@ export class JellyfinGetterService {
 
         case 'favoritedBy': {
           const favoritedByUserIds =
-            await this.jellyfinAdapter.getItemFavoritedBy(metadata.id);
+            await this.jellyfinAdapter.getItemFavoritedBy(
+              metadata.id,
+              libraryId,
+            );
           const users = await this.jellyfinAdapter.getUsers();
           return mapRuleUserIdsToNames(
             favoritedByUserIds,
@@ -177,7 +185,10 @@ export class JellyfinGetterService {
 
         case 'playCount': {
           // Get total play attempts across all users (includes unfinished views)
-          return await this.jellyfinAdapter.getTotalPlayCount(metadata.id);
+          return await this.jellyfinAdapter.getTotalPlayCount(
+            metadata.id,
+            libraryId,
+          );
         }
 
         case 'labels': {
@@ -205,9 +216,10 @@ export class JellyfinGetterService {
             return await this.getLastWatchedShowDate(
               metadata.id,
               metadata.type,
+              libraryId,
             );
           }
-          return await this.getLastViewedAt(metadata.id);
+          return await this.getLastViewedAt(metadata.id, libraryId);
         }
 
         case 'fileVideoResolution': {
@@ -235,13 +247,18 @@ export class JellyfinGetterService {
         }
 
         case 'sw_allEpisodesSeenBy': {
-          return await this.getAllEpisodesSeenBy(metadata.id, metadata.type);
+          return await this.getAllEpisodesSeenBy(
+            metadata.id,
+            metadata.type,
+            libraryId,
+          );
         }
 
         case 'sw_lastWatched': {
           return await this.getNewestWatchedEpisodeDate(
             metadata.id,
             metadata.type,
+            libraryId,
           );
         }
 
@@ -250,7 +267,11 @@ export class JellyfinGetterService {
         }
 
         case 'sw_viewedEpisodes': {
-          return await this.getViewedEpisodeCount(metadata.id, metadata.type);
+          return await this.getViewedEpisodeCount(
+            metadata.id,
+            metadata.type,
+            libraryId,
+          );
         }
 
         case 'sw_lastEpisodeAddedAt': {
@@ -258,17 +279,27 @@ export class JellyfinGetterService {
         }
 
         case 'sw_amountOfViews': {
-          return await this.getTotalShowViews(metadata.id, metadata.type);
+          return await this.getTotalShowViews(
+            metadata.id,
+            metadata.type,
+            libraryId,
+          );
         }
 
         case 'sw_playCount': {
           // For episodes, get total play attempts (includes unfinished views)
-          return await this.jellyfinAdapter.getTotalPlayCount(metadata.id);
+          return await this.jellyfinAdapter.getTotalPlayCount(
+            metadata.id,
+            libraryId,
+          );
         }
 
         case 'sw_favoritedBy': {
           const favoritedByUserIds =
-            await this.jellyfinAdapter.getItemFavoritedBy(metadata.id);
+            await this.jellyfinAdapter.getItemFavoritedBy(
+              metadata.id,
+              libraryId,
+            );
           const users = await this.jellyfinAdapter.getUsers();
           return mapRuleUserIdsToNames(
             favoritedByUserIds,
@@ -285,6 +316,7 @@ export class JellyfinGetterService {
             metadata.id,
             parent?.id,
             grandparent?.id,
+            libraryId,
           );
           const users = await this.jellyfinAdapter.getUsers();
           return mapRuleUserIdsToNames(
@@ -302,7 +334,11 @@ export class JellyfinGetterService {
         // jellyfin-getter.service.spec.ts. Use `sw_allEpisodesSeenBy` when
         // you need "watched every episode" semantics instead.
         case 'sw_watchers': {
-          return await this.getSwWatchers(metadata.id, metadata.type);
+          return await this.getSwWatchers(
+            metadata.id,
+            metadata.type,
+            libraryId,
+          );
         }
 
         case 'collection_names': {
@@ -493,12 +529,16 @@ export class JellyfinGetterService {
   private async descendantWatchHistory(
     itemId: string,
     type: MediaItemType,
+    libraryId: string | undefined,
   ): Promise<Record<string, WatchRecord[]>> {
     if (!isMediaType(type, 'show') && !isMediaType(type, 'season')) {
       return {};
     }
 
-    return this.jellyfinAdapter.getDescendantEpisodeWatchHistory(itemId);
+    return this.jellyfinAdapter.getDescendantEpisodeWatchHistory(
+      itemId,
+      libraryId,
+    );
   }
 
   private newestWatchedAt(records: WatchRecord[]): Date | null {
@@ -510,19 +550,23 @@ export class JellyfinGetterService {
     return times.length > 0 ? new Date(Math.max(...times)) : null;
   }
 
-  private async getLastViewedAt(itemId: string): Promise<Date | null> {
+  private async getLastViewedAt(
+    itemId: string,
+    libraryId: string | undefined,
+  ): Promise<Date | null> {
     return this.newestWatchedAt(
-      await this.jellyfinAdapter.getWatchHistory(itemId),
+      await this.jellyfinAdapter.getWatchHistory(itemId, true, libraryId),
     );
   }
 
   private async getAllEpisodesSeenBy(
     itemId: string,
     type: MediaItemType,
+    libraryId: string | undefined,
   ): Promise<string[]> {
     const users = await this.jellyfinAdapter.getUsers();
     const episodeWatchers = Object.values(
-      await this.descendantWatchHistory(itemId, type),
+      await this.descendantWatchHistory(itemId, type, libraryId),
     );
 
     if (episodeWatchers.length === 0) return [];
@@ -553,6 +597,7 @@ export class JellyfinGetterService {
   private async getNewestWatchedEpisodeDate(
     itemId: string,
     type: MediaItemType,
+    libraryId: string | undefined,
   ): Promise<Date | null> {
     const seasons: Array<{ id: string }> =
       type === 'season'
@@ -565,7 +610,11 @@ export class JellyfinGetterService {
       viewedAt: Date;
     }> = [];
 
-    const watchHistory = await this.descendantWatchHistory(itemId, type);
+    const watchHistory = await this.descendantWatchHistory(
+      itemId,
+      type,
+      libraryId,
+    );
 
     for (const season of seasons) {
       const episodes = await this.jellyfinAdapter.getChildrenMetadata(
@@ -611,8 +660,13 @@ export class JellyfinGetterService {
   private async getLastWatchedShowDate(
     itemId: string,
     type: MediaItemType,
+    libraryId: string | undefined,
   ): Promise<Date | null> {
-    const watchHistory = await this.descendantWatchHistory(itemId, type);
+    const watchHistory = await this.descendantWatchHistory(
+      itemId,
+      type,
+      libraryId,
+    );
 
     return this.newestWatchedAt(Object.values(watchHistory).flat());
   }
@@ -648,8 +702,13 @@ export class JellyfinGetterService {
   private async getViewedEpisodeCount(
     itemId: string,
     type: MediaItemType,
+    libraryId: string | undefined,
   ): Promise<number> {
-    const watchHistory = await this.descendantWatchHistory(itemId, type);
+    const watchHistory = await this.descendantWatchHistory(
+      itemId,
+      type,
+      libraryId,
+    );
 
     return Object.values(watchHistory).filter((records) => records.length > 0)
       .length;
@@ -687,13 +746,22 @@ export class JellyfinGetterService {
   private async getTotalShowViews(
     itemId: string,
     type: MediaItemType,
+    libraryId: string | undefined,
   ): Promise<number> {
     if (type === 'episode') {
-      const history = await this.jellyfinAdapter.getWatchHistory(itemId);
+      const history = await this.jellyfinAdapter.getWatchHistory(
+        itemId,
+        true,
+        libraryId,
+      );
       return history.length;
     }
 
-    const watchHistory = await this.descendantWatchHistory(itemId, type);
+    const watchHistory = await this.descendantWatchHistory(
+      itemId,
+      type,
+      libraryId,
+    );
 
     return Object.values(watchHistory).reduce(
       (total, records) => total + records.length,
@@ -704,13 +772,17 @@ export class JellyfinGetterService {
   private async getSwWatchers(
     itemId: string,
     type: MediaItemType,
+    libraryId: string | undefined,
   ): Promise<string[]> {
     const users = await this.jellyfinAdapter.getUsers();
     let watcherIds: string[];
 
     switch (type) {
       case 'episode': {
-        watcherIds = await this.jellyfinAdapter.getItemSeenBy(itemId);
+        watcherIds = await this.jellyfinAdapter.getItemSeenBy(
+          itemId,
+          libraryId,
+        );
         break;
       }
 
@@ -718,7 +790,11 @@ export class JellyfinGetterService {
       // (#2559). sw_allEpisodesSeenBy is the "watched every episode" one.
       case 'season':
       case 'show': {
-        const watchHistory = await this.descendantWatchHistory(itemId, type);
+        const watchHistory = await this.descendantWatchHistory(
+          itemId,
+          type,
+          libraryId,
+        );
         const watched = new Set(
           Object.values(watchHistory).flatMap((records) =>
             records.map((record) => record.userId),
@@ -782,6 +858,7 @@ export class JellyfinGetterService {
     itemId: string,
     parentId: string | undefined,
     grandparentId: string | undefined,
+    libraryId: string | undefined,
   ): Promise<string[]> {
     const idsToCheck = [...new Set([itemId, parentId, grandparentId])].filter(
       (id): id is string => id !== undefined,
@@ -789,7 +866,10 @@ export class JellyfinGetterService {
 
     const favoritedByUserIds = new Set<string>();
     for (const id of idsToCheck) {
-      const users = await this.jellyfinAdapter.getItemFavoritedBy(id);
+      const users = await this.jellyfinAdapter.getItemFavoritedBy(
+        id,
+        libraryId,
+      );
       users.forEach((userId) => favoritedByUserIds.add(userId));
     }
 
@@ -921,7 +1001,11 @@ export class JellyfinGetterService {
       for (const child of children) {
         // getWatchHistory aggregates LastPlayedDate across all Jellyfin users
         // (unlike child.lastViewedAt which is scoped to the admin user).
-        const history = await this.jellyfinAdapter.getWatchHistory(child.id);
+        const history = await this.jellyfinAdapter.getWatchHistory(
+          child.id,
+          true,
+          libraryId,
+        );
         for (const record of history) {
           const watchedMs = record.watchedAt?.getTime() ?? 0;
           if (watchedMs > latestMs) {

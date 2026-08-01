@@ -14,6 +14,7 @@ import {
   TmdbMovieDetails,
   TmdbPersonDetail,
   TmdbTvDetails,
+  TmdbTvSeasonDetails,
 } from './interfaces/tmdb.interface';
 
 const TMDB_DEFAULT_API_KEY = 'db55323b8d3e4154498498a75642b381';
@@ -168,6 +169,29 @@ export class TmdbApiService extends ExternalApiService {
       return data;
     } catch (error) {
       this.logger.warn('Failed to fetch TV show details');
+      this.logger.debug(error);
+    }
+  };
+
+  public getTvSeason = async ({
+    tvId,
+    seasonNumber,
+    language = 'en',
+  }: {
+    tvId: number;
+    seasonNumber: number;
+    language?: string;
+  }): Promise<TmdbTvSeasonDetails> => {
+    try {
+      const data = await this.get<TmdbTvSeasonDetails>(
+        `/tv/${tvId}/season/${seasonNumber}`,
+        { params: { language } },
+        43200,
+      );
+
+      return data;
+    } catch (error) {
+      this.logger.warn('Failed to fetch TV season details');
       this.logger.debug(error);
     }
   };

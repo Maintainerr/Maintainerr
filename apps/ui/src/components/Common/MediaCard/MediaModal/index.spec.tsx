@@ -1,17 +1,35 @@
 import { MediaServerType, type MediaItem } from '@maintainerr/contracts'
+import { QueryClientProvider } from '@tanstack/react-query'
 import {
   cleanup,
   fireEvent,
-  render,
+  render as renderComponent,
   screen,
   waitFor,
 } from '@testing-library/react'
+import type { ReactNode } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useMediaServerType } from '../../../../hooks/useMediaServerType'
 import { createDeferred } from '../../../../test-utils/createDeferred'
+import { createTestQueryClient } from '../../../../test-utils/queryClient'
 import GetApiHandler from '../../../../utils/ApiHandler'
 import { clearMaintainerrStatusDetailsCache } from '../maintainerrStatus'
 import MediaModal from './index'
+
+// The modal reads a metadata-provider description through TanStack Query, so
+// every render (including rerenders) needs a client in context.
+const render = (ui: ReactNode) => {
+  const queryClient = createTestQueryClient()
+  const withClient = (node: ReactNode) => (
+    <QueryClientProvider client={queryClient}>{node}</QueryClientProvider>
+  )
+  const result = renderComponent(withClient(ui))
+
+  return {
+    ...result,
+    rerender: (node: ReactNode) => result.rerender(withClient(node)),
+  }
+}
 
 vi.mock('../../../Collection/CollectionDetail/TriggerRuleActionButton', () => ({
   default: () => <div>trigger-rule-action</div>,
@@ -678,6 +696,93 @@ describe('MediaModal', () => {
     await screen.findByText('Movie summary')
 
     expect(getApiHandlerMock).not.toHaveBeenCalledWith('/streamystats/info')
+  })
+
+  it('names the season and falls back to the provider description when the media server has none', async () => {
+    getApiHandlerMock.mockImplementation((path: string) => {
+      if (path === '/media-server') {
+        return Promise.resolve({})
+      }
+
+      if (path === '/settings') {
+        return Promise.resolve({})
+      }
+
+      if (path === '/media-server/meta/55') {
+        return Promise.resolve({ summary: '' } as MediaItem)
+      }
+
+      if (path.startsWith('/metadata/backdrop/show?')) {
+        return Promise.resolve(undefined)
+      }
+
+      if (path === '/metadata/overview/show?tmdbId=101&itemId=55') {
+        return Promise.resolve({ overview: 'What happens in season two.' })
+      }
+
+      if (path === '/streamystats/info') {
+        return Promise.reject(new Error('404 Streamystats not configured'))
+      }
+
+      throw new Error(`Unexpected request: ${path}`)
+    })
+
+    render(
+      <MediaModal
+        onClose={() => {}}
+        id={55}
+        mediaType="season"
+        seasonNumber={2}
+        title="Sample Series"
+        providerIds={{ tmdb: ['101'] }}
+      />,
+    )
+
+    expect(await screen.findByText('season 2')).toBeTruthy()
+    expect(await screen.findByText('What happens in season two.')).toBeTruthy()
+    expect(screen.queryByText('No summary available.')).toBeNull()
+  })
+
+  it('does not ask the provider for a description the media server already has', async () => {
+    getApiHandlerMock.mockImplementation((path: string) => {
+      if (path === '/media-server') {
+        return Promise.resolve({})
+      }
+
+      if (path === '/settings') {
+        return Promise.resolve({})
+      }
+
+      if (path === '/media-server/meta/56') {
+        return Promise.resolve({ summary: 'Season summary.' } as MediaItem)
+      }
+
+      if (path.startsWith('/metadata/backdrop/show?')) {
+        return Promise.resolve(undefined)
+      }
+
+      if (path === '/streamystats/info') {
+        return Promise.reject(new Error('404 Streamystats not configured'))
+      }
+
+      throw new Error(`Unexpected request: ${path}`)
+    })
+
+    render(
+      <MediaModal
+        onClose={() => {}}
+        id={56}
+        mediaType="season"
+        seasonNumber={1}
+        title="Sample Series"
+        providerIds={{ tmdb: ['101'] }}
+      />,
+    )
+
+    expect(await screen.findByText('Season summary.')).toBeTruthy()
+    expect(getApiHandlerMock).not.toHaveBeenCalledWith(
+      expect.stringContaining('/metadata/overview/'),
+    )
   })
 
   it('hides the trigger rule action control for excluded collection items', async () => {

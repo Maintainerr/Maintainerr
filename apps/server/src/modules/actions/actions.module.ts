@@ -4,6 +4,7 @@ import { MediaServerModule } from '../api/media-server/media-server.module';
 import { SeerrApiModule } from '../api/seerr-api/seerr-api.module';
 import { ServarrApiModule } from '../api/servarr-api/servarr-api.module';
 import { MetadataModule } from '../metadata/metadata.module';
+import { LeftoverFolderCleanupService } from './leftover-folder-cleanup.service';
 import { RadarrActionHandler } from './radarr-action-handler';
 import { ServarrTagService } from './servarr-tag.service';
 import { SonarrActionHandler } from './sonarr-action-handler';
@@ -22,6 +23,7 @@ import { SportarrActionHandler } from './sportarr-action-handler';
     SonarrActionHandler,
     SportarrActionHandler,
     ServarrTagService,
+    LeftoverFolderCleanupService,
   ],
   exports: [
     RadarrActionHandler,

@@ -10,6 +10,8 @@ import {
 import { zodResolver } from '@hookform/resolvers/zod'
 import {
   Application,
+  isValidMediaItemType,
+  leftoverCleanupScope,
   MediaItemType,
   MediaLibrary,
   MediaServerFeature,
@@ -356,6 +358,7 @@ export const ruleGroupFormSchema = z
     overlayEnabled: z.boolean(),
     overlayTemplateId: z.number().int().nullable().optional(),
     listExclusions: z.boolean(),
+    cleanupLeftoverFolders: z.boolean(),
     forceSeerr: z.boolean(),
     manualCollection: z.boolean(),
     manualCollectionName: z.string().optional(),
@@ -452,6 +455,7 @@ const buildFormDefaults = (editData?: IRuleGroup): RuleGroupFormValues => ({
   overlayEnabled: editData?.collection?.overlayEnabled ?? false,
   overlayTemplateId: editData?.collection?.overlayTemplateId ?? null,
   listExclusions: editData?.collection?.listExclusions ?? true,
+  cleanupLeftoverFolders: editData?.collection?.cleanupLeftoverFolders ?? false,
   forceSeerr: editData?.collection?.forceSeerr ?? false,
   manualCollection: editData?.collection?.manualCollection ?? false,
   manualCollectionName: editData?.collection?.manualCollectionName ?? '',
@@ -582,6 +586,16 @@ const AddModal = (props: AddModal) => {
   }) as number | null | undefined
   const hasSelectedRadarrServer = radarrSettingsId != null
   const hasSelectedSonarrServer = sonarrSettingsId != null
+  // Which folder the chosen action strands, or undefined when it strands none.
+  // leftoverCleanupScope is shared with the server, so the checkbox is offered
+  // for exactly the actions the handlers act on.
+  const cleanupScope =
+    arrActionValue !== undefined && isValidMediaItemType(selectedType)
+      ? leftoverCleanupScope(selectedType, arrActionValue)
+      : undefined
+  // Which *arr owns this collection: movie libraries are Radarr's, every other
+  // type (show, season, episode) is Sonarr's.
+  const cleanupArrName = selectedType === 'movie' ? 'Radarr' : 'Sonarr'
   const hasSelectedSportarrServer = sportarrSettingsId != null
   const [showCommunityModal, setShowCommunityModal] = useState(false)
   const [yamlImporterModal, setYamlImporterModal] = useState(false)
@@ -718,6 +732,7 @@ const AddModal = (props: AddModal) => {
     setValue('sonarrQualityProfileId', undefined)
     setValue('sportarrQualityProfileId', undefined)
     setValue('tagInArr', false)
+    setValue('cleanupLeftoverFolders', false)
     setShowLibraryManager('Sonarr')
     updateArrOption(ServarrAction.DELETE)
 
@@ -743,6 +758,7 @@ const AddModal = (props: AddModal) => {
     setValue('sonarrQualityProfileId', undefined)
     setValue('sportarrQualityProfileId', undefined)
     setValue('tagInArr', false)
+    setValue('cleanupLeftoverFolders', false)
     updateArrOption(ServarrAction.DELETE)
 
     const filtered = filterRulesForArrSettings(
@@ -776,6 +792,18 @@ const AddModal = (props: AddModal) => {
       setValue('sonarrQualityProfileId', undefined)
       setValue('sportarrQualityProfileId', undefined)
     }
+
+    // Drop the leftover-folder cleanup opt-in when the new action strands no
+    // folder; the checkbox hides with it, so don't leave a destructive option
+    // enabled out of sight. The server clamps the same way on save.
+    const dataType = getValues('dataType')
+    if (
+      value === undefined ||
+      !isValidMediaItemType(dataType) ||
+      leftoverCleanupScope(dataType, value) === undefined
+    ) {
+      setValue('cleanupLeftoverFolders', false)
+    }
   }
 
   const handleUpdateArrAction = (
@@ -797,10 +825,12 @@ const AddModal = (props: AddModal) => {
       setValue('sportarrQualityProfileId', undefined)
     }
 
-    // Drop the membership-tag opt-in if the matching *arr server is deselected;
-    // the checkbox hides with the server, so don't leave a stale enabled flag.
+    // Drop the membership-tag and leftover-cleanup opt-ins if the matching *arr
+    // server is deselected; both checkboxes hide with the server, so don't
+    // leave a stale enabled flag.
     if (settingId == null) {
       setValue('tagInArr', false)
+      setValue('cleanupLeftoverFolders', false)
     }
 
     // A collection is managed by exactly one *arr, so selecting a server for one
@@ -952,6 +982,7 @@ const AddModal = (props: AddModal) => {
       isActive: data.active,
       useRules: data.useRules,
       listExclusions: data.listExclusions,
+      cleanupLeftoverFolders: data.cleanupLeftoverFolders,
       forceSeerr: data.forceSeerr,
       tautulliWatchedPercentOverride: data.tautulliWatchedPercentOverride,
       radarrSettingsId: data.radarrSettingsId ?? undefined,
@@ -1372,8 +1403,7 @@ const AddModal = (props: AddModal) => {
                           Take action after days*
                           <p className="text-xs font-normal">
                             Duration of days media remains in the{' '}
-                            {collectionTerm}
-                            before deletion/unmonitor
+                            {collectionTerm} before deletion/unmonitor
                           </p>
                         </label>
                         <div className="form-input">
@@ -1580,6 +1610,42 @@ const AddModal = (props: AddModal) => {
                         </div>
                       </div>
                     )}
+
+                    {/* Only the actions that delete an item's files one at a
+                        time strand a folder; leftoverCleanupScope is the one
+                        definition of which those are, shared with the server. */}
+                    {cleanupScope !== undefined &&
+                      ((selectedType === 'movie' && hasSelectedRadarrServer) ||
+                        (selectedType !== 'movie' &&
+                          hasSelectedSonarrServer)) && (
+                        <div className="flex flex-row items-center justify-between py-4">
+                          <label
+                            htmlFor="cleanup_leftover_folders"
+                            className="text-label"
+                          >
+                            Clean up leftover folders
+                            <span className="ml-1.5 rounded-full bg-maintainerr-600 px-3 text-sm font-medium text-white">
+                              BETA
+                            </span>
+                            <p className="text-xs font-normal">
+                              Delete the folder {cleanupArrName} leaves behind
+                              and its sidecars (subtitles, .nfo, artwork).
+                              Requires the library mounted at the same path{' '}
+                              {cleanupArrName} uses
+                            </p>
+                          </label>
+                          <div className="form-input">
+                            <div className="form-input-field">
+                              <input
+                                type="checkbox"
+                                id="cleanup_leftover_folders"
+                                className="checkbox"
+                                {...register('cleanupLeftoverFolders')}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      )}
 
                     {/* Strict 'show' (not selectedLibraryType) on purpose:
                         Sonarr tags are series-level, so season/episode

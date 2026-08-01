@@ -772,4 +772,49 @@ describe('SonarrApi', () => {
       expect(result).toBe(false);
     });
   });
+
+  // The leftover-folder cleanup fences a filesystem delete on these reads. A
+  // cached snapshot predating a newly added series - or a file Sonarr has since
+  // moved - would leave the fence blind to it, so both must bypass the cache.
+  describe('reads that fence a destructive operation', () => {
+    it('lists every series uncached', async () => {
+      const cached = jest.spyOn(sonarrApi as any, 'get');
+      const uncached = jest
+        .spyOn(sonarrApi as any, 'getWithoutCache')
+        .mockResolvedValue([createSonarrSeries({ id: 1 })]);
+
+      await sonarrApi.getSeries();
+
+      expect(uncached).toHaveBeenCalledWith('/series', expect.any(Object));
+      expect(cached).not.toHaveBeenCalled();
+    });
+
+    it('lists the series episode files uncached, with their season and path', async () => {
+      const cached = jest.spyOn(sonarrApi as any, 'get');
+      const uncached = jest
+        .spyOn(sonarrApi as any, 'getWithoutCache')
+        .mockResolvedValue([
+          { id: 7, seasonNumber: 1, path: '/tv/Sample Series/Season 01/a.mkv' },
+        ]);
+
+      const files = await sonarrApi.getEpisodeFiles(42);
+
+      expect(uncached).toHaveBeenCalledWith(
+        '/episodefile?seriesId=42',
+        expect.any(Object),
+      );
+      expect(cached).not.toHaveBeenCalled();
+      expect(files?.[0]).toMatchObject({ seasonNumber: 1 });
+    });
+
+    // undefined must survive to the caller: "the listing failed" is not "no
+    // files", and collapsing the two would fence on an empty deleted-file list.
+    it('passes a failed episode-file listing through as undefined', async () => {
+      jest
+        .spyOn(sonarrApi as any, 'getWithoutCache')
+        .mockResolvedValue(undefined);
+
+      await expect(sonarrApi.getEpisodeFiles(42)).resolves.toBeUndefined();
+    });
+  });
 });

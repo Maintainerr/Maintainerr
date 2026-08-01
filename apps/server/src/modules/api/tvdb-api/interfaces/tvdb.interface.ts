@@ -38,6 +38,7 @@ export interface TvdbSeason {
   type: TvdbSeasonType;
   number: number;
   name: string | null;
+  image?: string;
 }
 
 export interface TvdbSeriesBase {

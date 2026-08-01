@@ -3762,6 +3762,7 @@ export class CollectionsService {
             visibleOnHome: collection.visibleOnHome,
             deleteAfterDays: collection.deleteAfterDays,
             listExclusions: collection.listExclusions,
+            cleanupLeftoverFolders: collection.cleanupLeftoverFolders ?? false,
             forceSeerr: collection.forceSeerr,
             keepLogsForMonths: collection.keepLogsForMonths,
             tautulliWatchedPercentOverride:

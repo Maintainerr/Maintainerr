@@ -16,8 +16,8 @@ interface ElementToolboxProps {
   nextLayerOrder: number
 }
 
-let _uid = 0
-const uid = () => `el-${Date.now()}-${++_uid}`
+let uidCounter = 0
+const uid = () => `el-${Date.now()}-${++uidCounter}`
 
 export function ElementToolbox({ onAdd, nextLayerOrder }: ElementToolboxProps) {
   const addText = () => {

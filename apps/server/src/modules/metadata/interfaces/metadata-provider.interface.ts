@@ -1,8 +1,10 @@
 import {
   ExternalIdSearchResult,
   MetadataDetails,
+  MetadataImageOptions,
   PersonDetails,
   ProviderIds,
+  TvHierarchyRef,
 } from './metadata.types';
 
 export const MetadataProviders = Symbol('MetadataProviders');
@@ -22,16 +24,35 @@ export interface IMetadataProvider {
     type: 'movie' | 'tv',
   ): Promise<MetadataDetails | undefined>;
 
+  /**
+   * `ref` asks for that season's poster; episodes get their season's poster
+   * because neither provider holds a portrait image per episode. Providers fall
+   * back to the show poster when they have no artwork for the season.
+   */
   getPosterUrl(
     id: number,
     type: 'movie' | 'tv',
-    sizeHint?: string,
+    options?: MetadataImageOptions,
   ): Promise<string | undefined>;
 
+  /**
+   * `ref` asks for the episode's still. Providers with no landscape image for
+   * what `ref` addresses - a season, or an episode they don't hold a still for
+   * - fall back to the show backdrop.
+   */
   getBackdropUrl(
     id: number,
     type: 'movie' | 'tv',
-    sizeHint?: string,
+    options?: MetadataImageOptions,
+  ): Promise<string | undefined>;
+
+  /**
+   * Description of the episode `ref` addresses, or of the season when it
+   * addresses a whole season. Undefined when the provider has none.
+   */
+  getHierarchyOverview(
+    id: number,
+    ref: TvHierarchyRef,
   ): Promise<string | undefined>;
 
   getPersonDetails(id: number): Promise<PersonDetails | undefined>;

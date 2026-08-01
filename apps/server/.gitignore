@@ -38,3 +38,7 @@ coverage
 
 # Database
 ./data/maintainerr.sqlite
+
+# Throwaway tsconfig for the TypeORM migration CLI (see typeorm_instructions.txt)
+tsconfig.migrate.json
+

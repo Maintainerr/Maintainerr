@@ -29,9 +29,16 @@ export class RadarrApi extends ServarrApi<{ movieId: number }> {
     this.logger.setContext(RadarrApi.name);
   }
 
+  /**
+   * Every tracked movie. Uncached: its only caller fences a filesystem delete
+   * on the other movies' folders, and a movie added since the last read would
+   * be missing from a cached snapshot - so the fence would not see it.
+   */
   public getMovies = async (): Promise<RadarrMovie[]> => {
     try {
-      const response = await this.get<RadarrMovie[]>('/movie');
+      const response = await this.getWithoutCache<RadarrMovie[]>('/movie', {
+        timeout: SLOW_INSTANCE_TIMEOUT_MS,
+      });
 
       return response;
     } catch (error) {
@@ -39,6 +46,18 @@ export class RadarrApi extends ServarrApi<{ movieId: number }> {
       this.logger.debug(error);
     }
   };
+
+  /**
+   * The movie's files. Uncached: callers read it right before deleting them, so
+   * a stale snapshot would delete the wrong ids. Returns undefined when the
+   * listing itself failed, which callers must treat as "unknown", not "none".
+   */
+  public getMovieFiles = async (
+    movieId: number,
+  ): Promise<RadarrMovieFile[] | undefined> =>
+    this.getWithoutCache<RadarrMovieFile[]>(`moviefile?movieId=${movieId}`, {
+      timeout: SLOW_INSTANCE_TIMEOUT_MS,
+    });
 
   public getMovie = async ({ id }: { id: number }): Promise<RadarrMovie> => {
     try {
@@ -199,10 +218,7 @@ export class RadarrApi extends ServarrApi<{ movieId: number }> {
       }
 
       if (options?.deleteFiles) {
-        const movieFiles: RadarrMovieFile[] = await this.getWithoutCache(
-          `moviefile?movieId=${movieId}`,
-          { timeout: SLOW_INSTANCE_TIMEOUT_MS },
-        );
+        const movieFiles = await this.getMovieFiles(movieId);
 
         // undefined = the listing failed; [] = confirmed no files. Fail closed
         // instead of reporting success without having deleted anything.

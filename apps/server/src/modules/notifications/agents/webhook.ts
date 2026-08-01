@@ -18,7 +18,7 @@ type KeyMapFunction = (
 ) => string;
 
 const KeyMap: Record<string, string | KeyMapFunction> = {
-  notification_type: (_payload, type) => NotificationType[type],
+  notification_type: (payload, type) => NotificationType[type],
   event: 'event',
   subject: 'subject',
   message: 'message',

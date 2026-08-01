@@ -2,6 +2,7 @@ import {
   createMockLogger,
   createMockServarrTagService,
 } from '../../../test/utils/data';
+import { ServarrAction } from '../collections/interfaces/collection.interface';
 import { Application, RulePossibility } from './constants/rules.constants';
 import { RulesService } from './rules.service';
 
@@ -102,6 +103,71 @@ describe('RulesService.setRules', () => {
       result: 'Success',
       message: 'Success',
     });
+  });
+
+  // The UI submits the leftover-folder cleanup opt-in on the rule-group payload,
+  // so setRules is the only path that can turn it on. It used to be missing from
+  // RulesDto and from the createCollection call, which silently dropped it.
+  it('persists the leftover-folder cleanup opt-in for an action that strands a folder', async () => {
+    const createCollection = jest
+      .fn()
+      .mockResolvedValue({ dbCollection: { id: 99 } });
+
+    const service = createRulesService({
+      rulesRepository: { save: jest.fn().mockResolvedValue(undefined) },
+      collectionService: { createCollection },
+      mediaServerFactory: createMediaServerFactory(),
+    });
+
+    jest.spyOn(service as any, 'createOrUpdateGroup').mockResolvedValue(7);
+
+    await service.setRules({
+      libraryId: '1',
+      name: 'Cleanup on',
+      description: '',
+      useRules: true,
+      isActive: true,
+      rules: validRules,
+      arrAction: ServarrAction.UNMONITOR_DELETE_ALL,
+      cleanupLeftoverFolders: true,
+    } as any);
+
+    expect(createCollection).toHaveBeenCalledWith(
+      expect.objectContaining({ cleanupLeftoverFolders: true }),
+    );
+  });
+
+  // Mirrors the forceSeerr clamp: the checkbox is hidden for an action that
+  // strands nothing, so a value left over from switching action after ticking it
+  // must not be stored - a filesystem delete may not end up enabled unseen.
+  it('clears the cleanup opt-in for an action that strands no folder', async () => {
+    const createCollection = jest
+      .fn()
+      .mockResolvedValue({ dbCollection: { id: 99 } });
+
+    const service = createRulesService({
+      rulesRepository: { save: jest.fn().mockResolvedValue(undefined) },
+      collectionService: { createCollection },
+      mediaServerFactory: createMediaServerFactory(),
+    });
+
+    jest.spyOn(service as any, 'createOrUpdateGroup').mockResolvedValue(7);
+
+    await service.setRules({
+      libraryId: '1',
+      name: 'Cleanup stale',
+      description: '',
+      useRules: true,
+      isActive: true,
+      rules: validRules,
+      // Radarr removes the movie folder itself on a whole-entity delete.
+      arrAction: ServarrAction.DELETE,
+      cleanupLeftoverFolders: true,
+    } as any);
+
+    expect(createCollection).toHaveBeenCalledWith(
+      expect.objectContaining({ cleanupLeftoverFolders: false }),
+    );
   });
 
   it('rejects a payload that binds both Sonarr and Sportarr', async () => {

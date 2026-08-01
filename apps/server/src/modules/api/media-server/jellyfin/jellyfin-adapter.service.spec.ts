@@ -9,7 +9,10 @@ import type { AxiosError } from 'axios';
 import { delay } from '../../../../utils/delay';
 import { MaintainerrLogger } from '../../../logging/logs.service';
 import { SettingsDataService } from '../../../settings/settings-data.service';
-import { JELLYFIN_WATCH_SNAPSHOT_MAX_RECORDS } from './jellyfin.constants';
+import {
+  JELLYFIN_WATCH_SNAPSHOT_MAX_RECORDS,
+  jellyfinWatchSnapshotCacheKey,
+} from './jellyfin.constants';
 import { JellyfinAdapterService } from './jellyfin-adapter.service';
 import { JELLYFIN_BATCH_SIZE, JELLYFIN_CACHE_TTL } from './jellyfin.constants';
 
@@ -423,7 +426,9 @@ describe('JellyfinAdapterService', () => {
     });
 
     it('prefetchWatchHistory is a no-op when the adapter is not initialised', async () => {
-      await expect(service.prefetchWatchHistory()).resolves.toBeUndefined();
+      await expect(
+        service.prefetchWatchHistory({ libraryId: 'lib-1' }),
+      ).resolves.toBeUndefined();
     });
   });
 
@@ -1047,7 +1052,7 @@ describe('JellyfinAdapterService', () => {
       ['searchContent', [], () => service.searchContent('test')],
     ] as [string, unknown, () => Promise<unknown>][])(
       '%s returns %j when not initialized',
-      async (_method, expected, call) => {
+      async (method, expected, call) => {
         const result = await call();
         if (expected === undefined) {
           expect(result).toBeUndefined();
@@ -1302,7 +1307,7 @@ describe('JellyfinAdapterService', () => {
     });
 
     const snapshot = () =>
-      mockSnapshotStore.get('watch-snapshot') as
+      mockSnapshotStore.get(jellyfinWatchSnapshotCacheKey('lib-1')) as
         | {
             watchHistory: Map<string, unknown[]>;
             descendants: Map<string, string[]>;
@@ -1357,7 +1362,7 @@ describe('JellyfinAdapterService', () => {
         ({ userId }: { userId: string }) => Promise.resolve(leafPage(userId)),
       );
 
-      await service.prefetchWatchHistory();
+      await service.prefetchWatchHistory({ libraryId: 'lib-1' });
 
       const cached = snapshot();
       expect(cached).toBeDefined();
@@ -1391,19 +1396,21 @@ describe('JellyfinAdapterService', () => {
       jellyfinApiMocks.getItems.mockImplementation(
         ({ userId }: { userId: string }) => Promise.resolve(leafPage(userId)),
       );
-      await service.prefetchWatchHistory();
+      await service.prefetchWatchHistory({ libraryId: 'lib-1' });
       jellyfinApiMocks.getItems.mockClear();
 
       // A season's IsFavorite is independent of its episodes', so this can
       // only come from the container's own swept UserData.
-      await expect(service.getItemFavoritedBy('season-1')).resolves.toEqual([
-        'user-2',
-      ]);
-      await expect(service.getItemFavoritedBy('show-1')).resolves.toEqual([
-        'user-1',
-      ]);
+      await expect(
+        service.getItemFavoritedBy('season-1', 'lib-1'),
+      ).resolves.toEqual(['user-2']);
+      await expect(
+        service.getItemFavoritedBy('show-1', 'lib-1'),
+      ).resolves.toEqual(['user-1']);
       // A swept container nobody favourited is a confirmed empty list.
-      await expect(service.getItemFavoritedBy('movie-1')).resolves.toEqual([]);
+      await expect(
+        service.getItemFavoritedBy('movie-1', 'lib-1'),
+      ).resolves.toEqual([]);
       expect(jellyfinApiMocks.getItems).not.toHaveBeenCalled();
     });
 
@@ -1414,10 +1421,13 @@ describe('JellyfinAdapterService', () => {
       jellyfinApiMocks.getItems.mockImplementation(
         ({ userId }: { userId: string }) => Promise.resolve(leafPage(userId)),
       );
-      await service.prefetchWatchHistory();
+      await service.prefetchWatchHistory({ libraryId: 'lib-1' });
       jellyfinApiMocks.getItems.mockClear();
 
-      const result = await service.getDescendantEpisodeWatchHistory('show-1');
+      const result = await service.getDescendantEpisodeWatchHistory(
+        'show-1',
+        'lib-1',
+      );
 
       expect(Object.keys(result).sort()).toEqual(['ep-1', 'ep-2']);
       expect(result['ep-1'].map((r) => r.userId)).toEqual(['user-1']);
@@ -1431,7 +1441,7 @@ describe('JellyfinAdapterService', () => {
       jellyfinApiMocks.getItems.mockImplementation(
         ({ userId }: { userId: string }) => Promise.resolve(leafPage(userId)),
       );
-      await service.prefetchWatchHistory();
+      await service.prefetchWatchHistory({ libraryId: 'lib-1' });
       jellyfinApiMocks.getItems.mockClear();
       jellyfinApiMocks.getItems.mockResolvedValue({
         data: { Items: [{ Id: 'ep-9', UserData: { Played: true } }] },
@@ -1450,7 +1460,7 @@ describe('JellyfinAdapterService', () => {
       jellyfinApiMocks.getItems.mockImplementation(
         ({ userId }: { userId: string }) => Promise.resolve(leafPage(userId)),
       );
-      await service.prefetchWatchHistory();
+      await service.prefetchWatchHistory({ libraryId: 'lib-1' });
       jellyfinApiMocks.getItems.mockClear();
       // The snapshot says ep-2 is unwatched for this user; Jellyfin now says otherwise.
       jellyfinApiMocks.getItems.mockResolvedValue({
@@ -1478,7 +1488,9 @@ describe('JellyfinAdapterService', () => {
             : Promise.resolve(leafPage(userId)),
       );
 
-      await expect(service.prefetchWatchHistory()).resolves.toBeUndefined();
+      await expect(
+        service.prefetchWatchHistory({ libraryId: 'lib-1' }),
+      ).resolves.toBeUndefined();
       expect(snapshot()).toBeUndefined();
     });
 
@@ -1493,7 +1505,7 @@ describe('JellyfinAdapterService', () => {
         },
       });
 
-      await service.prefetchWatchHistory();
+      await service.prefetchWatchHistory({ libraryId: 'lib-1' });
       expect(snapshot()).toBeUndefined();
     });
 
@@ -1505,7 +1517,7 @@ describe('JellyfinAdapterService', () => {
         data: { Items: [{ Id: 'ep-1', UserData: { Played: true } }] },
       });
 
-      await service.prefetchWatchHistory();
+      await service.prefetchWatchHistory({ libraryId: 'lib-1' });
       expect(snapshot()).toBeUndefined();
     });
 
@@ -1519,7 +1531,7 @@ describe('JellyfinAdapterService', () => {
       jellyfinApiMocks.getItems.mockImplementation(
         ({ userId }: { userId: string }) => Promise.resolve(leafPage(userId)),
       );
-      await service.prefetchWatchHistory();
+      await service.prefetchWatchHistory({ libraryId: 'lib-1' });
 
       // Server threshold changes; the cached records were decided by the old one.
       jellyfinCacheMocks.data.has.mockReturnValue(false);
@@ -1551,7 +1563,7 @@ describe('JellyfinAdapterService', () => {
         data: { Items: many, TotalRecordCount: many.length },
       });
 
-      await service.prefetchWatchHistory();
+      await service.prefetchWatchHistory({ libraryId: 'lib-1' });
 
       // Nothing cached, so every caller reads live rather than trusting a
       // snapshot that would have kept growing.
@@ -1566,7 +1578,7 @@ describe('JellyfinAdapterService', () => {
         ({ userId }: { userId: string }) => Promise.resolve(leafPage(userId)),
       );
 
-      await service.prefetchWatchHistory();
+      await service.prefetchWatchHistory({ libraryId: 'lib-1' });
 
       // Libraries with "Group films into collections" hide BoxSet members by
       // default, which would silently drop those items from the snapshot.
@@ -1591,7 +1603,7 @@ describe('JellyfinAdapterService', () => {
         data: { Items: [row, row], TotalRecordCount: 2 },
       });
 
-      await service.prefetchWatchHistory();
+      await service.prefetchWatchHistory({ libraryId: 'lib-1' });
 
       const cached = snapshot() as unknown as {
         watchHistory: Map<string, unknown[]>;
@@ -1611,9 +1623,9 @@ describe('JellyfinAdapterService', () => {
         ({ userId }: { userId: string }) => Promise.resolve(leafPage(userId)),
       );
 
-      await service.prefetchWatchHistory();
+      await service.prefetchWatchHistory({ libraryId: 'lib-1' });
       jellyfinApiMocks.getItems.mockClear();
-      await service.prefetchWatchHistory();
+      await service.prefetchWatchHistory({ libraryId: 'lib-1' });
 
       expect(jellyfinApiMocks.getItems).not.toHaveBeenCalled();
     });

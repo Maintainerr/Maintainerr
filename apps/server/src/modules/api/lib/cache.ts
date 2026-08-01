@@ -138,10 +138,11 @@ class CacheManager {
       persistent: true,
     }),
     plexguid: new Cache('plexguid', 'Plex GUID', 'plexguid'),
-    // Holds the leaf watch-history map built by PlexApiService.prefetchWatchHistory.
-    // Persistent so the map survives flushAll() between rule groups in the same
-    // cron window; useClones is off because the value is a large Map -
-    // getWatchHistory returns copies of the per-item arrays instead.
+    // Holds the per-library watch-history snapshots built by
+    // PlexApiService.prefetchWatchHistory. Persistent so a snapshot survives
+    // flushAll() between rule groups in the same cron window; useClones is off
+    // because the values are large Maps - getWatchHistory returns copies of the
+    // per-item arrays instead.
     plexwatchhistory: new Cache(
       'plexwatchhistory',
       'Plex watch history',
@@ -150,8 +151,8 @@ class CacheManager {
         stdTtl: 3600, // 1 hour
         persistent: true,
         useClones: false,
-        // Holds a single prefetched Map, not one entry per item - exempt from
-        // the key-count bound so it is never evicted mid-run.
+        // One entry per library swept, not one per item - exempt from the
+        // key-count bound so a snapshot is never evicted mid-run.
         maxKeys: 0,
       },
     ),

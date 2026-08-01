@@ -14,33 +14,16 @@ import {
   RuleOperators,
 } from '../rules/constants/rules.constants';
 import { RuleDto } from '../rules/dtos/rule.dto';
+import {
+  MEDIA_SERVER_APPS,
+  MEDIA_SERVER_TYPE_TO_APP,
+} from '../rules/helpers/media-server-application.helper';
 import { reassertSectionBoundaryOperators } from '../rules/helpers/section-operators';
 import { RuleGroup } from '../rules/entities/rule-group.entities';
 import { Rules } from '../rules/entities/rules.entities';
 
 /** Singleton instance - avoids re-creating the constant data on every call. */
 const RULE_CONSTANTS = new RuleConstants();
-
-/**
- * Single source of truth mapping each supported media server to its rule
- * `Application` id. The `Record<MediaServerType, …>` type is exhaustive - adding
- * a new media server to `MediaServerType` is a compile error until it is mapped
- * here, which keeps the migrator in step with the supported-server list.
- */
-const MEDIA_SERVER_TYPE_TO_APP: Record<MediaServerType, Application> = {
-  [MediaServerType.PLEX]: Application.PLEX,
-  [MediaServerType.JELLYFIN]: Application.JELLYFIN,
-  [MediaServerType.EMBY]: Application.EMBY,
-};
-
-/**
- * Apps that represent the media server itself and therefore differ between
- * servers. Only these are remapped during migration; every other app (Radarr,
- * Sonarr, Seerr, Tautulli) is media-server independent and left exactly as-is.
- */
-const MEDIA_SERVER_APPS = new Set<Application>(
-  Object.values(MEDIA_SERVER_TYPE_TO_APP),
-);
 
 /**
  * Outcome of checking whether a single rule can be migrated.

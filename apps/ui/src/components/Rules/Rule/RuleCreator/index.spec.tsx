@@ -78,7 +78,7 @@ vi.mock('./RuleInput', () => ({
       <button
         type="button"
         onClick={() =>
-          onCommit(0, {
+          onCommit({
             operator: null,
             firstVal: ['1', String(tagId)],
             action: 1,
