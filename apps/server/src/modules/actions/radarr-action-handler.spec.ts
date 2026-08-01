@@ -319,6 +319,28 @@ describe('RadarrActionHandler', () => {
       expect(folderCleanup.logSkippedForUntrackedItem).not.toHaveBeenCalled();
     });
 
+    it('does not claim a file removal when Radarr held no files for the movie', async () => {
+      const collection = createCollection({
+        arrAction: ServarrAction.UNMONITOR_DELETE_ALL,
+        radarrSettingsId: 1,
+        type: 'movie',
+      });
+      const collectionMedia = createCollectionMedia(collection, { tmdbId: 1 });
+      const mockedRadarrApi = mockRadarrApi(servarrService, logger);
+      jest
+        .spyOn(mockedRadarrApi, 'getMovieByTmdbId')
+        .mockResolvedValue(createRadarrMovie({ id: 5 }));
+      jest
+        .spyOn(mockedRadarrApi, 'updateMovie')
+        .mockResolvedValue({ ok: true, deletedFileCount: 0 });
+
+      await radarrActionHandler.handleAction(collection, collectionMedia);
+
+      expect(logger.log).toHaveBeenCalledWith(
+        expect.stringContaining('it had no files to remove'),
+      );
+    });
+
     it('reads no cleanup inputs when the collection has not opted in', async () => {
       const collection = createCollection({
         arrAction: ServarrAction.UNMONITOR_DELETE_ALL,

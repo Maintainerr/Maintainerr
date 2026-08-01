@@ -115,10 +115,12 @@ export class RadarrActionHandler {
             return true;
           case ServarrAction.UNMONITOR:
             if (
-              !(await radarrApiClient.updateMovie(radarrMedia.id, {
-                monitored: false,
-                addImportExclusion: collection.listExclusions,
-              }))
+              !(
+                await radarrApiClient.updateMovie(radarrMedia.id, {
+                  monitored: false,
+                  addImportExclusion: collection.listExclusions,
+                })
+              ).ok
             ) {
               return false;
             }
@@ -126,18 +128,28 @@ export class RadarrActionHandler {
               `Unmonitored movie with ${matchedProvider} ID ${matchedId}${collection.listExclusions ? ' & added to import exclusion list' : ''} in Radarr`,
             );
             return true;
-          case ServarrAction.UNMONITOR_DELETE_ALL:
-            if (
-              !(await radarrApiClient.updateMovie(radarrMedia.id, {
+          case ServarrAction.UNMONITOR_DELETE_ALL: {
+            const updateResult = await radarrApiClient.updateMovie(
+              radarrMedia.id,
+              {
                 monitored: false,
                 deleteFiles: true,
                 addImportExclusion: collection.listExclusions,
-              }))
-            ) {
+              },
+            );
+
+            if (!updateResult.ok) {
               return false;
             }
+            // Say what was actually removed: Radarr holding no file records for
+            // the movie deletes nothing, and claiming otherwise leaves a later
+            // "it kept my file" report with no way to tell the two apart.
             this.logger.log(
-              `Unmonitored movie with ${matchedProvider} ID ${matchedId}${collection.listExclusions ? ', added to import exclusion list' : ''} & removed files from filesystem in Radarr`,
+              `Unmonitored movie with ${matchedProvider} ID ${matchedId}${collection.listExclusions ? ', added to import exclusion list' : ''}${
+                updateResult.deletedFileCount > 0
+                  ? ` & removed ${updateResult.deletedFileCount} file(s) from filesystem in Radarr`
+                  : ' in Radarr; it had no files to remove'
+              }`,
             );
             await this.downloadClient.removeDownloads(downloadIds);
             if (cleanupScope && cleanupInputs) {
@@ -149,6 +161,7 @@ export class RadarrActionHandler {
               });
             }
             return true;
+          }
           case ServarrAction.CHANGE_QUALITY_PROFILE: {
             const targetProfileId = collection.radarrQualityProfileId;
 
@@ -171,9 +184,11 @@ export class RadarrActionHandler {
             }
 
             if (
-              !(await radarrApiClient.updateMovie(radarrMedia.id, {
-                qualityProfileId: targetProfileId,
-              }))
+              !(
+                await radarrApiClient.updateMovie(radarrMedia.id, {
+                  qualityProfileId: targetProfileId,
+                })
+              ).ok
             ) {
               return false;
             }

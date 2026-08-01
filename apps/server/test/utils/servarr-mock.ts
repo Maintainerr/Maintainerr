@@ -19,7 +19,10 @@ export const mockRadarrApi = (
 
   jest.spyOn(api, 'getMovieByTmdbId').mockResolvedValue(undefined);
   jest.spyOn(api, 'deleteMovie').mockResolvedValue(true);
-  jest.spyOn(api, 'updateMovie').mockResolvedValue(true);
+  // Default to the ordinary case: the update applied and one file was removed.
+  jest
+    .spyOn(api, 'updateMovie')
+    .mockResolvedValue({ ok: true, deletedFileCount: 1 });
   jest.spyOn(api, 'ensureTag').mockResolvedValue(1);
   jest.spyOn(api, 'setMovieTags').mockResolvedValue(true);
   // Leftover-folder cleanup inputs; default to "nothing known" so tests that
