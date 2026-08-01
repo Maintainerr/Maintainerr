@@ -9,7 +9,7 @@ import {
   writeFile,
 } from 'fs/promises';
 import { tmpdir } from 'os';
-import { dirname, join } from 'path';
+import { dirname, join, sep } from 'path';
 import { LeftoverFolderCleanupService } from './leftover-folder-cleanup.service';
 
 // Exercises the destructive guardrail pipeline against a real temp filesystem.
@@ -261,6 +261,29 @@ describe('LeftoverFolderCleanupService', () => {
       scope: 'movie',
     });
 
+    expect(await exists(realTarget)).toBe(true);
+    expect(await exists(link)).toBe(true);
+  });
+
+  // lstat resolves a trailing separator, so statting the raw path would report
+  // the target and clear the leaf-symlink gate. The target sits inside the root
+  // here, so containment would not catch it either.
+  it('refuses a symlinked folder reported with a trailing separator', async () => {
+    const root = join(tmp, 'movies');
+    const realTarget = join(root, 'Actual Folder');
+    await mkdir(realTarget, { recursive: true });
+    await writeFile(join(realTarget, 'a.srt'), 'x');
+    const link = join(root, 'Sample Movie');
+    await symlink(realTarget, link);
+
+    await service.cleanupAfterDelete({
+      folderPath: link + sep,
+      rootFolderPaths: [root],
+      deletedFilePaths: [join(link, 'deleted.mkv')],
+      scope: 'movie',
+    });
+
+    expect(await exists(join(realTarget, 'a.srt'))).toBe(true);
     expect(await exists(realTarget)).toBe(true);
     expect(await exists(link)).toBe(true);
   });

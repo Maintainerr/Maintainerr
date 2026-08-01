@@ -32,6 +32,10 @@ describe('media provider ids', () => {
     ['a missing provider', undefined, '12345'],
     ['a missing id', 'imdb', undefined],
     ['an empty id', 'imdb', ''],
+    // A server is free to send any key; these two resolve on an object
+    // literal's prototype chain, so a lookup there would throw mid-mapping.
+    ['the constructor key', 'constructor', '12345'],
+    ['the __proto__ key', '__proto__', '12345'],
   ])('ignores %s', (scenario, name, id) => {
     const providerIds = emptyProviderIds();
     addProviderId(providerIds, name, id);

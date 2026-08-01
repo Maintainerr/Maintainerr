@@ -157,27 +157,30 @@ export class LeftoverFolderCleanupService {
       }
 
       // Existence + leaf-symlink check in one. A missing folder means the *arr
-      // already removed it (a clean delete) - nothing to do.
+      // already removed it (a clean delete) - nothing to do. Stat the
+      // normalized path, not the raw one: lstat resolves a trailing separator,
+      // so `lstat('link/')` reports the target and would slip a symlinked
+      // folder past this gate.
       let rawLeaf: Awaited<ReturnType<typeof lstat>>;
       try {
-        rawLeaf = await lstat(rawPath);
+        rawLeaf = await lstat(rawFolder);
       } catch (error) {
         if (this.isENOENT(error)) {
-          this.logger.debug(`Folder already gone${label}: ${rawPath}`);
+          this.logger.debug(`Folder already gone${label}: ${rawFolder}`);
           return;
         }
         throw error;
       }
       if (rawLeaf.isSymbolicLink()) {
         this.logger.warn(
-          `Refusing to remove a symlinked folder${label}: ${rawPath}`,
+          `Refusing to remove a symlinked folder${label}: ${rawFolder}`,
         );
         return;
       }
 
       // Canonicalize (resolves any parent symlinks - common in atomic-move
       // layouts) so containment is checked against real paths.
-      const candidate = normalizeDiskPath(await realpath(rawPath));
+      const candidate = normalizeDiskPath(await realpath(rawFolder));
       const candidateStat = await stat(candidate);
       if (!candidateStat.isDirectory()) {
         this.logger.warn(`Target is not a directory${label}: ${candidate}`);

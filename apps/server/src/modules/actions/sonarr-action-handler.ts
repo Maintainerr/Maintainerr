@@ -641,9 +641,12 @@ export class SonarrActionHandler {
         sonarrApiClient.getEpisodeFiles(sonarrMedia.id),
       ]);
 
-      // undefined = the listing failed, so which files are about to be deleted
-      // is unknown - not "none". Skip rather than fence on a guess.
-      if (episodeFiles === undefined) {
+      // undefined = the listing failed, so what it would have fenced is
+      // unknown - not "nothing". Skip rather than fence on a guess: an empty
+      // deleted-file list drops the proof that this is the folder the delete
+      // emptied, and an empty series list drops the fence that keeps the
+      // cleanup off another tracked item's folder.
+      if (episodeFiles === undefined || allSeries === undefined) {
         return undefined;
       }
 
@@ -664,7 +667,7 @@ export class SonarrActionHandler {
             .map((folder) => folder.path)
             .filter((p): p is string => !!p),
           deletedFilePaths,
-          otherItemPaths: (allSeries ?? [])
+          otherItemPaths: allSeries
             .filter((series) => series.id !== sonarrMedia.id)
             .map((series) => series.path)
             .filter((p): p is string => !!p),

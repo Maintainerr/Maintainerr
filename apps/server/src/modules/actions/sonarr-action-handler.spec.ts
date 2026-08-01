@@ -294,6 +294,26 @@ describe('SonarrActionHandler', () => {
       expect(folderCleanup.cleanupAfterDelete).not.toHaveBeenCalled();
     });
 
+    // Likewise for the series listing: an empty list drops the fence that keeps
+    // the cleanup off another tracked item's folder.
+    it('skips the cleanup when the series listing failed', async () => {
+      const collection = createCollection({
+        arrAction: ServarrAction.UNMONITOR_DELETE_ALL,
+        sonarrSettingsId: 1,
+        cleanupLeftoverFolders: true,
+        type: 'show',
+      });
+      const collectionMedia = createCollectionMediaWithMetadata(collection, {
+        tmdbId: 1,
+      });
+      const api = arrangeCleanup(seriesFixture());
+      jest.spyOn(api, 'getSeries').mockResolvedValue(undefined as never);
+
+      await sonarrActionHandler.handleAction(collection, collectionMedia);
+
+      expect(folderCleanup.cleanupAfterDelete).not.toHaveBeenCalled();
+    });
+
     it('does not clean a season when the series has no season folders', async () => {
       const collection = createCollection({
         arrAction: ServarrAction.DELETE,
