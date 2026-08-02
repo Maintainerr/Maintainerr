@@ -62,6 +62,77 @@ describe('RulesService.updateRules', () => {
     jest.clearAllMocks();
   });
 
+  // TypeORM drops an undefined id from the where clause instead of rejecting
+  // it, so this has to be caught before the lookup (#3384).
+  it('rejects an update that names no rule group', async () => {
+    const ruleGroupRepository = { findOne: jest.fn() };
+    const service = createRulesService({ ruleGroupRepository });
+
+    await expect(
+      service.updateRules({
+        libraryId: '1',
+        dataType: 'movie',
+        name: 'Test',
+        rules: [],
+        description: '',
+      } as any),
+    ).rejects.toMatchObject({
+      status: 400,
+      message: 'A rule group id is required',
+    });
+    expect(ruleGroupRepository.findOne).not.toHaveBeenCalled();
+  });
+
+  // Moving libraries wipes the collection's members. A library the media
+  // server does not have is rejected before that happens, so a bad payload
+  // cannot cost the collection its contents on the way to a 400.
+  it('rejects an unknown library without wiping the collection first', async () => {
+    const collectionMediaRepository = { delete: jest.fn() };
+    const exclusionRepo = { delete: jest.fn() };
+    const mediaServer = {
+      getLibraries: jest
+        .fn()
+        .mockResolvedValue([{ id: '1', title: 'Movies', type: 'movie' }]),
+      cleanupCollectionForLibrary: jest.fn(),
+    };
+
+    const service = createRulesService({
+      ruleGroupRepository: {
+        findOne: jest
+          .fn()
+          .mockResolvedValue({ id: 5, collectionId: 42, dataType: 'movie' }),
+      },
+      collectionMediaRepository,
+      exclusionRepo,
+      collectionService: {
+        getCollection: jest
+          .fn()
+          .mockResolvedValue({ id: 42, libraryId: 'old-library' }),
+      },
+      mediaServerFactory: {
+        getService: jest.fn().mockReturnValue(mediaServer),
+      },
+    });
+
+    await expect(
+      service.updateRules({
+        id: 5,
+        libraryId: 'gone-library',
+        dataType: 'movie',
+        name: 'Test',
+        rules: [],
+        description: '',
+      } as any),
+    ).rejects.toMatchObject({
+      status: 400,
+      message: 'Library gone-library does not exist on the media server',
+    });
+
+    expect(collectionMediaRepository.delete).not.toHaveBeenCalled();
+    expect(exclusionRepo.delete).not.toHaveBeenCalled();
+    expect(mediaServer.cleanupCollectionForLibrary).not.toHaveBeenCalled();
+  });
+
   it('fails with a not-found status when the rule group is gone', async () => {
     const ruleGroupRepository = {
       findOne: jest.fn().mockResolvedValue(null),

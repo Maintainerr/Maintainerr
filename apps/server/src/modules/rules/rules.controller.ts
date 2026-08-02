@@ -243,6 +243,20 @@ export class RulesController {
   }
 
   @Post()
+  @ApiResponse({ status: 201, description: 'The rule group was created.' })
+  @ApiResponse({
+    status: 400,
+    description:
+      'The rule group was rejected. The message names what was wrong.',
+  })
+  @ApiResponse({
+    status: 500,
+    description: 'The rule group could not be written. The cause is logged.',
+  })
+  @ApiResponse({
+    status: 502,
+    description: 'The media server could not be read to resolve the library.',
+  })
   async setRules(@Body() body: RulesDto): Promise<ReturnStatus> {
     return this.orFail(await this.rulesService.setRules(body));
   }
@@ -271,6 +285,21 @@ export class RulesController {
   }
 
   @Put()
+  @ApiResponse({ status: 200, description: 'The rule group was updated.' })
+  @ApiResponse({
+    status: 400,
+    description:
+      'The rule group was rejected. The message names what was wrong.',
+  })
+  @ApiResponse({ status: 404, description: 'The rule group does not exist.' })
+  @ApiResponse({
+    status: 500,
+    description: 'The rule group could not be written. The cause is logged.',
+  })
+  @ApiResponse({
+    status: 502,
+    description: 'The media server could not be read to resolve the library.',
+  })
   async updateRule(@Body() body: RulesDto): Promise<ReturnStatus> {
     return this.orFail(await this.rulesService.updateRules(body));
   }

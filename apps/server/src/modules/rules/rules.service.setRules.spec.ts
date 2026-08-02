@@ -61,13 +61,34 @@ describe('RulesService.setRules', () => {
     },
   ];
 
-  const createMediaServerFactory = () => ({
+  const createMediaServerFactory = (
+    libraries: unknown[] = [{ id: '1', title: 'Movies', type: 'movie' }],
+  ) => ({
     getService: jest.fn().mockReturnValue({
-      getLibraries: jest
-        .fn()
-        .mockResolvedValue([{ id: '1', title: 'Movies', type: 'movie' }]),
+      getLibraries: jest.fn().mockResolvedValue(libraries),
     }),
   });
+
+  const setRulesFor = (libraryId: unknown, libraries?: unknown[]) => {
+    const service = createRulesService({
+      collectionService: {
+        createCollection: jest
+          .fn()
+          .mockResolvedValue({ dbCollection: { id: 9 } }),
+      },
+      mediaServerFactory: createMediaServerFactory(libraries),
+    });
+
+    return service.setRules({
+      libraryId,
+      name: 'Library probe',
+      description: '',
+      useRules: true,
+      isActive: true,
+      rules: validRules,
+      collection: { keepLogsForMonths: 6 },
+    } as any);
+  };
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -260,6 +281,31 @@ describe('RulesService.setRules', () => {
       status: 500,
       message: 'Failed to create collection',
     });
+  });
+
+  // A library the caller never named, or named wrongly, is a bad request - not
+  // the 500 a dereferenced library used to produce (#3384).
+  it.each([
+    ['no library', undefined],
+    ['an empty library', ''],
+  ])('rejects a rule group with %s', async (_name, libraryId) => {
+    await expect(setRulesFor(libraryId)).rejects.toMatchObject({
+      status: 400,
+      message: 'A library is required',
+    });
+  });
+
+  it('rejects a library the media server does not have', async () => {
+    await expect(setRulesFor('999')).rejects.toMatchObject({
+      status: 400,
+      message: 'Library 999 does not exist on the media server',
+    });
+  });
+
+  // Every getLibraries path answers [] when the media server is unreachable, so
+  // an empty list must not be read as "the caller named a bad library".
+  it('blames the media server, not the caller, when no library can be read', async () => {
+    await expect(setRulesFor('1', [])).rejects.toMatchObject({ status: 502 });
   });
 
   it('fails with a server error, and logs the cause, when saving throws', async () => {

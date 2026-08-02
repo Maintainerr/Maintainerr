@@ -3,9 +3,12 @@ import {
   leftoverCleanupScope,
   MaintainerrEvent,
   MediaItemType,
+  MediaLibrary,
   MediaServerType,
 } from '@maintainerr/contracts';
 import {
+  BadGatewayException,
+  BadRequestException,
   HttpException,
   Injectable,
   InternalServerErrorException,
@@ -374,6 +377,38 @@ export class RulesService {
     }
   }
 
+  // An id the media server does not know is the caller's mistake, but an empty
+  // library list is not: every getLibraries path answers [] when the server is
+  // unreachable or unconfigured, so only a list we could actually read proves
+  // the id wrong. Blaming the caller for an outage is how a broken connection
+  // gets read as a broken rule group.
+  private async resolveLibraryOrFail(
+    libraryId: string | undefined,
+  ): Promise<MediaLibrary> {
+    if (!libraryId) {
+      throw new BadRequestException('A library is required');
+    }
+
+    const mediaServer = await this.getMediaServer();
+    const libraries = await mediaServer.getLibraries();
+
+    if (libraries.length === 0) {
+      throw new BadGatewayException(
+        'No libraries could be read from the media server. Check its connection in the settings.',
+      );
+    }
+
+    const library = libraries.find((el) => el.id === libraryId);
+
+    if (!library) {
+      throw new BadRequestException(
+        `Library ${libraryId} does not exist on the media server`,
+      );
+    }
+
+    return library;
+  }
+
   // Resolve the collection's media type: a movie library is always 'movie';
   // a TV library uses the rule group's selected dataType (show/season/episode),
   // defaulting to 'show'.
@@ -422,10 +457,7 @@ export class RulesService {
         return state;
       }
 
-      const mediaServer = await this.getMediaServer();
-      const lib = (await mediaServer.getLibraries()).find(
-        (el) => el.id === params.libraryId,
-      );
+      const lib = await this.resolveLibraryOrFail(params.libraryId);
       const collectionType = this.resolveCollectionType(lib.type, params);
       const collection = (
         await this.collectionService.createCollection({
@@ -513,6 +545,12 @@ export class RulesService {
 
   async updateRules(params: RulesDto) {
     try {
+      // Without one there is nothing to update, and TypeORM drops an undefined
+      // id from the where clause rather than rejecting it.
+      if (params.id == null) {
+        throw new BadRequestException('A rule group id is required');
+      }
+
       const managerState = this.validateSingleShowManager(params);
       if (managerState.code !== 1) {
         return managerState;
@@ -551,6 +589,11 @@ export class RulesService {
         if (!group) {
           throw new NotFoundException('Rule group not found');
         }
+
+        // Resolved before the crucial-setting wipe below, not after it: a
+        // library we cannot accept must not cost the collection its members
+        // on the way to being rejected.
+        const lib = await this.resolveLibraryOrFail(params.libraryId);
 
         const dbCollection = group.collectionId
           ? await this.collectionService.getCollection(group.collectionId)
@@ -628,11 +671,6 @@ export class RulesService {
         }
 
         // update or create the collection
-        const mediaServer = await this.getMediaServer();
-        const lib = (await mediaServer.getLibraries()).find(
-          (el) => el.id === params.libraryId,
-        );
-
         const collectionType = this.resolveCollectionType(lib.type, params);
         const collectionData = {
           libraryId: params.libraryId,
