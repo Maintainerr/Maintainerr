@@ -234,9 +234,9 @@ describe('RulesService.setRules', () => {
 
   // Regression for #3044: when collection creation fails, setRules used to
   // `return undefined`, which NestJS serialized as a silent HTTP 201 with an
-  // empty body - indistinguishable from success to the client. It must now
-  // return a structured failure the UI can surface.
-  it('returns a structured failure (not undefined) when collection creation fails', async () => {
+  // empty body - indistinguishable from success to the client. A returned
+  // failure was still a 201, so it now answers with a status code (#3384).
+  it('fails with a server error when collection creation fails', async () => {
     const service = createRulesService({
       collectionService: {
         createCollection: jest
@@ -246,24 +246,23 @@ describe('RulesService.setRules', () => {
       mediaServerFactory: createMediaServerFactory(),
     });
 
-    const result = await service.setRules({
-      libraryId: '1',
-      name: 'Collection fails',
-      description: '',
-      useRules: true,
-      isActive: true,
-      rules: validRules,
-      collection: { keepLogsForMonths: 6 },
-    } as any);
-
-    expect(result).toEqual({
-      code: 0,
-      result: 'Failed to create collection',
+    await expect(
+      service.setRules({
+        libraryId: '1',
+        name: 'Collection fails',
+        description: '',
+        useRules: true,
+        isActive: true,
+        rules: validRules,
+        collection: { keepLogsForMonths: 6 },
+      } as any),
+    ).rejects.toMatchObject({
+      status: 500,
       message: 'Failed to create collection',
     });
   });
 
-  it('returns a structured failure (not undefined) when saving throws', async () => {
+  it('fails with a server error, and logs the cause, when saving throws', async () => {
     const service = createRulesService({
       collectionService: {
         createCollection: jest
@@ -273,20 +272,22 @@ describe('RulesService.setRules', () => {
       mediaServerFactory: createMediaServerFactory(),
     });
 
-    const result = await service.setRules({
-      libraryId: '1',
-      name: 'Throws',
-      description: '',
-      useRules: true,
-      isActive: true,
-      rules: validRules,
-      collection: { keepLogsForMonths: 6 },
-    } as any);
-
-    expect(result).toEqual({
-      code: 0,
-      result: 'Failed to save the rule group',
+    await expect(
+      service.setRules({
+        libraryId: '1',
+        name: 'Throws',
+        description: '',
+        useRules: true,
+        isActive: true,
+        rules: validRules,
+        collection: { keepLogsForMonths: 6 },
+      } as any),
+    ).rejects.toMatchObject({
+      status: 500,
       message: 'Failed to save the rule group',
     });
+    // Short reason at error, the stack behind debug.
+    expect(logger.error).toHaveBeenCalledWith('Failed to save the rule group');
+    expect(logger.debug).toHaveBeenCalledWith(expect.any(Error));
   });
 });

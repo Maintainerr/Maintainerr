@@ -1,5 +1,6 @@
 import { MediaItemType, RuleExecuteStatusDto } from '@maintainerr/contracts';
 import {
+  BadRequestException,
   Body,
   ConflictException,
   Controller,
@@ -232,9 +233,18 @@ export class RulesController {
     res.status(HttpStatus.ACCEPTED).send();
   }
 
+  // A rule group that failed validation used to answer 201 with the reason
+  // buried in the body, so a caller could not tell it apart from a save.
+  private orFail(status: ReturnStatus): ReturnStatus {
+    if (status.code !== 1) {
+      throw new BadRequestException(status.message ?? status.result);
+    }
+    return status;
+  }
+
   @Post()
   async setRules(@Body() body: RulesDto): Promise<ReturnStatus> {
-    return await this.rulesService.setRules(body);
+    return this.orFail(await this.rulesService.setRules(body));
   }
 
   @Post('/exclusion')
@@ -262,7 +272,7 @@ export class RulesController {
 
   @Put()
   async updateRule(@Body() body: RulesDto): Promise<ReturnStatus> {
-    return await this.rulesService.updateRules(body);
+    return this.orFail(await this.rulesService.updateRules(body));
   }
 
   @Post('/community')

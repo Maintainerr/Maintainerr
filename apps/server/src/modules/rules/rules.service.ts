@@ -5,7 +5,12 @@ import {
   MediaItemType,
   MediaServerType,
 } from '@maintainerr/contracts';
-import { Injectable } from '@nestjs/common';
+import {
+  HttpException,
+  Injectable,
+  InternalServerErrorException,
+  NotFoundException,
+} from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 import axios from 'axios';
@@ -469,7 +474,7 @@ export class RulesService {
       )?.dbCollection;
 
       if (!collection) {
-        return this.createReturnStatus(false, 'Failed to create collection');
+        throw new InternalServerErrorException('Failed to create collection');
       }
 
       const groupId = await this.createOrUpdateGroup(
@@ -502,9 +507,7 @@ export class RulesService {
 
       return state;
     } catch (error) {
-      this.logger.warn('Rules - Action failed');
-      this.logger.debug(error);
-      return this.createReturnStatus(false, 'Failed to save the rule group');
+      throw this.asSaveFailure(error);
     }
   }
 
@@ -546,7 +549,7 @@ export class RulesService {
         });
 
         if (!group) {
-          return this.createReturnStatus(false, 'Rule group not found');
+          throw new NotFoundException('Rule group not found');
         }
 
         const dbCollection = group.collectionId
@@ -704,8 +707,7 @@ export class RulesService {
         }
 
         if (!collectionId) {
-          return this.createReturnStatus(
-            false,
+          throw new InternalServerErrorException(
             'Failed to create/update collection',
           );
         }
@@ -773,11 +775,24 @@ export class RulesService {
         return state;
       }
     } catch (error) {
-      this.logger.warn('Rules - Action failed');
-      this.logger.debug(error);
-      return this.createReturnStatus(false, 'Failed to save the rule group');
+      throw this.asSaveFailure(error);
     }
   }
+
+  // A rule group that could not be saved answers with a status the caller can
+  // act on, not a 201 carrying a failure in the body. Anything already
+  // classified (the group is gone, the collection could not be written) keeps
+  // its own status; only an unclassified fault becomes a 500.
+  private asSaveFailure(error: unknown): HttpException {
+    if (error instanceof HttpException) {
+      return error;
+    }
+
+    this.logger.error('Failed to save the rule group');
+    this.logger.debug(error);
+    return new InternalServerErrorException('Failed to save the rule group');
+  }
+
   // A collection_media row reduced to the fields ServarrTagService needs to
   // resolve an item to its *arr entity (id + provider-id fallbacks).
   private toArrTagItem(m: CollectionMedia) {
@@ -1413,6 +1428,15 @@ export class RulesService {
           return this.createReturnStatus(false, "Types don't match");
         }
       } else if (rule.customVal) {
+        // Same reason as the first-value guard: a custom value without a rule
+        // type threw a TypeError below, which surfaced as the catch-all
+        // "Unexpected error occurred" instead of naming what was wrong.
+        if (rule.customVal.ruleTypeId == null) {
+          return this.createReturnStatus(
+            false,
+            'Custom value is missing a rule type',
+          );
+        }
         if (
           val1.type.toString() === rule.customVal.ruleTypeId.toString() ||
           (val1.type === RuleType.DATE &&
@@ -1442,10 +1466,8 @@ export class RulesService {
         return this.createReturnStatus(false, 'No second value found');
       }
     } catch (error) {
-      this.logger.debug(
-        'Unexpected error occurred while validating a rule',
-        error,
-      );
+      this.logger.error('Unexpected error occurred while validating a rule');
+      this.logger.debug(error);
       return this.createReturnStatus(false, 'Unexpected error occurred');
     }
   }
