@@ -3,15 +3,23 @@ import {
   leftoverCleanupScope,
   MaintainerrEvent,
   MediaItemType,
+  MediaLibrary,
   MediaServerType,
 } from '@maintainerr/contracts';
-import { Injectable } from '@nestjs/common';
+import {
+  BadGatewayException,
+  BadRequestException,
+  HttpException,
+  Injectable,
+  InternalServerErrorException,
+  NotFoundException,
+} from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 import axios from 'axios';
 import _ from 'lodash';
 import { DataSource, IsNull, Not, Repository } from 'typeorm';
-import { ServarrTagService } from '../actions/servarr-tag.service';
+import { ArrTagItem, ServarrTagService } from '../actions/servarr-tag.service';
 import cacheManager from '../api/lib/cache';
 import { MediaServerFactory } from '../api/media-server/media-server.factory';
 import { IMediaServerService } from '../api/media-server/media-server.interface';
@@ -294,9 +302,13 @@ export class RulesService {
 
       if (group) {
         if (group.collectionId) {
-          // Behavior A: deleting a tagging group makes every member "leave" - strip
-          // their *arr membership tags first (best-effort), while the collection
-          // media rows still exist (deleteCollection removes them next).
+          // Behavior A: deleting a tagging group makes every member "leave" -
+          // strip their *arr membership tags. The rows this needs are removed
+          // by deleteCollection, so read them first but only write to the *arr
+          // once the delete has gone through: a refused delete leaves the group
+          // standing, and untagging it anyway is damage nothing undoes.
+          let leavingMembers:
+            { collection: Collection; items: ArrTagItem[] } | undefined;
           try {
             const collection = await this.collectionService.getCollection(
               group.collectionId,
@@ -306,11 +318,10 @@ export class RulesService {
                 (await this.collectionService.getCollectionMedia(
                   group.collectionId,
                 )) ?? [];
-              await this.servarrTagService.syncMembershipTags(
+              leavingMembers = {
                 collection,
-                [],
-                members.map((m) => this.toArrTagItem(m)),
-              );
+                items: members.map((m) => this.toArrTagItem(m)),
+              };
             }
           } catch (error) {
             this.logger.debug(error);
@@ -330,6 +341,18 @@ export class RulesService {
               false,
               collectionDeleteResult.message || 'Delete Failed',
             );
+          }
+
+          if (leavingMembers) {
+            try {
+              await this.servarrTagService.syncMembershipTags(
+                leavingMembers.collection,
+                [],
+                leavingMembers.items,
+              );
+            } catch (error) {
+              this.logger.debug(error);
+            }
           }
         }
       }
@@ -352,6 +375,38 @@ export class RulesService {
       this.logger.debug(error);
       return this.createReturnStatus(false, 'Delete Failed');
     }
+  }
+
+  // An id the media server does not know is the caller's mistake, but an empty
+  // library list is not: every getLibraries path answers [] when the server is
+  // unreachable or unconfigured, so only a list we could actually read proves
+  // the id wrong. Blaming the caller for an outage is how a broken connection
+  // gets read as a broken rule group.
+  private async resolveLibraryOrFail(
+    libraryId: string | undefined,
+  ): Promise<MediaLibrary> {
+    if (!libraryId) {
+      throw new BadRequestException('A library is required');
+    }
+
+    const mediaServer = await this.getMediaServer();
+    const libraries = await mediaServer.getLibraries();
+
+    if (libraries.length === 0) {
+      throw new BadGatewayException(
+        'No libraries could be read from the media server. Check its connection in the settings.',
+      );
+    }
+
+    const library = libraries.find((el) => el.id === libraryId);
+
+    if (!library) {
+      throw new BadRequestException(
+        `Library ${libraryId} does not exist on the media server`,
+      );
+    }
+
+    return library;
   }
 
   // Resolve the collection's media type: a movie library is always 'movie';
@@ -402,10 +457,7 @@ export class RulesService {
         return state;
       }
 
-      const mediaServer = await this.getMediaServer();
-      const lib = (await mediaServer.getLibraries()).find(
-        (el) => el.id === params.libraryId,
-      );
+      const lib = await this.resolveLibraryOrFail(params.libraryId);
       const collectionType = this.resolveCollectionType(lib.type, params);
       const collection = (
         await this.collectionService.createCollection({
@@ -454,7 +506,7 @@ export class RulesService {
       )?.dbCollection;
 
       if (!collection) {
-        return this.createReturnStatus(false, 'Failed to create collection');
+        throw new InternalServerErrorException('Failed to create collection');
       }
 
       const groupId = await this.createOrUpdateGroup(
@@ -487,14 +539,18 @@ export class RulesService {
 
       return state;
     } catch (error) {
-      this.logger.warn('Rules - Action failed');
-      this.logger.debug(error);
-      return this.createReturnStatus(false, 'Failed to save the rule group');
+      throw this.asSaveFailure(error);
     }
   }
 
   async updateRules(params: RulesDto) {
     try {
+      // Without one there is nothing to update, and TypeORM drops an undefined
+      // id from the where clause rather than rejecting it.
+      if (params.id == null) {
+        throw new BadRequestException('A rule group id is required');
+      }
+
       const managerState = this.validateSingleShowManager(params);
       if (managerState.code !== 1) {
         return managerState;
@@ -531,8 +587,13 @@ export class RulesService {
         });
 
         if (!group) {
-          return this.createReturnStatus(false, 'Rule group not found');
+          throw new NotFoundException('Rule group not found');
         }
+
+        // Resolved before the crucial-setting wipe below, not after it: a
+        // library we cannot accept must not cost the collection its members
+        // on the way to being rejected.
+        const lib = await this.resolveLibraryOrFail(params.libraryId);
 
         const dbCollection = group.collectionId
           ? await this.collectionService.getCollection(group.collectionId)
@@ -610,11 +671,6 @@ export class RulesService {
         }
 
         // update or create the collection
-        const mediaServer = await this.getMediaServer();
-        const lib = (await mediaServer.getLibraries()).find(
-          (el) => el.id === params.libraryId,
-        );
-
         const collectionType = this.resolveCollectionType(lib.type, params);
         const collectionData = {
           libraryId: params.libraryId,
@@ -689,8 +745,7 @@ export class RulesService {
         }
 
         if (!collectionId) {
-          return this.createReturnStatus(
-            false,
+          throw new InternalServerErrorException(
             'Failed to create/update collection',
           );
         }
@@ -758,11 +813,24 @@ export class RulesService {
         return state;
       }
     } catch (error) {
-      this.logger.warn('Rules - Action failed');
-      this.logger.debug(error);
-      return this.createReturnStatus(false, 'Failed to save the rule group');
+      throw this.asSaveFailure(error);
     }
   }
+
+  // A rule group that could not be saved answers with a status the caller can
+  // act on, not a 201 carrying a failure in the body. Anything already
+  // classified (the group is gone, the collection could not be written) keeps
+  // its own status; only an unclassified fault becomes a 500.
+  private asSaveFailure(error: unknown): HttpException {
+    if (error instanceof HttpException) {
+      return error;
+    }
+
+    this.logger.error('Failed to save the rule group');
+    this.logger.debug(error);
+    return new InternalServerErrorException('Failed to save the rule group');
+  }
+
   // A collection_media row reduced to the fields ServarrTagService needs to
   // resolve an item to its *arr entity (id + provider-id fallbacks).
   private toArrTagItem(m: CollectionMedia) {
@@ -900,6 +968,33 @@ export class RulesService {
     }
   }
 
+  /**
+   * Ids a context action applies to. The walk reads the media server, so a
+   * failure means we do not know what to act on - reported as a failed status
+   * rather than swallowed into "nothing to do".
+   */
+  private async resolveContextActionIdsOrFail(
+    mediaServer: IMediaServerService,
+    collectionType: MediaItemType | undefined,
+    context: { type: MediaItemType; id: string },
+    mediaId: string,
+  ): Promise<CollectionMediaChange[] | undefined> {
+    try {
+      const ids = await mediaServer.getAllIdsForContextAction(
+        collectionType,
+        context,
+        mediaId,
+      );
+      return ids.map((id) => ({ mediaServerId: id }));
+    } catch (error) {
+      this.logger.warn(
+        `Could not resolve which items to act on for media ${mediaId}`,
+      );
+      this.logger.debug(error);
+      return undefined;
+    }
+  }
+
   async setExclusion(data: ExclusionContextDto) {
     const mediaServer = await this.getMediaServer();
     let handleMedia: CollectionMediaChange[] = [];
@@ -913,14 +1008,21 @@ export class RulesService {
         },
       });
       // get media - traverse show -> seasons -> episodes if needed
-      const ids = await mediaServer.getAllIdsForContextAction(
+      const resolved = await this.resolveContextActionIdsOrFail(
+        mediaServer,
         group?.dataType,
         data.context
           ? { type: data.context.type, id: String(data.context.id) }
           : { type: group.dataType, id: String(data.mediaId) },
         String(data.mediaId),
       );
-      handleMedia = ids.map((id) => ({ mediaServerId: id }));
+      if (!resolved) {
+        return this.createReturnStatus(
+          false,
+          'Failed - media server unreadable',
+        );
+      }
+      handleMedia = resolved;
       data.ruleGroupId = group.id;
       topLevelType = group?.dataType;
     } else {
@@ -934,14 +1036,21 @@ export class RulesService {
       }
 
       // get media - traverse show -> seasons -> episodes if needed
-      const ids = await mediaServer.getAllIdsForContextAction(
+      const resolved = await this.resolveContextActionIdsOrFail(
+        mediaServer,
         undefined,
         data.context
           ? { type: data.context.type, id: String(data.context.id) }
           : { type: metaData.type, id: String(data.mediaId) },
         String(data.mediaId),
       );
-      handleMedia = ids.map((id) => ({ mediaServerId: id }));
+      if (!resolved) {
+        return this.createReturnStatus(
+          false,
+          'Failed - media server unreadable',
+        );
+      }
+      handleMedia = resolved;
       topLevelType = metaData.type;
     }
     try {
@@ -1120,22 +1229,36 @@ export class RulesService {
       data.ruleGroupId = group.id;
       topLevelType = group?.dataType;
       // get media - traverse show -> seasons -> episodes if needed
-      const ids = await mediaServer.getAllIdsForContextAction(
+      const resolved = await this.resolveContextActionIdsOrFail(
+        mediaServer,
         group?.dataType,
         data.context
           ? { type: data.context.type, id: String(data.context.id) }
           : { type: group.dataType, id: String(data.mediaId) },
         String(data.mediaId),
       );
-      handleMedia = ids.map((id) => ({ mediaServerId: id }));
+      if (!resolved) {
+        return this.createReturnStatus(
+          false,
+          'Failed - media server unreadable',
+        );
+      }
+      handleMedia = resolved;
     } else {
       // get media - traverse show -> seasons -> episodes if needed
-      const ids = await mediaServer.getAllIdsForContextAction(
+      const resolved = await this.resolveContextActionIdsOrFail(
+        mediaServer,
         undefined,
         { type: data.context.type, id: String(data.context.id) },
         String(data.mediaId),
       );
-      handleMedia = ids.map((id) => ({ mediaServerId: id }));
+      if (!resolved) {
+        return this.createReturnStatus(
+          false,
+          'Failed - media server unreadable',
+        );
+      }
+      handleMedia = resolved;
     }
 
     try {
@@ -1343,6 +1466,15 @@ export class RulesService {
           return this.createReturnStatus(false, "Types don't match");
         }
       } else if (rule.customVal) {
+        // Same reason as the first-value guard: a custom value without a rule
+        // type threw a TypeError below, which surfaced as the catch-all
+        // "Unexpected error occurred" instead of naming what was wrong.
+        if (rule.customVal.ruleTypeId == null) {
+          return this.createReturnStatus(
+            false,
+            'Custom value is missing a rule type',
+          );
+        }
         if (
           val1.type.toString() === rule.customVal.ruleTypeId.toString() ||
           (val1.type === RuleType.DATE &&
@@ -1372,10 +1504,8 @@ export class RulesService {
         return this.createReturnStatus(false, 'No second value found');
       }
     } catch (error) {
-      this.logger.debug(
-        'Unexpected error occurred while validating a rule',
-        error,
-      );
+      this.logger.error('Unexpected error occurred while validating a rule');
+      this.logger.debug(error);
       return this.createReturnStatus(false, 'Unexpected error occurred');
     }
   }

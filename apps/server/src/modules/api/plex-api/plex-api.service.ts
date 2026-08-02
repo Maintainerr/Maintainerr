@@ -737,13 +737,18 @@ export class PlexApiService {
     }
   }
 
+  /**
+   * @returns the children, or undefined when the read failed. A container with
+   * no children answers without a Metadata node, so an empty array is a
+   * confirmed "no children" rather than a swallowed failure.
+   */
   public async getChildrenMetadata(key: string): Promise<PlexMetadata[]> {
     try {
       const response = await this.plexClient.queryAll<PlexMetadataResponse>({
         uri: `/library/metadata/${key}/children`,
       });
 
-      return response.MediaContainer.Metadata;
+      return response.MediaContainer.Metadata ?? [];
     } catch (error) {
       this.logger.error(
         'Plex api communication failure.. Is the application running?',
@@ -959,6 +964,18 @@ export class PlexApiService {
     };
 
     for (const record of records) {
+      // Offset paging over a viewedAt:desc sort re-reads a row for every view
+      // that lands mid-sweep: the new row takes offset 0 and pushes each later
+      // page one slot older. Counting it twice inflates sw_amountOfViews.
+      const alreadyStored = leaf
+        .get(record.ratingKey)
+        ?.some(
+          (stored) =>
+            stored.viewedAt === record.viewedAt &&
+            stored.accountID === record.accountID,
+        );
+      if (alreadyStored) continue;
+
       add(leaf, record.ratingKey, record);
 
       if (record.type !== 'episode') continue;

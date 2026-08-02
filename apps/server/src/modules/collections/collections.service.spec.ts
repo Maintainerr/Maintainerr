@@ -91,6 +91,7 @@ describe('CollectionsService', () => {
       getCollection: jest.fn().mockResolvedValue(undefined),
       getCollections: jest.fn().mockResolvedValue([]),
       getCollectionChildren: jest.fn().mockResolvedValue([]),
+      getAllIdsForContextAction: jest.fn().mockResolvedValue([]),
       getLibraries: jest.fn().mockResolvedValue([{ id: 'library-1' }]),
       getMetadata: jest.fn().mockResolvedValue(undefined),
       itemExists: jest.fn().mockResolvedValue(true),
@@ -3332,6 +3333,113 @@ describe('CollectionsService', () => {
     });
   });
 
+  // Both used to answer 201 with an empty body, which is the same silent
+  // success the manual add was reporting for a rejected item.
+  describe('MediaCollectionActionWithContext failures', () => {
+    const context = { type: 'show' as const, id: '7' };
+    const media = { mediaServerId: '7' };
+
+    it('reports an add naming a collection that does not exist', async () => {
+      collectionRepo.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.MediaCollectionActionWithContext(999, context, media, 'add'),
+      ).rejects.toThrow('Collection 999 not found');
+    });
+
+    it('reports a remove naming a collection that does not exist', async () => {
+      collectionRepo.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.MediaCollectionActionWithContext(999, context, media, 'remove'),
+      ).rejects.toThrow('Collection 999 not found');
+    });
+
+    // addToCollectionInternal swallows its own failures so a rule run survives
+    // one bad collection; the interactive path must not read that as done.
+    it('reports an add whose internal work failed', async () => {
+      collectionRepo.findOne.mockResolvedValue({ id: 1, type: 'show' } as any);
+      mediaServer.getAllIdsForContextAction.mockResolvedValue(['7']);
+      jest
+        .spyOn(service as any, 'addToCollectionInternal')
+        .mockResolvedValue({ collection: undefined, serverRejectedIds: [] });
+
+      await expect(
+        service.MediaCollectionActionWithContext(1, context, media, 'add'),
+      ).rejects.toThrow('could not be updated');
+    });
+
+    it('reports a remove whose internal work failed', async () => {
+      collectionRepo.findOne.mockResolvedValue({ id: 1, type: 'show' } as any);
+      mediaServer.getAllIdsForContextAction.mockResolvedValue(['7']);
+      jest.spyOn(service, 'removeFromCollection').mockResolvedValue(undefined);
+
+      await expect(
+        service.MediaCollectionActionWithContext(1, context, media, 'remove'),
+      ).rejects.toThrow('could not be updated');
+    });
+
+    it('still allows a global remove, which names no collection', async () => {
+      mediaServer.getAllIdsForContextAction.mockResolvedValue(['7']);
+      const removeAll = jest
+        .spyOn(service, 'removeFromAllCollections')
+        .mockResolvedValue(undefined as never);
+
+      await expect(
+        service.MediaCollectionActionWithContext(
+          undefined,
+          context,
+          media,
+          'remove',
+        ),
+      ).resolves.toMatchObject({ resolvedCount: 1 });
+      expect(removeAll).toHaveBeenCalled();
+    });
+
+    it('reports a context the media server could not resolve', async () => {
+      collectionRepo.findOne.mockResolvedValue({
+        id: 1,
+        type: 'season',
+      } as any);
+      mediaServer.getAllIdsForContextAction.mockRejectedValue(
+        new Error('plex unreachable'),
+      );
+
+      await expect(
+        service.MediaCollectionActionWithContext(1, context, media, 'add'),
+      ).rejects.toThrow('plex unreachable');
+    });
+  });
+
+  // A library id used to discard the type filter, so the add modal listed the
+  // same collection once per type it asked for.
+  describe('getCollections filtering', () => {
+    it.each([
+      [
+        'both filters',
+        '2',
+        'season' as const,
+        { libraryId: '2', type: 'season' },
+      ],
+      ['a library only', '2', undefined, { libraryId: '2' }],
+      ['a type only', undefined, 'season' as const, { type: 'season' }],
+    ])('applies %s', async (label, libraryId, typeId, expected) => {
+      collectionRepo.find.mockResolvedValue([]);
+
+      await service.getCollections(libraryId, typeId);
+
+      expect(collectionRepo.find).toHaveBeenCalledWith({ where: expected });
+    });
+
+    it('reads every collection when neither filter is given', async () => {
+      collectionRepo.find.mockResolvedValue([]);
+
+      await service.getCollections();
+
+      expect(collectionRepo.find).toHaveBeenCalledWith(undefined);
+    });
+  });
+
   describe('findMediaServerCollection', () => {
     const boxset = (props: Partial<MediaCollection>): MediaCollection =>
       ({ id: 'box-1', title: 'Shared', smart: false, ...props }) as never;
@@ -3367,6 +3475,40 @@ describe('CollectionsService', () => {
       const found = await service.findMediaServerCollection('Shared', 'shows');
 
       expect(found).toBeUndefined();
+    });
+
+    // Adopting a show collection for a season rule group made every later add
+    // a 400 on Plex, which fixes a collection's media type at creation.
+    it('leaves a same-named collection of another media type alone', async () => {
+      mediaServer.getCollections.mockResolvedValue([
+        boxset({ title: 'Shared', type: 'show' }),
+      ]);
+
+      await expect(
+        service.findMediaServerCollection('Shared', 'shows', false, 'season'),
+      ).resolves.toBeUndefined();
+    });
+
+    it('adopts a same-named collection of the expected media type', async () => {
+      mediaServer.getCollections.mockResolvedValue([
+        boxset({ title: 'Shared', type: 'season' }),
+      ]);
+
+      await expect(
+        service.findMediaServerCollection('Shared', 'shows', false, 'season'),
+      ).resolves.toMatchObject({ id: 'box-1' });
+    });
+
+    // A false miss creates a second collection beside the real one (#3344),
+    // so an unknown type on either side still matches.
+    it('adopts a same-named collection whose media type the server omits', async () => {
+      mediaServer.getCollections.mockResolvedValue([
+        boxset({ title: 'Shared', type: undefined }),
+      ]);
+
+      await expect(
+        service.findMediaServerCollection('Shared', 'shows', false, 'season'),
+      ).resolves.toMatchObject({ id: 'box-1' });
     });
 
     it('falls back to other libraries for a cross-library server when opted in', async () => {

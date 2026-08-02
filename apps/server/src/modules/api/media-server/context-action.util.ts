@@ -5,10 +5,18 @@ import { MediaItem, MediaItemType } from '@maintainerr/contracts';
  * remove) should apply to, given the collection's media type and the item the
  * user acted on.
  *
- * Jellyfin and Emby resolve this identically - both walk show -> season ->
- * episode through `getChildrenMetadata` - so the traversal lives here rather
- * than being duplicated per adapter. Plex has its own implementation because it
- * resolves the hierarchy through the Plex API instead.
+ * Shared by every media server: the traversal is the same show -> season ->
+ * episode walk, only the `getChildren` lookup behind it differs.
+ *
+ * `getChildren` must throw on a failed read rather than answer an empty list:
+ * the walk cannot tell the two apart, so a swallowed failure silently drops the
+ * expansion and the action is reported as done.
+ *
+ * `context.id` is always a real media server id. Do not add a "whole item"
+ * sentinel case: short-circuiting on one is what handed a show's id to a season
+ * collection for Plex to reject with a 400 (#3381). A context that names no
+ * season or episode is expressed by `context.type`, which the switches below
+ * resolve from `mediaId`.
  */
 export const resolveContextActionIds = async (
   collectionType: MediaItemType | undefined,
@@ -17,11 +25,6 @@ export const resolveContextActionIds = async (
   getChildren: (parentId: string, type: MediaItemType) => Promise<MediaItem[]>,
   onUnsupported?: (message: string) => void,
 ): Promise<string[]> => {
-  // -1 is the UI's "all" sentinel.
-  if (context.id === '-1') {
-    return [mediaId];
-  }
-
   const handleMedia: string[] = [];
   const childIds = async (parentId: string, type: MediaItemType) =>
     (await getChildren(parentId, type)).map((child) => child.id);

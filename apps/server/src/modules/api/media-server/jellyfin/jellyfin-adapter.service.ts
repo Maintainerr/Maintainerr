@@ -999,8 +999,14 @@ export class JellyfinAdapterService implements IMediaServerService {
   async getChildrenMetadata(
     parentId: string,
     childType?: MediaItemType,
+    throwOnError = false,
   ): Promise<MediaItem[]> {
-    if (!this.api) return [];
+    if (!this.api) {
+      if (throwOnError) {
+        throw new Error('Jellyfin API not initialized');
+      }
+      return [];
+    }
 
     const cacheKey = `${JELLYFIN_CACHE_KEYS.CHILDREN}:${parentId}:${childType ?? 'any'}`;
     const cached = this.cache.data.get<MediaItem[]>(cacheKey);
@@ -1060,6 +1066,15 @@ export class JellyfinAdapterService implements IMediaServerService {
         (response.data.Items || []).map(JellyfinMapper.toMediaItem),
       );
     } catch (error) {
+      if (throwOnError) {
+        // Worded like the Plex adapter's: the raw client error reaches the user
+        // as "Request failed with status code 404", which names nothing.
+        throw new Error(
+          `Could not read the children of Jellyfin item ${parentId}`,
+          { cause: error },
+        );
+      }
+
       this.logger.error(`Failed to get children for ${parentId}`);
       this.logger.debug(error);
       return [];
@@ -2480,7 +2495,7 @@ export class JellyfinAdapterService implements IMediaServerService {
       collectionType,
       context,
       mediaId,
-      (parentId, type) => this.getChildrenMetadata(parentId, type),
+      (parentId, type) => this.getChildrenMetadata(parentId, type, true),
       (message) => this.logger.warn(message),
     );
   }

@@ -20,7 +20,7 @@ interface ArrInstanceRef {
 // The ids are passed as resolution fallbacks (exactly like the *arr action
 // handlers), so an item whose media-server metadata omits a tmdb/tvdb still
 // resolves to its *arr entity.
-interface ArrTagItem {
+export interface ArrTagItem {
   mediaServerId: string;
   tmdbId?: number | null;
   tvdbId?: number | null;

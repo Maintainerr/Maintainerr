@@ -947,11 +947,21 @@ describe('PlexAdapterService', () => {
       plexApi.deleteChildFromCollection.mockImplementation(
         async (collectionId, itemId) => {
           if (itemId === 'missing') {
-            throw new Error('404 Not Found');
+            throw new Error(
+              'DELETE /library/collections/col123/items/missing failed with exception: response code: 404',
+            );
           }
 
           if (itemId === 'bad') {
             throw new Error('boom');
+          }
+
+          // A ratingKey can contain 404 without the request having 404'd, and
+          // the failure message carries the request URL.
+          if (itemId === '1404') {
+            throw new Error(
+              'DELETE /library/collections/col123/items/1404 failed with exception: response code: 500',
+            );
           }
 
           return { status: 'OK' } as any;
@@ -959,8 +969,13 @@ describe('PlexAdapterService', () => {
       );
 
       await expect(
-        service.removeBatchFromCollection('col123', ['good', 'missing', 'bad']),
-      ).resolves.toEqual(['bad']);
+        service.removeBatchFromCollection('col123', [
+          'good',
+          'missing',
+          'bad',
+          '1404',
+        ]),
+      ).resolves.toEqual(['bad', '1404']);
     });
 
     it('should default optional visibility flags to false', async () => {

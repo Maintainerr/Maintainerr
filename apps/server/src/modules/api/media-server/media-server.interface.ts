@@ -153,8 +153,16 @@ export interface IMediaServerService {
 
   /**
    * Get child items (seasons for shows, episodes for seasons).
+   *
+   * @param throwOnError - by default a failed read answers with an empty list,
+   * which reads as "no children" downstream. Callers that must not mistake the
+   * two pass true.
    */
-  getChildrenMetadata(parentId: string): Promise<MediaItem[]>;
+  getChildrenMetadata(
+    parentId: string,
+    childType?: MediaItemType,
+    throwOnError?: boolean,
+  ): Promise<MediaItem[]>;
 
   /**
    * Get recently added items from a library.

@@ -1090,6 +1090,29 @@ describe('PlexApiService.prefetchWatchHistory', () => {
     expect(snapshot?.leaf.get('2')).toHaveLength(1);
   });
 
+  // Playback finishing mid-sweep shifts every later offset by one, so the row
+  // at the boundary comes back on the next page too.
+  it('counts a row re-read by a shifted page only once', async () => {
+    const queryAll = jest.fn().mockResolvedValue({
+      MediaContainer: {
+        Metadata: [
+          historyRow({ ratingKey: '1', accountID: 10, viewedAt: 1700000000 }),
+          historyRow({ ratingKey: '1', accountID: 10, viewedAt: 1700000000 }),
+          historyRow({ ratingKey: '1', accountID: 10, viewedAt: 1700000900 }),
+          historyRow({ ratingKey: '1', accountID: 11, viewedAt: 1700000000 }),
+        ],
+        totalSize: 4,
+      },
+    });
+    (service as any).plexClient = { queryAll };
+
+    await service.prefetchWatchHistory(LIBRARY);
+
+    // The duplicate is dropped; a different view time and a different account
+    // are distinct views and stay.
+    expect((await snapshotFor(LIBRARY))?.leaf.get('1')).toHaveLength(3);
+  });
+
   it('caches per library, so one library does not answer for another', async () => {
     const queryAll = jest.fn().mockResolvedValue({
       MediaContainer: { Metadata: [historyRow()], totalSize: 1 },

@@ -37,6 +37,7 @@ import {
   useUpdateRuleGroup,
 } from '../../../../api/rules'
 import { useMediaServerType } from '../../../../hooks/useMediaServerType'
+import { getApiErrorMessage } from '../../../../utils/ApiError'
 import { PostApiHandler } from '../../../../utils/ApiHandler'
 import { logClientError } from '../../../../utils/ClientLogger'
 import Alert from '../../../Common/Alert'
@@ -534,14 +535,22 @@ const AddModal = (props: AddModal) => {
 
   const {
     mutateAsync: createRuleGroup,
-    isError: isCreateError,
+    error: createError,
     isPending: isCreatePending,
   } = useCreateRuleGroup()
   const {
     mutateAsync: updateRuleGroup,
-    isError: isUpdateError,
+    error: updateError,
     isPending: isUpdatePending,
   } = useUpdateRuleGroup()
+
+  // The server names what it rejected ("Operator is required for every rule
+  // after the first"); saying "something went wrong" instead left the user to
+  // guess which of the form's values it meant.
+  const saveError = createError ?? updateError
+  const saveErrorMessage = saveError
+    ? getApiErrorMessage(saveError, 'The rule group could not be saved')
+    : undefined
 
   const selectedLibraryId = useWatch({ control, name: 'libraryId' }) ?? ''
   const selectedType = useWatch({ control, name: 'dataType' }) ?? ''
@@ -1033,7 +1042,9 @@ const AddModal = (props: AddModal) => {
         mutationError,
         'RuleGroup.AddModal.handleSave',
       )
-      toast.error('Failed to save rule group. Check logs for details.')
+      toast.error(
+        getApiErrorMessage(mutationError, 'The rule group could not be saved'),
+      )
     }
   }
 
@@ -1087,12 +1098,7 @@ const AddModal = (props: AddModal) => {
           </Alert>
         )}
 
-        {(isCreateError || isUpdateError) && (
-          <Alert>
-            Something went wrong saving the group.. Please verify that all
-            values are valid
-          </Alert>
-        )}
+        {saveErrorMessage && <Alert>{saveErrorMessage}</Alert>}
 
         {formIncomplete && (
           <Alert>
