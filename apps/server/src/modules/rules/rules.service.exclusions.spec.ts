@@ -68,6 +68,7 @@ describe('RulesService exclusions - global (null ruleGroupId) handling', () => {
       {} as any, // eventEmitter
       servarrTagService as any,
       logger as any,
+      {} as any, // tracearrApi
     );
 
     return {

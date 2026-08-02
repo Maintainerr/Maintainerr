@@ -23,6 +23,11 @@ import {
   sportarrSettingSchema,
   StreamystatsSetting,
   streamystatsSettingSchema,
+  TracearrConnection,
+  TracearrSetting,
+  tracearrConnectionSchema,
+  TracearrSettingForm,
+  tracearrSettingSchema,
   SwitchMediaServerRequest,
   SwitchMediaServerResponse,
   switchMediaServerSchema,
@@ -37,6 +42,7 @@ import {
 } from '@maintainerr/contracts';
 import {
   Body,
+  BadGatewayException,
   Controller,
   Delete,
   ForbiddenException,
@@ -306,6 +312,58 @@ export class SettingsController {
   ): Promise<BasicResponseDto> {
     this.assertJellyfinActive();
     return this.settingsOperationsService.testStreamystats(payload);
+  }
+
+  @Get('/tracearr')
+  async getTracearrSetting(): Promise<TracearrSettingForm | BasicResponseDto> {
+    const settings = await this.settingsOperationsService.getSettings();
+
+    if (!(settings instanceof Settings)) {
+      return settings;
+    }
+
+    return {
+      url: settings.tracearr_url,
+      api_key: settings.tracearr_api_key,
+      server_id: settings.tracearr_server_id,
+    };
+  }
+
+  @Post('/tracearr')
+  async updateTracearrSetting(
+    @Body(new ZodValidationPipe(tracearrSettingSchema))
+    payload: TracearrSetting,
+  ) {
+    return await this.settingsOperationsService.updateTracearrSetting(payload);
+  }
+
+  @Delete('/tracearr')
+  async removeTracearrSetting() {
+    return await this.settingsOperationsService.removeTracearrSetting();
+  }
+
+  @Post('/test/tracearr')
+  testTracearr(
+    @Body(new ZodValidationPipe(tracearrSettingSchema))
+    payload: TracearrSetting,
+  ): Promise<BasicResponseDto> {
+    return this.settingsOperationsService.testTracearr(payload);
+  }
+
+  @Post('/tracearr/servers')
+  async getTracearrServers(
+    @Body(new ZodValidationPipe(tracearrConnectionSchema))
+    payload: TracearrConnection,
+  ) {
+    const servers =
+      await this.settingsOperationsService.getTracearrServers(payload);
+    if (!servers) {
+      throw new BadGatewayException(
+        'Could not load Tracearr servers. Verify URL and API key.',
+      );
+    }
+
+    return servers;
   }
 
   @Get('/download-client')

@@ -141,8 +141,14 @@ describe('database migrations', () => {
         notnull: 0,
       });
 
-      // Column added by the newest migration (AddCollectionLeftoverCleanup).
-      expect(collection.cleanupLeftoverFolders).toMatchObject(bool);
+      const nullableVarchar = {
+        type: 'varchar',
+        notnull: 0,
+        dflt_value: null,
+      };
+      expect(settings.tracearr_url).toMatchObject(nullableVarchar);
+      expect(settings.tracearr_api_key).toMatchObject(nullableVarchar);
+      expect(settings.tracearr_server_id).toMatchObject(nullableVarchar);
     } finally {
       await ds.destroy();
     }
@@ -155,8 +161,8 @@ describe('database migrations', () => {
     // emits a full create-temporary-table / copy / drop / rename rebuild for the
     // changed tables. A hand-written ALTER shortcut lacks it - this is the
     // cheapest signal the migration was generated rather than authored. The
-    // newest migration adds a `collection` column, so it rebuilds that table.
-    expect(src).toContain('CREATE TABLE "temporary_collection"');
+    // newest migration adds settings columns, so it rebuilds that table.
+    expect(src).toContain('CREATE TABLE "temporary_settings"');
   });
 
   // We don't revert the whole chain: several pre-existing migrations have
@@ -168,8 +174,8 @@ describe('database migrations', () => {
     try {
       await ds.runMigrations();
       const has = async () =>
-        (await columns(ds, 'collection')).some(
-          (c) => c.name === 'cleanupLeftoverFolders',
+        (await columns(ds, 'settings')).some(
+          (c) => c.name === 'tracearr_server_id',
         );
       expect(await has()).toBe(true);
 

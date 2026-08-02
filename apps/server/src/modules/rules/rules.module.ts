@@ -7,6 +7,7 @@ import { PlexApiModule } from '../api/plex-api/plex-api.module';
 import { ServarrApiModule } from '../api/servarr-api/servarr-api.module';
 import { StreamystatsApiModule } from '../api/streamystats-api/streamystats-api.module';
 import { TautulliApiModule } from '../api/tautulli-api/tautulli-api.module';
+import { TracearrApiModule } from '../api/tracearr-api/tracearr-api.module';
 import { CollectionsModule } from '../collections/collections.module';
 import { Collection } from '../collections/entities/collection.entities';
 import { CollectionMedia } from '../collections/entities/collection_media.entities';
@@ -31,6 +32,7 @@ import { SonarrGetterService } from './getter/sonarr-getter.service';
 import { SportarrGetterService } from './getter/sportarr-getter.service';
 import { StreamystatsGetterService } from './getter/streamystats-getter.service';
 import { TautulliGetterService } from './getter/tautulli-getter.service';
+import { TracearrGetterService } from './getter/tracearr-getter.service';
 import {
   RuleComparatorService,
   RuleComparatorServiceFactory,
@@ -65,6 +67,7 @@ import { RuleMaintenanceService } from './tasks/rule-maintenance.service';
     SeerrApiModule,
     TautulliApiModule,
     StreamystatsApiModule,
+    TracearrApiModule,
     MetadataModule,
     ActionsModule,
     forwardRef(() => CollectionsModule),
@@ -87,6 +90,7 @@ import { RuleMaintenanceService } from './tasks/rule-maintenance.service';
     SeerrGetterService,
     TautulliGetterService,
     StreamystatsGetterService,
+    TracearrGetterService,
     ValueGetterService,
     RuleYamlService,
     RuleComparatorService,

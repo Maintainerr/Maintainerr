@@ -184,6 +184,11 @@ const SettingsWrapper = () => {
         route: '/settings/metadata',
         regex: /^\/settings\/metadata$/,
       },
+      {
+        text: 'Tracearr',
+        route: '/settings/tracearr',
+        regex: /^\/settings\/tracearr$/,
+      },
     )
 
     // Tautulli is a Plex-only integration

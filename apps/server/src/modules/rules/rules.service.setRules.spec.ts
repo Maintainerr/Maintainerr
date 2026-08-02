@@ -48,6 +48,7 @@ describe('RulesService.setRules', () => {
       (overrides.eventEmitter ?? {}) as any,
       createMockServarrTagService() as any,
       logger as any,
+      {} as any,
     );
 
   // A minimal, valid single-rule section (Plex "date added" EXISTS). EXISTS is

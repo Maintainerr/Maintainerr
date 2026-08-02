@@ -20,6 +20,8 @@ import { StreamystatsApiModule } from '../modules/api/streamystats-api/streamyst
 import { StreamystatsApiService } from '../modules/api/streamystats-api/streamystats-api.service';
 import { TautulliApiModule } from '../modules/api/tautulli-api/tautulli-api.module';
 import { TautulliApiService } from '../modules/api/tautulli-api/tautulli-api.service';
+import { TracearrApiModule } from '../modules/api/tracearr-api/tracearr-api.module';
+import { TracearrApiService } from '../modules/api/tracearr-api/tracearr-api.service';
 import { CollectionsModule } from '../modules/collections/collections.module';
 import { EventsModule } from '../modules/events/events.module';
 import { LogsModule } from '../modules/logging/logs.module';
@@ -55,6 +57,7 @@ import ormConfig from './config/typeOrmConfig';
     SeerrApiModule,
     TautulliApiModule,
     StreamystatsApiModule,
+    TracearrApiModule,
     DownloadClientApiModule,
     RulesModule,
     CollectionsModule,
@@ -95,6 +98,7 @@ export class AppModule implements OnModuleInit {
     private readonly seerrApi: SeerrApiService,
     private readonly tautulliApi: TautulliApiService,
     private readonly streamystatsApi: StreamystatsApiService,
+    private readonly tracearrApi: TracearrApiService,
     private readonly downloadClientApi: DownloadClientApiService,
     private readonly notificationService: NotificationService,
   ) {}
@@ -108,6 +112,7 @@ export class AppModule implements OnModuleInit {
     this.seerrApi.init();
     this.tautulliApi.init();
     this.streamystatsApi.init();
+    this.tracearrApi.init();
     this.downloadClientApi.init();
 
     // intialize notification agents

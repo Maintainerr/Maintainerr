@@ -57,6 +57,7 @@ describe('RulesService.deleteRuleGroup', () => {
       eventEmitter as any,
       servarrTagService as any,
       logger as any,
+      {} as any, // tracearrApi
     );
 
     return {
@@ -312,6 +313,7 @@ describe('RulesService.removeExclusion', () => {
       {} as any, // eventEmitter
       createMockServarrTagService() as any,
       logger as any,
+      {} as any, // tracearrApi
     );
 
     return {

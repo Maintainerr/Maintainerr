@@ -4,6 +4,9 @@ import {
   type FocusEvent,
   type JSX,
   type ReactNode,
+  useEffect,
+  useEffectEvent,
+  useRef,
   useState,
 } from 'react'
 import { Controller, useForm, useWatch } from 'react-hook-form'
@@ -21,20 +24,30 @@ import DocsButton from '../Common/DocsButton'
 import SaveButton from '../Common/SaveButton'
 import TestingButton from '../Common/TestingButton'
 import { InputGroup } from '../Forms/Input'
+import { SelectGroup } from '../Forms/Select'
 import SettingsAlertSlot from './SettingsAlertSlot'
 import { useSettingsFeedback } from './useSettingsFeedback'
+
+export interface ExternalServiceSelectOption {
+  value: string
+  label: string
+}
+
+export type SettingsValues = Record<string, string>
 
 export interface ExternalServiceFieldConfig {
   name: string
   label: string
-  type?: 'text' | 'password'
+  type?: 'text' | 'password' | 'select'
   placeholder?: string
   helpText?: JSX.Element | string
   normalize?: (value: string) => string
   required?: boolean
+  options?: ExternalServiceSelectOption[]
+  loadOptions?: (
+    values: SettingsValues,
+  ) => Promise<ExternalServiceSelectOption[]>
 }
-
-type SettingsValues = Record<string, string>
 
 interface TestStatus {
   status: boolean
@@ -46,6 +59,7 @@ interface ExternalServiceSettingsPageProps {
   pageTitle: string
   heading: string
   description: ReactNode
+  warning?: ReactNode
   docsPage: string
   settingsPath: string
   testPath: string
@@ -69,6 +83,7 @@ const ExternalServiceSettingsPage = ({
   pageTitle,
   heading,
   description,
+  warning,
   docsPage,
   settingsPath,
   testPath,
@@ -80,6 +95,14 @@ const ExternalServiceSettingsPage = ({
   const [testedSettings, setTestedSettings] = useState<SettingsValues>()
   const [testing, setTesting] = useState(false)
   const [testResult, setTestResult] = useState<TestStatus>()
+  const [loadedOptionsByFieldName, setLoadedOptionsByFieldName] = useState<
+    Record<string, ExternalServiceSelectOption[]>
+  >({})
+  const [loadingOptionsByFieldName, setLoadingOptionsByFieldName] = useState<
+    Record<string, boolean>
+  >({})
+  const loadingOptionFieldNamesRef = useRef(new Set<string>())
+  const selectOptionsVersionRef = useRef(0)
   const { feedback, showUpdated, showUpdateError, clearError } =
     useSettingsFeedback(scope)
 
@@ -108,11 +131,81 @@ const ExternalServiceSettingsPage = ({
       : undefined
   const canSave = !isSubmitting && !isLoading
 
-  const clearTransientState = () => {
+  const clearTransientState = (clearLoadedOptions = true) => {
     clearError()
     clearErrors()
     setTestResult(undefined)
+    if (clearLoadedOptions) {
+      selectOptionsVersionRef.current += 1
+      setLoadedOptionsByFieldName({})
+    }
   }
+
+  const loadFieldOptions = async (
+    fieldConfig: ExternalServiceFieldConfig,
+    values: SettingsValues,
+  ) => {
+    if (
+      !fieldConfig.loadOptions ||
+      loadedOptionsByFieldName[fieldConfig.name]
+    ) {
+      return
+    }
+    if (loadingOptionFieldNamesRef.current.has(fieldConfig.name)) {
+      return
+    }
+
+    const optionsVersion = selectOptionsVersionRef.current
+    loadingOptionFieldNamesRef.current.add(fieldConfig.name)
+    setLoadingOptionsByFieldName((current) => ({
+      ...current,
+      [fieldConfig.name]: true,
+    }))
+
+    try {
+      const options = await fieldConfig.loadOptions(values)
+      if (optionsVersion === selectOptionsVersionRef.current) {
+        setLoadedOptionsByFieldName((current) => ({
+          ...current,
+          [fieldConfig.name]: options,
+        }))
+      }
+    } catch (error) {
+      if (optionsVersion === selectOptionsVersionRef.current) {
+        setError(fieldConfig.name, {
+          type: 'manual',
+          message: getApiErrorMessage(
+            error,
+            `Failed to load ${fieldConfig.label.toLowerCase()} options.`,
+          ),
+        })
+      }
+    } finally {
+      loadingOptionFieldNamesRef.current.delete(fieldConfig.name)
+      setLoadingOptionsByFieldName((current) => ({
+        ...current,
+        [fieldConfig.name]: false,
+      }))
+    }
+  }
+
+  const loadSelectOptions = (values: SettingsValues) => {
+    fields.forEach((fieldConfig) => {
+      if (fieldConfig.type === 'select') {
+        void loadFieldOptions(fieldConfig, values)
+      }
+    })
+  }
+
+  const loadInitialSelectOptions = useEffectEvent(() => {
+    loadSelectOptions(getValues())
+  })
+
+  useEffect(() => {
+    if (!isLoading) {
+      loadInitialSelectOptions()
+    }
+  }, [isLoading])
 
   const validateValues = (values: SettingsValues) => {
     if (allEmpty(values, fields)) {
@@ -214,8 +307,11 @@ const ExternalServiceSettingsPage = ({
         </div>
 
         <SettingsAlertSlot>
-          {feedback || testResult ? (
+          {warning || feedback || testResult ? (
             <div className="space-y-4">
+              {!isLoading && isGoingToRemove && warning ? (
+                <Alert type="warning" title={warning} />
+              ) : null}
               {feedback ? (
                 <Alert type={feedback.type} title={feedback.title} />
               ) : null}
@@ -246,34 +342,101 @@ const ExternalServiceSettingsPage = ({
                 name={fieldConfig.name}
                 defaultValue=""
                 control={control}
-                render={({ field }) => (
-                  <InputGroup
-                    label={fieldConfig.label}
-                    value={field.value}
-                    placeholder={fieldConfig.placeholder}
-                    onChange={(event: ChangeEvent<HTMLInputElement>) => {
-                      clearTransientState()
-                      field.onChange(event)
-                    }}
-                    onBlur={(event: FocusEvent<HTMLInputElement>) => {
-                      if (fieldConfig.normalize) {
-                        field.onChange(
-                          fieldConfig.normalize(event.target.value),
-                        )
-                      } else {
-                        field.onBlur()
-                      }
-                    }}
-                    ref={field.ref}
-                    name={field.name}
-                    type={fieldConfig.type ?? 'text'}
-                    error={
-                      errors[fieldConfig.name]?.message as string | undefined
-                    }
-                    helpText={fieldConfig.helpText ?? undefined}
-                    required={fieldConfig.required}
-                  />
-                )}
+                render={({ field }) => {
+                  const error = errors[fieldConfig.name]?.message as
+                    string | undefined
+
+                  if (fieldConfig.type === 'select') {
+                    const options =
+                      loadedOptionsByFieldName[fieldConfig.name] ??
+                      fieldConfig.options ??
+                      []
+                    const selectedOption = options.some(
+                      (option) => option.value === field.value,
+                    )
+                    const selectOptions =
+                      field.value && !selectedOption
+                        ? [
+                            { value: field.value, label: field.value },
+                            ...options,
+                          ]
+                        : options
+
+                    return (
+                      <SelectGroup
+                        label={fieldConfig.label}
+                        value={field.value}
+                        onChange={(event: ChangeEvent<HTMLSelectElement>) => {
+                          clearTransientState(false)
+                          field.onChange(event)
+                        }}
+                        onFocus={() => {
+                          void loadFieldOptions(fieldConfig, getValues())
+                        }}
+                        onBlur={(event: FocusEvent<HTMLSelectElement>) => {
+                          if (fieldConfig.normalize) {
+                            field.onChange(
+                              fieldConfig.normalize(event.target.value),
+                            )
+                          } else {
+                            field.onBlur()
+                          }
+                        }}
+                        ref={field.ref}
+                        name={field.name}
+                        error={error}
+                        helpText={fieldConfig.helpText ?? undefined}
+                        required={fieldConfig.required}
+                        disabled={loadingOptionsByFieldName[fieldConfig.name]}
+                      >
+                        <option value="" disabled>
+                          {loadingOptionsByFieldName[fieldConfig.name]
+                            ? `Loading ${fieldConfig.label.toLowerCase()}...`
+                            : `Select ${fieldConfig.label.toLowerCase()}`}
+                        </option>
+                        {selectOptions.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </SelectGroup>
+                    )
+                  }
+
+                  return (
+                    <InputGroup
+                      label={fieldConfig.label}
+                      value={field.value}
+                      placeholder={fieldConfig.placeholder}
+                      onChange={(event: ChangeEvent<HTMLInputElement>) => {
+                        clearTransientState()
+                        field.onChange(event)
+                      }}
+                      onBlur={(event: FocusEvent<HTMLInputElement>) => {
+                        const value = fieldConfig.normalize
+                          ? fieldConfig.normalize(event.target.value)
+                          : event.target.value
+
+                        if (fieldConfig.normalize) {
+                          field.onChange(value)
+                        } else {
+                          field.onBlur()
+                        }
+
+                        loadSelectOptions({
+                          ...getValues(),
+                          [fieldConfig.name]: value,
+                        })
+                      }}
+                      ref={field.ref}
+                      name={field.name}
+                      type={fieldConfig.type ?? 'text'}
+                      error={error}
+                      helpText={fieldConfig.helpText ?? undefined}
+                      required={fieldConfig.required}
+                    />
+                  )
+                }}
               />
             ))}
 

@@ -13,6 +13,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import cacheManager from '../../api/lib/cache';
 import { MediaServerFactory } from '../../api/media-server/media-server.factory';
 import { IMediaServerService } from '../../api/media-server/media-server.interface';
+import { TracearrApiService } from '../../api/tracearr-api/tracearr-api.service';
 import { CollectionsService } from '../../collections/collections.service';
 import { Collection } from '../../collections/entities/collection.entities';
 import {
@@ -30,7 +31,8 @@ import {
 import { ServarrTagService } from '../../actions/servarr-tag.service';
 import { MaintainerrLogger } from '../../logging/logs.service';
 import { SettingsDataService } from '../../settings/settings-data.service';
-import { RuleConstants } from '../constants/rules.constants';
+import { Application, RuleConstants } from '../constants/rules.constants';
+import { RuleDto } from '../dtos/rule.dto';
 import { RulesDto } from '../dtos/rules.dto';
 import { RuleGroup } from '../entities/rule-group.entities';
 import {
@@ -111,6 +113,7 @@ export class RuleExecutorService {
     private readonly logger: MaintainerrLogger,
     private readonly recentlyHandledMedia: RecentlyHandledMediaService,
     private readonly servarrTagService: ServarrTagService,
+    private readonly tracearrApi: TracearrApiService,
   ) {
     logger.setContext(RuleExecutorService.name);
     this.ruleConstants = new RuleConstants();
@@ -119,6 +122,18 @@ export class RuleExecutorService {
 
   private async getMediaServer(): Promise<IMediaServerService> {
     return this.mediaServerFactory.getService();
+  }
+
+  private usesTracearr(ruleGroup: RulesDto): boolean {
+    return ruleGroup.rules.some((rule) => {
+      const parsedRule = (
+        'ruleJson' in rule ? JSON.parse(rule.ruleJson) : rule
+      ) as RuleDto;
+      return (
+        parsedRule.firstVal[0] === Application.TRACEARR ||
+        parsedRule.lastVal?.[0] === Application.TRACEARR
+      );
+    });
   }
 
   private buildRuleHandlerFailedDto(
@@ -284,6 +299,9 @@ export class RuleExecutorService {
             libraryId: ruleGroup.libraryId,
             abortSignal,
           });
+        }
+        if (this.usesTracearr(ruleGroup)) {
+          await this.tracearrApi.prefetchHistory();
         }
 
         // prepare
