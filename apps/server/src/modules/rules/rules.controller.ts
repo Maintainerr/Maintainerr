@@ -257,6 +257,10 @@ export class RulesController {
     status: 502,
     description: 'The media server could not be read to resolve the library.',
   })
+  @ApiResponse({
+    status: 503,
+    description: 'The configured media server adapter could not initialize.',
+  })
   async setRules(@Body() body: RulesDto): Promise<ReturnStatus> {
     return this.orFail(await this.rulesService.setRules(body));
   }
@@ -299,6 +303,10 @@ export class RulesController {
   @ApiResponse({
     status: 502,
     description: 'The media server could not be read to resolve the library.',
+  })
+  @ApiResponse({
+    status: 503,
+    description: 'The configured media server adapter could not initialize.',
   })
   async updateRule(@Body() body: RulesDto): Promise<ReturnStatus> {
     return this.orFail(await this.rulesService.updateRules(body));
