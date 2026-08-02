@@ -1,3 +1,16 @@
+# [3.21.1](https://github.com/Maintainerr/Maintainerr/compare/v3.21.0...v3.21.1) (2026-08-02)
+
+
+### Fixes
+
+- fix(rules): answer a status code when a rule group cannot be saved, and drop the add modal's fetch effects (#3385)
+- fix(collections): report manual add failures, and the defects that cause them (#3383)
+- fix(collections): add a whole show to a season or episode collection (#3381) (#3382)
+
+### Dependencies
+
+- 2 dependency updates (js-yaml, brace-expansion)
+
 # [3.21.0](https://github.com/Maintainerr/Maintainerr/compare/v3.20.1...v3.21.0) (2026-08-01)
 
 
