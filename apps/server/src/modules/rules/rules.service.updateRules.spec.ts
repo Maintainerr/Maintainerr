@@ -62,25 +62,95 @@ describe('RulesService.updateRules', () => {
     jest.clearAllMocks();
   });
 
-  it('returns error status when rule group is not found', async () => {
+  // TypeORM drops an undefined id from the where clause instead of rejecting
+  // it, so this has to be caught before the lookup (#3384).
+  it('rejects an update that names no rule group', async () => {
+    const ruleGroupRepository = { findOne: jest.fn() };
+    const service = createRulesService({ ruleGroupRepository });
+
+    await expect(
+      service.updateRules({
+        libraryId: '1',
+        dataType: 'movie',
+        name: 'Test',
+        rules: [],
+        description: '',
+      } as any),
+    ).rejects.toMatchObject({
+      status: 400,
+      message: 'A rule group id is required',
+    });
+    expect(ruleGroupRepository.findOne).not.toHaveBeenCalled();
+  });
+
+  // Moving libraries wipes the collection's members. A library the media
+  // server does not have is rejected before that happens, so a bad payload
+  // cannot cost the collection its contents on the way to a 400.
+  it('rejects an unknown library without wiping the collection first', async () => {
+    const collectionMediaRepository = { delete: jest.fn() };
+    const exclusionRepo = { delete: jest.fn() };
+    const mediaServer = {
+      getLibraries: jest
+        .fn()
+        .mockResolvedValue([{ id: '1', title: 'Movies', type: 'movie' }]),
+      cleanupCollectionForLibrary: jest.fn(),
+    };
+
+    const service = createRulesService({
+      ruleGroupRepository: {
+        findOne: jest
+          .fn()
+          .mockResolvedValue({ id: 5, collectionId: 42, dataType: 'movie' }),
+      },
+      collectionMediaRepository,
+      exclusionRepo,
+      collectionService: {
+        getCollection: jest
+          .fn()
+          .mockResolvedValue({ id: 42, libraryId: 'old-library' }),
+      },
+      mediaServerFactory: {
+        getService: jest.fn().mockReturnValue(mediaServer),
+      },
+    });
+
+    await expect(
+      service.updateRules({
+        id: 5,
+        libraryId: 'gone-library',
+        dataType: 'movie',
+        name: 'Test',
+        rules: [],
+        description: '',
+      } as any),
+    ).rejects.toMatchObject({
+      status: 400,
+      message: 'Library gone-library does not exist on the media server',
+    });
+
+    expect(collectionMediaRepository.delete).not.toHaveBeenCalled();
+    expect(exclusionRepo.delete).not.toHaveBeenCalled();
+    expect(mediaServer.cleanupCollectionForLibrary).not.toHaveBeenCalled();
+  });
+
+  it('fails with a not-found status when the rule group is gone', async () => {
     const ruleGroupRepository = {
       findOne: jest.fn().mockResolvedValue(null),
     };
 
     const service = createRulesService({ ruleGroupRepository });
 
-    const result = await service.updateRules({
-      id: 999,
-      libraryId: '1',
-      dataType: 'show',
-      name: 'Test',
-      rules: [],
-      description: '',
-    });
-
-    expect(result).toEqual({
-      code: 0,
-      result: 'Rule group not found',
+    await expect(
+      service.updateRules({
+        id: 999,
+        libraryId: '1',
+        dataType: 'show',
+        name: 'Test',
+        rules: [],
+        description: '',
+      }),
+    ).rejects.toMatchObject({
+      status: 404,
       message: 'Rule group not found',
     });
   });
@@ -92,33 +162,31 @@ describe('RulesService.updateRules', () => {
 
     const service = createRulesService({ ruleGroupRepository });
 
-    const result = await service.updateRules({
-      id: 999,
-      libraryId: '1',
-      dataType: 'movie',
-      name: 'Test',
-      description: '',
-      rules: [
-        {
-          operator: null,
-          action: RulePossibility.EQUALS,
-          firstVal: [Application.PLEX, 7],
-          customVal: {
-            ruleTypeId: +RuleType.NUMBER,
-            value: (330 * 86400).toString(),
+    // Reaching the (missing) rule group means validation let the rule through.
+    await expect(
+      service.updateRules({
+        id: 999,
+        libraryId: '1',
+        dataType: 'movie',
+        name: 'Test',
+        description: '',
+        rules: [
+          {
+            operator: null,
+            action: RulePossibility.EQUALS,
+            firstVal: [Application.PLEX, 7],
+            customVal: {
+              ruleTypeId: +RuleType.NUMBER,
+              value: (330 * 86400).toString(),
+            },
+            section: 0,
           },
-          section: 0,
-        },
-      ],
-    } as any);
+        ],
+      } as any),
+    ).rejects.toMatchObject({ status: 404 });
 
     expect(ruleGroupRepository.findOne).toHaveBeenCalledWith({
       where: { id: 999 },
-    });
-    expect(result).toEqual({
-      code: 0,
-      result: 'Rule group not found',
-      message: 'Rule group not found',
     });
   });
 

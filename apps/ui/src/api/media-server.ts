@@ -206,6 +206,48 @@ export const useMediaServerMetadata = (
   })
 }
 
+type UseMediaServerMetadataChildrenQueryKey = ReturnType<
+  typeof mediaServerKeys.metadataChildren
+>
+type UseMediaServerMetadataChildrenOptions = Omit<
+  UseQueryOptions<
+    MediaItem[],
+    Error,
+    MediaItem[],
+    UseMediaServerMetadataChildrenQueryKey
+  >,
+  'queryKey' | 'queryFn'
+>
+
+/**
+ * Hook to fetch an item's direct children: a show's seasons, a season's
+ * episodes.
+ */
+export const useMediaServerMetadataChildren = (
+  itemId?: string,
+  options?: UseMediaServerMetadataChildrenOptions,
+) => {
+  const queryEnabled = !!itemId && (options?.enabled ?? true)
+
+  return useQuery<
+    MediaItem[],
+    Error,
+    MediaItem[],
+    UseMediaServerMetadataChildrenQueryKey
+  >({
+    queryKey: mediaServerKeys.metadataChildren(itemId ?? ''),
+    queryFn: async () => {
+      return await GetApiHandler<MediaItem[]>(
+        `/media-server/meta/${itemId}/children`,
+      )
+    },
+    staleTime: 60000, // 1 minute
+    retry: 1,
+    ...options,
+    enabled: queryEnabled,
+  })
+}
+
 type UseMediaServerSearchQueryKey = ReturnType<typeof mediaServerKeys.search>
 type UseMediaServerSearchOptions = Omit<
   UseQueryOptions<
@@ -253,5 +295,8 @@ export type UseMediaServerCollectionsResult = ReturnType<
 >
 export type UseMediaServerMetadataResult = ReturnType<
   typeof useMediaServerMetadata
+>
+export type UseMediaServerMetadataChildrenResult = ReturnType<
+  typeof useMediaServerMetadataChildren
 >
 export type UseMediaServerSearchResult = ReturnType<typeof useMediaServerSearch>

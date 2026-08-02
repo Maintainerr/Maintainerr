@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import {
   cleanup,
   fireEvent,
@@ -6,18 +7,12 @@ import {
   waitFor,
 } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { createTestQueryClient } from '../../test-utils/queryClient'
 import GetApiHandler, { PostApiHandler } from '../../utils/ApiHandler'
+import type { IAddModal } from './interfaces'
 import AddModal from './index'
 
-const invalidateQueries = vi.fn()
 const navigate = vi.fn()
-
-vi.mock('@tanstack/react-query', async () => {
-  const actual = await vi.importActual<typeof import('@tanstack/react-query')>(
-    '@tanstack/react-query',
-  )
-  return { ...actual, useQueryClient: () => ({ invalidateQueries }) }
-})
 
 vi.mock('react-router-dom', async () => {
   const actual =
@@ -29,6 +24,43 @@ vi.mock('../../utils/ApiHandler', () => ({
   default: vi.fn(),
   PostApiHandler: vi.fn(),
 }))
+
+let queryClient: QueryClient
+let invalidateQueries: ReturnType<typeof vi.spyOn>
+
+const renderModal = (props: Partial<IAddModal> = {}) => {
+  const onCancel = props.onCancel ?? vi.fn()
+  const onSubmit = props.onSubmit ?? vi.fn()
+
+  render(
+    <QueryClientProvider client={queryClient}>
+      <AddModal
+        mediaServerId="m1"
+        type="movie"
+        modalType="add"
+        {...props}
+        onCancel={onCancel}
+        onSubmit={onSubmit}
+      />
+    </QueryClientProvider>,
+  )
+
+  return { onCancel, onSubmit }
+}
+
+beforeEach(() => {
+  // The hooks set their own retry count, so only the delay can be flattened.
+  queryClient = createTestQueryClient({
+    defaultOptions: { queries: { retryDelay: 0 } },
+  })
+  invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
+  navigate.mockReset()
+})
+
+afterEach(() => {
+  cleanup()
+  queryClient.clear()
+})
 
 describe('AddModal - global exclusion warning', () => {
   const getApiHandlerMock = vi.mocked(GetApiHandler)
@@ -55,19 +87,7 @@ describe('AddModal - global exclusion warning', () => {
     postApiHandlerMock.mockResolvedValue(undefined as never)
   }
 
-  const renderExclude = () => {
-    const onCancel = vi.fn()
-    render(
-      <AddModal
-        mediaServerId="m1"
-        type="movie"
-        modalType="exclude"
-        onCancel={onCancel}
-        onSubmit={vi.fn()}
-      />,
-    )
-    return { onCancel }
-  }
+  const renderExclude = () => renderModal({ modalType: 'exclude' })
 
   const exclusionPost = () =>
     postApiHandlerMock.mock.calls.find(
@@ -77,10 +97,7 @@ describe('AddModal - global exclusion warning', () => {
   beforeEach(() => {
     getApiHandlerMock.mockReset()
     postApiHandlerMock.mockReset()
-    navigate.mockReset()
-    invalidateQueries.mockReset()
   })
-  afterEach(() => cleanup())
 
   it('Add + all collections, item has scoped exclusions: warns with item - rule-group links, then Proceed submits a global exclusion', async () => {
     stubApi(scopedStatus)
@@ -171,19 +188,37 @@ describe('AddModal - context payload', () => {
   const getApiHandlerMock = vi.mocked(GetApiHandler)
   const postApiHandlerMock = vi.mocked(PostApiHandler)
 
+  const collections = [
+    { id: 1, title: 'Show collection', type: 'show' },
+    { id: 2, title: 'Season collection', type: 'season' },
+    { id: 3, title: 'Episode collection', type: 'episode' },
+    { id: 4, title: 'Movie collection', type: 'movie' },
+  ]
+
+  const stubApi = (children: unknown[] = []) => {
+    getApiHandlerMock.mockImplementation(((url: string) => {
+      if (url.startsWith('/media-server/meta/'))
+        return Promise.resolve(children)
+      if (url.startsWith('/collections')) return Promise.resolve(collections)
+      return Promise.resolve(undefined)
+    }) as typeof GetApiHandler)
+  }
+
+  const optionTitles = () =>
+    Array.from(
+      (
+        screen.getByRole('combobox', {
+          name: 'Collection',
+        }) as HTMLSelectElement
+      ).options,
+    ).map((option) => option.text)
+
   beforeEach(() => {
     getApiHandlerMock.mockReset()
     postApiHandlerMock.mockReset()
-    getApiHandlerMock.mockImplementation(((url: string) => {
-      if (url.startsWith('/media-server/meta/')) return Promise.resolve([])
-      if (url === '/collections?typeId=season')
-        return Promise.resolve([{ id: 4, title: 'Season cleanup' }])
-      if (url.startsWith('/collections')) return Promise.resolve([])
-      return Promise.resolve(undefined)
-    }) as typeof GetApiHandler)
+    stubApi()
     postApiHandlerMock.mockResolvedValue(undefined as never)
   })
-  afterEach(() => cleanup())
 
   // Every failure used to be swallowed by a bare catch, so a refused add
   // looked identical to a successful one (#3381).
@@ -196,17 +231,7 @@ describe('AddModal - context payload', () => {
         },
       }),
     )
-    const onSubmit = vi.fn()
-
-    render(
-      <AddModal
-        mediaServerId="show-1"
-        type="show"
-        modalType="add"
-        onCancel={vi.fn()}
-        onSubmit={onSubmit}
-      />,
-    )
+    const { onSubmit } = renderModal({ mediaServerId: 'show-1', type: 'show' })
 
     fireEvent.click(await screen.findByRole('button', { name: 'Submit' }))
 
@@ -217,29 +242,45 @@ describe('AddModal - context payload', () => {
   })
 
   // A season or episode can only go into a collection of that type, and the
-  // list is refetched as the picker narrows.
+  // list narrows as the picker does.
   it('offers only the collection types the current selection can produce', async () => {
-    render(
-      <AddModal
-        mediaServerId="show-1"
-        type="show"
-        modalType="add"
-        onCancel={vi.fn()}
-        onSubmit={vi.fn()}
-      />,
-    )
+    stubApi([{ id: 'season-1', title: 'Season 1', index: 1 }])
+    renderModal({ mediaServerId: 'show-1', type: 'show' })
 
-    await screen.findByRole('button', { name: 'Submit' })
-
-    const requested = getApiHandlerMock.mock.calls
-      .map((call) => String(call[0]))
-      .filter((url) => url.startsWith('/collections'))
-
-    expect(requested).toEqual([
-      '/collections?typeId=show',
-      '/collections?typeId=season',
-      '/collections?typeId=episode',
+    await screen.findByRole('option', { name: 'Show collection' })
+    expect(optionTitles()).toEqual([
+      'Show collection',
+      'Season collection',
+      'Episode collection',
     ])
+
+    // Narrowing to a season drops the show collection without a refetch.
+    fireEvent.change(screen.getByRole('combobox', { name: 'Seasons' }), {
+      target: { value: 'season-1' },
+    })
+
+    await waitFor(() =>
+      expect(optionTitles()).toEqual([
+        'Season collection',
+        'Episode collection',
+      ]),
+    )
+  })
+
+  it('offers only movie collections for a movie', async () => {
+    renderModal({ mediaServerId: 'movie-1', type: 'movie' })
+
+    await screen.findByRole('option', { name: 'Movie collection' })
+    expect(optionTitles()).toEqual(['Movie collection'])
+  })
+
+  // A collection only accepts items from its own library, so the read is
+  // scoped to the one the item is in.
+  it('reads collections for the item library only', async () => {
+    renderModal({ mediaServerId: 'movie-1', type: 'movie', libraryId: '3' })
+
+    await screen.findByRole('option', { name: 'Movie collection' })
+    expect(getApiHandlerMock).toHaveBeenCalledWith('/collections?libraryId=3')
   })
 
   // The empty list used to say "Please select a collection" with nothing to
@@ -251,15 +292,7 @@ describe('AddModal - context payload', () => {
       return Promise.resolve(undefined)
     }) as typeof GetApiHandler)
 
-    render(
-      <AddModal
-        mediaServerId="show-1"
-        type="show"
-        modalType="add"
-        onCancel={vi.fn()}
-        onSubmit={vi.fn()}
-      />,
-    )
+    renderModal({ mediaServerId: 'show-1', type: 'show' })
 
     const submit = (await screen.findByRole('button', {
       name: 'Submit',
@@ -271,71 +304,30 @@ describe('AddModal - context payload', () => {
     expect(screen.queryByText('Please select a collection')).toBeNull()
   })
 
-  // A slow read for the wider selection used to land last and re-offer
-  // collection types the current selection cannot fill.
-  it('ignores a collection read the selection has moved past', async () => {
-    let releaseWide: (value: unknown) => void = () => {}
-    const wide = new Promise((resolve) => {
-      releaseWide = resolve
-    })
-
+  // A failed read leaves the same empty picker as an empty library, but the
+  // cause is different - and Submit has nothing to send either way.
+  it('reports a failed collection read instead of an empty picker', async () => {
     getApiHandlerMock.mockImplementation(((url: string) => {
-      if (url.startsWith('/media-server/meta/'))
-        return Promise.resolve([
-          { id: 'season-1', title: 'Season 1', index: 1 },
-        ])
-      // The show read only happens for the wider "all seasons" selection.
-      if (url.startsWith('/collections?typeId=show'))
-        return wide.then(() => [{ id: 1, title: 'Show collection' }])
-      if (url.startsWith('/collections?typeId=season'))
-        return Promise.resolve([{ id: 2, title: 'Season collection' }])
-      if (url.startsWith('/collections?typeId=episode'))
-        return Promise.resolve([{ id: 3, title: 'Episode collection' }])
-      return Promise.resolve(undefined)
+      if (url.startsWith('/media-server/meta/')) return Promise.resolve([])
+      return Promise.reject(new Error('Network Error'))
     }) as typeof GetApiHandler)
 
-    render(
-      <AddModal
-        mediaServerId="show-1"
-        type="show"
-        modalType="add"
-        onCancel={vi.fn()}
-        onSubmit={vi.fn()}
-      />,
-    )
+    renderModal({ mediaServerId: 'movie-1', type: 'movie' })
 
-    // Narrow to a season while the wider read is still outstanding.
-    fireEvent.change(await screen.findByRole('combobox', { name: 'Seasons' }), {
-      target: { value: 'season-1' },
-    })
-    await waitFor(() =>
-      expect(
-        screen.queryByRole('option', { name: 'Show collection' }),
-      ).toBeNull(),
-    )
-
-    releaseWide(undefined)
-
-    await waitFor(() =>
-      expect(
-        screen.getByRole('option', { name: 'Season collection' }),
-      ).toBeTruthy(),
-    )
-    expect(screen.queryByRole('option', { name: 'Show collection' })).toBeNull()
+    expect(await screen.findByText('Network Error')).toBeTruthy()
+    expect(
+      screen.queryByText(/No collection in this library can take this item/),
+    ).toBeNull()
+    const submit = screen.getByRole('button', {
+      name: 'Submit',
+    }) as HTMLButtonElement
+    expect(submit.disabled).toBe(true)
   })
 
   // A -1 context id let the server act on the show itself, so a season
   // collection received a show id and Plex answered 400 (#3381).
   it('identifies "all seasons" by the show id rather than a sentinel', async () => {
-    render(
-      <AddModal
-        mediaServerId="show-1"
-        type="show"
-        modalType="add"
-        onCancel={vi.fn()}
-        onSubmit={vi.fn()}
-      />,
-    )
+    renderModal({ mediaServerId: 'show-1', type: 'show' })
 
     fireEvent.click(await screen.findByRole('button', { name: 'Submit' }))
 
@@ -345,7 +337,7 @@ describe('AddModal - context payload', () => {
         {
           mediaId: 'show-1',
           context: { id: 'show-1', type: 'show' },
-          collectionId: 4,
+          collectionId: 1,
           action: 0,
         },
       ),
