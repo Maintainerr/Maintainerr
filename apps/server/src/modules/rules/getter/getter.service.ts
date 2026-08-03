@@ -74,7 +74,10 @@ export class ValueGetterService {
                 ? this.embyGetter
                 : null;
 
-        return getter?.get(val2, libItem, dataType, ruleGroup) ?? null;
+        return (
+          getter?.get(val2, libItem, dataType, ruleGroup, arrLookupCache) ??
+          null
+        );
       }
       case Application.RADARR: {
         return await this.radarrGetter.get(

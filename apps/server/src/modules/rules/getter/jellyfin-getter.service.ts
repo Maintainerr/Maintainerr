@@ -15,10 +15,12 @@ import {
   RuleConstants,
 } from '../constants/rules.constants';
 import { RulesDto } from '../dtos/rules.dto';
+import { ArrLookupCache } from '../helpers/arr-lookup-cache';
 import {
   filterRuleCollectionNames,
   mapRuleUserIdsToNames,
 } from '../helpers/rule-property.helper';
+import { MetadataRuleValueService } from './metadata-rule-value.service';
 
 /**
  * Jellyfin Getter Service
@@ -40,6 +42,7 @@ export class JellyfinGetterService {
 
   constructor(
     private readonly jellyfinAdapter: JellyfinAdapterService,
+    private readonly metadataRuleValueService: MetadataRuleValueService,
     private readonly logger: MaintainerrLogger,
   ) {
     logger.setContext(JellyfinGetterService.name);
@@ -55,6 +58,7 @@ export class JellyfinGetterService {
     libItem: MediaItem,
     dataType?: MediaItemType,
     ruleGroup?: RulesDto,
+    arrLookupCache?: ArrLookupCache,
   ): Promise<RuleValueType> {
     try {
       if (!this.jellyfinAdapter.isSetup()) {
@@ -66,6 +70,13 @@ export class JellyfinGetterService {
       if (!prop) {
         this.logger.warn(`Unknown Jellyfin property ID: ${id}`);
         return null;
+      }
+
+      if (prop.name === 'studios') {
+        return await this.metadataRuleValueService.getStudios(
+          libItem,
+          arrLookupCache,
+        );
       }
 
       // Which library's prefetched watch snapshot may answer the reads below.

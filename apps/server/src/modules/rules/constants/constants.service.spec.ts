@@ -183,3 +183,24 @@ describe('RuleConstanstService', () => {
     });
   });
 });
+
+describe('RuleConstanstService with the real rule constants', () => {
+  // Uses the constructor-built RuleConstants so these round-trips break if the
+  // shared studios property (id 46) is removed or renamed on any server.
+  const service = new RuleConstanstService();
+
+  it.each([
+    [Application.PLEX, 'Plex.studios'],
+    [Application.JELLYFIN, 'Jellyfin.studios'],
+    [Application.EMBY, 'Emby.studios'],
+  ])(
+    'round-trips the studios identifier for application %i',
+    (application, identifier) => {
+      expect(service.getValueIdentifier([application, 46])).toBe(identifier);
+      expect(service.getValueFromIdentifier(identifier)).toEqual([
+        application,
+        46,
+      ]);
+    },
+  );
+});

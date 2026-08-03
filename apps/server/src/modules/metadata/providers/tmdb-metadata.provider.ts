@@ -79,6 +79,7 @@ export class TmdbMetadataProvider implements IMetadataProvider {
       posterUrl: this.buildImageUrl(record.poster_path, 'w500'),
       backdropUrl: this.buildImageUrl(record.backdrop_path, 'w1280'),
       rating: record.vote_average || undefined,
+      studios: this.getStudios(record, type),
       externalIds: {
         tmdb: record.id,
         tvdb: record.external_ids?.tvdb_id ?? undefined,
@@ -100,6 +101,25 @@ export class TmdbMetadataProvider implements IMetadataProvider {
       seasonCount:
         'seasons' in record ? this.countRealSeasons(record.seasons) : undefined,
     };
+  }
+
+  // Movies use production companies, TV uses networks - the same split Seerr,
+  // Radarr (studio) and Sonarr (network) landed on, and what media servers'
+  // own TMDB agents surface as an item's studio. Movie company lists are kept
+  // unfiltered: TMDB does not flag distributors or shell companies, so any
+  // heuristic would silently drop real studios from a CONTAINS match.
+  private getStudios(
+    record: TmdbMovieDetails | TmdbTvDetails,
+    type: 'movie' | 'tv',
+  ): string[] | undefined {
+    const values =
+      type === 'movie'
+        ? (record as TmdbMovieDetails).production_companies
+        : (record as TmdbTvDetails).networks;
+
+    return Array.isArray(values)
+      ? values.map((value) => value.name)
+      : undefined;
   }
 
   private countRealSeasons(

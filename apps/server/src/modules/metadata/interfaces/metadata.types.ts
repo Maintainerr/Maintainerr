@@ -41,6 +41,7 @@ export interface MetadataDetails {
   posterUrl?: string;
   backdropUrl?: string;
   rating?: number;
+  studios?: string[];
   externalIds: ResolvedMediaIds;
   type: 'movie' | 'tv';
   // Show-only fallback fields. Limited to values whose semantics match across

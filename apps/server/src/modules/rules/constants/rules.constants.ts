@@ -503,6 +503,13 @@ export class RuleConstants {
           type: RuleType.DATE,
           cacheReset: true,
         },
+        {
+          id: 46,
+          name: 'studios',
+          humanName: '[list] Studios',
+          mediaType: MediaType.BOTH,
+          type: RuleType.TEXT_LIST,
+        },
       ],
     },
     {
@@ -1646,6 +1653,13 @@ export class RuleConstants {
           mediaType: MediaType.MOVIE,
           type: RuleType.DATE,
           cacheReset: true,
+        },
+        {
+          id: 46,
+          name: 'studios',
+          humanName: '[list] Studios',
+          mediaType: MediaType.BOTH,
+          type: RuleType.TEXT_LIST,
         },
       ],
     },
