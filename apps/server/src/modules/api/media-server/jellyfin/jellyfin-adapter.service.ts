@@ -944,7 +944,10 @@ export class JellyfinAdapterService implements IMediaServerService {
         enableUserData: true,
       });
 
-      const item = response.data.Items?.[0];
+      // Jellyfin silently drops an unparseable ids filter and answers with an
+      // unfiltered listing, so only an exact id match may count as a result -
+      // taking the first row would resolve garbage input to a random item.
+      const item = response.data.Items?.find((el) => el.Id === itemId);
       if (!item) return undefined;
 
       // Only a resolved item is cached. This method answers undefined for both
@@ -981,7 +984,7 @@ export class JellyfinAdapterService implements IMediaServerService {
         enableUserData: false,
         limit: 1,
       });
-      return Boolean(response.data.Items?.[0]);
+      return Boolean(response.data.Items?.some((el) => el.Id === itemId));
     } catch (error) {
       if (isAxiosError(error) && error.response?.status === 404) {
         return false;
@@ -1831,7 +1834,7 @@ export class JellyfinAdapterService implements IMediaServerService {
         ids: [itemId],
         enableUserData: true,
       });
-      return response.data.Items?.[0]?.UserData;
+      return response.data.Items?.find((el) => el.Id === itemId)?.UserData;
     } catch (error) {
       this.logger.debug(
         `Failed to get Jellyfin user data for item ${itemId} and user ${userId}`,
