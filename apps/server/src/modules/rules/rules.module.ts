@@ -25,6 +25,7 @@ import { Rules } from './entities/rules.entities';
 import { EmbyGetterService } from './getter/emby-getter.service';
 import { ValueGetterService } from './getter/getter.service';
 import { JellyfinGetterService } from './getter/jellyfin-getter.service';
+import { MetadataRuleValueService } from './getter/metadata-rule-value.service';
 import { SeerrGetterService } from './getter/seerr-getter.service';
 import { PlexGetterService } from './getter/plex-getter.service';
 import { RadarrGetterService } from './getter/radarr-getter.service';
@@ -84,6 +85,7 @@ import { RuleMaintenanceService } from './tasks/rule-maintenance.service';
     PlexGetterService,
     JellyfinGetterService,
     EmbyGetterService,
+    MetadataRuleValueService,
     RadarrGetterService,
     SonarrGetterService,
     SportarrGetterService,

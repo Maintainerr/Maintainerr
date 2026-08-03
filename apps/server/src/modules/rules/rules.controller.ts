@@ -1,4 +1,11 @@
-import { MediaItemType, RuleExecuteStatusDto } from '@maintainerr/contracts';
+import {
+  BULK_EXCLUSION_MAX_ITEMS,
+  bulkExclusionRequestSchema,
+  type BulkExclusionRequest,
+  type BulkExclusionResponse,
+  MediaItemType,
+  RuleExecuteStatusDto,
+} from '@maintainerr/contracts';
 import {
   BadRequestException,
   Body,
@@ -18,6 +25,7 @@ import {
 } from '@nestjs/common';
 import { ApiResponse } from '@nestjs/swagger';
 import { Response } from 'express';
+import { ZodValidationPipe } from 'nestjs-zod';
 import { MaintainerrLogger } from '../logging/logs.service';
 import { CommunityRule } from './dtos/communityRule.dto';
 import { ExclusionAction, ExclusionContextDto } from './dtos/exclusion.dto';
@@ -272,6 +280,22 @@ export class RulesController {
     } else {
       return await this.rulesService.removeExclusionWitData(body);
     }
+  }
+
+  @Post('/exclusions/bulk')
+  @ApiResponse({
+    status: 201,
+    description: 'Per-item results; failures are reported per media id.',
+  })
+  @ApiResponse({
+    status: 400,
+    description: `Rejected without processing: empty, or more than ${BULK_EXCLUSION_MAX_ITEMS} media ids.`,
+  })
+  async setBulkExclusions(
+    @Body(new ZodValidationPipe(bulkExclusionRequestSchema))
+    body: BulkExclusionRequest,
+  ): Promise<BulkExclusionResponse> {
+    return await this.rulesService.setBulkExclusions(body.mediaIds);
   }
 
   @Delete('/exclusion/:id')

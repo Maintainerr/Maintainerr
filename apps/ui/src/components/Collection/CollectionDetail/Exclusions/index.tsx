@@ -1,8 +1,13 @@
-import { type MediaItem } from '@maintainerr/contracts'
+import {
+  MediaServerFeature,
+  supportsFeature,
+  type MediaItem,
+} from '@maintainerr/contracts'
 import { useCallback } from 'react'
 import { ICollection } from '../..'
 import CollectionDetailControlRow from '../CollectionDetailControlRow'
 import useInfinitePaginatedList from '../../../../hooks/useInfinitePaginatedList'
+import { useMediaServerType } from '../../../../hooks/useMediaServerType'
 import GetApiHandler from '../../../../utils/ApiHandler'
 import {
   getCollectionSortConfig,
@@ -30,8 +35,13 @@ export interface IExclusionMedia {
 
 const CollectionExcludions = (props: ICollectionExclusions) => {
   const fetchAmount = 30
+  const { mediaServerType } = useMediaServerType()
   const libraryType = props.collection.type === 'movie' ? 'movie' : 'show'
-  const sortConfig = getCollectionSortConfig(libraryType)
+  const sortConfig = getCollectionSortConfig(
+    libraryType,
+    'Recently Excluded',
+    supportsFeature(mediaServerType, MediaServerFeature.LIBRARY_STUDIO_SORT),
+  )
   const { sortValue, sortParams, onSortChange } =
     useMediaLibrarySort(sortConfig)
 

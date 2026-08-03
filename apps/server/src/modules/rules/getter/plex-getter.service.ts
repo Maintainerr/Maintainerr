@@ -15,6 +15,7 @@ import {
   RuleConstants,
 } from '../constants/rules.constants';
 import { RulesDto } from '../dtos/rules.dto';
+import { ArrLookupCache } from '../helpers/arr-lookup-cache';
 import {
   countRuleCollectionNames,
   definedUniqueValues,
@@ -24,6 +25,7 @@ import {
   trimRulePropertyNames,
   uniqueTrimmedRulePropertyNames,
 } from '../helpers/rule-property.helper';
+import { MetadataRuleValueService } from './metadata-rule-value.service';
 
 @Injectable()
 export class PlexGetterService {
@@ -33,6 +35,7 @@ export class PlexGetterService {
   constructor(
     private readonly plexApi: PlexApiService,
     private readonly plexAdapter: PlexAdapterService,
+    private readonly metadataRuleValueService: MetadataRuleValueService,
     private readonly logger: MaintainerrLogger,
   ) {
     logger.setContext(PlexGetterService.name);
@@ -47,9 +50,17 @@ export class PlexGetterService {
     libItem: MediaItem,
     dataType?: MediaItemType,
     ruleGroup?: RulesDto,
+    arrLookupCache?: ArrLookupCache,
   ): Promise<RuleValueType> {
     try {
       const prop = this.plexProperties.find((el) => el.id === id);
+
+      if (prop?.name === 'studios') {
+        return await this.metadataRuleValueService.getStudios(
+          libItem,
+          arrLookupCache,
+        );
+      }
 
       // Which library's prefetched watch-history snapshot may answer the reads
       // below. Absent (a single-item rule test) means every watch read goes

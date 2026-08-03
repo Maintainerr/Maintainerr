@@ -8,7 +8,7 @@ vi.mock('../../utils/ClientLogger', () => ({
 
 const renderButton = (
   onConfirm: () => Promise<void>,
-  props?: { confirmDisabled?: boolean },
+  props?: { disabled?: boolean; confirmDisabled?: boolean },
 ) =>
   render(
     <ConfirmActionButton
@@ -82,6 +82,18 @@ describe('ConfirmActionButton', () => {
 
     expect(confirm.hasAttribute('disabled')).toBe(true)
     fireEvent.click(confirm)
+    expect(onConfirm).not.toHaveBeenCalled()
+  })
+
+  it('does not open the dialog when the action button is disabled', () => {
+    const onConfirm = vi.fn().mockResolvedValue(undefined)
+
+    renderButton(onConfirm, { disabled: true })
+    const button = screen.getByRole('button', { name: 'Do it' })
+
+    expect(button.hasAttribute('disabled')).toBe(true)
+    fireEvent.click(button)
+    expect(screen.queryByText('Are you sure?')).toBeNull()
     expect(onConfirm).not.toHaveBeenCalled()
   })
 

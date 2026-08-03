@@ -122,7 +122,7 @@ function Button<P extends ElementTypes = 'button'>({
         {...(props as React.ComponentProps<'a'>)}
         ref={ref as ForwardedRef<HTMLAnchorElement>}
       >
-        <span className="flex items-center">{children}</span>
+        <span className="flex items-center justify-center">{children}</span>
       </a>
     )
   } else {
@@ -132,7 +132,7 @@ function Button<P extends ElementTypes = 'button'>({
         {...(props as React.ComponentProps<'button'>)}
         ref={ref as ForwardedRef<HTMLButtonElement>}
       >
-        <span className="flex items-center">{children}</span>
+        <span className="flex items-center justify-center">{children}</span>
       </button>
     )
   }

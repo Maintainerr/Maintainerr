@@ -61,6 +61,51 @@ describe('TmdbMetadataProvider', () => {
     expect(details?.seasonCount).toBe(2);
   });
 
+  it('maps movie production company names as studios', async () => {
+    tmdbApi.getMovie.mockResolvedValue({
+      id: 1,
+      title: 'Sample Movie',
+      release_date: '2010-01-01',
+      overview: '',
+      vote_average: 7,
+      poster_path: '/p.jpg',
+      backdrop_path: '/b.jpg',
+      external_ids: {},
+      production_companies: [
+        { id: 1, name: 'Company One', origin_country: 'US' },
+        { id: 2, name: 'Company Two', origin_country: 'GB' },
+      ],
+    } as any);
+
+    await expect(provider.getDetails(1, 'movie')).resolves.toMatchObject({
+      studios: ['Company One', 'Company Two'],
+    });
+  });
+
+  it('maps TV networks as studios, including a confirmed empty list', async () => {
+    tmdbApi.getTvShow.mockResolvedValue({
+      ...baseTvRecord,
+      status: 'Ended',
+      in_production: false,
+      networks: [{ id: 1, name: 'Network One', origin_country: 'US' }],
+    } as any);
+
+    await expect(provider.getDetails(1, 'tv')).resolves.toMatchObject({
+      studios: ['Network One'],
+    });
+
+    tmdbApi.getTvShow.mockResolvedValue({
+      ...baseTvRecord,
+      status: 'Ended',
+      in_production: false,
+      networks: [],
+    } as any);
+
+    await expect(provider.getDetails(1, 'tv')).resolves.toMatchObject({
+      studios: [],
+    });
+  });
+
   it('prefers in_production: true over an "Ended" status string', async () => {
     tmdbApi.getTvShow.mockResolvedValue({
       ...baseTvRecord,

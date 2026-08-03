@@ -14,10 +14,12 @@ import {
   RuleConstants,
 } from '../constants/rules.constants';
 import { RulesDto } from '../dtos/rules.dto';
+import { ArrLookupCache } from '../helpers/arr-lookup-cache';
 import {
   filterRuleCollectionNames,
   mapRuleUserIdsToNames,
 } from '../helpers/rule-property.helper';
+import { MetadataRuleValueService } from './metadata-rule-value.service';
 
 /**
  * Emby Getter Service
@@ -41,6 +43,7 @@ export class EmbyGetterService {
 
   constructor(
     private readonly embyAdapter: EmbyAdapterService,
+    private readonly metadataRuleValueService: MetadataRuleValueService,
     private readonly logger: MaintainerrLogger,
   ) {
     logger.setContext(EmbyGetterService.name);
@@ -56,6 +59,7 @@ export class EmbyGetterService {
     libItem: MediaItem,
     dataType?: MediaItemType,
     ruleGroup?: RulesDto,
+    arrLookupCache?: ArrLookupCache,
   ): Promise<RuleValueType> {
     try {
       if (!this.embyAdapter.isSetup()) {
@@ -67,6 +71,13 @@ export class EmbyGetterService {
       if (!prop) {
         this.logger.warn(`Unknown Emby property ID: ${id}`);
         return null;
+      }
+
+      if (prop.name === 'studios') {
+        return await this.metadataRuleValueService.getStudios(
+          libItem,
+          arrLookupCache,
+        );
       }
 
       // Fetch full metadata from Emby

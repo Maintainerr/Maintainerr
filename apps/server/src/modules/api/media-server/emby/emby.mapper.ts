@@ -162,6 +162,9 @@ export class EmbyMapper {
       parentIndex: item.ParentIndexNumber ?? undefined,
       collections: undefined,
       labels: item.Tags || undefined,
+      studios: item.Studios?.map((studio) => studio.Name ?? '').filter(
+        (studio) => studio.length > 0,
+      ),
     };
   }
 

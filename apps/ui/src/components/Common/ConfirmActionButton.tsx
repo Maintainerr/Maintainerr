@@ -10,10 +10,15 @@ interface ConfirmActionButtonProps {
   buttonLabel: string
   buttonIcon: ReactNode
   buttonType?: ButtonType
+  buttonClassName?: string
+  // Destructive callers pass 'danger' so the dialog's confirm carries the
+  // same weight as the action button that opened it.
+  confirmButtonType?: ButtonType
   modalTitle: string
   modalSize?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl'
   confirmLabel: string
   pendingLabel: string
+  disabled?: boolean
   confirmDisabled?: boolean
   // Shown when the action throws without a usable message, and logged as the
   // client-error summary.
@@ -33,10 +38,13 @@ const ConfirmActionButton = ({
   buttonLabel,
   buttonIcon,
   buttonType = 'default',
+  buttonClassName,
+  confirmButtonType = 'primary',
   modalTitle,
   modalSize,
   confirmLabel,
   pendingLabel,
+  disabled = false,
   confirmDisabled = false,
   errorMessage,
   errorContext,
@@ -48,7 +56,7 @@ const ConfirmActionButton = ({
   const [error, setError] = useState<string | undefined>()
 
   const handleConfirm = async () => {
-    if (executing || confirmDisabled) {
+    if (disabled || executing || confirmDisabled) {
       return
     }
 
@@ -70,7 +78,12 @@ const ConfirmActionButton = ({
 
   return (
     <>
-      <Button buttonType={buttonType} onClick={() => setConfirmOpen(true)}>
+      <Button
+        buttonType={buttonType}
+        className={buttonClassName}
+        disabled={disabled}
+        onClick={() => setConfirmOpen(true)}
+      >
         {buttonIcon}
         {buttonLabel}
       </Button>
@@ -90,9 +103,9 @@ const ConfirmActionButton = ({
           backgroundClickable={!executing}
           footerActions={
             <PendingButton
-              buttonType="primary"
+              buttonType={confirmButtonType}
               className="ml-3"
-              disabled={executing || confirmDisabled}
+              disabled={disabled || executing || confirmDisabled}
               isPending={executing}
               idleLabel={confirmLabel}
               pendingLabel={pendingLabel}

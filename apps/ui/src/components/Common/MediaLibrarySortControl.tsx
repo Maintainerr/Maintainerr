@@ -73,8 +73,10 @@ const getMediaLibrarySortOptions = (
   libraryType?: MediaLibrary['type'],
   {
     includeTitleAscending = true,
+    includeStudioSort = false,
   }: {
     includeTitleAscending?: boolean
+    includeStudioSort?: boolean
   } = {},
 ): Array<SortOption<MediaLibrarySortParams>> => {
   const airDateLabel =
@@ -85,6 +87,13 @@ const getMediaLibrarySortOptions = (
   if (includeTitleAscending) {
     options.push(
       createMediaLibrarySortOption('title.asc', titleAscendingSortLabel),
+    )
+  }
+
+  if (includeStudioSort) {
+    options.push(
+      createMediaLibrarySortOption('studio.asc', 'Studio (A-Z) Ascending'),
+      createMediaLibrarySortOption('studio.desc', 'Studio (Z-A) Descending'),
     )
   }
 
@@ -103,6 +112,7 @@ const getMediaLibrarySortOptions = (
 
 export const getMediaLibrarySortConfig = (
   libraryType?: MediaLibrary['type'],
+  includeStudioSort: boolean = false,
 ): SortConfig<MediaLibrarySortParams> => {
   return {
     defaultValue: defaultOverviewSortValue,
@@ -113,6 +123,7 @@ export const getMediaLibrarySortConfig = (
       ),
       ...getMediaLibrarySortOptions(libraryType, {
         includeTitleAscending: false,
+        includeStudioSort,
       }),
       createMediaLibrarySortOption('manual.desc', 'Manual Added First'),
       createMediaLibrarySortOption('excluded.desc', 'Excluded First'),
@@ -123,6 +134,7 @@ export const getMediaLibrarySortConfig = (
 export const getCollectionSortConfig = (
   libraryType?: MediaLibrary['type'],
   defaultLabel: string = 'Recently Excluded',
+  includeStudioSort: boolean = false,
 ): SortConfig<MediaLibrarySortParams> => {
   return {
     defaultValue: defaultSortValue,
@@ -131,7 +143,7 @@ export const getCollectionSortConfig = (
         value: defaultSortValue,
         label: defaultLabel,
       },
-      ...getMediaLibrarySortOptions(libraryType),
+      ...getMediaLibrarySortOptions(libraryType, { includeStudioSort }),
     ],
   }
 }
@@ -153,8 +165,13 @@ const collectionDeleteLatestSortOption: SortOption<CollectionMediaSortParams> =
 export const getCollectionMediaSortConfig = (
   libraryType?: MediaLibrary['type'],
   includeDeleteSoonest: boolean = false,
+  includeStudioSort: boolean = false,
 ): SortConfig<CollectionMediaSortParams> => {
-  const options = getCollectionSortConfig(libraryType, 'Recently Added')
+  const options = getCollectionSortConfig(
+    libraryType,
+    'Recently Added',
+    includeStudioSort,
+  )
     .options.map((option) => ({
       value: option.value,
       label: option.label,

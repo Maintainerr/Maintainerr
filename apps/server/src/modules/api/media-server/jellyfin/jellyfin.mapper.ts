@@ -207,6 +207,9 @@ export class JellyfinMapper {
       parentIndex: item.ParentIndexNumber ?? undefined,
       collections: undefined, // Need to query separately
       labels: item.Tags || undefined,
+      studios: item.Studios?.map((studio) => studio.Name ?? '').filter(
+        (studio) => studio.length > 0,
+      ),
     };
   }
 

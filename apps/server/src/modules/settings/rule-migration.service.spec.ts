@@ -1113,6 +1113,39 @@ describe('RuleMigrationService', () => {
       expect(rulesRepo.delete).toHaveBeenCalledWith(1);
     });
 
+    it('migrates the shared studios property from Plex to Jellyfin', async () => {
+      const mockRules: Partial<Rules>[] = [
+        {
+          id: 1,
+          ruleGroupId: 1,
+          ruleJson: JSON.stringify({
+            operator: null,
+            action: RulePossibility.CONTAINS,
+            firstVal: [Application.PLEX, 46],
+            customVal: { ruleTypeId: 4, value: 'Company One' },
+            section: 0,
+          }),
+          ruleGroup: { id: 1, name: 'Studio Group' } as RuleGroup,
+        },
+      ];
+
+      rulesRepo.find.mockResolvedValue(mockRules as Rules[]);
+      rulesRepo.update.mockResolvedValue({ affected: 1 } as any);
+
+      const result = await service.migrateRules(
+        MediaServerType.PLEX,
+        MediaServerType.JELLYFIN,
+        true,
+      );
+
+      expect(result.migratedRules).toBe(1);
+      expect(result.skippedRules).toBe(0);
+      const updatedJson = JSON.parse(
+        rulesRepo.update.mock.calls[0][1].ruleJson as string,
+      );
+      expect(updatedJson.firstVal).toEqual([Application.JELLYFIN, 46]);
+    });
+
     it('migrates Jellyfin rules to Emby as a no-op property remap (shared props)', async () => {
       // Emby and Jellyfin share the same props[] array reference in
       // RuleConstants, so every property ID stays identical.

@@ -3,6 +3,8 @@ import type {
   MediaLibrary,
   MediaLibrarySortParams,
 } from '@maintainerr/contracts'
+import { MediaServerFeature, supportsFeature } from '@maintainerr/contracts'
+import { CheckCircleIcon, DocumentRemoveIcon } from '@heroicons/react/solid'
 import {
   useCallback,
   use,
@@ -12,10 +14,15 @@ import {
   useRef,
   useState,
 } from 'react'
+import { toast } from 'react-toastify'
 import SearchContext from '../../contexts/search-context'
+import { useBulkExcludeMedia } from '../../api/rules'
 import useLibrarySelection from '../../hooks/useLibrarySelection'
+import { useMediaServerType } from '../../hooks/useMediaServerType'
 import { useRequestGeneration } from '../../hooks/useRequestGeneration'
 import GetApiHandler from '../../utils/ApiHandler'
+import Button from '../Common/Button'
+import ConfirmActionButton from '../Common/ConfirmActionButton'
 import LibrarySwitcher from '../Common/LibrarySwitcher'
 import LoadingSpinner from '../Common/LoadingSpinner'
 import PageControlRow from '../Common/PageControlRow'
@@ -25,6 +32,7 @@ import {
   sortMediaItems,
   useMediaLibrarySort,
 } from '../Common/MediaLibrarySortControl'
+import { invalidateMaintainerrStatusDetails } from '../Common/MediaCard/maintainerrStatus'
 import OverviewContent from './Content'
 
 interface OverviewBootstrapResult {
@@ -35,6 +43,9 @@ interface OverviewBootstrapResult {
     items: MediaItem[]
   }
 }
+
+const formatItemCount = (count: number): string =>
+  `${count} item${count === 1 ? '' : 's'}`
 
 export const buildLibraryContentQuery = ({
   page,
@@ -63,6 +74,11 @@ const Overview = () => {
 
   const [data, setData] = useState<MediaItem[]>([])
   const dataRef = useRef<MediaItem[]>([])
+  const [selectedMediaIds, setSelectedMediaIds] = useState<Set<string>>(
+    () => new Set(),
+  )
+  const [selectionMode, setSelectionMode] = useState(false)
+  const bulkExcludeMedia = useBulkExcludeMedia()
 
   const [totalSize, setTotalSize] = useState<number>(999)
   const totalSizeRef = useRef<number>(999)
@@ -84,6 +100,7 @@ const Overview = () => {
   const fetchingRef = useRef<boolean>(false)
   const { invalidate, guardedFetch } = useRequestGeneration()
   const SearchCtx = use(SearchContext)
+  const { mediaServerType } = useMediaServerType()
 
   const defaultLibraryId = libraries?.[0]?.id
   const effectiveSelectedLibraryId =
@@ -94,9 +111,13 @@ const Overview = () => {
   const currentLibraryType = libraries?.find(
     (library) => library.id === effectiveSelectedLibraryId,
   )?.type
+  const supportsStudioSort = supportsFeature(
+    mediaServerType,
+    MediaServerFeature.LIBRARY_STUDIO_SORT,
+  )
   const sortConfig = useMemo(
-    () => getMediaLibrarySortConfig(currentLibraryType),
-    [currentLibraryType],
+    () => getMediaLibrarySortConfig(currentLibraryType, supportsStudioSort),
+    [currentLibraryType, supportsStudioSort],
   )
   const { sortValue, sortParams, onSortChange } =
     useMediaLibrarySort(sortConfig)
@@ -161,6 +182,8 @@ const Overview = () => {
           totalSizeRef.current = nextContent.totalSize
           dataRef.current = nextContent.items
           setData(nextContent.items)
+          setSelectedMediaIds(new Set())
+          setSelectionMode(false)
         }
       } catch {
         setLibrariesError(true)
@@ -240,6 +263,12 @@ const Overview = () => {
           pageDataRef.current = preservedPageCount ?? pageDataRef.current + 1
           dataRef.current = mergedItems
           setData(mergedItems)
+          if (options?.replaceExisting) {
+            // The outgoing cards stay clickable while the replacement is in
+            // flight, so anything selected in that window must not survive
+            // into the new item set.
+            setSelectedMediaIds(new Set())
+          }
           setLoadingExtra(false)
           setLoading(false)
           setFetching(false)
@@ -263,6 +292,10 @@ const Overview = () => {
   const performOverviewSync = useCallback(
     async (libraryId?: string, nextSortParams = sortParams) => {
       invalidateFetches()
+      // Every sync replaces the visible item set (search results, a library
+      // switch, a sort change, or leaving search), so a selection made against
+      // the previous set must never survive into the next one.
+      setSelectedMediaIds(new Set())
 
       if (SearchCtx.search.text !== '') {
         setLoading(true)
@@ -282,6 +315,7 @@ const Overview = () => {
               setTotalSize(result.data.length)
               pageDataRef.current = result.data.length * 50
               setData(sortMediaItems(result.data, nextSortParams))
+              setSelectedMediaIds(new Set())
               setLoading(false)
             }
           } catch {
@@ -368,6 +402,86 @@ const Overview = () => {
     )
   }
 
+  // Stable identity: MediaCard is memoized, so an inline handler would
+  // re-render every loaded card on each selection click.
+  const handleSelectionChange = useCallback(
+    (mediaId: string, selected: boolean) => {
+      setSelectedMediaIds((currentIds) => {
+        const nextIds = new Set(currentIds)
+        if (selected) {
+          nextIds.add(mediaId)
+        } else {
+          nextIds.delete(mediaId)
+        }
+        return nextIds
+      })
+    },
+    [],
+  )
+
+  const handleSelectionModeChange = () => {
+    const nextSelectionMode = !selectionMode
+    setSelectionMode(nextSelectionMode)
+    if (!nextSelectionMode) {
+      setSelectedMediaIds(new Set())
+    }
+  }
+
+  const handleBulkExclusion = async () => {
+    const response = await bulkExcludeMedia.mutateAsync([...selectedMediaIds])
+    const failedIds = new Set(
+      response.results
+        .filter((result) => result.code !== 1)
+        .map((result) => result.mediaId),
+    )
+    const succeededIds = new Set(
+      response.results
+        .filter((result) => result.code === 1)
+        .map((result) => result.mediaId),
+    )
+
+    setSelectedMediaIds(failedIds)
+
+    if (succeededIds.size > 0) {
+      // The server cascades an excluded show to its seasons and episodes, so
+      // visible child cards (mixed search results) must be reconciled along
+      // with the exact submitted ids.
+      const isCovered = (item: MediaItem) =>
+        succeededIds.has(item.id) ||
+        (item.parentId !== undefined && succeededIds.has(item.parentId)) ||
+        (item.grandparentId !== undefined &&
+          succeededIds.has(item.grandparentId))
+
+      const nextItems = dataRef.current.map((item) =>
+        isCovered(item)
+          ? { ...item, maintainerrExclusionType: 'global' as const }
+          : item,
+      )
+      dataRef.current = nextItems
+      setData(nextItems)
+
+      const invalidated = new Set(succeededIds)
+      for (const item of nextItems) {
+        if (isCovered(item)) {
+          invalidated.add(item.id)
+        }
+      }
+      for (const mediaId of invalidated) {
+        invalidateMaintainerrStatusDetails(mediaId)
+      }
+    }
+
+    const succeeded = succeededIds.size
+    const failed = failedIds.size
+    if (failed > 0) {
+      toast.error(
+        `${formatItemCount(succeeded)} excluded. ${formatItemCount(failed)} could not be excluded; the failed items stay selected.`,
+      )
+    } else {
+      toast.success(`${formatItemCount(succeeded)} excluded.`)
+    }
+  }
+
   useEffect(() => {
     return () => {
       invalidateFetches()
@@ -436,6 +550,12 @@ const Overview = () => {
   const canRequestLibraryContent = Boolean(resolvedLibraryId)
   const hasMoreData = data.length < totalSize
   const showRefreshing = isLoading && hasData
+  const selectedCount = selectedMediaIds.size
+  const selectionHasContainers = data.some(
+    (item) =>
+      selectedMediaIds.has(item.id) &&
+      (item.type === 'show' || item.type === 'season'),
+  )
   const showBootstrapLoading =
     !searchUsed &&
     !hasData &&
@@ -449,11 +569,47 @@ const Overview = () => {
     <>
       <title>Overview - Maintainerr</title>
       <div className="w-full px-4">
-        {!searchUsed ? (
-          <PageControlRow
-            className="justify-end"
-            controlsClassName="sm:w-auto"
-            controls={
+        <PageControlRow
+          controlsClassName="sm:w-auto"
+          actions={
+            <>
+              <Button
+                buttonType={selectionMode ? 'primary' : 'default'}
+                className="min-w-44"
+                onClick={handleSelectionModeChange}
+              >
+                <CheckCircleIcon className="h-4 w-4" />
+                {selectionMode ? 'Done selecting' : 'Select items'}
+              </Button>
+              <ConfirmActionButton
+                buttonLabel={
+                  selectedCount > 0
+                    ? `Exclude selected (${selectedCount})`
+                    : 'Exclude selected'
+                }
+                buttonIcon={<DocumentRemoveIcon className="h-4 w-4" />}
+                buttonType="danger"
+                buttonClassName="min-w-52"
+                confirmButtonType="danger"
+                disabled={!selectionMode || selectedCount === 0}
+                modalTitle="Exclude selected items"
+                confirmLabel="Exclude items"
+                pendingLabel="Excluding items..."
+                errorMessage="The selected items could not be excluded"
+                errorContext="bulk media exclusion"
+                onConfirm={handleBulkExclusion}
+              >
+                <p>
+                  Exclude the selected items globally?{' '}
+                  {selectionHasContainers
+                    ? 'Selected shows and seasons are excluded together with everything they contain, and any scoped exclusions for the same items are replaced.'
+                    : 'Any scoped exclusions for the same items are replaced.'}
+                </p>
+              </ConfirmActionButton>
+            </>
+          }
+          controls={
+            !searchUsed ? (
               <div className="ml-auto flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center sm:justify-end sm:gap-2">
                 <div className="w-full sm:w-[18rem]">
                   <LibrarySwitcher
@@ -477,9 +633,9 @@ const Overview = () => {
                   />
                 </div>
               </div>
-            }
-          />
-        ) : undefined}
+            ) : undefined
+          }
+        />
         {showBootstrapLoading ? (
           <div className="min-h-80">
             <LoadingSpinner />
@@ -492,6 +648,9 @@ const Overview = () => {
             extrasLoading={isLoadingExtra && !isLoading && hasMoreData}
             data={data}
             libraryId={resolvedLibraryId ?? ''}
+            selectionMode={selectionMode}
+            selectedMediaIds={selectedMediaIds}
+            onToggleSelection={handleSelectionChange}
           />
         ) : (
           <OverviewContent
@@ -501,6 +660,9 @@ const Overview = () => {
             extrasLoading={false}
             data={data}
             libraryId=""
+            selectionMode={selectionMode}
+            selectedMediaIds={selectedMediaIds}
+            onToggleSelection={handleSelectionChange}
           />
         )}
       </div>

@@ -27,6 +27,11 @@ const getAirDateBucket = (item: MediaItem): number | undefined =>
 
 const getWatchCount = (item: MediaItem): number | undefined => item.viewCount
 
+const getStudio = (item: MediaItem): string | undefined => {
+  const studio = item.studios?.find((value) => value.trim().length > 0)
+  return studio?.trim()
+}
+
 export interface CompareMediaItemsOptions {
   /**
    * Override the timestamp used for the `deleteSoonest` sort. Collection
@@ -112,6 +117,25 @@ const compareNumericWithTitleFallback = (
   )
 }
 
+const compareTextWithTitleFallback = (
+  leftItem: MediaItem,
+  rightItem: MediaItem,
+  getValue: (item: MediaItem) => string | undefined,
+  direction: 1 | -1,
+): number => {
+  const leftValue = getValue(leftItem)
+  const rightValue = getValue(rightItem)
+  if (leftValue === undefined && rightValue === undefined) {
+    return compareByDisplayHierarchy(leftItem, rightItem)
+  }
+  if (leftValue === undefined) return 1
+  if (rightValue === undefined) return -1
+  return (
+    leftValue.localeCompare(rightValue) * direction ||
+    compareByDisplayHierarchy(leftItem, rightItem)
+  )
+}
+
 const compareMaintainerrState = (
   leftItem: MediaItem,
   rightItem: MediaItem,
@@ -159,6 +183,13 @@ export const compareMediaItemsBySort = (
         leftItem,
         rightItem,
         getWatchCount,
+        direction,
+      )
+    case 'studio':
+      return compareTextWithTitleFallback(
+        leftItem,
+        rightItem,
+        getStudio,
         direction,
       )
     case 'manual':
