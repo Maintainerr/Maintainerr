@@ -102,6 +102,12 @@ export class SettingsDataService implements SettingDto {
 
   streamystats_url: string;
 
+  tracearr_url: string;
+
+  tracearr_api_key: string;
+
+  tracearr_server_id: string;
+
   download_client_url: string;
 
   download_client_username: string;
@@ -180,6 +186,9 @@ export class SettingsDataService implements SettingDto {
       this.tautulli_url = settingsDb?.tautulli_url;
       this.tautulli_api_key = settingsDb?.tautulli_api_key;
       this.streamystats_url = settingsDb?.streamystats_url;
+      this.tracearr_url = settingsDb?.tracearr_url;
+      this.tracearr_api_key = settingsDb?.tracearr_api_key;
+      this.tracearr_server_id = settingsDb?.tracearr_server_id;
       this.download_client_url = settingsDb?.download_client_url;
       this.download_client_username = settingsDb?.download_client_username;
       this.download_client_password = settingsDb?.download_client_password;
@@ -301,6 +310,7 @@ export class SettingsDataService implements SettingDto {
       tmdb_api_key: maskSecret(settings.tmdb_api_key),
       tvdb_api_key: maskSecret(settings.tvdb_api_key),
       tautulli_api_key: maskSecret(settings.tautulli_api_key),
+      tracearr_api_key: maskSecret(settings.tracearr_api_key),
       download_client_password: maskSecret(settings.download_client_password),
     };
   }

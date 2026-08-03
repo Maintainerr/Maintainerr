@@ -53,6 +53,7 @@ describe('RulesService.updateRules', () => {
       (overrides.eventEmitter ?? {}) as any,
       (overrides.servarrTagService ?? createMockServarrTagService()) as any,
       logger as any,
+      {} as any,
     );
 
   // Let the fire-and-forget membership reconcile settle before asserting on it.

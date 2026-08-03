@@ -9,6 +9,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { z } from 'zod'
 import ExternalServiceSettingsPage, {
   type ExternalServiceFieldConfig,
+  type ExternalServiceSelectOption,
 } from './ExternalServiceSettingsPage'
 
 const getApiHandler = vi.fn()
@@ -51,6 +52,21 @@ const urlApiKeySchema = z.object({
 })
 
 const urlOnlySchema = z.object({ url: z.string().min(1) })
+
+const tracearrFields: ExternalServiceFieldConfig[] = [
+  ...urlApiKeyFields,
+  {
+    name: 'server_id',
+    label: 'Tracearr server',
+    type: 'select',
+    required: true,
+    loadOptions: async (values) =>
+      await postApiHandler('/settings/tracearr/servers', {
+        url: values.url,
+        api_key: values.api_key,
+      }),
+  },
+]
 
 describe('ExternalServiceSettingsPage', () => {
   beforeEach(() => {
@@ -130,7 +146,7 @@ describe('ExternalServiceSettingsPage', () => {
     fireEvent.change(screen.getByLabelText(/URL/), {
       target: { value: '' },
     })
-    fireEvent.change(screen.getByLabelText('API key'), {
+    fireEvent.change(screen.getByLabelText(/API key/), {
       target: { value: '' },
     })
 
@@ -184,5 +200,186 @@ describe('ExternalServiceSettingsPage', () => {
     await waitFor(() => {
       expect(deleteApiHandler).toHaveBeenCalledWith('/settings/streamystats')
     })
+  })
+
+  it('shows a warning only when an integration is not configured', async () => {
+    getApiHandler.mockResolvedValue({ url: '', api_key: '' })
+
+    render(
+      <ExternalServiceSettingsPage
+        scope="Tracearr settings"
+        pageTitle="Tracearr settings - Maintainerr"
+        heading="Tracearr Settings"
+        description="Tracearr configuration"
+        warning="Tracearr is not configured"
+        docsPage="Configuration/#tracearr"
+        settingsPath="/settings/tracearr"
+        testPath="/settings/test/tracearr"
+        schema={urlApiKeySchema}
+        fields={urlApiKeyFields}
+        testSuccessTitle="Tracearr"
+        testFailureMessage="Failed to connect"
+      />,
+    )
+
+    expect(await screen.findByText('Tracearr is not configured')).not.toBeNull()
+  })
+
+  it('hides the setup warning for configured integrations', async () => {
+    render(
+      <ExternalServiceSettingsPage
+        scope="Tracearr settings"
+        pageTitle="Tracearr settings - Maintainerr"
+        heading="Tracearr Settings"
+        description="Tracearr configuration"
+        warning="Tracearr is not configured"
+        docsPage="Configuration/#tracearr"
+        settingsPath="/settings/tracearr"
+        testPath="/settings/test/tracearr"
+        schema={urlApiKeySchema}
+        fields={urlApiKeyFields}
+        testSuccessTitle="Tracearr"
+        testFailureMessage="Failed to connect"
+      />,
+    )
+
+    await screen.findByDisplayValue('http://seerr.local')
+
+    expect(screen.queryByText('Tracearr is not configured')).toBeNull()
+  })
+
+  it('loads select options after connection fields are available', async () => {
+    postApiHandler.mockResolvedValue([
+      {
+        value: '11111111-1111-4111-8111-111111111111',
+        label: 'Sample Plex',
+      },
+    ])
+
+    render(
+      <ExternalServiceSettingsPage
+        scope="Tracearr settings"
+        pageTitle="Tracearr settings - Maintainerr"
+        heading="Tracearr Settings"
+        description="Tracearr configuration"
+        docsPage="Configuration/#tracearr"
+        settingsPath="/settings/tracearr"
+        testPath="/settings/test/tracearr"
+        schema={z.object({
+          url: z.string().min(1),
+          api_key: z.string().min(1),
+          server_id: z.string().uuid(),
+        })}
+        fields={tracearrFields}
+        testSuccessTitle="Tracearr"
+        testFailureMessage="Failed to connect"
+      />,
+    )
+
+    const serverSelect = await screen.findByLabelText('Tracearr server *')
+
+    await waitFor(() => {
+      expect(postApiHandler).toHaveBeenCalledWith(
+        '/settings/tracearr/servers',
+        {
+          url: 'http://seerr.local',
+          api_key: 'saved-key',
+        },
+      )
+    })
+    expect(
+      await screen.findByRole('option', { name: 'Sample Plex' }),
+    ).not.toBeNull()
+
+    fireEvent.focus(serverSelect)
+
+    expect(postApiHandler).toHaveBeenCalledTimes(1)
+
+    fireEvent.change(serverSelect, {
+      target: { value: '11111111-1111-4111-8111-111111111111' },
+    })
+
+    expect((serverSelect as HTMLSelectElement).selectedOptions[0]?.text).toBe(
+      'Sample Plex',
+    )
+  })
+
+  it('shows a select error when options cannot be loaded', async () => {
+    postApiHandler.mockRejectedValue(
+      new Error('Could not load Tracearr servers. Verify URL and API key.'),
+    )
+
+    render(
+      <ExternalServiceSettingsPage
+        scope="Tracearr settings"
+        pageTitle="Tracearr settings - Maintainerr"
+        heading="Tracearr Settings"
+        description="Tracearr configuration"
+        docsPage="Configuration/#tracearr"
+        settingsPath="/settings/tracearr"
+        testPath="/settings/test/tracearr"
+        schema={z.object({
+          url: z.string().min(1),
+          api_key: z.string().min(1),
+          server_id: z.string().uuid(),
+        })}
+        fields={tracearrFields}
+        testSuccessTitle="Tracearr"
+        testFailureMessage="Failed to connect"
+      />,
+    )
+
+    expect(
+      await screen.findByText(
+        'Could not load Tracearr servers. Verify URL and API key.',
+      ),
+    ).not.toBeNull()
+  })
+
+  it('does not start duplicate option loads when a connection field blurs into the select', async () => {
+    let resolveOptions:
+      ((options: ExternalServiceSelectOption[]) => void) | undefined
+    postApiHandler.mockImplementation(
+      () =>
+        new Promise<ExternalServiceSelectOption[]>((resolve) => {
+          resolveOptions = resolve
+        }),
+    )
+
+    render(
+      <ExternalServiceSettingsPage
+        scope="Tracearr settings"
+        pageTitle="Tracearr settings - Maintainerr"
+        heading="Tracearr Settings"
+        description="Tracearr configuration"
+        docsPage="Configuration/#tracearr"
+        settingsPath="/settings/tracearr"
+        testPath="/settings/test/tracearr"
+        schema={z.object({
+          url: z.string().min(1),
+          api_key: z.string().min(1),
+          server_id: z.string().uuid(),
+        })}
+        fields={tracearrFields}
+        testSuccessTitle="Tracearr"
+        testFailureMessage="Failed to connect"
+      />,
+    )
+
+    const apiKey = await screen.findByLabelText('API key')
+    const serverSelect = screen.getByLabelText('Tracearr server *')
+    await waitFor(() => {
+      expect(postApiHandler).toHaveBeenCalledTimes(1)
+    })
+    resolveOptions?.([])
+    await waitFor(() => {
+      expect((serverSelect as HTMLSelectElement).disabled).toBe(false)
+    })
+
+    fireEvent.change(apiKey, { target: { value: 'new-key' } })
+    fireEvent.blur(apiKey)
+    fireEvent.focus(serverSelect)
+
+    expect(postApiHandler).toHaveBeenCalledTimes(2)
   })
 })

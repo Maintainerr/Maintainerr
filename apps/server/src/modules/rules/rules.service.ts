@@ -23,6 +23,7 @@ import { ArrTagItem, ServarrTagService } from '../actions/servarr-tag.service';
 import cacheManager from '../api/lib/cache';
 import { MediaServerFactory } from '../api/media-server/media-server.factory';
 import { IMediaServerService } from '../api/media-server/media-server.interface';
+import { TracearrApiService } from '../api/tracearr-api/tracearr-api.service';
 import { CollectionsService } from '../collections/collections.service';
 import { Collection } from '../collections/entities/collection.entities';
 import { CollectionMedia } from '../collections/entities/collection_media.entities';
@@ -93,6 +94,7 @@ export class RulesService {
     private readonly eventEmitter: EventEmitter2,
     private readonly servarrTagService: ServarrTagService,
     private readonly logger: MaintainerrLogger,
+    private readonly tracearrApi: TracearrApiService,
   ) {
     logger.setContext(RulesService.name);
     this.ruleConstants = new RuleConstants();
@@ -100,6 +102,16 @@ export class RulesService {
 
   private async getMediaServer(): Promise<IMediaServerService> {
     return this.mediaServerFactory.getService();
+  }
+
+  private usesTracearr(rules: Rules[]): boolean {
+    return rules.some((rule) => {
+      const parsedRule = JSON.parse(rule.ruleJson) as RuleDto;
+      return (
+        parsedRule.firstVal[0] === Application.TRACEARR ||
+        parsedRule.lastVal?.[0] === Application.TRACEARR
+      );
+    });
   }
 
   async getRuleConstants(): Promise<RuleConstants> {
@@ -150,6 +162,16 @@ export class RulesService {
       if (!settings.streamystats_url || !settings.jellyfin_api_key) {
         localConstants.applications = localConstants.applications.filter(
           (el) => el.id !== Application.STREAMYSTATS,
+        );
+      }
+
+      if (
+        !settings.tracearr_url ||
+        !settings.tracearr_api_key ||
+        !settings.tracearr_server_id
+      ) {
+        localConstants.applications = localConstants.applications.filter(
+          (el) => el.id !== Application.TRACEARR,
         );
       }
     }
@@ -1964,6 +1986,9 @@ export class RulesService {
 
     if (mediaResp) {
       group.rules = await this.getRules(group.id);
+      if (group.rules && this.usesTracearr(group.rules)) {
+        this.tracearrApi.invalidateHistory();
+      }
       const ruleComparator = this.ruleComparatorServiceFactory.create();
       try {
         const result = await ruleComparator.executeRulesWithData(
