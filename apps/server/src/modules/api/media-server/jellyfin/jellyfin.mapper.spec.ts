@@ -331,6 +331,7 @@ describe('JellyfinMapper', () => {
           DateCreated: '2021-01-01T00:00:00.000Z',
           Overview: 'A test movie',
           ProductionYear: 2021,
+          Studios: [{ Name: 'Studio One' }, { Name: 'Studio Two' }],
           ProviderIds: {
             Imdb: 'tt1234567',
             Tmdb: '12345',
@@ -348,6 +349,7 @@ describe('JellyfinMapper', () => {
         expect(result.type).toBe('movie');
         expect(result.summary).toBe('A test movie');
         expect(result.year).toBe(2021);
+        expect(result.studios).toEqual(['Studio One', 'Studio Two']);
       });
 
       it('should handle missing optional fields', () => {

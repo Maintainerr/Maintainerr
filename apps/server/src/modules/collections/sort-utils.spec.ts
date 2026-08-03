@@ -87,6 +87,18 @@ describe('compareMediaItemsBySort tiebreakers', () => {
     expect(sortBy(views, 'watchCount', 'asc')).toEqual(['A', 'B', 'C']);
   });
 
+  it('sorts by the first studio with title tiebreakers and missing values last', () => {
+    const items: MediaItem[] = [
+      item({ title: 'C', studios: ['B Studio'] }),
+      item({ title: 'A', studios: ['A Studio'] }),
+      item({ title: 'B', studios: ['A Studio'] }),
+      item({ title: 'Z' }),
+    ];
+
+    expect(sortBy(items, 'studio', 'asc')).toEqual(['A', 'B', 'C', 'Z']);
+    expect(sortBy(items, 'studio', 'desc')).toEqual(['C', 'A', 'B', 'Z']);
+  });
+
   it('does not apply a title tiebreaker to status sorts (manual/excluded)', () => {
     // Status sorts intentionally only partition - incoming order must be
     // preserved within each partition for stable filter UX.

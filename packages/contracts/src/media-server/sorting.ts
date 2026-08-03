@@ -5,6 +5,7 @@ export const mediaLibrarySortFields = [
   'watchCount',
   'manual',
   'excluded',
+  'studio',
 ] as const
 
 export type MediaLibrarySortField = (typeof mediaLibrarySortFields)[number]

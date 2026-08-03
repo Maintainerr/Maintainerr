@@ -1,5 +1,6 @@
 import type {
   ArrDiskspaceResource,
+  BulkExclusionResponse,
   MediaServerCollectionSort,
 } from '@maintainerr/contracts'
 import {
@@ -14,6 +15,7 @@ import {
   useQueryClient,
   UseQueryOptions,
 } from '@tanstack/react-query'
+import { chunk } from 'lodash-es'
 import type { IRule } from '../components/Rules/Rule/RuleCreator'
 import type { IRuleGroup } from '../components/Rules/RuleGroup'
 import type { AgentConfiguration } from '../components/Settings/Notifications/CreateNotificationModal'
@@ -189,6 +191,31 @@ export const useRuleConstants = (options?: UseRuleConstantsOptions) => {
 }
 
 export type UseRuleConstants = ReturnType<typeof useRuleConstants>
+
+// Kept well below BULK_EXCLUSION_MAX_ITEMS: each excluded show cascades to
+// all of its seasons and episodes server-side, so smaller requests keep every
+// call comfortably inside reverse-proxy timeouts and let a selection larger
+// than one request cap still succeed as a whole.
+const BULK_EXCLUSION_REQUEST_CHUNK = 25
+
+export const useBulkExcludeMedia = () => {
+  return useMutation<BulkExclusionResponse, Error, string[]>({
+    mutationKey: ['rules', 'exclusions', 'bulk'],
+    mutationFn: async (mediaIds) => {
+      const results: BulkExclusionResponse['results'] = []
+
+      for (const batch of chunk(mediaIds, BULK_EXCLUSION_REQUEST_CHUNK)) {
+        const response = await PostApiHandler<BulkExclusionResponse>(
+          '/rules/exclusions/bulk',
+          { mediaIds: batch },
+        )
+        results.push(...response.results)
+      }
+
+      return { results }
+    },
+  })
+}
 
 export type { ArrDiskspaceResource } from '@maintainerr/contracts'
 

@@ -85,15 +85,15 @@ import { JellyfinMapper } from './jellyfin.mapper';
 import type { JellyfinWatchSnapshot } from './jellyfin.types';
 
 const toJellyfinSortBy = (sort?: MediaLibrarySortField): ItemSortBy => {
-  // The Jellyfin SDK enum does not expose every server-supported sort key,
-  // so use the documented raw values and narrow them for the request model.
   switch (sort) {
     case 'airDate':
-      return 'PremiereDate' as ItemSortBy;
+      return ItemSortBy.PremiereDate;
     case 'rating':
-      return 'CommunityRating' as ItemSortBy;
+      return ItemSortBy.CommunityRating;
     case 'watchCount':
-      return 'PlayCount' as ItemSortBy;
+      return ItemSortBy.PlayCount;
+    case 'studio':
+      return ItemSortBy.Studio;
     case 'title':
     default:
       return ItemSortBy.SortName;
@@ -939,6 +939,7 @@ export class JellyfinAdapterService implements IMediaServerService {
           ItemFields.Tags,
           ItemFields.Overview,
           ItemFields.People,
+          ItemFields.Studios,
         ],
         enableUserData: true,
       });
@@ -1135,6 +1136,7 @@ export class JellyfinAdapterService implements IMediaServerService {
           ItemFields.Path,
           ItemFields.DateCreated,
           ItemFields.MediaSources,
+          ItemFields.Studios,
         ],
         includeItemTypes: [
           BaseItemKind.Movie,
@@ -2068,6 +2070,9 @@ export class JellyfinAdapterService implements IMediaServerService {
                 ItemFields.ProviderIds,
                 ItemFields.Path,
                 ItemFields.DateCreated,
+                // Collection grids are sorted Maintainerr-side, so studio
+                // ordering needs the field on every hydrated child.
+                ItemFields.Studios,
               ],
               enableUserData: true,
               recursive: false,
@@ -2093,6 +2098,7 @@ export class JellyfinAdapterService implements IMediaServerService {
                   ItemFields.ProviderIds,
                   ItemFields.Path,
                   ItemFields.DateCreated,
+                  ItemFields.Studios,
                 ],
                 enableUserData: true,
               }),

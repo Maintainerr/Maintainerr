@@ -94,6 +94,7 @@ jest.mock('@jellyfin/sdk/lib/generated-client/models', () => ({
     Overview: 'Overview',
     ParentId: 'ParentId',
     People: 'People',
+    Studios: 'Studios',
   },
   LocationType: {
     FileSystem: 'FileSystem',
@@ -108,6 +109,10 @@ jest.mock('@jellyfin/sdk/lib/generated-client/models', () => ({
     SortName: 'SortName',
     DateCreated: 'DateCreated',
     Random: 'Random',
+    PremiereDate: 'PremiereDate',
+    CommunityRating: 'CommunityRating',
+    PlayCount: 'PlayCount',
+    Studio: 'Studio',
   },
   SortOrder: {
     Ascending: 'Ascending',
@@ -463,6 +468,47 @@ describe('JellyfinAdapterService', () => {
           startIndex: 0,
           limit: 30,
           fields: ['ProviderIds', 'DateCreated', 'Overview'],
+        }),
+      );
+    });
+
+    it('uses Jellyfin native studio sorting', async () => {
+      jellyfinApiMocks.getItems.mockResolvedValue({
+        data: { Items: [], TotalRecordCount: 0 },
+      });
+
+      await service.getLibraryContents('library-1', {
+        offset: 0,
+        limit: 30,
+        type: 'movie',
+        sort: 'studio',
+        sortOrder: 'desc',
+      });
+
+      expect(jellyfinApiMocks.getItems).toHaveBeenCalledWith(
+        expect.objectContaining({
+          sortBy: ['Studio'],
+          sortOrder: ['Descending'],
+        }),
+      );
+    });
+
+    it('includes studios in global search results for local studio sorting', async () => {
+      jellyfinApiMocks.getItems.mockResolvedValue({
+        data: { Items: [], TotalRecordCount: 0 },
+      });
+
+      await service.searchContent('query');
+
+      expect(jellyfinApiMocks.getItems).toHaveBeenCalledWith(
+        expect.objectContaining({
+          fields: [
+            'ProviderIds',
+            'Path',
+            'DateCreated',
+            'MediaSources',
+            'Studios',
+          ],
         }),
       );
     });
@@ -2080,6 +2126,35 @@ describe('JellyfinAdapterService', () => {
         'Failed to get collection collection-1',
       );
       expect(logger.debug).toHaveBeenCalledWith(serverError);
+    });
+
+    it('requests studios on both collection-children queries for studio sorting', async () => {
+      jellyfinApiMocks.getItems
+        .mockResolvedValueOnce({ data: { Items: [] } })
+        .mockResolvedValueOnce({
+          data: {
+            Items: [
+              { Id: 'item-1', Name: 'Movie One', Type: 'Movie', UserData: {} },
+            ],
+          },
+        });
+
+      await service.getCollectionChildren('collection-1');
+
+      expect(jellyfinApiMocks.getItems).toHaveBeenNthCalledWith(
+        1,
+        expect.objectContaining({
+          fields: expect.arrayContaining(['Studios']),
+          recursive: false,
+        }),
+      );
+      expect(jellyfinApiMocks.getItems).toHaveBeenNthCalledWith(
+        2,
+        expect.objectContaining({
+          fields: expect.arrayContaining(['Studios']),
+          recursive: true,
+        }),
+      );
     });
 
     it('retries once after a transient collection-children failure', async () => {

@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import MediaCard from './index'
@@ -22,8 +22,31 @@ vi.mock('../Button', () => ({
 }))
 
 vi.mock('../Poster/PosterCard', () => ({
-  default: ({ children }: { children: (image?: string) => ReactNode }) => (
-    <div>{children(undefined)}</div>
+  default: ({
+    children,
+    onClick,
+    onKeyDown,
+    role,
+    'aria-pressed': ariaPressed,
+    'aria-label': ariaLabel,
+  }: {
+    children: (image?: string) => ReactNode
+    onClick?: () => void
+    onKeyDown?: (event: React.KeyboardEvent<HTMLDivElement>) => void
+    role?: string
+    'aria-pressed'?: boolean
+    'aria-label'?: string
+  }) => (
+    <div
+      onClick={onClick}
+      onKeyDown={onKeyDown}
+      role={role}
+      aria-pressed={ariaPressed}
+      aria-label={ariaLabel}
+      tabIndex={0}
+    >
+      {children(undefined)}
+    </div>
   ),
 }))
 
@@ -65,6 +88,32 @@ describe('MediaCard', () => {
     )
 
     expect(screen.queryByText('EXCL')).toBeNull()
+  })
+
+  it('reports selection changes from a card in selection mode', () => {
+    const onToggleSelection = vi.fn()
+
+    render(
+      <MediaCard
+        id="movie-1"
+        title="Movie"
+        mediaType="movie"
+        collectionPage={false}
+        selectionMode
+        selected={false}
+        onToggleSelection={onToggleSelection}
+      />,
+    )
+
+    const card = screen.getByRole('button', { name: 'Select Movie' })
+    expect(card.getAttribute('aria-pressed')).toBe('false')
+    fireEvent.click(card)
+    expect(onToggleSelection).toHaveBeenCalledWith('movie-1', true)
+
+    fireEvent.keyDown(card, { key: 'Enter' })
+    expect(onToggleSelection).toHaveBeenCalledTimes(2)
+    expect(screen.queryByRole('button', { name: 'Add' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Excl' })).toBeNull()
   })
 
   it('numbers the season badge so seasons of one show stay distinguishable', () => {

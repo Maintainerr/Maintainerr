@@ -14,6 +14,7 @@ interface ConfirmActionButtonProps {
   modalSize?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl'
   confirmLabel: string
   pendingLabel: string
+  disabled?: boolean
   confirmDisabled?: boolean
   // Shown when the action throws without a usable message, and logged as the
   // client-error summary.
@@ -37,6 +38,7 @@ const ConfirmActionButton = ({
   modalSize,
   confirmLabel,
   pendingLabel,
+  disabled = false,
   confirmDisabled = false,
   errorMessage,
   errorContext,
@@ -48,7 +50,7 @@ const ConfirmActionButton = ({
   const [error, setError] = useState<string | undefined>()
 
   const handleConfirm = async () => {
-    if (executing || confirmDisabled) {
+    if (disabled || executing || confirmDisabled) {
       return
     }
 
@@ -70,7 +72,11 @@ const ConfirmActionButton = ({
 
   return (
     <>
-      <Button buttonType={buttonType} onClick={() => setConfirmOpen(true)}>
+      <Button
+        buttonType={buttonType}
+        disabled={disabled}
+        onClick={() => setConfirmOpen(true)}
+      >
         {buttonIcon}
         {buttonLabel}
       </Button>
@@ -92,7 +98,7 @@ const ConfirmActionButton = ({
             <PendingButton
               buttonType="primary"
               className="ml-3"
-              disabled={executing || confirmDisabled}
+              disabled={disabled || executing || confirmDisabled}
               isPending={executing}
               idleLabel={confirmLabel}
               pendingLabel={pendingLabel}

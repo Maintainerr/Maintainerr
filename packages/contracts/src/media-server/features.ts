@@ -22,6 +22,7 @@ export const MEDIA_SERVER_FEATURES: Record<
     MediaServerFeature.PLAYLISTS,
     MediaServerFeature.COLLECTION_POSTER,
     MediaServerFeature.CROSS_LIBRARY_COLLECTIONS, // BoxSets are server-global
+    MediaServerFeature.LIBRARY_STUDIO_SORT,
     // Jellyfin has no central history endpoint, but /Items answers watch state
     // in bulk per user, which is all this flag gates (#3337).
     MediaServerFeature.CENTRAL_WATCH_HISTORY,

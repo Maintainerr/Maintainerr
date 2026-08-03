@@ -1,4 +1,4 @@
-import { MediaItem } from '@maintainerr/contracts';
+import { MediaItem, MediaServerFeature } from '@maintainerr/contracts';
 import {
   BadRequestException,
   ServiceUnavailableException,
@@ -40,6 +40,7 @@ describe('MediaServerController', () => {
       searchLibraryContents: jest.fn().mockResolvedValue([]),
       getMetadata: jest.fn().mockResolvedValue(undefined),
       isSetup: jest.fn().mockReturnValue(false),
+      supportsFeature: jest.fn().mockReturnValue(false),
       updateCollectionVisibility: jest.fn().mockResolvedValue(undefined),
     } as unknown as jest.Mocked<IMediaServerService>;
 
@@ -115,6 +116,44 @@ describe('MediaServerController', () => {
         'lib1',
         { offset: 0, limit: 50, type: 'movie' },
       );
+    });
+
+    it('passes studio sorting to a supporting media server', async () => {
+      mockMediaServerService.supportsFeature.mockReturnValue(true);
+
+      await controller.getLibraryContent(
+        'lib1',
+        1,
+        50,
+        'movie',
+        'studio',
+        'asc',
+      );
+
+      expect(mockMediaServerService.supportsFeature).toHaveBeenCalledWith(
+        MediaServerFeature.LIBRARY_STUDIO_SORT,
+      );
+      expect(mockMediaServerService.getLibraryContents).toHaveBeenCalledWith(
+        'lib1',
+        {
+          offset: 0,
+          limit: 50,
+          type: 'movie',
+          sort: 'studio',
+          sortOrder: 'asc',
+        },
+      );
+    });
+
+    it('rejects studio sorting on a media server without native support', async () => {
+      mockMediaServerService.supportsFeature.mockReturnValue(false);
+
+      await expect(
+        controller.getLibraryContent('lib1', 1, 50, 'movie', 'studio', 'asc'),
+      ).rejects.toThrow(
+        'Studio sorting is not supported by the configured media server.',
+      );
+      expect(mockMediaServerService.getLibraryContents).not.toHaveBeenCalled();
     });
 
     it('should sort excluded items server-side before paging', async () => {
