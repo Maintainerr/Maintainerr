@@ -544,6 +544,28 @@ describe('EmbyAdapterService', () => {
   });
 
   describe('getLibraryContents', () => {
+    it('uses Emby native studio sorting', async () => {
+      http.get
+        .mockResolvedValueOnce({ data: { Items: [], TotalRecordCount: 0 } })
+        .mockResolvedValueOnce({ data: { Items: [], TotalRecordCount: 0 } });
+
+      await service.getLibraryContents('library-1', {
+        offset: 0,
+        limit: 30,
+        type: 'movie',
+        sort: 'studio',
+        sortOrder: 'desc',
+      });
+
+      const itemsCall = http.get.mock.calls.find(([path]) => path === '/Items');
+      expect(itemsCall?.[1]?.params).toEqual(
+        expect.objectContaining({
+          SortBy: 'Studio',
+          SortOrder: 'Descending',
+        }),
+      );
+    });
+
     it('re-throws page read failures so callers never mistake a failed read for an empty library', async () => {
       http.get.mockRejectedValueOnce(new Error('boom'));
 

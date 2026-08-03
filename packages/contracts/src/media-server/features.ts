@@ -35,6 +35,9 @@ export const MEDIA_SERVER_FEATURES: Record<
     MediaServerFeature.PLAYLISTS,
     MediaServerFeature.COLLECTION_POSTER,
     MediaServerFeature.CROSS_LIBRARY_COLLECTIONS, // BoxSets are server-global
+    // Verified on Emby 4.9.5: Fields=Studios returns data and SortBy=Studio
+    // genuinely sorts (asc differs from the SortName baseline).
+    MediaServerFeature.LIBRARY_STUDIO_SORT,
     // Conservative defaults mirroring Jellyfin:
     // - COLLECTION_VISIBILITY: Emby has no Plex-style home/recommended pinning.
     // - WATCHLIST: no public watchlist API.

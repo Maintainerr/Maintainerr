@@ -80,6 +80,7 @@ export interface EmbyBaseItemDto {
   CommunityRating?: number;
   OfficialRating?: string;
   Overview?: string;
+  Studios?: { Name?: string }[];
   ProviderIds?: EmbyProviderIds;
   ImageTags?: Record<string, string>;
   BackdropImageTags?: string[];
