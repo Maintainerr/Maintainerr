@@ -551,6 +551,11 @@ const Overview = () => {
   const hasMoreData = data.length < totalSize
   const showRefreshing = isLoading && hasData
   const selectedCount = selectedMediaIds.size
+  const selectionHasContainers = data.some(
+    (item) =>
+      selectedMediaIds.has(item.id) &&
+      (item.type === 'show' || item.type === 'season'),
+  )
   const showBootstrapLoading =
     !searchUsed &&
     !hasData &&
@@ -570,7 +575,7 @@ const Overview = () => {
             <>
               <Button
                 buttonType={selectionMode ? 'primary' : 'default'}
-                className="min-w-36"
+                className="min-w-44"
                 onClick={handleSelectionModeChange}
               >
                 <CheckCircleIcon className="h-4 w-4" />
@@ -584,6 +589,8 @@ const Overview = () => {
                 }
                 buttonIcon={<DocumentRemoveIcon className="h-4 w-4" />}
                 buttonType="danger"
+                buttonClassName="min-w-52"
+                confirmButtonType="danger"
                 disabled={!selectionMode || selectedCount === 0}
                 modalTitle="Exclude selected items"
                 confirmLabel="Exclude items"
@@ -593,9 +600,10 @@ const Overview = () => {
                 onConfirm={handleBulkExclusion}
               >
                 <p>
-                  Exclude the selected items globally? Selected shows are
-                  excluded together with all of their seasons and episodes, and
-                  any scoped exclusions for the same items are replaced.
+                  Exclude the selected items globally?{' '}
+                  {selectionHasContainers
+                    ? 'Selected shows and seasons are excluded together with everything they contain, and any scoped exclusions for the same items are replaced.'
+                    : 'Any scoped exclusions for the same items are replaced.'}
                 </p>
               </ConfirmActionButton>
             </>

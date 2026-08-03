@@ -265,6 +265,11 @@ describe('Overview', () => {
     fireEvent.click(
       screen.getByRole('button', { name: 'Exclude selected (2)' }),
     )
+    // a movie-only selection must not warn about show cascades
+    expect(
+      screen.getByText(/Any scoped exclusions for the same items are replaced/),
+    ).toBeTruthy()
+    expect(screen.queryByText(/Selected shows and seasons/)).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Exclude items' }))
 
     await waitFor(() => {
@@ -328,6 +333,10 @@ describe('Overview', () => {
     fireEvent.click(
       screen.getByRole('button', { name: 'Exclude selected (1)' }),
     )
+    // a selected show warns about the cascade
+    expect(
+      screen.getByText(/Selected shows and seasons are excluded together/),
+    ).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Exclude items' }))
 
     await waitFor(() => {

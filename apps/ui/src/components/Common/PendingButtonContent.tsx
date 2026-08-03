@@ -26,10 +26,12 @@ const PendingButtonContent = ({
     contentSize === 'compact'
       ? 'inline-flex h-4 w-4 shrink-0 items-center justify-center [&>svg]:h-full [&>svg]:w-full'
       : 'inline-flex h-5 w-5 shrink-0 items-center justify-center [&>svg]:h-full [&>svg]:w-full'
+  // justify-center keeps the visible label centered inside the width the
+  // invisible placeholder reserves for the longest state.
   const contentRowClass =
     contentSize === 'compact'
-      ? 'flex items-center gap-1'
-      : 'flex items-center gap-2'
+      ? 'flex items-center justify-center gap-1'
+      : 'flex items-center justify-center gap-2'
   const spinnerClass = contentSize === 'compact' ? 'h-3.5 w-3.5' : 'h-4 w-4'
 
   return (

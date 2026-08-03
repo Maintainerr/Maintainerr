@@ -10,6 +10,10 @@ interface ConfirmActionButtonProps {
   buttonLabel: string
   buttonIcon: ReactNode
   buttonType?: ButtonType
+  buttonClassName?: string
+  // Destructive callers pass 'danger' so the dialog's confirm carries the
+  // same weight as the action button that opened it.
+  confirmButtonType?: ButtonType
   modalTitle: string
   modalSize?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl'
   confirmLabel: string
@@ -34,6 +38,8 @@ const ConfirmActionButton = ({
   buttonLabel,
   buttonIcon,
   buttonType = 'default',
+  buttonClassName,
+  confirmButtonType = 'primary',
   modalTitle,
   modalSize,
   confirmLabel,
@@ -74,6 +80,7 @@ const ConfirmActionButton = ({
     <>
       <Button
         buttonType={buttonType}
+        className={buttonClassName}
         disabled={disabled}
         onClick={() => setConfirmOpen(true)}
       >
@@ -96,7 +103,7 @@ const ConfirmActionButton = ({
           backgroundClickable={!executing}
           footerActions={
             <PendingButton
-              buttonType="primary"
+              buttonType={confirmButtonType}
               className="ml-3"
               disabled={disabled || executing || confirmDisabled}
               isPending={executing}
