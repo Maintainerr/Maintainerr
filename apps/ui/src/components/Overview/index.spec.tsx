@@ -68,6 +68,10 @@ vi.mock('./Content', () => ({
         {data.map((item) => (
           <span key={item.id}>
             {item.title}
+            <span data-testid={`overview-exclusion-${item.id}`}>
+              {(item as { maintainerrExclusionType?: string })
+                .maintainerrExclusionType ?? 'none'}
+            </span>
             {selectionMode ? (
               <button
                 data-testid={`overview-select-${item.id}`}
@@ -275,6 +279,70 @@ describe('Overview', () => {
     expect(
       screen.getByRole('button', { name: 'Exclude selected (1)' }),
     ).toBeTruthy()
+  })
+
+  it('reconciles visible child cards when their show is bulk excluded', async () => {
+    libraries = [
+      {
+        id: 'shows-library',
+        title: 'Shows',
+        type: 'show',
+      } as MediaLibrary,
+    ]
+    getApiHandlerMock.mockImplementation(async (path: string) => {
+      if (path.startsWith('/media-server/overview/bootstrap?')) {
+        return {
+          libraries,
+          selectedLibraryId: 'shows-library',
+          content: {
+            totalSize: 2,
+            items: [
+              { id: 'show-1', title: 'Sample Show', type: 'show' },
+              {
+                id: 'episode-1',
+                title: 'Sample Episode',
+                type: 'episode',
+                grandparentId: 'show-1',
+              },
+            ],
+          },
+        }
+      }
+      throw new Error(`Unexpected API request: ${path}`)
+    })
+    mutateAsyncMock.mockResolvedValue({
+      results: [{ mediaId: 'show-1', code: 1 }],
+    })
+
+    render(
+      <SearchContextProvider>
+        <Overview />
+      </SearchContextProvider>,
+    )
+
+    await waitFor(() => {
+      expect(screen.getByText('Sample Show')).toBeTruthy()
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Select items' }))
+    fireEvent.click(screen.getByTestId('overview-select-show-1'))
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Exclude selected (1)' }),
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Exclude items' }))
+
+    await waitFor(() => {
+      expect(mutateAsyncMock).toHaveBeenCalledWith(['show-1'])
+    })
+    // the cascade covers the visible episode even though only the show id
+    // was submitted
+    await waitFor(() => {
+      expect(
+        screen.getByTestId('overview-exclusion-episode-1').textContent,
+      ).toBe('global')
+    })
+    expect(screen.getByTestId('overview-exclusion-show-1').textContent).toBe(
+      'global',
+    )
   })
 
   it('clears selection and exits multi-select mode when done selecting', async () => {

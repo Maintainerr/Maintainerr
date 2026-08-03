@@ -263,6 +263,12 @@ const Overview = () => {
           pageDataRef.current = preservedPageCount ?? pageDataRef.current + 1
           dataRef.current = mergedItems
           setData(mergedItems)
+          if (options?.replaceExisting) {
+            // The outgoing cards stay clickable while the replacement is in
+            // flight, so anything selected in that window must not survive
+            // into the new item set.
+            setSelectedMediaIds(new Set())
+          }
           setLoadingExtra(false)
           setLoading(false)
           setFetching(false)
@@ -309,6 +315,7 @@ const Overview = () => {
               setTotalSize(result.data.length)
               pageDataRef.current = result.data.length * 50
               setData(sortMediaItems(result.data, nextSortParams))
+              setSelectedMediaIds(new Set())
               setLoading(false)
             }
           } catch {
@@ -434,18 +441,34 @@ const Overview = () => {
     )
 
     setSelectedMediaIds(failedIds)
-    for (const mediaId of succeededIds) {
-      invalidateMaintainerrStatusDetails(mediaId)
-    }
 
     if (succeededIds.size > 0) {
+      // The server cascades an excluded show to its seasons and episodes, so
+      // visible child cards (mixed search results) must be reconciled along
+      // with the exact submitted ids.
+      const isCovered = (item: MediaItem) =>
+        succeededIds.has(item.id) ||
+        (item.parentId !== undefined && succeededIds.has(item.parentId)) ||
+        (item.grandparentId !== undefined &&
+          succeededIds.has(item.grandparentId))
+
       const nextItems = dataRef.current.map((item) =>
-        succeededIds.has(item.id)
+        isCovered(item)
           ? { ...item, maintainerrExclusionType: 'global' as const }
           : item,
       )
       dataRef.current = nextItems
       setData(nextItems)
+
+      const invalidated = new Set(succeededIds)
+      for (const item of nextItems) {
+        if (isCovered(item)) {
+          invalidated.add(item.id)
+        }
+      }
+      for (const mediaId of invalidated) {
+        invalidateMaintainerrStatusDetails(mediaId)
+      }
     }
 
     const succeeded = succeededIds.size

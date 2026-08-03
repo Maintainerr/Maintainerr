@@ -198,22 +198,39 @@ export type UseRuleConstants = ReturnType<typeof useRuleConstants>
 // than one request cap still succeed as a whole.
 const BULK_EXCLUSION_REQUEST_CHUNK = 25
 
+export const postBulkExclusions = async (
+  mediaIds: string[],
+): Promise<BulkExclusionResponse> => {
+  const results: BulkExclusionResponse['results'] = []
+  const batches = chunk(mediaIds, BULK_EXCLUSION_REQUEST_CHUNK)
+
+  for (const [index, batch] of batches.entries()) {
+    try {
+      const response = await PostApiHandler<BulkExclusionResponse>(
+        '/rules/exclusions/bulk',
+        { mediaIds: batch },
+      )
+      results.push(...response.results)
+    } catch {
+      // Earlier chunks are already persisted server-side, so a transport
+      // failure must not reject the aggregate: report this and every
+      // unattempted batch as per-item failures instead.
+      for (const remaining of batches.slice(index)) {
+        for (const mediaId of remaining) {
+          results.push({ mediaId, code: 0, message: 'Failed - request error' })
+        }
+      }
+      break
+    }
+  }
+
+  return { results }
+}
+
 export const useBulkExcludeMedia = () => {
   return useMutation<BulkExclusionResponse, Error, string[]>({
     mutationKey: ['rules', 'exclusions', 'bulk'],
-    mutationFn: async (mediaIds) => {
-      const results: BulkExclusionResponse['results'] = []
-
-      for (const batch of chunk(mediaIds, BULK_EXCLUSION_REQUEST_CHUNK)) {
-        const response = await PostApiHandler<BulkExclusionResponse>(
-          '/rules/exclusions/bulk',
-          { mediaIds: batch },
-        )
-        results.push(...response.results)
-      }
-
-      return { results }
-    },
+    mutationFn: postBulkExclusions,
   })
 }
 
