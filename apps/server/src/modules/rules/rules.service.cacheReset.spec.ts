@@ -40,6 +40,7 @@ describe('RulesService.resetCacheIfGroupUsesRuleThatRequiresIt', () => {
       {} as any,
       createMockServarrTagService() as any,
       logger as any,
+      {} as any,
     );
 
   const stubGetRuleConstants = (service: RulesService) => {

@@ -14,7 +14,9 @@ const LIBRARY_ID = 'lib-1';
 
 import cacheManager from '../../api/lib/cache';
 import { JellyfinAdapterService } from '../../api/media-server/jellyfin/jellyfin-adapter.service';
+import { ArrLookupCache } from '../helpers/arr-lookup-cache';
 import { JellyfinGetterService } from './jellyfin-getter.service';
+import { MetadataRuleValueService } from './metadata-rule-value.service';
 
 // Helper to create mock MediaItem
 const createMediaItem = (overrides: Partial<MediaItem> = {}): MediaItem => ({
@@ -98,6 +100,7 @@ const createMediaPlaylist = (
 describe('JellyfinGetterService', () => {
   let jellyfinGetterService: JellyfinGetterService;
   let jellyfinAdapter: Mocked<JellyfinAdapterService>;
+  let metadataRuleValueService: Mocked<MetadataRuleValueService>;
 
   const JELLYFIN_IS_WATCHED_PROP_ID = 42;
 
@@ -108,6 +111,7 @@ describe('JellyfinGetterService', () => {
 
     jellyfinGetterService = unit;
     jellyfinAdapter = unitRef.get(JellyfinAdapterService);
+    metadataRuleValueService = unitRef.get(MetadataRuleValueService);
 
     // Default: Jellyfin is set up
     jellyfinAdapter.isSetup.mockReturnValue(true);
@@ -116,6 +120,39 @@ describe('JellyfinGetterService', () => {
   afterEach(() => {
     cacheManager.getCache('jellyfin')?.flush();
     jest.clearAllMocks();
+  });
+
+  describe('studios (id 46)', () => {
+    const STUDIOS_PROP_ID = 46;
+
+    it('delegates to the shared metadata resolution with the run cache', async () => {
+      const mediaItem = createMediaItem();
+      const cache = new ArrLookupCache();
+      metadataRuleValueService.getStudios.mockResolvedValue(['Studio One']);
+
+      await expect(
+        jellyfinGetterService.get(
+          STUDIOS_PROP_ID,
+          mediaItem,
+          'movie',
+          createRulesDto({ dataType: 'movie', libraryId: LIBRARY_ID }),
+          cache,
+        ),
+      ).resolves.toEqual(['Studio One']);
+      expect(metadataRuleValueService.getStudios).toHaveBeenCalledWith(
+        mediaItem,
+        cache,
+      );
+      expect(jellyfinAdapter.getMetadata).not.toHaveBeenCalled();
+    });
+
+    it('preserves undefined so a failed lookup stays transient', async () => {
+      metadataRuleValueService.getStudios.mockResolvedValue(undefined);
+
+      await expect(
+        jellyfinGetterService.get(STUDIOS_PROP_ID, createMediaItem(), 'movie'),
+      ).resolves.toBeUndefined();
+    });
   });
 
   describe('when Jellyfin is not configured', () => {

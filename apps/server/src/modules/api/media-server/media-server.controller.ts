@@ -11,6 +11,7 @@ import {
   MediaLibrarySortField,
   mediaLibrarySortFields,
   mediaLibraryStatusSortFields,
+  MediaServerFeature,
   MediaServerStatus,
   MediaSortOrder,
   mediaSortOrders,
@@ -110,11 +111,27 @@ export class MediaServerController {
     return await this.attachParentMetadata(enrichedItems, mediaServer);
   }
 
-  private isStatusLibrarySort(sort?: MediaLibrarySortField): boolean {
+  private isStatusLibrarySort(
+    sort?: MediaLibrarySortField,
+  ): sort is MediaLibraryStatusSortField {
     return (
       sort != null &&
       mediaLibraryStatusSortFields.includes(sort as MediaLibraryStatusSortField)
     );
+  }
+
+  private assertLibrarySortSupported(
+    mediaServer: IMediaServerService,
+    sort?: MediaLibrarySortField,
+  ): void {
+    if (
+      sort === 'studio' &&
+      !mediaServer.supportsFeature(MediaServerFeature.LIBRARY_STUDIO_SORT)
+    ) {
+      throw new BadRequestException(
+        'Studio sorting is not supported by the configured media server.',
+      );
+    }
   }
 
   private async getLibraryContentPage(
@@ -135,6 +152,8 @@ export class MediaServerController {
       sortOrder?: MediaSortOrder;
     },
   ): Promise<PagedResult<MediaItem>> {
+    this.assertLibrarySortSupported(mediaServer, sort);
+
     if (!this.isStatusLibrarySort(sort)) {
       const result = await mediaServer.getLibraryContents(libraryId, {
         offset,

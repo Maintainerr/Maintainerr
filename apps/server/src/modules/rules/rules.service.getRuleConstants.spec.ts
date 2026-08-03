@@ -20,6 +20,9 @@ describe('RulesService.getRuleConstants', () => {
     tautulli_api_key: 'key',
     streamystats_url: 'http://streamystats',
     jellyfin_api_key: 'key',
+    tracearr_url: 'http://tracearr',
+    tracearr_api_key: 'trr_pub_token',
+    tracearr_server_id: '11111111-1111-4111-8111-111111111111',
   };
 
   const createRulesService = (exists: {
@@ -46,6 +49,7 @@ describe('RulesService.getRuleConstants', () => {
       {} as any, // eventEmitter
       createMockServarrTagService() as any,
       logger as any,
+      {} as any, // tracearrApi
     );
 
   const applicationIds = async (service: RulesService) =>
@@ -74,5 +78,17 @@ describe('RulesService.getRuleConstants', () => {
     expect(ids).toContain(Application.SPORTARR);
     expect(ids).not.toContain(Application.SONARR);
     expect(ids).not.toContain(Application.RADARR);
+  });
+
+  it('includes Tracearr when its connection is configured', async () => {
+    const service = createRulesService({
+      radarr: false,
+      sonarr: false,
+      sportarr: false,
+    });
+
+    await expect(applicationIds(service)).resolves.toContain(
+      Application.TRACEARR,
+    );
   });
 });

@@ -3,7 +3,7 @@ import {
   createMockLogger,
   createMockServarrTagService,
 } from '../../../test/utils/data';
-import { RulesService } from './rules.service';
+import { BULK_EXCLUSION_CONCURRENCY, RulesService } from './rules.service';
 
 // Regression coverage for global-exclusion handling (ruleGroupId IS NULL).
 // TypeORM 1.x throws on a bare `null` in a `where` clause, so these paths must
@@ -68,6 +68,7 @@ describe('RulesService exclusions - global (null ruleGroupId) handling', () => {
       {} as any, // eventEmitter
       servarrTagService as any,
       logger as any,
+      {} as any, // tracearrApi
     );
 
     return {
@@ -540,5 +541,120 @@ describe('RulesService exclusions - global (null ruleGroupId) handling', () => {
     ).toBe(true);
     expect(exclusionRepo.save).not.toHaveBeenCalled();
     expect(result.code).toBe(1);
+  });
+
+  const createBulkService = (
+    metadataById: Record<string, { parentId?: string; grandparentId?: string }>,
+  ) =>
+    createService({
+      mediaServerFactory: {
+        getService: jest.fn().mockResolvedValue({
+          getMetadata: jest
+            .fn()
+            .mockImplementation((id: string) =>
+              Promise.resolve(metadataById[id]),
+            ),
+        }),
+      },
+    });
+
+  it('setBulkExclusions dedupes ids and keeps individual failures', async () => {
+    const { service } = createBulkService({ 'movie-1': {}, 'movie-2': {} });
+    const setExclusion = jest
+      .spyOn(service, 'setExclusion')
+      .mockResolvedValueOnce({ code: 1, message: 'Success' })
+      .mockResolvedValueOnce({ code: 0, message: 'Failed - no metadata' });
+
+    await expect(
+      service.setBulkExclusions(['movie-1', 'movie-2', 'movie-1']),
+    ).resolves.toEqual({
+      results: [
+        { mediaId: 'movie-1', code: 1, message: 'Success' },
+        { mediaId: 'movie-2', code: 0, message: 'Failed - no metadata' },
+      ],
+    });
+    expect(setExclusion).toHaveBeenCalledTimes(2);
+    expect(setExclusion).toHaveBeenNthCalledWith(1, { mediaId: 'movie-1' });
+    expect(setExclusion).toHaveBeenNthCalledWith(2, { mediaId: 'movie-2' });
+  });
+
+  it('setBulkExclusions collapses ids nested under another selected id', async () => {
+    // show-1 > season-1 > episode-1; excluding the show already cascades to
+    // both, so neither may race its own concurrent setExclusion write.
+    const { service } = createBulkService({
+      'show-1': {},
+      'season-1': { parentId: 'show-1' },
+      'episode-1': { parentId: 'season-1', grandparentId: 'show-1' },
+      'movie-1': {},
+    });
+    const setExclusion = jest
+      .spyOn(service, 'setExclusion')
+      .mockResolvedValue({ code: 1, message: 'Success' });
+
+    const response = await service.setBulkExclusions([
+      'episode-1',
+      'show-1',
+      'season-1',
+      'movie-1',
+    ]);
+
+    expect(setExclusion).toHaveBeenCalledTimes(2);
+    expect(setExclusion).toHaveBeenCalledWith({ mediaId: 'show-1' });
+    expect(setExclusion).toHaveBeenCalledWith({ mediaId: 'movie-1' });
+    // collapsed children report their covering ancestor's outcome
+    expect(response.results).toEqual([
+      { mediaId: 'episode-1', code: 1, message: 'Success' },
+      { mediaId: 'show-1', code: 1, message: 'Success' },
+      { mediaId: 'season-1', code: 1, message: 'Success' },
+      { mediaId: 'movie-1', code: 1, message: 'Success' },
+    ]);
+  });
+
+  it('setBulkExclusions reports a thrown setExclusion as a per-item failure', async () => {
+    const { service } = createBulkService({ 'movie-1': {}, 'movie-2': {} });
+    jest
+      .spyOn(service, 'setExclusion')
+      .mockResolvedValueOnce({ code: 1, message: 'Success' })
+      .mockRejectedValueOnce(new Error('boom'));
+
+    await expect(
+      service.setBulkExclusions(['movie-1', 'movie-2']),
+    ).resolves.toEqual({
+      results: [
+        { mediaId: 'movie-1', code: 1, message: 'Success' },
+        { mediaId: 'movie-2', code: 0, message: 'Failed - see server logs' },
+      ],
+    });
+    expect(logger.warn).toHaveBeenCalledWith(
+      'Bulk exclusion failed for media movie-2',
+    );
+  });
+
+  it('setBulkExclusions processes bounded concurrent batches', async () => {
+    const { service } = createBulkService(
+      Object.fromEntries(
+        Array.from({ length: 6 }, (_, i) => [`item-${i + 1}`, {}]),
+      ),
+    );
+    let active = 0;
+    let peak = 0;
+    jest.spyOn(service, 'setExclusion').mockImplementation(async () => {
+      active += 1;
+      peak = Math.max(peak, active);
+      await new Promise<void>((resolve) => setImmediate(resolve));
+      active -= 1;
+      return { code: 1, message: 'Success' };
+    });
+
+    await service.setBulkExclusions([
+      'item-1',
+      'item-2',
+      'item-3',
+      'item-4',
+      'item-5',
+      'item-6',
+    ]);
+
+    expect(peak).toBe(BULK_EXCLUSION_CONCURRENCY);
   });
 });

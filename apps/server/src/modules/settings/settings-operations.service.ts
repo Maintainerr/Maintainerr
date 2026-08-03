@@ -8,6 +8,9 @@ import {
   SeerrSetting,
   StreamystatsSetting,
   TautulliSetting,
+  TracearrConnection,
+  TracearrSetting,
+  TracearrServer,
 } from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -22,10 +25,11 @@ import { MediaServerFactory } from '../api/media-server/media-server.factory';
 import { DownloadClientApiService } from '../api/download-client-api/download-client-api.service';
 import { PlexApiService } from '../api/plex-api/plex-api.service';
 import { SeerrApiService } from '../api/seerr-api/seerr-api.service';
-import { isBelowMinimumVersion } from '../api/servarr-api/helpers/sportarr-version';
+import { isBelowMinimumVersion } from '../../utils/required-version-helper';
 import { ServarrService } from '../api/servarr-api/servarr.service';
 import { StreamystatsApiService } from '../api/streamystats-api/streamystats-api.service';
 import { TautulliApiService } from '../api/tautulli-api/tautulli-api.service';
+import { TracearrApiService } from '../api/tracearr-api/tracearr-api.service';
 import { MaintainerrLogger } from '../logging/logs.service';
 import { SettingsDataService } from './settings-data.service';
 import {
@@ -58,6 +62,7 @@ export class SettingsOperationsService {
     private readonly seerr: SeerrApiService,
     private readonly tautulli: TautulliApiService,
     private readonly streamystats: StreamystatsApiService,
+    private readonly tracearr: TracearrApiService,
     private readonly downloadClient: DownloadClientApiService,
     private readonly internalApi: InternalApiService,
     @InjectRepository(Settings)
@@ -336,6 +341,68 @@ export class SettingsOperationsService {
       this.logger.debug(error);
       return { status: 'NOK', code: 0, message: 'Failed' };
     }
+  }
+
+  public async removeTracearrSetting(): Promise<BasicResponseDto> {
+    try {
+      const settingsDb = await this.settingsRepo.findOne({ where: {} });
+
+      await this.settingsDataService.saveSettings({
+        ...settingsDb,
+        tracearr_url: null,
+        tracearr_api_key: null,
+        tracearr_server_id: null,
+      });
+
+      await this.settingsDataService.init();
+      this.tracearr.init();
+
+      return { status: 'OK', code: 1, message: 'Success' };
+    } catch (error) {
+      this.logger.error('Error removing Tracearr settings');
+      this.logger.debug(error);
+      return { status: 'NOK', code: 0, message: 'Failed' };
+    }
+  }
+
+  public async updateTracearrSetting(
+    settings: TracearrSetting,
+  ): Promise<BasicResponseDto> {
+    try {
+      const settingsDb = await this.settingsRepo.findOne({ where: {} });
+
+      await this.settingsDataService.saveSettings({
+        ...settingsDb,
+        tracearr_url: settings.url,
+        tracearr_api_key: settings.api_key,
+        tracearr_server_id: settings.server_id,
+      });
+
+      await this.settingsDataService.init();
+      this.tracearr.init();
+
+      return { status: 'OK', code: 1, message: 'Success' };
+    } catch (error) {
+      this.logger.error('Error updating Tracearr settings');
+      this.logger.debug(error);
+      return { status: 'NOK', code: 0, message: 'Failed' };
+    }
+  }
+
+  public testTracearr(settings: TracearrSetting): Promise<BasicResponseDto> {
+    return this.tracearr.testConnection({
+      url: settings.url,
+      apiKey: settings.api_key,
+    });
+  }
+
+  public getTracearrServers(
+    settings: TracearrConnection,
+  ): Promise<TracearrServer[] | undefined> {
+    return this.tracearr.getServers({
+      url: settings.url,
+      apiKey: settings.api_key,
+    });
   }
 
   public async removeDownloadClientSetting() {

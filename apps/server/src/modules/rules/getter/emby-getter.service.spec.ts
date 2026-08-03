@@ -11,7 +11,9 @@ import { createRulesDto } from '../../../../test/utils/data';
 
 import cacheManager from '../../api/lib/cache';
 import { EmbyAdapterService } from '../../api/media-server/emby/emby-adapter.service';
+import { ArrLookupCache } from '../helpers/arr-lookup-cache';
 import { EmbyGetterService } from './emby-getter.service';
+import { MetadataRuleValueService } from './metadata-rule-value.service';
 
 const createMediaItem = (overrides: Partial<MediaItem> = {}): MediaItem => ({
   id: 'emby-item-123',
@@ -52,6 +54,7 @@ const createWatchRecord = (
 describe('EmbyGetterService', () => {
   let embyGetterService: EmbyGetterService;
   let embyAdapter: Mocked<EmbyAdapterService>;
+  let metadataRuleValueService: Mocked<MetadataRuleValueService>;
 
   beforeEach(async () => {
     const { unit, unitRef } =
@@ -59,12 +62,46 @@ describe('EmbyGetterService', () => {
 
     embyGetterService = unit;
     embyAdapter = unitRef.get(EmbyAdapterService);
+    metadataRuleValueService = unitRef.get(MetadataRuleValueService);
     embyAdapter.isSetup.mockReturnValue(true);
   });
 
   afterEach(() => {
     cacheManager.getCache('emby')?.flush();
     jest.clearAllMocks();
+  });
+
+  describe('studios (id 46)', () => {
+    const STUDIOS_PROP_ID = 46;
+
+    it('delegates to the shared metadata resolution with the run cache', async () => {
+      const mediaItem = createMediaItem();
+      const cache = new ArrLookupCache();
+      metadataRuleValueService.getStudios.mockResolvedValue(['Studio One']);
+
+      await expect(
+        embyGetterService.get(
+          STUDIOS_PROP_ID,
+          mediaItem,
+          'movie',
+          createRulesDto({ dataType: 'movie' }),
+          cache,
+        ),
+      ).resolves.toEqual(['Studio One']);
+      expect(metadataRuleValueService.getStudios).toHaveBeenCalledWith(
+        mediaItem,
+        cache,
+      );
+      expect(embyAdapter.getMetadata).not.toHaveBeenCalled();
+    });
+
+    it('preserves undefined so a failed lookup stays transient', async () => {
+      metadataRuleValueService.getStudios.mockResolvedValue(undefined);
+
+      await expect(
+        embyGetterService.get(STUDIOS_PROP_ID, createMediaItem(), 'movie'),
+      ).resolves.toBeUndefined();
+    });
   });
 
   describe('user-backed rules', () => {

@@ -19,6 +19,7 @@ import { SonarrGetterService } from './sonarr-getter.service';
 import { SportarrGetterService } from './sportarr-getter.service';
 import { StreamystatsGetterService } from './streamystats-getter.service';
 import { TautulliGetterService } from './tautulli-getter.service';
+import { TracearrGetterService } from './tracearr-getter.service';
 
 @Injectable()
 export class ValueGetterService {
@@ -30,6 +31,7 @@ export class ValueGetterService {
     private readonly seerrGetter: SeerrGetterService,
     private readonly tautulliGetter: TautulliGetterService,
     private readonly streamystatsGetter: StreamystatsGetterService,
+    private readonly tracearrGetter: TracearrGetterService,
     private readonly jellyfinGetter: JellyfinGetterService,
     private readonly embyGetter: EmbyGetterService,
     private readonly mediaServerFactory: MediaServerFactory,
@@ -72,7 +74,10 @@ export class ValueGetterService {
                 ? this.embyGetter
                 : null;
 
-        return getter?.get(val2, libItem, dataType, ruleGroup) ?? null;
+        return (
+          getter?.get(val2, libItem, dataType, ruleGroup, arrLookupCache) ??
+          null
+        );
       }
       case Application.RADARR: {
         return await this.radarrGetter.get(
@@ -121,6 +126,9 @@ export class ValueGetterService {
       }
       case Application.STREAMYSTATS: {
         return await this.streamystatsGetter.get(val2, libItem);
+      }
+      case Application.TRACEARR: {
+        return await this.tracearrGetter.get(val2, libItem, ruleGroup);
       }
       default: {
         return null;

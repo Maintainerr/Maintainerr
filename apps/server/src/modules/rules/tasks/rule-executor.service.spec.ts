@@ -1,4 +1,5 @@
 import {
+  Application,
   MaintainerrEvent,
   MediaServerFeature,
   MediaServerType,
@@ -10,6 +11,7 @@ import {
   createMockServarrTagService,
 } from '../../../../test/utils/data';
 import { MediaServerFactory } from '../../api/media-server/media-server.factory';
+import { TracearrApiService } from '../../api/tracearr-api/tracearr-api.service';
 import { CollectionsService } from '../../collections/collections.service';
 import { CollectionMediaManualMembershipSource } from '../../collections/entities/collection_media.entities';
 import { RecentlyHandledMediaService } from '../../collections/recently-handled-media.service';
@@ -146,6 +148,9 @@ describe('RuleExecutorService', () => {
     const logger = createMockLogger();
 
     const recentlyHandledMedia = new RecentlyHandledMediaService();
+    const tracearrApi = {
+      prefetchHistory: jest.fn().mockResolvedValue(undefined),
+    } as unknown as jest.Mocked<TracearrApiService>;
 
     const service = new RuleExecutorService(
       rulesService,
@@ -158,6 +163,7 @@ describe('RuleExecutorService', () => {
       logger,
       recentlyHandledMedia,
       createMockServarrTagService(),
+      tracearrApi,
     );
 
     return {
@@ -171,6 +177,7 @@ describe('RuleExecutorService', () => {
       progressManager,
       logger,
       recentlyHandledMedia,
+      tracearrApi,
     };
   };
 
@@ -304,6 +311,40 @@ describe('RuleExecutorService', () => {
         message: "Finished execution of rule 'Filmer'",
       }),
     );
+  });
+
+  it('prefetches Tracearr history once for a rule group that uses Tracearr', async () => {
+    const { service, rulesService, tracearrApi } = createService(
+      MediaServerType.JELLYFIN,
+    );
+    const ruleGroup = {
+      id: 12,
+      name: 'Tracearr history group',
+      isActive: true,
+      libraryId: 'library-1',
+      useRules: true,
+      rules: [
+        {
+          ruleJson: JSON.stringify({
+            firstVal: [Application.TRACEARR, 3],
+            action: 0,
+            operator: null,
+            section: 0,
+          }),
+          section: 0,
+        },
+      ],
+      collectionId: 1,
+      collection: { title: 'Test Collection' },
+    };
+    rulesService.getRuleGroup.mockResolvedValue(ruleGroup as any);
+    rulesService.getRuleGroupById.mockResolvedValue(ruleGroup as any);
+
+    await expect(
+      service.executeForRuleGroups(12, new AbortController().signal),
+    ).resolves.toEqual({ status: 'success' });
+
+    expect(tracearrApi.prefetchHistory).toHaveBeenCalledTimes(1);
   });
 
   it('emits a single failed rule notification when collection handling fails', async () => {

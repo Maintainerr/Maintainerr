@@ -11,6 +11,7 @@ type AvailableCacheIds =
   | 'plexcommunity'
   | 'tautulli'
   | 'streamystats'
+  | 'tracearr'
   | 'github'
   | 'jellyfin'
   | 'jellyfinwatchhistory'
@@ -183,6 +184,12 @@ class CacheManager {
     ),
     tautulli: new Cache('tautulli', 'Tautulli API', 'tautulli'),
     streamystats: new Cache('streamystats', 'Streamystats API', 'streamystats'),
+    tracearr: new Cache('tracearr', 'Tracearr API', 'tracearr', {
+      stdTtl: 3600,
+      persistent: true,
+      useClones: false,
+      maxKeys: 0,
+    }),
     github: new Cache('github', 'GitHub API', 'github', {
       stdTtl: 86400, // 24 hours
       checkPeriod: 60 * 60, // Check every hour

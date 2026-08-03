@@ -85,15 +85,15 @@ import { JellyfinMapper } from './jellyfin.mapper';
 import type { JellyfinWatchSnapshot } from './jellyfin.types';
 
 const toJellyfinSortBy = (sort?: MediaLibrarySortField): ItemSortBy => {
-  // The Jellyfin SDK enum does not expose every server-supported sort key,
-  // so use the documented raw values and narrow them for the request model.
   switch (sort) {
     case 'airDate':
-      return 'PremiereDate' as ItemSortBy;
+      return ItemSortBy.PremiereDate;
     case 'rating':
-      return 'CommunityRating' as ItemSortBy;
+      return ItemSortBy.CommunityRating;
     case 'watchCount':
-      return 'PlayCount' as ItemSortBy;
+      return ItemSortBy.PlayCount;
+    case 'studio':
+      return ItemSortBy.Studio;
     case 'title':
     default:
       return ItemSortBy.SortName;
@@ -939,11 +939,15 @@ export class JellyfinAdapterService implements IMediaServerService {
           ItemFields.Tags,
           ItemFields.Overview,
           ItemFields.People,
+          ItemFields.Studios,
         ],
         enableUserData: true,
       });
 
-      const item = response.data.Items?.[0];
+      // Jellyfin silently drops an unparseable ids filter and answers with an
+      // unfiltered listing, so only an exact id match may count as a result -
+      // taking the first row would resolve garbage input to a random item.
+      const item = response.data.Items?.find((el) => el.Id === itemId);
       if (!item) return undefined;
 
       // Only a resolved item is cached. This method answers undefined for both
@@ -980,7 +984,7 @@ export class JellyfinAdapterService implements IMediaServerService {
         enableUserData: false,
         limit: 1,
       });
-      return Boolean(response.data.Items?.[0]);
+      return Boolean(response.data.Items?.some((el) => el.Id === itemId));
     } catch (error) {
       if (isAxiosError(error) && error.response?.status === 404) {
         return false;
@@ -1135,6 +1139,7 @@ export class JellyfinAdapterService implements IMediaServerService {
           ItemFields.Path,
           ItemFields.DateCreated,
           ItemFields.MediaSources,
+          ItemFields.Studios,
         ],
         includeItemTypes: [
           BaseItemKind.Movie,
@@ -1829,7 +1834,7 @@ export class JellyfinAdapterService implements IMediaServerService {
         ids: [itemId],
         enableUserData: true,
       });
-      return response.data.Items?.[0]?.UserData;
+      return response.data.Items?.find((el) => el.Id === itemId)?.UserData;
     } catch (error) {
       this.logger.debug(
         `Failed to get Jellyfin user data for item ${itemId} and user ${userId}`,
@@ -2068,6 +2073,9 @@ export class JellyfinAdapterService implements IMediaServerService {
                 ItemFields.ProviderIds,
                 ItemFields.Path,
                 ItemFields.DateCreated,
+                // Collection grids are sorted Maintainerr-side, so studio
+                // ordering needs the field on every hydrated child.
+                ItemFields.Studios,
               ],
               enableUserData: true,
               recursive: false,
@@ -2093,6 +2101,7 @@ export class JellyfinAdapterService implements IMediaServerService {
                   ItemFields.ProviderIds,
                   ItemFields.Path,
                   ItemFields.DateCreated,
+                  ItemFields.Studios,
                 ],
                 enableUserData: true,
               }),

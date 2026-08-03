@@ -232,6 +232,7 @@ describe('EmbyMapper', () => {
         },
       ],
       Tags: ['HD', '4K'],
+      Studios: [{ Name: 'Studio One' }, { Name: '' }, {}],
     };
 
     it('converts ISO timestamps to Date objects', () => {
@@ -313,6 +314,11 @@ describe('EmbyMapper', () => {
     it('returns labels from Tags', () => {
       const result = EmbyMapper.toMediaItem(baseItem);
       expect(result.labels).toEqual(['HD', '4K']);
+    });
+
+    it('maps studio names and drops empty entries', () => {
+      const result = EmbyMapper.toMediaItem(baseItem);
+      expect(result.studios).toEqual(['Studio One']);
     });
 
     it('handles minimal items without crashing', () => {

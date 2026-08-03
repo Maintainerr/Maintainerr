@@ -109,6 +109,15 @@ export class Settings implements SettingDto {
   @Column({ nullable: true })
   streamystats_url: string;
 
+  @Column({ nullable: true })
+  tracearr_url: string;
+
+  @Column({ nullable: true })
+  tracearr_api_key: string;
+
+  @Column({ nullable: true })
+  tracearr_server_id: string;
+
   // Download client integration (currently qBittorrent)
   @Column({ nullable: true })
   download_client_url: string;

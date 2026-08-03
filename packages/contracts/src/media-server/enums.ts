@@ -58,6 +58,8 @@ export enum MediaServerFeature {
   COLLECTION_POSTER = 'collection_poster',
   /** Ability to sort collections */
   COLLECTION_SORT = 'collection_sort',
+  /** Ability to natively sort media-library listings by studio */
+  LIBRARY_STUDIO_SORT = 'library_studio_sort',
   /**
    * A single collection can span multiple libraries. Jellyfin/Emby BoxSets are
    * server-global and may hold items from any library; Plex collections are

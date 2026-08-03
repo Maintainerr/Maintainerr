@@ -61,6 +61,9 @@ export interface ISettings {
   tautulli_url: string
   tautulli_api_key: string
   streamystats_url?: string
+  tracearr_url?: string
+  tracearr_api_key?: string
+  tracearr_server_id?: string
   // Download client integration (currently qBittorrent)
   download_client_url?: string
   download_client_username?: string

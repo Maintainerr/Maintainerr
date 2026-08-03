@@ -1,4 +1,6 @@
 import {
+  type BulkExclusionItemResult,
+  type BulkExclusionResponse,
   ECollectionLogType,
   leftoverCleanupScope,
   MaintainerrEvent,
@@ -23,6 +25,7 @@ import { ArrTagItem, ServarrTagService } from '../actions/servarr-tag.service';
 import cacheManager from '../api/lib/cache';
 import { MediaServerFactory } from '../api/media-server/media-server.factory';
 import { IMediaServerService } from '../api/media-server/media-server.interface';
+import { TracearrApiService } from '../api/tracearr-api/tracearr-api.service';
 import { CollectionsService } from '../collections/collections.service';
 import { Collection } from '../collections/entities/collection.entities';
 import { CollectionMedia } from '../collections/entities/collection_media.entities';
@@ -60,6 +63,11 @@ export interface ReturnStatus {
   skipped?: number;
 }
 
+// Each excluded item fans out server-side (child cascade + a live metadata
+// read per traversed id), so this stays below RULE_EVALUATION_CONCURRENCY to
+// avoid over-driving constrained media servers during a bulk run.
+export const BULK_EXCLUSION_CONCURRENCY = 5;
+
 @Injectable()
 export class RulesService {
   private readonly communityUrl = 'https://community.maintainerr.info';
@@ -93,6 +101,7 @@ export class RulesService {
     private readonly eventEmitter: EventEmitter2,
     private readonly servarrTagService: ServarrTagService,
     private readonly logger: MaintainerrLogger,
+    private readonly tracearrApi: TracearrApiService,
   ) {
     logger.setContext(RulesService.name);
     this.ruleConstants = new RuleConstants();
@@ -100,6 +109,16 @@ export class RulesService {
 
   private async getMediaServer(): Promise<IMediaServerService> {
     return this.mediaServerFactory.getService();
+  }
+
+  private usesTracearr(rules: Rules[]): boolean {
+    return rules.some((rule) => {
+      const parsedRule = JSON.parse(rule.ruleJson) as RuleDto;
+      return (
+        parsedRule.firstVal[0] === Application.TRACEARR ||
+        parsedRule.lastVal?.[0] === Application.TRACEARR
+      );
+    });
   }
 
   async getRuleConstants(): Promise<RuleConstants> {
@@ -150,6 +169,16 @@ export class RulesService {
       if (!settings.streamystats_url || !settings.jellyfin_api_key) {
         localConstants.applications = localConstants.applications.filter(
           (el) => el.id !== Application.STREAMYSTATS,
+        );
+      }
+
+      if (
+        !settings.tracearr_url ||
+        !settings.tracearr_api_key ||
+        !settings.tracearr_server_id
+      ) {
+        localConstants.applications = localConstants.applications.filter(
+          (el) => el.id !== Application.TRACEARR,
         );
       }
     }
@@ -1151,6 +1180,69 @@ export class RulesService {
     }
   }
 
+  async setBulkExclusions(mediaIds: string[]): Promise<BulkExclusionResponse> {
+    const uniqueMediaIds = [...new Set(mediaIds)];
+
+    // Collapse ids nested under another selected id (a show plus one of its
+    // seasons/episodes): excluding both concurrently races setExclusion's
+    // find-then-save on the same row, and the exclusion table has no unique
+    // constraint to stop the duplicate. The ancestor's cascade already covers
+    // the child, so the child just reports the ancestor's outcome.
+    const idSet = new Set(uniqueMediaIds);
+    const coveredBy = new Map<string, string>();
+    const mediaServer = await this.getMediaServer();
+    for (const batch of _.chunk(uniqueMediaIds, BULK_EXCLUSION_CONCURRENCY)) {
+      await Promise.all(
+        batch.map(async (mediaId) => {
+          const metadata = await mediaServer.getMetadata(mediaId);
+          const ancestorId = [metadata?.parentId, metadata?.grandparentId].find(
+            (id) => id !== undefined && id !== mediaId && idSet.has(id),
+          );
+          if (ancestorId) {
+            coveredBy.set(mediaId, ancestorId);
+          }
+        }),
+      );
+    }
+
+    const resultById = new Map<string, BulkExclusionItemResult>();
+    const rootIds = uniqueMediaIds.filter((id) => !coveredBy.has(id));
+
+    for (const batch of _.chunk(rootIds, BULK_EXCLUSION_CONCURRENCY)) {
+      await Promise.all(
+        batch.map(async (mediaId) => {
+          try {
+            const result = await this.setExclusion({ mediaId });
+
+            resultById.set(mediaId, {
+              mediaId,
+              code: result.code,
+              ...(result.message ? { message: result.message } : {}),
+            });
+          } catch (error) {
+            this.logger.warn(`Bulk exclusion failed for media ${mediaId}`);
+            this.logger.debug(error);
+            resultById.set(mediaId, {
+              mediaId,
+              code: 0,
+              message: 'Failed - see server logs',
+            });
+          }
+        }),
+      );
+    }
+
+    const results = uniqueMediaIds.map((mediaId): BulkExclusionItemResult => {
+      let rootId = mediaId;
+      while (coveredBy.has(rootId)) {
+        rootId = coveredBy.get(rootId);
+      }
+      return { ...resultById.get(rootId), mediaId };
+    });
+
+    return { results };
+  }
+
   async removeExclusion(id: number) {
     try {
       const exclcusion = await this.exclusionRepo.findOne({
@@ -1964,6 +2056,9 @@ export class RulesService {
 
     if (mediaResp) {
       group.rules = await this.getRules(group.id);
+      if (group.rules && this.usesTracearr(group.rules)) {
+        this.tracearrApi.invalidateHistory();
+      }
       const ruleComparator = this.ruleComparatorServiceFactory.create();
       try {
         const result = await ruleComparator.executeRulesWithData(

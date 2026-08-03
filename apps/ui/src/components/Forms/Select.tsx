@@ -37,6 +37,7 @@ export const Select = ({
       <select
         {...props}
         ref={ref}
+        id={props.id || props.name}
         className={clsx(
           selectClassNames.base,
           showChevron && 'pr-9',
@@ -79,22 +80,39 @@ type SelectGroupProps = {
   name: string
   label: string
   children?: ReactNode
+  helpText?: ReactNode
   error?: string
   ref?: Ref<HTMLSelectElement>
 } & SelectHTMLAttributes<HTMLSelectElement>
 
-export const SelectGroup = ({ label, ref, ...props }: SelectGroupProps) => {
+export const SelectGroup = ({
+  label,
+  helpText,
+  ref,
+  ...props
+}: SelectGroupProps) => {
+  const ariaDescribedBy = []
+  if (helpText) ariaDescribedBy.push(`${props.name}-help`)
+  if (props.error) ariaDescribedBy.push(`${props.name}-error`)
+
   return (
     <div className="mt-6 max-w-6xl sm:mt-5 sm:grid sm:grid-cols-3 sm:items-start sm:gap-4">
       <label htmlFor={props.id || props.name} className="sm:mt-2">
         {label} {props.required && <>*</>}
+        {helpText && (
+          <p className="text-xs font-normal" id={`${props.name}-help`}>
+            {helpText}
+          </p>
+        )}
       </label>
       <div className="px-3 py-2 sm:col-span-2">
         <div className="max-w-xl">
           <Select
             {...props}
             ref={ref}
-            aria-describedby={props.error ? `${props.name}-error` : undefined}
+            aria-describedby={
+              ariaDescribedBy.length ? ariaDescribedBy.join(' ') : undefined
+            }
             error={!!props.error}
           />
           {props.error && (

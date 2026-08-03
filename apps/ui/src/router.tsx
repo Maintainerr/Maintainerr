@@ -100,6 +100,9 @@ const settingsTautulliRoute = createLazyRoute(
 const settingsStreamystatsRoute = createLazyRoute(
   () => import('./components/Settings/Streamystats'),
 )
+const settingsTracearrRoute = createLazyRoute(
+  () => import('./components/Settings/Tracearr'),
+)
 const settingsDownloadClientRoute = createLazyRoute(
   () => import('./components/Settings/DownloadClient'),
 )
@@ -306,6 +309,11 @@ const appRoutes: AppRoute[] = [
         path: 'streamystats',
         lazy: settingsStreamystatsRoute.lazy,
         preload: settingsStreamystatsRoute.preload,
+      },
+      {
+        path: 'tracearr',
+        lazy: settingsTracearrRoute.lazy,
+        preload: settingsTracearrRoute.preload,
       },
       {
         path: 'download-client',

@@ -463,7 +463,7 @@ export class EmbyAdapterService implements IMediaServerService {
       const { data } = await this.http.get<EmbyBaseItemDto>(path, {
         params: {
           Fields:
-            'ProviderIds,DateCreated,Overview,Tags,MediaSources,Genres,People',
+            'ProviderIds,DateCreated,Overview,Tags,MediaSources,Genres,People,Studios',
         },
       });
       const mediaItem = EmbyMapper.toMediaItem(data);
@@ -713,7 +713,7 @@ export class EmbyAdapterService implements IMediaServerService {
           Recursive: true,
           SearchTerm: query,
           IncludeItemTypes: 'Movie,Series,Episode',
-          Fields: 'ProviderIds,DateCreated,Overview',
+          Fields: 'ProviderIds,DateCreated,Overview,Studios',
           Limit: EMBY_BATCH_SIZE.DEFAULT_PAGE_SIZE,
         },
       });
@@ -1193,7 +1193,9 @@ export class EmbyAdapterService implements IMediaServerService {
           params: {
             ...(userId ? { UserId: userId } : {}),
             ParentId: collectionId,
-            Fields: 'ProviderIds,DateCreated,Overview',
+            // Collection grids are sorted Maintainerr-side, so studio
+            // ordering needs the field on every hydrated child.
+            Fields: 'ProviderIds,DateCreated,Overview,Studios',
             Limit: EMBY_BATCH_SIZE.MAX_PAGE_SIZE,
             StartIndex: offset,
             EnableTotalRecordCount: true,
@@ -1668,6 +1670,8 @@ export class EmbyAdapterService implements IMediaServerService {
         return 'CommunityRating';
       case 'watchCount':
         return 'PlayCount';
+      case 'studio':
+        return 'Studio';
       case 'title':
       default:
         return 'SortName';

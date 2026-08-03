@@ -1,4 +1,4 @@
-import { MediaServerType } from '@maintainerr/contracts';
+import { MediaServerType, TracearrSetting } from '@maintainerr/contracts';
 import { TestBed, type Mocked } from '@suites/unit';
 import { Repository } from 'typeorm';
 import { InternalApiService } from '../api/internal-api/internal-api.service';
@@ -8,6 +8,7 @@ import { SeerrApiService } from '../api/seerr-api/seerr-api.service';
 import { ServarrService } from '../api/servarr-api/servarr.service';
 import { StreamystatsApiService } from '../api/streamystats-api/streamystats-api.service';
 import { TautulliApiService } from '../api/tautulli-api/tautulli-api.service';
+import { TracearrApiService } from '../api/tracearr-api/tracearr-api.service';
 import { MaintainerrLogger } from '../logging/logs.service';
 import { Settings } from './entities/settings.entities';
 import { RadarrSettings } from './entities/radarr_settings.entities';
@@ -24,6 +25,7 @@ describe('SettingsOperationsService', () => {
   let seerr: Mocked<SeerrApiService>;
   let tautulli: Mocked<TautulliApiService>;
   let streamystats: Mocked<StreamystatsApiService>;
+  let tracearr: Mocked<TracearrApiService>;
   let internalApi: Mocked<InternalApiService>;
 
   const createSettings = (overrides: Partial<Settings> = {}): Settings =>
@@ -65,6 +67,7 @@ describe('SettingsOperationsService', () => {
     seerr = unitRef.get(SeerrApiService);
     tautulli = unitRef.get(TautulliApiService);
     streamystats = unitRef.get(StreamystatsApiService);
+    tracearr = unitRef.get(TracearrApiService);
     internalApi = unitRef.get(InternalApiService);
     unitRef.get(MaintainerrLogger);
 
@@ -88,7 +91,69 @@ describe('SettingsOperationsService', () => {
     seerr.init.mockImplementation();
     tautulli.init.mockImplementation();
     streamystats.init.mockImplementation();
+    tracearr.init.mockImplementation();
     internalApi.init.mockImplementation();
+  });
+
+  it('saves Tracearr settings and reinitializes the client', async () => {
+    const setting: TracearrSetting = {
+      url: 'http://tracearr.local',
+      api_key: 'trr_pub_token',
+      server_id: '11111111-1111-4111-8111-111111111111',
+    };
+
+    await expect(service.updateTracearrSetting(setting)).resolves.toEqual({
+      status: 'OK',
+      code: 1,
+      message: 'Success',
+    });
+
+    expect(settingsDataService.saveSettings).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tracearr_url: setting.url,
+        tracearr_api_key: setting.api_key,
+        tracearr_server_id: setting.server_id,
+      }),
+    );
+    expect(tracearr.init).toHaveBeenCalledTimes(1);
+  });
+
+  it('tests Tracearr with connection fields only', async () => {
+    tracearr.testConnection.mockResolvedValue({
+      status: 'OK',
+      code: 1,
+      message: '2.0.0-beta.1',
+    });
+
+    await expect(
+      service.testTracearr({
+        url: 'http://tracearr.local',
+        api_key: 'trr_pub_token',
+        server_id: '11111111-1111-4111-8111-111111111111',
+      }),
+    ).resolves.toEqual({ status: 'OK', code: 1, message: '2.0.0-beta.1' });
+  });
+
+  it('loads Tracearr servers with connection fields only', async () => {
+    const connection = {
+      url: 'http://tracearr.local',
+      api_key: 'trr_pub_token',
+    };
+    const servers = [
+      {
+        id: '11111111-1111-4111-8111-111111111111',
+        name: 'Sample Plex',
+      },
+    ];
+    tracearr.getServers.mockResolvedValue(servers);
+
+    await expect(service.getTracearrServers(connection)).resolves.toEqual(
+      servers,
+    );
+    expect(tracearr.getServers).toHaveBeenCalledWith({
+      url: connection.url,
+      apiKey: connection.api_key,
+    });
   });
 
   it('rejects Plex server setting changes when no Plex credentials are stored', async () => {

@@ -60,6 +60,12 @@ export class SettingDto {
 
   streamystats_url: string;
 
+  tracearr_url: string;
+
+  tracearr_api_key: string;
+
+  tracearr_server_id: string;
+
   download_client_url: string;
 
   download_client_username: string;

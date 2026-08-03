@@ -25,6 +25,9 @@ interface IOverviewContent {
   collectionInfo?: ICollectionMedia[]
   collectionId?: number
   collection?: ICollection
+  selectionMode?: boolean
+  selectedMediaIds?: ReadonlySet<string>
+  onToggleSelection?: (mediaId: string, selected: boolean) => void
 }
 
 function extractProviderIds(
@@ -187,6 +190,9 @@ const OverviewContent = (props: IOverviewContent) => {
                   isManual={
                     el.maintainerrIsManual ? el.maintainerrIsManual : false
                   }
+                  selectionMode={props.selectionMode}
+                  selected={props.selectedMediaIds?.has(el.id) ?? false}
+                  onToggleSelection={props.onToggleSelection}
                   {...(props.collectionInfo
                     ? {
                         daysLeft: getDaysLeft(el.id),
