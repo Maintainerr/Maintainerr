@@ -1509,9 +1509,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@hookform/resolvers@npm:^5.5.7":
-  version: 5.5.7
-  resolution: "@hookform/resolvers@npm:5.5.7"
+"@hookform/resolvers@npm:^5.6.0":
+  version: 5.6.0
+  resolution: "@hookform/resolvers@npm:5.6.0"
   dependencies:
     "@standard-schema/utils": "npm:^0.3.0"
   peerDependencies:
@@ -1589,7 +1589,7 @@ __metadata:
       optional: true
     zod:
       optional: true
-  checksum: 10c0/412663923df939084e6370dcc3107910b12294559799197bebbc57d560ec6f27bd24e14a4fb7a498ee6b01b60d5c5e1b20cafbfe4e9e7ee6879e1479d51f5da0
+  checksum: 10c0/7b0a10300e2610095e7165effdaa62a3b864d53adad0e0a40fac337c7ac70b026911630a8024330deb1006dd752e07036502488d8947a81a54092b1835b55f57
   languageName: node
   linkType: hard
 
@@ -3154,7 +3154,7 @@ __metadata:
     "@eslint/js": "npm:^10.0.1"
     "@headlessui/react": "npm:^2.2.10"
     "@heroicons/react": "npm:^1.0.6"
-    "@hookform/resolvers": "npm:^5.5.7"
+    "@hookform/resolvers": "npm:^5.6.0"
     "@maintainerr/contracts": "workspace:^"
     "@monaco-editor/react": "npm:^4.7.0"
     "@tailwindcss/forms": "npm:^0.5.11"
