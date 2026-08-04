@@ -412,12 +412,13 @@ describe('TracearrGetterService', () => {
     VIEWED_EPISODES,
     LAST_WATCHED,
     WATCHERS,
+    // A property that does not apply to this item type answers null, the
+    // definitive "does not apply". The transient signal froze the whole group,
+    // because the executor sweeps a library at a single dataType.
   ])('skips show property %i for a movie', async (propertyId) => {
     const { service, tracearrApi } = createService([]);
 
-    await expect(
-      service.get(propertyId, movie, ruleGroup),
-    ).resolves.toBeUndefined();
+    await expect(service.get(propertyId, movie, ruleGroup)).resolves.toBeNull();
     expect(tracearrApi.prefetchHistory).not.toHaveBeenCalled();
   });
 
@@ -428,7 +429,7 @@ describe('TracearrGetterService', () => {
 
       await expect(
         service.get(propertyId, episode, ruleGroup),
-      ).resolves.toBeUndefined();
+      ).resolves.toBeNull();
       expect(tracearrApi.prefetchHistory).not.toHaveBeenCalled();
     },
   );
