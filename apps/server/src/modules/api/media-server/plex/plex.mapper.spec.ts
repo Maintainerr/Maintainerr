@@ -64,6 +64,32 @@ describe('PlexMapper', () => {
     });
   });
 
+  describe('extractPlexAgentId', () => {
+    it.each([
+      ['plex://movie/5d776830880197001ec7f3eb', '5d776830880197001ec7f3eb'],
+      ['plex://show/5d9c07f4705e7a001e6e59a2', '5d9c07f4705e7a001e6e59a2'],
+      ['plex://episode/5d9c1176e264b7001fef1d0e', '5d9c1176e264b7001fef1d0e'],
+    ])('reads the agent id out of %s', (guid, expected) => {
+      expect(PlexMapper.extractPlexAgentId(guid)).toBe(expected);
+    });
+
+    // Watchlist entries are keyed on the Plex agent id, so anything without one
+    // has to come back undefined rather than a partial match.
+    it.each([
+      ['a legacy agent guid', 'com.plexapp.agents.imdb://tt1234567?lang=en'],
+      ['a provider guid', 'tmdb://12345'],
+      ['personal media', 'local://12345'],
+      ['a guid that only looks like one', 'notplex://movie/5d7768308801'],
+      ['a missing type segment', 'plex://5d776830880197001ec7f3eb'],
+      ['an empty type segment', 'plex:///5d776830880197001ec7f3eb'],
+      ['a trailing separator', 'plex://movie/'],
+      ['an id with unexpected characters', 'plex://movie/5d7768-30?lang=en'],
+      ['nothing at all', undefined],
+    ])('returns undefined for %s', (label, guid) => {
+      expect(PlexMapper.extractPlexAgentId(guid)).toBeUndefined();
+    });
+  });
+
   describe('extractProviderIds', () => {
     it('should extract IMDB id from guid', () => {
       const guids = [{ id: 'imdb://tt1234567' }];

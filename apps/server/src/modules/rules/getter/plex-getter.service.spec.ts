@@ -811,6 +811,94 @@ describe('PlexGetterService', () => {
       ).resolves.toBeUndefined();
     });
 
+    it('skips users whose watchlist Plex will not share and keeps evaluating the rest (ids 28 and 30)', async () => {
+      // getWatchlistIdsForUser resolves null for a private watchlist. That is
+      // permanent, so it must not stall the rule the way a failed read does
+      // (#3395).
+      plexApi.getMetadata.mockResolvedValue(
+        makeMetadata({
+          ratingKey: 'movie-1',
+          type: 'movie',
+          guid: 'plex://movie/movieuuid',
+        }),
+      );
+      plexApi.getCorrectedUsers.mockResolvedValue([
+        makePlexUser({ plexId: 1, username: 'alice', uuid: 'uuid-a' }),
+        makePlexUser({ plexId: 2, username: 'bob', uuid: 'uuid-b' }),
+      ]);
+      plexApi.getWatchlistIdsForUser.mockImplementation(async (uuid) =>
+        uuid === 'uuid-a'
+          ? null
+          : [
+              {
+                id: 'movieuuid',
+                key: '/movieuuid',
+                title: 'Fixture Movie',
+                type: 'movie',
+              },
+            ],
+      );
+
+      const libItem = createMediaItem({ id: 'movie-1', type: 'movie' });
+      const ruleGroup = createRulesDto({ dataType: 'movie' });
+
+      await expect(
+        service.get(28, libItem, 'movie', ruleGroup),
+      ).resolves.toEqual(['bob']);
+      await expect(service.get(30, libItem, 'movie', ruleGroup)).resolves.toBe(
+        true,
+      );
+    });
+
+    it('reports nobody when every watchlist is private (ids 28 and 30)', async () => {
+      plexApi.getMetadata.mockResolvedValue(
+        makeMetadata({
+          ratingKey: 'movie-1',
+          type: 'movie',
+          guid: 'plex://movie/movieuuid',
+        }),
+      );
+      plexApi.getCorrectedUsers.mockResolvedValue([
+        makePlexUser({ plexId: 1, username: 'alice', uuid: 'uuid-a' }),
+      ]);
+      plexApi.getWatchlistIdsForUser.mockResolvedValue(null);
+
+      const libItem = createMediaItem({ id: 'movie-1', type: 'movie' });
+      const ruleGroup = createRulesDto({ dataType: 'movie' });
+
+      await expect(
+        service.get(28, libItem, 'movie', ruleGroup),
+      ).resolves.toEqual([]);
+      await expect(service.get(30, libItem, 'movie', ruleGroup)).resolves.toBe(
+        false,
+      );
+    });
+
+    it('reports nobody without querying plex.tv when the item has no plex guid (ids 28 and 30)', async () => {
+      // Legacy-agent, unmatched and personal media carry a non-plex:// guid,
+      // and watchlist entries are keyed on the plex:// uuid, so they can never
+      // be watchlisted.
+      plexApi.getMetadata.mockResolvedValue(
+        makeMetadata({
+          ratingKey: 'movie-1',
+          type: 'movie',
+          guid: 'local://movie-1',
+        }),
+      );
+
+      const libItem = createMediaItem({ id: 'movie-1', type: 'movie' });
+      const ruleGroup = createRulesDto({ dataType: 'movie' });
+
+      await expect(
+        service.get(28, libItem, 'movie', ruleGroup),
+      ).resolves.toEqual([]);
+      await expect(service.get(30, libItem, 'movie', ruleGroup)).resolves.toBe(
+        false,
+      );
+      expect(plexApi.getCorrectedUsers).not.toHaveBeenCalled();
+      expect(plexApi.getWatchlistIdsForUser).not.toHaveBeenCalled();
+    });
+
     it.each([
       { id: 31, name: 'rating_imdb', expected: 7.8 },
       { id: 32, name: 'rating_rottenTomatoesCritic', expected: 6.6 },
@@ -896,6 +984,27 @@ describe('PlexGetterService', () => {
 
       expect(result).toBe(rule.expected);
     });
+
+    // A show has no show above it. Plex threw on the missing parent, and the
+    // outer catch turned "does not apply" into the transient signal, stalling
+    // the rule; Jellyfin and Emby already answer null here.
+    it.each([35, 36, 37, 38])(
+      'returns null for show ratings evaluated on a show itself (id %i)',
+      async (id) => {
+        plexApi.getMetadata.mockResolvedValue(
+          makeMetadata({ ratingKey: 'show-1', type: 'show', Rating: [] }),
+        );
+
+        await expect(
+          service.get(
+            id,
+            createMediaItem({ id: 'show-1', type: 'show' }),
+            'show',
+            createRulesDto({ dataType: 'show' }),
+          ),
+        ).resolves.toBeNull();
+      },
+    );
 
     it('counts regular and smart collections while excluding rule-managed regular collections (id 39)', async () => {
       plexApi.getMetadata.mockResolvedValue(

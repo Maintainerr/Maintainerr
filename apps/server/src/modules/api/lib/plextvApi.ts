@@ -1,5 +1,6 @@
 import { AxiosError } from 'axios';
 import { parseStringPromise } from 'xml2js';
+import { PLEX_TV_USERS_CACHE_KEY } from '../../api/plex-api/plex-api.constants';
 import { PlexDevice } from '../../api/plex-api/interfaces/server.interface';
 import { MaintainerrLogger } from '../../logging/logs.service';
 import { ExternalApiService } from '../external-api/external-api.service';
@@ -106,6 +107,7 @@ interface UsersResponse {
 
 export class PlexTvApi extends ExternalApiService {
   private authToken: string;
+  private usersRequest: Promise<UsersResponse> | undefined;
 
   constructor(
     authToken: string,
@@ -169,6 +171,23 @@ export class PlexTvApi extends ExternalApiService {
   }
 
   public async getUsers(): Promise<UsersResponse> {
+    const cached = cacheManager
+      .getCache('plextv')
+      .data.get<UsersResponse>(PLEX_TV_USERS_CACHE_KEY);
+    if (cached) {
+      return cached;
+    }
+
+    // Rule evaluation resolves operands in parallel batches, so a cold cache
+    // otherwise sends the whole batch to plex.tv at once. Share one in-flight
+    // request, as the watch-history prefetch does.
+    this.usersRequest ??= this.fetchUsers().finally(() => {
+      this.usersRequest = undefined;
+    });
+    return this.usersRequest;
+  }
+
+  private async fetchUsers(): Promise<UsersResponse> {
     const response = await this.get('/api/users', {
       transformResponse: [],
       responseType: 'text',
@@ -179,6 +198,12 @@ export class PlexTvApi extends ExternalApiService {
     }
 
     const parsedXml = (await parseStringPromise(response)) as UsersResponse;
+    // Cached here rather than by the response cache, which only holds objects -
+    // this endpoint answers XML text. A failure never gets this far, so only a
+    // successfully parsed list is ever cached.
+    cacheManager
+      .getCache('plextv')
+      .data.set(PLEX_TV_USERS_CACHE_KEY, parsedXml);
     return parsedXml;
   }
 
