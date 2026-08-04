@@ -83,6 +83,7 @@ export class SportarrGetterService {
       let externalId = sportarrLeagueExternalIdFromProviderIds(
         showItem?.providerIds?.tvdb,
       );
+      let showMetadataRead = showItem !== undefined;
       if (!externalId) {
         // The rule executor can pass a lightweight library item whose
         // providerIds aren't populated. Re-fetch the show's full metadata to
@@ -100,20 +101,32 @@ export class SportarrGetterService {
               (item) => item === undefined,
             )
           : fetchShow());
+        // Whether the show's metadata was actually read is what separates the
+        // two causes below.
+        showMetadataRead = fullShow !== undefined;
         externalId = sportarrLeagueExternalIdFromProviderIds(
           fullShow?.providerIds?.tvdb,
         );
       }
       if (!externalId) {
-        this.logger.warn(
-          `Failed to resolve a Sportarr league id for '${libItem.title}' (media server ID '${libItem.id}'). No Sportarr query could be made.`,
+        if (!showMetadataRead) {
+          this.logger.warn(
+            `Failed to resolve a Sportarr league id for '${libItem.title}' (media server ID '${libItem.id}'). No Sportarr query could be made.`,
+          );
+          // The metadata read failed, so the alias is unknown rather than
+          // absent - `null` here would defeat the transient-removal guard and
+          // splice items out during an outage (#3307).
+          return undefined;
+        }
+
+        // The show's metadata read fine and simply carries no Sportarr alias:
+        // an ordinary show in a sports library, which will never have one.
+        // Answering transient pinned it for good - it could never enter a
+        // collection, and never leave one it was already in.
+        this.logger.debug(
+          `'${libItem.title}' (media server ID '${libItem.id}') carries no Sportarr league alias, so no Sportarr query is possible.`,
         );
-        // An empty resolution cannot distinguish "item carries no Sportarr
-        // alias" from a transient media-server failure on the metadata reads
-        // above, so it must stay `undefined` - `null` would defeat the
-        // transient-removal guard and splice items out of collections during
-        // an outage (same reasoning as the Sonarr getter, #3307).
-        return undefined;
+        return null;
       }
 
       // The /leagues list is identical for every item in the run, so pull it

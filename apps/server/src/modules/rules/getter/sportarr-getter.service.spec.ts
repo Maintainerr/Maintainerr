@@ -75,17 +75,38 @@ describe('SportarrGetterService', () => {
     expect(result).toBeNull();
   });
 
-  it('fails closed (undefined) when no Sportarr id can be resolved', async () => {
-    // An empty resolution can't distinguish "no alias on the item" from a
-    // transient media-server failure, so it must not read as definitive
-    // absence (same reasoning as the Sonarr getter, #3307).
+  it('fails closed (undefined) when the show metadata read fails', async () => {
+    // The alias is unknown rather than absent, so it must not read as
+    // definitive absence (same reasoning as the Sonarr getter, #3307).
+    mockMediaServer.getMetadata.mockResolvedValue(undefined);
+
     const result = await service.get(
       0,
       createMediaItem({ type: 'show', providerIds: { tvdb: ['342040'] } }),
       'show',
       ruleGroup(),
     );
+
     expect(result).toBeUndefined();
+    expect(mockClient.getLeagueByExternalId).not.toHaveBeenCalled();
+  });
+
+  // An ordinary show in a sports library will never carry a league alias, so
+  // the transient signal pinned it for good: it could never enter a collection
+  // and never leave one it was already in.
+  it('answers null when the show reads fine but carries no league alias', async () => {
+    mockMediaServer.getMetadata.mockResolvedValue(
+      createMediaItem({ type: 'show', providerIds: { tvdb: ['342040'] } }),
+    );
+
+    const result = await service.get(
+      0,
+      createMediaItem({ type: 'show', providerIds: { tvdb: ['342040'] } }),
+      'show',
+      ruleGroup(),
+    );
+
+    expect(result).toBeNull();
     expect(mockClient.getLeagueByExternalId).not.toHaveBeenCalled();
   });
 
