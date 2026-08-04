@@ -391,16 +391,15 @@ describe('SonarrGetterService', () => {
         await expect(call()).resolves.toBeUndefined();
       });
 
-      // Nothing is ever requested for an item with no external ids, so the
-      // empty resolution cannot be an outage - and answering transient pinned
-      // the item in place forever.
-      it('returns null when the item carries no external ids at all', async () => {
+      // "We could not look it up" is not "it is not there": a definitive answer
+      // would let unmatched items and personal media match NOT_EXISTS rules.
+      it('stays transient when the item carries no external ids', async () => {
         metadataService.hasExternalIds.mockReturnValue(false);
         metadataService.resolveLookupCandidatesFromMediaItemForService.mockResolvedValue(
           [],
         );
 
-        await expect(call()).resolves.toBeNull();
+        await expect(call()).resolves.toBeUndefined();
       });
 
       it('evicts an empty resolution so a later condition retries (transient safety, #3125)', async () => {
