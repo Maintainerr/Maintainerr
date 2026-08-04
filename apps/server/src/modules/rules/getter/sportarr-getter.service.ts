@@ -101,32 +101,24 @@ export class SportarrGetterService {
               (item) => item === undefined,
             )
           : fetchShow());
-        // Whether the show's metadata was actually read is what separates the
-        // two causes below.
         showMetadataRead = fullShow !== undefined;
         externalId = sportarrLeagueExternalIdFromProviderIds(
           fullShow?.providerIds?.tvdb,
         );
       }
       if (!externalId) {
-        if (!showMetadataRead) {
-          this.logger.warn(
-            `Failed to resolve a Sportarr league id for '${libItem.title}' (media server ID '${libItem.id}'). No Sportarr query could be made.`,
-          );
-          // The metadata read failed, so the alias is unknown rather than
-          // absent - `null` here would defeat the transient-removal guard and
-          // splice items out during an outage (#3307).
-          return undefined;
+        // A show that read fine and carries no alias is an ordinary show in a
+        // sports library, so log it quietly rather than warning every run. The
+        // answer stays transient either way - a definitive one would let those
+        // shows match NOT_EXISTS rules.
+        const message = `Failed to resolve a Sportarr league id for '${libItem.title}' (media server ID '${libItem.id}'). No Sportarr query could be made.`;
+        if (showMetadataRead) {
+          this.logger.debug(message);
+        } else {
+          this.logger.warn(message);
         }
 
-        // The show's metadata read fine and simply carries no Sportarr alias:
-        // an ordinary show in a sports library, which will never have one.
-        // Answering transient pinned it for good - it could never enter a
-        // collection, and never leave one it was already in.
-        this.logger.debug(
-          `'${libItem.title}' (media server ID '${libItem.id}') carries no Sportarr league alias, so no Sportarr query is possible.`,
-        );
-        return null;
+        return undefined;
       }
 
       // The /leagues list is identical for every item in the run, so pull it

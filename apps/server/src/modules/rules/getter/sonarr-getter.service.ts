@@ -106,21 +106,18 @@ export class SonarrGetterService {
       );
 
       if (lookupCandidates.length === 0) {
-        // Two very different causes look the same here. An item the media
-        // server gave no external ids for can never resolve, no matter how
-        // often it is retried, and answering the transient signal pinned it
-        // for good. A failed online validation is the case #3307 protects, so
-        // that one still pauses evaluation.
-        if (!this.metadataService.hasExternalIds(libItem)) {
-          this.logger.debug(
-            `'${libItem.title}' (media server ID '${libItem.id}') carries no external IDs, so no Sonarr query is possible.`,
-          );
-          return null;
+        // An item the media server gave no external IDs for can never resolve,
+        // so log it quietly rather than warning about it every run. The answer
+        // stays transient either way: "we could not look it up" is not the same
+        // claim as "it is not there", and a definitive one would let unmatched
+        // and personal media match NOT_EXISTS rules.
+        const message = `Failed to resolve external IDs for '${libItem.title}' (media server ID '${libItem.id}'). As a result, no Sonarr query could be made.`;
+        if (this.metadataService.hasExternalIds(libItem)) {
+          this.logger.warn(message);
+        } else {
+          this.logger.debug(message);
         }
 
-        this.logger.warn(
-          `Failed to resolve external IDs for '${libItem.title}' (media server ID '${libItem.id}'). As a result, no Sonarr query could be made.`,
-        );
         return undefined;
       }
 

@@ -340,18 +340,18 @@ describe('RadarrGetterService', () => {
       await expect(callAddDate()).resolves.toBeUndefined();
     });
 
-    // Unmatched items, personal media and home videos reach rule evaluation
-    // with no external ids at all. Nothing is ever requested for them, so the
-    // empty resolution cannot be an outage - and answering transient pinned
-    // them in place forever.
-    it('returns null when the item carries no external ids at all', async () => {
+    // "We could not look it up" is not "it is not there": a definitive answer
+    // would let unmatched items and personal media match NOT_EXISTS rules. Only
+    // the log level changes.
+    it('stays transient, and logs quietly, when the item carries no external ids', async () => {
       mockRadarrApi();
       metadataService.hasExternalIds.mockReturnValue(false);
       metadataService.resolveLookupCandidatesFromMediaItemForService.mockResolvedValue(
         [],
       );
 
-      await expect(callAddDate()).resolves.toBeNull();
+      await expect(callAddDate()).resolves.toBeUndefined();
+      expect(logger.warn).not.toHaveBeenCalled();
     });
   });
 

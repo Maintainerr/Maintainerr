@@ -91,10 +91,10 @@ describe('SportarrGetterService', () => {
     expect(mockClient.getLeagueByExternalId).not.toHaveBeenCalled();
   });
 
-  // An ordinary show in a sports library will never carry a league alias, so
-  // the transient signal pinned it for good: it could never enter a collection
-  // and never leave one it was already in.
-  it('answers null when the show reads fine but carries no league alias', async () => {
+  // An ordinary show in a sports library carries no alias, but a definitive
+  // answer would let it match NOT_EXISTS rules - so it stays transient and only
+  // the log level changes.
+  it('stays transient when the show reads fine but carries no league alias', async () => {
     mockMediaServer.getMetadata.mockResolvedValue(
       createMediaItem({ type: 'show', providerIds: { tvdb: ['342040'] } }),
     );
@@ -106,7 +106,7 @@ describe('SportarrGetterService', () => {
       ruleGroup(),
     );
 
-    expect(result).toBeNull();
+    expect(result).toBeUndefined();
     expect(mockClient.getLeagueByExternalId).not.toHaveBeenCalled();
   });
 

@@ -87,12 +87,10 @@ export class SeerrGetterService {
         this.logger.debug(
           `Couldn't find tmdb id for media '${libItem.title}' with id '${libItem.id}'. As a result, no Seerr query could be made.`,
         );
-        // An item the media server gave no external ids for can never resolve
-        // one, however often it is retried, so the transient signal pinned it
-        // for good. An item that has ids but could not be cross-referenced to a
-        // tmdb id may just be a failed online lookup, which is the case #3307
-        // protects, so that one still pauses evaluation.
-        return this.metadataService.hasExternalIds(libItem) ? undefined : null;
+        // Transient either way: "we could not look it up" is not the same claim
+        // as "it is not requested", and a definitive answer would let unmatched
+        // and personal media match NOT_EXISTS rules.
+        return undefined;
       }
 
       // releaseDate (movie releaseDate / tv firstAirDate / season|episode

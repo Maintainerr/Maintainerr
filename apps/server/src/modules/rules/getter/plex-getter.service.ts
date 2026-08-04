@@ -861,11 +861,13 @@ export class PlexGetterService {
     guid: string | undefined,
     stopAtFirstMatch: boolean,
   ): Promise<string[] | undefined> {
-    // An item without a Plex agent id can never be on a watchlist - that is a
-    // definitive empty answer, not a failed lookup.
+    // Watchlist entries are keyed on the Plex agent id, so an item without one
+    // cannot be correlated with any watchlist. Transient rather than an empty
+    // answer: a definitive one would let unmatched and personal media match a
+    // "not watchlisted" rule.
     const plexAgentId = PlexMapper.extractPlexAgentId(guid);
     if (!plexAgentId) {
-      return [];
+      return undefined;
     }
 
     const plexUsers: SimplePlexUser[] = await this.plexApi.getCorrectedUsers();

@@ -874,10 +874,11 @@ describe('PlexGetterService', () => {
       );
     });
 
-    it('reports nobody without querying plex.tv when the item has no plex guid (ids 28 and 30)', async () => {
-      // Legacy-agent, unmatched and personal media carry a non-plex:// guid,
-      // and watchlist entries are keyed on the plex:// uuid, so they can never
-      // be watchlisted.
+    it('stays transient without querying plex.tv when the item has no plex guid (ids 28 and 30)', async () => {
+      // Legacy-agent, unmatched and personal media carry a non-plex:// guid and
+      // cannot be correlated with a watchlist. Answering "nobody" would let them
+      // match a "not watchlisted" rule, so it stays transient - it just no
+      // longer throws its way there.
       plexApi.getMetadata.mockResolvedValue(
         makeMetadata({
           ratingKey: 'movie-1',
@@ -891,10 +892,10 @@ describe('PlexGetterService', () => {
 
       await expect(
         service.get(28, libItem, 'movie', ruleGroup),
-      ).resolves.toEqual([]);
-      await expect(service.get(30, libItem, 'movie', ruleGroup)).resolves.toBe(
-        false,
-      );
+      ).resolves.toBeUndefined();
+      await expect(
+        service.get(30, libItem, 'movie', ruleGroup),
+      ).resolves.toBeUndefined();
       expect(plexApi.getCorrectedUsers).not.toHaveBeenCalled();
       expect(plexApi.getWatchlistIdsForUser).not.toHaveBeenCalled();
     });
