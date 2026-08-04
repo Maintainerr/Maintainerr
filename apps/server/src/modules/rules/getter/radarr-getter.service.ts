@@ -73,13 +73,21 @@ export class RadarrGetterService {
       );
 
       if (lookupCandidates.length === 0) {
+        // Two very different causes look the same here. An item the media
+        // server gave no external ids for can never resolve, no matter how
+        // often it is retried, and answering the transient signal pinned it
+        // for good. A failed online validation is the case #3307 protects, so
+        // that one still pauses evaluation.
+        if (!this.metadataService.hasExternalIds(libItem)) {
+          this.logger.debug(
+            `'${libItem.title}' (media server ID '${libItem.id}') carries no external IDs, so no Radarr query is possible.`,
+          );
+          return null;
+        }
+
         this.logger.warn(
           `Failed to resolve external IDs for '${libItem.title}' (media server ID '${libItem.id}'). As a result, no Radarr query could be made.`,
         );
-        // An empty resolution cannot distinguish "item has no provider ids"
-        // from a transient TMDB/TVDB failure (validation runs online), so it
-        // must stay `undefined` - `null` would defeat the transient-removal
-        // guard and wipe collections during an internet outage (#3307).
         return undefined;
       }
 
