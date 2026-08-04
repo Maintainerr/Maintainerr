@@ -6,6 +6,7 @@ import * as fs from 'fs';
 import { cleanupOpenApiDoc } from 'nestjs-zod';
 import path from 'path';
 import { AppModule } from './app/app.module';
+import { resolveCorsOptions } from './app/config/cors';
 import { dataDir } from './app/config/dataDir';
 import { MaintainerrLogger } from './modules/logging/logs.service';
 import { installStdioPipeGuards } from './modules/logging/winston/stdioPipeGuard';
@@ -48,7 +49,11 @@ async function bootstrap() {
   SwaggerModule.setup('api/swagger', app, document);
 
   app.useLogger(await app.resolve(MaintainerrLogger));
-  app.enableCors({ origin: true });
+
+  const corsOptions = resolveCorsOptions();
+  if (corsOptions) {
+    app.enableCors(corsOptions);
+  }
 
   if (!isSharpAvailable) {
     const sharpLogger = await app.resolve(MaintainerrLogger);
