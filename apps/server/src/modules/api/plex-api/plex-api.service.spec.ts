@@ -1761,3 +1761,106 @@ describe('PlexApiService.resetMetadataCache', () => {
     expect(watchCache.keys()).toEqual([]);
   });
 });
+
+describe('PlexApiService.getWatchlistIdsForUser', () => {
+  let service: PlexApiService;
+  let communityLogger: { warn: jest.Mock; debug: jest.Mock };
+
+  const entry = {
+    id: 'movieuuid',
+    key: '/movieuuid',
+    title: 'Fixture Movie',
+    type: 'MOVIE',
+  };
+
+  const page = (nodes: unknown[], hasNextPage = false, endCursor = null) => ({
+    data: {
+      user: { watchlist: { nodes, pageInfo: { hasNextPage, endCursor } } },
+    },
+  });
+
+  beforeEach(async () => {
+    const { unit, unitRef } = await TestBed.solitary(PlexApiService).compile();
+    service = unit;
+
+    communityLogger = { warn: jest.fn(), debug: jest.fn() };
+    unitRef.get(MaintainerrLoggerFactory).createLogger.mockReturnValue({
+      setContext: jest.fn(),
+      log: jest.fn(),
+      error: jest.fn(),
+      ...communityLogger,
+    } as any);
+    Object.assign(unitRef.get(MaintainerrLogger), communityLogger);
+  });
+
+  const withQuery = (query: jest.Mock) => {
+    (service as any).plexCommunityClient = { query };
+    return query;
+  };
+
+  it('collects every page of the watchlist', async () => {
+    const query = withQuery(
+      jest
+        .fn()
+        .mockResolvedValueOnce(page([entry], true, 'cursor'))
+        .mockResolvedValueOnce(page([{ ...entry, id: 'showuuid' }])),
+    );
+
+    await expect(
+      service.getWatchlistIdsForUser('uuid-a', 'alice'),
+    ).resolves.toEqual([entry, { ...entry, id: 'showuuid' }]);
+    expect(query).toHaveBeenCalledTimes(2);
+  });
+
+  // plex.tv answers HTTP 200 with a `User not found:` GraphQL error for an
+  // account that hides its watchlist. That is definitive, so the caller must be
+  // able to skip the user instead of stalling the whole rule (#3395).
+  it.each([
+    ['a private watchlist', 'User not found: User privacy prevents viewing'],
+    [
+      'an account plex.tv does not know',
+      'User not found: Data loader item not found: users uuid=0000000000000000',
+    ],
+  ])('resolves null for %s', async (label, message) => {
+    withQuery(
+      jest.fn().mockResolvedValue({ errors: [{ message }], data: null }),
+    );
+
+    await expect(
+      service.getWatchlistIdsForUser('uuid-a', 'alice'),
+    ).resolves.toBeNull();
+    expect(communityLogger.warn).not.toHaveBeenCalled();
+  });
+
+  // Anything else stays transient: collapsing it would let a rule act on a
+  // watchlist that was never read (#3307).
+  it('resolves undefined for any other GraphQL error', async () => {
+    withQuery(
+      jest.fn().mockResolvedValue({
+        errors: [{ message: 'Internal server error' }],
+        data: null,
+      }),
+    );
+
+    await expect(
+      service.getWatchlistIdsForUser('uuid-a', 'alice'),
+    ).resolves.toBeUndefined();
+    expect(communityLogger.warn).toHaveBeenCalled();
+  });
+
+  it('resolves undefined when the request itself fails', async () => {
+    withQuery(jest.fn().mockResolvedValue(undefined));
+
+    await expect(
+      service.getWatchlistIdsForUser('uuid-a', 'alice'),
+    ).resolves.toBeUndefined();
+  });
+
+  it('resolves undefined when the community client throws', async () => {
+    withQuery(jest.fn().mockRejectedValue(new Error('boom')));
+
+    await expect(
+      service.getWatchlistIdsForUser('uuid-a', 'alice'),
+    ).resolves.toBeUndefined();
+  });
+});

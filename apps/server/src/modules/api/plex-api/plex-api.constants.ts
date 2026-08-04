@@ -17,6 +17,25 @@ export const PLEX_PAGE_SIZE = {
 // CONNECTION_TEST_TIMEOUT_MS; this applies to the long-lived runtime client.
 export const PLEX_REQUEST_TIMEOUT_MS = 30_000;
 
+// plex.tv answers with HTTP 200 and a `User not found:` GraphQL error when it
+// refuses to resolve the requested user at all: the account keeps its watchlist
+// private ("User privacy prevents viewing"), or the uuid is unknown to plex.tv.
+// That is a definitive answer, not a transport failure, and no retry changes it.
+//
+// The endpoint is undocumented (python-plexapi and Seerr only ever read the
+// authenticated account's own watchlist), so this comes from probing it: query
+// errors - unknown field, syntax error, introspection - all answer HTTP 400,
+// which never reaches this branch. Only resolver errors arrive as 200 + errors.
+// Anything else that turns up there stays transient, per the #3307 contract.
+export const PLEX_COMMUNITY_UNRESOLVED_USER_ERROR = 'User not found:';
+
+// Key in the 'plextv' cache for the shared-user list. plex.tv answers
+// /api/users as XML, and ExternalApiService only caches objects, so without
+// this every caller re-fetched and re-parsed the list - once per evaluated item
+// on the getters that resolve usernames. The rule executor flushes this cache
+// at the start of every run, so a run still reads a fresh list.
+export const PLEX_TV_USERS_CACHE_KEY = 'plextv-users';
+
 // Key prefix in the 'plexwatchhistory' cache for the watch-history snapshots
 // built by prefetchWatchHistory(). TTL and flush behaviour live on the cache
 // definition in lib/cache.ts.

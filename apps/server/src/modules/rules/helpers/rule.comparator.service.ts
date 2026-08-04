@@ -367,16 +367,21 @@ export class RuleComparatorService {
   ): { firstValueReason?: string; secondValueReason?: string } {
     const reasons: { firstValueReason?: string; secondValueReason?: string } =
       {};
+    // `undefined` is the transport-failure signal, `null` a confirmed absence -
+    // keep them apart here so the Test Media output stops reporting a failed
+    // lookup as "no entries for this item".
     if (firstVal == null) {
       reasons.firstValueReason = this.ruleConstanstService.getValueNullReason(
         rule.firstVal,
         this.configuredServerType,
+        { lookupFailed: firstVal === undefined },
       );
     }
     if (secondVal == null && rule.lastVal) {
       reasons.secondValueReason = this.ruleConstanstService.getValueNullReason(
         rule.lastVal,
         this.configuredServerType,
+        { lookupFailed: secondVal === undefined },
       );
     }
     return reasons;
