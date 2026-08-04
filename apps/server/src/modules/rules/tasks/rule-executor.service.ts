@@ -1,4 +1,5 @@
 import {
+  ApplicationNames,
   IComparisonStatistics,
   MaintainerrEvent,
   MediaItem,
@@ -136,6 +137,29 @@ export class RuleExecutorService {
     });
   }
 
+  /** Both sides of a rule count: a Seerr date compared against a Tautulli one needs both. */
+  private async findUnavailableApplications(
+    ruleGroup: RulesDto,
+  ): Promise<string[]> {
+    const referenced = new Set<Application>();
+    for (const rule of ruleGroup.rules) {
+      const parsedRule = (
+        'ruleJson' in rule ? JSON.parse(rule.ruleJson) : rule
+      ) as RuleDto;
+      referenced.add(parsedRule.firstVal[0]);
+      if (parsedRule.lastVal) {
+        referenced.add(parsedRule.lastVal[0]);
+      }
+    }
+
+    const unavailable = await this.rulesService.getUnavailableApplications();
+    return unavailable
+      .filter((application) => referenced.has(application))
+      .map(
+        (application) => ApplicationNames[application] ?? `app ${application}`,
+      );
+  }
+
   private buildRuleHandlerFailedDto(
     rulegroup?: Partial<Pick<RuleGroup, 'id' | 'name' | 'collectionId'>> & {
       collection?: { title?: string } | null;
@@ -201,6 +225,17 @@ export class RuleExecutorService {
         );
         throw new RuleExecutionFailure(
           this.buildRuleHandlerFailedDto(ruleGroup, ruleGroup.name),
+        );
+      }
+
+      // Absent, not merely unreachable: every property reading it answers the
+      // transient signal for every item, which holds the collection and retries
+      // next run. That part is by design; being silent about it is not.
+      const missing = await this.findUnavailableApplications(ruleGroup);
+      if (missing.length > 0) {
+        this.logger.warn(
+          `Rule group '${ruleGroup.name}' reads ${missing.join(', ')}, not available for this server. ` +
+            `Its collection is held until you configure it or remove those rules.`,
         );
       }
 

@@ -53,6 +53,7 @@ import { CommunityRuleKarma } from './entities/community-rule-karma.entities';
 import { Exclusion } from './entities/exclusion.entities';
 import { RuleGroup } from './entities/rule-group.entities';
 import { Rules } from './entities/rules.entities';
+import { unavailableRuleApplications } from './helpers/rule-application-availability.helper';
 import { RuleComparatorServiceFactory } from './helpers/rule.comparator.service';
 import { RuleYamlService } from './helpers/yaml.service';
 
@@ -122,68 +123,29 @@ export class RulesService {
   }
 
   async getRuleConstants(): Promise<RuleConstants> {
-    const settings = await this.settingsRepo.findOne({ where: {} });
-    const radarrSettingsExist = await this.radarrSettingsRepo.exists();
-    const sonarrSettingsExist = await this.sonarrSettingsRepo.exists();
-    const sportarrSettingsExist = await this.sportarrSettingsRepo.exists();
-
     const localConstants = _.cloneDeep(this.ruleConstants);
-    if (settings) {
-      // remove seerr if not configured
-      if (!settings.seerr_api_key || !settings.seerr_url) {
-        localConstants.applications = localConstants.applications.filter(
-          (el) => el.id !== Application.SEERR,
-        );
-      }
+    const unavailable = new Set(await this.getUnavailableApplications());
 
-      // remove radarr if not configured
-      if (!radarrSettingsExist) {
-        localConstants.applications = localConstants.applications.filter(
-          (el) => el.id !== Application.RADARR,
-        );
-      }
-
-      // remove sonarr if not configured
-      if (!sonarrSettingsExist) {
-        localConstants.applications = localConstants.applications.filter(
-          (el) => el.id !== Application.SONARR,
-        );
-      }
-
-      // remove sportarr if not configured
-      if (!sportarrSettingsExist) {
-        localConstants.applications = localConstants.applications.filter(
-          (el) => el.id !== Application.SPORTARR,
-        );
-      }
-
-      // remove tautulli if not configured
-      if (!settings.tautulli_url || !settings.tautulli_api_key) {
-        localConstants.applications = localConstants.applications.filter(
-          (el) => el.id !== Application.TAUTULLI,
-        );
-      }
-
-      // remove streamystats if not configured. It is Jellyfin-only and reuses
-      // the Jellyfin API key; the UI further restricts it to Jellyfin servers.
-      if (!settings.streamystats_url || !settings.jellyfin_api_key) {
-        localConstants.applications = localConstants.applications.filter(
-          (el) => el.id !== Application.STREAMYSTATS,
-        );
-      }
-
-      if (
-        !settings.tracearr_url ||
-        !settings.tracearr_api_key ||
-        !settings.tracearr_server_id
-      ) {
-        localConstants.applications = localConstants.applications.filter(
-          (el) => el.id !== Application.TRACEARR,
-        );
-      }
-    }
+    localConstants.applications = localConstants.applications.filter(
+      (application) => !unavailable.has(application.id),
+    );
 
     return localConstants;
+  }
+
+  /**
+   * Rule Applications that cannot produce a value here - not set up, or not
+   * the configured media server's companion. The editor hides them and the
+   * executor warns when a group reads one, so both say the same thing.
+   */
+  async getUnavailableApplications(): Promise<Application[]> {
+    const settings = await this.settingsRepo.findOne({ where: {} });
+
+    return unavailableRuleApplications(settings, {
+      radarr: await this.radarrSettingsRepo.exists(),
+      sonarr: await this.sonarrSettingsRepo.exists(),
+      sportarr: await this.sportarrSettingsRepo.exists(),
+    });
   }
   async getRules(ruleGroupId: number): Promise<Rules[]> {
     try {
