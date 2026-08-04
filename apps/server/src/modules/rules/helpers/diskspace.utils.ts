@@ -55,18 +55,28 @@ export function computeDiskspaceGiB(
   return parseFloat((totalSpace / GiB).toFixed(1));
 }
 
+/**
+ * `null` means the instance answered but has no usable figure for the
+ * configured path. `undefined` means the read failed, so the caller must treat
+ * it as transient - a failed arr call read as "0 GiB free" removes the very
+ * items the rule was protecting (#3307 family).
+ */
 export async function evaluateArrDiskspaceGiB(
   client: ArrDiskspaceClient,
   propertyName: string,
   rule: RuleDto | undefined,
   providerName: string,
   warn: (message: string) => void,
-): Promise<number | null> {
+): Promise<number | null | undefined> {
   const allDiskspace =
     propertyName === DISKSPACE_REMAINING_PROPERTY
       ? await client.getDiskspaceWithRootFolders()
       : await client.getDiskspace();
-  if (!allDiskspace || allDiskspace.length === 0) {
+  if (!allDiskspace) {
+    warn(`[Diskspace] Could not read disk space from ${providerName}.`);
+    return undefined;
+  }
+  if (allDiskspace.length === 0) {
     return null;
   }
 
