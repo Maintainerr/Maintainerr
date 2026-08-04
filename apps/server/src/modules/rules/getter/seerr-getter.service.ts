@@ -87,11 +87,12 @@ export class SeerrGetterService {
         this.logger.debug(
           `Couldn't find tmdb id for media '${libItem.title}' with id '${libItem.id}'. As a result, no Seerr query could be made.`,
         );
-        // An empty resolution cannot distinguish "item has no tmdb id" from a
-        // transient TMDB failure (validation runs online), so it must stay
-        // `undefined` - `null` would defeat the transient-removal guard and
-        // wipe collections during an internet outage (#3307).
-        return undefined;
+        // An item the media server gave no external ids for can never resolve
+        // one, however often it is retried, so the transient signal pinned it
+        // for good. An item that has ids but could not be cross-referenced to a
+        // tmdb id may just be a failed online lookup, which is the case #3307
+        // protects, so that one still pauses evaluation.
+        return this.metadataService.hasExternalIds(libItem) ? undefined : null;
       }
 
       // releaseDate (movie releaseDate / tv firstAirDate / season|episode

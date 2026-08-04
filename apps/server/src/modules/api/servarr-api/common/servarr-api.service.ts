@@ -138,7 +138,19 @@ export abstract class ServarrApi<QueueItemAppendT> extends ExternalApiService {
       this.getRootFolders(),
     ]);
 
-    const mounts: DiskSpaceResource[] = [...(diskspace ?? [])];
+    // Either read answering undefined means it failed, and merging that in
+    // fabricates a mount list rather than losing one: measured against a real
+    // Radarr, dropping `/diskspace` and keeping the root folder reported 3.9 GB
+    // free where the instance had 15.4, which is enough to fire a "delete when
+    // space runs low" rule on a server with plenty of room. A partial merge is
+    // no safer than an empty one - the missing side only ever understates free
+    // space - so throw and let callers decide, as the media-server reads do
+    // (#3248).
+    if (diskspace === undefined || rootFolders === undefined) {
+      throw new Error('Failed to read disk space');
+    }
+
+    const mounts: DiskSpaceResource[] = [...diskspace];
     const existingPaths = new Set(
       mounts.filter((d) => d.path).map((d) => normalizeDiskPath(d.path!)),
     );

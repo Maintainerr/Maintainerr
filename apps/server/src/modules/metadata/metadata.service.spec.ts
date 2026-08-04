@@ -1372,4 +1372,38 @@ describe('MetadataService', () => {
       expect(merged).toBeUndefined();
     });
   });
+  // The predicate the arr and Seerr getters use to tell "nothing to look up"
+  // from "the lookup failed". It must never make a request, and it must be
+  // broader than "TMDB or TVDB can extract an id" - an imdb-only item has
+  // neither yet still resolves online by cross-referencing, so calling it
+  // unresolvable would un-protect exactly the items #3125 guards during a
+  // TMDB outage.
+  describe('hasExternalIds', () => {
+    it.each([
+      ['a tmdb id', { tmdb: ['550'] }, true],
+      ['a tvdb id', { tvdb: ['73141'] }, true],
+      ['only an imdb id', { imdb: ['tt0099785'] }, true],
+      ['no ids at all', {}, false],
+      ['empty id lists', { imdb: [], tmdb: [], tvdb: [] }, false],
+    ])('is %s -> %s', (label, providerIds, expected) => {
+      const { service, providers } = createService({});
+
+      expect(
+        service.hasExternalIds(
+          createMediaItem({ type: 'movie', providerIds } as never),
+        ),
+      ).toBe(expected);
+      for (const provider of providers) {
+        expect(provider.getDetails).not.toHaveBeenCalled();
+      }
+    });
+
+    it('is false when the item carries no providerIds field', () => {
+      const { service } = createService({});
+      const item = createMediaItem({ type: 'movie' });
+      delete (item as { providerIds?: unknown }).providerIds;
+
+      expect(service.hasExternalIds(item)).toBe(false);
+    });
+  });
 });
