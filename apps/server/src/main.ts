@@ -76,7 +76,7 @@ function createDataDirectoryStructure() {
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, {
         recursive: true,
-        mode: 0o777,
+        mode: 0o755,
       });
     }
 
@@ -85,7 +85,7 @@ function createDataDirectoryStructure() {
     for (const name of ['overlays/fonts', 'overlays/images']) {
       const overlayDir = path.join(dataDir, name);
       if (!fs.existsSync(overlayDir)) {
-        fs.mkdirSync(overlayDir, { recursive: true, mode: 0o777 });
+        fs.mkdirSync(overlayDir, { recursive: true, mode: 0o755 });
       }
     }
 

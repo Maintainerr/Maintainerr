@@ -38,6 +38,7 @@ import { AppService } from './app.service';
 import { HealthController } from './health.controller';
 import { HealthService } from './health.service';
 import ormConfig from './config/typeOrmConfig';
+import { resolveUiRootPath } from './config/uiPath';
 
 @Module({
   imports: [
@@ -73,7 +74,7 @@ import ormConfig from './config/typeOrmConfig';
 
         return [
           {
-            rootPath: join(__dirname, '..', 'ui'),
+            rootPath: resolveUiRootPath(join(__dirname, '..', 'ui')),
             serveRoot: process.env.BASE_PATH || undefined,
             exclude: ['/api/{*path}'],
           },
