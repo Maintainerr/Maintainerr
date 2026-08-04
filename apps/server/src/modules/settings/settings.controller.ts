@@ -1,5 +1,7 @@
 import {
   BasicResponseDto,
+  CronSchedule,
+  cronScheduleSchema,
   EmbyLoginRequest,
   embyLoginRequestSchema,
   EmbySetting,
@@ -13,10 +15,14 @@ import {
   downloadClientSettingSchema,
   MetadataProviderSetting,
   metadataProviderSettingSchema,
+  PlexAuthToken,
+  plexAuthTokenSchema,
   RadarrSetting,
   radarrSettingSchema,
   SeerrSetting,
   seerrSettingSchema,
+  SettingsUpdate,
+  settingsUpdateSchema,
   SonarrSetting,
   sonarrSettingSchema,
   SportarrSetting,
@@ -61,9 +67,6 @@ import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Response } from 'express';
 import { ZodValidationPipe } from 'nestjs-zod';
 import { DatabaseDownloadService } from './database-download.service';
-import { CronScheduleDto } from "./dto's/cron.schedule.dto";
-import { SettingDto } from "./dto's/setting.dto";
-import { UpdateSettingDto } from "./dto's/update-setting.dto";
 import { Settings } from './entities/settings.entities';
 import { MediaServerSwitchService } from './media-server-switch.service';
 import { MetadataProvider } from './metadata-provider';
@@ -130,15 +133,24 @@ export class SettingsController {
     return this.settingsOperationsService.deletePlexApiAuth();
   }
   @Post()
-  updateSettings(@Body() payload: SettingDto) {
+  updateSettings(
+    @Body(new ZodValidationPipe(settingsUpdateSchema))
+    payload: SettingsUpdate,
+  ) {
     return this.settingsOperationsService.updateSettings(payload);
   }
   @Patch()
-  patchSettings(@Body() payload: UpdateSettingDto) {
+  patchSettings(
+    @Body(new ZodValidationPipe(settingsUpdateSchema))
+    payload: SettingsUpdate,
+  ) {
     return this.settingsOperationsService.patchSettings(payload);
   }
   @Post('/plex/token')
-  updateAuthToken(@Body() payload: { plex_auth_token: string }) {
+  updateAuthToken(
+    @Body(new ZodValidationPipe(plexAuthTokenSchema))
+    payload: PlexAuthToken,
+  ) {
     return this.settingsOperationsService.savePlexApiAuthToken(
       payload.plex_auth_token,
     );
@@ -683,7 +695,9 @@ export class SettingsController {
   }
 
   @Post('/cron/validate')
-  validateSingleCron(@Body() payload: CronScheduleDto) {
+  validateSingleCron(
+    @Body(new ZodValidationPipe(cronScheduleSchema)) payload: CronSchedule,
+  ) {
     return this.settingsOperationsService.cronIsValid(payload.schedule)
       ? { status: 'OK', code: 1, message: 'Success' }
       : { status: 'NOK', code: 0, message: 'Failure' };
