@@ -328,15 +328,30 @@ describe('RadarrGetterService', () => {
       await expect(callAddDate()).resolves.toBeNull();
     });
 
-    it('returns undefined (fail closed) when no external ids resolve', async () => {
-      // Empty resolution also covers a transient TMDB/TVDB validation
-      // failure, so it must stay transient (#3307).
+    it('returns undefined (fail closed) when the lookup fails for an item that has ids', async () => {
+      // The item has something to look up, so an empty resolution may be a
+      // transient TMDB/TVDB validation failure and must stay transient (#3307).
       mockRadarrApi();
+      metadataService.hasExternalIds.mockReturnValue(true);
       metadataService.resolveLookupCandidatesFromMediaItemForService.mockResolvedValue(
         [],
       );
 
       await expect(callAddDate()).resolves.toBeUndefined();
+    });
+
+    // Unmatched items, personal media and home videos reach rule evaluation
+    // with no external ids at all. Nothing is ever requested for them, so the
+    // empty resolution cannot be an outage - and answering transient pinned
+    // them in place forever.
+    it('returns null when the item carries no external ids at all', async () => {
+      mockRadarrApi();
+      metadataService.hasExternalIds.mockReturnValue(false);
+      metadataService.resolveLookupCandidatesFromMediaItemForService.mockResolvedValue(
+        [],
+      );
+
+      await expect(callAddDate()).resolves.toBeNull();
     });
   });
 
