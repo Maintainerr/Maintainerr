@@ -1025,11 +1025,22 @@ export class EmbyAdapterService implements IMediaServerService {
       }
       return undefined;
     }
+    // Emby answers 404 on the unscoped /Items/{id} route for a collection that
+    // exists, so reading that as a confirmed absence unlinks a live collection.
+    // Only the user-scoped route tells the two apart, and it is also the only
+    // one that carries ChildCount, which the empty-collection heal reads.
+    const userId = await this.resolveUserId();
+    if (!userId) {
+      const message = `Emby getCollection(${collectionId}) has no user to scope the lookup to; its existence is unknown`;
+      if (throwOnError) throw new Error(message);
+      this.logger.debug(message);
+      return undefined;
+    }
+
     try {
-      const path = this.embyUserId
-        ? `/Users/${this.embyUserId}/Items/${collectionId}`
-        : `/Items/${collectionId}`;
-      const { data } = await this.http.get<EmbyBaseItemDto>(path);
+      const { data } = await this.http.get<EmbyBaseItemDto>(
+        `/Users/${userId}/Items/${collectionId}`,
+      );
       return EmbyMapper.toMediaCollection(data);
     } catch (error) {
       // A 404 is the server confirming the collection is gone; anything else
@@ -1284,10 +1295,16 @@ export class EmbyAdapterService implements IMediaServerService {
     if (!this.http) throw new Error('Emby not initialized');
     try {
       // Emby's POST /Items/{id} expects the full updated item. Fetch, mutate, send.
-      const path = this.embyUserId
-        ? `/Users/${this.embyUserId}/Items/${params.collectionId}`
-        : `/Items/${params.collectionId}`;
-      const { data: current } = await this.http.get<EmbyBaseItemDto>(path);
+      // The read has to be user-scoped: the unscoped route 404s for an item that
+      // exists, and the list form answers a trimmed item that would write back
+      // as a wipe of everything it omits.
+      const userId = await this.resolveUserId();
+      if (!userId) {
+        throw new Error('no Emby user available to read the collection');
+      }
+      const { data: current } = await this.http.get<EmbyBaseItemDto>(
+        `/Users/${userId}/Items/${params.collectionId}`,
+      );
       const updated: EmbyBaseItemDto = {
         ...current,
         Name: params.title ?? current.Name,
@@ -1650,8 +1667,16 @@ export class EmbyAdapterService implements IMediaServerService {
     if (!this.http) return undefined;
 
     try {
+      // Unscoped, Emby answers the physical folder tree, which never contains
+      // the CollectionFolder id Maintainerr stores as the library. Every child
+      // then reads as "not in this library". The user-scoped read answers the
+      // library view, matching the Jellyfin adapter's getAncestors({ userId }).
+      const userId = await this.resolveUserId();
+      if (!userId) return undefined;
+
       const { data } = await this.http.get<EmbyBaseItemDto[]>(
         `/Items/${itemId}/Ancestors`,
+        { params: { UserId: userId } },
       );
 
       return (data ?? []).some((ancestor) => ancestor.Id === libraryId);
