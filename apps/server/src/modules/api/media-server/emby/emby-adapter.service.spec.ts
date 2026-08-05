@@ -706,6 +706,80 @@ describe('EmbyAdapterService', () => {
       expect(itemsCall[1].params.ParentId).toBe('library-1');
       expect(itemsCall[1].params.UserId).toBeUndefined();
     });
+
+    // Emby answers 404 on the unscoped route for a collection that exists, so
+    // the caller read a live collection as gone and dropped its link.
+    it('resolves a user before reading a collection instead of going unscoped', async () => {
+      clearConfiguredUser();
+      http.get.mockImplementation((path: string) =>
+        path === '/Users/Query'
+          ? Promise.resolve({
+              data: [{ Id: 'admin-9', Policy: { IsAdministrator: true } }],
+            })
+          : Promise.resolve({ data: { Id: 'box-1', Name: 'Box' } }),
+      );
+
+      await expect(service.getCollection('box-1', true)).resolves.toEqual(
+        expect.objectContaining({ id: 'box-1' }),
+      );
+      expect(http.get).toHaveBeenCalledWith('/Users/admin-9/Items/box-1');
+      expect(http.get).not.toHaveBeenCalledWith('/Items/box-1');
+    });
+
+    it('does not call a collection missing when no user can scope the lookup', async () => {
+      clearConfiguredUser();
+      http.get.mockResolvedValue({ data: { Items: [] } });
+
+      await expect(service.getCollection('box-1', true)).rejects.toThrow(
+        'no user to scope the lookup',
+      );
+      await expect(service.getCollection('box-1')).resolves.toBeUndefined();
+      expect(http.get).not.toHaveBeenCalledWith('/Items/box-1');
+    });
+
+    // The unscoped read 404s, so the update failed outright on a token-only
+    // setup; the list form would answer a trimmed item and write back a wipe.
+    it('reads the collection to update through the user-scoped route', async () => {
+      clearConfiguredUser();
+      http.get.mockImplementation((path: string) =>
+        path === '/Users/Query'
+          ? Promise.resolve({
+              data: [{ Id: 'admin-9', Policy: { IsAdministrator: true } }],
+            })
+          : Promise.resolve({ data: { Id: 'box-1', Name: 'Box' } }),
+      );
+      http.post.mockResolvedValue({ data: {} });
+
+      await service.updateCollection({
+        collectionId: 'box-1',
+        libraryId: 'library-1',
+        title: 'Renamed',
+      } as any);
+
+      expect(http.get).toHaveBeenCalledWith('/Users/admin-9/Items/box-1');
+    });
+
+    // Unscoped, Emby answers the physical folder tree, which never holds the
+    // CollectionFolder id stored as the library, so every child read as "not in
+    // this library" and the cleanup silently removed nothing.
+    it('scopes the library-membership check so cleanup can match its children', async () => {
+      jest
+        .spyOn(service, 'getCollectionChildren')
+        .mockResolvedValueOnce([{ id: 'item-1' }] as any)
+        .mockResolvedValueOnce([]);
+      const removeBatch = jest
+        .spyOn(service, 'removeBatchFromCollection')
+        .mockResolvedValue(undefined as never);
+      jest.spyOn(service, 'deleteCollection').mockResolvedValue(undefined);
+      http.get.mockResolvedValue({ data: [{ Id: 'library-1' }] });
+
+      await service.cleanupCollectionForLibrary('box-1', 'library-1', false);
+
+      expect(http.get).toHaveBeenCalledWith('/Items/item-1/Ancestors', {
+        params: { UserId: 'user-1' },
+      });
+      expect(removeBatch).toHaveBeenCalledWith('box-1', ['item-1']);
+    });
   });
 
   describe('updateCollection', () => {
