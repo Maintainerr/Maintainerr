@@ -3618,10 +3618,16 @@ export class CollectionsService {
   async removeFromAllCollections(media: CollectionMediaChange[]) {
     try {
       const collections = await this.collectionRepo.find();
+      let removedEverywhere = true;
       for (const collection of collections) {
-        await this.removeFromCollection(collection.id, media);
+        // The helper reports its own failure by answering nothing rather than
+        // throwing, so discarding the result reads a failed removal as done.
+        const removed = await this.removeFromCollection(collection.id, media);
+        removedEverywhere = removedEverywhere && removed !== undefined;
       }
-      return { status: 'OK', code: 1, message: 'Success' };
+      return removedEverywhere
+        ? { status: 'OK', code: 1, message: 'Success' }
+        : { status: 'NOK', code: 0, message: 'Failed' };
     } catch (error) {
       this.logger.warn(
         'An error occurred while removing media from all collections',

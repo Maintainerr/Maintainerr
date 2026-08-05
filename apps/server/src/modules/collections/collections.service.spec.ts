@@ -3542,6 +3542,24 @@ describe('CollectionsService', () => {
       expect(removeAll).toHaveBeenCalledWith([{ mediaServerId: 'movie-1' }]);
     });
 
+    // removeFromCollection answers nothing when it fails instead of throwing,
+    // so a discarded result let a failed removal report as done.
+    it('reports a collection that could not be updated during a remove-all', async () => {
+      const collections = [
+        createCollection({ id: 7 }),
+        createCollection({ id: 8 }),
+      ] as Collection[];
+      collectionRepo.find.mockResolvedValue(collections);
+      jest
+        .spyOn(service, 'removeFromCollection')
+        .mockResolvedValueOnce(collections[0])
+        .mockResolvedValueOnce(undefined);
+
+      await expect(
+        service.removeFromAllCollections([{ mediaServerId: 'movie-1' }]),
+      ).resolves.toEqual({ status: 'NOK', code: 0, message: 'Failed' });
+    });
+
     it('reports an item the target collection cannot take', async () => {
       mediaServer.getAllIdsForContextAction.mockResolvedValue([]);
 
