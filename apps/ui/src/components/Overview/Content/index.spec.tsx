@@ -70,7 +70,6 @@ describe('OverviewContent', () => {
         loading={true}
         extrasLoading={false}
         fetchData={vi.fn()}
-        libraryId="library-1"
       />,
     )
 
@@ -92,7 +91,6 @@ describe('OverviewContent', () => {
         loading={false}
         extrasLoading={true}
         fetchData={vi.fn()}
-        libraryId="library-1"
       />,
     )
 
@@ -121,7 +119,6 @@ describe('OverviewContent', () => {
         loading={false}
         extrasLoading={true}
         fetchData={vi.fn()}
-        libraryId="library-1"
       />,
     )
 
@@ -149,7 +146,6 @@ describe('OverviewContent', () => {
         loading={true}
         extrasLoading={false}
         fetchData={vi.fn()}
-        libraryId="library-1"
       />,
     )
 
@@ -174,7 +170,6 @@ describe('OverviewContent', () => {
         loading={false}
         extrasLoading={false}
         fetchData={vi.fn()}
-        libraryId="library-1"
       />,
     )
 
@@ -197,7 +192,6 @@ describe('OverviewContent', () => {
         loading={false}
         extrasLoading={false}
         fetchData={vi.fn()}
-        libraryId="library-1"
         selectionMode
         selectedMediaIds={new Set(['1'])}
         onToggleSelection={onSelectionChange}
@@ -225,7 +219,6 @@ describe('OverviewContent', () => {
         loading={false}
         extrasLoading={false}
         fetchData={vi.fn()}
-        libraryId="library-1"
       />,
     )
 
@@ -253,7 +246,6 @@ describe('OverviewContent', () => {
         loading={false}
         extrasLoading={false}
         fetchData={vi.fn()}
-        libraryId="library-1"
       />,
     )
 
@@ -284,7 +276,6 @@ describe('OverviewContent', () => {
         loading={false}
         extrasLoading={false}
         fetchData={vi.fn()}
-        libraryId="library-1"
       />,
     )
 

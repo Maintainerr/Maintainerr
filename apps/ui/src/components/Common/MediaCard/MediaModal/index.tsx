@@ -16,6 +16,7 @@ import GetApiHandler from '../../../../utils/ApiHandler'
 import { logClientError } from '../../../../utils/ClientLogger'
 import {
   buildMetadataPath,
+  buildProviderUrl,
   mediaTypeLabel,
   toApiMediaType,
 } from '../../../../utils/mediaTypeUtils'
@@ -118,6 +119,39 @@ const metadataProviderLogos: Record<
       `https://thetvdb.com/dereferrer/${mediaType === 'tv' ? 'series' : 'movie'}/${id}`,
     providerIdKey: 'tvdb',
   },
+}
+
+const providerBadgeClassName =
+  'flex items-center justify-center rounded-lg bg-zinc-700 p-2 text-xs text-white shadow-lg'
+
+const ProviderIdBadge = ({
+  provider,
+  providerId,
+  mediaType,
+}: {
+  provider: keyof MediaProviderIds
+  providerId: string
+  mediaType: MediaItemType
+}) => {
+  const href = buildProviderUrl(provider, providerId, mediaType)
+  const label = `${provider}://${providerId}`
+
+  if (!href) {
+    return <span className={providerBadgeClassName}>{label}</span>
+  }
+
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noreferrer"
+      title={`Open on ${provider}`}
+      className={`${providerBadgeClassName} underline transition hover:bg-zinc-600`}
+      onClick={(event) => event.stopPropagation()}
+    >
+      {label}
+    </a>
+  )
 }
 
 interface BackdropResult {
@@ -835,37 +869,23 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
                   providerIds.imdb?.length ||
                   providerIds.tvdb?.length) && (
                   <div className="flex flex-wrap items-center gap-1 text-xs text-zinc-400">
-                    {providerIds.tmdb?.map((id) => (
-                      <span
-                        key={`tmdb-${id}`}
-                        className="flex items-center justify-center rounded-lg bg-zinc-700 p-2 text-xs text-white shadow-lg"
-                      >
-                        tmdb://{id}
-                      </span>
-                    ))}
-                    {providerIds.imdb?.map((id) => (
-                      <span
-                        key={`imdb-${id}`}
-                        className="flex items-center justify-center rounded-lg bg-zinc-700 p-2 text-xs text-white shadow-lg"
-                      >
-                        imdb://{id}
-                      </span>
-                    ))}
-                    {providerIds.tvdb?.map((id) => (
-                      <span
-                        key={`tvdb-${id}`}
-                        className="flex items-center justify-center rounded-lg bg-zinc-700 p-2 text-xs text-white shadow-lg"
-                      >
-                        tvdb://{id}
-                      </span>
-                    ))}
+                    {(['tmdb', 'imdb', 'tvdb'] as const).flatMap((provider) =>
+                      (providerIds[provider] ?? []).map((id) => (
+                        <ProviderIdBadge
+                          key={`${provider}-${id}`}
+                          provider={provider}
+                          providerId={id}
+                          mediaType={mediaType}
+                        />
+                      )),
+                    )}
                     {showBackdropProviderBadge && backdropProviderKey && (
-                      <span
+                      <ProviderIdBadge
                         key={`${backdropProviderKey}-${backdropResult.providerId}`}
-                        className="flex items-center justify-center rounded-lg bg-zinc-700 p-2 text-xs text-white shadow-lg"
-                      >
-                        {backdropProviderKey}://{backdropResult.providerId}
-                      </span>
+                        provider={backdropProviderKey}
+                        providerId={String(backdropResult.providerId)}
+                        mediaType={mediaType}
+                      />
                     )}
                   </div>
                 )}

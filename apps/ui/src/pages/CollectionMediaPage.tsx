@@ -7,6 +7,8 @@ import { useCallback, useRef, useState } from 'react'
 import { useOutletContext, useParams } from 'react-router-dom'
 import type { ICollectionMedia } from '../components/Collection'
 import CollectionDetailControlRow from '../components/Collection/CollectionDetail/CollectionDetailControlRow'
+import MediaSelectionActions from '../components/Common/MediaSelectionActions'
+import type { MediaActionOutcome } from '../components/MediaActionModal'
 import {
   getCollectionMediaSortConfig,
   MediaLibrarySortControl,
@@ -14,7 +16,9 @@ import {
 } from '../components/Common/MediaLibrarySortControl'
 import OverviewContent from '../components/Overview/Content'
 import useInfinitePaginatedList from '../hooks/useInfinitePaginatedList'
+import useMediaSelection from '../hooks/useMediaSelection'
 import { useMediaServerType } from '../hooks/useMediaServerType'
+import { bulkOutcomeVerb, reportBulkOutcome } from '../utils/bulkOutcome'
 import type { CollectionDetailOutletContext } from './CollectionDetailPage'
 import GetApiHandler from '../utils/ApiHandler'
 
@@ -39,6 +43,13 @@ const CollectionMediaPage = () => {
   const { id } = useParams<{ id: string }>()
   const [media, setMedia] = useState<ICollectionMedia[]>([])
   const { mediaServerType } = useMediaServerType()
+  const {
+    selectionMode,
+    selectedIds,
+    toggleSelection,
+    toggleSelectionMode,
+    applyBulkOutcome,
+  } = useMediaSelection()
   const fetchAmount = 30
   const mediaRef = useRef<ICollectionMedia[]>([])
   const libraryType = collection.type === 'movie' ? 'movie' : 'show'
@@ -124,6 +135,36 @@ const CollectionMediaPage = () => {
     })
   }
 
+  const removeMediaItem = (mediaServerId: string) => {
+    updateData((currentData) =>
+      currentData.filter((item) => item.id !== mediaServerId),
+    )
+    updateMedia((currentMedia) =>
+      currentMedia.filter((item) => item.mediaServerId !== mediaServerId),
+    )
+  }
+
+  const handleBulkOutcome = ({
+    action,
+    succeededIds,
+    failedIds,
+  }: MediaActionOutcome) => {
+    applyBulkOutcome(new Set(failedIds))
+
+    // Only these two drop the item from this collection.
+    if (action === 'exclusion-add' || action === 'collection-remove') {
+      for (const mediaServerId of succeededIds) {
+        removeMediaItem(mediaServerId)
+      }
+    }
+
+    reportBulkOutcome(
+      succeededIds.length,
+      failedIds.length,
+      bulkOutcomeVerb(action),
+    )
+  }
+
   const showRefreshing = isLoading && data.length > 0
 
   return (
@@ -131,6 +172,19 @@ const CollectionMediaPage = () => {
       <CollectionDetailControlRow
         canTestMedia={canTestMedia}
         onOpenTestMedia={openMediaTestModal}
+        actions={
+          <MediaSelectionActions
+            selectionMode={selectionMode}
+            onToggleSelectionMode={toggleSelectionMode}
+            selectedIds={selectedIds}
+            mediaType={collection.type}
+            libraryId={collection.libraryId}
+            lockedCollection={{ id: collection.id, title: collection.title }}
+            // Everything here is already in this collection.
+            hiddenActions={['collection-add']}
+            onSubmitted={handleBulkOutcome}
+          />
+        }
       >
         <MediaLibrarySortControl
           ariaLabel="Sort collection items"
@@ -146,18 +200,13 @@ const CollectionMediaPage = () => {
         fetchData={() => {}}
         loading={isLoading}
         data={data}
-        libraryId={collection.libraryId}
         collection={collection}
         collectionPage={true}
         extrasLoading={isLoadingExtra && !isLoading && hasMoreData}
-        onRemove={(id: string) => {
-          updateData((currentData) =>
-            currentData.filter((item) => item.id !== id),
-          )
-          updateMedia((currentMedia) =>
-            currentMedia.filter((item) => item.mediaServerId !== id),
-          )
-        }}
+        selectionMode={selectionMode}
+        selectedMediaIds={selectedIds}
+        onToggleSelection={toggleSelection}
+        onRemove={removeMediaItem}
         onItemPostponed={(id: string, addDate: string) => {
           // Patch the local addDate so the "days left" badge reflects the new
           // deletion date immediately, without refetching the page.

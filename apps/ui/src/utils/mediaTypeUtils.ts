@@ -81,6 +81,30 @@ export function buildMetadataPath(
   return `/metadata/${kind}/${toImageEndpointType(mediaType)}?${params.toString()}`
 }
 
+/**
+ * TMDB and TheTVDB split movies from series; TheTVDB goes through its
+ * dereferrer, which resolves a numeric id to the right slug.
+ */
+export function buildProviderUrl(
+  provider: keyof MediaProviderIds,
+  providerId: string,
+  mediaType: MediaItemType,
+): string | undefined {
+  const id = encodeURIComponent(providerId)
+  const isMovie = toApiMediaType(mediaType) === 'movie'
+
+  switch (provider) {
+    case 'tmdb':
+      return `https://www.themoviedb.org/${isMovie ? 'movie' : 'tv'}/${id}`
+    case 'imdb':
+      return `https://www.imdb.com/title/${id}/`
+    case 'tvdb':
+      return `https://thetvdb.com/dereferrer/${isMovie ? 'movie' : 'series'}/${id}`
+    default:
+      return undefined
+  }
+}
+
 export function toProviderIds(ids: {
   tmdbId?: number | null
   tvdbId?: number | null

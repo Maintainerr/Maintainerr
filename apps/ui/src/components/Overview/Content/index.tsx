@@ -20,7 +20,6 @@ interface IOverviewContent {
   fetchData: () => void
   onRemove?: (id: string) => void
   onItemPostponed?: (id: string, addDate: string) => void
-  libraryId: string
   collectionPage?: boolean
   collectionInfo?: ICollectionMedia[]
   collectionId?: number
@@ -28,6 +27,8 @@ interface IOverviewContent {
   selectionMode?: boolean
   selectedMediaIds?: ReadonlySet<string>
   onToggleSelection?: (mediaId: string, selected: boolean) => void
+  /** Items a bulk action changed, which carry no marker to key the status off. */
+  statusChangedMediaIds?: ReadonlySet<string>
 }
 
 function extractProviderIds(
@@ -141,8 +142,6 @@ const OverviewContent = (props: IOverviewContent) => {
               <li key={el.id}>
                 <MediaCard
                   id={el.id}
-                  libraryId={props.libraryId}
-                  type={el.type}
                   summary={el.summary}
                   year={
                     el.type === 'episode'
@@ -190,9 +189,13 @@ const OverviewContent = (props: IOverviewContent) => {
                   isManual={
                     el.maintainerrIsManual ? el.maintainerrIsManual : false
                   }
+                  collections={el.maintainerrCollections}
                   selectionMode={props.selectionMode}
                   selected={props.selectedMediaIds?.has(el.id) ?? false}
                   onToggleSelection={props.onToggleSelection}
+                  forceStatusLoad={
+                    props.statusChangedMediaIds?.has(el.id) ?? false
+                  }
                   {...(props.collectionInfo
                     ? {
                         daysLeft: getDaysLeft(el.id),

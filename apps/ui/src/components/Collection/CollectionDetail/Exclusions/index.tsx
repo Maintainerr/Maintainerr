@@ -7,8 +7,15 @@ import { useCallback } from 'react'
 import { ICollection } from '../..'
 import CollectionDetailControlRow from '../CollectionDetailControlRow'
 import useInfinitePaginatedList from '../../../../hooks/useInfinitePaginatedList'
+import useMediaSelection from '../../../../hooks/useMediaSelection'
 import { useMediaServerType } from '../../../../hooks/useMediaServerType'
 import GetApiHandler from '../../../../utils/ApiHandler'
+import {
+  bulkOutcomeVerb,
+  reportBulkOutcome,
+} from '../../../../utils/bulkOutcome'
+import MediaSelectionActions from '../../../Common/MediaSelectionActions'
+import type { MediaActionOutcome } from '../../../MediaActionModal'
 import {
   getCollectionSortConfig,
   MediaLibrarySortControl,
@@ -36,6 +43,13 @@ export interface IExclusionMedia {
 const CollectionExcludions = (props: ICollectionExclusions) => {
   const fetchAmount = 30
   const { mediaServerType } = useMediaServerType()
+  const {
+    selectionMode,
+    selectedIds,
+    toggleSelection,
+    toggleSelectionMode,
+    applyBulkOutcome,
+  } = useMediaSelection()
   const libraryType = props.collection.type === 'movie' ? 'movie' : 'show'
   const sortConfig = getCollectionSortConfig(
     libraryType,
@@ -106,6 +120,28 @@ const CollectionExcludions = (props: ICollectionExclusions) => {
     })
   }
 
+  const handleBulkOutcome = ({
+    action,
+    succeededIds,
+    failedIds,
+  }: MediaActionOutcome) => {
+    applyBulkOutcome(new Set(failedIds))
+
+    // This list is the collection's exclusions, so only an un-exclude empties it.
+    if (action === 'exclusion-remove') {
+      const removedIds = new Set(succeededIds)
+      updateData((currentData) =>
+        currentData.filter((item) => !removedIds.has(item.id)),
+      )
+    }
+
+    reportBulkOutcome(
+      succeededIds.length,
+      failedIds.length,
+      bulkOutcomeVerb(action),
+    )
+  }
+
   const showRefreshing = isLoading && data.length > 0
 
   return (
@@ -113,6 +149,22 @@ const CollectionExcludions = (props: ICollectionExclusions) => {
       <CollectionDetailControlRow
         canTestMedia={props.canTestMedia}
         onOpenTestMedia={props.onOpenTestMedia}
+        actions={
+          <MediaSelectionActions
+            selectionMode={selectionMode}
+            onToggleSelectionMode={toggleSelectionMode}
+            selectedIds={selectedIds}
+            mediaType={props.collection.type}
+            libraryId={props.libraryId}
+            lockedCollection={{
+              id: props.collection.id,
+              title: props.collection.title,
+            }}
+            // Everything here is already excluded from this collection.
+            hiddenActions={['exclusion-add']}
+            onSubmitted={handleBulkOutcome}
+          />
+        }
       >
         <MediaLibrarySortControl
           ariaLabel="Sort collection exclusions"
@@ -128,10 +180,12 @@ const CollectionExcludions = (props: ICollectionExclusions) => {
         fetchData={() => {}}
         loading={isLoading}
         data={data}
-        libraryId={props.libraryId}
         collectionPage={true}
         collectionId={props.collection.id}
         extrasLoading={isLoadingExtra && !isLoading && hasMoreData}
+        selectionMode={selectionMode}
+        selectedMediaIds={selectedIds}
+        onToggleSelection={toggleSelection}
         onRemove={(id: string) =>
           updateData((currentData) =>
             currentData.filter((item) => item.id !== id),

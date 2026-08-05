@@ -1,5 +1,7 @@
 import {
   BasicResponseDto,
+  type BulkMediaItemResult,
+  type BulkMediaResponse,
   CollectionLogMeta,
   CollectionMediaSortField,
   compareMediaItemsBySort,
@@ -24,6 +26,7 @@ import {
 } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
+import { chunk } from 'lodash';
 import { Brackets, DataSource, In, LessThan, Not, Repository } from 'typeorm';
 import { CollectionLog } from '../../modules/collections/entities/collection_log.entities';
 import { getErrorMessage } from '../../utils/connection-error';
@@ -84,6 +87,10 @@ interface CollectionPreviewMediaRow {
 }
 
 type CollectionMediaRemovalScope = 'all' | 'rule' | 'manual';
+
+// Each item resolves its own hierarchy against the media server, so this stays
+// modest to avoid over-driving it on a large selection.
+const BULK_COLLECTION_ACTION_CONCURRENCY = 5;
 
 interface SharedManualCollectionReconciliationOptions {
   addedMediaServerIds?: Set<string>;
@@ -2543,6 +2550,133 @@ export class CollectionsService {
       }
     }
     return collection;
+  }
+
+  /**
+   * Resolution is bounded-parallel, but the write is a **single** batched call.
+   * The write path find-or-creates the media server collection, which is not
+   * safe to run concurrently against the same collection: parallel first adds
+   * each create their own, leaving duplicates beside the linked one (#3344).
+   */
+  async bulkMediaCollectionAction(
+    mediaIds: string[],
+    collectionId: number | undefined,
+    action: 'add' | 'remove',
+    mediaType: MediaItemType,
+  ): Promise<BulkMediaResponse> {
+    const uniqueMediaIds = [...new Set(mediaIds)];
+    const resultById = new Map<string, BulkMediaItemResult>();
+    const mediaServer = await this.getMediaServer();
+    const collection =
+      collectionId !== undefined
+        ? await this.collectionRepo.findOne({ where: { id: collectionId } })
+        : undefined;
+
+    if (collectionId !== undefined && !collection) {
+      throw new NotFoundException(`Collection ${collectionId} not found`);
+    }
+
+    const fail = (mediaId: string, message: string) =>
+      resultById.set(mediaId, { mediaId, code: 0, message });
+
+    const resolvedByMediaId = new Map<string, string[]>();
+    for (const batch of chunk(
+      uniqueMediaIds,
+      BULK_COLLECTION_ACTION_CONCURRENCY,
+    )) {
+      await Promise.all(
+        batch.map(async (mediaId) => {
+          try {
+            // An add into a movie or show collection has nothing to resolve,
+            // so an id the library does not hold would become a membership row
+            // for media that does not exist. An inconclusive lookup throws and
+            // is taken as present, so a blip never blocks a real add.
+            if (action === 'add') {
+              let exists = true;
+              try {
+                exists = await mediaServer.itemExists(mediaId);
+              } catch (error) {
+                this.logger.debug(error);
+              }
+
+              if (!exists) {
+                fail(mediaId, 'Failed - not found on the media server');
+                return;
+              }
+            }
+
+            const ids = await mediaServer.getAllIdsForContextAction(
+              collection?.type,
+              { type: mediaType, id: mediaId },
+              mediaId,
+            );
+
+            if (ids.length === 0) {
+              fail(mediaId, 'Failed - nothing this collection can take');
+              return;
+            }
+
+            resolvedByMediaId.set(mediaId, ids);
+          } catch (error) {
+            this.logger.warn(
+              `Bulk collection ${action} could not resolve media ${mediaId}`,
+            );
+            this.logger.debug(error);
+            fail(mediaId, 'Failed - see server logs');
+          }
+        }),
+      );
+    }
+
+    const media = [
+      ...new Set([...resolvedByMediaId.values()].flat()),
+    ].map<CollectionMediaChange>((mediaServerId) => ({ mediaServerId }));
+
+    if (media.length > 0) {
+      const failAllResolved = (message: string) => {
+        for (const mediaId of resolvedByMediaId.keys()) {
+          fail(mediaId, message);
+        }
+      };
+
+      try {
+        if (action === 'add') {
+          const result = await this.addToCollectionInternal(
+            collectionId,
+            media,
+            true,
+          );
+
+          if (!result.collection) {
+            // The helper swallows its own failures so a rule run survives one
+            // bad collection; an interactive caller has to be told.
+            failAllResolved('Failed - the collection could not be updated');
+          } else if (result.serverRejectedIds.length > 0) {
+            const rejected = new Set(result.serverRejectedIds);
+            for (const [mediaId, ids] of resolvedByMediaId) {
+              if (ids.some((id) => rejected.has(id))) {
+                fail(mediaId, 'Failed - refused by the media server');
+              }
+            }
+          }
+        } else if (collectionId === undefined) {
+          await this.removeFromAllCollections(media);
+        } else if (!(await this.removeFromCollection(collectionId, media))) {
+          failAllResolved('Failed - the collection could not be updated');
+        }
+      } catch (error) {
+        this.logger.warn(`Bulk collection ${action} failed`);
+        this.logger.debug(error);
+        failAllResolved('Failed - see server logs');
+      }
+    }
+
+    return {
+      results: uniqueMediaIds.map(
+        (mediaId): BulkMediaItemResult =>
+          resultById.get(mediaId) ?? { mediaId, code: 1 },
+      ),
+    };
   }
 
   /**

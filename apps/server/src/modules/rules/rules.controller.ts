@@ -1,8 +1,8 @@
 import {
-  BULK_EXCLUSION_MAX_ITEMS,
+  BULK_MEDIA_ACTION_MAX_ITEMS,
   bulkExclusionRequestSchema,
   type BulkExclusionRequest,
-  type BulkExclusionResponse,
+  type BulkMediaResponse,
   MediaItemType,
   RuleExecuteStatusDto,
 } from '@maintainerr/contracts';
@@ -289,13 +289,23 @@ export class RulesController {
   })
   @ApiResponse({
     status: 400,
-    description: `Rejected without processing: empty, or more than ${BULK_EXCLUSION_MAX_ITEMS} media ids.`,
+    description: `Rejected without processing: empty, or more than ${BULK_MEDIA_ACTION_MAX_ITEMS} media ids.`,
   })
   async setBulkExclusions(
     @Body(new ZodValidationPipe(bulkExclusionRequestSchema))
     body: BulkExclusionRequest,
-  ): Promise<BulkExclusionResponse> {
-    return await this.rulesService.setBulkExclusions(body.mediaIds);
+  ): Promise<BulkMediaResponse> {
+    if (body.action === ExclusionAction.REMOVE) {
+      return await this.rulesService.removeBulkExclusions(
+        body.mediaIds,
+        body.collectionId,
+      );
+    }
+
+    return await this.rulesService.setBulkExclusions(
+      body.mediaIds,
+      body.collectionId,
+    );
   }
 
   @Delete('/exclusion/:id')

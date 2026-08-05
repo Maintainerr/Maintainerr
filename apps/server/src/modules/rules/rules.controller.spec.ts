@@ -12,6 +12,7 @@ describe('RulesController', () => {
     setRules: jest.fn(),
     updateRules: jest.fn(),
     setBulkExclusions: jest.fn(),
+    removeBulkExclusions: jest.fn(),
   } as unknown as jest.Mocked<RulesService>;
 
   const ruleExecutorSchedulerService =
@@ -84,9 +85,40 @@ describe('RulesController', () => {
     await expect(
       controller.setBulkExclusions({ mediaIds: ['item-1', 'item-2'] }),
     ).resolves.toEqual(response);
-    expect(rulesService.setBulkExclusions).toHaveBeenCalledWith([
-      'item-1',
-      'item-2',
-    ]);
+    expect(rulesService.setBulkExclusions).toHaveBeenCalledWith(
+      ['item-1', 'item-2'],
+      undefined,
+    );
+  });
+
+  it('passes the collection through so bulk exclusions can be scoped', async () => {
+    rulesService.setBulkExclusions.mockResolvedValue({ results: [] });
+
+    await controller.setBulkExclusions({
+      mediaIds: ['item-1'],
+      collectionId: 7,
+    });
+
+    expect(rulesService.setBulkExclusions).toHaveBeenCalledWith(['item-1'], 7);
+  });
+
+  it('routes a removal action to the removal service, not the add path', async () => {
+    const response = {
+      results: [{ mediaId: 'item-1', code: 1 as const }],
+    };
+    rulesService.removeBulkExclusions.mockResolvedValue(response);
+
+    await expect(
+      controller.setBulkExclusions({
+        mediaIds: ['item-1'],
+        collectionId: 7,
+        action: 1,
+      }),
+    ).resolves.toEqual(response);
+    expect(rulesService.removeBulkExclusions).toHaveBeenCalledWith(
+      ['item-1'],
+      7,
+    );
+    expect(rulesService.setBulkExclusions).not.toHaveBeenCalled();
   });
 });

@@ -4,7 +4,6 @@ import type {
   MediaLibrarySortParams,
 } from '@maintainerr/contracts'
 import { MediaServerFeature, supportsFeature } from '@maintainerr/contracts'
-import { CheckCircleIcon, DocumentRemoveIcon } from '@heroicons/react/solid'
 import {
   useCallback,
   use,
@@ -14,17 +13,17 @@ import {
   useRef,
   useState,
 } from 'react'
-import { toast } from 'react-toastify'
 import SearchContext from '../../contexts/search-context'
-import { useBulkExcludeMedia } from '../../api/rules'
 import useLibrarySelection from '../../hooks/useLibrarySelection'
+import useMediaSelection from '../../hooks/useMediaSelection'
 import { useMediaServerType } from '../../hooks/useMediaServerType'
 import { useRequestGeneration } from '../../hooks/useRequestGeneration'
+import { bulkOutcomeVerb, reportBulkOutcome } from '../../utils/bulkOutcome'
 import GetApiHandler from '../../utils/ApiHandler'
-import Button from '../Common/Button'
-import ConfirmActionButton from '../Common/ConfirmActionButton'
 import LibrarySwitcher from '../Common/LibrarySwitcher'
 import LoadingSpinner from '../Common/LoadingSpinner'
+import MediaSelectionActions from '../Common/MediaSelectionActions'
+import type { MediaActionOutcome } from '../MediaActionModal'
 import PageControlRow from '../Common/PageControlRow'
 import {
   getMediaLibrarySortConfig,
@@ -43,9 +42,6 @@ interface OverviewBootstrapResult {
     items: MediaItem[]
   }
 }
-
-const formatItemCount = (count: number): string =>
-  `${count} item${count === 1 ? '' : 's'}`
 
 export const buildLibraryContentQuery = ({
   page,
@@ -74,11 +70,18 @@ const Overview = () => {
 
   const [data, setData] = useState<MediaItem[]>([])
   const dataRef = useRef<MediaItem[]>([])
-  const [selectedMediaIds, setSelectedMediaIds] = useState<Set<string>>(
+  const [statusChangedIds, setStatusChangedIds] = useState<Set<string>>(
     () => new Set(),
   )
-  const [selectionMode, setSelectionMode] = useState(false)
-  const bulkExcludeMedia = useBulkExcludeMedia()
+  const {
+    selectionMode,
+    selectedIds: selectedMediaIds,
+    toggleSelection,
+    toggleSelectionMode,
+    clearSelection,
+    resetSelection,
+    applyBulkOutcome,
+  } = useMediaSelection()
 
   const [totalSize, setTotalSize] = useState<number>(999)
   const totalSizeRef = useRef<number>(999)
@@ -182,8 +185,7 @@ const Overview = () => {
           totalSizeRef.current = nextContent.totalSize
           dataRef.current = nextContent.items
           setData(nextContent.items)
-          setSelectedMediaIds(new Set())
-          setSelectionMode(false)
+          resetSelection()
         }
       } catch {
         setLibrariesError(true)
@@ -199,6 +201,7 @@ const Overview = () => {
       fetchAmount,
       guardedFetch,
       invalidateFetches,
+      resetSelection,
       sortParams,
     ],
   )
@@ -267,7 +270,7 @@ const Overview = () => {
             // The outgoing cards stay clickable while the replacement is in
             // flight, so anything selected in that window must not survive
             // into the new item set.
-            setSelectedMediaIds(new Set())
+            clearSelection()
           }
           setLoadingExtra(false)
           setLoading(false)
@@ -281,6 +284,7 @@ const Overview = () => {
     },
     [
       SearchCtx.search.text,
+      clearSelection,
       effectiveSelectedLibraryId,
       guardedFetch,
       libraries,
@@ -295,7 +299,7 @@ const Overview = () => {
       // Every sync replaces the visible item set (search results, a library
       // switch, a sort change, or leaving search), so a selection made against
       // the previous set must never survive into the next one.
-      setSelectedMediaIds(new Set())
+      clearSelection()
 
       if (SearchCtx.search.text !== '') {
         setLoading(true)
@@ -315,7 +319,7 @@ const Overview = () => {
               setTotalSize(result.data.length)
               pageDataRef.current = result.data.length * 50
               setData(sortMediaItems(result.data, nextSortParams))
-              setSelectedMediaIds(new Set())
+              clearSelection()
               setLoading(false)
             }
           } catch {
@@ -360,6 +364,7 @@ const Overview = () => {
     [
       SearchCtx.search.text,
       applySelectedLibrary,
+      clearSelection,
       fetchData,
       guardedFetch,
       invalidateFetches,
@@ -402,45 +407,14 @@ const Overview = () => {
     )
   }
 
-  // Stable identity: MediaCard is memoized, so an inline handler would
-  // re-render every loaded card on each selection click.
-  const handleSelectionChange = useCallback(
-    (mediaId: string, selected: boolean) => {
-      setSelectedMediaIds((currentIds) => {
-        const nextIds = new Set(currentIds)
-        if (selected) {
-          nextIds.add(mediaId)
-        } else {
-          nextIds.delete(mediaId)
-        }
-        return nextIds
-      })
-    },
-    [],
-  )
-
-  const handleSelectionModeChange = () => {
-    const nextSelectionMode = !selectionMode
-    setSelectionMode(nextSelectionMode)
-    if (!nextSelectionMode) {
-      setSelectedMediaIds(new Set())
-    }
-  }
-
-  const handleBulkExclusion = async () => {
-    const response = await bulkExcludeMedia.mutateAsync([...selectedMediaIds])
-    const failedIds = new Set(
-      response.results
-        .filter((result) => result.code !== 1)
-        .map((result) => result.mediaId),
-    )
-    const succeededIds = new Set(
-      response.results
-        .filter((result) => result.code === 1)
-        .map((result) => result.mediaId),
-    )
-
-    setSelectedMediaIds(failedIds)
+  const handleBulkOutcome = ({
+    action,
+    collectionId,
+    succeededIds: succeeded,
+    failedIds: failed,
+  }: MediaActionOutcome) => {
+    const succeededIds = new Set(succeeded)
+    applyBulkOutcome(new Set(failed))
 
     if (succeededIds.size > 0) {
       // The server cascades an excluded show to its seasons and episodes, so
@@ -452,16 +426,27 @@ const Overview = () => {
         (item.grandparentId !== undefined &&
           succeededIds.has(item.grandparentId))
 
-      const nextItems = dataRef.current.map((item) =>
-        isCovered(item)
-          ? { ...item, maintainerrExclusionType: 'global' as const }
-          : item,
-      )
-      dataRef.current = nextItems
-      setData(nextItems)
+      // Only a global exclusion changes what a library card shows; a scoped one
+      // and the collection actions are invisible here.
+      const nextExclusionType =
+        collectionId === undefined && action === 'exclusion-add'
+          ? ('global' as const)
+          : action === 'exclusion-remove'
+            ? undefined
+            : null
+
+      if (nextExclusionType !== null) {
+        const nextItems = dataRef.current.map((item) =>
+          isCovered(item)
+            ? { ...item, maintainerrExclusionType: nextExclusionType }
+            : item,
+        )
+        dataRef.current = nextItems
+        setData(nextItems)
+      }
 
       const invalidated = new Set(succeededIds)
-      for (const item of nextItems) {
+      for (const item of dataRef.current) {
         if (isCovered(item)) {
           invalidated.add(item.id)
         }
@@ -469,17 +454,12 @@ const Overview = () => {
       for (const mediaId of invalidated) {
         invalidateMaintainerrStatusDetails(mediaId)
       }
+      // Merged, not replaced: a second bulk action must not stop the first
+      // one's cards from loading their status.
+      setStatusChangedIds((current) => new Set([...current, ...invalidated]))
     }
 
-    const succeeded = succeededIds.size
-    const failed = failedIds.size
-    if (failed > 0) {
-      toast.error(
-        `${formatItemCount(succeeded)} excluded. ${formatItemCount(failed)} could not be excluded; the failed items stay selected.`,
-      )
-    } else {
-      toast.success(`${formatItemCount(succeeded)} excluded.`)
-    }
+    reportBulkOutcome(succeededIds.size, failed.length, bulkOutcomeVerb(action))
   }
 
   useEffect(() => {
@@ -550,12 +530,15 @@ const Overview = () => {
   const canRequestLibraryContent = Boolean(resolvedLibraryId)
   const hasMoreData = data.length < totalSize
   const showRefreshing = isLoading && hasData
-  const selectedCount = selectedMediaIds.size
-  const selectionHasContainers = data.some(
-    (item) =>
-      selectedMediaIds.has(item.id) &&
-      (item.type === 'show' || item.type === 'season'),
+  // A collection takes one media type, so a selection spanning types (search
+  // results mix movies, shows and episodes) can only be excluded.
+  const selectedTypes = new Set(
+    data
+      .filter((item) => selectedMediaIds.has(item.id))
+      .map((item) => item.type),
   )
+  const selectionType =
+    selectedTypes.size === 1 ? [...selectedTypes][0] : undefined
   const showBootstrapLoading =
     !searchUsed &&
     !hasData &&
@@ -572,41 +555,14 @@ const Overview = () => {
         <PageControlRow
           controlsClassName="sm:w-auto"
           actions={
-            <>
-              <Button
-                buttonType={selectionMode ? 'primary' : 'default'}
-                className="min-w-44"
-                onClick={handleSelectionModeChange}
-              >
-                <CheckCircleIcon className="h-4 w-4" />
-                {selectionMode ? 'Done selecting' : 'Select items'}
-              </Button>
-              <ConfirmActionButton
-                buttonLabel={
-                  selectedCount > 0
-                    ? `Exclude selected (${selectedCount})`
-                    : 'Exclude selected'
-                }
-                buttonIcon={<DocumentRemoveIcon className="h-4 w-4" />}
-                buttonType="danger"
-                buttonClassName="min-w-52"
-                confirmButtonType="danger"
-                disabled={!selectionMode || selectedCount === 0}
-                modalTitle="Exclude selected items"
-                confirmLabel="Exclude items"
-                pendingLabel="Excluding items..."
-                errorMessage="The selected items could not be excluded"
-                errorContext="bulk media exclusion"
-                onConfirm={handleBulkExclusion}
-              >
-                <p>
-                  Exclude the selected items globally?{' '}
-                  {selectionHasContainers
-                    ? 'Selected shows and seasons are excluded together with everything they contain, and any scoped exclusions for the same items are replaced.'
-                    : 'Any scoped exclusions for the same items are replaced.'}
-                </p>
-              </ConfirmActionButton>
-            </>
+            <MediaSelectionActions
+              selectionMode={selectionMode}
+              onToggleSelectionMode={toggleSelectionMode}
+              selectedIds={selectedMediaIds}
+              mediaType={selectionType}
+              libraryId={resolvedLibraryId}
+              onSubmitted={handleBulkOutcome}
+            />
           }
           controls={
             !searchUsed ? (
@@ -647,10 +603,10 @@ const Overview = () => {
             loading={isLoading}
             extrasLoading={isLoadingExtra && !isLoading && hasMoreData}
             data={data}
-            libraryId={resolvedLibraryId ?? ''}
+            statusChangedMediaIds={statusChangedIds}
             selectionMode={selectionMode}
             selectedMediaIds={selectedMediaIds}
-            onToggleSelection={handleSelectionChange}
+            onToggleSelection={toggleSelection}
           />
         ) : (
           <OverviewContent
@@ -659,10 +615,10 @@ const Overview = () => {
             loading={isLoading}
             extrasLoading={false}
             data={data}
-            libraryId=""
+            statusChangedMediaIds={statusChangedIds}
             selectionMode={selectionMode}
             selectedMediaIds={selectedMediaIds}
-            onToggleSelection={handleSelectionChange}
+            onToggleSelection={toggleSelection}
           />
         )}
       </div>

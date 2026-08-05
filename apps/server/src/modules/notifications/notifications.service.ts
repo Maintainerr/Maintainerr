@@ -11,7 +11,7 @@ import {
 } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
-import _ from 'lodash';
+import { isEqual, sortBy } from 'lodash';
 import { DataSource, Repository } from 'typeorm';
 import { getErrorMessage } from '../../utils/connection-error';
 import { MediaServerFactory } from '../api/media-server/media-server.factory';
@@ -334,13 +334,13 @@ export class NotificationService implements OnModuleInit {
   public async registerConfiguredAgents(skiplog = false) {
     const configuredAgents = await this.getNotificationConfigurations();
 
-    const isEqual = (a: Notification[], b: Notification[]) =>
-      _.isEqual(_.sortBy(a, 'id'), _.sortBy(b, 'id'));
+    const sameAgents = (a: Notification[], b: Notification[]) =>
+      isEqual(sortBy(a, 'id'), sortBy(b, 'id'));
 
     const notifications = this.activeAgents.map((e) => e.getNotification());
 
     // Only (re-)register agents when required
-    if (!isEqual(notifications, configuredAgents)) {
+    if (!sameAgents(notifications, configuredAgents)) {
       this.activeAgents = [];
 
       const agents: NotificationAgent[] = configuredAgents?.map(

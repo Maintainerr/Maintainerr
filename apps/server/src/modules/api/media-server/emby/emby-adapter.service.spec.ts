@@ -978,5 +978,52 @@ describe('EmbyAdapterService', () => {
 
       await expect(service.itemExists('42')).rejects.toBe(error);
     });
+
+    // Emby 404s the unscoped /Items/{id} route for an item that exists.
+    describe('without a configured user', () => {
+      beforeEach(() => {
+        (service as unknown as { embyUserId?: string }).embyUserId = undefined;
+      });
+
+      it('resolves a single id through the list form', async () => {
+        http.get.mockResolvedValueOnce({ data: { Items: [{ Id: '42' }] } });
+
+        await expect(service.itemExists('42')).resolves.toBe(true);
+        expect(http.get).toHaveBeenCalledWith('/Items', {
+          params: { Ids: '42', Recursive: true },
+        });
+      });
+
+      it('reports an empty listing as a confirmed absence', async () => {
+        http.get.mockResolvedValueOnce({ data: { Items: [] } });
+
+        await expect(service.itemExists('42')).resolves.toBe(false);
+      });
+
+      // Emby answers an unfiltered listing when it ignores the Ids filter.
+      it('does not accept another item as the one asked for', async () => {
+        http.get.mockResolvedValueOnce({ data: { Items: [{ Id: '99' }] } });
+
+        await expect(service.itemExists('42')).resolves.toBe(false);
+      });
+
+      it('reads metadata through the same route', async () => {
+        http.get.mockResolvedValueOnce({
+          data: { Items: [{ Id: '42', Name: 'Sample Movie', Type: 'Movie' }] },
+        });
+
+        await expect(service.getMetadata('42')).resolves.toMatchObject({
+          id: '42',
+        });
+        expect(http.get).toHaveBeenCalledWith('/Items', {
+          params: {
+            Ids: '42',
+            Recursive: true,
+            Fields:
+              'ProviderIds,DateCreated,Overview,Tags,MediaSources,Genres,People,Studios',
+          },
+        });
+      });
+    });
   });
 });

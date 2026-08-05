@@ -657,4 +657,196 @@ describe('RulesService exclusions - global (null ruleGroupId) handling', () => {
 
     expect(peak).toBe(BULK_EXCLUSION_CONCURRENCY);
   });
+
+  const createScopedBulkService = (
+    removeFromCollection = jest.fn().mockResolvedValue({ id: 3 }),
+  ) => {
+    const mediaServer = {
+      getMetadata: jest.fn().mockResolvedValue({ type: 'movie' }),
+    };
+    const collectionService = {
+      CollectionLogRecordForChild: jest.fn().mockResolvedValue(undefined),
+      removeFromCollection,
+    };
+    const { service } = createService({
+      collectionService,
+      mediaServerFactory: {
+        getService: jest.fn().mockResolvedValue(mediaServer),
+      },
+    });
+
+    return { service, collectionService, mediaServer, removeFromCollection };
+  };
+
+  it('setBulkExclusions scopes to the collection and drops the excluded items from it', async () => {
+    const { service, mediaServer, removeFromCollection } =
+      createScopedBulkService();
+    const setExclusion = jest
+      .spyOn(service, 'setExclusion')
+      .mockResolvedValueOnce({ code: 1, message: 'Success' })
+      .mockResolvedValueOnce({ code: 0, message: 'Failed - no rule group' });
+
+    const response = await service.setBulkExclusions(
+      ['movie-1', 'movie-2'],
+      12,
+    );
+
+    expect(setExclusion).toHaveBeenNthCalledWith(1, {
+      mediaId: 'movie-1',
+      collectionId: 12,
+    });
+    // a collection holds one media type, so nothing can nest
+    expect(mediaServer.getMetadata).not.toHaveBeenCalled();
+    expect(removeFromCollection).toHaveBeenCalledWith(12, [
+      { mediaServerId: 'movie-1' },
+    ]);
+    expect(response.results).toEqual([
+      { mediaId: 'movie-1', code: 1, message: 'Success' },
+      { mediaId: 'movie-2', code: 0, message: 'Failed - no rule group' },
+    ]);
+  });
+
+  it('setBulkExclusions reports a failed collection removal instead of claiming success', async () => {
+    const { service } = createScopedBulkService(
+      jest.fn().mockResolvedValue(undefined),
+    );
+    jest
+      .spyOn(service, 'setExclusion')
+      .mockResolvedValue({ code: 1, message: 'Success' });
+
+    await expect(service.setBulkExclusions(['movie-1'], 12)).resolves.toEqual({
+      results: [
+        {
+          mediaId: 'movie-1',
+          code: 0,
+          message: 'Excluded, but not removed from the collection',
+        },
+      ],
+    });
+  });
+
+  it('setBulkExclusions leaves the collection alone when nothing was excluded', async () => {
+    const { service, removeFromCollection } = createScopedBulkService();
+    jest
+      .spyOn(service, 'setExclusion')
+      .mockResolvedValue({ code: 0, message: 'Failed' });
+
+    await service.setBulkExclusions(['movie-1'], 12);
+
+    expect(removeFromCollection).not.toHaveBeenCalled();
+  });
+
+  const createRemovalService = (
+    rows: { id: number; mediaServerId: string; ruleGroupId: number | null }[],
+    ruleGroup: { id: number } | null = { id: 5 },
+  ) =>
+    createService({
+      exclusionRepo: {
+        find: jest.fn().mockResolvedValue(rows),
+        findOne: jest.fn().mockResolvedValue(undefined),
+        delete: jest.fn().mockResolvedValue(undefined),
+        count: jest.fn().mockResolvedValue(0),
+      },
+      ruleGroupRepository: { findOne: jest.fn().mockResolvedValue(ruleGroup) },
+    });
+
+  it('removeBulkExclusions deletes the row covering each item in the collection', async () => {
+    // an item is global or scoped, never both, so either row is the one to drop
+    const { service } = createRemovalService([
+      { id: 11, mediaServerId: 'movie-1', ruleGroupId: 5 },
+      { id: 12, mediaServerId: 'movie-2', ruleGroupId: null },
+      { id: 13, mediaServerId: 'movie-3', ruleGroupId: 9 },
+    ]);
+    const removeExclusion = jest
+      .spyOn(service, 'removeExclusion')
+      .mockResolvedValue({ code: 1, message: 'Success' });
+
+    const response = await service.removeBulkExclusions(
+      ['movie-1', 'movie-2', 'movie-3', 'movie-1'],
+      12,
+    );
+
+    // an item with nothing excluding it here is already in the requested state
+    expect(removeExclusion.mock.calls.map(([id]) => id).sort()).toEqual([
+      11, 12,
+    ]);
+    expect(response.results).toEqual([
+      { mediaId: 'movie-1', code: 1, message: 'Success' },
+      { mediaId: 'movie-2', code: 1, message: 'Success' },
+      { mediaId: 'movie-3', code: 1, message: 'Success' },
+    ]);
+  });
+
+  it('removeBulkExclusions drops every exclusion an item carries when no collection is named', async () => {
+    const { service } = createRemovalService([
+      { id: 11, mediaServerId: 'movie-1', ruleGroupId: 5 },
+      { id: 14, mediaServerId: 'movie-1', ruleGroupId: 9 },
+    ]);
+    const removeExclusion = jest
+      .spyOn(service, 'removeExclusion')
+      .mockResolvedValue({ code: 1, message: 'Success' });
+
+    await service.removeBulkExclusions(['movie-1']);
+
+    expect(removeExclusion.mock.calls.map(([id]) => id).sort()).toEqual([
+      11, 14,
+    ]);
+  });
+
+  it('removeBulkExclusions reports a thrown removal as a per-item failure', async () => {
+    const { service } = createRemovalService([
+      { id: 11, mediaServerId: 'movie-1', ruleGroupId: null },
+    ]);
+    jest
+      .spyOn(service, 'removeExclusion')
+      .mockRejectedValueOnce(new Error('boom'));
+
+    await expect(service.removeBulkExclusions(['movie-1'])).resolves.toEqual({
+      results: [
+        { mediaId: 'movie-1', code: 0, message: 'Failed - see server logs' },
+      ],
+    });
+    expect(logger.warn).toHaveBeenCalledWith(
+      'Bulk exclusion removal failed for media movie-1',
+    );
+  });
+
+  it('removeBulkExclusions fails cleanly when the collection has no rule group', async () => {
+    const { service } = createRemovalService([], null);
+
+    await expect(
+      service.removeBulkExclusions(['movie-1'], 12),
+    ).resolves.toEqual({
+      results: [
+        { mediaId: 'movie-1', code: 0, message: 'Failed - no rule group' },
+      ],
+    });
+  });
+
+  it('setExclusion fails cleanly when the collection has no rule group', async () => {
+    const { service, ruleGroupRepository } = createService();
+
+    await expect(
+      service.setExclusion({ mediaId: 'movie-1', collectionId: 12 }),
+    ).resolves.toEqual({
+      code: 0,
+      result: 'Failed - no rule group',
+      message: 'Failed - no rule group',
+    });
+    expect(ruleGroupRepository.findOne).toHaveBeenCalledWith({
+      where: { collectionId: 12 },
+    });
+  });
+
+  it('removeExclusionWitData fails cleanly when the collection has no rule group', async () => {
+    const { service } = createService();
+
+    await expect(
+      service.removeExclusionWitData({ mediaId: 'movie-1', collectionId: 12 }),
+    ).resolves.toEqual({
+      code: 0,
+      result: 'Failed - no rule group',
+      message: 'Failed - no rule group',
+    });
+  });
 });

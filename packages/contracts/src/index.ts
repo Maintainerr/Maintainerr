@@ -1,3 +1,4 @@
+export * from './bulk-media-action'
 export * from './app'
 export * from './collections'
 export * from './events'

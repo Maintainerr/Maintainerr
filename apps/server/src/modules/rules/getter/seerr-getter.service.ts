@@ -4,7 +4,7 @@ import {
   RequestMediaStatus,
 } from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
-import _ from 'lodash';
+import { cloneDeep } from 'lodash';
 import { MediaServerFactory } from '../../api/media-server/media-server.factory';
 import {
   resolveRequestUsername,
@@ -53,7 +53,7 @@ export class SeerrGetterService {
 
       // get original show in case of season / episode
       if (dataType === 'season' || dataType === 'episode') {
-        origLibItem = _.cloneDeep(libItem);
+        origLibItem = cloneDeep(libItem);
         const mediaServer = await this.mediaServerFactory.getService();
         libItem = await mediaServer.getMetadata(
           dataType === 'season' ? libItem.parentId : libItem.grandparentId,
