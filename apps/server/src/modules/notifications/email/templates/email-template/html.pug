@@ -44,4 +44,6 @@ html
                       | Maintainerr
             tr
               td(style='padding-top: 16px; color: #fff; font-family: Inter, Arial, sans-serif; font-size: 20px; line-height: 1.6; mso-line-height-rule: exactly;')
+                //- `body` is pre-escaped by EmailAgent.buildBody so the <br> it
+                //- inserts survives; never interpolate raw payload text here.
                 != body

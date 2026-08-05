@@ -176,6 +176,32 @@ describe('SettingsOperationsService', () => {
     expect(settingsDataService.saveSettings).not.toHaveBeenCalled();
   });
 
+  it('accepts an update that omits the cron schedules', async () => {
+    // Both routes merge over the stored row, so an absent schedule means "leave
+    // as-is". Validating it anyway reached `undefined.trim()` and threw a 500.
+    const response = await service.updateSettings({
+      applicationTitle: 'Maintainerr Dev',
+    });
+
+    expect(response).toEqual({ status: 'OK', code: 1, message: 'Success' });
+    expect(settingsDataService.saveSettings).toHaveBeenCalledTimes(1);
+  });
+
+  it('still rejects a schedule that is present but invalid', async () => {
+    settingsDataService.cronIsValid.mockReturnValue(false);
+
+    const response = await service.updateSettings({
+      collection_handler_job_cron: 'not a cron',
+    });
+
+    expect(response).toEqual({
+      status: 'NOK',
+      code: 0,
+      message: 'Update failed, invalid CRON value was found',
+    });
+    expect(settingsDataService.saveSettings).not.toHaveBeenCalled();
+  });
+
   it('still allows unrelated settings updates when Plex server settings are unchanged', async () => {
     const response = await service.updateSettings(
       createSettings({ applicationTitle: 'Maintainerr Dev' }),
@@ -262,6 +288,46 @@ describe('SettingsOperationsService', () => {
         plex_port: 32400,
         plex_ssl: 1,
       }),
+    );
+  });
+
+  it('keeps plex_ssl when a partial update omits the Plex connection fields', async () => {
+    settingsRepo.findOne.mockResolvedValue(
+      createSettings({
+        plex_hostname: 'abc.plex.direct',
+        plex_port: 32400,
+        plex_ssl: 1,
+      }),
+    );
+
+    const response = await service.patchSettings({
+      applicationTitle: 'Maintainerr Dev',
+    });
+
+    expect(response).toEqual({ status: 'OK', code: 1, message: 'Success' });
+    expect(settingsDataService.saveSettings).toHaveBeenCalledWith(
+      expect.objectContaining({
+        plex_hostname: 'abc.plex.direct',
+        plex_port: 32400,
+        plex_ssl: 1,
+      }),
+    );
+  });
+
+  it('lets an explicit plex_ssl update turn ssl off for a bare hostname', async () => {
+    settingsRepo.findOne.mockResolvedValue(
+      createSettings({
+        plex_hostname: 'abc.plex.direct',
+        plex_port: 32400,
+        plex_ssl: 1,
+      }),
+    );
+
+    const response = await service.patchSettings({ plex_ssl: 0 });
+
+    expect(response).toEqual({ status: 'OK', code: 1, message: 'Success' });
+    expect(settingsDataService.saveSettings).toHaveBeenCalledWith(
+      expect.objectContaining({ plex_ssl: 0 }),
     );
   });
 
