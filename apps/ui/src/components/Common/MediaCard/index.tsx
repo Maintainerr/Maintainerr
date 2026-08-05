@@ -14,7 +14,6 @@ const mediaBadgeClasses = {
   season: 'bg-yellow-700',
   episode: 'bg-rose-900',
   info: 'bg-maintainerrdark',
-  accent: 'bg-maintainerr',
   success: 'bg-emerald-700',
 } as const
 
@@ -158,7 +157,7 @@ const MediaCard: React.FC<IMediaCard> = ({
                       ? `${collections[0]} +${collections.length - 1}`
                       : collections[0]}
                   </span>,
-                  'accent',
+                  'info',
                   'absolute inset-x-0 bottom-0 flex justify-center p-2',
                 )
               : undefined}
