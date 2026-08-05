@@ -1,6 +1,6 @@
-import { cleanup, render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import { useEffect } from 'react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import OverlayTemplateEditorPage from './OverlayTemplateEditorPage'
 
 const navigate = vi.fn()
@@ -100,7 +100,6 @@ vi.mock('react-router-dom', async () => {
 
 describe('OverlayTemplateEditorPage', () => {
   beforeEach(() => {
-    cleanup()
     routeId = '42'
     navigate.mockReset()
     getOverlayTemplate.mockReset()
@@ -131,10 +130,6 @@ describe('OverlayTemplateEditorPage', () => {
       canRedo: false,
       reset: vi.fn(),
     })
-  })
-
-  afterEach(() => {
-    cleanup()
   })
 
   it('keeps the editor shell visible while an existing template is still loading', () => {

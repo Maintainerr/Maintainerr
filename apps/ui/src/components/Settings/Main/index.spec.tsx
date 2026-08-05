@@ -1,11 +1,5 @@
-import {
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import GetApiHandler from '../../../utils/ApiHandler'
 import MainSettings from './index'
 
@@ -60,10 +54,6 @@ describe('MainSettings', () => {
       apikey: 'saved-api-key',
       media_server_type: 'plex',
     }
-  })
-
-  afterEach(() => {
-    cleanup()
   })
 
   it('keeps Save Changes enabled regardless of whether general settings have changed', () => {

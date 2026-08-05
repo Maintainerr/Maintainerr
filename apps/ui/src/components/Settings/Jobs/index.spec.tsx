@@ -1,11 +1,5 @@
-import {
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import JobSettings from './index'
 
 const updateSettings = vi.fn()
@@ -71,10 +65,6 @@ describe('JobSettings', () => {
 
       return currentOverlaySettings
     })
-  })
-
-  afterEach(() => {
-    cleanup()
   })
 
   it('keeps Save Changes disabled until the overlay schedule finishes loading', async () => {

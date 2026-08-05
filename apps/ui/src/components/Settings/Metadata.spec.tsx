@@ -1,12 +1,6 @@
 import { MetadataProviderPreference } from '@maintainerr/contracts'
-import {
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createDeferred } from '../../test-utils/createDeferred'
 import MetadataSettings from './Metadata'
 
@@ -74,10 +68,6 @@ describe('MetadataSettings', () => {
       code: 1,
       message: 'Updated',
     })
-  })
-
-  afterEach(() => {
-    cleanup()
   })
 
   it('keeps the selector shell and provider cards visible while provider settings load', () => {

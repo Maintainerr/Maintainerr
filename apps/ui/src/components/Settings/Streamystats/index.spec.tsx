@@ -1,5 +1,5 @@
-import { cleanup, render, screen, waitFor } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { render, screen, waitFor } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import StreamystatsSettings from './index'
 
 const useMediaServerTypeMock = vi.fn()
@@ -32,13 +32,8 @@ vi.mock('../../Common/DocsButton', () => ({
 
 describe('StreamystatsSettings', () => {
   beforeEach(() => {
-    cleanup()
     useMediaServerTypeMock.mockReset()
     getApiHandler.mockReset()
-  })
-
-  afterEach(() => {
-    cleanup()
   })
 
   it('renders nothing while settings are loading', () => {

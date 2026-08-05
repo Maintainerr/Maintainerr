@@ -1,12 +1,6 @@
 import { DEFAULT_OVERLAY_SETTINGS } from '@maintainerr/contracts'
-import {
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import OverlaySettings from './index'
 
 const getOverlaySettings = vi.fn()
@@ -54,10 +48,6 @@ describe('OverlaySettings', () => {
     })
     resetAllOverlays.mockResolvedValue({ success: true })
     updateOverlaySettings.mockImplementation(async (payload) => payload)
-  })
-
-  afterEach(() => {
-    cleanup()
   })
 
   it('runs a forced manual overlay pass from Run Now', async () => {

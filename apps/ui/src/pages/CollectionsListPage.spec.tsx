@@ -1,12 +1,6 @@
-import {
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { useQueryClient } from '@tanstack/react-query'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fetchCollections, useCollections } from '../api/collections'
 import type { ICollection } from '../components/Collection'
 import { createTestQueryClient } from '../test-utils/queryClient'
@@ -77,7 +71,6 @@ describe('CollectionsListPage', () => {
   let queryClient: ReturnType<typeof createTestQueryClient>
 
   beforeEach(() => {
-    cleanup()
     navigate.mockReset()
     fetchCollectionsMock.mockReset()
     useCollectionsMock.mockReset()
@@ -102,10 +95,6 @@ describe('CollectionsListPage', () => {
     }
 
     useCollectionsMock.mockReturnValue(buildQuerySuccessResult([collection]))
-  })
-
-  afterEach(() => {
-    cleanup()
   })
 
   it('restores the previous library selection if a library switch request fails', async () => {

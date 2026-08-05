@@ -55,6 +55,7 @@ export default defineConfig(({ mode }) => {
     },
     test: {
       environment: 'jsdom',
+      setupFiles: ['./src/test-utils/react-cleanup.ts'],
     },
     // Ensure environment variables are available and can be replaced at runtime
     define: {

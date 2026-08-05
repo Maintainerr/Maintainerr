@@ -1,4 +1,4 @@
-import { act, cleanup, render } from '@testing-library/react'
+import { act, render } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { LOG_STREAM_ERROR_DELAY_MS, Logs } from './index'
 
@@ -72,7 +72,6 @@ describe('Logs stream reporting', () => {
   })
 
   afterEach(() => {
-    cleanup()
     vi.runOnlyPendingTimers()
     vi.useRealTimers()
   })

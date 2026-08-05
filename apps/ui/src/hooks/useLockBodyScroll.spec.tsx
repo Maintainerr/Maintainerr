@@ -1,4 +1,4 @@
-import { cleanup, renderHook } from '@testing-library/react'
+import { renderHook } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
 import {
   __resetLockBodyScrollForTests,
@@ -7,7 +7,6 @@ import {
 
 describe('useLockBodyScroll', () => {
   afterEach(() => {
-    cleanup()
     __resetLockBodyScrollForTests()
   })
 

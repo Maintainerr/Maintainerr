@@ -1,13 +1,7 @@
 import type { MediaLibrary } from '@maintainerr/contracts'
-import {
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import type { ReactNode } from 'react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useMediaServerLibraries } from '../../../api/media-server'
 import {
   buildQueryErrorResult,
@@ -49,10 +43,6 @@ describe('CollectionItem', () => {
     ]
 
     librariesHookMock.mockReturnValue(buildQuerySuccessResult(libraries))
-  })
-
-  afterEach(() => {
-    cleanup()
   })
 
   it('renders collection preview images inside the wide backdrop layout', async () => {

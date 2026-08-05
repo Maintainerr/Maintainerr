@@ -1,5 +1,5 @@
-import { cleanup, render, screen } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { render, screen } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useCollection } from '../api/collections'
 import { useRuleGroupForCollection } from '../api/rules'
 import type { ICollection } from '../components/Collection'
@@ -107,7 +107,6 @@ describe('CollectionDetailPage', () => {
   const useRuleGroupForCollectionMock = vi.mocked(useRuleGroupForCollection)
 
   beforeEach(() => {
-    cleanup()
     navigate.mockReset()
     useLocation.mockReset()
     useParams.mockReset()
@@ -122,10 +121,6 @@ describe('CollectionDetailPage', () => {
     useRuleGroupForCollectionMock.mockReturnValue(
       buildQuerySuccessResult(buildRuleGroup()),
     )
-  })
-
-  afterEach(() => {
-    cleanup()
   })
 
   it('renders collection content once collection data is available', () => {

@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import OverlaysWrapper from './index'
 
@@ -38,7 +38,6 @@ vi.mock('react-router-dom', async () => {
 
 describe('OverlaysWrapper', () => {
   afterEach(() => {
-    cleanup()
     useMediaServerType.mockReset()
     useOverlaySettings.mockReset()
     useLocation.mockReset()

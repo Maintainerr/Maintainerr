@@ -1,11 +1,5 @@
-import {
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { z } from 'zod'
 import ExternalServiceSettingsPage, {
   type ExternalServiceFieldConfig,
@@ -70,7 +64,6 @@ const tracearrFields: ExternalServiceFieldConfig[] = [
 
 describe('ExternalServiceSettingsPage', () => {
   beforeEach(() => {
-    cleanup()
     getApiHandler.mockReset()
     postApiHandler.mockReset()
     deleteApiHandler.mockReset()
@@ -78,10 +71,6 @@ describe('ExternalServiceSettingsPage', () => {
       url: 'http://seerr.local',
       api_key: 'saved-key',
     })
-  })
-
-  afterEach(() => {
-    cleanup()
   })
 
   it('keeps Save Changes enabled regardless of whether connection values have changed', async () => {

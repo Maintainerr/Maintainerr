@@ -1,7 +1,7 @@
 import { QueryClientProvider } from '@tanstack/react-query'
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import type { ReactElement } from 'react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createTestQueryClient } from '../../../../test-utils/queryClient'
 import type { ICollection } from '../../index'
 import PostponeButton from './index'
@@ -49,10 +49,6 @@ describe('PostponeButton', () => {
     postponeCollectionItem.mockReset()
     invalidateCollectionQueries.mockReset()
     invalidateCollectionQueries.mockResolvedValue(undefined)
-  })
-
-  afterEach(() => {
-    cleanup()
   })
 
   it('posts the entered days and hands the new addDate back to the caller', async () => {

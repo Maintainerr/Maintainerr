@@ -1,12 +1,7 @@
 import { QueryClientProvider } from '@tanstack/react-query'
-import {
-  cleanup,
-  render,
-  screen,
-  type RenderResult,
-} from '@testing-library/react'
+import { render, screen, type RenderResult } from '@testing-library/react'
 import type { ReactElement } from 'react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createDeferred } from '../../test-utils/createDeferred'
 import { createTestQueryClient } from '../../test-utils/queryClient'
 import RadarrSettings from './Radarr'
@@ -67,10 +62,6 @@ describe.each([
     deleteApiHandler.mockReset()
     logClientError.mockReset()
     toastError.mockReset()
-  })
-
-  afterEach(() => {
-    cleanup()
   })
 
   it('does not show transient loading UI while server settings load', async () => {
