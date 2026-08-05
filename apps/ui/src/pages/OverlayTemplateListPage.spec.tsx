@@ -1,5 +1,5 @@
-import { cleanup, render, screen } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { render, screen } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import OverlayTemplateListPage from './OverlayTemplateListPage'
 
 const navigate = vi.fn()
@@ -26,13 +26,8 @@ vi.mock('react-router-dom', async () => {
 
 describe('OverlayTemplateListPage', () => {
   beforeEach(() => {
-    cleanup()
     navigate.mockReset()
     getOverlayTemplates.mockReset()
-  })
-
-  afterEach(() => {
-    cleanup()
   })
 
   it('keeps the page shell visible while templates are still loading', () => {

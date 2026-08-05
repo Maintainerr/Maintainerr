@@ -1,11 +1,5 @@
-import {
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import VersionStatus from './index'
 
 const getApiHandler = vi.fn()
@@ -51,10 +45,6 @@ describe('VersionStatus', () => {
       updateAvailable: false,
     })
     isRouteBlocked.mockReturnValue(false)
-  })
-
-  afterEach(() => {
-    cleanup()
   })
 
   it('blocks navigation to about when setup guard blocks the route', async () => {

@@ -1,6 +1,6 @@
 import type { MediaLibrary } from '@maintainerr/contracts'
-import { cleanup, render, screen } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { render, screen } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useMediaServerLibraries } from '../../../api/media-server'
 import { useTaskStatusContext } from '../../../contexts/taskstatus-context'
 import { buildQuerySuccessResult } from '../../../test-utils/queryResults'
@@ -46,10 +46,6 @@ describe('CollectionOverview', () => {
     taskStatusHookMock.mockReturnValue({
       collectionHandlerRunning: false,
     })
-  })
-
-  afterEach(() => {
-    cleanup()
   })
 
   it('keeps rendered collections visible while a refresh is in flight', () => {

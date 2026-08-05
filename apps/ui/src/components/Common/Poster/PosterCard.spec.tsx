@@ -1,10 +1,4 @@
-import {
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import GetApiHandler from '../../../utils/ApiHandler'
 import PosterCard, { resetPosterImageCache } from './PosterCard'
@@ -39,7 +33,6 @@ describe('PosterCard', () => {
   })
 
   afterEach(() => {
-    cleanup()
     getApiHandlerMock.mockReset()
     resetPosterImageCache()
     vi.unstubAllGlobals()

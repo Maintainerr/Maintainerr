@@ -1,10 +1,4 @@
-import {
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createDeferred } from '../../../../test-utils/createDeferred'
 import {
@@ -36,7 +30,6 @@ describe('CollectionPosterPicker', () => {
   })
 
   afterEach(() => {
-    cleanup()
     vi.unstubAllGlobals()
   })
 

@@ -1,11 +1,5 @@
 import { Application, MediaType, RulePossibility } from '@maintainerr/contracts'
-import {
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import RuleInput from './index'
 
@@ -76,7 +70,6 @@ describe('RuleInput', () => {
   })
 
   afterEach(() => {
-    cleanup()
     vi.clearAllMocks()
   })
 

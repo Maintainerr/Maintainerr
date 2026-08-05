@@ -1,12 +1,8 @@
-import { act, cleanup, renderHook } from '@testing-library/react'
-import { afterEach, describe, expect, it } from 'vitest'
+import { act, renderHook } from '@testing-library/react'
+import { describe, expect, it } from 'vitest'
 import useLibrarySelection from './useLibrarySelection'
 
 describe('useLibrarySelection', () => {
-  afterEach(() => {
-    cleanup()
-  })
-
   it('keeps selected library state and ref in sync', () => {
     const { result } = renderHook(() =>
       useLibrarySelection({ initialLibraryId: 'all' }),

@@ -1,6 +1,6 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import type { ReactNode } from 'react'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import MediaCard from './index'
 
 vi.mock('react-router-dom', () => ({
@@ -55,10 +55,6 @@ vi.mock('./MediaModal', () => ({
 }))
 
 describe('MediaCard', () => {
-  afterEach(() => {
-    cleanup()
-  })
-
   it('shows the exclusion badge on overview cards only for global exclusions', () => {
     render(
       <MediaCard

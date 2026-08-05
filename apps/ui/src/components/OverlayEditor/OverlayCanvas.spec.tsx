@@ -1,5 +1,5 @@
 import type { OverlayElement } from '@maintainerr/contracts'
-import { cleanup, render, waitFor } from '@testing-library/react'
+import { render, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { OverlayCanvas } from './OverlayCanvas'
 
@@ -202,7 +202,6 @@ describe('OverlayCanvas', () => {
   })
 
   afterEach(() => {
-    cleanup()
     Object.defineProperty(window, 'Image', {
       configurable: true,
       value: originalImage,

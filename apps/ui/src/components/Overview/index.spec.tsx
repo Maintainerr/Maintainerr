@@ -1,12 +1,6 @@
 import { MediaServerType, type MediaLibrary } from '@maintainerr/contracts'
-import {
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { toast } from 'react-toastify'
 import { SearchContextProvider } from '../../contexts/search-context'
 import { useBulkExcludeMedia } from '../../api/rules'
@@ -143,10 +137,6 @@ describe('Overview', () => {
 
       throw new Error(`Unexpected API request: ${path}`)
     })
-  })
-
-  afterEach(() => {
-    cleanup()
   })
 
   it('shows title ascending as the default overview option', () => {

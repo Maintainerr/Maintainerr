@@ -1,12 +1,6 @@
-import {
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import type { ReactNode } from 'react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { downloadDatabase } from '../../../api/settings'
 import DatabaseBackupModal from './DatabaseBackupModal'
 
@@ -41,10 +35,6 @@ describe('DatabaseBackupModal', () => {
     downloadDatabaseMock.mockReset()
     onClose.mockReset()
     onDownloaded.mockReset()
-  })
-
-  afterEach(() => {
-    cleanup()
   })
 
   it('reports success to the parent before closing', async () => {

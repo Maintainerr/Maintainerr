@@ -1,6 +1,6 @@
 import type { MediaLibrary } from '@maintainerr/contracts'
-import { cleanup, renderHook } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { renderHook } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useMediaServerLibraries } from '../api/media-server'
 import {
   buildQueryErrorResult,
@@ -30,10 +30,6 @@ const mockHook = (overrides: { data?: MediaLibrary[]; isError?: boolean }) => {
 describe('useLibraryDisplay', () => {
   beforeEach(() => {
     vi.mocked(useMediaServerLibraries).mockReset()
-  })
-
-  afterEach(() => {
-    cleanup()
   })
 
   it('resolves the stored libraryId to a title when present', () => {

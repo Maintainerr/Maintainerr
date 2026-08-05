@@ -1,11 +1,5 @@
-import {
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import DownloadClientSettings from './index'
 
 const saveSettingsMock = vi.fn()
@@ -55,7 +49,6 @@ vi.mock('../../Common/DocsButton', () => ({
 
 describe('DownloadClientSettings', () => {
   beforeEach(() => {
-    cleanup()
     saveSettingsMock.mockReset()
     deleteSettingsMock.mockReset()
     testMock.mockReset()
@@ -69,10 +62,6 @@ describe('DownloadClientSettings', () => {
       download_client_delete_data: true,
       download_client_fallback_ratio: 0.5,
     }
-  })
-
-  afterEach(() => {
-    cleanup()
   })
 
   it('saves the connection settings as a contract payload', async () => {

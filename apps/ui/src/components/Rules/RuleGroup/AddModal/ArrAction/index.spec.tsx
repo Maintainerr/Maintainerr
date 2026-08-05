@@ -1,6 +1,6 @@
 import { ServarrAction } from '@maintainerr/contracts'
-import { cleanup, render, screen, waitFor } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { render, screen, waitFor } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useServarrSettings } from '../../../../../api/settings'
 import {
   buildQueryLoadingResult,
@@ -21,10 +21,6 @@ describe('ArrAction', () => {
     useServarrSettingsMock.mockReturnValue(
       buildQuerySuccessResult<ISonarrSetting[]>([]),
     )
-  })
-
-  afterEach(() => {
-    cleanup()
   })
 
   it('does not clear the saved server before Servarr settings finish loading', async () => {

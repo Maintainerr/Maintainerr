@@ -1,12 +1,8 @@
-import { cleanup, render, screen } from '@testing-library/react'
-import { afterEach, describe, expect, it } from 'vitest'
+import { render, screen } from '@testing-library/react'
+import { describe, expect, it } from 'vitest'
 import SaveButton, { SaveButtonContent } from './SaveButton'
 
 describe('SaveButtonContent', () => {
-  afterEach(() => {
-    cleanup()
-  })
-
   it('renders the default save label while idle', () => {
     render(<SaveButtonContent isPending={false} />)
 
@@ -21,10 +17,6 @@ describe('SaveButtonContent', () => {
 })
 
 describe('SaveButton', () => {
-  afterEach(() => {
-    cleanup()
-  })
-
   it('renders an enabled save button by default', () => {
     render(<SaveButton isPending={false} />)
 

@@ -1,11 +1,5 @@
-import {
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import JellyfinSettings from './index'
 
 const saveSettingsMock = vi.fn()
@@ -60,16 +54,11 @@ vi.mock('../../Common/DocsButton', () => ({
 
 describe('JellyfinSettings', () => {
   beforeEach(() => {
-    cleanup()
     saveSettingsMock.mockReset()
     showUpdated.mockReset()
     showUpdateError.mockReset()
     showError.mockReset()
     clearError.mockReset()
-  })
-
-  afterEach(() => {
-    cleanup()
   })
 
   it('surfaces backend validation failures instead of showing a success message', async () => {
