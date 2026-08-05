@@ -1059,40 +1059,54 @@ describe('EmbyAdapterService', () => {
         (service as unknown as { embyUserId?: string }).embyUserId = undefined;
       });
 
-      it('resolves a single id through the list form', async () => {
-        http.get.mockResolvedValueOnce({ data: { Items: [{ Id: '42' }] } });
+      const withResolvedAdmin = (item: unknown) =>
+        http.get.mockImplementation((path: string) =>
+          path === '/Users/Query'
+            ? Promise.resolve({
+                data: [{ Id: 'admin-9', Policy: { IsAdministrator: true } }],
+              })
+            : Promise.resolve({ data: item }),
+        );
+
+      it('resolves a single id through the auto-resolved user', async () => {
+        withResolvedAdmin({ Id: '42' });
 
         await expect(service.itemExists('42')).resolves.toBe(true);
-        expect(http.get).toHaveBeenCalledWith('/Items', {
-          params: { Ids: '42', Recursive: true },
-        });
+        expect(http.get).toHaveBeenCalledWith('/Users/admin-9/Items/42');
       });
 
-      it('reports an empty listing as a confirmed absence', async () => {
-        http.get.mockResolvedValueOnce({ data: { Items: [] } });
+      it('reports a 404 on that route as a confirmed absence', async () => {
+        http.get.mockImplementation((path: string) =>
+          path === '/Users/Query'
+            ? Promise.resolve({
+                data: [{ Id: 'admin-9', Policy: { IsAdministrator: true } }],
+              })
+            : Promise.reject(createResponseError(404)),
+        );
 
         await expect(service.itemExists('42')).resolves.toBe(false);
       });
 
-      // Emby answers an unfiltered listing when it ignores the Ids filter.
-      it('does not accept another item as the one asked for', async () => {
-        http.get.mockResolvedValueOnce({ data: { Items: [{ Id: '99' }] } });
+      // Without a user the answer is unknown, and an unknown must never reach
+      // the caller as "deleted" - that is what removes live media.
+      it('stays inconclusive when no user can be resolved', async () => {
+        http.get.mockResolvedValue({ data: { Items: [] } });
 
-        await expect(service.itemExists('42')).resolves.toBe(false);
+        await expect(service.itemExists('42')).rejects.toThrow(
+          'no user to scope the lookup',
+        );
       });
 
-      it('reads metadata through the same route', async () => {
-        http.get.mockResolvedValueOnce({
-          data: { Items: [{ Id: '42', Name: 'Sample Movie', Type: 'Movie' }] },
-        });
+      // The list form would answer a trimmed item here, which is a metadata
+      // read silently losing most of its fields.
+      it('reads metadata through the same user-scoped route', async () => {
+        withResolvedAdmin({ Id: '42', Name: 'Sample Movie', Type: 'Movie' });
 
         await expect(service.getMetadata('42')).resolves.toMatchObject({
           id: '42',
         });
-        expect(http.get).toHaveBeenCalledWith('/Items', {
+        expect(http.get).toHaveBeenCalledWith('/Users/admin-9/Items/42', {
           params: {
-            Ids: '42',
-            Recursive: true,
             Fields:
               'ProviderIds,DateCreated,Overview,Tags,MediaSources,Genres,People,Studios',
           },

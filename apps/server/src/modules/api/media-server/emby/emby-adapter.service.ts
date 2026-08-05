@@ -1631,29 +1631,28 @@ export class EmbyAdapterService implements IMediaServerService {
   /**
    * `emby_user_id` is optional, and Emby answers **404 on the unscoped
    * `/Items/{id}` route for an item that exists** - which `itemExists` read as
-   * deleted. The list form is the only single-id route that resolves without a
-   * user context, matched on the exact id because Emby answers an unfiltered
-   * listing when it ignores the filter.
+   * deleted. Resolve a user instead, as every other single-item read here does.
+   * The list form resolves without a user but answers a trimmed item (7 fields
+   * against this route's 31, no ChildCount even when asked for), so it cannot
+   * stand in for a metadata read. With no user at all the lookup is
+   * inconclusive, which the caller must not read as "deleted".
    */
   private async fetchItem(
     itemId: string,
     fields?: string,
   ): Promise<EmbyBaseItemDto | undefined> {
-    const fieldParams = fields ? { Fields: fields } : {};
-
-    if (this.embyUserId) {
-      const path = `/Users/${this.embyUserId}/Items/${itemId}`;
-      const { data } = await (fields
-        ? this.http.get<EmbyBaseItemDto>(path, { params: fieldParams })
-        : this.http.get<EmbyBaseItemDto>(path));
-      return data?.Id ? data : undefined;
+    const userId = await this.resolveUserId();
+    if (!userId) {
+      throw new Error(
+        `Emby has no user to scope the lookup of item ${itemId} to`,
+      );
     }
 
-    const { data } = await this.http.get<{ Items?: EmbyBaseItemDto[] }>(
-      '/Items',
-      { params: { Ids: itemId, Recursive: true, ...fieldParams } },
-    );
-    return data?.Items?.find((item) => String(item.Id) === itemId);
+    const path = `/Users/${userId}/Items/${itemId}`;
+    const { data } = await (fields
+      ? this.http.get<EmbyBaseItemDto>(path, { params: { Fields: fields } })
+      : this.http.get<EmbyBaseItemDto>(path));
+    return data?.Id ? data : undefined;
   }
 
   // ============================================================================
