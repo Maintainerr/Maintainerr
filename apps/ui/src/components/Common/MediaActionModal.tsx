@@ -59,7 +59,7 @@ export interface MediaActionModalProps {
   mediaType?: MediaItemType
   libraryId?: string
   /** Pins the picker, so a page cannot act outside the scope it can show. */
-  lockedCollection?: { id: number; title: string }
+  lockedCollection?: { id: number; title: string; type?: MediaItemType }
   /** Actions that cannot do anything on the calling page. */
   hiddenActions?: MediaAction[]
   onCancel: () => void
@@ -94,7 +94,14 @@ const MediaActionModal = ({
   >([])
 
   const singleMediaId = mediaIds.length === 1 ? mediaIds[0] : undefined
-  const canNarrow = singleMediaId !== undefined && mediaType === 'show'
+  // A pinned show collection acts on the item itself, so a narrowed season
+  // resolves straight back to the show. Offering the choice there promises a
+  // reach the action does not have. An unpinned picker needs no such guard: a
+  // narrowed selection already drops show collections from collectionTypes.
+  const canNarrow =
+    singleMediaId !== undefined &&
+    mediaType === 'show' &&
+    lockedCollection?.type !== 'show'
 
   const seasonsQuery = useMediaServerMetadataChildren(singleMediaId, {
     enabled: canNarrow,

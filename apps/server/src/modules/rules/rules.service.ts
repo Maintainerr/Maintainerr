@@ -989,7 +989,15 @@ export class RulesService {
     }
   }
 
-  async setExclusion(data: ExclusionContextDto) {
+  /**
+   * `handledIds` names the ids the exclusion resolved to. A caller pairing a
+   * collection drop with the exclusion has to use them: a season or episode
+   * collection holds those children, not the show the selection entered
+   * through, so dropping the entry point matches nothing.
+   */
+  async setExclusion(
+    data: ExclusionContextDto,
+  ): Promise<ReturnStatus & { handledIds?: string[] }> {
     const mediaServer = await this.getMediaServer();
     let handleMedia: CollectionMediaChange[] = [];
     // The top-level excluded item's type (movie/show/…) drives Behavior B below.
@@ -1008,13 +1016,24 @@ export class RulesService {
         );
         return this.createReturnStatus(false, 'Failed - no rule group');
       }
+      // The selection's own type, not the collection's: a show reaching a
+      // season collection has to traverse down to its seasons. Naming it a
+      // season instead makes the traversal stop and write a row for the show.
+      const metaData = await mediaServer.getMetadata(String(data.mediaId));
+      if (!metaData?.type) {
+        this.logger.warn(
+          `No metadata found for media ${data.mediaId}, cannot set exclusion`,
+        );
+        return this.createReturnStatus(false, 'Failed - no metadata');
+      }
+
       // get media - traverse show -> seasons -> episodes if needed
       const resolved = await this.resolveContextActionIdsOrFail(
         mediaServer,
         group.dataType,
         data.context
           ? { type: data.context.type, id: String(data.context.id) }
-          : { type: group.dataType, id: String(data.mediaId) },
+          : { type: metaData.type, id: String(data.mediaId) },
         String(data.mediaId),
       );
       if (!resolved) {
@@ -1025,7 +1044,7 @@ export class RulesService {
       }
       handleMedia = resolved;
       data.ruleGroupId = group.id;
-      topLevelType = group.dataType;
+      topLevelType = metaData.type;
     } else {
       // get type from metadata
       const metaData = await mediaServer.getMetadata(String(data.mediaId));
@@ -1142,7 +1161,10 @@ export class RulesService {
         );
       }
 
-      return this.createReturnStatus(true, 'Success');
+      return {
+        ...this.createReturnStatus(true, 'Success'),
+        handledIds: handleMedia.map((media) => media.mediaServerId),
+      };
     } catch (error) {
       this.logger.warn(
         `Adding exclusion for media ID ${data.mediaId} and rulegroup id ${data.ruleGroupId} failed.`,
@@ -1184,17 +1206,22 @@ export class RulesService {
     }
 
     const resultById = new Map<string, BulkMediaItemResult>();
+    const handledByRoot = new Map<string, string[]>();
     const rootIds = uniqueMediaIds.filter((id) => !coveredBy.has(id));
 
     for (const batch of chunk(rootIds, BULK_EXCLUSION_CONCURRENCY)) {
       await Promise.all(
         batch.map(async (mediaId) => {
           try {
-            const result = await this.setExclusion({
+            const { handledIds, ...result } = await this.setExclusion({
               mediaId,
               collectionId,
               context,
             });
+
+            if (handledIds) {
+              handledByRoot.set(mediaId, handledIds);
+            }
 
             resultById.set(mediaId, {
               mediaId,
@@ -1216,17 +1243,23 @@ export class RulesService {
 
     // Excluding from a collection page also drops the items from it, the
     // pairing the per-item action performs. After the exclusions, so a failed
-    // one never silently removes its item.
+    // one never silently removes its item. The drop names the ids the exclusion
+    // resolved to, which is what the collection holds.
     if (collectionId !== undefined) {
       const excludedIds = rootIds.filter(
         (mediaId) => resultById.get(mediaId)?.code === 1,
       );
+      const members = [
+        ...new Set(
+          excludedIds.flatMap((mediaId) => handledByRoot.get(mediaId) ?? []),
+        ),
+      ].map((mediaServerId) => ({ mediaServerId }));
 
       if (
-        excludedIds.length > 0 &&
+        members.length > 0 &&
         !(await this.collectionService.removeFromCollection(
           collectionId,
-          excludedIds.map((mediaServerId) => ({ mediaServerId })),
+          members,
         ))
       ) {
         for (const mediaId of excludedIds) {
@@ -1259,9 +1292,11 @@ export class RulesService {
   async removeBulkExclusions(
     mediaIds: string[],
     collectionId?: number,
+    context?: AlterableMediaContext,
   ): Promise<BulkMediaResponse> {
     const uniqueMediaIds = [...new Set(mediaIds)];
     let ruleGroupId: number | undefined;
+    let collectionType: MediaItemType | undefined;
 
     if (collectionId !== undefined) {
       const group = await this.ruleGroupRepository.findOne({
@@ -1280,6 +1315,30 @@ export class RulesService {
         };
       }
       ruleGroupId = group.id;
+      collectionType = group.dataType;
+    }
+
+    // A narrowed request names the one season or episode to stop excluding, so
+    // it matches only what that narrowing resolves to. The entry point stays
+    // excluded, exactly as the single-item path behaves.
+    const narrowedIds = context
+      ? await this.resolveContextActionIdsOrFail(
+          await this.getMediaServer(),
+          collectionType,
+          { type: context.type, id: String(context.id) },
+          // The schema admits a context only alongside a single media id.
+          uniqueMediaIds[0],
+        )
+      : undefined;
+
+    if (context && !narrowedIds) {
+      return {
+        results: uniqueMediaIds.map((mediaId) => ({
+          mediaId,
+          code: 0 as const,
+          message: 'Failed - media server unreadable',
+        })),
+      };
     }
 
     // `parent` records the entry point of the original exclusion request, so
@@ -1288,10 +1347,12 @@ export class RulesService {
     // item excluded while the caller is told it succeeded.
     const selectedIds = new Set(uniqueMediaIds);
     const exclusions = await this.exclusionRepo.find({
-      where: [
-        { mediaServerId: In(uniqueMediaIds) },
-        { parent: In(uniqueMediaIds) },
-      ],
+      where: narrowedIds
+        ? { mediaServerId: In(narrowedIds.map((media) => media.mediaServerId)) }
+        : [
+            { mediaServerId: In(uniqueMediaIds) },
+            { parent: In(uniqueMediaIds) },
+          ],
     });
     // An item is either globally excluded or scoped-excluded, never both, so
     // the row keeping it out of this collection is whichever one exists.
@@ -1304,10 +1365,15 @@ export class RulesService {
       ) {
         continue;
       }
-      // A cascaded row reports under the id that was selected, not its own.
-      const coveringId = selectedIds.has(exclusion.mediaServerId)
-        ? exclusion.mediaServerId
-        : String(exclusion.parent);
+      // A cascaded row reports under the id that was selected, not its own. A
+      // narrowed request reached every row it matched through its one
+      // selection, whatever entry point originally wrote them.
+      let coveringId = uniqueMediaIds[0];
+      if (!narrowedIds) {
+        coveringId = selectedIds.has(exclusion.mediaServerId)
+          ? exclusion.mediaServerId
+          : String(exclusion.parent);
+      }
       const rowIds = rowIdsByMediaId.get(coveringId) ?? [];
       rowIds.push(exclusion.id);
       rowIdsByMediaId.set(coveringId, rowIds);
@@ -1439,14 +1505,24 @@ export class RulesService {
       }
 
       data.ruleGroupId = group.id;
-      topLevelType = group.dataType;
+      // The selection's own type, as setExclusion resolves it: naming the entry
+      // point after the collection makes the traversal stop on the entry point.
+      const metaData = await mediaServer.getMetadata(String(data.mediaId));
+      if (!metaData?.type) {
+        this.logger.warn(
+          `No metadata found for media ${data.mediaId}, cannot remove exclusion`,
+        );
+        return this.createReturnStatus(false, 'Failed - no metadata');
+      }
+
+      topLevelType = metaData.type;
       // get media - traverse show -> seasons -> episodes if needed
       const resolved = await this.resolveContextActionIdsOrFail(
         mediaServer,
         group.dataType,
         data.context
           ? { type: data.context.type, id: String(data.context.id) }
-          : { type: group.dataType, id: String(data.mediaId) },
+          : { type: metaData.type, id: String(data.mediaId) },
         String(data.mediaId),
       );
       if (!resolved) {

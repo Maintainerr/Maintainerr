@@ -134,7 +134,6 @@ describe('CollectionExclusions bulk removal', () => {
     render(
       <CollectionExclusions
         collection={collection}
-        libraryId="library-1"
         canTestMedia={false}
         onOpenTestMedia={() => {}}
       />,

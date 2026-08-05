@@ -190,6 +190,61 @@ describe('RulesService exclusions - global (null ruleGroupId) handling', () => {
     );
   });
 
+  // Naming the entry point after the collection's own type stopped the
+  // traversal before it started: a show reaching a season collection wrote a
+  // row for the show id, typed season, and left the season excluded by nothing.
+  it('setExclusion(collection) traverses a show into a season collection', async () => {
+    const metadataById: Record<string, { type: string }> = {
+      'show-1': { type: 'show' },
+      'season-1': { type: 'season' },
+    };
+    const exclusionRepo = {
+      findOne: jest.fn().mockResolvedValue(undefined),
+      save: jest.fn().mockResolvedValue(undefined),
+      delete: jest.fn().mockResolvedValue(undefined),
+      count: jest.fn().mockResolvedValue(0),
+    };
+    const mediaServer = {
+      getMetadata: jest
+        .fn()
+        .mockImplementation((id: string) =>
+          Promise.resolve(metadataById[id] ?? undefined),
+        ),
+      getAllIdsForContextAction: jest.fn().mockResolvedValue(['season-1']),
+    };
+    const { service } = createService({
+      exclusionRepo,
+      ruleGroupRepository: {
+        findOne: jest.fn().mockResolvedValue({ id: 7, dataType: 'season' }),
+      },
+      mediaServerFactory: {
+        getService: jest.fn().mockResolvedValue(mediaServer),
+      },
+    });
+
+    const result = await service.setExclusion({
+      mediaId: 'show-1',
+      collectionId: 9,
+    });
+
+    expect(mediaServer.getAllIdsForContextAction).toHaveBeenCalledWith(
+      'season',
+      { type: 'show', id: 'show-1' },
+      'show-1',
+    );
+    expect(exclusionRepo.save).toHaveBeenCalledWith([
+      expect.objectContaining({
+        mediaServerId: 'season-1',
+        ruleGroupId: 7,
+        parent: 'show-1',
+        type: 'season',
+      }),
+    ]);
+    // The caller pairs the collection drop with these, so they must be the
+    // resolved seasons and not the show the selection entered through.
+    expect(result.handledIds).toEqual(['season-1']);
+  });
+
   it('setExclusion does not tag when exclusion tagging is disabled', async () => {
     const exclusionRepo = {
       findOne: jest.fn().mockResolvedValue(undefined),
@@ -682,7 +737,11 @@ describe('RulesService exclusions - global (null ruleGroupId) handling', () => {
     const { service, removeFromCollection } = createScopedBulkService();
     const setExclusion = jest
       .spyOn(service, 'setExclusion')
-      .mockResolvedValueOnce({ code: 1, message: 'Success' })
+      .mockResolvedValueOnce({
+        code: 1,
+        message: 'Success',
+        handledIds: ['movie-1'],
+      })
       .mockResolvedValueOnce({ code: 0, message: 'Failed - no rule group' });
 
     const response = await service.setBulkExclusions(
@@ -707,9 +766,11 @@ describe('RulesService exclusions - global (null ruleGroupId) handling', () => {
     const { service } = createScopedBulkService(
       jest.fn().mockResolvedValue(undefined),
     );
-    jest
-      .spyOn(service, 'setExclusion')
-      .mockResolvedValue({ code: 1, message: 'Success' });
+    jest.spyOn(service, 'setExclusion').mockResolvedValue({
+      code: 1,
+      message: 'Success',
+      handledIds: ['movie-1'],
+    });
 
     await expect(service.setBulkExclusions(['movie-1'], 12)).resolves.toEqual({
       results: [
@@ -720,6 +781,25 @@ describe('RulesService exclusions - global (null ruleGroupId) handling', () => {
         },
       ],
     });
+  });
+
+  // A season or episode collection holds what the exclusion resolved to, not
+  // the show the selection entered through. Dropping the entry point instead
+  // matched nothing, so the excluded item stayed in the collection.
+  it('setBulkExclusions drops the ids the exclusion resolved to, not the entry point', async () => {
+    const { service, removeFromCollection } = createScopedBulkService();
+    jest.spyOn(service, 'setExclusion').mockResolvedValue({
+      code: 1,
+      message: 'Success',
+      handledIds: ['season-1', 'season-2'],
+    });
+
+    await service.setBulkExclusions(['show-1'], 12);
+
+    expect(removeFromCollection).toHaveBeenCalledWith(12, [
+      { mediaServerId: 'season-1' },
+      { mediaServerId: 'season-2' },
+    ]);
   });
 
   it('setBulkExclusions leaves the collection alone when nothing was excluded', async () => {
@@ -733,6 +813,23 @@ describe('RulesService exclusions - global (null ruleGroupId) handling', () => {
     expect(removeFromCollection).not.toHaveBeenCalled();
   });
 
+  // Honors the where clause rather than answering every row: a query that
+  // stopped matching `parent`, or one that ignored a narrowing, would otherwise
+  // still see the rows it no longer asks for and pass.
+  const findMatchingRows = (
+    rows: Record<string, unknown>[],
+    where: Record<string, FindOperator<string>>[],
+  ) =>
+    rows.filter((row) =>
+      [where]
+        .flat()
+        .some((clause) =>
+          Object.entries(clause).every(([field, operator]) =>
+            operator.value.includes(row[field] as string),
+          ),
+        ),
+    );
+
   const createRemovalService = (
     rows: {
       id: number;
@@ -740,16 +837,26 @@ describe('RulesService exclusions - global (null ruleGroupId) handling', () => {
       ruleGroupId: number | null;
       parent?: string;
     }[],
-    ruleGroup: { id: number } | null = { id: 5 },
+    ruleGroup: { id: number; dataType?: string } | null = { id: 5 },
+    mediaServer?: { getAllIdsForContextAction: jest.Mock },
   ) =>
     createService({
       exclusionRepo: {
-        find: jest.fn().mockResolvedValue(rows),
+        find: jest
+          .fn()
+          .mockImplementation(({ where }) => findMatchingRows(rows, where)),
         findOne: jest.fn().mockResolvedValue(undefined),
         delete: jest.fn().mockResolvedValue(undefined),
         count: jest.fn().mockResolvedValue(0),
       },
       ruleGroupRepository: { findOne: jest.fn().mockResolvedValue(ruleGroup) },
+      ...(mediaServer
+        ? {
+            mediaServerFactory: {
+              getService: jest.fn().mockResolvedValue(mediaServer),
+            },
+          }
+        : {}),
     });
 
   it('removeBulkExclusions deletes the row covering each item in the collection', async () => {
@@ -807,6 +914,65 @@ describe('RulesService exclusions - global (null ruleGroupId) handling', () => {
 
     expect(removeExclusion.mock.calls.map(([id]) => id).sort()).toEqual([
       11, 12, 13,
+    ]);
+    expect(response.results).toEqual([
+      { mediaId: 'show-1', code: 1, message: 'Success' },
+    ]);
+  });
+
+  // Narrowing is offered for an un-exclude too. Ignoring the context matched
+  // the entry point's whole cascade, so un-excluding one season cleared every
+  // row the show carried and still reported success.
+  it('removeBulkExclusions narrowed to a season leaves the rest of the show excluded', async () => {
+    const getAllIdsForContextAction = jest
+      .fn()
+      .mockResolvedValue(['season-1', 'episode-1']);
+    const { service } = createRemovalService(
+      [
+        {
+          id: 11,
+          mediaServerId: 'show-1',
+          ruleGroupId: null,
+          parent: 'show-1',
+        },
+        {
+          id: 12,
+          mediaServerId: 'season-1',
+          ruleGroupId: null,
+          parent: 'show-1',
+        },
+        {
+          id: 13,
+          mediaServerId: 'episode-1',
+          ruleGroupId: null,
+          parent: 'show-1',
+        },
+        {
+          id: 14,
+          mediaServerId: 'season-2',
+          ruleGroupId: null,
+          parent: 'show-1',
+        },
+      ],
+      { id: 5 },
+      { getAllIdsForContextAction },
+    );
+    const removeExclusion = jest
+      .spyOn(service, 'removeExclusion')
+      .mockResolvedValue({ code: 1, message: 'Success' });
+
+    const response = await service.removeBulkExclusions(['show-1'], undefined, {
+      id: 'season-1',
+      type: 'season',
+    });
+
+    expect(getAllIdsForContextAction).toHaveBeenCalledWith(
+      undefined,
+      { type: 'season', id: 'season-1' },
+      'show-1',
+    );
+    expect(removeExclusion.mock.calls.map(([id]) => id).sort()).toEqual([
+      12, 13,
     ]);
     expect(response.results).toEqual([
       { mediaId: 'show-1', code: 1, message: 'Success' },

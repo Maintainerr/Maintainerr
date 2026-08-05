@@ -182,7 +182,12 @@ const CollectionMediaPage = () => {
             onToggleSelectionMode={toggleSelectionMode}
             selectedIds={selectedIds}
             items={data}
-            lockedCollection={{ id: collection.id, title: collection.title }}
+            libraryId={collection.libraryId}
+            lockedCollection={{
+              id: collection.id,
+              title: collection.title,
+              type: collection.type,
+            }}
             // Everything here is already in this collection.
             hiddenActions={['collection-add']}
             onSubmitted={handleBulkOutcome}

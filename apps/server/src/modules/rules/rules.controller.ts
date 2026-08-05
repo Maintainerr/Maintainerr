@@ -25,6 +25,7 @@ import {
 } from '@nestjs/common';
 import { ApiResponse } from '@nestjs/swagger';
 import { Response } from 'express';
+import { omit } from 'lodash';
 import { ZodValidationPipe } from 'nestjs-zod';
 import { MaintainerrLogger } from '../logging/logs.service';
 import { CommunityRule } from './dtos/communityRule.dto';
@@ -276,7 +277,9 @@ export class RulesController {
   @Post('/exclusion')
   async setExclusion(@Body() body: ExclusionContextDto): Promise<ReturnStatus> {
     if (body.action === undefined || body.action === ExclusionAction.ADD) {
-      return await this.rulesService.setExclusion(body);
+      // handledIds serves the bulk path's collection pairing; it is not part of
+      // this endpoint's response.
+      return omit(await this.rulesService.setExclusion(body), 'handledIds');
     } else {
       return await this.rulesService.removeExclusionWitData(body);
     }
@@ -299,6 +302,7 @@ export class RulesController {
       return await this.rulesService.removeBulkExclusions(
         body.mediaIds,
         body.collectionId,
+        body.context,
       );
     }
 

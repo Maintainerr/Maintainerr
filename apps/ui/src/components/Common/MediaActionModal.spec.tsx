@@ -266,6 +266,18 @@ describe('MediaActionModal', () => {
     expect(screen.queryByLabelText('Seasons')).toBeNull()
   })
 
+  // A show collection acts on the show itself, so a narrowed season resolves
+  // straight back to it. The picker promised a reach the action never had.
+  it('does not offer season narrowing on a pinned show collection', () => {
+    renderModal({
+      mediaIds: ['show-1'],
+      mediaType: 'show',
+      lockedCollection: { id: 42, title: 'This collection', type: 'show' },
+    })
+
+    expect(screen.queryByLabelText('Seasons')).toBeNull()
+  })
+
   it('keeps the modal open and shows why when the request fails', async () => {
     postCollectionMock.mockRejectedValue(new Error('boom'))
 

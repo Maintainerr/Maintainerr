@@ -25,7 +25,6 @@ import OverviewContent from '../../../Overview/Content'
 
 interface ICollectionExclusions {
   collection: ICollection
-  libraryId: string
   canTestMedia: boolean
   onOpenTestMedia: () => void
 }
@@ -155,9 +154,11 @@ const CollectionExcludions = (props: ICollectionExclusions) => {
             onToggleSelectionMode={toggleSelectionMode}
             selectedIds={selectedIds}
             items={data}
+            libraryId={props.collection.libraryId}
             lockedCollection={{
               id: props.collection.id,
               title: props.collection.title,
+              type: props.collection.type,
             }}
             // Everything here is already excluded from this collection.
             hiddenActions={['exclusion-add']}

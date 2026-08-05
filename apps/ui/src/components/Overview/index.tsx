@@ -575,6 +575,9 @@ const Overview = () => {
               onToggleSelectionMode={toggleSelectionMode}
               selectedIds={selectedMediaIds}
               items={data}
+              // A search spans every library, so none of them can scope the
+              // collection picker.
+              libraryId={searchUsed ? undefined : effectiveSelectedLibraryId}
               onSubmitted={handleBulkOutcome}
             />
           }

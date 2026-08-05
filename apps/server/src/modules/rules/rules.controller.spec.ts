@@ -123,7 +123,26 @@ describe('RulesController', () => {
     expect(rulesService.removeBulkExclusions).toHaveBeenCalledWith(
       ['item-1'],
       7,
+      undefined,
     );
     expect(rulesService.setBulkExclusions).not.toHaveBeenCalled();
+  });
+
+  // The modal offers season narrowing for an un-exclude as well. Dropping the
+  // context here removed every exclusion the entry point carried.
+  it('passes the narrowing context through on a removal too', async () => {
+    rulesService.removeBulkExclusions.mockResolvedValue({ results: [] });
+
+    await controller.setBulkExclusions({
+      mediaIds: ['show-1'],
+      action: 1,
+      context: { id: 'season-1', type: 'season' },
+    });
+
+    expect(rulesService.removeBulkExclusions).toHaveBeenCalledWith(
+      ['show-1'],
+      undefined,
+      { id: 'season-1', type: 'season' },
+    );
   });
 });
