@@ -321,6 +321,7 @@ describe('CollectionsController', () => {
         7,
         'add',
         'movie',
+        undefined,
       );
     });
 
@@ -340,6 +341,7 @@ describe('CollectionsController', () => {
         undefined,
         'remove',
         'movie',
+        undefined,
       );
     });
 

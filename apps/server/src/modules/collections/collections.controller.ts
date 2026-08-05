@@ -50,6 +50,7 @@ import * as fs from 'fs';
 import { ZodValidationPipe } from 'nestjs-zod';
 import { z } from 'zod';
 import { MaintainerrLogger } from '../logging/logs.service';
+import { ExclusionAction } from '../rules/dtos/exclusion.dto';
 import { RuleExecutorJobManagerService } from '../rules/tasks/rule-executor-job-manager.service';
 import {
   ExecutionLockService,
@@ -418,7 +419,7 @@ export class CollectionsController {
         request.collectionId,
         request.context,
         { mediaServerId: request.mediaId },
-        request.action === 0 ? 'add' : 'remove',
+        request.action === ExclusionAction.ADD ? 'add' : 'remove',
       );
 
     // A rejected item and an item the context resolved to nothing both used to
@@ -455,7 +456,10 @@ export class CollectionsController {
     request: BulkCollectionMediaRequest,
   ): Promise<BulkMediaResponse> {
     // Only a removal can mean "every collection"; an add needs a target.
-    if (request.action === 0 && request.collectionId === undefined) {
+    if (
+      request.action === ExclusionAction.ADD &&
+      request.collectionId === undefined
+    ) {
       throw new BadRequestException(
         'A collection is required to add media to it',
       );
@@ -466,6 +470,7 @@ export class CollectionsController {
       request.collectionId,
       request.action === 0 ? 'add' : 'remove',
       request.mediaType,
+      request.context,
     );
   }
 

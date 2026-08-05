@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useMediaServerType } from '../../../../hooks/useMediaServerType'
 import GetApiHandler from '../../../../utils/ApiHandler'
 import type { ICollection } from '../..'
-import type { MediaActionOutcome } from '../../../MediaActionModal'
+import type { MediaActionOutcome } from '../../../Common/MediaActionModal'
 import CollectionExclusions from './index'
 
 vi.mock('../../../../utils/ApiHandler', () => ({
@@ -18,7 +18,7 @@ let submittedOutcome: MediaActionOutcome = {
   failedIds: [],
 }
 
-vi.mock('../../../MediaActionModal', () => ({
+vi.mock('../../../Common/MediaActionModal', () => ({
   default: ({
     onSubmitted,
   }: {

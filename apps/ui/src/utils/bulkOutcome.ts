@@ -1,5 +1,5 @@
 import { toast } from 'react-toastify'
-import type { MediaAction } from '../components/MediaActionModal'
+import type { MediaAction } from '../components/Common/MediaActionModal'
 
 export const formatItemCount = (count: number): string =>
   `${count} item${count === 1 ? '' : 's'}`

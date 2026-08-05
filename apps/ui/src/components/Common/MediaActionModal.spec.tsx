@@ -8,7 +8,7 @@ import { useCollections } from '../../api/collections'
 import { useMediaServerMetadataChildren } from '../../api/media-server'
 import type { ICollection } from '../Collection'
 import { buildQuerySuccessResult } from '../../test-utils/queryResults'
-import MediaActionModal from './index'
+import MediaActionModal from './MediaActionModal'
 
 vi.mock('../../api/bulkMediaAction', () => ({
   postBulkCollectionMedia: vi.fn(),
@@ -117,6 +117,7 @@ describe('MediaActionModal', () => {
     expect(onSubmitted).toHaveBeenCalledWith({
       action: 'collection-add',
       collectionId: 7,
+      collectionTitle: 'Movie collection',
       succeededIds: ['movie-1'],
       failedIds: [],
     })
@@ -146,6 +147,8 @@ describe('MediaActionModal', () => {
     expect(onSubmitted).toHaveBeenCalledWith({
       action: 'exclusion-add',
       collectionId: undefined,
+      // "every collection" is a scope, not a collection a badge can name
+      collectionTitle: undefined,
       succeededIds: ['movie-1'],
       failedIds: ['movie-2'],
     })
@@ -222,7 +225,9 @@ describe('MediaActionModal', () => {
     expect(screen.getByText(/mixes media types/)).toBeTruthy()
   })
 
-  it('narrows a single show to a season and submits that id instead', async () => {
+  // The show has to stay the media id: the exclusion rows record it as their
+  // parent, which is what an un-exclude through the show later matches on.
+  it('narrows a single show through a context, keeping the show as the item', async () => {
     useChildrenMock.mockImplementation(
       (itemId?: string) =>
         (itemId === 'show-1'
@@ -247,9 +252,10 @@ describe('MediaActionModal', () => {
 
     await waitFor(() =>
       expect(postExclusionsMock).toHaveBeenCalledWith({
-        mediaIds: ['season-1'],
+        mediaIds: ['show-1'],
         collectionId: 11,
         action: 0,
+        context: { id: 'season-1', type: 'season' },
       }),
     )
   })

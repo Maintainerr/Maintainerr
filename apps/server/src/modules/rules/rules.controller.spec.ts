@@ -88,6 +88,7 @@ describe('RulesController', () => {
     expect(rulesService.setBulkExclusions).toHaveBeenCalledWith(
       ['item-1', 'item-2'],
       undefined,
+      undefined,
     );
   });
 
@@ -99,7 +100,11 @@ describe('RulesController', () => {
       collectionId: 7,
     });
 
-    expect(rulesService.setBulkExclusions).toHaveBeenCalledWith(['item-1'], 7);
+    expect(rulesService.setBulkExclusions).toHaveBeenCalledWith(
+      ['item-1'],
+      7,
+      undefined,
+    );
   });
 
   it('routes a removal action to the removal service, not the add path', async () => {

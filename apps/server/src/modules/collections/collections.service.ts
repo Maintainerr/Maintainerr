@@ -2563,6 +2563,7 @@ export class CollectionsService {
     collectionId: number | undefined,
     action: 'add' | 'remove',
     mediaType: MediaItemType,
+    context?: AlterableMediaContext,
   ): Promise<BulkMediaResponse> {
     const uniqueMediaIds = [...new Set(mediaIds)];
     const resultById = new Map<string, BulkMediaItemResult>();
@@ -2607,7 +2608,9 @@ export class CollectionsService {
 
             const ids = await mediaServer.getAllIdsForContextAction(
               collection?.type,
-              { type: mediaType, id: mediaId },
+              context
+                ? { type: context.type, id: String(context.id) }
+                : { type: mediaType, id: mediaId },
               mediaId,
             );
 
@@ -2660,7 +2663,10 @@ export class CollectionsService {
             }
           }
         } else if (collectionId === undefined) {
-          await this.removeFromAllCollections(media);
+          const result = await this.removeFromAllCollections(media);
+          if (result.code !== 1) {
+            failAllResolved('Failed - the collections could not be updated');
+          }
         } else if (!(await this.removeFromCollection(collectionId, media))) {
           failAllResolved('Failed - the collection could not be updated');
         }

@@ -305,6 +305,7 @@ export class RulesController {
     return await this.rulesService.setBulkExclusions(
       body.mediaIds,
       body.collectionId,
+      body.context,
     );
   }
 

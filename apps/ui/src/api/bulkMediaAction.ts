@@ -47,12 +47,14 @@ export const postBulkExclusions = async ({
   mediaIds,
   collectionId,
   action,
+  context,
 }: BulkExclusionRequest): Promise<BulkMediaResponse> =>
   await postInChunks(mediaIds, (batch) =>
     PostApiHandler<BulkMediaResponse>('/rules/exclusions/bulk', {
       mediaIds: batch,
       ...(collectionId !== undefined ? { collectionId } : {}),
       action,
+      ...(context ? { context } : {}),
     }),
   )
 
@@ -61,6 +63,7 @@ export const postBulkCollectionMedia = async ({
   collectionId,
   action,
   mediaType,
+  context,
 }: BulkCollectionMediaRequest): Promise<BulkMediaResponse> =>
   await postInChunks(mediaIds, (batch) =>
     PostApiHandler<BulkMediaResponse>('/collections/media/bulk', {
@@ -68,5 +71,6 @@ export const postBulkCollectionMedia = async ({
       ...(collectionId !== undefined ? { collectionId } : {}),
       action,
       mediaType,
+      ...(context ? { context } : {}),
     }),
   )

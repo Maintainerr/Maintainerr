@@ -3529,7 +3529,7 @@ describe('CollectionsService', () => {
     it('removes from every collection when none is named', async () => {
       const removeAll = jest
         .spyOn(service, 'removeFromAllCollections')
-        .mockResolvedValue(undefined as never);
+        .mockResolvedValue({ status: 'OK', code: 1, message: 'Success' });
 
       await expect(
         service.bulkMediaCollectionAction(

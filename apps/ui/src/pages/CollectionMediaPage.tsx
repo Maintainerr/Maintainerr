@@ -8,7 +8,7 @@ import { useOutletContext, useParams } from 'react-router-dom'
 import type { ICollectionMedia } from '../components/Collection'
 import CollectionDetailControlRow from '../components/Collection/CollectionDetail/CollectionDetailControlRow'
 import MediaSelectionActions from '../components/Common/MediaSelectionActions'
-import type { MediaActionOutcome } from '../components/MediaActionModal'
+import type { MediaActionOutcome } from '../components/Common/MediaActionModal'
 import {
   getCollectionMediaSortConfig,
   MediaLibrarySortControl,
@@ -151,8 +151,12 @@ const CollectionMediaPage = () => {
   }: MediaActionOutcome) => {
     applyBulkOutcome(new Set(failedIds))
 
-    // Only these two drop the item from this collection.
-    if (action === 'exclusion-add' || action === 'collection-remove') {
+    // Only these drop the item from this collection.
+    if (
+      action === 'exclusion-add' ||
+      action === 'collection-remove' ||
+      action === 'collection-remove-all'
+    ) {
       for (const mediaServerId of succeededIds) {
         removeMediaItem(mediaServerId)
       }
@@ -177,8 +181,7 @@ const CollectionMediaPage = () => {
             selectionMode={selectionMode}
             onToggleSelectionMode={toggleSelectionMode}
             selectedIds={selectedIds}
-            mediaType={collection.type}
-            libraryId={collection.libraryId}
+            items={data}
             lockedCollection={{ id: collection.id, title: collection.title }}
             // Everything here is already in this collection.
             hiddenActions={['collection-add']}

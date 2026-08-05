@@ -1,8 +1,6 @@
 import {
   MediaItem,
   ServarrAction,
-  SPORTARR_TVDB_ALIAS_LEAGUE_OFFSET,
-  SPORTARR_TVDB_ALIAS_RANGE,
   type MaintainerrMediaStatusDetails,
   type MaintainerrMediaStatusEntry,
   type MediaItemType,
@@ -18,7 +16,6 @@ import {
   buildMetadataPath,
   buildProviderUrl,
   mediaTypeLabel,
-  toApiMediaType,
 } from '../../../../utils/mediaTypeUtils'
 import Button from '../../Button'
 import LoadingSpinner from '../../LoadingSpinner'
@@ -102,21 +99,17 @@ const metadataProviderLogos: Record<
   {
     logo: string
     alt: string
-    buildUrl: (mediaType: string, id: string) => string
     providerIdKey: keyof MediaProviderIds
   }
 > = {
   TMDB: {
     logo: `${basePath}/icons_logos/tmdb_logo.svg`,
     alt: 'TMDB Logo',
-    buildUrl: (mediaType, id) => `https://themoviedb.org/${mediaType}/${id}`,
     providerIdKey: 'tmdb',
   },
   TVDB: {
     logo: `${basePath}/icons_logos/tvdb_logo.svg`,
     alt: 'TheTVDB Logo',
-    buildUrl: (mediaType, id) =>
-      `https://thetvdb.com/dereferrer/${mediaType === 'tv' ? 'series' : 'movie'}/${id}`,
     providerIdKey: 'tvdb',
   },
 }
@@ -217,7 +210,6 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
       details: MaintainerrMediaStatusDetails
     } | null>(null)
 
-    const mediaTypeOf = useMemo(() => toApiMediaType(mediaType), [mediaType])
     const maintainerrDetailsKey = useMemo(
       () =>
         forceStatusLoad
@@ -324,19 +316,10 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
         backdropResult.providerId?.toString() ??
         providerIds?.[cfg.providerIdKey]?.[0]
       if (!linkId) return null
-      // Sportarr stamps numeric aliases in the tvdb namespace on its items;
-      // no real TVDB page exists for those, so don't render a dead link.
-      if (cfg.providerIdKey === 'tvdb') {
-        const numericId = Number(linkId)
-        if (
-          numericId >= SPORTARR_TVDB_ALIAS_LEAGUE_OFFSET &&
-          numericId <
-            SPORTARR_TVDB_ALIAS_LEAGUE_OFFSET + SPORTARR_TVDB_ALIAS_RANGE
-        )
-          return null
-      }
-      return { ...cfg, linkId }
-    }, [isCurrentBackdrop, backdropResult, providerIds])
+      const href = buildProviderUrl(cfg.providerIdKey, linkId, mediaType)
+      if (!href) return null
+      return { ...cfg, href }
+    }, [isCurrentBackdrop, backdropResult, providerIds, mediaType])
 
     useEffect(() => {
       if (!maintainerrDetailsKey) {
@@ -648,10 +631,7 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
                   <div className="flex h-8 w-32 justify-end">
                     {providerLogo && (
                       <a
-                        href={providerLogo.buildUrl(
-                          mediaTypeOf,
-                          providerLogo.linkId,
-                        )}
+                        href={providerLogo.href}
                         target="_blank"
                         rel="noreferrer"
                         className="block h-full w-full"

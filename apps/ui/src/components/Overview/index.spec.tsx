@@ -9,7 +9,7 @@ import {
   getCollectionMediaSortConfig,
   getMediaLibrarySortConfig,
 } from '../Common/MediaLibrarySortControl'
-import type { MediaActionOutcome } from '../MediaActionModal'
+import type { MediaActionOutcome } from '../Common/MediaActionModal'
 import Overview, { buildLibraryContentQuery } from './index'
 
 vi.mock('../../utils/ApiHandler', () => ({
@@ -27,7 +27,7 @@ let submittedOutcome: MediaActionOutcome = {
   failedIds: [],
 }
 
-vi.mock('../MediaActionModal', () => ({
+vi.mock('../Common/MediaActionModal', () => ({
   default: ({
     onSubmitted,
   }: {

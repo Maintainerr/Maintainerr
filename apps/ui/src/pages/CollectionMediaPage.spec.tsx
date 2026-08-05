@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { toast } from 'react-toastify'
 import type { ICollection } from '../components/Collection'
-import type { MediaActionOutcome } from '../components/MediaActionModal'
+import type { MediaActionOutcome } from '../components/Common/MediaActionModal'
 import { useMediaServerType } from '../hooks/useMediaServerType'
 import GetApiHandler from '../utils/ApiHandler'
 import CollectionMediaPage, {
@@ -31,7 +31,7 @@ let submittedOutcome: MediaActionOutcome = {
   failedIds: [],
 }
 
-vi.mock('../components/MediaActionModal', () => ({
+vi.mock('../components/Common/MediaActionModal', () => ({
   default: ({
     onSubmitted,
   }: {
@@ -207,6 +207,21 @@ describe('CollectionMediaPage', () => {
       expect(screen.getByText('Item movie-2')).toBeTruthy()
       expect(toast.success).toHaveBeenCalledWith('1 item excluded.')
       expect(screen.getByRole('button', { name: 'Select items' })).toBeTruthy()
+    })
+
+    // The item leaves this collection, and the grid holds its own state, so
+    // nothing refetches it away.
+    it('drops the cards a remove-from-all-collections took out', async () => {
+      submittedOutcome = {
+        action: 'collection-remove-all',
+        succeededIds: ['movie-1'],
+        failedIds: [],
+      }
+
+      await selectAndSubmit(['movie-1'])
+
+      await waitFor(() => expect(screen.queryByText('Item movie-1')).toBeNull())
+      expect(screen.getByText('Item movie-2')).toBeTruthy()
     })
 
     it('keeps the cards an action left in the collection', async () => {

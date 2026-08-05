@@ -1,18 +1,18 @@
 import { CheckCircleIcon, PencilAltIcon } from '@heroicons/react/solid'
-import type { MediaItemType } from '@maintainerr/contracts'
+import type { MediaItem } from '@maintainerr/contracts'
 import { useState } from 'react'
 import MediaActionModal, {
   type MediaAction,
   type MediaActionOutcome,
-} from '../MediaActionModal'
+} from './MediaActionModal'
 import Button from './Button'
 
 interface MediaSelectionActionsProps {
   selectionMode: boolean
   onToggleSelectionMode: () => void
   selectedIds: ReadonlySet<string>
-  mediaType?: MediaItemType
-  libraryId?: string
+  /** The grid the selection was made in, to read the picked items from. */
+  items: MediaItem[]
   /** Id is optional only to match ICollection; a saved collection always has one. */
   lockedCollection?: { id?: number; title: string }
   hiddenActions?: MediaAction[]
@@ -27,14 +27,22 @@ const MediaSelectionActions = ({
   selectionMode,
   onToggleSelectionMode,
   selectedIds,
-  mediaType,
-  libraryId,
+  items,
   lockedCollection,
   hiddenActions,
   onSubmitted,
 }: MediaSelectionActionsProps) => {
   const [modalOpen, setModalOpen] = useState(false)
   const selectedCount = selectedIds.size
+  // A collection takes one media type from one library. Read both off the
+  // picked items rather than the page: an exclusion list carries parent-type
+  // rows, and search results span both, so neither can be assumed from context.
+  const selected = items.filter((item) => selectedIds.has(item.id))
+  const selectedTypes = new Set(selected.map((item) => item.type))
+  const selectedLibraries = new Set(selected.map((item) => item.library?.id))
+  const mediaType = selectedTypes.size === 1 ? [...selectedTypes][0] : undefined
+  const libraryId =
+    selectedLibraries.size === 1 ? [...selectedLibraries][0] : undefined
 
   return (
     <>

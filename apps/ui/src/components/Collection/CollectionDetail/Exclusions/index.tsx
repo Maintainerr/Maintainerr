@@ -15,7 +15,7 @@ import {
   reportBulkOutcome,
 } from '../../../../utils/bulkOutcome'
 import MediaSelectionActions from '../../../Common/MediaSelectionActions'
-import type { MediaActionOutcome } from '../../../MediaActionModal'
+import type { MediaActionOutcome } from '../../../Common/MediaActionModal'
 import {
   getCollectionSortConfig,
   MediaLibrarySortControl,
@@ -154,8 +154,7 @@ const CollectionExcludions = (props: ICollectionExclusions) => {
             selectionMode={selectionMode}
             onToggleSelectionMode={toggleSelectionMode}
             selectedIds={selectedIds}
-            mediaType={props.collection.type}
-            libraryId={props.libraryId}
+            items={data}
             lockedCollection={{
               id: props.collection.id,
               title: props.collection.title,

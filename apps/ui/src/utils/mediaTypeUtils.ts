@@ -1,4 +1,6 @@
 import {
+  SPORTARR_TVDB_ALIAS_LEAGUE_OFFSET,
+  SPORTARR_TVDB_ALIAS_RANGE,
   type MediaItemType,
   type MediaProviderIds,
 } from '@maintainerr/contracts'
@@ -83,7 +85,9 @@ export function buildMetadataPath(
 
 /**
  * TMDB and TheTVDB split movies from series; TheTVDB goes through its
- * dereferrer, which resolves a numeric id to the right slug.
+ * dereferrer, which resolves a numeric id to the right slug. Sportarr stamps
+ * numeric aliases into the tvdb namespace that have no page at all, so those
+ * resolve to nothing rather than a dead link.
  */
 export function buildProviderUrl(
   provider: keyof MediaProviderIds,
@@ -95,11 +99,20 @@ export function buildProviderUrl(
 
   switch (provider) {
     case 'tmdb':
-      return `https://www.themoviedb.org/${isMovie ? 'movie' : 'tv'}/${id}`
+      return `https://themoviedb.org/${isMovie ? 'movie' : 'tv'}/${id}`
     case 'imdb':
       return `https://www.imdb.com/title/${id}/`
-    case 'tvdb':
+    case 'tvdb': {
+      const numericId = Number(providerId)
+      if (
+        numericId >= SPORTARR_TVDB_ALIAS_LEAGUE_OFFSET &&
+        numericId <
+          SPORTARR_TVDB_ALIAS_LEAGUE_OFFSET + SPORTARR_TVDB_ALIAS_RANGE
+      ) {
+        return undefined
+      }
       return `https://thetvdb.com/dereferrer/${isMovie ? 'movie' : 'series'}/${id}`
+    }
     default:
       return undefined
   }

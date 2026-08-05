@@ -679,8 +679,7 @@ describe('RulesService exclusions - global (null ruleGroupId) handling', () => {
   };
 
   it('setBulkExclusions scopes to the collection and drops the excluded items from it', async () => {
-    const { service, mediaServer, removeFromCollection } =
-      createScopedBulkService();
+    const { service, removeFromCollection } = createScopedBulkService();
     const setExclusion = jest
       .spyOn(service, 'setExclusion')
       .mockResolvedValueOnce({ code: 1, message: 'Success' })
@@ -695,8 +694,6 @@ describe('RulesService exclusions - global (null ruleGroupId) handling', () => {
       mediaId: 'movie-1',
       collectionId: 12,
     });
-    // a collection holds one media type, so nothing can nest
-    expect(mediaServer.getMetadata).not.toHaveBeenCalled();
     expect(removeFromCollection).toHaveBeenCalledWith(12, [
       { mediaServerId: 'movie-1' },
     ]);
@@ -737,7 +734,12 @@ describe('RulesService exclusions - global (null ruleGroupId) handling', () => {
   });
 
   const createRemovalService = (
-    rows: { id: number; mediaServerId: string; ruleGroupId: number | null }[],
+    rows: {
+      id: number;
+      mediaServerId: string;
+      ruleGroupId: number | null;
+      parent?: string;
+    }[],
     ruleGroup: { id: number } | null = { id: 5 },
   ) =>
     createService({
@@ -774,6 +776,40 @@ describe('RulesService exclusions - global (null ruleGroupId) handling', () => {
       { mediaId: 'movie-1', code: 1, message: 'Success' },
       { mediaId: 'movie-2', code: 1, message: 'Success' },
       { mediaId: 'movie-3', code: 1, message: 'Success' },
+    ]);
+  });
+
+  // An excluded show writes a row per season and episode, all recording the
+  // show as their parent. Matching only mediaServerId left them behind while
+  // reporting success, so the item stayed excluded.
+  it('removeBulkExclusions takes the rows an exclusion cascaded to', async () => {
+    const { service } = createRemovalService([
+      { id: 11, mediaServerId: 'show-1', ruleGroupId: null, parent: 'show-1' },
+      {
+        id: 12,
+        mediaServerId: 'season-1',
+        ruleGroupId: null,
+        parent: 'show-1',
+      },
+      {
+        id: 13,
+        mediaServerId: 'episode-1',
+        ruleGroupId: null,
+        parent: 'show-1',
+      },
+      { id: 14, mediaServerId: 'other', ruleGroupId: null, parent: 'other' },
+    ]);
+    const removeExclusion = jest
+      .spyOn(service, 'removeExclusion')
+      .mockResolvedValue({ code: 1, message: 'Success' });
+
+    const response = await service.removeBulkExclusions(['show-1']);
+
+    expect(removeExclusion.mock.calls.map(([id]) => id).sort()).toEqual([
+      11, 12, 13,
+    ]);
+    expect(response.results).toEqual([
+      { mediaId: 'show-1', code: 1, message: 'Success' },
     ]);
   });
 

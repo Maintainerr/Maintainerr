@@ -29,7 +29,10 @@ import { TracearrApiService } from '../api/tracearr-api/tracearr-api.service';
 import { CollectionsService } from '../collections/collections.service';
 import { Collection } from '../collections/entities/collection.entities';
 import { CollectionMedia } from '../collections/entities/collection_media.entities';
-import { CollectionMediaChange } from '../collections/interfaces/collection-media.interface';
+import {
+  AlterableMediaContext,
+  CollectionMediaChange,
+} from '../collections/interfaces/collection-media.interface';
 import { MaintainerrLogger } from '../logging/logs.service';
 import { Notification } from '../notifications/entities/notification.entities';
 import { RadarrSettings } from '../settings/entities/radarr_settings.entities';
@@ -1152,6 +1155,7 @@ export class RulesService {
   async setBulkExclusions(
     mediaIds: string[],
     collectionId?: number,
+    context?: AlterableMediaContext,
   ): Promise<BulkMediaResponse> {
     const uniqueMediaIds = [...new Set(mediaIds)];
 
@@ -1159,27 +1163,24 @@ export class RulesService {
     // seasons/episodes): excluding both concurrently races setExclusion's
     // find-then-save on the same row, and the exclusion table has no unique
     // constraint to stop the duplicate. The ancestor's cascade already covers
-    // the child, so the child just reports the ancestor's outcome.
-    // A collection holds a single media type, so a scoped run cannot nest and
-    // is spared the metadata read this costs per item.
+    // the child, so the child just reports the ancestor's outcome. This runs
+    // for a scoped request too: a season collection expands a selected show to
+    // its seasons, which is the same row a separately selected season writes.
     const coveredBy = new Map<string, string>();
-    if (collectionId === undefined) {
-      const idSet = new Set(uniqueMediaIds);
-      const mediaServer = await this.getMediaServer();
-      for (const batch of chunk(uniqueMediaIds, BULK_EXCLUSION_CONCURRENCY)) {
-        await Promise.all(
-          batch.map(async (mediaId) => {
-            const metadata = await mediaServer.getMetadata(mediaId);
-            const ancestorId = [
-              metadata?.parentId,
-              metadata?.grandparentId,
-            ].find((id) => id !== undefined && id !== mediaId && idSet.has(id));
-            if (ancestorId) {
-              coveredBy.set(mediaId, ancestorId);
-            }
-          }),
-        );
-      }
+    const idSet = new Set(uniqueMediaIds);
+    const mediaServer = await this.getMediaServer();
+    for (const batch of chunk(uniqueMediaIds, BULK_EXCLUSION_CONCURRENCY)) {
+      await Promise.all(
+        batch.map(async (mediaId) => {
+          const metadata = await mediaServer.getMetadata(mediaId);
+          const ancestorId = [metadata?.parentId, metadata?.grandparentId].find(
+            (id) => id !== undefined && id !== mediaId && idSet.has(id),
+          );
+          if (ancestorId) {
+            coveredBy.set(mediaId, ancestorId);
+          }
+        }),
+      );
     }
 
     const resultById = new Map<string, BulkMediaItemResult>();
@@ -1189,7 +1190,11 @@ export class RulesService {
       await Promise.all(
         batch.map(async (mediaId) => {
           try {
-            const result = await this.setExclusion({ mediaId, collectionId });
+            const result = await this.setExclusion({
+              mediaId,
+              collectionId,
+              context,
+            });
 
             resultById.set(mediaId, {
               mediaId,
@@ -1277,8 +1282,16 @@ export class RulesService {
       ruleGroupId = group.id;
     }
 
+    // `parent` records the entry point of the original exclusion request, so
+    // matching it too picks up the rows an excluded show cascaded to its
+    // seasons and episodes. Without it they survive the removal and keep the
+    // item excluded while the caller is told it succeeded.
+    const selectedIds = new Set(uniqueMediaIds);
     const exclusions = await this.exclusionRepo.find({
-      where: { mediaServerId: In(uniqueMediaIds) },
+      where: [
+        { mediaServerId: In(uniqueMediaIds) },
+        { parent: In(uniqueMediaIds) },
+      ],
     });
     // An item is either globally excluded or scoped-excluded, never both, so
     // the row keeping it out of this collection is whichever one exists.
@@ -1291,9 +1304,13 @@ export class RulesService {
       ) {
         continue;
       }
-      const rowIds = rowIdsByMediaId.get(exclusion.mediaServerId) ?? [];
+      // A cascaded row reports under the id that was selected, not its own.
+      const coveringId = selectedIds.has(exclusion.mediaServerId)
+        ? exclusion.mediaServerId
+        : String(exclusion.parent);
+      const rowIds = rowIdsByMediaId.get(coveringId) ?? [];
       rowIds.push(exclusion.id);
-      rowIdsByMediaId.set(exclusion.mediaServerId, rowIds);
+      rowIdsByMediaId.set(coveringId, rowIds);
     }
 
     const resultById = new Map<string, BulkMediaItemResult>();

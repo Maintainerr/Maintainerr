@@ -13,14 +13,14 @@ import {
 import { useMediaServerMetadataChildren } from '../../api/media-server'
 import { getApiErrorMessage } from '../../utils/ApiError'
 import GetApiHandler from '../../utils/ApiHandler'
-import Alert from '../Common/Alert'
-import FormItem from '../Common/FormItem'
-import Modal from '../Common/Modal'
-import PendingButton from '../Common/PendingButton'
+import Alert from './Alert'
+import FormItem from './FormItem'
+import Modal from './Modal'
+import PendingButton from './PendingButton'
 import {
   clearMaintainerrStatusDetailsCache,
   fetchMaintainerrStatusDetails,
-} from '../Common/MediaCard/maintainerrStatus'
+} from './MediaCard/maintainerrStatus'
 import { Select } from '../Forms/Select'
 
 /** Sentinel collection id for "every collection", including a global exclusion. */
@@ -48,6 +48,7 @@ export interface MediaActionOutcome {
   action: MediaAction
   /** undefined means every collection. */
   collectionId?: number
+  collectionTitle?: string
   succeededIds: string[]
   failedIds: string[]
 }
@@ -105,24 +106,22 @@ const MediaActionModal = ({
     enabled: !lockedCollection,
   })
 
-  // Handing the narrowed id straight to the server resolves identically to
-  // naming it as a context, so the request keeps one shape for every size.
-  const submittedIds = useMemo(
-    () =>
-      selectedEpisodes
-        ? [selectedEpisodes]
-        : selectedSeasons
-          ? [selectedSeasons]
-          : mediaIds,
-    [selectedSeasons, selectedEpisodes, mediaIds],
-  )
-
   const submittedType = useMemo((): MediaItemType | undefined => {
     if (!canNarrow) return mediaType
     if (selectedEpisodes) return 'episode'
     if (selectedSeasons) return 'season'
     return mediaType
   }, [canNarrow, mediaType, selectedSeasons, selectedEpisodes])
+
+  // The narrowed season or episode travels as a context, not as the media id.
+  // The show stays the entry point, so the rows it writes keep recording it as
+  // their `parent` and an un-exclude through the show still reaches them.
+  const submittedContext = useMemo(() => {
+    const narrowedId = selectedEpisodes ?? selectedSeasons
+    return narrowedId && submittedType
+      ? { id: narrowedId, type: submittedType }
+      : undefined
+  }, [selectedSeasons, selectedEpisodes, submittedType])
 
   // A context resolves down the hierarchy but never up, so offer exactly the
   // collection types the current selection can produce.
@@ -269,16 +268,18 @@ const MediaActionModal = ({
     try {
       const response = isCollectionAction
         ? await postBulkCollectionMedia({
-            mediaIds: submittedIds,
+            mediaIds,
             collectionId,
             action: selectedAction === 'collection-add' ? 0 : 1,
             // Guarded by actionOptions: a collection action needs a type.
-            mediaType: submittedType as MediaItemType,
+            mediaType: mediaType as MediaItemType,
+            context: submittedContext,
           })
         : await postBulkExclusions({
-            mediaIds: submittedIds,
+            mediaIds,
             collectionId,
             action: selectedAction === 'exclusion-add' ? 0 : 1,
+            context: submittedContext,
           })
 
       const succeededIds = response.results
@@ -288,13 +289,22 @@ const MediaActionModal = ({
         .filter((result) => result.code !== 1)
         .map((result) => result.mediaId)
 
-      if (isCollectionAction && succeededIds.length > 0) {
+      // A scoped exclusion also drops the items from the collection, so it
+      // invalidates the same caches a collection action does.
+      const changedMembership =
+        isCollectionAction ||
+        (selectedAction === 'exclusion-add' && collectionId !== undefined)
+
+      if (changedMembership && succeededIds.length > 0) {
         await invalidateCollectionQueries(queryClient)
       }
 
       onSubmitted({
         action: selectedAction,
         collectionId,
+        collectionTitle: collectionOptions.find(
+          (option) => option.id === collectionId,
+        )?.title,
         succeededIds,
         failedIds,
       })
@@ -350,7 +360,7 @@ const MediaActionModal = ({
     await submit()
   }
 
-  const itemLabel = `${submittedIds.length} item${submittedIds.length === 1 ? '' : 's'}`
+  const itemLabel = `${mediaIds.length} item${mediaIds.length === 1 ? '' : 's'}`
 
   return (
     <Modal
@@ -522,7 +532,12 @@ const MediaActionModal = ({
         <p className="mt-4 text-sm text-zinc-400">
           Applies to {itemLabel}.
           {!mediaType
-            ? ' The selection mixes media types, so only exclusions can be applied to it.'
+            ? ' The selection mixes media types or libraries, so only exclusions can be applied to it.'
+            : ''}
+          {/* An item is global or scoped, never both, so removing "its"
+              exclusion here removes a global one if that is what it has. */}
+          {selectedAction === 'exclusion-remove' && !isAllCollections
+            ? ' An item excluded globally is un-excluded everywhere, not just here.'
             : ''}
         </p>
       </div>

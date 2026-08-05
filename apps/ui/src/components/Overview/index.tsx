@@ -23,7 +23,7 @@ import GetApiHandler from '../../utils/ApiHandler'
 import LibrarySwitcher from '../Common/LibrarySwitcher'
 import LoadingSpinner from '../Common/LoadingSpinner'
 import MediaSelectionActions from '../Common/MediaSelectionActions'
-import type { MediaActionOutcome } from '../MediaActionModal'
+import type { MediaActionOutcome } from '../Common/MediaActionModal'
 import PageControlRow from '../Common/PageControlRow'
 import {
   getMediaLibrarySortConfig,
@@ -410,6 +410,7 @@ const Overview = () => {
   const handleBulkOutcome = ({
     action,
     collectionId,
+    collectionTitle,
     succeededIds: succeeded,
     failedIds: failed,
   }: MediaActionOutcome) => {
@@ -426,8 +427,19 @@ const Overview = () => {
         (item.grandparentId !== undefined &&
           succeededIds.has(item.grandparentId))
 
-      // Only a global exclusion changes what a library card shows; a scoped one
-      // and the collection actions are invisible here.
+      const isCollectionAction = action.startsWith('collection-')
+      const nextCollections = (current: string[]) => {
+        if (action === 'collection-remove-all') return []
+        if (!collectionTitle) return current
+        return action === 'collection-add'
+          ? [...new Set([...current, collectionTitle])].sort((left, right) =>
+              left.localeCompare(right),
+            )
+          : current.filter((title) => title !== collectionTitle)
+      }
+
+      // Only a global exclusion changes the exclusion marker; a scoped one is
+      // invisible on a library card.
       const nextExclusionType =
         collectionId === undefined && action === 'exclusion-add'
           ? ('global' as const)
@@ -435,11 +447,23 @@ const Overview = () => {
             ? undefined
             : null
 
-      if (nextExclusionType !== null) {
+      // A collection action moves membership, which the card names in its own
+      // badge; only a global exclusion changes the exclusion marker.
+      const patchCard = (item: MediaItem) => {
+        if (nextExclusionType !== null) {
+          return { ...item, maintainerrExclusionType: nextExclusionType }
+        }
+        return {
+          ...item,
+          maintainerrCollections: nextCollections(
+            item.maintainerrCollections ?? [],
+          ),
+        }
+      }
+
+      if (nextExclusionType !== null || isCollectionAction) {
         const nextItems = dataRef.current.map((item) =>
-          isCovered(item)
-            ? { ...item, maintainerrExclusionType: nextExclusionType }
-            : item,
+          isCovered(item) ? patchCard(item) : item,
         )
         dataRef.current = nextItems
         setData(nextItems)
@@ -530,15 +554,6 @@ const Overview = () => {
   const canRequestLibraryContent = Boolean(resolvedLibraryId)
   const hasMoreData = data.length < totalSize
   const showRefreshing = isLoading && hasData
-  // A collection takes one media type, so a selection spanning types (search
-  // results mix movies, shows and episodes) can only be excluded.
-  const selectedTypes = new Set(
-    data
-      .filter((item) => selectedMediaIds.has(item.id))
-      .map((item) => item.type),
-  )
-  const selectionType =
-    selectedTypes.size === 1 ? [...selectedTypes][0] : undefined
   const showBootstrapLoading =
     !searchUsed &&
     !hasData &&
@@ -559,8 +574,7 @@ const Overview = () => {
               selectionMode={selectionMode}
               onToggleSelectionMode={toggleSelectionMode}
               selectedIds={selectedMediaIds}
-              mediaType={selectionType}
-              libraryId={resolvedLibraryId}
+              items={data}
               onSubmitted={handleBulkOutcome}
             />
           }
