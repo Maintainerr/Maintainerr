@@ -114,6 +114,8 @@ integrations, and production static serving.
 - `src/modules/tasks/` creates and tracks scheduled jobs.
 - `src/modules/events/` exposes server-sent events for rule and collection job
   progress.
+- `src/modules/version/` resolves the running build against GitHub, for the
+  version indicator and the update-available notification.
 - `src/modules/overlays/`, `src/modules/metadata/`,
   `src/modules/notifications/`, `src/modules/logging/`, and
   `src/modules/storage-metrics/` own their respective feature areas.

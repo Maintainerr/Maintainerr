@@ -119,12 +119,13 @@ export class NotificationService implements OnModuleInit {
     return this.activeAgents;
   };
 
+  /** Returns each agent's outcome, so a caller can tell whether anyone took it. */
   public async sendNotification(
     type: NotificationType,
     payload: NotificationPayload,
     rulegroup?: RuleGroup,
-  ): Promise<void> {
-    await Promise.allSettled(
+  ): Promise<string[]> {
+    const results = await Promise.allSettled(
       this.activeAgents.map(async (agent) => {
         // if rulegroup is supplied, then only send the notification if configured
         if (
@@ -133,8 +134,14 @@ export class NotificationService implements OnModuleInit {
             (n) => n.id === agent.getNotification().id,
           )
         )
-          await this.sendNotificationToAgent(type, payload, agent);
+          return await this.sendNotificationToAgent(type, payload, agent);
+
+        return 'Agent is not connected to this rule group.';
       }),
+    );
+
+    return results.map((result) =>
+      result.status === 'fulfilled' ? result.value : 'Failure',
     );
   }
 
@@ -143,11 +150,23 @@ export class NotificationService implements OnModuleInit {
     payload: NotificationPayload,
     agent: NotificationAgent,
   ): Promise<string> {
-    if (agent.shouldSend()) {
-      if (agent.getSettings().types?.includes(type))
-        return await agent.send(type, payload);
+    if (this.canSend(type, agent)) {
+      return await agent.send(type, payload);
     }
     return Promise.resolve('Agent is not allowed to send this message.');
+  }
+
+  /**
+   * Whether any configured agent would actually deliver this type. Lets a
+   * producer skip work (and skip marking something as announced) when nobody
+   * is listening yet.
+   */
+  public hasSubscribers(type: NotificationType): boolean {
+    return this.activeAgents.some((agent) => this.canSend(type, agent));
+  }
+
+  private canSend(type: NotificationType, agent: NotificationAgent): boolean {
+    return agent.shouldSend() && !!agent.getSettings().types?.includes(type);
   }
 
   async addNotificationConfiguration(payload: {
@@ -343,9 +362,22 @@ export class NotificationService implements OnModuleInit {
     if (!sameAgents(notifications, configuredAgents)) {
       this.activeAgents = [];
 
-      const agents: NotificationAgent[] = configuredAgents?.map(
-        (notification) => this.createAgent(notification),
-      );
+      // A row whose agent key this build doesn't know (a downgrade after
+      // configuring a newer agent type) yields no agent. Drop it here rather
+      // than letting an undefined entry reach the send paths.
+      const agents: NotificationAgent[] = [];
+      for (const notification of configuredAgents ?? []) {
+        const agent = this.createAgent(notification);
+
+        if (!agent) {
+          this.logger.warn(
+            `Skipping notification configuration '${notification.name}': unknown agent '${notification.agent}'`,
+          );
+          continue;
+        }
+
+        agents.push(agent);
+      }
 
       this.registerAgents(agents, skiplog);
     }
@@ -755,6 +787,39 @@ export class NotificationService implements OnModuleInit {
     }
   }
 
+  /**
+   * Announces a newer Maintainerr release to every agent subscribed to the
+   * type. Separate from `handleNotification` because it substitutes versions
+   * rather than media, and carries no collection or day count to put in
+   * `extra`. Returns whether an agent accepted it.
+   */
+  public async handleUpdateAvailableNotification(
+    currentVersion: string,
+    newVersion: string,
+    releaseUrl?: string,
+  ): Promise<boolean> {
+    const type = NotificationType.UPDATE_AVAILABLE;
+    const { subject, message } = this.getContent(type, false);
+
+    const results = await this.sendNotification(type, {
+      subject,
+      message: message
+        .replace('{current_version}', currentVersion)
+        .replace('{new_version}', newVersion)
+        .replace(
+          '{release_notes}',
+          releaseUrl ? `\n\nRelease notes: ${releaseUrl}` : '',
+        ),
+      extra: [
+        { name: 'currentVersion', value: currentVersion },
+        { name: 'newVersion', value: newVersion },
+        ...(releaseUrl ? [{ name: 'releaseUrl', value: releaseUrl }] : []),
+      ],
+    });
+
+    return results.includes('Success');
+  }
+
   private getContent(
     type: NotificationType,
     multiple: boolean,
@@ -814,6 +879,14 @@ export class NotificationService implements OnModuleInit {
           subject = 'Overlay Reverted';
           message =
             "↩️ Overlay has been reverted for '{media_title}' in '{collection_name}'.";
+          break;
+        case NotificationType.UPDATE_AVAILABLE:
+          subject = 'Update Available';
+          // {release_notes} carries its own separator so the single replace
+          // always fires, collapsing to '' for a branch build that has no
+          // release page. A raw token can never reach a user.
+          message =
+            "📦 Maintainerr {new_version} is available. You're running {current_version}.{release_notes}\n\nHow to update: https://docs.maintainerr.info/installation/#updating";
           break;
       }
     } else {

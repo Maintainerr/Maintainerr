@@ -33,8 +33,8 @@ import { RulesModule } from '../modules/rules/rules.module';
 import { SettingsModule } from '../modules/settings/settings.module';
 import { SettingsDataService } from '../modules/settings/settings-data.service';
 import { StorageMetricsModule } from '../modules/storage-metrics/storage-metrics.module';
+import { VersionModule } from '../modules/version/version.module';
 import { AppController } from './app.controller';
-import { AppService } from './app.service';
 import { HealthController } from './health.controller';
 import { HealthService } from './health.service';
 import ormConfig from './config/typeOrmConfig';
@@ -66,6 +66,7 @@ import { resolveUiRootPath } from './config/uiPath';
     EventsModule,
     OverlaysModule,
     StorageMetricsModule,
+    VersionModule,
     ServeStaticModule.forRootAsync({
       useFactory: () => {
         if (process.env.NODE_ENV !== 'production') {
@@ -84,7 +85,6 @@ import { resolveUiRootPath } from './config/uiPath';
   ],
   controllers: [AppController, HealthController],
   providers: [
-    AppService,
     HealthService,
     {
       provide: APP_PIPE,

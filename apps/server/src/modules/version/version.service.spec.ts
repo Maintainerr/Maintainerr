@@ -1,6 +1,6 @@
-import { AppService } from './app.service';
+import { VersionService } from './version.service';
 
-describe('AppService', () => {
+describe('VersionService', () => {
   const envBackup = { ...process.env };
 
   let githubApi: {
@@ -13,7 +13,7 @@ describe('AppService', () => {
     debug: jest.Mock;
     warn: jest.Mock;
   };
-  let service: AppService;
+  let service: VersionService;
 
   beforeEach(() => {
     process.env = { ...envBackup };
@@ -30,7 +30,7 @@ describe('AppService', () => {
       warn: jest.fn(),
     };
 
-    service = new AppService(githubApi as never, logger as never);
+    service = new VersionService(githubApi as never, logger as never);
   });
 
   afterAll(() => {
@@ -151,6 +151,52 @@ describe('AppService', () => {
     await expect(service.getAppVersionStatus()).resolves.toMatchObject({
       updateAvailable: false,
     });
+  });
+
+  it('labels an available release without its tag prefix, with its release page', async () => {
+    process.env.npm_package_version = '3.9.0';
+    process.env.VERSION_TAG = 'latest';
+
+    githubApi.getLatestRelease.mockResolvedValue({
+      tag_name: 'v3.10.1',
+      html_url:
+        'https://github.com/Maintainerr/Maintainerr/releases/tag/v3.10.1',
+    });
+
+    await expect(service.getAvailableUpdate()).resolves.toEqual({
+      version: '3.10.1',
+      releaseUrl:
+        'https://github.com/Maintainerr/Maintainerr/releases/tag/v3.10.1',
+    });
+  });
+
+  it('labels an available branch build with its short SHA and no release page', async () => {
+    process.env.VERSION_TAG = 'development';
+    process.env.GIT_SHA = 'bd8a1e0123456789';
+
+    githubApi.getCommit.mockResolvedValue({ sha: 'fffffff123456789' });
+
+    await expect(service.getAvailableUpdate()).resolves.toEqual({
+      version: 'development-fffffff',
+    });
+  });
+
+  it('reports no available version when the build is up to date', async () => {
+    process.env.npm_package_version = '3.10.1';
+    process.env.VERSION_TAG = 'latest';
+
+    githubApi.getLatestRelease.mockResolvedValue({ tag_name: 'v3.10.1' });
+
+    await expect(service.getAvailableUpdate()).resolves.toBeUndefined();
+  });
+
+  it('reports no available version when GitHub cannot be reached', async () => {
+    process.env.npm_package_version = '3.10.1';
+    process.env.VERSION_TAG = 'latest';
+
+    githubApi.getLatestRelease.mockResolvedValue(undefined);
+
+    await expect(service.getAvailableUpdate()).resolves.toBeUndefined();
   });
 
   it('keeps local development builds marked as local', async () => {
