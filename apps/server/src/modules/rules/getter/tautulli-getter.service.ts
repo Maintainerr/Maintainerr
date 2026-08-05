@@ -43,7 +43,15 @@ export class TautulliGetterService {
   ) {
     try {
       const prop = this.appProperties.find((el) => el.id === id);
+
       const metadata = await this.tautulliApi.getMetadata(libItem.id);
+      // Tautulli answers null both for an item it does not know and for a failed
+      // read, so this keeps the transient contract. Reading through the null
+      // threw instead, which surfaced as the same signal behind a misleading
+      // "Action failed" warning.
+      if (!metadata) {
+        return undefined;
+      }
       const collection = await this.collectionRepository.findOne({
         where: { id: ruleGroup.collection.id },
       });

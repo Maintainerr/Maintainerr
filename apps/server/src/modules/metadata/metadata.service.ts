@@ -232,6 +232,24 @@ export class MetadataService {
     );
   }
 
+  /**
+   * Whether the item carries any external id a lookup could start from.
+   *
+   * Purely local - it reads what the media server already sent and makes no
+   * request - so a `false` here can never be an outage. Resolution answering
+   * `undefined` otherwise means two different things: "nothing to look up" and
+   * "the lookup failed", and only the second should pause rule evaluation.
+   *
+   * Note this is broader than "TMDB or TVDB can extract an id": an item with
+   * only an imdb id has neither, but is still resolvable online by
+   * cross-referencing, so it must not count as unresolvable.
+   */
+  public hasExternalIds(item: MediaItem): boolean {
+    const ids = this.extractDirectIds(item);
+
+    return Object.entries(ids).some(([key, value]) => key !== 'type' && value);
+  }
+
   public async resolveLookupCandidatesFromMediaItemForService(
     item: MediaItem,
     service: string,

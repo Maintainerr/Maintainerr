@@ -218,6 +218,10 @@ export class SeerrApiService {
   }
 
   public init() {
+    // Drop the previous client first, so removing Seerr from settings stops
+    // the app querying it rather than leaving the old one live until restart.
+    this.api = undefined;
+
     if (!this.settings.seerr_url) {
       return;
     }

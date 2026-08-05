@@ -17,10 +17,17 @@ import { Property, RuleConstants, RuleType } from './rules.constants';
 const buildDynamicNullReason = (
   property: Property,
   applicationName?: string,
+  lookupFailed?: boolean,
 ): string => {
   const cleanHuman = stripHumanNamePrefix(property.humanName);
   const noun = cleanHuman || property.name;
   const label = applicationName ? `${applicationName} ${noun}` : noun;
+
+  // A getter answering `undefined` never established the value, so reporting
+  // it as empty/unset sends the user looking for the wrong problem.
+  if (lookupFailed) {
+    return `${label} could not be read for this item`;
+  }
 
   switch (property.type) {
     case RuleType.DATE:
@@ -122,6 +129,7 @@ export class RuleConstanstService {
   public getValueNullReason(
     location: [number, number],
     configuredServerType?: MediaServerType | null,
+    options?: { lookupFailed?: boolean },
   ): string {
     const application = this.ruleConstants.applications.find(
       (el) =>
@@ -129,7 +137,11 @@ export class RuleConstanstService {
     );
     const prop = application?.props.find((el) => el.id === location[1]);
     if (!prop) return 'Value unavailable';
-    return buildDynamicNullReason(prop, application?.name);
+    return buildDynamicNullReason(
+      prop,
+      application?.name,
+      options?.lookupFailed,
+    );
   }
 
   /**

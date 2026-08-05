@@ -512,6 +512,35 @@ describe('RuleComparatorService.executeRulesWithData', () => {
       expect(result.data).toEqual([]);
     });
 
+    // A failed lookup reported as "no entries for this item" reads as real data
+    // and hides the outage from whoever is debugging the rule (#3395).
+    it.each([
+      [undefined, true],
+      [null, false],
+    ])('reports %p as a failed lookup: %p', async (value, lookupFailed) => {
+      const rules = [
+        createStoredRule(1, {
+          operator: null,
+          action: RulePossibility.EXISTS,
+          firstVal: [Application.PLEX, 6],
+          section: 0,
+        }),
+      ];
+
+      mockGetterSequence(value);
+
+      await ruleComparatorService.executeRulesWithData(
+        createRulesDto({ dataType: 'movie', rules }),
+        [createSingleMedia()],
+      );
+
+      expect(ruleConstanstService.getValueNullReason).toHaveBeenCalledWith(
+        [Application.PLEX, 6],
+        undefined,
+        { lookupFailed },
+      );
+    });
+
     it('completes the run and logs a skip (not a crash) when a unary rule value is unavailable', async () => {
       // getCustomValueIdentifier dereferences customValue.ruleTypeId. A unary
       // rule (EXISTS/NOT_EXISTS) carries no customVal, so logging the skipped

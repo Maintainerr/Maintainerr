@@ -380,9 +380,21 @@ describe('SonarrGetterService', () => {
         ).toHaveBeenCalledTimes(2);
       });
 
-      it('returns undefined (fail closed) when no external ids resolve', async () => {
-        // Empty resolution also covers a transient TMDB/TVDB validation
-        // failure, so it must stay transient (#3307).
+      it('returns undefined (fail closed) when the lookup fails for an item that has ids', async () => {
+        // The item has something to look up, so an empty resolution may be a
+        // transient TMDB/TVDB validation failure (#3307).
+        metadataService.hasExternalIds.mockReturnValue(true);
+        metadataService.resolveLookupCandidatesFromMediaItemForService.mockResolvedValue(
+          [],
+        );
+
+        await expect(call()).resolves.toBeUndefined();
+      });
+
+      // "We could not look it up" is not "it is not there": a definitive answer
+      // would let unmatched items and personal media match NOT_EXISTS rules.
+      it('stays transient when the item carries no external ids', async () => {
+        metadataService.hasExternalIds.mockReturnValue(false);
         metadataService.resolveLookupCandidatesFromMediaItemForService.mockResolvedValue(
           [],
         );

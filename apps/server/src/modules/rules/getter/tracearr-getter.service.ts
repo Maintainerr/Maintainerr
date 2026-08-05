@@ -48,8 +48,12 @@ export class TracearrGetterService {
       if (!property) {
         return null;
       }
+      // A property that does not apply to this item type is a definitive
+      // answer, not a failed lookup - and because the executor sweeps a whole
+      // library at one dataType, the transient signal froze every item in the
+      // group. Every other getter answers `null` here.
       if (!this.supportsMediaItem(property, libItem)) {
-        return undefined;
+        return null;
       }
 
       let historyIndex = this.tracearrApi.getHistoryIndex();

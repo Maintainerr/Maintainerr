@@ -51,6 +51,7 @@ import {
   PlexStatusResponse,
 } from './interfaces/server.interface';
 import {
+  PLEX_COMMUNITY_UNRESOLVED_USER_ERROR,
   PLEX_PAGE_SIZE,
   PLEX_REQUEST_TIMEOUT_MS,
   WATCH_HISTORY_EXCLUDE_FIELDS,
@@ -1698,10 +1699,18 @@ export class PlexApiService {
     }
   }
 
+  /**
+   * The watchlist of a single plex.tv user.
+   *
+   * `undefined` means the read failed and the watchlist is unknown, so callers
+   * must not read it as "empty" (#3307). `null` means plex.tv answered that it
+   * will not share this user's watchlist (private profile, or an account it
+   * does not know) - a permanent condition callers should skip past (#3395).
+   */
   public async getWatchlistIdsForUser(
     userId: string,
     username: string,
-  ): Promise<PlexCommunityWatchList[]> {
+  ): Promise<PlexCommunityWatchList[] | null | undefined> {
     try {
       let result: PlexCommunityWatchList[] = [];
       let next = true;
@@ -1744,8 +1753,26 @@ export class PlexApiService {
           );
           return undefined;
         } else if (resp.errors) {
+          const reason = resp.errors.map((x) => x.message).join(', ');
+          // Every error has to be the definitive one - a mixed response could
+          // still be hiding a transient failure.
+          const unresolvedUser =
+            resp.errors.length > 0 &&
+            resp.errors.every((x) =>
+              x.message?.startsWith(PLEX_COMMUNITY_UNRESOLVED_USER_ERROR),
+            );
+
+          if (unresolvedUser) {
+            // Debug, not warn: a normal, permanent state of that account, which
+            // the admin cannot act on from Maintainerr.
+            this.logger.debug(
+              `Plex is not sharing the watchlist of user ${userId} (${username}), skipping them: ${reason}`,
+            );
+            return null;
+          }
+
           this.logger.warn(
-            `Failure while fetching watchlist of user ${userId} (${username}): ${resp.errors.map((x) => x.message).join(', ')}`,
+            `Failure while fetching watchlist of user ${userId} (${username}): ${reason}`,
           );
           return undefined;
         }

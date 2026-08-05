@@ -32,6 +32,7 @@ import { addProviderId, emptyProviderIds } from '../media-provider-ids.utils';
 
 const GUID_SCHEME_SEPARATOR = '://';
 const LEGACY_AGENT_PREFIX = 'com.plexapp.agents.';
+const PLEX_AGENT_GUID_PREFIX = `plex${GUID_SCHEME_SEPARATOR}`;
 
 /**
  * Mapper for converting Plex-specific types to server-agnostic MediaItem types.
@@ -160,6 +161,36 @@ export class PlexMapper {
     collect(fallbackGuid);
 
     return providerIds;
+  }
+
+  /**
+   * The id Plex's own agent gives an item, from a `plex://<type>/<uuid>` guid.
+   *
+   * Undefined for anything else - a legacy-agent, unmatched or personal-media
+   * guid carries no such id. plex.tv keys watchlist entries on it, so an item
+   * without one can never appear on a watchlist.
+   */
+  static extractPlexAgentId(guid?: string): string | undefined {
+    if (!guid?.startsWith(PLEX_AGENT_GUID_PREFIX)) {
+      return undefined;
+    }
+
+    const typeEnd = guid.indexOf('/', PLEX_AGENT_GUID_PREFIX.length);
+    if (typeEnd <= PLEX_AGENT_GUID_PREFIX.length) {
+      return undefined;
+    }
+
+    const id = guid.slice(typeEnd + 1);
+    for (const character of id) {
+      const isDigit = character >= '0' && character <= '9';
+      const isLowercaseLetter = character >= 'a' && character <= 'z';
+
+      if (!isDigit && !isLowercaseLetter) {
+        return undefined;
+      }
+    }
+
+    return id || undefined;
   }
 
   /**

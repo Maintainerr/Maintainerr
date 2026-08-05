@@ -1108,26 +1108,11 @@ export class SettingsOperationsService {
     }
   }
 
+  /** Kept as its own route verb; updateSettings merges over the stored row too. */
   public async patchSettings(
     settings: Partial<Settings>,
   ): Promise<BasicResponseDto> {
-    const settingsDb = await this.settingsRepo.findOne({ where: {} });
-
-    if (!settingsDb) {
-      this.logger.error('Settings could not be loaded for partial update.');
-      return {
-        status: 'NOK',
-        code: 0,
-        message: 'No settings found to update',
-      };
-    }
-
-    const mergedSettings: Settings = {
-      ...settingsDb,
-      ...settings,
-    };
-
-    return this.updateSettings(mergedSettings);
+    return this.updateSettings(settings);
   }
 
   private stripPlexProtocolPrefix(hostname: string | null | undefined) {
@@ -1149,16 +1134,25 @@ export class SettingsOperationsService {
   private normalizePlexServerConnectionSettings({
     hostname,
     port,
+    fallbackSsl,
   }: {
     hostname: string | null | undefined;
     port: number | null | undefined;
+    fallbackSsl: number | null | undefined;
   }) {
     const normalizedHostnameInput = hostname?.trim().toLowerCase();
     const normalizedHostname = this.stripPlexProtocolPrefix(
       normalizedHostnameInput,
     );
+    // Only a scheme prefix or port 443 says anything about TLS. The stored
+    // hostname is always bare and auto-discovery stores plex.direct hosts on
+    // 32400 with ssl=1, so a bare hostname must not downgrade fallbackSsl.
     const normalizedSsl =
-      normalizedHostnameInput?.startsWith('https://') || port === 443 ? 1 : 0;
+      normalizedHostnameInput?.startsWith('https://') || port === 443
+        ? 1
+        : normalizedHostnameInput?.startsWith('http://')
+          ? 0
+          : (fallbackSsl ?? 0);
 
     return {
       hostname: normalizedHostname,
@@ -1169,7 +1163,7 @@ export class SettingsOperationsService {
 
   private isPlexServerSettingsUpdate(
     currentSettings: Settings,
-    nextSettings: Settings,
+    nextSettings: Partial<Settings>,
   ): boolean {
     const currentMediaServerType =
       nextSettings.media_server_type ?? currentSettings.media_server_type;
@@ -1181,10 +1175,12 @@ export class SettingsOperationsService {
     const normalizedCurrent = this.normalizePlexServerConnectionSettings({
       hostname: currentSettings.plex_hostname,
       port: currentSettings.plex_port,
+      fallbackSsl: currentSettings.plex_ssl,
     });
     const normalizedNext = this.normalizePlexServerConnectionSettings({
       hostname: nextSettings.plex_hostname,
       port: nextSettings.plex_port,
+      fallbackSsl: nextSettings.plex_ssl,
     });
 
     return (
@@ -1195,21 +1191,9 @@ export class SettingsOperationsService {
     );
   }
 
-  public async updateSettings(settings: Settings): Promise<BasicResponseDto> {
-    if (
-      !this.cronIsValid(settings.collection_handler_job_cron) ||
-      !this.cronIsValid(settings.rules_handler_job_cron)
-    ) {
-      this.logger.error(
-        'Invalid CRON configuration found, settings update aborted.',
-      );
-      return {
-        status: 'NOK',
-        code: 0,
-        message: 'Update failed, invalid CRON value was found',
-      };
-    }
-
+  public async updateSettings(
+    settings: Partial<Settings>,
+  ): Promise<BasicResponseDto> {
     try {
       const settingsDb = await this.settingsRepo.findOne({ where: {} });
 
@@ -1222,8 +1206,29 @@ export class SettingsOperationsService {
         };
       }
 
+      // Merge before anything reads the payload. An absent field means "leave
+      // as-is", and every step below - cron validation, the Plex-change check,
+      // URL lowercasing, hostname/ssl normalisation - assumes it is looking at
+      // a complete settings object. Reading the raw partial instead reset
+      // plex_ssl to 0 and rescheduled the collection handler to "undefined".
+      const merged: Settings = { ...settingsDb, ...settings };
+
       if (
-        this.isPlexServerSettingsUpdate(settingsDb, settings) &&
+        !this.cronIsValid(merged.collection_handler_job_cron) ||
+        !this.cronIsValid(merged.rules_handler_job_cron)
+      ) {
+        this.logger.error(
+          'Invalid CRON configuration found, settings update aborted.',
+        );
+        return {
+          status: 'NOK',
+          code: 0,
+          message: 'Update failed, invalid CRON value was found',
+        };
+      }
+
+      if (
+        this.isPlexServerSettingsUpdate(settingsDb, merged) &&
         !settingsDb.plex_auth_token
       ) {
         return {
@@ -1233,22 +1238,20 @@ export class SettingsOperationsService {
         };
       }
 
-      settings.seerr_url = settings.seerr_url?.toLowerCase();
-      settings.tautulli_url = settings.tautulli_url?.toLowerCase();
+      merged.seerr_url = merged.seerr_url?.toLowerCase();
+      merged.tautulli_url = merged.tautulli_url?.toLowerCase();
 
       const normalizedPlexServerSettings =
         this.normalizePlexServerConnectionSettings({
-          hostname: settings.plex_hostname,
-          port: settings.plex_port,
+          hostname: merged.plex_hostname,
+          port: merged.plex_port,
+          fallbackSsl: merged.plex_ssl,
         });
 
-      settings.plex_hostname = normalizedPlexServerSettings.hostname;
-      settings.plex_ssl = normalizedPlexServerSettings.ssl;
+      merged.plex_hostname = normalizedPlexServerSettings.hostname;
+      merged.plex_ssl = normalizedPlexServerSettings.ssl;
 
-      await this.settingsDataService.saveSettings({
-        ...settingsDb,
-        ...settings,
-      });
+      await this.settingsDataService.saveSettings(merged);
 
       await this.settingsDataService.init();
       this.logger.log('Settings updated');
@@ -1261,7 +1264,7 @@ export class SettingsOperationsService {
       // reload Collection handler job if changed
       if (
         settingsDb.collection_handler_job_cron !==
-        settings.collection_handler_job_cron
+        merged.collection_handler_job_cron
       ) {
         this.logger.log(
           `Collection Handler cron schedule changed.. Reloading job.`,
@@ -1270,7 +1273,7 @@ export class SettingsOperationsService {
           .getApi()
           .put(
             '/collections/schedule/update',
-            `{"schedule": "${settings.collection_handler_job_cron}"}`,
+            `{"schedule": "${merged.collection_handler_job_cron}"}`,
           );
       }
 

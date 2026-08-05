@@ -83,6 +83,7 @@ export class SportarrGetterService {
       let externalId = sportarrLeagueExternalIdFromProviderIds(
         showItem?.providerIds?.tvdb,
       );
+      let showMetadataRead = showItem !== undefined;
       if (!externalId) {
         // The rule executor can pass a lightweight library item whose
         // providerIds aren't populated. Re-fetch the show's full metadata to
@@ -100,19 +101,23 @@ export class SportarrGetterService {
               (item) => item === undefined,
             )
           : fetchShow());
+        showMetadataRead = fullShow !== undefined;
         externalId = sportarrLeagueExternalIdFromProviderIds(
           fullShow?.providerIds?.tvdb,
         );
       }
       if (!externalId) {
-        this.logger.warn(
-          `Failed to resolve a Sportarr league id for '${libItem.title}' (media server ID '${libItem.id}'). No Sportarr query could be made.`,
-        );
-        // An empty resolution cannot distinguish "item carries no Sportarr
-        // alias" from a transient media-server failure on the metadata reads
-        // above, so it must stay `undefined` - `null` would defeat the
-        // transient-removal guard and splice items out of collections during
-        // an outage (same reasoning as the Sonarr getter, #3307).
+        // A show that read fine and carries no alias is an ordinary show in a
+        // sports library, so log it quietly rather than warning every run. The
+        // answer stays transient either way - a definitive one would let those
+        // shows match NOT_EXISTS rules.
+        const message = `Failed to resolve a Sportarr league id for '${libItem.title}' (media server ID '${libItem.id}'). No Sportarr query could be made.`;
+        if (showMetadataRead) {
+          this.logger.debug(message);
+        } else {
+          this.logger.warn(message);
+        }
+
         return undefined;
       }
 

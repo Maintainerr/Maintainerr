@@ -7,6 +7,7 @@ import { Injectable } from '@nestjs/common';
 import { SimplePlexUser } from '../../..//modules/api/plex-api/interfaces/library.interfaces';
 import { PlexApiService } from '../../../modules/api/plex-api/plex-api.service';
 import { PlexAdapterService } from '../../api/media-server/plex/plex-adapter.service';
+import { PlexMapper } from '../../api/media-server/plex/plex.mapper';
 import { PlexMetadata } from '../../api/plex-api/interfaces/media.interface';
 import { MaintainerrLogger } from '../../logging/logs.service';
 import {
@@ -95,6 +96,16 @@ export class PlexGetterService {
         );
         return grandparentPromise;
       };
+
+      // The show a season/episode belongs to. Undefined for anything else, so
+      // the `*Show` properties answer `null` (does not apply) instead of
+      // throwing into the transient signal - same as Jellyfin and Emby.
+      const getShowMetadata = async (): Promise<PlexMetadata | undefined> =>
+        metadata?.type === 'season'
+          ? getParent()
+          : metadata?.type === 'episode'
+            ? getGrandparent()
+            : undefined;
 
       switch (prop.name) {
         case 'addDate': {
@@ -521,55 +532,10 @@ export class PlexGetterService {
           // originallyAvailableAt is usually an ISO 8601 date string, no need to convert from epoch time
           return lastEpDate ? new Date(lastEpDate) : null;
         }
-        case 'watchlist_isListedByUsers': {
-          // returns a list of users that have this media item, or parent, in their watchlist
-          const parent = await getParent();
-          const grandparent = await getGrandparent();
-          const guid = grandparent
-            ? grandparent.guid
-            : parent
-              ? parent.guid
-              : metadata.guid;
-          const media_uuid = guid.match(/plex:\/\/[a-z]+\/([a-z0-9]+)$/);
-
-          const plexUsers: SimplePlexUser[] =
-            await this.plexApi.getCorrectedUsers();
-
-          // When plex.tv is unreachable, no users will have UUIDs. This is a
-          // transient transport failure, so return `undefined` - `null` would
-          // read as "confirmed absent" and let the executor remove protected
-          // items (#3307).
-          if (
-            plexUsers.length > 0 &&
-            !plexUsers.some((u) => u.uuid !== undefined)
-          ) {
-            this.logger.warn(
-              'Unable to check watchlists: no user UUIDs available (plex.tv may be unreachable)',
-            );
-            return undefined;
-          }
-
-          const usernames: string[] = [];
-          for (const u of plexUsers.filter(
-            (u) => u.uuid !== undefined && media_uuid !== undefined,
-          )) {
-            const watchlist = await this.plexApi.getWatchlistIdsForUser(
-              u.uuid,
-              u.username,
-            );
-            // A failed fetch would silently understate the list, so surface
-            // it as transient instead of a confirmed answer.
-            if (watchlist === undefined) {
-              return undefined;
-            }
-            if (watchlist.find((i) => i.id === media_uuid[1]) !== undefined) {
-              usernames.push(u.username);
-            }
-          }
-
-          return usernames;
-        }
+        case 'watchlist_isListedByUsers':
         case 'watchlist_isWatchlisted': {
+          // returns the users that have this media item, or its parent, in
+          // their watchlist
           const parent = await getParent();
           const grandparent = await getGrandparent();
           const guid = grandparent
@@ -577,43 +543,18 @@ export class PlexGetterService {
             : parent
               ? parent.guid
               : metadata.guid;
-          const media_uuid = guid.match(/plex:\/\/[a-z]+\/([a-z0-9]+)$/);
 
-          const plexUsers: SimplePlexUser[] =
-            await this.plexApi.getCorrectedUsers();
+          const asBoolean = prop.name === 'watchlist_isWatchlisted';
+          const usernames = await this.getWatchlistedByUsernames(
+            guid,
+            asBoolean,
+          );
 
-          // When plex.tv is unreachable, no users will have UUIDs. This is a
-          // transient transport failure, so return `undefined` - `null` would
-          // read as "confirmed absent" and let the executor remove protected
-          // items (#3307).
-          if (
-            plexUsers.length > 0 &&
-            !plexUsers.some((u) => u.uuid !== undefined)
-          ) {
-            this.logger.warn(
-              'Unable to check watchlists: no user UUIDs available (plex.tv may be unreachable)',
-            );
+          if (usernames === undefined) {
             return undefined;
           }
 
-          for (const u of plexUsers.filter(
-            (u) => u.uuid !== undefined && media_uuid !== undefined,
-          )) {
-            const watchlist = await this.plexApi.getWatchlistIdsForUser(
-              u.uuid,
-              u.username,
-            );
-            // A failed fetch cannot confirm "not watchlisted", so surface it
-            // as transient instead of a false negative.
-            if (watchlist === undefined) {
-              return undefined;
-            }
-            if (watchlist.find((i) => i.id === media_uuid[1]) !== undefined) {
-              return true;
-            }
-          }
-
-          return false;
+          return asBoolean ? usernames.length > 0 : usernames;
         }
         case 'sw_seasonLastEpisodeAiredAt': {
           const parent = await getParent();
@@ -660,10 +601,8 @@ export class PlexGetterService {
           );
         }
         case 'rating_imdbShow': {
-          const showMetadata =
-            metadata.type === 'season'
-              ? await getParent()
-              : await getGrandparent();
+          const showMetadata = await getShowMetadata();
+          if (!showMetadata) return null;
 
           return (
             showMetadata.Rating?.find(
@@ -672,10 +611,8 @@ export class PlexGetterService {
           );
         }
         case 'rating_rottenTomatoesCriticShow': {
-          const showMetadata =
-            metadata.type === 'season'
-              ? await getParent()
-              : await getGrandparent();
+          const showMetadata = await getShowMetadata();
+          if (!showMetadata) return null;
 
           return (
             showMetadata.Rating?.find(
@@ -684,10 +621,8 @@ export class PlexGetterService {
           );
         }
         case 'rating_rottenTomatoesAudienceShow': {
-          const showMetadata =
-            metadata.type === 'season'
-              ? await getParent()
-              : await getGrandparent();
+          const showMetadata = await getShowMetadata();
+          if (!showMetadata) return null;
 
           return (
             showMetadata.Rating?.find(
@@ -697,10 +632,8 @@ export class PlexGetterService {
           );
         }
         case 'rating_tmdbShow': {
-          const showMetadata =
-            metadata.type === 'season'
-              ? await getParent()
-              : await getGrandparent();
+          const showMetadata = await getShowMetadata();
+          if (!showMetadata) return null;
 
           return (
             showMetadata.Rating?.find(
@@ -915,5 +848,69 @@ export class PlexGetterService {
       );
       return undefined;
     }
+  }
+
+  /**
+   * The users whose plex.tv watchlist holds the item behind `guid`.
+   *
+   * `undefined` means the answer could not be established and must not be read
+   * as "nobody" (#3307). `stopAtFirstMatch` skips the remaining lookups once a
+   * user matches, for the boolean property.
+   */
+  private async getWatchlistedByUsernames(
+    guid: string | undefined,
+    stopAtFirstMatch: boolean,
+  ): Promise<string[] | undefined> {
+    // Watchlist entries are keyed on the Plex agent id, so an item without one
+    // cannot be correlated with any watchlist. Transient rather than an empty
+    // answer: a definitive one would let unmatched and personal media match a
+    // "not watchlisted" rule.
+    const plexAgentId = PlexMapper.extractPlexAgentId(guid);
+    if (!plexAgentId) {
+      return undefined;
+    }
+
+    const plexUsers: SimplePlexUser[] = await this.plexApi.getCorrectedUsers();
+
+    // When plex.tv is unreachable, no users will have UUIDs. This is a
+    // transient transport failure, so return `undefined` - `null` would
+    // read as "confirmed absent" and let the executor remove protected
+    // items (#3307).
+    if (plexUsers.length > 0 && !plexUsers.some((u) => u.uuid !== undefined)) {
+      this.logger.warn(
+        'Unable to check watchlists: no user UUIDs available (plex.tv may be unreachable)',
+      );
+      return undefined;
+    }
+
+    const usernames: string[] = [];
+    for (const user of plexUsers.filter((u) => u.uuid !== undefined)) {
+      const watchlist = await this.plexApi.getWatchlistIdsForUser(
+        user.uuid,
+        user.username,
+      );
+
+      // A failed fetch would silently understate the list, so surface it as
+      // transient instead of a confirmed answer.
+      if (watchlist === undefined) {
+        return undefined;
+      }
+
+      // A watchlist Plex refuses to share is permanently unreadable, so skip
+      // that user and let the others still decide the rule - blocking on it
+      // stalls the whole rule forever (#3395).
+      if (watchlist === null) {
+        continue;
+      }
+
+      if (watchlist.some((entry) => entry.id === plexAgentId)) {
+        usernames.push(user.username);
+        if (stopAtFirstMatch) {
+          break;
+        }
+      }
+    }
+
+    return usernames;
   }
 }

@@ -1,5 +1,6 @@
 import type { EmailOptions } from 'email-templates';
 import path from 'path';
+import { escapeHtml } from '../../../utils/escapeHtml';
 import { MaintainerrLogger } from '../../logging/logs.service';
 import { SettingsDataService } from '../../settings/settings-data.service';
 import PreparedEmail from '../email/preparedEmail';
@@ -43,6 +44,15 @@ class EmailAgent implements NotificationAgent {
     return false;
   }
 
+  /**
+   * The templates render `body` unescaped so the line breaks below survive, so
+   * escaping has to happen here - the message carries media titles, collection
+   * names and requester names, none of which are trusted HTML.
+   */
+  private buildBody(message: string): string {
+    return escapeHtml(message).replaceAll('\n', '<br>');
+  }
+
   private buildMessage(
     type: NotificationType,
     payload: NotificationPayload,
@@ -55,7 +65,7 @@ class EmailAgent implements NotificationAgent {
           to: recipientEmail,
         },
         locals: {
-          body: payload.message.replaceAll('\n', '<br>'),
+          body: this.buildBody(payload.message),
           recipientEmail,
         },
       };
@@ -68,7 +78,7 @@ class EmailAgent implements NotificationAgent {
       },
       locals: {
         subject: payload.subject,
-        body: payload.message.replaceAll('\n', '<br>'),
+        body: this.buildBody(payload.message),
         extra: payload.extra ?? [],
         imageUrl: payload.image,
         timestamp: new Date().toTimeString(),

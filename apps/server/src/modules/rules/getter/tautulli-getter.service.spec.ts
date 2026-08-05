@@ -183,4 +183,28 @@ describe('TautulliGetterService', () => {
       ).resolves.toEqual(new Date(1_700_000_000 * 1000));
     });
   });
+
+  describe('when Tautulli cannot answer', () => {
+    const serviceWith = (tautulliApi: Partial<TautulliApiService>) =>
+      new TautulliGetterService(
+        tautulliApi as jest.Mocked<TautulliApiService>,
+        {} as jest.Mocked<PlexApiService>,
+        {
+          findOne: jest.fn().mockResolvedValue(createCollection({})),
+        } as unknown as jest.Mocked<Repository<Collection>>,
+        createMockLogger(),
+      );
+
+    // Reading through the null threw, which surfaced as the same transient
+    // signal behind a misleading "Action failed" warning.
+    it('stays transient when Tautulli returns no metadata', async () => {
+      const service = serviceWith({
+        getMetadata: jest.fn().mockResolvedValue(null),
+      });
+
+      await expect(
+        service.get(SEEN_BY, showItem, undefined, ruleGroup),
+      ).resolves.toBeUndefined();
+    });
+  });
 });

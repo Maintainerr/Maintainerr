@@ -99,6 +99,7 @@ A list of all available environment variables are below. No other env variables 
 | UI_PORT | 6246 | The listen port of the web server. |
 | BASE_PATH | (*none*) | If reverse proxying with a subfolder you'll want to set this. Must be in the format of `/subfolder` |
 | GITHUB_TOKEN | (*none*) | GitHub Personal Access Token for higher API rate limits |
+| CORS_ALLOWED_ORIGINS | (*none*) | Comma-separated list of origins allowed to call the API cross-origin, e.g. `https://maintainerr.example.com`. The bundled UI is served from the same origin as the API and does not need this; only set it if a separate front end calls the API. |
 
 # Features
 

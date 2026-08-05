@@ -156,3 +156,81 @@ describe('PlexTvApi.getDevices', () => {
     await expect(createApi().getDevices('client-123')).resolves.toEqual([]);
   });
 });
+
+describe('PlexTvApi.getUsers', () => {
+  const get = jest.fn();
+
+  const usersXml = (username: string) =>
+    `<?xml version="1.0" encoding="UTF-8"?><MediaContainer size="1">` +
+    `<User id="2" username="${username}" thumb="https://plex.tv/users/aaaaaaaaaaaaaaaa/avatar?c=1"/>` +
+    `</MediaContainer>`;
+
+  const createApi = () =>
+    new PlexTvApi(
+      'a-token',
+      createMockLogger() as unknown as MaintainerrLogger,
+    );
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    axios.create.mockReturnValue({ get });
+    (axiosRetry as unknown as jest.Mock).mockImplementation(() => undefined);
+    cacheManager.getCache('plextv').data.flushAll();
+  });
+
+  // plex.tv answers XML, which the response cache never holds, so the shared
+  // user list was re-fetched and re-parsed once per evaluated item.
+  it('reads plex.tv once and serves the parsed list from cache', async () => {
+    get.mockResolvedValue({ data: usersXml('alice') });
+    const api = createApi();
+
+    const first = await api.getUsers();
+    const second = await api.getUsers();
+
+    expect(get).toHaveBeenCalledTimes(1);
+    expect(second).toEqual(first);
+    expect(first.MediaContainer.User[0].$.username).toBe('alice');
+  });
+
+  // Rule evaluation resolves a whole batch of items at once, so a cold cache
+  // used to send one plex.tv request per item in the batch.
+  it('shares one request across callers that race a cold cache', async () => {
+    let release: (value: { data: string }) => void;
+    get.mockReturnValue(new Promise((resolve) => (release = resolve)));
+    const api = createApi();
+
+    const inFlight = [api.getUsers(), api.getUsers(), api.getUsers()];
+    release!({ data: usersXml('alice') });
+
+    for (const users of await Promise.all(inFlight)) {
+      expect(users.MediaContainer.User[0].$.username).toBe('alice');
+    }
+    expect(get).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not cache a failed fetch', async () => {
+    get.mockResolvedValueOnce({ data: undefined });
+    const api = createApi();
+
+    await expect(api.getUsers()).rejects.toThrow('Failed to fetch users');
+
+    get.mockResolvedValue({ data: usersXml('bob') });
+    await expect(api.getUsers()).resolves.toMatchObject({
+      MediaContainer: { User: [{ $: { username: 'bob' } }] },
+    });
+  });
+
+  it('re-reads plex.tv after the cache is flushed between rule runs', async () => {
+    get.mockResolvedValue({ data: usersXml('alice') });
+    const api = createApi();
+    await api.getUsers();
+
+    cacheManager.flushAll();
+    get.mockResolvedValue({ data: usersXml('carol') });
+
+    await expect(api.getUsers()).resolves.toMatchObject({
+      MediaContainer: { User: [{ $: { username: 'carol' } }] },
+    });
+    expect(get).toHaveBeenCalledTimes(2);
+  });
+});

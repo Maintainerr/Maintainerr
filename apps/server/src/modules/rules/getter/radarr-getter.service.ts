@@ -73,13 +73,18 @@ export class RadarrGetterService {
       );
 
       if (lookupCandidates.length === 0) {
-        this.logger.warn(
-          `Failed to resolve external IDs for '${libItem.title}' (media server ID '${libItem.id}'). As a result, no Radarr query could be made.`,
-        );
-        // An empty resolution cannot distinguish "item has no provider ids"
-        // from a transient TMDB/TVDB failure (validation runs online), so it
-        // must stay `undefined` - `null` would defeat the transient-removal
-        // guard and wipe collections during an internet outage (#3307).
+        // An item the media server gave no external IDs for can never resolve,
+        // so log it quietly rather than warning about it every run. The answer
+        // stays transient either way: "we could not look it up" is not the same
+        // claim as "it is not there", and a definitive one would let unmatched
+        // and personal media match NOT_EXISTS rules.
+        const message = `Failed to resolve external IDs for '${libItem.title}' (media server ID '${libItem.id}'). As a result, no Radarr query could be made.`;
+        if (this.metadataService.hasExternalIds(libItem)) {
+          this.logger.warn(message);
+        } else {
+          this.logger.debug(message);
+        }
+
         return undefined;
       }
 

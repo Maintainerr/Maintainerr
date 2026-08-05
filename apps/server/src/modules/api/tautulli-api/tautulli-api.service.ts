@@ -108,6 +108,12 @@ export class TautulliApiService {
   }
 
   public init() {
+    // Drop the previous client first. Without this, removing Tautulli from
+    // settings left the old one in place and the app kept querying an
+    // integration the user had deleted, until the next restart. Tracearr and
+    // Streamystats already reset this way.
+    this.api = undefined;
+
     if (!this.settings.tautulli_url) {
       return;
     }

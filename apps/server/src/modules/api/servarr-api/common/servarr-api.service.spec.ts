@@ -22,7 +22,12 @@ describe('ServarrApi', () => {
     );
   });
 
-  it('returns diskspace mounts unchanged when root folders are unavailable', async () => {
+  // This used to tolerate a failed root folder read and return the disk space
+  // mounts alone. Measured against a real Radarr, that shape reported 3.9 GB
+  // free where the instance had 15.4 - the missing side only ever understates
+  // free space, which is exactly what fires a "delete when space runs low"
+  // rule. Both reads now have to succeed.
+  it('throws when the root folder read fails, rather than reporting a partial view', async () => {
     const diskspace: ArrDiskspaceResource[] = [
       {
         id: 1,
@@ -37,8 +42,49 @@ describe('ServarrApi', () => {
     jest.spyOn(api as any, 'getDiskspace').mockResolvedValue(diskspace);
     jest.spyOn(api as any, 'getRootFolders').mockResolvedValue(undefined);
 
+    await expect(api.getDiskspaceAndRootFolders()).rejects.toThrow(
+      'Failed to read disk space',
+    );
+  });
+
+  it('merges root folders the disk space read omitted', async () => {
+    jest.spyOn(api as any, 'getDiskspace').mockResolvedValue([
+      {
+        id: 1,
+        path: '/movies',
+        label: null,
+        freeSpace: 100,
+        totalSpace: 200,
+        hasAccurateTotalSpace: true,
+      },
+    ]);
+    jest
+      .spyOn(api as any, 'getRootFolders')
+      .mockResolvedValue([{ id: 2, path: '/tv', freeSpace: 50 }]);
+
+    const { mounts, rootFolderPaths } = await api.getDiskspaceAndRootFolders();
+
+    expect(mounts.map((mount) => mount.path)).toEqual(['/movies', '/tv']);
+    expect(rootFolderPaths).toEqual(new Set(['/tv']));
+  });
+
+  // An empty mount list reads as "this instance has no disks", which a
+  // free-space rule then acts on. Only a genuine answer may say that.
+  it('throws instead of reporting no mounts when the disk space read fails', async () => {
+    jest.spyOn(api as any, 'getDiskspace').mockResolvedValue(undefined);
+    jest.spyOn(api as any, 'getRootFolders').mockResolvedValue([]);
+
+    await expect(api.getDiskspaceAndRootFolders()).rejects.toThrow(
+      'Failed to read disk space',
+    );
+  });
+
+  it('reports an instance that genuinely has no disks as empty', async () => {
+    jest.spyOn(api as any, 'getDiskspace').mockResolvedValue([]);
+    jest.spyOn(api as any, 'getRootFolders').mockResolvedValue([]);
+
     await expect(api.getDiskspaceAndRootFolders()).resolves.toEqual({
-      mounts: diskspace,
+      mounts: [],
       rootFolderPaths: new Set(),
     });
   });

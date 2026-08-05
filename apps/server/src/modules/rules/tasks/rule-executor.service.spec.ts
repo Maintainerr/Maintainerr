@@ -26,6 +26,7 @@ describe('RuleExecutorService', () => {
     const rulesService = {
       getRuleGroup: jest.fn(),
       getRuleGroupById: jest.fn(),
+      getUnavailableApplications: jest.fn().mockResolvedValue([]),
       resetCacheIfGroupUsesRuleThatRequiresIt: jest.fn(),
       getExclusions: jest.fn().mockResolvedValue([]),
     } as unknown as jest.Mocked<RulesService>;
@@ -1414,6 +1415,46 @@ describe('RuleExecutorService', () => {
       MaintainerrEvent.RuleHandler_Failed,
       expect.anything(),
     );
+  });
+
+  // The per-item transient path already holds the collection and retries; the
+  // only thing missing was telling the user which integration is absent.
+  it('warns which integration is unavailable, and still runs', async () => {
+    const { service, rulesService, mediaServerFactory, logger } = createService(
+      MediaServerType.PLEX,
+    );
+
+    rulesService.getRuleGroup.mockResolvedValue({
+      id: 56,
+      name: 'Unwatched in Tautulli',
+      isActive: true,
+      libraryId: 'library-1',
+      useRules: true,
+      collection: { id: 2, title: 'Movies' },
+      rules: [
+        {
+          ruleJson: JSON.stringify({
+            operator: null,
+            action: 0,
+            section: 0,
+            firstVal: [Application.TAUTULLI, 3],
+            customVal: { ruleTypeId: 0, value: '0' },
+          }),
+        },
+      ],
+    } as any);
+    rulesService.getUnavailableApplications.mockResolvedValue([
+      Application.TAUTULLI,
+    ]);
+    mediaServerFactory.verifyConnection.mockRejectedValue(new Error('stop'));
+
+    await service.executeForRuleGroups(56, new AbortController().signal);
+
+    expect(logger.warn).toHaveBeenCalledWith(
+      expect.stringContaining('Tautulli'),
+    );
+    // The run itself is untouched: the getters still decide per item.
+    expect(mediaServerFactory.verifyConnection).toHaveBeenCalledTimes(1);
   });
 
   it('does not emit started and still cleans up when execution was already aborted before starting', async () => {

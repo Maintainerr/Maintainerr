@@ -1,4 +1,5 @@
 import { Mocked, TestBed } from '@suites/unit';
+import { MaintainerrLoggerFactory } from '../../logging/logs.service';
 import { SettingsDataService } from '../../settings/settings-data.service';
 import cacheManager from '../lib/cache';
 import { SEERR_REQUESTS_CACHE_ID } from './seerr-api.constants';
@@ -507,5 +508,40 @@ describe('SeerrApiService', () => {
         'alice',
       ]);
     });
+  });
+});
+
+describe('SeerrApiService.init lifecycle', () => {
+  let service: SeerrApiService;
+  let settings: Mocked<SettingsDataService>;
+
+  beforeEach(async () => {
+    const { unit, unitRef } = await TestBed.solitary(SeerrApiService).compile();
+    service = unit;
+    settings = unitRef.get(
+      SettingsDataService,
+    ) as unknown as Mocked<SettingsDataService>;
+    unitRef.get(MaintainerrLoggerFactory).createLogger.mockReturnValue({
+      setContext: jest.fn(),
+      log: jest.fn(),
+      warn: jest.fn(),
+      error: jest.fn(),
+      debug: jest.fn(),
+    } as never);
+  });
+
+  // Removing Seerr from settings left the previous client in place, so the app
+  // kept querying an integration the user had deleted until the next restart.
+  it('drops the client when the settings are removed', () => {
+    settings.seerr_url = 'http://seerr.local';
+    settings.seerr_api_key = 'key';
+    service.init();
+    expect(service.api).toBeDefined();
+
+    settings.seerr_url = null;
+    settings.seerr_api_key = null;
+    service.init();
+
+    expect(service.api).toBeUndefined();
   });
 });
