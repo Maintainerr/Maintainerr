@@ -1134,16 +1134,25 @@ export class SettingsOperationsService {
   private normalizePlexServerConnectionSettings({
     hostname,
     port,
+    fallbackSsl,
   }: {
     hostname: string | null | undefined;
     port: number | null | undefined;
+    fallbackSsl: number | null | undefined;
   }) {
     const normalizedHostnameInput = hostname?.trim().toLowerCase();
     const normalizedHostname = this.stripPlexProtocolPrefix(
       normalizedHostnameInput,
     );
+    // Only a scheme prefix or port 443 says anything about TLS. The stored
+    // hostname is always bare and auto-discovery stores plex.direct hosts on
+    // 32400 with ssl=1, so a bare hostname must not downgrade fallbackSsl.
     const normalizedSsl =
-      normalizedHostnameInput?.startsWith('https://') || port === 443 ? 1 : 0;
+      normalizedHostnameInput?.startsWith('https://') || port === 443
+        ? 1
+        : normalizedHostnameInput?.startsWith('http://')
+          ? 0
+          : (fallbackSsl ?? 0);
 
     return {
       hostname: normalizedHostname,
@@ -1166,10 +1175,12 @@ export class SettingsOperationsService {
     const normalizedCurrent = this.normalizePlexServerConnectionSettings({
       hostname: currentSettings.plex_hostname,
       port: currentSettings.plex_port,
+      fallbackSsl: currentSettings.plex_ssl,
     });
     const normalizedNext = this.normalizePlexServerConnectionSettings({
       hostname: nextSettings.plex_hostname,
       port: nextSettings.plex_port,
+      fallbackSsl: nextSettings.plex_ssl,
     });
 
     return (
@@ -1234,6 +1245,7 @@ export class SettingsOperationsService {
         this.normalizePlexServerConnectionSettings({
           hostname: merged.plex_hostname,
           port: merged.plex_port,
+          fallbackSsl: merged.plex_ssl,
         });
 
       merged.plex_hostname = normalizedPlexServerSettings.hostname;

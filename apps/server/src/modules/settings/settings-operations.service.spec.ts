@@ -291,6 +291,46 @@ describe('SettingsOperationsService', () => {
     );
   });
 
+  it('keeps plex_ssl when a partial update omits the Plex connection fields', async () => {
+    settingsRepo.findOne.mockResolvedValue(
+      createSettings({
+        plex_hostname: 'abc.plex.direct',
+        plex_port: 32400,
+        plex_ssl: 1,
+      }),
+    );
+
+    const response = await service.patchSettings({
+      applicationTitle: 'Maintainerr Dev',
+    });
+
+    expect(response).toEqual({ status: 'OK', code: 1, message: 'Success' });
+    expect(settingsDataService.saveSettings).toHaveBeenCalledWith(
+      expect.objectContaining({
+        plex_hostname: 'abc.plex.direct',
+        plex_port: 32400,
+        plex_ssl: 1,
+      }),
+    );
+  });
+
+  it('lets an explicit plex_ssl update turn ssl off for a bare hostname', async () => {
+    settingsRepo.findOne.mockResolvedValue(
+      createSettings({
+        plex_hostname: 'abc.plex.direct',
+        plex_port: 32400,
+        plex_ssl: 1,
+      }),
+    );
+
+    const response = await service.patchSettings({ plex_ssl: 0 });
+
+    expect(response).toEqual({ status: 'OK', code: 1, message: 'Success' });
+    expect(settingsDataService.saveSettings).toHaveBeenCalledWith(
+      expect.objectContaining({ plex_ssl: 0 }),
+    );
+  });
+
   it('returns a clear Plex auth message before calling the Plex API test endpoint', async () => {
     settingsDataService.plex_auth_token = null;
 
