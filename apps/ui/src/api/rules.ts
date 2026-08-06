@@ -1,6 +1,5 @@
 import type {
   ArrDiskspaceResource,
-  BulkExclusionResponse,
   MediaServerCollectionSort,
 } from '@maintainerr/contracts'
 import {
@@ -15,7 +14,6 @@ import {
   useQueryClient,
   UseQueryOptions,
 } from '@tanstack/react-query'
-import { chunk } from 'lodash-es'
 import type { IRule } from '../components/Rules/Rule/RuleCreator'
 import type { IRuleGroup } from '../components/Rules/RuleGroup'
 import type { AgentConfiguration } from '../components/Settings/Notifications/CreateNotificationModal'
@@ -191,48 +189,6 @@ export const useRuleConstants = (options?: UseRuleConstantsOptions) => {
 }
 
 export type UseRuleConstants = ReturnType<typeof useRuleConstants>
-
-// Kept well below BULK_EXCLUSION_MAX_ITEMS: each excluded show cascades to
-// all of its seasons and episodes server-side, so smaller requests keep every
-// call comfortably inside reverse-proxy timeouts and let a selection larger
-// than one request cap still succeed as a whole.
-const BULK_EXCLUSION_REQUEST_CHUNK = 25
-
-export const postBulkExclusions = async (
-  mediaIds: string[],
-): Promise<BulkExclusionResponse> => {
-  const results: BulkExclusionResponse['results'] = []
-  const batches = chunk(mediaIds, BULK_EXCLUSION_REQUEST_CHUNK)
-
-  for (const [index, batch] of batches.entries()) {
-    try {
-      const response = await PostApiHandler<BulkExclusionResponse>(
-        '/rules/exclusions/bulk',
-        { mediaIds: batch },
-      )
-      results.push(...response.results)
-    } catch {
-      // Earlier chunks are already persisted server-side, so a transport
-      // failure must not reject the aggregate: report this and every
-      // unattempted batch as per-item failures instead.
-      for (const remaining of batches.slice(index)) {
-        for (const mediaId of remaining) {
-          results.push({ mediaId, code: 0, message: 'Failed - request error' })
-        }
-      }
-      break
-    }
-  }
-
-  return { results }
-}
-
-export const useBulkExcludeMedia = () => {
-  return useMutation<BulkExclusionResponse, Error, string[]>({
-    mutationKey: ['rules', 'exclusions', 'bulk'],
-    mutationFn: postBulkExclusions,
-  })
-}
 
 export type { ArrDiskspaceResource } from '@maintainerr/contracts'
 

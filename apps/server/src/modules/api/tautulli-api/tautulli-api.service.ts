@@ -1,7 +1,7 @@
 import { BasicResponseDto } from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
 import { AxiosError } from 'axios';
-import _ from 'lodash';
+import { unionBy } from 'lodash';
 import { SettingsDataService } from '../../..//modules/settings/settings-data.service';
 import {
   CONNECTION_TEST_TIMEOUT_MS,
@@ -193,7 +193,7 @@ export class TautulliApiService {
       let currentPage = 1;
 
       let results: TautulliHistoryItem[] = [];
-      results = _.unionBy(
+      results = unionBy(
         results,
         data && data.data && data.data && data.data.length ? data.data : [],
         'id',
@@ -206,7 +206,7 @@ export class TautulliApiService {
 
           currentPage++;
 
-          results = _.unionBy(
+          results = unionBy(
             results,
             data && data.data && data.data && data.data.length ? data.data : [],
             'id',

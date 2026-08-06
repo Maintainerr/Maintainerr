@@ -5,23 +5,30 @@ import ExecuteButton from '../../Common/ExecuteButton'
 interface CollectionDetailControlRowProps {
   canTestMedia: boolean
   onOpenTestMedia: () => void
+  actions?: ReactNode
   children?: ReactNode
 }
 
 const CollectionDetailControlRow = ({
   canTestMedia,
   onOpenTestMedia,
+  actions,
   children,
 }: CollectionDetailControlRowProps) => {
-  if (!canTestMedia && !children) {
+  if (!canTestMedia && !actions && !children) {
     return null
   }
 
   return (
     <PageControlRow
       actions={
-        canTestMedia ? (
-          <ExecuteButton onClick={onOpenTestMedia} text="Test Media" />
+        canTestMedia || actions ? (
+          <>
+            {canTestMedia ? (
+              <ExecuteButton onClick={onOpenTestMedia} text="Test Media" />
+            ) : null}
+            {actions}
+          </>
         ) : undefined
       }
       controls={children}

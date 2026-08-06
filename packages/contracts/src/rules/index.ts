@@ -1,5 +1,4 @@
 export * from './arrDiskspaceResource'
-export * from './bulkExclusion'
 export * from './constants'
 export * from './execute'
 export * from './rule'

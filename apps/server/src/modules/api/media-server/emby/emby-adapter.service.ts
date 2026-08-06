@@ -17,7 +17,7 @@ import {
   type WatchRecord,
 } from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
-import { type AxiosInstance, AxiosError } from 'axios';
+import { type AxiosInstance, AxiosError, isAxiosError } from 'axios';
 import { formatConnectionFailureMessage } from '../../../../utils/connection-error';
 import { MaintainerrLogger } from '../../../logging/logs.service';
 import { SettingsDataService } from '../../../settings/settings-data.service';
@@ -455,17 +455,15 @@ export class EmbyAdapterService implements IMediaServerService {
     cacheKey: string,
   ): Promise<MediaItem | undefined> {
     try {
-      // Emby's /Users/{userId}/Items/{itemId} returns user-specific data.
-      // When no user context, fall back to /Items/{itemId}.
-      const path = this.embyUserId
-        ? `/Users/${this.embyUserId}/Items/${itemId}`
-        : `/Items/${itemId}`;
-      const { data } = await this.http.get<EmbyBaseItemDto>(path, {
-        params: {
-          Fields:
-            'ProviderIds,DateCreated,Overview,Tags,MediaSources,Genres,People,Studios',
-        },
-      });
+      const data = await this.fetchItem(
+        itemId,
+        'ProviderIds,DateCreated,Overview,Tags,MediaSources,Genres,People,Studios',
+      );
+
+      if (!data) {
+        return undefined;
+      }
+
       const mediaItem = EmbyMapper.toMediaItem(data);
       this.cache.data.set(cacheKey, mediaItem, EMBY_CACHE_TTL.METADATA);
       return mediaItem;
@@ -1620,21 +1618,41 @@ export class EmbyAdapterService implements IMediaServerService {
     }
 
     try {
-      // User-scope the lookup like every other single-item read in this
-      // adapter (e.g. getMetadata): Emby returns 404 on the unscoped
-      // /Items/{id} route for an item that exists, which would otherwise make
-      // a still-present item look deleted.
-      const path = this.embyUserId
-        ? `/Users/${this.embyUserId}/Items/${itemId}`
-        : `/Items/${itemId}`;
-      const { data } = await this.http.get<EmbyBaseItemDto>(path);
-      return Boolean(data?.Id);
+      return Boolean(await this.fetchItem(itemId));
     } catch (error) {
-      if (error instanceof AxiosError && error.response?.status === 404) {
+      if (isAxiosError(error) && error.response?.status === 404) {
         return false;
       }
+      // Anything else is inconclusive and must not read as "deleted".
       throw error;
     }
+  }
+
+  /**
+   * `emby_user_id` is optional, and Emby answers **404 on the unscoped
+   * `/Items/{id}` route for an item that exists** - which `itemExists` read as
+   * deleted. Resolve a user instead, as every other single-item read here does.
+   * The list form resolves without a user but answers a trimmed item (7 fields
+   * against this route's 31, no ChildCount even when asked for), so it cannot
+   * stand in for a metadata read. With no user at all the lookup is
+   * inconclusive, which the caller must not read as "deleted".
+   */
+  private async fetchItem(
+    itemId: string,
+    fields?: string,
+  ): Promise<EmbyBaseItemDto | undefined> {
+    const userId = await this.resolveUserId();
+    if (!userId) {
+      throw new Error(
+        `Emby has no user to scope the lookup of item ${itemId} to`,
+      );
+    }
+
+    const path = `/Users/${userId}/Items/${itemId}`;
+    const { data } = await (fields
+      ? this.http.get<EmbyBaseItemDto>(path, { params: { Fields: fields } })
+      : this.http.get<EmbyBaseItemDto>(path));
+    return data?.Id ? data : undefined;
   }
 
   // ============================================================================

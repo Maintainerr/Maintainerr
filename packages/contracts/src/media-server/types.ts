@@ -101,6 +101,7 @@ export interface MediaItem {
   maintainerrExclusionType?: 'specific' | 'global'
   maintainerrExclusionId?: number
   maintainerrIsManual?: boolean
+  maintainerrCollections?: string[]
 }
 
 export interface MaintainerrMediaStatusEntry {

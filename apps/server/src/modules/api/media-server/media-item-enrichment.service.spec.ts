@@ -126,6 +126,35 @@ describe('MediaItemEnrichmentService', () => {
     ]);
   });
 
+  it('names the collections an item is in, once each and sorted', async () => {
+    const movie = {
+      id: 'movie-1',
+      title: 'Movie',
+      guid: 'movie-guid',
+      type: 'movie',
+      addedAt: new Date(),
+      providerIds: {},
+      mediaSources: [],
+      library: { id: 'library-1', title: 'Movies' },
+    } satisfies MediaItem;
+
+    exclusionRepo.find.mockResolvedValue([]);
+    collectionMediaRepo.find.mockResolvedValue([
+      { mediaServerId: 'movie-1', collection: { title: 'Watched movies' } },
+      { mediaServerId: 'movie-1', collection: { title: 'Stale movies' } },
+      // a second membership of the same collection, and one with no title
+      { mediaServerId: 'movie-1', collection: { title: 'Stale movies' } },
+      { mediaServerId: 'movie-1', collection: { title: '  ' } },
+    ] as CollectionMedia[]);
+
+    await expect(service.enrichItems([movie])).resolves.toEqual([
+      {
+        ...movie,
+        maintainerrCollections: ['Stale movies', 'Watched movies'],
+      },
+    ]);
+  });
+
   it('returns items unchanged when no maintainerr state exists', async () => {
     const movie = {
       id: 'movie-1',

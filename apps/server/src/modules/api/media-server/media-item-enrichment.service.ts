@@ -15,6 +15,11 @@ interface ExclusionState {
   type: 'global' | 'specific';
 }
 
+interface CollectionMembership {
+  manuallyIncludedIds: Set<string>;
+  collectionTitles: Map<string, string[]>;
+}
+
 @Injectable()
 export class MediaItemEnrichmentService {
   constructor(
@@ -46,9 +51,9 @@ export class MediaItemEnrichmentService {
       return items;
     }
 
-    const [exclusionMap, manuallyIncludedItemIds] = await Promise.all([
+    const [exclusionMap, membership] = await Promise.all([
       this.fetchExclusionMap(relationIds),
-      this.fetchManuallyIncludedItemIds(directIds),
+      this.fetchCollectionMembership(directIds),
     ]);
 
     return items.map((item) => {
@@ -60,9 +65,10 @@ export class MediaItemEnrichmentService {
       const exclusion = itemRelationIds
         .map((id) => exclusionMap.get(id))
         .find((value): value is ExclusionState => value !== undefined);
-      const isManuallyIncluded = manuallyIncludedItemIds.has(item.id);
+      const isManuallyIncluded = membership.manuallyIncludedIds.has(item.id);
+      const collections = membership.collectionTitles.get(item.id);
 
-      if (!exclusion && !isManuallyIncluded) {
+      if (!exclusion && !isManuallyIncluded && !collections) {
         return item;
       }
 
@@ -79,6 +85,7 @@ export class MediaItemEnrichmentService {
               maintainerrIsManual: true,
             }
           : {}),
+        ...(collections ? { maintainerrCollections: collections } : {}),
       };
     });
   }
@@ -150,23 +157,45 @@ export class MediaItemEnrichmentService {
     return map;
   }
 
-  private async fetchManuallyIncludedItemIds(
+  /** The manual set is a subset of the same rows, so it costs no second read. */
+  private async fetchCollectionMembership(
     ids: string[],
-  ): Promise<Set<string>> {
+  ): Promise<CollectionMembership> {
     const collectionMedia = await this.collectionMediaRepo.find({
-      where: {
-        mediaServerId: In(ids),
-        manualMembershipSource: Not(IsNull()),
-      },
+      where: { mediaServerId: In(ids) },
+      relations: { collection: true },
+    });
+    const manuallyIncludedIds = new Set<string>();
+    const collectionTitles = new Map<string, string[]>();
+
+    collectionMedia.forEach((item) => {
+      if (!item.mediaServerId) {
+        return;
+      }
+
+      if (item.manualMembershipSource != null) {
+        manuallyIncludedIds.add(item.mediaServerId);
+      }
+
+      const title = item.collection?.title?.trim();
+      if (!title) {
+        return;
+      }
+
+      const titles = collectionTitles.get(item.mediaServerId) ?? [];
+      if (!titles.includes(title)) {
+        titles.push(title);
+        collectionTitles.set(item.mediaServerId, titles);
+      }
     });
 
-    return new Set(
-      collectionMedia
-        .map((item) => item.mediaServerId)
-        .filter((mediaServerId): mediaServerId is string =>
-          Boolean(mediaServerId),
-        ),
+    collectionTitles.forEach((titles) =>
+      titles.sort((leftTitle, rightTitle) =>
+        leftTitle.localeCompare(rightTitle),
+      ),
     );
+
+    return { manuallyIncludedIds, collectionTitles };
   }
 
   private async buildExcludedFromEntries(

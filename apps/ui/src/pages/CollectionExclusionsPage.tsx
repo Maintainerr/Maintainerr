@@ -9,7 +9,6 @@ const CollectionExclusionsPage = () => {
   return (
     <CollectionExclusions
       collection={collection}
-      libraryId={collection.libraryId}
       canTestMedia={canTestMedia}
       onOpenTestMedia={openMediaTestModal}
     />

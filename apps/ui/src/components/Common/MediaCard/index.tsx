@@ -1,16 +1,12 @@
 import { Transition } from '@headlessui/react'
-import { DocumentAddIcon, DocumentRemoveIcon } from '@heroicons/react/solid'
 import { MediaItemType, type MediaProviderIds } from '@maintainerr/contracts'
 import React, { memo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { mediaTypeLabel } from '../../../utils/mediaTypeUtils'
-import AddModal from '../../AddModal'
 import type { ICollection } from '../../Collection'
 import RemoveFromCollectionButton from '../../Collection/CollectionDetail/RemoveFromCollectionButton'
-import Button from '../Button'
 import PosterCard from '../Poster/PosterCard'
 import MediaModalContent from './MediaModal'
-import { invalidateMaintainerrStatusDetails } from './maintainerrStatus'
 
 const mediaBadgeClasses = {
   movie: 'bg-zinc-900',
@@ -28,9 +24,9 @@ const renderBadge = (
 ) => (
   <div className={className}>
     <div
-      className={`pointer-events-none z-40 rounded-full shadow-sm ${tone === 'danger' ? 'bg-error-700' : mediaBadgeClasses[tone]}`}
+      className={`pointer-events-none z-40 min-w-0 rounded-full shadow-sm ${tone === 'danger' ? 'bg-error-700' : mediaBadgeClasses[tone]}`}
     >
-      <div className="flex h-4 items-center px-2 py-2 text-center text-xs font-medium tracking-wider text-zinc-200 uppercase sm:h-5">
+      <div className="flex h-4 min-w-0 items-center px-2 py-2 text-center text-xs font-medium tracking-wider text-zinc-200 uppercase sm:h-5">
         {label}
       </div>
     </div>
@@ -47,20 +43,20 @@ interface IMediaCard {
   episodeNumber?: number
   episodeTitle?: string
   providerIds?: MediaProviderIds
-  libraryId?: string
-  type?: MediaItemType
   collectionPage: boolean
   daysLeft?: number
   exclusionId?: number
   exclusionType?: 'global' | 'specific' | undefined
   collectionId?: number
   collection?: ICollection
+  collections?: string[]
   isManual?: boolean
   onRemove?: (id: string) => void
   onItemPostponed?: (id: string, addDate: string) => void
   selectionMode?: boolean
   selected?: boolean
   onToggleSelection?: (mediaId: string, selected: boolean) => void
+  forceStatusLoad?: boolean
 }
 
 const MediaCard: React.FC<IMediaCard> = ({
@@ -72,8 +68,6 @@ const MediaCard: React.FC<IMediaCard> = ({
   seasonNumber,
   episodeNumber,
   episodeTitle,
-  libraryId,
-  type,
   collectionId = 0,
   daysLeft = 9999,
   exclusionId = undefined,
@@ -81,19 +75,18 @@ const MediaCard: React.FC<IMediaCard> = ({
   collectionPage = false,
   exclusionType = undefined,
   collection = undefined,
+  collections,
   isManual = false,
   onRemove = () => {},
   onItemPostponed,
   selectionMode = false,
   selected = false,
   onToggleSelection,
+  forceStatusLoad = false,
 }) => {
   const navigate = useNavigate()
   const [showDetail, setShowDetail] = useState(false)
-  const [excludeModal, setExcludeModal] = useState(false)
-  const [addModal, setAddModal] = useState(false)
   const [showMediaModal, setShowMediaModal] = useState(false)
-  const [statusShouldRefetch, setStatusShouldRefetch] = useState(false)
   const displayYear = year && mediaType !== 'episode' ? year.slice(0, 4) : year
 
   const handleStatusLink = (targetPath: string) => {
@@ -107,35 +100,6 @@ const MediaCard: React.FC<IMediaCard> = ({
 
   return (
     <div className={'w-full'}>
-      {excludeModal ? (
-        <AddModal
-          mediaServerId={id}
-          {...(libraryId ? { libraryId: libraryId } : {})}
-          {...(type ? { type: type } : {})}
-          onSubmit={() => {
-            invalidateMaintainerrStatusDetails(id)
-            setStatusShouldRefetch(true)
-            setExcludeModal(false)
-          }}
-          onCancel={() => setExcludeModal(false)}
-          modalType="exclude"
-        />
-      ) : undefined}
-
-      {addModal ? (
-        <AddModal
-          mediaServerId={id}
-          {...(libraryId ? { libraryId: libraryId } : {})}
-          {...(type ? { type: type } : {})}
-          onSubmit={() => {
-            invalidateMaintainerrStatusDetails(id)
-            setStatusShouldRefetch(true)
-            setAddModal(false)
-          }}
-          onCancel={() => setAddModal(false)}
-          modalType="add"
-        />
-      ) : undefined}
       <PosterCard
         mediaType={mediaType}
         providerIds={providerIds}
@@ -183,6 +147,18 @@ const MediaCard: React.FC<IMediaCard> = ({
                   'MANUAL',
                   mediaType,
                   'absolute bottom-0 left-1/2 flex -translate-x-1/2 transform items-center justify-between p-2',
+                )
+              : undefined}
+
+            {!collectionPage && collections?.length && !showDetail
+              ? renderBadge(
+                  <span className="truncate" title={collections.join(', ')}>
+                    {collections.length > 1
+                      ? `${collections[0]} +${collections.length - 1}`
+                      : collections[0]}
+                  </span>,
+                  'info',
+                  'absolute inset-x-0 bottom-0 flex justify-center p-2',
                 )
               : undefined}
 
@@ -255,40 +231,9 @@ const MediaCard: React.FC<IMediaCard> = ({
                       </div>
                     )}
 
-                    {!collectionPage ? (
-                      !selectionMode ? (
-                        <div>
-                          <Button
-                            buttonType="twin-primary-l"
-                            buttonSize="md"
-                            className="mt-2 mb-1 h-6 w-1/2 text-zinc-200 shadow-md"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              setAddModal(true)
-                            }}
-                          >
-                            {<DocumentAddIcon className="m-auto ml-3 h-3" />}{' '}
-                            <p className="rules-button-text m-auto mr-2">
-                              {'Add'}
-                            </p>
-                          </Button>
-                          <Button
-                            buttonSize="md"
-                            buttonType="twin-primary-r"
-                            className="mt-2 h-6 w-1/2"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              setExcludeModal(true)
-                            }}
-                          >
-                            {<DocumentRemoveIcon className="m-auto ml-3 h-3" />}{' '}
-                            <p className="rules-button-text m-auto mr-2">
-                              {'Excl'}
-                            </p>
-                          </Button>
-                        </div>
-                      ) : null
-                    ) : (
+                    {/* Selection mode makes the whole card a checkbox, so its
+                        own action would fire on the click that picks it. */}
+                    {collectionPage && !selectionMode ? (
                       <RemoveFromCollectionButton
                         mediaServerId={id}
                         popup={exclusionType && exclusionType === 'global'}
@@ -296,7 +241,7 @@ const MediaCard: React.FC<IMediaCard> = ({
                         collectionId={collectionId}
                         exclusionId={exclusionId}
                       />
-                    )}
+                    ) : null}
                   </div>
                 </div>
               </div>
@@ -304,7 +249,7 @@ const MediaCard: React.FC<IMediaCard> = ({
           </>
         )}
       </PosterCard>
-      {!addModal && !excludeModal && showMediaModal && (
+      {showMediaModal && (
         <MediaModalContent
           id={id}
           onClose={() => setShowMediaModal(false)}
@@ -318,7 +263,7 @@ const MediaCard: React.FC<IMediaCard> = ({
           exclusionType={exclusionType}
           collection={collection}
           isManual={isManual}
-          forceStatusLoad={statusShouldRefetch}
+          forceStatusLoad={forceStatusLoad}
           onStatusLink={handleStatusLink}
           onCollectionItemRemoved={() => {
             onRemove(id.toString())

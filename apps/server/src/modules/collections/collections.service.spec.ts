@@ -3411,6 +3411,180 @@ describe('CollectionsService', () => {
     });
   });
 
+  describe('bulkMediaCollectionAction', () => {
+    beforeEach(() => {
+      collectionRepo.findOne.mockResolvedValue({ id: 7, type: 'movie' } as any);
+      mediaServer.itemExists.mockResolvedValue(true);
+      mediaServer.getAllIdsForContextAction.mockImplementation(
+        async (_type, _context, mediaId) => [mediaId],
+      );
+    });
+
+    // Parallel first adds each create their own media server collection.
+    it('writes the whole selection in one batched call, never one per item', async () => {
+      const addInternal = jest
+        .spyOn(service as any, 'addToCollectionInternal')
+        .mockResolvedValue({
+          collection: createCollection(),
+          serverRejectedIds: [],
+        });
+
+      await expect(
+        service.bulkMediaCollectionAction(
+          ['movie-1', 'movie-2', 'movie-1'],
+          7,
+          'add',
+          'movie',
+        ),
+      ).resolves.toEqual({
+        results: [
+          { mediaId: 'movie-1', code: 1 },
+          { mediaId: 'movie-2', code: 1 },
+        ],
+      });
+      expect(addInternal).toHaveBeenCalledTimes(1);
+      expect(addInternal).toHaveBeenCalledWith(
+        7,
+        [{ mediaServerId: 'movie-1' }, { mediaServerId: 'movie-2' }],
+        true,
+      );
+    });
+
+    it('reports only the items the media server refused', async () => {
+      jest.spyOn(service as any, 'addToCollectionInternal').mockResolvedValue({
+        collection: createCollection(),
+        serverRejectedIds: ['movie-2'],
+      });
+
+      await expect(
+        service.bulkMediaCollectionAction(
+          ['movie-1', 'movie-2'],
+          7,
+          'add',
+          'movie',
+        ),
+      ).resolves.toEqual({
+        results: [
+          { mediaId: 'movie-1', code: 1 },
+          {
+            mediaId: 'movie-2',
+            code: 0,
+            message: 'Failed - refused by the media server',
+          },
+        ],
+      });
+    });
+
+    it('refuses to add an id the media server does not hold', async () => {
+      const addInternal = jest.spyOn(service as any, 'addToCollectionInternal');
+      mediaServer.itemExists.mockResolvedValue(false);
+
+      await expect(
+        service.bulkMediaCollectionAction(['ghost-1'], 7, 'add', 'movie'),
+      ).resolves.toEqual({
+        results: [
+          {
+            mediaId: 'ghost-1',
+            code: 0,
+            message: 'Failed - not found on the media server',
+          },
+        ],
+      });
+      expect(addInternal).not.toHaveBeenCalled();
+    });
+
+    it('adds anyway when the existence lookup is inconclusive', async () => {
+      const addInternal = jest
+        .spyOn(service as any, 'addToCollectionInternal')
+        .mockResolvedValue({
+          collection: createCollection(),
+          serverRejectedIds: [],
+        });
+      mediaServer.itemExists.mockRejectedValue(new Error('unreachable'));
+
+      await expect(
+        service.bulkMediaCollectionAction(['movie-1'], 7, 'add', 'movie'),
+      ).resolves.toEqual({ results: [{ mediaId: 'movie-1', code: 1 }] });
+      expect(addInternal).toHaveBeenCalled();
+    });
+
+    it('removes without an existence check, so a stale row can still be cleaned up', async () => {
+      const removeFromCollection = jest
+        .spyOn(service, 'removeFromCollection')
+        .mockResolvedValue(createCollection());
+
+      await service.bulkMediaCollectionAction(
+        ['ghost-1'],
+        7,
+        'remove',
+        'movie',
+      );
+
+      expect(mediaServer.itemExists).not.toHaveBeenCalled();
+      expect(removeFromCollection).toHaveBeenCalledWith(7, [
+        { mediaServerId: 'ghost-1' },
+      ]);
+    });
+
+    it('removes from every collection when none is named', async () => {
+      const removeAll = jest
+        .spyOn(service, 'removeFromAllCollections')
+        .mockResolvedValue({ status: 'OK', code: 1, message: 'Success' });
+
+      await expect(
+        service.bulkMediaCollectionAction(
+          ['movie-1'],
+          undefined,
+          'remove',
+          'movie',
+        ),
+      ).resolves.toEqual({ results: [{ mediaId: 'movie-1', code: 1 }] });
+      expect(removeAll).toHaveBeenCalledWith([{ mediaServerId: 'movie-1' }]);
+    });
+
+    // removeFromCollection answers nothing when it fails instead of throwing,
+    // so a discarded result let a failed removal report as done.
+    it('reports a collection that could not be updated during a remove-all', async () => {
+      const collections = [
+        createCollection({ id: 7 }),
+        createCollection({ id: 8 }),
+      ] as Collection[];
+      collectionRepo.find.mockResolvedValue(collections);
+      jest
+        .spyOn(service, 'removeFromCollection')
+        .mockResolvedValueOnce(collections[0])
+        .mockResolvedValueOnce(undefined);
+
+      await expect(
+        service.removeFromAllCollections([{ mediaServerId: 'movie-1' }]),
+      ).resolves.toEqual({ status: 'NOK', code: 0, message: 'Failed' });
+    });
+
+    it('reports an item the target collection cannot take', async () => {
+      mediaServer.getAllIdsForContextAction.mockResolvedValue([]);
+
+      await expect(
+        service.bulkMediaCollectionAction(['show-1'], 7, 'add', 'show'),
+      ).resolves.toEqual({
+        results: [
+          {
+            mediaId: 'show-1',
+            code: 0,
+            message: 'Failed - nothing this collection can take',
+          },
+        ],
+      });
+    });
+
+    it('rejects a collection that does not exist rather than acting globally', async () => {
+      collectionRepo.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.bulkMediaCollectionAction(['movie-1'], 999, 'remove', 'movie'),
+      ).rejects.toThrow('Collection 999 not found');
+    });
+  });
+
   // A library id used to discard the type filter, so the add modal listed the
   // same collection once per type it asked for.
   describe('getCollections filtering', () => {

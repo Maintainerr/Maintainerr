@@ -1,8 +1,8 @@
 import {
-  BULK_EXCLUSION_MAX_ITEMS,
+  BULK_MEDIA_ACTION_MAX_ITEMS,
   bulkExclusionRequestSchema,
   type BulkExclusionRequest,
-  type BulkExclusionResponse,
+  type BulkMediaResponse,
   MediaItemType,
   RuleExecuteStatusDto,
 } from '@maintainerr/contracts';
@@ -25,6 +25,7 @@ import {
 } from '@nestjs/common';
 import { ApiResponse } from '@nestjs/swagger';
 import { Response } from 'express';
+import { omit } from 'lodash';
 import { ZodValidationPipe } from 'nestjs-zod';
 import { MaintainerrLogger } from '../logging/logs.service';
 import { CommunityRule } from './dtos/communityRule.dto';
@@ -276,7 +277,9 @@ export class RulesController {
   @Post('/exclusion')
   async setExclusion(@Body() body: ExclusionContextDto): Promise<ReturnStatus> {
     if (body.action === undefined || body.action === ExclusionAction.ADD) {
-      return await this.rulesService.setExclusion(body);
+      // handledIds serves the bulk path's collection pairing; it is not part of
+      // this endpoint's response.
+      return omit(await this.rulesService.setExclusion(body), 'handledIds');
     } else {
       return await this.rulesService.removeExclusionWitData(body);
     }
@@ -289,13 +292,25 @@ export class RulesController {
   })
   @ApiResponse({
     status: 400,
-    description: `Rejected without processing: empty, or more than ${BULK_EXCLUSION_MAX_ITEMS} media ids.`,
+    description: `Rejected without processing: empty, or more than ${BULK_MEDIA_ACTION_MAX_ITEMS} media ids.`,
   })
   async setBulkExclusions(
     @Body(new ZodValidationPipe(bulkExclusionRequestSchema))
     body: BulkExclusionRequest,
-  ): Promise<BulkExclusionResponse> {
-    return await this.rulesService.setBulkExclusions(body.mediaIds);
+  ): Promise<BulkMediaResponse> {
+    if (body.action === ExclusionAction.REMOVE) {
+      return await this.rulesService.removeBulkExclusions(
+        body.mediaIds,
+        body.collectionId,
+        body.context,
+      );
+    }
+
+    return await this.rulesService.setBulkExclusions(
+      body.mediaIds,
+      body.collectionId,
+      body.context,
+    );
   }
 
   @Delete('/exclusion/:id')

@@ -1,6 +1,6 @@
 import {
-  type BulkExclusionItemResult,
-  type BulkExclusionResponse,
+  type BulkMediaItemResult,
+  type BulkMediaResponse,
   ECollectionLogType,
   leftoverCleanupScope,
   MaintainerrEvent,
@@ -19,8 +19,8 @@ import {
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 import axios from 'axios';
-import _ from 'lodash';
-import { DataSource, IsNull, Not, Repository } from 'typeorm';
+import { chunk, cloneDeep } from 'lodash';
+import { DataSource, In, IsNull, Not, Repository } from 'typeorm';
 import { ArrTagItem, ServarrTagService } from '../actions/servarr-tag.service';
 import cacheManager from '../api/lib/cache';
 import { MediaServerFactory } from '../api/media-server/media-server.factory';
@@ -29,7 +29,10 @@ import { TracearrApiService } from '../api/tracearr-api/tracearr-api.service';
 import { CollectionsService } from '../collections/collections.service';
 import { Collection } from '../collections/entities/collection.entities';
 import { CollectionMedia } from '../collections/entities/collection_media.entities';
-import { CollectionMediaChange } from '../collections/interfaces/collection-media.interface';
+import {
+  AlterableMediaContext,
+  CollectionMediaChange,
+} from '../collections/interfaces/collection-media.interface';
 import { MaintainerrLogger } from '../logging/logs.service';
 import { Notification } from '../notifications/entities/notification.entities';
 import { RadarrSettings } from '../settings/entities/radarr_settings.entities';
@@ -123,7 +126,7 @@ export class RulesService {
   }
 
   async getRuleConstants(): Promise<RuleConstants> {
-    const localConstants = _.cloneDeep(this.ruleConstants);
+    const localConstants = cloneDeep(this.ruleConstants);
     const unavailable = new Set(await this.getUnavailableApplications());
 
     localConstants.applications = localConstants.applications.filter(
@@ -986,7 +989,15 @@ export class RulesService {
     }
   }
 
-  async setExclusion(data: ExclusionContextDto) {
+  /**
+   * `handledIds` names the ids the exclusion resolved to. A caller pairing a
+   * collection drop with the exclusion has to use them: a season or episode
+   * collection holds those children, not the show the selection entered
+   * through, so dropping the entry point matches nothing.
+   */
+  async setExclusion(
+    data: ExclusionContextDto,
+  ): Promise<ReturnStatus & { handledIds?: string[] }> {
     const mediaServer = await this.getMediaServer();
     let handleMedia: CollectionMediaChange[] = [];
     // The top-level excluded item's type (movie/show/…) drives Behavior B below.
@@ -998,13 +1009,31 @@ export class RulesService {
           collectionId: data.collectionId,
         },
       });
+      // A collection created outside a rule group has nothing to scope to.
+      if (!group) {
+        this.logger.warn(
+          `Collection ${data.collectionId} has no rule group, cannot set a scoped exclusion`,
+        );
+        return this.createReturnStatus(false, 'Failed - no rule group');
+      }
+      // The selection's own type, not the collection's: a show reaching a
+      // season collection has to traverse down to its seasons. Naming it a
+      // season instead makes the traversal stop and write a row for the show.
+      const metaData = await mediaServer.getMetadata(String(data.mediaId));
+      if (!metaData?.type) {
+        this.logger.warn(
+          `No metadata found for media ${data.mediaId}, cannot set exclusion`,
+        );
+        return this.createReturnStatus(false, 'Failed - no metadata');
+      }
+
       // get media - traverse show -> seasons -> episodes if needed
       const resolved = await this.resolveContextActionIdsOrFail(
         mediaServer,
-        group?.dataType,
+        group.dataType,
         data.context
           ? { type: data.context.type, id: String(data.context.id) }
-          : { type: group.dataType, id: String(data.mediaId) },
+          : { type: metaData.type, id: String(data.mediaId) },
         String(data.mediaId),
       );
       if (!resolved) {
@@ -1015,7 +1044,7 @@ export class RulesService {
       }
       handleMedia = resolved;
       data.ruleGroupId = group.id;
-      topLevelType = group?.dataType;
+      topLevelType = metaData.type;
     } else {
       // get type from metadata
       const metaData = await mediaServer.getMetadata(String(data.mediaId));
@@ -1132,7 +1161,10 @@ export class RulesService {
         );
       }
 
-      return this.createReturnStatus(true, 'Success');
+      return {
+        ...this.createReturnStatus(true, 'Success'),
+        handledIds: handleMedia.map((media) => media.mediaServerId),
+      };
     } catch (error) {
       this.logger.warn(
         `Adding exclusion for media ID ${data.mediaId} and rulegroup id ${data.ruleGroupId} failed.`,
@@ -1142,18 +1174,24 @@ export class RulesService {
     }
   }
 
-  async setBulkExclusions(mediaIds: string[]): Promise<BulkExclusionResponse> {
+  async setBulkExclusions(
+    mediaIds: string[],
+    collectionId?: number,
+    context?: AlterableMediaContext,
+  ): Promise<BulkMediaResponse> {
     const uniqueMediaIds = [...new Set(mediaIds)];
 
     // Collapse ids nested under another selected id (a show plus one of its
     // seasons/episodes): excluding both concurrently races setExclusion's
     // find-then-save on the same row, and the exclusion table has no unique
     // constraint to stop the duplicate. The ancestor's cascade already covers
-    // the child, so the child just reports the ancestor's outcome.
-    const idSet = new Set(uniqueMediaIds);
+    // the child, so the child just reports the ancestor's outcome. This runs
+    // for a scoped request too: a season collection expands a selected show to
+    // its seasons, which is the same row a separately selected season writes.
     const coveredBy = new Map<string, string>();
+    const idSet = new Set(uniqueMediaIds);
     const mediaServer = await this.getMediaServer();
-    for (const batch of _.chunk(uniqueMediaIds, BULK_EXCLUSION_CONCURRENCY)) {
+    for (const batch of chunk(uniqueMediaIds, BULK_EXCLUSION_CONCURRENCY)) {
       await Promise.all(
         batch.map(async (mediaId) => {
           const metadata = await mediaServer.getMetadata(mediaId);
@@ -1167,14 +1205,23 @@ export class RulesService {
       );
     }
 
-    const resultById = new Map<string, BulkExclusionItemResult>();
+    const resultById = new Map<string, BulkMediaItemResult>();
+    const handledByRoot = new Map<string, string[]>();
     const rootIds = uniqueMediaIds.filter((id) => !coveredBy.has(id));
 
-    for (const batch of _.chunk(rootIds, BULK_EXCLUSION_CONCURRENCY)) {
+    for (const batch of chunk(rootIds, BULK_EXCLUSION_CONCURRENCY)) {
       await Promise.all(
         batch.map(async (mediaId) => {
           try {
-            const result = await this.setExclusion({ mediaId });
+            const { handledIds, ...result } = await this.setExclusion({
+              mediaId,
+              collectionId,
+              context,
+            });
+
+            if (handledIds) {
+              handledByRoot.set(mediaId, handledIds);
+            }
 
             resultById.set(mediaId, {
               mediaId,
@@ -1194,7 +1241,38 @@ export class RulesService {
       );
     }
 
-    const results = uniqueMediaIds.map((mediaId): BulkExclusionItemResult => {
+    // Excluding from a collection page also drops the items from it, the
+    // pairing the per-item action performs. After the exclusions, so a failed
+    // one never silently removes its item. The drop names the ids the exclusion
+    // resolved to, which is what the collection holds.
+    if (collectionId !== undefined) {
+      const excludedIds = rootIds.filter(
+        (mediaId) => resultById.get(mediaId)?.code === 1,
+      );
+      const members = [
+        ...new Set(
+          excludedIds.flatMap((mediaId) => handledByRoot.get(mediaId) ?? []),
+        ),
+      ].map((mediaServerId) => ({ mediaServerId }));
+
+      if (
+        members.length > 0 &&
+        !(await this.collectionService.removeFromCollection(
+          collectionId,
+          members,
+        ))
+      ) {
+        for (const mediaId of excludedIds) {
+          resultById.set(mediaId, {
+            mediaId,
+            code: 0,
+            message: 'Excluded, but not removed from the collection',
+          });
+        }
+      }
+    }
+
+    const results = uniqueMediaIds.map((mediaId): BulkMediaItemResult => {
       let rootId = mediaId;
       while (coveredBy.has(rootId)) {
         rootId = coveredBy.get(rootId);
@@ -1203,6 +1281,145 @@ export class RulesService {
     });
 
     return { results };
+  }
+
+  /**
+   * Scoped like `setBulkExclusions`: a collection means "stop excluding these
+   * from that collection", no collection means every exclusion they carry.
+   * Removal goes per row through `removeExclusion`, so the collection log and
+   * the *arr tag sync stay exactly as the single-item path.
+   */
+  async removeBulkExclusions(
+    mediaIds: string[],
+    collectionId?: number,
+    context?: AlterableMediaContext,
+  ): Promise<BulkMediaResponse> {
+    const uniqueMediaIds = [...new Set(mediaIds)];
+    let ruleGroupId: number | undefined;
+    let collectionType: MediaItemType | undefined;
+
+    if (collectionId !== undefined) {
+      const group = await this.ruleGroupRepository.findOne({
+        where: { collectionId },
+      });
+      if (!group) {
+        this.logger.warn(
+          `Collection ${collectionId} has no rule group, cannot remove scoped exclusions`,
+        );
+        return {
+          results: uniqueMediaIds.map((mediaId) => ({
+            mediaId,
+            code: 0 as const,
+            message: 'Failed - no rule group',
+          })),
+        };
+      }
+      ruleGroupId = group.id;
+      collectionType = group.dataType;
+    }
+
+    // A narrowed request names the one season or episode to stop excluding, so
+    // it matches only what that narrowing resolves to. The entry point stays
+    // excluded, exactly as the single-item path behaves.
+    const narrowedIds = context
+      ? await this.resolveContextActionIdsOrFail(
+          await this.getMediaServer(),
+          collectionType,
+          { type: context.type, id: String(context.id) },
+          // The schema admits a context only alongside a single media id.
+          uniqueMediaIds[0],
+        )
+      : undefined;
+
+    if (context && !narrowedIds) {
+      return {
+        results: uniqueMediaIds.map((mediaId) => ({
+          mediaId,
+          code: 0 as const,
+          message: 'Failed - media server unreadable',
+        })),
+      };
+    }
+
+    // `parent` records the entry point of the original exclusion request, so
+    // matching it too picks up the rows an excluded show cascaded to its
+    // seasons and episodes. Without it they survive the removal and keep the
+    // item excluded while the caller is told it succeeded.
+    const selectedIds = new Set(uniqueMediaIds);
+    const exclusions = await this.exclusionRepo.find({
+      where: narrowedIds
+        ? { mediaServerId: In(narrowedIds.map((media) => media.mediaServerId)) }
+        : [
+            { mediaServerId: In(uniqueMediaIds) },
+            { parent: In(uniqueMediaIds) },
+          ],
+    });
+    // An item is either globally excluded or scoped-excluded, never both, so
+    // the row keeping it out of this collection is whichever one exists.
+    const rowIdsByMediaId = new Map<string, number[]>();
+    for (const exclusion of exclusions) {
+      if (
+        ruleGroupId !== undefined &&
+        exclusion.ruleGroupId != null &&
+        exclusion.ruleGroupId !== ruleGroupId
+      ) {
+        continue;
+      }
+      // A cascaded row reports under the id that was selected, not its own. A
+      // narrowed request reached every row it matched through its one
+      // selection, whatever entry point originally wrote them.
+      let coveringId = uniqueMediaIds[0];
+      if (!narrowedIds) {
+        coveringId = selectedIds.has(exclusion.mediaServerId)
+          ? exclusion.mediaServerId
+          : String(exclusion.parent);
+      }
+      const rowIds = rowIdsByMediaId.get(coveringId) ?? [];
+      rowIds.push(exclusion.id);
+      rowIdsByMediaId.set(coveringId, rowIds);
+    }
+
+    const resultById = new Map<string, BulkMediaItemResult>();
+
+    for (const batch of chunk(uniqueMediaIds, BULK_EXCLUSION_CONCURRENCY)) {
+      await Promise.all(
+        batch.map(async (mediaId) => {
+          try {
+            // Nothing excluding it here already is the requested end state.
+            let result: ReturnStatus = { code: 1, message: 'Success' };
+            for (const exclusionId of rowIdsByMediaId.get(mediaId) ?? []) {
+              const rowResult = await this.removeExclusion(exclusionId);
+              if (rowResult.code !== 1) {
+                result = rowResult;
+              }
+            }
+
+            resultById.set(mediaId, {
+              mediaId,
+              code: result.code,
+              ...(result.message ? { message: result.message } : {}),
+            });
+          } catch (error) {
+            this.logger.warn(
+              `Bulk exclusion removal failed for media ${mediaId}`,
+            );
+            this.logger.debug(error);
+            resultById.set(mediaId, {
+              mediaId,
+              code: 0,
+              message: 'Failed - see server logs',
+            });
+          }
+        }),
+      );
+    }
+
+    return {
+      results: uniqueMediaIds.map((mediaId): BulkMediaItemResult => ({
+        ...resultById.get(mediaId),
+        mediaId,
+      })),
+    };
   }
 
   async removeExclusion(id: number) {
@@ -1279,16 +1496,33 @@ export class RulesService {
           collectionId: data.collectionId,
         },
       });
+      // Same as setExclusion: no rule group means no scope to remove from.
+      if (!group) {
+        this.logger.warn(
+          `Collection ${data.collectionId} has no rule group, cannot remove a scoped exclusion`,
+        );
+        return this.createReturnStatus(false, 'Failed - no rule group');
+      }
 
       data.ruleGroupId = group.id;
-      topLevelType = group?.dataType;
+      // The selection's own type, as setExclusion resolves it: naming the entry
+      // point after the collection makes the traversal stop on the entry point.
+      const metaData = await mediaServer.getMetadata(String(data.mediaId));
+      if (!metaData?.type) {
+        this.logger.warn(
+          `No metadata found for media ${data.mediaId}, cannot remove exclusion`,
+        );
+        return this.createReturnStatus(false, 'Failed - no metadata');
+      }
+
+      topLevelType = metaData.type;
       // get media - traverse show -> seasons -> episodes if needed
       const resolved = await this.resolveContextActionIdsOrFail(
         mediaServer,
-        group?.dataType,
+        group.dataType,
         data.context
           ? { type: data.context.type, id: String(data.context.id) }
-          : { type: group.dataType, id: String(data.mediaId) },
+          : { type: metaData.type, id: String(data.mediaId) },
         String(data.mediaId),
       );
       if (!resolved) {

@@ -1,6 +1,6 @@
 import { MediaItem, MediaItemType } from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
-import _ from 'lodash';
+import { cloneDeep } from 'lodash';
 import {
   SonarrEpisode,
   SonarrEpisodeFile,
@@ -88,7 +88,7 @@ export class SonarrGetterService {
       let seasonRatingKey: number | undefined = undefined;
 
       if (dataType === 'season' || dataType === 'episode') {
-        origLibItem = _.cloneDeep(libItem);
+        origLibItem = cloneDeep(libItem);
         seasonRatingKey = libItem.grandparentId
           ? libItem.parentIndex
           : libItem.index;
