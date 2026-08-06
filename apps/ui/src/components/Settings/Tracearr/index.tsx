@@ -1,9 +1,9 @@
 import {
+  stripTrailingSlashes,
   type TracearrServer,
   tracearrSettingSchema,
 } from '@maintainerr/contracts'
 import { PostApiHandler } from '../../../utils/ApiHandler'
-import { stripTrailingSlashes } from '../../../utils/SettingsUtils'
 import ExternalServiceSettingsPage, {
   type ExternalServiceFieldConfig,
 } from '../ExternalServiceSettingsPage'

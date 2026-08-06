@@ -1,6 +1,7 @@
 import {
   embyLoginRequestSchema,
   radarrSettingSchema,
+  seerrSettingSchema,
 } from '@maintainerr/contracts';
 import { BadGatewayException, StreamableFile } from '@nestjs/common';
 import { Response } from 'express';
@@ -243,6 +244,24 @@ describe('SettingsController', () => {
         },
       ),
     ).toThrow('Validation failed');
+  });
+
+  it('normalises a trailing slash off a service URL rather than rejecting it (#3416)', () => {
+    const pipe = new ZodValidationPipe(seerrSettingSchema);
+
+    expect(
+      pipe.transform(
+        {
+          url: 'http://seerr.local:5055/',
+          api_key: 'key',
+        },
+        {
+          type: 'body',
+          metatype: Object,
+          data: '',
+        },
+      ),
+    ).toEqual({ url: 'http://seerr.local:5055', api_key: 'key' });
   });
 
   it('rejects invalid Emby login requests with the shared Zod schema', () => {

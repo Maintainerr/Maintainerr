@@ -1,3 +1,4 @@
+import { stripTrailingSlashes } from '@maintainerr/contracts'
 import { useMemo, useState } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
 import {
@@ -140,10 +141,7 @@ const buildServarrPayload = <TSetting extends ServarrSettingShape>(
       ? `https://${state.hostname}`
       : `http://${state.hostname}`
 
-  const normalizedUrl = addPortToUrl(hostnameValue, Number(port))
-  const url = normalizedUrl.endsWith('/')
-    ? normalizedUrl.slice(0, -1)
-    : normalizedUrl
+  const url = stripTrailingSlashes(addPortToUrl(hostnameValue, Number(port)))
 
   return {
     payload: {
