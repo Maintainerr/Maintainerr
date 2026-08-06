@@ -93,6 +93,21 @@ export class SonarrGetterService {
           ? libItem.parentIndex
           : libItem.index;
 
+        // Every season-scoped read below has to be limited to this number.
+        // Jellyfin and Emby file episodes they can't place under a permanent
+        // "Season Unknown" that carries no index, which leaves it undefined -
+        // and the episode reads drop their season filter when it is, so the
+        // rule would be answered with another season's data. Report the
+        // transport-failure signal instead (same as the outer catch): the
+        // comparator skips the item rather than matching it, and the executor
+        // keeps it in any collection it already belongs to.
+        if (seasonRatingKey == null) {
+          this.logger.debug(
+            `Sonarr-Getter - No season number for '${libItem.title}' with id '${libItem.id}'; skipping this item.`,
+          );
+          return undefined;
+        }
+
         // get (grand)parent
         const mediaServer = await this.getMediaServer();
         libItem = await mediaServer.getMetadata(
@@ -183,9 +198,14 @@ export class SonarrGetterService {
         return null;
       }
 
-      const season = seasonRatingKey
-        ? showResponse.seasons.find((el) => el.seasonNumber === seasonRatingKey)
-        : undefined;
+      // Season 0 is the specials season, so test for a number rather than
+      // truthiness - `0` would otherwise read as "no season".
+      const season =
+        seasonRatingKey != null
+          ? showResponse.seasons.find(
+              (el) => el.seasonNumber === seasonRatingKey,
+            )
+          : undefined;
 
       // Lazy-load episode / episodeFile only if a property actually needs them.
       let episodePromise: Promise<SonarrEpisode | undefined> | undefined;
@@ -203,17 +223,13 @@ export class SonarrGetterService {
         }
 
         episodePromise ??= (async () => {
-          const seasonNumber = origLibItem.grandparentId
-            ? origLibItem.parentIndex
-            : origLibItem.index;
-
           const episodeNumbers = [
             origLibItem.grandparentId ? origLibItem.index : 1,
           ];
 
           const episodes = await sonarrApiClient.getEpisodes(
             showResponse.id,
-            seasonNumber,
+            seasonRatingKey,
             episodeNumbers,
           );
 
@@ -263,9 +279,7 @@ export class SonarrGetterService {
 
         seasonEpisodesPromise ??= sonarrApiClient.getEpisodes(
           showResponse.id,
-          origLibItem.grandparentId
-            ? origLibItem.parentIndex
-            : origLibItem.index,
+          seasonRatingKey,
         );
 
         return seasonEpisodesPromise;
@@ -647,9 +661,7 @@ export class SonarrGetterService {
             return null;
           }
 
-          const targetSeasonNumber = origLibItem.grandparentId
-            ? origLibItem.parentIndex
-            : origLibItem.index;
+          const targetSeasonNumber = seasonRatingKey;
           const targetEpisodeNumber = origLibItem.grandparentId
             ? origLibItem.index
             : 1;
