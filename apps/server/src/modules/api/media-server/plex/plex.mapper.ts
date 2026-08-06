@@ -232,6 +232,7 @@ export class PlexMapper {
       userRating: plex.userRating,
       genres: PlexMapper.toMediaGenres(plex.Genre),
       actors: PlexMapper.toMediaActors(plex.Role),
+      studios: PlexMapper.toMediaStudios(plex.studio),
       childCount: plex.leafCount,
       watchedChildCount: plex.viewedLeafCount,
       index: plex.index,
@@ -281,6 +282,7 @@ export class PlexMapper {
       userRating: plex.userRating,
       genres: PlexMapper.toMediaGenres(plex.Genre),
       actors: PlexMapper.toMediaActors(plex.Role),
+      studios: PlexMapper.toMediaStudios(plex.studio),
       childCount: plex.leafCount,
       watchedChildCount: plex.viewedLeafCount,
       index: plex.index,
@@ -423,6 +425,16 @@ export class PlexMapper {
       role: a.role,
       thumb: a.thumb,
     }));
+  }
+
+  /**
+   * Plex sends one studio as a string where Jellyfin and Emby send a list.
+   * Undefined rather than empty, so the sort still reads it as unknown.
+   */
+  private static toMediaStudios(
+    studio: string | undefined,
+  ): string[] | undefined {
+    return studio?.trim() ? [studio] : undefined;
   }
 
   private static toMediaRatings(plex: PlexLibraryItem): MediaRating[] {

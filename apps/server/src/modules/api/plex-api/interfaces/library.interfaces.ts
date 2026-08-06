@@ -10,6 +10,7 @@ export interface PlexLibraryItem {
   guid: string;
   parentGuid?: string;
   grandparentGuid?: string;
+  studio?: string;
   addedAt: number;
   updatedAt: number;
   Guid?: {

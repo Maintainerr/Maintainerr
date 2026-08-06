@@ -16,6 +16,9 @@ export const MEDIA_SERVER_FEATURES: Record<
     MediaServerFeature.PLAYLISTS,
     MediaServerFeature.COLLECTION_POSTER,
     MediaServerFeature.COLLECTION_SORT,
+    // Verified against a live PMS 1.43.3: listings carry studio and sort=studio
+    // genuinely sorts, though /library/sections/{id}/sorts never advertises it.
+    MediaServerFeature.LIBRARY_STUDIO_SORT,
   ]),
   [MediaServerType.JELLYFIN]: new Set([
     MediaServerFeature.LABELS, // Tags in Jellyfin

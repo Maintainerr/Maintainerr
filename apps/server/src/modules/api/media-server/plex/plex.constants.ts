@@ -12,6 +12,9 @@ const PLEX_SORT_FIELDS: Partial<Record<MediaLibrarySortField, string>> = {
   rating: 'audienceRating',
   watchCount: 'viewCount',
   title: 'titleSort',
+  // Undocumented: PMS leaves studio out of /library/sections/{id}/sorts but
+  // honours it. Verified on 1.43.3 against the titleSort baseline.
+  studio: 'studio',
 };
 
 export function toPlexSort(

@@ -279,6 +279,21 @@ describe('PlexMapper', () => {
       expect(result.providerIds.imdb).toEqual(['tt7654321']);
     });
 
+    it('lists the single studio Plex sends', () => {
+      expect(
+        PlexMapper.toMediaItem({ ...basePlexItem, studio: 'Studio A' }).studios,
+      ).toEqual(['Studio A']);
+    });
+
+    it.each([undefined, '', '   '])(
+      'leaves studios unset when Plex sends %p',
+      (studio) => {
+        expect(
+          PlexMapper.toMediaItem({ ...basePlexItem, studio }).studios,
+        ).toBeUndefined();
+      },
+    );
+
     it('should convert media sources correctly', () => {
       const result = PlexMapper.toMediaItem(basePlexItem);
 
