@@ -273,6 +273,16 @@ export class SonarrApi extends ServarrApi<{
     deleteFiles = true,
     airDate?: string | Date,
   ): Promise<boolean> {
+    // Without a season number the episode read below drops its season filter,
+    // so an episode number would match - and delete - that episode in every
+    // season of the show. Same widening as #3415, one scope down.
+    if (!Number.isInteger(seasonNumber)) {
+      this.logger.warn(
+        `Couldn't remove/unmonitor episodes for series ID ${seriesId}: no valid season number was provided.`,
+      );
+      return false;
+    }
+
     const validEpisodeIds = this.filterDefinedEpisodeNumbers(episodeIds);
 
     if (!validEpisodeIds.length && !airDate) {
@@ -320,12 +330,26 @@ export class SonarrApi extends ServarrApi<{
     }
   }
 
+  /**
+   * @param type the scope to act on: `all` seasons, only the seasons holding
+   *   files (`existing`), or a single season number. Required - there is no
+   *   whole-show default, since an unresolved season number reaching here as
+   *   `undefined` matched no season branch below yet still fell into the
+   *   "delete every episode file" arm of the delete loop (#3415).
+   */
   public async unmonitorSeasons(
     seriesId: number | string,
-    type: 'all' | number | 'existing' = 'all',
+    type: 'all' | number | 'existing',
     deleteFiles = true,
     forceExisting = false,
   ): Promise<SonarrSeries | undefined> {
+    if (type !== 'all' && type !== 'existing' && !Number.isInteger(type)) {
+      this.logger.warn(
+        `Couldn't unmonitor/delete seasons for series ID ${seriesId}: '${type}' is not a valid season scope. No action was taken.`,
+      );
+      return undefined;
+    }
+
     try {
       const data: SonarrSeries = (await this.axios.get(`series/${seriesId}`))
         .data;
