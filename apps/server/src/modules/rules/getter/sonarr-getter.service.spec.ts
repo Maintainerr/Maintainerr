@@ -2107,6 +2107,82 @@ describe('SonarrGetterService', () => {
     });
   });
 
+  // Jellyfin and Emby file episodes they cannot place under a permanent
+  // "Season Unknown" that carries no index. Without a season number the episode
+  // reads drop their season filter and answer with every season's episodes, so
+  // the rule would be evaluated against another season's data.
+  describe('season item without a season number', () => {
+    it.each([
+      {
+        title: 'a season with no index',
+        dataType: 'season' as const,
+        item: { type: 'season' as const, index: undefined },
+      },
+      {
+        title: 'an episode whose season has no index',
+        dataType: 'episode' as const,
+        item: {
+          type: 'episode' as const,
+          index: 1,
+          parentIndex: undefined,
+          grandparentId: '99',
+        },
+      },
+    ])('reports a transient failure for $title', async ({ dataType, item }) => {
+      const collectionMedia = createCollectionMedia(dataType);
+      collectionMedia.collection.sonarrSettingsId = 1;
+
+      const mockedSonarrApi = mockSonarrApi(createSonarrSeries());
+      const getEpisodesSpy = jest
+        .spyOn(mockedSonarrApi, 'getEpisodes')
+        .mockResolvedValue([]);
+
+      const response = await sonarrGetterService.get(
+        11,
+        createMediaItem(item),
+        dataType,
+        createRulesDto({ collection: collectionMedia.collection, dataType }),
+      );
+
+      // `undefined`, not `null`: the comparator reads it as a transport
+      // failure and skips the item rather than matching NOT_EXISTS on it.
+      expect(response).toBeUndefined();
+      expect(getEpisodesSpy).not.toHaveBeenCalled();
+      expect(mockMediaServer.getMetadata).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('specials season', () => {
+    it('resolves season 0 rather than reading it as no season', async () => {
+      const collectionMedia = createCollectionMedia('season');
+      collectionMedia.collection.sonarrSettingsId = 1;
+
+      mockMediaServer.getMetadata.mockResolvedValue(
+        createMediaItem({ type: 'show' }),
+      );
+
+      const series = createSonarrSeries({
+        seasons: [
+          { seasonNumber: 0, monitored: true },
+          { seasonNumber: 1, monitored: true },
+        ],
+      });
+      mockSonarrApi(series);
+
+      const response = await sonarrGetterService.get(
+        18,
+        createMediaItem({ type: 'season', index: 0 }),
+        'season',
+        createRulesDto({
+          collection: collectionMedia.collection,
+          dataType: 'season',
+        }),
+      );
+
+      expect(response).toBe(0);
+    });
+  });
+
   const mockSonarrApi = (series?: SonarrSeries) => {
     const mockedSonarrApi = new SonarrApi(
       { url: 'http://localhost:8989', apiKey: 'test' },
