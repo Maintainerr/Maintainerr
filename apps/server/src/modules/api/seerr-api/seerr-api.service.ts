@@ -546,23 +546,50 @@ export class SeerrApiService {
     }
   }
 
-  public async removeSeasonRequest(tmdbid: string | number, season: number) {
+  /**
+   * Whether the season's requests were removed. `undefined` when that could not
+   * be established, the same contract as {@link hasRemainingSeasonRequests}, so
+   * a caller never reports a removal that did not happen. The writes rethrow
+   * rather than answering their body: a 204 carries an empty one, so success
+   * and failure are both falsy.
+   */
+  public async removeSeasonRequest(
+    tmdbid: string | number,
+    season: number,
+  ): Promise<boolean | undefined> {
     try {
       const media = await this.getShow(tmdbid);
 
-      if (media?.mediaInfo) {
-        const requests = (media.mediaInfo.requests ?? []).filter((el) =>
-          el.seasons.find((s) => s.seasonNumber === season),
-        );
-        if (requests.length > 0) {
-          for (const el of requests) {
-            await this.deleteRequest(el.id.toString());
-          }
-        } else {
-          // no requests? clear data and let Seerr refetch.
-          await this.api.delete(`/media/${media.id}`);
-        }
+      // getShow returns undefined only on communication failure or falsy id;
+      // the show being untracked still yields a response with mediaInfo == null.
+      if (!media) {
+        return undefined;
       }
+
+      if (!media.mediaInfo) {
+        return false;
+      }
+
+      const requests = (media.mediaInfo.requests ?? []).filter((el) =>
+        el.seasons.find((s) => s.seasonNumber === season),
+      );
+      if (requests.length > 0) {
+        for (const el of requests) {
+          await this.api.delete(`/request/${el.id}`, undefined, {
+            rethrow: true,
+          });
+        }
+      } else {
+        // No requests? Clear the media record and let Seerr refetch. Keyed on
+        // Seerr's own media id, not `media.id`, which is the TMDB id: Seerr
+        // answers 204 for an id it does not hold, so the wrong one was a no-op
+        // that reported success.
+        await this.api.delete(`/media/${media.mediaInfo.id}`, undefined, {
+          rethrow: true,
+        });
+      }
+
+      return true;
     } catch (error) {
       this.logger.warn(
         'Seerr communication failed. Is the application running?',
@@ -638,30 +665,31 @@ export class SeerrApiService {
     }
   }
 
-  public async removeMediaByTmdbId(id: string | number, type: 'movie' | 'tv') {
+  /** Whether the media record was cleared, with the same contract as
+   * {@link removeSeasonRequest}. */
+  public async removeMediaByTmdbId(
+    id: string | number,
+    type: 'movie' | 'tv',
+  ): Promise<boolean | undefined> {
     try {
-      let media: SeerrMovieResponse | SeerrTVResponse;
-      if (type === 'movie') {
-        media = await this.getMovie(id);
-      } else {
-        media = await this.getShow(id);
-      }
+      const media: SeerrMovieResponse | SeerrTVResponse =
+        type === 'movie' ? await this.getMovie(id) : await this.getShow(id);
 
-      if (!media.mediaInfo?.id) {
+      // Reading through an undefined media used to throw, which the catch
+      // below then reported as a communication failure. Answer it directly.
+      if (!media) {
         return undefined;
       }
 
-      try {
-        await this.deleteMediaItem(media.mediaInfo.id.toString());
-      } catch (error) {
-        this.logger.log(
-          `Couldn't delete media by TMDB ID ${id}. Does it exist in Seerr?`,
-        );
-        this.logger.debug(
-          `Couldn't delete media by TMDB ID ${id}. Does it exist in Seerr?`,
-          error,
-        );
+      if (!media.mediaInfo?.id) {
+        return false;
       }
+
+      await this.api.delete(`/media/${media.mediaInfo.id}`, undefined, {
+        rethrow: true,
+      });
+
+      return true;
     } catch (error) {
       this.logger.warn(
         'Seerr communication failed. Is the application running?',

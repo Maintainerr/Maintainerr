@@ -183,14 +183,20 @@ export class CollectionHandler {
               );
 
               if (mediaDataSeason?.index !== undefined) {
-                await this.seerrApi.removeSeasonRequest(
+                const removed = await this.seerrApi.removeSeasonRequest(
                   tmdbId,
                   mediaDataSeason.index,
                 );
 
-                this.logger.log(
-                  `[Seerr] Removed request of season ${mediaDataSeason.index} from show with TMDB ID '${tmdbId}'`,
-                );
+                if (removed === undefined) {
+                  this.logger.warn(
+                    `[Seerr] Couldn't remove the request of season ${mediaDataSeason.index} from show with TMDB ID '${tmdbId}'`,
+                  );
+                } else if (removed) {
+                  this.logger.log(
+                    `[Seerr] Removed request of season ${mediaDataSeason.index} from show with TMDB ID '${tmdbId}'`,
+                  );
+                }
               }
               break;
             }
@@ -214,13 +220,20 @@ export class CollectionHandler {
               // numbers movies and shows independently, so that sends a show's
               // id to the movie endpoint, where it can resolve to an unrelated
               // film whose Seerr record is then deleted.
-              await this.seerrApi.removeMediaByTmdbId(
+              const removed = await this.seerrApi.removeMediaByTmdbId(
                 tmdbId,
                 collection.type === 'show' ? 'tv' : 'movie',
               );
-              this.logger.log(
-                `[Seerr] Removed requests of media with TMDB ID '${tmdbId}'`,
-              );
+
+              if (removed === undefined) {
+                this.logger.warn(
+                  `[Seerr] Couldn't remove the requests of media with TMDB ID '${tmdbId}'`,
+                );
+              } else if (removed) {
+                this.logger.log(
+                  `[Seerr] Removed requests of media with TMDB ID '${tmdbId}'`,
+                );
+              }
               break;
           }
         }
