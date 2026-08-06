@@ -1,6 +1,8 @@
-import { seerrSettingSchema } from '@maintainerr/contracts'
+import {
+  seerrSettingSchema,
+  stripTrailingSlashes,
+} from '@maintainerr/contracts'
 import { z } from 'zod'
-import { stripTrailingSlashes } from '../../../utils/SettingsUtils'
 import ExternalServiceSettingsPage, {
   type ExternalServiceFieldConfig,
 } from '../ExternalServiceSettingsPage'

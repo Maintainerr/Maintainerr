@@ -66,8 +66,9 @@ describe('settings body validation', () => {
       body: { seerr_url: 'file:///e' },
     },
     {
-      case: 'a URL with a trailing slash',
-      body: { tautulli_url: 'http://t/' },
+      // Slashes are stripped first, so this is left as the bare 'http:'.
+      case: 'a URL that is nothing but a scheme',
+      body: { seerr_url: 'http://' },
     },
     {
       case: 'a wrongly typed field',
@@ -76,6 +77,13 @@ describe('settings body validation', () => {
   ])('rejects $case', async ({ body }) => {
     expect((await patch(body)).status).toBe(400);
     expect(settingsOperationsService.patchSettings).not.toHaveBeenCalled();
+  });
+
+  it('normalises trailing slashes away instead of rejecting them (#3416)', async () => {
+    expect((await patch({ tautulli_url: 'http://t:8181//' })).status).toBe(200);
+    expect(settingsOperationsService.patchSettings).toHaveBeenCalledWith({
+      tautulli_url: 'http://t:8181',
+    });
   });
 
   it('strips keys the client has no business setting', async () => {

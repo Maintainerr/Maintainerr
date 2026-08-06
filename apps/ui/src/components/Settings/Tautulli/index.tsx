@@ -1,6 +1,8 @@
-import { tautulliSettingSchema } from '@maintainerr/contracts'
+import {
+  stripTrailingSlashes,
+  tautulliSettingSchema,
+} from '@maintainerr/contracts'
 import { z } from 'zod'
-import { stripTrailingSlashes } from '../../../utils/SettingsUtils'
 import ExternalServiceSettingsPage, {
   type ExternalServiceFieldConfig,
 } from '../ExternalServiceSettingsPage'
