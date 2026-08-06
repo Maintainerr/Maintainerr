@@ -66,6 +66,9 @@ import { PlexAdapterService } from './plex/plex-adapter.service';
     MediaServerFactory,
     MediaServerSwitchState,
     MediaServerSetupGuard,
+    // Exported for CollectionsService: the manual and excluded sorts need the
+    // state this resolves.
+    MediaItemEnrichmentService,
   ],
 })
 export class MediaServerModule {}

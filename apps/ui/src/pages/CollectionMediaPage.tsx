@@ -57,6 +57,7 @@ const CollectionMediaPage = () => {
     libraryType,
     collection.deleteAfterDays != null,
     supportsFeature(mediaServerType, MediaServerFeature.LIBRARY_STUDIO_SORT),
+    true,
   )
   const { sortValue, sortParams, onSortChange } =
     useMediaLibrarySort(sortConfig)

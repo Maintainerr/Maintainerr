@@ -14,6 +14,7 @@ import {
   createCollectionMedia,
   createMediaItem,
 } from '../../../test/utils/data';
+import { MediaItemEnrichmentService } from '../api/media-server/media-item-enrichment.service';
 import { MediaServerFactory } from '../api/media-server/media-server.factory';
 import { IMediaServerService } from '../api/media-server/media-server.interface';
 import { MaintainerrLogger } from '../logging/logs.service';
@@ -43,6 +44,7 @@ describe('CollectionsService', () => {
   let collectionLogRepo: Mocked<Repository<CollectionLog>>;
   let ruleRemovalRepo: Mocked<Repository<CollectionMediaRuleRemoval>>;
   let metadataService: Mocked<MetadataService>;
+  let mediaItemEnrichmentService: Mocked<MediaItemEnrichmentService>;
   let settingsDataService: Mocked<SettingsDataService>;
   let collectionPosterService: Mocked<CollectionPosterService>;
   let eventEmitter: Mocked<EventEmitter2>;
@@ -68,6 +70,10 @@ describe('CollectionsService', () => {
       getRepositoryToken(CollectionMediaRuleRemoval) as string,
     );
     metadataService = unitRef.get(MetadataService);
+    mediaItemEnrichmentService = unitRef.get(MediaItemEnrichmentService);
+    mediaItemEnrichmentService.enrichItems.mockImplementation(
+      async (items) => items,
+    );
     settingsDataService = unitRef.get(SettingsDataService);
     collectionPosterService = unitRef.get(CollectionPosterService);
     eventEmitter = unitRef.get(EventEmitter2);
@@ -2816,6 +2822,112 @@ describe('CollectionsService', () => {
       totalSize: 2,
       items: hydratedPage,
     });
+  });
+
+  // Without the status lookup these had nothing to order by at all.
+  it.each(['manual', 'excluded'] as const)(
+    'orders a %s sort by state the media server does not report',
+    async (sort) => {
+      const collection = createCollection({
+        id: 12,
+        mediaServerId: 'remote-collection',
+        type: 'movie',
+      });
+      const ruleEntity = createCollectionMedia(collection, {
+        mediaServerId: 'movie-rule',
+      });
+      const manualEntity = createCollectionMedia(collection, {
+        mediaServerId: 'movie-manual',
+      });
+      const entities = [ruleEntity, manualEntity];
+      const metadataByMediaServerId = new Map([
+        ['movie-rule', createMediaItem({ id: 'movie-rule', title: 'Alpha' })],
+        [
+          'movie-manual',
+          createMediaItem({ id: 'movie-manual', title: 'Zulu' }),
+        ],
+      ]);
+      const queryBuilder = {
+        where: jest.fn().mockReturnThis(),
+        getCount: jest.fn().mockResolvedValue(entities.length),
+        clone: jest.fn(),
+      };
+      const cloneBuilder = {
+        orderBy: jest.fn().mockReturnThis(),
+        addOrderBy: jest.fn().mockReturnThis(),
+        getRawAndEntities: jest.fn().mockResolvedValue({ entities }),
+      };
+      queryBuilder.clone.mockReturnValue(cloneBuilder);
+      collectionMediaRepo.createQueryBuilder.mockReturnValue(
+        queryBuilder as any,
+      );
+      jest
+        .spyOn(service as any, 'getCollectionMediaMetadata')
+        .mockResolvedValue(metadataByMediaServerId);
+      const hydrateSpy = jest
+        .spyOn(service as any, 'hydrateCollectionMediaWithMetadata')
+        .mockImplementation(async (page) => page as any);
+      mediaItemEnrichmentService.enrichItems.mockImplementation(async (items) =>
+        items.map((item) =>
+          item.id === 'movie-manual'
+            ? { ...item, maintainerrIsManual: true, maintainerrExclusionId: 7 }
+            : item,
+        ),
+      );
+
+      await (service as any).getCollectionMediaWithServerDataAndPaging(
+        collection.id,
+        { size: 2, sort, sortOrder: 'desc' },
+      );
+
+      expect(mediaItemEnrichmentService.enrichItems).toHaveBeenCalled();
+      // Zulu sorts last by title, so leading means the state decided the order.
+      expect(hydrateSpy.mock.calls[0][0]).toEqual([manualEntity, ruleEntity]);
+      // The state is for comparing only: which fields the response carries must
+      // not depend on how it was sorted.
+      expect(hydrateSpy.mock.calls[0][2]).toBe(metadataByMediaServerId);
+      expect(metadataByMediaServerId.get('movie-manual')).not.toHaveProperty(
+        'maintainerrIsManual',
+      );
+    },
+  );
+
+  it('does not pay for the status lookup on a sort that never reads it', async () => {
+    const collection = createCollection({
+      id: 13,
+      mediaServerId: 'remote-collection',
+      type: 'movie',
+    });
+    const entities = [
+      createCollectionMedia(collection, { mediaServerId: 'movie-1' }),
+    ];
+    const queryBuilder = {
+      where: jest.fn().mockReturnThis(),
+      getCount: jest.fn().mockResolvedValue(1),
+      clone: jest.fn(),
+    };
+    const cloneBuilder = {
+      orderBy: jest.fn().mockReturnThis(),
+      addOrderBy: jest.fn().mockReturnThis(),
+      getRawAndEntities: jest.fn().mockResolvedValue({ entities }),
+    };
+    queryBuilder.clone.mockReturnValue(cloneBuilder);
+    collectionMediaRepo.createQueryBuilder.mockReturnValue(queryBuilder as any);
+    jest
+      .spyOn(service as any, 'getCollectionMediaMetadata')
+      .mockResolvedValue(
+        new Map([['movie-1', createMediaItem({ id: 'movie-1' })]]),
+      );
+    jest
+      .spyOn(service as any, 'hydrateCollectionMediaWithMetadata')
+      .mockResolvedValue([]);
+
+    await (service as any).getCollectionMediaWithServerDataAndPaging(
+      collection.id,
+      { size: 2, sort: 'title', sortOrder: 'asc' },
+    );
+
+    expect(mediaItemEnrichmentService.enrichItems).not.toHaveBeenCalled();
   });
 
   it('uses hydrated exclusion count for sorted exclusion totals', async () => {

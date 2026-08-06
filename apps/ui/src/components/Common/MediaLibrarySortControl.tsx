@@ -166,6 +166,7 @@ export const getCollectionMediaSortConfig = (
   libraryType?: MediaLibrary['type'],
   includeDeleteSoonest: boolean = false,
   includeStudioSort: boolean = false,
+  includeStatusSorts: boolean = false,
 ): SortConfig<CollectionMediaSortParams> => {
   const options = getCollectionSortConfig(
     libraryType,
@@ -200,7 +201,17 @@ export const getCollectionMediaSortConfig = (
     defaultValue: includeDeleteSoonest
       ? collectionDeleteSoonestSortOption.value
       : defaultSortValue,
-    options: resolvedOptions,
+    // Opt-in, and only the collection media page opts in. The rule group form
+    // persists its selection as the order pushed to the media server, which is
+    // resolved without Maintainerr state, and the exclusions tab shares the
+    // config this builds on while listing nothing but exclusions.
+    options: includeStatusSorts
+      ? [
+          ...resolvedOptions,
+          createMediaLibrarySortOption('manual.desc', 'Manual Added First'),
+          createMediaLibrarySortOption('excluded.desc', 'Excluded First'),
+        ]
+      : resolvedOptions,
   }
 }
 

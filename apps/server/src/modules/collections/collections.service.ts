@@ -13,6 +13,7 @@ import {
   MediaItem,
   MediaItemType,
   MediaItemWithParent,
+  mediaLibraryStatusSortFields,
   MediaLibrarySortField,
   MediaServerFeature,
   MediaServerType,
@@ -30,6 +31,7 @@ import { chunk } from 'lodash';
 import { Brackets, DataSource, In, LessThan, Not, Repository } from 'typeorm';
 import { CollectionLog } from '../../modules/collections/entities/collection_log.entities';
 import { getErrorMessage } from '../../utils/connection-error';
+import { MediaItemEnrichmentService } from '../api/media-server/media-item-enrichment.service';
 import { MediaServerFactory } from '../api/media-server/media-server.factory';
 import { IMediaServerService } from '../api/media-server/media-server.interface';
 import {
@@ -148,6 +150,7 @@ export class CollectionsService {
     private readonly exclusionRepo: Repository<Exclusion>,
     private readonly connection: DataSource,
     private readonly mediaServerFactory: MediaServerFactory,
+    private readonly mediaItemEnrichmentService: MediaItemEnrichmentService,
     private readonly settingsDataService: SettingsDataService,
     private readonly metadataService: MetadataService,
     private readonly eventEmitter: EventEmitter2,
@@ -1126,6 +1129,31 @@ export class CollectionsService {
     return metadataByMediaServerId;
   }
 
+  /**
+   * A copy carrying the state no media server knows, for the sorts that compare
+   * it. Separate from the map the response is built from, so which fields the
+   * response carries never depends on how it was sorted. Only for those sorts,
+   * as the library path also gates it.
+   */
+  private async withMaintainerrStatusForSort(
+    sort: CollectionMediaSortField | undefined,
+    metadataByMediaServerId: Map<string, MediaItem>,
+  ): Promise<Map<string, MediaItem>> {
+    if (
+      sort === undefined ||
+      !(mediaLibraryStatusSortFields as readonly string[]).includes(sort) ||
+      metadataByMediaServerId.size === 0
+    ) {
+      return metadataByMediaServerId;
+    }
+
+    const enrichedItems = await this.mediaItemEnrichmentService.enrichItems([
+      ...metadataByMediaServerId.values(),
+    ]);
+
+    return new Map(enrichedItems.map((item) => [item.id, item]));
+  }
+
   private async hydrateCollectionMediaWithMetadata(
     entities: CollectionMedia[],
     mediaServer: IMediaServerService,
@@ -1436,6 +1464,11 @@ export class CollectionsService {
         mediaServer,
       );
 
+      const sortMetadata = await this.withMaintainerrStatusForSort(
+        sort,
+        metadataByMediaServerId,
+      );
+
       const sortableEntities = entities.filter((entity) =>
         metadataByMediaServerId.has(entity.mediaServerId),
       );
@@ -1449,8 +1482,8 @@ export class CollectionsService {
       const sortedPageEntities = sortableEntities
         .sort((leftItem, rightItem) =>
           compareMediaItemsBySort(
-            metadataByMediaServerId.get(leftItem.mediaServerId)!,
-            metadataByMediaServerId.get(rightItem.mediaServerId)!,
+            sortMetadata.get(leftItem.mediaServerId)!,
+            sortMetadata.get(rightItem.mediaServerId)!,
             sort,
             sortOrder,
             compareOptions,
