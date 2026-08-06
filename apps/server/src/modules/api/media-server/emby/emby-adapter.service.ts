@@ -1451,6 +1451,15 @@ export class EmbyAdapterService implements IMediaServerService {
 
   async deleteFromDisk(itemId: string): Promise<void> {
     if (!this.http) throw new Error('Emby not initialized');
+
+    // Same guard as the Jellyfin adapter: a blank id would leave `/Items/`,
+    // which is a different route from the single-item delete this intends.
+    if (!itemId || itemId.trim() === '') {
+      throw new Error(
+        'deleteFromDisk called with empty itemId - aborting to prevent unintended deletion',
+      );
+    }
+
     try {
       await this.http.delete(`/Items/${itemId}`);
     } catch (error) {

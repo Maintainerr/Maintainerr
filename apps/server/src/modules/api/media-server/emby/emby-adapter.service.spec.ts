@@ -93,6 +93,29 @@ describe('EmbyAdapterService', () => {
     setHttp();
   });
 
+  describe('deleteFromDisk', () => {
+    it.each(['', '   '])(
+      'refuses a blank item id (%j) rather than calling /Items/',
+      async (itemId) => {
+        setHttp();
+
+        await expect(service.deleteFromDisk(itemId)).rejects.toThrow(
+          'aborting to prevent unintended deletion',
+        );
+        expect(http.delete).not.toHaveBeenCalled();
+      },
+    );
+
+    it('deletes a real item', async () => {
+      setHttp();
+      http.delete.mockResolvedValue({ data: {} });
+
+      await service.deleteFromDisk('42');
+
+      expect(http.delete).toHaveBeenCalledWith('/Items/42');
+    });
+  });
+
   describe('getMetadata caching (#3355)', () => {
     it('caches a resolved item so repeat conditions do not re-read it', async () => {
       http.get.mockResolvedValue({

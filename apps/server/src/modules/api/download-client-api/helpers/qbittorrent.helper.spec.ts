@@ -138,3 +138,52 @@ describe('QbittorrentApi auth', () => {
     expect(t?.reachedSeedingGoal).toBe(true);
   });
 });
+
+describe('QbittorrentApi deleteTorrents', () => {
+  const arrange = () => {
+    const { api, axiosMock } = buildApi();
+    axiosMock.post.mockResolvedValue({ data: 'Ok.', headers: {} });
+    return { api, axiosMock };
+  };
+
+  // qBittorrent documents `hashes=all` on /torrents/delete as "delete all
+  // torrents", so it must never be forwarded as if it were one download.
+  it.each(['all', 'ALL', '  all  '])(
+    'refuses the whole-client magic value %j',
+    async (hash) => {
+      const { api, axiosMock } = arrange();
+
+      await api.deleteTorrents([hash], true);
+
+      expect(
+        axiosMock.post.mock.calls.some(([url]) =>
+          String(url).includes('/torrents/delete'),
+        ),
+      ).toBe(false);
+    },
+  );
+
+  it('drops blank hashes rather than widening the joined list', async () => {
+    const { api, axiosMock } = arrange();
+
+    await api.deleteTorrents(['ABC123', '', '   ', 'def456'], false);
+
+    const deleteCall = axiosMock.post.mock.calls.find(([url]) =>
+      String(url).includes('/torrents/delete'),
+    );
+    expect(deleteCall).toBeDefined();
+    expect(String(deleteCall[1])).toContain('hashes=abc123%7Cdef456');
+  });
+
+  it('sends nothing when every hash was rejected', async () => {
+    const { api, axiosMock } = arrange();
+
+    await api.deleteTorrents(['', 'all'], true);
+
+    expect(
+      axiosMock.post.mock.calls.some(([url]) =>
+        String(url).includes('/torrents/delete'),
+      ),
+    ).toBe(false);
+  });
+});
