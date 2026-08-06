@@ -15,7 +15,7 @@ import {
   Property,
   RuleConstants,
 } from '../constants/rules.constants';
-import { RulesDto } from '../dtos/rules.dto';
+import { RuleGroupDto } from '../dtos/ruleGroup.dto';
 import { ArrLookupCache } from '../helpers/arr-lookup-cache';
 import {
   countRuleCollectionNames,
@@ -50,7 +50,7 @@ export class PlexGetterService {
     id: number,
     libItem: MediaItem,
     dataType?: MediaItemType,
-    ruleGroup?: RulesDto,
+    ruleGroup?: RuleGroupDto,
     arrLookupCache?: ArrLookupCache,
   ): Promise<RuleValueType> {
     try {

@@ -15,7 +15,7 @@ import {
   Property,
   RuleConstants,
 } from '../constants/rules.constants';
-import { RulesDto } from '../dtos/rules.dto';
+import { RuleGroupDto } from '../dtos/ruleGroup.dto';
 
 @Injectable()
 export class TautulliGetterService {
@@ -39,7 +39,7 @@ export class TautulliGetterService {
     id: number,
     libItem: MediaItem,
     dataType?: MediaItemType,
-    ruleGroup?: RulesDto,
+    ruleGroup?: RuleGroupDto,
   ) {
     try {
       const prop = this.appProperties.find((el) => el.id === id);

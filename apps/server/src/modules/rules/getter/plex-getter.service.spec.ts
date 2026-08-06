@@ -1,6 +1,9 @@
 import { MediaItem } from '@maintainerr/contracts';
 import { Mocked, TestBed } from '@suites/unit';
-import { createMediaItem, createRulesDto } from '../../../../test/utils/data';
+import {
+  createMediaItem,
+  createRuleGroupDto,
+} from '../../../../test/utils/data';
 import { PlexAdapterService } from '../../api/media-server/plex/plex-adapter.service';
 import {
   PlexCollection,
@@ -178,7 +181,7 @@ describe('PlexGetterService', () => {
         VIEWCOUNT_PROP_ID,
         libItem,
         'movie',
-        createRulesDto({ dataType: 'movie' }),
+        createRuleGroupDto({ dataType: 'movie' }),
       );
 
       expect(result).toBe(7);
@@ -197,7 +200,7 @@ describe('PlexGetterService', () => {
         ISWATCHED_PROP_ID,
         libItem,
         'movie',
-        createRulesDto({ dataType: 'movie' }),
+        createRuleGroupDto({ dataType: 'movie' }),
       );
 
       expect(result).toBe(false);
@@ -271,7 +274,7 @@ describe('PlexGetterService', () => {
         rule.id,
         createMediaItem({ id: metadata.ratingKey, type: 'movie' }),
         'movie',
-        createRulesDto({ dataType: 'movie' }),
+        createRuleGroupDto({ dataType: 'movie' }),
       );
 
       expect(result).toEqual(rule.expected);
@@ -289,7 +292,7 @@ describe('PlexGetterService', () => {
         7,
         createMediaItem({ type: 'movie', lastViewedAt }),
         'movie',
-        createRulesDto({ dataType: 'movie' }),
+        createRuleGroupDto({ dataType: 'movie' }),
       );
 
       expect(result).toEqual(lastViewedAt);
@@ -308,7 +311,7 @@ describe('PlexGetterService', () => {
           lastViewedAt: new Date(1_730_000_000 * 1000),
         }),
         'movie',
-        createRulesDto({ dataType: 'movie' }),
+        createRuleGroupDto({ dataType: 'movie' }),
       );
 
       expect(result).toEqual(new Date(1_740_000_000 * 1000));
@@ -322,7 +325,7 @@ describe('PlexGetterService', () => {
         makeWatchEntry({ viewedAt: 1_710_000_000 }),
       ]);
 
-      const ruleGroup = createRulesDto({ dataType: 'movie' });
+      const ruleGroup = createRuleGroupDto({ dataType: 'movie' });
       const result = await service.get(
         7,
         createMediaItem({ type: 'movie' }),
@@ -354,12 +357,12 @@ describe('PlexGetterService', () => {
         6,
         createMediaItem({ type: 'movie' }),
         'movie',
-        createRulesDto({
+        createRuleGroupDto({
           dataType: 'movie',
           name: ' cleanup group ',
           collection: {
             manualCollectionName: ' Manual Shelf ',
-          } as ReturnType<typeof createRulesDto>['collection'],
+          } as ReturnType<typeof createRuleGroupDto>['collection'],
         }),
       );
 
@@ -381,7 +384,7 @@ describe('PlexGetterService', () => {
         19,
         createMediaItem({ type: 'movie' }),
         'movie',
-        createRulesDto({ dataType: 'movie' }),
+        createRuleGroupDto({ dataType: 'movie' }),
       );
 
       expect(result).toEqual(['Space Saga', 'space saga', 'Space Saga']);
@@ -410,7 +413,7 @@ describe('PlexGetterService', () => {
           11,
           libItem,
           'episode',
-          createRulesDto({ dataType: 'show' }),
+          createRuleGroupDto({ dataType: 'show' }),
         ),
       ).resolves.toEqual(['Mystery']);
       await expect(
@@ -418,7 +421,7 @@ describe('PlexGetterService', () => {
           24,
           libItem,
           'episode',
-          createRulesDto({ dataType: 'show' }),
+          createRuleGroupDto({ dataType: 'show' }),
         ),
       ).resolves.toEqual(['Shared Show Label']);
     });
@@ -455,7 +458,7 @@ describe('PlexGetterService', () => {
         12,
         createMediaItem({ type: 'season' }),
         'season',
-        createRulesDto({ dataType: 'show' }),
+        createRuleGroupDto({ dataType: 'show' }),
       );
 
       expect(result).toEqual(['bob', 'alice']);
@@ -483,7 +486,7 @@ describe('PlexGetterService', () => {
         }),
       ]);
 
-      const ruleGroup = createRulesDto({ dataType: 'show' });
+      const ruleGroup = createRuleGroupDto({ dataType: 'show' });
       const result = await service.get(
         13,
         createMediaItem({ type: 'show' }),
@@ -512,7 +515,7 @@ describe('PlexGetterService', () => {
         13,
         createMediaItem({ type: 'show' }),
         'show',
-        createRulesDto({ dataType: 'show' }),
+        createRuleGroupDto({ dataType: 'show' }),
       );
 
       expect(result).toBeNull();
@@ -533,7 +536,7 @@ describe('PlexGetterService', () => {
       );
 
       const libItem = createMediaItem({ type: 'season' });
-      const ruleGroup = createRulesDto({ dataType: 'show' });
+      const ruleGroup = createRuleGroupDto({ dataType: 'show' });
 
       await expect(service.get(14, libItem, 'season', ruleGroup)).resolves.toBe(
         2,
@@ -593,7 +596,7 @@ describe('PlexGetterService', () => {
           16,
           createMediaItem({ id: 'show-1', type: 'show' }),
           'show',
-          createRulesDto({ dataType: 'show' }),
+          createRuleGroupDto({ dataType: 'show' }),
         ),
       ).resolves.toEqual(new Date(1_720_000_000 * 1000));
       await expect(
@@ -601,7 +604,7 @@ describe('PlexGetterService', () => {
           27,
           createMediaItem({ id: 'show-1', type: 'show' }),
           'show',
-          createRulesDto({ dataType: 'show' }),
+          createRuleGroupDto({ dataType: 'show' }),
         ),
       ).resolves.toEqual(new Date('2024-04-17'));
       await expect(
@@ -609,7 +612,7 @@ describe('PlexGetterService', () => {
           29,
           createMediaItem({ id: 'episode-1', type: 'episode' }),
           'episode',
-          createRulesDto({ dataType: 'show' }),
+          createRuleGroupDto({ dataType: 'show' }),
         ),
       ).resolves.toEqual(new Date('2024-04-17'));
     });
@@ -630,7 +633,7 @@ describe('PlexGetterService', () => {
         makeWatchEntry({ accountID: 1 }),
       ]);
 
-      const ruleGroup = createRulesDto({ dataType: 'show' });
+      const ruleGroup = createRuleGroupDto({ dataType: 'show' });
       const result = await service.get(
         18,
         createMediaItem({ type: 'show' }),
@@ -678,7 +681,7 @@ describe('PlexGetterService', () => {
       });
 
       const libItem = createMediaItem({ type: 'show' });
-      const ruleGroup = createRulesDto({ dataType: 'show' });
+      const ruleGroup = createRuleGroupDto({ dataType: 'show' });
 
       await expect(service.get(20, libItem, 'show', ruleGroup)).resolves.toBe(
         3,
@@ -702,7 +705,7 @@ describe('PlexGetterService', () => {
         21,
         createMediaItem({ id: 'movie-1', type: 'movie' }),
         'movie',
-        createRulesDto({ dataType: 'movie' }),
+        createRuleGroupDto({ dataType: 'movie' }),
       );
 
       expect(result).toEqual(['Road Trip', 'Road Trip', 'Finale']);
@@ -743,7 +746,7 @@ describe('PlexGetterService', () => {
       );
 
       const libItem = createMediaItem({ id: 'episode-1', type: 'episode' });
-      const ruleGroup = createRulesDto({ dataType: 'show' });
+      const ruleGroup = createRuleGroupDto({ dataType: 'show' });
 
       await expect(
         service.get(28, libItem, 'episode', ruleGroup),
@@ -774,7 +777,7 @@ describe('PlexGetterService', () => {
       ]);
 
       const libItem = createMediaItem({ id: 'movie-1', type: 'movie' });
-      const ruleGroup = createRulesDto({ dataType: 'movie' });
+      const ruleGroup = createRuleGroupDto({ dataType: 'movie' });
 
       await expect(
         service.get(28, libItem, 'movie', ruleGroup),
@@ -801,7 +804,7 @@ describe('PlexGetterService', () => {
       plexApi.getWatchlistIdsForUser.mockResolvedValue(undefined);
 
       const libItem = createMediaItem({ id: 'movie-1', type: 'movie' });
-      const ruleGroup = createRulesDto({ dataType: 'movie' });
+      const ruleGroup = createRuleGroupDto({ dataType: 'movie' });
 
       await expect(
         service.get(28, libItem, 'movie', ruleGroup),
@@ -840,7 +843,7 @@ describe('PlexGetterService', () => {
       );
 
       const libItem = createMediaItem({ id: 'movie-1', type: 'movie' });
-      const ruleGroup = createRulesDto({ dataType: 'movie' });
+      const ruleGroup = createRuleGroupDto({ dataType: 'movie' });
 
       await expect(
         service.get(28, libItem, 'movie', ruleGroup),
@@ -864,7 +867,7 @@ describe('PlexGetterService', () => {
       plexApi.getWatchlistIdsForUser.mockResolvedValue(null);
 
       const libItem = createMediaItem({ id: 'movie-1', type: 'movie' });
-      const ruleGroup = createRulesDto({ dataType: 'movie' });
+      const ruleGroup = createRuleGroupDto({ dataType: 'movie' });
 
       await expect(
         service.get(28, libItem, 'movie', ruleGroup),
@@ -888,7 +891,7 @@ describe('PlexGetterService', () => {
       );
 
       const libItem = createMediaItem({ id: 'movie-1', type: 'movie' });
-      const ruleGroup = createRulesDto({ dataType: 'movie' });
+      const ruleGroup = createRuleGroupDto({ dataType: 'movie' });
 
       await expect(
         service.get(28, libItem, 'movie', ruleGroup),
@@ -933,7 +936,7 @@ describe('PlexGetterService', () => {
         rule.id,
         createMediaItem({ type: 'movie' }),
         'movie',
-        createRulesDto({ dataType: 'movie' }),
+        createRuleGroupDto({ dataType: 'movie' }),
       );
 
       expect(result).toBe(rule.expected);
@@ -980,7 +983,7 @@ describe('PlexGetterService', () => {
         rule.id,
         createMediaItem({ id: 'episode-1', type: 'episode' }),
         'episode',
-        createRulesDto({ dataType: 'show' }),
+        createRuleGroupDto({ dataType: 'show' }),
       );
 
       expect(result).toBe(rule.expected);
@@ -1001,7 +1004,7 @@ describe('PlexGetterService', () => {
             id,
             createMediaItem({ id: 'show-1', type: 'show' }),
             'show',
-            createRulesDto({ dataType: 'show' }),
+            createRuleGroupDto({ dataType: 'show' }),
           ),
         ).resolves.toBeNull();
       },
@@ -1035,13 +1038,13 @@ describe('PlexGetterService', () => {
         39,
         createMediaItem({ id: 'movie-1', type: 'movie' }),
         'movie',
-        createRulesDto({
+        createRuleGroupDto({
           dataType: 'movie',
           libraryId: 'lib-1',
           name: 'Cleanup Group',
           collection: {
             manualCollectionName: 'manual shelf',
-          } as ReturnType<typeof createRulesDto>['collection'],
+          } as ReturnType<typeof createRuleGroupDto>['collection'],
         }),
       );
 
@@ -1089,7 +1092,7 @@ describe('PlexGetterService', () => {
         40,
         createMediaItem({ id: 'episode-1', type: 'episode' }),
         'episode',
-        createRulesDto({
+        createRuleGroupDto({
           dataType: 'show',
           libraryId: 'lib-1',
           name: ' cleanup group ',
@@ -1138,7 +1141,7 @@ describe('PlexGetterService', () => {
         41,
         createMediaItem({ id: 'episode-1', type: 'episode' }),
         'episode',
-        createRulesDto({ dataType: 'show', libraryId: 'lib-1' }),
+        createRuleGroupDto({ dataType: 'show', libraryId: 'lib-1' }),
       );
 
       // Pre-refactor behaviour (#1630): dedupe runs on the RAW tag, so the
@@ -1175,7 +1178,7 @@ describe('PlexGetterService', () => {
         42,
         createMediaItem({ id: 'movie-1', type: 'movie' }),
         'movie',
-        createRulesDto({ dataType: 'movie', libraryId: 'lib-1' }),
+        createRuleGroupDto({ dataType: 'movie', libraryId: 'lib-1' }),
       );
 
       // The exact-equal 'Space Saga' (metadata + smart) collapse; the whitespace
@@ -1209,7 +1212,7 @@ describe('PlexGetterService', () => {
       });
 
       const libItem = createMediaItem({ id: 'episode-1', type: 'episode' });
-      const ruleGroup = createRulesDto({
+      const ruleGroup = createRuleGroupDto({
         dataType: 'show',
         name: 'cleanup group',
       });
@@ -1271,7 +1274,7 @@ describe('PlexGetterService', () => {
       31,
       mediaItem,
       'movie',
-      createRulesDto({ dataType: 'movie' }),
+      createRuleGroupDto({ dataType: 'movie' }),
     );
 
     expect(result).toBe(7.8);
@@ -1308,7 +1311,7 @@ describe('PlexGetterService', () => {
       35,
       mediaItem,
       'episode',
-      createRulesDto({ dataType: 'show' }),
+      createRuleGroupDto({ dataType: 'show' }),
     );
 
     expect(result).toBe(8.2);
@@ -1353,7 +1356,7 @@ describe('PlexGetterService', () => {
       });
 
       const libItem = createMediaItem({ type: 'movie' });
-      const ruleGroup = createRulesDto({
+      const ruleGroup = createRuleGroupDto({
         dataType: 'movie',
         libraryId: 'lib-1',
         name: 'My cleanup group',
@@ -1397,7 +1400,7 @@ describe('PlexGetterService', () => {
         COLLECTION_SIBLINGS_PROP_ID,
         createMediaItem({ type: 'movie' }),
         'movie',
-        createRulesDto({ dataType: 'movie', libraryId: 'lib-1' }),
+        createRuleGroupDto({ dataType: 'movie', libraryId: 'lib-1' }),
       );
 
       expect(result).toBeNull();
@@ -1425,7 +1428,7 @@ describe('PlexGetterService', () => {
         COLLECTION_SIBLINGS_PROP_ID,
         createMediaItem({ type: 'movie' }),
         'movie',
-        createRulesDto({ dataType: 'movie', libraryId: 'lib-1' }),
+        createRuleGroupDto({ dataType: 'movie', libraryId: 'lib-1' }),
       );
 
       expect(result).toBeNull();
@@ -1458,7 +1461,7 @@ describe('PlexGetterService', () => {
         COLLECTION_SIBLINGS_PROP_ID,
         createMediaItem({ type: 'movie' }),
         'movie',
-        createRulesDto({
+        createRuleGroupDto({
           dataType: 'movie',
           libraryId: 'lib-1',
           name: 'My cleanup group',
@@ -1499,13 +1502,13 @@ describe('PlexGetterService', () => {
         COLLECTION_SIBLINGS_PROP_ID,
         createMediaItem({ type: 'movie' }),
         'movie',
-        createRulesDto({
+        createRuleGroupDto({
           dataType: 'movie',
           libraryId: 'lib-1',
           name: ' cleanup group ',
           collection: {
             manualCollectionName: ' manual shelf ',
-          } as ReturnType<typeof createRulesDto>['collection'],
+          } as ReturnType<typeof createRuleGroupDto>['collection'],
         }),
       );
 
@@ -1531,7 +1534,7 @@ describe('PlexGetterService', () => {
         makeWatchEntry({ accountID: 2 }),
       ]);
 
-      const ruleGroup = createRulesDto({ dataType: 'movie' });
+      const ruleGroup = createRuleGroupDto({ dataType: 'movie' });
       const result = await service.get(
         SEEN_BY_PROP_ID,
         createMediaItem({ type: 'movie' }),
@@ -1604,7 +1607,7 @@ describe('PlexGetterService', () => {
         SW_LAST_WATCHED_PROP_ID,
         createMediaItem({ type: 'show' }),
         'show',
-        createRulesDto({ dataType: 'show' }),
+        createRuleGroupDto({ dataType: 'show' }),
       );
 
     it('returns the newest watched episode date (highest season, then episode)', async () => {

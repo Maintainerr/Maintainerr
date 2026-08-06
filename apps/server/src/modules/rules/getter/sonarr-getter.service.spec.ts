@@ -5,7 +5,7 @@ import {
   createCollectionMedia,
   createMediaItem,
   createRuleDto,
-  createRulesDto,
+  createRuleGroupDto,
   createSonarrEpisode,
   createSonarrEpisodeFile,
   createSonarrSeries,
@@ -145,7 +145,7 @@ describe('SonarrGetterService', () => {
           13,
           mediaItem,
           type as MediaItemType,
-          createRulesDto({
+          createRuleGroupDto({
             collection: collectionMedia.collection,
             dataType: type as MediaItemType,
           }),
@@ -238,7 +238,7 @@ describe('SonarrGetterService', () => {
             13,
             mediaItem,
             type as MediaItemType,
-            createRulesDto({
+            createRuleGroupDto({
               collection: collectionMedia.collection,
               dataType: type as MediaItemType,
             }),
@@ -311,7 +311,7 @@ describe('SonarrGetterService', () => {
                 parentIndex: type === 'episode' ? seasonNumber : undefined,
               }),
               type as MediaItemType,
-              createRulesDto({
+              createRuleGroupDto({
                 collection: collectionMedia.collection,
                 dataType: type as MediaItemType,
               }),
@@ -352,7 +352,7 @@ describe('SonarrGetterService', () => {
           0,
           showItem,
           'show',
-          createRulesDto({
+          createRuleGroupDto({
             collection: collectionMedia.collection,
             dataType: 'show',
           }),
@@ -470,7 +470,7 @@ describe('SonarrGetterService', () => {
           index: 6,
         }),
         'season',
-        createRulesDto({
+        createRuleGroupDto({
           collection: collectionMedia.collection,
           dataType: 'season',
         }),
@@ -530,7 +530,7 @@ describe('SonarrGetterService', () => {
           index: 8,
         }),
         'season',
-        createRulesDto({
+        createRuleGroupDto({
           collection: collectionMedia.collection,
           dataType: 'season',
         }),
@@ -593,7 +593,7 @@ describe('SonarrGetterService', () => {
           grandparentId: 'show-1',
         }),
         'episode',
-        createRulesDto({
+        createRuleGroupDto({
           collection: collectionMedia.collection,
           dataType: 'episode',
         }),
@@ -646,7 +646,7 @@ describe('SonarrGetterService', () => {
           index: 5,
         }),
         'season',
-        createRulesDto({
+        createRuleGroupDto({
           collection: collectionMedia.collection,
           dataType: 'season',
         }),
@@ -678,7 +678,7 @@ describe('SonarrGetterService', () => {
           type: 'show',
         }),
         'show',
-        createRulesDto({
+        createRuleGroupDto({
           collection: collectionMedia.collection,
           dataType: 'show',
         }),
@@ -725,7 +725,7 @@ describe('SonarrGetterService', () => {
           23,
           mediaItem,
           'episode',
-          createRulesDto({
+          createRuleGroupDto({
             collection: collectionMedia.collection,
             dataType: 'episode',
           }),
@@ -750,7 +750,7 @@ describe('SonarrGetterService', () => {
           23,
           mediaItem,
           'episode',
-          createRulesDto({
+          createRuleGroupDto({
             collection: collectionMedia.collection,
             dataType: 'episode',
           }),
@@ -766,7 +766,7 @@ describe('SonarrGetterService', () => {
           23,
           mediaItem,
           'episode',
-          createRulesDto({
+          createRuleGroupDto({
             collection: collectionMedia.collection,
             dataType: 'episode',
           }),
@@ -800,7 +800,7 @@ describe('SonarrGetterService', () => {
           24,
           mediaItem,
           'episode',
-          createRulesDto({
+          createRuleGroupDto({
             collection: collectionMedia.collection,
             dataType: 'episode',
           }),
@@ -816,7 +816,7 @@ describe('SonarrGetterService', () => {
           24,
           mediaItem,
           'episode',
-          createRulesDto({
+          createRuleGroupDto({
             collection: collectionMedia.collection,
             dataType: 'episode',
           }),
@@ -843,7 +843,7 @@ describe('SonarrGetterService', () => {
           26,
           mediaItem,
           'episode',
-          createRulesDto({
+          createRuleGroupDto({
             collection: collectionMedia.collection,
             dataType: 'episode',
           }),
@@ -859,7 +859,7 @@ describe('SonarrGetterService', () => {
           26,
           mediaItem,
           'episode',
-          createRulesDto({
+          createRuleGroupDto({
             collection: collectionMedia.collection,
             dataType: 'episode',
           }),
@@ -884,7 +884,7 @@ describe('SonarrGetterService', () => {
           26,
           mediaItem,
           'episode',
-          createRulesDto({
+          createRuleGroupDto({
             collection: collectionMedia.collection,
             dataType: 'episode',
           }),
@@ -938,7 +938,7 @@ describe('SonarrGetterService', () => {
           25,
           mediaItem,
           type as MediaItemType,
-          createRulesDto({
+          createRuleGroupDto({
             collection: collectionMedia.collection,
             dataType: type as MediaItemType,
           }),
@@ -977,7 +977,7 @@ describe('SonarrGetterService', () => {
         28,
         mediaItem,
         'show',
-        createRulesDto({
+        createRuleGroupDto({
           collection: collectionMedia.collection,
           dataType: 'show',
         }),
@@ -1007,7 +1007,7 @@ describe('SonarrGetterService', () => {
         29,
         mediaItem,
         'show',
-        createRulesDto({
+        createRuleGroupDto({
           collection: collectionMedia.collection,
           dataType: 'show',
         }),
@@ -1043,7 +1043,7 @@ describe('SonarrGetterService', () => {
         propId,
         mediaItem,
         'show',
-        createRulesDto({
+        createRuleGroupDto({
           collection: collectionMedia.collection,
           dataType: 'show',
         }),
@@ -1059,7 +1059,7 @@ describe('SonarrGetterService', () => {
           7, // 'ended' - reaches tryMetadataFallback's resolveIdsFromMediaItem
           mediaItem,
           'show',
-          createRulesDto({
+          createRuleGroupDto({
             collection: collectionMedia.collection,
             dataType: 'show',
           }),
@@ -1253,7 +1253,7 @@ describe('SonarrGetterService', () => {
             : {}),
         }),
         type,
-        createRulesDto({
+        createRuleGroupDto({
           collection: collectionMedia.collection,
           dataType: type,
         }),
@@ -1313,7 +1313,7 @@ describe('SonarrGetterService', () => {
             : {}),
         }),
         type,
-        createRulesDto({
+        createRuleGroupDto({
           collection: collectionMedia.collection,
           dataType: type,
         }),
@@ -1365,7 +1365,7 @@ describe('SonarrGetterService', () => {
           grandparentId: 'show-1',
         }),
         'episode',
-        createRulesDto({
+        createRuleGroupDto({
           collection: collectionMedia.collection,
           dataType: 'episode',
         }),
@@ -1600,7 +1600,7 @@ describe('SonarrGetterService', () => {
           grandparentId: 'show-1',
         }),
         'episode',
-        createRulesDto({
+        createRuleGroupDto({
           collection: collectionMedia.collection,
           dataType: 'episode',
         }),
@@ -1633,7 +1633,7 @@ describe('SonarrGetterService', () => {
           grandparentId: 'show-1',
         }),
         'episode',
-        createRulesDto({
+        createRuleGroupDto({
           collection: collectionMedia.collection,
           dataType: 'episode',
         }),
@@ -1761,7 +1761,7 @@ describe('SonarrGetterService', () => {
           originallyAvailableAt: target.originallyAvailableAt,
         }),
         'episode',
-        createRulesDto({
+        createRuleGroupDto({
           collection: collectionMedia.collection,
           dataType: 'episode',
         }),
@@ -1949,7 +1949,7 @@ describe('SonarrGetterService', () => {
           parentId: 'show-1',
         }),
         dataType,
-        createRulesDto({
+        createRuleGroupDto({
           collection: collectionMedia.collection,
           dataType,
         }),
@@ -2051,7 +2051,7 @@ describe('SonarrGetterService', () => {
         35,
         createMediaItem({ type: 'season', index: 1, parentId: 'show-1' }),
         'season',
-        createRulesDto({
+        createRuleGroupDto({
           collection: collectionMedia.collection,
           dataType: 'season',
         }),
@@ -2094,7 +2094,7 @@ describe('SonarrGetterService', () => {
           grandparentId: 'show-1',
         }),
         'episode',
-        createRulesDto({
+        createRuleGroupDto({
           collection: collectionMedia.collection,
           dataType: 'episode',
         }),
@@ -2141,7 +2141,10 @@ describe('SonarrGetterService', () => {
         11,
         createMediaItem(item),
         dataType,
-        createRulesDto({ collection: collectionMedia.collection, dataType }),
+        createRuleGroupDto({
+          collection: collectionMedia.collection,
+          dataType,
+        }),
       );
 
       // `undefined`, not `null`: the comparator reads it as a transport
@@ -2173,7 +2176,7 @@ describe('SonarrGetterService', () => {
         18,
         createMediaItem({ type: 'season', index: 0 }),
         'season',
-        createRulesDto({
+        createRuleGroupDto({
           collection: collectionMedia.collection,
           dataType: 'season',
         }),

@@ -17,7 +17,7 @@ import {
 } from '../constants/rules.constants';
 import { RuleDto } from '../dtos/rule.dto';
 import { RuleDbDto } from '../dtos/ruleDb.dto';
-import { RulesDto } from '../dtos/rules.dto';
+import { RuleGroupDto } from '../dtos/ruleGroup.dto';
 import { ValueGetterService } from '../getter/getter.service';
 import { ArrLookupCache } from './arr-lookup-cache';
 
@@ -77,7 +77,7 @@ export class RuleComparatorService {
   }
 
   public async executeRulesWithData(
-    rulegroup: RulesDto,
+    rulegroup: RuleGroupDto,
     plexData: MediaItem[],
     onRuleProgress?: (processingRule: number) => void,
     abortSignal?: AbortSignal,
@@ -220,7 +220,7 @@ export class RuleComparatorService {
     });
   }
 
-  private async executeRule(rule: RuleDto, ruleGroup: RulesDto) {
+  private async executeRule(rule: RuleDto, ruleGroup: RuleGroupDto) {
     let data: MediaItem[];
     let firstVal: RuleValueType;
     let secondVal: RuleValueType;
@@ -394,7 +394,7 @@ export class RuleComparatorService {
   private async getSecondValue(
     rule: RuleDto,
     data: MediaItem,
-    rulegroup: RulesDto,
+    rulegroup: RuleGroupDto,
     firstVal: RuleValueType,
   ): Promise<RuleValueType> {
     let secondVal: RuleValueType;
@@ -526,7 +526,7 @@ export class RuleComparatorService {
 
   private logMissingOperand(
     rule: RuleDto,
-    ruleGroup: RulesDto,
+    ruleGroup: RuleGroupDto,
     mediaId: string,
     firstVal: RuleValueType,
     secondVal: RuleValueType,

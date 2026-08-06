@@ -43,7 +43,7 @@ import {
   ResolvedMediaIds,
 } from '../../src/modules/metadata/interfaces/metadata.types';
 import { RuleDto } from '../../src/modules/rules/dtos/rule.dto';
-import { RulesDto } from '../../src/modules/rules/dtos/rules.dto';
+import { RuleGroupDto } from '../../src/modules/rules/dtos/ruleGroup.dto';
 
 export const createCollection = (
   properties: Partial<Collection> = {},
@@ -597,9 +597,9 @@ export const createSonarrEpisodeFile = (
   ...properties,
 });
 
-export const createRulesDto = (
-  properties: Partial<RulesDto> = {},
-): RulesDto => ({
+export const createRuleGroupDto = (
+  properties: Partial<RuleGroupDto> = {},
+): RuleGroupDto => ({
   id: faker.number.int(),
   libraryId: faker.number.int().toString(),
   dataType: faker.helpers.arrayElement([

@@ -24,7 +24,7 @@ import {
   RuleConstants,
 } from '../constants/rules.constants';
 import { RuleDto } from '../dtos/rule.dto';
-import { RulesDto } from '../dtos/rules.dto';
+import { RuleGroupDto } from '../dtos/ruleGroup.dto';
 import { ArrLookupCache } from '../helpers/arr-lookup-cache';
 import { evaluateArrDiskspaceGiB } from '../helpers/diskspace.utils';
 
@@ -53,7 +53,7 @@ export class SonarrGetterService {
     id: number,
     libItem: MediaItem,
     dataType?: MediaItemType,
-    ruleGroup?: RulesDto,
+    ruleGroup?: RuleGroupDto,
     rule?: RuleDto,
     arrLookupCache?: ArrLookupCache,
   ) {

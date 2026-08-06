@@ -10,7 +10,7 @@ import { CronJob, CronTime } from 'cron';
 import { MaintainerrLogger } from '../../logging/logs.service';
 import { Settings } from '../../settings/entities/settings.entities';
 import { SettingsDataService } from '../../settings/settings-data.service';
-import { RulesDto } from '../dtos/rules.dto';
+import { RuleGroupDto } from '../dtos/ruleGroup.dto';
 import { RuleGroup } from '../entities/rule-group.entities';
 import { RulesService } from '../rules.service';
 import { RuleExecutorJobManagerService } from './rule-executor-job-manager.service';
@@ -179,7 +179,7 @@ export class RuleExecutorSchedulerService
     globalJob.setTime(new CronTime(data.settings.rules_handler_job_cron));
   }
 
-  private createRuleGroupCronJob(ruleGroup: RulesDto) {
+  private createRuleGroupCronJob(ruleGroup: RuleGroupDto) {
     const jobName = this.getJobNameForRuleGroup(ruleGroup.id);
     if (!ruleGroup.ruleHandlerCronSchedule) {
       this.logger.warn(

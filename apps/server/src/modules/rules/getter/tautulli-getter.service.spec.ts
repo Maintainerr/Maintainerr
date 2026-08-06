@@ -8,7 +8,7 @@ import {
 import { PlexApiService } from '../../api/plex-api/plex-api.service';
 import { TautulliApiService } from '../../api/tautulli-api/tautulli-api.service';
 import { Collection } from '../../collections/entities/collection.entities';
-import { RulesDto } from '../dtos/rules.dto';
+import { RuleGroupDto } from '../dtos/ruleGroup.dto';
 import { TautulliGetterService } from './tautulli-getter.service';
 
 const SEEN_BY = 0;
@@ -51,7 +51,7 @@ const createService = (
 };
 
 const showItem: MediaItem = createMediaItem({ type: 'show', id: '1' });
-const ruleGroup = { collection: { id: 1 } } as RulesDto;
+const ruleGroup = { collection: { id: 1 } } as RuleGroupDto;
 
 describe('TautulliGetterService', () => {
   describe('seenBy', () => {

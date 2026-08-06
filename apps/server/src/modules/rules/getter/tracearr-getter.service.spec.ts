@@ -10,7 +10,7 @@ import {
   TracearrHistoryIndex,
 } from '../../api/tracearr-api/tracearr-api.service';
 import { Collection } from '../../collections/entities/collection.entities';
-import { RulesDto } from '../dtos/rules.dto';
+import { RuleGroupDto } from '../dtos/ruleGroup.dto';
 import { TracearrGetterService } from './tracearr-getter.service';
 
 const SEEN_BY = 0;
@@ -80,7 +80,7 @@ const createHistoryIndex = (
   };
 };
 
-const ruleGroup = { collection: { id: 1 } } as RulesDto;
+const ruleGroup = { collection: { id: 1 } } as RuleGroupDto;
 
 const createService = (
   rows: TracearrHistoryItem[],

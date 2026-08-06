@@ -34,7 +34,7 @@ import { MaintainerrLogger } from '../../logging/logs.service';
 import { SettingsDataService } from '../../settings/settings-data.service';
 import { Application, RuleConstants } from '../constants/rules.constants';
 import { RuleDto } from '../dtos/rule.dto';
-import { RulesDto } from '../dtos/rules.dto';
+import { RuleGroupDto } from '../dtos/ruleGroup.dto';
 import { RuleGroup } from '../entities/rule-group.entities';
 import {
   buildExclusionCascadeSets,
@@ -125,7 +125,7 @@ export class RuleExecutorService {
     return this.mediaServerFactory.getService();
   }
 
-  private usesTracearr(ruleGroup: RulesDto): boolean {
+  private usesTracearr(ruleGroup: RuleGroupDto): boolean {
     return ruleGroup.rules.some((rule) => {
       const parsedRule = (
         'ruleJson' in rule ? JSON.parse(rule.ruleJson) : rule
@@ -139,7 +139,7 @@ export class RuleExecutorService {
 
   /** Both sides of a rule count: a Seerr date compared against a Tautulli one needs both. */
   private async findUnavailableApplications(
-    ruleGroup: RulesDto,
+    ruleGroup: RuleGroupDto,
   ): Promise<string[]> {
     const referenced = new Set<Application>();
     for (const rule of ruleGroup.rules) {
@@ -1220,7 +1220,7 @@ export class RuleExecutorService {
     }
   }
 
-  private async getAllActiveRuleGroups(): Promise<RulesDto[]> {
+  private async getAllActiveRuleGroups(): Promise<RuleGroupDto[]> {
     return await this.rulesService.getRuleGroups(true);
   }
 

@@ -51,7 +51,7 @@ import { CommunityRule } from './dtos/communityRule.dto';
 import { ExclusionContextDto } from './dtos/exclusion.dto';
 import { RuleDto } from './dtos/rule.dto';
 import { RuleDbDto } from './dtos/ruleDb.dto';
-import { RulesDto } from './dtos/rules.dto';
+import { RuleGroupDto } from './dtos/ruleGroup.dto';
 import { CommunityRuleKarma } from './entities/community-rule-karma.entities';
 import { Exclusion } from './entities/exclusion.entities';
 import { RuleGroup } from './entities/rule-group.entities';
@@ -168,7 +168,7 @@ export class RulesService {
     activeOnly = false,
     libraryId?: string,
     typeId?: number,
-  ): Promise<RulesDto[]> {
+  ): Promise<RuleGroupDto[]> {
     try {
       const queryBuilder = this.connection
         .createQueryBuilder('rule_group', 'rg')
@@ -196,7 +196,7 @@ export class RulesService {
           group.rules = [];
         }
       }
-      return rulegroups as RulesDto[];
+      return rulegroups as RuleGroupDto[];
     } catch (error) {
       this.logger.warn('Rules - Action failed');
       this.logger.debug(error);
@@ -204,7 +204,7 @@ export class RulesService {
     }
   }
 
-  async getRuleGroupsByIds(ids: number[]): Promise<RulesDto[]> {
+  async getRuleGroupsByIds(ids: number[]): Promise<RuleGroupDto[]> {
     if (ids.length === 0) {
       return [];
     }
@@ -226,7 +226,7 @@ export class RulesService {
           group.rules = [];
         }
       }
-      return rulegroups as RulesDto[];
+      return rulegroups as RuleGroupDto[];
     } catch (error) {
       this.logger.warn('Rules - Action failed');
       this.logger.debug(error);
@@ -234,7 +234,7 @@ export class RulesService {
     }
   }
 
-  async getRuleGroup(id: number): Promise<RulesDto> {
+  async getRuleGroup(id: number): Promise<RuleGroupDto> {
     try {
       const rulegroup = await this.connection
         .createQueryBuilder('rule_group', 'rg')
@@ -250,7 +250,7 @@ export class RulesService {
       if (rulegroup && !Array.isArray(rulegroup.rules)) {
         rulegroup.rules = [];
       }
-      return rulegroup as RulesDto;
+      return rulegroup as RuleGroupDto;
     } catch (error) {
       this.logger.warn('Rules - Action failed');
       this.logger.debug(error);
@@ -408,7 +408,7 @@ export class RulesService {
   // defaulting to 'show'.
   private resolveCollectionType(
     libType: MediaItemType,
-    params: RulesDto,
+    params: RuleGroupDto,
   ): MediaItemType {
     if (libType === 'movie') {
       return 'movie';
@@ -416,7 +416,7 @@ export class RulesService {
     return params.dataType !== undefined ? params.dataType : 'show';
   }
 
-  async setRules(params: RulesDto) {
+  async setRules(params: RuleGroupDto) {
     try {
       const managerState = this.validateSingleShowManager(params);
       if (managerState.code !== 1) {
@@ -537,7 +537,7 @@ export class RulesService {
     }
   }
 
-  async updateRules(params: RulesDto) {
+  async updateRules(params: RuleGroupDto) {
     try {
       // Without one there is nothing to update, and TypeORM drops an undefined
       // id from the where clause rather than rejecting it.
@@ -1844,7 +1844,7 @@ export class RulesService {
   // The UI enforces this via the "Managed by" selector; this guards the raw
   // API path, where a payload with both set would otherwise dispatch the
   // Sonarr handler against a sports library.
-  private validateSingleShowManager(params: RulesDto): ReturnStatus {
+  private validateSingleShowManager(params: RuleGroupDto): ReturnStatus {
     if (params.sonarrSettingsId != null && params.sportarrSettingsId != null) {
       return this.createReturnStatus(
         false,
@@ -2258,7 +2258,7 @@ export class RulesService {
       const ruleComparator = this.ruleComparatorServiceFactory.create();
       try {
         const result = await ruleComparator.executeRulesWithData(
-          group as RulesDto,
+          group as RuleGroupDto,
           [mediaResp],
         );
         return { code: 1, result: result.stats };
@@ -2274,11 +2274,11 @@ export class RulesService {
   /**
    * Reset the media server cache if any rule in the rule group requires it.
    *
-   * @param {RulesDto} rulegroup - The rule group to check for cache reset requirement.
+   * @param {RuleGroupDto} rulegroup - The rule group to check for cache reset requirement.
    * @return {Promise<boolean>} Whether the media server cache was reset.
    */
   public async resetCacheIfGroupUsesRuleThatRequiresIt(
-    rulegroup: RulesDto,
+    rulegroup: RuleGroupDto,
   ): Promise<boolean> {
     try {
       let result = false;
