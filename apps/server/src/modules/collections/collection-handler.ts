@@ -208,9 +208,15 @@ export class CollectionHandler {
               break;
             }
             default:
+              // Keyed on the collection's own type, not the library lookup:
+              // `library` is undefined whenever the media server stops listing
+              // the id, and `undefined?.type` silently reads as 'movie'. TMDB
+              // numbers movies and shows independently, so that sends a show's
+              // id to the movie endpoint, where it can resolve to an unrelated
+              // film whose Seerr record is then deleted.
               await this.seerrApi.removeMediaByTmdbId(
                 tmdbId,
-                library?.type === 'show' ? 'tv' : 'movie',
+                collection.type === 'show' ? 'tv' : 'movie',
               );
               this.logger.log(
                 `[Seerr] Removed requests of media with TMDB ID '${tmdbId}'`,

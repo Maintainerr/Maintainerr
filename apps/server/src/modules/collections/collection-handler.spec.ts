@@ -654,6 +654,31 @@ describe('CollectionHandler', () => {
     expect(seerrApi.removeMediaByTmdbId).toHaveBeenCalledTimes(1);
   });
 
+  it('should still remove a show as tv when the library is no longer listed', async () => {
+    const collection = createCollection({
+      arrAction: ServarrAction.DELETE,
+      forceSeerr: true,
+      type: 'show',
+    });
+    const collectionMedia = createCollectionMedia(collection);
+
+    settings.seerrConfigured.mockReturnValue(true);
+
+    // The media server no longer lists the collection's library, so the lookup
+    // misses. Reading the type off it would send the show's TMDB id to the
+    // movie endpoint, where it can name an unrelated film.
+    mediaServer.getLibraries.mockResolvedValue([]);
+
+    await expect(
+      collectionHandler.handleMedia(collection, collectionMedia),
+    ).resolves.toBe('handled');
+
+    expect(seerrApi.removeMediaByTmdbId).toHaveBeenCalledWith(
+      collectionMedia.tmdbId,
+      'tv',
+    );
+  });
+
   it('should not call SeerrApiService if forceSeerr is false', async () => {
     const collection = createCollection({
       arrAction: ServarrAction.DELETE,
