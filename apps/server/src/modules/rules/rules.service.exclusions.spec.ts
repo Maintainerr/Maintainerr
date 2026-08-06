@@ -68,7 +68,8 @@ describe('RulesService exclusions - global (null ruleGroupId) handling', () => {
       {} as any, // eventEmitter
       servarrTagService as any,
       logger as any,
-      {} as any, // tracearrApi
+      {} as any, // tracearrApi,
+      { getUsernames: jest.fn().mockResolvedValue([]) } as any,
     );
 
     return {

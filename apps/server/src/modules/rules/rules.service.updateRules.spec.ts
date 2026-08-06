@@ -54,6 +54,7 @@ describe('RulesService.updateRules', () => {
       (overrides.servarrTagService ?? createMockServarrTagService()) as any,
       logger as any,
       {} as any,
+      { getUsernames: jest.fn().mockResolvedValue([]) } as any,
     );
 
   // Let the fire-and-forget membership reconcile settle before asserting on it.

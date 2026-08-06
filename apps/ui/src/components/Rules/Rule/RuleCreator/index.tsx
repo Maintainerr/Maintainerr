@@ -13,10 +13,11 @@ import {
   useState,
 } from 'react'
 import { arrayMove, List } from 'react-movable'
+import { useRuleUsernames } from '../../../../api/rules'
 import AddButton from '../../../Common/AddButton'
 import Alert from '../../../Common/Alert'
 import SectionHeading from '../../../Common/SectionHeading'
-import RuleInput from './RuleInput'
+import RuleInput, { RULE_USERNAMES_DATALIST_ID } from './RuleInput'
 
 export interface IRule {
   operator: string | null
@@ -25,6 +26,7 @@ export interface IRule {
   section?: number
   customVal?: { ruleTypeId: number; value: string | number }
   arrDiskPath?: string
+  username?: string
   action: number
 }
 
@@ -100,6 +102,8 @@ const RuleCreator = (props: iRuleCreator) => {
     buildInitialSections(props.editData),
   )
   const didMountRef = useRef(false)
+  // Reads the cache only: a rule card that needs users is what fetches them.
+  const { data: ruleUsernames = [] } = useRuleUsernames({ enabled: false })
 
   const emitUpdate = useEffectEvent(() => {
     props.onUpdate(flattenSections(sections))
@@ -214,6 +218,11 @@ const RuleCreator = (props: iRuleCreator) => {
 
   return (
     <div className="text-zinc-100">
+      <datalist id={RULE_USERNAMES_DATALIST_ID}>
+        {ruleUsernames.map((username) => (
+          <option key={username} value={username} />
+        ))}
+      </datalist>
       <List
         lockVertically
         values={sections}

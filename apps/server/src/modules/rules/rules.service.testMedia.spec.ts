@@ -61,6 +61,7 @@ describe('RulesService Test Media Tracearr freshness', () => {
       createMockServarrTagService() as never,
       createMockLogger() as never,
       tracearrApi,
+      { getUsernames: jest.fn().mockResolvedValue([]) } as any,
     );
 
     return { service, tracearrApi, comparator };

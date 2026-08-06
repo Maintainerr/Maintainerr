@@ -1,5 +1,6 @@
 import { BadRequestException } from '@nestjs/common';
 import { MaintainerrLogger } from '../logging/logs.service';
+import { RuleUsersService } from './rule-users.service';
 import { RulesController } from './rules.controller';
 import { RulesService } from './rules.service';
 import { RuleExecutorJobManagerService } from './tasks/rule-executor-job-manager.service';
@@ -19,6 +20,7 @@ describe('RulesController', () => {
     {} as jest.Mocked<RuleExecutorSchedulerService>;
   const ruleExecutorJobManagerService =
     {} as jest.Mocked<RuleExecutorJobManagerService>;
+  const ruleUsersService = {} as jest.Mocked<RuleUsersService>;
 
   const logger = {
     setContext: jest.fn(),
@@ -32,6 +34,7 @@ describe('RulesController', () => {
       rulesService,
       ruleExecutorSchedulerService,
       ruleExecutorJobManagerService,
+      ruleUsersService,
       logger,
     );
   });

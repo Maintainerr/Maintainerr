@@ -199,6 +199,28 @@ describe('RuleYamlService', () => {
     expect(rules[1].operator).toBe(RuleOperators.AND); // section boundary, not OR
   });
 
+  it('round-trips the user a per-user property is scoped to', () => {
+    const encoded = service.encode(
+      [
+        {
+          operator: null,
+          action: RulePossibility.BIGGER,
+          firstVal: [4, 9],
+          customVal: { ruleTypeId: 0, value: '3' },
+          username: 'alice',
+          section: 0,
+        },
+      ],
+      'movie',
+    );
+
+    expect(YAML.parse(encoded.result).rules[0][0][0].username).toBe('alice');
+
+    const decoded = service.decode(encoded.result, 'movie');
+
+    expect(JSON.parse(decoded.result).rules[0].username).toBe('alice');
+  });
+
   it('returns a clear, structured message when the YAML is not valid', () => {
     // Malformed YAML (an unterminated flow sequence) makes the parser throw,
     // which the decoder catches and reports as a structured failure.

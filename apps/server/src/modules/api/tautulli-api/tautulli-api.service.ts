@@ -55,6 +55,9 @@ interface TautulliHistoryItem {
   rating_key: number;
   media_index: number;
   parent_media_index: number;
+  // Seconds actually played: Tautulli computes it as (stopped - started) minus
+  // the paused counter. `duration` is the same value under its older name.
+  play_duration: number;
 }
 
 export interface TautulliHistoryRequestOptions {

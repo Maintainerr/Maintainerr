@@ -31,6 +31,7 @@ import { MaintainerrLogger } from '../logging/logs.service';
 import { CommunityRule } from './dtos/communityRule.dto';
 import { ExclusionAction, ExclusionContextDto } from './dtos/exclusion.dto';
 import { RuleGroupDto } from './dtos/ruleGroup.dto';
+import { RuleUsersService } from './rule-users.service';
 import { ReturnStatus, RulesService } from './rules.service';
 import { RuleExecutorJobManagerService } from './tasks/rule-executor-job-manager.service';
 import { RuleExecutorSchedulerService } from './tasks/rule-executor-scheduler.service';
@@ -41,6 +42,7 @@ export class RulesController {
     private readonly rulesService: RulesService,
     private readonly ruleExecutorSchedulerService: RuleExecutorSchedulerService,
     private readonly ruleExecutorJobManagerService: RuleExecutorJobManagerService,
+    private readonly ruleUsersService: RuleUsersService,
     private readonly logger: MaintainerrLogger,
   ) {
     this.logger.setContext(RulesController.name);
@@ -49,6 +51,11 @@ export class RulesController {
   @Get('/constants')
   async getRuleConstants() {
     return await this.rulesService.getRuleConstants();
+  }
+
+  @Get('/users')
+  async getRuleUsernames(): Promise<string[]> {
+    return await this.ruleUsersService.getUsernames();
   }
 
   @Get('/community')

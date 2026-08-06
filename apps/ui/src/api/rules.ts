@@ -190,6 +190,27 @@ export const useRuleConstants = (options?: UseRuleConstantsOptions) => {
 
 export type UseRuleConstants = ReturnType<typeof useRuleConstants>
 
+type UseRuleUsernamesQueryKey = ['rules', 'users']
+
+type UseRuleUsernamesOptions = Omit<
+  UseQueryOptions<string[], Error, string[], UseRuleUsernamesQueryKey>,
+  'queryKey' | 'queryFn'
+>
+
+/**
+ * Users a rule can be scoped to, named as the rule getters resolve them.
+ */
+export const useRuleUsernames = (options?: UseRuleUsernamesOptions) => {
+  return useQuery<string[], Error, string[], UseRuleUsernamesQueryKey>({
+    queryKey: ['rules', 'users'],
+    queryFn: async () => {
+      return await GetApiHandler<string[]>('/rules/users')
+    },
+    staleTime: 60000,
+    ...options,
+  })
+}
+
 export type { ArrDiskspaceResource } from '@maintainerr/contracts'
 
 type UseArrDiskspaceQueryKey = [

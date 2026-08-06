@@ -115,6 +115,57 @@ describe('TracearrApiService', () => {
     ]);
   });
 
+  // A username that maps to no Tracearr user means "unknown user" to the
+  // per-user properties, so users without history must still be mapped.
+  it('maps every Tracearr user, under both the media server and Tracearr names', async () => {
+    const OTHER_USER_ID = '55555555-5555-4555-8555-555555555555';
+    apiMock.getWithoutCache.mockImplementation(async (endpoint: string) => {
+      if (endpoint === '/history') {
+        return {
+          data: [historyRow('33333333-3333-4333-8333-333333333333', 'movie-1')],
+          meta: { nextCursor: null, pageSize: 100 },
+        };
+      }
+      return {
+        data: [
+          {
+            id: USER_ID,
+            accounts: [
+              {
+                server_id: SERVER_ID,
+                server_type: 'plex',
+                external_user_id: 'account-1',
+                username: 'alice.on.plex.tv',
+              },
+            ],
+          },
+          {
+            id: OTHER_USER_ID,
+            accounts: [
+              {
+                server_id: SERVER_ID,
+                server_type: 'plex',
+                external_user_id: 'account-2',
+                username: 'bob',
+              },
+            ],
+          },
+        ],
+        meta: { nextCursor: null, pageSize: 100 },
+      };
+    });
+
+    await service.prefetchHistory();
+
+    expect(service.getUsernamesByTracearrUserId()?.get(USER_ID)).toEqual([
+      'alice',
+      'alice.on.plex.tv',
+    ]);
+    expect(service.getUsernamesByTracearrUserId()?.get(OTHER_USER_ID)).toEqual([
+      'bob',
+    ]);
+  });
+
   it('invalidates a prefetched history snapshot', async () => {
     apiMock.getWithoutCache.mockImplementation(async (endpoint: string) => {
       if (endpoint === '/history') {

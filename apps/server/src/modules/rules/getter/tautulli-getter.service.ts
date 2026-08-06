@@ -1,4 +1,8 @@
-import { MediaItem, MediaItemType } from '@maintainerr/contracts';
+import {
+  isPerUserProperty,
+  MediaItem,
+  MediaItemType,
+} from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -15,6 +19,7 @@ import {
   Property,
   RuleConstants,
 } from '../constants/rules.constants';
+import { RuleDto } from '../dtos/rule.dto';
 import { RuleGroupDto } from '../dtos/ruleGroup.dto';
 
 @Injectable()
@@ -40,6 +45,7 @@ export class TautulliGetterService {
     libItem: MediaItem,
     dataType?: MediaItemType,
     ruleGroup?: RuleGroupDto,
+    currentRule?: RuleDto,
   ) {
     try {
       const prop = this.appProperties.find((el) => el.id === id);
@@ -57,6 +63,15 @@ export class TautulliGetterService {
       });
       const tautulliWatchedPercentOverride =
         collection.tautulliWatchedPercentOverride;
+
+      if (isPerUserProperty(prop.name)) {
+        return await this.getUserStat(
+          prop.name,
+          metadata,
+          currentRule,
+          tautulliWatchedPercentOverride,
+        );
+      }
 
       switch (prop.name) {
         // At season/show level `sw_watchers` returns the UNION of users that
@@ -219,6 +234,68 @@ export class TautulliGetterService {
       );
       return undefined;
     }
+  }
+
+  /**
+   * Per-user statistics for the rule's user. Views and the last view date
+   * count watched plays only, honouring the collection's watched-percent
+   * override like the whole-item properties; watch time counts every play,
+   * since an abandoned one still ran for its minutes.
+   *
+   * Resolves the username through the plex.tv-corrected list the rule editor
+   * offers, and answers `undefined` when it cannot: zero would read as "this
+   * user watched nothing" after a rename or a plex.tv outage.
+   */
+  private async getUserStat(
+    propName: string,
+    metadata: TautulliMetadata,
+    currentRule: RuleDto | undefined,
+    tautulliWatchedPercentOverride: number | null,
+  ): Promise<number | Date | null | undefined> {
+    const username = currentRule?.username;
+    if (!username) {
+      this.logger.warn(
+        `Tautulli-Getter - Skipping '${propName}': the rule has no user selected.`,
+      );
+      return undefined;
+    }
+
+    const plexUsers = await this.plexApi.getCorrectedUsers();
+    const plexUser = plexUsers.find((user) => user.username === username);
+    if (!plexUser) {
+      this.logger.warn(
+        `Tautulli-Getter - Skipping '${propName}': Plex has no user named '${username}'.`,
+      );
+      return undefined;
+    }
+
+    const history = (await this.getHistoryForMetadata(metadata)).filter(
+      (el) => el.user_id === plexUser.plexId,
+    );
+
+    if (propName === 'watchTimeByUser') {
+      const seconds = history.reduce(
+        (total, el) => total + (el.play_duration ?? 0),
+        0,
+      );
+      return Math.round(seconds / 60);
+    }
+
+    const watchedHistory = history.filter((el) =>
+      tautulliWatchedPercentOverride != null
+        ? el.percent_complete >= tautulliWatchedPercentOverride
+        : el.watched_status == 1,
+    );
+
+    if (propName === 'viewCountByUser') {
+      return watchedHistory.length;
+    }
+
+    const lastStopped = watchedHistory.reduce(
+      (latest, el) => (el.stopped > latest ? el.stopped : latest),
+      0,
+    );
+    return lastStopped > 0 ? new Date(lastStopped * 1000) : null;
   }
 
   private async getHistoryForMetadata(metadata: TautulliMetadata) {

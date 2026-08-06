@@ -6,11 +6,13 @@ import RuleInput from './index'
 const useRuleConstantsMock = vi.fn()
 const useRadarrDiskspaceMock = vi.fn()
 const useSonarrDiskspaceMock = vi.fn()
+const useRuleUsernamesMock = vi.fn()
 
 vi.mock('../../../../../api/rules', () => ({
   useRuleConstants: () => useRuleConstantsMock(),
   useRadarrDiskspace: (...args: unknown[]) => useRadarrDiskspaceMock(...args),
   useSonarrDiskspace: (...args: unknown[]) => useSonarrDiskspaceMock(...args),
+  useRuleUsernames: (...args: unknown[]) => useRuleUsernamesMock(...args),
 }))
 
 vi.mock('../../../../../hooks/useMediaServerType', () => ({
@@ -29,6 +31,8 @@ const onIncomplete = vi.fn()
 const onDelete = vi.fn()
 
 const listPropertyId = 101
+const numberPropertyId = 102
+const perUserPropertyId = 9
 
 const ruleConstants = {
   applications: [
@@ -45,6 +49,33 @@ const ruleConstants = {
           type: {
             key: '4',
             possibilities: [RulePossibility.NOT_EQUALS, RulePossibility.EXISTS],
+          },
+        },
+        {
+          id: numberPropertyId,
+          name: 'viewCount',
+          humanName: 'Times viewed',
+          mediaType: MediaType.BOTH,
+          type: {
+            key: '0',
+            possibilities: [RulePossibility.BIGGER, RulePossibility.EXISTS],
+          },
+        },
+      ],
+    },
+    {
+      id: Application.TAUTULLI,
+      name: 'Tautulli',
+      mediaType: MediaType.BOTH,
+      props: [
+        {
+          id: perUserPropertyId,
+          name: 'viewCountByUser',
+          humanName: 'Times viewed by user',
+          mediaType: MediaType.BOTH,
+          type: {
+            key: '0',
+            possibilities: [RulePossibility.BIGGER, RulePossibility.EXISTS],
           },
         },
       ],
@@ -67,6 +98,11 @@ describe('RuleInput', () => {
     })
     useRadarrDiskspaceMock.mockReturnValue({ data: [], isLoading: false })
     useSonarrDiskspaceMock.mockReturnValue({ data: [], isLoading: false })
+    useRuleUsernamesMock.mockReset()
+    useRuleUsernamesMock.mockReturnValue({
+      data: ['alice', 'bob'],
+      isLoading: false,
+    })
   })
 
   afterEach(() => {
@@ -194,6 +230,149 @@ describe('RuleInput', () => {
       expect(onIncomplete).toHaveBeenCalled()
     })
     expect(onCommit).not.toHaveBeenCalled()
+  })
+
+  describe('per-user properties', () => {
+    const renderPerUserRule = () => {
+      render(
+        <RuleInput
+          id={1}
+          mediaType={MediaType.MOVIE}
+          onCommit={onCommit}
+          onIncomplete={onIncomplete}
+          onDelete={onDelete}
+        />,
+      )
+
+      fireEvent.change(screen.getByLabelText('First Value'), {
+        target: {
+          value: JSON.stringify([Application.TAUTULLI, perUserPropertyId]),
+        },
+      })
+      fireEvent.change(screen.getByLabelText('Action'), {
+        target: { value: String(RulePossibility.EXISTS) },
+      })
+    }
+
+    it('asks for a user and reports the rule incomplete until one is picked', async () => {
+      renderPerUserRule()
+
+      expect(screen.getByLabelText('User')).toBeTruthy()
+      await waitFor(() => {
+        expect(onIncomplete).toHaveBeenCalled()
+      })
+      expect(onCommit).not.toHaveBeenCalled()
+    })
+
+    it('commits the picked user with the rule', async () => {
+      renderPerUserRule()
+
+      fireEvent.change(screen.getByLabelText('User'), {
+        target: { value: 'alice' },
+      })
+
+      await waitFor(() => {
+        expect(onCommit.mock.calls.at(-1)?.[0]).toMatchObject({
+          firstVal: [Application.TAUTULLI, perUserPropertyId],
+          username: 'alice',
+        })
+      })
+    })
+
+    // The field takes typed input, so a name the media server does not report
+    // must not save a rule that would then skip every item.
+    it('stays incomplete for a user the media server does not report', async () => {
+      renderPerUserRule()
+
+      fireEvent.change(screen.getByLabelText('User'), {
+        target: { value: 'alicia' },
+      })
+
+      await waitFor(() => {
+        expect(onIncomplete).toHaveBeenCalled()
+      })
+      expect(onCommit).not.toHaveBeenCalled()
+    })
+
+    it('keeps a saved user that the media server no longer reports', async () => {
+      render(
+        <RuleInput
+          id={1}
+          mediaType={MediaType.MOVIE}
+          editData={{
+            rule: {
+              operator: null,
+              firstVal: [Application.TAUTULLI, perUserPropertyId],
+              action: RulePossibility.EXISTS,
+              username: 'carol',
+            } as never,
+          }}
+          onCommit={onCommit}
+          onIncomplete={onIncomplete}
+          onDelete={onDelete}
+        />,
+      )
+
+      await waitFor(() => {
+        expect(onCommit.mock.calls.at(-1)?.[0]).toMatchObject({
+          username: 'carol',
+        })
+      })
+    })
+
+    // The rule's user applies to whichever side holds the property, so the
+    // second value has to raise the field too.
+    it('asks for a user when only the second value is scoped to one', () => {
+      render(
+        <RuleInput
+          id={1}
+          mediaType={MediaType.MOVIE}
+          radarrSettingsId={1}
+          onCommit={onCommit}
+          onIncomplete={onIncomplete}
+          onDelete={onDelete}
+        />,
+      )
+
+      fireEvent.change(screen.getByLabelText('First Value'), {
+        target: {
+          value: JSON.stringify([Application.RADARR, numberPropertyId]),
+        },
+      })
+
+      fireEvent.change(screen.getByLabelText('Action'), {
+        target: { value: String(RulePossibility.BIGGER) },
+      })
+
+      expect(screen.queryByLabelText('User')).toBeNull()
+
+      fireEvent.change(screen.getByLabelText('Second Value'), {
+        target: {
+          value: JSON.stringify([Application.TAUTULLI, perUserPropertyId]),
+        },
+      })
+
+      expect(screen.getByLabelText('User')).toBeTruthy()
+    })
+
+    it('offers no user for a property that is not scoped to one', () => {
+      render(
+        <RuleInput
+          id={1}
+          mediaType={MediaType.MOVIE}
+          radarrSettingsId={1}
+          onCommit={onCommit}
+          onIncomplete={onIncomplete}
+          onDelete={onDelete}
+        />,
+      )
+
+      fireEvent.change(screen.getByLabelText('First Value'), {
+        target: { value: JSON.stringify([Application.RADARR, listPropertyId]) },
+      })
+
+      expect(screen.queryByLabelText('User')).toBeNull()
+    })
   })
 
   describe('application filtering', () => {
