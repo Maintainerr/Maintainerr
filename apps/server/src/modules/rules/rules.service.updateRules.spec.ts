@@ -32,6 +32,7 @@ describe('RulesService.updateRules', () => {
       ruleMigrationService: unknown;
       eventEmitter: unknown;
       servarrTagService: unknown;
+      ruleUsersService: unknown;
     }> = {},
   ) =>
     new RulesService(
@@ -54,7 +55,9 @@ describe('RulesService.updateRules', () => {
       (overrides.servarrTagService ?? createMockServarrTagService()) as any,
       logger as any,
       {} as any,
-      { getUsernames: jest.fn().mockResolvedValue([]) } as any,
+      (overrides.ruleUsersService ?? {
+        getUsernames: jest.fn().mockResolvedValue([]),
+      }) as any,
     );
 
   // Let the fire-and-forget membership reconcile settle before asserting on it.
@@ -860,5 +863,68 @@ describe('RulesService.updateRules', () => {
       [],
       [{ mediaServerId: 'm1', tmdbId: 1, tvdbId: null }],
     );
+  });
+
+  // A per-user rule keeps working on the items it can still resolve and pauses
+  // on the rest, so an account that has since gone must not block every later
+  // edit to the group it sits in.
+  describe('a user the media server no longer reports', () => {
+    const perUserRule = (username: string) => ({
+      operator: null,
+      action: RulePossibility.BIGGER,
+      firstVal: [Application.TAUTULLI, 9],
+      customVal: { ruleTypeId: 0, value: '3' },
+      username,
+      section: 0,
+    });
+
+    const updateWith = (username: string, savedUsername?: string) => {
+      const service = createRulesService({
+        ruleGroupRepository: {
+          findOne: jest.fn().mockResolvedValue({ id: 1, collectionId: 1 }),
+        },
+        ruleUsersService: {
+          getUsernames: jest.fn().mockResolvedValue(['alice']),
+        },
+      });
+      jest
+        .spyOn(service, 'getRules')
+        .mockResolvedValue(
+          savedUsername
+            ? ([
+                { ruleJson: JSON.stringify(perUserRule(savedUsername)) },
+              ] as never)
+            : ([] as never),
+        );
+
+      return service.updateRules({
+        id: 1,
+        libraryId: '1',
+        name: 'Per-user group',
+        description: '',
+        useRules: true,
+        isActive: true,
+        rules: [perUserRule(username)],
+        collection: { keepLogsForMonths: 6 },
+      } as never);
+    };
+
+    it('keeps a user the group already saved', async () => {
+      // The save itself runs past validation into repositories this test does
+      // not stand up, so assert only on what is under test: it is not the
+      // username that stops it.
+      const outcome = await updateWith('bob', 'bob').catch((error) => error);
+
+      expect(outcome).not.toMatchObject({
+        result: "The media server has no user named 'bob'",
+      });
+    });
+
+    it('still rejects one the group never had', async () => {
+      await expect(updateWith('bob')).resolves.toMatchObject({
+        code: 0,
+        result: "The media server has no user named 'bob'",
+      });
+    });
   });
 });

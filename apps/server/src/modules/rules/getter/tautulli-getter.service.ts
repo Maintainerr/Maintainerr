@@ -275,7 +275,7 @@ export class TautulliGetterService {
 
     if (propName === 'watchTimeByUser') {
       const seconds = history.reduce(
-        (total, el) => total + (el.play_duration ?? 0),
+        (total, el) => total + (el.play_duration ?? el.duration ?? 0),
         0,
       );
       return Math.round(seconds / 60);

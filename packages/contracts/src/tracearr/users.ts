@@ -12,6 +12,8 @@ export const tracearrUsersPageSchema = z.object({
           // Tracearr's own copy of the account name, which can differ from
           // the media server's for the same Plex account.
           username: z.string().min(1).nullish(),
+          // Set once the account is gone from the media server.
+          removed_at: z.iso.datetime().nullish(),
         }),
       ),
     }),

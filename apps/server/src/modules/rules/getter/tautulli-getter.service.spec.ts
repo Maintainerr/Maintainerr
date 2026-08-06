@@ -241,6 +241,24 @@ describe('TautulliGetterService', () => {
       ).resolves.toEqual(new Date(1_700_000_000 * 1000));
     });
 
+    // Tautulli only renamed `duration` to `play_duration` in 2.12.3, so an
+    // older install answers with the original key alone.
+    it('reads the watch time of a Tautulli older than 2.12.3', async () => {
+      const legacyHistory = history.map(({ play_duration, ...row }) => ({
+        ...row,
+        duration: play_duration,
+      }));
+      const service = createService(
+        legacyHistory as never,
+        null,
+        correctedUsers,
+      );
+
+      await expect(
+        service.get(WATCH_TIME_BY_USER, showItem, undefined, ruleGroup, rule),
+      ).resolves.toBe(45);
+    });
+
     it('sums every play of the picked user, in minutes', async () => {
       const service = createService(history, null, correctedUsers);
 

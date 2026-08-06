@@ -166,6 +166,41 @@ describe('TracearrApiService', () => {
     ]);
   });
 
+  // Tracearr keeps a departed account in the identity, flagged with removed_at.
+  // Resolving it would let a per-user rule read "watched nothing" for someone
+  // the server no longer has, instead of skipping the item.
+  it('does not resolve an account Tracearr marks as removed', async () => {
+    apiMock.getWithoutCache.mockImplementation(async (endpoint: string) => {
+      if (endpoint === '/history') {
+        return {
+          data: [historyRow('33333333-3333-4333-8333-333333333333', 'movie-1')],
+          meta: { nextCursor: null, pageSize: 100 },
+        };
+      }
+      return {
+        data: [
+          {
+            id: USER_ID,
+            accounts: [
+              {
+                server_id: SERVER_ID,
+                server_type: 'plex',
+                external_user_id: 'account-1',
+                username: 'alice',
+                removed_at: '2026-08-01T00:00:00.000Z',
+              },
+            ],
+          },
+        ],
+        meta: { nextCursor: null, pageSize: 100 },
+      };
+    });
+
+    await service.prefetchHistory();
+
+    expect(service.getUsernamesByTracearrUserId()?.has(USER_ID)).toBe(false);
+  });
+
   it('invalidates a prefetched history snapshot', async () => {
     apiMock.getWithoutCache.mockImplementation(async (endpoint: string) => {
       if (endpoint === '/history') {

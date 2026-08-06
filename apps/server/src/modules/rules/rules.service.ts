@@ -560,9 +560,10 @@ export class RulesService {
         return managerState;
       }
       let state: ReturnStatus = this.createReturnStatus(true, 'Success');
-      const knownUsernames = await this.getKnownUsernames(
-        params.rules as RuleDto[],
-      );
+      const knownUsernames = [
+        ...(await this.getKnownUsernames(params.rules as RuleDto[])),
+        ...(await this.getSavedUsernames(params.id)),
+      ];
       for (const [index, rule] of (params.rules as RuleDto[]).entries()) {
         if (state.code === 1 && index > 0 && rule.operator == null) {
           state = this.createReturnStatus(
@@ -1921,6 +1922,30 @@ export class RulesService {
     return rules.some((rule) => rule.username?.trim())
       ? await this.ruleUsersService.getUsernames()
       : [];
+  }
+
+  /**
+   * Users this group already reads. An account that has since been renamed or
+   * deleted leaves the rule paused at execution time, which is the point - but
+   * it must not block every later edit to the group it sits in.
+   */
+  private async getSavedUsernames(ruleGroupId: number): Promise<string[]> {
+    const rules = (await this.getRules(ruleGroupId)) ?? [];
+
+    return rules.reduce((usernames, rule) => {
+      try {
+        const username = (
+          JSON.parse(rule.ruleJson) as RuleDto
+        ).username?.trim();
+        if (username) {
+          usernames.push(username);
+        }
+      } catch {
+        // A rule row that no longer parses is the executor's problem, not this
+        // validation's.
+      }
+      return usernames;
+    }, [] as string[]);
   }
 
   /** Rejected here rather than skipping every item at execution time. */

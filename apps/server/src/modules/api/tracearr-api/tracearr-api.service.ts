@@ -509,7 +509,10 @@ export class TracearrApiService {
         const usernames = [
           ...new Set(
             user.accounts
-              .filter((account) => account.server_id === serverId)
+              .filter(
+                (account) =>
+                  account.server_id === serverId && !account.removed_at,
+              )
               .flatMap((account) => [
                 usernamesByAccountId.get(account.external_user_id),
                 account.username,
