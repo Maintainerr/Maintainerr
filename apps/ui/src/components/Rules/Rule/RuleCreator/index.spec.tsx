@@ -56,7 +56,12 @@ vi.mock('react-movable', () => {
   return { List, arrayMove }
 })
 
+vi.mock('../../../../api/rules', () => ({
+  useRuleUsernames: () => ({ data: ['alice', 'bob'], isLoading: false }),
+}))
+
 vi.mock('./RuleInput', () => ({
+  RULE_USERNAMES_DATALIST_ID: 'rule-usernames',
   default: ({
     tagId,
     section,

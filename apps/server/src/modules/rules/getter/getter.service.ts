@@ -122,13 +122,19 @@ export class ValueGetterService {
           libItem,
           dataType,
           ruleGroup,
+          currentRule,
         );
       }
       case Application.STREAMYSTATS: {
-        return await this.streamystatsGetter.get(val2, libItem);
+        return await this.streamystatsGetter.get(val2, libItem, currentRule);
       }
       case Application.TRACEARR: {
-        return await this.tracearrGetter.get(val2, libItem, ruleGroup);
+        return await this.tracearrGetter.get(
+          val2,
+          libItem,
+          ruleGroup,
+          currentRule,
+        );
       }
       default: {
         return null;

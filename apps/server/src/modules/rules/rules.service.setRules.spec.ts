@@ -1,3 +1,4 @@
+import axios from 'axios';
 import {
   createMockLogger,
   createMockServarrTagService,
@@ -27,6 +28,7 @@ describe('RulesService.setRules', () => {
       ruleComparatorServiceFactory: unknown;
       ruleMigrationService: unknown;
       eventEmitter: unknown;
+      ruleUsersService: unknown;
     }> = {},
   ) =>
     new RulesService(
@@ -49,6 +51,9 @@ describe('RulesService.setRules', () => {
       createMockServarrTagService() as any,
       logger as any,
       {} as any,
+      (overrides.ruleUsersService ?? {
+        getUsernames: jest.fn().mockResolvedValue([]),
+      }) as any,
     );
 
   // A minimal, valid single-rule section (Plex "date added" EXISTS). EXISTS is
@@ -93,6 +98,131 @@ describe('RulesService.setRules', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+  });
+
+  // Without the user, a saved rule would skip every item at run time.
+  // The community list is public and shared between installs; a rule must not
+  // carry the uploader's media-server user into it.
+  it('uploads a per-user rule without the user it was scoped to', async () => {
+    const patch = jest.fn().mockResolvedValue({});
+    jest.spyOn(axios, 'patch').mockImplementation(patch);
+    const service = createRulesService();
+    jest.spyOn(service, 'getCommunityRules').mockResolvedValue([]);
+
+    await service.addToCommunityRules({
+      name: 'Rewatched by a user',
+      description: 'keeps what one user rewatches',
+      JsonRules: [
+        {
+          operator: null,
+          action: RulePossibility.BIGGER,
+          firstVal: [Application.TAUTULLI, 9],
+          customVal: { ruleTypeId: 0, value: '3' },
+          username: 'alice',
+          section: 0,
+        },
+      ],
+    } as never);
+
+    const uploaded = patch.mock.calls[0][1][0].value;
+    expect(uploaded.JsonRules[0]).not.toHaveProperty('username');
+    expect(uploaded.JsonRules[0]).toMatchObject({
+      firstVal: [Application.TAUTULLI, 9],
+      customVal: { ruleTypeId: 0, value: '3' },
+    });
+  });
+
+  describe('per-user property validation', () => {
+    const perUserRule = (username?: string) => [
+      {
+        operator: null,
+        action: RulePossibility.BIGGER,
+        firstVal: [Application.TAUTULLI, 9],
+        customVal: { ruleTypeId: 0, value: '3' },
+        section: 0,
+        ...(username != null ? { username } : {}),
+      },
+    ];
+
+    const saveRules = (rules: unknown[], knownUsernames = ['alice']) => {
+      const service = createRulesService({
+        ruleUsersService: {
+          getUsernames: jest.fn().mockResolvedValue(knownUsernames),
+        },
+        rulesRepository: { save: jest.fn().mockResolvedValue(undefined) },
+        collectionService: {
+          createCollection: jest
+            .fn()
+            .mockResolvedValue({ dbCollection: { id: 9 } }),
+        },
+        mediaServerFactory: createMediaServerFactory(),
+      });
+      jest.spyOn(service as any, 'createOrUpdateGroup').mockResolvedValue(7);
+
+      return service.setRules({
+        libraryId: '1',
+        name: 'Per-user group',
+        description: '',
+        useRules: true,
+        isActive: true,
+        rules,
+        collection: { keepLogsForMonths: 6 },
+      } as any);
+    };
+
+    it('rejects a per-user property saved without a user', async () => {
+      await expect(saveRules(perUserRule())).resolves.toEqual({
+        code: 0,
+        result: 'Select a user for properties that are scoped to one user',
+        message: 'Select a user for properties that are scoped to one user',
+      });
+    });
+
+    it('rejects a blank user as no user at all', async () => {
+      await expect(saveRules(perUserRule('   '))).resolves.toEqual({
+        code: 0,
+        result: 'Select a user for properties that are scoped to one user',
+        message: 'Select a user for properties that are scoped to one user',
+      });
+    });
+
+    it('rejects a user picked for a property that ignores it', async () => {
+      const rules = [{ ...validRules[0], username: 'alice' }];
+
+      await expect(saveRules(rules)).resolves.toEqual({
+        code: 0,
+        result:
+          'A user can only be selected for properties that are scoped to one user',
+        message:
+          'A user can only be selected for properties that are scoped to one user',
+      });
+    });
+
+    it('accepts a per-user property with a user', async () => {
+      await expect(saveRules(perUserRule('alice'))).resolves.toEqual({
+        code: 1,
+        result: 'Success',
+        message: 'Success',
+      });
+    });
+
+    // A YAML or community import carries the user of the install it came from,
+    // and never passes through the editor's picker.
+    it('rejects a user the media server does not have', async () => {
+      await expect(saveRules(perUserRule('bob'))).resolves.toEqual({
+        code: 0,
+        result: "The media server has no user named 'bob'",
+        message: "The media server has no user named 'bob'",
+      });
+    });
+
+    it('saves anyway when the media server cannot list its users', async () => {
+      await expect(saveRules(perUserRule('bob'), [])).resolves.toEqual({
+        code: 1,
+        result: 'Success',
+        message: 'Success',
+      });
+    });
   });
 
   it('persists a valid rule group and reports success', async () => {

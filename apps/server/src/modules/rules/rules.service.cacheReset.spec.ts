@@ -41,6 +41,7 @@ describe('RulesService.resetCacheIfGroupUsesRuleThatRequiresIt', () => {
       createMockServarrTagService() as any,
       logger as any,
       {} as any,
+      { getUsernames: jest.fn().mockResolvedValue([]) } as any,
     );
 
   const stubGetRuleConstants = (service: RulesService) => {

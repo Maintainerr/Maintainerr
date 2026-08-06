@@ -46,6 +46,10 @@ import { RuleExecutorSchedulerService } from '../src/modules/rules/tasks/rule-ex
 import { RadarrSettings } from '../src/modules/settings/entities/radarr_settings.entities';
 import { Settings } from '../src/modules/settings/entities/settings.entities';
 import { SonarrSettings } from '../src/modules/settings/entities/sonarr_settings.entities';
+import { SportarrSettings } from '../src/modules/settings/entities/sportarr_settings.entities';
+import { RuleUsersService } from '../src/modules/rules/rule-users.service';
+import { TracearrApiService } from '../src/modules/api/tracearr-api/tracearr-api.service';
+import { ServarrTagService } from '../src/modules/actions/servarr-tag.service';
 import { RuleMigrationService } from '../src/modules/settings/rule-migration.service';
 import { createMediaItem } from './utils/data';
 
@@ -112,6 +116,7 @@ const mediaServerFactory = {
 
 const valueGetter = {
   get: async () => (state.values.length > 0 ? state.values.shift() : null),
+  getConfiguredServerType: async () => null,
 };
 
 function createStoredRule(
@@ -835,6 +840,22 @@ async function bootstrapApp(): Promise<INestApplication> {
       {
         provide: getRepositoryToken(SonarrSettings),
         useValue: { exists: async () => false },
+      },
+      {
+        provide: getRepositoryToken(SportarrSettings),
+        useValue: { exists: async () => false },
+      },
+      {
+        provide: ServarrTagService,
+        useValue: {},
+      },
+      {
+        provide: TracearrApiService,
+        useValue: { invalidateHistory: () => undefined },
+      },
+      {
+        provide: RuleUsersService,
+        useValue: { getUsernames: async () => [] },
       },
       {
         provide: 'CollectionMediaRepository',

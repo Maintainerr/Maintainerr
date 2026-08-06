@@ -2,6 +2,7 @@ import {
   type BulkMediaItemResult,
   type BulkMediaResponse,
   ECollectionLogType,
+  isPerUserProperty,
   leftoverCleanupScope,
   MaintainerrEvent,
   MediaItemType,
@@ -51,6 +52,7 @@ import { CommunityRule } from './dtos/communityRule.dto';
 import { ExclusionContextDto } from './dtos/exclusion.dto';
 import { RuleDto } from './dtos/rule.dto';
 import { RuleDbDto } from './dtos/ruleDb.dto';
+import { RuleUsersService } from './rule-users.service';
 import { RuleGroupDto } from './dtos/ruleGroup.dto';
 import { CommunityRuleKarma } from './entities/community-rule-karma.entities';
 import { Exclusion } from './entities/exclusion.entities';
@@ -106,6 +108,7 @@ export class RulesService {
     private readonly servarrTagService: ServarrTagService,
     private readonly logger: MaintainerrLogger,
     private readonly tracearrApi: TracearrApiService,
+    private readonly ruleUsersService: RuleUsersService,
   ) {
     logger.setContext(RulesService.name);
     this.ruleConstants = new RuleConstants();
@@ -423,6 +426,9 @@ export class RulesService {
         return managerState;
       }
       let state: ReturnStatus = this.createReturnStatus(true, 'Success');
+      const knownUsernames = await this.getKnownUsernames(
+        params.rules as RuleDto[],
+      );
       for (const [index, rule] of (params.rules as RuleDto[]).entries()) {
         if (state.code === 1 && index > 0 && rule.operator == null) {
           state = this.createReturnStatus(
@@ -431,6 +437,7 @@ export class RulesService {
           );
         }
         this.normalizeRuleDiskPath(rule);
+        this.normalizeRuleUsername(rule);
         if (state.code === 1) {
           state = this.validateRule(rule);
         }
@@ -444,6 +451,9 @@ export class RulesService {
         }
         if (state.code === 1) {
           state = this.validateRuleDiskPath(rule);
+        }
+        if (state.code === 1) {
+          state = this.validateRuleUsername(rule, knownUsernames);
         }
       }
 
@@ -550,6 +560,10 @@ export class RulesService {
         return managerState;
       }
       let state: ReturnStatus = this.createReturnStatus(true, 'Success');
+      const knownUsernames = [
+        ...(await this.getKnownUsernames(params.rules as RuleDto[])),
+        ...(await this.getSavedUsernames(params.id)),
+      ];
       for (const [index, rule] of (params.rules as RuleDto[]).entries()) {
         if (state.code === 1 && index > 0 && rule.operator == null) {
           state = this.createReturnStatus(
@@ -558,6 +572,7 @@ export class RulesService {
           );
         }
         this.normalizeRuleDiskPath(rule);
+        this.normalizeRuleUsername(rule);
         if (state.code === 1) {
           state = this.validateRule(rule);
         }
@@ -571,6 +586,9 @@ export class RulesService {
         }
         if (state.code === 1) {
           state = this.validateRuleDiskPath(rule);
+        }
+        if (state.code === 1) {
+          state = this.validateRuleUsername(rule, knownUsernames);
         }
       }
 
@@ -1887,6 +1905,99 @@ export class RulesService {
     return this.createReturnStatus(true, 'Success');
   }
 
+  private normalizeRuleUsername(rule: RuleDto) {
+    if (rule.username == null) {
+      return;
+    }
+
+    const username = rule.username.trim();
+    rule.username = username.length > 0 ? username : undefined;
+  }
+
+  /**
+   * Resolved once per save, and only when a rule names a user: imports and API
+   * clients never see the editor's picker.
+   */
+  private async getKnownUsernames(rules: RuleDto[]): Promise<string[]> {
+    return rules.some((rule) => rule.username?.trim())
+      ? await this.ruleUsersService.getUsernames()
+      : [];
+  }
+
+  /**
+   * Users this group already reads. An account that has since been renamed or
+   * deleted leaves the rule paused at execution time, which is the point - but
+   * it must not block every later edit to the group it sits in.
+   */
+  private async getSavedUsernames(ruleGroupId: number): Promise<string[]> {
+    const rules = (await this.getRules(ruleGroupId)) ?? [];
+
+    return rules.reduce((usernames, rule) => {
+      try {
+        const username = (
+          JSON.parse(rule.ruleJson) as RuleDto
+        ).username?.trim();
+        if (username) {
+          usernames.push(username);
+        }
+      } catch {
+        // A rule row that no longer parses is the executor's problem, not this
+        // validation's.
+      }
+      return usernames;
+    }, [] as string[]);
+  }
+
+  /** Rejected here rather than skipping every item at execution time. */
+  private validateRuleUsername(
+    rule: RuleDto,
+    knownUsernames: string[],
+  ): ReturnStatus {
+    const usesPerUserProperty = [rule.firstVal, rule.lastVal].some((value) =>
+      isPerUserProperty(this.findRuleProperty(value)?.name),
+    );
+
+    if (usesPerUserProperty && !rule.username) {
+      return this.createReturnStatus(
+        false,
+        'Select a user for properties that are scoped to one user',
+      );
+    }
+
+    if (!usesPerUserProperty && rule.username) {
+      return this.createReturnStatus(
+        false,
+        'A user can only be selected for properties that are scoped to one user',
+      );
+    }
+
+    // An empty list means the media server could not be reached, which must not
+    // block a save; a populated one that lacks the user means the rule would
+    // skip every item, so reject it here instead.
+    if (
+      rule.username &&
+      knownUsernames.length > 0 &&
+      !knownUsernames.includes(rule.username)
+    ) {
+      return this.createReturnStatus(
+        false,
+        `The media server has no user named '${rule.username}'`,
+      );
+    }
+
+    return this.createReturnStatus(true, 'Success');
+  }
+
+  private findRuleProperty(value?: [number, number]): Property | undefined {
+    if (!value) {
+      return undefined;
+    }
+
+    return this.ruleConstants.applications
+      .find((el) => el.id === value[0])
+      ?.props.find((el) => el.id === value[1]);
+  }
+
   private normalizeRuleDiskPath(rule: RuleDto) {
     if (rule.arrDiskPath == null) {
       return;
@@ -2038,6 +2149,27 @@ export class RulesService {
     return Array.isArray(response) ? response.length : 0;
   }
 
+  /**
+   * The community list is public and shared between installs, so a rule leaves
+   * without the user it was scoped to: that name identifies someone's
+   * household, and it would resolve to nobody on the install that imports it.
+   * The importer picks their own user, which the editor already demands.
+   */
+  private withoutLocalUsers(rules: CommunityRule['JsonRules']) {
+    if (!Array.isArray(rules)) {
+      return rules;
+    }
+
+    return rules.map((rule) => {
+      if (!rule || typeof rule !== 'object' || !('username' in rule)) {
+        return rule;
+      }
+      const withoutUser: RuleDto = { ...(rule as RuleDto) };
+      delete withoutUser.username;
+      return withoutUser;
+    });
+  }
+
   public async addToCommunityRules(rule: CommunityRule): Promise<ReturnStatus> {
     const rules = await this.getCommunityRules();
     const appVersion = process.env.npm_package_version
@@ -2066,6 +2198,7 @@ export class RulesService {
             appVersion: appVersion,
             hasRules,
             ...rule,
+            JsonRules: this.withoutLocalUsers(rule.JsonRules),
           },
         },
       ])
@@ -2238,6 +2371,7 @@ export class RulesService {
     // it from a fresh /request sweep and agrees with a full run (#3152).
     cacheManager.getCache('seerrrequests').data.flushAll();
     cacheManager.getCache('tautulli').data.flushAll();
+    cacheManager.getCache('streamystats').data.flushAll();
     cacheManager
       .getCachesByType('radarr')
       .forEach((cache) => cache.data.flushAll());

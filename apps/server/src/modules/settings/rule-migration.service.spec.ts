@@ -360,6 +360,60 @@ describe('RuleMigrationService', () => {
       expect(result.rules[0].firstVal?.[0]).toBe(6); // 6 = JELLYFIN
     });
 
+    // The migration rewrites the property slots; everything else that gives a
+    // rule its meaning has to survive a server switch untouched.
+    it('keeps the per-rule fields when it rewrites a property', () => {
+      const rules: RuleDto[] = [
+        {
+          operator: null,
+          action: RulePossibility.BIGGER,
+          firstVal: [Application.PLEX, 0],
+          customVal: { ruleTypeId: 0, value: '3' },
+          username: 'alice',
+          arrDiskPath: '/movies',
+          section: 0,
+        },
+      ];
+
+      const result = service.migrateImportedRuleDtos(
+        rules,
+        MediaServerType.JELLYFIN,
+      );
+
+      expect(result.rules[0]).toMatchObject({
+        firstVal: [Application.JELLYFIN, 0],
+        customVal: { ruleTypeId: 0, value: '3' },
+        username: 'alice',
+        arrDiskPath: '/movies',
+      });
+    });
+
+    // Tautulli, Streamystats and Tracearr rules are carried across a server
+    // change untouched; the executor warns when the companion is unavailable.
+    it('leaves a companion per-user rule alone', () => {
+      const rules: RuleDto[] = [
+        {
+          operator: null,
+          action: RulePossibility.BIGGER,
+          firstVal: [Application.TAUTULLI, 9],
+          customVal: { ruleTypeId: 0, value: '1' },
+          username: 'alice',
+          section: 0,
+        },
+      ];
+
+      const result = service.migrateImportedRuleDtos(
+        rules,
+        MediaServerType.JELLYFIN,
+      );
+
+      expect(result.skippedRules).toBe(0);
+      expect(result.rules[0]).toMatchObject({
+        firstVal: [Application.TAUTULLI, 9],
+        username: 'alice',
+      });
+    });
+
     it('backfills an unset within-section operator to OR (pre-explicit-operator community rule)', () => {
       // Mirrors a real community rule (appVersion 2.19.0): three rules in one
       // section with the third operator left unset. reassert only fixes section

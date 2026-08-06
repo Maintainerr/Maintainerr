@@ -13,6 +13,9 @@ import { TautulliGetterService } from './tautulli-getter.service';
 
 const SEEN_BY = 0;
 const SW_LAST_WATCHED = 7;
+const VIEW_COUNT_BY_USER = 9;
+const WATCH_TIME_BY_USER = 10;
+const LAST_VIEWED_AT_BY_USER = 11;
 
 // Tautulli grades watched_status as 0 | 0.25 | 0.5 | 0.75 | 1; only 1 means the
 // item crossed the configured watched percent.
@@ -22,7 +25,13 @@ const historyItem = (props: {
   parent_media_index: number;
   media_index: number;
   stopped: number;
-}) => ({ user_id: 1, user: 'user', rating_key: 1, ...props });
+}) => ({
+  user_id: 1,
+  user: 'user',
+  rating_key: 1,
+  play_duration: 0,
+  ...props,
+});
 
 const createService = (
   history: ReturnType<typeof historyItem>[],
@@ -181,6 +190,125 @@ describe('TautulliGetterService', () => {
       await expect(
         service.get(SW_LAST_WATCHED, showItem, undefined, ruleGroup),
       ).resolves.toEqual(new Date(1_700_000_000 * 1000));
+    });
+  });
+
+  describe('per-user properties', () => {
+    const rule = { username: 'alice' } as never;
+    const correctedUsers = {
+      getCorrectedUsers: jest.fn().mockResolvedValue([
+        { plexId: 1, username: 'alice' },
+        { plexId: 2, username: 'bob' },
+      ]),
+    };
+    const play = (
+      user_id: number,
+      watched_status: number,
+      play_duration: number,
+      stopped: number,
+    ) => ({
+      ...historyItem({
+        watched_status,
+        percent_complete: watched_status === 1 ? 100 : 30,
+        parent_media_index: 1,
+        media_index: 1,
+        stopped,
+      }),
+      user_id,
+      play_duration,
+    });
+
+    const history = [
+      play(1, 1, 1800, 1_700_000_000),
+      play(1, 0.25, 900, 1_700_000_500),
+      play(2, 1, 3600, 1_700_100_000),
+    ];
+
+    it('counts only the picked user, and only their watched plays', async () => {
+      const service = createService(history, null, correctedUsers);
+
+      await expect(
+        service.get(VIEW_COUNT_BY_USER, showItem, undefined, ruleGroup, rule),
+      ).resolves.toBe(1);
+      await expect(
+        service.get(
+          LAST_VIEWED_AT_BY_USER,
+          showItem,
+          undefined,
+          ruleGroup,
+          rule,
+        ),
+      ).resolves.toEqual(new Date(1_700_000_000 * 1000));
+    });
+
+    // Tautulli only renamed `duration` to `play_duration` in 2.12.3, so an
+    // older install answers with the original key alone.
+    it('reads the watch time of a Tautulli older than 2.12.3', async () => {
+      const legacyHistory = history.map(({ play_duration, ...row }) => ({
+        ...row,
+        duration: play_duration,
+      }));
+      const service = createService(
+        legacyHistory as never,
+        null,
+        correctedUsers,
+      );
+
+      await expect(
+        service.get(WATCH_TIME_BY_USER, showItem, undefined, ruleGroup, rule),
+      ).resolves.toBe(45);
+    });
+
+    it('sums every play of the picked user, in minutes', async () => {
+      const service = createService(history, null, correctedUsers);
+
+      await expect(
+        service.get(WATCH_TIME_BY_USER, showItem, undefined, ruleGroup, rule),
+      ).resolves.toBe(45);
+    });
+
+    it('honours the collection watched-percent override for the view count', async () => {
+      const service = createService(history, 20, correctedUsers);
+
+      await expect(
+        service.get(VIEW_COUNT_BY_USER, showItem, undefined, ruleGroup, rule),
+      ).resolves.toBe(2);
+    });
+
+    // Zero here would read as "this user never watched it" and let a rule that
+    // protects rewatched media sweep it instead.
+    it.each([
+      {
+        when: 'the rule has no user',
+        ruleDto: {} as never,
+        plexApi: correctedUsers,
+      },
+      {
+        when: 'Plex no longer has the user',
+        ruleDto: rule,
+        plexApi: { getCorrectedUsers: jest.fn().mockResolvedValue([]) },
+      },
+      {
+        when: 'plex.tv could not be reached',
+        ruleDto: rule,
+        plexApi: {
+          getCorrectedUsers: jest
+            .fn()
+            .mockRejectedValue(new Error('plex.tv user data unavailable')),
+        },
+      },
+    ])('skips the item when $when', async ({ ruleDto, plexApi }) => {
+      const service = createService(history, null, plexApi);
+
+      await expect(
+        service.get(
+          VIEW_COUNT_BY_USER,
+          showItem,
+          undefined,
+          ruleGroup,
+          ruleDto,
+        ),
+      ).resolves.toBeUndefined();
     });
   });
 
