@@ -87,11 +87,17 @@ export class ExternalApiService {
   public async delete<T>(
     endpoint: string,
     config?: RawAxiosRequestConfig,
+    options?: { rethrow?: boolean },
   ): Promise<T> {
     try {
       const response = await this.axios.delete<T>(endpoint, config);
       return response.data;
     } catch (error) {
+      // Same escape hatch as post(): a 204 answers an empty body, so a caller
+      // cannot tell success from failure by the return value.
+      if (options?.rethrow) {
+        throw error;
+      }
       this.logRequestFailure('DELETE', endpoint, config, error);
       return undefined;
     }
