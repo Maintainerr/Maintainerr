@@ -18,7 +18,6 @@ import {
   WatchRecord,
 } from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
-import { chunk } from 'lodash';
 import { MaintainerrLogger } from '../../../logging/logs.service';
 import { EPlexDataType } from '../../plex-api/enums/plex-data-type-enum';
 import { PlexLibraryItem } from '../../plex-api/interfaces/library.interfaces';
@@ -30,6 +29,7 @@ import {
 } from '../media-server-id.utils';
 import { resolveContextActionIds } from '../context-action.util';
 import { supportsFeature } from '../media-server.constants';
+import { readMetadataInBatches } from '../metadata-batch.util';
 import {
   IMediaServerService,
   type MediaWatchState,
@@ -193,6 +193,19 @@ export class PlexAdapterService implements IMediaServerService {
     const metadata = await this.plexApi.getMetadata(itemId);
     if (!metadata) return undefined;
     return PlexMapper.metadataToMediaItem(metadata);
+  }
+
+  async getMetadataBatch(itemIds: string[]): Promise<MediaItem[]> {
+    return readMetadataInBatches({
+      itemIds,
+      // Ids are comma separated in the path.
+      perIdCost: 1,
+      // plexApi answers [] for a failed read, so there is nothing to report.
+      readBatch: async (idBatch) =>
+        (await this.plexApi.getMetadataBatch(idBatch)).map(
+          PlexMapper.metadataToMediaItem,
+        ),
+    });
   }
 
   async itemExists(itemId: string): Promise<boolean> {
@@ -521,19 +534,12 @@ export class PlexAdapterService implements IMediaServerService {
     // episodes and seasons, and for any library whose agent publishes none. In
     // id batches, never one request per child: that is what a Plex host answers
     // with 503s.
-    const resolvedById = new Map<string, MediaItem>();
-
-    for (const idBatch of chunk(
-      idsWithoutProviderIds,
-      PLEX_BATCH_SIZE.METADATA_LOOKUP,
-    )) {
-      for (const metadata of await this.plexApi.getMetadataBatch(idBatch)) {
-        resolvedById.set(
-          metadata.ratingKey,
-          PlexMapper.metadataToMediaItem(metadata),
-        );
-      }
-    }
+    const resolvedById = new Map(
+      (await this.getMetadataBatch(idsWithoutProviderIds)).map((item) => [
+        item.id,
+        item,
+      ]),
+    );
 
     const unresolved = idsWithoutProviderIds.filter(
       (id) => !this.hasUsableProviderIds(resolvedById.get(id)?.providerIds),

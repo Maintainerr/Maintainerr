@@ -36,6 +36,7 @@ import {
   EMBY_CLIENT_INFO,
   EMBY_DEVICE_INFO,
 } from './emby.constants';
+import { readMetadataInBatches } from '../metadata-batch.util';
 import { EmbyMapper } from './emby.mapper';
 import type {
   EmbyAuthenticationResult,
@@ -60,6 +61,19 @@ import type {
  * Methods marked with TODO(emby-server-test) have not been verified against a
  * live Emby server and require validation before production use.
  */
+// The fields a metadata read needs, shared by the single-item and bulk reads so
+// the two can never drift into answering differently shaped items.
+//
+// The trailing five are only returned by `/Users/{userId}/Items/{itemId}` unless
+// they are named: verified on Emby 4.9.5 that a `/Items` list read omits
+// ParentId and ChildCount entirely, and PremiereDate, CommunityRating and
+// OfficialRating for movies. The mapper reads all five - the last three are the
+// airDate and rating sort keys and the content rating - and a batch result is
+// cached under the key getMetadata reads, so a short list read would then be
+// served to callers that never asked for one.
+export const EMBY_METADATA_FIELDS =
+  'ProviderIds,DateCreated,Overview,Tags,MediaSources,Genres,People,Studios,ParentId,ChildCount,PremiereDate,CommunityRating,OfficialRating';
+
 @Injectable()
 export class EmbyAdapterService implements IMediaServerService {
   private http: AxiosInstance | undefined;
@@ -450,15 +464,57 @@ export class EmbyAdapterService implements IMediaServerService {
     return pending;
   }
 
+  async getMetadataBatch(itemIds: string[]): Promise<MediaItem[]> {
+    if (!this.http) return [];
+
+    return readMetadataInBatches({
+      itemIds,
+      // Ids are comma separated in one `Ids` parameter.
+      perIdCost: 1,
+      cache: {
+        get: (itemId) =>
+          this.cache.data.get<MediaItem>(
+            `${EMBY_CACHE_KEYS.METADATA}:${itemId}`,
+          ),
+        set: (item) =>
+          this.cache.data.set(
+            `${EMBY_CACHE_KEYS.METADATA}:${item.id}`,
+            item,
+            EMBY_CACHE_TTL.METADATA,
+          ),
+      },
+      readBatch: async (idBatch) => {
+        // User-scoped, like every other Emby read: the unscoped path 404s for
+        // items that exist.
+        const userId = await this.resolveUserId();
+        const { data } = await this.http.get<EmbyItemsQueryResponse>('/Items', {
+          params: {
+            ...(userId ? { UserId: userId } : {}),
+            Ids: idBatch.join(','),
+            Fields: EMBY_METADATA_FIELDS,
+          },
+        });
+
+        return (data.Items ?? []).map(EmbyMapper.toMediaItem);
+      },
+      // Emby answers 500 for a malformed id, so one bad id costs its batch.
+      onBatchError: (idBatch, error) => {
+        this.logger.warn(
+          `Failed to get metadata for ${idBatch.length} Emby item(s)`,
+        );
+        this.logger.debug(
+          formatConnectionFailureMessage(error, 'Connection failed'),
+        );
+      },
+    });
+  }
+
   private async fetchMetadata(
     itemId: string,
     cacheKey: string,
   ): Promise<MediaItem | undefined> {
     try {
-      const data = await this.fetchItem(
-        itemId,
-        'ProviderIds,DateCreated,Overview,Tags,MediaSources,Genres,People,Studios',
-      );
+      const data = await this.fetchItem(itemId, EMBY_METADATA_FIELDS);
 
       if (!data) {
         return undefined;
