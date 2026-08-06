@@ -30,7 +30,7 @@ import { ZodValidationPipe } from 'nestjs-zod';
 import { MaintainerrLogger } from '../logging/logs.service';
 import { CommunityRule } from './dtos/communityRule.dto';
 import { ExclusionAction, ExclusionContextDto } from './dtos/exclusion.dto';
-import { RulesDto } from './dtos/rules.dto';
+import { RuleGroupDto } from './dtos/ruleGroup.dto';
 import { ReturnStatus, RulesService } from './rules.service';
 import { RuleExecutorJobManagerService } from './tasks/rule-executor-job-manager.service';
 import { RuleExecutorSchedulerService } from './tasks/rule-executor-scheduler.service';
@@ -104,7 +104,7 @@ export class RulesController {
   }
 
   @Get('/:id')
-  getRuleGroup(@Param('id', ParseIntPipe) id: number): Promise<RulesDto> {
+  getRuleGroup(@Param('id', ParseIntPipe) id: number): Promise<RuleGroupDto> {
     return this.rulesService.getRuleGroup(id);
   }
 
@@ -270,7 +270,7 @@ export class RulesController {
     status: 503,
     description: 'The configured media server adapter could not initialize.',
   })
-  async setRules(@Body() body: RulesDto): Promise<ReturnStatus> {
+  async setRules(@Body() body: RuleGroupDto): Promise<ReturnStatus> {
     return this.orFail(await this.rulesService.setRules(body));
   }
 
@@ -347,7 +347,7 @@ export class RulesController {
     status: 503,
     description: 'The configured media server adapter could not initialize.',
   })
-  async updateRule(@Body() body: RulesDto): Promise<ReturnStatus> {
+  async updateRule(@Body() body: RuleGroupDto): Promise<ReturnStatus> {
     return this.orFail(await this.rulesService.updateRules(body));
   }
 

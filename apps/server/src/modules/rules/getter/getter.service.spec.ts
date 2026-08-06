@@ -6,7 +6,7 @@ import {
 import { Mocked, TestBed } from '@suites/unit';
 import { MediaServerFactory } from '../../api/media-server/media-server.factory';
 import { Application } from '../constants/rules.constants';
-import { RulesDto } from '../dtos/rules.dto';
+import { RuleGroupDto } from '../dtos/ruleGroup.dto';
 import { ArrLookupCache } from '../helpers/arr-lookup-cache';
 import { EmbyGetterService } from './emby-getter.service';
 import { ValueGetterService } from './getter.service';
@@ -50,7 +50,7 @@ describe('ValueGetterService', () => {
     'passes the run cache to the %s media-server getter',
     async (serverType) => {
       const cache = new ArrLookupCache();
-      const ruleGroup = { id: 1 } as RulesDto;
+      const ruleGroup = { id: 1 } as RuleGroupDto;
       const get =
         serverType === MediaServerType.PLEX
           ? plexGetter.get
@@ -81,7 +81,7 @@ describe('ValueGetterService', () => {
     plexGetter.get.mockResolvedValue(undefined);
 
     await expect(
-      service.get([Application.PLEX, 46], item, { id: 1 } as RulesDto),
+      service.get([Application.PLEX, 46], item, { id: 1 } as RuleGroupDto),
     ).resolves.toBeUndefined();
   });
 });

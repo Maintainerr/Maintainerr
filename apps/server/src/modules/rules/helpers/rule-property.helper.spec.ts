@@ -1,6 +1,6 @@
 import { type MediaItemType } from '@maintainerr/contracts';
-import { createRulesDto } from '../../../../test/utils/data';
-import { type RulesDto } from '../dtos/rules.dto';
+import { createRuleGroupDto } from '../../../../test/utils/data';
+import { type RuleGroupDto } from '../dtos/ruleGroup.dto';
 import {
   countRuleCollectionNames,
   filterRuleCollectionNames,
@@ -15,12 +15,12 @@ interface TestUser {
   name: string;
 }
 
-const createRuleGroup = (): RulesDto =>
-  createRulesDto({
+const createRuleGroup = (): RuleGroupDto =>
+  createRuleGroupDto({
     name: 'Cleanup Collection',
     collection: {
       manualCollectionName: 'Manual Cleanup',
-    } as RulesDto['collection'],
+    } as RuleGroupDto['collection'],
   });
 
 describe('rule-property.helper', () => {

@@ -8,7 +8,7 @@ import { Injectable } from '@nestjs/common';
 import { MediaServerFactory } from '../../api/media-server/media-server.factory';
 import { Application } from '../constants/rules.constants';
 import { RuleDto } from '../dtos/rule.dto';
-import { RulesDto } from '../dtos/rules.dto';
+import { RuleGroupDto } from '../dtos/ruleGroup.dto';
 import { ArrLookupCache } from '../helpers/arr-lookup-cache';
 import { EmbyGetterService } from './emby-getter.service';
 import { JellyfinGetterService } from './jellyfin-getter.service';
@@ -49,7 +49,7 @@ export class ValueGetterService {
   async get(
     [val1, val2]: [number, number],
     libItem: MediaItem,
-    ruleGroup?: RulesDto,
+    ruleGroup?: RuleGroupDto,
     dataType?: MediaItemType,
     currentRule?: RuleDto,
     arrLookupCache?: ArrLookupCache,

@@ -129,7 +129,7 @@ describe('RulesService.setRules', () => {
 
   // The UI submits the leftover-folder cleanup opt-in on the rule-group payload,
   // so setRules is the only path that can turn it on. It used to be missing from
-  // RulesDto and from the createCollection call, which silently dropped it.
+  // RuleGroupDto and from the createCollection call, which silently dropped it.
   it('persists the leftover-folder cleanup opt-in for an action that strands a folder', async () => {
     const createCollection = jest
       .fn()

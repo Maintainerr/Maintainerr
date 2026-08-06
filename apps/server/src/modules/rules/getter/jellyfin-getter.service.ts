@@ -14,7 +14,7 @@ import {
   Property,
   RuleConstants,
 } from '../constants/rules.constants';
-import { RulesDto } from '../dtos/rules.dto';
+import { RuleGroupDto } from '../dtos/ruleGroup.dto';
 import { ArrLookupCache } from '../helpers/arr-lookup-cache';
 import {
   filterRuleCollectionNames,
@@ -57,7 +57,7 @@ export class JellyfinGetterService {
     id: number,
     libItem: MediaItem,
     dataType?: MediaItemType,
-    ruleGroup?: RulesDto,
+    ruleGroup?: RuleGroupDto,
     arrLookupCache?: ArrLookupCache,
   ): Promise<RuleValueType> {
     try {
@@ -838,7 +838,7 @@ export class JellyfinGetterService {
   private async getCollectionNames(
     itemId: string,
     libraryId: string,
-    ruleGroup?: RulesDto,
+    ruleGroup?: RuleGroupDto,
   ): Promise<string[]> {
     // Cache the raw collection names (without exclusion filtering)
     // so we can apply different exclusions for different rule groups
@@ -940,7 +940,7 @@ export class JellyfinGetterService {
     parentId: string | undefined,
     grandparentId: string | undefined,
     libraryId: string,
-    ruleGroup?: RulesDto,
+    ruleGroup?: RuleGroupDto,
   ): Promise<number> {
     const names = await this.getCollectionNamesIncludingParent(
       itemId,
@@ -957,7 +957,7 @@ export class JellyfinGetterService {
     parentId: string | undefined,
     grandparentId: string | undefined,
     libraryId: string,
-    ruleGroup?: RulesDto,
+    ruleGroup?: RuleGroupDto,
   ): Promise<string[]> {
     const collections = await this.jellyfinAdapter.getCollections(libraryId);
     const collectionNames: string[] = [];
@@ -986,7 +986,7 @@ export class JellyfinGetterService {
   private async getCollectionSiblingsLastViewedAt(
     itemId: string,
     libraryId: string,
-    ruleGroup?: RulesDto,
+    ruleGroup?: RuleGroupDto,
   ): Promise<Date | null> {
     const collections = await this.jellyfinAdapter.getCollections(libraryId);
     const includedCollectionNames = new Set(

@@ -8,7 +8,7 @@ import {
   createRadarrMovieFile,
   createRadarrQuality,
   createRuleDto,
-  createRulesDto,
+  createRuleGroupDto,
 } from '../../../../test/utils/data';
 import { RadarrApi } from '../../api/servarr-api/helpers/radarr.helper';
 import { RadarrMovie } from '../../api/servarr-api/interfaces/radarr.interface';
@@ -67,7 +67,7 @@ describe('RadarrGetterService', () => {
       const response = await radarrGetterService.get(
         20,
         mediaItem,
-        createRulesDto({
+        createRuleGroupDto({
           collection: collectionMedia.collection,
           dataType: 'movie',
         }),
@@ -87,7 +87,7 @@ describe('RadarrGetterService', () => {
       const response = await radarrGetterService.get(
         20,
         mediaItem,
-        createRulesDto({
+        createRuleGroupDto({
           collection: collectionMedia.collection,
           dataType: 'movie',
         }),
@@ -105,7 +105,7 @@ describe('RadarrGetterService', () => {
       const response = await radarrGetterService.get(
         20,
         mediaItem,
-        createRulesDto({
+        createRuleGroupDto({
           collection: collectionMedia.collection,
           dataType: 'movie',
         }),
@@ -129,7 +129,7 @@ describe('RadarrGetterService', () => {
       const response = await radarrGetterService.get(
         21,
         mediaItem,
-        createRulesDto({
+        createRuleGroupDto({
           collection: collectionMedia.collection,
           dataType: 'movie',
         }),
@@ -147,7 +147,7 @@ describe('RadarrGetterService', () => {
       const response = await radarrGetterService.get(
         21,
         mediaItem,
-        createRulesDto({
+        createRuleGroupDto({
           collection: collectionMedia.collection,
           dataType: 'movie',
         }),
@@ -167,7 +167,7 @@ describe('RadarrGetterService', () => {
       const response = await radarrGetterService.get(
         22,
         mediaItem,
-        createRulesDto({
+        createRuleGroupDto({
           collection: collectionMedia.collection,
           dataType: 'movie',
         }),
@@ -185,7 +185,7 @@ describe('RadarrGetterService', () => {
       const response = await radarrGetterService.get(
         22,
         mediaItem,
-        createRulesDto({
+        createRuleGroupDto({
           collection: collectionMedia.collection,
           dataType: 'movie',
         }),
@@ -205,7 +205,7 @@ describe('RadarrGetterService', () => {
       const response = await radarrGetterService.get(
         22,
         mediaItem,
-        createRulesDto({
+        createRuleGroupDto({
           collection: collectionMedia.collection,
           dataType: 'movie',
         }),
@@ -245,7 +245,7 @@ describe('RadarrGetterService', () => {
       const response = await radarrGetterService.get(
         23,
         mediaItem,
-        createRulesDto({
+        createRuleGroupDto({
           collection: collectionMedia.collection,
           dataType: 'movie',
         }),
@@ -274,7 +274,7 @@ describe('RadarrGetterService', () => {
       const response = await radarrGetterService.get(
         24,
         mediaItem,
-        createRulesDto({
+        createRuleGroupDto({
           collection: collectionMedia.collection,
           dataType: 'movie',
         }),
@@ -306,7 +306,7 @@ describe('RadarrGetterService', () => {
       radarrGetterService.get(
         0,
         mediaItem,
-        createRulesDto({
+        createRuleGroupDto({
           collection: collectionMedia.collection,
           dataType: 'movie',
         }),
@@ -370,7 +370,7 @@ describe('RadarrGetterService', () => {
       radarrGetterService.get(
         propertyId,
         mediaItem,
-        createRulesDto({
+        createRuleGroupDto({
           collection: collectionMedia.collection,
           dataType: 'movie',
         }),
@@ -424,7 +424,7 @@ describe('RadarrGetterService', () => {
       radarrGetterService.get(
         25,
         mediaItem,
-        createRulesDto({
+        createRuleGroupDto({
           collection: collectionMedia.collection,
           dataType: 'movie',
         }),

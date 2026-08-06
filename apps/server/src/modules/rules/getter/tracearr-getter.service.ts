@@ -17,7 +17,7 @@ import {
   Property,
   RuleConstants,
 } from '../constants/rules.constants';
-import { RulesDto } from '../dtos/rules.dto';
+import { RuleGroupDto } from '../dtos/ruleGroup.dto';
 
 @Injectable()
 export class TracearrGetterService {
@@ -42,7 +42,7 @@ export class TracearrGetterService {
     ).props;
   }
 
-  async get(id: number, libItem: MediaItem, ruleGroup?: RulesDto) {
+  async get(id: number, libItem: MediaItem, ruleGroup?: RuleGroupDto) {
     try {
       const property = this.appProperties.find((item) => item.id === id);
       if (!property) {
@@ -120,7 +120,7 @@ export class TracearrGetterService {
   }
 
   private async getWatchedPercentOverride(
-    ruleGroup?: RulesDto,
+    ruleGroup?: RuleGroupDto,
     historyIndex?: TracearrHistoryIndex,
   ): Promise<number | null> {
     if (this.historyIndexForWatchedPercentOverrides !== historyIndex) {

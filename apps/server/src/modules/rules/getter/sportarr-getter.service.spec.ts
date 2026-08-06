@@ -1,5 +1,8 @@
 import { Mocked, TestBed } from '@suites/unit';
-import { createMediaItem, createRulesDto } from '../../../../test/utils/data';
+import {
+  createMediaItem,
+  createRuleGroupDto,
+} from '../../../../test/utils/data';
 import { MediaServerFactory } from '../../api/media-server/media-server.factory';
 import { IMediaServerService } from '../../api/media-server/media-server.interface';
 import { ServarrService } from '../../api/servarr-api/servarr.service';
@@ -60,7 +63,7 @@ describe('SportarrGetterService', () => {
     });
 
   const ruleGroup = () =>
-    createRulesDto({
+    createRuleGroupDto({
       dataType: 'show',
       collection: { title: 'F1', sportarrSettingsId: 1 } as any,
     });
@@ -70,7 +73,7 @@ describe('SportarrGetterService', () => {
       0,
       showItem(),
       'show',
-      createRulesDto({ collection: {} as any }),
+      createRuleGroupDto({ collection: {} as any }),
     );
     expect(result).toBeNull();
   });
