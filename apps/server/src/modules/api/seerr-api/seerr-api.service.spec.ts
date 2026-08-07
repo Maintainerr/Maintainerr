@@ -247,6 +247,83 @@ describe('SeerrApiService', () => {
     results,
   });
 
+  describe('removeSeasonRequest', () => {
+    const tvRequest = (id: number, seasonNumbers: number[]) =>
+      ({
+        id,
+        type: 'tv',
+        status: SeerrRequestStatus.APPROVED,
+        createdAt: '2026-03-14T00:00:00.000Z',
+        updatedAt: '2026-03-14T00:00:00.000Z',
+        requestedBy: {} as never,
+        modifiedBy: {} as never,
+        is4k: false,
+        serverId: 1,
+        profileId: 1,
+        rootFolder: '/',
+        media: {} as never,
+        seasons: seasonNumbers.map((seasonNumber) => ({
+          id: seasonNumber,
+          name: `Season ${seasonNumber}`,
+          seasonNumber,
+          status: SeerrRequestStatus.APPROVED,
+        })),
+      }) as never;
+
+    const arrange = (requests: unknown[]) => {
+      jest.spyOn(service, 'getShow').mockResolvedValue({
+        id: 100,
+        mediaInfo: {
+          id: 7,
+          tmdbId: 100,
+          tvdbId: 200,
+          status: 1,
+          updatedAt: '2026-03-14T00:00:00.000Z',
+          mediaAddedAt: '2026-03-14T00:00:00.000Z',
+          externalServiceId: 1,
+          externalServiceId4k: 1,
+          mediaType: 'tv',
+          requests,
+        },
+      } as never);
+
+      const del = jest.fn().mockResolvedValue('');
+      service.api = { delete: del } as never;
+      return del;
+    };
+
+    it('deletes only the requests covering the season', async () => {
+      const del = arrange([tvRequest(10, [1]), tvRequest(11, [2])]);
+
+      await expect(service.removeSeasonRequest(100, 1)).resolves.toBe(true);
+
+      expect(del).toHaveBeenCalledTimes(1);
+      expect(del).toHaveBeenCalledWith('/request/10', undefined, {
+        rethrow: true,
+      });
+    });
+
+    // Deleting the media record cascades into every request it holds, so a
+    // season with none of its own must not take the other seasons with it.
+    it('keeps the media record when another season is still requested', async () => {
+      const del = arrange([tvRequest(11, [2])]);
+
+      await expect(service.removeSeasonRequest(100, 1)).resolves.toBe(false);
+
+      expect(del).not.toHaveBeenCalled();
+    });
+
+    it('clears the stale media record when nothing is requested at all', async () => {
+      const del = arrange([]);
+
+      await expect(service.removeSeasonRequest(100, 1)).resolves.toBe(true);
+
+      expect(del).toHaveBeenCalledWith('/media/7', undefined, {
+        rethrow: true,
+      });
+    });
+  });
+
   describe('getRequests', () => {
     it('paginates until page === pages and accumulates all results', async () => {
       const getWithoutCache = jest

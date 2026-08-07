@@ -570,7 +570,8 @@ export class SeerrApiService {
         return false;
       }
 
-      const requests = (media.mediaInfo.requests ?? []).filter((el) =>
+      const allRequests = media.mediaInfo.requests ?? [];
+      const requests = allRequests.filter((el) =>
         el.seasons.find((s) => s.seasonNumber === season),
       );
       if (requests.length > 0) {
@@ -579,11 +580,15 @@ export class SeerrApiService {
             rethrow: true,
           });
         }
+      } else if (allRequests.length > 0) {
+        // Other seasons are still requested. Deleting the media record cascades
+        // into their requests, so leave it alone and report nothing removed.
+        return false;
       } else {
-        // No requests? Clear the media record and let Seerr refetch. Keyed on
-        // Seerr's own media id, not `media.id`, which is the TMDB id: Seerr
-        // answers 204 for an id it does not hold, so the wrong one was a no-op
-        // that reported success.
+        // Nothing requested at all? Clear the stale media record and let Seerr
+        // refetch. Keyed on Seerr's own media id, not `media.id`, which is the
+        // TMDB id: Seerr answers 204 for an id it does not hold, so the wrong
+        // one was a no-op that reported success.
         await this.api.delete(`/media/${media.mediaInfo.id}`, undefined, {
           rethrow: true,
         });
