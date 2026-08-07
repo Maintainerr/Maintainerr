@@ -1177,29 +1177,22 @@ export class CollectionsService {
     ];
 
     if (parentIds.length > 0) {
-      const parentMetadataResults = await Promise.allSettled(
-        parentIds.map(async (parentId) => ({
-          parentId,
-          mediaItem: await mediaServer.getMetadata(parentId),
-        })),
-      );
+      // One read per batch of ids rather than one per parent. Emby and Jellyfin
+      // put a movie under its library folder, so a collection stored one folder
+      // per film has about as many parents as it has rows.
+      for (const parent of await mediaServer.getMetadataBatch(parentIds)) {
+        parentMetadataById.set(parent.id, parent);
+      }
 
-      parentMetadataResults.forEach((result, index) => {
-        const parentId = parentIds[index];
+      const unresolved = parentIds.length - parentMetadataById.size;
 
-        if (result.status === 'fulfilled') {
-          if (result.value.mediaItem) {
-            parentMetadataById.set(parentId, result.value.mediaItem);
-          }
-
-          return;
-        }
-
+      if (unresolved > 0) {
+        // Counted, not one line each. A parent that does not resolve only costs
+        // the item its parent title and artwork, so the row is still returned.
         this.logger.debug(
-          `Failed to fetch parent metadata for collection media parentId=${parentId}`,
+          `No metadata for ${unresolved} of ${parentIds.length} collection media parents`,
         );
-        this.logger.debug(result.reason);
-      });
+      }
     }
 
     return entities
