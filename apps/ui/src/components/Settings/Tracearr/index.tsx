@@ -54,7 +54,6 @@ const TracearrSettings = () => {
       pageTitle="Tracearr settings - Maintainerr"
       heading="Tracearr Settings"
       description="Tracearr configuration"
-      warning="Tracearr is not configured. Configure its URL, API key, and server ID to enable Tracearr history rules. Tracearr does not backfill media-server history."
       docsPage="Configuration/#tracearr"
       settingsPath="/settings/tracearr"
       testPath="/settings/test/tracearr"
