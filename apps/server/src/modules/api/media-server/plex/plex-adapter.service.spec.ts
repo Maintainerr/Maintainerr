@@ -12,7 +12,7 @@ import { MaintainerrLogger } from '../../../logging/logs.service';
 import type { PlexStatusResponse } from '../../plex-api/interfaces/server.interface';
 import { PlexApiService } from '../../plex-api/plex-api.service';
 import { PlexAdapterService } from './plex-adapter.service';
-import { PLEX_BATCH_SIZE } from './plex.constants';
+import { batchIdsByRequestCost } from '../metadata-batch.util';
 
 describe('PlexAdapterService', () => {
   let service: PlexAdapterService;
@@ -639,6 +639,50 @@ describe('PlexAdapterService', () => {
     });
   });
 
+  describe('getMetadataBatch', () => {
+    it('reads a whole id list in one request', async () => {
+      plexApi.getMetadataBatch.mockResolvedValue([
+        createPlexMetadata({ ratingKey: 'movie-1', type: 'movie' }),
+        createPlexMetadata({ ratingKey: 'movie-2', type: 'movie' }),
+      ]);
+
+      const items = await service.getMetadataBatch(['movie-1', 'movie-2']);
+
+      expect(plexApi.getMetadataBatch).toHaveBeenCalledTimes(1);
+      expect(plexApi.getMetadataBatch).toHaveBeenCalledWith([
+        'movie-1',
+        'movie-2',
+      ]);
+      expect(items.map((item) => item.id)).toEqual(['movie-1', 'movie-2']);
+    });
+
+    it('splits a long id list so the request line stays bounded', async () => {
+      plexApi.getMetadataBatch.mockResolvedValue([]);
+      const itemIds = Array.from(
+        { length: 1500 },
+        (unused, index) => `movie-${index}`,
+      );
+
+      await service.getMetadataBatch(itemIds);
+
+      // The shared helper decides the split from the ids themselves.
+      expect(plexApi.getMetadataBatch).toHaveBeenCalledTimes(
+        batchIdsByRequestCost(itemIds, 1).length,
+      );
+      expect(plexApi.getMetadataBatch.mock.calls.length).toBeGreaterThan(1);
+    });
+
+    it('leaves out the ids Plex did not answer for', async () => {
+      plexApi.getMetadataBatch.mockResolvedValue([
+        createPlexMetadata({ ratingKey: 'movie-1', type: 'movie' }),
+      ]);
+
+      await expect(
+        service.getMetadataBatch(['movie-1', 'gone']),
+      ).resolves.toEqual([expect.objectContaining({ id: 'movie-1' })]);
+    });
+  });
+
   describe('getCollectionChildren', () => {
     it('reads no metadata at all when the listing carries provider ids', async () => {
       plexApi.getCollectionChildren.mockResolvedValue([
@@ -691,7 +735,7 @@ describe('PlexAdapterService', () => {
     });
 
     it('splits the lookup so the request line cannot grow without bound', async () => {
-      const childCount = PLEX_BATCH_SIZE.METADATA_LOOKUP * 2 + 3;
+      const childCount = 1500;
       plexApi.getCollectionChildren.mockResolvedValue(
         Array.from({ length: childCount }, (_, index) =>
           createPlexLibraryItem('movie', {
@@ -712,12 +756,7 @@ describe('PlexAdapterService', () => {
 
       const children = await service.getCollectionChildren('col123');
 
-      expect(plexApi.getMetadataBatch).toHaveBeenCalledTimes(3);
-      expect(
-        plexApi.getMetadataBatch.mock.calls.every(
-          ([keys]) => keys.length <= PLEX_BATCH_SIZE.METADATA_LOOKUP,
-        ),
-      ).toBe(true);
+      expect(plexApi.getMetadataBatch.mock.calls.length).toBeGreaterThan(1);
       expect(children.every((child) => child.providerIds.tmdb.length > 0)).toBe(
         true,
       );

@@ -13,6 +13,7 @@ import {
   JELLYFIN_WATCH_SNAPSHOT_MAX_RECORDS,
   jellyfinWatchSnapshotCacheKey,
 } from './jellyfin.constants';
+import { batchIdsByRequestCost } from '../metadata-batch.util';
 import { JellyfinAdapterService } from './jellyfin-adapter.service';
 import { JELLYFIN_BATCH_SIZE, JELLYFIN_CACHE_TTL } from './jellyfin.constants';
 
@@ -1039,6 +1040,102 @@ describe('JellyfinAdapterService', () => {
       expect(jellyfinCacheMocks.data.del).not.toHaveBeenCalledWith(
         'jellyfin:users',
       );
+    });
+  });
+
+  describe('getMetadataBatch', () => {
+    beforeEach(async () => {
+      settingsDataService.getSettings.mockResolvedValue(
+        mockSettings as unknown as Awaited<
+          ReturnType<SettingsDataService['getSettings']>
+        >,
+      );
+      await service.initialize();
+    });
+
+    it('reads a whole id list in one request and caches each item', async () => {
+      jellyfinApiMocks.getItems.mockResolvedValue({
+        data: {
+          Items: [
+            { Id: 'movie-1', Type: 'Movie', Name: 'One' },
+            { Id: 'movie-2', Type: 'Movie', Name: 'Two' },
+          ],
+        },
+      });
+
+      const items = await service.getMetadataBatch(['movie-1', 'movie-2']);
+
+      expect(jellyfinApiMocks.getItems).toHaveBeenCalledTimes(1);
+      expect(jellyfinApiMocks.getItems).toHaveBeenCalledWith(
+        expect.objectContaining({ ids: ['movie-1', 'movie-2'] }),
+      );
+      expect(items.map((item) => item.id)).toEqual(['movie-1', 'movie-2']);
+      expect(jellyfinCacheMocks.data.set).toHaveBeenCalledWith(
+        'jellyfin:metadata:movie-1',
+        expect.objectContaining({ id: 'movie-1' }),
+        JELLYFIN_CACHE_TTL.METADATA,
+      );
+    });
+
+    // The ids go in the query string and Jellyfin answers 414 past roughly an
+    // 8KB request line, so a long list cannot be one request.
+    it('splits a long id list', async () => {
+      jellyfinApiMocks.getItems.mockResolvedValue({ data: { Items: [] } });
+      const itemIds = Array.from({ length: 400 }, (unused, index) =>
+        `${index}`.padStart(32, 'i'),
+      );
+
+      await service.getMetadataBatch(itemIds);
+
+      // The shared helper decides the split from the ids themselves.
+      expect(jellyfinApiMocks.getItems).toHaveBeenCalledTimes(
+        batchIdsByRequestCost(itemIds, 5).length,
+      );
+      expect(jellyfinApiMocks.getItems.mock.calls.length).toBeGreaterThan(1);
+    });
+
+    // Jellyfin answers an unfiltered listing when it cannot parse the filter.
+    it('keeps only the ids it was asked for', async () => {
+      jellyfinApiMocks.getItems.mockResolvedValue({
+        data: {
+          Items: [
+            { Id: 'movie-1', Type: 'Movie', Name: 'One' },
+            { Id: 'somebody-else', Type: 'Movie', Name: 'Unrelated' },
+          ],
+        },
+      });
+
+      const items = await service.getMetadataBatch(['movie-1']);
+
+      expect(items.map((item) => item.id)).toEqual(['movie-1']);
+    });
+
+    it('serves cached ids without asking for them again', async () => {
+      jellyfinCacheMocks.data.get.mockImplementation((key: string) =>
+        key === 'jellyfin:metadata:movie-1' ? { id: 'movie-1' } : undefined,
+      );
+      jellyfinApiMocks.getItems.mockResolvedValue({
+        data: { Items: [{ Id: 'movie-2', Type: 'Movie', Name: 'Two' }] },
+      });
+
+      const items = await service.getMetadataBatch(['movie-1', 'movie-2']);
+
+      expect(jellyfinApiMocks.getItems).toHaveBeenCalledWith(
+        expect.objectContaining({ ids: ['movie-2'] }),
+      );
+      expect(items.map((item) => item.id).sort()).toEqual([
+        'movie-1',
+        'movie-2',
+      ]);
+    });
+
+    // Same contract as getMetadata: a failed read leaves its ids out rather
+    // than reporting them as missing items.
+    it('leaves out the ids of a failed read', async () => {
+      jellyfinCacheMocks.data.get.mockReturnValue(undefined);
+      jellyfinApiMocks.getItems.mockRejectedValue(new Error('boom'));
+
+      await expect(service.getMetadataBatch(['movie-1'])).resolves.toEqual([]);
     });
   });
 
