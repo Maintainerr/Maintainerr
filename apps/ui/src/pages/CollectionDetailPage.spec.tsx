@@ -79,15 +79,6 @@ vi.mock('react-router-dom', async () => {
   }
 })
 
-vi.mock(
-  '../components/Collection/CollectionDetail/CollectionDetailControlRow',
-  () => ({
-    default: ({ children }: { children?: React.ReactNode }) => (
-      <div data-testid="collection-detail-control-row">{children}</div>
-    ),
-  }),
-)
-
 vi.mock('../components/Common/LazyModalBoundary', () => ({
   default: ({ children }: { children?: React.ReactNode }) => (
     <div>{children}</div>

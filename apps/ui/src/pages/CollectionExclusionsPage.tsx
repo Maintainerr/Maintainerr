@@ -3,16 +3,9 @@ import CollectionExclusions from '../components/Collection/CollectionDetail/Excl
 import type { CollectionDetailOutletContext } from './CollectionDetailPage'
 
 const CollectionExclusionsPage = () => {
-  const { collection, canTestMedia, openMediaTestModal } =
-    useOutletContext<CollectionDetailOutletContext>()
+  const { collection } = useOutletContext<CollectionDetailOutletContext>()
 
-  return (
-    <CollectionExclusions
-      collection={collection}
-      canTestMedia={canTestMedia}
-      onOpenTestMedia={openMediaTestModal}
-    />
-  )
+  return <CollectionExclusions collection={collection} />
 }
 
 export default CollectionExclusionsPage
