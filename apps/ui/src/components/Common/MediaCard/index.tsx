@@ -8,25 +8,29 @@ import RemoveFromCollectionButton from '../../Collection/CollectionDetail/Remove
 import PosterCard from '../Poster/PosterCard'
 import MediaModalContent from './MediaModal'
 
+// Each tone carries its own text colour.
 const mediaBadgeClasses = {
-  movie: 'bg-zinc-900',
-  show: 'bg-maintainerrdark',
-  season: 'bg-yellow-700',
-  episode: 'bg-rose-900',
-  info: 'bg-maintainerrdark',
-  success: 'bg-emerald-700',
+  movie: 'bg-zinc-900 text-zinc-200',
+  show: 'bg-maintainerrdark text-zinc-200',
+  season: 'bg-yellow-700 text-zinc-200',
+  episode: 'bg-rose-900 text-zinc-200',
+  // Matches the palette, where info mirrors zinc, and the other card badges.
+  info: 'bg-zinc-900 text-zinc-200',
+  success: 'bg-emerald-700 text-zinc-200',
+  exclusion: 'bg-maintainerr text-white',
+  danger: 'bg-error-700 text-zinc-200',
 } as const
 
 const renderBadge = (
   label: React.ReactNode,
-  tone: keyof typeof mediaBadgeClasses | 'danger',
+  tone: keyof typeof mediaBadgeClasses,
   className?: string,
 ) => (
   <div className={className}>
     <div
-      className={`pointer-events-none z-40 min-w-0 rounded-full shadow-sm ${tone === 'danger' ? 'bg-error-700' : mediaBadgeClasses[tone]}`}
+      className={`pointer-events-none z-40 min-w-0 rounded-full shadow-sm ${mediaBadgeClasses[tone]}`}
     >
-      <div className="flex h-4 min-w-0 items-center px-2 py-2 text-center text-xs font-medium tracking-wider text-zinc-200 uppercase sm:h-5">
+      <div className="flex h-4 min-w-0 items-center px-2 py-2 text-center text-xs font-medium tracking-wider uppercase sm:h-5">
         {label}
       </div>
     </div>
@@ -132,15 +136,34 @@ const MediaCard: React.FC<IMediaCard> = ({
       >
         {(image) => (
           <>
-            <div className="absolute right-0 left-0 flex items-center justify-between p-2">
+            {/* The markers head the card: over the poster's foot they sat on
+                the artwork and on the title the detail view reveals. EXCL takes
+                the free bottom corner rather than a third slot up here, which
+                truncated the collection name to an ellipsis on a phone. */}
+            <div className="absolute right-0 left-0 flex items-start justify-between gap-1 p-2">
               {renderBadge(
                 mediaTypeLabel(mediaType, { seasonNumber, episodeNumber }),
                 mediaType,
+                'shrink-0',
               )}
-              {!collectionPage && exclusionType === 'global'
-                ? renderBadge('EXCL', mediaType)
+              {!collectionPage && collections?.length
+                ? renderBadge(
+                    <span className="truncate" title={collections.join(', ')}>
+                      {collections.length > 1
+                        ? `${collections[0]} +${collections.length - 1}`
+                        : collections[0]}
+                    </span>,
+                    'info',
+                    'min-w-0',
+                  )
                 : undefined}
             </div>
+
+            {/* The card's one free corner, so a long collection name up top
+                never has to share a line with this. */}
+            {exclusionType === 'global' && !showDetail
+              ? renderBadge('EXCL', 'exclusion', 'absolute bottom-0 left-0 p-2')
+              : undefined}
 
             {collectionPage && isManual && !showDetail
               ? renderBadge(
@@ -150,30 +173,10 @@ const MediaCard: React.FC<IMediaCard> = ({
                 )
               : undefined}
 
-            {!collectionPage && collections?.length && !showDetail
-              ? renderBadge(
-                  <span className="truncate" title={collections.join(', ')}>
-                    {collections.length > 1
-                      ? `${collections[0]} +${collections.length - 1}`
-                      : collections[0]}
-                  </span>,
-                  'info',
-                  'absolute inset-x-0 bottom-0 flex justify-center p-2',
-                )
-              : undefined}
-
             {collectionPage && !exclusionType && daysLeft !== 9999
               ? renderBadge(
                   daysLeft,
                   daysLeft < 0 ? 'danger' : mediaType,
-                  'absolute right-0 p-2',
-                )
-              : undefined}
-
-            {collectionPage && exclusionType === 'global'
-              ? renderBadge(
-                  exclusionType.toUpperCase(),
-                  mediaType,
                   'absolute right-0 p-2',
                 )
               : undefined}

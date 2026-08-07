@@ -80,7 +80,9 @@ const LayoutShell: React.FC<LayoutShellProps> = ({ children }) => {
         <div
           className={`searchbar fixed top-0 right-0 left-0 z-10 flex shrink-0 bg-transparent transition duration-300 lg:ml-64`}
         >
-          <div className="transparent-glass-bg flex flex-1 items-center justify-between pr-4 md:pr-4 md:pl-4">
+          {/* No drop shadow: it lands on the pinned page control row below and
+              reads as a seam between two panes of the same glass. */}
+          <div className="transparent-glass-bg flex flex-1 items-center justify-between pr-4 shadow-none md:pr-4 md:pl-4">
             <button
               className={`px-4 text-white opacity-70 transition duration-300 focus:outline-hidden lg:hidden`}
               aria-label="Open sidebar"

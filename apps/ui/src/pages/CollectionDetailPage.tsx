@@ -4,7 +4,7 @@ import { toast } from 'react-toastify'
 import { useCollection } from '../api/collections'
 import { useRuleGroupForCollection } from '../api/rules'
 import { ICollection } from '../components/Collection'
-import CollectionDetailControlRow from '../components/Collection/CollectionDetail/CollectionDetailControlRow'
+import ExecuteButton from '../components/Common/ExecuteButton'
 import LazyModalBoundary from '../components/Common/LazyModalBoundary'
 import LoadingSpinner from '../components/Common/LoadingSpinner'
 import TabbedLinks, { TabbedRoute } from '../components/Common/TabbedLinks'
@@ -17,8 +17,6 @@ const TestMediaItem = lazy(
 
 export interface CollectionDetailOutletContext {
   collection: ICollection
-  canTestMedia: boolean
-  openMediaTestModal: () => void
 }
 
 const CollectionDetailPage = () => {
@@ -112,10 +110,20 @@ const CollectionDetailPage = () => {
     <>
       <title>{collection.title} - Maintainerr</title>
       <div className="w-full px-4">
-        <div className="m-auto mb-3 flex w-full">
+        {/* Test Media belongs to this collection's rules, so it sits with its
+            title: the same place on every tab, and out of the pinned row that
+            carries the media actions. */}
+        <div className="m-auto mb-3 flex w-full items-center gap-3">
           <h1 className="flex w-full justify-center overflow-hidden text-lg font-bold text-ellipsis whitespace-nowrap text-zinc-200 sm:m-0 sm:justify-start xl:m-0">
             {collection.title}
           </h1>
+          {ruleGroup?.useRules ? (
+            <ExecuteButton
+              className="mx-0 shrink-0"
+              onClick={() => setMediaTestModalOpen(true)}
+              text="Test Media"
+            />
+          ) : null}
         </div>
 
         <div>
@@ -130,20 +138,7 @@ const CollectionDetailPage = () => {
               />
             </div>
           </div>
-          {currentTab === 'info' && ruleGroup?.useRules ? (
-            <CollectionDetailControlRow
-              canTestMedia={true}
-              onOpenTestMedia={() => setMediaTestModalOpen(true)}
-            />
-          ) : null}
-
-          <Outlet
-            context={{
-              collection,
-              canTestMedia: Boolean(ruleGroup?.useRules),
-              openMediaTestModal: () => setMediaTestModalOpen(true),
-            }}
-          />
+          <Outlet context={{ collection }} />
         </div>
 
         {mediaTestModalOpen && collection?.id ? (

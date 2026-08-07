@@ -6,7 +6,6 @@ import {
 import { useCallback, useRef, useState } from 'react'
 import { useOutletContext, useParams } from 'react-router-dom'
 import type { ICollectionMedia } from '../components/Collection'
-import CollectionDetailControlRow from '../components/Collection/CollectionDetail/CollectionDetailControlRow'
 import MediaSelectionActions from '../components/Common/MediaSelectionActions'
 import type { MediaActionOutcome } from '../components/Common/MediaActionModal'
 import {
@@ -14,6 +13,7 @@ import {
   MediaLibrarySortControl,
   useMediaLibrarySort,
 } from '../components/Common/MediaLibrarySortControl'
+import PageControlRow from '../components/Common/PageControlRow'
 import OverviewContent from '../components/Overview/Content'
 import useInfinitePaginatedList from '../hooks/useInfinitePaginatedList'
 import useMediaSelection from '../hooks/useMediaSelection'
@@ -38,8 +38,7 @@ export const mapCollectionMediaItemsToMediaData = (
 }
 
 const CollectionMediaPage = () => {
-  const { collection, canTestMedia, openMediaTestModal } =
-    useOutletContext<CollectionDetailOutletContext>()
+  const { collection } = useOutletContext<CollectionDetailOutletContext>()
   const { id } = useParams<{ id: string }>()
   const [media, setMedia] = useState<ICollectionMedia[]>([])
   const { mediaServerType } = useMediaServerType()
@@ -178,9 +177,9 @@ const CollectionMediaPage = () => {
 
   return (
     <div className="w-full">
-      <CollectionDetailControlRow
-        canTestMedia={canTestMedia}
-        onOpenTestMedia={openMediaTestModal}
+      <PageControlRow
+        sticky
+        actionsClassName="justify-center sm:justify-start"
         actions={
           <MediaSelectionActions
             selectionMode={selectionMode}
@@ -198,15 +197,16 @@ const CollectionMediaPage = () => {
             onSubmitted={handleBulkOutcome}
           />
         }
-      >
-        <MediaLibrarySortControl
-          ariaLabel="Sort collection items"
-          options={sortConfig.options}
-          value={sortValue}
-          onSortChange={handleSortChange}
-          isLoading={showRefreshing}
-        />
-      </CollectionDetailControlRow>
+        controls={
+          <MediaLibrarySortControl
+            ariaLabel="Sort collection items"
+            options={sortConfig.options}
+            value={sortValue}
+            onSortChange={handleSortChange}
+            isLoading={showRefreshing}
+          />
+        }
+      />
 
       <OverviewContent
         dataFinished={true}

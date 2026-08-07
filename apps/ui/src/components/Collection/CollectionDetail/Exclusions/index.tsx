@@ -5,7 +5,6 @@ import {
 } from '@maintainerr/contracts'
 import { useCallback } from 'react'
 import { ICollection } from '../..'
-import CollectionDetailControlRow from '../CollectionDetailControlRow'
 import useInfinitePaginatedList from '../../../../hooks/useInfinitePaginatedList'
 import useMediaSelection from '../../../../hooks/useMediaSelection'
 import { useMediaServerType } from '../../../../hooks/useMediaServerType'
@@ -21,12 +20,11 @@ import {
   MediaLibrarySortControl,
   useMediaLibrarySort,
 } from '../../../Common/MediaLibrarySortControl'
+import PageControlRow from '../../../Common/PageControlRow'
 import OverviewContent from '../../../Overview/Content'
 
 interface ICollectionExclusions {
   collection: ICollection
-  canTestMedia: boolean
-  onOpenTestMedia: () => void
 }
 
 export interface IExclusionMedia {
@@ -149,9 +147,9 @@ const CollectionExcludions = (props: ICollectionExclusions) => {
 
   return (
     <div className="w-full">
-      <CollectionDetailControlRow
-        canTestMedia={props.canTestMedia}
-        onOpenTestMedia={props.onOpenTestMedia}
+      <PageControlRow
+        sticky
+        actionsClassName="justify-center sm:justify-start"
         actions={
           <MediaSelectionActions
             selectionMode={selectionMode}
@@ -169,15 +167,16 @@ const CollectionExcludions = (props: ICollectionExclusions) => {
             onSubmitted={handleBulkOutcome}
           />
         }
-      >
-        <MediaLibrarySortControl
-          ariaLabel="Sort collection exclusions"
-          options={sortConfig.options}
-          value={sortValue}
-          onSortChange={handleSortChange}
-          isLoading={showRefreshing}
-        />
-      </CollectionDetailControlRow>
+        controls={
+          <MediaLibrarySortControl
+            ariaLabel="Sort collection exclusions"
+            options={sortConfig.options}
+            value={sortValue}
+            onSortChange={handleSortChange}
+            isLoading={showRefreshing}
+          />
+        }
+      />
 
       <OverviewContent
         dataFinished={true}
