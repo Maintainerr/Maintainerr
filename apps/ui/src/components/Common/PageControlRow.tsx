@@ -66,7 +66,7 @@ const PageControlRow = ({
       {actions ? (
         <div
           className={clsx(
-            'flex flex-wrap items-center justify-center gap-2 sm:justify-start',
+            'flex flex-wrap items-center gap-2',
             actionsClassName,
           )}
         >

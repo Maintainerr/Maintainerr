@@ -34,6 +34,7 @@ const CollectionOverview = (props: ICollectionOverview) => {
     <div className="w-full px-4">
       <PageControlRow
         sticky
+        actionsClassName="justify-center sm:justify-start"
         actions={
           <ExecuteButton
             className="mx-0"

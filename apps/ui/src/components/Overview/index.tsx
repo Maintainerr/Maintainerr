@@ -569,6 +569,7 @@ const Overview = () => {
       <div className="w-full px-4">
         <PageControlRow
           sticky
+          actionsClassName="justify-center sm:justify-start"
           controlsClassName="sm:w-auto"
           actions={
             <MediaSelectionActions

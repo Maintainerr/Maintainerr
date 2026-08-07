@@ -179,6 +179,7 @@ const CollectionMediaPage = () => {
     <div className="w-full">
       <PageControlRow
         sticky
+        actionsClassName="justify-center sm:justify-start"
         actions={
           <MediaSelectionActions
             selectionMode={selectionMode}
