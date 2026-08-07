@@ -1,3 +1,4 @@
+import { AxiosError, AxiosHeaders, AxiosResponse } from 'axios';
 import { MaintainerrLogger } from '../../../logging/logs.service';
 import { QbittorrentApi } from './qbittorrent.helper';
 
@@ -39,22 +40,60 @@ describe('QbittorrentApi auth', () => {
     expect(axiosMock.defaults.headers.common['Cookie']).toBeUndefined();
   });
 
-  it('captures the SID cookie when one is issued', async () => {
-    const { api, axiosMock } = buildApi();
-    axiosMock.post.mockResolvedValue({
+  it.each([
+    // qBittorrent 5.1 and older: HTTP 200 "Ok." plus a cookie named `SID`.
+    {
       data: 'Ok.',
-      headers: { 'set-cookie': ['SID=abc123; HttpOnly; path=/'] },
-    });
-    axiosMock.get.mockResolvedValue({ data: 'v5.0.0' });
+      setCookie: 'SID=abc123; HttpOnly; path=/',
+      expected: 'SID=abc123',
+    },
+    // 5.2+: HTTP 204 with no body, and the cookie is named after qBittorrent's
+    // OWN WebUI port - here 8090, deliberately not the configured URL's 8080,
+    // because a Docker port mapping or reverse proxy hides it (#3437).
+    {
+      data: '',
+      setCookie: 'QBT_SID_8090=Zk6xfR8Y+Vl6; HttpOnly; SameSite=Lax; path=/',
+      expected: 'QBT_SID_8090=Zk6xfR8Y+Vl6',
+    },
+  ])(
+    'captures the session cookie whatever qBittorrent names it ($expected)',
+    async ({ data, setCookie, expected }) => {
+      const { api, axiosMock } = buildApi();
+      axiosMock.post.mockResolvedValue({
+        data,
+        headers: { 'set-cookie': [setCookie] },
+      });
+      axiosMock.get.mockResolvedValue({ data: 'v5.0.0' });
 
-    await api.getVersion();
+      await api.getVersion();
 
-    expect(axiosMock.defaults.headers.common['Cookie']).toBe('SID=abc123');
-  });
+      expect(axiosMock.defaults.headers.common['Cookie']).toBe(expected);
+    },
+  );
 
-  it('rejects invalid credentials (HTTP 200 body "Fails.")', async () => {
+  it('rejects invalid credentials (HTTP 200 body "Fails." on 5.1 and older)', async () => {
     const { api, axiosMock } = buildApi();
     axiosMock.post.mockResolvedValue({ data: 'Fails.', headers: {} });
+
+    await expect(api.getVersion()).rejects.toThrow(
+      'Invalid username or password',
+    );
+    expect(axiosMock.get).not.toHaveBeenCalled();
+  });
+
+  it('rejects invalid credentials (HTTP 401 on 5.2+)', async () => {
+    const { api, axiosMock } = buildApi();
+    axiosMock.post.mockRejectedValue(
+      new AxiosError(
+        'Request failed with status code 401',
+        undefined,
+        {
+          headers: new AxiosHeaders(),
+        },
+        undefined,
+        { status: 401 } as AxiosResponse,
+      ),
+    );
 
     await expect(api.getVersion()).rejects.toThrow(
       'Invalid username or password',

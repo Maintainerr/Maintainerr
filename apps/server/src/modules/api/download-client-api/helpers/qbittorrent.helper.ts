@@ -1,4 +1,4 @@
-import { AxiosError, RawAxiosRequestConfig } from 'axios';
+import { AxiosError, AxiosResponse, RawAxiosRequestConfig } from 'axios';
 import { MaintainerrLogger } from '../../../logging/logs.service';
 import { ExternalApiService } from '../../external-api/external-api.service';
 import {
@@ -57,14 +57,17 @@ const toDownloadClientTorrent = (
 };
 
 /**
- * Thin client for the qBittorrent WebUI API (v2, qBittorrent 4.1+) - the
- * qBittorrent implementation of the backend-agnostic `DownloadClient` contract.
+ * Thin client for the qBittorrent WebUI API (v2) - the qBittorrent
+ * implementation of the backend-agnostic `DownloadClient` contract. The v2 API
+ * itself dates from 4.1, but the oldest usable version is 4.3.4: `content_path`
+ * (cross-seed detection) only arrived in 4.3.1 and `seeding_time` in 4.3.4.
  *
- * qBittorrent uses cookie/session auth: `POST /api/v2/auth/login` issues a `SID`
- * cookie that must accompany every subsequent request. `ExternalApiService` has
- * no cookie jar, so this helper manages the `SID` on its own axios instance and
- * re-logs in once on a 401/403. Calls go through `this.axios` directly (not the
- * cached `get`/`post` wrappers) so auth failures surface and reads stay fresh.
+ * qBittorrent uses cookie/session auth: `POST /api/v2/auth/login` issues a
+ * session cookie that must accompany every subsequent request.
+ * `ExternalApiService` has no cookie jar, so this helper keeps that cookie on
+ * its own axios instance and re-logs in once on a 401/403. Calls go through
+ * `this.axios` directly (not the cached `get`/`post` wrappers) so auth failures
+ * surface and reads stay fresh.
  */
 export class QbittorrentApi
   extends ExternalApiService
@@ -165,27 +168,35 @@ export class QbittorrentApi
     body.set('username', this.username ?? '');
     body.set('password', this.password ?? '');
 
-    const response = await this.axios.post<string>(
-      '/auth/login',
-      body.toString(),
-      { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } },
-    );
+    let response: AxiosResponse<string>;
+    try {
+      response = await this.axios.post<string>('/auth/login', body.toString(), {
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      });
+    } catch (error) {
+      // qBittorrent 5.2+ rejects invalid credentials with HTTP 401 instead of
+      // the older HTTP 200 body "Fails." handled below.
+      if (error instanceof AxiosError && error.response?.status === 401) {
+        throw new Error('Invalid username or password');
+      }
+      throw error;
+    }
 
-    // qBittorrent answers HTTP 200 with body "Fails." on invalid credentials.
+    // qBittorrent 5.1 and older answer HTTP 200 with body "Fails." instead.
     const responseBody =
       typeof response.data === 'string' ? response.data.trim() : '';
     if (responseBody === 'Fails.') {
       throw new Error('Invalid username or password');
     }
 
-    // On a normal login qBittorrent issues an SID cookie to use on subsequent
-    // requests. When the WebUI bypasses authentication (e.g. "Bypass
-    // authentication for clients on localhost"/whitelisted subnets) it returns
-    // "Ok." with no cookie - that is still a valid, authenticated session, so
+    // On a normal login qBittorrent issues a session cookie to send back on
+    // every subsequent request. When the WebUI bypasses authentication (e.g.
+    // "Bypass authentication for clients on localhost"/whitelisted subnets) it
+    // can answer without one - that is still a valid, authenticated session, so
     // capture the cookie when present but never require it.
-    const sid = this.extractSid(response.headers['set-cookie']);
-    if (sid) {
-      this.axios.defaults.headers.common['Cookie'] = `SID=${sid}`;
+    const cookie = this.extractSessionCookie(response.headers['set-cookie']);
+    if (cookie) {
+      this.axios.defaults.headers.common['Cookie'] = cookie;
     }
     this.authenticated = true;
   }
@@ -215,25 +226,28 @@ export class QbittorrentApi
     }
   }
 
-  private extractSid(setCookie: string[] | undefined): string | undefined {
-    if (!setCookie) {
-      return undefined;
+  /**
+   * Echo back whatever cookie the login response set, name included. The name
+   * is deliberately not matched: qBittorrent 5.1 and older call it `SID` (and
+   * let the user rename it), while 5.2+ call it `QBT_SID_<WebUI port>` - and
+   * that is qBittorrent's own port, which a Docker port mapping or reverse
+   * proxy hides, so it cannot be derived from the configured URL either.
+   */
+  private extractSessionCookie(
+    setCookie: string[] | undefined,
+  ): string | undefined {
+    const cookies: string[] = [];
+
+    for (const cookie of setCookie ?? []) {
+      const end = cookie.indexOf(';');
+      const pair = (end === -1 ? cookie : cookie.slice(0, end)).trim();
+      // Keep only `name=value`; a cookie without a value is a deletion.
+      const separator = pair.indexOf('=');
+      if (separator > 0 && separator < pair.length - 1) {
+        cookies.push(pair);
+      }
     }
 
-    for (const cookie of setCookie) {
-      const trimmed = cookie.trimStart();
-      if (!trimmed.startsWith('SID=')) {
-        continue;
-      }
-
-      const afterEquals = trimmed.slice('SID='.length);
-      const end = afterEquals.indexOf(';');
-      const value = end === -1 ? afterEquals : afterEquals.slice(0, end);
-      if (value) {
-        return value;
-      }
-    }
-
-    return undefined;
+    return cookies.length > 0 ? cookies.join('; ') : undefined;
   }
 }
