@@ -31,8 +31,8 @@ import {
   streamystatsSettingSchema,
   TracearrConnection,
   TracearrSetting,
-  tracearrConnectionSchema,
   TracearrSettingForm,
+  tracearrConnectionSchema,
   tracearrSettingSchema,
   SwitchMediaServerRequest,
   SwitchMediaServerResponse,
@@ -48,9 +48,9 @@ import {
 } from '@maintainerr/contracts';
 import {
   Body,
-  BadGatewayException,
   Controller,
   Delete,
+  BadGatewayException,
   ForbiddenException,
   Get,
   Header,
@@ -354,14 +354,6 @@ export class SettingsController {
     return await this.settingsOperationsService.removeTracearrSetting();
   }
 
-  @Post('/test/tracearr')
-  testTracearr(
-    @Body(new ZodValidationPipe(tracearrSettingSchema))
-    payload: TracearrSetting,
-  ): Promise<BasicResponseDto> {
-    return this.settingsOperationsService.testTracearr(payload);
-  }
-
   @Post('/tracearr/servers')
   async getTracearrServers(
     @Body(new ZodValidationPipe(tracearrConnectionSchema))
@@ -369,6 +361,7 @@ export class SettingsController {
   ) {
     const servers =
       await this.settingsOperationsService.getTracearrServers(payload);
+
     if (!servers) {
       throw new BadGatewayException(
         'Could not load Tracearr servers. Verify URL and API key.',
@@ -376,6 +369,14 @@ export class SettingsController {
     }
 
     return servers;
+  }
+
+  @Post('/test/tracearr')
+  testTracearr(
+    @Body(new ZodValidationPipe(tracearrSettingSchema))
+    payload: TracearrSetting,
+  ): Promise<BasicResponseDto> {
+    return this.settingsOperationsService.testTracearr(payload);
   }
 
   @Get('/download-client')

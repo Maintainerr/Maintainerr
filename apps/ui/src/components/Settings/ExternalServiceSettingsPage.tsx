@@ -40,7 +40,10 @@ export interface ExternalServiceFieldConfig {
   label: string
   type?: 'text' | 'password' | 'select'
   placeholder?: string
-  helpText?: JSX.Element | string
+  // A function receives the current form values, so a field can point at the
+  // service the user is configuring rather than at generic documentation.
+  helpText?:
+    JSX.Element | string | ((values: SettingsValues) => JSX.Element | string)
   normalize?: (value: string) => string
   required?: boolean
   options?: ExternalServiceSelectOption[]
@@ -362,6 +365,18 @@ const ExternalServiceSettingsPage = ({
                           ]
                         : options
 
+                    // One candidate is not a choice. The backend resolves that
+                    // case itself, so rendering the field would only ask the
+                    // user to confirm something that cannot vary. Only hide it
+                    // once options actually loaded: while pending or after a
+                    // failure the field has to stay, or its error has nowhere
+                    // to appear.
+                    const optionsLoaded =
+                      loadedOptionsByFieldName[fieldConfig.name] !== undefined
+                    if (optionsLoaded && selectOptions.length < 2) {
+                      return <></>
+                    }
+
                     return (
                       <SelectGroup
                         label={fieldConfig.label}
@@ -385,7 +400,11 @@ const ExternalServiceSettingsPage = ({
                         ref={field.ref}
                         name={field.name}
                         error={error}
-                        helpText={fieldConfig.helpText ?? undefined}
+                        helpText={
+                          typeof fieldConfig.helpText === 'function'
+                            ? fieldConfig.helpText(currentValues)
+                            : (fieldConfig.helpText ?? undefined)
+                        }
                         required={fieldConfig.required}
                         disabled={loadingOptionsByFieldName[fieldConfig.name]}
                       >
@@ -432,7 +451,11 @@ const ExternalServiceSettingsPage = ({
                       name={field.name}
                       type={fieldConfig.type ?? 'text'}
                       error={error}
-                      helpText={fieldConfig.helpText ?? undefined}
+                      helpText={
+                        typeof fieldConfig.helpText === 'function'
+                          ? fieldConfig.helpText(currentValues)
+                          : (fieldConfig.helpText ?? undefined)
+                      }
                       required={fieldConfig.required}
                     />
                   )

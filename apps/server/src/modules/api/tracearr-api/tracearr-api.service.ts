@@ -5,6 +5,8 @@ import {
   TracearrServer,
   TracearrHistoryItem,
   tracearrHistoryPageSchema,
+  tracearrLibrariesPageSchema,
+  tracearrRecentlyAddedPageSchema,
   tracearrServerSchema,
   tracearrUsersPageSchema,
 } from '@maintainerr/contracts';
@@ -26,6 +28,8 @@ import {
   TRACEARR_HISTORY_CACHE_KEY,
   TRACEARR_HISTORY_MAX_RECORDS,
   TRACEARR_PAGE_SIZE,
+  TRACEARR_SERVER_MATCH_THRESHOLD,
+  TRACEARR_SERVER_PROBE_SIZE,
 } from './tracearr-api.constants';
 import { TracearrApi } from './helpers/tracearr-api.helper';
 import { isBelowMinimumVersion } from '../../../utils/required-version-helper';
@@ -69,6 +73,7 @@ export class TracearrApiService {
   private activeHistoryIndex: TracearrHistoryIndex | undefined;
   private activeUsernamesByTracearrUserId: Map<string, string[]> | undefined;
   private episodeIdsByItemId = new Map<string, Promise<string[] | undefined>>();
+  private resolvedServerId: string | undefined;
   private sweepPromise: Promise<void> | undefined;
 
   constructor(
@@ -110,6 +115,7 @@ export class TracearrApiService {
     this.activeHistoryIndex = undefined;
     this.activeUsernamesByTracearrUserId = undefined;
     this.episodeIdsByItemId.clear();
+    this.resolvedServerId = undefined;
     cacheManager
       .getCache(TRACEARR_CACHE_ID)
       ?.data.del(TRACEARR_HISTORY_CACHE_KEY);
@@ -156,7 +162,8 @@ export class TracearrApiService {
 
     try {
       const document = await this.getOpenApiDocument(api);
-      return this.getServersFromOpenApiDocument(document);
+      const servers = this.getServersFromOpenApiDocument(document);
+      return await this.keepServersMatchingMediaServer(api, servers);
     } catch (error) {
       this.logger.warn(
         'Could not load Tracearr servers from the public API document.',
@@ -164,6 +171,122 @@ export class TracearrApiService {
       this.logger.debug(error);
       return undefined;
     }
+  }
+
+  /**
+   * Confirms a Tracearr server is the one Maintainerr manages by taking its own
+   * recently added items and resolving their rating keys against the media
+   * server. A key alone proves nothing, since every Plex server numbers its
+   * items from the same small range, so the title has to agree too.
+   *
+   * Returns undefined when nothing could be checked (no readable items), which
+   * is deliberately not the same as "wrong server".
+   */
+  public async serverSharesLibrary(
+    params: ConstructorParameters<typeof TracearrApi>[0],
+    serverId: string,
+  ): Promise<boolean | undefined> {
+    const api = new TracearrApi(params, this.loggerFactory.createLogger());
+    const raw = await api.getWithoutCache<unknown>('/recently-added', {
+      params: { server_id: serverId, pageSize: TRACEARR_SERVER_PROBE_SIZE },
+    });
+    const parsed = tracearrRecentlyAddedPageSchema.safeParse(raw);
+    if (!parsed.success || parsed.data.data.length === 0) {
+      return undefined;
+    }
+
+    const mediaServer = await this.mediaServerFactory.getService();
+    let checked = 0;
+    let matches = 0;
+    for (const item of parsed.data.data) {
+      if (!item.rating_key) {
+        continue;
+      }
+
+      const metadata = await mediaServer.getMetadata(item.rating_key);
+      if (metadata === undefined) {
+        continue;
+      }
+      checked += 1;
+      // Titles like "Season 1" repeat across every library, and Plex and Emby
+      // both number items from the same small range, so one agreement is not
+      // evidence. Year has to agree too, and several items have to agree.
+      if (
+        metadata.title === item.title &&
+        (item.year == null || metadata.year === item.year)
+      ) {
+        matches += 1;
+        if (matches >= TRACEARR_SERVER_MATCH_THRESHOLD) {
+          return true;
+        }
+      }
+    }
+
+    return checked > 0 ? false : undefined;
+  }
+
+  /**
+   * Resolves the one Tracearr server whose media server Maintainerr manages.
+   * Undefined when Tracearr has no such server, or more than one, since either
+   * way there is nothing safe to bind to.
+   */
+  public async resolveServerId(
+    params: ConstructorParameters<typeof TracearrApi>[0],
+  ): Promise<string | undefined> {
+    const servers = await this.getServers(params);
+    if (!servers || servers.length === 0) {
+      return undefined;
+    }
+    if (servers.length === 1) {
+      return servers[0].id;
+    }
+
+    // Several servers of the configured type: nothing in the server list tells
+    // them apart, so ask their libraries which one Maintainerr is managing.
+    const confirmed: string[] = [];
+    for (const server of servers) {
+      if (await this.serverSharesLibrary(params, server.id)) {
+        confirmed.push(server.id);
+      }
+    }
+
+    return confirmed.length === 1 ? confirmed[0] : undefined;
+  }
+
+  /**
+   * The server list carries no type, so /libraries supplies it. Only the media
+   * server Maintainerr manages shares its rating keys, and offering the others
+   * yields rules that silently match nothing. A server absent from /libraries
+   * has no type to compare and is kept, so it stays selectable.
+   */
+  private async keepServersMatchingMediaServer(
+    api: TracearrApi,
+    servers: TracearrServer[],
+  ): Promise<TracearrServer[]> {
+    const mediaServerType = this.settings.media_server_type;
+    if (!mediaServerType) {
+      return servers;
+    }
+
+    const raw = await api.getWithoutCache<unknown>('/libraries');
+    const parsed = tracearrLibrariesPageSchema.safeParse(raw);
+    if (!parsed.success) {
+      this.logger.warn(
+        'Could not read Tracearr library types. Listing every Tracearr server.',
+      );
+      return servers;
+    }
+
+    const typeByServerId = new Map(
+      parsed.data.data.map((library) => [
+        library.server_id,
+        library.server_type,
+      ]),
+    );
+    return servers.filter((server) => {
+      const serverType = typeByServerId.get(server.id);
+      return serverType === undefined || serverType === mediaServerType;
+    });
   }
 
   public async testConnection(
@@ -214,14 +337,35 @@ export class TracearrApiService {
     }
   }
 
+  /**
+   * The stored server id is only a cache. A media server switch clears it, and
+   * an unchanged settings form cannot be re-saved, so the matching server is
+   * resolved here rather than making the user reconfigure.
+   */
+  private async resolveActiveServerId(): Promise<string | undefined> {
+    if (!this.api) {
+      return undefined;
+    }
+    if (this.settings.tracearr_server_id) {
+      this.resolvedServerId = this.settings.tracearr_server_id;
+    } else if (!this.resolvedServerId) {
+      this.resolvedServerId = await this.resolveServerId({
+        url: this.settings.tracearr_url,
+        apiKey: this.settings.tracearr_api_key,
+      });
+    }
+
+    return this.resolvedServerId;
+  }
+
   private async prefetchHistoryInternal(): Promise<void> {
     this.activeHistoryIndex = undefined;
     this.activeUsernamesByTracearrUserId = undefined;
     this.episodeIdsByItemId.clear();
 
-    if (!this.isHistoryConfigured()) {
+    if (!(await this.resolveActiveServerId())) {
       this.logger.warn(
-        'Tracearr history rules are unavailable until a server ID is configured.',
+        'Tracearr has no server matching the configured media server. Tracearr rule values are unavailable for this run.',
       );
       return;
     }
@@ -265,7 +409,8 @@ export class TracearrApiService {
     TracearrHistoryIndex | undefined
   > {
     const api = this.api;
-    const serverId = this.settings.tracearr_server_id;
+    const serverId = this.resolvedServerId;
+    const mediaServerType = this.settings.media_server_type;
     if (!api || !serverId) {
       return undefined;
     }
@@ -304,6 +449,15 @@ export class TracearrApiService {
         if (row.server_id !== serverId) {
           this.logger.warn(
             'Tracearr history response included a row for a different server.',
+          );
+          return undefined;
+        }
+
+        // Rating keys only exist within one media server, so a mismatched
+        // selection matches nothing at all rather than matching partially.
+        if (mediaServerType && row.server_type !== mediaServerType) {
+          this.logger.warn(
+            `The selected Tracearr server is ${row.server_type}, but Maintainerr is configured for ${mediaServerType}. Select the Tracearr server for the media server Maintainerr manages.`,
           );
           return undefined;
         }
@@ -464,7 +618,7 @@ export class TracearrApiService {
     Map<string, string[]> | undefined
   > {
     const api = this.api;
-    const serverId = this.settings.tracearr_server_id;
+    const serverId = this.resolvedServerId;
     if (!api || !serverId) {
       return undefined;
     }
@@ -540,10 +694,6 @@ export class TracearrApiService {
       cursors.add(nextCursor);
       cursor = nextCursor;
     }
-  }
-
-  private isHistoryConfigured(): boolean {
-    return Boolean(this.api && this.settings.tracearr_server_id);
   }
 
   private async fetchEpisodeIds(

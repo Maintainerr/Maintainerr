@@ -1,5 +1,11 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { z } from 'zod'
 import ExternalServiceSettingsPage, {
   type ExternalServiceFieldConfig,
@@ -64,6 +70,7 @@ const tracearrFields: ExternalServiceFieldConfig[] = [
 
 describe('ExternalServiceSettingsPage', () => {
   beforeEach(() => {
+    cleanup()
     getApiHandler.mockReset()
     postApiHandler.mockReset()
     deleteApiHandler.mockReset()
@@ -71,6 +78,10 @@ describe('ExternalServiceSettingsPage', () => {
       url: 'http://seerr.local',
       api_key: 'saved-key',
     })
+  })
+
+  afterEach(() => {
+    cleanup()
   })
 
   it('keeps Save Changes enabled regardless of whether connection values have changed', async () => {
@@ -238,10 +249,15 @@ describe('ExternalServiceSettingsPage', () => {
   })
 
   it('loads select options after connection fields are available', async () => {
+    // The picker only renders when there is a real choice to make.
     postApiHandler.mockResolvedValue([
       {
         value: '11111111-1111-4111-8111-111111111111',
         label: 'Sample Plex',
+      },
+      {
+        value: '22222222-2222-4222-8222-222222222222',
+        label: 'Other Plex',
       },
     ])
 
@@ -360,7 +376,10 @@ describe('ExternalServiceSettingsPage', () => {
     await waitFor(() => {
       expect(postApiHandler).toHaveBeenCalledTimes(1)
     })
-    resolveOptions?.([])
+    resolveOptions?.([
+      { value: '11111111-1111-4111-8111-111111111111', label: 'Sample Plex' },
+      { value: '22222222-2222-4222-8222-222222222222', label: 'Other Plex' },
+    ])
     await waitFor(() => {
       expect((serverSelect as HTMLSelectElement).disabled).toBe(false)
     })
@@ -370,5 +389,43 @@ describe('ExternalServiceSettingsPage', () => {
     fireEvent.focus(serverSelect)
 
     expect(postApiHandler).toHaveBeenCalledTimes(2)
+  })
+
+  it('hides a select once it resolves to a single option', async () => {
+    postApiHandler.mockResolvedValue([
+      {
+        value: '11111111-1111-4111-8111-111111111111',
+        label: 'Sample Plex',
+      },
+    ])
+
+    render(
+      <ExternalServiceSettingsPage
+        scope="Tracearr settings"
+        pageTitle="Tracearr settings - Maintainerr"
+        heading="Tracearr Settings"
+        description="Tracearr configuration"
+        docsPage="Configuration/#tracearr"
+        settingsPath="/settings/tracearr"
+        testPath="/settings/test/tracearr"
+        schema={z.object({
+          url: z.string().min(1),
+          api_key: z.string().min(1),
+          server_id: z.string().uuid().optional(),
+        })}
+        fields={tracearrFields}
+        testSuccessTitle="Tracearr"
+        testFailureMessage="Failed to connect"
+      />,
+    )
+
+    await screen.findByLabelText('API key')
+    await waitFor(() => {
+      expect(postApiHandler).toHaveBeenCalledTimes(1)
+    })
+
+    await waitFor(() => {
+      expect(screen.queryByLabelText('Tracearr server *')).toBeNull()
+    })
   })
 })

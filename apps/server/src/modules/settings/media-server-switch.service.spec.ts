@@ -495,5 +495,40 @@ describe('MediaServerSwitchService', () => {
         );
       },
     );
+
+    it('should clear the Tracearr server binding but keep its credentials', async () => {
+      const queryRunner = createQueryRunnerMock();
+      queryRunner.manager.findOne.mockResolvedValue({
+        id: 1,
+        media_server_type: MediaServerType.JELLYFIN,
+        tracearr_url: 'http://tracearr.local:3000',
+        tracearr_api_key: 'trr_pub_key',
+        tracearr_server_id: 'jellyfin-server-uuid',
+      });
+      dataSource.createQueryRunner.mockReturnValue(queryRunner as any);
+
+      settingsDataService.getMediaServerType.mockReturnValue(
+        MediaServerType.JELLYFIN,
+      );
+      settingsDataService.init.mockResolvedValue(undefined);
+      collectionRepo.count.mockResolvedValue(0);
+      collectionMediaRepo.count.mockResolvedValue(0);
+      collectionLogRepo.count.mockResolvedValue(0);
+      exclusionRepo.count.mockResolvedValue(0);
+
+      await service.executeSwitch({
+        targetServerType: MediaServerType.PLEX,
+        migrateRules: false,
+      });
+
+      expect(queryRunner.manager.save).toHaveBeenCalledWith(
+        expect.any(Function),
+        expect.objectContaining({
+          tracearr_url: 'http://tracearr.local:3000',
+          tracearr_api_key: 'trr_pub_key',
+          tracearr_server_id: null,
+        }),
+      );
+    });
   });
 });

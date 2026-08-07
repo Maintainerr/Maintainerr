@@ -418,6 +418,11 @@ export class MediaServerSwitchService {
       updatedSettings.emby_server_name = null;
     }
 
+    // The Tracearr instance survives a switch, but its selected server does
+    // not: rating keys are per media server, so a stale binding silently
+    // matches nothing.
+    updatedSettings.tracearr_server_id = null;
+
     await queryRunner.manager.save(Settings, updatedSettings);
   }
 

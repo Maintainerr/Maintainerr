@@ -99,8 +99,10 @@ describe('SettingsOperationsService', () => {
     const setting: TracearrSetting = {
       url: 'http://tracearr.local',
       api_key: 'trr_pub_token',
-      server_id: '11111111-1111-4111-8111-111111111111',
     };
+    tracearr.resolveServerId.mockResolvedValue(
+      '11111111-1111-4111-8111-111111111111',
+    );
 
     await expect(service.updateTracearrSetting(setting)).resolves.toEqual({
       status: 'OK',
@@ -112,7 +114,7 @@ describe('SettingsOperationsService', () => {
       expect.objectContaining({
         tracearr_url: setting.url,
         tracearr_api_key: setting.api_key,
-        tracearr_server_id: setting.server_id,
+        tracearr_server_id: '11111111-1111-4111-8111-111111111111',
       }),
     );
     expect(tracearr.init).toHaveBeenCalledTimes(1);
@@ -129,31 +131,8 @@ describe('SettingsOperationsService', () => {
       service.testTracearr({
         url: 'http://tracearr.local',
         api_key: 'trr_pub_token',
-        server_id: '11111111-1111-4111-8111-111111111111',
       }),
     ).resolves.toEqual({ status: 'OK', code: 1, message: '2.0.0-beta.1' });
-  });
-
-  it('loads Tracearr servers with connection fields only', async () => {
-    const connection = {
-      url: 'http://tracearr.local',
-      api_key: 'trr_pub_token',
-    };
-    const servers = [
-      {
-        id: '11111111-1111-4111-8111-111111111111',
-        name: 'Sample Plex',
-      },
-    ];
-    tracearr.getServers.mockResolvedValue(servers);
-
-    await expect(service.getTracearrServers(connection)).resolves.toEqual(
-      servers,
-    );
-    expect(tracearr.getServers).toHaveBeenCalledWith({
-      url: connection.url,
-      apiKey: connection.api_key,
-    });
   });
 
   it('rejects Plex server setting changes when no Plex credentials are stored', async () => {
