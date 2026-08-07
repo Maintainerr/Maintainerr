@@ -190,8 +190,11 @@
     inset: 0 -2rem;
     z-index: -1;
     background-color: rgb(24 24 27 / 0.22);
-    backdrop-filter: blur(5.8px);
+    /* -webkit- first: Lightning CSS (production only) keeps a hand written
+       prefix that follows the standard property and drops the standard one,
+       leaving Firefox with no blur at all. */
     -webkit-backdrop-filter: blur(5.8px);
+    backdrop-filter: blur(5.8px);
   }
 
   /* Once pinned, that one panel reaches up behind the search bar and the bar
@@ -207,16 +210,16 @@
     .searchbar
     > .transparent-glass-bg {
     background-color: transparent;
-    backdrop-filter: none;
     -webkit-backdrop-filter: none;
+    backdrop-filter: none;
   }
 
   .transparent-glass-bg {
     --tw-bg-opacity: 0.22;
     background-color: rgb(24 24 27 / var(--tw-bg-opacity));
     box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
-    backdrop-filter: blur(5.8px);
     -webkit-backdrop-filter: blur(5.8px);
+    backdrop-filter: blur(5.8px);
   }
 
   .max-width-form {
