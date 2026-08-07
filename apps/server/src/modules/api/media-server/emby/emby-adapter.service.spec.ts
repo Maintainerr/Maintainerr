@@ -279,10 +279,13 @@ describe('EmbyAdapterService', () => {
     });
 
     it('maps a batch item to the same shape as a single item', async () => {
+      // DateCreated is set because the mapper falls back to `new Date()`
+      // without it, which the two reads below stamp a few milliseconds apart.
       const payload = {
         Id: 'movie-1',
         Type: 'Movie',
         Name: 'One',
+        DateCreated: '2026-01-02T03:04:05.0000000Z',
         ParentId: '6',
         ChildCount: 1,
         PremiereDate: '2008-05-20T00:00:00.0000000Z',
