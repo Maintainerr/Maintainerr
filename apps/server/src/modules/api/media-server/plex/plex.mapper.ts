@@ -203,7 +203,7 @@ export class PlexMapper {
       grandparentId: plex.grandparentRatingKey,
       title: plex.title,
       parentTitle: plex.parentTitle,
-      grandparentTitle: undefined, // Not available on PlexLibraryItem
+      grandparentTitle: plex.grandparentTitle,
       guid: plex.guid,
       parentGuid: plex.parentGuid,
       grandparentGuid: plex.grandparentGuid,

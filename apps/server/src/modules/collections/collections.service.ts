@@ -1098,33 +1098,26 @@ export class CollectionsService {
       return metadataByMediaServerId;
     }
 
-    const missingMetadataResults = await Promise.allSettled(
-      missingMediaServerIds.map(async (mediaServerId) => ({
-        mediaServerId,
-        mediaItem: await mediaServer.getMetadata(mediaServerId),
-      })),
+    // One read per batch of ids rather than one per row. Every row lands here
+    // when the collection read above failed, which is exactly when the server is
+    // least able to answer a request each.
+    for (const mediaItem of await mediaServer.getMetadataBatch(
+      missingMediaServerIds,
+    )) {
+      metadataByMediaServerId.set(mediaItem.id, mediaItem);
+    }
+
+    const unresolvedIds = missingMediaServerIds.filter(
+      (mediaServerId) => !metadataByMediaServerId.has(mediaServerId),
     );
 
-    missingMetadataResults.forEach((result, index) => {
-      const mediaServerId = missingMediaServerIds[index];
-
-      if (result.status === 'fulfilled') {
-        if (result.value.mediaItem) {
-          metadataByMediaServerId.set(mediaServerId, result.value.mediaItem);
-          return;
-        }
-
-        this.logger.debug(
-          `Missing metadata for collection media with mediaServerId=${mediaServerId}; skipping item without deleting`,
-        );
-        return;
-      }
-
+    if (unresolvedIds.length > 0) {
+      // An id the server did not answer for is skipped, never deleted: this read
+      // cannot tell a missing item from a failed one.
       this.logger.debug(
-        `Failed to fetch metadata for collection media with mediaServerId=${mediaServerId}`,
+        `No metadata for ${unresolvedIds.length} of ${entities.length} collection media rows; skipping them without deleting: ${unresolvedIds.slice(0, 10).join(', ')}`,
       );
-      this.logger.debug(result.reason);
-    });
+    }
 
     return metadataByMediaServerId;
   }

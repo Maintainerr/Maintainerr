@@ -141,6 +141,19 @@ export interface IMediaServerService {
   getMetadata(itemId: string): Promise<MediaItem | undefined>;
 
   /**
+   * Metadata for many items, in as few reads as the server allows.
+   *
+   * Only the items the server resolved come back, in no guaranteed order, so
+   * callers must match on `id` rather than position. An id the server does not
+   * hold is left out rather than answering an entry for it.
+   *
+   * Same read contract as `getMetadata`: an absent item and a failed read are
+   * indistinguishable, both being an id that simply is not in the result. Never
+   * use it to decide an item is gone - `itemExists` is the primitive for that.
+   */
+  getMetadataBatch(itemIds: string[]): Promise<MediaItem[]>;
+
+  /**
    * Confirm an item is still present on the media server.
    *
    * Returns `false` only when the server explicitly reports the item as

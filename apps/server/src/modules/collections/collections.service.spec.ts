@@ -100,6 +100,7 @@ describe('CollectionsService', () => {
       getAllIdsForContextAction: jest.fn().mockResolvedValue([]),
       getLibraries: jest.fn().mockResolvedValue([{ id: 'library-1' }]),
       getMetadata: jest.fn().mockResolvedValue(undefined),
+      getMetadataBatch: jest.fn().mockResolvedValue([]),
       itemExists: jest.fn().mockResolvedValue(true),
       removeFromCollection: jest.fn().mockResolvedValue(undefined),
       deleteCollection: jest.fn().mockResolvedValue(undefined),
@@ -3212,9 +3213,9 @@ describe('CollectionsService', () => {
     );
     // getCollection confirms the collection is truly gone
     mediaServer.getCollection.mockResolvedValue(undefined);
-    mediaServer.getMetadata.mockResolvedValue(
+    mediaServer.getMetadataBatch.mockResolvedValue([
       createMediaItem({ id: 'movie-1', title: 'Fallback Movie' }),
-    );
+    ]);
 
     const result = await (service as any).hydrateCollectionMediaWithMetadata(
       items,
@@ -3228,8 +3229,8 @@ describe('CollectionsService', () => {
     expect(collectionRepo.save).toHaveBeenCalledWith(
       expect.objectContaining({ mediaServerId: null }),
     );
-    // Fallback per-item lookup still works
-    expect(mediaServer.getMetadata).toHaveBeenCalledWith('movie-1');
+    // The batched fallback read still answers for the row
+    expect(mediaServer.getMetadataBatch).toHaveBeenCalledWith(['movie-1']);
     expect(result).toHaveLength(1);
     expect(result[0].mediaData?.title).toBe('Fallback Movie');
   });
@@ -3255,9 +3256,9 @@ describe('CollectionsService', () => {
       childCount: 1,
       smart: false,
     });
-    mediaServer.getMetadata.mockResolvedValue(
+    mediaServer.getMetadataBatch.mockResolvedValue([
       createMediaItem({ id: 'movie-1', title: 'Fallback Movie' }),
-    );
+    ]);
 
     const result = await (service as any).hydrateCollectionMediaWithMetadata(
       items,
@@ -3291,9 +3292,9 @@ describe('CollectionsService', () => {
       new Error('Request failed with status code 400'),
     );
     mediaServer.getCollection.mockRejectedValue(new Error('status code 502'));
-    mediaServer.getMetadata.mockResolvedValue(
+    mediaServer.getMetadataBatch.mockResolvedValue([
       createMediaItem({ id: 'movie-1', title: 'Fallback Movie' }),
-    );
+    ]);
 
     const result = await (service as any).hydrateCollectionMediaWithMetadata(
       items,
@@ -3306,7 +3307,7 @@ describe('CollectionsService', () => {
     );
     expect(collectionRepo.save).not.toHaveBeenCalled();
     expect(collection.mediaServerId).toBe('verification-failure-collection');
-    expect(mediaServer.getMetadata).toHaveBeenCalledWith('movie-1');
+    expect(mediaServer.getMetadataBatch).toHaveBeenCalledWith(['movie-1']);
     expect(result).toHaveLength(1);
     expect(result[0].mediaData?.title).toBe('Fallback Movie');
   });
@@ -3398,13 +3399,15 @@ describe('CollectionsService', () => {
     // if the comparator falls through to MediaItem.addedAt (the bug) the
     // ordering becomes whatever Map iteration gives us; the assertion
     // below would fail.
-    mediaServer.getMetadata.mockImplementation(async (id: string) =>
-      createMediaItem({
-        id,
-        title: id,
-        type: 'movie',
-        addedAt: libraryAddDate,
-      }),
+    mediaServer.getMetadataBatch.mockImplementation(async (ids: string[]) =>
+      ids.map((id) =>
+        createMediaItem({
+          id,
+          title: id,
+          type: 'movie',
+          addedAt: libraryAddDate,
+        }),
+      ),
     );
 
     mediaServer.reorderCollectionItems = jest.fn().mockResolvedValue(undefined);
@@ -3415,6 +3418,66 @@ describe('CollectionsService', () => {
       'remote-99',
       ['leaves-soonest', 'leaves-middle', 'leaves-latest'],
     );
+  });
+
+  describe('getCollectionMediaMetadata per-item fallback', () => {
+    const collection = () =>
+      createCollection({
+        id: 21,
+        mediaServerId: 'remote-collection',
+        type: 'movie',
+      });
+
+    // Every row falls through to this read when the collection read above it
+    // failed, which is exactly when the server is least able to answer a
+    // request each.
+    it('reads the rows the collection did not answer for in one batch', async () => {
+      const col = collection();
+      const entities = Array.from({ length: 25 }, (unused, index) =>
+        createCollectionMedia(col, { mediaServerId: `movie-${index}` }),
+      );
+      collectionRepo.findOne.mockResolvedValue(col);
+      mediaServer.getCollectionChildren.mockRejectedValue(new Error('503'));
+      mediaServer.getCollection.mockResolvedValue({
+        id: 'remote-collection',
+      } as MediaCollection);
+      mediaServer.getMetadataBatch.mockImplementation(async (ids: string[]) =>
+        ids.map((id) => createMediaItem({ id })),
+      );
+
+      const metadata = await (service as any).getCollectionMediaMetadata(
+        entities,
+        mediaServer,
+      );
+
+      expect(mediaServer.getMetadataBatch).toHaveBeenCalledTimes(1);
+      expect(mediaServer.getMetadata).not.toHaveBeenCalled();
+      expect(metadata.size).toBe(25);
+    });
+
+    it('skips a row the server answered nothing for rather than dropping it', async () => {
+      const col = collection();
+      const entities = [
+        createCollectionMedia(col, { mediaServerId: 'movie-1' }),
+        createCollectionMedia(col, { mediaServerId: 'gone' }),
+      ];
+      collectionRepo.findOne.mockResolvedValue(col);
+      mediaServer.getCollectionChildren.mockResolvedValue([]);
+      mediaServer.getMetadataBatch.mockResolvedValue([
+        createMediaItem({ id: 'movie-1' }),
+      ]);
+
+      const metadata = await (service as any).getCollectionMediaMetadata(
+        entities,
+        mediaServer,
+      );
+
+      expect(metadata.has('movie-1')).toBe(true);
+      expect(metadata.has('gone')).toBe(false);
+      expect(logger.debug).toHaveBeenCalledWith(
+        expect.stringContaining('No metadata for 1 of 2 collection media rows'),
+      );
+    });
   });
 
   describe('removeStaleCollectionMedia', () => {
