@@ -164,7 +164,8 @@ export class TracearrApiService {
     try {
       const document = await this.getOpenApiDocument(api);
       const servers = this.getServersFromOpenApiDocument(document);
-      return await this.keepServersMatchingMediaServer(api, servers);
+      const sameType = await this.keepServersMatchingMediaServer(api, servers);
+      return await this.keepServersSharingLibrary(params, sameType);
     } catch (error) {
       this.logger.warn(
         'Could not load Tracearr servers from the public API document.',
@@ -235,31 +236,39 @@ export class TracearrApiService {
   }
 
   /**
+   * Narrows several same-type candidates to those whose items resolve on the
+   * managed library, which is the only thing that separates two servers of one
+   * type. Falls back to the whole list when that confirms none, so an
+   * unreadable library leaves something to choose from rather than nothing.
+   */
+  private async keepServersSharingLibrary(
+    params: ConstructorParameters<typeof TracearrApi>[0],
+    servers: TracearrServer[],
+  ): Promise<TracearrServer[]> {
+    if (servers.length < 2) {
+      return servers;
+    }
+
+    const confirmed: TracearrServer[] = [];
+    for (const server of servers) {
+      if (await this.serverSharesLibrary(params, server.id)) {
+        confirmed.push(server);
+      }
+    }
+
+    return confirmed.length > 0 ? confirmed : servers;
+  }
+
+  /**
    * Resolves the one Tracearr server whose media server Maintainerr manages.
-   * Undefined when Tracearr has no such server, or more than one, since either
-   * way there is nothing safe to bind to.
+   * Undefined when Tracearr has no such server, or when more than one survives,
+   * since either way there is nothing safe to bind to on its own.
    */
   public async resolveServerId(
     params: ConstructorParameters<typeof TracearrApi>[0],
   ): Promise<string | undefined> {
     const servers = await this.getServers(params);
-    if (!servers || servers.length === 0) {
-      return undefined;
-    }
-    if (servers.length === 1) {
-      return servers[0].id;
-    }
-
-    // Several servers of the configured type: nothing in the server list tells
-    // them apart, so ask their libraries which one Maintainerr is managing.
-    const confirmed: string[] = [];
-    for (const server of servers) {
-      if (await this.serverSharesLibrary(params, server.id)) {
-        confirmed.push(server.id);
-      }
-    }
-
-    return confirmed.length === 1 ? confirmed[0] : undefined;
+    return servers?.length === 1 ? servers[0].id : undefined;
   }
 
   /**

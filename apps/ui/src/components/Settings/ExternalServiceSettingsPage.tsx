@@ -365,15 +365,18 @@ const ExternalServiceSettingsPage = ({
                           ]
                         : options
 
-                    // One candidate is not a choice. The backend resolves that
-                    // case itself, so rendering the field would only ask the
-                    // user to confirm something that cannot vary. Only hide it
-                    // once options actually loaded: while pending or after a
-                    // failure the field has to stay, or its error has nowhere
-                    // to appear.
+                    // One candidate is not a choice: the backend resolves that
+                    // case itself, so the field would only ask the user to
+                    // confirm something that cannot vary. It stays hidden while
+                    // the options load as well, since appearing and then
+                    // vanishing reads as a glitch. An error is the exception,
+                    // because it would otherwise have nowhere to appear.
                     const optionsLoaded =
                       loadedOptionsByFieldName[fieldConfig.name] !== undefined
-                    if (optionsLoaded && selectOptions.length < 2) {
+                    if (
+                      !error &&
+                      (!optionsLoaded || selectOptions.length < 2)
+                    ) {
                       return <></>
                     }
 

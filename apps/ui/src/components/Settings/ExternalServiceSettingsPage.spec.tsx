@@ -372,14 +372,16 @@ describe('ExternalServiceSettingsPage', () => {
     )
 
     const apiKey = await screen.findByLabelText('API key')
-    const serverSelect = screen.getByLabelText('Tracearr server *')
     await waitFor(() => {
       expect(postApiHandler).toHaveBeenCalledTimes(1)
     })
+    // The field only renders once there is a choice to make, so it cannot be
+    // queried until the options resolve.
     resolveOptions?.([
       { value: '11111111-1111-4111-8111-111111111111', label: 'Sample Plex' },
       { value: '22222222-2222-4222-8222-222222222222', label: 'Other Plex' },
     ])
+    const serverSelect = await screen.findByLabelText('Tracearr server *')
     await waitFor(() => {
       expect((serverSelect as HTMLSelectElement).disabled).toBe(false)
     })
