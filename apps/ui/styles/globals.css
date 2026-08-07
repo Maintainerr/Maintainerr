@@ -174,6 +174,43 @@
     height: calc(4rem + env(safe-area-inset-top));
   }
 
+  /* Pins a page bar right below the fixed .searchbar - keep the offset equal
+     to that bar's height. */
+  .sticky-under-searchbar {
+    position: sticky;
+    top: calc(4rem + env(safe-area-inset-top));
+  }
+
+  /* The bar wears the .searchbar's glass, carried past the page padding (1rem
+     from the shell, 1rem from the page) so it lines up with that full-width
+     bar. Its own layer, so scrolling content repaints without it. */
+  .sticky-under-searchbar::before {
+    content: '';
+    position: absolute;
+    inset: 0 -2rem;
+    z-index: -1;
+    background-color: rgb(24 24 27 / 0.22);
+    backdrop-filter: blur(5.8px);
+    -webkit-backdrop-filter: blur(5.8px);
+  }
+
+  /* Once pinned, that one panel reaches up behind the search bar and the bar
+     drops its own glass. A backdrop filter samples only what is inside its own
+     box, so two of them meeting edge to edge each blur a truncated kernel and
+     the join shows as a line however well their colours match. One panel over
+     both has no join to show. */
+  .sticky-under-searchbar[data-pinned]::before {
+    top: calc(-4rem - env(safe-area-inset-top));
+  }
+
+  body:has(.sticky-under-searchbar[data-pinned])
+    .searchbar
+    > .transparent-glass-bg {
+    background-color: transparent;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+
   .transparent-glass-bg {
     --tw-bg-opacity: 0.22;
     background-color: rgb(24 24 27 / var(--tw-bg-opacity));

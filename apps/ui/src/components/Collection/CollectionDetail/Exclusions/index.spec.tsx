@@ -131,13 +131,7 @@ describe('CollectionExclusions bulk removal', () => {
   })
 
   const renderAndSelect = async (mediaServerIds: string[]) => {
-    render(
-      <CollectionExclusions
-        collection={collection}
-        canTestMedia={false}
-        onOpenTestMedia={() => {}}
-      />,
-    )
+    render(<CollectionExclusions collection={collection} />)
 
     await waitFor(() => expect(screen.getByText('Item movie-1')).toBeTruthy())
 

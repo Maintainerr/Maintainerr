@@ -568,6 +568,7 @@ const Overview = () => {
       <title>Overview - Maintainerr</title>
       <div className="w-full px-4">
         <PageControlRow
+          sticky
           controlsClassName="sm:w-auto"
           actions={
             <MediaSelectionActions
@@ -583,7 +584,9 @@ const Overview = () => {
           }
           controls={
             !searchUsed ? (
-              <div className="ml-auto flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center sm:justify-end sm:gap-2">
+              // Two across on a phone: they share the pinned row with the
+              // actions, so a stacked pair would eat the screen.
+              <div className="ml-auto grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:items-center sm:justify-end">
                 <div className="w-full sm:w-[18rem]">
                   <LibrarySwitcher
                     shouldShowAllOption={false}

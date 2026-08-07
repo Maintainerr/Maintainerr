@@ -25,8 +25,17 @@ interface MediaSelectionActionsProps {
 }
 
 /**
+ * On a phone: small text, one shared minimum width so the pair reads as a unit,
+ * and a full-height tap target. The app's normal button size from `sm`, where
+ * each button takes its own width.
+ */
+const compactOnMobile = 'h-9 min-w-36 sm:h-auto sm:px-4 sm:py-2 sm:text-sm'
+
+/**
  * Both buttons hold a fixed width so toggling selection mode or the live count
- * cannot shift the control row.
+ * cannot shift the row. Below `sm` the labels also drop their tail, so the pair
+ * fits one line of the pinned control row on a phone; the tail is a suffix, so
+ * the accessible name reads in full at either width.
  */
 const MediaSelectionActions = ({
   selectionMode,
@@ -51,24 +60,37 @@ const MediaSelectionActions = ({
     <>
       <Button
         buttonType={selectionMode ? 'primary' : 'default'}
-        className="min-w-44"
+        buttonSize="sm"
+        className={`${compactOnMobile} sm:min-w-44`}
         onClick={onToggleSelectionMode}
       >
         <CheckCircleIcon className="h-4 w-4" />
-        {selectionMode ? 'Done selecting' : 'Select items'}
+        {/* One span, so the space before the tail survives the button's flex
+            row - whitespace between flex items is dropped. */}
+        {selectionMode ? (
+          <span>
+            Done <span className="hidden sm:inline">selecting</span>
+          </span>
+        ) : (
+          <span>
+            Select <span className="hidden sm:inline">items</span>
+          </span>
+        )}
       </Button>
       {/* Same weight as Test Media: this opens a form, it is not the
           destructive step. */}
       <Button
         buttonType="success"
-        className="min-w-52"
+        buttonSize="sm"
+        className={`${compactOnMobile} sm:min-w-52`}
         disabled={!selectionMode || selectedCount === 0}
         onClick={() => setModalOpen(true)}
       >
         <PencilAltIcon className="h-4 w-4" />
-        {selectedCount > 0
-          ? `Add/Exclude selected (${selectedCount})`
-          : 'Add/Exclude selected'}
+        <span>
+          Add/Exclude <span className="hidden sm:inline">selected</span>
+          {selectedCount > 0 ? ` (${selectedCount})` : ''}
+        </span>
       </Button>
 
       {modalOpen ? (

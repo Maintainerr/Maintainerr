@@ -33,8 +33,10 @@ const CollectionOverview = (props: ICollectionOverview) => {
   return (
     <div className="w-full px-4">
       <PageControlRow
+        sticky
         actions={
           <ExecuteButton
+            className="mx-0"
             onClick={props.doActions}
             text="Handle Collections"
             executing={collectionHandlerRunning}
