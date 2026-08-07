@@ -198,6 +198,49 @@ describe('PlexApiService.getMetadata', () => {
     expect(await service.getCollectionChildren('col-1')).toEqual([]);
   });
 
+  it('asks for external guids so children arrive with provider ids', async () => {
+    const queryAll = jest.fn().mockResolvedValue({
+      MediaContainer: { Metadata: [{ ratingKey: '1' }] },
+    });
+
+    (service as any).plexClient = { queryAll };
+
+    await service.getCollectionChildren('col-1');
+
+    expect(queryAll).toHaveBeenCalledWith(
+      { uri: '/library/collections/col-1/children?includeGuids=1' },
+      true,
+    );
+  });
+
+  it('reads a batch of ids in one guid-carrying metadata request', async () => {
+    const query = jest.fn().mockResolvedValue({
+      MediaContainer: { Metadata: [{ ratingKey: '1' }, { ratingKey: '2' }] },
+    });
+
+    (service as any).plexClient = { query };
+
+    expect(await service.getMetadataBatch(['1', '2'])).toHaveLength(2);
+    expect(query).toHaveBeenCalledWith('/library/metadata/1,2?includeGuids=1');
+  });
+
+  it('makes no request for an empty batch', async () => {
+    const query = jest.fn();
+
+    (service as any).plexClient = { query };
+
+    expect(await service.getMetadataBatch([])).toEqual([]);
+    expect(query).not.toHaveBeenCalled();
+  });
+
+  it('reports no ids rather than failing the caller when a batch read fails', async () => {
+    const query = jest.fn().mockRejectedValue(new Error('boom'));
+
+    (service as any).plexClient = { query };
+
+    expect(await service.getMetadataBatch(['1'])).toEqual([]);
+  });
+
   it('re-throws children query failures instead of reporting an empty collection', async () => {
     const queryAll = jest.fn().mockRejectedValue(new Error('boom'));
 
@@ -1733,6 +1776,23 @@ describe('PlexApiService.resetMetadataCache', () => {
       [
         key('/library/metadata/12/children'),
         key('/library/metadata/123'),
+      ].sort(),
+    );
+  });
+
+  // A batch caches a whole id list under one key, which matching the uri as a
+  // whole never found.
+  it('drops a batched entry that holds the item among its ids', () => {
+    cache.set(key('/library/metadata/9,12,15?includeGuids=1'), 'batched');
+    cache.set(key('/library/metadata/9,15?includeGuids=1'), 'without the item');
+    cache.set(key('/library/metadata/121,123?includeGuids=1'), 'longer ids');
+
+    service.resetMetadataCache('12');
+
+    expect(cache.keys().sort()).toEqual(
+      [
+        key('/library/metadata/9,15?includeGuids=1'),
+        key('/library/metadata/121,123?includeGuids=1'),
       ].sort(),
     );
   });
