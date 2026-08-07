@@ -31,7 +31,10 @@ import { chunk } from 'lodash';
 import { Brackets, DataSource, In, LessThan, Not, Repository } from 'typeorm';
 import { CollectionLog } from '../../modules/collections/entities/collection_log.entities';
 import { getErrorMessage } from '../../utils/connection-error';
-import { MediaItemEnrichmentService } from '../api/media-server/media-item-enrichment.service';
+import {
+  ENRICHMENT_ID_CHUNK,
+  MediaItemEnrichmentService,
+} from '../api/media-server/media-item-enrichment.service';
 import { MediaServerFactory } from '../api/media-server/media-server.factory';
 import { IMediaServerService } from '../api/media-server/media-server.interface';
 import {
@@ -2725,17 +2728,19 @@ export class CollectionsService {
           // The helper answers the collection even when the media server
           // refused some children, but it only deletes the rows the server
           // confirmed - so a row still present is a removal that did not
-          // happen.
-          const remaining = new Set(
-            (
-              (await this.CollectionMediaRepo.find({
-                where: {
-                  collectionId,
-                  mediaServerId: In(media.map((m) => m.mediaServerId)),
-                },
-              })) ?? []
-            ).map((row) => row.mediaServerId),
-          );
+          // happen. Chunked because a show selection can resolve to enough
+          // episode ids to pass SQLite's parameter cap (#3431).
+          const remaining = new Set<string>();
+          for (const idBatch of chunk(
+            media.map((m) => m.mediaServerId),
+            ENRICHMENT_ID_CHUNK,
+          )) {
+            for (const row of (await this.CollectionMediaRepo.find({
+              where: { collectionId, mediaServerId: In(idBatch) },
+            })) ?? []) {
+              remaining.add(row.mediaServerId);
+            }
+          }
           for (const [mediaId, ids] of resolvedByMediaId) {
             if (ids.some((id) => remaining.has(id))) {
               fail(mediaId, 'Failed - refused by the media server');
