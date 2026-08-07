@@ -1077,6 +1077,38 @@ describe('JellyfinAdapterService', () => {
       );
     });
 
+    // The single and the batch read go through the same getItems call with the
+    // same fields, so their shapes can only drift if one of the two is changed
+    // alone. DateCreated is set because the mapper falls back to `new Date()`
+    // without it, which the two reads below would stamp milliseconds apart.
+    it('maps a batch item to the same shape as a single item', async () => {
+      const payload = {
+        Id: 'movie-1',
+        Type: 'Movie',
+        Name: 'One',
+        DateCreated: '2026-01-02T03:04:05.0000000Z',
+        ParentId: '6',
+        ChildCount: 1,
+        PremiereDate: '2008-05-20T00:00:00.0000000Z',
+        CommunityRating: 7.5,
+        OfficialRating: 'PG',
+        ProviderIds: { Tmdb: '10378' },
+      };
+
+      jellyfinApiMocks.getItems.mockResolvedValue({
+        data: { Items: [payload] },
+      });
+      const single = await service.getMetadata('movie-1');
+
+      jellyfinCacheMocks.data.get.mockReturnValue(undefined);
+      const [batched] = await service.getMetadataBatch(['movie-1']);
+
+      expect(batched).toEqual(single);
+      expect(batched.parentId).toBe('6');
+      expect(batched.originallyAvailableAt).toBeInstanceOf(Date);
+      expect(batched.contentRating).toBe('PG');
+    });
+
     // The ids go in the query string and Jellyfin answers 414 past roughly an
     // 8KB request line, so a long list cannot be one request.
     it('splits a long id list', async () => {
