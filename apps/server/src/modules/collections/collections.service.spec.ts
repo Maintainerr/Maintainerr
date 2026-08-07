@@ -2565,13 +2565,9 @@ describe('CollectionsService', () => {
         grandparentTitle: undefined,
       }),
     ]);
-    mediaServer.getMetadata.mockImplementation(async (itemId: string) => {
-      if (itemId === 'show-1') {
-        return showMetadata;
-      }
-
-      return undefined;
-    });
+    mediaServer.getMetadataBatch.mockImplementation(async (ids: string[]) =>
+      ids.includes('show-1') ? [showMetadata] : [],
+    );
 
     const result = await (service as any).hydrateCollectionMediaWithMetadata(
       items,
@@ -2581,10 +2577,80 @@ describe('CollectionsService', () => {
     expect(mediaServer.getCollectionChildren).toHaveBeenCalledWith(
       'remote-collection',
     );
-    expect(mediaServer.getMetadata).toHaveBeenCalledTimes(1);
+    // Two episodes of one show: the shared parent is asked for once, in one read.
+    expect(mediaServer.getMetadataBatch).toHaveBeenCalledTimes(1);
+    expect(mediaServer.getMetadataBatch).toHaveBeenCalledWith(['show-1']);
+    expect(mediaServer.getMetadata).not.toHaveBeenCalled();
     expect(result).toHaveLength(2);
     expect(result[0].mediaData?.parentItem?.id).toBe('show-1');
     expect(result[0].mediaData?.grandparentTitle).toBe('Shared Show');
+  });
+
+  // Emby and Jellyfin put a movie under its library folder, so a collection
+  // stored one folder per film has about as many parents as it has rows.
+  it('reads many distinct parents in one request', async () => {
+    const collection = createCollection({
+      id: 31,
+      mediaServerId: 'remote-collection',
+      type: 'movie',
+    });
+    const entities = Array.from({ length: 25 }, (unused, index) =>
+      createCollectionMedia(collection, { mediaServerId: `movie-${index}` }),
+    );
+    collectionRepo.findOne.mockResolvedValue(collection);
+    mediaServer.getCollectionChildren.mockResolvedValue(
+      entities.map((entity, index) =>
+        createMediaItem({
+          id: entity.mediaServerId,
+          type: 'movie',
+          parentId: `folder-${index}`,
+        }),
+      ),
+    );
+    mediaServer.getMetadataBatch.mockImplementation(async (ids: string[]) =>
+      ids.map((id) => createMediaItem({ id, title: id })),
+    );
+
+    const result = await (service as any).hydrateCollectionMediaWithMetadata(
+      entities,
+      mediaServer,
+    );
+
+    expect(mediaServer.getMetadataBatch).toHaveBeenCalledTimes(1);
+    expect(mediaServer.getMetadataBatch.mock.calls[0][0]).toHaveLength(25);
+    expect(mediaServer.getMetadata).not.toHaveBeenCalled();
+    expect(result[0].mediaData?.parentItem?.id).toBe('folder-0');
+  });
+
+  it('keeps a row whose parent the server did not answer for', async () => {
+    const collection = createCollection({
+      id: 32,
+      mediaServerId: 'remote-collection',
+      type: 'episode',
+    });
+    const entity = createCollectionMedia(collection, {
+      mediaServerId: 'episode-1',
+    });
+    collectionRepo.findOne.mockResolvedValue(collection);
+    mediaServer.getCollectionChildren.mockResolvedValue([
+      createMediaItem({
+        id: 'episode-1',
+        type: 'episode',
+        grandparentId: 'show-gone',
+      }),
+    ]);
+    mediaServer.getMetadataBatch.mockResolvedValue([]);
+
+    const result = await (service as any).hydrateCollectionMediaWithMetadata(
+      [entity],
+      mediaServer,
+    );
+
+    expect(result).toHaveLength(1);
+    expect(result[0].mediaData?.parentItem).toBeUndefined();
+    expect(logger.debug).toHaveBeenCalledWith(
+      'No metadata for 1 of 1 collection media parents',
+    );
   });
 
   it('hydrates only the requested page after sorting collection media', async () => {
