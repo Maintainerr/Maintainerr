@@ -1,3 +1,59 @@
+# [3.22.0](https://github.com/Maintainerr/Maintainerr/compare/v3.21.1...v3.22.0) (2026-08-07)
+
+
+### Database migrations
+
+- `1785714034481-AddTracearrSettings.ts`
+
+### Features
+
+- feat(ui): keep the media actions reachable while the grid scrolls (#3443)
+- feat(collections): studio sorting for Plex, and manual/excluded sorts on collection media (#3430)
+- feat(media-server): read metadata for many items in one request (#3432)
+- feat(rules): scope watch statistics to one user (#3426)
+- feat: bulk media actions from one shared modal (#3411)
+- feat(notifications): notify when a Maintainerr update is available (#3414)
+- feat: add studio rules, sorting, and bulk exclusions (#3393)
+- feat(rules): add Tracearr watch history application (#3387)
+
+### Fixes
+
+- fix(download-client): keep the qBittorrent session on 5.2+ (#3437) (#3438)
+- fix: address release-review findings across rules, collections and integrations (#3436)
+- fix(collections): read collection media parents in one request (#3435)
+- fix(seerr): keep the other seasons' requests when one has none (#3433)
+- fix(collections): keep the enrichment reads under SQLite's parameter cap (#3431)
+- fix(plex): read collection children ids from the listing, not per child (#3429)
+- fix(seerr): only report a removal or a sync that actually happened (#3428)
+- fix(settings): normalise trailing slashes off service URLs instead of rejecting them (#3422)
+- fix: reject the identifiers that turn a single delete into a bulk one (#3420)
+- fix(rules): scope Sonarr season rules to the season being evaluated (#3419)
+- fix(seerr): key the forced media removal on the collection type (#3418)
+- fix(sonarr): require a season number before any season-scoped action (#3417)
+- fix(emby): user-scope the item reads that decide a collection's fate (#3413)
+- fix: harden the appliance against cross-origin reads, unvalidated settings bodies, HTML in email and world-writable code (#3407)
+- fix(rules): say which integration a stalled rule group is waiting on (#3402)
+- fix(rules): keep items that cannot be looked up out of NOT_EXISTS matches (#3406)
+- fix(rules): keep Plex watchlist rules working when a user's watchlist is private (#3400)
+- fix(rules): stop a failed arr disk space read counting as a real figure (#3401)
+- fix(rules): stop shows without a league alias pinning Sportarr rules forever (#3405)
+- fix(rules): stop items with no external IDs pinning arr and Seerr rules forever (#3403)
+
+### Refactors
+
+- refactor(rules): name the rule group DTO for what it holds (#3425)
+
+### Other
+
+- docs(release-review): audit the dependency tree before tagging
+- test(jellyfin): cover the batch metadata read, with a date the clock cannot move
+- test(emby): stop the metadata parity test racing the clock (#3434)
+- test(ui): unmount rendered components after every test in one place (#3409)
+
+### Dependencies
+
+- 17 dependency updates (@typescript-eslint/eslint-plugin, @typescript-eslint/parser, typescript-eslint, rolldown, globals, @hookform/resolvers, fast-uri, nodemailer, react-hook-form, @types/lodash, …)
+
 # [3.21.1](https://github.com/Maintainerr/Maintainerr/compare/v3.21.0...v3.21.1) (2026-08-02)
 
 
