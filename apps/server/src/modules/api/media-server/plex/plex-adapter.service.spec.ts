@@ -12,6 +12,7 @@ import { MaintainerrLogger } from '../../../logging/logs.service';
 import type { PlexStatusResponse } from '../../plex-api/interfaces/server.interface';
 import { PlexApiService } from '../../plex-api/plex-api.service';
 import { PlexAdapterService } from './plex-adapter.service';
+import { PLEX_BATCH_SIZE } from './plex.constants';
 
 describe('PlexAdapterService', () => {
   let service: PlexAdapterService;
@@ -639,43 +640,200 @@ describe('PlexAdapterService', () => {
   });
 
   describe('getCollectionChildren', () => {
-    it('refreshes incomplete Plex collection children via full metadata lookups', async () => {
+    it('reads no metadata at all when the listing carries provider ids', async () => {
       plexApi.getCollectionChildren.mockResolvedValue([
         createPlexLibraryItem('movie', {
           ratingKey: 'movie-1',
-          Guid: undefined,
-        }),
-      ]);
-      plexApi.getMetadata.mockResolvedValue(
-        createPlexMetadata({
-          ratingKey: 'movie-1',
-          type: 'movie',
           Guid: [{ id: 'tmdb://321' }],
         }),
-      );
+      ]);
 
       const children = await service.getCollectionChildren('col123');
 
       expect(plexApi.getCollectionChildren).toHaveBeenCalledWith('col123');
-      expect(plexApi.getMetadata).toHaveBeenCalledWith('movie-1');
+      expect(plexApi.getMetadataBatch).not.toHaveBeenCalled();
       expect(children[0].providerIds.tmdb).toEqual(['321']);
     });
 
-    it('keeps the original collection child when the metadata refresh is unavailable', async () => {
+    it('looks up the ids Plex withheld from the listing in one batch', async () => {
+      plexApi.getCollectionChildren.mockResolvedValue([
+        createPlexLibraryItem('episode', {
+          ratingKey: 'episode-1',
+          Guid: undefined,
+        }),
+        createPlexLibraryItem('episode', {
+          ratingKey: 'episode-2',
+          Guid: undefined,
+        }),
+      ]);
+      plexApi.getMetadataBatch.mockResolvedValue([
+        createPlexMetadata({
+          ratingKey: 'episode-1',
+          type: 'episode',
+          Guid: [{ id: 'tmdb://321' }],
+        }),
+        createPlexMetadata({
+          ratingKey: 'episode-2',
+          type: 'episode',
+          Guid: [{ id: 'tmdb://654' }],
+        }),
+      ]);
+
+      const children = await service.getCollectionChildren('col123');
+
+      expect(plexApi.getMetadataBatch).toHaveBeenCalledTimes(1);
+      expect(plexApi.getMetadataBatch).toHaveBeenCalledWith([
+        'episode-1',
+        'episode-2',
+      ]);
+      expect(children[0].providerIds.tmdb).toEqual(['321']);
+      expect(children[1].providerIds.tmdb).toEqual(['654']);
+    });
+
+    it('splits the lookup so the request line cannot grow without bound', async () => {
+      const childCount = PLEX_BATCH_SIZE.METADATA_LOOKUP * 2 + 3;
+      plexApi.getCollectionChildren.mockResolvedValue(
+        Array.from({ length: childCount }, (_, index) =>
+          createPlexLibraryItem('movie', {
+            ratingKey: `movie-${index}`,
+            Guid: undefined,
+          }),
+        ),
+      );
+      plexApi.getMetadataBatch.mockImplementation(async (keys: string[]) =>
+        keys.map((ratingKey) =>
+          createPlexMetadata({
+            ratingKey,
+            type: 'movie',
+            Guid: [{ id: 'tmdb://321' }],
+          }),
+        ),
+      );
+
+      const children = await service.getCollectionChildren('col123');
+
+      expect(plexApi.getMetadataBatch).toHaveBeenCalledTimes(3);
+      expect(
+        plexApi.getMetadataBatch.mock.calls.every(
+          ([keys]) => keys.length <= PLEX_BATCH_SIZE.METADATA_LOOKUP,
+        ),
+      ).toBe(true);
+      expect(children.every((child) => child.providerIds.tmdb.length > 0)).toBe(
+        true,
+      );
+    });
+
+    // Plex sends no rating at all on an episode or season listing row and puts
+    // the audience score in Rating[], which only the per-item read returns. The
+    // rating sort compares it, so it has to survive the merge.
+    it('takes the ratings the listing row does not carry', async () => {
+      plexApi.getCollectionChildren.mockResolvedValue([
+        createPlexLibraryItem('episode', {
+          ratingKey: 'episode-1',
+          Guid: undefined,
+          rating: undefined,
+          audienceRating: undefined,
+        }),
+      ]);
+      plexApi.getMetadataBatch.mockResolvedValue([
+        createPlexMetadata({
+          ratingKey: 'episode-1',
+          type: 'episode',
+          Guid: [{ id: 'tmdb://321' }],
+          Rating: [
+            { image: 'imdb://image.rating', value: 6.5, type: 'audience' },
+          ],
+        }),
+      ]);
+
+      const children = await service.getCollectionChildren('col123');
+
+      expect(children[0].ratings).toEqual([
+        { source: 'imdb://image.rating', value: 6.5, type: 'audience' },
+      ]);
+    });
+
+    // A movie listing row carries audienceRating, and the metadata read dedupes
+    // Rating[] by type behind it, so the listing value must not be replaced.
+    it('keeps the rating the listing row already carried', async () => {
       plexApi.getCollectionChildren.mockResolvedValue([
         createPlexLibraryItem('movie', {
           ratingKey: 'movie-1',
           Guid: undefined,
+          audienceRating: 5.4,
         }),
       ]);
-      plexApi.getMetadata.mockResolvedValue(undefined);
+      plexApi.getMetadataBatch.mockResolvedValue([
+        createPlexMetadata({
+          ratingKey: 'movie-1',
+          type: 'movie',
+          Guid: [{ id: 'tmdb://321' }],
+          audienceRating: 5.4,
+        }),
+      ]);
 
       const children = await service.getCollectionChildren('col123');
 
-      expect(children[0].id).toBe('movie-1');
+      expect(children[0].ratings).toEqual([
+        { source: 'audience', value: 5.4, type: 'audience' },
+      ]);
+    });
+
+    it('keeps the listing entry, and only its ids change, when a lookup resolves', async () => {
+      plexApi.getCollectionChildren.mockResolvedValue([
+        createPlexLibraryItem('episode', {
+          ratingKey: 'episode-1',
+          Guid: undefined,
+          librarySectionID: 7,
+          librarySectionTitle: 'Shows',
+          grandparentTitle: 'Sample Series',
+        }),
+      ]);
+      plexApi.getMetadataBatch.mockResolvedValue([
+        createPlexMetadata({
+          ratingKey: 'episode-1',
+          type: 'episode',
+          Guid: [{ id: 'tmdb://321' }],
+        }),
+      ]);
+
+      const children = await service.getCollectionChildren('col123');
+
+      expect(children[0].providerIds.tmdb).toEqual(['321']);
+      expect(children[0].grandparentTitle).toBe('Sample Series');
+      expect(children[0].library).toEqual({ id: '7', title: 'Shows' });
+    });
+
+    it('counts the children Plex holds no ids for instead of logging each one', async () => {
+      plexApi.getCollectionChildren.mockResolvedValue([
+        createPlexLibraryItem('episode', {
+          ratingKey: 'episode-1',
+          Guid: undefined,
+        }),
+        createPlexLibraryItem('episode', {
+          ratingKey: 'episode-2',
+          Guid: undefined,
+        }),
+      ]);
+      // An item answered with no ids counts the same as one never answered for.
+      plexApi.getMetadataBatch.mockResolvedValue([
+        createPlexMetadata({
+          ratingKey: 'episode-1',
+          type: 'episode',
+          Guid: undefined,
+        }),
+      ]);
+
+      const children = await service.getCollectionChildren('col123');
+
+      expect(children[0].id).toBe('episode-1');
       expect(children[0].providerIds.tmdb).toEqual([]);
       expect(children[0].providerIds.tvdb).toEqual([]);
       expect(children[0].providerIds.imdb).toEqual([]);
+      expect(logger.debug).toHaveBeenCalledWith(
+        'No external ids resolved for 2 of 2 children of Plex collection col123',
+      );
+      expect(logger.debug).toHaveBeenCalledTimes(1);
     });
 
     it('propagates enumeration failures so callers never mistake a failed read for an empty collection', async () => {
