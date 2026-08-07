@@ -1551,11 +1551,27 @@ export class RulesService {
       }
       handleMedia = resolved;
     } else {
+      // Without a context the entry point removes its own rows, typed like
+      // setExclusion writes them (a bare global un-exclude, API-only today).
+      let entryPoint = data.context
+        ? { type: data.context.type, id: String(data.context.id) }
+        : undefined;
+      if (!entryPoint) {
+        const metaData = await mediaServer.getMetadata(String(data.mediaId));
+        if (!metaData?.type) {
+          this.logger.warn(
+            `No metadata found for media ${data.mediaId}, cannot remove exclusion`,
+          );
+          return this.createReturnStatus(false, 'Failed - no metadata');
+        }
+        topLevelType = metaData.type;
+        entryPoint = { type: metaData.type, id: String(data.mediaId) };
+      }
       // get media - traverse show -> seasons -> episodes if needed
       const resolved = await this.resolveContextActionIdsOrFail(
         mediaServer,
         undefined,
-        { type: data.context.type, id: String(data.context.id) },
+        entryPoint,
         String(data.mediaId),
       );
       if (!resolved) {

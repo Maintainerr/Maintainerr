@@ -178,6 +178,7 @@ export class SonarrActionHandler {
           sonarrMedia,
           collection.type,
           mediaData,
+          seasonNumber,
         );
       }
     }
@@ -549,13 +550,15 @@ export class SonarrActionHandler {
     sonarrMedia: SonarrSeries,
     type: 'season' | 'episode',
     mediaData?: MediaItem,
+    // The handler's once-resolved, fail-closed season number (#3415) - not
+    // re-derived here so the guard cannot be bypassed by a future edit.
+    seasonNumber?: number,
   ): Promise<string[]> {
     try {
       // The deleted set comes from Sonarr's episode list (what the delete acts
       // on), not history, so it matches the files actually removed.
       let deletedEpisodes: SonarrEpisode[];
       if (type === 'season') {
-        const seasonNumber = mediaData?.index;
         if (seasonNumber === undefined || seasonNumber === null) {
           this.logger.debug(
             `[Sonarr] Skipping download cleanup for '${sonarrMedia.title}': season number could not be determined.`,

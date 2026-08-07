@@ -190,6 +190,11 @@ export class TautulliApiService {
       };
 
       let data = await this.getPaginatedHistory(newOptions);
+      // A page that could not be read must not collapse into "no plays" -
+      // the caller cannot tell a confirmed-empty history from an outage.
+      if (!data) {
+        return null;
+      }
       const pageSize: number = MAX_PAGE_SIZE;
 
       const totalCount: number =
@@ -208,6 +213,10 @@ export class TautulliApiService {
         while (currentPage < pageCount) {
           newOptions.start = currentPage * pageSize;
           data = await this.getPaginatedHistory(newOptions);
+          // Same for a later page: partial results would undercount views.
+          if (!data) {
+            return null;
+          }
 
           currentPage++;
 

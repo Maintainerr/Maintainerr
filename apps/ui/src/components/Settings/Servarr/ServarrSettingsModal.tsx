@@ -145,7 +145,12 @@ const buildServarrPayload = <TSetting extends ServarrSettingShape>(
 
   return {
     payload: {
-      url: `${url}${state.baseUrl ? `/${state.baseUrl}` : ''}`,
+      // The base URL slot can contribute its own trailing slash (#3416), so
+      // the composed URL is stripped as well - the host strip above still
+      // keeps a slash-ended hostname from doubling at the join.
+      url: stripTrailingSlashes(
+        `${url}${state.baseUrl ? `/${state.baseUrl}` : ''}`,
+      ),
       apiKey: state.apiKey,
       serverName: state.serverName,
       ...(settings?.id ? { id: settings.id } : {}),

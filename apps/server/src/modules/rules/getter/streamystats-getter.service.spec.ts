@@ -15,8 +15,11 @@ const WATCH_TIME_BY_USER_PROP_ID = 5;
 const LAST_VIEWED_AT_BY_USER_PROP_ID = 6;
 
 const itemDetailsOf = (
+  // Streamystats reports the Jellyfin user id; its copy of the name can lag a
+  // rename or be null, which is why the getter matches on id.
   usersWatched: {
-    name: string;
+    id: string;
+    name: string | null;
     watchCount: number;
     totalWatchTime: number;
     lastWatched: string | null;
@@ -32,8 +35,8 @@ const itemDetailsOf = (
     watchHistory: [],
     watchCountByMonth: [],
     usersWatched: usersWatched.map(
-      ({ name, watchCount, totalWatchTime, lastWatched }) => ({
-        user: { id: `id-${name}`, name },
+      ({ id, name, watchCount, totalWatchTime, lastWatched }) => ({
+        user: { id, name },
         watchCount,
         totalWatchTime,
         completionRate: 0,
@@ -345,12 +348,14 @@ describe('StreamystatsGetterService', () => {
       streamystatsApi.getItemDetails.mockResolvedValue(
         itemDetailsOf([
           {
+            id: 'user-a',
             name: 'alice',
             watchCount: 3,
             totalWatchTime: 5400,
             lastWatched: '2026-05-01T10:00:00.000Z',
           },
           {
+            id: 'user-b',
             name: 'bob',
             watchCount: 9,
             totalWatchTime: 60,
@@ -369,6 +374,29 @@ describe('StreamystatsGetterService', () => {
       expect(
         await service.get(LAST_VIEWED_AT_BY_USER_PROP_ID, libItem, rule),
       ).toEqual(new Date('2026-05-01T10:00:00.000Z'));
+    });
+
+    // Streamystats' copy of the name lags a Jellyfin rename (and is nullable),
+    // so a name match would read this as "never watched" and let a delete rule
+    // sweep the item.
+    it('matches the statistics row by user id when the names disagree', async () => {
+      const { service, streamystatsApi } = createService([alice]);
+      const libItem = createMediaItem({ type: 'movie', id: 'item-1' });
+      streamystatsApi.getItemDetails.mockResolvedValue(
+        itemDetailsOf([
+          {
+            id: 'user-a',
+            name: null,
+            watchCount: 3,
+            totalWatchTime: 60,
+            lastWatched: null,
+          },
+        ]),
+      );
+
+      expect(await service.get(VIEW_COUNT_BY_USER_PROP_ID, libItem, rule)).toBe(
+        3,
+      );
     });
 
     it('answers zero and no date for a known user who never watched the item', async () => {
@@ -403,6 +431,7 @@ describe('StreamystatsGetterService', () => {
       streamystatsApi.getItemDetails.mockResolvedValue(
         itemDetailsOf([
           {
+            id: 'user-a',
             name: 'alice',
             watchCount: 3,
             totalWatchTime: 60,

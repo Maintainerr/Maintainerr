@@ -64,15 +64,18 @@ import type {
 // The fields a metadata read needs, shared by the single-item and bulk reads so
 // the two can never drift into answering differently shaped items.
 //
-// The trailing five are only returned by `/Users/{userId}/Items/{itemId}` unless
-// they are named: verified on Emby 4.9.5 that a `/Items` list read omits
-// ParentId and ChildCount entirely, and PremiereDate, CommunityRating and
-// OfficialRating for movies. The mapper reads all five - the last three are the
-// airDate and rating sort keys and the content rating - and a batch result is
-// cached under the key getMetadata reads, so a short list read would then be
-// served to callers that never asked for one.
+// Everything after Studios is only returned by `/Users/{userId}/Items/{itemId}`
+// unless it is named: verified on Emby 4.9.5 that a `/Items` list read omits
+// each one until asked, while the mapper reads them all (PremiereDate,
+// CommunityRating and ProductionYear are sort keys). The parity spec derives
+// this list from the mapper, so a newly consumed field fails a test instead of
+// silently losing its value on batched rows. Naming fields cannot close every
+// list-route gap, though: it stubs UserData (PlayCount 0, no LastPlayedDate,
+// EnableUserData or not) and answers a BoxSet id only with IncludeItemTypes -
+// which is why batch rows are cached apart from the direct-route rows
+// getMetadata serves.
 export const EMBY_METADATA_FIELDS =
-  'ProviderIds,DateCreated,Overview,Tags,MediaSources,Genres,People,Studios,ParentId,ChildCount,PremiereDate,CommunityRating,OfficialRating';
+  'ProviderIds,DateCreated,Overview,Tags,MediaSources,Genres,People,Studios,ParentId,ChildCount,PremiereDate,CommunityRating,OfficialRating,ProductionYear,IndexNumberEnd,CriticRating,DateLastSaved';
 
 @Injectable()
 export class EmbyAdapterService implements IMediaServerService {
@@ -474,22 +477,29 @@ export class EmbyAdapterService implements IMediaServerService {
       cache: {
         get: (itemId) =>
           this.cache.data.get<MediaItem>(
-            `${EMBY_CACHE_KEYS.METADATA}:${itemId}`,
+            `${EMBY_CACHE_KEYS.METADATA_BATCH}:${itemId}`,
           ),
         set: (item) =>
           this.cache.data.set(
-            `${EMBY_CACHE_KEYS.METADATA}:${item.id}`,
+            `${EMBY_CACHE_KEYS.METADATA_BATCH}:${item.id}`,
             item,
             EMBY_CACHE_TTL.METADATA,
           ),
       },
       readBatch: async (idBatch) => {
-        // User-scoped, like every other Emby read: the unscoped path 404s for
-        // items that exist.
+        // User-scoped, like every other Emby read. Unscoped, the list route
+        // answers rows with no UserData at all, so treat a missing user as
+        // inconclusive: the thrown batch comes back unresolved rather than
+        // trimmed (fetchItem draws the same line).
         const userId = await this.resolveUserId();
+        if (!userId) {
+          throw new Error(
+            'Cannot resolve an Emby user for the batched metadata read',
+          );
+        }
         const { data } = await this.http.get<EmbyItemsQueryResponse>('/Items', {
           params: {
-            ...(userId ? { UserId: userId } : {}),
+            UserId: userId,
             Ids: idBatch.join(','),
             Fields: EMBY_METADATA_FIELDS,
           },
@@ -1024,8 +1034,8 @@ export class EmbyAdapterService implements IMediaServerService {
    * though auth is a server-level admin key. Prefer the configured admin user;
    * otherwise resolve and cache the first admin so token-only setups still get
    * a user-scoped read instead of the unreliable plain /Items path. Returns
-   * undefined only when no admin can be resolved (callers then fall back to
-   * /Items).
+   * undefined only when no admin can be resolved - callers must treat that as
+   * inconclusive, never fall back to an unscoped read.
    */
   private async resolveUserId(): Promise<string | undefined> {
     if (this.embyUserId) return this.embyUserId;

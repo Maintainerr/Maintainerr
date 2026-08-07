@@ -504,8 +504,11 @@ export class TracearrApiService {
         // Mapped whether or not they appear in the swept history: absence has
         // to mean "Tracearr has no such user" so the per-user properties can
         // skip rather than read an unknown user as "watched nothing" (#3387
-        // fails closed). Both spellings are kept because the media server and
-        // Tracearr can name the same Plex account differently.
+        // fails closed). One name per account: Tracearr's `username` IS the
+        // media server's - it re-reads it on every user sync, from plex.tv on
+        // Plex (the spelling the rule editor offers) and from the server's
+        // user list on Jellyfin and Emby. The live account list only fills in
+        // when Tracearr answered no name at all.
         const usernames = [
           ...new Set(
             user.accounts
@@ -513,10 +516,11 @@ export class TracearrApiService {
                 (account) =>
                   account.server_id === serverId && !account.removed_at,
               )
-              .flatMap((account) => [
-                usernamesByAccountId.get(account.external_user_id),
-                account.username,
-              ])
+              .map(
+                (account) =>
+                  account.username ??
+                  usernamesByAccountId.get(account.external_user_id),
+              )
               .filter((username): username is string => Boolean(username)),
           ),
         ];

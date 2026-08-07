@@ -249,6 +249,108 @@ describe('SonarrGetterService', () => {
       );
     });
 
+    // Season 0 used to short-circuit on truthiness to a definitive false;
+    // specials are a real season and compare like any other (#3421 review).
+    it('answers true for specials when only specials have aired', async () => {
+      jest.useFakeTimers().setSystemTime(new Date('2025-01-01'));
+
+      const collectionMedia = createCollectionMedia('season');
+      collectionMedia.collection.sonarrSettingsId = 1;
+
+      mockMediaServer.getMetadata.mockResolvedValue(
+        createMediaItem({ type: 'show' }),
+      );
+      const series = createSonarrSeries({
+        seasons: [
+          { seasonNumber: 0, monitored: false },
+          { seasonNumber: 1, monitored: true },
+        ],
+      });
+
+      const mockedSonarrApi = mockSonarrApi(series);
+      jest
+        .spyOn(mockedSonarrApi, 'getEpisodes')
+        .mockImplementation((seriesId, seasonNumber) =>
+          Promise.resolve([
+            createSonarrEpisode({
+              seriesId,
+              seasonNumber,
+              episodeNumber: 1,
+              // Only the specials have aired; season 1 is in the future.
+              airDateUtc:
+                seasonNumber === 0
+                  ? '2024-06-26T00:00:00Z'
+                  : '2025-04-01T00:00:00Z',
+            }),
+          ]),
+        );
+
+      const mediaItem = createMediaItem({ type: 'season', index: 0 });
+
+      const response = await sonarrGetterService.get(
+        13,
+        mediaItem,
+        'season',
+        createRuleGroupDto({
+          collection: collectionMedia.collection,
+          dataType: 'season',
+        }),
+      );
+
+      expect(response).toBe(true);
+    });
+
+    // A show-scoped rule used to fall through into the originalLanguage case
+    // and answer a language string for a boolean property (#3421 review).
+    it('answers null for a show, not the next case in the switch', async () => {
+      const collectionMedia = createCollectionMedia('show');
+      collectionMedia.collection.sonarrSettingsId = 1;
+
+      mockSonarrApi(
+        createSonarrSeries({
+          originalLanguage: { id: 1, name: 'English' },
+        } as Partial<SonarrSeries>),
+      );
+
+      const response = await sonarrGetterService.get(
+        13,
+        createMediaItem({ type: 'show' }),
+        'show',
+        createRuleGroupDto({
+          collection: collectionMedia.collection,
+          dataType: 'show',
+        }),
+      );
+
+      expect(response).toBeNull();
+    });
+
+    it('skips a season Sonarr does not list', async () => {
+      const collectionMedia = createCollectionMedia('season');
+      collectionMedia.collection.sonarrSettingsId = 1;
+
+      mockMediaServer.getMetadata.mockResolvedValue(
+        createMediaItem({ type: 'show' }),
+      );
+      mockSonarrApi(
+        createSonarrSeries({
+          seasons: [{ seasonNumber: 1, monitored: true }],
+        }),
+      );
+
+      const response = await sonarrGetterService.get(
+        13,
+        createMediaItem({ type: 'season', index: 5 }),
+        'season',
+        createRuleGroupDto({
+          collection: collectionMedia.collection,
+          dataType: 'season',
+        }),
+      );
+
+      expect(response).toBeUndefined();
+    });
+
     // #3153: in a full run the comparator resolves several of a show's seasons
     // concurrently, all sharing ONE memoized `showResponse.seasons` array via the
     // run-scoped ArrLookupCache. The latest-aired-season scan must not mutate that

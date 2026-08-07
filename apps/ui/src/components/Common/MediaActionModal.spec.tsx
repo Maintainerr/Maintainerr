@@ -93,12 +93,39 @@ describe('MediaActionModal', () => {
   it('offers only the collections the selection can be applied to', () => {
     renderModal({})
 
+    // The picker is scoped to the page's library - offering another library's
+    // collections only produces a rejected add (#3383's shape).
+    expect(useCollectionsMock).toHaveBeenCalledWith(
+      'library-1',
+      expect.objectContaining({ enabled: true }),
+    )
     expect(
       screen.getByRole('option', { name: 'Movie collection' }),
     ).toBeTruthy()
     expect(screen.queryByRole('option', { name: 'Show collection' })).toBeNull()
     // an add needs a real target, so it cannot mean "every collection"
     expect(screen.queryByRole('option', { name: 'All collections' })).toBeNull()
+  })
+
+  // A search spans libraries, so the page passes none - the picker-driven
+  // actions drop rather than offering every library's collections.
+  it('offers only library-agnostic actions when the page has no library', () => {
+    renderModal({ libraryId: undefined })
+
+    expect(useCollectionsMock).toHaveBeenCalledWith(
+      undefined,
+      expect.objectContaining({ enabled: false }),
+    )
+    expect(
+      screen.queryByRole('option', { name: 'Add to collection' }),
+    ).toBeNull()
+    expect(
+      screen.queryByRole('option', { name: 'Remove from collection' }),
+    ).toBeNull()
+    expect(
+      screen.getByRole('option', { name: 'Remove from all collections' }),
+    ).toBeTruthy()
+    expect(screen.getByRole('option', { name: 'Add exclusion' })).toBeTruthy()
   })
 
   it('adds the selection to the chosen collection and reports per-item results', async () => {
