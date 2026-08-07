@@ -139,6 +139,12 @@ export class QbittorrentApi
       .map((hash) => hash?.trim().toLowerCase())
       .filter((hash) => !!hash && hash !== 'all');
 
+    if (validHashes.length < hashes.length) {
+      this.logger.warn(
+        `Refused ${hashes.length - validHashes.length} download id(s) that do not name a single torrent`,
+      );
+    }
+
     if (validHashes.length === 0) {
       return;
     }

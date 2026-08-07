@@ -110,14 +110,19 @@ describe('TracearrApiService', () => {
     expect(service.getHistoryIndex()?.rowsByRatingKey.get('movie-2')).toEqual([
       second,
     ]);
+    // The fixture account carries no username, so the live media-server
+    // account list fills in.
     expect(service.getUsernamesByTracearrUserId()?.get(USER_ID)).toEqual([
       'alice',
     ]);
   });
 
   // A username that maps to no Tracearr user means "unknown user" to the
-  // per-user properties, so users without history must still be mapped.
-  it('maps every Tracearr user, under both the media server and Tracearr names', async () => {
+  // per-user properties, so users without history must still be mapped. One
+  // name per account: Tracearr re-reads the media server's username on every
+  // sync (plex.tv on Plex), so its copy is authoritative and emitting the
+  // local spelling too would count one viewer twice in the watcher lists.
+  it('maps every Tracearr user to the username Tracearr read off the media server', async () => {
     const OTHER_USER_ID = '55555555-5555-4555-8555-555555555555';
     apiMock.getWithoutCache.mockImplementation(async (endpoint: string) => {
       if (endpoint === '/history') {
@@ -158,7 +163,6 @@ describe('TracearrApiService', () => {
     await service.prefetchHistory();
 
     expect(service.getUsernamesByTracearrUserId()?.get(USER_ID)).toEqual([
-      'alice',
       'alice.on.plex.tv',
     ]);
     expect(service.getUsernamesByTracearrUserId()?.get(OTHER_USER_ID)).toEqual([

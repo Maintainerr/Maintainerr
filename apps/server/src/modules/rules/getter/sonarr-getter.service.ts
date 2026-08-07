@@ -515,6 +515,9 @@ export class SonarrGetterService {
           // returns true if a season with unaired episodes is found in monitored seasons
           const data: SonarrSeason[] = [];
           if (dataType === 'season') {
+            if (!season) {
+              return undefined;
+            }
             data.push(season);
           } else {
             data.push(...showResponse.seasons.filter((el) => el.monitored));
@@ -546,17 +549,24 @@ export class SonarrGetterService {
         case 'part_of_latest_season': {
           // returns the true when this is the latest season or the episode is part of the latest season
           if (dataType === 'season' || dataType === 'episode') {
-            return season.seasonNumber && showResponse.seasons
-              ? +season.seasonNumber ===
-                  (
-                    await this.getLastAiredOrCurrentlyAiringSeason(
-                      showResponse.seasons,
-                      showResponse.id,
-                      sonarrApiClient,
-                    )
-                  )?.seasonNumber
-              : false;
+            // A season Sonarr does not list cannot be judged - skip the item
+            // rather than answer. Season 0 is a real season: specials compare
+            // like any other, and are the latest when only specials aired.
+            if (!season) {
+              return undefined;
+            }
+            return (
+              +season.seasonNumber ===
+              (
+                await this.getLastAiredOrCurrentlyAiringSeason(
+                  showResponse.seasons,
+                  showResponse.id,
+                  sonarrApiClient,
+                )
+              )?.seasonNumber
+            );
           }
+          return null;
         }
         case 'originalLanguage': {
           return showResponse.originalLanguage?.name
@@ -579,7 +589,7 @@ export class SonarrGetterService {
           );
         }
         case 'seasonNumber': {
-          return season.seasonNumber;
+          return season?.seasonNumber ?? null;
         }
         case 'rating': {
           return showResponse.ratings?.value ?? null;

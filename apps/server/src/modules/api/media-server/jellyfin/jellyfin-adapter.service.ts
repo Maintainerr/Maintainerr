@@ -28,6 +28,7 @@ import {
 import {
   MediaServerFeature,
   MediaServerType,
+  stripTrailingSlashes,
   type CollectionVisibilitySettings,
   type CreateCollectionParams,
   type LibraryQueryOptions,
@@ -178,7 +179,9 @@ export class JellyfinAdapterService implements IMediaServerService {
       },
     });
 
-    const api = jellyfin.createApi(url, apiKey);
+    // Rows saved before the schema stripped trailing slashes (#3422) can
+    // still hold one, and Jellyfin 404s routes reached through a double slash.
+    const api = jellyfin.createApi(stripTrailingSlashes(url), apiKey);
 
     // Retry transient failures with exponential backoff, like every other
     // outbound client (e.g. so a momentary blip doesn't surface as a null

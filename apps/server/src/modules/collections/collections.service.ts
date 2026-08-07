@@ -31,7 +31,10 @@ import { chunk } from 'lodash';
 import { Brackets, DataSource, In, LessThan, Not, Repository } from 'typeorm';
 import { CollectionLog } from '../../modules/collections/entities/collection_log.entities';
 import { getErrorMessage } from '../../utils/connection-error';
-import { MediaItemEnrichmentService } from '../api/media-server/media-item-enrichment.service';
+import {
+  ENRICHMENT_ID_CHUNK,
+  MediaItemEnrichmentService,
+} from '../api/media-server/media-item-enrichment.service';
 import { MediaServerFactory } from '../api/media-server/media-server.factory';
 import { IMediaServerService } from '../api/media-server/media-server.interface';
 import {
@@ -126,6 +129,9 @@ export interface PostponeCollectionMediaResult {
 export interface CollectionAddResult {
   collection?: Collection;
   serverRejectedIds: string[];
+  /** Ids the server accepted but whose membership row failed to persist; the
+   * server add was rolled back, so nothing of the add survived. */
+  unpersistedIds?: string[];
 }
 
 export interface ContextActionResult extends CollectionAddResult {
@@ -1275,6 +1281,18 @@ export class CollectionsService {
       );
       return;
     }
+    // The status sorts compare Maintainerr-side state this hydrate never
+    // resolves, so every comparison would tie and the pushed order would be
+    // arbitrary. The rule group form withholds them; refuse one that arrives
+    // anyway.
+    if (
+      (mediaLibraryStatusSortFields as readonly string[]).includes(parsed.sort)
+    ) {
+      this.logger.warn(
+        `Ignoring collection sort '${sortKey}' on collection ${collection.id}: status sorts cannot be pushed to the media server`,
+      );
+      return;
+    }
     if (!collection.mediaServerId) {
       return;
     }
@@ -1340,35 +1358,50 @@ export class CollectionsService {
     entities: Exclusion[],
     mediaServer: IMediaServerService,
   ): Promise<Exclusion[]> {
-    const results = await Promise.allSettled(
-      entities.map(async (el) => {
-        const mediaItem = await mediaServer.getMetadata(
-          el.mediaServerId.toString(),
-        );
+    if (entities.length === 0) {
+      return [];
+    }
 
+    // One batched read for the rows and one for their deduped parents, not a
+    // request per row - the same shape as the collection media hydrate.
+    const metadataById = new Map<string, MediaItem>();
+    for (const mediaItem of await mediaServer.getMetadataBatch([
+      ...new Set(entities.map((el) => el.mediaServerId.toString())),
+    ])) {
+      metadataById.set(mediaItem.id, mediaItem);
+    }
+
+    const parentMetadataById = new Map<string, MediaItem>();
+    const parentIds = [
+      ...new Set(
+        [...metadataById.values()]
+          .map((mediaItem) => mediaItem.grandparentId ?? mediaItem.parentId)
+          .filter((parentId): parentId is string => Boolean(parentId)),
+      ),
+    ];
+    if (parentIds.length > 0) {
+      for (const parent of await mediaServer.getMetadataBatch(parentIds)) {
+        parentMetadataById.set(parent.id, parent);
+      }
+    }
+
+    return entities
+      .map((el) => {
+        const mediaItem = metadataById.get(el.mediaServerId.toString());
+
+        // A row the server did not answer for stays hidden, as before.
         if (!mediaItem) {
-          return { ...el, mediaData: undefined };
+          return undefined;
         }
 
         const parentId = mediaItem.grandparentId ?? mediaItem.parentId;
-        const parentItem = parentId
-          ? await mediaServer.getMetadata(parentId)
-          : undefined;
-
         el.mediaData = {
           ...mediaItem,
-          parentItem,
+          parentItem: parentId ? parentMetadataById.get(parentId) : undefined,
         };
         return el;
-      }),
-    );
-
-    return results
-      .filter(
-        (result): result is PromiseFulfilledResult<Exclusion> =>
-          result.status === 'fulfilled' && result.value.mediaData !== undefined,
-      )
-      .map((result) => result.value);
+      })
+      .filter((el): el is Exclusion => el !== undefined);
   }
 
   public async getCollectionMediaWithServerDataAndPaging(
@@ -2673,11 +2706,14 @@ export class CollectionsService {
             // The helper swallows its own failures so a rule run survives one
             // bad collection; an interactive caller has to be told.
             failAllResolved('Failed - the collection could not be updated');
-          } else if (result.serverRejectedIds.length > 0) {
+          } else {
             const rejected = new Set(result.serverRejectedIds);
+            const unpersisted = new Set(result.unpersistedIds ?? []);
             for (const [mediaId, ids] of resolvedByMediaId) {
               if (ids.some((id) => rejected.has(id))) {
                 fail(mediaId, 'Failed - refused by the media server');
+              } else if (ids.some((id) => unpersisted.has(id))) {
+                fail(mediaId, 'Failed - the collection could not be updated');
               }
             }
           }
@@ -2688,6 +2724,28 @@ export class CollectionsService {
           }
         } else if (!(await this.removeFromCollection(collectionId, media))) {
           failAllResolved('Failed - the collection could not be updated');
+        } else {
+          // The helper answers the collection even when the media server
+          // refused some children, but it only deletes the rows the server
+          // confirmed - so a row still present is a removal that did not
+          // happen. Chunked because a show selection can resolve to enough
+          // episode ids to pass SQLite's parameter cap (#3431).
+          const remaining = new Set<string>();
+          for (const idBatch of chunk(
+            media.map((m) => m.mediaServerId),
+            ENRICHMENT_ID_CHUNK,
+          )) {
+            for (const row of (await this.CollectionMediaRepo.find({
+              where: { collectionId, mediaServerId: In(idBatch) },
+            })) ?? []) {
+              remaining.add(row.mediaServerId);
+            }
+          }
+          for (const [mediaId, ids] of resolvedByMediaId) {
+            if (ids.some((id) => remaining.has(id))) {
+              fail(mediaId, 'Failed - refused by the media server');
+            }
+          }
         }
       } catch (error) {
         this.logger.warn(`Bulk collection ${action} failed`);
@@ -2775,14 +2833,22 @@ export class CollectionsService {
         true,
       );
       return {
-        ...result,
         collection: orFail(result.collection),
+        // A rolled-back add left nothing behind either, so the caller reports
+        // it alongside the refusals.
+        serverRejectedIds: [
+          ...result.serverRejectedIds,
+          ...(result.unpersistedIds ?? []),
+        ],
         resolvedCount: handleMedia.length,
       };
     }
 
     if (!collectionDbId) {
-      await this.removeFromAllCollections(handleMedia);
+      const result = await this.removeFromAllCollections(handleMedia);
+      if (result && result.code !== 1) {
+        orFail(undefined);
+      }
       return { serverRejectedIds: [], resolvedCount: handleMedia.length };
     }
 
@@ -2882,6 +2948,7 @@ export class CollectionsService {
           !collectionMedia.find((el) => el.mediaServerId === m.mediaServerId),
       );
       let rejectedByServer: string[] = [];
+      let unpersistedIds: string[] = [];
 
       if (collection) {
         if (!skipAutomaticLinkCheck) {
@@ -3081,6 +3148,11 @@ export class CollectionsService {
               manualMembershipSource,
             );
           rejectedByServer = [...serverRejectedIds];
+          unpersistedIds = newMedia
+            .map((m) => m.mediaServerId)
+            .filter(
+              (id) => !serverRejectedIds.has(id) && !persistedIds.has(id),
+            );
 
           // Only notify for items whose membership was persisted - both
           // server-rejected items and locally-rolled-back items never
@@ -3140,7 +3212,11 @@ export class CollectionsService {
         // Update cached total size (non-blocking)
         this.updateCollectionTotalSize(collectionDbId).catch(() => {});
 
-        return { collection, serverRejectedIds: rejectedByServer };
+        return {
+          collection,
+          serverRejectedIds: rejectedByServer,
+          unpersistedIds,
+        };
       } else {
         this.logger.warn("Collection doesn't exist.");
       }

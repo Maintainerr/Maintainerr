@@ -108,9 +108,10 @@ const MediaActionModal = ({
   })
   const episodesQuery = useMediaServerMetadataChildren(selectedSeasons)
   // A collection only accepts items from its own library, so offering the other
-  // libraries' collections only produces a rejected add.
+  // libraries' collections only produces a rejected add. No library (a search
+  // spanning them) means no list to offer, not every list.
   const collectionsQuery = useCollections(libraryId, {
-    enabled: !lockedCollection,
+    enabled: !lockedCollection && libraryId !== undefined,
   })
 
   const submittedType = useMemo((): MediaItemType | undefined => {
@@ -148,11 +149,15 @@ const MediaActionModal = ({
   }, [submittedType])
 
   const actionOptions = useMemo((): MediaAction[] => {
-    // A mixed selection has no single type, so no collection can take it.
+    // A mixed selection has no single type, so no collection can take it. The
+    // picker-driven actions also need a library (or a pinned collection) to
+    // scope the picker; without one only the library-agnostic actions remain.
+    const canPickCollection = lockedCollection || libraryId !== undefined
     const actions: MediaAction[] = mediaType
       ? [
-          'collection-add',
-          'collection-remove',
+          ...(canPickCollection
+            ? (['collection-add', 'collection-remove'] as const)
+            : []),
           'collection-remove-all',
           'exclusion-add',
           'exclusion-remove',
@@ -162,7 +167,7 @@ const MediaActionModal = ({
     return hiddenActions
       ? actions.filter((action) => !hiddenActions.includes(action))
       : actions
-  }, [mediaType, hiddenActions])
+  }, [mediaType, hiddenActions, lockedCollection, libraryId])
 
   // Derived, not synced: a page can hide actions, and a mixed selection drops
   // the collection ones, so fall back to the first one still offered.

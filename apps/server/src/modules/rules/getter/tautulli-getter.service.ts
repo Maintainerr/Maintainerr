@@ -124,6 +124,13 @@ export class TautulliGetterService {
               const viewers = await this.tautulliApi.getHistory({
                 rating_key: episode.rating_key,
               });
+              // An unreadable episode history would read as "nobody watched
+              // this episode" and empty the whole list.
+              if (!viewers) {
+                throw new Error(
+                  `Tautulli could not answer the watch history for episode ${episode.rating_key}`,
+                );
+              }
 
               const arrLength = allViewers.length - 1;
               allViewers
@@ -131,7 +138,7 @@ export class TautulliGetterService {
                 .reverse()
                 .forEach((el, idx) => {
                   if (
-                    !viewers?.find(
+                    !viewers.find(
                       (viewEl) =>
                         (tautulliWatchedPercentOverride != null
                           ? viewEl.percent_complete >=
@@ -312,6 +319,13 @@ export class TautulliGetterService {
     }
 
     const history = await this.tautulliApi.getHistory(options);
+    // null is a failed read, not an empty history - throw into the outer
+    // catch so the item pauses instead of reading as never watched.
+    if (!history) {
+      throw new Error(
+        `Tautulli could not answer the watch history for item ${metadata.rating_key}`,
+      );
+    }
     return history;
   }
 

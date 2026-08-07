@@ -49,6 +49,7 @@ const CollectionMediaPage = () => {
     toggleSelection,
     toggleSelectionMode,
     applyBulkOutcome,
+    resetSelection,
   } = useMediaSelection()
   const fetchAmount = 30
   const mediaRef = useRef<ICollectionMedia[]>([])
@@ -130,6 +131,9 @@ const CollectionMediaPage = () => {
       return
     }
 
+    // A selection made against the previous item set must never survive into
+    // the next one - same contract as the Overview sync.
+    resetSelection()
     resetAndLoad({
       fetchPage: (page) =>
         fetchCollectionMediaPage(page, nextSortState.sortParams),

@@ -3,6 +3,7 @@ import { batchIdsByRequestCost } from '../metadata-batch.util';
 import { EMBY_METADATA_FIELDS } from './emby-adapter.service';
 import { EMBY_CACHE_TTL } from './emby.constants';
 import { EmbyAdapterService } from './emby-adapter.service';
+import { EmbyMapper } from './emby.mapper';
 
 const embyCacheMocks = {
   flush: jest.fn(),
@@ -172,8 +173,10 @@ describe('EmbyAdapterService', () => {
         }),
       );
       expect(items.map((item) => item.id)).toEqual(['movie-1', 'movie-2']);
+      // Batched list-route rows stub UserData, so they live in their own
+      // namespace and are never served to getMetadata callers.
       expect(embyCacheMocks.data.set).toHaveBeenCalledWith(
-        'emby:metadata:movie-1',
+        'emby:metadata-batch:movie-1',
         expect.objectContaining({ id: 'movie-1' }),
         EMBY_CACHE_TTL.METADATA,
       );
@@ -212,7 +215,7 @@ describe('EmbyAdapterService', () => {
 
     it('serves cached ids without asking for them again', async () => {
       embyCacheMocks.data.get.mockImplementation((key: string) =>
-        key === 'emby:metadata:movie-1' ? { id: 'movie-1' } : undefined,
+        key === 'emby:metadata-batch:movie-1' ? { id: 'movie-1' } : undefined,
       );
       http.get.mockResolvedValue({
         data: { Items: [{ Id: 'movie-2', Type: 'Movie', Name: 'Two' }] },
@@ -239,6 +242,22 @@ describe('EmbyAdapterService', () => {
       http.get.mockRejectedValue(new Error('boom'));
 
       await expect(service.getMetadataBatch(['movie-1'])).resolves.toEqual([]);
+    });
+
+    // Unscoped, the list route answers rows with no UserData at all, so a
+    // missing user must leave the ids unresolved rather than read unscoped.
+    it('resolves nothing rather than reading unscoped when no user resolves', async () => {
+      setHttp('');
+      embyCacheMocks.data.get.mockReturnValue(undefined);
+      http.get.mockResolvedValue({ data: [] });
+
+      await expect(service.getMetadataBatch(['movie-1'])).resolves.toEqual([]);
+      expect(http.get).not.toHaveBeenCalledWith(
+        '/Items',
+        expect.objectContaining({
+          params: expect.objectContaining({ Ids: 'movie-1' }),
+        }),
+      );
     });
   });
 
@@ -274,8 +293,59 @@ describe('EmbyAdapterService', () => {
       ['PremiereDate', 'originallyAvailableAt'],
       ['CommunityRating', 'ratings'],
       ['OfficialRating', 'contentRating'],
+      ['ProductionYear', 'year'],
+      ['IndexNumberEnd', 'indexEnd'],
     ])('names %s, which the mapper needs for %s', (field) => {
       expect(EMBY_METADATA_FIELDS.split(',')).toContain(field);
+    });
+
+    // The keys the list route answers without being asked, verified on 4.9.5
+    // for a movie and an episode. Everything else the mapper consumes must be
+    // named in EMBY_METADATA_FIELDS or the batched row silently loses it.
+    const LIST_ROUTE_BASE_KEYS = [
+      'BackdropImageTags',
+      'Id',
+      'ImageTags',
+      'IndexNumber',
+      'IsFolder',
+      'MediaType',
+      'Name',
+      'ParentIndexNumber',
+      'RunTimeTicks',
+      'SeasonId',
+      'SeasonName',
+      'SeriesId',
+      'SeriesName',
+      'ServerId',
+      'Type',
+      // Answered as a stub (PlayCount 0, no LastPlayedDate), which is why the
+      // batch caches apart from getMetadata rather than asking for it.
+      'UserData',
+      // Read only to classify library folders, which no metadata batch holds.
+      'CollectionType',
+    ];
+
+    it('asks for every field the mapper actually reads', () => {
+      const accessed = new Set<string>();
+      const record = (payload: Record<string, unknown>) =>
+        new Proxy(payload, {
+          get(target, key) {
+            if (typeof key === 'string') accessed.add(key);
+            return target[key as keyof typeof payload];
+          },
+        });
+
+      for (const type of ['Movie', 'Series', 'Season', 'Episode']) {
+        EmbyMapper.toMediaItem(
+          record({ Id: 'item-1', Type: type, Name: 'One' }) as never,
+        );
+      }
+
+      const askedFor = new Set(EMBY_METADATA_FIELDS.split(','));
+      const unrequested = [...accessed].filter(
+        (key) => !askedFor.has(key) && !LIST_ROUTE_BASE_KEYS.includes(key),
+      );
+      expect(unrequested).toEqual([]);
     });
 
     it('maps a batch item to the same shape as a single item', async () => {

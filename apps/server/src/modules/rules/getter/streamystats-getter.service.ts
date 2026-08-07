@@ -130,7 +130,8 @@ export class StreamystatsGetterService {
     if (users.length === 0) {
       return undefined;
     }
-    if (!users.some((user) => user.name === username)) {
+    const mediaServerUser = users.find((user) => user.name === username);
+    if (!mediaServerUser) {
       this.logger.warn(
         `Streamystats-Getter - Skipping '${propName}': the media server has no user named '${username}'.`,
       );
@@ -144,8 +145,10 @@ export class StreamystatsGetterService {
       return undefined;
     }
 
+    // Streamystats user ids are the Jellyfin user ids (verified live), while
+    // its copy of the name is nullable and can lag a rename - so match on id.
     const userStats = details.usersWatched.find(
-      (entry) => entry.user.name === username,
+      (entry) => entry.user.id === mediaServerUser.id,
     );
 
     switch (propName) {

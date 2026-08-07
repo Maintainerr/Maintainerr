@@ -48,6 +48,7 @@ const CollectionExcludions = (props: ICollectionExclusions) => {
     toggleSelection,
     toggleSelectionMode,
     applyBulkOutcome,
+    resetSelection,
   } = useMediaSelection()
   const libraryType = props.collection.type === 'movie' ? 'movie' : 'show'
   const sortConfig = getCollectionSortConfig(
@@ -114,6 +115,9 @@ const CollectionExcludions = (props: ICollectionExclusions) => {
       return
     }
 
+    // A selection made against the previous item set must never survive into
+    // the next one - same contract as the Overview sync.
+    resetSelection()
     resetAndLoad({
       fetchPage: (page) => fetchExclusionsPage(page, nextSortState.sortParams),
     })

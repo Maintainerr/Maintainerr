@@ -400,8 +400,11 @@ const RuleInput = (props: IRuleInput) => {
     isPerUserProperty(selectedFirstValueProp?.name) ||
     isPerUserProperty(getPropFromValue(secondVal, constants)?.name)
 
-  const { data: ruleUsernames = [], isLoading: ruleUsernamesLoading } =
-    useRuleUsernames({ enabled: isSelectedPerUserRule })
+  const {
+    data: ruleUsernames = [],
+    isLoading: ruleUsernamesLoading,
+    isError: ruleUsernamesFailed,
+  } = useRuleUsernames({ enabled: isSelectedPerUserRule })
 
   // A typo would save a rule that then skips every item, so only a known user
   // counts - or the one already saved, which keeps a rule editable after the
@@ -891,8 +894,19 @@ const RuleInput = (props: IRuleInput) => {
               }
               onChange={updateUsername}
               value={username}
+              error={!!username && !isUsernameUsable}
             />
-            {!ruleUsernamesLoading && ruleUsernames.length === 0 ? (
+            {!!username && !isUsernameUsable ? (
+              // The same reason the save would be rejected with - without it
+              // the rule just never commits and nothing says why.
+              <p className="mt-1 text-xs text-error-500">
+                The media server has no user named &apos;{username}&apos;
+              </p>
+            ) : ruleUsernamesFailed ? (
+              <p className="mt-1 text-xs text-zinc-400">
+                The user list could not be loaded
+              </p>
+            ) : !ruleUsernamesLoading && ruleUsernames.length === 0 ? (
               <p className="mt-1 text-xs text-zinc-400">
                 No users reported by the media server
               </p>

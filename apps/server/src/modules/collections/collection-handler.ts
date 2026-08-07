@@ -182,7 +182,9 @@ export class CollectionHandler {
                 media.mediaServerId,
               );
 
-              if (mediaDataSeason?.index !== undefined) {
+              // != null: a null season index must not reach Seerr as a season
+              // number either
+              if (mediaDataSeason?.index != null) {
                 const removed = await this.seerrApi.removeSeasonRequest(
                   tmdbId,
                   mediaDataSeason.index,

@@ -249,6 +249,11 @@ Non-obvious facts:
 - The getter returns `undefined` (transient skip) when membership is null;
   `false`/`[]` only when genuinely fetched. This prevents a failed lookup from
   flipping negative list comparisons and matching protected items.
+- Streamystats user ids ARE the Jellyfin user ids (verified live), while its
+  copy of the display name is nullable and can lag a rename. Rules store the
+  media-server username; the getter resolves that name against the Jellyfin
+  user list and then matches statistics rows **by id**, never by
+  Streamystats' name column.
 - Gating mirrors Tautulli: UI gate folded into the Jellyfin line in RuleInput
   `shouldFilterApplication`; server gate in `getRuleConstants()` removes the
   Application when `streamystats_url` / `jellyfin_api_key` are unset. Emby stays
