@@ -1,4 +1,6 @@
 import { AxiosError } from 'axios';
+import { batchIdsByRequestCost } from '../metadata-batch.util';
+import { EMBY_METADATA_FIELDS } from './emby-adapter.service';
 import { EMBY_CACHE_TTL } from './emby.constants';
 import { EmbyAdapterService } from './emby-adapter.service';
 
@@ -146,6 +148,161 @@ describe('EmbyAdapterService', () => {
 
       await expect(service.getMetadata('item-1')).resolves.toBeUndefined();
       expect(embyCacheMocks.data.set).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('getMetadataBatch', () => {
+    it('reads a whole id list in one user-scoped request and caches each item', async () => {
+      http.get.mockResolvedValue({
+        data: {
+          Items: [
+            { Id: 'movie-1', Type: 'Movie', Name: 'One' },
+            { Id: 'movie-2', Type: 'Movie', Name: 'Two' },
+          ],
+        },
+      });
+
+      const items = await service.getMetadataBatch(['movie-1', 'movie-2']);
+
+      expect(http.get).toHaveBeenCalledTimes(1);
+      expect(http.get).toHaveBeenCalledWith(
+        '/Items',
+        expect.objectContaining({
+          params: expect.objectContaining({ Ids: 'movie-1,movie-2' }),
+        }),
+      );
+      expect(items.map((item) => item.id)).toEqual(['movie-1', 'movie-2']);
+      expect(embyCacheMocks.data.set).toHaveBeenCalledWith(
+        'emby:metadata:movie-1',
+        expect.objectContaining({ id: 'movie-1' }),
+        EMBY_CACHE_TTL.METADATA,
+      );
+    });
+
+    it('splits a long id list', async () => {
+      http.get.mockResolvedValue({ data: { Items: [] } });
+      const itemIds = Array.from(
+        { length: 1500 },
+        (unused, index) => `movie-${index}`,
+      );
+
+      await service.getMetadataBatch(itemIds);
+
+      // The shared helper decides the split from the ids themselves.
+      expect(http.get).toHaveBeenCalledTimes(
+        batchIdsByRequestCost(itemIds, 1).length,
+      );
+      expect(http.get.mock.calls.length).toBeGreaterThan(1);
+    });
+
+    it('keeps only the ids it was asked for', async () => {
+      http.get.mockResolvedValue({
+        data: {
+          Items: [
+            { Id: 'movie-1', Type: 'Movie', Name: 'One' },
+            { Id: 'somebody-else', Type: 'Movie', Name: 'Unrelated' },
+          ],
+        },
+      });
+
+      await expect(service.getMetadataBatch(['movie-1'])).resolves.toEqual([
+        expect.objectContaining({ id: 'movie-1' }),
+      ]);
+    });
+
+    it('serves cached ids without asking for them again', async () => {
+      embyCacheMocks.data.get.mockImplementation((key: string) =>
+        key === 'emby:metadata:movie-1' ? { id: 'movie-1' } : undefined,
+      );
+      http.get.mockResolvedValue({
+        data: { Items: [{ Id: 'movie-2', Type: 'Movie', Name: 'Two' }] },
+      });
+
+      const items = await service.getMetadataBatch(['movie-1', 'movie-2']);
+
+      expect(http.get).toHaveBeenCalledWith(
+        '/Items',
+        expect.objectContaining({
+          params: expect.objectContaining({ Ids: 'movie-2' }),
+        }),
+      );
+      expect(items.map((item) => item.id).sort()).toEqual([
+        'movie-1',
+        'movie-2',
+      ]);
+    });
+
+    // Emby answers 500 for a malformed id, so a bad id costs its batch. Same
+    // contract as getMetadata: those ids are absent, not reported missing.
+    it('leaves out the ids of a failed read', async () => {
+      embyCacheMocks.data.get.mockReturnValue(undefined);
+      http.get.mockRejectedValue(new Error('boom'));
+
+      await expect(service.getMetadataBatch(['movie-1'])).resolves.toEqual([]);
+    });
+  });
+
+  // Emby answers fewer fields on `/Items` than on `/Users/{id}/Items/{id}`, and a
+  // batch result is cached under the key getMetadata reads, so the two reads have
+  // to ask for exactly the same set.
+  describe('metadata read parity', () => {
+    const fieldsOf = (call: unknown[]) =>
+      (call[1] as { params: { Fields: string } }).params.Fields;
+
+    it('asks for the same fields in the batch read as in the single read', async () => {
+      http.get.mockResolvedValue({
+        data: { Id: 'movie-1', Type: 'Movie', Name: 'One' },
+      });
+      await service.getMetadata('movie-1');
+      const singleFields = fieldsOf(http.get.mock.calls[0]);
+
+      http.get.mockClear();
+      embyCacheMocks.data.get.mockReturnValue(undefined);
+      http.get.mockResolvedValue({
+        data: { Items: [{ Id: 'movie-1', Type: 'Movie', Name: 'One' }] },
+      });
+      await service.getMetadataBatch(['movie-1']);
+
+      expect(fieldsOf(http.get.mock.calls[0])).toBe(singleFields);
+    });
+
+    // Verified on Emby 4.9.5: a list read omits each of these unless it is named,
+    // and the mapper reads all of them.
+    it.each([
+      ['ParentId', 'parentId'],
+      ['ChildCount', 'childCount'],
+      ['PremiereDate', 'originallyAvailableAt'],
+      ['CommunityRating', 'ratings'],
+      ['OfficialRating', 'contentRating'],
+    ])('names %s, which the mapper needs for %s', (field) => {
+      expect(EMBY_METADATA_FIELDS.split(',')).toContain(field);
+    });
+
+    it('maps a batch item to the same shape as a single item', async () => {
+      const payload = {
+        Id: 'movie-1',
+        Type: 'Movie',
+        Name: 'One',
+        ParentId: '6',
+        ChildCount: 1,
+        PremiereDate: '2008-05-20T00:00:00.0000000Z',
+        CommunityRating: 7.5,
+        OfficialRating: 'PG',
+        ProviderIds: { Tmdb: '10378' },
+      };
+
+      http.get.mockResolvedValue({ data: payload });
+      const single = await service.getMetadata('movie-1');
+
+      embyCacheMocks.data.get.mockReturnValue(undefined);
+      http.get.mockResolvedValue({ data: { Items: [payload] } });
+      const [batched] = await service.getMetadataBatch(['movie-1']);
+
+      expect(batched).toEqual(single);
+      expect(batched.parentId).toBe('6');
+      expect(batched.originallyAvailableAt).toBeInstanceOf(Date);
+      expect(batched.ratings).not.toEqual([]);
+      expect(batched.contentRating).toBe('PG');
     });
   });
 
@@ -1129,10 +1286,7 @@ describe('EmbyAdapterService', () => {
           id: '42',
         });
         expect(http.get).toHaveBeenCalledWith('/Users/admin-9/Items/42', {
-          params: {
-            Fields:
-              'ProviderIds,DateCreated,Overview,Tags,MediaSources,Genres,People,Studios',
-          },
+          params: { Fields: EMBY_METADATA_FIELDS },
         });
       });
     });

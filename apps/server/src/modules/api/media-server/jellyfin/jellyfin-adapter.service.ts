@@ -81,6 +81,7 @@ import {
   JELLYFIN_RETRYABLE_LIBRARY_ERROR_CODES,
   JELLYFIN_RETRYABLE_LIBRARY_STATUS_CODES,
 } from './jellyfin.constants';
+import { readMetadataInBatches } from '../metadata-batch.util';
 import { JellyfinMapper } from './jellyfin.mapper';
 import type { JellyfinWatchSnapshot } from './jellyfin.types';
 
@@ -122,6 +123,20 @@ const JELLYFIN_LIBRARY_LIST_FIELDS = [
  * - No watchlist API
  * - Uses ticks for duration (1 tick = 100 nanoseconds)
  */
+// The fields a metadata read needs, shared by the single-item and bulk reads so
+// the two can never drift into answering differently shaped items.
+const JELLYFIN_METADATA_FIELDS = [
+  ItemFields.ProviderIds,
+  ItemFields.Path,
+  ItemFields.DateCreated,
+  ItemFields.MediaSources,
+  ItemFields.Genres,
+  ItemFields.Tags,
+  ItemFields.Overview,
+  ItemFields.People,
+  ItemFields.Studios,
+];
+
 @Injectable()
 export class JellyfinAdapterService implements IMediaServerService {
   private api: Api | undefined;
@@ -930,17 +945,7 @@ export class JellyfinAdapterService implements IMediaServerService {
       const response = await getItemsApi(this.api).getItems({
         userId,
         ids: [itemId],
-        fields: [
-          ItemFields.ProviderIds,
-          ItemFields.Path,
-          ItemFields.DateCreated,
-          ItemFields.MediaSources,
-          ItemFields.Genres,
-          ItemFields.Tags,
-          ItemFields.Overview,
-          ItemFields.People,
-          ItemFields.Studios,
-        ],
+        fields: JELLYFIN_METADATA_FIELDS,
         enableUserData: true,
       });
 
@@ -961,6 +966,45 @@ export class JellyfinAdapterService implements IMediaServerService {
       this.logger.debug(error);
       return undefined;
     }
+  }
+
+  async getMetadataBatch(itemIds: string[]): Promise<MediaItem[]> {
+    if (!this.api) return [];
+
+    return readMetadataInBatches({
+      itemIds,
+      // The SDK sends one `ids=` parameter per id.
+      perIdCost: 'ids='.length + 1,
+      cache: {
+        get: (itemId) =>
+          this.cache.data.get<MediaItem>(
+            `${JELLYFIN_CACHE_KEYS.METADATA}:${itemId}`,
+          ),
+        set: (item) =>
+          this.cache.data.set(
+            `${JELLYFIN_CACHE_KEYS.METADATA}:${item.id}`,
+            item,
+            JELLYFIN_CACHE_TTL.METADATA,
+          ),
+      },
+      readBatch: async (idBatch) => {
+        const userId = await this.getUserId();
+        const response = await getItemsApi(this.api).getItems({
+          userId,
+          ids: idBatch,
+          fields: JELLYFIN_METADATA_FIELDS,
+          enableUserData: true,
+        });
+
+        return (response.data.Items ?? []).map(JellyfinMapper.toMediaItem);
+      },
+      onBatchError: (idBatch, error) => {
+        this.logger.warn(
+          `Failed to get metadata for ${idBatch.length} Jellyfin item(s)`,
+        );
+        this.logger.debug(error);
+      },
+    });
   }
 
   /**
