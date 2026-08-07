@@ -17,7 +17,9 @@ export const tracearrRecentlyAddedPageSchema = z.object({
     z.object({
       rating_key: z.string().min(1).nullable(),
       title: z.string().min(1),
-      year: z.number().int().nullable(),
+      // The media server's own added date, which every server reports for every
+      // item. Year is not usable for this: it is absent on most rows.
+      added_at: z.iso.datetime(),
     }),
   ),
 })

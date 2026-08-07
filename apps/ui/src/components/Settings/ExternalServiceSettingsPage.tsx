@@ -77,6 +77,26 @@ const allEmpty = (
   fields: ExternalServiceFieldConfig[],
 ) => fields.every((field) => (values[field.name] ?? '') === '')
 
+// An unchosen select is '' in the form but "not provided" to the API, and a
+// schema that accepts an optional id still rejects an empty string. The field
+// is hidden whenever the backend can resolve the value itself, so this is the
+// normal path rather than an edge case.
+const withoutEmptySelects = (
+  values: SettingsValues,
+  fields: ExternalServiceFieldConfig[],
+): SettingsValues => {
+  const emptySelects = new Set(
+    fields
+      .filter((field) => field.type === 'select')
+      .map((field) => field.name),
+  )
+  return Object.fromEntries(
+    Object.entries(values).filter(
+      ([name, value]) => !(emptySelects.has(name) && value === ''),
+    ),
+  )
+}
+
 const valuesEqual = (a: SettingsValues, b: SettingsValues): boolean =>
   Object.keys(a).length === Object.keys(b).length &&
   Object.keys(a).every((key) => a[key] === b[key])
@@ -216,7 +236,7 @@ const ExternalServiceSettingsPage = ({
       return true
     }
 
-    const result = schema.safeParse(values)
+    const result = schema.safeParse(withoutEmptySelects(values, fields))
 
     if (result.success) {
       clearErrors()
@@ -240,7 +260,7 @@ const ExternalServiceSettingsPage = ({
   }
 
   const onSubmit = async () => {
-    const data = getValues()
+    const data = withoutEmptySelects(getValues(), fields)
 
     clearError()
 
@@ -267,7 +287,7 @@ const ExternalServiceSettingsPage = ({
   }
 
   const performTest = async () => {
-    const values = getValues()
+    const values = withoutEmptySelects(getValues(), fields)
 
     if (testing || !validateValues(values)) {
       return

@@ -534,10 +534,19 @@ describe('TracearrApiService', () => {
       // else entirely.
       getMetadata: jest.fn(async (id: string) =>
         id === 'ours-1'
-          ? { title: 'Real Movie', year: 2020 }
+          ? {
+              title: 'Real Movie',
+              addedAt: new Date('2026-01-01T00:00:00.000Z'),
+            }
           : id === 'ours-2'
-            ? { title: 'Other Real Movie', year: 2021 }
-            : { title: 'Something Else', year: 1999 },
+            ? {
+                title: 'Other Real Movie',
+                addedAt: new Date('2026-01-01T00:00:00.000Z'),
+              }
+            : {
+                title: 'Something Else',
+                addedAt: new Date('1999-01-01T00:00:00.000Z'),
+              },
       ),
     } as never);
     apiMock.getRawWithoutCache.mockResolvedValue({
@@ -571,13 +580,25 @@ describe('TracearrApiService', () => {
         return config.params.server_id === SERVER_ID
           ? {
               data: [
-                { rating_key: 'ours-1', title: 'Real Movie', year: 2020 },
-                { rating_key: 'ours-2', title: 'Other Real Movie', year: 2021 },
+                {
+                  rating_key: 'ours-1',
+                  title: 'Real Movie',
+                  added_at: '2026-01-01T00:00:00.000Z',
+                },
+                {
+                  rating_key: 'ours-2',
+                  title: 'Other Real Movie',
+                  added_at: '2026-01-01T00:00:00.000Z',
+                },
               ],
             }
           : {
               data: [
-                { rating_key: 'theirs-1', title: 'Real Movie', year: 2020 },
+                {
+                  rating_key: 'theirs-1',
+                  title: 'Real Movie',
+                  added_at: '2026-01-01T00:00:00.000Z',
+                },
                 {
                   rating_key: 'theirs-2',
                   title: 'Other Real Movie',
@@ -607,9 +628,15 @@ describe('TracearrApiService', () => {
       getChildrenMetadata: jest.fn().mockResolvedValue([]),
       getMetadata: jest.fn(async (id: string) =>
         id.startsWith('ours-')
-          ? { title: `Real ${id}`, year: 2020 }
+          ? {
+              title: `Real ${id}`,
+              addedAt: new Date('2026-01-01T00:00:00.000Z'),
+            }
           : undefined,
       ),
+      // The foreign server's GUIDs are genuinely absent. getMetadata alone
+      // cannot tell that from a failed read, which is what itemExists answers.
+      itemExists: jest.fn(async (id: string) => id.startsWith('ours-')),
     } as never);
     apiMock.getWithoutCache.mockImplementation(
       async (endpoint: string, config: { params: { server_id: string } }) => {
@@ -626,7 +653,7 @@ describe('TracearrApiService', () => {
           data: Array.from({ length: 6 }, (_unused, i) => ({
             rating_key: own ? `ours-${i}` : `theirs-${i}`,
             title: own ? `Real ours-${i}` : `Foreign ${i}`,
-            year: 2020,
+            added_at: '2026-01-01T00:00:00.000Z',
           })),
         };
       },
@@ -638,6 +665,59 @@ describe('TracearrApiService', () => {
         foreignId,
       ),
     ).resolves.toBe(false);
+  });
+
+  // getMetadata cannot tell an absent item from a failed read, so a timeout
+  // must not be read as proof that the server is foreign.
+  it('does not condemn a server when the media server cannot be read', async () => {
+    const otherId = '99999999-9999-4999-8999-999999999999';
+    Object.assign(settings, { media_server_type: MediaServerType.JELLYFIN });
+    mediaServerFactory.getService.mockResolvedValue({
+      getUsers: jest.fn().mockResolvedValue([{ id: 'account-1', name: 'a' }]),
+      getChildrenMetadata: jest.fn().mockResolvedValue([]),
+      getMetadata: jest.fn().mockResolvedValue(undefined),
+      itemExists: jest.fn().mockRejectedValue(new Error('gateway timeout')),
+    } as never);
+    apiMock.getWithoutCache.mockResolvedValue({
+      data: Array.from({ length: 8 }, (_unused, i) => ({
+        rating_key: `key-${i}`,
+        title: `Title ${i}`,
+        added_at: '2026-01-01T00:00:00.000Z',
+      })),
+    });
+
+    await expect(
+      service.serverSharesLibrary(
+        { url: 'http://tracearr.local', apiKey: 'trr_pub_token' },
+        otherId,
+      ),
+    ).resolves.toBeUndefined();
+  });
+
+  // Live recently-added rows are full of seasons and episodes with no year, so
+  // a title on its own must not confirm a server.
+  it('does not confirm a server from title-only agreement', async () => {
+    Object.assign(settings, { media_server_type: MediaServerType.PLEX });
+    mediaServerFactory.getService.mockResolvedValue({
+      getUsers: jest.fn().mockResolvedValue([{ id: 'account-1', name: 'a' }]),
+      getChildrenMetadata: jest.fn().mockResolvedValue([]),
+      getMetadata: jest.fn(async () => ({ title: 'Season 1', year: null })),
+      itemExists: jest.fn().mockResolvedValue(true),
+    } as never);
+    apiMock.getWithoutCache.mockResolvedValue({
+      data: Array.from({ length: 8 }, (_unused, i) => ({
+        rating_key: `${i}`,
+        title: 'Season 1',
+        added_at: '2026-01-01T00:00:00.000Z',
+      })),
+    });
+
+    await expect(
+      service.serverSharesLibrary(
+        { url: 'http://tracearr.local', apiKey: 'trr_pub_token' },
+        SERVER_ID,
+      ),
+    ).resolves.toBeUndefined();
   });
 
   it('refuses history from a server that is not the configured media server', async () => {

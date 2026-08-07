@@ -20,6 +20,7 @@ import { Exclusion } from '../rules/entities/exclusion.entities';
 import { RuleGroup } from '../rules/entities/rule-group.entities';
 import { Settings } from './entities/settings.entities';
 import { RuleMigrationService } from './rule-migration.service';
+import { TracearrApiService } from '../api/tracearr-api/tracearr-api.service';
 import { SettingsDataService } from './settings-data.service';
 
 interface MediaServerDataCounts {
@@ -55,6 +56,7 @@ export class MediaServerSwitchService {
     private readonly exclusionRepo: Repository<Exclusion>,
     private readonly connection: DataSource,
     private readonly ruleMigrationService: RuleMigrationService,
+    private readonly tracearrApi: TracearrApiService,
     private readonly logger: MaintainerrLogger,
   ) {
     logger.setContext(MediaServerSwitchService.name);
@@ -227,6 +229,11 @@ export class MediaServerSwitchService {
 
       // Refresh in-memory settings and uninitialize old server after commit
       await this.settingsDataService.init();
+
+      // Clearing the stored binding is not enough: the resolved server is also
+      // held in memory, and reusing it would point the next run at the server
+      // the switch just moved away from.
+      this.tracearrApi.invalidateHistory();
 
       // Uninitialize old media server adapter
       this.uninitializeOldServer(currentServerType);

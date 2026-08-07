@@ -60,6 +60,13 @@ interface TracearrOpenApiParameter {
   };
 }
 
+// Tracearr truncates the media server's added date to milliseconds, so the two
+// only agree to the second.
+const sameSecond = (left: Date | undefined, right: number): boolean =>
+  left != null &&
+  !Number.isNaN(right) &&
+  Math.floor(left.getTime() / 1000) === Math.floor(right / 1000);
+
 export interface TracearrHistoryIndex {
   rowsById: Map<string, TracearrHistoryItem>;
   rowsByRatingKey: Map<string, TracearrHistoryItem[]>;
@@ -199,36 +206,48 @@ export class TracearrApiService {
     }
 
     const mediaServer = await this.mediaServerFactory.getService();
-    let probed = 0;
     let matches = 0;
+    let contradictions = 0;
     for (const item of parsed.data.data) {
       if (!item.rating_key) {
         continue;
       }
 
-      probed += 1;
       const metadata = await mediaServer.getMetadata(item.rating_key);
-      // Titles like "Season 1" repeat across every library, and Plex and Emby
-      // both number items from the same small range, so one agreement is not
-      // evidence. Year has to agree too, and several items have to agree.
-      if (
-        metadata !== undefined &&
-        metadata.title === item.title &&
-        (item.year == null || metadata.year === item.year)
-      ) {
-        matches += 1;
-        if (matches >= TRACEARR_SERVER_MATCH_THRESHOLD) {
+      if (metadata !== undefined) {
+        // Titles like "Season 1" repeat across every library, and Plex and Emby
+        // both number items from the same small range, so a title alone proves
+        // nothing. The added date is the second signal: every server reports
+        // one for every item, unlike year, which is missing on most rows.
+        // Tracearr stores it at millisecond precision, so compare by second.
+        if (metadata.title !== item.title) {
+          contradictions += 1;
+        } else if (
+          sameSecond(metadata.addedAt, Date.parse(item.added_at)) &&
+          ++matches >= TRACEARR_SERVER_MATCH_THRESHOLD
+        ) {
           return true;
         }
+        continue;
+      }
+
+      // getMetadata cannot tell an absent item from a failed read, so it must
+      // not decide this on its own. itemExists answers false only when the
+      // server says the item is gone, and throws otherwise, which keeps a
+      // timeout or a 5xx from condemning the right server.
+      try {
+        if (!(await mediaServer.itemExists(item.rating_key))) {
+          contradictions += 1;
+        }
+      } catch {
+        return undefined;
       }
     }
 
-    // A key that resolves to nothing counts against the server rather than
-    // being skipped. Plex and Emby number items from a shared range so a wrong
-    // server resolves to the wrong title, but Jellyfin ids are per-server
-    // GUIDs, so a wrong server resolves to nothing at all. Skipping those made
-    // an entirely foreign server look merely unreadable.
-    if (matches === 0 && probed >= TRACEARR_SERVER_PROBE_MINIMUM) {
+    // Jellyfin ids are per-server GUIDs, so a foreign server's items are absent
+    // rather than merely different. Absence and disagreement both count against
+    // the server, but only once enough items agree on it.
+    if (matches === 0 && contradictions >= TRACEARR_SERVER_PROBE_MINIMUM) {
       return false;
     }
 
