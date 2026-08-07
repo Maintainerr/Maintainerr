@@ -9,8 +9,8 @@ import {
   StreamystatsSetting,
   TautulliSetting,
   TracearrConnection,
-  TracearrSetting,
   TracearrServer,
+  TracearrSetting,
 } from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -371,11 +371,42 @@ export class SettingsOperationsService {
     try {
       const settingsDb = await this.settingsRepo.findOne({ where: {} });
 
+      // A chosen server wins: it is only ever offered when Tracearr has several
+      // of the configured type and nothing can pick between them.
+      const serverId =
+        settings.server_id ??
+        (await this.tracearr.resolveServerId({
+          url: settings.url,
+          apiKey: settings.api_key,
+        }));
+      if (!serverId) {
+        return {
+          status: 'NOK',
+          code: 0,
+          message: `Tracearr has no single ${this.settingsDataService.media_server_type ?? 'media'} server matching the one Maintainerr manages. Add it in Tracearr and let it sync a library first, or pick the server to use.`,
+        };
+      }
+
+      // A chosen server is checked rather than trusted: rating keys from the
+      // wrong server match nothing, and every rule would read as unwatched.
+      const sharesLibrary = await this.tracearr.serverSharesLibrary(
+        { url: settings.url, apiKey: settings.api_key },
+        serverId,
+      );
+      if (sharesLibrary === false) {
+        return {
+          status: 'NOK',
+          code: 0,
+          message:
+            'That Tracearr server tracks a different media server than the one Maintainerr manages. Pick the Tracearr server for this media server.',
+        };
+      }
+
       await this.settingsDataService.saveSettings({
         ...settingsDb,
         tracearr_url: settings.url,
         tracearr_api_key: settings.api_key,
-        tracearr_server_id: settings.server_id,
+        tracearr_server_id: serverId,
       });
 
       await this.settingsDataService.init();
@@ -389,17 +420,17 @@ export class SettingsOperationsService {
     }
   }
 
-  public testTracearr(settings: TracearrSetting): Promise<BasicResponseDto> {
-    return this.tracearr.testConnection({
+  public getTracearrServers(
+    settings: TracearrConnection,
+  ): Promise<TracearrServer[] | undefined> {
+    return this.tracearr.getServers({
       url: settings.url,
       apiKey: settings.api_key,
     });
   }
 
-  public getTracearrServers(
-    settings: TracearrConnection,
-  ): Promise<TracearrServer[] | undefined> {
-    return this.tracearr.getServers({
+  public testTracearr(settings: TracearrSetting): Promise<BasicResponseDto> {
+    return this.tracearr.testConnection({
       url: settings.url,
       apiKey: settings.api_key,
     });
