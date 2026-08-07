@@ -220,13 +220,29 @@ export class TracearrApiService {
         // nothing. The added date is the second signal: every server reports
         // one for every item, unlike year, which is missing on most rows.
         // Tracearr stores it at millisecond precision, so compare by second.
+        const localAddedAt = metadata.addedAt?.getTime();
+        const remoteAddedAt = Date.parse(item.added_at);
+        const datesComparable =
+          localAddedAt !== undefined &&
+          !Number.isNaN(localAddedAt) &&
+          !Number.isNaN(remoteAddedAt);
+
         if (metadata.title !== item.title) {
           contradictions += 1;
-        } else if (
-          sameSecond(metadata.addedAt, Date.parse(item.added_at)) &&
-          ++matches >= TRACEARR_SERVER_MATCH_THRESHOLD
-        ) {
-          return true;
+        } else if (!datesComparable) {
+          // No date to compare on this item, so the title alone decides
+          // nothing either way rather than condemning a server whose media
+          // server reports no added date.
+          continue;
+        } else if (sameSecond(metadata.addedAt, remoteAddedAt)) {
+          matches += 1;
+          if (matches >= TRACEARR_SERVER_MATCH_THRESHOLD) {
+            return true;
+          }
+        } else {
+          // Same title, different moment: a different copy on a different
+          // server, which argues against this one rather than proving nothing.
+          contradictions += 1;
         }
         continue;
       }

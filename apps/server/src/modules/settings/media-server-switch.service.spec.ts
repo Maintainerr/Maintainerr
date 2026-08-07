@@ -12,6 +12,7 @@ import { MaintainerrLogger } from '../logging/logs.service';
 import { Exclusion } from '../rules/entities/exclusion.entities';
 import { MediaServerSwitchService } from './media-server-switch.service';
 import { RuleMigrationService } from './rule-migration.service';
+import { TracearrApiService } from '../api/tracearr-api/tracearr-api.service';
 import { SettingsDataService } from './settings-data.service';
 
 const STORAGE_DIR = path.join(configDataDir, 'collection-posters');
@@ -19,6 +20,7 @@ const STORAGE_DIR = path.join(configDataDir, 'collection-posters');
 describe('MediaServerSwitchService', () => {
   let service: MediaServerSwitchService;
   let settingsDataService: Mocked<SettingsDataService>;
+  let tracearrApi: Mocked<TracearrApiService>;
   let ruleMigrationService: Mocked<RuleMigrationService>;
   let dataSource: Mocked<DataSource>;
   let collectionRepo: Mocked<Repository<Collection>>;
@@ -33,6 +35,7 @@ describe('MediaServerSwitchService', () => {
 
     service = unit;
     settingsDataService = unitRef.get(SettingsDataService);
+    tracearrApi = unitRef.get(TracearrApiService);
     ruleMigrationService = unitRef.get(RuleMigrationService);
     dataSource = unitRef.get(DataSource);
     collectionRepo = unitRef.get('CollectionRepository');
@@ -495,6 +498,35 @@ describe('MediaServerSwitchService', () => {
         );
       },
     );
+
+    // Clearing the stored binding is only half of it: the resolved server is
+    // also held in memory, and reusing it would point the next run at the
+    // server the switch just moved away from.
+    it('should invalidate the resolved Tracearr server on a switch', async () => {
+      const queryRunner = createQueryRunnerMock();
+      queryRunner.manager.findOne.mockResolvedValue({
+        id: 1,
+        media_server_type: MediaServerType.JELLYFIN,
+        tracearr_server_id: 'jellyfin-server-uuid',
+      });
+      dataSource.createQueryRunner.mockReturnValue(queryRunner as any);
+
+      settingsDataService.getMediaServerType.mockReturnValue(
+        MediaServerType.JELLYFIN,
+      );
+      settingsDataService.init.mockResolvedValue(undefined);
+      collectionRepo.count.mockResolvedValue(0);
+      collectionMediaRepo.count.mockResolvedValue(0);
+      collectionLogRepo.count.mockResolvedValue(0);
+      exclusionRepo.count.mockResolvedValue(0);
+
+      await service.executeSwitch({
+        targetServerType: MediaServerType.PLEX,
+        migrateRules: false,
+      });
+
+      expect(tracearrApi.invalidateHistory).toHaveBeenCalled();
+    });
 
     it('should clear the Tracearr server binding but keep its credentials', async () => {
       const queryRunner = createQueryRunnerMock();

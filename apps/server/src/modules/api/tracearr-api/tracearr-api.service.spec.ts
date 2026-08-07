@@ -667,6 +667,38 @@ describe('TracearrApiService', () => {
     ).resolves.toBe(false);
   });
 
+  // Plex and Emby number items from a shared range and generic titles like
+  // "Season 1" repeat everywhere, so a foreign server's keys can resolve to
+  // same-titled items. The added date is then the only thing separating them.
+  it('rejects a same-titled server whose items were added at other times', async () => {
+    const foreignId = '66666666-6666-4666-8666-666666666666';
+    Object.assign(settings, { media_server_type: MediaServerType.PLEX });
+    mediaServerFactory.getService.mockResolvedValue({
+      getUsers: jest.fn().mockResolvedValue([{ id: 'account-1', name: 'a' }]),
+      getChildrenMetadata: jest.fn().mockResolvedValue([]),
+      // Same key, same title, different copy: added months earlier.
+      getMetadata: jest.fn(async () => ({
+        title: 'Season 1',
+        addedAt: new Date('2025-03-04T10:00:00.000Z'),
+      })),
+      itemExists: jest.fn().mockResolvedValue(true),
+    } as never);
+    apiMock.getWithoutCache.mockResolvedValue({
+      data: Array.from({ length: 6 }, (_unused, i) => ({
+        rating_key: `${100 + i}`,
+        title: 'Season 1',
+        added_at: '2026-01-01T00:00:00.000Z',
+      })),
+    });
+
+    await expect(
+      service.serverSharesLibrary(
+        { url: 'http://tracearr.local', apiKey: 'trr_pub_token' },
+        foreignId,
+      ),
+    ).resolves.toBe(false);
+  });
+
   // getMetadata cannot tell an absent item from a failed read, so a timeout
   // must not be read as proof that the server is foreign.
   it('does not condemn a server when the media server cannot be read', async () => {
