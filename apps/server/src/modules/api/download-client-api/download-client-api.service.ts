@@ -9,11 +9,11 @@ import {
 } from '../../../utils/connection-error';
 
 // qBittorrent rejects an authenticated request with 403 when its Web UI security
-// blocks the caller. Bad credentials are NOT this case (they return HTTP 200
-// "Fails." and are handled at login), so "Invalid API key" (the shared util's
-// 401/403 message) is misleading. The reliable fix is whitelisting Maintainerr's
-// IP - it and qBittorrent commonly run on different (Docker) IPs - so lead with
-// that and only mention proxy/host validation as a secondary cause.
+// blocks the caller. Bad credentials are NOT this case (they are rejected at
+// login instead), so "Invalid API key" (the shared util's 401/403 message) is
+// misleading. The reliable fix is whitelisting Maintainerr's IP - it and
+// qBittorrent commonly run on different (Docker) IPs - so lead with that and
+// only mention proxy/host validation as a secondary cause.
 const DOWNLOAD_CLIENT_FORBIDDEN_MESSAGE =
   'The download client accepted the login but returned 403 Forbidden - a ' +
   'qBittorrent Web UI security restriction, not a wrong username or password. ' +
