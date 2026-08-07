@@ -1,12 +1,15 @@
 import { type MediaItem } from '@maintainerr/contracts';
-import { Repository } from 'typeorm';
+import { FindOperator, Repository } from 'typeorm';
 import {
   CollectionMedia,
   CollectionMediaManualMembershipSource,
 } from '../../collections/entities/collection_media.entities';
 import { Exclusion } from '../../rules/entities/exclusion.entities';
 import { RuleGroup } from '../../rules/entities/rule-group.entities';
-import { MediaItemEnrichmentService } from './media-item-enrichment.service';
+import {
+  ENRICHMENT_ID_CHUNK,
+  MediaItemEnrichmentService,
+} from './media-item-enrichment.service';
 
 describe('MediaItemEnrichmentService', () => {
   let service: MediaItemEnrichmentService;
@@ -171,6 +174,101 @@ describe('MediaItemEnrichmentService', () => {
     collectionMediaRepo.find.mockResolvedValue([]);
 
     await expect(service.enrichItems([movie])).resolves.toEqual([movie]);
+  });
+
+  // One IN list for every id would pass SQLite's 32766 parameter ceiling.
+  it('reads long id lists in chunks and merges what each returns', async () => {
+    const lastIndex = ENRICHMENT_ID_CHUNK * 2;
+    const items = Array.from(
+      { length: lastIndex + 1 },
+      (unused, index) =>
+        ({
+          id: `movie-${index}`,
+          title: `Movie ${index}`,
+          guid: `movie-guid-${index}`,
+          type: 'movie',
+          addedAt: new Date(),
+          providerIds: {},
+          mediaSources: [],
+          library: { id: 'library-1', title: 'Movies' },
+        }) satisfies MediaItem,
+    );
+
+    exclusionRepo.find.mockResolvedValue([]);
+    collectionMediaRepo.find.mockImplementation(async (options) => {
+      const ids = (
+        (options?.where as { mediaServerId: unknown })
+          .mediaServerId as FindOperator<string>
+      ).value as unknown as string[];
+      expect(ids.length).toBeLessThanOrEqual(ENRICHMENT_ID_CHUNK);
+      // Only the last chunk answers, so a dropped chunk shows up as a failure.
+      return ids.includes(`movie-${lastIndex}`)
+        ? ([
+            {
+              mediaServerId: `movie-${lastIndex}`,
+              manualMembershipSource:
+                CollectionMediaManualMembershipSource.LOCAL,
+            },
+          ] as CollectionMedia[])
+        : [];
+    });
+
+    const enriched = await service.enrichItems(items);
+
+    expect(collectionMediaRepo.find).toHaveBeenCalledTimes(3);
+    expect(exclusionRepo.find).toHaveBeenCalledTimes(3);
+    expect(enriched[lastIndex].maintainerrIsManual).toBe(true);
+    expect(enriched[0].maintainerrIsManual).toBeUndefined();
+  });
+
+  // One exclusion row can match one batch on mediaServerId and another on
+  // parent, so it comes back twice. Both of its ids still have to resolve.
+  it('resolves an exclusion whose two ids fall in different batches', async () => {
+    const item = (id: string, type: 'movie' | 'show') =>
+      ({
+        id,
+        title: id,
+        guid: `${id}-guid`,
+        type,
+        addedAt: new Date(),
+        providerIds: {},
+        mediaSources: [],
+        library: { id: 'library-1', title: 'Library' },
+      }) satisfies MediaItem;
+    // Enough items between them that 'first' and 'last' cannot share a batch.
+    const items = [
+      item('first', 'movie'),
+      ...Array.from({ length: ENRICHMENT_ID_CHUNK }, (unused, index) =>
+        item(`filler-${index}`, 'movie'),
+      ),
+      item('last', 'show'),
+    ];
+
+    collectionMediaRepo.find.mockResolvedValue([]);
+    exclusionRepo.find.mockImplementation(async (options) => {
+      const ids = (
+        (options?.where as [{ mediaServerId: unknown }])[0]
+          .mediaServerId as FindOperator<string>
+      ).value as unknown as string[];
+      // The one row Plex-side ids straddle: matched by mediaServerId in one
+      // batch and by parent in the other, so it is returned by both.
+      return ids.includes('first') || ids.includes('last')
+        ? ([
+            {
+              id: 7,
+              mediaServerId: 'first',
+              parent: 'last',
+              ruleGroupId: null,
+            },
+          ] as Exclusion[])
+        : [];
+    });
+
+    const enriched = await service.enrichItems(items);
+
+    expect(exclusionRepo.find.mock.calls.length).toBeGreaterThan(1);
+    expect(enriched[0].maintainerrExclusionId).toBe(7);
+    expect(enriched[enriched.length - 1].maintainerrExclusionId).toBe(7);
   });
 
   it('does not inherit manual state from parent or grandparent relations', async () => {
