@@ -560,10 +560,16 @@ export class RulesService {
         return managerState;
       }
       let state: ReturnStatus = this.createReturnStatus(true, 'Success');
-      const knownUsernames = [
-        ...(await this.getKnownUsernames(params.rules as RuleDto[])),
-        ...(await this.getSavedUsernames(params.id)),
-      ];
+      // Same gate getKnownUsernames applies internally: no rule names a user,
+      // so nothing consults the list and neither read is needed.
+      const knownUsernames = (params.rules as RuleDto[]).some((rule) =>
+        rule.username?.trim(),
+      )
+        ? [
+            ...(await this.getKnownUsernames(params.rules as RuleDto[])),
+            ...(await this.getSavedUsernames(params.id)),
+          ]
+        : [];
       for (const [index, rule] of (params.rules as RuleDto[]).entries()) {
         if (state.code === 1 && index > 0 && rule.operator == null) {
           state = this.createReturnStatus(

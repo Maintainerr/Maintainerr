@@ -468,7 +468,7 @@ export class CollectionsController {
     return await this.collectionService.bulkMediaCollectionAction(
       request.mediaIds,
       request.collectionId,
-      request.action === 0 ? 'add' : 'remove',
+      request.action === ExclusionAction.ADD ? 'add' : 'remove',
       request.mediaType,
       request.context,
     );

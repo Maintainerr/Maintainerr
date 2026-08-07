@@ -44,3 +44,8 @@ jobs:
 
       - name: Run tests
         run: yarn turbo test
+
+      # Guards the rules regression matrix itself: it silently stopped
+      # starting once before because nothing ran it (#3426).
+      - name: Run rules regression matrix
+        run: yarn workspace @maintainerr/server test:e2e

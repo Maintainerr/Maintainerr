@@ -9,7 +9,7 @@ import { MediaItemTypes, type MediaItemType } from '../media-server/enums'
 export const BULK_MEDIA_ACTION_MAX_ITEMS = 250
 
 /** 0 = add, 1 = remove, matching the singular endpoints' action field. */
-export const bulkMediaActionSchema = z.union([z.literal(0), z.literal(1)])
+const bulkMediaActionSchema = z.union([z.literal(0), z.literal(1)])
 
 const bulkMediaIdsSchema = z
   .array(z.string().trim().min(1))
