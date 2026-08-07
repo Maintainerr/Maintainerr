@@ -198,6 +198,47 @@ Note what you exercised (and what you could not - e.g. plex.tv watchlist
 enrichment can't be mocked locally) in the report. A flow you did not drive
 is an untested flow; say so rather than implying coverage.
 
+### 5b. Audit the dependency tree (supply chain)
+
+The diff review only covers our own code. A release can ship a
+vulnerable or compromised dependency without a single line of ours
+changing: Dependabot auto-merges non-major bumps once required checks
+pass (`dependabot_merge.yml`) and `.yarnrc.yml` sets
+`npmMinimalAgeGate: 0` (no cooling-off period for freshly published
+versions), so this step is the human review for everything that
+entered the release range that way.
+
+1. `yarn npm audit --all --recursive` - known advisories for the exact
+   resolved versions. Triage by reachability, not raw severity: use
+   `yarn why <pkg>` to classify each hit as server runtime, shipped UI
+   bundle, or dev/CI-only toolchain. Advisories reachable in production
+   code paths block the tag; dev-only hits become follow-ups. Read the
+   advisory's conditions before accepting a hit as real - a
+   vulnerability in a framework mode we do not use is not a blocker,
+   but document why it does not apply.
+2. Reconcile with the repo's open Dependabot alerts (GitHub Security
+   tab, or `gh api "repos/<owner>/<repo>/dependabot/alerts?state=open"`).
+   Both this and the audit also flag known-malicious versions (malware
+   advisories), which covers packages hit by supply-chain attacks.
+3. Check security news for active npm supply-chain attacks before
+   tagging: the GitHub Advisory Database, the npm blog, security
+   vendors' write-ups, and general security press. For any compromised
+   package family in the news, cross-reference `yarn.lock`: confirm the
+   resolved versions predate the attack and that the malicious versions
+   are not in semver range of our lockfile entries. Advisory databases
+   lag fresh compromises by hours to days - news first, databases
+   second.
+4. Review dependency changes in the release range for name legitimacy:
+   `git diff <lastTag>..HEAD -- '**/package.json'`. Verify any newly
+   added package name against the registry (publisher, linked repo,
+   weekly downloads, age) - typosquats and AI-hallucinated lookalikes
+   (slopsquatting) are registered precisely to be installed by mistake.
+5. Confirm `yarn.lock` still resolves everything through the npm
+   registry (`npm:` protocol only - no git, url, or file entries), and
+   skim the auto-merged bumps in the range
+   (`git log <lastTag>..HEAD --oneline | grep "build(deps"`) for
+   anything unexpected.
+
 ### 6. Write the report
 
 Use severity levels, in this order:
