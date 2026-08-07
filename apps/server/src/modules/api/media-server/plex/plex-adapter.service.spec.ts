@@ -60,8 +60,24 @@ describe('PlexAdapterService', () => {
       [MediaServerFeature.COLLECTION_VISIBILITY, true],
       [MediaServerFeature.WATCHLIST, true],
       [MediaServerFeature.CENTRAL_WATCH_HISTORY, true],
+      [MediaServerFeature.LIBRARY_STUDIO_SORT, true],
     ])('supportsFeature(%s) is %s', (feature, expected) => {
       expect(service.supportsFeature(feature)).toBe(expected);
+    });
+
+    it('asks Plex to sort a library by studio natively', async () => {
+      plexApi.getLibraryContents.mockResolvedValue({ items: [], totalSize: 0 });
+
+      await service.getLibraryContents('1', {
+        sort: 'studio',
+        sortOrder: 'desc',
+      });
+
+      expect(plexApi.getLibraryContents).toHaveBeenCalledWith(
+        '1',
+        expect.objectContaining({ sort: 'studio:desc' }),
+        undefined,
+      );
     });
   });
 

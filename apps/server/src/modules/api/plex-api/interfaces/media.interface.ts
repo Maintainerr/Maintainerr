@@ -8,6 +8,7 @@ export interface PlexMetadata {
   title: string;
   summary?: string;
   year?: number;
+  studio?: string;
   Guid: {
     id: string;
   }[];
