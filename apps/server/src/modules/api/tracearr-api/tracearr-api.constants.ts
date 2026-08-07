@@ -12,6 +12,11 @@ export const TRACEARR_SERVER_PROBE_SIZE = 20;
 // in every library and Plex and Emby both number items from the same range.
 export const TRACEARR_SERVER_MATCH_THRESHOLD = 2;
 
+// How many items must be checked before "nothing matched" is treated as the
+// wrong server rather than as unknown. Guards against condemning a correct
+// server whose few recent items happen to have been deleted since.
+export const TRACEARR_SERVER_PROBE_MINIMUM = 5;
+
 // Tracearr can only filter history by server, not by Maintainerr library. Keep
 // the server-wide snapshot within the same 500k-record ceiling as the
 // library-scoped Plex and Jellyfin snapshots (#3284, #3368). The rule getter

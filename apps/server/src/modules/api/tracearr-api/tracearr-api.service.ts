@@ -29,6 +29,7 @@ import {
   TRACEARR_HISTORY_MAX_RECORDS,
   TRACEARR_PAGE_SIZE,
   TRACEARR_SERVER_MATCH_THRESHOLD,
+  TRACEARR_SERVER_PROBE_MINIMUM,
   TRACEARR_SERVER_PROBE_SIZE,
 } from './tracearr-api.constants';
 import { TracearrApi } from './helpers/tracearr-api.helper';
@@ -179,8 +180,9 @@ export class TracearrApiService {
    * server. A key alone proves nothing, since every Plex server numbers its
    * items from the same small range, so the title has to agree too.
    *
-   * Returns undefined when nothing could be checked (no readable items), which
-   * is deliberately not the same as "wrong server".
+   * Returns undefined only when too little could be checked to judge, which is
+   * deliberately not the same as "wrong server": an unreadable library must not
+   * lock anyone out, while a foreign one must not be accepted.
    */
   public async serverSharesLibrary(
     params: ConstructorParameters<typeof TracearrApi>[0],
@@ -196,22 +198,20 @@ export class TracearrApiService {
     }
 
     const mediaServer = await this.mediaServerFactory.getService();
-    let checked = 0;
+    let probed = 0;
     let matches = 0;
     for (const item of parsed.data.data) {
       if (!item.rating_key) {
         continue;
       }
 
+      probed += 1;
       const metadata = await mediaServer.getMetadata(item.rating_key);
-      if (metadata === undefined) {
-        continue;
-      }
-      checked += 1;
       // Titles like "Season 1" repeat across every library, and Plex and Emby
       // both number items from the same small range, so one agreement is not
       // evidence. Year has to agree too, and several items have to agree.
       if (
+        metadata !== undefined &&
         metadata.title === item.title &&
         (item.year == null || metadata.year === item.year)
       ) {
@@ -222,7 +222,16 @@ export class TracearrApiService {
       }
     }
 
-    return checked > 0 ? false : undefined;
+    // A key that resolves to nothing counts against the server rather than
+    // being skipped. Plex and Emby number items from a shared range so a wrong
+    // server resolves to the wrong title, but Jellyfin ids are per-server
+    // GUIDs, so a wrong server resolves to nothing at all. Skipping those made
+    // an entirely foreign server look merely unreadable.
+    if (matches === 0 && probed >= TRACEARR_SERVER_PROBE_MINIMUM) {
+      return false;
+    }
+
+    return undefined;
   }
 
   /**

@@ -596,6 +596,50 @@ describe('TracearrApiService', () => {
     ).resolves.toBe(SERVER_ID);
   });
 
+  // Jellyfin ids are per-server GUIDs, so a foreign server's keys resolve to
+  // nothing rather than to the wrong title. Skipping unresolvable keys made
+  // such a server look merely unreadable, and it was accepted.
+  it('rejects a server whose items do not exist on the media server at all', async () => {
+    const foreignId = '88888888-8888-4888-8888-888888888888';
+    Object.assign(settings, { media_server_type: MediaServerType.JELLYFIN });
+    mediaServerFactory.getService.mockResolvedValue({
+      getUsers: jest.fn().mockResolvedValue([{ id: 'account-1', name: 'a' }]),
+      getChildrenMetadata: jest.fn().mockResolvedValue([]),
+      getMetadata: jest.fn(async (id: string) =>
+        id.startsWith('ours-')
+          ? { title: `Real ${id}`, year: 2020 }
+          : undefined,
+      ),
+    } as never);
+    apiMock.getWithoutCache.mockImplementation(
+      async (endpoint: string, config: { params: { server_id: string } }) => {
+        if (endpoint === '/libraries') {
+          return {
+            data: [
+              { server_id: SERVER_ID, server_type: 'jellyfin' },
+              { server_id: foreignId, server_type: 'jellyfin' },
+            ],
+          };
+        }
+        const own = config.params.server_id === SERVER_ID;
+        return {
+          data: Array.from({ length: 6 }, (_unused, i) => ({
+            rating_key: own ? `ours-${i}` : `theirs-${i}`,
+            title: own ? `Real ours-${i}` : `Foreign ${i}`,
+            year: 2020,
+          })),
+        };
+      },
+    );
+
+    await expect(
+      service.serverSharesLibrary(
+        { url: 'http://tracearr.local', apiKey: 'trr_pub_token' },
+        foreignId,
+      ),
+    ).resolves.toBe(false);
+  });
+
   it('refuses history from a server that is not the configured media server', async () => {
     Object.assign(settings, { media_server_type: MediaServerType.JELLYFIN });
     apiMock.getWithoutCache.mockImplementation(async (endpoint: string) => {
