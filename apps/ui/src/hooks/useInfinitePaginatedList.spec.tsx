@@ -1,5 +1,5 @@
-import { act, cleanup, renderHook, waitFor } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { act, renderHook, waitFor } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('lodash-es', () => ({
   debounce: <T extends (...args: any[]) => void>(fn: T) => {
@@ -36,10 +36,6 @@ describe('useInfinitePaginatedList', () => {
       configurable: true,
       value: 100,
     })
-  })
-
-  afterEach(() => {
-    cleanup()
   })
 
   it('uses the override fetcher for the first page after resetAndLoad', async () => {

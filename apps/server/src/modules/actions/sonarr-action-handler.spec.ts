@@ -2332,4 +2332,96 @@ describe('SonarrActionHandler', () => {
       });
     });
   });
+
+  // #3415: a season item can reach the handler without a season index -
+  // its metadata was dropped by the media server, or it is one of the
+  // "Season Unknown" buckets Jellyfin/Emby create, which carry no index. That
+  // undefined index used to reach `unmonitorSeasons`' whole-show default,
+  // unmonitoring every season and deleting every remaining episode file.
+  describe('season action without a resolvable season number (#3415)', () => {
+    const seasonActions = [
+      { name: 'DELETE', arrAction: ServarrAction.DELETE },
+      { name: 'UNMONITOR', arrAction: ServarrAction.UNMONITOR },
+      {
+        name: 'UNMONITOR_DELETE_EXISTING',
+        arrAction: ServarrAction.UNMONITOR_DELETE_EXISTING,
+      },
+      {
+        name: 'DELETE_SHOW_IF_EMPTY',
+        arrAction: ServarrAction.DELETE_SHOW_IF_EMPTY,
+      },
+      {
+        name: 'UNMONITOR_SHOW_IF_EMPTY',
+        arrAction: ServarrAction.UNMONITOR_SHOW_IF_EMPTY,
+      },
+    ];
+
+    it.each(seasonActions)(
+      'fails closed and takes no Sonarr action for $name',
+      async ({ arrAction }) => {
+        const collection = createCollection({
+          arrAction,
+          sonarrSettingsId: 1,
+          type: 'season',
+        });
+        const collectionMedia = createCollectionMediaWithMetadata(collection, {
+          tmdbId: 1,
+          mediaData: { index: undefined },
+        });
+
+        mockMediaServerMetadata(collectionMedia.mediaData);
+
+        const mockedSonarrApi = mockSonarrApi(servarrService, logger);
+        jest
+          .spyOn(mockedSonarrApi, 'getSeriesByTvdbId')
+          .mockResolvedValue(createSonarrSeries());
+
+        mediaIdFinder.findTvdbId.mockResolvedValue(1);
+
+        await expect(
+          sonarrActionHandler.handleAction(collection, collectionMedia),
+        ).resolves.toBe(false);
+
+        validateNoSonarrActionsTaken(mockedSonarrApi);
+        expect(mediaServer.deleteFromDisk).not.toHaveBeenCalled();
+        expect(logger.warn).toHaveBeenCalledWith(
+          `[Sonarr] Couldn't determine the season number for media server item ${collectionMedia.mediaServerId}. No action was taken.`,
+        );
+      },
+    );
+
+    it('still acts on season 0 (specials), which is a valid season number', async () => {
+      const collection = createCollection({
+        arrAction: ServarrAction.UNMONITOR_DELETE_EXISTING,
+        sonarrSettingsId: 1,
+        type: 'season',
+      });
+      const collectionMedia = createCollectionMediaWithMetadata(collection, {
+        tmdbId: 1,
+        mediaData: { index: 0 },
+      });
+
+      mockMediaServerMetadata(collectionMedia.mediaData);
+
+      const series = createSonarrSeries();
+      const mockedSonarrApi = mockSonarrApi(servarrService, logger);
+      jest
+        .spyOn(mockedSonarrApi, 'getSeriesByTvdbId')
+        .mockResolvedValue(series);
+      jest.spyOn(mockedSonarrApi, 'unmonitorSeasons').mockResolvedValue(series);
+
+      mediaIdFinder.findTvdbId.mockResolvedValue(1);
+
+      await expect(
+        sonarrActionHandler.handleAction(collection, collectionMedia),
+      ).resolves.toBe(true);
+
+      expect(mockedSonarrApi.unmonitorSeasons).toHaveBeenCalledWith(
+        series.id,
+        0,
+        true,
+        true,
+      );
+    });
+  });
 });

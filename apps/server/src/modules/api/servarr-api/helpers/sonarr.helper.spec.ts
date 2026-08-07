@@ -207,6 +207,47 @@ describe('SonarrApi', () => {
     expect(runDeleteSpy).not.toHaveBeenCalled();
   });
 
+  it('should refuse an episode action without a season number (#3415)', async () => {
+    // An unfiltered episode read returns every season, so episode 1 would match
+    // - and be deleted - in each of them.
+    const getSpy = jest
+      .spyOn(sonarrApi as any, 'get')
+      .mockResolvedValue([
+        createSonarrEpisode({ seasonNumber: 1, episodeNumber: 1 }),
+        createSonarrEpisode({ seasonNumber: 2, episodeNumber: 1 }),
+      ]);
+    const runPutSpy = jest.spyOn(sonarrApi as any, 'runPut');
+    const runDeleteSpy = jest.spyOn(sonarrApi as any, 'runDelete');
+
+    await expect(
+      sonarrApi.UnmonitorDeleteEpisodes(1, undefined as unknown as number, [1]),
+    ).resolves.toBe(false);
+
+    expect(getSpy).not.toHaveBeenCalled();
+    expect(runPutSpy).not.toHaveBeenCalled();
+    expect(runDeleteSpy).not.toHaveBeenCalled();
+    expect(logger.warn).toHaveBeenCalledWith(
+      "Couldn't remove/unmonitor episodes for series ID 1: no valid season number was provided.",
+    );
+  });
+
+  it('should refuse a season scope that is not "all", "existing" or a number (#3415)', async () => {
+    const axiosGetSpy = jest.spyOn((sonarrApi as any).axios, 'get');
+    const runPutSpy = jest.spyOn(sonarrApi as any, 'runPut');
+    const runDeleteSpy = jest.spyOn(sonarrApi as any, 'runDelete');
+
+    await expect(
+      sonarrApi.unmonitorSeasons(1, undefined as unknown as number),
+    ).resolves.toBeUndefined();
+
+    expect(axiosGetSpy).not.toHaveBeenCalled();
+    expect(runPutSpy).not.toHaveBeenCalled();
+    expect(runDeleteSpy).not.toHaveBeenCalled();
+    expect(logger.warn).toHaveBeenCalledWith(
+      "Couldn't unmonitor/delete seasons for series ID 1: 'undefined' is not a valid season scope. No action was taken.",
+    );
+  });
+
   describe('cache coherency (issue #2757 / #2891)', () => {
     it('getSeriesByTvdbId reads uncached so post-mutation state is never stale', async () => {
       const series = createSonarrSeries({ id: 1, tvdbId: 555 });

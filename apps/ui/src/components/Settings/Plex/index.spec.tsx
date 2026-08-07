@@ -1,11 +1,5 @@
-import {
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createDeferred } from '../../../test-utils/createDeferred'
 import PlexSettings, { hasUnsavedPlexServerChanges } from './index'
 
@@ -164,10 +158,6 @@ beforeEach(() => {
 
     throw new Error(`Unexpected request: ${url}`)
   })
-})
-
-afterEach(() => {
-  cleanup()
 })
 
 describe('hasUnsavedPlexServerChanges', () => {

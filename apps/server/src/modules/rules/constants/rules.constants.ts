@@ -1238,6 +1238,28 @@ export class RuleConstants {
           type: RuleType.TEXT_LIST, // return usernames []
           showType: ['show', 'season', 'episode'],
         },
+        // Scoped to the rule's user; same names as the other two companions.
+        {
+          id: 9,
+          name: 'viewCountByUser',
+          humanName: 'Times viewed by user',
+          mediaType: MediaType.BOTH,
+          type: RuleType.NUMBER,
+        },
+        {
+          id: 10,
+          name: 'watchTimeByUser',
+          humanName: 'Watch time by user (minutes)',
+          mediaType: MediaType.BOTH,
+          type: RuleType.NUMBER,
+        },
+        {
+          id: 11,
+          name: 'lastViewedAtByUser',
+          humanName: 'Last view date by user',
+          mediaType: MediaType.BOTH,
+          type: RuleType.DATE,
+        },
       ],
     },
     {
@@ -1306,6 +1328,28 @@ export class RuleConstants {
           mediaType: MediaType.SHOW,
           type: RuleType.TEXT_LIST,
           showType: ['show', 'season', 'episode'],
+        },
+        // Scoped to the rule's user; same names as the other two companions.
+        {
+          id: 9,
+          name: 'viewCountByUser',
+          humanName: 'Times viewed by user',
+          mediaType: MediaType.BOTH,
+          type: RuleType.NUMBER,
+        },
+        {
+          id: 10,
+          name: 'watchTimeByUser',
+          humanName: 'Watch time by user (minutes)',
+          mediaType: MediaType.BOTH,
+          type: RuleType.NUMBER,
+        },
+        {
+          id: 11,
+          name: 'lastViewedAtByUser',
+          humanName: 'Last view date by user',
+          mediaType: MediaType.BOTH,
+          type: RuleType.DATE,
         },
       ],
     },
@@ -1710,6 +1754,32 @@ export class RuleConstants {
           mediaType: MediaType.SHOW,
           type: RuleType.TEXT_LIST, // returns usernames []
           showType: ['season', 'episode'],
+        },
+        // Scoped to the rule's user. Streamystats aggregates a show from its
+        // episodes but holds no session against a season, so seasons are out.
+        {
+          id: 4,
+          name: 'viewCountByUser',
+          humanName: 'Times viewed by user',
+          mediaType: MediaType.BOTH,
+          type: RuleType.NUMBER,
+          showType: ['show', 'episode'],
+        },
+        {
+          id: 5,
+          name: 'watchTimeByUser',
+          humanName: 'Watch time by user (minutes)',
+          mediaType: MediaType.BOTH,
+          type: RuleType.NUMBER,
+          showType: ['show', 'episode'],
+        },
+        {
+          id: 6,
+          name: 'lastViewedAtByUser',
+          humanName: 'Last view date by user',
+          mediaType: MediaType.BOTH,
+          type: RuleType.DATE,
+          showType: ['show', 'episode'],
         },
       ],
     },

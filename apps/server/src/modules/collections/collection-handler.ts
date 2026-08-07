@@ -182,15 +182,23 @@ export class CollectionHandler {
                 media.mediaServerId,
               );
 
-              if (mediaDataSeason?.index !== undefined) {
-                await this.seerrApi.removeSeasonRequest(
+              // != null: a null season index must not reach Seerr as a season
+              // number either
+              if (mediaDataSeason?.index != null) {
+                const removed = await this.seerrApi.removeSeasonRequest(
                   tmdbId,
                   mediaDataSeason.index,
                 );
 
-                this.logger.log(
-                  `[Seerr] Removed request of season ${mediaDataSeason.index} from show with TMDB ID '${tmdbId}'`,
-                );
+                if (removed === undefined) {
+                  this.logger.warn(
+                    `[Seerr] Couldn't remove the request of season ${mediaDataSeason.index} from show with TMDB ID '${tmdbId}'`,
+                  );
+                } else if (removed) {
+                  this.logger.log(
+                    `[Seerr] Removed request of season ${mediaDataSeason.index} from show with TMDB ID '${tmdbId}'`,
+                  );
+                }
               }
               break;
             }
@@ -208,13 +216,26 @@ export class CollectionHandler {
               break;
             }
             default:
-              await this.seerrApi.removeMediaByTmdbId(
+              // Keyed on the collection's own type, not the library lookup:
+              // `library` is undefined whenever the media server stops listing
+              // the id, and `undefined?.type` silently reads as 'movie'. TMDB
+              // numbers movies and shows independently, so that sends a show's
+              // id to the movie endpoint, where it can resolve to an unrelated
+              // film whose Seerr record is then deleted.
+              const removed = await this.seerrApi.removeMediaByTmdbId(
                 tmdbId,
-                library?.type === 'show' ? 'tv' : 'movie',
+                collection.type === 'show' ? 'tv' : 'movie',
               );
-              this.logger.log(
-                `[Seerr] Removed requests of media with TMDB ID '${tmdbId}'`,
-              );
+
+              if (removed === undefined) {
+                this.logger.warn(
+                  `[Seerr] Couldn't remove the requests of media with TMDB ID '${tmdbId}'`,
+                );
+              } else if (removed) {
+                this.logger.log(
+                  `[Seerr] Removed requests of media with TMDB ID '${tmdbId}'`,
+                );
+              }
               break;
           }
         }

@@ -17,7 +17,7 @@ import {
   type WatchRecord,
 } from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
-import { type AxiosInstance, AxiosError } from 'axios';
+import { type AxiosInstance, AxiosError, isAxiosError } from 'axios';
 import { formatConnectionFailureMessage } from '../../../../utils/connection-error';
 import { MaintainerrLogger } from '../../../logging/logs.service';
 import { SettingsDataService } from '../../../settings/settings-data.service';
@@ -36,6 +36,7 @@ import {
   EMBY_CLIENT_INFO,
   EMBY_DEVICE_INFO,
 } from './emby.constants';
+import { readMetadataInBatches } from '../metadata-batch.util';
 import { EmbyMapper } from './emby.mapper';
 import type {
   EmbyAuthenticationResult,
@@ -60,6 +61,22 @@ import type {
  * Methods marked with TODO(emby-server-test) have not been verified against a
  * live Emby server and require validation before production use.
  */
+// The fields a metadata read needs, shared by the single-item and bulk reads so
+// the two can never drift into answering differently shaped items.
+//
+// Everything after Studios is only returned by `/Users/{userId}/Items/{itemId}`
+// unless it is named: verified on Emby 4.9.5 that a `/Items` list read omits
+// each one until asked, while the mapper reads them all (PremiereDate,
+// CommunityRating and ProductionYear are sort keys). The parity spec derives
+// this list from the mapper, so a newly consumed field fails a test instead of
+// silently losing its value on batched rows. Naming fields cannot close every
+// list-route gap, though: it stubs UserData (PlayCount 0, no LastPlayedDate,
+// EnableUserData or not) and answers a BoxSet id only with IncludeItemTypes -
+// which is why batch rows are cached apart from the direct-route rows
+// getMetadata serves.
+export const EMBY_METADATA_FIELDS =
+  'ProviderIds,DateCreated,Overview,Tags,MediaSources,Genres,People,Studios,ParentId,ChildCount,PremiereDate,CommunityRating,OfficialRating,ProductionYear,IndexNumberEnd,CriticRating,DateLastSaved';
+
 @Injectable()
 export class EmbyAdapterService implements IMediaServerService {
   private http: AxiosInstance | undefined;
@@ -450,22 +467,69 @@ export class EmbyAdapterService implements IMediaServerService {
     return pending;
   }
 
+  async getMetadataBatch(itemIds: string[]): Promise<MediaItem[]> {
+    if (!this.http) return [];
+
+    return readMetadataInBatches({
+      itemIds,
+      // Ids are comma separated in one `Ids` parameter.
+      perIdCost: 1,
+      cache: {
+        get: (itemId) =>
+          this.cache.data.get<MediaItem>(
+            `${EMBY_CACHE_KEYS.METADATA_BATCH}:${itemId}`,
+          ),
+        set: (item) =>
+          this.cache.data.set(
+            `${EMBY_CACHE_KEYS.METADATA_BATCH}:${item.id}`,
+            item,
+            EMBY_CACHE_TTL.METADATA,
+          ),
+      },
+      readBatch: async (idBatch) => {
+        // User-scoped, like every other Emby read. Unscoped, the list route
+        // answers rows with no UserData at all, so treat a missing user as
+        // inconclusive: the thrown batch comes back unresolved rather than
+        // trimmed (fetchItem draws the same line).
+        const userId = await this.resolveUserId();
+        if (!userId) {
+          throw new Error(
+            'Cannot resolve an Emby user for the batched metadata read',
+          );
+        }
+        const { data } = await this.http.get<EmbyItemsQueryResponse>('/Items', {
+          params: {
+            UserId: userId,
+            Ids: idBatch.join(','),
+            Fields: EMBY_METADATA_FIELDS,
+          },
+        });
+
+        return (data.Items ?? []).map(EmbyMapper.toMediaItem);
+      },
+      // Emby answers 500 for a malformed id, so one bad id costs its batch.
+      onBatchError: (idBatch, error) => {
+        this.logger.warn(
+          `Failed to get metadata for ${idBatch.length} Emby item(s)`,
+        );
+        this.logger.debug(
+          formatConnectionFailureMessage(error, 'Connection failed'),
+        );
+      },
+    });
+  }
+
   private async fetchMetadata(
     itemId: string,
     cacheKey: string,
   ): Promise<MediaItem | undefined> {
     try {
-      // Emby's /Users/{userId}/Items/{itemId} returns user-specific data.
-      // When no user context, fall back to /Items/{itemId}.
-      const path = this.embyUserId
-        ? `/Users/${this.embyUserId}/Items/${itemId}`
-        : `/Items/${itemId}`;
-      const { data } = await this.http.get<EmbyBaseItemDto>(path, {
-        params: {
-          Fields:
-            'ProviderIds,DateCreated,Overview,Tags,MediaSources,Genres,People,Studios',
-        },
-      });
+      const data = await this.fetchItem(itemId, EMBY_METADATA_FIELDS);
+
+      if (!data) {
+        return undefined;
+      }
+
       const mediaItem = EmbyMapper.toMediaItem(data);
       this.cache.data.set(cacheKey, mediaItem, EMBY_CACHE_TTL.METADATA);
       return mediaItem;
@@ -970,8 +1034,8 @@ export class EmbyAdapterService implements IMediaServerService {
    * though auth is a server-level admin key. Prefer the configured admin user;
    * otherwise resolve and cache the first admin so token-only setups still get
    * a user-scoped read instead of the unreliable plain /Items path. Returns
-   * undefined only when no admin can be resolved (callers then fall back to
-   * /Items).
+   * undefined only when no admin can be resolved - callers must treat that as
+   * inconclusive, never fall back to an unscoped read.
    */
   private async resolveUserId(): Promise<string | undefined> {
     if (this.embyUserId) return this.embyUserId;
@@ -1027,11 +1091,22 @@ export class EmbyAdapterService implements IMediaServerService {
       }
       return undefined;
     }
+    // Emby answers 404 on the unscoped /Items/{id} route for a collection that
+    // exists, so reading that as a confirmed absence unlinks a live collection.
+    // Only the user-scoped route tells the two apart, and it is also the only
+    // one that carries ChildCount, which the empty-collection heal reads.
+    const userId = await this.resolveUserId();
+    if (!userId) {
+      const message = `Emby getCollection(${collectionId}) has no user to scope the lookup to; its existence is unknown`;
+      if (throwOnError) throw new Error(message);
+      this.logger.debug(message);
+      return undefined;
+    }
+
     try {
-      const path = this.embyUserId
-        ? `/Users/${this.embyUserId}/Items/${collectionId}`
-        : `/Items/${collectionId}`;
-      const { data } = await this.http.get<EmbyBaseItemDto>(path);
+      const { data } = await this.http.get<EmbyBaseItemDto>(
+        `/Users/${userId}/Items/${collectionId}`,
+      );
       return EmbyMapper.toMediaCollection(data);
     } catch (error) {
       // A 404 is the server confirming the collection is gone; anything else
@@ -1286,10 +1361,16 @@ export class EmbyAdapterService implements IMediaServerService {
     if (!this.http) throw new Error('Emby not initialized');
     try {
       // Emby's POST /Items/{id} expects the full updated item. Fetch, mutate, send.
-      const path = this.embyUserId
-        ? `/Users/${this.embyUserId}/Items/${params.collectionId}`
-        : `/Items/${params.collectionId}`;
-      const { data: current } = await this.http.get<EmbyBaseItemDto>(path);
+      // The read has to be user-scoped: the unscoped route 404s for an item that
+      // exists, and the list form answers a trimmed item that would write back
+      // as a wipe of everything it omits.
+      const userId = await this.resolveUserId();
+      if (!userId) {
+        throw new Error('no Emby user available to read the collection');
+      }
+      const { data: current } = await this.http.get<EmbyBaseItemDto>(
+        `/Users/${userId}/Items/${params.collectionId}`,
+      );
       const updated: EmbyBaseItemDto = {
         ...current,
         Name: params.title ?? current.Name,
@@ -1436,6 +1517,15 @@ export class EmbyAdapterService implements IMediaServerService {
 
   async deleteFromDisk(itemId: string): Promise<void> {
     if (!this.http) throw new Error('Emby not initialized');
+
+    // Same guard as the Jellyfin adapter: a blank id would leave `/Items/`,
+    // which is a different route from the single-item delete this intends.
+    if (!itemId || itemId.trim() === '') {
+      throw new Error(
+        'deleteFromDisk called with empty itemId - aborting to prevent unintended deletion',
+      );
+    }
+
     try {
       await this.http.delete(`/Items/${itemId}`);
     } catch (error) {
@@ -1603,21 +1693,41 @@ export class EmbyAdapterService implements IMediaServerService {
     }
 
     try {
-      // User-scope the lookup like every other single-item read in this
-      // adapter (e.g. getMetadata): Emby returns 404 on the unscoped
-      // /Items/{id} route for an item that exists, which would otherwise make
-      // a still-present item look deleted.
-      const path = this.embyUserId
-        ? `/Users/${this.embyUserId}/Items/${itemId}`
-        : `/Items/${itemId}`;
-      const { data } = await this.http.get<EmbyBaseItemDto>(path);
-      return Boolean(data?.Id);
+      return Boolean(await this.fetchItem(itemId));
     } catch (error) {
-      if (error instanceof AxiosError && error.response?.status === 404) {
+      if (isAxiosError(error) && error.response?.status === 404) {
         return false;
       }
+      // Anything else is inconclusive and must not read as "deleted".
       throw error;
     }
+  }
+
+  /**
+   * `emby_user_id` is optional, and Emby answers **404 on the unscoped
+   * `/Items/{id}` route for an item that exists** - which `itemExists` read as
+   * deleted. Resolve a user instead, as every other single-item read here does.
+   * The list form resolves without a user but answers a trimmed item (7 fields
+   * against this route's 31, no ChildCount even when asked for), so it cannot
+   * stand in for a metadata read. With no user at all the lookup is
+   * inconclusive, which the caller must not read as "deleted".
+   */
+  private async fetchItem(
+    itemId: string,
+    fields?: string,
+  ): Promise<EmbyBaseItemDto | undefined> {
+    const userId = await this.resolveUserId();
+    if (!userId) {
+      throw new Error(
+        `Emby has no user to scope the lookup of item ${itemId} to`,
+      );
+    }
+
+    const path = `/Users/${userId}/Items/${itemId}`;
+    const { data } = await (fields
+      ? this.http.get<EmbyBaseItemDto>(path, { params: { Fields: fields } })
+      : this.http.get<EmbyBaseItemDto>(path));
+    return data?.Id ? data : undefined;
   }
 
   // ============================================================================
@@ -1631,8 +1741,16 @@ export class EmbyAdapterService implements IMediaServerService {
     if (!this.http) return undefined;
 
     try {
+      // Unscoped, Emby answers the physical folder tree, which never contains
+      // the CollectionFolder id Maintainerr stores as the library. Every child
+      // then reads as "not in this library". The user-scoped read answers the
+      // library view, matching the Jellyfin adapter's getAncestors({ userId }).
+      const userId = await this.resolveUserId();
+      if (!userId) return undefined;
+
       const { data } = await this.http.get<EmbyBaseItemDto[]>(
         `/Items/${itemId}/Ancestors`,
+        { params: { UserId: userId } },
       );
 
       return (data ?? []).some((ancestor) => ancestor.Id === libraryId);

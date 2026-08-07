@@ -1,7 +1,8 @@
 import {
-  type BulkExclusionItemResult,
-  type BulkExclusionResponse,
+  type BulkMediaItemResult,
+  type BulkMediaResponse,
   ECollectionLogType,
+  isPerUserProperty,
   leftoverCleanupScope,
   MaintainerrEvent,
   MediaItemType,
@@ -19,8 +20,8 @@ import {
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 import axios from 'axios';
-import _ from 'lodash';
-import { DataSource, IsNull, Not, Repository } from 'typeorm';
+import { chunk, cloneDeep } from 'lodash';
+import { DataSource, In, IsNull, Not, Repository } from 'typeorm';
 import { ArrTagItem, ServarrTagService } from '../actions/servarr-tag.service';
 import cacheManager from '../api/lib/cache';
 import { MediaServerFactory } from '../api/media-server/media-server.factory';
@@ -29,7 +30,10 @@ import { TracearrApiService } from '../api/tracearr-api/tracearr-api.service';
 import { CollectionsService } from '../collections/collections.service';
 import { Collection } from '../collections/entities/collection.entities';
 import { CollectionMedia } from '../collections/entities/collection_media.entities';
-import { CollectionMediaChange } from '../collections/interfaces/collection-media.interface';
+import {
+  AlterableMediaContext,
+  CollectionMediaChange,
+} from '../collections/interfaces/collection-media.interface';
 import { MaintainerrLogger } from '../logging/logs.service';
 import { Notification } from '../notifications/entities/notification.entities';
 import { RadarrSettings } from '../settings/entities/radarr_settings.entities';
@@ -48,7 +52,8 @@ import { CommunityRule } from './dtos/communityRule.dto';
 import { ExclusionContextDto } from './dtos/exclusion.dto';
 import { RuleDto } from './dtos/rule.dto';
 import { RuleDbDto } from './dtos/ruleDb.dto';
-import { RulesDto } from './dtos/rules.dto';
+import { RuleUsersService } from './rule-users.service';
+import { RuleGroupDto } from './dtos/ruleGroup.dto';
 import { CommunityRuleKarma } from './entities/community-rule-karma.entities';
 import { Exclusion } from './entities/exclusion.entities';
 import { RuleGroup } from './entities/rule-group.entities';
@@ -103,6 +108,7 @@ export class RulesService {
     private readonly servarrTagService: ServarrTagService,
     private readonly logger: MaintainerrLogger,
     private readonly tracearrApi: TracearrApiService,
+    private readonly ruleUsersService: RuleUsersService,
   ) {
     logger.setContext(RulesService.name);
     this.ruleConstants = new RuleConstants();
@@ -123,7 +129,7 @@ export class RulesService {
   }
 
   async getRuleConstants(): Promise<RuleConstants> {
-    const localConstants = _.cloneDeep(this.ruleConstants);
+    const localConstants = cloneDeep(this.ruleConstants);
     const unavailable = new Set(await this.getUnavailableApplications());
 
     localConstants.applications = localConstants.applications.filter(
@@ -165,7 +171,7 @@ export class RulesService {
     activeOnly = false,
     libraryId?: string,
     typeId?: number,
-  ): Promise<RulesDto[]> {
+  ): Promise<RuleGroupDto[]> {
     try {
       const queryBuilder = this.connection
         .createQueryBuilder('rule_group', 'rg')
@@ -193,7 +199,7 @@ export class RulesService {
           group.rules = [];
         }
       }
-      return rulegroups as RulesDto[];
+      return rulegroups as RuleGroupDto[];
     } catch (error) {
       this.logger.warn('Rules - Action failed');
       this.logger.debug(error);
@@ -201,7 +207,7 @@ export class RulesService {
     }
   }
 
-  async getRuleGroupsByIds(ids: number[]): Promise<RulesDto[]> {
+  async getRuleGroupsByIds(ids: number[]): Promise<RuleGroupDto[]> {
     if (ids.length === 0) {
       return [];
     }
@@ -223,7 +229,7 @@ export class RulesService {
           group.rules = [];
         }
       }
-      return rulegroups as RulesDto[];
+      return rulegroups as RuleGroupDto[];
     } catch (error) {
       this.logger.warn('Rules - Action failed');
       this.logger.debug(error);
@@ -231,7 +237,7 @@ export class RulesService {
     }
   }
 
-  async getRuleGroup(id: number): Promise<RulesDto> {
+  async getRuleGroup(id: number): Promise<RuleGroupDto> {
     try {
       const rulegroup = await this.connection
         .createQueryBuilder('rule_group', 'rg')
@@ -247,7 +253,7 @@ export class RulesService {
       if (rulegroup && !Array.isArray(rulegroup.rules)) {
         rulegroup.rules = [];
       }
-      return rulegroup as RulesDto;
+      return rulegroup as RuleGroupDto;
     } catch (error) {
       this.logger.warn('Rules - Action failed');
       this.logger.debug(error);
@@ -405,7 +411,7 @@ export class RulesService {
   // defaulting to 'show'.
   private resolveCollectionType(
     libType: MediaItemType,
-    params: RulesDto,
+    params: RuleGroupDto,
   ): MediaItemType {
     if (libType === 'movie') {
       return 'movie';
@@ -413,13 +419,16 @@ export class RulesService {
     return params.dataType !== undefined ? params.dataType : 'show';
   }
 
-  async setRules(params: RulesDto) {
+  async setRules(params: RuleGroupDto) {
     try {
       const managerState = this.validateSingleShowManager(params);
       if (managerState.code !== 1) {
         return managerState;
       }
       let state: ReturnStatus = this.createReturnStatus(true, 'Success');
+      const knownUsernames = await this.getKnownUsernames(
+        params.rules as RuleDto[],
+      );
       for (const [index, rule] of (params.rules as RuleDto[]).entries()) {
         if (state.code === 1 && index > 0 && rule.operator == null) {
           state = this.createReturnStatus(
@@ -428,6 +437,7 @@ export class RulesService {
           );
         }
         this.normalizeRuleDiskPath(rule);
+        this.normalizeRuleUsername(rule);
         if (state.code === 1) {
           state = this.validateRule(rule);
         }
@@ -441,6 +451,9 @@ export class RulesService {
         }
         if (state.code === 1) {
           state = this.validateRuleDiskPath(rule);
+        }
+        if (state.code === 1) {
+          state = this.validateRuleUsername(rule, knownUsernames);
         }
       }
 
@@ -534,7 +547,7 @@ export class RulesService {
     }
   }
 
-  async updateRules(params: RulesDto) {
+  async updateRules(params: RuleGroupDto) {
     try {
       // Without one there is nothing to update, and TypeORM drops an undefined
       // id from the where clause rather than rejecting it.
@@ -547,6 +560,16 @@ export class RulesService {
         return managerState;
       }
       let state: ReturnStatus = this.createReturnStatus(true, 'Success');
+      // Same gate getKnownUsernames applies internally: no rule names a user,
+      // so nothing consults the list and neither read is needed.
+      const knownUsernames = (params.rules as RuleDto[]).some((rule) =>
+        rule.username?.trim(),
+      )
+        ? [
+            ...(await this.getKnownUsernames(params.rules as RuleDto[])),
+            ...(await this.getSavedUsernames(params.id)),
+          ]
+        : [];
       for (const [index, rule] of (params.rules as RuleDto[]).entries()) {
         if (state.code === 1 && index > 0 && rule.operator == null) {
           state = this.createReturnStatus(
@@ -555,6 +578,7 @@ export class RulesService {
           );
         }
         this.normalizeRuleDiskPath(rule);
+        this.normalizeRuleUsername(rule);
         if (state.code === 1) {
           state = this.validateRule(rule);
         }
@@ -568,6 +592,9 @@ export class RulesService {
         }
         if (state.code === 1) {
           state = this.validateRuleDiskPath(rule);
+        }
+        if (state.code === 1) {
+          state = this.validateRuleUsername(rule, knownUsernames);
         }
       }
 
@@ -986,7 +1013,15 @@ export class RulesService {
     }
   }
 
-  async setExclusion(data: ExclusionContextDto) {
+  /**
+   * `handledIds` names the ids the exclusion resolved to. A caller pairing a
+   * collection drop with the exclusion has to use them: a season or episode
+   * collection holds those children, not the show the selection entered
+   * through, so dropping the entry point matches nothing.
+   */
+  async setExclusion(
+    data: ExclusionContextDto,
+  ): Promise<ReturnStatus & { handledIds?: string[] }> {
     const mediaServer = await this.getMediaServer();
     let handleMedia: CollectionMediaChange[] = [];
     // The top-level excluded item's type (movie/show/…) drives Behavior B below.
@@ -998,13 +1033,31 @@ export class RulesService {
           collectionId: data.collectionId,
         },
       });
+      // A collection created outside a rule group has nothing to scope to.
+      if (!group) {
+        this.logger.warn(
+          `Collection ${data.collectionId} has no rule group, cannot set a scoped exclusion`,
+        );
+        return this.createReturnStatus(false, 'Failed - no rule group');
+      }
+      // The selection's own type, not the collection's: a show reaching a
+      // season collection has to traverse down to its seasons. Naming it a
+      // season instead makes the traversal stop and write a row for the show.
+      const metaData = await mediaServer.getMetadata(String(data.mediaId));
+      if (!metaData?.type) {
+        this.logger.warn(
+          `No metadata found for media ${data.mediaId}, cannot set exclusion`,
+        );
+        return this.createReturnStatus(false, 'Failed - no metadata');
+      }
+
       // get media - traverse show -> seasons -> episodes if needed
       const resolved = await this.resolveContextActionIdsOrFail(
         mediaServer,
-        group?.dataType,
+        group.dataType,
         data.context
           ? { type: data.context.type, id: String(data.context.id) }
-          : { type: group.dataType, id: String(data.mediaId) },
+          : { type: metaData.type, id: String(data.mediaId) },
         String(data.mediaId),
       );
       if (!resolved) {
@@ -1015,7 +1068,7 @@ export class RulesService {
       }
       handleMedia = resolved;
       data.ruleGroupId = group.id;
-      topLevelType = group?.dataType;
+      topLevelType = metaData.type;
     } else {
       // get type from metadata
       const metaData = await mediaServer.getMetadata(String(data.mediaId));
@@ -1132,7 +1185,10 @@ export class RulesService {
         );
       }
 
-      return this.createReturnStatus(true, 'Success');
+      return {
+        ...this.createReturnStatus(true, 'Success'),
+        handledIds: handleMedia.map((media) => media.mediaServerId),
+      };
     } catch (error) {
       this.logger.warn(
         `Adding exclusion for media ID ${data.mediaId} and rulegroup id ${data.ruleGroupId} failed.`,
@@ -1142,18 +1198,24 @@ export class RulesService {
     }
   }
 
-  async setBulkExclusions(mediaIds: string[]): Promise<BulkExclusionResponse> {
+  async setBulkExclusions(
+    mediaIds: string[],
+    collectionId?: number,
+    context?: AlterableMediaContext,
+  ): Promise<BulkMediaResponse> {
     const uniqueMediaIds = [...new Set(mediaIds)];
 
     // Collapse ids nested under another selected id (a show plus one of its
     // seasons/episodes): excluding both concurrently races setExclusion's
     // find-then-save on the same row, and the exclusion table has no unique
     // constraint to stop the duplicate. The ancestor's cascade already covers
-    // the child, so the child just reports the ancestor's outcome.
-    const idSet = new Set(uniqueMediaIds);
+    // the child, so the child just reports the ancestor's outcome. This runs
+    // for a scoped request too: a season collection expands a selected show to
+    // its seasons, which is the same row a separately selected season writes.
     const coveredBy = new Map<string, string>();
+    const idSet = new Set(uniqueMediaIds);
     const mediaServer = await this.getMediaServer();
-    for (const batch of _.chunk(uniqueMediaIds, BULK_EXCLUSION_CONCURRENCY)) {
+    for (const batch of chunk(uniqueMediaIds, BULK_EXCLUSION_CONCURRENCY)) {
       await Promise.all(
         batch.map(async (mediaId) => {
           const metadata = await mediaServer.getMetadata(mediaId);
@@ -1167,14 +1229,23 @@ export class RulesService {
       );
     }
 
-    const resultById = new Map<string, BulkExclusionItemResult>();
+    const resultById = new Map<string, BulkMediaItemResult>();
+    const handledByRoot = new Map<string, string[]>();
     const rootIds = uniqueMediaIds.filter((id) => !coveredBy.has(id));
 
-    for (const batch of _.chunk(rootIds, BULK_EXCLUSION_CONCURRENCY)) {
+    for (const batch of chunk(rootIds, BULK_EXCLUSION_CONCURRENCY)) {
       await Promise.all(
         batch.map(async (mediaId) => {
           try {
-            const result = await this.setExclusion({ mediaId });
+            const { handledIds, ...result } = await this.setExclusion({
+              mediaId,
+              collectionId,
+              context,
+            });
+
+            if (handledIds) {
+              handledByRoot.set(mediaId, handledIds);
+            }
 
             resultById.set(mediaId, {
               mediaId,
@@ -1194,7 +1265,38 @@ export class RulesService {
       );
     }
 
-    const results = uniqueMediaIds.map((mediaId): BulkExclusionItemResult => {
+    // Excluding from a collection page also drops the items from it, the
+    // pairing the per-item action performs. After the exclusions, so a failed
+    // one never silently removes its item. The drop names the ids the exclusion
+    // resolved to, which is what the collection holds.
+    if (collectionId !== undefined) {
+      const excludedIds = rootIds.filter(
+        (mediaId) => resultById.get(mediaId)?.code === 1,
+      );
+      const members = [
+        ...new Set(
+          excludedIds.flatMap((mediaId) => handledByRoot.get(mediaId) ?? []),
+        ),
+      ].map((mediaServerId) => ({ mediaServerId }));
+
+      if (
+        members.length > 0 &&
+        !(await this.collectionService.removeFromCollection(
+          collectionId,
+          members,
+        ))
+      ) {
+        for (const mediaId of excludedIds) {
+          resultById.set(mediaId, {
+            mediaId,
+            code: 0,
+            message: 'Excluded, but not removed from the collection',
+          });
+        }
+      }
+    }
+
+    const results = uniqueMediaIds.map((mediaId): BulkMediaItemResult => {
       let rootId = mediaId;
       while (coveredBy.has(rootId)) {
         rootId = coveredBy.get(rootId);
@@ -1203,6 +1305,145 @@ export class RulesService {
     });
 
     return { results };
+  }
+
+  /**
+   * Scoped like `setBulkExclusions`: a collection means "stop excluding these
+   * from that collection", no collection means every exclusion they carry.
+   * Removal goes per row through `removeExclusion`, so the collection log and
+   * the *arr tag sync stay exactly as the single-item path.
+   */
+  async removeBulkExclusions(
+    mediaIds: string[],
+    collectionId?: number,
+    context?: AlterableMediaContext,
+  ): Promise<BulkMediaResponse> {
+    const uniqueMediaIds = [...new Set(mediaIds)];
+    let ruleGroupId: number | undefined;
+    let collectionType: MediaItemType | undefined;
+
+    if (collectionId !== undefined) {
+      const group = await this.ruleGroupRepository.findOne({
+        where: { collectionId },
+      });
+      if (!group) {
+        this.logger.warn(
+          `Collection ${collectionId} has no rule group, cannot remove scoped exclusions`,
+        );
+        return {
+          results: uniqueMediaIds.map((mediaId) => ({
+            mediaId,
+            code: 0 as const,
+            message: 'Failed - no rule group',
+          })),
+        };
+      }
+      ruleGroupId = group.id;
+      collectionType = group.dataType;
+    }
+
+    // A narrowed request names the one season or episode to stop excluding, so
+    // it matches only what that narrowing resolves to. The entry point stays
+    // excluded, exactly as the single-item path behaves.
+    const narrowedIds = context
+      ? await this.resolveContextActionIdsOrFail(
+          await this.getMediaServer(),
+          collectionType,
+          { type: context.type, id: String(context.id) },
+          // The schema admits a context only alongside a single media id.
+          uniqueMediaIds[0],
+        )
+      : undefined;
+
+    if (context && !narrowedIds) {
+      return {
+        results: uniqueMediaIds.map((mediaId) => ({
+          mediaId,
+          code: 0 as const,
+          message: 'Failed - media server unreadable',
+        })),
+      };
+    }
+
+    // `parent` records the entry point of the original exclusion request, so
+    // matching it too picks up the rows an excluded show cascaded to its
+    // seasons and episodes. Without it they survive the removal and keep the
+    // item excluded while the caller is told it succeeded.
+    const selectedIds = new Set(uniqueMediaIds);
+    const exclusions = await this.exclusionRepo.find({
+      where: narrowedIds
+        ? { mediaServerId: In(narrowedIds.map((media) => media.mediaServerId)) }
+        : [
+            { mediaServerId: In(uniqueMediaIds) },
+            { parent: In(uniqueMediaIds) },
+          ],
+    });
+    // An item is either globally excluded or scoped-excluded, never both, so
+    // the row keeping it out of this collection is whichever one exists.
+    const rowIdsByMediaId = new Map<string, number[]>();
+    for (const exclusion of exclusions) {
+      if (
+        ruleGroupId !== undefined &&
+        exclusion.ruleGroupId != null &&
+        exclusion.ruleGroupId !== ruleGroupId
+      ) {
+        continue;
+      }
+      // A cascaded row reports under the id that was selected, not its own. A
+      // narrowed request reached every row it matched through its one
+      // selection, whatever entry point originally wrote them.
+      let coveringId = uniqueMediaIds[0];
+      if (!narrowedIds) {
+        coveringId = selectedIds.has(exclusion.mediaServerId)
+          ? exclusion.mediaServerId
+          : String(exclusion.parent);
+      }
+      const rowIds = rowIdsByMediaId.get(coveringId) ?? [];
+      rowIds.push(exclusion.id);
+      rowIdsByMediaId.set(coveringId, rowIds);
+    }
+
+    const resultById = new Map<string, BulkMediaItemResult>();
+
+    for (const batch of chunk(uniqueMediaIds, BULK_EXCLUSION_CONCURRENCY)) {
+      await Promise.all(
+        batch.map(async (mediaId) => {
+          try {
+            // Nothing excluding it here already is the requested end state.
+            let result: ReturnStatus = { code: 1, message: 'Success' };
+            for (const exclusionId of rowIdsByMediaId.get(mediaId) ?? []) {
+              const rowResult = await this.removeExclusion(exclusionId);
+              if (rowResult.code !== 1) {
+                result = rowResult;
+              }
+            }
+
+            resultById.set(mediaId, {
+              mediaId,
+              code: result.code,
+              ...(result.message ? { message: result.message } : {}),
+            });
+          } catch (error) {
+            this.logger.warn(
+              `Bulk exclusion removal failed for media ${mediaId}`,
+            );
+            this.logger.debug(error);
+            resultById.set(mediaId, {
+              mediaId,
+              code: 0,
+              message: 'Failed - see server logs',
+            });
+          }
+        }),
+      );
+    }
+
+    return {
+      results: uniqueMediaIds.map((mediaId): BulkMediaItemResult => ({
+        ...resultById.get(mediaId),
+        mediaId,
+      })),
+    };
   }
 
   async removeExclusion(id: number) {
@@ -1279,16 +1520,33 @@ export class RulesService {
           collectionId: data.collectionId,
         },
       });
+      // Same as setExclusion: no rule group means no scope to remove from.
+      if (!group) {
+        this.logger.warn(
+          `Collection ${data.collectionId} has no rule group, cannot remove a scoped exclusion`,
+        );
+        return this.createReturnStatus(false, 'Failed - no rule group');
+      }
 
       data.ruleGroupId = group.id;
-      topLevelType = group?.dataType;
+      // The selection's own type, as setExclusion resolves it: naming the entry
+      // point after the collection makes the traversal stop on the entry point.
+      const metaData = await mediaServer.getMetadata(String(data.mediaId));
+      if (!metaData?.type) {
+        this.logger.warn(
+          `No metadata found for media ${data.mediaId}, cannot remove exclusion`,
+        );
+        return this.createReturnStatus(false, 'Failed - no metadata');
+      }
+
+      topLevelType = metaData.type;
       // get media - traverse show -> seasons -> episodes if needed
       const resolved = await this.resolveContextActionIdsOrFail(
         mediaServer,
-        group?.dataType,
+        group.dataType,
         data.context
           ? { type: data.context.type, id: String(data.context.id) }
-          : { type: group.dataType, id: String(data.mediaId) },
+          : { type: metaData.type, id: String(data.mediaId) },
         String(data.mediaId),
       );
       if (!resolved) {
@@ -1299,11 +1557,27 @@ export class RulesService {
       }
       handleMedia = resolved;
     } else {
+      // Without a context the entry point removes its own rows, typed like
+      // setExclusion writes them (a bare global un-exclude, API-only today).
+      let entryPoint = data.context
+        ? { type: data.context.type, id: String(data.context.id) }
+        : undefined;
+      if (!entryPoint) {
+        const metaData = await mediaServer.getMetadata(String(data.mediaId));
+        if (!metaData?.type) {
+          this.logger.warn(
+            `No metadata found for media ${data.mediaId}, cannot remove exclusion`,
+          );
+          return this.createReturnStatus(false, 'Failed - no metadata');
+        }
+        topLevelType = metaData.type;
+        entryPoint = { type: metaData.type, id: String(data.mediaId) };
+      }
       // get media - traverse show -> seasons -> episodes if needed
       const resolved = await this.resolveContextActionIdsOrFail(
         mediaServer,
         undefined,
-        { type: data.context.type, id: String(data.context.id) },
+        entryPoint,
         String(data.mediaId),
       );
       if (!resolved) {
@@ -1610,7 +1884,7 @@ export class RulesService {
   // The UI enforces this via the "Managed by" selector; this guards the raw
   // API path, where a payload with both set would otherwise dispatch the
   // Sonarr handler against a sports library.
-  private validateSingleShowManager(params: RulesDto): ReturnStatus {
+  private validateSingleShowManager(params: RuleGroupDto): ReturnStatus {
     if (params.sonarrSettingsId != null && params.sportarrSettingsId != null) {
       return this.createReturnStatus(
         false,
@@ -1651,6 +1925,99 @@ export class RulesService {
     }
 
     return this.createReturnStatus(true, 'Success');
+  }
+
+  private normalizeRuleUsername(rule: RuleDto) {
+    if (rule.username == null) {
+      return;
+    }
+
+    const username = rule.username.trim();
+    rule.username = username.length > 0 ? username : undefined;
+  }
+
+  /**
+   * Resolved once per save, and only when a rule names a user: imports and API
+   * clients never see the editor's picker.
+   */
+  private async getKnownUsernames(rules: RuleDto[]): Promise<string[]> {
+    return rules.some((rule) => rule.username?.trim())
+      ? await this.ruleUsersService.getUsernames()
+      : [];
+  }
+
+  /**
+   * Users this group already reads. An account that has since been renamed or
+   * deleted leaves the rule paused at execution time, which is the point - but
+   * it must not block every later edit to the group it sits in.
+   */
+  private async getSavedUsernames(ruleGroupId: number): Promise<string[]> {
+    const rules = (await this.getRules(ruleGroupId)) ?? [];
+
+    return rules.reduce((usernames, rule) => {
+      try {
+        const username = (
+          JSON.parse(rule.ruleJson) as RuleDto
+        ).username?.trim();
+        if (username) {
+          usernames.push(username);
+        }
+      } catch {
+        // A rule row that no longer parses is the executor's problem, not this
+        // validation's.
+      }
+      return usernames;
+    }, [] as string[]);
+  }
+
+  /** Rejected here rather than skipping every item at execution time. */
+  private validateRuleUsername(
+    rule: RuleDto,
+    knownUsernames: string[],
+  ): ReturnStatus {
+    const usesPerUserProperty = [rule.firstVal, rule.lastVal].some((value) =>
+      isPerUserProperty(this.findRuleProperty(value)?.name),
+    );
+
+    if (usesPerUserProperty && !rule.username) {
+      return this.createReturnStatus(
+        false,
+        'Select a user for properties that are scoped to one user',
+      );
+    }
+
+    if (!usesPerUserProperty && rule.username) {
+      return this.createReturnStatus(
+        false,
+        'A user can only be selected for properties that are scoped to one user',
+      );
+    }
+
+    // An empty list means the media server could not be reached, which must not
+    // block a save; a populated one that lacks the user means the rule would
+    // skip every item, so reject it here instead.
+    if (
+      rule.username &&
+      knownUsernames.length > 0 &&
+      !knownUsernames.includes(rule.username)
+    ) {
+      return this.createReturnStatus(
+        false,
+        `The media server has no user named '${rule.username}'`,
+      );
+    }
+
+    return this.createReturnStatus(true, 'Success');
+  }
+
+  private findRuleProperty(value?: [number, number]): Property | undefined {
+    if (!value) {
+      return undefined;
+    }
+
+    return this.ruleConstants.applications
+      .find((el) => el.id === value[0])
+      ?.props.find((el) => el.id === value[1]);
   }
 
   private normalizeRuleDiskPath(rule: RuleDto) {
@@ -1804,6 +2171,27 @@ export class RulesService {
     return Array.isArray(response) ? response.length : 0;
   }
 
+  /**
+   * The community list is public and shared between installs, so a rule leaves
+   * without the user it was scoped to: that name identifies someone's
+   * household, and it would resolve to nobody on the install that imports it.
+   * The importer picks their own user, which the editor already demands.
+   */
+  private withoutLocalUsers(rules: CommunityRule['JsonRules']) {
+    if (!Array.isArray(rules)) {
+      return rules;
+    }
+
+    return rules.map((rule) => {
+      if (!rule || typeof rule !== 'object' || !('username' in rule)) {
+        return rule;
+      }
+      const withoutUser: RuleDto = { ...(rule as RuleDto) };
+      delete withoutUser.username;
+      return withoutUser;
+    });
+  }
+
   public async addToCommunityRules(rule: CommunityRule): Promise<ReturnStatus> {
     const rules = await this.getCommunityRules();
     const appVersion = process.env.npm_package_version
@@ -1832,6 +2220,7 @@ export class RulesService {
             appVersion: appVersion,
             hasRules,
             ...rule,
+            JsonRules: this.withoutLocalUsers(rule.JsonRules),
           },
         },
       ])
@@ -2004,6 +2393,7 @@ export class RulesService {
     // it from a fresh /request sweep and agrees with a full run (#3152).
     cacheManager.getCache('seerrrequests').data.flushAll();
     cacheManager.getCache('tautulli').data.flushAll();
+    cacheManager.getCache('streamystats').data.flushAll();
     cacheManager
       .getCachesByType('radarr')
       .forEach((cache) => cache.data.flushAll());
@@ -2024,7 +2414,7 @@ export class RulesService {
       const ruleComparator = this.ruleComparatorServiceFactory.create();
       try {
         const result = await ruleComparator.executeRulesWithData(
-          group as RulesDto,
+          group as RuleGroupDto,
           [mediaResp],
         );
         return { code: 1, result: result.stats };
@@ -2040,11 +2430,11 @@ export class RulesService {
   /**
    * Reset the media server cache if any rule in the rule group requires it.
    *
-   * @param {RulesDto} rulegroup - The rule group to check for cache reset requirement.
+   * @param {RuleGroupDto} rulegroup - The rule group to check for cache reset requirement.
    * @return {Promise<boolean>} Whether the media server cache was reset.
    */
   public async resetCacheIfGroupUsesRuleThatRequiresIt(
-    rulegroup: RulesDto,
+    rulegroup: RuleGroupDto,
   ): Promise<boolean> {
     try {
       let result = false;

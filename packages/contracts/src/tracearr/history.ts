@@ -11,6 +11,8 @@ export const tracearrHistoryItemSchema = z.object({
   season_number: z.number().int().nullable(),
   episode_number: z.number().int().nullable(),
   percent_complete: z.number().nullable(),
+  // Milliseconds played, summed across the play's segments.
+  duration_ms: z.number().nullable().optional(),
   watched: z.boolean(),
   started_at: z.iso.datetime(),
   stopped_at: z.iso.datetime().nullable(),

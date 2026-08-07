@@ -1,5 +1,6 @@
 import { BadRequestException } from '@nestjs/common';
 import { MaintainerrLogger } from '../logging/logs.service';
+import { RuleUsersService } from './rule-users.service';
 import { RulesController } from './rules.controller';
 import { RulesService } from './rules.service';
 import { RuleExecutorJobManagerService } from './tasks/rule-executor-job-manager.service';
@@ -12,12 +13,14 @@ describe('RulesController', () => {
     setRules: jest.fn(),
     updateRules: jest.fn(),
     setBulkExclusions: jest.fn(),
+    removeBulkExclusions: jest.fn(),
   } as unknown as jest.Mocked<RulesService>;
 
   const ruleExecutorSchedulerService =
     {} as jest.Mocked<RuleExecutorSchedulerService>;
   const ruleExecutorJobManagerService =
     {} as jest.Mocked<RuleExecutorJobManagerService>;
+  const ruleUsersService = {} as jest.Mocked<RuleUsersService>;
 
   const logger = {
     setContext: jest.fn(),
@@ -31,6 +34,7 @@ describe('RulesController', () => {
       rulesService,
       ruleExecutorSchedulerService,
       ruleExecutorJobManagerService,
+      ruleUsersService,
       logger,
     );
   });
@@ -84,9 +88,64 @@ describe('RulesController', () => {
     await expect(
       controller.setBulkExclusions({ mediaIds: ['item-1', 'item-2'] }),
     ).resolves.toEqual(response);
-    expect(rulesService.setBulkExclusions).toHaveBeenCalledWith([
-      'item-1',
-      'item-2',
-    ]);
+    expect(rulesService.setBulkExclusions).toHaveBeenCalledWith(
+      ['item-1', 'item-2'],
+      undefined,
+      undefined,
+    );
+  });
+
+  it('passes the collection through so bulk exclusions can be scoped', async () => {
+    rulesService.setBulkExclusions.mockResolvedValue({ results: [] });
+
+    await controller.setBulkExclusions({
+      mediaIds: ['item-1'],
+      collectionId: 7,
+    });
+
+    expect(rulesService.setBulkExclusions).toHaveBeenCalledWith(
+      ['item-1'],
+      7,
+      undefined,
+    );
+  });
+
+  it('routes a removal action to the removal service, not the add path', async () => {
+    const response = {
+      results: [{ mediaId: 'item-1', code: 1 as const }],
+    };
+    rulesService.removeBulkExclusions.mockResolvedValue(response);
+
+    await expect(
+      controller.setBulkExclusions({
+        mediaIds: ['item-1'],
+        collectionId: 7,
+        action: 1,
+      }),
+    ).resolves.toEqual(response);
+    expect(rulesService.removeBulkExclusions).toHaveBeenCalledWith(
+      ['item-1'],
+      7,
+      undefined,
+    );
+    expect(rulesService.setBulkExclusions).not.toHaveBeenCalled();
+  });
+
+  // The modal offers season narrowing for an un-exclude as well. Dropping the
+  // context here removed every exclusion the entry point carried.
+  it('passes the narrowing context through on a removal too', async () => {
+    rulesService.removeBulkExclusions.mockResolvedValue({ results: [] });
+
+    await controller.setBulkExclusions({
+      mediaIds: ['show-1'],
+      action: 1,
+      context: { id: 'season-1', type: 'season' },
+    });
+
+    expect(rulesService.removeBulkExclusions).toHaveBeenCalledWith(
+      ['show-1'],
+      undefined,
+      { id: 'season-1', type: 'season' },
+    );
   });
 });

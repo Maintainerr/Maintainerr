@@ -342,8 +342,12 @@ export class CollectionWorkerService extends TaskBase {
         if (this.settings.seerrConfigured()) {
           await delay(7000, async () => {
             try {
+              // rethrow, or post() answers undefined and this catch never runs.
               await this.seerrApi.api.post(
                 '/settings/jobs/availability-sync/run',
+                undefined,
+                undefined,
+                { rethrow: true },
               );
 
               this.logger.log(

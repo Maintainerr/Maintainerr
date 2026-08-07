@@ -5,6 +5,7 @@ import {
 } from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { chunk } from 'lodash';
 import { In, IsNull, Not, Repository } from 'typeorm';
 import { CollectionMedia } from '../../collections/entities/collection_media.entities';
 import { Exclusion } from '../../rules/entities/exclusion.entities';
@@ -14,6 +15,17 @@ interface ExclusionState {
   id: number;
   type: 'global' | 'specific';
 }
+
+interface CollectionMembership {
+  manuallyIncludedIds: Set<string>;
+  collectionTitles: Map<string, string[]>;
+}
+
+// SQLite binds at most 32766 parameters, and a status-sorted sweep reaches
+// thousands of ids: three relation ids per item, and the exclusion read binds
+// each of them twice. 2048 leaves that widest read 8x of headroom, and measured
+// flat against 500 through 16000 - the sweep costs per row, not per query.
+export const ENRICHMENT_ID_CHUNK = 2048;
 
 @Injectable()
 export class MediaItemEnrichmentService {
@@ -46,9 +58,9 @@ export class MediaItemEnrichmentService {
       return items;
     }
 
-    const [exclusionMap, manuallyIncludedItemIds] = await Promise.all([
+    const [exclusionMap, membership] = await Promise.all([
       this.fetchExclusionMap(relationIds),
-      this.fetchManuallyIncludedItemIds(directIds),
+      this.fetchCollectionMembership(directIds),
     ]);
 
     return items.map((item) => {
@@ -60,9 +72,10 @@ export class MediaItemEnrichmentService {
       const exclusion = itemRelationIds
         .map((id) => exclusionMap.get(id))
         .find((value): value is ExclusionState => value !== undefined);
-      const isManuallyIncluded = manuallyIncludedItemIds.has(item.id);
+      const isManuallyIncluded = membership.manuallyIncludedIds.has(item.id);
+      const collections = membership.collectionTitles.get(item.id);
 
-      if (!exclusion && !isManuallyIncluded) {
+      if (!exclusion && !isManuallyIncluded && !collections) {
         return item;
       }
 
@@ -79,6 +92,7 @@ export class MediaItemEnrichmentService {
               maintainerrIsManual: true,
             }
           : {}),
+        ...(collections ? { maintainerrCollections: collections } : {}),
       };
     });
   }
@@ -126,9 +140,18 @@ export class MediaItemEnrichmentService {
   private async fetchExclusionMap(
     ids: string[],
   ): Promise<Map<string, ExclusionState>> {
-    const exclusions = await this.exclusionRepo.find({
-      where: [{ mediaServerId: In(ids) }, { parent: In(ids) }],
-    });
+    const exclusions: Exclusion[] = [];
+
+    for (const idBatch of chunk(ids, ENRICHMENT_ID_CHUNK)) {
+      exclusions.push(
+        // A row can match one batch on mediaServerId and another on parent. The
+        // map below is written per id, so the repeat is a no-op.
+        ...(await this.exclusionRepo.find({
+          where: [{ mediaServerId: In(idBatch) }, { parent: In(idBatch) }],
+        })),
+      );
+    }
+
     const map = new Map<string, ExclusionState>();
 
     exclusions.forEach((exclusion) => {
@@ -150,23 +173,52 @@ export class MediaItemEnrichmentService {
     return map;
   }
 
-  private async fetchManuallyIncludedItemIds(
+  /** The manual set is a subset of the same rows, so it costs no second read. */
+  private async fetchCollectionMembership(
     ids: string[],
-  ): Promise<Set<string>> {
-    const collectionMedia = await this.collectionMediaRepo.find({
-      where: {
-        mediaServerId: In(ids),
-        manualMembershipSource: Not(IsNull()),
-      },
+  ): Promise<CollectionMembership> {
+    const collectionMedia: CollectionMedia[] = [];
+
+    for (const idBatch of chunk(ids, ENRICHMENT_ID_CHUNK)) {
+      collectionMedia.push(
+        ...(await this.collectionMediaRepo.find({
+          where: { mediaServerId: In(idBatch) },
+          relations: { collection: true },
+        })),
+      );
+    }
+
+    const manuallyIncludedIds = new Set<string>();
+    const collectionTitles = new Map<string, string[]>();
+
+    collectionMedia.forEach((item) => {
+      if (!item.mediaServerId) {
+        return;
+      }
+
+      if (item.manualMembershipSource != null) {
+        manuallyIncludedIds.add(item.mediaServerId);
+      }
+
+      const title = item.collection?.title?.trim();
+      if (!title) {
+        return;
+      }
+
+      const titles = collectionTitles.get(item.mediaServerId) ?? [];
+      if (!titles.includes(title)) {
+        titles.push(title);
+        collectionTitles.set(item.mediaServerId, titles);
+      }
     });
 
-    return new Set(
-      collectionMedia
-        .map((item) => item.mediaServerId)
-        .filter((mediaServerId): mediaServerId is string =>
-          Boolean(mediaServerId),
-        ),
+    collectionTitles.forEach((titles) =>
+      titles.sort((leftTitle, rightTitle) =>
+        leftTitle.localeCompare(rightTitle),
+      ),
     );
+
+    return { manuallyIncludedIds, collectionTitles };
   }
 
   private async buildExcludedFromEntries(

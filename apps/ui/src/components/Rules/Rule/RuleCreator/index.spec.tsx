@@ -1,10 +1,4 @@
-import {
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import RuleCreator, { type IRule } from './index'
 
@@ -62,7 +56,12 @@ vi.mock('react-movable', () => {
   return { List, arrayMove }
 })
 
+vi.mock('../../../../api/rules', () => ({
+  useRuleUsernames: () => ({ data: ['alice', 'bob'], isLoading: false }),
+}))
+
 vi.mock('./RuleInput', () => ({
+  RULE_USERNAMES_DATALIST_ID: 'rule-usernames',
   default: ({
     tagId,
     section,
@@ -111,7 +110,6 @@ const createRule = (
 
 describe('RuleCreator', () => {
   afterEach(() => {
-    cleanup()
     vi.clearAllMocks()
   })
 

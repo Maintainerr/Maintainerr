@@ -10,7 +10,7 @@ import {
   TracearrHistoryIndex,
 } from '../../api/tracearr-api/tracearr-api.service';
 import { Collection } from '../../collections/entities/collection.entities';
-import { RulesDto } from '../dtos/rules.dto';
+import { RuleGroupDto } from '../dtos/ruleGroup.dto';
 import { TracearrGetterService } from './tracearr-getter.service';
 
 const SEEN_BY = 0;
@@ -21,6 +21,9 @@ const AMOUNT_OF_VIEWS = 5;
 const VIEWED_EPISODES = 6;
 const LAST_WATCHED = 7;
 const WATCHERS = 8;
+const VIEW_COUNT_BY_USER = 9;
+const WATCH_TIME_BY_USER = 10;
+const LAST_VIEWED_AT_BY_USER = 11;
 
 const USER_ID = '22222222-2222-4222-8222-222222222222';
 
@@ -80,7 +83,7 @@ const createHistoryIndex = (
   };
 };
 
-const ruleGroup = { collection: { id: 1 } } as RulesDto;
+const ruleGroup = { collection: { id: 1 } } as RuleGroupDto;
 
 const createService = (
   rows: TracearrHistoryItem[],
@@ -140,6 +143,94 @@ describe('TracearrGetterService', () => {
     parentId: 'season-1',
     grandparentId: 'show-1',
     addedAt: new Date('2026-01-02T00:00:00.000Z'),
+  });
+
+  describe('per-user properties', () => {
+    const OTHER_USER_ID = '44444444-4444-4444-8444-444444444444';
+    const rule = { username: 'alice' } as never;
+    const movieRow = (
+      id: string,
+      properties: Partial<TracearrHistoryItem> = {},
+    ) =>
+      historyItem(id, {
+        media_type: 'movie',
+        rating_key: 'movie-1',
+        grandparent_rating_key: null,
+        season_number: null,
+        episode_number: null,
+        ...properties,
+      });
+
+    const rows = [
+      movieRow('33333333-3333-4333-8333-333333333333', {
+        duration_ms: 1_800_000,
+      }),
+      movieRow('55555555-5555-4555-8555-555555555555', {
+        watched: false,
+        percent_complete: 30,
+        duration_ms: 900_000,
+      }),
+      movieRow('66666666-6666-4666-8666-666666666666', {
+        user: { id: OTHER_USER_ID },
+        duration_ms: 3_600_000,
+      }),
+    ];
+
+    const withUsers = (
+      usernamesByTracearrUserId: Map<string, string[]> | undefined,
+    ) => {
+      const created = createService(rows);
+      (
+        created.tracearrApi.getUsernamesByTracearrUserId as jest.Mock
+      ).mockReturnValue(usernamesByTracearrUserId);
+      return created.service;
+    };
+
+    const users = new Map([
+      [USER_ID, ['alice']],
+      [OTHER_USER_ID, ['bob']],
+    ]);
+
+    it('counts only the picked user, and only their watched plays', async () => {
+      const service = withUsers(users);
+
+      await expect(
+        service.get(VIEW_COUNT_BY_USER, movie, ruleGroup, rule),
+      ).resolves.toBe(1);
+      await expect(
+        service.get(LAST_VIEWED_AT_BY_USER, movie, ruleGroup, rule),
+      ).resolves.toEqual(new Date('2026-01-01T01:00:00.000Z'));
+    });
+
+    it('sums every play of the picked user, in minutes', async () => {
+      const service = withUsers(users);
+
+      await expect(
+        service.get(WATCH_TIME_BY_USER, movie, ruleGroup, rule),
+      ).resolves.toBe(45);
+    });
+
+    // Zero here would read as "this user never watched it" and let a rule that
+    // protects rewatched media sweep it instead.
+    it.each([
+      { when: 'the rule has no user', ruleDto: {} as never, usernames: users },
+      {
+        when: 'Tracearr has no account for the user',
+        ruleDto: rule,
+        usernames: new Map(),
+      },
+      {
+        when: 'the Tracearr user lookup failed',
+        ruleDto: rule,
+        usernames: undefined,
+      },
+    ])('skips the item when $when', async ({ ruleDto, usernames }) => {
+      const service = withUsers(usernames);
+
+      await expect(
+        service.get(VIEW_COUNT_BY_USER, movie, ruleGroup, ruleDto),
+      ).resolves.toBeUndefined();
+    });
   });
 
   it('returns usernames for seenBy', async () => {

@@ -4,7 +4,7 @@ import { Notification } from '../../notifications/entities/notification.entities
 import { RuleDto } from './rule.dto';
 import { RuleDbDto } from './ruleDb.dto';
 
-export class RulesDto {
+export class RuleGroupDto {
   id?: number;
   libraryId: string;
   name: string;

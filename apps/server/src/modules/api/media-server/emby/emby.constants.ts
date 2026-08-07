@@ -22,6 +22,10 @@ export const EMBY_BATCH_SIZE = {
 
 export const EMBY_CACHE_KEYS = {
   METADATA: 'emby:metadata',
+  // Batched list-route rows carry a stubbed UserData (PlayCount 0, no
+  // LastPlayedDate - verified on 4.9.5, EnableUserData does not help), so
+  // they are cached apart from the full direct-route rows getMetadata serves.
+  METADATA_BATCH: 'emby:metadata-batch',
   CHILDREN: 'emby:children',
   USERS: 'emby:users',
   LIBRARIES: 'emby:libraries',

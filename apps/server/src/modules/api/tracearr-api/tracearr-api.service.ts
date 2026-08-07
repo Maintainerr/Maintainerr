@@ -245,7 +245,7 @@ export class TracearrApiService {
     this.logger.log(
       `Tracearr history starts at ${new Date(historyIndex.earliestStartedAt).toISOString()}. Earlier unobserved media is skipped.`,
     );
-    const usernames = await this.fetchUsernamesByTracearrUserId(historyIndex);
+    const usernames = await this.fetchUsernamesByTracearrUserId();
     if (!usernames) {
       this.logger.warn(
         'Tracearr media-server user lookup did not complete. Tracearr username rule values are unavailable for this run.',
@@ -256,6 +256,11 @@ export class TracearrApiService {
     this.activeUsernamesByTracearrUserId = usernames;
   }
 
+  /**
+   * Tracearr's public history only returns a play once one of its segments ran
+   * for 2 minutes or more, so every Tracearr rule property counts sustained
+   * plays only.
+   */
   private async refreshHistoryIndex(): Promise<
     TracearrHistoryIndex | undefined
   > {
@@ -455,9 +460,9 @@ export class TracearrApiService {
     return name || id;
   }
 
-  private async fetchUsernamesByTracearrUserId(
-    historyIndex: TracearrHistoryIndex,
-  ): Promise<Map<string, string[]> | undefined> {
+  private async fetchUsernamesByTracearrUserId(): Promise<
+    Map<string, string[]> | undefined
+  > {
     const api = this.api;
     const serverId = this.settings.tracearr_server_id;
     if (!api || !serverId) {
@@ -472,9 +477,6 @@ export class TracearrApiService {
 
     const usernamesByAccountId = new Map(
       mediaUsers.map((user) => [user.id, user.name]),
-    );
-    const historyUserIds = new Set(
-      [...historyIndex.rowsById.values()].map((row) => row.user.id),
     );
     const usernamesByTracearrUserId = new Map<string, string[]>();
     const cursors = new Set<string>();
@@ -499,14 +501,29 @@ export class TracearrApiService {
       }
 
       for (const user of parsed.data.data) {
-        if (!historyUserIds.has(user.id)) {
-          continue;
-        }
-
-        const usernames = user.accounts
-          .filter((account) => account.server_id === serverId)
-          .map((account) => usernamesByAccountId.get(account.external_user_id))
-          .filter((username): username is string => Boolean(username));
+        // Mapped whether or not they appear in the swept history: absence has
+        // to mean "Tracearr has no such user" so the per-user properties can
+        // skip rather than read an unknown user as "watched nothing" (#3387
+        // fails closed). One name per account: Tracearr's `username` IS the
+        // media server's - it re-reads it on every user sync, from plex.tv on
+        // Plex (the spelling the rule editor offers) and from the server's
+        // user list on Jellyfin and Emby. The live account list only fills in
+        // when Tracearr answered no name at all.
+        const usernames = [
+          ...new Set(
+            user.accounts
+              .filter(
+                (account) =>
+                  account.server_id === serverId && !account.removed_at,
+              )
+              .map(
+                (account) =>
+                  account.username ??
+                  usernamesByAccountId.get(account.external_user_id),
+              )
+              .filter((username): username is string => Boolean(username)),
+          ),
+        ];
         if (usernames.length > 0) {
           usernamesByTracearrUserId.set(user.id, usernames);
         }

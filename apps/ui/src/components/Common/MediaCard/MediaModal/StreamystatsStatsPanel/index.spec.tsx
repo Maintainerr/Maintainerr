@@ -1,5 +1,5 @@
-import { cleanup, render, screen, waitFor } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { render, screen, waitFor } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import StreamystatsStatsPanel from './'
 
 const getApiHandler = vi.fn()
@@ -10,12 +10,7 @@ vi.mock('../../../../../utils/ApiHandler', () => ({
 
 describe('StreamystatsStatsPanel', () => {
   beforeEach(() => {
-    cleanup()
     getApiHandler.mockReset()
-  })
-
-  afterEach(() => {
-    cleanup()
   })
 
   it('renders aggregate stats and per-user table on a valid response', async () => {

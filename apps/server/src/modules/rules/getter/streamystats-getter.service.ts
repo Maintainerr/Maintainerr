@@ -1,4 +1,4 @@
-import { MediaItem } from '@maintainerr/contracts';
+import { isPerUserProperty, MediaItem } from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
 import { MediaServerFactory } from '../../api/media-server/media-server.factory';
 import { StreamystatsApiService } from '../../api/streamystats-api/streamystats-api.service';
@@ -8,6 +8,7 @@ import {
   Property,
   RuleConstants,
 } from '../constants/rules.constants';
+import { RuleDto } from '../dtos/rule.dto';
 import { definedUniqueValues } from '../helpers/rule-property.helper';
 
 /**
@@ -37,11 +38,15 @@ export class StreamystatsGetterService {
     ).props;
   }
 
-  async get(id: number, libItem: MediaItem) {
+  async get(id: number, libItem: MediaItem, currentRule?: RuleDto) {
     try {
       const prop = this.appProperties.find((el) => el.id === id);
       if (!prop) {
         return null;
+      }
+
+      if (isPerUserProperty(prop.name)) {
+        return await this.getUserStat(prop.name, libItem, currentRule);
       }
 
       const membership = await this.streamystatsApi.getWatchlistMembership();
@@ -89,6 +94,76 @@ export class StreamystatsGetterService {
         error,
       );
       return undefined;
+    }
+  }
+
+  /**
+   * Per-user statistics for the rule's user. Streamystats counts every
+   * recorded session, so an abandoned play counts as a view here - it exposes
+   * no completion filter, unlike Tautulli and Tracearr.
+   *
+   * A show aggregates its episodes, but a season holds no session of its own,
+   * so seasons answer `null` (no value) rather than a zero reading as "never
+   * watched" - the distinction #3402 drew. An unknown user is `undefined`
+   * (skip) for the same reason.
+   */
+  private async getUserStat(
+    propName: string,
+    libItem: MediaItem,
+    currentRule?: RuleDto,
+  ): Promise<number | Date | null | undefined> {
+    const username = currentRule?.username;
+    if (!username) {
+      this.logger.warn(
+        `Streamystats-Getter - Skipping '${propName}': the rule has no user selected.`,
+      );
+      return undefined;
+    }
+
+    if (libItem.type === 'season') {
+      return null;
+    }
+
+    const mediaServer = await this.mediaServerFactory.getService();
+    // Fail-closed ([] on error) and cached, so not a per-item request.
+    const users = await mediaServer.getUsers();
+    if (users.length === 0) {
+      return undefined;
+    }
+    const mediaServerUser = users.find((user) => user.name === username);
+    if (!mediaServerUser) {
+      this.logger.warn(
+        `Streamystats-Getter - Skipping '${propName}': the media server has no user named '${username}'.`,
+      );
+      return undefined;
+    }
+
+    // Null covers both an unsynced item and a failed read, so treat it as
+    // transient rather than sweeping on statistics that were never available.
+    const details = await this.streamystatsApi.getItemDetails(libItem.id);
+    if (!details) {
+      return undefined;
+    }
+
+    // Streamystats user ids are the Jellyfin user ids (verified live), while
+    // its copy of the name is nullable and can lag a rename - so match on id.
+    const userStats = details.usersWatched.find(
+      (entry) => entry.user.id === mediaServerUser.id,
+    );
+
+    switch (propName) {
+      case 'viewCountByUser': {
+        return userStats?.watchCount ?? 0;
+      }
+      case 'watchTimeByUser': {
+        return Math.round((userStats?.totalWatchTime ?? 0) / 60);
+      }
+      case 'lastViewedAtByUser': {
+        return userStats?.lastWatched ? new Date(userStats.lastWatched) : null;
+      }
+      default: {
+        return null;
+      }
     }
   }
 

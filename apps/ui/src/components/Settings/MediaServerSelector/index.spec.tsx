@@ -1,6 +1,6 @@
 import { MediaServerType } from '@maintainerr/contracts'
-import { cleanup, render, screen } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { render, screen } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import MediaServerSelector from './index'
 
 const navigate = vi.fn()
@@ -49,10 +49,6 @@ describe('MediaServerSelector', () => {
     refetchQueries.mockReset()
     previewSwitch.mockReset()
     switchServer.mockReset()
-  })
-
-  afterEach(() => {
-    cleanup()
   })
 
   it('uses the shared icon placement classes for all media server options', () => {

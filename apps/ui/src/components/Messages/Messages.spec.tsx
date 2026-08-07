@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { MaintainerrEvent } from '@maintainerr/contracts'
 import { useEffect } from 'react'
@@ -71,7 +71,6 @@ describe('Messages', () => {
   })
 
   afterEach(() => {
-    cleanup()
     useEventMock.mockReset()
   })
 

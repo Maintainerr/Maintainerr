@@ -1,3 +1,4 @@
+import { stripTrailingSlashes } from '@maintainerr/contracts'
 import { useMemo, useState } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
 import {
@@ -140,14 +141,16 @@ const buildServarrPayload = <TSetting extends ServarrSettingShape>(
       ? `https://${state.hostname}`
       : `http://${state.hostname}`
 
-  const normalizedUrl = addPortToUrl(hostnameValue, Number(port))
-  const url = normalizedUrl.endsWith('/')
-    ? normalizedUrl.slice(0, -1)
-    : normalizedUrl
+  const url = stripTrailingSlashes(addPortToUrl(hostnameValue, Number(port)))
 
   return {
     payload: {
-      url: `${url}${state.baseUrl ? `/${state.baseUrl}` : ''}`,
+      // The base URL slot can contribute its own trailing slash (#3416), so
+      // the composed URL is stripped as well - the host strip above still
+      // keeps a slash-ended hostname from doubling at the join.
+      url: stripTrailingSlashes(
+        `${url}${state.baseUrl ? `/${state.baseUrl}` : ''}`,
+      ),
       apiKey: state.apiKey,
       serverName: state.serverName,
       ...(settings?.id ? { id: settings.id } : {}),

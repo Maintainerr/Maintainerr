@@ -1,21 +1,15 @@
 import { MediaServerType, type MediaLibrary } from '@maintainerr/contracts'
-import {
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { toast } from 'react-toastify'
 import { SearchContextProvider } from '../../contexts/search-context'
-import { useBulkExcludeMedia } from '../../api/rules'
 import { useMediaServerType } from '../../hooks/useMediaServerType'
 import GetApiHandler from '../../utils/ApiHandler'
 import {
   getCollectionMediaSortConfig,
   getMediaLibrarySortConfig,
 } from '../Common/MediaLibrarySortControl'
+import type { MediaActionOutcome } from '../Common/MediaActionModal'
 import Overview, { buildLibraryContentQuery } from './index'
 
 vi.mock('../../utils/ApiHandler', () => ({
@@ -26,8 +20,26 @@ vi.mock('../../hooks/useMediaServerType', () => ({
   useMediaServerType: vi.fn(),
 }))
 
-vi.mock('../../api/rules', () => ({
-  useBulkExcludeMedia: vi.fn(),
+// The shared modal has its own spec; this only hands back an outcome.
+let submittedOutcome: MediaActionOutcome = {
+  action: 'exclusion-add',
+  succeededIds: [],
+  failedIds: [],
+}
+
+vi.mock('../Common/MediaActionModal', () => ({
+  default: ({
+    onSubmitted,
+  }: {
+    onSubmitted: (outcome: MediaActionOutcome) => void
+  }) => (
+    <button
+      data-testid="media-action-submit"
+      onClick={() => onSubmitted(submittedOutcome)}
+    >
+      Submit
+    </button>
+  ),
 }))
 
 vi.mock('react-toastify', () => ({
@@ -104,20 +116,19 @@ const buildMediaServerTypeResult = (
 
 describe('Overview', () => {
   const getApiHandlerMock = vi.mocked(GetApiHandler)
-  const useBulkExcludeMediaMock = vi.mocked(useBulkExcludeMedia)
   const useMediaServerTypeMock = vi.mocked(useMediaServerType)
-  const mutateAsyncMock = vi.fn()
   let libraries: MediaLibrary[] | undefined
 
   beforeEach(() => {
     libraries = undefined
     getApiHandlerMock.mockReset()
-    mutateAsyncMock.mockReset()
+    submittedOutcome = {
+      action: 'exclusion-add',
+      succeededIds: [],
+      failedIds: [],
+    }
     vi.mocked(toast.success).mockReset()
     vi.mocked(toast.error).mockReset()
-    useBulkExcludeMediaMock.mockReturnValue({
-      mutateAsync: mutateAsyncMock,
-    } as unknown as ReturnType<typeof useBulkExcludeMedia>)
     useMediaServerTypeMock.mockReturnValue(
       buildMediaServerTypeResult(MediaServerType.PLEX),
     )
@@ -143,10 +154,6 @@ describe('Overview', () => {
 
       throw new Error(`Unexpected API request: ${path}`)
     })
-  })
-
-  afterEach(() => {
-    cleanup()
   })
 
   it('shows title ascending as the default overview option', () => {
@@ -243,12 +250,11 @@ describe('Overview', () => {
       }
       throw new Error(`Unexpected API request: ${path}`)
     })
-    mutateAsyncMock.mockResolvedValue({
-      results: [
-        { mediaId: 'item-1', code: 1 },
-        { mediaId: 'item-2', code: 0, message: 'Failed' },
-      ],
-    })
+    submittedOutcome = {
+      action: 'exclusion-add',
+      succeededIds: ['item-1'],
+      failedIds: ['item-2'],
+    }
 
     render(
       <SearchContextProvider>
@@ -263,27 +269,64 @@ describe('Overview', () => {
     fireEvent.click(screen.getByTestId('overview-select-item-1'))
     fireEvent.click(screen.getByTestId('overview-select-item-2'))
     fireEvent.click(
-      screen.getByRole('button', { name: 'Exclude selected (2)' }),
+      screen.getByRole('button', { name: 'Add/Exclude selected (2)' }),
     )
-    // a movie-only selection must not warn about show cascades
-    expect(
-      screen.getByText(/Any scoped exclusions for the same items are replaced/),
-    ).toBeTruthy()
-    expect(screen.queryByText(/Selected shows and seasons/)).toBeNull()
-    fireEvent.click(screen.getByRole('button', { name: 'Exclude items' }))
+    fireEvent.click(screen.getByTestId('media-action-submit'))
 
-    await waitFor(() => {
-      expect(mutateAsyncMock).toHaveBeenCalledWith(['item-1', 'item-2'])
-    })
     await waitFor(() => {
       expect(toast.error).toHaveBeenCalledWith(
         '1 item excluded. 1 item could not be excluded; the failed items stay selected.',
       )
     })
-    // the failed item stays selected
     expect(
-      screen.getByRole('button', { name: 'Exclude selected (1)' }),
+      screen.getByRole('button', { name: 'Add/Exclude selected (1)' }),
     ).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Done selecting' })).toBeTruthy()
+  })
+
+  it('closes selection mode once a bulk exclusion leaves nothing selected', async () => {
+    libraries = [
+      { id: 'movies-library', title: 'Movies', type: 'movie' } as MediaLibrary,
+    ]
+    getApiHandlerMock.mockImplementation(async (path: string) => {
+      if (path.startsWith('/media-server/overview/bootstrap?')) {
+        return {
+          libraries,
+          selectedLibraryId: 'movies-library',
+          content: {
+            totalSize: 1,
+            items: [{ id: 'item-1', title: 'Item One', type: 'movie' }],
+          },
+        }
+      }
+      throw new Error(`Unexpected API request: ${path}`)
+    })
+    submittedOutcome = {
+      action: 'exclusion-add',
+      succeededIds: ['item-1'],
+      failedIds: [],
+    }
+
+    render(
+      <SearchContextProvider>
+        <Overview />
+      </SearchContextProvider>,
+    )
+
+    await waitFor(() => {
+      expect(screen.getByText('Item One')).toBeTruthy()
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Select items' }))
+    fireEvent.click(screen.getByTestId('overview-select-item-1'))
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Add/Exclude selected (1)' }),
+    )
+    fireEvent.click(screen.getByTestId('media-action-submit'))
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Select items' })).toBeTruthy()
+    })
+    expect(screen.queryByTestId('overview-select-item-1')).toBeNull()
   })
 
   it('reconciles visible child cards when their show is bulk excluded', async () => {
@@ -315,9 +358,11 @@ describe('Overview', () => {
       }
       throw new Error(`Unexpected API request: ${path}`)
     })
-    mutateAsyncMock.mockResolvedValue({
-      results: [{ mediaId: 'show-1', code: 1 }],
-    })
+    submittedOutcome = {
+      action: 'exclusion-add',
+      succeededIds: ['show-1'],
+      failedIds: [],
+    }
 
     render(
       <SearchContextProvider>
@@ -331,17 +376,10 @@ describe('Overview', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Select items' }))
     fireEvent.click(screen.getByTestId('overview-select-show-1'))
     fireEvent.click(
-      screen.getByRole('button', { name: 'Exclude selected (1)' }),
+      screen.getByRole('button', { name: 'Add/Exclude selected (1)' }),
     )
-    // a selected show warns about the cascade
-    expect(
-      screen.getByText(/Selected shows and seasons are excluded together/),
-    ).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: 'Exclude items' }))
+    fireEvent.click(screen.getByTestId('media-action-submit'))
 
-    await waitFor(() => {
-      expect(mutateAsyncMock).toHaveBeenCalledWith(['show-1'])
-    })
     // the cascade covers the visible episode even though only the show id
     // was submitted
     await waitFor(() => {
@@ -389,7 +427,7 @@ describe('Overview', () => {
     fireEvent.click(screen.getByTestId('overview-select-item-1'))
     expect(
       screen
-        .getByRole('button', { name: 'Exclude selected (1)' })
+        .getByRole('button', { name: 'Add/Exclude selected (1)' })
         .hasAttribute('disabled'),
     ).toBe(false)
 
@@ -399,7 +437,7 @@ describe('Overview', () => {
     expect(screen.queryByTestId('overview-select-item-1')).toBeNull()
     expect(
       screen
-        .getByRole('button', { name: 'Exclude selected' })
+        .getByRole('button', { name: 'Add/Exclude selected' })
         .hasAttribute('disabled'),
     ).toBe(true)
   })
@@ -697,7 +735,7 @@ describe('Overview', () => {
     fireEvent.click(screen.getByTestId('overview-select-item-1'))
     expect(
       screen
-        .getByRole('button', { name: 'Exclude selected (1)' })
+        .getByRole('button', { name: 'Add/Exclude selected (1)' })
         .hasAttribute('disabled'),
     ).toBe(false)
 
@@ -710,7 +748,7 @@ describe('Overview', () => {
     })
     expect(
       screen
-        .getByRole('button', { name: 'Exclude selected' })
+        .getByRole('button', { name: 'Add/Exclude selected' })
         .hasAttribute('disabled'),
     ).toBe(true)
   })

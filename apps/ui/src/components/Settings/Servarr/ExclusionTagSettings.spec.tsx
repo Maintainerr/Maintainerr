@@ -1,11 +1,5 @@
-import {
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ISettings } from '../../../api/settings'
 import ExclusionTagSettings from './ExclusionTagSettings'
 
@@ -46,10 +40,6 @@ describe.each([
         [tagKey]: 'dnd',
         [untagKey]: false,
       }
-    })
-
-    afterEach(() => {
-      cleanup()
     })
 
     const enableToggle = () =>

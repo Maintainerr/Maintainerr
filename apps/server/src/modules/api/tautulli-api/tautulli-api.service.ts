@@ -1,7 +1,7 @@
 import { BasicResponseDto } from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
 import { AxiosError } from 'axios';
-import _ from 'lodash';
+import { unionBy } from 'lodash';
 import { SettingsDataService } from '../../..//modules/settings/settings-data.service';
 import {
   CONNECTION_TEST_TIMEOUT_MS,
@@ -55,6 +55,11 @@ interface TautulliHistoryItem {
   rating_key: number;
   media_index: number;
   parent_media_index: number;
+  // Seconds actually played: (stopped - started) minus the paused counter.
+  // Tautulli renamed `duration` to `play_duration` in 2.12.3 and kept both
+  // since; older versions answer only the original name.
+  play_duration?: number;
+  duration?: number;
 }
 
 export interface TautulliHistoryRequestOptions {
@@ -185,6 +190,11 @@ export class TautulliApiService {
       };
 
       let data = await this.getPaginatedHistory(newOptions);
+      // A page that could not be read must not collapse into "no plays" -
+      // the caller cannot tell a confirmed-empty history from an outage.
+      if (!data) {
+        return null;
+      }
       const pageSize: number = MAX_PAGE_SIZE;
 
       const totalCount: number =
@@ -193,7 +203,7 @@ export class TautulliApiService {
       let currentPage = 1;
 
       let results: TautulliHistoryItem[] = [];
-      results = _.unionBy(
+      results = unionBy(
         results,
         data && data.data && data.data && data.data.length ? data.data : [],
         'id',
@@ -203,10 +213,14 @@ export class TautulliApiService {
         while (currentPage < pageCount) {
           newOptions.start = currentPage * pageSize;
           data = await this.getPaginatedHistory(newOptions);
+          // Same for a later page: partial results would undercount views.
+          if (!data) {
+            return null;
+          }
 
           currentPage++;
 
-          results = _.unionBy(
+          results = unionBy(
             results,
             data && data.data && data.data && data.data.length ? data.data : [],
             'id',

@@ -1,4 +1,5 @@
 import {
+  isPerUserProperty,
   MediaItem,
   MediaType,
   TracearrHistoryItem,
@@ -17,7 +18,8 @@ import {
   Property,
   RuleConstants,
 } from '../constants/rules.constants';
-import { RulesDto } from '../dtos/rules.dto';
+import { RuleDto } from '../dtos/rule.dto';
+import { RuleGroupDto } from '../dtos/ruleGroup.dto';
 
 @Injectable()
 export class TracearrGetterService {
@@ -42,7 +44,12 @@ export class TracearrGetterService {
     ).props;
   }
 
-  async get(id: number, libItem: MediaItem, ruleGroup?: RulesDto) {
+  async get(
+    id: number,
+    libItem: MediaItem,
+    ruleGroup?: RuleGroupDto,
+    currentRule?: RuleDto,
+  ) {
     try {
       const property = this.appProperties.find((item) => item.id === id);
       if (!property) {
@@ -84,6 +91,15 @@ export class TracearrGetterService {
         this.isWatched(item, watchedPercentOverride),
       );
 
+      if (isPerUserProperty(property.name)) {
+        return this.getUserStat(
+          property.name,
+          currentRule,
+          history,
+          watchedHistory,
+        );
+      }
+
       switch (property.name) {
         case 'seenBy':
         case 'sw_watchers':
@@ -120,7 +136,7 @@ export class TracearrGetterService {
   }
 
   private async getWatchedPercentOverride(
-    ruleGroup?: RulesDto,
+    ruleGroup?: RuleGroupDto,
     historyIndex?: TracearrHistoryIndex,
   ): Promise<number | null> {
     if (this.historyIndexForWatchedPercentOverrides !== historyIndex) {
@@ -206,6 +222,63 @@ export class TracearrGetterService {
   ): boolean {
     const addedAt = libItem.addedAt.getTime();
     return Number.isNaN(addedAt) || addedAt < historyIndex.earliestStartedAt;
+  }
+
+  /**
+   * Per-user statistics for the rule's user. Views and the last view date
+   * count watched plays only, honouring the collection's watched-percent
+   * override like the whole-item properties; watch time counts every play,
+   * since an abandoned one still ran for its minutes.
+   *
+   * A username Tracearr has no account for answers `undefined`: zero would
+   * read as "this user watched nothing" after a rename or an unlink.
+   */
+  private getUserStat(
+    propName: string,
+    currentRule: RuleDto | undefined,
+    history: TracearrHistoryItem[],
+    watchedHistory: TracearrHistoryItem[],
+  ): number | Date | null | undefined {
+    const username = currentRule?.username;
+    if (!username) {
+      this.logger.warn(
+        `Tracearr-Getter - Skipping '${propName}': the rule has no user selected.`,
+      );
+      return undefined;
+    }
+
+    const usernamesByTracearrUserId =
+      this.tracearrApi.getUsernamesByTracearrUserId();
+    if (!usernamesByTracearrUserId) {
+      return undefined;
+    }
+
+    const tracearrUserIds = new Set(
+      [...usernamesByTracearrUserId.entries()]
+        .filter(([, usernames]) => usernames.includes(username))
+        .map(([tracearrUserId]) => tracearrUserId),
+    );
+    if (tracearrUserIds.size === 0) {
+      this.logger.warn(
+        `Tracearr-Getter - Skipping '${propName}': Tracearr has no account for user '${username}'.`,
+      );
+      return undefined;
+    }
+
+    if (propName === 'watchTimeByUser') {
+      const milliseconds = history
+        .filter((item) => tracearrUserIds.has(item.user.id))
+        .reduce((total, item) => total + (item.duration_ms ?? 0), 0);
+      return Math.round(milliseconds / 60000);
+    }
+
+    const userHistory = watchedHistory.filter((item) =>
+      tracearrUserIds.has(item.user.id),
+    );
+
+    return propName === 'viewCountByUser'
+      ? userHistory.length
+      : this.getLatestViewedAt(userHistory);
   }
 
   private getUsernames(history: TracearrHistoryItem[]): string[] | undefined {

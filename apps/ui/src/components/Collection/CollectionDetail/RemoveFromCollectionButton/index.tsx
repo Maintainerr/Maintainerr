@@ -1,8 +1,8 @@
 import { DocumentRemoveIcon, TrashIcon } from '@heroicons/react/solid'
 import { useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
+import { postBulkExclusions } from '../../../../api/bulkMediaAction'
 import { invalidateCollectionQueries } from '../../../../api/collections'
-import { DeleteApiHandler, PostApiHandler } from '../../../../utils/ApiHandler'
 import Button from '../../../Common/Button'
 import Modal from '../../../Common/Modal'
 
@@ -36,22 +36,23 @@ const RemoveFromCollectionButton = (props: IRemoveFromCollectionButton) => {
     setRemoving(true)
 
     try {
-      if (!props.exclusionId) {
-        await Promise.all([
-          DeleteApiHandler(
-            `/collections/media?mediaId=${props.mediaServerId}&collectionId=${props.collectionId}`,
-          ),
-          PostApiHandler('/rules/exclusion', {
-            collectionId: props.collectionId,
-            mediaId: props.mediaServerId,
-            action: 0,
-          }),
-        ])
+      // Same endpoint the bulk modal uses, so both orders agree: the server
+      // excludes first and only then drops the item, and an exclusion that
+      // cascaded to seasons and episodes is removed with its children.
+      const response = await postBulkExclusions({
+        mediaIds: [String(props.mediaServerId)],
+        collectionId: props.collectionId,
+        action: isCreatingExclusion ? 0 : 1,
+      })
 
-        await invalidateCollectionQueries(queryClient)
-      } else {
-        await DeleteApiHandler(`/rules/exclusion/${props.exclusionId}`)
+      if (response.results.some((result) => result.code !== 1)) {
+        throw new Error(
+          response.results.find((result) => result.code !== 1)?.message ??
+            'The item could not be updated',
+        )
       }
+
+      await invalidateCollectionQueries(queryClient)
       props.onRemove()
     } catch {
       setRemoving(false)

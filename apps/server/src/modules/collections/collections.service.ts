@@ -1,5 +1,7 @@
 import {
   BasicResponseDto,
+  type BulkMediaItemResult,
+  type BulkMediaResponse,
   CollectionLogMeta,
   CollectionMediaSortField,
   compareMediaItemsBySort,
@@ -11,6 +13,7 @@ import {
   MediaItem,
   MediaItemType,
   MediaItemWithParent,
+  mediaLibraryStatusSortFields,
   MediaLibrarySortField,
   MediaServerFeature,
   MediaServerType,
@@ -24,9 +27,14 @@ import {
 } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
+import { chunk } from 'lodash';
 import { Brackets, DataSource, In, LessThan, Not, Repository } from 'typeorm';
 import { CollectionLog } from '../../modules/collections/entities/collection_log.entities';
 import { getErrorMessage } from '../../utils/connection-error';
+import {
+  ENRICHMENT_ID_CHUNK,
+  MediaItemEnrichmentService,
+} from '../api/media-server/media-item-enrichment.service';
 import { MediaServerFactory } from '../api/media-server/media-server.factory';
 import { IMediaServerService } from '../api/media-server/media-server.interface';
 import {
@@ -85,6 +93,10 @@ interface CollectionPreviewMediaRow {
 
 type CollectionMediaRemovalScope = 'all' | 'rule' | 'manual';
 
+// Each item resolves its own hierarchy against the media server, so this stays
+// modest to avoid over-driving it on a large selection.
+const BULK_COLLECTION_ACTION_CONCURRENCY = 5;
+
 interface SharedManualCollectionReconciliationOptions {
   addedMediaServerIds?: Set<string>;
   removedMediaServerIds?: Set<string>;
@@ -117,6 +129,9 @@ export interface PostponeCollectionMediaResult {
 export interface CollectionAddResult {
   collection?: Collection;
   serverRejectedIds: string[];
+  /** Ids the server accepted but whose membership row failed to persist; the
+   * server add was rolled back, so nothing of the add survived. */
+  unpersistedIds?: string[];
 }
 
 export interface ContextActionResult extends CollectionAddResult {
@@ -141,6 +156,7 @@ export class CollectionsService {
     private readonly exclusionRepo: Repository<Exclusion>,
     private readonly connection: DataSource,
     private readonly mediaServerFactory: MediaServerFactory,
+    private readonly mediaItemEnrichmentService: MediaItemEnrichmentService,
     private readonly settingsDataService: SettingsDataService,
     private readonly metadataService: MetadataService,
     private readonly eventEmitter: EventEmitter2,
@@ -1088,35 +1104,53 @@ export class CollectionsService {
       return metadataByMediaServerId;
     }
 
-    const missingMetadataResults = await Promise.allSettled(
-      missingMediaServerIds.map(async (mediaServerId) => ({
-        mediaServerId,
-        mediaItem: await mediaServer.getMetadata(mediaServerId),
-      })),
+    // One read per batch of ids rather than one per row. Every row lands here
+    // when the collection read above failed, which is exactly when the server is
+    // least able to answer a request each.
+    for (const mediaItem of await mediaServer.getMetadataBatch(
+      missingMediaServerIds,
+    )) {
+      metadataByMediaServerId.set(mediaItem.id, mediaItem);
+    }
+
+    const unresolvedIds = missingMediaServerIds.filter(
+      (mediaServerId) => !metadataByMediaServerId.has(mediaServerId),
     );
 
-    missingMetadataResults.forEach((result, index) => {
-      const mediaServerId = missingMediaServerIds[index];
-
-      if (result.status === 'fulfilled') {
-        if (result.value.mediaItem) {
-          metadataByMediaServerId.set(mediaServerId, result.value.mediaItem);
-          return;
-        }
-
-        this.logger.debug(
-          `Missing metadata for collection media with mediaServerId=${mediaServerId}; skipping item without deleting`,
-        );
-        return;
-      }
-
+    if (unresolvedIds.length > 0) {
+      // An id the server did not answer for is skipped, never deleted: this read
+      // cannot tell a missing item from a failed one.
       this.logger.debug(
-        `Failed to fetch metadata for collection media with mediaServerId=${mediaServerId}`,
+        `No metadata for ${unresolvedIds.length} of ${entities.length} collection media rows; skipping them without deleting: ${unresolvedIds.slice(0, 10).join(', ')}`,
       );
-      this.logger.debug(result.reason);
-    });
+    }
 
     return metadataByMediaServerId;
+  }
+
+  /**
+   * A copy carrying the state no media server knows, for the sorts that compare
+   * it. Separate from the map the response is built from, so which fields the
+   * response carries never depends on how it was sorted. Only for those sorts,
+   * as the library path also gates it.
+   */
+  private async withMaintainerrStatusForSort(
+    sort: CollectionMediaSortField | undefined,
+    metadataByMediaServerId: Map<string, MediaItem>,
+  ): Promise<Map<string, MediaItem>> {
+    if (
+      sort === undefined ||
+      !(mediaLibraryStatusSortFields as readonly string[]).includes(sort) ||
+      metadataByMediaServerId.size === 0
+    ) {
+      return metadataByMediaServerId;
+    }
+
+    const enrichedItems = await this.mediaItemEnrichmentService.enrichItems([
+      ...metadataByMediaServerId.values(),
+    ]);
+
+    return new Map(enrichedItems.map((item) => [item.id, item]));
   }
 
   private async hydrateCollectionMediaWithMetadata(
@@ -1149,29 +1183,22 @@ export class CollectionsService {
     ];
 
     if (parentIds.length > 0) {
-      const parentMetadataResults = await Promise.allSettled(
-        parentIds.map(async (parentId) => ({
-          parentId,
-          mediaItem: await mediaServer.getMetadata(parentId),
-        })),
-      );
+      // One read per batch of ids rather than one per parent. Emby and Jellyfin
+      // put a movie under its library folder, so a collection stored one folder
+      // per film has about as many parents as it has rows.
+      for (const parent of await mediaServer.getMetadataBatch(parentIds)) {
+        parentMetadataById.set(parent.id, parent);
+      }
 
-      parentMetadataResults.forEach((result, index) => {
-        const parentId = parentIds[index];
+      const unresolved = parentIds.length - parentMetadataById.size;
 
-        if (result.status === 'fulfilled') {
-          if (result.value.mediaItem) {
-            parentMetadataById.set(parentId, result.value.mediaItem);
-          }
-
-          return;
-        }
-
+      if (unresolved > 0) {
+        // Counted, not one line each. A parent that does not resolve only costs
+        // the item its parent title and artwork, so the row is still returned.
         this.logger.debug(
-          `Failed to fetch parent metadata for collection media parentId=${parentId}`,
+          `No metadata for ${unresolved} of ${parentIds.length} collection media parents`,
         );
-        this.logger.debug(result.reason);
-      });
+      }
     }
 
     return entities
@@ -1254,6 +1281,18 @@ export class CollectionsService {
       );
       return;
     }
+    // The status sorts compare Maintainerr-side state this hydrate never
+    // resolves, so every comparison would tie and the pushed order would be
+    // arbitrary. The rule group form withholds them; refuse one that arrives
+    // anyway.
+    if (
+      (mediaLibraryStatusSortFields as readonly string[]).includes(parsed.sort)
+    ) {
+      this.logger.warn(
+        `Ignoring collection sort '${sortKey}' on collection ${collection.id}: status sorts cannot be pushed to the media server`,
+      );
+      return;
+    }
     if (!collection.mediaServerId) {
       return;
     }
@@ -1319,35 +1358,50 @@ export class CollectionsService {
     entities: Exclusion[],
     mediaServer: IMediaServerService,
   ): Promise<Exclusion[]> {
-    const results = await Promise.allSettled(
-      entities.map(async (el) => {
-        const mediaItem = await mediaServer.getMetadata(
-          el.mediaServerId.toString(),
-        );
+    if (entities.length === 0) {
+      return [];
+    }
 
+    // One batched read for the rows and one for their deduped parents, not a
+    // request per row - the same shape as the collection media hydrate.
+    const metadataById = new Map<string, MediaItem>();
+    for (const mediaItem of await mediaServer.getMetadataBatch([
+      ...new Set(entities.map((el) => el.mediaServerId.toString())),
+    ])) {
+      metadataById.set(mediaItem.id, mediaItem);
+    }
+
+    const parentMetadataById = new Map<string, MediaItem>();
+    const parentIds = [
+      ...new Set(
+        [...metadataById.values()]
+          .map((mediaItem) => mediaItem.grandparentId ?? mediaItem.parentId)
+          .filter((parentId): parentId is string => Boolean(parentId)),
+      ),
+    ];
+    if (parentIds.length > 0) {
+      for (const parent of await mediaServer.getMetadataBatch(parentIds)) {
+        parentMetadataById.set(parent.id, parent);
+      }
+    }
+
+    return entities
+      .map((el) => {
+        const mediaItem = metadataById.get(el.mediaServerId.toString());
+
+        // A row the server did not answer for stays hidden, as before.
         if (!mediaItem) {
-          return { ...el, mediaData: undefined };
+          return undefined;
         }
 
         const parentId = mediaItem.grandparentId ?? mediaItem.parentId;
-        const parentItem = parentId
-          ? await mediaServer.getMetadata(parentId)
-          : undefined;
-
         el.mediaData = {
           ...mediaItem,
-          parentItem,
+          parentItem: parentId ? parentMetadataById.get(parentId) : undefined,
         };
         return el;
-      }),
-    );
-
-    return results
-      .filter(
-        (result): result is PromiseFulfilledResult<Exclusion> =>
-          result.status === 'fulfilled' && result.value.mediaData !== undefined,
-      )
-      .map((result) => result.value);
+      })
+      .filter((el): el is Exclusion => el !== undefined);
   }
 
   public async getCollectionMediaWithServerDataAndPaging(
@@ -1429,6 +1483,11 @@ export class CollectionsService {
         mediaServer,
       );
 
+      const sortMetadata = await this.withMaintainerrStatusForSort(
+        sort,
+        metadataByMediaServerId,
+      );
+
       const sortableEntities = entities.filter((entity) =>
         metadataByMediaServerId.has(entity.mediaServerId),
       );
@@ -1442,8 +1501,8 @@ export class CollectionsService {
       const sortedPageEntities = sortableEntities
         .sort((leftItem, rightItem) =>
           compareMediaItemsBySort(
-            metadataByMediaServerId.get(leftItem.mediaServerId)!,
-            metadataByMediaServerId.get(rightItem.mediaServerId)!,
+            sortMetadata.get(leftItem.mediaServerId)!,
+            sortMetadata.get(rightItem.mediaServerId)!,
             sort,
             sortOrder,
             compareOptions,
@@ -2546,6 +2605,164 @@ export class CollectionsService {
   }
 
   /**
+   * Resolution is bounded-parallel, but the write is a **single** batched call.
+   * The write path find-or-creates the media server collection, which is not
+   * safe to run concurrently against the same collection: parallel first adds
+   * each create their own, leaving duplicates beside the linked one (#3344).
+   */
+  async bulkMediaCollectionAction(
+    mediaIds: string[],
+    collectionId: number | undefined,
+    action: 'add' | 'remove',
+    mediaType: MediaItemType,
+    context?: AlterableMediaContext,
+  ): Promise<BulkMediaResponse> {
+    const uniqueMediaIds = [...new Set(mediaIds)];
+    const resultById = new Map<string, BulkMediaItemResult>();
+    const mediaServer = await this.getMediaServer();
+    const collection =
+      collectionId !== undefined
+        ? await this.collectionRepo.findOne({ where: { id: collectionId } })
+        : undefined;
+
+    if (collectionId !== undefined && !collection) {
+      throw new NotFoundException(`Collection ${collectionId} not found`);
+    }
+
+    const fail = (mediaId: string, message: string) =>
+      resultById.set(mediaId, { mediaId, code: 0, message });
+
+    const resolvedByMediaId = new Map<string, string[]>();
+    for (const batch of chunk(
+      uniqueMediaIds,
+      BULK_COLLECTION_ACTION_CONCURRENCY,
+    )) {
+      await Promise.all(
+        batch.map(async (mediaId) => {
+          try {
+            // An add into a movie or show collection has nothing to resolve,
+            // so an id the library does not hold would become a membership row
+            // for media that does not exist. An inconclusive lookup throws and
+            // is taken as present, so a blip never blocks a real add.
+            if (action === 'add') {
+              let exists = true;
+              try {
+                exists = await mediaServer.itemExists(mediaId);
+              } catch (error) {
+                this.logger.debug(error);
+              }
+
+              if (!exists) {
+                fail(mediaId, 'Failed - not found on the media server');
+                return;
+              }
+            }
+
+            const ids = await mediaServer.getAllIdsForContextAction(
+              collection?.type,
+              context
+                ? { type: context.type, id: String(context.id) }
+                : { type: mediaType, id: mediaId },
+              mediaId,
+            );
+
+            if (ids.length === 0) {
+              fail(mediaId, 'Failed - nothing this collection can take');
+              return;
+            }
+
+            resolvedByMediaId.set(mediaId, ids);
+          } catch (error) {
+            this.logger.warn(
+              `Bulk collection ${action} could not resolve media ${mediaId}`,
+            );
+            this.logger.debug(error);
+            fail(mediaId, 'Failed - see server logs');
+          }
+        }),
+      );
+    }
+
+    const media = [
+      ...new Set([...resolvedByMediaId.values()].flat()),
+    ].map<CollectionMediaChange>((mediaServerId) => ({ mediaServerId }));
+
+    if (media.length > 0) {
+      const failAllResolved = (message: string) => {
+        for (const mediaId of resolvedByMediaId.keys()) {
+          fail(mediaId, message);
+        }
+      };
+
+      try {
+        if (action === 'add') {
+          const result = await this.addToCollectionInternal(
+            collectionId,
+            media,
+            true,
+          );
+
+          if (!result.collection) {
+            // The helper swallows its own failures so a rule run survives one
+            // bad collection; an interactive caller has to be told.
+            failAllResolved('Failed - the collection could not be updated');
+          } else {
+            const rejected = new Set(result.serverRejectedIds);
+            const unpersisted = new Set(result.unpersistedIds ?? []);
+            for (const [mediaId, ids] of resolvedByMediaId) {
+              if (ids.some((id) => rejected.has(id))) {
+                fail(mediaId, 'Failed - refused by the media server');
+              } else if (ids.some((id) => unpersisted.has(id))) {
+                fail(mediaId, 'Failed - the collection could not be updated');
+              }
+            }
+          }
+        } else if (collectionId === undefined) {
+          const result = await this.removeFromAllCollections(media);
+          if (result.code !== 1) {
+            failAllResolved('Failed - the collections could not be updated');
+          }
+        } else if (!(await this.removeFromCollection(collectionId, media))) {
+          failAllResolved('Failed - the collection could not be updated');
+        } else {
+          // The helper answers the collection even when the media server
+          // refused some children, but it only deletes the rows the server
+          // confirmed - so a row still present is a removal that did not
+          // happen. Chunked because a show selection can resolve to enough
+          // episode ids to pass SQLite's parameter cap (#3431).
+          const remaining = new Set<string>();
+          for (const idBatch of chunk(
+            media.map((m) => m.mediaServerId),
+            ENRICHMENT_ID_CHUNK,
+          )) {
+            for (const row of (await this.CollectionMediaRepo.find({
+              where: { collectionId, mediaServerId: In(idBatch) },
+            })) ?? []) {
+              remaining.add(row.mediaServerId);
+            }
+          }
+          for (const [mediaId, ids] of resolvedByMediaId) {
+            if (ids.some((id) => remaining.has(id))) {
+              fail(mediaId, 'Failed - refused by the media server');
+            }
+          }
+        }
+      } catch (error) {
+        this.logger.warn(`Bulk collection ${action} failed`);
+        this.logger.debug(error);
+        failAllResolved('Failed - see server logs');
+      }
+    }
+
+    return {
+      results: uniqueMediaIds.map(
+        (mediaId): BulkMediaItemResult =>
+          resultById.get(mediaId) ?? { mediaId, code: 1 },
+      ),
+    };
+  }
+
+  /**
    * Drives the manual add/remove modal. Reports what the media server refused
    * so the caller can tell the user, rather than answering "done" to an action
    * that changed nothing.
@@ -2616,14 +2833,22 @@ export class CollectionsService {
         true,
       );
       return {
-        ...result,
         collection: orFail(result.collection),
+        // A rolled-back add left nothing behind either, so the caller reports
+        // it alongside the refusals.
+        serverRejectedIds: [
+          ...result.serverRejectedIds,
+          ...(result.unpersistedIds ?? []),
+        ],
         resolvedCount: handleMedia.length,
       };
     }
 
     if (!collectionDbId) {
-      await this.removeFromAllCollections(handleMedia);
+      const result = await this.removeFromAllCollections(handleMedia);
+      if (result && result.code !== 1) {
+        orFail(undefined);
+      }
       return { serverRejectedIds: [], resolvedCount: handleMedia.length };
     }
 
@@ -2723,6 +2948,7 @@ export class CollectionsService {
           !collectionMedia.find((el) => el.mediaServerId === m.mediaServerId),
       );
       let rejectedByServer: string[] = [];
+      let unpersistedIds: string[] = [];
 
       if (collection) {
         if (!skipAutomaticLinkCheck) {
@@ -2922,6 +3148,11 @@ export class CollectionsService {
               manualMembershipSource,
             );
           rejectedByServer = [...serverRejectedIds];
+          unpersistedIds = newMedia
+            .map((m) => m.mediaServerId)
+            .filter(
+              (id) => !serverRejectedIds.has(id) && !persistedIds.has(id),
+            );
 
           // Only notify for items whose membership was persisted - both
           // server-rejected items and locally-rolled-back items never
@@ -2981,7 +3212,11 @@ export class CollectionsService {
         // Update cached total size (non-blocking)
         this.updateCollectionTotalSize(collectionDbId).catch(() => {});
 
-        return { collection, serverRejectedIds: rejectedByServer };
+        return {
+          collection,
+          serverRejectedIds: rejectedByServer,
+          unpersistedIds,
+        };
       } else {
         this.logger.warn("Collection doesn't exist.");
       }
@@ -3478,10 +3713,16 @@ export class CollectionsService {
   async removeFromAllCollections(media: CollectionMediaChange[]) {
     try {
       const collections = await this.collectionRepo.find();
+      let removedEverywhere = true;
       for (const collection of collections) {
-        await this.removeFromCollection(collection.id, media);
+        // The helper reports its own failure by answering nothing rather than
+        // throwing, so discarding the result reads a failed removal as done.
+        const removed = await this.removeFromCollection(collection.id, media);
+        removedEverywhere = removedEverywhere && removed !== undefined;
       }
-      return { status: 'OK', code: 1, message: 'Success' };
+      return removedEverywhere
+        ? { status: 'OK', code: 1, message: 'Success' }
+        : { status: 'NOK', code: 0, message: 'Failed' };
     } catch (error) {
       this.logger.warn(
         'An error occurred while removing media from all collections',

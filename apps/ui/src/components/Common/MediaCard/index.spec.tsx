@@ -1,18 +1,14 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import type { ReactNode } from 'react'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import MediaCard from './index'
 
 vi.mock('react-router-dom', () => ({
   useNavigate: () => vi.fn(),
 }))
 
-vi.mock('../../AddModal', () => ({
-  default: () => null,
-}))
-
 vi.mock('../../Collection/CollectionDetail/RemoveFromCollectionButton', () => ({
-  default: () => null,
+  default: () => <button type="button">Exclude</button>,
 }))
 
 vi.mock('../Button', () => ({
@@ -55,10 +51,6 @@ vi.mock('./MediaModal', () => ({
 }))
 
 describe('MediaCard', () => {
-  afterEach(() => {
-    cleanup()
-  })
-
   it('shows the exclusion badge on overview cards only for global exclusions', () => {
     render(
       <MediaCard
@@ -112,8 +104,34 @@ describe('MediaCard', () => {
 
     fireEvent.keyDown(card, { key: 'Enter' })
     expect(onToggleSelection).toHaveBeenCalledTimes(2)
-    expect(screen.queryByRole('button', { name: 'Add' })).toBeNull()
-    expect(screen.queryByRole('button', { name: 'Excl' })).toBeNull()
+  })
+
+  // Selection mode turns the whole card into a checkbox, so its own action
+  // would fire on the click that picks it.
+  it('hides the collection action while the grid is in selection mode', () => {
+    const { rerender } = render(
+      <MediaCard
+        id="movie-1"
+        title="Movie"
+        mediaType="movie"
+        collectionPage={true}
+      />,
+    )
+
+    expect(screen.getByRole('button', { name: 'Exclude' })).toBeTruthy()
+
+    rerender(
+      <MediaCard
+        id="movie-1"
+        title="Movie"
+        mediaType="movie"
+        collectionPage={true}
+        selectionMode
+        onToggleSelection={vi.fn()}
+      />,
+    )
+
+    expect(screen.queryByRole('button', { name: 'Exclude' })).toBeNull()
   })
 
   it('numbers the season badge so seasons of one show stay distinguishable', () => {
@@ -159,6 +177,32 @@ describe('MediaCard', () => {
 
     expect(screen.getByText('episode 4')).toBeTruthy()
     expect(screen.getByText('A Quiet Arrival')).toBeTruthy()
+  })
+
+  it('names the collections a library item is in, and collapses the rest', () => {
+    const { rerender } = render(
+      <MediaCard
+        id="movie-1"
+        title="Movie"
+        mediaType="movie"
+        collectionPage={false}
+        collections={['Stale Movies']}
+      />,
+    )
+
+    expect(screen.getByText('Stale Movies')).toBeTruthy()
+
+    rerender(
+      <MediaCard
+        id="movie-1"
+        title="Movie"
+        mediaType="movie"
+        collectionPage={false}
+        collections={['Stale Movies', 'Franchise A', 'Watched']}
+      />,
+    )
+
+    expect(screen.getByText('Stale Movies +2')).toBeTruthy()
   })
 
   it('keeps the collection page manual badge without an overview include badge', () => {

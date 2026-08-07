@@ -1,5 +1,5 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { fireEvent, render, screen } from '@testing-library/react'
+import { describe, expect, it, vi } from 'vitest'
 import ConfirmActionButton from './ConfirmActionButton'
 
 vi.mock('../../utils/ClientLogger', () => ({
@@ -30,10 +30,6 @@ const openDialog = () =>
   fireEvent.click(screen.getByRole('button', { name: 'Do it' }))
 
 describe('ConfirmActionButton', () => {
-  afterEach(() => {
-    cleanup()
-  })
-
   it('runs the action and closes the dialog once it resolves', async () => {
     const onConfirm = vi.fn().mockResolvedValue(undefined)
 

@@ -40,6 +40,7 @@ describe('CollectionsController', () => {
     getCollectionRecord: jest.fn(),
     getCollectionMediaRecord: jest.fn(),
     MediaCollectionActionWithContext: jest.fn(),
+    bulkMediaCollectionAction: jest.fn(),
     postponeCollectionMedia: jest.fn(),
     logPostponedCollectionMedia: jest.fn(),
   } as unknown as jest.Mocked<CollectionsService>;
@@ -294,6 +295,67 @@ describe('CollectionsController', () => {
       await expect(
         controller.ManualActionOnCollection(addRequest),
       ).resolves.toBe(collection);
+    });
+  });
+
+  describe('bulkMediaCollectionAction', () => {
+    it('delegates the selection and returns per-item results', async () => {
+      const response = {
+        results: [
+          { mediaId: '10', code: 1 as const },
+          { mediaId: '11', code: 0 as const, message: 'Failed' },
+        ],
+      };
+      collectionsService.bulkMediaCollectionAction.mockResolvedValue(response);
+
+      await expect(
+        controller.bulkMediaCollectionAction({
+          mediaIds: ['10', '11'],
+          collectionId: 7,
+          action: 0,
+          mediaType: 'movie',
+        }),
+      ).resolves.toEqual(response);
+      expect(collectionsService.bulkMediaCollectionAction).toHaveBeenCalledWith(
+        ['10', '11'],
+        7,
+        'add',
+        'movie',
+        undefined,
+      );
+    });
+
+    it('removes from every collection when none is named', async () => {
+      collectionsService.bulkMediaCollectionAction.mockResolvedValue({
+        results: [],
+      });
+
+      await controller.bulkMediaCollectionAction({
+        mediaIds: ['10'],
+        action: 1,
+        mediaType: 'movie',
+      });
+
+      expect(collectionsService.bulkMediaCollectionAction).toHaveBeenCalledWith(
+        ['10'],
+        undefined,
+        'remove',
+        'movie',
+        undefined,
+      );
+    });
+
+    it('rejects an add with no collection to add to', async () => {
+      await expect(
+        controller.bulkMediaCollectionAction({
+          mediaIds: ['10'],
+          action: 0,
+          mediaType: 'movie',
+        }),
+      ).rejects.toThrow('A collection is required');
+      expect(
+        collectionsService.bulkMediaCollectionAction,
+      ).not.toHaveBeenCalled();
     });
   });
 

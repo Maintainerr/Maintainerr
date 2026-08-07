@@ -11,6 +11,7 @@ import { SonarrActionHandler } from '../actions/sonarr-action-handler';
 import { MediaServerFactory } from '../api/media-server/media-server.factory';
 import { IMediaServerService } from '../api/media-server/media-server.interface';
 import { SeerrApiService } from '../api/seerr-api/seerr-api.service';
+import { MaintainerrLogger } from '../logging/logs.service';
 import { MetadataService } from '../metadata/metadata.service';
 import { SettingsDataService } from '../settings/settings-data.service';
 import { CollectionHandler } from './collection-handler';
@@ -29,6 +30,7 @@ describe('CollectionHandler', () => {
   let settings: Mocked<SettingsDataService>;
   let metadataService: Mocked<MetadataService>;
   let recentlyHandledMedia: Mocked<RecentlyHandledMediaService>;
+  let logger: Mocked<MaintainerrLogger>;
 
   beforeEach(async () => {
     const { unit, unitRef } =
@@ -43,11 +45,16 @@ describe('CollectionHandler', () => {
     settings = unitRef.get(SettingsDataService);
     metadataService = unitRef.get(MetadataService);
     recentlyHandledMedia = unitRef.get(RecentlyHandledMediaService);
+    logger = unitRef.get(MaintainerrLogger);
 
     metadataService.resolveIdsForService.mockResolvedValue(undefined);
     // The sibling-prune cascade returns the collection ids it pruned; default
     // to none so the disk-freeing tests don't iterate `undefined`.
     collectionsService.removeMediaFromOtherCollections.mockResolvedValue([]);
+    // Default the Seerr removals to a confirmed removal; the unreachable tests
+    // override with undefined.
+    seerrApi.removeSeasonRequest.mockResolvedValue(true);
+    seerrApi.removeMediaByTmdbId.mockResolvedValue(true);
 
     // Setup media server mock. `itemExists` defaults to true (item present) so
     // the action-failure tests exercise the retryable path; the gone-item test
@@ -598,6 +605,43 @@ describe('CollectionHandler', () => {
     );
   });
 
+  // #3427: a removal that never reached Seerr logged as though it had, so a run
+  // against an unreachable Seerr read as fully successful.
+  it.each([
+    { title: 'a season', type: 'season' as const, index: 1 },
+    { title: 'a movie', type: 'movie' as const, index: undefined },
+  ])(
+    'warns instead of claiming the Seerr removal for $title',
+    async ({ type, index }) => {
+      const collection = createCollection({
+        arrAction: ServarrAction.DELETE,
+        forceSeerr: true,
+        type,
+      });
+      const collectionMedia = createCollectionMedia(collection);
+
+      settings.seerrConfigured.mockReturnValue(true);
+      seerrApi.removeSeasonRequest.mockResolvedValue(undefined);
+      seerrApi.removeMediaByTmdbId.mockResolvedValue(undefined);
+      mockMediaServerMetadata({ index } as MediaItem);
+      mediaServer.getLibraries.mockResolvedValue(
+        createMediaLibraries({
+          id: collection.libraryId.toString(),
+          type: type === 'season' ? 'show' : 'movie',
+        }),
+      );
+
+      await collectionHandler.handleMedia(collection, collectionMedia);
+
+      expect(logger.warn).toHaveBeenCalledWith(
+        expect.stringContaining("[Seerr] Couldn't remove"),
+      );
+      expect(logger.log).not.toHaveBeenCalledWith(
+        expect.stringContaining('[Seerr] Removed'),
+      );
+    },
+  );
+
   it('should call removeMediaByTmdbId for movies', async () => {
     const collection = createCollection({
       arrAction: ServarrAction.DELETE,
@@ -652,6 +696,31 @@ describe('CollectionHandler', () => {
       'tv',
     );
     expect(seerrApi.removeMediaByTmdbId).toHaveBeenCalledTimes(1);
+  });
+
+  it('should still remove a show as tv when the library is no longer listed', async () => {
+    const collection = createCollection({
+      arrAction: ServarrAction.DELETE,
+      forceSeerr: true,
+      type: 'show',
+    });
+    const collectionMedia = createCollectionMedia(collection);
+
+    settings.seerrConfigured.mockReturnValue(true);
+
+    // The media server no longer lists the collection's library, so the lookup
+    // misses. Reading the type off it would send the show's TMDB id to the
+    // movie endpoint, where it can name an unrelated film.
+    mediaServer.getLibraries.mockResolvedValue([]);
+
+    await expect(
+      collectionHandler.handleMedia(collection, collectionMedia),
+    ).resolves.toBe('handled');
+
+    expect(seerrApi.removeMediaByTmdbId).toHaveBeenCalledWith(
+      collectionMedia.tmdbId,
+      'tv',
+    );
   });
 
   it('should not call SeerrApiService if forceSeerr is false', async () => {

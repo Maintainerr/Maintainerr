@@ -18,5 +18,12 @@ export class RuleDto {
    * Undefined means aggregate all reported paths.
    */
   arrDiskPath?: string;
+  /**
+   * Media-server user the PER_USER_PROPERTIES read; unused by every other one.
+   * Held as a username because the companions key history on their own user
+   * ids and agree only on this - Tautulli reports the plex.tv account id where
+   * the media server reports its local one.
+   */
+  username?: string;
   section: number;
 }

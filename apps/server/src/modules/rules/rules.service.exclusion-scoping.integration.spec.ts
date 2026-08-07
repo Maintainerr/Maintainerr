@@ -63,7 +63,8 @@ describe('Exclusion scoping (real DB) - excluded-in-A item is added in B', () =>
       { emit: jest.fn() } as any, // eventEmitter
       createMockServarrTagService() as any,
       createMockLogger() as any,
-      {} as any, // tracearrApi
+      {} as any, // tracearrApi,
+      { getUsernames: jest.fn().mockResolvedValue([]) } as any,
     );
 
   beforeAll(async () => {

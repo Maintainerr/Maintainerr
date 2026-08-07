@@ -31,6 +31,7 @@ import { PlexGetterService } from './getter/plex-getter.service';
 import { RadarrGetterService } from './getter/radarr-getter.service';
 import { SonarrGetterService } from './getter/sonarr-getter.service';
 import { SportarrGetterService } from './getter/sportarr-getter.service';
+import { RuleUsersService } from './rule-users.service';
 import { StreamystatsGetterService } from './getter/streamystats-getter.service';
 import { TautulliGetterService } from './getter/tautulli-getter.service';
 import { TracearrGetterService } from './getter/tracearr-getter.service';
@@ -92,6 +93,7 @@ import { RuleMaintenanceService } from './tasks/rule-maintenance.service';
     SeerrGetterService,
     TautulliGetterService,
     StreamystatsGetterService,
+    RuleUsersService,
     TracearrGetterService,
     ValueGetterService,
     RuleYamlService,

@@ -10,6 +10,41 @@ const IS_IN_WATCHLIST_PROP_ID = 0;
 const WATCHLISTED_BY_USERS_PROP_ID = 1;
 const IS_IN_WATCHLIST_INCLUDING_PARENT_PROP_ID = 2;
 const WATCHLISTED_BY_USERS_INCLUDING_PARENT_PROP_ID = 3;
+const VIEW_COUNT_BY_USER_PROP_ID = 4;
+const WATCH_TIME_BY_USER_PROP_ID = 5;
+const LAST_VIEWED_AT_BY_USER_PROP_ID = 6;
+
+const itemDetailsOf = (
+  // Streamystats reports the Jellyfin user id; its copy of the name can lag a
+  // rename or be null, which is why the getter matches on id.
+  usersWatched: {
+    id: string;
+    name: string | null;
+    watchCount: number;
+    totalWatchTime: number;
+    lastWatched: string | null;
+  }[],
+) =>
+  ({
+    item: { id: 'item-1' },
+    totalViews: 0,
+    totalWatchTime: 0,
+    completionRate: 0,
+    firstWatched: null,
+    lastWatched: null,
+    watchHistory: [],
+    watchCountByMonth: [],
+    usersWatched: usersWatched.map(
+      ({ id, name, watchCount, totalWatchTime, lastWatched }) => ({
+        user: { id, name },
+        watchCount,
+        totalWatchTime,
+        completionRate: 0,
+        firstWatched: null,
+        lastWatched,
+      }),
+    ),
+  }) as never;
 
 const membershipOf = (
   entries: Record<string, string[]>,
@@ -26,6 +61,7 @@ describe('StreamystatsGetterService', () => {
   ) => {
     const streamystatsApi = {
       getWatchlistMembership: jest.fn(),
+      getItemDetails: jest.fn(),
     } as unknown as jest.Mocked<StreamystatsApiService>;
 
     const getMetadata = jest.fn(async (id: string) =>
@@ -299,6 +335,134 @@ describe('StreamystatsGetterService', () => {
           season,
         ),
       ).toEqual([]);
+    });
+  });
+
+  describe('per-user properties (ids 4-6)', () => {
+    const alice = { id: 'user-a', name: 'alice' };
+    const rule = { username: 'alice' } as never;
+
+    it('reads the picked user out of the item statistics', async () => {
+      const { service, streamystatsApi } = createService([alice]);
+      const libItem = createMediaItem({ type: 'movie', id: 'item-1' });
+      streamystatsApi.getItemDetails.mockResolvedValue(
+        itemDetailsOf([
+          {
+            id: 'user-a',
+            name: 'alice',
+            watchCount: 3,
+            totalWatchTime: 5400,
+            lastWatched: '2026-05-01T10:00:00.000Z',
+          },
+          {
+            id: 'user-b',
+            name: 'bob',
+            watchCount: 9,
+            totalWatchTime: 60,
+            lastWatched: '2026-06-01T10:00:00.000Z',
+          },
+        ]),
+      );
+
+      expect(await service.get(VIEW_COUNT_BY_USER_PROP_ID, libItem, rule)).toBe(
+        3,
+      );
+      // Streamystats reports seconds; the property is minutes.
+      expect(await service.get(WATCH_TIME_BY_USER_PROP_ID, libItem, rule)).toBe(
+        90,
+      );
+      expect(
+        await service.get(LAST_VIEWED_AT_BY_USER_PROP_ID, libItem, rule),
+      ).toEqual(new Date('2026-05-01T10:00:00.000Z'));
+    });
+
+    // Streamystats' copy of the name lags a Jellyfin rename (and is nullable),
+    // so a name match would read this as "never watched" and let a delete rule
+    // sweep the item.
+    it('matches the statistics row by user id when the names disagree', async () => {
+      const { service, streamystatsApi } = createService([alice]);
+      const libItem = createMediaItem({ type: 'movie', id: 'item-1' });
+      streamystatsApi.getItemDetails.mockResolvedValue(
+        itemDetailsOf([
+          {
+            id: 'user-a',
+            name: null,
+            watchCount: 3,
+            totalWatchTime: 60,
+            lastWatched: null,
+          },
+        ]),
+      );
+
+      expect(await service.get(VIEW_COUNT_BY_USER_PROP_ID, libItem, rule)).toBe(
+        3,
+      );
+    });
+
+    it('answers zero and no date for a known user who never watched the item', async () => {
+      const { service, streamystatsApi } = createService([alice]);
+      const libItem = createMediaItem({ type: 'movie', id: 'item-1' });
+      streamystatsApi.getItemDetails.mockResolvedValue(itemDetailsOf([]));
+
+      expect(await service.get(VIEW_COUNT_BY_USER_PROP_ID, libItem, rule)).toBe(
+        0,
+      );
+      expect(await service.get(WATCH_TIME_BY_USER_PROP_ID, libItem, rule)).toBe(
+        0,
+      );
+      expect(
+        await service.get(LAST_VIEWED_AT_BY_USER_PROP_ID, libItem, rule),
+      ).toBeNull();
+    });
+
+    // Zero here would read as "this user never watched it" and let a rule that
+    // protects rewatched media sweep it instead.
+    it.each([
+      { when: 'the rule has no user', users: [alice], ruleDto: {} as never },
+      {
+        when: 'the media server has no such user',
+        users: [{ id: 'user-b', name: 'bob' }],
+        ruleDto: rule,
+      },
+      { when: 'the media server user lookup failed', users: [], ruleDto: rule },
+    ])('skips the item when $when', async ({ users, ruleDto }) => {
+      const { service, streamystatsApi } = createService(users);
+      const libItem = createMediaItem({ type: 'movie', id: 'item-1' });
+      streamystatsApi.getItemDetails.mockResolvedValue(
+        itemDetailsOf([
+          {
+            id: 'user-a',
+            name: 'alice',
+            watchCount: 3,
+            totalWatchTime: 60,
+            lastWatched: null,
+          },
+        ]),
+      );
+
+      expect(
+        await service.get(VIEW_COUNT_BY_USER_PROP_ID, libItem, ruleDto),
+      ).toBeUndefined();
+    });
+
+    it('skips the item when Streamystats has no statistics for it', async () => {
+      const { service, streamystatsApi } = createService([alice]);
+      const libItem = createMediaItem({ type: 'movie', id: 'item-1' });
+      streamystatsApi.getItemDetails.mockResolvedValue(null);
+
+      expect(
+        await service.get(VIEW_COUNT_BY_USER_PROP_ID, libItem, rule),
+      ).toBeUndefined();
+    });
+
+    it('answers null for a season without reading Streamystats', async () => {
+      const { service, streamystatsApi } = createService([alice]);
+      const season = createMediaItem({ type: 'season', id: 'season-1' });
+
+      expect(
+        await service.get(VIEW_COUNT_BY_USER_PROP_ID, season, rule),
+      ).toBeNull();
+      expect(streamystatsApi.getItemDetails).not.toHaveBeenCalled();
     });
   });
 

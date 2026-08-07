@@ -67,6 +67,26 @@ export class SonarrActionHandler {
       mediaData = await mediaServer.getMetadata(media.mediaServerId);
     }
 
+    // Every season-scoped Sonarr call has to be limited to this one number, and
+    // it is missing more often than it looks: the metadata read fails because
+    // the season is gone (Plex drops an emptied season on its next scan, while
+    // the item stays queued for retry), or the season simply has no index -
+    // Jellyfin and Emby file episodes they can't place under a permanent
+    // "Season Unknown" that carries no IndexNumber. Either way the index used to
+    // reach `unmonitorSeasons` as its whole-show default and delete every
+    // remaining episode file of the show (#3415), so fail closed: no Sonarr call
+    // is made, and the collection handler decides whether to keep the item for
+    // retry or prune it.
+    const seasonNumber =
+      collection.type === 'season' ? mediaData?.index : undefined;
+
+    if (collection.type === 'season' && seasonNumber == null) {
+      this.logger.warn(
+        `[Sonarr] Couldn't determine the season number for media server item ${media.mediaServerId}. No action was taken.`,
+      );
+      return false;
+    }
+
     const lookupCandidates =
       await this.metadataService.resolveLookupCandidatesForService(
         media.mediaServerId,
@@ -158,6 +178,7 @@ export class SonarrActionHandler {
           sonarrMedia,
           collection.type,
           mediaData,
+          seasonNumber,
         );
       }
     }
@@ -177,7 +198,7 @@ export class SonarrActionHandler {
       ? await this.collectCleanupInputs(
           sonarrApiClient,
           sonarrMedia,
-          cleanupScope === 'season' ? mediaData?.index : undefined,
+          cleanupScope === 'season' ? seasonNumber : undefined,
         )
       : undefined;
 
@@ -191,7 +212,7 @@ export class SonarrActionHandler {
         }
         sonarrMedia = await sonarrApiClient.unmonitorSeasons(
           sonarrMedia.id,
-          mediaData?.index,
+          seasonNumber,
           true,
         );
 
@@ -200,14 +221,14 @@ export class SonarrActionHandler {
         }
 
         this.logger.log(
-          `[Sonarr] Removed season ${mediaData?.index} from show '${sonarrMedia.title}'`,
+          `[Sonarr] Removed season ${seasonNumber} from show '${sonarrMedia.title}'`,
         );
         {
           const showDeleted = await this.deleteShowIfEmpty(
             sonarrApiClient,
             matchedResult.candidate,
             media.tmdbId,
-            mediaData?.index,
+            seasonNumber,
             collection.listExclusions,
           );
           await this.downloadClient.removeDownloads(downloadIds);
@@ -228,7 +249,7 @@ export class SonarrActionHandler {
           case 'season':
             sonarrMedia = await sonarrApiClient.unmonitorSeasons(
               sonarrMedia.id,
-              mediaData?.index,
+              seasonNumber,
               true,
             );
 
@@ -237,7 +258,7 @@ export class SonarrActionHandler {
             }
 
             this.logger.log(
-              `[Sonarr] Removed season ${mediaData?.index} from show '${sonarrMedia.title}'`,
+              `[Sonarr] Removed season ${seasonNumber} from show '${sonarrMedia.title}'`,
             );
             await this.downloadClient.removeDownloads(downloadIds);
             await this.cleanupLeftoverFolder(
@@ -299,7 +320,7 @@ export class SonarrActionHandler {
         }
         sonarrMedia = await sonarrApiClient.unmonitorSeasons(
           sonarrMedia.id,
-          mediaData?.index,
+          seasonNumber,
           false,
         );
 
@@ -308,7 +329,7 @@ export class SonarrActionHandler {
         }
 
         this.logger.log(
-          `[Sonarr] Unmonitored season ${mediaData?.index} from show '${sonarrMedia.title}'`,
+          `[Sonarr] Unmonitored season ${seasonNumber} from show '${sonarrMedia.title}'`,
         );
         await this.unmonitorShowIfEmptyAndEnded(
           sonarrApiClient,
@@ -320,7 +341,7 @@ export class SonarrActionHandler {
           case 'season':
             sonarrMedia = await sonarrApiClient.unmonitorSeasons(
               sonarrMedia.id,
-              mediaData?.index,
+              seasonNumber,
               false,
             );
 
@@ -329,7 +350,7 @@ export class SonarrActionHandler {
             }
 
             this.logger.log(
-              `[Sonarr] Unmonitored season ${mediaData?.index} from show '${sonarrMedia.title}'`,
+              `[Sonarr] Unmonitored season ${seasonNumber} from show '${sonarrMedia.title}'`,
             );
             return true;
           case 'episode': {
@@ -418,7 +439,7 @@ export class SonarrActionHandler {
           case 'season':
             sonarrMedia = await sonarrApiClient.unmonitorSeasons(
               sonarrMedia.id,
-              mediaData?.index,
+              seasonNumber,
               true,
               true,
             );
@@ -428,7 +449,7 @@ export class SonarrActionHandler {
             }
 
             this.logger.log(
-              `[Sonarr] Removed existing episodes from season ${mediaData?.index} from show '${sonarrMedia.title}'`,
+              `[Sonarr] Removed existing episodes from season ${seasonNumber} from show '${sonarrMedia.title}'`,
             );
             await this.downloadClient.removeDownloads(downloadIds);
             await this.cleanupLeftoverFolder(
@@ -529,13 +550,15 @@ export class SonarrActionHandler {
     sonarrMedia: SonarrSeries,
     type: 'season' | 'episode',
     mediaData?: MediaItem,
+    // The handler's once-resolved, fail-closed season number (#3415) - not
+    // re-derived here so the guard cannot be bypassed by a future edit.
+    seasonNumber?: number,
   ): Promise<string[]> {
     try {
       // The deleted set comes from Sonarr's episode list (what the delete acts
       // on), not history, so it matches the files actually removed.
       let deletedEpisodes: SonarrEpisode[];
       if (type === 'season') {
-        const seasonNumber = mediaData?.index;
         if (seasonNumber === undefined || seasonNumber === null) {
           this.logger.debug(
             `[Sonarr] Skipping download cleanup for '${sonarrMedia.title}': season number could not be determined.`,

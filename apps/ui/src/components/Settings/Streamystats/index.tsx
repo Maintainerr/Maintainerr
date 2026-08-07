@@ -1,8 +1,10 @@
-import { streamystatsSettingSchema } from '@maintainerr/contracts'
+import {
+  streamystatsSettingSchema,
+  stripTrailingSlashes,
+} from '@maintainerr/contracts'
 import { Navigate } from 'react-router-dom'
 import { z } from 'zod'
 import { useMediaServerType } from '../../../hooks/useMediaServerType'
-import { stripTrailingSlashes } from '../../../utils/SettingsUtils'
 import ExternalServiceSettingsPage, {
   type ExternalServiceFieldConfig,
 } from '../ExternalServiceSettingsPage'

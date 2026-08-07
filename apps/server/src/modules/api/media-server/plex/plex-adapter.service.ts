@@ -7,6 +7,7 @@ import {
   MediaItemType,
   MediaLibrary,
   MediaPlaylist,
+  MediaProviderIds,
   MediaServerFeature,
   MediaServerStatus,
   MediaServerType,
@@ -28,6 +29,7 @@ import {
 } from '../media-server-id.utils';
 import { resolveContextActionIds } from '../context-action.util';
 import { supportsFeature } from '../media-server.constants';
+import { readMetadataInBatches } from '../metadata-batch.util';
 import {
   IMediaServerService,
   type MediaWatchState,
@@ -191,6 +193,19 @@ export class PlexAdapterService implements IMediaServerService {
     const metadata = await this.plexApi.getMetadata(itemId);
     if (!metadata) return undefined;
     return PlexMapper.metadataToMediaItem(metadata);
+  }
+
+  async getMetadataBatch(itemIds: string[]): Promise<MediaItem[]> {
+    return readMetadataInBatches({
+      itemIds,
+      // Ids are comma separated in the path.
+      perIdCost: 1,
+      // plexApi answers [] for a failed read, so there is nothing to report.
+      readBatch: async (idBatch) =>
+        (await this.plexApi.getMetadataBatch(idBatch)).map(
+          PlexMapper.metadataToMediaItem,
+        ),
+    });
   }
 
   async itemExists(itemId: string): Promise<boolean> {
@@ -492,13 +507,11 @@ export class PlexAdapterService implements IMediaServerService {
     );
   }
 
-  private hasUsableProviderIds(mediaItem: MediaItem | undefined): boolean {
-    if (!mediaItem) {
-      return false;
-    }
-
-    return Object.values(mediaItem.providerIds ?? {}).some((values) =>
-      Array.isArray(values) ? values.length > 0 : false,
+  private hasUsableProviderIds(
+    providerIds: MediaProviderIds | undefined,
+  ): boolean {
+    return Object.values(providerIds ?? {}).some(
+      (values) => Array.isArray(values) && values.length > 0,
     );
   }
 
@@ -508,43 +521,55 @@ export class PlexAdapterService implements IMediaServerService {
     const children = await this.plexApi.getCollectionChildren(collectionId);
 
     const mappedChildren = children.map(PlexMapper.toMediaItem);
-    const incompleteChildren = mappedChildren.filter(
-      (child) => !this.hasUsableProviderIds(child),
-    );
+    const idsWithoutProviderIds = mappedChildren
+      .filter((child) => !this.hasUsableProviderIds(child.providerIds))
+      .map((child) => child.id)
+      .filter((id): id is string => Boolean(id));
 
-    if (incompleteChildren.length === 0) {
+    if (idsWithoutProviderIds.length === 0) {
       return mappedChildren;
     }
 
-    const refreshedMetadataResults = await Promise.allSettled(
-      incompleteChildren.map(async (child) => ({
-        id: child.id,
-        mediaItem: await this.getMetadata(child.id),
-      })),
+    // The listing asks for guids, but Plex withholds the Guid array anyway for
+    // episodes and seasons, and for any library whose agent publishes none. In
+    // id batches, never one request per child: that is what a Plex host answers
+    // with 503s.
+    const resolvedById = new Map(
+      (await this.getMetadataBatch(idsWithoutProviderIds)).map((item) => [
+        item.id,
+        item,
+      ]),
     );
 
-    const refreshedMetadataById = new Map<string, MediaItem>();
+    const unresolved = idsWithoutProviderIds.filter(
+      (id) => !this.hasUsableProviderIds(resolvedById.get(id)?.providerIds),
+    ).length;
 
-    refreshedMetadataResults.forEach((result, index) => {
-      const child = incompleteChildren[index];
-
-      if (result.status === 'fulfilled' && result.value.mediaItem) {
-        refreshedMetadataById.set(result.value.id, result.value.mediaItem);
-        return;
-      }
-
+    if (unresolved > 0) {
+      // Counted, not one line each: an unmatched collection is normal. Says
+      // unresolved rather than absent, since a failed batch lands here too.
       this.logger.debug(
-        `Failed to refresh complete metadata for Plex collection child ${child?.id}`,
+        `No external ids resolved for ${unresolved} of ${mappedChildren.length} children of Plex collection ${collectionId}`,
       );
+    }
 
-      if (result.status === 'rejected') {
-        this.logger.debug(result.reason);
+    // The listing entry stays the record: it carries fields the metadata one
+    // does not (library, parent guids, watch counts). Ratings come across too,
+    // because Plex sends none at all on an episode or season listing row and
+    // the rating sort compares them.
+    return mappedChildren.map((child) => {
+      const resolved = resolvedById.get(child.id);
+
+      if (!resolved) {
+        return child;
       }
-    });
 
-    return mappedChildren.map(
-      (child) => refreshedMetadataById.get(child.id) ?? child,
-    );
+      return {
+        ...child,
+        providerIds: resolved.providerIds,
+        ...(resolved.ratings.length > 0 ? { ratings: resolved.ratings } : {}),
+      };
+    });
   }
 
   private ensureMutationSucceeded(

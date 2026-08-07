@@ -1,6 +1,9 @@
 import { AxiosError } from 'axios';
+import { batchIdsByRequestCost } from '../metadata-batch.util';
+import { EMBY_METADATA_FIELDS } from './emby-adapter.service';
 import { EMBY_CACHE_TTL } from './emby.constants';
 import { EmbyAdapterService } from './emby-adapter.service';
+import { EmbyMapper } from './emby.mapper';
 
 const embyCacheMocks = {
   flush: jest.fn(),
@@ -93,6 +96,29 @@ describe('EmbyAdapterService', () => {
     setHttp();
   });
 
+  describe('deleteFromDisk', () => {
+    it.each(['', '   '])(
+      'refuses a blank item id (%j) rather than calling /Items/',
+      async (itemId) => {
+        setHttp();
+
+        await expect(service.deleteFromDisk(itemId)).rejects.toThrow(
+          'aborting to prevent unintended deletion',
+        );
+        expect(http.delete).not.toHaveBeenCalled();
+      },
+    );
+
+    it('deletes a real item', async () => {
+      setHttp();
+      http.delete.mockResolvedValue({ data: {} });
+
+      await service.deleteFromDisk('42');
+
+      expect(http.delete).toHaveBeenCalledWith('/Items/42');
+    });
+  });
+
   describe('getMetadata caching (#3355)', () => {
     it('caches a resolved item so repeat conditions do not re-read it', async () => {
       http.get.mockResolvedValue({
@@ -123,6 +149,233 @@ describe('EmbyAdapterService', () => {
 
       await expect(service.getMetadata('item-1')).resolves.toBeUndefined();
       expect(embyCacheMocks.data.set).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('getMetadataBatch', () => {
+    it('reads a whole id list in one user-scoped request and caches each item', async () => {
+      http.get.mockResolvedValue({
+        data: {
+          Items: [
+            { Id: 'movie-1', Type: 'Movie', Name: 'One' },
+            { Id: 'movie-2', Type: 'Movie', Name: 'Two' },
+          ],
+        },
+      });
+
+      const items = await service.getMetadataBatch(['movie-1', 'movie-2']);
+
+      expect(http.get).toHaveBeenCalledTimes(1);
+      expect(http.get).toHaveBeenCalledWith(
+        '/Items',
+        expect.objectContaining({
+          params: expect.objectContaining({ Ids: 'movie-1,movie-2' }),
+        }),
+      );
+      expect(items.map((item) => item.id)).toEqual(['movie-1', 'movie-2']);
+      // Batched list-route rows stub UserData, so they live in their own
+      // namespace and are never served to getMetadata callers.
+      expect(embyCacheMocks.data.set).toHaveBeenCalledWith(
+        'emby:metadata-batch:movie-1',
+        expect.objectContaining({ id: 'movie-1' }),
+        EMBY_CACHE_TTL.METADATA,
+      );
+    });
+
+    it('splits a long id list', async () => {
+      http.get.mockResolvedValue({ data: { Items: [] } });
+      const itemIds = Array.from(
+        { length: 1500 },
+        (unused, index) => `movie-${index}`,
+      );
+
+      await service.getMetadataBatch(itemIds);
+
+      // The shared helper decides the split from the ids themselves.
+      expect(http.get).toHaveBeenCalledTimes(
+        batchIdsByRequestCost(itemIds, 1).length,
+      );
+      expect(http.get.mock.calls.length).toBeGreaterThan(1);
+    });
+
+    it('keeps only the ids it was asked for', async () => {
+      http.get.mockResolvedValue({
+        data: {
+          Items: [
+            { Id: 'movie-1', Type: 'Movie', Name: 'One' },
+            { Id: 'somebody-else', Type: 'Movie', Name: 'Unrelated' },
+          ],
+        },
+      });
+
+      await expect(service.getMetadataBatch(['movie-1'])).resolves.toEqual([
+        expect.objectContaining({ id: 'movie-1' }),
+      ]);
+    });
+
+    it('serves cached ids without asking for them again', async () => {
+      embyCacheMocks.data.get.mockImplementation((key: string) =>
+        key === 'emby:metadata-batch:movie-1' ? { id: 'movie-1' } : undefined,
+      );
+      http.get.mockResolvedValue({
+        data: { Items: [{ Id: 'movie-2', Type: 'Movie', Name: 'Two' }] },
+      });
+
+      const items = await service.getMetadataBatch(['movie-1', 'movie-2']);
+
+      expect(http.get).toHaveBeenCalledWith(
+        '/Items',
+        expect.objectContaining({
+          params: expect.objectContaining({ Ids: 'movie-2' }),
+        }),
+      );
+      expect(items.map((item) => item.id).sort()).toEqual([
+        'movie-1',
+        'movie-2',
+      ]);
+    });
+
+    // Emby answers 500 for a malformed id, so a bad id costs its batch. Same
+    // contract as getMetadata: those ids are absent, not reported missing.
+    it('leaves out the ids of a failed read', async () => {
+      embyCacheMocks.data.get.mockReturnValue(undefined);
+      http.get.mockRejectedValue(new Error('boom'));
+
+      await expect(service.getMetadataBatch(['movie-1'])).resolves.toEqual([]);
+    });
+
+    // Unscoped, the list route answers rows with no UserData at all, so a
+    // missing user must leave the ids unresolved rather than read unscoped.
+    it('resolves nothing rather than reading unscoped when no user resolves', async () => {
+      setHttp('');
+      embyCacheMocks.data.get.mockReturnValue(undefined);
+      http.get.mockResolvedValue({ data: [] });
+
+      await expect(service.getMetadataBatch(['movie-1'])).resolves.toEqual([]);
+      expect(http.get).not.toHaveBeenCalledWith(
+        '/Items',
+        expect.objectContaining({
+          params: expect.objectContaining({ Ids: 'movie-1' }),
+        }),
+      );
+    });
+  });
+
+  // Emby answers fewer fields on `/Items` than on `/Users/{id}/Items/{id}`, and a
+  // batch result is cached under the key getMetadata reads, so the two reads have
+  // to ask for exactly the same set.
+  describe('metadata read parity', () => {
+    const fieldsOf = (call: unknown[]) =>
+      (call[1] as { params: { Fields: string } }).params.Fields;
+
+    it('asks for the same fields in the batch read as in the single read', async () => {
+      http.get.mockResolvedValue({
+        data: { Id: 'movie-1', Type: 'Movie', Name: 'One' },
+      });
+      await service.getMetadata('movie-1');
+      const singleFields = fieldsOf(http.get.mock.calls[0]);
+
+      http.get.mockClear();
+      embyCacheMocks.data.get.mockReturnValue(undefined);
+      http.get.mockResolvedValue({
+        data: { Items: [{ Id: 'movie-1', Type: 'Movie', Name: 'One' }] },
+      });
+      await service.getMetadataBatch(['movie-1']);
+
+      expect(fieldsOf(http.get.mock.calls[0])).toBe(singleFields);
+    });
+
+    // Verified on Emby 4.9.5: a list read omits each of these unless it is named,
+    // and the mapper reads all of them.
+    it.each([
+      ['ParentId', 'parentId'],
+      ['ChildCount', 'childCount'],
+      ['PremiereDate', 'originallyAvailableAt'],
+      ['CommunityRating', 'ratings'],
+      ['OfficialRating', 'contentRating'],
+      ['ProductionYear', 'year'],
+      ['IndexNumberEnd', 'indexEnd'],
+    ])('names %s, which the mapper needs for %s', (field) => {
+      expect(EMBY_METADATA_FIELDS.split(',')).toContain(field);
+    });
+
+    // The keys the list route answers without being asked, verified on 4.9.5
+    // for a movie and an episode. Everything else the mapper consumes must be
+    // named in EMBY_METADATA_FIELDS or the batched row silently loses it.
+    const LIST_ROUTE_BASE_KEYS = [
+      'BackdropImageTags',
+      'Id',
+      'ImageTags',
+      'IndexNumber',
+      'IsFolder',
+      'MediaType',
+      'Name',
+      'ParentIndexNumber',
+      'RunTimeTicks',
+      'SeasonId',
+      'SeasonName',
+      'SeriesId',
+      'SeriesName',
+      'ServerId',
+      'Type',
+      // Answered as a stub (PlayCount 0, no LastPlayedDate), which is why the
+      // batch caches apart from getMetadata rather than asking for it.
+      'UserData',
+      // Read only to classify library folders, which no metadata batch holds.
+      'CollectionType',
+    ];
+
+    it('asks for every field the mapper actually reads', () => {
+      const accessed = new Set<string>();
+      const record = (payload: Record<string, unknown>) =>
+        new Proxy(payload, {
+          get(target, key) {
+            if (typeof key === 'string') accessed.add(key);
+            return target[key as keyof typeof payload];
+          },
+        });
+
+      for (const type of ['Movie', 'Series', 'Season', 'Episode']) {
+        EmbyMapper.toMediaItem(
+          record({ Id: 'item-1', Type: type, Name: 'One' }) as never,
+        );
+      }
+
+      const askedFor = new Set(EMBY_METADATA_FIELDS.split(','));
+      const unrequested = [...accessed].filter(
+        (key) => !askedFor.has(key) && !LIST_ROUTE_BASE_KEYS.includes(key),
+      );
+      expect(unrequested).toEqual([]);
+    });
+
+    it('maps a batch item to the same shape as a single item', async () => {
+      // DateCreated is set because the mapper falls back to `new Date()`
+      // without it, which the two reads below stamp a few milliseconds apart.
+      const payload = {
+        Id: 'movie-1',
+        Type: 'Movie',
+        Name: 'One',
+        DateCreated: '2026-01-02T03:04:05.0000000Z',
+        ParentId: '6',
+        ChildCount: 1,
+        PremiereDate: '2008-05-20T00:00:00.0000000Z',
+        CommunityRating: 7.5,
+        OfficialRating: 'PG',
+        ProviderIds: { Tmdb: '10378' },
+      };
+
+      http.get.mockResolvedValue({ data: payload });
+      const single = await service.getMetadata('movie-1');
+
+      embyCacheMocks.data.get.mockReturnValue(undefined);
+      http.get.mockResolvedValue({ data: { Items: [payload] } });
+      const [batched] = await service.getMetadataBatch(['movie-1']);
+
+      expect(batched).toEqual(single);
+      expect(batched.parentId).toBe('6');
+      expect(batched.originallyAvailableAt).toBeInstanceOf(Date);
+      expect(batched.ratings).not.toEqual([]);
+      expect(batched.contentRating).toBe('PG');
     });
   });
 
@@ -706,6 +959,80 @@ describe('EmbyAdapterService', () => {
       expect(itemsCall[1].params.ParentId).toBe('library-1');
       expect(itemsCall[1].params.UserId).toBeUndefined();
     });
+
+    // Emby answers 404 on the unscoped route for a collection that exists, so
+    // the caller read a live collection as gone and dropped its link.
+    it('resolves a user before reading a collection instead of going unscoped', async () => {
+      clearConfiguredUser();
+      http.get.mockImplementation((path: string) =>
+        path === '/Users/Query'
+          ? Promise.resolve({
+              data: [{ Id: 'admin-9', Policy: { IsAdministrator: true } }],
+            })
+          : Promise.resolve({ data: { Id: 'box-1', Name: 'Box' } }),
+      );
+
+      await expect(service.getCollection('box-1', true)).resolves.toEqual(
+        expect.objectContaining({ id: 'box-1' }),
+      );
+      expect(http.get).toHaveBeenCalledWith('/Users/admin-9/Items/box-1');
+      expect(http.get).not.toHaveBeenCalledWith('/Items/box-1');
+    });
+
+    it('does not call a collection missing when no user can scope the lookup', async () => {
+      clearConfiguredUser();
+      http.get.mockResolvedValue({ data: { Items: [] } });
+
+      await expect(service.getCollection('box-1', true)).rejects.toThrow(
+        'no user to scope the lookup',
+      );
+      await expect(service.getCollection('box-1')).resolves.toBeUndefined();
+      expect(http.get).not.toHaveBeenCalledWith('/Items/box-1');
+    });
+
+    // The unscoped read 404s, so the update failed outright on a token-only
+    // setup; the list form would answer a trimmed item and write back a wipe.
+    it('reads the collection to update through the user-scoped route', async () => {
+      clearConfiguredUser();
+      http.get.mockImplementation((path: string) =>
+        path === '/Users/Query'
+          ? Promise.resolve({
+              data: [{ Id: 'admin-9', Policy: { IsAdministrator: true } }],
+            })
+          : Promise.resolve({ data: { Id: 'box-1', Name: 'Box' } }),
+      );
+      http.post.mockResolvedValue({ data: {} });
+
+      await service.updateCollection({
+        collectionId: 'box-1',
+        libraryId: 'library-1',
+        title: 'Renamed',
+      } as any);
+
+      expect(http.get).toHaveBeenCalledWith('/Users/admin-9/Items/box-1');
+    });
+
+    // Unscoped, Emby answers the physical folder tree, which never holds the
+    // CollectionFolder id stored as the library, so every child read as "not in
+    // this library" and the cleanup silently removed nothing.
+    it('scopes the library-membership check so cleanup can match its children', async () => {
+      jest
+        .spyOn(service, 'getCollectionChildren')
+        .mockResolvedValueOnce([{ id: 'item-1' }] as any)
+        .mockResolvedValueOnce([]);
+      const removeBatch = jest
+        .spyOn(service, 'removeBatchFromCollection')
+        .mockResolvedValue(undefined as never);
+      jest.spyOn(service, 'deleteCollection').mockResolvedValue(undefined);
+      http.get.mockResolvedValue({ data: [{ Id: 'library-1' }] });
+
+      await service.cleanupCollectionForLibrary('box-1', 'library-1', false);
+
+      expect(http.get).toHaveBeenCalledWith('/Items/item-1/Ancestors', {
+        params: { UserId: 'user-1' },
+      });
+      expect(removeBatch).toHaveBeenCalledWith('box-1', ['item-1']);
+    });
   });
 
   describe('updateCollection', () => {
@@ -977,6 +1304,64 @@ describe('EmbyAdapterService', () => {
       http.get.mockRejectedValueOnce(error);
 
       await expect(service.itemExists('42')).rejects.toBe(error);
+    });
+
+    // Emby 404s the unscoped /Items/{id} route for an item that exists.
+    describe('without a configured user', () => {
+      beforeEach(() => {
+        (service as unknown as { embyUserId?: string }).embyUserId = undefined;
+      });
+
+      const withResolvedAdmin = (item: unknown) =>
+        http.get.mockImplementation((path: string) =>
+          path === '/Users/Query'
+            ? Promise.resolve({
+                data: [{ Id: 'admin-9', Policy: { IsAdministrator: true } }],
+              })
+            : Promise.resolve({ data: item }),
+        );
+
+      it('resolves a single id through the auto-resolved user', async () => {
+        withResolvedAdmin({ Id: '42' });
+
+        await expect(service.itemExists('42')).resolves.toBe(true);
+        expect(http.get).toHaveBeenCalledWith('/Users/admin-9/Items/42');
+      });
+
+      it('reports a 404 on that route as a confirmed absence', async () => {
+        http.get.mockImplementation((path: string) =>
+          path === '/Users/Query'
+            ? Promise.resolve({
+                data: [{ Id: 'admin-9', Policy: { IsAdministrator: true } }],
+              })
+            : Promise.reject(createResponseError(404)),
+        );
+
+        await expect(service.itemExists('42')).resolves.toBe(false);
+      });
+
+      // Without a user the answer is unknown, and an unknown must never reach
+      // the caller as "deleted" - that is what removes live media.
+      it('stays inconclusive when no user can be resolved', async () => {
+        http.get.mockResolvedValue({ data: { Items: [] } });
+
+        await expect(service.itemExists('42')).rejects.toThrow(
+          'no user to scope the lookup',
+        );
+      });
+
+      // The list form would answer a trimmed item here, which is a metadata
+      // read silently losing most of its fields.
+      it('reads metadata through the same user-scoped route', async () => {
+        withResolvedAdmin({ Id: '42', Name: 'Sample Movie', Type: 'Movie' });
+
+        await expect(service.getMetadata('42')).resolves.toMatchObject({
+          id: '42',
+        });
+        expect(http.get).toHaveBeenCalledWith('/Users/admin-9/Items/42', {
+          params: { Fields: EMBY_METADATA_FIELDS },
+        });
+      });
     });
   });
 });

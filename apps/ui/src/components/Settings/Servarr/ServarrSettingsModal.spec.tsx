@@ -1,11 +1,5 @@
-import {
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import ServarrSettingsModal from './ServarrSettingsModal'
 
 const postApiHandler = vi.fn()
@@ -51,10 +45,6 @@ describe('ServarrSettingsModal', () => {
   beforeEach(() => {
     postApiHandler.mockReset()
     putApiHandler.mockReset()
-  })
-
-  afterEach(() => {
-    cleanup()
   })
 
   it('allows clearing an existing server and saving to remove it', async () => {

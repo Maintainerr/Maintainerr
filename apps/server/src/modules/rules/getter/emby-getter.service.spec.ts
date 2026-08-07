@@ -7,7 +7,7 @@ import {
   WatchRecord,
 } from '@maintainerr/contracts';
 import { Mocked, TestBed } from '@suites/unit';
-import { createRulesDto } from '../../../../test/utils/data';
+import { createRuleGroupDto } from '../../../../test/utils/data';
 
 import cacheManager from '../../api/lib/cache';
 import { EmbyAdapterService } from '../../api/media-server/emby/emby-adapter.service';
@@ -84,7 +84,7 @@ describe('EmbyGetterService', () => {
           STUDIOS_PROP_ID,
           mediaItem,
           'movie',
-          createRulesDto({ dataType: 'movie' }),
+          createRuleGroupDto({ dataType: 'movie' }),
           cache,
         ),
       ).resolves.toEqual(['Studio One']);
@@ -123,7 +123,7 @@ describe('EmbyGetterService', () => {
         1,
         mediaItem,
         'movie',
-        createRulesDto({ dataType: 'movie' }),
+        createRuleGroupDto({ dataType: 'movie' }),
       );
 
       expect(response).toEqual(['blank-user', 'missing-user', 'Alice']);
@@ -141,7 +141,7 @@ describe('EmbyGetterService', () => {
         0,
         createMediaItem(),
         'movie',
-        createRulesDto({ dataType: 'movie' }),
+        createRuleGroupDto({ dataType: 'movie' }),
       );
 
       expect(response).toBeUndefined();
@@ -154,7 +154,7 @@ describe('EmbyGetterService', () => {
         id: 'movie-collections-1',
         type: 'movie',
       });
-      const ruleGroup = createRulesDto({
+      const ruleGroup = createRuleGroupDto({
         dataType: 'movie',
         libraryId: mediaItem.library.id,
         name: ' movie cleanup ',
@@ -257,7 +257,7 @@ describe('EmbyGetterService', () => {
         },
       );
 
-      const ruleGroup = createRulesDto({
+      const ruleGroup = createRuleGroupDto({
         dataType: 'episode',
         libraryId: episodeItem.library.id,
         name: ' show cleanup ',
@@ -293,7 +293,7 @@ describe('EmbyGetterService', () => {
         id: 'movie-excluded-sibling',
         type: 'movie',
       });
-      const ruleGroup = createRulesDto({
+      const ruleGroup = createRuleGroupDto({
         dataType: 'movie',
         libraryId: mediaItem.library.id,
         name: ' sibling cleanup ',

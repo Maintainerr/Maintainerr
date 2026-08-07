@@ -1,5 +1,5 @@
 import { type MediaItemType } from '@maintainerr/contracts';
-import { type RulesDto } from '../dtos/rules.dto';
+import { type RuleGroupDto } from '../dtos/ruleGroup.dto';
 import { buildCollectionExcludeNames } from './collection-exclude.helper';
 
 type RuleUserId = string | number;
@@ -28,7 +28,7 @@ export function uniqueTrimmedRulePropertyNames(
 
 export function filterRuleCollectionNames(
   collectionNames: readonly string[],
-  ruleGroup?: RulesDto,
+  ruleGroup?: RuleGroupDto,
 ): string[] {
   const excludedCollectionNames = new Set(
     buildCollectionExcludeNames(ruleGroup),
@@ -41,7 +41,7 @@ export function filterRuleCollectionNames(
 
 export function countRuleCollectionNames(
   collectionNames: readonly string[],
-  ruleGroup?: RulesDto,
+  ruleGroup?: RuleGroupDto,
 ): number {
   return filterRuleCollectionNames(collectionNames, ruleGroup).length;
 }

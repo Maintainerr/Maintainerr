@@ -1,4 +1,8 @@
 import {
+  BULK_MEDIA_ACTION_MAX_ITEMS,
+  bulkCollectionMediaRequestSchema,
+  type BulkCollectionMediaRequest,
+  type BulkMediaResponse,
   COLLECTION_POSTER_MAX_BYTES,
   COLLECTION_POSTER_MAX_LABEL,
   CollectionPosterDeleteResponse,
@@ -46,6 +50,7 @@ import * as fs from 'fs';
 import { ZodValidationPipe } from 'nestjs-zod';
 import { z } from 'zod';
 import { MaintainerrLogger } from '../logging/logs.service';
+import { ExclusionAction } from '../rules/dtos/exclusion.dto';
 import { RuleExecutorJobManagerService } from '../rules/tasks/rule-executor-job-manager.service';
 import {
   ExecutionLockService,
@@ -414,7 +419,7 @@ export class CollectionsController {
         request.collectionId,
         request.context,
         { mediaServerId: request.mediaId },
-        request.action === 0 ? 'add' : 'remove',
+        request.action === ExclusionAction.ADD ? 'add' : 'remove',
       );
 
     // A rejected item and an item the context resolved to nothing both used to
@@ -432,6 +437,41 @@ export class CollectionsController {
     }
 
     return result.collection;
+  }
+
+  @Post('/media/bulk')
+  @ApiOperation({
+    summary: 'Add or remove a media selection to or from one collection',
+  })
+  @ApiResponse({
+    status: 201,
+    description: 'Per-item results; failures are reported per media id.',
+  })
+  @ApiResponse({
+    status: 400,
+    description: `Rejected without processing: empty, more than ${BULK_MEDIA_ACTION_MAX_ITEMS} media ids, or an add without a collection.`,
+  })
+  async bulkMediaCollectionAction(
+    @Body(new ZodValidationPipe(bulkCollectionMediaRequestSchema))
+    request: BulkCollectionMediaRequest,
+  ): Promise<BulkMediaResponse> {
+    // Only a removal can mean "every collection"; an add needs a target.
+    if (
+      request.action === ExclusionAction.ADD &&
+      request.collectionId === undefined
+    ) {
+      throw new BadRequestException(
+        'A collection is required to add media to it',
+      );
+    }
+
+    return await this.collectionService.bulkMediaCollectionAction(
+      request.mediaIds,
+      request.collectionId,
+      request.action === ExclusionAction.ADD ? 'add' : 'remove',
+      request.mediaType,
+      request.context,
+    );
   }
 
   @Post('/media/handle')

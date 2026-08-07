@@ -57,7 +57,8 @@ describe('RulesService.deleteRuleGroup', () => {
       eventEmitter as any,
       servarrTagService as any,
       logger as any,
-      {} as any, // tracearrApi
+      {} as any, // tracearrApi,
+      { getUsernames: jest.fn().mockResolvedValue([]) } as any,
     );
 
     return {
@@ -313,7 +314,8 @@ describe('RulesService.removeExclusion', () => {
       {} as any, // eventEmitter
       createMockServarrTagService() as any,
       logger as any,
-      {} as any, // tracearrApi
+      {} as any, // tracearrApi,
+      { getUsernames: jest.fn().mockResolvedValue([]) } as any,
     );
 
     return {

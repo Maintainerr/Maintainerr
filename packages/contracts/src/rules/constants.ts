@@ -103,3 +103,20 @@ export enum RequestMediaStatus {
 
 export const DISKSPACE_REMAINING_PROPERTY = 'diskspace_remaining_gb'
 export const DISKSPACE_TOTAL_PROPERTY = 'diskspace_total_gb'
+
+/**
+ * Properties scoped to the single user named by the rule's `username`. Shared
+ * by the watch-history companions (Streamystats, Tautulli, Tracearr).
+ */
+export const PER_USER_PROPERTIES = [
+  'viewCountByUser',
+  'watchTimeByUser',
+  'lastViewedAtByUser',
+] as const
+
+export type PerUserProperty = (typeof PER_USER_PROPERTIES)[number]
+
+export const isPerUserProperty = (
+  property: string | undefined,
+): property is PerUserProperty =>
+  PER_USER_PROPERTIES.includes(property as PerUserProperty)

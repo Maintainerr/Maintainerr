@@ -4,6 +4,7 @@ import {
   type ArrDiskspaceResource,
   DISKSPACE_REMAINING_PROPERTY,
   DISKSPACE_TOTAL_PROPERTY,
+  isPerUserProperty,
   type MediaItemType,
   MediaType,
   normalizeDiskPath,
@@ -15,6 +16,7 @@ import { IRule } from '../'
 import {
   useRadarrDiskspace,
   useRuleConstants,
+  useRuleUsernames,
   useSonarrDiskspace,
 } from '../../../../../api/rules'
 import {
@@ -23,8 +25,14 @@ import {
 } from '../../../../../contexts/constants-context'
 import { useMediaServerType } from '../../../../../hooks/useMediaServerType'
 import LoadingSpinner from '../../../../Common/LoadingSpinner'
+import { DatalistInput } from '../../../../Forms/DatalistInput'
 import { Input } from '../../../../Forms/Input'
 import { Select } from '../../../../Forms/Select'
+
+// One shared list of users for every rule card: the options are rendered once
+// by the rule creator, not per card, so a server with thousands of users does
+// not multiply them across the editor.
+export const RULE_USERNAMES_DATALIST_ID = 'rule-usernames'
 
 enum RuleType {
   NUMBER,
@@ -204,6 +212,14 @@ const getPropFromTuple = (
   return application?.props.find((el) => el.id === +parsed[1])
 }
 
+const getPropFromValue = (
+  value: string | undefined,
+  constants: IConstants | undefined,
+): IProperty | undefined => {
+  // The second value holds either a property tuple or a CustomParams marker.
+  return value?.startsWith('[') ? getPropFromTuple(value, constants) : undefined
+}
+
 interface InitialRuleState {
   operator: string | undefined
   firstVal: string | undefined
@@ -211,6 +227,7 @@ interface InitialRuleState {
   secondVal: string | undefined
   customVal: string | undefined
   arrDiskPath: string
+  username: string
   ruleType: RuleType
 }
 
@@ -225,6 +242,7 @@ const getInitialRuleState = (props: IRuleInput): InitialRuleState => {
       secondVal: undefined,
       customVal: undefined,
       arrDiskPath: '',
+      username: '',
       ruleType: RuleType.NUMBER,
     }
   }
@@ -236,6 +254,7 @@ const getInitialRuleState = (props: IRuleInput): InitialRuleState => {
     secondVal: undefined,
     customVal: undefined,
     arrDiskPath: rule.arrDiskPath ? normalizeDiskPath(rule.arrDiskPath) : '',
+    username: rule.username ?? '',
     ruleType: RuleType.NUMBER,
   }
 
@@ -295,6 +314,7 @@ const RuleInput = (props: IRuleInput) => {
   const [arrDiskPath, setArrDiskPath] = useState<string>(
     initialRuleState.arrDiskPath,
   )
+  const [username, setUsername] = useState<string>(initialRuleState.username)
 
   const { data: constants, isLoading: constantsLoading } = useRuleConstants()
   const { isPlex, isJellyfin, isEmby } = useMediaServerType()
@@ -374,6 +394,26 @@ const RuleInput = (props: IRuleInput) => {
     (selectedFirstValueAppId === Application.RADARR ||
       selectedFirstValueAppId === Application.SONARR) &&
     isArrDiskspaceProperty(selectedFirstValueProp)
+
+  // Either side can hold a per-user property; both read the one user here.
+  const isSelectedPerUserRule =
+    isPerUserProperty(selectedFirstValueProp?.name) ||
+    isPerUserProperty(getPropFromValue(secondVal, constants)?.name)
+
+  const {
+    data: ruleUsernames = [],
+    isLoading: ruleUsernamesLoading,
+    isError: ruleUsernamesFailed,
+  } = useRuleUsernames({ enabled: isSelectedPerUserRule })
+
+  // A typo would save a rule that then skips every item, so only a known user
+  // counts - or the one already saved, which keeps a rule editable after the
+  // account is gone.
+  const isUsernameUsable =
+    !!username &&
+    (ruleUsernames.length === 0 ||
+      ruleUsernames.includes(username) ||
+      username === initialRuleState.username)
 
   const { data: radarrDiskspace = [], isLoading: radarrDiskspaceLoading } =
     useRadarrDiskspace(props.radarrSettingsId, {
@@ -473,6 +513,13 @@ const RuleInput = (props: IRuleInput) => {
     if (!isArrDiskspaceProperty(nextProp)) {
       setArrDiskPath('')
     }
+
+    if (
+      !isPerUserProperty(nextProp?.name) &&
+      !isPerUserProperty(getPropFromValue(secondVal, constants)?.name)
+    ) {
+      setUsername('')
+    }
   }
 
   const updateSecondValue = (event: { target: { value: string } }) => {
@@ -499,6 +546,14 @@ const RuleInput = (props: IRuleInput) => {
     } else {
       setCustomVal(event.target.value)
     }
+  }
+
+  // Unique per card: every rule renders this field, and a shared id would bind
+  // all their labels to the first one.
+  const usernameFieldId = `username_${props.section ?? 0}_${props.id ?? 0}`
+
+  const updateUsername = (event: { target: { value: string } }) => {
+    setUsername(event.target.value)
   }
 
   const updateArrDiskPath = (event: { target: { value: string } }) => {
@@ -556,7 +611,8 @@ const RuleInput = (props: IRuleInput) => {
       validFirstVal &&
       action != null &&
       (!requiresSecondValue || hasSecondValue || !!customVal) &&
-      (!operatorRequired || !!operator)
+      (!operatorRequired || !!operator) &&
+      (!isSelectedPerUserRule || isUsernameUsable)
     ) {
       const ruleValues = {
         operator: operator ? operator : null,
@@ -564,6 +620,7 @@ const RuleInput = (props: IRuleInput) => {
         action,
         section: props.section ? props.section - 1 : 0,
         ...(isSelectedArrDiskspaceRule && arrDiskPath ? { arrDiskPath } : {}),
+        ...(isSelectedPerUserRule && username ? { username } : {}),
       }
       if (!requiresSecondValue) {
         props.onCommit(ruleValues)
@@ -618,9 +675,12 @@ const RuleInput = (props: IRuleInput) => {
     customVal,
     validFirstVal,
     isSelectedArrDiskspaceRule,
+    isSelectedPerUserRule,
+    isUsernameUsable,
     operator,
     ruleType,
     secondVal,
+    username,
   ])
 
   if (!constants || constantsLoading) {
@@ -814,6 +874,43 @@ const RuleInput = (props: IRuleInput) => {
                 ) : undefined
               })}
             </Select>
+          </div>
+        ) : null}
+
+        {isSelectedPerUserRule ? (
+          <div>
+            <label
+              htmlFor={usernameFieldId}
+              className="mb-1 block text-sm font-medium"
+            >
+              User
+            </label>
+            <DatalistInput
+              name="username"
+              id={usernameFieldId}
+              list={RULE_USERNAMES_DATALIST_ID}
+              placeholder={
+                ruleUsernamesLoading ? 'Loading users...' : 'Select a user'
+              }
+              onChange={updateUsername}
+              value={username}
+              error={!!username && !isUsernameUsable}
+            />
+            {!!username && !isUsernameUsable ? (
+              // The same reason the save would be rejected with - without it
+              // the rule just never commits and nothing says why.
+              <p className="mt-1 text-xs text-error-500">
+                The media server has no user named &apos;{username}&apos;
+              </p>
+            ) : ruleUsernamesFailed ? (
+              <p className="mt-1 text-xs text-zinc-400">
+                The user list could not be loaded
+              </p>
+            ) : !ruleUsernamesLoading && ruleUsernames.length === 0 ? (
+              <p className="mt-1 text-xs text-zinc-400">
+                No users reported by the media server
+              </p>
+            ) : null}
           </div>
         ) : null}
 

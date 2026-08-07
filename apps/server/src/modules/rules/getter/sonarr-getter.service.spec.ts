@@ -5,7 +5,7 @@ import {
   createCollectionMedia,
   createMediaItem,
   createRuleDto,
-  createRulesDto,
+  createRuleGroupDto,
   createSonarrEpisode,
   createSonarrEpisodeFile,
   createSonarrSeries,
@@ -145,7 +145,7 @@ describe('SonarrGetterService', () => {
           13,
           mediaItem,
           type as MediaItemType,
-          createRulesDto({
+          createRuleGroupDto({
             collection: collectionMedia.collection,
             dataType: type as MediaItemType,
           }),
@@ -238,7 +238,7 @@ describe('SonarrGetterService', () => {
             13,
             mediaItem,
             type as MediaItemType,
-            createRulesDto({
+            createRuleGroupDto({
               collection: collectionMedia.collection,
               dataType: type as MediaItemType,
             }),
@@ -247,6 +247,108 @@ describe('SonarrGetterService', () => {
           expect(response).toBe(false);
         },
       );
+    });
+
+    // Season 0 used to short-circuit on truthiness to a definitive false;
+    // specials are a real season and compare like any other (#3421 review).
+    it('answers true for specials when only specials have aired', async () => {
+      jest.useFakeTimers().setSystemTime(new Date('2025-01-01'));
+
+      const collectionMedia = createCollectionMedia('season');
+      collectionMedia.collection.sonarrSettingsId = 1;
+
+      mockMediaServer.getMetadata.mockResolvedValue(
+        createMediaItem({ type: 'show' }),
+      );
+      const series = createSonarrSeries({
+        seasons: [
+          { seasonNumber: 0, monitored: false },
+          { seasonNumber: 1, monitored: true },
+        ],
+      });
+
+      const mockedSonarrApi = mockSonarrApi(series);
+      jest
+        .spyOn(mockedSonarrApi, 'getEpisodes')
+        .mockImplementation((seriesId, seasonNumber) =>
+          Promise.resolve([
+            createSonarrEpisode({
+              seriesId,
+              seasonNumber,
+              episodeNumber: 1,
+              // Only the specials have aired; season 1 is in the future.
+              airDateUtc:
+                seasonNumber === 0
+                  ? '2024-06-26T00:00:00Z'
+                  : '2025-04-01T00:00:00Z',
+            }),
+          ]),
+        );
+
+      const mediaItem = createMediaItem({ type: 'season', index: 0 });
+
+      const response = await sonarrGetterService.get(
+        13,
+        mediaItem,
+        'season',
+        createRuleGroupDto({
+          collection: collectionMedia.collection,
+          dataType: 'season',
+        }),
+      );
+
+      expect(response).toBe(true);
+    });
+
+    // A show-scoped rule used to fall through into the originalLanguage case
+    // and answer a language string for a boolean property (#3421 review).
+    it('answers null for a show, not the next case in the switch', async () => {
+      const collectionMedia = createCollectionMedia('show');
+      collectionMedia.collection.sonarrSettingsId = 1;
+
+      mockSonarrApi(
+        createSonarrSeries({
+          originalLanguage: { id: 1, name: 'English' },
+        } as Partial<SonarrSeries>),
+      );
+
+      const response = await sonarrGetterService.get(
+        13,
+        createMediaItem({ type: 'show' }),
+        'show',
+        createRuleGroupDto({
+          collection: collectionMedia.collection,
+          dataType: 'show',
+        }),
+      );
+
+      expect(response).toBeNull();
+    });
+
+    it('skips a season Sonarr does not list', async () => {
+      const collectionMedia = createCollectionMedia('season');
+      collectionMedia.collection.sonarrSettingsId = 1;
+
+      mockMediaServer.getMetadata.mockResolvedValue(
+        createMediaItem({ type: 'show' }),
+      );
+      mockSonarrApi(
+        createSonarrSeries({
+          seasons: [{ seasonNumber: 1, monitored: true }],
+        }),
+      );
+
+      const response = await sonarrGetterService.get(
+        13,
+        createMediaItem({ type: 'season', index: 5 }),
+        'season',
+        createRuleGroupDto({
+          collection: collectionMedia.collection,
+          dataType: 'season',
+        }),
+      );
+
+      expect(response).toBeUndefined();
     });
 
     // #3153: in a full run the comparator resolves several of a show's seasons
@@ -311,7 +413,7 @@ describe('SonarrGetterService', () => {
                 parentIndex: type === 'episode' ? seasonNumber : undefined,
               }),
               type as MediaItemType,
-              createRulesDto({
+              createRuleGroupDto({
                 collection: collectionMedia.collection,
                 dataType: type as MediaItemType,
               }),
@@ -352,7 +454,7 @@ describe('SonarrGetterService', () => {
           0,
           showItem,
           'show',
-          createRulesDto({
+          createRuleGroupDto({
             collection: collectionMedia.collection,
             dataType: 'show',
           }),
@@ -470,7 +572,7 @@ describe('SonarrGetterService', () => {
           index: 6,
         }),
         'season',
-        createRulesDto({
+        createRuleGroupDto({
           collection: collectionMedia.collection,
           dataType: 'season',
         }),
@@ -530,7 +632,7 @@ describe('SonarrGetterService', () => {
           index: 8,
         }),
         'season',
-        createRulesDto({
+        createRuleGroupDto({
           collection: collectionMedia.collection,
           dataType: 'season',
         }),
@@ -593,7 +695,7 @@ describe('SonarrGetterService', () => {
           grandparentId: 'show-1',
         }),
         'episode',
-        createRulesDto({
+        createRuleGroupDto({
           collection: collectionMedia.collection,
           dataType: 'episode',
         }),
@@ -646,7 +748,7 @@ describe('SonarrGetterService', () => {
           index: 5,
         }),
         'season',
-        createRulesDto({
+        createRuleGroupDto({
           collection: collectionMedia.collection,
           dataType: 'season',
         }),
@@ -678,7 +780,7 @@ describe('SonarrGetterService', () => {
           type: 'show',
         }),
         'show',
-        createRulesDto({
+        createRuleGroupDto({
           collection: collectionMedia.collection,
           dataType: 'show',
         }),
@@ -725,7 +827,7 @@ describe('SonarrGetterService', () => {
           23,
           mediaItem,
           'episode',
-          createRulesDto({
+          createRuleGroupDto({
             collection: collectionMedia.collection,
             dataType: 'episode',
           }),
@@ -750,7 +852,7 @@ describe('SonarrGetterService', () => {
           23,
           mediaItem,
           'episode',
-          createRulesDto({
+          createRuleGroupDto({
             collection: collectionMedia.collection,
             dataType: 'episode',
           }),
@@ -766,7 +868,7 @@ describe('SonarrGetterService', () => {
           23,
           mediaItem,
           'episode',
-          createRulesDto({
+          createRuleGroupDto({
             collection: collectionMedia.collection,
             dataType: 'episode',
           }),
@@ -800,7 +902,7 @@ describe('SonarrGetterService', () => {
           24,
           mediaItem,
           'episode',
-          createRulesDto({
+          createRuleGroupDto({
             collection: collectionMedia.collection,
             dataType: 'episode',
           }),
@@ -816,7 +918,7 @@ describe('SonarrGetterService', () => {
           24,
           mediaItem,
           'episode',
-          createRulesDto({
+          createRuleGroupDto({
             collection: collectionMedia.collection,
             dataType: 'episode',
           }),
@@ -843,7 +945,7 @@ describe('SonarrGetterService', () => {
           26,
           mediaItem,
           'episode',
-          createRulesDto({
+          createRuleGroupDto({
             collection: collectionMedia.collection,
             dataType: 'episode',
           }),
@@ -859,7 +961,7 @@ describe('SonarrGetterService', () => {
           26,
           mediaItem,
           'episode',
-          createRulesDto({
+          createRuleGroupDto({
             collection: collectionMedia.collection,
             dataType: 'episode',
           }),
@@ -884,7 +986,7 @@ describe('SonarrGetterService', () => {
           26,
           mediaItem,
           'episode',
-          createRulesDto({
+          createRuleGroupDto({
             collection: collectionMedia.collection,
             dataType: 'episode',
           }),
@@ -938,7 +1040,7 @@ describe('SonarrGetterService', () => {
           25,
           mediaItem,
           type as MediaItemType,
-          createRulesDto({
+          createRuleGroupDto({
             collection: collectionMedia.collection,
             dataType: type as MediaItemType,
           }),
@@ -977,7 +1079,7 @@ describe('SonarrGetterService', () => {
         28,
         mediaItem,
         'show',
-        createRulesDto({
+        createRuleGroupDto({
           collection: collectionMedia.collection,
           dataType: 'show',
         }),
@@ -1007,7 +1109,7 @@ describe('SonarrGetterService', () => {
         29,
         mediaItem,
         'show',
-        createRulesDto({
+        createRuleGroupDto({
           collection: collectionMedia.collection,
           dataType: 'show',
         }),
@@ -1043,7 +1145,7 @@ describe('SonarrGetterService', () => {
         propId,
         mediaItem,
         'show',
-        createRulesDto({
+        createRuleGroupDto({
           collection: collectionMedia.collection,
           dataType: 'show',
         }),
@@ -1059,7 +1161,7 @@ describe('SonarrGetterService', () => {
           7, // 'ended' - reaches tryMetadataFallback's resolveIdsFromMediaItem
           mediaItem,
           'show',
-          createRulesDto({
+          createRuleGroupDto({
             collection: collectionMedia.collection,
             dataType: 'show',
           }),
@@ -1253,7 +1355,7 @@ describe('SonarrGetterService', () => {
             : {}),
         }),
         type,
-        createRulesDto({
+        createRuleGroupDto({
           collection: collectionMedia.collection,
           dataType: type,
         }),
@@ -1313,7 +1415,7 @@ describe('SonarrGetterService', () => {
             : {}),
         }),
         type,
-        createRulesDto({
+        createRuleGroupDto({
           collection: collectionMedia.collection,
           dataType: type,
         }),
@@ -1365,7 +1467,7 @@ describe('SonarrGetterService', () => {
           grandparentId: 'show-1',
         }),
         'episode',
-        createRulesDto({
+        createRuleGroupDto({
           collection: collectionMedia.collection,
           dataType: 'episode',
         }),
@@ -1600,7 +1702,7 @@ describe('SonarrGetterService', () => {
           grandparentId: 'show-1',
         }),
         'episode',
-        createRulesDto({
+        createRuleGroupDto({
           collection: collectionMedia.collection,
           dataType: 'episode',
         }),
@@ -1633,7 +1735,7 @@ describe('SonarrGetterService', () => {
           grandparentId: 'show-1',
         }),
         'episode',
-        createRulesDto({
+        createRuleGroupDto({
           collection: collectionMedia.collection,
           dataType: 'episode',
         }),
@@ -1761,7 +1863,7 @@ describe('SonarrGetterService', () => {
           originallyAvailableAt: target.originallyAvailableAt,
         }),
         'episode',
-        createRulesDto({
+        createRuleGroupDto({
           collection: collectionMedia.collection,
           dataType: 'episode',
         }),
@@ -1949,7 +2051,7 @@ describe('SonarrGetterService', () => {
           parentId: 'show-1',
         }),
         dataType,
-        createRulesDto({
+        createRuleGroupDto({
           collection: collectionMedia.collection,
           dataType,
         }),
@@ -2051,7 +2153,7 @@ describe('SonarrGetterService', () => {
         35,
         createMediaItem({ type: 'season', index: 1, parentId: 'show-1' }),
         'season',
-        createRulesDto({
+        createRuleGroupDto({
           collection: collectionMedia.collection,
           dataType: 'season',
         }),
@@ -2094,7 +2196,7 @@ describe('SonarrGetterService', () => {
           grandparentId: 'show-1',
         }),
         'episode',
-        createRulesDto({
+        createRuleGroupDto({
           collection: collectionMedia.collection,
           dataType: 'episode',
         }),
@@ -2104,6 +2206,85 @@ describe('SonarrGetterService', () => {
 
       expect(response).toBe(1);
       expect(secondApi.getEpisodes).not.toHaveBeenCalled();
+    });
+  });
+
+  // Jellyfin and Emby file episodes they cannot place under a permanent
+  // "Season Unknown" that carries no index. Without a season number the episode
+  // reads drop their season filter and answer with every season's episodes, so
+  // the rule would be evaluated against another season's data.
+  describe('season item without a season number', () => {
+    it.each([
+      {
+        title: 'a season with no index',
+        dataType: 'season' as const,
+        item: { type: 'season' as const, index: undefined },
+      },
+      {
+        title: 'an episode whose season has no index',
+        dataType: 'episode' as const,
+        item: {
+          type: 'episode' as const,
+          index: 1,
+          parentIndex: undefined,
+          grandparentId: '99',
+        },
+      },
+    ])('reports a transient failure for $title', async ({ dataType, item }) => {
+      const collectionMedia = createCollectionMedia(dataType);
+      collectionMedia.collection.sonarrSettingsId = 1;
+
+      const mockedSonarrApi = mockSonarrApi(createSonarrSeries());
+      const getEpisodesSpy = jest
+        .spyOn(mockedSonarrApi, 'getEpisodes')
+        .mockResolvedValue([]);
+
+      const response = await sonarrGetterService.get(
+        11,
+        createMediaItem(item),
+        dataType,
+        createRuleGroupDto({
+          collection: collectionMedia.collection,
+          dataType,
+        }),
+      );
+
+      // `undefined`, not `null`: the comparator reads it as a transport
+      // failure and skips the item rather than matching NOT_EXISTS on it.
+      expect(response).toBeUndefined();
+      expect(getEpisodesSpy).not.toHaveBeenCalled();
+      expect(mockMediaServer.getMetadata).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('specials season', () => {
+    it('resolves season 0 rather than reading it as no season', async () => {
+      const collectionMedia = createCollectionMedia('season');
+      collectionMedia.collection.sonarrSettingsId = 1;
+
+      mockMediaServer.getMetadata.mockResolvedValue(
+        createMediaItem({ type: 'show' }),
+      );
+
+      const series = createSonarrSeries({
+        seasons: [
+          { seasonNumber: 0, monitored: true },
+          { seasonNumber: 1, monitored: true },
+        ],
+      });
+      mockSonarrApi(series);
+
+      const response = await sonarrGetterService.get(
+        18,
+        createMediaItem({ type: 'season', index: 0 }),
+        'season',
+        createRuleGroupDto({
+          collection: collectionMedia.collection,
+          dataType: 'season',
+        }),
+      );
+
+      expect(response).toBe(0);
     });
   });
 

@@ -131,12 +131,26 @@ export class QbittorrentApi
     hashes: string[],
     deleteFiles: boolean,
   ): Promise<void> {
-    if (hashes.length === 0) {
+    // qBittorrent documents `hashes=all` on this endpoint as "delete all
+    // torrents", so a hash that arrives as the literal string would wipe the
+    // client rather than remove one download. Blanks are dropped for the same
+    // reason: they contribute nothing but widen the list they are joined into.
+    const validHashes = hashes
+      .map((hash) => hash?.trim().toLowerCase())
+      .filter((hash) => !!hash && hash !== 'all');
+
+    if (validHashes.length < hashes.length) {
+      this.logger.warn(
+        `Refused ${hashes.length - validHashes.length} download id(s) that do not name a single torrent`,
+      );
+    }
+
+    if (validHashes.length === 0) {
       return;
     }
 
     const body = new URLSearchParams();
-    body.set('hashes', hashes.map((hash) => hash.toLowerCase()).join('|'));
+    body.set('hashes', validHashes.join('|'));
     body.set('deleteFiles', deleteFiles ? 'true' : 'false');
 
     await this.withAuth(async () => {

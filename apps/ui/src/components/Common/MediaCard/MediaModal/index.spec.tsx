@@ -1,14 +1,13 @@
 import { MediaServerType, type MediaItem } from '@maintainerr/contracts'
 import { QueryClientProvider } from '@tanstack/react-query'
 import {
-  cleanup,
   fireEvent,
   render as renderComponent,
   screen,
   waitFor,
 } from '@testing-library/react'
 import type { ReactNode } from 'react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useMediaServerType } from '../../../../hooks/useMediaServerType'
 import { createDeferred } from '../../../../test-utils/createDeferred'
 import { createTestQueryClient } from '../../../../test-utils/queryClient'
@@ -66,10 +65,6 @@ describe('MediaModal', () => {
       isSetupComplete: false,
       isNotConfigured: true,
     })
-  })
-
-  afterEach(() => {
-    cleanup()
   })
 
   it('clears the previous provider badge until the current backdrop request resolves', async () => {

@@ -1,8 +1,8 @@
 import {
-  BULK_EXCLUSION_MAX_ITEMS,
+  BULK_MEDIA_ACTION_MAX_ITEMS,
   bulkExclusionRequestSchema,
   type BulkExclusionRequest,
-  type BulkExclusionResponse,
+  type BulkMediaResponse,
   MediaItemType,
   RuleExecuteStatusDto,
 } from '@maintainerr/contracts';
@@ -25,11 +25,13 @@ import {
 } from '@nestjs/common';
 import { ApiResponse } from '@nestjs/swagger';
 import { Response } from 'express';
+import { omit } from 'lodash';
 import { ZodValidationPipe } from 'nestjs-zod';
 import { MaintainerrLogger } from '../logging/logs.service';
 import { CommunityRule } from './dtos/communityRule.dto';
 import { ExclusionAction, ExclusionContextDto } from './dtos/exclusion.dto';
-import { RulesDto } from './dtos/rules.dto';
+import { RuleGroupDto } from './dtos/ruleGroup.dto';
+import { RuleUsersService } from './rule-users.service';
 import { ReturnStatus, RulesService } from './rules.service';
 import { RuleExecutorJobManagerService } from './tasks/rule-executor-job-manager.service';
 import { RuleExecutorSchedulerService } from './tasks/rule-executor-scheduler.service';
@@ -40,6 +42,7 @@ export class RulesController {
     private readonly rulesService: RulesService,
     private readonly ruleExecutorSchedulerService: RuleExecutorSchedulerService,
     private readonly ruleExecutorJobManagerService: RuleExecutorJobManagerService,
+    private readonly ruleUsersService: RuleUsersService,
     private readonly logger: MaintainerrLogger,
   ) {
     this.logger.setContext(RulesController.name);
@@ -48,6 +51,11 @@ export class RulesController {
   @Get('/constants')
   async getRuleConstants() {
     return await this.rulesService.getRuleConstants();
+  }
+
+  @Get('/users')
+  async getRuleUsernames(): Promise<string[]> {
+    return await this.ruleUsersService.getUsernames();
   }
 
   @Get('/community')
@@ -103,7 +111,7 @@ export class RulesController {
   }
 
   @Get('/:id')
-  getRuleGroup(@Param('id', ParseIntPipe) id: number): Promise<RulesDto> {
+  getRuleGroup(@Param('id', ParseIntPipe) id: number): Promise<RuleGroupDto> {
     return this.rulesService.getRuleGroup(id);
   }
 
@@ -269,14 +277,16 @@ export class RulesController {
     status: 503,
     description: 'The configured media server adapter could not initialize.',
   })
-  async setRules(@Body() body: RulesDto): Promise<ReturnStatus> {
+  async setRules(@Body() body: RuleGroupDto): Promise<ReturnStatus> {
     return this.orFail(await this.rulesService.setRules(body));
   }
 
   @Post('/exclusion')
   async setExclusion(@Body() body: ExclusionContextDto): Promise<ReturnStatus> {
     if (body.action === undefined || body.action === ExclusionAction.ADD) {
-      return await this.rulesService.setExclusion(body);
+      // handledIds serves the bulk path's collection pairing; it is not part of
+      // this endpoint's response.
+      return omit(await this.rulesService.setExclusion(body), 'handledIds');
     } else {
       return await this.rulesService.removeExclusionWitData(body);
     }
@@ -289,13 +299,25 @@ export class RulesController {
   })
   @ApiResponse({
     status: 400,
-    description: `Rejected without processing: empty, or more than ${BULK_EXCLUSION_MAX_ITEMS} media ids.`,
+    description: `Rejected without processing: empty, or more than ${BULK_MEDIA_ACTION_MAX_ITEMS} media ids.`,
   })
   async setBulkExclusions(
     @Body(new ZodValidationPipe(bulkExclusionRequestSchema))
     body: BulkExclusionRequest,
-  ): Promise<BulkExclusionResponse> {
-    return await this.rulesService.setBulkExclusions(body.mediaIds);
+  ): Promise<BulkMediaResponse> {
+    if (body.action === ExclusionAction.REMOVE) {
+      return await this.rulesService.removeBulkExclusions(
+        body.mediaIds,
+        body.collectionId,
+        body.context,
+      );
+    }
+
+    return await this.rulesService.setBulkExclusions(
+      body.mediaIds,
+      body.collectionId,
+      body.context,
+    );
   }
 
   @Delete('/exclusion/:id')
@@ -332,7 +354,7 @@ export class RulesController {
     status: 503,
     description: 'The configured media server adapter could not initialize.',
   })
-  async updateRule(@Body() body: RulesDto): Promise<ReturnStatus> {
+  async updateRule(@Body() body: RuleGroupDto): Promise<ReturnStatus> {
     return this.orFail(await this.rulesService.updateRules(body));
   }
 

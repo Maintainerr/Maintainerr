@@ -574,4 +574,114 @@ describe('NotificationService', () => {
         "↩️ Overlays have been reverted for these media items in '{collection_name}'.\n\n{media_items}",
     });
   });
+
+  describe('update available notification', () => {
+    const releaseUrl =
+      'https://github.com/Maintainerr/Maintainerr/releases/tag/v3.19.0';
+
+    it('carries both versions, the release page and the upgrade guide', async () => {
+      const { service, mediaServerFactory } = createService();
+      const sendNotification = jest
+        .spyOn(service, 'sendNotification')
+        .mockResolvedValue(['Success']);
+
+      await expect(
+        service.handleUpdateAvailableNotification(
+          '3.18.0',
+          '3.19.0',
+          releaseUrl,
+        ),
+      ).resolves.toBe(true);
+
+      expect(sendNotification).toHaveBeenCalledWith(
+        NotificationType.UPDATE_AVAILABLE,
+        {
+          subject: 'Update Available',
+          message:
+            "📦 Maintainerr 3.19.0 is available. You're running 3.18.0." +
+            `\n\nRelease notes: ${releaseUrl}` +
+            '\n\nHow to update: https://docs.maintainerr.info/installation/#updating',
+          extra: [
+            { name: 'currentVersion', value: '3.18.0' },
+            { name: 'newVersion', value: '3.19.0' },
+            { name: 'releaseUrl', value: releaseUrl },
+          ],
+        },
+      );
+      expect(mediaServerFactory.getService).not.toHaveBeenCalled();
+    });
+
+    it('drops the release clause for a build with no release page', async () => {
+      const { service } = createService();
+      const sendNotification = jest
+        .spyOn(service, 'sendNotification')
+        .mockResolvedValue(['Success']);
+
+      await service.handleUpdateAvailableNotification(
+        'main-bd8a1e0',
+        'main-fffffff',
+      );
+
+      const message = sendNotification.mock.calls[0][1].message;
+      // A raw placeholder must never reach a user.
+      expect(message).not.toContain('{release_notes}');
+      expect(message).not.toContain('Release notes:');
+      expect(message).toContain(
+        'How to update: https://docs.maintainerr.info/installation/#updating',
+      );
+    });
+
+    it('reports whether an agent actually took it', async () => {
+      const { service } = createService();
+      jest
+        .spyOn(service, 'sendNotification')
+        .mockResolvedValue([
+          'Failure: connect ETIMEDOUT',
+          'Agent is not allowed to send this message.',
+        ]);
+
+      await expect(
+        service.handleUpdateAvailableNotification('3.18.0', '3.19.0'),
+      ).resolves.toBe(false);
+    });
+  });
+
+  describe('hasSubscribers', () => {
+    const agentWith = (types: number[], enabled = true) => ({
+      shouldSend: () => enabled,
+      getSettings: () => ({ types }),
+    });
+
+    it('reports whether any agent would deliver the type', () => {
+      const { service } = createService();
+
+      service.registerAgents(
+        [
+          agentWith([NotificationType.MEDIA_HANDLED]) as any,
+          agentWith([NotificationType.UPDATE_AVAILABLE]) as any,
+        ],
+        true,
+      );
+
+      expect(service.hasSubscribers(NotificationType.UPDATE_AVAILABLE)).toBe(
+        true,
+      );
+      expect(service.hasSubscribers(NotificationType.OVERLAY_APPLIED)).toBe(
+        false,
+      );
+    });
+
+    it('ignores an agent that cannot send', () => {
+      const { service } = createService();
+
+      service.registerAgents(
+        [agentWith([NotificationType.UPDATE_AVAILABLE], false) as any],
+        true,
+      );
+
+      expect(service.hasSubscribers(NotificationType.UPDATE_AVAILABLE)).toBe(
+        false,
+      );
+    });
+  });
 });

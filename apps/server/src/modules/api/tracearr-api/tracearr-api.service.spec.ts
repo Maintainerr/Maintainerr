@@ -110,9 +110,99 @@ describe('TracearrApiService', () => {
     expect(service.getHistoryIndex()?.rowsByRatingKey.get('movie-2')).toEqual([
       second,
     ]);
+    // The fixture account carries no username, so the live media-server
+    // account list fills in.
     expect(service.getUsernamesByTracearrUserId()?.get(USER_ID)).toEqual([
       'alice',
     ]);
+  });
+
+  // A username that maps to no Tracearr user means "unknown user" to the
+  // per-user properties, so users without history must still be mapped. One
+  // name per account: Tracearr re-reads the media server's username on every
+  // sync (plex.tv on Plex), so its copy is authoritative and emitting the
+  // local spelling too would count one viewer twice in the watcher lists.
+  it('maps every Tracearr user to the username Tracearr read off the media server', async () => {
+    const OTHER_USER_ID = '55555555-5555-4555-8555-555555555555';
+    apiMock.getWithoutCache.mockImplementation(async (endpoint: string) => {
+      if (endpoint === '/history') {
+        return {
+          data: [historyRow('33333333-3333-4333-8333-333333333333', 'movie-1')],
+          meta: { nextCursor: null, pageSize: 100 },
+        };
+      }
+      return {
+        data: [
+          {
+            id: USER_ID,
+            accounts: [
+              {
+                server_id: SERVER_ID,
+                server_type: 'plex',
+                external_user_id: 'account-1',
+                username: 'alice.on.plex.tv',
+              },
+            ],
+          },
+          {
+            id: OTHER_USER_ID,
+            accounts: [
+              {
+                server_id: SERVER_ID,
+                server_type: 'plex',
+                external_user_id: 'account-2',
+                username: 'bob',
+              },
+            ],
+          },
+        ],
+        meta: { nextCursor: null, pageSize: 100 },
+      };
+    });
+
+    await service.prefetchHistory();
+
+    expect(service.getUsernamesByTracearrUserId()?.get(USER_ID)).toEqual([
+      'alice.on.plex.tv',
+    ]);
+    expect(service.getUsernamesByTracearrUserId()?.get(OTHER_USER_ID)).toEqual([
+      'bob',
+    ]);
+  });
+
+  // Tracearr keeps a departed account in the identity, flagged with removed_at.
+  // Resolving it would let a per-user rule read "watched nothing" for someone
+  // the server no longer has, instead of skipping the item.
+  it('does not resolve an account Tracearr marks as removed', async () => {
+    apiMock.getWithoutCache.mockImplementation(async (endpoint: string) => {
+      if (endpoint === '/history') {
+        return {
+          data: [historyRow('33333333-3333-4333-8333-333333333333', 'movie-1')],
+          meta: { nextCursor: null, pageSize: 100 },
+        };
+      }
+      return {
+        data: [
+          {
+            id: USER_ID,
+            accounts: [
+              {
+                server_id: SERVER_ID,
+                server_type: 'plex',
+                external_user_id: 'account-1',
+                username: 'alice',
+                removed_at: '2026-08-01T00:00:00.000Z',
+              },
+            ],
+          },
+        ],
+        meta: { nextCursor: null, pageSize: 100 },
+      };
+    });
+
+    await service.prefetchHistory();
+
+    expect(service.getUsernamesByTracearrUserId()?.has(USER_ID)).toBe(false);
   });
 
   it('invalidates a prefetched history snapshot', async () => {

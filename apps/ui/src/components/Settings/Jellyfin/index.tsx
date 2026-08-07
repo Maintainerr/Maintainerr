@@ -3,6 +3,7 @@ import {
   type JellyfinSetting,
   jellyfinSettingSchema,
   maskSecret,
+  stripTrailingSlashes,
 } from '@maintainerr/contracts'
 import { useState } from 'react'
 import { Controller, useForm, useWatch } from 'react-hook-form'
@@ -15,7 +16,6 @@ import {
   useTestJellyfin,
 } from '../../../api/settings'
 import { getApiErrorMessage } from '../../../utils/ApiError'
-import { stripTrailingSlashes } from '../../../utils/SettingsUtils'
 import Alert from '../../Common/Alert'
 import DocsButton from '../../Common/DocsButton'
 import SaveButton from '../../Common/SaveButton'
