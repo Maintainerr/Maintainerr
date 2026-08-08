@@ -83,7 +83,6 @@ export class TracearrApiService {
   private episodeIdsByItemId = new Map<string, Promise<string[] | undefined>>();
   private resolvedServerId: string | undefined;
   private historyGeneration = 0;
-  private verifiedServerId: string | undefined;
   private sweepPromise: Promise<void> | undefined;
 
   constructor(
@@ -126,7 +125,6 @@ export class TracearrApiService {
     this.activeUsernamesByTracearrUserId = undefined;
     this.episodeIdsByItemId.clear();
     this.resolvedServerId = undefined;
-    this.verifiedServerId = undefined;
     // A sweep already in flight resolves after this, so mark its results stale
     // rather than let them repopulate what was just discarded.
     this.historyGeneration += 1;
@@ -445,9 +443,6 @@ export class TracearrApiService {
     this.episodeIdsByItemId.clear();
 
     const serverId = await this.resolveActiveServerId();
-    if (generation !== this.historyGeneration) {
-      return;
-    }
     if (!serverId) {
       this.logger.warn(
         'Tracearr has no server matching the configured media server. Tracearr rule values are unavailable for this run.',
@@ -458,27 +453,21 @@ export class TracearrApiService {
     // A binding survives whatever the media server did since it was chosen, and
     // the wrong one's history reads as "watched nothing" for every item it does
     // not cover rather than as a failure. Unconfirmed is not good enough to
-    // read history by, so only a confirmed match is remembered and trusted.
-    if (this.verifiedServerId !== serverId) {
-      const sharesLibrary = await this.serverSharesLibrary(
-        {
-          url: this.settings.tracearr_url,
-          apiKey: this.settings.tracearr_api_key,
-        },
-        serverId,
+    // read history by.
+    const sharesLibrary = await this.serverSharesLibrary(
+      {
+        url: this.settings.tracearr_url,
+        apiKey: this.settings.tracearr_api_key,
+      },
+      serverId,
+    );
+    if (!sharesLibrary) {
+      this.logger.warn(
+        sharesLibrary === false
+          ? 'The selected Tracearr server tracks a different media server than the one Maintainerr manages. Pick the right server in Tracearr settings. Tracearr rule values are unavailable for this run.'
+          : 'The selected Tracearr server could not be confirmed to track the media server Maintainerr manages. Tracearr rule values are unavailable for this run.',
       );
-      if (generation !== this.historyGeneration) {
-        return;
-      }
-      if (!sharesLibrary) {
-        this.logger.warn(
-          sharesLibrary === false
-            ? 'The selected Tracearr server tracks a different media server than the one Maintainerr manages. Pick the right server in Tracearr settings. Tracearr rule values are unavailable for this run.'
-            : 'The selected Tracearr server could not be confirmed to track the media server Maintainerr manages. Tracearr rule values are unavailable for this run.',
-        );
-        return;
-      }
-      this.verifiedServerId = serverId;
+      return;
     }
 
     const historyIndex = await this.refreshHistoryIndex(generation);

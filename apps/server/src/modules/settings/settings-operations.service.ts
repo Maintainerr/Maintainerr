@@ -462,29 +462,11 @@ export class SettingsOperationsService {
     });
   }
 
-  public async testTracearr(
-    settings: TracearrSetting,
-  ): Promise<BasicResponseDto> {
-    const connection = await this.tracearr.testConnection({
+  public testTracearr(settings: TracearrSetting): Promise<BasicResponseDto> {
+    return this.tracearr.testConnection({
       url: settings.url,
       apiKey: settings.api_key,
     });
-    if (connection.code !== 1 || !settings.server_id) {
-      return connection;
-    }
-
-    const sharesLibrary = await this.tracearr.serverSharesLibrary(
-      { url: settings.url, apiKey: settings.api_key },
-      settings.server_id,
-    );
-    return sharesLibrary === false
-      ? {
-          status: 'NOK',
-          code: 0,
-          message:
-            'That Tracearr server tracks a different media server than the one Maintainerr manages. Pick the Tracearr server for this media server.',
-        }
-      : connection;
   }
 
   public async removeDownloadClientSetting() {
