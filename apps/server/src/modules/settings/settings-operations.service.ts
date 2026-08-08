@@ -420,6 +420,39 @@ export class SettingsOperationsService {
     }
   }
 
+  /**
+   * Settings resolved against the media server go stale when Maintainerr is
+   * re-pointed at another instance of the same type: the type is unchanged, so
+   * the switch path never runs.
+   */
+  private async revalidateMediaServerDependentSettings(): Promise<void> {
+    try {
+      // The swept history, the resolved server and its verification all
+      // describe the previous connection, so they go regardless of what the
+      // check below concludes. Keeping them would let the next run read the
+      // old server from memory without probing it again.
+      this.tracearr.invalidateHistory();
+
+      if ((await this.tracearr.savedServerTracksMediaServer()) !== false) {
+        return;
+      }
+
+      const settingsDb = await this.settingsRepo.findOne({ where: {} });
+      await this.settingsDataService.saveSettings({
+        ...settingsDb,
+        tracearr_server_id: null,
+      });
+      await this.settingsDataService.init();
+
+      this.logger.log(
+        'Cleared the selected Tracearr server: it tracks a different media server than the one now configured.',
+      );
+    } catch (error) {
+      // The settings are already saved; this check must not fail that.
+      this.logger.debug(error);
+    }
+  }
+
   public getTracearrServers(
     settings: TracearrConnection,
   ): Promise<TracearrServer[] | undefined> {
@@ -643,6 +676,8 @@ export class SettingsOperationsService {
       // Streamystats uses the Jellyfin API key + server identity. Re-init so
       // the cached client and resolved serverId track the new credentials.
       this.streamystats.init();
+
+      await this.revalidateMediaServerDependentSettings();
 
       this.logger.log('Jellyfin settings saved successfully');
       return { status: 'OK', code: 1, message: 'Success' };
@@ -880,6 +915,8 @@ export class SettingsOperationsService {
       this.mediaServerFactory.uninitializeServer(MediaServerType.EMBY);
 
       await this.settingsDataService.init();
+
+      await this.revalidateMediaServerDependentSettings();
 
       this.logger.log('Emby settings saved successfully');
       return { status: 'OK', code: 1, message: 'Success' };
@@ -1282,6 +1319,13 @@ export class SettingsOperationsService {
       merged.plex_hostname = normalizedPlexServerSettings.hostname;
       merged.plex_ssl = normalizedPlexServerSettings.ssl;
 
+      // Plex is the only media server configured through this endpoint; the
+      // others have their own save paths.
+      const mediaServerConnectionChanged = this.isPlexServerSettingsUpdate(
+        settingsDb,
+        merged,
+      );
+
       await this.settingsDataService.saveSettings(merged);
 
       await this.settingsDataService.init();
@@ -1291,6 +1335,10 @@ export class SettingsOperationsService {
       this.tautulli.init();
       this.downloadClient.init();
       this.internalApi.init();
+
+      if (mediaServerConnectionChanged) {
+        await this.revalidateMediaServerDependentSettings();
+      }
 
       // reload Collection handler job if changed
       if (

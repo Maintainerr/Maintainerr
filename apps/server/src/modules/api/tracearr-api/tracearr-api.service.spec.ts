@@ -38,6 +38,14 @@ const historyRow = (id: string, ratingKey: string): TracearrHistoryItem => ({
   user: { id: USER_ID },
 });
 
+const CONFIRMING_LIBRARY = {
+  data: Array.from({ length: 6 }, (_unused, i) => ({
+    rating_key: `confirm-${i}`,
+    title: 'Confirming Title',
+    added_at: '2026-01-01T00:00:00.000Z',
+  })),
+};
+
 const usersPage = {
   data: [
     {
@@ -75,6 +83,11 @@ describe('TracearrApiService', () => {
         .fn()
         .mockResolvedValue([{ id: 'account-1', name: 'alice' }]),
       getChildrenMetadata: jest.fn().mockResolvedValue([]),
+      getMetadata: jest.fn(async () => ({
+        title: 'Confirming Title',
+        addedAt: new Date('2026-01-01T00:00:00.000Z'),
+      })),
+      itemExists: jest.fn().mockResolvedValue(true),
     } as never);
     Object.assign(settings, {
       media_server_type: MediaServerType.PLEX,
@@ -92,6 +105,9 @@ describe('TracearrApiService', () => {
       'movie-2',
     );
     apiMock.getWithoutCache.mockImplementation(async (endpoint: string) => {
+      if (endpoint === '/recently-added') {
+        return CONFIRMING_LIBRARY;
+      }
       if (endpoint === '/history') {
         const calls = apiMock.getWithoutCache.mock.calls.filter(
           (call) => call[0] === '/history',
@@ -126,6 +142,9 @@ describe('TracearrApiService', () => {
   it('maps every Tracearr user to the username Tracearr read off the media server', async () => {
     const OTHER_USER_ID = '55555555-5555-4555-8555-555555555555';
     apiMock.getWithoutCache.mockImplementation(async (endpoint: string) => {
+      if (endpoint === '/recently-added') {
+        return CONFIRMING_LIBRARY;
+      }
       if (endpoint === '/history') {
         return {
           data: [historyRow('33333333-3333-4333-8333-333333333333', 'movie-1')],
@@ -176,6 +195,9 @@ describe('TracearrApiService', () => {
   // the server no longer has, instead of skipping the item.
   it('does not resolve an account Tracearr marks as removed', async () => {
     apiMock.getWithoutCache.mockImplementation(async (endpoint: string) => {
+      if (endpoint === '/recently-added') {
+        return CONFIRMING_LIBRARY;
+      }
       if (endpoint === '/history') {
         return {
           data: [historyRow('33333333-3333-4333-8333-333333333333', 'movie-1')],
@@ -206,8 +228,62 @@ describe('TracearrApiService', () => {
     expect(service.getUsernamesByTracearrUserId()?.has(USER_ID)).toBe(false);
   });
 
+  it('keeps mapping real users when an account has no external user id', async () => {
+    const UNKNOWN_USER_ID = '66666666-6666-4666-8666-666666666666';
+    apiMock.getWithoutCache.mockImplementation(async (endpoint: string) => {
+      if (endpoint === '/recently-added') {
+        return CONFIRMING_LIBRARY;
+      }
+      if (endpoint === '/history') {
+        return {
+          data: [historyRow('33333333-3333-4333-8333-333333333333', 'movie-1')],
+          meta: { nextCursor: null, pageSize: 100 },
+        };
+      }
+      return {
+        data: [
+          {
+            id: UNKNOWN_USER_ID,
+            accounts: [
+              {
+                server_id: SERVER_ID,
+                server_type: 'plex',
+                external_user_id: '',
+                username: 'Unknown',
+              },
+            ],
+          },
+          {
+            id: USER_ID,
+            accounts: [
+              {
+                server_id: SERVER_ID,
+                server_type: 'plex',
+                external_user_id: 'account-1',
+                username: 'alice',
+              },
+            ],
+          },
+        ],
+        meta: { nextCursor: null, pageSize: 100 },
+      };
+    });
+
+    await service.prefetchHistory();
+
+    expect(service.getUsernamesByTracearrUserId()?.get(USER_ID)).toEqual([
+      'alice',
+    ]);
+    expect(
+      service.getUsernamesByTracearrUserId()?.get(UNKNOWN_USER_ID),
+    ).toEqual(['Unknown']);
+  });
+
   it('invalidates a prefetched history snapshot', async () => {
     apiMock.getWithoutCache.mockImplementation(async (endpoint: string) => {
+      if (endpoint === '/recently-added') {
+        return CONFIRMING_LIBRARY;
+      }
       if (endpoint === '/history') {
         return {
           data: [historyRow('33333333-3333-4333-8333-333333333333', 'movie-1')],
@@ -231,6 +307,9 @@ describe('TracearrApiService', () => {
     apiMock.getWithoutCache.mockImplementation(async (endpoint: string) => {
       if (endpoint === '/users') {
         return usersPage;
+      }
+      if (endpoint === '/recently-added') {
+        return CONFIRMING_LIBRARY;
       }
       sweep += 1;
       if (sweep === 1) {
@@ -269,6 +348,9 @@ describe('TracearrApiService', () => {
     apiMock.getWithoutCache.mockImplementation(async (endpoint: string) => {
       if (endpoint === '/users') {
         return usersPage;
+      }
+      if (endpoint === '/recently-added') {
+        return CONFIRMING_LIBRARY;
       }
       sweep += 1;
       if (sweep === 1) {
@@ -310,6 +392,9 @@ describe('TracearrApiService', () => {
     apiMock.getWithoutCache.mockImplementation(async (endpoint: string) => {
       if (endpoint === '/users') {
         return usersPage;
+      }
+      if (endpoint === '/recently-added') {
+        return CONFIRMING_LIBRARY;
       }
       sweep += 1;
       if (sweep === 1) {
@@ -355,6 +440,9 @@ describe('TracearrApiService', () => {
   it('does not expose an index after a later cursor page fails', async () => {
     const first = historyRow('33333333-3333-4333-8333-333333333333', 'movie-1');
     apiMock.getWithoutCache.mockImplementation(async (endpoint: string) => {
+      if (endpoint === '/recently-added') {
+        return CONFIRMING_LIBRARY;
+      }
       if (endpoint === '/history') {
         const calls = apiMock.getWithoutCache.mock.calls.filter(
           (call) => call[0] === '/history',
@@ -373,6 +461,9 @@ describe('TracearrApiService', () => {
 
   it('does not expose an empty history index', async () => {
     apiMock.getWithoutCache.mockImplementation(async (endpoint: string) => {
+      if (endpoint === '/recently-added') {
+        return CONFIRMING_LIBRARY;
+      }
       if (endpoint === '/history') {
         return { data: [], meta: { nextCursor: null, pageSize: 100 } };
       }
@@ -506,6 +597,9 @@ describe('TracearrApiService', () => {
     apiMock.getWithoutCache.mockImplementation(async (endpoint: string) => {
       if (endpoint === '/libraries') {
         return { data: [{ server_id: SERVER_ID, server_type: 'plex' }] };
+      }
+      if (endpoint === '/recently-added') {
+        return CONFIRMING_LIBRARY;
       }
       if (endpoint === '/history') {
         return {
@@ -755,6 +849,9 @@ describe('TracearrApiService', () => {
   it('refuses history from a server that is not the configured media server', async () => {
     Object.assign(settings, { media_server_type: MediaServerType.JELLYFIN });
     apiMock.getWithoutCache.mockImplementation(async (endpoint: string) => {
+      if (endpoint === '/recently-added') {
+        return CONFIRMING_LIBRARY;
+      }
       if (endpoint === '/history') {
         return {
           data: [historyRow('33333333-3333-4333-8333-333333333333', 'movie-1')],
@@ -767,6 +864,90 @@ describe('TracearrApiService', () => {
     await service.prefetchHistory();
 
     expect(service.getHistoryIndex()).toBeUndefined();
+  });
+
+  // The wrong server's history is readable, so its rows answer "watched
+  // nothing" for every item it does not cover instead of failing.
+  it('refuses a populated history from a server that stopped matching', async () => {
+    Object.assign(settings, { media_server_type: MediaServerType.PLEX });
+    mediaServerFactory.getService.mockResolvedValue({
+      getUsers: jest.fn().mockResolvedValue([{ id: 'account-1', name: 'a' }]),
+      getChildrenMetadata: jest.fn().mockResolvedValue([]),
+      getMetadata: jest.fn(async () => ({
+        title: 'Season 1',
+        addedAt: new Date('2025-03-04T10:00:00.000Z'),
+      })),
+      itemExists: jest.fn().mockResolvedValue(true),
+    } as never);
+    apiMock.getWithoutCache.mockImplementation(async (endpoint: string) => {
+      if (endpoint === '/history') {
+        return {
+          data: [historyRow('33333333-3333-4333-8333-333333333333', 'movie-1')],
+          meta: { nextCursor: null, pageSize: 100 },
+        };
+      }
+      if (endpoint === '/recently-added') {
+        return {
+          data: Array.from({ length: 6 }, (_unused, i) => ({
+            rating_key: `${100 + i}`,
+            title: 'Season 1',
+            added_at: '2026-01-01T00:00:00.000Z',
+          })),
+        };
+      }
+      return usersPage;
+    });
+
+    await service.prefetchHistory();
+
+    expect(service.getHistoryIndex()).toBeUndefined();
+  });
+
+  // A re-point invalidates the snapshot, so the next run probes again. The
+  // probe cannot always decide, and history it cannot vouch for must not be
+  // read as "watched nothing".
+  it('refuses history from a server it cannot confirm', async () => {
+    apiMock.getWithoutCache.mockImplementation(async (endpoint: string) => {
+      if (endpoint === '/history') {
+        return {
+          data: [historyRow('33333333-3333-4333-8333-333333333333', 'movie-1')],
+          meta: { nextCursor: null, pageSize: 100 },
+        };
+      }
+      if (endpoint === '/recently-added') {
+        return { data: [] };
+      }
+      return usersPage;
+    });
+
+    await service.prefetchHistory();
+
+    expect(service.getHistoryIndex()).toBeUndefined();
+  });
+
+  // A media-server re-point discards the snapshot mid-sweep. The sweep is
+  // already past its own guards by then, so only the generation stops it
+  // writing the previous server's history back.
+  it('discards a sweep that finishes after the snapshot was invalidated', async () => {
+    apiMock.getWithoutCache.mockImplementation(async (endpoint: string) => {
+      if (endpoint === '/recently-added') {
+        return CONFIRMING_LIBRARY;
+      }
+      if (endpoint === '/history') {
+        // The re-point lands while the history pages are being read.
+        service.invalidateHistory();
+        return {
+          data: [historyRow('33333333-3333-4333-8333-333333333333', 'movie-1')],
+          meta: { nextCursor: null, pageSize: 100 },
+        };
+      }
+      return usersPage;
+    });
+
+    await service.prefetchHistory();
+
+    expect(service.getHistoryIndex()).toBeUndefined();
+    expect(service.getUsernamesByTracearrUserId()).toBeUndefined();
   });
 
   it('reports a failed Tracearr server discovery', async () => {

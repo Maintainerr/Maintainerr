@@ -135,6 +135,31 @@ describe('SettingsOperationsService', () => {
     ).resolves.toEqual({ status: 'OK', code: 1, message: '2.0.0-beta.1' });
   });
 
+  it('clears the Tracearr server selection when the reconfigured media server no longer matches', async () => {
+    tracearr.savedServerTracksMediaServer.mockResolvedValue(false);
+
+    await service.updateSettings({ plex_hostname: 'other-plex.local' });
+
+    expect(settingsDataService.saveSettings).toHaveBeenCalledWith(
+      expect.objectContaining({ tracearr_server_id: null }),
+    );
+    expect(tracearr.invalidateHistory).toHaveBeenCalledTimes(1);
+  });
+
+  // The selection survives an inconclusive check, but the snapshot it was
+  // verified against does not: keeping it would let the next run read the
+  // previous media server's history without probing again.
+  it('keeps the Tracearr server selection but drops its snapshot when the match cannot be determined', async () => {
+    tracearr.savedServerTracksMediaServer.mockResolvedValue(undefined);
+
+    await service.updateSettings({ plex_hostname: 'other-plex.local' });
+
+    expect(settingsDataService.saveSettings).not.toHaveBeenCalledWith(
+      expect.objectContaining({ tracearr_server_id: null }),
+    );
+    expect(tracearr.invalidateHistory).toHaveBeenCalledTimes(1);
+  });
+
   it('rejects Plex server setting changes when no Plex credentials are stored', async () => {
     settingsRepo.findOne.mockResolvedValue(
       createSettings({ plex_auth_token: null }),

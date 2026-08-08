@@ -82,6 +82,7 @@ export class TracearrApiService {
   private activeUsernamesByTracearrUserId: Map<string, string[]> | undefined;
   private episodeIdsByItemId = new Map<string, Promise<string[] | undefined>>();
   private resolvedServerId: string | undefined;
+  private historyGeneration = 0;
   private sweepPromise: Promise<void> | undefined;
 
   constructor(
@@ -124,6 +125,9 @@ export class TracearrApiService {
     this.activeUsernamesByTracearrUserId = undefined;
     this.episodeIdsByItemId.clear();
     this.resolvedServerId = undefined;
+    // A sweep already in flight resolves after this, so mark its results stale
+    // rather than let them repopulate what was just discarded.
+    this.historyGeneration += 1;
     cacheManager
       .getCache(TRACEARR_CACHE_ID)
       ?.data.del(TRACEARR_HISTORY_CACHE_KEY);
@@ -180,6 +184,18 @@ export class TracearrApiService {
       this.logger.debug(error);
       return undefined;
     }
+  }
+
+  /** True when nothing is bound: there is no stale selection to catch. */
+  public async savedServerTracksMediaServer(): Promise<boolean | undefined> {
+    const url = this.settings.tracearr_url;
+    const apiKey = this.settings.tracearr_api_key;
+    const serverId = this.settings.tracearr_server_id;
+    if (!url || !apiKey || !serverId) {
+      return true;
+    }
+
+    return this.serverSharesLibrary({ url, apiKey }, serverId);
   }
 
   /**
@@ -401,29 +417,60 @@ export class TracearrApiService {
     }
     if (this.settings.tracearr_server_id) {
       this.resolvedServerId = this.settings.tracearr_server_id;
-    } else if (!this.resolvedServerId) {
-      this.resolvedServerId = await this.resolveServerId({
-        url: this.settings.tracearr_url,
-        apiKey: this.settings.tracearr_api_key,
-      });
+      return this.resolvedServerId;
+    }
+    if (this.resolvedServerId) {
+      return this.resolvedServerId;
     }
 
+    const generation = this.historyGeneration;
+    const resolved = await this.resolveServerId({
+      url: this.settings.tracearr_url,
+      apiKey: this.settings.tracearr_api_key,
+    });
+    if (generation !== this.historyGeneration) {
+      return undefined;
+    }
+
+    this.resolvedServerId = resolved;
     return this.resolvedServerId;
   }
 
   private async prefetchHistoryInternal(): Promise<void> {
+    const generation = this.historyGeneration;
     this.activeHistoryIndex = undefined;
     this.activeUsernamesByTracearrUserId = undefined;
     this.episodeIdsByItemId.clear();
 
-    if (!(await this.resolveActiveServerId())) {
+    const serverId = await this.resolveActiveServerId();
+    if (!serverId) {
       this.logger.warn(
         'Tracearr has no server matching the configured media server. Tracearr rule values are unavailable for this run.',
       );
       return;
     }
 
-    const historyIndex = await this.refreshHistoryIndex();
+    // A binding survives whatever the media server did since it was chosen, and
+    // the wrong one's history reads as "watched nothing" for every item it does
+    // not cover rather than as a failure. Unconfirmed is not good enough to
+    // read history by.
+    const sharesLibrary = await this.serverSharesLibrary(
+      {
+        url: this.settings.tracearr_url,
+        apiKey: this.settings.tracearr_api_key,
+      },
+      serverId,
+    );
+    if (!sharesLibrary) {
+      this.logger.warn(
+        sharesLibrary === false
+          ? 'The selected Tracearr server tracks a different media server than the one Maintainerr manages. Pick the right server in Tracearr settings. Tracearr rule values are unavailable for this run.'
+          : 'The selected Tracearr server could not be confirmed to track the media server Maintainerr manages. Tracearr rule values are unavailable for this run.',
+      );
+      return;
+    }
+
+    const historyIndex = await this.refreshHistoryIndex(generation);
     if (!historyIndex) {
       this.logger.warn(
         'Tracearr history sweep did not complete. Tracearr rule values are unavailable for this run.',
@@ -435,6 +482,10 @@ export class TracearrApiService {
       this.logger.warn(
         'Tracearr history contains no usable rating keys. Tracearr rule values are unavailable until history is recorded.',
       );
+      return;
+    }
+
+    if (generation !== this.historyGeneration) {
       return;
     }
 
@@ -450,6 +501,10 @@ export class TracearrApiService {
       return;
     }
 
+    if (generation !== this.historyGeneration) {
+      return;
+    }
+
     this.activeUsernamesByTracearrUserId = usernames;
   }
 
@@ -458,9 +513,9 @@ export class TracearrApiService {
    * for 2 minutes or more, so every Tracearr rule property counts sustained
    * plays only.
    */
-  private async refreshHistoryIndex(): Promise<
-    TracearrHistoryIndex | undefined
-  > {
+  private async refreshHistoryIndex(
+    generation: number,
+  ): Promise<TracearrHistoryIndex | undefined> {
     const api = this.api;
     const serverId = this.resolvedServerId;
     const mediaServerType = this.settings.media_server_type;
@@ -553,7 +608,9 @@ export class TracearrApiService {
     }
 
     const index = this.createHistoryIndex(rowsById);
-    cache?.set(TRACEARR_HISTORY_CACHE_KEY, index);
+    if (generation === this.historyGeneration) {
+      cache?.set(TRACEARR_HISTORY_CACHE_KEY, index);
+    }
     return index;
   }
 

@@ -8,7 +8,8 @@ export const tracearrUsersPageSchema = z.object({
         z.object({
           server_id: z.uuid(),
           server_type: z.string().min(1),
-          external_user_id: z.string().min(1),
+          // Empty on an account Tracearr could not attribute to a user.
+          external_user_id: z.string(),
           // Tracearr's own copy of the account name, which can differ from
           // the media server's for the same Plex account.
           username: z.string().min(1).nullish(),
