@@ -4484,10 +4484,25 @@ export class CollectionsService {
       let totalBytes = 0;
       let hasAnySize = false;
 
+      // One read for the whole collection; per row it opened a request per
+      // item against the media server on every handling run (#3449).
+      const metadataById = new Map(
+        (
+          await mediaServer.getMetadataBatch(
+            collectionMedia.map((media) => media.mediaServerId),
+          )
+        ).map((item) => [item.id, item]),
+      );
+
       for (const media of collectionMedia) {
-        const itemSize = await this.resolveItemSize(
+        const metadata = metadataById.get(media.mediaServerId);
+
+        // Absent means gone or unreadable; either way keep the cached size.
+        if (!metadata) continue;
+
+        const itemSize = await this.resolveSizeFromMetadata(
           mediaServer,
-          media.mediaServerId,
+          metadata,
         );
 
         if (itemSize != null && itemSize > 0) {
@@ -4506,6 +4521,13 @@ export class CollectionsService {
           });
         }
       }
+
+      // A read that answered for nothing is a failed read, not an empty
+      // collection: Emby 500s a whole batch over one unparseable id. Writing
+      // null there would erase a known total, so keep the last one until a
+      // read succeeds - a permanently bad id keeps poisoning its batch, so
+      // that may not be the next run. Same principle as the per-row size above.
+      if (metadataById.size === 0) return;
 
       await this.collectionRepo.update(collectionId, {
         totalSizeBytes: hasAnySize ? totalBytes : null,
@@ -4527,9 +4549,31 @@ export class CollectionsService {
     mediaServer: IMediaServerService,
     mediaServerId: string,
   ): Promise<number | null> {
+    let metadata: MediaItem | undefined;
+
     try {
-      const metadata = await mediaServer.getMetadata(mediaServerId);
-      if (!metadata) return null;
+      metadata = await mediaServer.getMetadata(mediaServerId);
+    } catch (error) {
+      this.logger.debug(`Failed to get size for media ${mediaServerId}`);
+      this.logger.debug(error);
+      return null;
+    }
+
+    return metadata
+      ? this.resolveSizeFromMetadata(mediaServer, metadata)
+      : null;
+  }
+
+  /**
+   * Size of an already-read item: its own files, or its children's for a show
+   * or season that carries none. Null when nothing usable resolved, so one
+   * bad item cannot fail the collection's total.
+   */
+  private async resolveSizeFromMetadata(
+    mediaServer: IMediaServerService,
+    metadata: MediaItem,
+  ): Promise<number | null> {
+    try {
       const directSize = this.sumMediaSourceSizes(metadata);
       if (directSize > 0) return directSize;
       if (metadata.type === 'show' || metadata.type === 'season') {
@@ -4541,7 +4585,7 @@ export class CollectionsService {
       }
       return null;
     } catch (error) {
-      this.logger.debug(`Failed to get size for media ${mediaServerId}`);
+      this.logger.debug(`Failed to get size for media ${metadata.id}`);
       this.logger.debug(error);
       return null;
     }
