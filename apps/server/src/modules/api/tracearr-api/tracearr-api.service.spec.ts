@@ -950,6 +950,38 @@ describe('TracearrApiService', () => {
     expect(service.getUsernamesByTracearrUserId()).toBeUndefined();
   });
 
+  // A confirmation belongs to the configuration it was taken under. Keeping
+  // one from a superseded sweep would let the next sweep skip the probe and
+  // read the previous server's history as verified.
+  it('probes again when the snapshot is invalidated while the server is being confirmed', async () => {
+    let invalidated = false;
+    apiMock.getWithoutCache.mockImplementation(async (endpoint: string) => {
+      if (endpoint === '/recently-added') {
+        if (!invalidated) {
+          invalidated = true;
+          service.invalidateHistory();
+        }
+        return CONFIRMING_LIBRARY;
+      }
+      if (endpoint === '/history') {
+        return {
+          data: [historyRow('33333333-3333-4333-8333-333333333333', 'movie-1')],
+          meta: { nextCursor: null, pageSize: 100 },
+        };
+      }
+      return usersPage;
+    });
+
+    await service.prefetchHistory();
+    await service.prefetchHistory();
+
+    expect(
+      apiMock.getWithoutCache.mock.calls.filter(
+        (call) => call[0] === '/recently-added',
+      ),
+    ).toHaveLength(2);
+  });
+
   it('reports a failed Tracearr server discovery', async () => {
     apiMock.getRawWithoutCache.mockRejectedValue(new Error('Unauthorized'));
 

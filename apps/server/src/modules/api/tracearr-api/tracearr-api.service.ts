@@ -419,13 +419,22 @@ export class TracearrApiService {
     }
     if (this.settings.tracearr_server_id) {
       this.resolvedServerId = this.settings.tracearr_server_id;
-    } else if (!this.resolvedServerId) {
-      this.resolvedServerId = await this.resolveServerId({
-        url: this.settings.tracearr_url,
-        apiKey: this.settings.tracearr_api_key,
-      });
+      return this.resolvedServerId;
+    }
+    if (this.resolvedServerId) {
+      return this.resolvedServerId;
     }
 
+    const generation = this.historyGeneration;
+    const resolved = await this.resolveServerId({
+      url: this.settings.tracearr_url,
+      apiKey: this.settings.tracearr_api_key,
+    });
+    if (generation !== this.historyGeneration) {
+      return undefined;
+    }
+
+    this.resolvedServerId = resolved;
     return this.resolvedServerId;
   }
 
@@ -436,6 +445,9 @@ export class TracearrApiService {
     this.episodeIdsByItemId.clear();
 
     const serverId = await this.resolveActiveServerId();
+    if (generation !== this.historyGeneration) {
+      return;
+    }
     if (!serverId) {
       this.logger.warn(
         'Tracearr has no server matching the configured media server. Tracearr rule values are unavailable for this run.',
@@ -455,6 +467,9 @@ export class TracearrApiService {
         },
         serverId,
       );
+      if (generation !== this.historyGeneration) {
+        return;
+      }
       if (!sharesLibrary) {
         this.logger.warn(
           sharesLibrary === false
