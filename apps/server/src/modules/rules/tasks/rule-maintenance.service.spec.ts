@@ -5,10 +5,13 @@ describe('RuleMaintenanceService - removeLeftoverExclusions', () => {
   const createService = (options?: {
     exclusions?: any[];
     itemExists?: jest.Mock;
+    getMetadataBatch?: jest.Mock;
   }) => {
     const { exclusions = [] } = options ?? {};
 
     const mediaServer = {
+      getMetadataBatch:
+        options?.getMetadataBatch ?? jest.fn().mockResolvedValue([]),
       itemExists: options?.itemExists ?? jest.fn().mockResolvedValue(true),
     };
 
@@ -65,5 +68,24 @@ describe('RuleMaintenanceService - removeLeftoverExclusions', () => {
     await (service as any).executeTask();
 
     expect(rulesService.removeExclusion).not.toHaveBeenCalled();
+  });
+
+  it('does not check an exclusion the batched read already answered for', async () => {
+    const itemExists = jest.fn().mockResolvedValue(false);
+    const { service, rulesService } = createService({
+      exclusions: [
+        { id: 1, mediaServerId: '11' },
+        { id: 2, mediaServerId: '22' },
+      ],
+      getMetadataBatch: jest.fn().mockResolvedValue([{ id: '11' }]),
+      itemExists,
+    });
+
+    await (service as any).executeTask();
+
+    expect(itemExists).toHaveBeenCalledTimes(1);
+    expect(itemExists).toHaveBeenCalledWith('22');
+    expect(rulesService.removeExclusion).toHaveBeenCalledTimes(1);
+    expect(rulesService.removeExclusion).toHaveBeenCalledWith(2);
   });
 });

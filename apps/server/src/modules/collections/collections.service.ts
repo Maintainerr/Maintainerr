@@ -31,6 +31,7 @@ import { chunk } from 'lodash';
 import { Brackets, DataSource, In, LessThan, Not, Repository } from 'typeorm';
 import { CollectionLog } from '../../modules/collections/entities/collection_log.entities';
 import { getErrorMessage } from '../../utils/connection-error';
+import { readItemPresence } from '../api/media-server/item-presence.util';
 import {
   ENRICHMENT_ID_CHUNK,
   MediaItemEnrichmentService,
@@ -1535,20 +1536,16 @@ export class CollectionsService {
     const mediaServer = await this.getMediaServer();
     let removedCount = 0;
 
-    for (const entry of allMedia) {
-      // Only remove a row when the media server *confirms* the item is gone.
-      // `itemExists` returns false solely on a 404/empty result and throws on
-      // an inconclusive check (network / 5xx / auth), unlike `getMetadata`
-      // which returns undefined for both absent and failed reads - so a
-      // transient blip can no longer delete a still-present item's row.
-      let exists = true;
-      try {
-        exists = await mediaServer.itemExists(entry.mediaServerId);
-      } catch (error) {
-        this.logger.debug(error);
-      }
+    // `missing` is a confirmed absence only, so a transient failure never
+    // deletes a still-present item's row.
+    const { missing } = await readItemPresence(
+      mediaServer,
+      allMedia.map((entry) => entry.mediaServerId),
+      (error) => this.logger.debug(error),
+    );
 
-      if (!exists) {
+    for (const entry of allMedia) {
+      if (missing.has(entry.mediaServerId)) {
         await this.CollectionMediaRepo.delete(entry.id);
         removedCount++;
       }

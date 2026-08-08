@@ -3572,6 +3572,23 @@ describe('CollectionsService', () => {
 
       expect(collectionMediaRepo.delete).not.toHaveBeenCalled();
     });
+
+    it('does not check a row the batched read already answered for', async () => {
+      collectionMediaRepo.find.mockResolvedValue([
+        buildMedia(1, 'present'),
+        buildMedia(2, 'gone'),
+      ]);
+      mediaServer.getMetadataBatch.mockResolvedValue([
+        createMediaItem({ id: 'present' }),
+      ]);
+      mediaServer.itemExists.mockResolvedValue(false);
+
+      await service.removeStaleCollectionMedia();
+
+      expect(mediaServer.itemExists).toHaveBeenCalledTimes(1);
+      expect(mediaServer.itemExists).toHaveBeenCalledWith('gone');
+      expect(collectionMediaRepo.delete).toHaveBeenCalledWith(2);
+    });
   });
 
   // Both used to answer 201 with an empty body, which is the same silent

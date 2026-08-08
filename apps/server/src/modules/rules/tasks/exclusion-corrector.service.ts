@@ -2,6 +2,7 @@ import { MediaItemType } from '@maintainerr/contracts';
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { readItemPresence } from '../../api/media-server/item-presence.util';
 import { MediaServerFactory } from '../../api/media-server/media-server.factory';
 import { Collection } from '../../collections/entities/collection.entities';
 import { MaintainerrLogger } from '../../logging/logs.service';
@@ -143,27 +144,21 @@ export class ExclusionTypeCorrectorService implements OnModuleInit {
 
     const mediaServer = await this.mediaServerFactory.getService();
 
+    // Neither typed nor confirmed gone: the row stays untyped and the next
+    // startup retries it.
+    const { found, missing } = await readItemPresence(
+      mediaServer,
+      exclusionsWithoutType.map((el) => el.mediaServerId),
+      (error) => this.logger.debug(error),
+    );
+
     const corrected: typeof exclusionsWithoutType = [];
     for (const el of exclusionsWithoutType) {
-      const metaData = await mediaServer.getMetadata(el.mediaServerId);
+      const metaData = found.get(el.mediaServerId);
       if (metaData) {
         el.type = metaData.type;
         corrected.push(el);
-        continue;
-      }
-
-      // getMetadata is undefined for both a gone item and a failed read.
-      // Only remove on a confirmed 404 via itemExists; on an inconclusive
-      // check leave the row untyped so the next startup retries - a
-      // transient blip must not delete the protection an exclusion provides.
-      let exists = true;
-      try {
-        exists = await mediaServer.itemExists(el.mediaServerId);
-      } catch (error) {
-        this.logger.debug(error);
-      }
-
-      if (!exists) {
+      } else if (missing.has(el.mediaServerId)) {
         await this.rulesService.removeExclusion(el.id);
       }
     }
