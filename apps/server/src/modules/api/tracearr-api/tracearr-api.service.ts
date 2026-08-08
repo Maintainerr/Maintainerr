@@ -82,6 +82,7 @@ export class TracearrApiService {
   private activeUsernamesByTracearrUserId: Map<string, string[]> | undefined;
   private episodeIdsByItemId = new Map<string, Promise<string[] | undefined>>();
   private resolvedServerId: string | undefined;
+  private verifiedServerId: string | undefined;
   private sweepPromise: Promise<void> | undefined;
 
   constructor(
@@ -124,6 +125,7 @@ export class TracearrApiService {
     this.activeUsernamesByTracearrUserId = undefined;
     this.episodeIdsByItemId.clear();
     this.resolvedServerId = undefined;
+    this.verifiedServerId = undefined;
     cacheManager
       .getCache(TRACEARR_CACHE_ID)
       ?.data.del(TRACEARR_HISTORY_CACHE_KEY);
@@ -180,6 +182,18 @@ export class TracearrApiService {
       this.logger.debug(error);
       return undefined;
     }
+  }
+
+  /** True when nothing is bound: there is no stale selection to catch. */
+  public async savedServerTracksMediaServer(): Promise<boolean | undefined> {
+    const url = this.settings.tracearr_url;
+    const apiKey = this.settings.tracearr_api_key;
+    const serverId = this.settings.tracearr_server_id;
+    if (!url || !apiKey || !serverId) {
+      return true;
+    }
+
+    return this.serverSharesLibrary({ url, apiKey }, serverId);
   }
 
   /**
@@ -416,11 +430,35 @@ export class TracearrApiService {
     this.activeUsernamesByTracearrUserId = undefined;
     this.episodeIdsByItemId.clear();
 
-    if (!(await this.resolveActiveServerId())) {
+    const serverId = await this.resolveActiveServerId();
+    if (!serverId) {
       this.logger.warn(
         'Tracearr has no server matching the configured media server. Tracearr rule values are unavailable for this run.',
       );
       return;
+    }
+
+    // A binding survives whatever the media server did since it was chosen, and
+    // the wrong one's history reads as "watched nothing" for every item it does
+    // not cover rather than as a failure. Only a confirmed match is remembered,
+    // so an undecided one is retried until it can be settled.
+    if (this.verifiedServerId !== serverId) {
+      const sharesLibrary = await this.serverSharesLibrary(
+        {
+          url: this.settings.tracearr_url,
+          apiKey: this.settings.tracearr_api_key,
+        },
+        serverId,
+      );
+      if (sharesLibrary === false) {
+        this.logger.warn(
+          'The selected Tracearr server tracks a different media server than the one Maintainerr manages. Pick the right server in Tracearr settings. Tracearr rule values are unavailable for this run.',
+        );
+        return;
+      }
+      if (sharesLibrary) {
+        this.verifiedServerId = serverId;
+      }
     }
 
     const historyIndex = await this.refreshHistoryIndex();

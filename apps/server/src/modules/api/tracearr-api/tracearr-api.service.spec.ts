@@ -206,6 +206,54 @@ describe('TracearrApiService', () => {
     expect(service.getUsernamesByTracearrUserId()?.has(USER_ID)).toBe(false);
   });
 
+  it('keeps mapping real users when an account has no external user id', async () => {
+    const UNKNOWN_USER_ID = '66666666-6666-4666-8666-666666666666';
+    apiMock.getWithoutCache.mockImplementation(async (endpoint: string) => {
+      if (endpoint === '/history') {
+        return {
+          data: [historyRow('33333333-3333-4333-8333-333333333333', 'movie-1')],
+          meta: { nextCursor: null, pageSize: 100 },
+        };
+      }
+      return {
+        data: [
+          {
+            id: UNKNOWN_USER_ID,
+            accounts: [
+              {
+                server_id: SERVER_ID,
+                server_type: 'plex',
+                external_user_id: '',
+                username: 'Unknown',
+              },
+            ],
+          },
+          {
+            id: USER_ID,
+            accounts: [
+              {
+                server_id: SERVER_ID,
+                server_type: 'plex',
+                external_user_id: 'account-1',
+                username: 'alice',
+              },
+            ],
+          },
+        ],
+        meta: { nextCursor: null, pageSize: 100 },
+      };
+    });
+
+    await service.prefetchHistory();
+
+    expect(service.getUsernamesByTracearrUserId()?.get(USER_ID)).toEqual([
+      'alice',
+    ]);
+    expect(
+      service.getUsernamesByTracearrUserId()?.get(UNKNOWN_USER_ID),
+    ).toEqual(['Unknown']);
+  });
+
   it('invalidates a prefetched history snapshot', async () => {
     apiMock.getWithoutCache.mockImplementation(async (endpoint: string) => {
       if (endpoint === '/history') {
@@ -231,6 +279,9 @@ describe('TracearrApiService', () => {
     apiMock.getWithoutCache.mockImplementation(async (endpoint: string) => {
       if (endpoint === '/users') {
         return usersPage;
+      }
+      if (endpoint === '/recently-added') {
+        return undefined;
       }
       sweep += 1;
       if (sweep === 1) {
@@ -269,6 +320,9 @@ describe('TracearrApiService', () => {
     apiMock.getWithoutCache.mockImplementation(async (endpoint: string) => {
       if (endpoint === '/users') {
         return usersPage;
+      }
+      if (endpoint === '/recently-added') {
+        return undefined;
       }
       sweep += 1;
       if (sweep === 1) {
@@ -310,6 +364,9 @@ describe('TracearrApiService', () => {
     apiMock.getWithoutCache.mockImplementation(async (endpoint: string) => {
       if (endpoint === '/users') {
         return usersPage;
+      }
+      if (endpoint === '/recently-added') {
+        return undefined;
       }
       sweep += 1;
       if (sweep === 1) {
@@ -759,6 +816,43 @@ describe('TracearrApiService', () => {
         return {
           data: [historyRow('33333333-3333-4333-8333-333333333333', 'movie-1')],
           meta: { nextCursor: null, pageSize: 100 },
+        };
+      }
+      return usersPage;
+    });
+
+    await service.prefetchHistory();
+
+    expect(service.getHistoryIndex()).toBeUndefined();
+  });
+
+  // The wrong server's history is readable, so its rows answer "watched
+  // nothing" for every item it does not cover instead of failing.
+  it('refuses a populated history from a server that stopped matching', async () => {
+    Object.assign(settings, { media_server_type: MediaServerType.PLEX });
+    mediaServerFactory.getService.mockResolvedValue({
+      getUsers: jest.fn().mockResolvedValue([{ id: 'account-1', name: 'a' }]),
+      getChildrenMetadata: jest.fn().mockResolvedValue([]),
+      getMetadata: jest.fn(async () => ({
+        title: 'Season 1',
+        addedAt: new Date('2025-03-04T10:00:00.000Z'),
+      })),
+      itemExists: jest.fn().mockResolvedValue(true),
+    } as never);
+    apiMock.getWithoutCache.mockImplementation(async (endpoint: string) => {
+      if (endpoint === '/history') {
+        return {
+          data: [historyRow('33333333-3333-4333-8333-333333333333', 'movie-1')],
+          meta: { nextCursor: null, pageSize: 100 },
+        };
+      }
+      if (endpoint === '/recently-added') {
+        return {
+          data: Array.from({ length: 6 }, (_unused, i) => ({
+            rating_key: `${100 + i}`,
+            title: 'Season 1',
+            added_at: '2026-01-01T00:00:00.000Z',
+          })),
         };
       }
       return usersPage;
