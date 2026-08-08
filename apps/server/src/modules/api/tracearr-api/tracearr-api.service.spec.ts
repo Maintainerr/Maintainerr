@@ -925,6 +925,31 @@ describe('TracearrApiService', () => {
     expect(service.getHistoryIndex()).toBeUndefined();
   });
 
+  // A media-server re-point discards the snapshot mid-sweep. The sweep is
+  // already past its own guards by then, so only the generation stops it
+  // writing the previous server's history back.
+  it('discards a sweep that finishes after the snapshot was invalidated', async () => {
+    apiMock.getWithoutCache.mockImplementation(async (endpoint: string) => {
+      if (endpoint === '/recently-added') {
+        return CONFIRMING_LIBRARY;
+      }
+      if (endpoint === '/history') {
+        // The re-point lands while the history pages are being read.
+        service.invalidateHistory();
+        return {
+          data: [historyRow('33333333-3333-4333-8333-333333333333', 'movie-1')],
+          meta: { nextCursor: null, pageSize: 100 },
+        };
+      }
+      return usersPage;
+    });
+
+    await service.prefetchHistory();
+
+    expect(service.getHistoryIndex()).toBeUndefined();
+    expect(service.getUsernamesByTracearrUserId()).toBeUndefined();
+  });
+
   it('reports a failed Tracearr server discovery', async () => {
     apiMock.getRawWithoutCache.mockRejectedValue(new Error('Unauthorized'));
 

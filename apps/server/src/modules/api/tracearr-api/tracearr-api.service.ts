@@ -82,6 +82,7 @@ export class TracearrApiService {
   private activeUsernamesByTracearrUserId: Map<string, string[]> | undefined;
   private episodeIdsByItemId = new Map<string, Promise<string[] | undefined>>();
   private resolvedServerId: string | undefined;
+  private historyGeneration = 0;
   private verifiedServerId: string | undefined;
   private sweepPromise: Promise<void> | undefined;
 
@@ -126,6 +127,9 @@ export class TracearrApiService {
     this.episodeIdsByItemId.clear();
     this.resolvedServerId = undefined;
     this.verifiedServerId = undefined;
+    // A sweep already in flight resolves after this, so mark its results stale
+    // rather than let them repopulate what was just discarded.
+    this.historyGeneration += 1;
     cacheManager
       .getCache(TRACEARR_CACHE_ID)
       ?.data.del(TRACEARR_HISTORY_CACHE_KEY);
@@ -426,6 +430,7 @@ export class TracearrApiService {
   }
 
   private async prefetchHistoryInternal(): Promise<void> {
+    const generation = this.historyGeneration;
     this.activeHistoryIndex = undefined;
     this.activeUsernamesByTracearrUserId = undefined;
     this.episodeIdsByItemId.clear();
@@ -461,7 +466,7 @@ export class TracearrApiService {
       this.verifiedServerId = serverId;
     }
 
-    const historyIndex = await this.refreshHistoryIndex();
+    const historyIndex = await this.refreshHistoryIndex(generation);
     if (!historyIndex) {
       this.logger.warn(
         'Tracearr history sweep did not complete. Tracearr rule values are unavailable for this run.',
@@ -473,6 +478,10 @@ export class TracearrApiService {
       this.logger.warn(
         'Tracearr history contains no usable rating keys. Tracearr rule values are unavailable until history is recorded.',
       );
+      return;
+    }
+
+    if (generation !== this.historyGeneration) {
       return;
     }
 
@@ -488,6 +497,10 @@ export class TracearrApiService {
       return;
     }
 
+    if (generation !== this.historyGeneration) {
+      return;
+    }
+
     this.activeUsernamesByTracearrUserId = usernames;
   }
 
@@ -496,9 +509,9 @@ export class TracearrApiService {
    * for 2 minutes or more, so every Tracearr rule property counts sustained
    * plays only.
    */
-  private async refreshHistoryIndex(): Promise<
-    TracearrHistoryIndex | undefined
-  > {
+  private async refreshHistoryIndex(
+    generation: number,
+  ): Promise<TracearrHistoryIndex | undefined> {
     const api = this.api;
     const serverId = this.resolvedServerId;
     const mediaServerType = this.settings.media_server_type;
@@ -591,7 +604,9 @@ export class TracearrApiService {
     }
 
     const index = this.createHistoryIndex(rowsById);
-    cache?.set(TRACEARR_HISTORY_CACHE_KEY, index);
+    if (generation === this.historyGeneration) {
+      cache?.set(TRACEARR_HISTORY_CACHE_KEY, index);
+    }
     return index;
   }
 
