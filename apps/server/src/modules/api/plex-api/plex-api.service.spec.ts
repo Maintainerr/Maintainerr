@@ -142,6 +142,54 @@ describe('PlexApiService.getMetadata', () => {
     );
   });
 
+  // #3449: a collection still listing deleted media logged one
+  // "is the application running?" ERROR per item against a healthy Plex.
+  it('reports a 404 as a missing item, not as a communication failure', async () => {
+    (service as any).plexClient = {
+      query: jest
+        .fn()
+        .mockRejectedValue(
+          new Error(
+            'GET /library/metadata/123 failed with exception: Plex Server didnt respond with a valid 2xx status code, response code: 404',
+            { cause: { response: { status: 404 } } as any },
+          ),
+        ),
+    };
+
+    expect(await service.getMetadata('123')).toBeUndefined();
+    expect(logger.error).not.toHaveBeenCalled();
+  });
+
+  it('still reports a non-404 metadata failure as a communication failure', async () => {
+    (service as any).plexClient = {
+      query: jest.fn().mockRejectedValue(
+        new Error('GET /library/metadata/123 failed: server error', {
+          cause: { response: { status: 503 } } as any,
+        }),
+      ),
+    };
+
+    expect(await service.getMetadata('123')).toBeUndefined();
+    expect(logger.error).toHaveBeenCalledWith(
+      'Plex api communication failure.. Is the application running?',
+    );
+  });
+
+  // Plex answers 404 only when it holds none of the requested ids; a mixed
+  // batch is a 200 listing just the live ones.
+  it('reads an all-missing batch as an empty answer, not a failure', async () => {
+    (service as any).plexClient = {
+      query: jest.fn().mockRejectedValue(
+        new Error('GET /library/metadata/1,2 failed: not found', {
+          cause: { response: { status: 404 } } as any,
+        }),
+      ),
+    };
+
+    expect(await service.getMetadataBatch(['1', '2'])).toEqual([]);
+    expect(logger.error).not.toHaveBeenCalled();
+  });
+
   it('preserves includeChildren queries while requesting external media enrichment', async () => {
     const query = jest.fn().mockResolvedValue({
       MediaContainer: { Metadata: [{ ratingKey: '123' }] },

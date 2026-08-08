@@ -661,6 +661,14 @@ export class PlexApiService {
         return undefined;
       }
     } catch (error) {
+      // A 404 is Plex answering that it has no such item - deleted media, not
+      // an unreachable server. Blaming the connection put one ERROR per gone
+      // item in the log and sent users looking at a Plex that was fine (#3449).
+      if (this.responseStatus(error) === 404) {
+        this.logger.debug(`Plex has no item with id ${key}`);
+        return undefined;
+      }
+
       this.logger.error(
         'Plex api communication failure.. Is the application running?',
       );
@@ -685,6 +693,16 @@ export class PlexApiService {
       );
       return response?.MediaContainer?.Metadata ?? [];
     } catch (error) {
+      // Plex answers 404 only when it holds none of the requested ids - a
+      // batch mixing live and dead ones is a 200 listing just the live ones
+      // (verified on PMS 1.43.3). So this is "all gone", not a failed read.
+      if (this.responseStatus(error) === 404) {
+        this.logger.debug(
+          `Plex has none of the ${keys.length} requested items`,
+        );
+        return [];
+      }
+
       this.logger.error(
         'Plex api communication failure.. Is the application running?',
       );

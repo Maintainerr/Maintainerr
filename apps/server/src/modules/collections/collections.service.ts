@@ -4487,10 +4487,28 @@ export class CollectionsService {
       let totalBytes = 0;
       let hasAnySize = false;
 
+      // One batched read for the whole collection. Reading per row opened a
+      // request per item against the media server on every handling run, and
+      // an item deleted since the last run cost a 404 of its own (#3449).
+      const metadataById = new Map(
+        (
+          await mediaServer.getMetadataBatch(
+            collectionMedia.map((media) => media.mediaServerId),
+          )
+        ).map((item) => [item.id, item]),
+      );
+
       for (const media of collectionMedia) {
-        const itemSize = await this.resolveItemSize(
+        const metadata = metadataById.get(media.mediaServerId);
+
+        // Absent from the answer: gone from the server, or a read that failed.
+        // Neither is a size, and the cached one stays - the same outcome the
+        // per-item read produced, without the request.
+        if (!metadata) continue;
+
+        const itemSize = await this.resolveSizeFromMetadata(
           mediaServer,
-          media.mediaServerId,
+          metadata,
         );
 
         if (itemSize != null && itemSize > 0) {
@@ -4530,9 +4548,32 @@ export class CollectionsService {
     mediaServer: IMediaServerService,
     mediaServerId: string,
   ): Promise<number | null> {
+    let metadata: MediaItem | undefined;
+
     try {
-      const metadata = await mediaServer.getMetadata(mediaServerId);
-      if (!metadata) return null;
+      metadata = await mediaServer.getMetadata(mediaServerId);
+    } catch (error) {
+      this.logger.debug(`Failed to get size for media ${mediaServerId}`);
+      this.logger.debug(error);
+      return null;
+    }
+
+    return metadata
+      ? this.resolveSizeFromMetadata(mediaServer, metadata)
+      : null;
+  }
+
+  /**
+   * Size of an item already read: its own files, or its children's for a show
+   * or season that carries none. Null when nothing usable resolved, so one
+   * unreadable item leaves its cached size alone instead of failing the
+   * collection's total.
+   */
+  private async resolveSizeFromMetadata(
+    mediaServer: IMediaServerService,
+    metadata: MediaItem,
+  ): Promise<number | null> {
+    try {
       const directSize = this.sumMediaSourceSizes(metadata);
       if (directSize > 0) return directSize;
       if (metadata.type === 'show' || metadata.type === 'season') {
@@ -4544,7 +4585,7 @@ export class CollectionsService {
       }
       return null;
     } catch (error) {
-      this.logger.debug(`Failed to get size for media ${mediaServerId}`);
+      this.logger.debug(`Failed to get size for media ${metadata.id}`);
       this.logger.debug(error);
       return null;
     }
