@@ -101,6 +101,7 @@ describe('CollectionsService', () => {
       getLibraries: jest.fn().mockResolvedValue([{ id: 'library-1' }]),
       getMetadata: jest.fn().mockResolvedValue(undefined),
       getMetadataBatch: jest.fn().mockResolvedValue([]),
+      getChildrenMetadata: jest.fn().mockResolvedValue([]),
       itemExists: jest.fn().mockResolvedValue(true),
       removeFromCollection: jest.fn().mockResolvedValue(undefined),
       deleteCollection: jest.fn().mockResolvedValue(undefined),
@@ -4027,6 +4028,94 @@ describe('CollectionsService', () => {
       expect(collectionRepo.findOne).not.toHaveBeenCalled();
       expect(collectionLogRepo.delete).toHaveBeenCalledWith({
         collection: { id: 99 },
+      });
+    });
+  });
+
+  describe('updateCollectionTotalSize', () => {
+    beforeEach(() => {
+      (
+        service.updateCollectionTotalSize as jest.MockedFunction<
+          typeof service.updateCollectionTotalSize
+        >
+      ).mockRestore();
+    });
+
+    const sizedItem = (id: string, sizeBytes: number) =>
+      createMediaItem({
+        id,
+        type: 'movie',
+        mediaSources: [{ id: `source-${id}`, duration: 0, sizeBytes }],
+      });
+
+    it('reads every row in one batch instead of a request per item', async () => {
+      const collection = createCollection({ id: 3, type: 'movie' });
+      collectionRepo.findOne.mockResolvedValue(collection);
+      collectionMediaRepo.find.mockResolvedValue([
+        createCollectionMedia(collection, { id: 1, mediaServerId: 'a' }),
+        createCollectionMedia(collection, { id: 2, mediaServerId: 'b' }),
+      ]);
+      mediaServer.getMetadataBatch.mockResolvedValue([
+        sizedItem('a', 100),
+        sizedItem('b', 250),
+      ]);
+
+      await service.updateCollectionTotalSize(3);
+
+      expect(mediaServer.getMetadataBatch).toHaveBeenCalledTimes(1);
+      expect(mediaServer.getMetadataBatch).toHaveBeenCalledWith(['a', 'b']);
+      expect(mediaServer.getMetadata).not.toHaveBeenCalled();
+      expect(collectionRepo.update).toHaveBeenCalledWith(3, {
+        totalSizeBytes: 350,
+      });
+    });
+
+    it('keeps the cached size of a row the server did not answer for', async () => {
+      // A deleted item, or a read that failed: neither is a size, and neither
+      // may cost a request of its own or clobber what was already known.
+      const collection = createCollection({ id: 4, type: 'movie' });
+      collectionRepo.findOne.mockResolvedValue(collection);
+      collectionMediaRepo.find.mockResolvedValue([
+        createCollectionMedia(collection, { id: 1, mediaServerId: 'live' }),
+        createCollectionMedia(collection, {
+          id: 2,
+          mediaServerId: 'gone',
+          sizeBytes: 999,
+        }),
+      ]);
+      mediaServer.getMetadataBatch.mockResolvedValue([sizedItem('live', 100)]);
+
+      await service.updateCollectionTotalSize(4);
+
+      expect(mediaServer.getMetadata).not.toHaveBeenCalled();
+      expect(collectionMediaRepo.update).not.toHaveBeenCalledWith(
+        2,
+        expect.anything(),
+      );
+      expect(collectionRepo.update).toHaveBeenCalledWith(4, {
+        totalSizeBytes: 100,
+      });
+    });
+
+    it('still totals the readable rows when a show cannot be traversed', async () => {
+      const collection = createCollection({ id: 5, type: 'show' });
+      collectionRepo.findOne.mockResolvedValue(collection);
+      collectionMediaRepo.find.mockResolvedValue([
+        createCollectionMedia(collection, { id: 1, mediaServerId: 'show-1' }),
+        createCollectionMedia(collection, { id: 2, mediaServerId: 'movie-1' }),
+      ]);
+      mediaServer.getMetadataBatch.mockResolvedValue([
+        createMediaItem({ id: 'show-1', type: 'show', mediaSources: [] }),
+        sizedItem('movie-1', 400),
+      ]);
+      mediaServer.getChildrenMetadata.mockRejectedValue(
+        new Error('children unavailable'),
+      );
+
+      await service.updateCollectionTotalSize(5);
+
+      expect(collectionRepo.update).toHaveBeenCalledWith(5, {
+        totalSizeBytes: 400,
       });
     });
   });
