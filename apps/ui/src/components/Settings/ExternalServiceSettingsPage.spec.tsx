@@ -431,6 +431,38 @@ describe('ExternalServiceSettingsPage', () => {
     })
   })
 
+  // Most services answer a bare "Failed", which says less than the scoped
+  // message the page shows by default.
+  it('keeps the scoped message when a save fails without a reason', async () => {
+    postApiHandler.mockResolvedValue({
+      status: 'NOK',
+      code: 0,
+      message: 'Failed',
+    })
+
+    render(
+      <ExternalServiceSettingsPage
+        scope="Seerr settings"
+        pageTitle="Seerr settings - Maintainerr"
+        heading="Seerr Settings"
+        description="Seerr configuration"
+        docsPage="Configuration/#seerr"
+        settingsPath="/settings/seerr"
+        testPath="/settings/test/seerr"
+        schema={urlApiKeySchema}
+        fields={urlApiKeyFields}
+        testSuccessTitle="Seerr"
+        testFailureMessage="Failed to connect"
+      />,
+    )
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Save Changes' }))
+
+    expect(
+      await screen.findByText('Seerr settings could not be updated'),
+    ).toBeTruthy()
+  })
+
   it('surfaces the server message when a save is rejected', async () => {
     postApiHandler.mockResolvedValue({
       status: 'NOK',

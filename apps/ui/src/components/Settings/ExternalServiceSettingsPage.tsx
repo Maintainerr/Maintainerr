@@ -283,8 +283,14 @@ const ExternalServiceSettingsPage = ({
       if (response.code) {
         reset(data)
         showUpdated()
-      } else if (response.message) {
-        showError(response.message)
+        return
+      }
+
+      // Most services answer a bare "Failed", which says less than the scoped
+      // message; only a specific one is worth showing instead.
+      const reason = normalizeConnectionErrorMessage(response.message, '')
+      if (reason) {
+        showError(reason)
       } else {
         showUpdateError()
       }
