@@ -14,7 +14,7 @@ describe('ExclusionTypeCorrectorService', () => {
     collections?: any[];
     ruleGroups?: any[];
     isSetup?: boolean;
-    mediaServer?: { getMetadata?: jest.Mock; itemExists?: jest.Mock };
+    mediaServer?: { getMetadataBatch?: jest.Mock; itemExists?: jest.Mock };
   }) => {
     const {
       exclusions = [],
@@ -45,7 +45,7 @@ describe('ExclusionTypeCorrectorService', () => {
     };
 
     const mediaServer = {
-      getMetadata: jest.fn().mockResolvedValue(null),
+      getMetadataBatch: jest.fn().mockResolvedValue([]),
       itemExists: jest.fn().mockResolvedValue(true),
       ...options?.mediaServer,
     };
@@ -205,19 +205,24 @@ describe('ExclusionTypeCorrectorService', () => {
   describe('correctExclusionTypes - stale vs unreachable media (#3307 follow-up)', () => {
     it('backfills the type and saves only corrected rows', async () => {
       const exclusions = [{ id: 1, type: null, mediaServerId: '11' }];
-      const { service, exclusionRepo, rulesService } = createService({
-        exclusions,
-        isSetup: true,
-        mediaServer: {
-          getMetadata: jest.fn().mockResolvedValue({ id: '11', type: 'movie' }),
-        },
-      });
+      const { service, exclusionRepo, rulesService, mediaServer } =
+        createService({
+          exclusions,
+          isSetup: true,
+          mediaServer: {
+            getMetadataBatch: jest
+              .fn()
+              .mockResolvedValue([{ id: '11', type: 'movie' }]),
+          },
+        });
 
       await service.onModuleInit();
 
       expect(exclusions[0].type).toBe('movie');
       expect(rulesService.removeExclusion).not.toHaveBeenCalled();
       expect(exclusionRepo.save).toHaveBeenLastCalledWith([exclusions[0]]);
+      // An item the batch answered for needs no confirmation of its own.
+      expect(mediaServer.itemExists).not.toHaveBeenCalled();
     });
 
     it('removes an exclusion only on a confirmed 404 and does not re-save the removed row', async () => {
@@ -226,7 +231,6 @@ describe('ExclusionTypeCorrectorService', () => {
         exclusions,
         isSetup: true,
         mediaServer: {
-          getMetadata: jest.fn().mockResolvedValue(undefined),
           itemExists: jest.fn().mockResolvedValue(false),
         },
       });
@@ -244,7 +248,6 @@ describe('ExclusionTypeCorrectorService', () => {
         exclusions,
         isSetup: true,
         mediaServer: {
-          getMetadata: jest.fn().mockResolvedValue(undefined),
           itemExists: jest.fn().mockRejectedValue(new Error('unreachable')),
         },
       });
