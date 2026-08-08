@@ -146,7 +146,10 @@ describe('SettingsOperationsService', () => {
     expect(tracearr.invalidateHistory).toHaveBeenCalledTimes(1);
   });
 
-  it('keeps the Tracearr server selection when the match cannot be determined', async () => {
+  // The selection survives an inconclusive check, but the snapshot it was
+  // verified against does not: keeping it would let the next run read the
+  // previous media server's history without probing again.
+  it('keeps the Tracearr server selection but drops its snapshot when the match cannot be determined', async () => {
     tracearr.savedServerTracksMediaServer.mockResolvedValue(undefined);
 
     await service.updateSettings({ plex_hostname: 'other-plex.local' });
@@ -154,7 +157,7 @@ describe('SettingsOperationsService', () => {
     expect(settingsDataService.saveSettings).not.toHaveBeenCalledWith(
       expect.objectContaining({ tracearr_server_id: null }),
     );
-    expect(tracearr.invalidateHistory).not.toHaveBeenCalled();
+    expect(tracearr.invalidateHistory).toHaveBeenCalledTimes(1);
   });
 
   it('rejects Plex server setting changes when no Plex credentials are stored', async () => {

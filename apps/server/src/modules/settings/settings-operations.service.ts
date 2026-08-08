@@ -427,6 +427,12 @@ export class SettingsOperationsService {
    */
   private async revalidateMediaServerDependentSettings(): Promise<void> {
     try {
+      // The swept history, the resolved server and its verification all
+      // describe the previous connection, so they go regardless of what the
+      // check below concludes. Keeping them would let the next run read the
+      // old server from memory without probing it again.
+      this.tracearr.invalidateHistory();
+
       if ((await this.tracearr.savedServerTracksMediaServer()) !== false) {
         return;
       }
@@ -437,8 +443,6 @@ export class SettingsOperationsService {
         tracearr_server_id: null,
       });
       await this.settingsDataService.init();
-      // The resolved server is cached in memory too.
-      this.tracearr.invalidateHistory();
 
       this.logger.log(
         'Cleared the selected Tracearr server: it tracks a different media server than the one now configured.',

@@ -440,8 +440,8 @@ export class TracearrApiService {
 
     // A binding survives whatever the media server did since it was chosen, and
     // the wrong one's history reads as "watched nothing" for every item it does
-    // not cover rather than as a failure. Only a confirmed match is remembered,
-    // so an undecided one is retried until it can be settled.
+    // not cover rather than as a failure. Unconfirmed is not good enough to
+    // read history by, so only a confirmed match is remembered and trusted.
     if (this.verifiedServerId !== serverId) {
       const sharesLibrary = await this.serverSharesLibrary(
         {
@@ -450,15 +450,15 @@ export class TracearrApiService {
         },
         serverId,
       );
-      if (sharesLibrary === false) {
+      if (!sharesLibrary) {
         this.logger.warn(
-          'The selected Tracearr server tracks a different media server than the one Maintainerr manages. Pick the right server in Tracearr settings. Tracearr rule values are unavailable for this run.',
+          sharesLibrary === false
+            ? 'The selected Tracearr server tracks a different media server than the one Maintainerr manages. Pick the right server in Tracearr settings. Tracearr rule values are unavailable for this run.'
+            : 'The selected Tracearr server could not be confirmed to track the media server Maintainerr manages. Tracearr rule values are unavailable for this run.',
         );
         return;
       }
-      if (sharesLibrary) {
-        this.verifiedServerId = serverId;
-      }
+      this.verifiedServerId = serverId;
     }
 
     const historyIndex = await this.refreshHistoryIndex();
