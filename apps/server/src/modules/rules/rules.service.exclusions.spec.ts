@@ -716,6 +716,7 @@ describe('RulesService exclusions - global (null ruleGroupId) handling', () => {
 
   const createScopedBulkService = (
     removeFromCollection = jest.fn().mockResolvedValue({ id: 3 }),
+    removeFromAllCollections = jest.fn().mockResolvedValue({ code: 1 }),
   ) => {
     const mediaServer = {
       getMetadata: jest.fn().mockResolvedValue({ type: 'movie' }),
@@ -723,6 +724,7 @@ describe('RulesService exclusions - global (null ruleGroupId) handling', () => {
     const collectionService = {
       CollectionLogRecordForChild: jest.fn().mockResolvedValue(undefined),
       removeFromCollection,
+      removeFromAllCollections,
     };
     const { service } = createService({
       collectionService,
@@ -731,7 +733,13 @@ describe('RulesService exclusions - global (null ruleGroupId) handling', () => {
       },
     });
 
-    return { service, collectionService, mediaServer, removeFromCollection };
+    return {
+      service,
+      collectionService,
+      mediaServer,
+      removeFromCollection,
+      removeFromAllCollections,
+    };
   };
 
   it('setBulkExclusions scopes to the collection and drops the excluded items from it', async () => {
@@ -801,6 +809,47 @@ describe('RulesService exclusions - global (null ruleGroupId) handling', () => {
       { mediaServerId: 'season-1' },
       { mediaServerId: 'season-2' },
     ]);
+  });
+
+  it('setBulkExclusions with no collection drops the items from every collection', async () => {
+    const { service, removeFromAllCollections, removeFromCollection } =
+      createScopedBulkService();
+    jest.spyOn(service, 'setExclusion').mockResolvedValue({
+      code: 1,
+      message: 'Success',
+      handledIds: ['season-1', 'season-2'],
+    });
+
+    await expect(service.setBulkExclusions(['show-1'])).resolves.toEqual({
+      results: [{ mediaId: 'show-1', code: 1, message: 'Success' }],
+    });
+    expect(removeFromAllCollections).toHaveBeenCalledWith([
+      { mediaServerId: 'season-1' },
+      { mediaServerId: 'season-2' },
+    ]);
+    expect(removeFromCollection).not.toHaveBeenCalled();
+  });
+
+  it('setBulkExclusions reports a failed removal from every collection', async () => {
+    const { service } = createScopedBulkService(
+      undefined,
+      jest.fn().mockResolvedValue({ code: 0 }),
+    );
+    jest.spyOn(service, 'setExclusion').mockResolvedValue({
+      code: 1,
+      message: 'Success',
+      handledIds: ['movie-1'],
+    });
+
+    await expect(service.setBulkExclusions(['movie-1'])).resolves.toEqual({
+      results: [
+        {
+          mediaId: 'movie-1',
+          code: 0,
+          message: 'Excluded, but not removed from every collection',
+        },
+      ],
+    });
   });
 
   it('setBulkExclusions leaves the collection alone when nothing was excluded', async () => {

@@ -1,10 +1,7 @@
 import { CheckCircleIcon, PencilAltIcon } from '@heroicons/react/solid'
-import type { MediaItem, MediaItemType } from '@maintainerr/contracts'
+import type { MediaItem } from '@maintainerr/contracts'
 import { useState } from 'react'
-import MediaActionModal, {
-  type MediaAction,
-  type MediaActionOutcome,
-} from './MediaActionModal'
+import MediaActionModal, { type MediaActionOutcome } from './MediaActionModal'
 import Button from './Button'
 
 interface MediaSelectionActionsProps {
@@ -14,13 +11,12 @@ interface MediaSelectionActionsProps {
   /** The grid the selection was made in, to read the picked items from. */
   items: MediaItem[]
   /**
-   * The library the grid is showing, or undefined when it spans several. No
-   * media server fills a media item's own library, so only the page knows.
+   * The library the grid is showing, or undefined when it spans several (a
+   * search), in which case the picked items are asked instead.
    */
   libraryId?: string
-  /** Id is optional only to match ICollection; a saved collection always has one. */
-  lockedCollection?: { id?: number; title: string; type?: MediaItemType }
-  hiddenActions?: MediaAction[]
+  /** The collection the calling page shows, if it is showing one. */
+  defaultCollectionId?: number
   onSubmitted: (outcome: MediaActionOutcome) => void
 }
 
@@ -43,8 +39,7 @@ const MediaSelectionActions = ({
   selectedIds,
   items,
   libraryId,
-  lockedCollection,
-  hiddenActions,
+  defaultCollectionId,
   onSubmitted,
 }: MediaSelectionActionsProps) => {
   const [modalOpen, setModalOpen] = useState(false)
@@ -55,6 +50,15 @@ const MediaSelectionActions = ({
   const selected = items.filter((item) => selectedIds.has(item.id))
   const selectedTypes = new Set(selected.map((item) => item.type))
   const mediaType = selectedTypes.size === 1 ? [...selectedTypes][0] : undefined
+  // The page's library wins; a search has none, so fall back to the one the
+  // picked items agree on. An empty id is an unfilled read, not every library.
+  const selectedLibraryIds = selected.map((item) => item.library?.id)
+  const resolvedLibraryId =
+    libraryId ??
+    (selectedLibraryIds.length > 0 &&
+    selectedLibraryIds.every((id) => id && id === selectedLibraryIds[0])
+      ? selectedLibraryIds[0]
+      : undefined)
 
   return (
     <>
@@ -97,17 +101,8 @@ const MediaSelectionActions = ({
         <MediaActionModal
           mediaIds={[...selectedIds]}
           mediaType={mediaType}
-          libraryId={libraryId}
-          lockedCollection={
-            lockedCollection?.id !== undefined
-              ? {
-                  id: lockedCollection.id,
-                  title: lockedCollection.title,
-                  type: lockedCollection.type,
-                }
-              : undefined
-          }
-          hiddenActions={hiddenActions}
+          libraryId={resolvedLibraryId}
+          defaultCollectionId={defaultCollectionId}
           onCancel={() => setModalOpen(false)}
           onSubmitted={(outcome) => {
             setModalOpen(false)

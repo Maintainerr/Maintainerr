@@ -1,5 +1,6 @@
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, ConflictException } from '@nestjs/common';
 import { MaintainerrLogger } from '../logging/logs.service';
+import { ExecutionLockService } from '../tasks/execution-lock.service';
 import { RuleUsersService } from './rule-users.service';
 import { RulesController } from './rules.controller';
 import { RulesService } from './rules.service';
@@ -14,6 +15,8 @@ describe('RulesController', () => {
     updateRules: jest.fn(),
     setBulkExclusions: jest.fn(),
     removeBulkExclusions: jest.fn(),
+    setExclusion: jest.fn(),
+    removeExclusionWitData: jest.fn(),
   } as unknown as jest.Mocked<RulesService>;
 
   const ruleExecutorSchedulerService =
@@ -21,6 +24,10 @@ describe('RulesController', () => {
   const ruleExecutorJobManagerService =
     {} as jest.Mocked<RuleExecutorJobManagerService>;
   const ruleUsersService = {} as jest.Mocked<RuleUsersService>;
+
+  const executionLock = {
+    acquireWithin: jest.fn(),
+  } as unknown as jest.Mocked<ExecutionLockService>;
 
   const logger = {
     setContext: jest.fn(),
@@ -35,8 +42,10 @@ describe('RulesController', () => {
       ruleExecutorSchedulerService,
       ruleExecutorJobManagerService,
       ruleUsersService,
+      executionLock,
       logger,
     );
+    executionLock.acquireWithin.mockResolvedValue(jest.fn());
   });
 
   // A rejected rule group answered 201 with the reason in the body, so a
@@ -147,5 +156,56 @@ describe('RulesController', () => {
       undefined,
       { id: 'season-1', type: 'season' },
     );
+  });
+
+  // A handler run picks its media up front, so an exclusion that lands mid-run
+  // would answer success while that run still deletes the item.
+  it.each([
+    ['in bulk', () => controller.setBulkExclusions({ mediaIds: ['m'] })],
+    ['one at a time', () => controller.setExclusion({ mediaId: 'm' } as never)],
+  ])(
+    'takes the execution lock to exclude %s, and releases it',
+    async (_label, call) => {
+      const release = jest.fn();
+      executionLock.acquireWithin.mockResolvedValue(release);
+      rulesService.setBulkExclusions.mockResolvedValue({ results: [] });
+      rulesService.setExclusion.mockResolvedValue({
+        code: 1,
+        message: 'Success',
+      });
+
+      await call();
+
+      expect(executionLock.acquireWithin).toHaveBeenCalled();
+      expect(release).toHaveBeenCalled();
+    },
+  );
+
+  it('releases the lock when excluding throws', async () => {
+    const release = jest.fn();
+    executionLock.acquireWithin.mockResolvedValue(release);
+    rulesService.setBulkExclusions.mockRejectedValue(new Error('boom'));
+
+    await expect(
+      controller.setBulkExclusions({ mediaIds: ['movie-1'], action: 0 }),
+    ).rejects.toThrow('boom');
+    expect(release).toHaveBeenCalled();
+  });
+
+  it('refuses to exclude rather than queue behind a long run', async () => {
+    executionLock.acquireWithin.mockResolvedValue(null);
+
+    await expect(
+      controller.setBulkExclusions({ mediaIds: ['movie-1'], action: 0 }),
+    ).rejects.toBeInstanceOf(ConflictException);
+    expect(rulesService.setBulkExclusions).not.toHaveBeenCalled();
+  });
+
+  it('does not take the lock to un-exclude, which frees media rather than acting on it', async () => {
+    rulesService.removeBulkExclusions.mockResolvedValue({ results: [] });
+
+    await controller.setBulkExclusions({ mediaIds: ['movie-1'], action: 1 });
+
+    expect(executionLock.acquireWithin).not.toHaveBeenCalled();
   });
 });

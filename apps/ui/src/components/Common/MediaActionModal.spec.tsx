@@ -1,3 +1,4 @@
+import { MediaServerType } from '@maintainerr/contracts'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
@@ -6,8 +7,12 @@ import {
 } from '../../api/bulkMediaAction'
 import { useCollections } from '../../api/collections'
 import { useMediaServerMetadataChildren } from '../../api/media-server'
+import { useMediaServerType } from '../../hooks/useMediaServerType'
 import type { ICollection } from '../Collection'
-import { buildQuerySuccessResult } from '../../test-utils/queryResults'
+import {
+  buildQueryErrorResult,
+  buildQuerySuccessResult,
+} from '../../test-utils/queryResults'
 import MediaActionModal from './MediaActionModal'
 
 vi.mock('../../api/bulkMediaAction', () => ({
@@ -22,6 +27,10 @@ vi.mock('../../api/collections', () => ({
 
 vi.mock('../../api/media-server', () => ({
   useMediaServerMetadataChildren: vi.fn(),
+}))
+
+vi.mock('../../hooks/useMediaServerType', () => ({
+  useMediaServerType: vi.fn(),
 }))
 
 vi.mock('@tanstack/react-query', () => ({
@@ -59,10 +68,18 @@ const selectAction = (value: string) =>
 describe('MediaActionModal', () => {
   const useCollectionsMock = vi.mocked(useCollections)
   const useChildrenMock = vi.mocked(useMediaServerMetadataChildren)
+  const useMediaServerTypeMock = vi.mocked(useMediaServerType)
   const postExclusionsMock = vi.mocked(postBulkExclusions)
   const postCollectionMock = vi.mocked(postBulkCollectionMedia)
 
+  const setMediaServerType = (mediaServerType: MediaServerType) =>
+    useMediaServerTypeMock.mockReturnValue({
+      mediaServerType,
+    } as unknown as ReturnType<typeof useMediaServerType>)
+
   beforeEach(() => {
+    // Bound to one library by default, which is what the picker assertions test.
+    setMediaServerType(MediaServerType.PLEX)
     onSubmitted.mockReset()
     onCancel.mockReset()
     postExclusionsMock.mockReset()
@@ -107,9 +124,7 @@ describe('MediaActionModal', () => {
     expect(screen.queryByRole('option', { name: 'All collections' })).toBeNull()
   })
 
-  // A search spans libraries, so the page passes none - the picker-driven
-  // actions drop rather than offering every library's collections.
-  it('offers only library-agnostic actions when the page has no library', () => {
+  it('offers only library-agnostic actions when no library is known', () => {
     renderModal({ libraryId: undefined })
 
     expect(useCollectionsMock).toHaveBeenCalledWith(
@@ -122,10 +137,25 @@ describe('MediaActionModal', () => {
     expect(
       screen.queryByRole('option', { name: 'Remove from collection' }),
     ).toBeNull()
-    expect(
-      screen.getByRole('option', { name: 'Remove from all collections' }),
-    ).toBeTruthy()
     expect(screen.getByRole('option', { name: 'Add exclusion' })).toBeTruthy()
+    expect(screen.getByText(/spans more than one library/)).toBeTruthy()
+  })
+
+  // A search selection keeps them where any collection can take the item (#3448).
+  it('keeps the collection actions without a library where collections span them', () => {
+    setMediaServerType(MediaServerType.JELLYFIN)
+    renderModal({ libraryId: undefined })
+
+    expect(useCollectionsMock).toHaveBeenCalledWith(
+      undefined,
+      expect.objectContaining({ enabled: true }),
+    )
+    expect(
+      screen.getByRole('option', { name: 'Add to collection' }),
+    ).toBeTruthy()
+    expect(
+      screen.getByRole('option', { name: 'Movie collection' }),
+    ).toBeTruthy()
   })
 
   it('adds the selection to the chosen collection and reports per-item results', async () => {
@@ -147,6 +177,7 @@ describe('MediaActionModal', () => {
       collectionTitle: 'Movie collection',
       succeededIds: ['movie-1'],
       failedIds: [],
+      failureReasons: [],
     })
   })
 
@@ -159,7 +190,10 @@ describe('MediaActionModal', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Submit' }))
 
-    expect(screen.getByText('Confirmation Required')).toBeTruthy()
+    expect(screen.getByText('Confirm Global Exclusion')).toBeTruthy()
+    expect(
+      screen.getByText(/removed from every collection they are currently in/),
+    ).toBeTruthy()
     expect(postExclusionsMock).not.toHaveBeenCalled()
 
     fireEvent.click(screen.getByRole('button', { name: 'Proceed' }))
@@ -178,43 +212,43 @@ describe('MediaActionModal', () => {
       collectionTitle: undefined,
       succeededIds: ['movie-1'],
       failedIds: ['movie-2'],
+      failureReasons: ['Failed'],
     })
   })
 
-  it('pins the collection a collection page acts on', async () => {
-    renderModal({
-      lockedCollection: { id: 42, title: 'This collection' },
-    })
+  it('preselects the calling page collection while still offering every scope', async () => {
+    renderModal({ defaultCollectionId: 7 })
     selectAction('exclusion-add')
 
     const collectionField = screen.getByLabelText(
       'Collection',
     ) as HTMLSelectElement
-    expect(collectionField.disabled).toBe(true)
-    expect(collectionField.options).toHaveLength(1)
-    // no "every collection" scope the page could not show the result of
-    expect(screen.queryByRole('option', { name: 'All collections' })).toBeNull()
+    expect(collectionField.disabled).toBe(false)
+    expect(collectionField.value).toBe('7')
+    expect(screen.getByRole('option', { name: 'All collections' })).toBeTruthy()
 
     fireEvent.click(screen.getByRole('button', { name: 'Submit' }))
 
     await waitFor(() =>
       expect(postExclusionsMock).toHaveBeenCalledWith({
         mediaIds: ['movie-1', 'movie-2'],
-        collectionId: 42,
+        collectionId: 7,
         action: 0,
       }),
     )
   })
 
-  it('removes from every collection without asking for one', async () => {
+  it('removes from every collection through the all-collections scope', async () => {
     renderModal({})
-    selectAction('collection-remove-all')
-
-    // nothing to pick: the action names every collection itself
-    expect(screen.queryByLabelText('Collection')).toBeNull()
+    selectAction('collection-remove')
+    fireEvent.change(screen.getByLabelText('Collection'), {
+      target: { value: '-1' },
+    })
 
     fireEvent.click(screen.getByRole('button', { name: 'Submit' }))
-    expect(screen.getByText('Confirmation Required')).toBeTruthy()
+    expect(
+      screen.getByText('Confirm Removal From Every Collection'),
+    ).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Proceed' }))
 
     await waitFor(() =>
@@ -224,21 +258,6 @@ describe('MediaActionModal', () => {
         action: 1,
         mediaType: 'movie',
       }),
-    )
-  })
-
-  it('hides the actions the calling page says cannot do anything', () => {
-    renderModal({
-      lockedCollection: { id: 42, title: 'This collection' },
-      hiddenActions: ['collection-add'],
-    })
-
-    expect(
-      screen.queryByRole('option', { name: 'Add to collection' }),
-    ).toBeNull()
-    // and the first action still offered is what the form falls back to
-    expect((screen.getByLabelText('Action') as HTMLSelectElement).value).toBe(
-      'collection-remove',
     )
   })
 
@@ -293,18 +312,6 @@ describe('MediaActionModal', () => {
     expect(screen.queryByLabelText('Seasons')).toBeNull()
   })
 
-  // A show collection acts on the show itself, so a narrowed season resolves
-  // straight back to it. The picker promised a reach the action never had.
-  it('does not offer season narrowing on a pinned show collection', () => {
-    renderModal({
-      mediaIds: ['show-1'],
-      mediaType: 'show',
-      lockedCollection: { id: 42, title: 'This collection', type: 'show' },
-    })
-
-    expect(screen.queryByLabelText('Seasons')).toBeNull()
-  })
-
   it('keeps the modal open and shows why when the request fails', async () => {
     postCollectionMock.mockRejectedValue(new Error('boom'))
 
@@ -314,5 +321,61 @@ describe('MediaActionModal', () => {
     await waitFor(() => expect(screen.getByText('boom')).toBeTruthy())
     expect(onSubmitted).not.toHaveBeenCalled()
     expect(screen.getByRole('button', { name: 'Submit' })).toBeTruthy()
+  })
+
+  it('reports the reasons the server refused items', async () => {
+    postCollectionMock.mockResolvedValue({
+      results: [
+        { mediaId: 'movie-1', code: 1 },
+        {
+          mediaId: 'movie-2',
+          code: 0,
+          message: "Failed - not in this collection's library",
+        },
+      ],
+    })
+
+    renderModal({})
+    fireEvent.click(screen.getByRole('button', { name: 'Submit' }))
+
+    await waitFor(() =>
+      expect(onSubmitted).toHaveBeenCalledWith(
+        expect.objectContaining({
+          failedIds: ['movie-2'],
+          failureReasons: ["Failed - not in this collection's library"],
+        }),
+      ),
+    )
+  })
+
+  it('says why the collections could not be loaded', () => {
+    useCollectionsMock.mockReturnValue(
+      buildQueryErrorResult(
+        new Error('Plex unreachable'),
+      ) as unknown as ReturnType<typeof useCollections>,
+    )
+
+    renderModal({})
+
+    // The reason the server gave beats the generic fallback.
+    expect(screen.getByText('Plex unreachable')).toBeTruthy()
+  })
+
+  it('says so, and refuses to submit, when no collection can take the selection', () => {
+    useCollectionsMock.mockReturnValue(
+      buildQuerySuccessResult([]) as unknown as ReturnType<
+        typeof useCollections
+      >,
+    )
+
+    renderModal({})
+
+    expect(
+      screen.getByText(/No collection can take this selection/),
+    ).toBeTruthy()
+    expect(
+      (screen.getByRole('button', { name: 'Submit' }) as HTMLButtonElement)
+        .disabled,
+    ).toBe(true)
   })
 })

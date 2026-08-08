@@ -413,6 +413,7 @@ const Overview = () => {
     collectionTitle,
     succeededIds: succeeded,
     failedIds: failed,
+    failureReasons,
   }: MediaActionOutcome) => {
     const succeededIds = new Set(succeeded)
     applyBulkOutcome(new Set(failed))
@@ -428,8 +429,12 @@ const Overview = () => {
           succeededIds.has(item.grandparentId))
 
       const isCollectionAction = action.startsWith('collection-')
+      // Excluding everywhere also drops the items from every collection.
+      const clearsEveryCollection =
+        collectionId === undefined &&
+        (action === 'collection-remove' || action === 'exclusion-add')
       const nextCollections = (current: string[]) => {
-        if (action === 'collection-remove-all') return []
+        if (clearsEveryCollection) return []
         if (!collectionTitle) return current
         return action === 'collection-add'
           ? [...new Set([...current, collectionTitle])].sort((left, right) =>
@@ -448,18 +453,21 @@ const Overview = () => {
             : null
 
       // A collection action moves membership, which the card names in its own
-      // badge; only a global exclusion changes the exclusion marker.
-      const patchCard = (item: MediaItem) => {
-        if (nextExclusionType !== null) {
-          return { ...item, maintainerrExclusionType: nextExclusionType }
-        }
-        return {
-          ...item,
-          maintainerrCollections: nextCollections(
-            item.maintainerrCollections ?? [],
-          ),
-        }
-      }
+      // badge; only a global exclusion changes the exclusion marker, and it
+      // does both.
+      const patchCard = (item: MediaItem) => ({
+        ...item,
+        ...(nextExclusionType !== null
+          ? { maintainerrExclusionType: nextExclusionType }
+          : {}),
+        ...(isCollectionAction || clearsEveryCollection
+          ? {
+              maintainerrCollections: nextCollections(
+                item.maintainerrCollections ?? [],
+              ),
+            }
+          : {}),
+      })
 
       if (nextExclusionType !== null || isCollectionAction) {
         const nextItems = dataRef.current.map((item) =>
@@ -483,7 +491,12 @@ const Overview = () => {
       setStatusChangedIds((current) => new Set([...current, ...invalidated]))
     }
 
-    reportBulkOutcome(succeededIds.size, failed.length, bulkOutcomeVerb(action))
+    reportBulkOutcome(
+      succeededIds.size,
+      failed.length,
+      bulkOutcomeVerb({ action, collectionId }),
+      failureReasons,
+    )
   }
 
   useEffect(() => {

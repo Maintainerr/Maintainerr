@@ -3752,6 +3752,82 @@ describe('CollectionsService', () => {
       expect(addInternal).not.toHaveBeenCalled();
     });
 
+    describe('a collection bound to one library', () => {
+      const addAllowed = () =>
+        jest
+          .spyOn(service as any, 'addToCollectionInternal')
+          .mockResolvedValue({
+            collection: createCollection(),
+            serverRejectedIds: [],
+          });
+
+      beforeEach(() => {
+        collectionRepo.findOne.mockResolvedValue({
+          id: 7,
+          type: 'movie',
+          libraryId: 'library-1',
+        } as any);
+        mediaServer.supportsFeature.mockReturnValue(false);
+      });
+
+      it('refuses an item from another library', async () => {
+        const addInternal = addAllowed();
+        mediaServer.getMetadata.mockResolvedValue({
+          library: { id: 'library-2' },
+        } as any);
+
+        await expect(
+          service.bulkMediaCollectionAction(['movie-1'], 7, 'add', 'movie'),
+        ).resolves.toEqual({
+          results: [
+            {
+              mediaId: 'movie-1',
+              code: 0,
+              message: "Failed - not in this collection's library",
+            },
+          ],
+        });
+        expect(addInternal).not.toHaveBeenCalled();
+      });
+
+      // An unreadable library is not evidence against the item; existence is
+      // already settled by itemExists, which throws when it cannot ask.
+      it.each([
+        ['its own library', { library: { id: 'library-1' } }],
+        ['no readable library at all', undefined],
+      ])('adds an item with %s', async (_label, metadata) => {
+        const addInternal = addAllowed();
+        mediaServer.getMetadata.mockResolvedValue(metadata as any);
+
+        await expect(
+          service.bulkMediaCollectionAction(['movie-1'], 7, 'add', 'movie'),
+        ).resolves.toEqual({ results: [{ mediaId: 'movie-1', code: 1 }] });
+        expect(addInternal).toHaveBeenCalled();
+      });
+    });
+
+    it('does not read metadata to check the library where collections span them', async () => {
+      collectionRepo.findOne.mockResolvedValue({
+        id: 7,
+        type: 'movie',
+        libraryId: 'library-1',
+      } as any);
+      mediaServer.supportsFeature.mockImplementation(
+        (feature) => feature === MediaServerFeature.CROSS_LIBRARY_COLLECTIONS,
+      );
+      mediaServer.getMetadata.mockReset();
+      jest.spyOn(service as any, 'addToCollectionInternal').mockResolvedValue({
+        collection: createCollection(),
+        serverRejectedIds: [],
+      });
+
+      await expect(
+        service.bulkMediaCollectionAction(['movie-1'], 7, 'add', 'movie'),
+      ).resolves.toEqual({ results: [{ mediaId: 'movie-1', code: 1 }] });
+      expect(mediaServer.itemExists).toHaveBeenCalledWith('movie-1');
+      expect(mediaServer.getMetadata).not.toHaveBeenCalled();
+    });
+
     it('adds anyway when the existence lookup is inconclusive', async () => {
       const addInternal = jest
         .spyOn(service as any, 'addToCollectionInternal')

@@ -15,6 +15,8 @@ import { ExecutionLockService } from '../tasks/execution-lock.service';
 import { TasksService } from '../tasks/tasks.service';
 import { CollectionHandler } from './collection-handler';
 import { CollectionWorkerService } from './collection-worker.service';
+import { Exclusion } from '../rules/entities/exclusion.entities';
+import { RuleGroup } from '../rules/entities/rule-group.entities';
 import { Collection } from './entities/collection.entities';
 import {
   CollectionMedia,
@@ -30,12 +32,15 @@ describe('CollectionWorkerService', () => {
   let settings: Mocked<SettingsDataService>;
   let collectionRepository: Mocked<Repository<Collection>>;
   let collectionMediaRepository: Mocked<Repository<CollectionMedia>>;
+  let exclusionRepository: Mocked<Repository<Exclusion>>;
+  let ruleGroupRepository: Mocked<Repository<RuleGroup>>;
   let seerrApi: Mocked<SeerrApiService>;
   let collectionHandler: Mocked<CollectionHandler>;
   let executionLock: Mocked<ExecutionLockService>;
   let eventEmitter: Mocked<EventEmitter2>;
   let logger: Mocked<MaintainerrLogger>;
   let mediaServerFactory: Mocked<MediaServerFactory>;
+  let getMetadataBatch: jest.Mock;
 
   beforeEach(async () => {
     const { unit, unitRef } = await TestBed.solitary(
@@ -51,6 +56,8 @@ describe('CollectionWorkerService', () => {
     collectionMediaRepository = unitRef.get(
       getRepositoryToken(CollectionMedia) as string,
     );
+    exclusionRepository = unitRef.get(getRepositoryToken(Exclusion) as string);
+    ruleGroupRepository = unitRef.get(getRepositoryToken(RuleGroup) as string);
     seerrApi = unitRef.get(SeerrApiService);
     collectionHandler = unitRef.get(CollectionHandler);
     executionLock = unitRef.get(ExecutionLockService);
@@ -60,9 +67,13 @@ describe('CollectionWorkerService', () => {
 
     executionLock.acquire.mockResolvedValue(jest.fn());
     eventEmitter.emit.mockImplementation();
+    exclusionRepository.find.mockResolvedValue([]);
+    ruleGroupRepository.find.mockResolvedValue([]);
+    getMetadataBatch = jest.fn().mockResolvedValue([]);
     mediaServerFactory.verifyConnection.mockResolvedValue({
       supportsFeature: jest.fn().mockReturnValue(false),
       getActiveSessions: jest.fn().mockResolvedValue(new Set<string>()),
+      getMetadataBatch,
     } as any);
   });
 
@@ -134,6 +145,118 @@ describe('CollectionWorkerService', () => {
     });
     expect(collectionHandler.handleMedia).toHaveBeenCalled();
     expect(seerrApi.api.post).toHaveBeenCalled();
+  });
+
+  describe('exclusions protect a due member from the delete action', () => {
+    const arrangeDueMember = (
+      exclusions: Partial<Exclusion>[],
+      {
+        mediaServerId = 'episode-1',
+        ruleGroups = [] as Partial<RuleGroup>[],
+      } = {},
+    ) => {
+      const collection = createCollection({
+        arrAction: ServarrAction.DELETE,
+        type: 'movie',
+      });
+
+      collectionRepository.find.mockResolvedValue([collection]);
+      collectionMediaRepository.find.mockResolvedValue([
+        createCollectionMedia(collection, { mediaServerId }),
+      ]);
+      exclusionRepository.find.mockResolvedValue(exclusions as Exclusion[]);
+      ruleGroupRepository.find.mockResolvedValue(ruleGroups as RuleGroup[]);
+      collectionHandler.handleMedia.mockResolvedValue('handled');
+
+      return collection;
+    };
+
+    it('skips a globally excluded member', async () => {
+      arrangeDueMember([{ mediaServerId: 'episode-1', ruleGroupId: null }]);
+
+      await collectionWorkerService.execute();
+
+      expect(collectionHandler.handleMedia).not.toHaveBeenCalled();
+    });
+
+    it('skips a member excluded from this collection', async () => {
+      const collection = arrangeDueMember([
+        { mediaServerId: 'episode-1', ruleGroupId: 4 },
+      ]);
+      ruleGroupRepository.find.mockResolvedValue([
+        { id: 4, collectionId: collection.id } as RuleGroup,
+      ]);
+
+      await collectionWorkerService.execute();
+
+      expect(collectionHandler.handleMedia).not.toHaveBeenCalled();
+    });
+
+    it('still handles a member excluded from a different collection', async () => {
+      const collection = arrangeDueMember([
+        { mediaServerId: 'episode-1', ruleGroupId: 4 },
+      ]);
+      ruleGroupRepository.find.mockResolvedValue([
+        { id: 4, collectionId: collection.id + 1 } as RuleGroup,
+      ]);
+
+      await collectionWorkerService.execute();
+
+      expect(collectionHandler.handleMedia).toHaveBeenCalled();
+    });
+
+    it.each<[string, Partial<Exclusion>]>([
+      ['a show', { mediaServerId: 'show-1', ruleGroupId: null, type: 'show' }],
+      [
+        'a season',
+        { mediaServerId: 'season-1', ruleGroupId: null, type: 'season' },
+      ],
+      [
+        'a legacy untyped row',
+        { mediaServerId: 'other-1', ruleGroupId: null, parent: 'season-1' },
+      ],
+    ])('skips a member %s exclusion cascades to', async (_label, exclusion) => {
+      arrangeDueMember([exclusion]);
+      getMetadataBatch.mockResolvedValue([
+        { id: 'episode-1', parentId: 'season-1', grandparentId: 'show-1' },
+      ]);
+
+      await collectionWorkerService.execute();
+
+      expect(getMetadataBatch).toHaveBeenCalledWith(['episode-1']);
+      expect(collectionHandler.handleMedia).not.toHaveBeenCalled();
+    });
+
+    it('does not read the hierarchy when no exclusion reaches past its own id', async () => {
+      arrangeDueMember([{ mediaServerId: 'other-1', ruleGroupId: null }]);
+
+      await collectionWorkerService.execute();
+
+      expect(getMetadataBatch).not.toHaveBeenCalled();
+      expect(collectionHandler.handleMedia).toHaveBeenCalled();
+    });
+
+    // A batch read omits what it could not resolve, so an unread hierarchy
+    // cannot show the member sits outside the cascade.
+    it.each([
+      ['fails', () => getMetadataBatch.mockRejectedValue(new Error('boom'))],
+      [
+        'answers for other ids only',
+        () => getMetadataBatch.mockResolvedValue([{ id: 'episode-2' }]),
+      ],
+    ])(
+      'leaves a member to the next run when the batch %s',
+      async (_l, fault) => {
+        arrangeDueMember([
+          { mediaServerId: 'show-9', ruleGroupId: null, type: 'show' },
+        ]);
+        fault();
+
+        await collectionWorkerService.execute();
+
+        expect(collectionHandler.handleMedia).not.toHaveBeenCalled();
+      },
+    );
   });
 
   it('captures the media title before handling and carries it on the handled event (#3249)', async () => {
