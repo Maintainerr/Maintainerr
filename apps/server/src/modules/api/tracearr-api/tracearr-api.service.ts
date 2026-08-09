@@ -29,6 +29,7 @@ import {
   TRACEARR_HISTORY_MAX_RECORDS,
   TRACEARR_PAGE_SIZE,
   TRACEARR_SERVER_MATCH_THRESHOLD,
+  TRACEARR_SERVER_PROBE_FAILURE_LIMIT,
   TRACEARR_SERVER_PROBE_MINIMUM,
   TRACEARR_SERVER_PROBE_SIZE,
 } from './tracearr-api.constants';
@@ -224,6 +225,7 @@ export class TracearrApiService {
     const mediaServer = await this.mediaServerFactory.getService();
     let matches = 0;
     let contradictions = 0;
+    let unreadable = 0;
     for (const item of parsed.data.data) {
       if (!item.rating_key) {
         continue;
@@ -246,9 +248,10 @@ export class TracearrApiService {
         if (metadata.title !== item.title) {
           contradictions += 1;
         } else if (!datesComparable) {
-          // No date to compare on this item, so the title alone decides
-          // nothing either way rather than condemning a server whose media
-          // server reports no added date.
+          // Only Plex reaches this: the Jellyfin and Emby mappers substitute
+          // the current time for a missing DateCreated, so an item without one
+          // reads as a mismatched date there rather than as no date at all.
+          // Both request the field, so that needs the server to omit it.
           continue;
         } else if (sameSecond(metadata.addedAt, remoteAddedAt)) {
           matches += 1;
@@ -272,7 +275,13 @@ export class TracearrApiService {
           contradictions += 1;
         }
       } catch {
-        return undefined;
+        // One unreadable item is not a verdict on the server, so keep checking
+        // the rest. Several are, and probing a dead server 20 times over only
+        // delays the same answer.
+        unreadable += 1;
+        if (unreadable >= TRACEARR_SERVER_PROBE_FAILURE_LIMIT) {
+          return undefined;
+        }
       }
     }
 

@@ -21,8 +21,11 @@ const fields: ExternalServiceFieldConfig[] = [
     label: 'API key',
     type: 'password',
     required: true,
+    // Only a real web URL becomes a link: the field is unvalidated while it is
+    // being typed, and any other scheme would still render as clickable.
     helpText: (values) =>
-      values.url ? (
+      values.url?.startsWith('http://') ||
+      values.url?.startsWith('https://') ? (
         <a
           className="underline"
           href={`${stripTrailingSlashes(values.url)}/settings`}
