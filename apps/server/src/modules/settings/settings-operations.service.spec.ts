@@ -160,6 +160,56 @@ describe('SettingsOperationsService', () => {
     expect(tracearr.invalidateHistory).toHaveBeenCalledTimes(1);
   });
 
+  // Re-pointing is what invalidates the binding, so an unchanged save must not
+  // drop the history snapshot and re-probe the media server for nothing.
+  it('leaves the Tracearr snapshot alone when a Jellyfin save changes nothing', async () => {
+    settingsRepo.findOne.mockResolvedValue(
+      createSettings({
+        media_server_type: MediaServerType.JELLYFIN,
+        jellyfin_url: 'http://jellyfin.local',
+        jellyfin_api_key: 'jellyfin-key',
+      }),
+    );
+    jest.spyOn(service, 'testJellyfin').mockResolvedValue({
+      status: 'OK',
+      code: 1,
+      message: 'Success',
+      users: [{ id: 'user-1', name: 'admin' }],
+    });
+
+    await service.saveJellyfinSettings({
+      jellyfin_url: 'http://jellyfin.local',
+      jellyfin_api_key: 'jellyfin-key',
+      jellyfin_user_id: 'user-1',
+    });
+
+    expect(tracearr.invalidateHistory).not.toHaveBeenCalled();
+  });
+
+  it('revalidates the Tracearr binding when a Jellyfin save changes the server', async () => {
+    settingsRepo.findOne.mockResolvedValue(
+      createSettings({
+        media_server_type: MediaServerType.JELLYFIN,
+        jellyfin_url: 'http://jellyfin.local',
+        jellyfin_api_key: 'jellyfin-key',
+      }),
+    );
+    jest.spyOn(service, 'testJellyfin').mockResolvedValue({
+      status: 'OK',
+      code: 1,
+      message: 'Success',
+      users: [{ id: 'user-1', name: 'admin' }],
+    });
+
+    await service.saveJellyfinSettings({
+      jellyfin_url: 'http://other-jellyfin.local',
+      jellyfin_api_key: 'jellyfin-key',
+      jellyfin_user_id: 'user-1',
+    });
+
+    expect(tracearr.invalidateHistory).toHaveBeenCalledTimes(1);
+  });
+
   it('rejects Plex server setting changes when no Plex credentials are stored', async () => {
     settingsRepo.findOne.mockResolvedValue(
       createSettings({ plex_auth_token: null }),

@@ -1,4 +1,5 @@
 import {
+  serviceUrlSchema,
   stripTrailingSlashes,
   type TracearrServer,
   tracearrSettingSchema,
@@ -21,8 +22,10 @@ const fields: ExternalServiceFieldConfig[] = [
     label: 'API key',
     type: 'password',
     required: true,
+    // The field is still being typed, so it is only a link once it parses as a
+    // service URL. Anything else, a javascript: value included, stays text.
     helpText: (values) =>
-      values.url ? (
+      serviceUrlSchema.safeParse(values.url).success ? (
         <a
           className="underline"
           href={`${stripTrailingSlashes(values.url)}/settings`}

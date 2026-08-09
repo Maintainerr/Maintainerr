@@ -246,9 +246,10 @@ export class TracearrApiService {
         if (metadata.title !== item.title) {
           contradictions += 1;
         } else if (!datesComparable) {
-          // No date to compare on this item, so the title alone decides
-          // nothing either way rather than condemning a server whose media
-          // server reports no added date.
+          // Only Plex reaches this: the Jellyfin and Emby mappers substitute
+          // the current time for a missing DateCreated, so an item without one
+          // reads as a mismatched date there rather than as no date at all.
+          // Both request the field, so that needs the server to omit it.
           continue;
         } else if (sameSecond(metadata.addedAt, remoteAddedAt)) {
           matches += 1;
