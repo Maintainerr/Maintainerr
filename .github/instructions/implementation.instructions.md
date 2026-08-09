@@ -39,7 +39,7 @@ When implementing against any external API or SDK (Plex, Jellyfin, TypeORM, etc.
 #### Media server services
 
 - Plex (python-plexapi): https://python-plexapi.readthedocs.io/en/latest/index.html
-- Plex (OpenAPI): https://raw.githubusercontent.com/LukeHagar/plex-api-spec/refs/heads/main/src/pms-spec.yaml
+- Plex (OpenAPI): https://raw.githubusercontent.com/LukasParke/plex-api-spec/refs/heads/main/plex-api-spec.yaml
 - Jellyfin: https://api.jellyfin.org/
 
 ## Rules

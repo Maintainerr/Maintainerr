@@ -338,7 +338,7 @@ Reference the following OpenAPI specifications and API documentation when workin
 
 ### Media Server Services
 
-- **Plex**: [OpenAPI Specification](https://raw.githubusercontent.com/LukeHagar/plex-api-spec/refs/heads/main/src/pms-spec.yaml) | [Additional Documentation](https://www.plexopedia.com/plex-media-server/api/)
+- **Plex**: [OpenAPI Specification](https://raw.githubusercontent.com/LukasParke/plex-api-spec/refs/heads/main/plex-api-spec.yaml) | [Additional Documentation](https://www.plexopedia.com/plex-media-server/api/)
 
 These specifications provide comprehensive type definitions and endpoint documentation for creating robust integrations with proper TypeScript typing.
 
