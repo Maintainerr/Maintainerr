@@ -1,3 +1,27 @@
+# [3.22.1](https://github.com/Maintainerr/Maintainerr/compare/v3.22.0...v3.22.1) (2026-08-09)
+
+
+### Fixes
+
+- fix: add search results to a collection, and exclude globally from a collection page (#3453)
+- fix(collections): size a collection in one read, not a request per item (#3449) (#3451)
+- fix(tracearr): keep watcher rules working and re-check a stale server binding (#3450)
+- fix(ui): keep the glass panels blurred in the production build
+- fix(tracearr): bind to the Tracearr server that tracks the managed media server (#3446)
+- fix(ui): drop the Tracearr-only unconfigured warning
+
+### Performance
+
+- perf(maintenance): clear the daily sweeps with one read, not one per row (#3452)
+
+### Other
+
+- test(ui): catch a vendor prefix written after its standard property
+
+### Dependencies
+
+- 1 dependency update (dompurify)
+
 # [3.22.0](https://github.com/Maintainerr/Maintainerr/compare/v3.21.1...v3.22.0) (2026-08-07)
 
 
