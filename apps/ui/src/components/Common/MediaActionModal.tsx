@@ -1,4 +1,5 @@
 import type { MediaItemType } from '@maintainerr/contracts'
+import { MediaServerFeature, supportsFeature } from '@maintainerr/contracts'
 import { useQueryClient } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -11,6 +12,7 @@ import {
   useCollections,
 } from '../../api/collections'
 import { useMediaServerMetadataChildren } from '../../api/media-server'
+import { useMediaServerType } from '../../hooks/useMediaServerType'
 import { getApiErrorMessage } from '../../utils/ApiError'
 import GetApiHandler from '../../utils/ApiHandler'
 import Alert from './Alert'
@@ -27,22 +29,14 @@ import { Select } from '../Forms/Select'
 const ALL_COLLECTIONS = -1
 
 export type MediaAction =
-  | 'collection-add'
-  | 'collection-remove'
-  | 'collection-remove-all'
-  | 'exclusion-add'
-  | 'exclusion-remove'
+  'collection-add' | 'collection-remove' | 'exclusion-add' | 'exclusion-remove'
 
 const actionLabels: Record<MediaAction, string> = {
   'collection-add': 'Add to collection',
   'collection-remove': 'Remove from collection',
-  'collection-remove-all': 'Remove from all collections',
   'exclusion-add': 'Add exclusion',
   'exclusion-remove': 'Remove exclusion',
 }
-
-const targetsEveryCollection = (action: MediaAction) =>
-  action === 'collection-remove-all'
 
 export interface MediaActionOutcome {
   action: MediaAction
@@ -51,6 +45,8 @@ export interface MediaActionOutcome {
   collectionTitle?: string
   succeededIds: string[]
   failedIds: string[]
+  /** Distinct reasons the server gave, so a refusal can say why. */
+  failureReasons?: string[]
 }
 
 export interface MediaActionModalProps {
@@ -58,10 +54,8 @@ export interface MediaActionModalProps {
   /** Undefined for a mixed selection, which no single collection can take. */
   mediaType?: MediaItemType
   libraryId?: string
-  /** Pins the picker, so a page cannot act outside the scope it can show. */
-  lockedCollection?: { id: number; title: string; type?: MediaItemType }
-  /** Actions that cannot do anything on the calling page. */
-  hiddenActions?: MediaAction[]
+  /** Preselects the picker with the collection the calling page is showing. */
+  defaultCollectionId?: number
   onCancel: () => void
   onSubmitted: (outcome: MediaActionOutcome) => void
 }
@@ -75,13 +69,18 @@ const MediaActionModal = ({
   mediaIds,
   mediaType,
   libraryId,
-  lockedCollection,
-  hiddenActions,
+  defaultCollectionId,
   onCancel,
   onSubmitted,
 }: MediaActionModalProps) => {
   const queryClient = useQueryClient()
   const navigate = useNavigate()
+  const { mediaServerType } = useMediaServerType()
+  // Where a collection can hold any library's items, it needs no library scope.
+  const collectionsSpanLibraries = supportsFeature(
+    mediaServerType,
+    MediaServerFeature.CROSS_LIBRARY_COLLECTIONS,
+  )
   const [pickedAction, setPickedAction] = useState<MediaAction>()
   const [selectedCollection, setSelectedCollection] = useState<number>()
   const [selectedSeasons, setSelectedSeasons] = useState<string>()
@@ -94,24 +93,19 @@ const MediaActionModal = ({
   >([])
 
   const singleMediaId = mediaIds.length === 1 ? mediaIds[0] : undefined
-  // A pinned show collection acts on the item itself, so a narrowed season
-  // resolves straight back to the show. Offering the choice there promises a
-  // reach the action does not have. An unpinned picker needs no such guard: a
-  // narrowed selection already drops show collections from collectionTypes.
-  const canNarrow =
-    singleMediaId !== undefined &&
-    mediaType === 'show' &&
-    lockedCollection?.type !== 'show'
+  // A narrowed selection drops show collections from collectionTypes, so the
+  // picker can never promise a reach the narrowed action does not have.
+  const canNarrow = singleMediaId !== undefined && mediaType === 'show'
 
   const seasonsQuery = useMediaServerMetadataChildren(singleMediaId, {
     enabled: canNarrow,
   })
   const episodesQuery = useMediaServerMetadataChildren(selectedSeasons)
-  // A collection only accepts items from its own library, so offering the other
-  // libraries' collections only produces a rejected add. No library (a search
-  // spanning them) means no list to offer, not every list.
+  // A collection bound to one library only accepts items from it, so offering
+  // the other libraries' collections there only produces a rejected add.
+  const canPickCollection = libraryId !== undefined || collectionsSpanLibraries
   const collectionsQuery = useCollections(libraryId, {
-    enabled: !lockedCollection && libraryId !== undefined,
+    enabled: canPickCollection,
   })
 
   const submittedType = useMemo((): MediaItemType | undefined => {
@@ -148,39 +142,32 @@ const MediaActionModal = ({
     }
   }, [submittedType])
 
-  const actionOptions = useMemo((): MediaAction[] => {
-    // A mixed selection has no single type, so no collection can take it. The
-    // picker-driven actions also need a library (or a pinned collection) to
-    // scope the picker; without one only the library-agnostic actions remain.
-    const canPickCollection = lockedCollection || libraryId !== undefined
-    const actions: MediaAction[] = mediaType
-      ? [
-          ...(canPickCollection
-            ? (['collection-add', 'collection-remove'] as const)
-            : []),
-          'collection-remove-all',
-          'exclusion-add',
-          'exclusion-remove',
-        ]
-      : ['exclusion-add', 'exclusion-remove']
+  const actionOptions = useMemo(
+    (): MediaAction[] =>
+      // A mixed selection has no single type, so no collection can take it, and
+      // without a scope for the picker only the library-agnostic actions remain.
+      mediaType && canPickCollection
+        ? [
+            'collection-add',
+            'collection-remove',
+            'exclusion-add',
+            'exclusion-remove',
+          ]
+        : ['exclusion-add', 'exclusion-remove'],
+    [mediaType, canPickCollection],
+  )
 
-    return hiddenActions
-      ? actions.filter((action) => !hiddenActions.includes(action))
-      : actions
-  }, [mediaType, hiddenActions, lockedCollection, libraryId])
-
-  // Derived, not synced: a page can hide actions, and a mixed selection drops
-  // the collection ones, so fall back to the first one still offered.
+  // Derived, not synced: a mixed selection drops the collection actions, so a
+  // choice made before that falls back to the first one still offered.
   const selectedAction =
     pickedAction && actionOptions.includes(pickedAction)
       ? pickedAction
       : actionOptions[0]
 
   const isCollectionAction = selectedAction.startsWith('collection-')
-  const isEveryCollection = targetsEveryCollection(selectedAction)
-  // Only an exclusion can be scoped to every collection at once; the collection
-  // actions say so through their own entry instead.
-  const allowsAllCollections = !lockedCollection && !isCollectionAction
+  // Only an add needs one specific target; every other action can mean the
+  // whole set, which is what makes an exclusion global.
+  const allowsAllCollections = selectedAction !== 'collection-add'
 
   const seasonOptions = useMemo(
     () => [
@@ -204,12 +191,8 @@ const MediaActionModal = ({
     [episodesQuery.data],
   )
 
-  const collectionOptions = useMemo((): { id: number; title: string }[] => {
-    if (lockedCollection) {
-      return [lockedCollection]
-    }
-
-    return [
+  const collectionOptions = useMemo(
+    (): { id: number; title: string }[] => [
       ...(allowsAllCollections
         ? [{ id: ALL_COLLECTIONS, title: 'All collections' }]
         : []),
@@ -218,26 +201,22 @@ const MediaActionModal = ({
           ? [{ id: collection.id, title: collection.title }]
           : [],
       ),
-    ]
-  }, [
-    lockedCollection,
-    allowsAllCollections,
-    collectionsQuery.data,
-    collectionTypes,
-  ])
+    ],
+    [allowsAllCollections, collectionsQuery.data, collectionTypes],
+  )
 
   // Derived, not synced: narrowing or switching action drops options, so a
-  // selection made before that is no longer offered and falls back to the first
-  // one. Keeping the state lets it come back if the user widens again.
+  // selection made before that falls back to the calling page's collection.
+  // Keeping the state lets it come back if the user widens again.
   const currentCollectionId = collectionOptions.some(
     (option) => option.id === selectedCollection,
   )
     ? selectedCollection
-    : collectionOptions[0]?.id
+    : (collectionOptions.find((option) => option.id === defaultCollectionId)
+        ?.id ?? collectionOptions[0]?.id)
   const isAllCollections = currentCollectionId === ALL_COLLECTIONS
-  // Everything but the every-collection action needs a target to act on.
-  const noCollectionSelectable =
-    !isEveryCollection && currentCollectionId === undefined
+  // Every action needs a target, even if that target is every collection.
+  const noCollectionSelectable = currentCollectionId === undefined
   const noCollectionsAvailable =
     noCollectionSelectable && collectionsQuery.isSuccess
 
@@ -274,8 +253,7 @@ const MediaActionModal = ({
     setConfirmAllCollections(false)
     setErrorMessage(undefined)
 
-    const collectionId =
-      isEveryCollection || isAllCollections ? undefined : currentCollectionId
+    const collectionId = isAllCollections ? undefined : currentCollectionId
 
     try {
       const response = isCollectionAction
@@ -297,15 +275,18 @@ const MediaActionModal = ({
       const succeededIds = response.results
         .filter((result) => result.code === 1)
         .map((result) => result.mediaId)
-      const failedIds = response.results
-        .filter((result) => result.code !== 1)
-        .map((result) => result.mediaId)
+      const failed = response.results.filter((result) => result.code !== 1)
+      const failedIds = failed.map((result) => result.mediaId)
+      // The server says why per item; without it a refusal reads as a bare
+      // count, which is the shape #3383 set out to stop.
+      const failureReasons = [
+        ...new Set(failed.flatMap((result) => result.message ?? [])),
+      ]
 
-      // A scoped exclusion also drops the items from the collection, so it
+      // Excluding drops the items from whatever it was scoped to, so it
       // invalidates the same caches a collection action does.
       const changedMembership =
-        isCollectionAction ||
-        (selectedAction === 'exclusion-add' && collectionId !== undefined)
+        isCollectionAction || selectedAction === 'exclusion-add'
 
       if (changedMembership && succeededIds.length > 0) {
         await invalidateCollectionQueries(queryClient)
@@ -319,6 +300,7 @@ const MediaActionModal = ({
         )?.title,
         succeededIds,
         failedIds,
+        failureReasons,
       })
     } catch (error) {
       setSubmitting(false)
@@ -363,7 +345,7 @@ const MediaActionModal = ({
       }
     }
 
-    if (isEveryCollection || isAllCollections) {
+    if (isAllCollections) {
       setAffectedExclusions([])
       setConfirmAllCollections(true)
       return
@@ -373,6 +355,12 @@ const MediaActionModal = ({
   }
 
   const itemLabel = `${mediaIds.length} item${mediaIds.length === 1 ? '' : 's'}`
+  const everyCollectionTitle =
+    selectedAction === 'exclusion-add'
+      ? 'Confirm Global Exclusion'
+      : selectedAction === 'exclusion-remove'
+        ? 'Confirm Removing Every Exclusion'
+        : 'Confirm Removal From Every Collection'
 
   return (
     <Modal
@@ -399,7 +387,7 @@ const MediaActionModal = ({
         <Modal
           backgroundClickable={false}
           onCancel={() => setConfirmAllCollections(false)}
-          title="Confirmation Required"
+          title={everyCollectionTitle}
           footerActions={
             <PendingButton
               buttonType="danger"
@@ -414,11 +402,22 @@ const MediaActionModal = ({
             />
           }
         >
+          <p>
+            {actionLabels[selectedAction]} applies to {itemLabel} across every
+            collection. For shows and seasons this covers everything they
+            contain.
+            {selectedAction === 'exclusion-add'
+              ? ' They are removed from every collection they are currently in as well.'
+              : ''}
+          </p>
+
           {affectedExclusions.length > 0 ? (
             <>
-              Making this a global exclusion removes the following rule-group
-              exclusions, and they will not return if you later remove the
-              global exclusion:
+              <p className="mt-2">
+                Making this a global exclusion removes the following rule-group
+                exclusions, and they will not return if you later remove the
+                global exclusion:
+              </p>
               <ul className="mt-2 list-disc pl-5">
                 {affectedExclusions.map((exclusion) => (
                   <li key={exclusion.targetPath}>
@@ -442,19 +441,13 @@ const MediaActionModal = ({
                 ))}
               </ul>
             </>
-          ) : (
-            <p>
-              {actionLabels[selectedAction]} applies to {itemLabel} across every
-              collection. For shows and seasons this covers everything they
-              contain.
-            </p>
-          )}
+          ) : null}
         </Modal>
       ) : null}
 
       {noCollectionsAvailable ? (
         <Alert
-          title="No collection in this library can take this selection. Create one from a rule first."
+          title="No collection can take this selection. Create one from a rule first."
           type="warning"
         />
       ) : null}
@@ -521,31 +514,30 @@ const MediaActionModal = ({
           </FormItem>
         ) : null}
 
-        {isEveryCollection ? null : (
-          <FormItem label="Collection">
-            <Select
-              name="Collection-field"
-              id="Collection-field"
-              value={currentCollectionId ?? ''}
-              disabled={Boolean(lockedCollection)}
-              onChange={(e: { target: { value: string } }) => {
-                setSelectedCollection(+e.target.value)
-              }}
-            >
-              {collectionOptions.map((collection) => (
-                <option key={collection.id} value={collection.id}>
-                  {collection.title}
-                </option>
-              ))}
-            </Select>
-          </FormItem>
-        )}
+        <FormItem label="Collection">
+          <Select
+            name="Collection-field"
+            id="Collection-field"
+            value={currentCollectionId ?? ''}
+            onChange={(e: { target: { value: string } }) => {
+              setSelectedCollection(+e.target.value)
+            }}
+          >
+            {collectionOptions.map((collection) => (
+              <option key={collection.id} value={collection.id}>
+                {collection.title}
+              </option>
+            ))}
+          </Select>
+        </FormItem>
 
         <p className="mt-4 text-sm text-zinc-400">
           Applies to {itemLabel}.
           {!mediaType
-            ? ' The selection mixes media types or libraries, so only exclusions can be applied to it.'
-            : ''}
+            ? ' The selection mixes media types, so only exclusions can be applied to it.'
+            : !canPickCollection
+              ? ' The selection spans more than one library, so only exclusions can be applied to it.'
+              : ''}
           {/* An item is global or scoped, never both, so removing "its"
               exclusion here removes a global one if that is what it has. */}
           {selectedAction === 'exclusion-remove' && !isAllCollections

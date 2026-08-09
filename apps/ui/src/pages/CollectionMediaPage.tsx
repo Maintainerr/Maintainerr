@@ -6,6 +6,7 @@ import {
 import { useCallback, useRef, useState } from 'react'
 import { useOutletContext, useParams } from 'react-router-dom'
 import type { ICollectionMedia } from '../components/Collection'
+import { invalidateMaintainerrStatusDetails } from '../components/Common/MediaCard/maintainerrStatus'
 import MediaSelectionActions from '../components/Common/MediaSelectionActions'
 import type { MediaActionOutcome } from '../components/Common/MediaActionModal'
 import {
@@ -150,17 +151,25 @@ const CollectionMediaPage = () => {
 
   const handleBulkOutcome = ({
     action,
+    collectionId,
     succeededIds,
     failedIds,
+    failureReasons,
   }: MediaActionOutcome) => {
     applyBulkOutcome(new Set(failedIds))
 
-    // Only these drop the item from this collection.
-    if (
-      action === 'exclusion-add' ||
-      action === 'collection-remove' ||
-      action === 'collection-remove-all'
-    ) {
+    for (const mediaServerId of succeededIds) {
+      invalidateMaintainerrStatusDetails(mediaServerId)
+    }
+
+    // Removing and excluding both drop membership, but only from the collection
+    // they were aimed at: an undefined id means every collection, so it reaches
+    // this one too. Aimed elsewhere, this grid is unchanged.
+    const leavesThisCollection =
+      (action === 'exclusion-add' || action === 'collection-remove') &&
+      (collectionId === undefined || collectionId === collection.id)
+
+    if (leavesThisCollection) {
       for (const mediaServerId of succeededIds) {
         removeMediaItem(mediaServerId)
       }
@@ -169,7 +178,8 @@ const CollectionMediaPage = () => {
     reportBulkOutcome(
       succeededIds.length,
       failedIds.length,
-      bulkOutcomeVerb(action),
+      bulkOutcomeVerb({ action, collectionId }),
+      failureReasons,
     )
   }
 
@@ -187,13 +197,7 @@ const CollectionMediaPage = () => {
             selectedIds={selectedIds}
             items={data}
             libraryId={collection.libraryId}
-            lockedCollection={{
-              id: collection.id,
-              title: collection.title,
-              type: collection.type,
-            }}
-            // Everything here is already in this collection.
-            hiddenActions={['collection-add']}
+            defaultCollectionId={collection.id}
             onSubmitted={handleBulkOutcome}
           />
         }

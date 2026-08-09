@@ -13,6 +13,7 @@ import {
   bulkOutcomeVerb,
   reportBulkOutcome,
 } from '../../../../utils/bulkOutcome'
+import { invalidateMaintainerrStatusDetails } from '../../../Common/MediaCard/maintainerrStatus'
 import MediaSelectionActions from '../../../Common/MediaSelectionActions'
 import type { MediaActionOutcome } from '../../../Common/MediaActionModal'
 import {
@@ -123,13 +124,24 @@ const CollectionExcludions = (props: ICollectionExclusions) => {
 
   const handleBulkOutcome = ({
     action,
+    collectionId,
     succeededIds,
     failedIds,
+    failureReasons,
   }: MediaActionOutcome) => {
     applyBulkOutcome(new Set(failedIds))
 
-    // This list is the collection's exclusions, so only an un-exclude empties it.
-    if (action === 'exclusion-remove') {
+    for (const mediaServerId of succeededIds) {
+      invalidateMaintainerrStatusDetails(mediaServerId)
+    }
+
+    // This list is the collection's exclusions, so only an un-exclude empties
+    // it, and only when it reached this collection: an undefined id means every
+    // exclusion the items carry, which includes these.
+    if (
+      action === 'exclusion-remove' &&
+      (collectionId === undefined || collectionId === props.collection.id)
+    ) {
       const removedIds = new Set(succeededIds)
       updateData((currentData) =>
         currentData.filter((item) => !removedIds.has(item.id)),
@@ -139,7 +151,8 @@ const CollectionExcludions = (props: ICollectionExclusions) => {
     reportBulkOutcome(
       succeededIds.length,
       failedIds.length,
-      bulkOutcomeVerb(action),
+      bulkOutcomeVerb({ action, collectionId }),
+      failureReasons,
     )
   }
 
@@ -157,13 +170,7 @@ const CollectionExcludions = (props: ICollectionExclusions) => {
             selectedIds={selectedIds}
             items={data}
             libraryId={props.collection.libraryId}
-            lockedCollection={{
-              id: props.collection.id,
-              title: props.collection.title,
-              type: props.collection.type,
-            }}
-            // Everything here is already excluded from this collection.
-            hiddenActions={['exclusion-add']}
+            defaultCollectionId={props.collection.id}
             onSubmitted={handleBulkOutcome}
           />
         }

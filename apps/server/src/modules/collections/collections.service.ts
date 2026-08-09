@@ -2602,6 +2602,51 @@ export class CollectionsService {
   }
 
   /**
+   * Why this collection cannot take the item, or undefined when it can. An
+   * inconclusive lookup answers undefined: a blip must never block a real add.
+   */
+  private async explainRejectedAdd(
+    mediaServer: IMediaServerService,
+    mediaId: string,
+    collection: Collection | undefined,
+  ): Promise<string | undefined> {
+    // itemExists is the only read that separates "gone" from "could not ask":
+    // it throws on the second, which is what keeps a blip from blocking an add.
+    try {
+      if (!(await mediaServer.itemExists(mediaId))) {
+        return 'Failed - not found on the media server';
+      }
+    } catch (error) {
+      this.logger.debug(error);
+      return undefined;
+    }
+
+    // A collection bound to one library refuses a foreign id on its own, but
+    // silently drops it from a mixed batch, leaving a row for an add that
+    // never happened.
+    const libraryId = collection?.libraryId;
+    if (
+      !libraryId ||
+      mediaServer.supportsFeature(MediaServerFeature.CROSS_LIBRARY_COLLECTIONS)
+    ) {
+      return undefined;
+    }
+
+    let item: MediaItem | undefined;
+    try {
+      item = await mediaServer.getMetadata(mediaId);
+    } catch (error) {
+      this.logger.debug(error);
+      return undefined;
+    }
+
+    // An unread library cannot disprove membership, and existence is settled.
+    return item?.library?.id && item.library.id !== libraryId
+      ? "Failed - not in this collection's library"
+      : undefined;
+  }
+
+  /**
    * Resolution is bounded-parallel, but the write is a **single** batched call.
    * The write path find-or-creates the media server collection, which is not
    * safe to run concurrently against the same collection: parallel first adds
@@ -2637,20 +2682,15 @@ export class CollectionsService {
       await Promise.all(
         batch.map(async (mediaId) => {
           try {
-            // An add into a movie or show collection has nothing to resolve,
-            // so an id the library does not hold would become a membership row
-            // for media that does not exist. An inconclusive lookup throws and
-            // is taken as present, so a blip never blocks a real add.
             if (action === 'add') {
-              let exists = true;
-              try {
-                exists = await mediaServer.itemExists(mediaId);
-              } catch (error) {
-                this.logger.debug(error);
-              }
+              const rejection = await this.explainRejectedAdd(
+                mediaServer,
+                mediaId,
+                collection,
+              );
 
-              if (!exists) {
-                fail(mediaId, 'Failed - not found on the media server');
+              if (rejection) {
+                fail(mediaId, rejection);
                 return;
               }
             }

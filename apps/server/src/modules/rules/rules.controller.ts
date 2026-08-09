@@ -28,6 +28,10 @@ import { Response } from 'express';
 import { omit } from 'lodash';
 import { ZodValidationPipe } from 'nestjs-zod';
 import { MaintainerrLogger } from '../logging/logs.service';
+import {
+  ExecutionLockService,
+  RULES_COLLECTIONS_EXECUTION_LOCK_KEY,
+} from '../tasks/execution-lock.service';
 import { CommunityRule } from './dtos/communityRule.dto';
 import { ExclusionAction, ExclusionContextDto } from './dtos/exclusion.dto';
 import { RuleGroupDto } from './dtos/ruleGroup.dto';
@@ -36,6 +40,9 @@ import { ReturnStatus, RulesService } from './rules.service';
 import { RuleExecutorJobManagerService } from './tasks/rule-executor-job-manager.service';
 import { RuleExecutorSchedulerService } from './tasks/rule-executor-scheduler.service';
 
+/** Matches the postpone endpoint: wait out a short run rather than 409 at once. */
+const EXCLUSION_LOCK_WAIT_MS = 30000;
+
 @Controller('api/rules')
 export class RulesController {
   constructor(
@@ -43,6 +50,7 @@ export class RulesController {
     private readonly ruleExecutorSchedulerService: RuleExecutorSchedulerService,
     private readonly ruleExecutorJobManagerService: RuleExecutorJobManagerService,
     private readonly ruleUsersService: RuleUsersService,
+    private readonly executionLock: ExecutionLockService,
     private readonly logger: MaintainerrLogger,
   ) {
     this.logger.setContext(RulesController.name);
@@ -281,12 +289,43 @@ export class RulesController {
     return this.orFail(await this.rulesService.setRules(body));
   }
 
+  /**
+   * Excluding shares the execution lock, as postpone does: a run picks its media
+   * up front, so an exclusion landing mid-run would answer success while that
+   * run still acts on the item. Un-excluding frees media, so it stays lock-free.
+   */
+  private async whileNotHandling<T>(run: () => Promise<T>): Promise<T> {
+    const release = await this.executionLock.acquireWithin(
+      RULES_COLLECTIONS_EXECUTION_LOCK_KEY,
+      EXCLUSION_LOCK_WAIT_MS,
+    );
+
+    if (!release) {
+      throw new ConflictException(
+        'Collection handling is already running. Try again when the current collection or rule execution finishes.',
+      );
+    }
+
+    try {
+      return await run();
+    } finally {
+      release();
+    }
+  }
+
   @Post('/exclusion')
+  @ApiResponse({
+    status: 409,
+    description:
+      'A collection or rule run held the execution lock for too long.',
+  })
   async setExclusion(@Body() body: ExclusionContextDto): Promise<ReturnStatus> {
     if (body.action === undefined || body.action === ExclusionAction.ADD) {
       // handledIds serves the bulk path's collection pairing; it is not part of
       // this endpoint's response.
-      return omit(await this.rulesService.setExclusion(body), 'handledIds');
+      return await this.whileNotHandling(async () =>
+        omit(await this.rulesService.setExclusion(body), 'handledIds'),
+      );
     } else {
       return await this.rulesService.removeExclusionWitData(body);
     }
@@ -301,6 +340,11 @@ export class RulesController {
     status: 400,
     description: `Rejected without processing: empty, or more than ${BULK_MEDIA_ACTION_MAX_ITEMS} media ids.`,
   })
+  @ApiResponse({
+    status: 409,
+    description:
+      'A collection or rule run held the execution lock for too long.',
+  })
   async setBulkExclusions(
     @Body(new ZodValidationPipe(bulkExclusionRequestSchema))
     body: BulkExclusionRequest,
@@ -313,10 +357,12 @@ export class RulesController {
       );
     }
 
-    return await this.rulesService.setBulkExclusions(
-      body.mediaIds,
-      body.collectionId,
-      body.context,
+    return await this.whileNotHandling(() =>
+      this.rulesService.setBulkExclusions(
+        body.mediaIds,
+        body.collectionId,
+        body.context,
+      ),
     );
   }
 
