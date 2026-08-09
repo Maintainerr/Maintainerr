@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { readItemPresence } from '../../api/media-server/item-presence.util';
 import { MediaServerFactory } from '../../api/media-server/media-server.factory';
 import { CollectionsService } from '../../collections/collections.service';
 import { Collection } from '../../collections/entities/collection.entities';
@@ -62,20 +63,17 @@ export class RuleMaintenanceService extends TaskBase {
   private async removeLeftoverExclusions() {
     const exclusions = await this.rulesService.getAllExclusions();
     const mediaServer = await this.mediaServerFactory.getService();
-    for (const exclusion of exclusions) {
-      // Only drop an exclusion when the media server *confirms* the item is
-      // gone. `itemExists` returns false solely on a 404/empty result and
-      // throws on an inconclusive check, unlike `getMetadata` which returns
-      // undefined for both absent and failed reads - a transient blip must
-      // not delete the protection an exclusion provides.
-      let exists = true;
-      try {
-        exists = await mediaServer.itemExists(exclusion.mediaServerId);
-      } catch (error) {
-        this.logger.debug(error);
-      }
 
-      if (!exists) {
+    // `missing` is a confirmed absence only, so a transient failure never
+    // deletes the protection an exclusion provides.
+    const { missing } = await readItemPresence(
+      mediaServer,
+      exclusions.map((exclusion) => exclusion.mediaServerId),
+      (error) => this.logger.debug(error),
+    );
+
+    for (const exclusion of exclusions) {
+      if (missing.has(exclusion.mediaServerId)) {
         await this.rulesService.removeExclusion(exclusion.id);
       }
     }

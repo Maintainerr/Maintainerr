@@ -197,6 +197,7 @@ describe('CollectionMediaPage', () => {
     it('drops the cards an exclusion took out of the collection', async () => {
       submittedOutcome = {
         action: 'exclusion-add',
+        collectionId: 42,
         succeededIds: ['movie-1'],
         failedIds: [],
       }
@@ -211,9 +212,9 @@ describe('CollectionMediaPage', () => {
 
     // The item leaves this collection, and the grid holds its own state, so
     // nothing refetches it away.
-    it('drops the cards a remove-from-all-collections took out', async () => {
+    it('drops the cards a removal from every collection took out', async () => {
       submittedOutcome = {
-        action: 'collection-remove-all',
+        action: 'collection-remove',
         succeededIds: ['movie-1'],
         failedIds: [],
       }
@@ -222,6 +223,25 @@ describe('CollectionMediaPage', () => {
 
       await waitFor(() => expect(screen.queryByText('Item movie-1')).toBeNull())
       expect(screen.getByText('Item movie-2')).toBeTruthy()
+      expect(toast.success).toHaveBeenCalledWith(
+        '1 item removed from every collection.',
+      )
+    })
+
+    it('keeps the cards an action aimed at another collection left alone', async () => {
+      submittedOutcome = {
+        action: 'exclusion-add',
+        collectionId: 7,
+        succeededIds: ['movie-1'],
+        failedIds: [],
+      }
+
+      await selectAndSubmit(['movie-1'])
+
+      await waitFor(() =>
+        expect(toast.success).toHaveBeenCalledWith('1 item excluded.'),
+      )
+      expect(screen.getByText('Item movie-1')).toBeTruthy()
     })
 
     it('keeps the cards an action left in the collection', async () => {
@@ -242,8 +262,10 @@ describe('CollectionMediaPage', () => {
     it('keeps a failed item on screen and selected', async () => {
       submittedOutcome = {
         action: 'exclusion-add',
+        collectionId: 42,
         succeededIds: ['movie-1'],
         failedIds: ['movie-2'],
+        failureReasons: ["Failed - not in this collection's library"],
       }
 
       await selectAndSubmit(['movie-1', 'movie-2'])
@@ -256,8 +278,9 @@ describe('CollectionMediaPage', () => {
       expect(
         screen.getByRole('button', { name: 'Done selecting' }),
       ).toBeTruthy()
+      // The server says why per item; a bare count leaves the user guessing.
       expect(toast.error).toHaveBeenCalledWith(
-        '1 item excluded. 1 item could not be excluded; the failed items stay selected.',
+        "1 item excluded. 1 item could not be excluded (not in this collection's library); the failed items stay selected.",
       )
     })
   })

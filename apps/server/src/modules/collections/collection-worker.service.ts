@@ -19,6 +19,12 @@ import {
   NotificationMediaItem,
 } from '../events/events.dto';
 import { MaintainerrLogger } from '../logging/logs.service';
+import { Exclusion } from '../rules/entities/exclusion.entities';
+import { RuleGroup } from '../rules/entities/rule-group.entities';
+import {
+  buildExclusionCascadeSets,
+  isMediaItemExcluded,
+} from '../rules/helpers/exclusion-cascade.helper';
 import { SettingsDataService } from '../settings/settings-data.service';
 import {
   ExecutionLockService,
@@ -48,6 +54,10 @@ export class CollectionWorkerService extends TaskBase {
     private readonly collectionRepo: Repository<Collection>,
     @InjectRepository(CollectionMedia)
     private readonly collectionMediaRepo: Repository<CollectionMedia>,
+    @InjectRepository(Exclusion)
+    private readonly exclusionRepo: Repository<Exclusion>,
+    @InjectRepository(RuleGroup)
+    private readonly ruleGroupRepo: Repository<RuleGroup>,
     private readonly seerrApi: SeerrApiService,
     protected readonly taskService: TasksService,
     private readonly settings: SettingsDataService,
@@ -64,6 +74,75 @@ export class CollectionWorkerService extends TaskBase {
 
   protected onBootstrapHook(): void {
     this.cronSchedule = this.settings.collection_handler_job_cron;
+  }
+
+  /** Every global exclusion, plus the ones scoped to a collection's own group. */
+  private async readExclusionsPerCollection(): Promise<
+    (collectionId: number) => Exclusion[]
+  > {
+    const [exclusions, ruleGroups] = await Promise.all([
+      this.exclusionRepo.find(),
+      this.ruleGroupRepo.find(),
+    ]);
+
+    const ruleGroupIdByCollectionId = new Map(
+      ruleGroups.map((ruleGroup) => [ruleGroup.collectionId, ruleGroup.id]),
+    );
+
+    return (collectionId) => {
+      const ruleGroupId = ruleGroupIdByCollectionId.get(collectionId);
+      return exclusions.filter(
+        (exclusion) =>
+          exclusion.ruleGroupId == null ||
+          exclusion.ruleGroupId === ruleGroupId,
+      );
+    };
+  }
+
+  /** The cascade a rule run applies, so a show or legacy row reaches its own
+   * descendants (#2858). The hierarchy costs a request, so it is only read when
+   * an exclusion can reach past its own id. */
+  private async dropExcludedMedia(
+    mediaServer: IMediaServerService,
+    exclusions: Exclusion[],
+    dueMedia: CollectionMedia[],
+  ): Promise<CollectionMedia[]> {
+    if (exclusions.length === 0 || dueMedia.length === 0) {
+      return dueMedia;
+    }
+
+    const cascade = buildExclusionCascadeSets(exclusions);
+    const cascades =
+      cascade.excludedShowIds.size > 0 ||
+      cascade.excludedSeasonIds.size > 0 ||
+      cascade.legacyParentIds.size > 0;
+
+    if (!cascades) {
+      return dueMedia.filter(
+        (media) => !isMediaItemExcluded(cascade, { id: media.mediaServerId }),
+      );
+    }
+
+    const hierarchyById = new Map<string, MediaItem>();
+    try {
+      for (const item of await mediaServer.getMetadataBatch(
+        dueMedia.map((media) => media.mediaServerId),
+      )) {
+        hierarchyById.set(item.id, item);
+      }
+    } catch (error) {
+      this.logger.debug(error);
+    }
+
+    return dueMedia.filter((media) => {
+      const item = hierarchyById.get(media.mediaServerId);
+
+      // A batch read omits what it could not resolve, so no hierarchy means
+      // unread, not unrelated. This is the only path that deletes.
+      if (!item) return false;
+
+      return !isMediaItemExcluded(cascade, item);
+    });
   }
 
   protected async executeTask() {
@@ -135,10 +214,14 @@ export class CollectionWorkerService extends TaskBase {
         mediaToHandle: CollectionMedia[];
       }[] = [];
 
+      // Nothing else protects an excluded member: membership is reconciled only
+      // by a rule run, and never for a manually added one.
+      const exclusionsFor = await this.readExclusionsPerCollection();
+
       for (const collection of collectionsToHandle) {
         const dangerDate = getCollectionDangerDate(collection.deleteAfterDays);
 
-        const eligibleMedia = (
+        const dueMedia = (
           await this.collectionMediaRepo.find({
             where: {
               collectionId: collection.id,
@@ -149,6 +232,12 @@ export class CollectionWorkerService extends TaskBase {
           (media) =>
             !media.ruleEvaluationFailed ||
             hasCollectionMediaManualMembership(media),
+        );
+
+        const eligibleMedia = await this.dropExcludedMedia(
+          mediaServer,
+          exclusionsFor(collection.id),
+          dueMedia,
         );
 
         // Defer any eligible media that is currently being streamed; it stays

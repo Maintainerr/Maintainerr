@@ -263,8 +263,8 @@ export class PlexMapper {
       providerIds: PlexMapper.extractProviderIds(plex.Guid, plex.guid),
       mediaSources: PlexMapper.toMediaSources(plex.Media || plex.media),
       library: {
-        id: '', // Not available on PlexMetadata
-        title: '',
+        id: plex.librarySectionID?.toString() ?? '',
+        title: plex.librarySectionTitle ?? '',
       },
       summary: plex.summary,
       viewCount: plex.viewCount,

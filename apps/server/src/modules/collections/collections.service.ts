@@ -31,6 +31,7 @@ import { chunk } from 'lodash';
 import { Brackets, DataSource, In, LessThan, Not, Repository } from 'typeorm';
 import { CollectionLog } from '../../modules/collections/entities/collection_log.entities';
 import { getErrorMessage } from '../../utils/connection-error';
+import { readItemPresence } from '../api/media-server/item-presence.util';
 import {
   ENRICHMENT_ID_CHUNK,
   MediaItemEnrichmentService,
@@ -1535,20 +1536,16 @@ export class CollectionsService {
     const mediaServer = await this.getMediaServer();
     let removedCount = 0;
 
-    for (const entry of allMedia) {
-      // Only remove a row when the media server *confirms* the item is gone.
-      // `itemExists` returns false solely on a 404/empty result and throws on
-      // an inconclusive check (network / 5xx / auth), unlike `getMetadata`
-      // which returns undefined for both absent and failed reads - so a
-      // transient blip can no longer delete a still-present item's row.
-      let exists = true;
-      try {
-        exists = await mediaServer.itemExists(entry.mediaServerId);
-      } catch (error) {
-        this.logger.debug(error);
-      }
+    // `missing` is a confirmed absence only, so a transient failure never
+    // deletes a still-present item's row.
+    const { missing } = await readItemPresence(
+      mediaServer,
+      allMedia.map((entry) => entry.mediaServerId),
+      (error) => this.logger.debug(error),
+    );
 
-      if (!exists) {
+    for (const entry of allMedia) {
+      if (missing.has(entry.mediaServerId)) {
         await this.CollectionMediaRepo.delete(entry.id);
         removedCount++;
       }
@@ -2605,6 +2602,51 @@ export class CollectionsService {
   }
 
   /**
+   * Why this collection cannot take the item, or undefined when it can. An
+   * inconclusive lookup answers undefined: a blip must never block a real add.
+   */
+  private async explainRejectedAdd(
+    mediaServer: IMediaServerService,
+    mediaId: string,
+    collection: Collection | undefined,
+  ): Promise<string | undefined> {
+    // itemExists is the only read that separates "gone" from "could not ask":
+    // it throws on the second, which is what keeps a blip from blocking an add.
+    try {
+      if (!(await mediaServer.itemExists(mediaId))) {
+        return 'Failed - not found on the media server';
+      }
+    } catch (error) {
+      this.logger.debug(error);
+      return undefined;
+    }
+
+    // A collection bound to one library refuses a foreign id on its own, but
+    // silently drops it from a mixed batch, leaving a row for an add that
+    // never happened.
+    const libraryId = collection?.libraryId;
+    if (
+      !libraryId ||
+      mediaServer.supportsFeature(MediaServerFeature.CROSS_LIBRARY_COLLECTIONS)
+    ) {
+      return undefined;
+    }
+
+    let item: MediaItem | undefined;
+    try {
+      item = await mediaServer.getMetadata(mediaId);
+    } catch (error) {
+      this.logger.debug(error);
+      return undefined;
+    }
+
+    // An unread library cannot disprove membership, and existence is settled.
+    return item?.library?.id && item.library.id !== libraryId
+      ? "Failed - not in this collection's library"
+      : undefined;
+  }
+
+  /**
    * Resolution is bounded-parallel, but the write is a **single** batched call.
    * The write path find-or-creates the media server collection, which is not
    * safe to run concurrently against the same collection: parallel first adds
@@ -2640,20 +2682,15 @@ export class CollectionsService {
       await Promise.all(
         batch.map(async (mediaId) => {
           try {
-            // An add into a movie or show collection has nothing to resolve,
-            // so an id the library does not hold would become a membership row
-            // for media that does not exist. An inconclusive lookup throws and
-            // is taken as present, so a blip never blocks a real add.
             if (action === 'add') {
-              let exists = true;
-              try {
-                exists = await mediaServer.itemExists(mediaId);
-              } catch (error) {
-                this.logger.debug(error);
-              }
+              const rejection = await this.explainRejectedAdd(
+                mediaServer,
+                mediaId,
+                collection,
+              );
 
-              if (!exists) {
-                fail(mediaId, 'Failed - not found on the media server');
+              if (rejection) {
+                fail(mediaId, rejection);
                 return;
               }
             }
@@ -4487,10 +4524,25 @@ export class CollectionsService {
       let totalBytes = 0;
       let hasAnySize = false;
 
+      // One read for the whole collection; per row it opened a request per
+      // item against the media server on every handling run (#3449).
+      const metadataById = new Map(
+        (
+          await mediaServer.getMetadataBatch(
+            collectionMedia.map((media) => media.mediaServerId),
+          )
+        ).map((item) => [item.id, item]),
+      );
+
       for (const media of collectionMedia) {
-        const itemSize = await this.resolveItemSize(
+        const metadata = metadataById.get(media.mediaServerId);
+
+        // Absent means gone or unreadable; either way keep the cached size.
+        if (!metadata) continue;
+
+        const itemSize = await this.resolveSizeFromMetadata(
           mediaServer,
-          media.mediaServerId,
+          metadata,
         );
 
         if (itemSize != null && itemSize > 0) {
@@ -4509,6 +4561,13 @@ export class CollectionsService {
           });
         }
       }
+
+      // A read that answered for nothing is a failed read, not an empty
+      // collection: Emby 500s a whole batch over one unparseable id. Writing
+      // null there would erase a known total, so keep the last one until a
+      // read succeeds - a permanently bad id keeps poisoning its batch, so
+      // that may not be the next run. Same principle as the per-row size above.
+      if (metadataById.size === 0) return;
 
       await this.collectionRepo.update(collectionId, {
         totalSizeBytes: hasAnySize ? totalBytes : null,
@@ -4530,9 +4589,31 @@ export class CollectionsService {
     mediaServer: IMediaServerService,
     mediaServerId: string,
   ): Promise<number | null> {
+    let metadata: MediaItem | undefined;
+
     try {
-      const metadata = await mediaServer.getMetadata(mediaServerId);
-      if (!metadata) return null;
+      metadata = await mediaServer.getMetadata(mediaServerId);
+    } catch (error) {
+      this.logger.debug(`Failed to get size for media ${mediaServerId}`);
+      this.logger.debug(error);
+      return null;
+    }
+
+    return metadata
+      ? this.resolveSizeFromMetadata(mediaServer, metadata)
+      : null;
+  }
+
+  /**
+   * Size of an already-read item: its own files, or its children's for a show
+   * or season that carries none. Null when nothing usable resolved, so one
+   * bad item cannot fail the collection's total.
+   */
+  private async resolveSizeFromMetadata(
+    mediaServer: IMediaServerService,
+    metadata: MediaItem,
+  ): Promise<number | null> {
+    try {
       const directSize = this.sumMediaSourceSizes(metadata);
       if (directSize > 0) return directSize;
       if (metadata.type === 'show' || metadata.type === 'season') {
@@ -4544,7 +4625,7 @@ export class CollectionsService {
       }
       return null;
     } catch (error) {
-      this.logger.debug(`Failed to get size for media ${mediaServerId}`);
+      this.logger.debug(`Failed to get size for media ${metadata.id}`);
       this.logger.debug(error);
       return null;
     }

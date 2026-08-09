@@ -275,7 +275,7 @@ describe('Overview', () => {
 
     await waitFor(() => {
       expect(toast.error).toHaveBeenCalledWith(
-        '1 item excluded. 1 item could not be excluded; the failed items stay selected.',
+        '1 item excluded everywhere. 1 item could not be excluded everywhere; the failed items stay selected.',
       )
     })
     expect(

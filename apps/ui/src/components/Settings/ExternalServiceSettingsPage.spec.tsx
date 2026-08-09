@@ -1,5 +1,11 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { z } from 'zod'
 import ExternalServiceSettingsPage, {
   type ExternalServiceFieldConfig,
@@ -64,6 +70,7 @@ const tracearrFields: ExternalServiceFieldConfig[] = [
 
 describe('ExternalServiceSettingsPage', () => {
   beforeEach(() => {
+    cleanup()
     getApiHandler.mockReset()
     postApiHandler.mockReset()
     deleteApiHandler.mockReset()
@@ -71,6 +78,10 @@ describe('ExternalServiceSettingsPage', () => {
       url: 'http://seerr.local',
       api_key: 'saved-key',
     })
+  })
+
+  afterEach(() => {
+    cleanup()
   })
 
   it('keeps Save Changes enabled regardless of whether connection values have changed', async () => {
@@ -238,10 +249,15 @@ describe('ExternalServiceSettingsPage', () => {
   })
 
   it('loads select options after connection fields are available', async () => {
+    // The picker only renders when there is a real choice to make.
     postApiHandler.mockResolvedValue([
       {
         value: '11111111-1111-4111-8111-111111111111',
         label: 'Sample Plex',
+      },
+      {
+        value: '22222222-2222-4222-8222-222222222222',
+        label: 'Other Plex',
       },
     ])
 
@@ -356,11 +372,16 @@ describe('ExternalServiceSettingsPage', () => {
     )
 
     const apiKey = await screen.findByLabelText('API key')
-    const serverSelect = screen.getByLabelText('Tracearr server *')
     await waitFor(() => {
       expect(postApiHandler).toHaveBeenCalledTimes(1)
     })
-    resolveOptions?.([])
+    // The field only renders once there is a choice to make, so it cannot be
+    // queried until the options resolve.
+    resolveOptions?.([
+      { value: '11111111-1111-4111-8111-111111111111', label: 'Sample Plex' },
+      { value: '22222222-2222-4222-8222-222222222222', label: 'Other Plex' },
+    ])
+    const serverSelect = await screen.findByLabelText('Tracearr server *')
     await waitFor(() => {
       expect((serverSelect as HTMLSelectElement).disabled).toBe(false)
     })
@@ -370,5 +391,161 @@ describe('ExternalServiceSettingsPage', () => {
     fireEvent.focus(serverSelect)
 
     expect(postApiHandler).toHaveBeenCalledTimes(2)
+  })
+
+  it('hides a select once it resolves to a single option', async () => {
+    postApiHandler.mockResolvedValue([
+      {
+        value: '11111111-1111-4111-8111-111111111111',
+        label: 'Sample Plex',
+      },
+    ])
+
+    render(
+      <ExternalServiceSettingsPage
+        scope="Tracearr settings"
+        pageTitle="Tracearr settings - Maintainerr"
+        heading="Tracearr Settings"
+        description="Tracearr configuration"
+        docsPage="Configuration/#tracearr"
+        settingsPath="/settings/tracearr"
+        testPath="/settings/test/tracearr"
+        schema={z.object({
+          url: z.string().min(1),
+          api_key: z.string().min(1),
+          server_id: z.string().uuid().optional(),
+        })}
+        fields={tracearrFields}
+        testSuccessTitle="Tracearr"
+        testFailureMessage="Failed to connect"
+      />,
+    )
+
+    await screen.findByLabelText('API key')
+    await waitFor(() => {
+      expect(postApiHandler).toHaveBeenCalledTimes(1)
+    })
+
+    await waitFor(() => {
+      expect(screen.queryByLabelText('Tracearr server *')).toBeNull()
+    })
+  })
+
+  // Most services answer a bare "Failed", which says less than the scoped
+  // message the page shows by default.
+  it('keeps the scoped message when a save fails without a reason', async () => {
+    postApiHandler.mockResolvedValue({
+      status: 'NOK',
+      code: 0,
+      message: 'Failed',
+    })
+
+    render(
+      <ExternalServiceSettingsPage
+        scope="Seerr settings"
+        pageTitle="Seerr settings - Maintainerr"
+        heading="Seerr Settings"
+        description="Seerr configuration"
+        docsPage="Configuration/#seerr"
+        settingsPath="/settings/seerr"
+        testPath="/settings/test/seerr"
+        schema={urlApiKeySchema}
+        fields={urlApiKeyFields}
+        testSuccessTitle="Seerr"
+        testFailureMessage="Failed to connect"
+      />,
+    )
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Save Changes' }))
+
+    expect(
+      await screen.findByText('Seerr settings could not be updated'),
+    ).toBeTruthy()
+  })
+
+  it('surfaces the server message when a save is rejected', async () => {
+    postApiHandler.mockResolvedValue({
+      status: 'NOK',
+      code: 0,
+      message: 'Pick the Tracearr server for this media server.',
+    })
+
+    render(
+      <ExternalServiceSettingsPage
+        scope="Seerr settings"
+        pageTitle="Seerr settings - Maintainerr"
+        heading="Seerr Settings"
+        description="Seerr configuration"
+        docsPage="Configuration/#seerr"
+        settingsPath="/settings/seerr"
+        testPath="/settings/test/seerr"
+        schema={urlApiKeySchema}
+        fields={urlApiKeyFields}
+        testSuccessTitle="Seerr"
+        testFailureMessage="Failed to connect"
+      />,
+    )
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Save Changes' }))
+
+    expect(
+      await screen.findByText(
+        'Pick the Tracearr server for this media server.',
+      ),
+    ).toBeTruthy()
+    expect(screen.queryByText('Seerr settings could not be updated')).toBeNull()
+  })
+
+  it('clears an integration whose hidden select still holds a resolved value', async () => {
+    getApiHandler.mockResolvedValue({
+      url: 'http://tracearr.local',
+      api_key: 'saved-key',
+      server_id: '11111111-1111-4111-8111-111111111111',
+    })
+    postApiHandler.mockResolvedValue([
+      {
+        value: '11111111-1111-4111-8111-111111111111',
+        label: 'Sample Plex',
+      },
+    ])
+    deleteApiHandler.mockResolvedValue({
+      status: 'OK',
+      code: 1,
+      message: 'Deleted',
+    })
+
+    render(
+      <ExternalServiceSettingsPage
+        scope="Tracearr settings"
+        pageTitle="Tracearr settings - Maintainerr"
+        heading="Tracearr Settings"
+        description="Tracearr configuration"
+        docsPage="Configuration/#tracearr"
+        settingsPath="/settings/tracearr"
+        testPath="/settings/test/tracearr"
+        schema={z.object({
+          url: z.string().min(1),
+          api_key: z.string().min(1),
+          server_id: z.string().uuid().optional(),
+        })}
+        fields={tracearrFields}
+        testSuccessTitle="Tracearr"
+        testFailureMessage="Failed to connect"
+      />,
+    )
+
+    const saveButton = await screen.findByRole('button', {
+      name: 'Save Changes',
+    })
+
+    fireEvent.change(screen.getByLabelText(/URL/), { target: { value: '' } })
+    fireEvent.change(screen.getByLabelText('API key'), {
+      target: { value: '' },
+    })
+    fireEvent.click(saveButton)
+
+    await waitFor(() => {
+      expect(deleteApiHandler).toHaveBeenCalledWith('/settings/tracearr')
+    })
   })
 })

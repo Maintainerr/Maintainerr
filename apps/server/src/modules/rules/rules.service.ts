@@ -1265,32 +1265,41 @@ export class RulesService {
       );
     }
 
-    // Excluding from a collection page also drops the items from it, the
+    // Excluding also drops the items from the collections it covers, the
     // pairing the per-item action performs. After the exclusions, so a failed
     // one never silently removes its item. The drop names the ids the exclusion
     // resolved to, which is what the collection holds.
-    if (collectionId !== undefined) {
-      const excludedIds = rootIds.filter(
-        (mediaId) => resultById.get(mediaId)?.code === 1,
-      );
-      const members = [
-        ...new Set(
-          excludedIds.flatMap((mediaId) => handledByRoot.get(mediaId) ?? []),
-        ),
-      ].map((mediaServerId) => ({ mediaServerId }));
+    const excludedIds = rootIds.filter(
+      (mediaId) => resultById.get(mediaId)?.code === 1,
+    );
+    const members = [
+      ...new Set(
+        excludedIds.flatMap((mediaId) => handledByRoot.get(mediaId) ?? []),
+      ),
+    ].map((mediaServerId) => ({ mediaServerId }));
 
-      if (
-        members.length > 0 &&
-        !(await this.collectionService.removeFromCollection(
-          collectionId,
-          members,
-        ))
-      ) {
+    if (members.length > 0) {
+      // A global exclusion says the items belong in no collection at all.
+      const removed =
+        collectionId === undefined
+          ? (await this.collectionService.removeFromAllCollections(members))
+              .code === 1
+          : Boolean(
+              await this.collectionService.removeFromCollection(
+                collectionId,
+                members,
+              ),
+            );
+
+      if (!removed) {
         for (const mediaId of excludedIds) {
           resultById.set(mediaId, {
             mediaId,
             code: 0,
-            message: 'Excluded, but not removed from the collection',
+            message:
+              collectionId === undefined
+                ? 'Excluded, but not removed from every collection'
+                : 'Excluded, but not removed from the collection',
           });
         }
       }

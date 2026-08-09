@@ -9,8 +9,8 @@ import {
   StreamystatsSetting,
   TautulliSetting,
   TracearrConnection,
-  TracearrSetting,
   TracearrServer,
+  TracearrSetting,
 } from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -371,11 +371,42 @@ export class SettingsOperationsService {
     try {
       const settingsDb = await this.settingsRepo.findOne({ where: {} });
 
+      // A chosen server wins: it is only ever offered when Tracearr has several
+      // of the configured type and nothing can pick between them.
+      const serverId =
+        settings.server_id ??
+        (await this.tracearr.resolveServerId({
+          url: settings.url,
+          apiKey: settings.api_key,
+        }));
+      if (!serverId) {
+        return {
+          status: 'NOK',
+          code: 0,
+          message: `Tracearr has no single ${this.settingsDataService.media_server_type ?? 'media'} server matching the one Maintainerr manages. Add it in Tracearr and let it sync a library first, or pick the server to use.`,
+        };
+      }
+
+      // A chosen server is checked rather than trusted: rating keys from the
+      // wrong server match nothing, and every rule would read as unwatched.
+      const sharesLibrary = await this.tracearr.serverSharesLibrary(
+        { url: settings.url, apiKey: settings.api_key },
+        serverId,
+      );
+      if (sharesLibrary === false) {
+        return {
+          status: 'NOK',
+          code: 0,
+          message:
+            'That Tracearr server tracks a different media server than the one Maintainerr manages. Pick the Tracearr server for this media server.',
+        };
+      }
+
       await this.settingsDataService.saveSettings({
         ...settingsDb,
         tracearr_url: settings.url,
         tracearr_api_key: settings.api_key,
-        tracearr_server_id: settings.server_id,
+        tracearr_server_id: serverId,
       });
 
       await this.settingsDataService.init();
@@ -389,17 +420,50 @@ export class SettingsOperationsService {
     }
   }
 
-  public testTracearr(settings: TracearrSetting): Promise<BasicResponseDto> {
-    return this.tracearr.testConnection({
-      url: settings.url,
-      apiKey: settings.api_key,
-    });
+  /**
+   * Settings resolved against the media server go stale when Maintainerr is
+   * re-pointed at another instance of the same type: the type is unchanged, so
+   * the switch path never runs.
+   */
+  private async revalidateMediaServerDependentSettings(): Promise<void> {
+    try {
+      // The swept history, the resolved server and its verification all
+      // describe the previous connection, so they go regardless of what the
+      // check below concludes. Keeping them would let the next run read the
+      // old server from memory without probing it again.
+      this.tracearr.invalidateHistory();
+
+      if ((await this.tracearr.savedServerTracksMediaServer()) !== false) {
+        return;
+      }
+
+      const settingsDb = await this.settingsRepo.findOne({ where: {} });
+      await this.settingsDataService.saveSettings({
+        ...settingsDb,
+        tracearr_server_id: null,
+      });
+      await this.settingsDataService.init();
+
+      this.logger.log(
+        'Cleared the selected Tracearr server: it tracks a different media server than the one now configured.',
+      );
+    } catch (error) {
+      // The settings are already saved; this check must not fail that.
+      this.logger.debug(error);
+    }
   }
 
   public getTracearrServers(
     settings: TracearrConnection,
   ): Promise<TracearrServer[] | undefined> {
     return this.tracearr.getServers({
+      url: settings.url,
+      apiKey: settings.api_key,
+    });
+  }
+
+  public testTracearr(settings: TracearrSetting): Promise<BasicResponseDto> {
+    return this.tracearr.testConnection({
       url: settings.url,
       apiKey: settings.api_key,
     });
@@ -612,6 +676,8 @@ export class SettingsOperationsService {
       // Streamystats uses the Jellyfin API key + server identity. Re-init so
       // the cached client and resolved serverId track the new credentials.
       this.streamystats.init();
+
+      await this.revalidateMediaServerDependentSettings();
 
       this.logger.log('Jellyfin settings saved successfully');
       return { status: 'OK', code: 1, message: 'Success' };
@@ -849,6 +915,8 @@ export class SettingsOperationsService {
       this.mediaServerFactory.uninitializeServer(MediaServerType.EMBY);
 
       await this.settingsDataService.init();
+
+      await this.revalidateMediaServerDependentSettings();
 
       this.logger.log('Emby settings saved successfully');
       return { status: 'OK', code: 1, message: 'Success' };
@@ -1251,6 +1319,13 @@ export class SettingsOperationsService {
       merged.plex_hostname = normalizedPlexServerSettings.hostname;
       merged.plex_ssl = normalizedPlexServerSettings.ssl;
 
+      // Plex is the only media server configured through this endpoint; the
+      // others have their own save paths.
+      const mediaServerConnectionChanged = this.isPlexServerSettingsUpdate(
+        settingsDb,
+        merged,
+      );
+
       await this.settingsDataService.saveSettings(merged);
 
       await this.settingsDataService.init();
@@ -1260,6 +1335,10 @@ export class SettingsOperationsService {
       this.tautulli.init();
       this.downloadClient.init();
       this.internalApi.init();
+
+      if (mediaServerConnectionChanged) {
+        await this.revalidateMediaServerDependentSettings();
+      }
 
       // reload Collection handler job if changed
       if (

@@ -40,6 +40,7 @@ import { ValueGetterService } from '../src/modules/rules/getter/getter.service';
 import { RuleComparatorServiceFactory } from '../src/modules/rules/helpers/rule.comparator.service';
 import { RuleYamlService } from '../src/modules/rules/helpers/yaml.service';
 import { RulesController } from '../src/modules/rules/rules.controller';
+import { ExecutionLockService } from '../src/modules/tasks/execution-lock.service';
 import { RulesService } from '../src/modules/rules/rules.service';
 import { RuleExecutorJobManagerService } from '../src/modules/rules/tasks/rule-executor-job-manager.service';
 import { RuleExecutorSchedulerService } from '../src/modules/rules/tasks/rule-executor-scheduler.service';
@@ -775,6 +776,7 @@ async function bootstrapApp(): Promise<INestApplication> {
       RulesService,
       RuleComparatorServiceFactory,
       RuleConstanstService,
+      ExecutionLockService,
       {
         provide: ValueGetterService,
         useValue: valueGetter,

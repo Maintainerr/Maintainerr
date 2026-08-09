@@ -40,7 +40,10 @@ export interface ExternalServiceFieldConfig {
   label: string
   type?: 'text' | 'password' | 'select'
   placeholder?: string
-  helpText?: JSX.Element | string
+  // A function receives the current form values, so a field can point at the
+  // service the user is configuring rather than at generic documentation.
+  helpText?:
+    JSX.Element | string | ((values: SettingsValues) => JSX.Element | string)
   normalize?: (value: string) => string
   required?: boolean
   options?: ExternalServiceSelectOption[]
@@ -69,10 +72,35 @@ interface ExternalServiceSettingsPageProps {
   testFailureMessage: string
 }
 
+// Selects are resolved for the user and can be hidden, so one holding a value
+// must not stop a cleared form from counting as a removal.
 const allEmpty = (
   values: SettingsValues,
   fields: ExternalServiceFieldConfig[],
-) => fields.every((field) => (values[field.name] ?? '') === '')
+) =>
+  fields
+    .filter((field) => field.type !== 'select')
+    .every((field) => (values[field.name] ?? '') === '')
+
+// An unchosen select is '' in the form but "not provided" to the API, and a
+// schema that accepts an optional id still rejects an empty string. The field
+// is hidden whenever the backend can resolve the value itself, so this is the
+// normal path rather than an edge case.
+const withoutEmptySelects = (
+  values: SettingsValues,
+  fields: ExternalServiceFieldConfig[],
+): SettingsValues => {
+  const emptySelects = new Set(
+    fields
+      .filter((field) => field.type === 'select')
+      .map((field) => field.name),
+  )
+  return Object.fromEntries(
+    Object.entries(values).filter(
+      ([name, value]) => !(emptySelects.has(name) && value === ''),
+    ),
+  )
+}
 
 const valuesEqual = (a: SettingsValues, b: SettingsValues): boolean =>
   Object.keys(a).length === Object.keys(b).length &&
@@ -103,7 +131,7 @@ const ExternalServiceSettingsPage = ({
   >({})
   const loadingOptionFieldNamesRef = useRef(new Set<string>())
   const selectOptionsVersionRef = useRef(0)
-  const { feedback, showUpdated, showUpdateError, clearError } =
+  const { feedback, showUpdated, showUpdateError, showError, clearError } =
     useSettingsFeedback(scope)
 
   const {
@@ -213,7 +241,7 @@ const ExternalServiceSettingsPage = ({
       return true
     }
 
-    const result = schema.safeParse(values)
+    const result = schema.safeParse(withoutEmptySelects(values, fields))
 
     if (result.success) {
       clearErrors()
@@ -237,7 +265,7 @@ const ExternalServiceSettingsPage = ({
   }
 
   const onSubmit = async () => {
-    const data = getValues()
+    const data = withoutEmptySelects(getValues(), fields)
 
     clearError()
 
@@ -255,6 +283,14 @@ const ExternalServiceSettingsPage = ({
       if (response.code) {
         reset(data)
         showUpdated()
+        return
+      }
+
+      // Most services answer a bare "Failed", which says less than the scoped
+      // message; only a specific one is worth showing instead.
+      const reason = normalizeConnectionErrorMessage(response.message, '')
+      if (reason) {
+        showError(reason)
       } else {
         showUpdateError()
       }
@@ -264,7 +300,7 @@ const ExternalServiceSettingsPage = ({
   }
 
   const performTest = async () => {
-    const values = getValues()
+    const values = withoutEmptySelects(getValues(), fields)
 
     if (testing || !validateValues(values)) {
       return
@@ -362,6 +398,21 @@ const ExternalServiceSettingsPage = ({
                           ]
                         : options
 
+                    // One candidate is not a choice: the backend resolves that
+                    // case itself, so the field would only ask the user to
+                    // confirm something that cannot vary. It stays hidden while
+                    // the options load as well, since appearing and then
+                    // vanishing reads as a glitch. An error is the exception,
+                    // because it would otherwise have nowhere to appear.
+                    const optionsLoaded =
+                      loadedOptionsByFieldName[fieldConfig.name] !== undefined
+                    if (
+                      !error &&
+                      (!optionsLoaded || selectOptions.length < 2)
+                    ) {
+                      return <></>
+                    }
+
                     return (
                       <SelectGroup
                         label={fieldConfig.label}
@@ -385,7 +436,11 @@ const ExternalServiceSettingsPage = ({
                         ref={field.ref}
                         name={field.name}
                         error={error}
-                        helpText={fieldConfig.helpText ?? undefined}
+                        helpText={
+                          typeof fieldConfig.helpText === 'function'
+                            ? fieldConfig.helpText(currentValues)
+                            : (fieldConfig.helpText ?? undefined)
+                        }
                         required={fieldConfig.required}
                         disabled={loadingOptionsByFieldName[fieldConfig.name]}
                       >
@@ -432,7 +487,11 @@ const ExternalServiceSettingsPage = ({
                       name={field.name}
                       type={fieldConfig.type ?? 'text'}
                       error={error}
-                      helpText={fieldConfig.helpText ?? undefined}
+                      helpText={
+                        typeof fieldConfig.helpText === 'function'
+                          ? fieldConfig.helpText(currentValues)
+                          : (fieldConfig.helpText ?? undefined)
+                      }
                       required={fieldConfig.required}
                     />
                   )
