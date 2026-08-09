@@ -202,52 +202,6 @@ describe('ExternalServiceSettingsPage', () => {
     })
   })
 
-  it('shows a warning only when an integration is not configured', async () => {
-    getApiHandler.mockResolvedValue({ url: '', api_key: '' })
-
-    render(
-      <ExternalServiceSettingsPage
-        scope="Tracearr settings"
-        pageTitle="Tracearr settings - Maintainerr"
-        heading="Tracearr Settings"
-        description="Tracearr configuration"
-        warning="Tracearr is not configured"
-        docsPage="Configuration/#tracearr"
-        settingsPath="/settings/tracearr"
-        testPath="/settings/test/tracearr"
-        schema={urlApiKeySchema}
-        fields={urlApiKeyFields}
-        testSuccessTitle="Tracearr"
-        testFailureMessage="Failed to connect"
-      />,
-    )
-
-    expect(await screen.findByText('Tracearr is not configured')).not.toBeNull()
-  })
-
-  it('hides the setup warning for configured integrations', async () => {
-    render(
-      <ExternalServiceSettingsPage
-        scope="Tracearr settings"
-        pageTitle="Tracearr settings - Maintainerr"
-        heading="Tracearr Settings"
-        description="Tracearr configuration"
-        warning="Tracearr is not configured"
-        docsPage="Configuration/#tracearr"
-        settingsPath="/settings/tracearr"
-        testPath="/settings/test/tracearr"
-        schema={urlApiKeySchema}
-        fields={urlApiKeyFields}
-        testSuccessTitle="Tracearr"
-        testFailureMessage="Failed to connect"
-      />,
-    )
-
-    await screen.findByDisplayValue('http://seerr.local')
-
-    expect(screen.queryByText('Tracearr is not configured')).toBeNull()
-  })
-
   it('loads select options after connection fields are available', async () => {
     // The picker only renders when there is a real choice to make.
     postApiHandler.mockResolvedValue([

@@ -62,7 +62,6 @@ interface ExternalServiceSettingsPageProps {
   pageTitle: string
   heading: string
   description: ReactNode
-  warning?: ReactNode
   docsPage: string
   settingsPath: string
   testPath: string
@@ -111,7 +110,6 @@ const ExternalServiceSettingsPage = ({
   pageTitle,
   heading,
   description,
-  warning,
   docsPage,
   settingsPath,
   testPath,
@@ -343,11 +341,8 @@ const ExternalServiceSettingsPage = ({
         </div>
 
         <SettingsAlertSlot>
-          {warning || feedback || testResult ? (
+          {feedback || testResult ? (
             <div className="space-y-4">
-              {!isLoading && isGoingToRemove && warning ? (
-                <Alert type="warning" title={warning} />
-              ) : null}
               {feedback ? (
                 <Alert type={feedback.type} title={feedback.title} />
               ) : null}

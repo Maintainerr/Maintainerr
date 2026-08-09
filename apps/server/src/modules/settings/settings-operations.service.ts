@@ -677,7 +677,12 @@ export class SettingsOperationsService {
       // the cached client and resolved serverId track the new credentials.
       this.streamystats.init();
 
-      await this.revalidateMediaServerDependentSettings();
+      if (
+        settingsDb?.jellyfin_url !== settings.jellyfin_url ||
+        settingsDb?.jellyfin_api_key !== settings.jellyfin_api_key
+      ) {
+        await this.revalidateMediaServerDependentSettings();
+      }
 
       this.logger.log('Jellyfin settings saved successfully');
       return { status: 'OK', code: 1, message: 'Success' };
@@ -916,7 +921,12 @@ export class SettingsOperationsService {
 
       await this.settingsDataService.init();
 
-      await this.revalidateMediaServerDependentSettings();
+      if (
+        settingsDb?.emby_url !== settings.emby_url ||
+        settingsDb?.emby_api_key !== settings.emby_api_key
+      ) {
+        await this.revalidateMediaServerDependentSettings();
+      }
 
       this.logger.log('Emby settings saved successfully');
       return { status: 'OK', code: 1, message: 'Success' };
