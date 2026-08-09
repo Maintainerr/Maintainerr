@@ -39,7 +39,8 @@ When implementing against any external API or SDK (Plex, Jellyfin, TypeORM, etc.
 #### Media server services
 
 - Plex (python-plexapi): https://python-plexapi.readthedocs.io/en/latest/index.html
-- Plex (OpenAPI): https://raw.githubusercontent.com/LukasParke/plex-api-spec/refs/heads/main/plex-api-spec.yaml
+- Plex (official PMS reference): https://developer.plex.tv/pms/ - authoritative for what Plex guarantees; rendered page only, no spec file to fetch
+- Plex (OpenAPI, community): https://raw.githubusercontent.com/LukasParke/plex-api-spec/refs/heads/main/plex-api-spec.yaml - machine-readable; its `required` lists are looser than the official reference (e.g. it requires `addedAt`, the official schema does not), so confirm guarantees against the official page
 - Jellyfin: https://api.jellyfin.org/
 
 ## Rules
