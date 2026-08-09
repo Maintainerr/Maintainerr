@@ -204,9 +204,9 @@ The diff review only covers our own code. A release can ship a
 vulnerable or compromised dependency without a single line of ours
 changing: Dependabot auto-merges non-major bumps once required checks
 pass (`dependabot_merge.yml`) and `.yarnrc.yml` sets
-`npmMinimalAgeGate: 0` (no cooling-off period for freshly published
-versions), so this step is the human review for everything that
-entered the release range that way.
+`npmMinimalAgeGate: 3d` (a short cooling-off period for freshly
+published versions, raised from 0 in #3439), so this step is the human
+review for everything that entered the release range that way.
 
 1. `yarn npm audit --all --recursive` - known advisories for the exact
    resolved versions. Triage by reachability, not raw severity: use

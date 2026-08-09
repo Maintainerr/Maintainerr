@@ -24,12 +24,11 @@ const fields: ExternalServiceFieldConfig[] = [
     required: true,
     // The field is still being typed, so it is only a link once it parses as a
     // service URL. Anything else, a javascript: value included, stays text.
-    helpText: (values) => {
-      const url = serviceUrlSchema.safeParse(values.url)
-      return url.success ? (
+    helpText: (values) =>
+      serviceUrlSchema.safeParse(values.url).success ? (
         <a
           className="underline"
-          href={`${url.data}/settings`}
+          href={`${stripTrailingSlashes(values.url)}/settings`}
           target="_blank"
           rel="noreferrer"
         >
@@ -37,8 +36,7 @@ const fields: ExternalServiceFieldConfig[] = [
         </a>
       ) : (
         'Find it in Tracearr under Settings, General, API Key.'
-      )
-    },
+      ),
   },
   // Only rendered when Tracearr has more than one server of the configured
   // media server's type, since that is the only case Maintainerr cannot
