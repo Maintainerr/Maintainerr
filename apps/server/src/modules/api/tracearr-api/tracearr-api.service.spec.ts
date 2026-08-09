@@ -950,36 +950,6 @@ describe('TracearrApiService', () => {
     expect(service.getUsernamesByTracearrUserId()).toBeUndefined();
   });
 
-  // An isolated unreadable item used to forfeit the whole probe, so a single
-  // timeout cost the run its Tracearr values even when later items confirmed
-  // the binding.
-  it('confirms a server despite an item it could not read', async () => {
-    Object.assign(settings, { media_server_type: MediaServerType.JELLYFIN });
-    let reads = 0;
-    mediaServerFactory.getService.mockResolvedValue({
-      getUsers: jest.fn().mockResolvedValue([{ id: 'account-1', name: 'a' }]),
-      getChildrenMetadata: jest.fn().mockResolvedValue([]),
-      getMetadata: jest.fn(async () => {
-        reads += 1;
-        return reads === 1
-          ? undefined
-          : {
-              title: 'Confirming Title',
-              addedAt: new Date('2026-01-01T00:00:00.000Z'),
-            };
-      }),
-      itemExists: jest.fn().mockRejectedValue(new Error('gateway timeout')),
-    } as never);
-    apiMock.getWithoutCache.mockResolvedValue(CONFIRMING_LIBRARY);
-
-    await expect(
-      service.serverSharesLibrary(
-        { url: 'http://tracearr.local', apiKey: 'trr_pub_token' },
-        SERVER_ID,
-      ),
-    ).resolves.toBe(true);
-  });
-
   it('reports a failed Tracearr server discovery', async () => {
     apiMock.getRawWithoutCache.mockRejectedValue(new Error('Unauthorized'));
 

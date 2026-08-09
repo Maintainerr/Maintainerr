@@ -29,7 +29,6 @@ import {
   TRACEARR_HISTORY_MAX_RECORDS,
   TRACEARR_PAGE_SIZE,
   TRACEARR_SERVER_MATCH_THRESHOLD,
-  TRACEARR_SERVER_PROBE_FAILURE_LIMIT,
   TRACEARR_SERVER_PROBE_MINIMUM,
   TRACEARR_SERVER_PROBE_SIZE,
 } from './tracearr-api.constants';
@@ -225,7 +224,6 @@ export class TracearrApiService {
     const mediaServer = await this.mediaServerFactory.getService();
     let matches = 0;
     let contradictions = 0;
-    let unreadable = 0;
     for (const item of parsed.data.data) {
       if (!item.rating_key) {
         continue;
@@ -275,13 +273,7 @@ export class TracearrApiService {
           contradictions += 1;
         }
       } catch {
-        // One unreadable item is not a verdict on the server, so keep checking
-        // the rest. Several are, and probing a dead server 20 times over only
-        // delays the same answer.
-        unreadable += 1;
-        if (unreadable >= TRACEARR_SERVER_PROBE_FAILURE_LIMIT) {
-          return undefined;
-        }
+        return undefined;
       }
     }
 

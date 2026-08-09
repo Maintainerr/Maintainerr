@@ -17,10 +17,6 @@ export const TRACEARR_SERVER_MATCH_THRESHOLD = 2;
 // server whose few recent items happen to have been deleted since.
 export const TRACEARR_SERVER_PROBE_MINIMUM = 5;
 
-// Unreadable items that end a probe. Below this an isolated timeout is skipped
-// rather than forfeiting the evidence the other items already gave.
-export const TRACEARR_SERVER_PROBE_FAILURE_LIMIT = 3;
-
 // Tracearr can only filter history by server, not by Maintainerr library. Keep
 // the server-wide snapshot within the same 500k-record ceiling as the
 // library-scoped Plex and Jellyfin snapshots (#3284, #3368). The rule getter

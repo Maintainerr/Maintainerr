@@ -1,4 +1,5 @@
 import {
+  serviceUrlSchema,
   stripTrailingSlashes,
   type TracearrServer,
   tracearrSettingSchema,
@@ -21,14 +22,14 @@ const fields: ExternalServiceFieldConfig[] = [
     label: 'API key',
     type: 'password',
     required: true,
-    // Only a real web URL becomes a link: the field is unvalidated while it is
-    // being typed, and any other scheme would still render as clickable.
-    helpText: (values) =>
-      values.url?.startsWith('http://') ||
-      values.url?.startsWith('https://') ? (
+    // The field is still being typed, so it is only a link once it parses as a
+    // service URL. Anything else, a javascript: value included, stays text.
+    helpText: (values) => {
+      const url = serviceUrlSchema.safeParse(values.url)
+      return url.success ? (
         <a
           className="underline"
-          href={`${stripTrailingSlashes(values.url)}/settings`}
+          href={`${url.data}/settings`}
           target="_blank"
           rel="noreferrer"
         >
@@ -36,7 +37,8 @@ const fields: ExternalServiceFieldConfig[] = [
         </a>
       ) : (
         'Find it in Tracearr under Settings, General, API Key.'
-      ),
+      )
+    },
   },
   // Only rendered when Tracearr has more than one server of the configured
   // media server's type, since that is the only case Maintainerr cannot
