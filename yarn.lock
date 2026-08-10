@@ -3123,7 +3123,7 @@ __metadata:
     octokit: "npm:^3.2.2"
     openpgp: "npm:^6.3.1"
     prettier: "npm:^3.9.6"
-    read-last-lines: "npm:^1.8.0"
+    read-last-lines: "npm:^1.10.0"
     reflect-metadata: "npm:^0.2.2"
     rxjs: "npm:^7.8.2"
     sharp: "npm:^0.35.3"
@@ -14678,7 +14678,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"mz@npm:^2.4.0, mz@npm:^2.7.0":
+"mz@npm:^2.4.0":
   version: 2.7.0
   resolution: "mz@npm:2.7.0"
   dependencies:
@@ -16700,12 +16700,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"read-last-lines@npm:^1.8.0":
-  version: 1.8.0
-  resolution: "read-last-lines@npm:1.8.0"
-  dependencies:
-    mz: "npm:^2.7.0"
-  checksum: 10c0/c1431136bad1ce85ce9d7e63ab5a20839de09226c5699f01bba3ce8cba1c2d83fa17e6a46d4d2c33f69fd8dafccb2bf91e061406909a35cc86a01704db650b0c
+"read-last-lines@npm:^1.10.0":
+  version: 1.10.0
+  resolution: "read-last-lines@npm:1.10.0"
+  checksum: 10c0/493d43cac0a1c141970c0eed2505d5cb7737e4bebdf0314b91ed15779dcf07bf4da47d8fdd9762ad0974d0b2c70405c97103be397cb0bb766f1c539db3ae6dec
   languageName: node
   linkType: hard
 
