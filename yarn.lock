@@ -13760,7 +13760,7 @@ __metadata:
     "@semantic-release/git": "npm:^11.0.1"
     "@types/node": "npm:^26.1.2"
     knip: "npm:^6.31.0"
-    semantic-release: "npm:^25.0.8"
+    semantic-release: "npm:^25.0.9"
     turbo: "npm:^2.10.8"
     typescript: "npm:^6.0.3"
   languageName: unknown
@@ -17287,9 +17287,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"semantic-release@npm:^25.0.8":
-  version: 25.0.8
-  resolution: "semantic-release@npm:25.0.8"
+"semantic-release@npm:^25.0.9":
+  version: 25.0.9
+  resolution: "semantic-release@npm:25.0.9"
   dependencies:
     "@semantic-release/commit-analyzer": "npm:^13.0.1"
     "@semantic-release/error": "npm:^4.0.0"
@@ -17321,7 +17321,7 @@ __metadata:
     yargs: "npm:^18.0.0"
   bin:
     semantic-release: bin/semantic-release.js
-  checksum: 10c0/837211f18fcef80f93fa60999f7f4da72c12604097518f1fe3fc7aad4efebbdd5930d02fed1865a1efe9124d588ea01e2e4f4fa09f471a13a05a7628efe0daf3
+  checksum: 10c0/00ef3109206c023678c3b8771bb2985d2911cf990868a54d8e4302d08664b3246636e9f2a3e4f7cbe162eab5dfbeae7535a92381aa60b00a1d893375e3fc4b0d
   languageName: node
   linkType: hard
 
