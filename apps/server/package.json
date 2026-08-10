@@ -54,7 +54,7 @@
     "nodemailer": "9.0.4",
     "octokit": "^3.2.2",
     "openpgp": "^6.3.1",
-    "read-last-lines": "^1.8.0",
+    "read-last-lines": "^1.10.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",
     "sharp": "^0.35.3",
