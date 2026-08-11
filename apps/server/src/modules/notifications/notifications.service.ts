@@ -744,12 +744,20 @@ export class NotificationService implements OnModuleInit {
     payload.extra.push({ name: 'dayAmount', value: dayAmount?.toString() });
     payload.extra.push({
       name: 'mediaItems',
-      // Keep the wire shape lean; the metadata snapshot is only for internal
-      // title rendering. `requestedBy` is the exception: an external workflow
-      // needs it to know who to ask before the item is deleted.
+      // Keep the wire shape lean; the metadata snapshot stays internal except
+      // what an external workflow needs: `requestedBy` to know who to ask
+      // before deletion, and `type`/`title`/`providerIds` to still identify
+      // the item after deletion invalidates its media server id.
       value: JSON.stringify(
         mediaItems?.map((item) => ({
           mediaServerId: item.mediaServerId,
+          ...(item.metadata
+            ? {
+                type: item.metadata.type,
+                title: item.metadata.title,
+                providerIds: item.metadata.providerIds,
+              }
+            : {}),
           ...(item.requestedBy?.length
             ? { requestedBy: item.requestedBy }
             : {}),

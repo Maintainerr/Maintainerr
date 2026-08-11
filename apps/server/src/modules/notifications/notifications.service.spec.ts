@@ -233,6 +233,47 @@ describe('NotificationService', () => {
     });
   });
 
+  describe('media identity on the wire', () => {
+    it('puts type, title and provider ids on the wire when the snapshot resolved', async () => {
+      const { service } = createService();
+      const sendNotification = jest
+        .spyOn(service, 'sendNotification')
+        .mockResolvedValue(undefined);
+
+      await service.handleNotification(
+        NotificationType.MEDIA_ABOUT_TO_BE_HANDLED,
+        [
+          {
+            mediaServerId: '1',
+            metadata: {
+              title: 'A Sample Movie',
+              type: 'movie',
+              providerIds: { imdb: ['tt0111161'], tmdb: ['278'], tvdb: [] },
+            } as any,
+          },
+          { mediaServerId: '2' },
+        ],
+        undefined,
+        3,
+      );
+
+      const payload = sendNotification.mock.calls[0][1];
+      const mediaItems = JSON.parse(
+        payload.extra!.find((e) => e.name === 'mediaItems')!.value,
+      );
+
+      expect(mediaItems).toEqual([
+        {
+          mediaServerId: '1',
+          type: 'movie',
+          title: 'A Sample Movie',
+          providerIds: { imdb: ['tt0111161'], tmdb: ['278'], tvdb: [] },
+        },
+        { mediaServerId: '2' },
+      ]);
+    });
+  });
+
   describe('media handled title snapshot (#3249)', () => {
     it('renders the pre-resolved title without a live lookup when the item is gone', async () => {
       // A delete action removes the item from the media server, so a live
