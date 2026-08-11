@@ -1,6 +1,6 @@
 import { MaintainerrEvent } from '@maintainerr/contracts';
 import { ServiceUnavailableException } from '@nestjs/common';
-import { createMockLogger } from '../../../test/utils/data';
+import { createMediaItem, createMockLogger } from '../../../test/utils/data';
 import {
   CollectionMediaAddedDto,
   CollectionMediaRemovedDto,
@@ -204,8 +204,10 @@ describe('NotificationService', () => {
       expect(content).toContain('(requested by alice)');
       expect(content).not.toContain('{requested_by}');
     });
+  });
 
-    it('puts the requester on the wire for external approval workflows', async () => {
+  describe('media items on the wire', () => {
+    it('carries the identity an external workflow needs, and nothing else', async () => {
       const { service } = createService();
       const sendNotification = jest
         .spyOn(service, 'sendNotification')
@@ -214,7 +216,15 @@ describe('NotificationService', () => {
       await service.handleNotification(
         NotificationType.MEDIA_ABOUT_TO_BE_HANDLED,
         [
-          { mediaServerId: '1', requestedBy: ['alice'] },
+          {
+            mediaServerId: '1',
+            metadata: createMediaItem({
+              title: 'A Sample Movie',
+              type: 'movie',
+              providerIds: { imdb: ['tt0111161'], tmdb: ['278'], tvdb: [] },
+            }),
+            requestedBy: ['alice'],
+          },
           { mediaServerId: '2' },
         ],
         undefined,
@@ -227,9 +237,85 @@ describe('NotificationService', () => {
       );
 
       expect(mediaItems).toEqual([
-        { mediaServerId: '1', requestedBy: ['alice'] },
+        {
+          mediaServerId: '1',
+          type: 'movie',
+          title: 'A Sample Movie',
+          providerIds: { imdb: ['tt0111161'], tmdb: ['278'], tvdb: [] },
+          requestedBy: ['alice'],
+        },
         { mediaServerId: '2' },
       ]);
+    });
+
+    it('titles an item on the wire exactly as the message does', async () => {
+      const { service } = createService();
+      const sendNotification = jest
+        .spyOn(service, 'sendNotification')
+        .mockResolvedValue(undefined);
+
+      await service.handleNotification(
+        NotificationType.MEDIA_HANDLED,
+        [
+          {
+            mediaServerId: '1',
+            metadata: createMediaItem({
+              type: 'season',
+              parentTitle: 'Sample Series',
+              title: 'Season 1',
+              index: 1,
+            }),
+          },
+          // Jellyfin files an unnumbered season under "Season Unknown"; naming
+          // it beats rendering "season undefined".
+          {
+            mediaServerId: '2',
+            metadata: createMediaItem({
+              type: 'season',
+              parentTitle: 'Sample Series',
+              title: 'Season Unknown',
+              index: undefined,
+            }),
+          },
+          {
+            mediaServerId: '3',
+            metadata: createMediaItem({
+              type: 'episode',
+              grandparentTitle: 'Sample Series',
+              title: 'A Sample Episode',
+              index: undefined,
+              parentIndex: undefined,
+            }),
+          },
+          // A sports library names the episode after the show already.
+          {
+            mediaServerId: '4',
+            metadata: createMediaItem({
+              type: 'episode',
+              grandparentTitle: 'Sample Series',
+              title: 'Sample Series - S2026E01 - A Sample Event',
+              index: undefined,
+              parentIndex: undefined,
+            }),
+          },
+        ],
+        'A Sample Collection',
+      );
+
+      const payload = sendNotification.mock.calls[0][1];
+      const mediaItems: { title: string }[] = JSON.parse(
+        payload.extra!.find((e) => e.name === 'mediaItems')!.value,
+      );
+
+      expect(mediaItems.map((item) => item.title)).toEqual([
+        'Sample Series - season 1',
+        'Sample Series - Season Unknown',
+        'Sample Series - A Sample Episode',
+        'Sample Series - S2026E01 - A Sample Event',
+      ]);
+      for (const { title } of mediaItems) {
+        expect(payload.message).toContain(`* ${title}`);
+      }
     });
   });
 

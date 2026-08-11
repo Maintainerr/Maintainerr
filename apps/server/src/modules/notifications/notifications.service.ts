@@ -744,12 +744,24 @@ export class NotificationService implements OnModuleInit {
     payload.extra.push({ name: 'dayAmount', value: dayAmount?.toString() });
     payload.extra.push({
       name: 'mediaItems',
-      // Keep the wire shape lean; the metadata snapshot is only for internal
-      // title rendering. `requestedBy` is the exception: an external workflow
-      // needs it to know who to ask before the item is deleted.
+      // The identity an external workflow needs, and nothing else from the
+      // snapshot: `requestedBy` to know who to ask before deletion, and
+      // `type`/`title`/`providerIds` to still identify the item once deletion
+      // has invalidated its media server id. `title` is the message's own
+      // rendering, so both name the item the same way. `providerIds` are the
+      // item's own: a season or episode carries season/episode-scoped ids (a
+      // TVDB season id, not the series one), so a consumer keying a show-level
+      // list off them has to resolve the series itself.
       value: JSON.stringify(
         mediaItems?.map((item) => ({
           mediaServerId: item.mediaServerId,
+          ...(item.metadata
+            ? {
+                type: item.metadata.type,
+                title: this.getTitle(item.metadata),
+                providerIds: item.metadata.providerIds,
+              }
+            : {}),
           ...(item.requestedBy?.length
             ? { requestedBy: item.requestedBy }
             : {}),
@@ -1062,12 +1074,26 @@ export class NotificationService implements OnModuleInit {
     // "undefined - season undefined".
     switch (item.type) {
       case 'episode':
-        return `${item.grandparentTitle} - season ${item.parentIndex} - episode ${item.index}`;
+        return item.parentIndex != null && item.index != null
+          ? `${item.grandparentTitle} - season ${item.parentIndex} - episode ${item.index}`
+          : this.underShow(item.grandparentTitle, item.title);
       case 'season':
-        return `${item.parentTitle} - season ${item.index}`;
+        return item.index != null
+          ? `${item.parentTitle} - season ${item.index}`
+          : this.underShow(item.parentTitle, item.title);
       default:
         return item.title;
     }
+  }
+
+  /**
+   * A library can leave the season/episode number unset - Jellyfin files those
+   * under a "Season Unknown" container - so name the item itself rather than
+   * render "season undefined". A sports or PVR library tends to name the
+   * episode after the show already, so don't repeat the show in that case.
+   */
+  private underShow(show: string | undefined, title: string): string {
+    return show && !title.startsWith(show) ? `${show} - ${title}` : title;
   }
 
   // OnEvent handlers
