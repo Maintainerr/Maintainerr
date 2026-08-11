@@ -34,10 +34,10 @@
     "@semantic-release/commit-analyzer": "^13.0.1",
     "@semantic-release/exec": "^7.1.0",
     "@semantic-release/git": "^11.0.1",
-    "@types/node": "^26.1.2",
+    "@types/node": "^26.2.0",
     "knip": "^6.32.0",
     "semantic-release": "^25.0.9",
-    "turbo": "^2.10.8",
+    "turbo": "^2.10.9",
     "typescript": "^6.0.3"
   },
   "release": {
