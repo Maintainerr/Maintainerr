@@ -10,7 +10,6 @@ import {
   createCollectionMedia,
 } from '../../../test/utils/data';
 import { MaintainerrLogger } from '../logging/logs.service';
-import { RuleExecutorJobManagerService } from '../rules/tasks/rule-executor-job-manager.service';
 import {
   ExecutionLockService,
   RULES_COLLECTIONS_EXECUTION_LOCK_KEY,
@@ -50,13 +49,10 @@ describe('CollectionsController', () => {
     execute: jest.fn(),
   } as unknown as jest.Mocked<CollectionWorkerService>;
 
-  const ruleExecutorJobManagerService = {
-    isProcessing: jest.fn(),
-  } as unknown as jest.Mocked<RuleExecutorJobManagerService>;
-
   const executionLock = {
     tryAcquire: jest.fn(),
     acquireWithin: jest.fn(),
+    isRuleQueueProcessing: jest.fn(),
   } as unknown as jest.Mocked<ExecutionLockService>;
 
   const collectionHandler = {
@@ -80,7 +76,6 @@ describe('CollectionsController', () => {
     controller = new CollectionsController(
       collectionsService,
       collectionWorkerService,
-      ruleExecutorJobManagerService,
       executionLock,
       collectionHandler,
       collectionPosterService,
@@ -88,7 +83,7 @@ describe('CollectionsController', () => {
     );
 
     collectionWorkerService.isRunning.mockReturnValue(false);
-    ruleExecutorJobManagerService.isProcessing.mockReturnValue(false);
+    executionLock.isRuleQueueProcessing.mockReturnValue(false);
     executionLock.tryAcquire.mockReturnValue(jest.fn());
     collectionPosterService.pushToMediaServer.mockResolvedValue({
       attempted: true,
@@ -451,7 +446,7 @@ describe('CollectionsController', () => {
   });
 
   it('rejects item handling while the rule executor is running', async () => {
-    ruleExecutorJobManagerService.isProcessing.mockReturnValue(true);
+    executionLock.isRuleQueueProcessing.mockReturnValue(true);
 
     await expect(
       controller.handleCollectionMedia({

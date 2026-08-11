@@ -36,10 +36,12 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { InjectRepository } from '@nestjs/typeorm';
 import { Response } from 'express';
 import * as fs from 'fs';
 import { ZodValidationPipe } from 'nestjs-zod';
 import * as path from 'path';
+import { Repository } from 'typeorm';
 import {
   isSharpAvailable,
   sharp,
@@ -51,7 +53,8 @@ import {
 } from '@maintainerr/contracts';
 import { dataDir as configDataDir } from '../../app/config/dataDir';
 import { MediaServerSetupGuard } from '../api/media-server/guards/media-server-setup.guard';
-import { CollectionsService } from '../collections/collections.service';
+import { Collection } from '../collections/entities/collection.entities';
+import { CollectionMedia } from '../collections/entities/collection_media.entities';
 import { MaintainerrLogger } from '../logging/logs.service';
 import { OverlayProcessorService } from './overlay-processor.service';
 import { OverlaySettingsService } from './overlay-settings.service';
@@ -81,7 +84,10 @@ export class OverlaysController {
     private readonly taskService: OverlayTaskService,
     private readonly templateService: OverlayTemplateService,
     private readonly providerFactory: OverlayProviderFactory,
-    private readonly collectionsService: CollectionsService,
+    @InjectRepository(Collection)
+    private readonly collectionRepo: Repository<Collection>,
+    @InjectRepository(CollectionMedia)
+    private readonly collectionMediaRepo: Repository<CollectionMedia>,
     private readonly logger: MaintainerrLogger,
   ) {
     this.logger.setContext(OverlaysController.name);
@@ -218,17 +224,18 @@ export class OverlaysController {
       );
     }
 
-    const collection =
-      await this.collectionsService.getCollection(collectionId);
+    const collection = await this.collectionRepo.findOne({
+      where: { id: collectionId },
+    });
     if (!collection) {
       throw new HttpException('Collection not found', HttpStatus.NOT_FOUND);
     }
 
     // Ensure collectionMedia is loaded
     if (!collection.collectionMedia) {
-      const media =
-        await this.collectionsService.getCollectionMedia(collectionId);
-      collection.collectionMedia = media ?? [];
+      collection.collectionMedia = await this.collectionMediaRepo.find({
+        where: { collectionId },
+      });
     }
 
     const result = await this.processorService.processCollection(collection);

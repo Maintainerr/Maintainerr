@@ -40,9 +40,9 @@ describe('RuleExecutorJobManagerService', () => {
       emit: jest.fn(),
     };
 
-    const executionLock = {
-      acquire: jest.fn().mockResolvedValue(jest.fn()),
-    } as unknown as ExecutionLockService;
+    // The real lock also carries the rule-queue flag the manager owns.
+    const executionLock = new ExecutionLockService();
+    jest.spyOn(executionLock, 'acquire').mockResolvedValue(jest.fn());
 
     const mediaServerFactory = {
       verifyConnection: jest.fn().mockResolvedValue({}),

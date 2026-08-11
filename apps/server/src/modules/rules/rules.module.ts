@@ -1,4 +1,4 @@
-import { Module, forwardRef } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ActionsModule } from '../actions/actions.module';
 import { MediaServerModule } from '../api/media-server/media-server.module';
@@ -72,7 +72,7 @@ import { RuleMaintenanceService } from './tasks/rule-maintenance.service';
     TracearrApiModule,
     MetadataModule,
     ActionsModule,
-    forwardRef(() => CollectionsModule),
+    CollectionsModule,
     TasksModule,
   ],
   providers: [

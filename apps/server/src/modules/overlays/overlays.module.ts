@@ -1,7 +1,8 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { MediaServerModule } from '../api/media-server/media-server.module';
-import { CollectionsModule } from '../collections/collections.module';
+import { Collection } from '../collections/entities/collection.entities';
+import { CollectionMedia } from '../collections/entities/collection_media.entities';
 import { LogsModule } from '../logging/logs.module';
 import { TasksModule } from '../tasks/tasks.module';
 import { OverlayItemStateEntity } from './entities/overlay-item-state.entities';
@@ -22,13 +23,15 @@ import { OverlayProviderModule } from './providers/overlay-provider.module';
       OverlaySettingsEntity,
       OverlayItemStateEntity,
       OverlayTemplateEntity,
+      // Read-only, so the module needs no dependency on CollectionsModule.
+      Collection,
+      CollectionMedia,
     ]),
     // MediaServerModule is imported because the controller uses its
     // MediaServerSetupGuard. OverlayProviderModule handles the rest of the
     // server-specific wiring (Plex/Jellyfin providers + the factory).
     MediaServerModule,
     OverlayProviderModule,
-    CollectionsModule,
     TasksModule,
     LogsModule,
   ],

@@ -1,4 +1,11 @@
-import { MaintainerrEvent, type OverlayTemplate } from '@maintainerr/contracts';
+import {
+  MaintainerrEvent,
+  ServarrAction,
+  type MediaItem,
+  type MediaItemType,
+  type OverlayTemplate,
+  type OverlayTemplateMode,
+} from '@maintainerr/contracts';
 import {
   createCollection,
   createCollectionMedia,
@@ -54,6 +61,33 @@ const makeMediaServerFactory = (
   getService: jest.fn().mockResolvedValue(mediaServer),
 });
 
+// The processor loads its own collections now.
+const makeCollectionRepos = (collections: any[] = []) => ({
+  collectionRepo: {
+    find: jest.fn().mockResolvedValue(collections),
+    findOne: jest
+      .fn()
+      .mockImplementation(({ where }) =>
+        collections.find((collection) => collection.id === where.id),
+      ),
+  },
+  collectionMediaRepo: {
+    find: jest
+      .fn()
+      .mockImplementation(
+        ({ where }) =>
+          collections.find((collection) => collection.id === where.collectionId)
+            ?.collectionMedia ?? [],
+      ),
+  },
+});
+
+const makeItem = (
+  id: string,
+  type: MediaItemType,
+  overrides: Partial<MediaItem> = {},
+): MediaItem => ({ id, type, ...overrides }) as MediaItem;
+
 describe('OverlayProcessorService', () => {
   it('processes collections with deleteAfterDays equal to zero', async () => {
     const settingsService = {
@@ -72,6 +106,7 @@ describe('OverlayProcessorService', () => {
     const service = new OverlayProcessorService(
       providerFactory as any,
       makeMediaServerFactory() as any,
+      {} as any,
       {} as any,
       settingsService as any,
       stateService as any,
@@ -131,6 +166,7 @@ describe('OverlayProcessorService', () => {
       providerFactory as any,
       makeMediaServerFactory() as any,
       {} as any,
+      {} as any,
       settingsService as any,
       stateService as any,
       {} as any,
@@ -188,6 +224,7 @@ describe('OverlayProcessorService', () => {
       providerFactory as any,
       makeMediaServerFactory() as any,
       {} as any,
+      {} as any,
       settingsService as any,
       stateService as any,
       {} as any,
@@ -240,6 +277,7 @@ describe('OverlayProcessorService', () => {
     const service = new OverlayProcessorService(
       providerFactory as any,
       makeMediaServerFactory() as any,
+      {} as any,
       {} as any,
       settingsService as any,
       stateService as any,
@@ -299,6 +337,7 @@ describe('OverlayProcessorService', () => {
     const service = new OverlayProcessorService(
       providerFactory as any,
       makeMediaServerFactory() as any,
+      {} as any,
       {} as any,
       settingsService as any,
       stateService as any,
@@ -374,11 +413,7 @@ describe('OverlayProcessorService', () => {
         addDate: new Date('2026-04-01T00:00:00.000Z'),
       }),
     ];
-    const collectionsService = {
-      getCollectionsWithOverlayEnabled: jest
-        .fn()
-        .mockResolvedValue([collection]),
-    };
+    const collectionRepos = makeCollectionRepos([collection]);
     const provider = makeProvider();
     const providerFactory = makeProviderFactory(provider);
     const eventEmitter = { emit: jest.fn() };
@@ -386,7 +421,8 @@ describe('OverlayProcessorService', () => {
     const service = new OverlayProcessorService(
       providerFactory as any,
       makeMediaServerFactory() as any,
-      collectionsService as any,
+      collectionRepos.collectionRepo as any,
+      collectionRepos.collectionMediaRepo as any,
       settingsService as any,
       stateService as any,
       {} as any,
@@ -433,11 +469,7 @@ describe('OverlayProcessorService', () => {
         addDate: new Date('2026-04-01T00:00:00.000Z'),
       }),
     ];
-    const collectionsService = {
-      getCollectionsWithOverlayEnabled: jest
-        .fn()
-        .mockResolvedValue([collection]),
-    };
+    const collectionRepos = makeCollectionRepos([collection]);
     const provider = makeProvider();
     const providerFactory = makeProviderFactory(provider);
     const eventEmitter = { emit: jest.fn() };
@@ -445,7 +477,8 @@ describe('OverlayProcessorService', () => {
     const service = new OverlayProcessorService(
       providerFactory as any,
       makeMediaServerFactory() as any,
-      collectionsService as any,
+      collectionRepos.collectionRepo as any,
+      collectionRepos.collectionMediaRepo as any,
       settingsService as any,
       stateService as any,
       {} as any,
@@ -502,11 +535,7 @@ describe('OverlayProcessorService', () => {
         addDate: new Date('2026-04-01T00:00:00.000Z'),
       }),
     ];
-    const collectionsService = {
-      getCollectionsWithOverlayEnabled: jest
-        .fn()
-        .mockResolvedValue([collection]),
-    };
+    const collectionRepos = makeCollectionRepos([collection]);
     const provider = makeProvider();
     const providerFactory = makeProviderFactory(provider);
     const eventEmitter = { emit: jest.fn() };
@@ -514,7 +543,8 @@ describe('OverlayProcessorService', () => {
     const service = new OverlayProcessorService(
       providerFactory as any,
       makeMediaServerFactory() as any,
-      collectionsService as any,
+      collectionRepos.collectionRepo as any,
+      collectionRepos.collectionMediaRepo as any,
       settingsService as any,
       stateService as any,
       {} as any,
@@ -584,11 +614,10 @@ describe('OverlayProcessorService', () => {
         addDate: new Date('2026-04-01T00:00:00.000Z'),
       }),
     ];
-    const collectionsService = {
-      getCollectionsWithOverlayEnabled: jest
-        .fn()
-        .mockResolvedValue([firstCollection, secondCollection]),
-    };
+    const collectionRepos = makeCollectionRepos([
+      firstCollection,
+      secondCollection,
+    ]);
     const provider = makeProvider();
     const providerFactory = makeProviderFactory(provider);
     const eventEmitter = { emit: jest.fn() };
@@ -596,7 +625,8 @@ describe('OverlayProcessorService', () => {
     const service = new OverlayProcessorService(
       providerFactory as any,
       makeMediaServerFactory() as any,
-      collectionsService as any,
+      collectionRepos.collectionRepo as any,
+      collectionRepos.collectionMediaRepo as any,
       settingsService as any,
       stateService as any,
       {} as any,
@@ -628,6 +658,7 @@ describe('OverlayProcessorService', () => {
     const service = new OverlayProcessorService(
       providerFactory as any,
       makeMediaServerFactory() as any,
+      {} as any,
       {} as any,
       settingsService as any,
       {} as any,
@@ -662,6 +693,7 @@ describe('OverlayProcessorService', () => {
     const service = new OverlayProcessorService(
       providerFactory as any,
       makeMediaServerFactory() as any,
+      {} as any,
       {} as any,
       settingsService as any,
       {} as any,
@@ -698,11 +730,7 @@ describe('OverlayProcessorService', () => {
       deleteAfterDays: null,
     });
     collection.collectionMedia = [];
-    const collectionsService = {
-      getCollectionsWithOverlayEnabled: jest
-        .fn()
-        .mockResolvedValue([collection]),
-    };
+    const collectionRepos = makeCollectionRepos([collection]);
     const provider = makeProvider({
       uploadImage: jest.fn().mockRejectedValue(epipeError),
     });
@@ -712,7 +740,8 @@ describe('OverlayProcessorService', () => {
     const service = new OverlayProcessorService(
       providerFactory as any,
       makeMediaServerFactory() as any,
-      collectionsService as any,
+      collectionRepos.collectionRepo as any,
+      collectionRepos.collectionMediaRepo as any,
       settingsService as any,
       stateService as any,
       {} as any,
@@ -757,15 +786,14 @@ describe('OverlayProcessorService', () => {
     };
     const provider = makeProvider();
     const providerFactory = makeProviderFactory(provider);
-    const collectionsService = {
-      getCollection: jest.fn().mockResolvedValue({ type: 'movie' }),
-    };
+    const collectionRepos = makeCollectionRepos([{ id: 42, type: 'movie' }]);
     const eventEmitter = { emit: jest.fn() };
 
     const service = new OverlayProcessorService(
       providerFactory as any,
       makeMediaServerFactory() as any,
-      collectionsService as any,
+      collectionRepos.collectionRepo as any,
+      collectionRepos.collectionMediaRepo as any,
       {} as any,
       stateService as any,
       {} as any,
@@ -824,6 +852,7 @@ describe('OverlayProcessorService', () => {
       makeMediaServerFactory() as any,
       {} as any,
       {} as any,
+      {} as any,
       stateService as any,
       {} as any,
       {} as any,
@@ -860,15 +889,14 @@ describe('OverlayProcessorService', () => {
     };
     const provider = makeProvider();
     const providerFactory = makeProviderFactory(provider);
-    const collectionsService = {
-      getCollection: jest.fn().mockResolvedValue({ type: 'movie' }),
-    };
+    const collectionRepos = makeCollectionRepos([{ id: 42, type: 'movie' }]);
     const eventEmitter = { emit: jest.fn() };
 
     const service = new OverlayProcessorService(
       providerFactory as any,
       makeMediaServerFactory() as any,
-      collectionsService as any,
+      collectionRepos.collectionRepo as any,
+      collectionRepos.collectionMediaRepo as any,
       {} as any,
       stateService as any,
       {} as any,
@@ -908,16 +936,15 @@ describe('OverlayProcessorService', () => {
     const provider = makeProvider();
     const providerFactory = makeProviderFactory(provider);
     const eventEmitter = { emit: jest.fn() };
-    const collectionsService = {
-      getCollection: jest
-        .fn()
-        .mockResolvedValue({ type: 'movie', title: 'Target collection' }),
-    };
+    const collectionRepos = makeCollectionRepos([
+      { id: 7, type: 'movie', title: 'Target collection' },
+    ]);
 
     const service = new OverlayProcessorService(
       providerFactory as any,
       makeMediaServerFactory() as any,
-      collectionsService as any,
+      collectionRepos.collectionRepo as any,
+      collectionRepos.collectionMediaRepo as any,
       {} as any,
       stateService as any,
       {} as any,
@@ -964,16 +991,15 @@ describe('OverlayProcessorService', () => {
     });
     const providerFactory = makeProviderFactory(provider);
     const eventEmitter = { emit: jest.fn() };
-    const collectionsService = {
-      getCollection: jest
-        .fn()
-        .mockResolvedValue({ type: 'movie', title: 'Flaky collection' }),
-    };
+    const collectionRepos = makeCollectionRepos([
+      { id: 42, type: 'movie', title: 'Flaky collection' },
+    ]);
 
     const service = new OverlayProcessorService(
       providerFactory as any,
       makeMediaServerFactory() as any,
-      collectionsService as any,
+      collectionRepos.collectionRepo as any,
+      collectionRepos.collectionMediaRepo as any,
       {} as any,
       stateService as any,
       {} as any,
@@ -1012,14 +1038,13 @@ describe('OverlayProcessorService', () => {
       itemExists: jest.fn().mockResolvedValue(false),
     });
     const eventEmitter = { emit: jest.fn() };
-    const collectionsService = {
-      getCollection: jest.fn().mockResolvedValue({ type: 'movie' }),
-    };
+    const collectionRepos = makeCollectionRepos([{ id: 42, type: 'movie' }]);
 
     const service = new OverlayProcessorService(
       providerFactory as any,
       makeMediaServerFactory(mediaServer) as any,
-      collectionsService as any,
+      collectionRepos.collectionRepo as any,
+      collectionRepos.collectionMediaRepo as any,
       {} as any,
       stateService as any,
       {} as any,
@@ -1065,16 +1090,15 @@ describe('OverlayProcessorService', () => {
       itemExists: jest.fn().mockRejectedValue(new Error('network blip')),
     });
     const eventEmitter = { emit: jest.fn() };
-    const collectionsService = {
-      getCollection: jest
-        .fn()
-        .mockResolvedValue({ type: 'movie', title: 'Flaky collection' }),
-    };
+    const collectionRepos = makeCollectionRepos([
+      { id: 42, type: 'movie', title: 'Flaky collection' },
+    ]);
 
     const service = new OverlayProcessorService(
       providerFactory as any,
       makeMediaServerFactory(mediaServer) as any,
-      collectionsService as any,
+      collectionRepos.collectionRepo as any,
+      collectionRepos.collectionMediaRepo as any,
       {} as any,
       stateService as any,
       {} as any,
@@ -1118,11 +1142,7 @@ describe('OverlayProcessorService', () => {
       deleteAfterDays: null,
     });
     collection.collectionMedia = [];
-    const collectionsService = {
-      getCollectionsWithOverlayEnabled: jest
-        .fn()
-        .mockResolvedValue([collection]),
-    };
+    const collectionRepos = makeCollectionRepos([collection]);
     const provider = makeProvider();
     const providerFactory = makeProviderFactory(provider);
     const mediaServer = makeMediaServer({
@@ -1133,7 +1153,8 @@ describe('OverlayProcessorService', () => {
     const service = new OverlayProcessorService(
       providerFactory as any,
       makeMediaServerFactory(mediaServer) as any,
-      collectionsService as any,
+      collectionRepos.collectionRepo as any,
+      collectionRepos.collectionMediaRepo as any,
       settingsService as any,
       stateService as any,
       {} as any,
@@ -1176,14 +1197,13 @@ describe('OverlayProcessorService', () => {
     const provider = makeProvider();
     const providerFactory = makeProviderFactory(provider);
     const eventEmitter = { emit: jest.fn() };
-    const collectionsService = {
-      getCollection: jest.fn().mockResolvedValue({ type: 'movie' }),
-    };
+    const collectionRepos = makeCollectionRepos([{ id: 42, type: 'movie' }]);
 
     const service = new OverlayProcessorService(
       providerFactory as any,
       makeMediaServerFactory() as any,
-      collectionsService as any,
+      collectionRepos.collectionRepo as any,
+      collectionRepos.collectionMediaRepo as any,
       {} as any,
       stateService as any,
       {} as any,
@@ -1214,14 +1234,13 @@ describe('OverlayProcessorService', () => {
     const provider = makeProvider();
     const providerFactory = makeProviderFactory(provider);
     const eventEmitter = { emit: jest.fn() };
-    const collectionsService = {
-      getCollection: jest.fn().mockResolvedValue({ type: 'movie' }),
-    };
+    const collectionRepos = makeCollectionRepos([{ id: 42, type: 'movie' }]);
 
     const service = new OverlayProcessorService(
       providerFactory as any,
       makeMediaServerFactory() as any,
-      collectionsService as any,
+      collectionRepos.collectionRepo as any,
+      collectionRepos.collectionMediaRepo as any,
       {} as any,
       stateService as any,
       {} as any,
@@ -1271,16 +1290,15 @@ describe('OverlayProcessorService', () => {
     const provider = makeProvider();
     const providerFactory = makeProviderFactory(provider);
     const eventEmitter = { emit: jest.fn() };
-    const collectionsService = {
-      getCollection: jest
-        .fn()
-        .mockResolvedValue({ type: 'movie', title: 'Stored title' }),
-    };
+    const collectionRepos = makeCollectionRepos([
+      { id: 42, type: 'movie', title: 'Stored title' },
+    ]);
 
     const service = new OverlayProcessorService(
       providerFactory as any,
       makeMediaServerFactory() as any,
-      collectionsService as any,
+      collectionRepos.collectionRepo as any,
+      collectionRepos.collectionMediaRepo as any,
       {} as any,
       stateService as any,
       {} as any,
@@ -1298,7 +1316,9 @@ describe('OverlayProcessorService', () => {
 
     await service.revertMultipleItems(42, [{ mediaServerId: 'media-1' }]);
 
-    expect(collectionsService.getCollection).toHaveBeenCalledWith(42);
+    expect(collectionRepos.collectionRepo.findOne).toHaveBeenCalledWith({
+      where: { id: 42 },
+    });
     expect(eventEmitter.emit).toHaveBeenCalledWith(
       MaintainerrEvent.Overlay_Reverted,
       expect.objectContaining({
@@ -1315,14 +1335,13 @@ describe('OverlayProcessorService', () => {
     const provider = makeProvider();
     const providerFactory = makeProviderFactory(provider);
     const eventEmitter = { emit: jest.fn() };
-    const collectionsService = {
-      getCollection: jest.fn().mockResolvedValue({ type: 'movie' }),
-    };
+    const collectionRepos = makeCollectionRepos([{ id: 42, type: 'movie' }]);
 
     const service = new OverlayProcessorService(
       providerFactory as any,
       makeMediaServerFactory() as any,
-      collectionsService as any,
+      collectionRepos.collectionRepo as any,
+      collectionRepos.collectionMediaRepo as any,
       {} as any,
       stateService as any,
       {} as any,
@@ -1344,5 +1363,345 @@ describe('OverlayProcessorService', () => {
     );
 
     expect(eventEmitter.emit).not.toHaveBeenCalled();
+  });
+  describe('overlay inheritance', () => {
+    const seasonCollection = (arrAction = ServarrAction.DELETE) => {
+      const collection = createCollection({
+        id: 1,
+        title: 'Leaving seasons',
+        type: 'season',
+        arrAction,
+        deleteAfterDays: 10,
+        overlayTemplateId: null,
+      });
+      collection.collectionMedia = [
+        createCollectionMedia(collection, {
+          mediaServerId: 'season-1',
+          addDate: new Date('2026-04-01T00:00:00.000Z'),
+        }),
+        createCollectionMedia(collection, {
+          mediaServerId: 'season-2',
+          addDate: new Date('2026-04-05T00:00:00.000Z'),
+        }),
+      ];
+      return collection;
+    };
+
+    // Children keyed by parent id; anything unlisted has none.
+    const childrenOf = (tree: Record<string, MediaItem[] | Error>) =>
+      jest
+        .fn()
+        .mockImplementation((parentId: string) =>
+          tree[parentId] instanceof Error
+            ? Promise.reject(tree[parentId])
+            : (tree[parentId] ?? []),
+        );
+
+    const buildService = (
+      mediaServer: ReturnType<typeof makeMediaServer>,
+      overrides: {
+        stateService?: Record<string, jest.Mock>;
+        collectionRepos?: ReturnType<typeof makeCollectionRepos>;
+      } = {},
+    ) => {
+      const provider = makeProvider();
+      const templateService = {
+        resolveForCollection: jest
+          .fn()
+          .mockImplementation((_id: number | null, mode: OverlayTemplateMode) =>
+            makeTemplate({ mode }),
+          ),
+      };
+      const service = new OverlayProcessorService(
+        makeProviderFactory(provider) as any,
+        makeMediaServerFactory(mediaServer) as any,
+        (overrides.collectionRepos?.collectionRepo ?? {}) as any,
+        (overrides.collectionRepos?.collectionMediaRepo ?? {}) as any,
+        { getSettings: jest.fn().mockResolvedValue({ enabled: true }) } as any,
+        (overrides.stateService ?? {
+          getItemState: jest.fn().mockResolvedValue(null),
+        }) as any,
+        {} as any,
+        templateService as any,
+        { emit: jest.fn() } as any,
+        createMockLogger(),
+      );
+      const applySpy = jest
+        .spyOn(service, 'applyTemplateOverlay')
+        .mockResolvedValue(true);
+      return { service, applySpy };
+    };
+
+    const drawn = (applySpy: jest.SpyInstance) =>
+      applySpy.mock.calls.map((call) => [call[0], call[3]?.mode]);
+
+    const dateFor = (applySpy: jest.SpyInstance, itemId: string) =>
+      applySpy.mock.calls.find((call) => call[0] === itemId)?.[2];
+
+    it('draws everything a deleted show takes with it', async () => {
+      const collection = createCollection({
+        id: 1,
+        title: 'Leaving shows',
+        type: 'show',
+        arrAction: ServarrAction.DELETE,
+        deleteAfterDays: 30,
+        overlayTemplateId: null,
+      });
+      collection.collectionMedia = [
+        createCollectionMedia(collection, {
+          mediaServerId: 'show-1',
+          addDate: new Date('2026-04-01T00:00:00.000Z'),
+        }),
+      ];
+      const mediaServer = makeMediaServer({
+        getMetadataBatch: jest
+          .fn()
+          .mockResolvedValue([makeItem('show-1', 'show')]),
+        getChildrenMetadata: childrenOf({
+          'show-1': [
+            makeItem('season-1', 'season', { index: 1 }),
+            makeItem('season-2', 'season', { index: 2 }),
+          ],
+          'season-1': [makeItem('episode-1', 'episode')],
+          'season-2': [makeItem('episode-2', 'episode')],
+        }),
+      });
+      const { service, applySpy } = buildService(mediaServer);
+
+      await service.processCollection(collection as any);
+
+      expect(drawn(applySpy)).toEqual([
+        ['show-1', 'poster'],
+        ['season-1', 'poster'],
+        ['episode-1', 'titlecard'],
+        ['season-2', 'poster'],
+        ['episode-2', 'titlecard'],
+      ]);
+    });
+
+    it('draws a show once no season of it is left outside, using the last to leave', async () => {
+      const collection = seasonCollection();
+      collection.collectionMedia.push(
+        createCollectionMedia(collection, {
+          mediaServerId: 'season-3',
+          addDate: new Date('2026-04-01T00:00:00.000Z'),
+        }),
+      );
+      const mediaServer = makeMediaServer({
+        getMetadataBatch: jest
+          .fn()
+          .mockResolvedValue([
+            makeItem('season-1', 'season', { parentId: 'show-1', index: 1 }),
+            makeItem('season-2', 'season', { parentId: 'show-1', index: 2 }),
+            makeItem('season-3', 'season', { parentId: 'show-2', index: 1 }),
+          ]),
+        getChildrenMetadata: childrenOf({
+          // Specials are left outside and must not disqualify show-1.
+          'show-1': [
+            makeItem('season-0', 'season', { index: 0 }),
+            makeItem('season-1', 'season', { index: 1 }),
+            makeItem('season-2', 'season', { index: 2 }),
+          ],
+          // show-2 keeps season-4, so it is not emptying.
+          'show-2': [
+            makeItem('season-3', 'season', { index: 1 }),
+            makeItem('season-4', 'season', { index: 2 }),
+          ],
+          'season-1': [makeItem('episode-1', 'episode')],
+          'season-2': [makeItem('episode-2', 'episode')],
+        }),
+      });
+      const { service, applySpy } = buildService(mediaServer);
+
+      await service.processCollection(collection as any);
+
+      expect(drawn(applySpy)).toEqual([
+        ['season-1', 'poster'],
+        ['season-2', 'poster'],
+        ['season-3', 'poster'],
+        ['episode-1', 'titlecard'],
+        ['episode-2', 'titlecard'],
+        ['show-1', 'poster'],
+      ]);
+      expect(dateFor(applySpy, 'show-1')).toEqual(
+        dateFor(applySpy, 'season-2'),
+      );
+    });
+
+    it('walks emptied episodes up to their season and its show', async () => {
+      const collection = createCollection({
+        id: 1,
+        title: 'Leaving episodes',
+        type: 'episode',
+        arrAction: ServarrAction.DELETE,
+        deleteAfterDays: 5,
+        overlayTemplateId: null,
+      });
+      collection.collectionMedia = [
+        createCollectionMedia(collection, {
+          mediaServerId: 'episode-1',
+          addDate: new Date('2026-04-01T00:00:00.000Z'),
+        }),
+        createCollectionMedia(collection, {
+          mediaServerId: 'episode-2',
+          addDate: new Date('2026-04-01T00:00:00.000Z'),
+        }),
+      ];
+      const parents = { parentId: 'season-1', grandparentId: 'show-1' };
+      const mediaServer = makeMediaServer({
+        getMetadataBatch: jest
+          .fn()
+          .mockResolvedValue([
+            makeItem('episode-1', 'episode', parents),
+            makeItem('episode-2', 'episode', parents),
+          ]),
+        getChildrenMetadata: childrenOf({
+          'season-1': [
+            makeItem('episode-1', 'episode'),
+            makeItem('episode-2', 'episode'),
+          ],
+          'show-1': [makeItem('season-1', 'season', { index: 1 })],
+        }),
+      });
+      const { service, applySpy } = buildService(mediaServer);
+
+      await service.processCollection(collection as any);
+
+      expect(drawn(applySpy)).toEqual([
+        ['episode-1', 'titlecard'],
+        ['episode-2', 'titlecard'],
+        ['season-1', 'poster'],
+        ['show-1', 'poster'],
+      ]);
+    });
+
+    it('inherits nothing for an action that keeps the files, and reverts what it drew before', async () => {
+      const collection = seasonCollection(ServarrAction.UNMONITOR);
+      const stateService = {
+        getItemState: jest.fn().mockResolvedValue(null),
+        getAllStates: jest
+          .fn()
+          .mockResolvedValue([{ collectionId: 1, mediaServerId: 'show-1' }]),
+        removeState: jest.fn().mockResolvedValue(undefined),
+      };
+      const getMetadataBatch = jest.fn();
+      const mediaServer = makeMediaServer({ getMetadataBatch });
+      const { service } = buildService(mediaServer, {
+        stateService,
+        collectionRepos: makeCollectionRepos([collection]),
+      });
+      jest
+        .spyOn(service as any, 'loadOriginalPoster')
+        .mockReturnValue(Buffer.from('poster'));
+      jest
+        .spyOn(service as any, 'deleteOriginalPoster')
+        .mockImplementation(() => {});
+
+      const result = await service.processAllCollections();
+
+      expect(getMetadataBatch).not.toHaveBeenCalled();
+      expect(stateService.removeState).toHaveBeenCalledWith(1, 'show-1');
+      expect(result.reverted).toBe(1);
+    });
+
+    it('leaves a show that is itself in an overlay collection to its own countdown', async () => {
+      const seasons = seasonCollection();
+      const shows = createCollection({
+        id: 2,
+        title: 'Leaving shows',
+        type: 'show',
+        arrAction: ServarrAction.DO_NOTHING,
+        deleteAfterDays: 30,
+        overlayTemplateId: null,
+      });
+      shows.collectionMedia = [
+        createCollectionMedia(shows, {
+          mediaServerId: 'show-1',
+          addDate: new Date('2026-04-01T00:00:00.000Z'),
+        }),
+      ];
+      const mediaServer = makeMediaServer({
+        getMetadataBatch: jest
+          .fn()
+          .mockResolvedValue([
+            makeItem('season-1', 'season', { parentId: 'show-1', index: 1 }),
+            makeItem('season-2', 'season', { parentId: 'show-1', index: 2 }),
+          ]),
+        getChildrenMetadata: childrenOf({
+          'show-1': [
+            makeItem('season-1', 'season', { index: 1 }),
+            makeItem('season-2', 'season', { index: 2 }),
+          ],
+        }),
+      });
+      const { service, applySpy } = buildService(mediaServer, {
+        stateService: {
+          getItemState: jest.fn().mockResolvedValue(null),
+          getAllStates: jest.fn().mockResolvedValue([]),
+        },
+        collectionRepos: makeCollectionRepos([seasons, shows]),
+      });
+
+      await service.processAllCollections();
+
+      // itemId + collectionId: the show is drawn once, by its own collection.
+      expect(applySpy.mock.calls.map((call) => [call[0], call[1]])).toEqual([
+        ['season-1', 1],
+        ['season-2', 1],
+        ['show-1', 2],
+      ]);
+    });
+
+    it('keeps drawing what it can read when one branch of the walk fails', async () => {
+      const collection = seasonCollection();
+      collection.collectionMedia.push(
+        createCollectionMedia(collection, {
+          mediaServerId: 'season-3',
+          addDate: new Date('2026-04-01T00:00:00.000Z'),
+        }),
+      );
+      const stateService = {
+        getItemState: jest.fn().mockResolvedValue(null),
+        // show-2 was drawn on a previous run; its hierarchy is unreadable now.
+        getAllStates: jest
+          .fn()
+          .mockResolvedValue([{ collectionId: 1, mediaServerId: 'show-2' }]),
+        getCollectionStates: jest
+          .fn()
+          .mockResolvedValue([{ collectionId: 1, mediaServerId: 'show-2' }]),
+        removeState: jest.fn().mockResolvedValue(undefined),
+      };
+      const mediaServer = makeMediaServer({
+        getMetadataBatch: jest
+          .fn()
+          .mockResolvedValue([
+            makeItem('season-1', 'season', { parentId: 'show-1', index: 1 }),
+            makeItem('season-2', 'season', { parentId: 'show-1', index: 2 }),
+            makeItem('season-3', 'season', { parentId: 'show-2', index: 1 }),
+          ]),
+        getChildrenMetadata: childrenOf({
+          'show-1': [
+            makeItem('season-1', 'season', { index: 1 }),
+            makeItem('season-2', 'season', { index: 2 }),
+          ],
+          'show-2': new Error('media server unreachable'),
+        }),
+      });
+      const { service, applySpy } = buildService(mediaServer, {
+        stateService,
+        collectionRepos: makeCollectionRepos([collection]),
+      });
+
+      const result = await service.processAllCollections();
+
+      expect(applySpy.mock.calls.map((call) => call[0])).toEqual([
+        'season-1',
+        'season-2',
+        'season-3',
+        'show-1',
+      ]);
+      expect(stateService.removeState).not.toHaveBeenCalled();
+      expect(result.reverted).toBe(0);
+    });
   });
 });

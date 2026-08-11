@@ -1,6 +1,24 @@
 import { MediaItem, MediaItemType } from '@maintainerr/contracts';
 
 /**
+ * Every descendant of an item, depth first: a show's seasons and their
+ * episodes, a season's episodes. Anything else has none.
+ */
+export const resolveDescendants = async (
+  item: { type: MediaItemType; id: string },
+  getChildren: (parentId: string, type: MediaItemType) => Promise<MediaItem[]>,
+): Promise<MediaItem[]> => {
+  if (item.type === 'season') return getChildren(item.id, 'episode');
+  if (item.type !== 'show') return [];
+
+  const descendants: MediaItem[] = [];
+  for (const season of await getChildren(item.id, 'season')) {
+    descendants.push(season, ...(await getChildren(season.id, 'episode')));
+  }
+  return descendants;
+};
+
+/**
  * Resolve which media server ids a context action (exclusion, manual add or
  * remove) should apply to, given the collection's media type and the item the
  * user acted on.
@@ -73,24 +91,14 @@ export const resolveContextActionIds = async (
   }
 
   // No collection type: a global exclusion, which cascades down the hierarchy.
-  switch (context.type) {
-    case 'show':
-      handleMedia.push(mediaId);
-      for (const seasonId of await childIds(mediaId, 'season')) {
-        handleMedia.push(seasonId);
-        handleMedia.push(...(await childIds(seasonId, 'episode')));
-      }
-      break;
-    case 'season':
-      handleMedia.push(context.id);
-      handleMedia.push(...(await childIds(context.id, 'episode')));
-      break;
-    case 'episode':
-      handleMedia.push(context.id);
-      break;
-    default:
-      handleMedia.push(mediaId);
-      break;
+  const cascade =
+    context.type === 'season' || context.type === 'episode'
+      ? { type: context.type, id: context.id }
+      : { type: context.type, id: mediaId };
+
+  handleMedia.push(cascade.id);
+  for (const descendant of await resolveDescendants(cascade, getChildren)) {
+    handleMedia.push(descendant.id);
   }
 
   return handleMedia;
