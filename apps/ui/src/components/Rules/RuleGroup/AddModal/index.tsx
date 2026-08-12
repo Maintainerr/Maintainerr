@@ -15,6 +15,7 @@ import {
   MediaItemType,
   MediaLibrary,
   MediaServerFeature,
+  overlayModeForType,
   OverlayTemplate,
   parseCollectionSortKey,
   ServarrAction,
@@ -642,8 +643,11 @@ const AddModal = (props: AddModal) => {
   const [pendingDisableSubmit, setPendingDisableSubmit] =
     useState<RuleGroupFormOutput | null>(null)
 
-  const overlayTemplateMode =
-    selectedType === 'episode' ? 'titlecard' : 'poster'
+  const overlayTemplateMode = isValidMediaItemType(selectedType)
+    ? overlayModeForType(selectedType)
+    : 'poster'
+  const overlayTemplateModeLabel =
+    overlayTemplateMode === 'titlecard' ? 'title card' : 'poster'
   const availableOverlayTemplates = overlayTemplates.filter(
     (template) => template.mode === overlayTemplateMode,
   )
@@ -1539,10 +1543,7 @@ const AddModal = (props: AddModal) => {
                           Overlay template
                           <p className="text-xs font-normal">
                             Leave unset to use the default{' '}
-                            {overlayTemplateMode === 'titlecard'
-                              ? 'title card'
-                              : 'poster'}{' '}
-                            template
+                            {overlayTemplateModeLabel} template
                           </p>
                         </label>
                         <div className="form-input">
@@ -1562,7 +1563,7 @@ const AddModal = (props: AddModal) => {
                                   }}
                                 >
                                   <option value="">
-                                    Default {overlayTemplateMode} template
+                                    Default {overlayTemplateModeLabel} template
                                   </option>
                                   {availableOverlayTemplates.map((template) => (
                                     <option

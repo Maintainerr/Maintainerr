@@ -1,10 +1,19 @@
 import z from 'zod'
+import type { MediaItemType } from '../media-server/enums'
 import { overlayElementSchema, type OverlayElement } from './overlay-element'
 
 // ── Template mode ─────────────────────────────────────────────────────────
 
 export const overlayTemplateModeValues = ['poster', 'titlecard'] as const
 export type OverlayTemplateMode = (typeof overlayTemplateModeValues)[number]
+
+/**
+ * Which artwork an overlay is drawn on. An episode has a title card, every
+ * other kind of item has a poster. Shared so the rule form cannot offer a
+ * template the overlay run would not use.
+ */
+export const overlayModeForType = (type: MediaItemType): OverlayTemplateMode =>
+  type === 'episode' ? 'titlecard' : 'poster'
 
 // ── Canvas dimension defaults ─────────────────────────────────────────────
 

@@ -4,6 +4,7 @@ import {
   MediaItemType,
   OverlayProcessorRunResult,
   OverlayResult,
+  overlayModeForType,
   OverlayTemplate,
   OverlayTemplateMode,
   ServarrAction,
@@ -115,14 +116,10 @@ export class OverlayProcessorService {
     return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
   }
 
-  private overlayMode(type: MediaItemType): OverlayTemplateMode {
-    return type === 'episode' ? 'titlecard' : 'poster';
-  }
-
   private getMemberTargets(
     collection: Collection & { collectionMedia: CollectionMedia[] },
   ): OverlayTarget[] {
-    const mode = this.overlayMode(collection.type);
+    const mode = overlayModeForType(collection.type);
     const targets: OverlayTarget[] = [];
     for (const media of collection.collectionMedia) {
       const deleteDate = this.getDeleteDate(
@@ -257,7 +254,7 @@ export class OverlayProcessorService {
       targets.set(item.id, {
         itemId: item.id,
         deleteDate,
-        mode: this.overlayMode(item.type),
+        mode: overlayModeForType(item.type),
       });
     };
 
@@ -553,8 +550,7 @@ export class OverlayProcessorService {
       return result;
     }
 
-    // Auto-detect title card vs poster based on collection type
-    const mode = this.overlayMode(collection.type);
+    const mode = overlayModeForType(collection.type);
 
     // Resolve the template: collection override → default for mode → null
     const template = await this.templateService.resolveForCollection(
