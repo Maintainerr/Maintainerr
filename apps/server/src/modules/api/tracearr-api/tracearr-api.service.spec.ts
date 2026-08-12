@@ -425,8 +425,8 @@ describe('TracearrApiService', () => {
         .mockResolvedValue([{ id: 'account-1', name: 'alice' }]),
       getChildrenMetadata: jest
         .fn()
-        .mockResolvedValueOnce([{ id: 'season-1' }])
-        .mockResolvedValueOnce([{ id: 'episode-1' }]),
+        .mockResolvedValueOnce([{ id: 'season-1', type: 'season' }])
+        .mockResolvedValueOnce([{ id: 'episode-1', type: 'episode' }]),
     };
     mediaServerFactory.getService.mockResolvedValue(mediaServer as never);
     const show = { id: 'show-1', type: 'show' } as never;

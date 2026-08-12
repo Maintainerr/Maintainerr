@@ -1,4 +1,10 @@
 import { MediaItem, MediaItemType } from '@maintainerr/contracts';
+import { chunk } from 'lodash';
+
+// Seasons are read a few at a time. One read per season would cost a
+// long-running show a round trip per season on the rule-evaluation path, while
+// an unbounded fan-out multiplies with the evaluator's own concurrency.
+export const SEASON_READ_CONCURRENCY = 5;
 
 /**
  * Every descendant of an item, depth first: a show's seasons and their
@@ -11,9 +17,15 @@ export const resolveDescendants = async (
   if (item.type === 'season') return getChildren(item.id, 'episode');
   if (item.type !== 'show') return [];
 
+  const seasons = await getChildren(item.id, 'season');
   const descendants: MediaItem[] = [];
-  for (const season of await getChildren(item.id, 'season')) {
-    descendants.push(season, ...(await getChildren(season.id, 'episode')));
+  for (const batch of chunk(seasons, SEASON_READ_CONCURRENCY)) {
+    const episodes = await Promise.all(
+      batch.map((season) => getChildren(season.id, 'episode')),
+    );
+    batch.forEach((season, index) =>
+      descendants.push(season, ...episodes[index]),
+    );
   }
   return descendants;
 };
