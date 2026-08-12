@@ -3077,7 +3077,7 @@ __metadata:
     "@typescript-eslint/parser": "npm:^8.66.0"
     axios: "npm:^1.18.1"
     axios-retry: "npm:^4.5.0"
-    better-sqlite3: "npm:^13.0.2"
+    better-sqlite3: "npm:^13.0.3"
     canvas: "npm:^3.2.3"
     chalk: "npm:^4.1.2"
     cron-validator: "npm:^1.4.0"
@@ -3151,7 +3151,7 @@ __metadata:
     prettier-plugin-tailwindcss: "npm:^0.8.1"
     react: "npm:^19.2.8"
     react-dom: "npm:^19.2.8"
-    react-hook-form: "npm:^7.84.0"
+    react-hook-form: "npm:^7.85.0"
     react-konva: "npm:^19.2.5"
     react-markdown: "npm:10.1.0"
     react-movable: "npm:^3.4.1"
@@ -6240,16 +6240,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/node@npm:*, @types/node@npm:^26":
-  version: 26.1.2
-  resolution: "@types/node@npm:26.1.2"
-  dependencies:
-    undici-types: "npm:~8.3.0"
-  checksum: 10c0/a45503222c7db8f374afd5c9381db63dd95b6b1f703abea0890dd3d4a09eeb41da489e08a1a45baf18fe89fb77fbf310ff2789f680c490b04dafc41a60800a86
-  languageName: node
-  linkType: hard
-
-"@types/node@npm:^26.2.0":
+"@types/node@npm:*, @types/node@npm:^26, @types/node@npm:^26.2.0":
   version: 26.2.0
   resolution: "@types/node@npm:26.2.0"
   dependencies:
@@ -7718,13 +7709,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"better-sqlite3@npm:^13.0.2":
-  version: 13.0.2
-  resolution: "better-sqlite3@npm:13.0.2"
+"better-sqlite3@npm:^13.0.3":
+  version: 13.0.3
+  resolution: "better-sqlite3@npm:13.0.3"
   dependencies:
     node-addon-api: "npm:^8.0.0"
     node-gyp: "npm:latest"
-  checksum: 10c0/c0519e589bdcac15d82c9c10df8cc149d18141c75fdabd6f230de71221d1791353f9611e4d31fc63a8b57a274b1b5cd5a8b3ac66eb1e8965ea6ca4c743b98d59
+  checksum: 10c0/3daaad4fbd39b3ebddd9840c1aab0a7ccc94a01054fb03f6660ec2c226422b5daf3eb8e55a14103eddb84c2cd16f8e70ae9d41f0e2892b58c8c6152ee7ff09c0
   languageName: node
   linkType: hard
 
@@ -16283,12 +16274,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"react-hook-form@npm:^7.84.0":
-  version: 7.84.0
-  resolution: "react-hook-form@npm:7.84.0"
+"react-hook-form@npm:^7.85.0":
+  version: 7.85.0
+  resolution: "react-hook-form@npm:7.85.0"
   peerDependencies:
     react: ^16.8.0 || ^17 || ^18 || ^19
-  checksum: 10c0/9af7e9850ac3c41e6a03fe2fc5a236525603dd8ab983194ffb8e893dba1d26b518ae02989192786d8c1f109793adb93d6de46385bee2b04ff06267f7431bdf8e
+  checksum: 10c0/53e81f4116129efa8e08c620cd334f74541174a82f3e4ce7a8839193c69a561b9bed070b4a46f24654c4860c474ddbb504d2ad402297708c8c2b80f1f6116d59
   languageName: node
   linkType: hard
 
