@@ -3077,7 +3077,7 @@ __metadata:
     "@typescript-eslint/parser": "npm:^8.66.0"
     axios: "npm:^1.18.1"
     axios-retry: "npm:^4.5.0"
-    better-sqlite3: "npm:^13.0.2"
+    better-sqlite3: "npm:^13.0.3"
     canvas: "npm:^3.2.3"
     chalk: "npm:^4.1.2"
     cron-validator: "npm:^1.4.0"
@@ -7718,13 +7718,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"better-sqlite3@npm:^13.0.2":
-  version: 13.0.2
-  resolution: "better-sqlite3@npm:13.0.2"
+"better-sqlite3@npm:^13.0.3":
+  version: 13.0.3
+  resolution: "better-sqlite3@npm:13.0.3"
   dependencies:
     node-addon-api: "npm:^8.0.0"
     node-gyp: "npm:latest"
-  checksum: 10c0/c0519e589bdcac15d82c9c10df8cc149d18141c75fdabd6f230de71221d1791353f9611e4d31fc63a8b57a274b1b5cd5a8b3ac66eb1e8965ea6ca4c743b98d59
+  checksum: 10c0/3daaad4fbd39b3ebddd9840c1aab0a7ccc94a01054fb03f6660ec2c226422b5daf3eb8e55a14103eddb84c2cd16f8e70ae9d41f0e2892b58c8c6152ee7ff09c0
   languageName: node
   linkType: hard
 
