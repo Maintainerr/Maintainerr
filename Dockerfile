@@ -1,7 +1,9 @@
 FROM node:26.3.0-alpine3.22@sha256:c7932b9e5e337b0e733d6e16abc1b0e104759e8b05e59ed56586cce967d26dfe AS base
 LABEL Description="Contains the Maintainerr Docker image"
 
-FROM base AS builder
+# Dependency install. Only the manifests reach this stage, so the layer holds
+# for as long as the lockfile does.
+FROM base AS deps
 
 WORKDIR /app
 
@@ -29,6 +31,22 @@ COPY packages/contracts/package.json ./packages/contracts/package.json
 
 RUN yarn install --network-timeout 99999999
 
+# The tree the runtime image ships. Pruning the dev dependencies changes the
+# dependency tree, which makes yarn rebuild better-sqlite3 and node-canvas, so
+# this keeps its own branch off `deps`: it is now keyed on the lockfile rather
+# than redone on every commit, which is what happened while it sat after the
+# `COPY . .` below.
+FROM deps AS proddeps
+
+# Only install production dependencies to reduce image size
+RUN yarn workspaces focus --all --production
+
+# When all packages are hoisted, there is no node_modules folder. Ensure these folders always have a node_modules folder to COPY later on.
+RUN mkdir -p ./packages/contracts/node_modules
+RUN mkdir -p ./apps/server/node_modules
+
+FROM deps AS builder
+
 # Copy the rest of the repository after deps are installed
 COPY . .
 
@@ -37,13 +55,6 @@ VITE_BASE_PATH=/__PATH_PREFIX__
 EOF
 
 RUN yarn turbo build
-
-# Only install production dependencies to reduce image size
-RUN yarn workspaces focus --all --production
-
-# When all packages are hoisted, there is no node_modules folder. Ensure these folders always have a node_modules folder to COPY later on.
-RUN mkdir -p ./packages/contracts/node_modules
-RUN mkdir -p ./apps/server/node_modules
 
 FROM base AS runner
 
@@ -54,12 +65,12 @@ WORKDIR /opt/app
 # keeping it unwritable.
 
 # copy root node_modules
-COPY --from=builder --chmod=755 --chown=node:node /app/node_modules ./node_modules
+COPY --from=proddeps --chmod=755 --chown=node:node /app/node_modules ./node_modules
 
 # Copy standalone server
 COPY --from=builder --chmod=755 --chown=node:node /app/apps/server/dist ./apps/server/dist
 COPY --from=builder --chmod=755 --chown=node:node /app/apps/server/package.json ./apps/server/package.json
-COPY --from=builder --chmod=755 --chown=node:node /app/apps/server/node_modules ./apps/server/node_modules
+COPY --from=proddeps --chmod=755 --chown=node:node /app/apps/server/node_modules ./apps/server/node_modules
 
 # copy UI output to API to be served statically. Read-only like the rest:
 # start.sh stages a copy under the data directory and resolves the BASE_PATH
@@ -72,7 +83,7 @@ COPY --from=builder --chmod=755 --chown=node:node /app/apps/server/assets ./apps
 # Copy packages/contracts
 COPY --from=builder --chmod=755 --chown=node:node /app/packages/contracts/dist ./packages/contracts/dist
 COPY --from=builder --chmod=755 --chown=node:node /app/packages/contracts/package.json ./packages/contracts/package.json
-COPY --from=builder --chmod=755 --chown=node:node /app/packages/contracts/node_modules ./packages/contracts/node_modules
+COPY --from=proddeps --chmod=755 --chown=node:node /app/packages/contracts/node_modules ./packages/contracts/node_modules
 
 # 755 keeps these executable by whichever uid the docker user directive selects.
 COPY --chmod=755 --chown=node:node docker/start.sh /opt/app/start.sh
