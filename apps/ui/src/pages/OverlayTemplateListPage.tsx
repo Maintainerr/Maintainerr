@@ -299,17 +299,17 @@ function TemplateCard({
 }) {
   return (
     <div className="rounded-lg border border-zinc-700 bg-zinc-800 p-4 transition hover:border-zinc-500">
-      <div className="mb-2 flex items-start justify-between">
+      <div className="mb-2 flex items-start justify-between gap-2">
         <div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <span className="font-medium text-zinc-100">{t.name}</span>
             {t.isDefault && (
-              <span className="rounded-sm bg-amber-600 px-1.5 py-0.5 text-xs text-white">
+              <span className="rounded-sm bg-amber-600 px-1.5 py-0.5 text-xs whitespace-nowrap text-white">
                 Default
               </span>
             )}
             {t.isPreset && (
-              <span className="rounded-sm bg-zinc-600/50 px-1.5 py-0.5 text-xs text-zinc-400">
+              <span className="rounded-sm bg-zinc-600/50 px-1.5 py-0.5 text-xs whitespace-nowrap text-zinc-400">
                 Preset
               </span>
             )}
@@ -318,7 +318,7 @@ function TemplateCard({
             <p className="mt-0.5 text-xs text-zinc-400">{t.description}</p>
           )}
         </div>
-        <span className="rounded-sm bg-zinc-700 px-1.5 py-0.5 text-xs text-zinc-300">
+        <span className="shrink-0 rounded-sm bg-zinc-700 px-1.5 py-0.5 text-xs whitespace-nowrap text-zinc-300">
           {t.elements.length} element{t.elements.length !== 1 ? 's' : ''}
         </span>
       </div>
