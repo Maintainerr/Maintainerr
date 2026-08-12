@@ -25,10 +25,8 @@ jobs:
         include:
           - os: ubuntu-latest
             platform: linux/amd64
-            cache-scope: amd64
           - os: ubuntu-24.04-arm
             platform: linux/arm64
-            cache-scope: arm64
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -89,8 +87,8 @@ jobs:
           build-args: |
             GIT_SHA=${{ github.sha }}
             VERSION_TAG=${{ steps.vars.outputs.tag }}
-          cache-from: type=gha,scope=${{ matrix.cache-scope }}
-          cache-to: type=gha,scope=${{ matrix.cache-scope }},mode=max
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       - name: Export digest
         shell: bash
