@@ -464,21 +464,22 @@ const OverlayTemplateEditor = ({ routeId }: { routeId: string }) => {
                   placeholder="Template Name"
                 />
               </div>
-              {isNew && (
-                <div className="w-36">
-                  <Select
-                    name="template-mode"
-                    value={mode}
-                    disabled={isLoading}
-                    onChange={(e) =>
-                      setMode(e.target.value as OverlayTemplateMode)
-                    }
-                  >
-                    <option value="poster">Poster</option>
-                    <option value="titlecard">Title Card</option>
-                  </Select>
-                </div>
-              )}
+              {/* Fixed once created, but still shown: two templates can share
+                  a name across modes, and nothing else on this page says
+                  which artwork is being designed. */}
+              <div className="w-36">
+                <Select
+                  name="template-mode"
+                  value={mode}
+                  disabled={isLoading || !isNew}
+                  onChange={(e) =>
+                    setMode(e.target.value as OverlayTemplateMode)
+                  }
+                >
+                  <option value="poster">Poster</option>
+                  <option value="titlecard">Title Card</option>
+                </Select>
+              </div>
               <div className="flex w-56 items-center gap-2">
                 <Select
                   name="background-section"
