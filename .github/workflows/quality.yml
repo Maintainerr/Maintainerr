@@ -182,12 +182,3 @@ jobs:
       # copy that runs on our PRs.
       - name: Validate translation catalogs
         run: yarn i18n:validate
-      # Advisory: machine-translates submissions back to English and reports
-      # ones that drift. Inert until a provider secret is configured.
-      - name: Back-translation review
-        if: ${{ !cancelled() }}
-        env:
-          LIBRETRANSLATE_URL: ${{ secrets.LIBRETRANSLATE_URL }}
-          LIBRETRANSLATE_API_KEY: ${{ secrets.LIBRETRANSLATE_API_KEY }}
-          DEEPL_API_KEY: ${{ secrets.DEEPL_API_KEY }}
-        run: yarn i18n:back-translate

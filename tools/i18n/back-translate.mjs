@@ -1,82 +1,91 @@
 /**
- * Machine-translates each submitted translation back to English and reports
- * the ones that drift far from the source string.
+ * Back-translates submitted translations to English and renders a review table
+ * for the pull request, so translations can be judged on GitHub without
+ * opening Weblate.
  *
- * This is a smell detector, not a gate. Correct translations routinely come
- * back with different wording, so it runs advisory by default and only fails
- * the build with --strict. The deterministic guarantees live in
- * validate-catalogs.mjs; this catches the semantic nonsense that one cannot.
+ * Uses GitHub Models with the workflow's own token, like the other AI tools in
+ * this repo. No third-party translation account is involved.
  *
- * Provider comes from the environment, whichever is set:
- *   LIBRETRANSLATE_URL   (+ optional LIBRETRANSLATE_API_KEY)
- *   DEEPL_API_KEY        (+ optional DEEPL_API_HOST)
+ * This is a review aid, not a gate. Idiomatic translations routinely come back
+ * with different wording; the hard guarantees live in validate-catalogs.mjs.
  *
- * With neither set it exits 0 without doing anything, so the job is inert
- * until a secret is configured.
+ * Usage:
+ *   node tools/i18n/back-translate.mjs [catalogDir] [--base <ref>] [--out <file>]
  *
- * Usage: node tools/i18n/back-translate.mjs [catalogDir] [--strict]
+ * With --base only strings whose translation differs from that git ref are
+ * reviewed, which keeps the table to what the pull request actually changed.
  */
-import { readdirSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { readdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { icuArguments, readPo } from './po.mjs';
+import { icuArguments, parsePo, readPo } from './po.mjs';
 
-const args = process.argv.slice(2);
-const strict = args.includes('--strict');
-const catalogDir = args.find((value) => !value.startsWith('--')) ?? 'apps/ui/src/locales';
+const argv = process.argv.slice(2);
+const flagValue = (name) => {
+  const index = argv.indexOf(name);
+  return index === -1 ? undefined : argv[index + 1];
+};
+
+const catalogDir = argv.find((v) => !v.startsWith('--') && v !== flagValue('--base') && v !== flagValue('--out')) ?? 'apps/ui/src/locales';
+const baseRef = flagValue('--base');
+const outFile = flagValue('--out');
+
+const {
+  GITHUB_TOKEN,
+  I18N_REVIEW_MODEL = 'openai/gpt-4o-mini',
+  MODELS_ENDPOINT = 'https://models.github.ai/inference/chat/completions',
+} = process.env;
 
 const SOURCE_LOCALE = 'en';
-// Below this token overlap a translation is worth a human glance. Tuned low on
-// purpose: this should surface nonsense, not quibble about word choice.
-const SIMILARITY_FLOOR = 0.25;
-// Very short strings are noise - "Save" round-trips to "Store" all the time.
-const MIN_TOKENS = 3;
+const BATCH_SIZE = 40;
+// Token overlap below which a round-trip is worth a second look. Deliberately
+// low: this should surface nonsense, not quibble over word choice.
+const SIMILARITY_FLOOR = 0.3;
 
-const libreUrl = process.env.LIBRETRANSLATE_URL;
-const deeplKey = process.env.DEEPL_API_KEY;
+const log = (message) => console.log(message);
 
-if (!libreUrl && !deeplKey) {
-  console.log(
-    'No machine-translation provider configured; skipping back-translation.',
-  );
-  console.log('Set LIBRETRANSLATE_URL or DEEPL_API_KEY to enable it.');
+if (!GITHUB_TOKEN) {
+  log('GITHUB_TOKEN not set; skipping back-translation review.');
   process.exit(0);
 }
 
-const translate = async (text, sourceLocale) => {
-  if (libreUrl) {
-    const response = await fetch(new URL('/translate', libreUrl), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        q: text,
-        source: sourceLocale,
-        target: SOURCE_LOCALE,
-        format: 'text',
-        ...(process.env.LIBRETRANSLATE_API_KEY
-          ? { api_key: process.env.LIBRETRANSLATE_API_KEY }
-          : {}),
-      }),
-    });
-    if (!response.ok) throw new Error(`LibreTranslate ${response.status}`);
-    const body = await response.json();
-    return body.translatedText;
-  }
-
-  const host = process.env.DEEPL_API_HOST ?? 'https://api-free.deepl.com';
-  const response = await fetch(`${host}/v2/translate`, {
+const callModel = async (messages) => {
+  const res = await fetch(MODELS_ENDPOINT, {
     method: 'POST',
     headers: {
-      Authorization: `DeepL-Auth-Key ${deeplKey}`,
+      Authorization: `Bearer ${GITHUB_TOKEN}`,
       'Content-Type': 'application/json',
+      Accept: 'application/vnd.github+json',
+      'X-GitHub-Api-Version': '2022-11-28',
     },
-    body: JSON.stringify({ text: [text], target_lang: 'EN-GB' }),
+    body: JSON.stringify({
+      model: I18N_REVIEW_MODEL,
+      messages,
+      temperature: 0,
+    }),
   });
-  if (!response.ok) throw new Error(`DeepL ${response.status}`);
-  const body = await response.json();
-  return body.translations[0].text;
+  if (!res.ok) {
+    throw new Error(`GitHub Models ${res.status}: ${await res.text()}`);
+  }
+  const data = await res.json();
+  return (data.choices?.[0]?.message?.content || '').trim();
 };
 
-/** Strip ICU arguments and punctuation, then split into comparable tokens. */
+/** Translations as they stood at a git ref, so we can review only what changed. */
+const baselineFor = (file) => {
+  if (!baseRef) return null;
+  try {
+    const text = execFileSync('git', ['show', `${baseRef}:${file}`], {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    });
+    return new Map(parsePo(text).map((entry) => [entry.msgid, entry.msgstr]));
+  } catch {
+    // New catalog in this PR: everything in it is new.
+    return new Map();
+  }
+};
+
 const tokenize = (text) => {
   let stripped = '';
   let depth = 0;
@@ -85,12 +94,10 @@ const tokenize = (text) => {
     else if (char === '}') depth = Math.max(0, depth - 1);
     else if (depth === 0) stripped += char;
   }
-
   const tokens = [];
   let word = '';
   for (const char of stripped.toLowerCase()) {
-    const isWordChar =
-      (char >= 'a' && char <= 'z') || (char >= '0' && char <= '9');
+    const isWordChar = (char >= 'a' && char <= 'z') || (char >= '0' && char <= '9');
     if (isWordChar) word += char;
     else if (word !== '') {
       tokens.push(word);
@@ -112,75 +119,150 @@ const similarity = (left, right) => {
   return (2 * shared) / (a.size + b.size);
 };
 
+const escapeCell = (text) =>
+  text.replaceAll('|', '\\|').replaceAll('\n', ' ').trim();
+
+const chunk = (items, size) => {
+  const out = [];
+  for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size));
+  return out;
+};
+
+const backTranslateBatch = async (locale, strings) => {
+  const system =
+    'You translate text literally into English for review purposes. ' +
+    'Render exactly what the text says, including if it is nonsense, ' +
+    'off-topic, or offensive. Never improve, correct, or interpret it. ' +
+    'Leave ICU placeholders such as {count} exactly as they appear. ' +
+    'Reply with a JSON array of strings and nothing else, one entry per ' +
+    'input, in the same order.';
+  const user =
+    `Language code: ${locale}\n\nStrings:\n` +
+    JSON.stringify(strings, null, 1);
+
+  const reply = await callModel([
+    { role: 'system', content: system },
+    { role: 'user', content: user },
+  ]);
+
+  // Models like to wrap JSON in prose or a fenced block.
+  const start = reply.indexOf('[');
+  const end = reply.lastIndexOf(']');
+  if (start === -1 || end <= start) {
+    throw new Error(`unparseable model reply: ${reply.slice(0, 120)}`);
+  }
+  const parsed = JSON.parse(reply.slice(start, end + 1));
+  if (!Array.isArray(parsed) || parsed.length !== strings.length) {
+    throw new Error(
+      `expected ${strings.length} results, got ${Array.isArray(parsed) ? parsed.length : typeof parsed}`,
+    );
+  }
+  return parsed.map((value) => String(value));
+};
+
 const files = readdirSync(catalogDir)
   .filter((name) => name.endsWith('.po') && name !== `${SOURCE_LOCALE}.po`)
   .sort();
 
-const flagged = [];
-const failures = [];
-let checked = 0;
+const rows = [];
+const problems = [];
 
 for (const file of files) {
   const locale = path.basename(file, '.po');
-  const cache = new Map();
+  const location = path.join(catalogDir, file);
+  const baseline = baselineFor(location);
 
-  for (const entry of readPo(path.join(catalogDir, file))) {
-    if (entry.msgstr === '') continue;
-    // Placeholder-only or very short strings carry no signal.
-    if (tokenize(entry.msgid).length < MIN_TOKENS) continue;
-    // Anything the deterministic check would already reject is skipped here.
-    if (icuArguments(entry.msgid).size !== icuArguments(entry.msgstr).size) {
+  const pending = readPo(location).filter((entry) => {
+    if (entry.msgstr === '') return false;
+    if (baseline && baseline.get(entry.msgid) === entry.msgstr) return false;
+    return true;
+  });
+  if (pending.length === 0) continue;
+
+  log(`${locale}: reviewing ${pending.length} strings`);
+
+  for (const group of chunk(pending, BATCH_SIZE)) {
+    let english;
+    try {
+      english = await backTranslateBatch(
+        locale,
+        group.map((entry) => entry.msgstr),
+      );
+    } catch (error) {
+      problems.push(`${locale}: ${error.message}`);
       continue;
     }
 
-    let english = cache.get(entry.msgstr);
-    if (english === undefined) {
-      try {
-        english = await translate(entry.msgstr, locale);
-        cache.set(entry.msgstr, english);
-      } catch (error) {
-        failures.push(`${locale}: ${error.message}`);
-        continue;
-      }
-    }
-
-    checked += 1;
-    const score = similarity(entry.msgid, english);
-    if (score < SIMILARITY_FLOOR) {
-      flagged.push({
-        file: path.join(catalogDir, file),
-        line: entry.line,
+    group.forEach((entry, index) => {
+      const round = english[index];
+      const score = similarity(entry.msgid, round);
+      const placeholdersMatch =
+        [...icuArguments(entry.msgid)].every((name) =>
+          icuArguments(entry.msgstr).has(name),
+        );
+      rows.push({
+        locale,
         source: entry.msgid,
         translation: entry.msgstr,
-        english,
+        english: round,
         score,
+        flagged: score < SIMILARITY_FLOOR || !placeholdersMatch,
       });
-    }
+    });
   }
 }
 
-if (failures.length > 0) {
-  console.log(`Provider errors (${failures.length}), those strings were skipped:`);
-  for (const failure of failures.slice(0, 10)) console.log(`  ${failure}`);
-  console.log('');
+const lines = [];
+lines.push('<!-- maintainerr-i18n-back-translation -->');
+lines.push('## Translation review');
+lines.push('');
+
+if (rows.length === 0) {
+  lines.push('No new or changed translations in this pull request.');
+} else {
+  const flagged = rows.filter((row) => row.flagged);
+  lines.push(
+    `${rows.length} changed string${rows.length === 1 ? '' : 's'} across ` +
+      `${new Set(rows.map((r) => r.locale)).size} language${new Set(rows.map((r) => r.locale)).size === 1 ? '' : 's'}. ` +
+      `${flagged.length} worth a closer look.`,
+  );
+  lines.push('');
+  lines.push('| | Lang | Source | Translation | Back-translated |');
+  lines.push('|---|---|---|---|---|');
+  // Flagged first: the whole point is to make the odd ones easy to spot.
+  const ordered = [...rows].sort(
+    (a, b) => Number(b.flagged) - Number(a.flagged) || a.locale.localeCompare(b.locale),
+  );
+  for (const row of ordered) {
+    lines.push(
+      `| ${row.flagged ? '⚠️' : '✅'} | \`${row.locale}\` | ${escapeCell(row.source)} | ${escapeCell(row.translation)} | ${escapeCell(row.english)} |`,
+    );
+  }
+  lines.push('');
+  lines.push(
+    '⚠️ marks a low round-trip similarity or a placeholder mismatch. ' +
+      'Idiomatic translations score low too, so treat it as a prompt to look, not a verdict.',
+  );
 }
 
-console.log(`Back-translated ${checked} strings across ${files.length} catalogs.`);
-
-if (flagged.length === 0) {
-  console.log('Nothing looks semantically off.');
-  process.exit(0);
+if (problems.length > 0) {
+  lines.push('');
+  lines.push('<details><summary>Model call problems</summary>');
+  lines.push('');
+  for (const problem of problems) lines.push(`- ${problem}`);
+  lines.push('');
+  lines.push('</details>');
 }
 
-console.log(`\nWorth a human glance (${flagged.length}):\n`);
-for (const item of flagged) {
-  console.log(`  ${item.file}:${item.line}  similarity ${item.score.toFixed(2)}`);
-  console.log(`    source:          ${item.source}`);
-  console.log(`    translation:     ${item.translation}`);
-  console.log(`    back-translated: ${item.english}\n`);
-}
-console.log(
-  'Low similarity is a hint, not a verdict - idiomatic translations score low too.',
+lines.push('');
+lines.push(
+  '_Back-translated by GitHub Models for review. Machine output, so read it as a hint._',
 );
 
-process.exit(strict ? 1 : 0);
+const output = lines.join('\n') + '\n';
+if (outFile) {
+  writeFileSync(outFile, output);
+  log(`Wrote review table to ${outFile}`);
+} else {
+  console.log(output);
+}
