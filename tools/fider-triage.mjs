@@ -14,7 +14,7 @@ const {
   FIDER_API_KEY,
   GITHUB_TOKEN,
   GITHUB_REPOSITORY: repo,
-  FIDER_TRIAGE_MODEL = process.env.AI_MODEL || 'gemini-2.0-flash',
+  FIDER_TRIAGE_MODEL = process.env.AI_MODEL || 'gemini-3.1-flash-lite',
   DRY_RUN = 'false',
   FORCE_REEVAL = 'false',
   CHECK_PRE_EXISTING = 'false',

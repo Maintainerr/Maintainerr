@@ -31,7 +31,7 @@ const baseRef = flagValue('--base');
 const outFile = flagValue('--out');
 
 const I18N_REVIEW_MODEL =
-  process.env.I18N_REVIEW_MODEL || process.env.AI_MODEL || 'gemini-2.0-flash';
+  process.env.I18N_REVIEW_MODEL || process.env.AI_MODEL || 'gemini-3.1-flash-lite';
 
 const SOURCE_LOCALE = 'en';
 const BATCH_SIZE = 40;

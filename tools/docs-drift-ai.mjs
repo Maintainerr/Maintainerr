@@ -9,7 +9,7 @@ import {
 import path from "node:path";
 
 import { MODEL_ENDPOINT, modelHeaders, modelToken } from "./ai/model-client.mjs";
-const MODEL = process.env.DOCS_DRIFT_MODEL || process.env.AI_MODEL || "gemini-2.0-flash";
+const MODEL = process.env.DOCS_DRIFT_MODEL || process.env.AI_MODEL || "gemini-3.1-flash-lite";
 const MAX_PROMPT_CHARS = 24000;
 const MAX_DOC_CHARS = 4000;
 const MAX_ISSUE_BODY_CHARS = 2000;

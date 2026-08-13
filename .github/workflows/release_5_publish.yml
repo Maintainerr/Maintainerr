@@ -91,6 +91,7 @@ jobs:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           AI_MODEL_API_KEY: ${{ secrets.AI_MODEL_API_KEY }}
+          AI_MODEL: ${{ vars.AI_MODEL }}
           DRY_RUN: ${{ github.event.inputs.dry-run-semantic-release }}
         run: |
           if [ "$DRY_RUN" == "true" ]; then
