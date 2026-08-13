@@ -166,6 +166,7 @@ const files = readdirSync(catalogDir)
 
 const rows = [];
 const problems = [];
+let pendingTotal = 0;
 
 for (const file of files) {
   const locale = path.basename(file, '.po');
@@ -178,6 +179,7 @@ for (const file of files) {
     return true;
   });
   if (pending.length === 0) continue;
+  pendingTotal += pending.length;
 
   log(`${locale}: reviewing ${pending.length} strings`);
 
@@ -217,7 +219,15 @@ lines.push('<!-- maintainerr-i18n-back-translation -->');
 lines.push('## Translation review');
 lines.push('');
 
-if (rows.length === 0) {
+if (rows.length === 0 && pendingTotal > 0) {
+  // Never report "nothing changed" when there was something to review and the
+  // provider refused: a silent pass here reads as a clean bill of health.
+  lines.push(
+    `:warning: **Could not review ${pendingTotal} changed translation` +
+      `${pendingTotal === 1 ? '' : 's'}.** The back-translation provider did not ` +
+      'respond, so these strings have NOT been checked. See the details below.',
+  );
+} else if (rows.length === 0) {
   lines.push('No new or changed translations in this pull request.');
 } else {
   const flagged = rows.filter((row) => row.flagged);
