@@ -1,8 +1,9 @@
 import { DownloadIcon, RefreshIcon } from '@heroicons/react/solid'
-import { useMemo, useState } from 'react'
+import { use, useMemo, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { useSettingsOutletContext } from '..'
 import { usePatchSettings } from '../../../api/settings'
+import LocaleContext from '../../../contexts/locale-context'
 import GetApiHandler from '../../../utils/ApiHandler'
 import Button from '../../Common/Button'
 import DocsButton from '../../Common/DocsButton'
@@ -15,10 +16,13 @@ import {
   useSettingsFeedback,
 } from '../useSettingsFeedback'
 import DatabaseBackupModal from './DatabaseBackupModal'
+import LanguageSelector from './LanguageSelector'
 
 interface GeneralSettingsFormValues {
   applicationUrl: string
   apikey: string
+  // Not part of the settings payload - applied on save, stored per browser.
+  locale: string
 }
 
 const MainSettings = () => {
@@ -34,20 +38,22 @@ const MainSettings = () => {
     clearError,
   } = useSettingsFeedback('General settings')
   const { settings } = useSettingsOutletContext()
+  const { locale } = use(LocaleContext)
 
   const initialValues = useMemo<GeneralSettingsFormValues>(
     () => ({
       applicationUrl: settings.applicationUrl ?? '',
       apikey: settings.apikey ?? '',
+      locale,
     }),
-    [settings.apikey, settings.applicationUrl],
+    [settings.apikey, settings.applicationUrl, locale],
   )
 
   return (
     <>
       <title>General settings - Maintainerr</title>
       <div className="h-full w-full">
-        <div className="section h-full w-full">
+        <div className="section mb-2 h-full w-full">
           <h3 className="heading">General Settings</h3>
           <p className="description">Configure global settings</p>
         </div>
@@ -60,7 +66,7 @@ const MainSettings = () => {
           />
         )}
 
-        <div className="section">
+        <div className="section my-2">
           <MainSettingsForm
             key={`${initialValues.applicationUrl}:${initialValues.apikey}`}
             initialValues={initialValues}
@@ -96,6 +102,7 @@ const MainSettingsForm = ({
   onUpdateError: () => void
 }) => {
   const { mutateAsync: updateSettings, isPending } = usePatchSettings()
+  const { setLocale } = use(LocaleContext)
 
   const { register, handleSubmit, reset, getValues } =
     useForm<GeneralSettingsFormValues>({
@@ -107,8 +114,13 @@ const MainSettingsForm = ({
   const submit = async (data: GeneralSettingsFormValues) => {
     onClearError()
 
+    // The locale rides along in the form so it follows the usual Save flow,
+    // but it is a browser preference rather than a server setting.
+    const { locale, ...settingsPayload } = data
+
     try {
-      await updateSettings(data)
+      await updateSettings(settingsPayload)
+      await setLocale(locale)
       reset(data)
       onUpdated()
     } catch {
@@ -130,6 +142,7 @@ const MainSettingsForm = ({
         {
           applicationUrl: getValues('applicationUrl'),
           apikey: key,
+          locale: getValues('locale'),
         },
         {
           keepValues: true,
@@ -186,6 +199,9 @@ const MainSettingsForm = ({
           </div>
         </div>
       </div>
+
+      <LanguageSelector field={register('locale')} />
+
       <div className="actions mt-5 w-full">
         <PageControlRow
           className="mb-0"

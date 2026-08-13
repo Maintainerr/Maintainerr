@@ -1,3 +1,5 @@
+import { lingui, linguiTransformerBabelPreset } from '@lingui/vite-plugin'
+import babel from '@rolldown/plugin-babel'
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 import { loadEnv } from 'vite'
@@ -9,7 +11,15 @@ export default defineConfig(({ mode }) => {
   const basePath = env.VITE_BASE_PATH || ''
 
   return {
-    plugins: [react(), tailwindcss()],
+    plugins: [
+      react(),
+      lingui(),
+      // Vite 8 runs Rolldown, where plugin-react's `babel` option is not
+      // applied - it silently ships untransformed macros. The macro rewrite
+      // has to go through @rolldown/plugin-babel instead.
+      babel({ presets: [linguiTransformerBabelPreset()] }),
+      tailwindcss(),
+    ],
     base: basePath || '/',
     build: {
       outDir: 'dist',
