@@ -22,6 +22,15 @@ jobs:
     name: Back-translation review
     runs-on: ubuntu-latest
     steps:
+      # Labels and the review comment come from the bot rather than
+      # github-actions, matching the rest of the repo's automation.
+      - name: Create GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ secrets.MERGE_APP_ID }}
+          private-key: ${{ secrets.MERGE_APP_KEY }}
+
       - name: Checkout
         uses: actions/checkout@v7
         with:
@@ -37,6 +46,7 @@ jobs:
       - name: Label the pull request
         uses: actions/github-script@v9
         with:
+          github-token: ${{ steps.app-token.outputs.token }}
           script: |
             await github.rest.issues.addLabels({
               owner: context.repo.owner,
@@ -62,6 +72,7 @@ jobs:
         with:
           issue-number: ${{ github.event.pull_request.number }}
           body-includes: '<!-- maintainerr-i18n-back-translation -->'
+          token: ${{ steps.app-token.outputs.token }}
 
       - name: Upsert review comment
         uses: peter-evans/create-or-update-comment@v5
@@ -70,3 +81,4 @@ jobs:
           issue-number: ${{ github.event.pull_request.number }}
           body-path: .i18n-review.md
           edit-mode: replace
+          token: ${{ steps.app-token.outputs.token }}
