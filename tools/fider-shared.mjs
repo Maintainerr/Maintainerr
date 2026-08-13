@@ -29,7 +29,7 @@ const summariseRateHeaders = (headers) => {
   return parts.length ? parts.join(' ') : '(no rate-limit headers returned)';
 };
 
-// Factory for a throttled, retrying GitHub Models caller with a per-run
+// Factory for a throttled, retrying model caller with a per-run
 // budget. Returns { call, count, BudgetExhaustedError }.
 //
 // Observed runner-token limits (GitHub Actions GITHUB_TOKEN, models: read):
@@ -96,7 +96,7 @@ export const createModelCaller = ({
       if (!transient || attempt >= retryDelaysMs.length) {
         const text = await res.text().catch(() => '');
         log(`models headers on final failure: ${summariseRateHeaders(res.headers)}`);
-        throw new Error(`GitHub Models ${res.status}: ${text}`);
+        throw new Error(`Model endpoint ${res.status}: ${text}`);
       }
       const retryAfterRaw = Number(res.headers.get('retry-after'));
       const retryAfterMs =
@@ -105,7 +105,7 @@ export const createModelCaller = ({
         const text = await res.text().catch(() => '');
         log(`models ${res.status} with retry-after=${retryAfterRaw}s exceeds ${Math.round(maxHonouredRetryAfterMs / 1000)}s cap - likely daily quota; giving up on this post`);
         log(`models headers on final failure: ${summariseRateHeaders(res.headers)}`);
-        throw new Error(`GitHub Models ${res.status}: retry-after ${retryAfterRaw}s; ${text}`);
+        throw new Error(`Model endpoint ${res.status}: retry-after ${retryAfterRaw}s; ${text}`);
       }
       const wait = retryAfterMs > 0 ? retryAfterMs : retryDelaysMs[attempt];
       log(`models ${res.status}, retrying in ${Math.round(wait / 1000)}s (attempt ${attempt + 1}/${retryDelaysMs.length}) - ${summariseRateHeaders(res.headers)}`);

@@ -400,7 +400,7 @@ const callModel = async (payload) => {
     body: JSON.stringify(payload),
   });
   if (!res.ok) {
-    throw new Error(`GitHub Models ${res.status}: ${await res.text()}`);
+    throw new Error(`Model endpoint ${res.status}: ${await res.text()}`);
   }
   const data = await res.json();
   return stripOuterFence(data.choices?.[0]?.message?.content ?? "");
