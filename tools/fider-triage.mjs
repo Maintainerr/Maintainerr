@@ -148,6 +148,16 @@ const findBotCommentOfType = async (post, marker) => {
 // body has changed. Lets re-evaluation update stale evidence (e.g. pointing
 // at a newer/better PR) instead of leaving the original verdict frozen.
 const upsertBotComment = async (post, marker, content, label) => {
+  // The queue is read once, then worked through one post at a time. A
+  // maintainer can complete or decline a post while the run is still going,
+  // and the post object in hand would still say "open". Re-read the status
+  // immediately before writing so the bot never comments on a closed request.
+  const current = await fider(`/api/v1/posts/${post.number}`);
+  if (current && !OPEN_STATUSES.has(current.status)) {
+    log(`#${post.number}: now ${current.status}, skipping ${label}`);
+    return;
+  }
+
   const existing = await findBotCommentOfType(post, marker);
   if (!existing) {
     if (dryRun) {
