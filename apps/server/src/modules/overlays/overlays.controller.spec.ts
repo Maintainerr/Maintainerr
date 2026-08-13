@@ -48,10 +48,8 @@ describe('OverlaysController', () => {
     processCollection: jest.Mock;
     resetAllOverlays: jest.Mock;
   };
-  let collectionsService: {
-    getCollection: jest.Mock;
-    getCollectionMedia: jest.Mock;
-  };
+  let collectionRepo: { findOne: jest.Mock };
+  let collectionMediaRepo: { find: jest.Mock };
 
   beforeEach(() => {
     mockedCreateReadStream.mockClear();
@@ -68,10 +66,8 @@ describe('OverlaysController', () => {
       processCollection: jest.fn(),
       resetAllOverlays: jest.fn(),
     };
-    collectionsService = {
-      getCollection: jest.fn(),
-      getCollectionMedia: jest.fn(),
-    };
+    collectionRepo = { findOne: jest.fn() };
+    collectionMediaRepo = { find: jest.fn() };
 
     controller = new OverlaysController(
       {} as any,
@@ -79,7 +75,8 @@ describe('OverlaysController', () => {
       {} as any,
       {} as any,
       {} as any,
-      collectionsService as any,
+      collectionRepo as any,
+      collectionMediaRepo as any,
       createMockLogger(),
     );
 
@@ -331,7 +328,7 @@ describe('OverlaysController', () => {
       collectionMedia: [],
     };
     const result = { processed: 0, reverted: 0, skipped: 3, errors: 0 };
-    collectionsService.getCollection.mockResolvedValue(collection);
+    collectionRepo.findOne.mockResolvedValue(collection);
     processorService.processCollection.mockResolvedValue(result);
 
     await expect(controller.processCollection(8)).resolves.toBe(result);

@@ -1,4 +1,34 @@
 import { MediaItem, MediaItemType } from '@maintainerr/contracts';
+import { chunk } from 'lodash';
+
+// Seasons are read a few at a time. One read per season would cost a
+// long-running show a round trip per season on the rule-evaluation path, while
+// an unbounded fan-out multiplies with the evaluator's own concurrency.
+export const SEASON_READ_CONCURRENCY = 5;
+
+/**
+ * Every descendant of an item, depth first: a show's seasons and their
+ * episodes, a season's episodes. Anything else has none.
+ */
+export const resolveDescendants = async (
+  item: { type: MediaItemType; id: string },
+  getChildren: (parentId: string, type: MediaItemType) => Promise<MediaItem[]>,
+): Promise<MediaItem[]> => {
+  if (item.type === 'season') return getChildren(item.id, 'episode');
+  if (item.type !== 'show') return [];
+
+  const seasons = await getChildren(item.id, 'season');
+  const descendants: MediaItem[] = [];
+  for (const batch of chunk(seasons, SEASON_READ_CONCURRENCY)) {
+    const episodes = await Promise.all(
+      batch.map((season) => getChildren(season.id, 'episode')),
+    );
+    batch.forEach((season, index) =>
+      descendants.push(season, ...episodes[index]),
+    );
+  }
+  return descendants;
+};
 
 /**
  * Resolve which media server ids a context action (exclusion, manual add or
@@ -73,24 +103,14 @@ export const resolveContextActionIds = async (
   }
 
   // No collection type: a global exclusion, which cascades down the hierarchy.
-  switch (context.type) {
-    case 'show':
-      handleMedia.push(mediaId);
-      for (const seasonId of await childIds(mediaId, 'season')) {
-        handleMedia.push(seasonId);
-        handleMedia.push(...(await childIds(seasonId, 'episode')));
-      }
-      break;
-    case 'season':
-      handleMedia.push(context.id);
-      handleMedia.push(...(await childIds(context.id, 'episode')));
-      break;
-    case 'episode':
-      handleMedia.push(context.id);
-      break;
-    default:
-      handleMedia.push(mediaId);
-      break;
+  const cascade =
+    context.type === 'season' || context.type === 'episode'
+      ? { type: context.type, id: context.id }
+      : { type: context.type, id: mediaId };
+
+  handleMedia.push(cascade.id);
+  for (const descendant of await resolveDescendants(cascade, getChildren)) {
+    handleMedia.push(descendant.id);
   }
 
   return handleMedia;

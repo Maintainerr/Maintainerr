@@ -12,6 +12,7 @@ import {
 } from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
 import { SettingsDataService } from '../../settings/settings-data.service';
+import { resolveDescendants } from '../media-server/context-action.util';
 import { MediaServerFactory } from '../media-server/media-server.factory';
 import {
   CONNECTION_TEST_TIMEOUT_MS,
@@ -80,7 +81,7 @@ export class TracearrApiService {
   api: TracearrApi | undefined;
   private activeHistoryIndex: TracearrHistoryIndex | undefined;
   private activeUsernamesByTracearrUserId: Map<string, string[]> | undefined;
-  private episodeIdsByItemId = new Map<string, Promise<string[] | undefined>>();
+  private episodeIdsByItemId = new Map<string, Promise<string[]>>();
   private resolvedServerId: string | undefined;
   private historyGeneration = 0;
   private sweepPromise: Promise<void> | undefined;
@@ -807,33 +808,14 @@ export class TracearrApiService {
     }
   }
 
-  private async fetchEpisodeIds(
-    libItem: MediaItem,
-  ): Promise<string[] | undefined> {
+  /** Every episode under a show or season; callers guarantee the type. */
+  private async fetchEpisodeIds(libItem: MediaItem): Promise<string[]> {
     const mediaServer = await this.mediaServerFactory.getService();
-
-    if (libItem.type === 'season') {
-      const episodes = await mediaServer.getChildrenMetadata(
-        libItem.id,
-        'episode',
-        true,
-      );
-      return episodes.map((item) => item.id);
-    }
-    if (libItem.type !== 'show') {
-      return undefined;
-    }
-
-    const seasons = await mediaServer.getChildrenMetadata(
-      libItem.id,
-      'season',
-      true,
+    const descendants = await resolveDescendants(libItem, (parentId, type) =>
+      mediaServer.getChildrenMetadata(parentId, type, true),
     );
-    const episodeLists = await Promise.all(
-      seasons.map((season) =>
-        mediaServer.getChildrenMetadata(season.id, 'episode', true),
-      ),
-    );
-    return episodeLists.flatMap((episodes) => episodes.map((item) => item.id));
+    return descendants
+      .filter((item) => item.type === 'episode')
+      .map((item) => item.id);
   }
 }

@@ -9,6 +9,20 @@ export const RULES_COLLECTIONS_EXECUTION_LOCK_KEY = 'rules-collections-lock';
 @Injectable()
 export class ExecutionLockService {
   private readonly locks = new Map<string, Promise<void>>();
+  private ruleQueueProcessing = false;
+
+  /**
+   * True while the rule queue is draining, which spans the gaps between the
+   * per-run locks below. Kept here so the collections side can see it without
+   * depending on the rules module.
+   */
+  public isRuleQueueProcessing(): boolean {
+    return this.ruleQueueProcessing;
+  }
+
+  public setRuleQueueProcessing(processing: boolean): void {
+    this.ruleQueueProcessing = processing;
+  }
 
   public tryAcquire(key: string): (() => void) | null {
     if (this.locks.has(key)) {
