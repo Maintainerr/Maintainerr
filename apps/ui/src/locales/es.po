@@ -8,7 +8,7 @@ msgstr ""
 "Language: es\n"
 "Project-Id-Version: \n"
 "Report-Msgid-Bugs-To: \n"
-"PO-Revision-Date: 2026-08-13 20:28+0000\n"
+"PO-Revision-Date: 2026-08-13 20:50+0000\n"
 "Last-Translator: slx612 <sergiolazaro228@gmail.com>\n"
 "Language-Team: Spanish <https://hosted.weblate.org/projects/maintainerr/app/"
 "es/>\n"
@@ -84,84 +84,88 @@ msgstr "Nueva regla"
 
 #: src/components/Collection/CollectionOverview/index.tsx
 msgid "No collections found for this library."
-msgstr ""
+msgstr "No se han encontrado colecciones para esta biblioteca."
 
 #: src/components/Layout/index.tsx
 msgid "Open sidebar"
-msgstr ""
+msgstr "Abrir barra lateral"
 
 #: src/components/Layout/NavBar/index.tsx
 msgid "Overlays"
-msgstr ""
+msgstr "Superposiciones"
 
 #: src/components/Layout/NavBar/index.tsx
 msgid "Overview"
-msgstr ""
+msgstr "Resumen"
 
 #: src/pages/RulesListPage.tsx
 msgid "Requested to stop all rule executions."
-msgstr ""
+msgstr "Se ha solicitado detener todas las ejecuciones de reglas."
 
 #: src/pages/RulesListPage.tsx
 msgid "Rule execution started."
-msgstr ""
+msgstr "Se ha iniciado la ejecución de la regla."
 
 #: src/components/Layout/NavBar/index.tsx
 msgid "Rules"
-msgstr ""
+msgstr "Reglas"
 
 #: src/pages/RulesListPage.tsx
 msgid "Run Rules"
-msgstr ""
+msgstr "Ejecutar reglas"
 
 #: src/components/Settings/Main/LanguageSelector.tsx
 msgid "Saved in this browser. Untranslated text falls back to English."
-msgstr ""
+msgstr "Guardado en este navegador. El texto sin traducir se muestra en inglés."
 
 #: src/components/Settings/Tabs/index.tsx
 msgid "Select a Tab"
-msgstr ""
+msgstr "Selecciona una pestaña"
 
 #: src/components/Settings/Tabs/index.tsx
 msgid "Selected Tab"
-msgstr ""
+msgstr "Pestaña seleccionada"
 
 #: src/components/Layout/NavBar/index.tsx
 msgid "Settings"
-msgstr ""
+msgstr "Configuración"
 
 #: src/pages/RulesListPage.tsx
 msgid "Stop Rules"
-msgstr ""
+msgstr "Detener reglas"
 
 #: src/components/Layout/NavBar/index.tsx
 msgid "Storage"
-msgstr ""
+msgstr "Almacenamiento"
 
 #: src/components/Settings/index.tsx
 msgid "The Logs page stays available during setup if you need to troubleshoot your connection."
 msgstr ""
+"La página «Registros» permanece disponible durante la configuración por si "
+"necesitas solucionar algún problema con tu conexión."
 
 #: src/components/Layout/index.tsx
 msgid "The server returned an unexpected response."
-msgstr ""
+msgstr "El servidor ha devuelto una respuesta inesperada."
 
 #: src/components/Settings/index.tsx
 msgid "There was a problem loading settings."
-msgstr ""
+msgstr "Ha surgido un problema al cargar la configuración."
 
 #: src/components/Layout/index.tsx
 msgid "Unexpected error"
-msgstr ""
+msgstr "Error inesperado"
 
 #: src/components/Layout/index.tsx
 msgid "Unknown error"
-msgstr ""
+msgstr "Error desconocido"
 
 #: src/components/Settings/index.tsx
 msgid "Welcome to Maintainerr!"
-msgstr ""
+msgstr "¡Bienvenido a Maintainerr!"
 
 #: src/components/Layout/index.tsx
 msgid "You can try going back or reloading the page. If the problem persists, please check the browser console for more details."
 msgstr ""
+"Puedes intentar volver atrás o actualizar la página. Si el problema "
+"persiste, comprueba la consola del navegador para obtener más detalles."
