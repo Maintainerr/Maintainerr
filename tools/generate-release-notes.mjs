@@ -31,7 +31,7 @@ const {
   GITHUB_REPOSITORY: repo = "",
   GITHUB_TOKEN,
   GH_TOKEN,
-  RELEASE_NOTES_MODEL = process.env.AI_MODEL || "gemini-2.0-flash",
+  RELEASE_NOTES_MODEL = process.env.AI_MODEL || "gemini-3.1-flash-lite",
 } = process.env;
 
 const modelToken = GITHUB_TOKEN || GH_TOKEN || "";

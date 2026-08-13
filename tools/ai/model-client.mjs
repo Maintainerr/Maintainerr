@@ -18,7 +18,7 @@ export const MODEL_ENDPOINT =
   process.env.AI_MODEL_ENDPOINT ||
   'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions';
 
-export const DEFAULT_MODEL = process.env.AI_MODEL || 'gemini-2.0-flash';
+export const DEFAULT_MODEL = process.env.AI_MODEL || 'gemini-3.1-flash-lite';
 
 export const modelToken = () => process.env.AI_MODEL_API_KEY || '';
 
@@ -44,7 +44,13 @@ export const callModel = async (
     body: JSON.stringify({ model, messages, temperature }),
   });
   if (!res.ok) {
-    throw new Error(`Model endpoint ${res.status}: ${await res.text()}`);
+    const body = await res.text();
+    // Model names get retired; make the fix obvious rather than cryptic.
+    const hint =
+      res.status === 404
+        ? ' (set the AI_MODEL repository variable to a current model)'
+        : '';
+    throw new Error(`Model endpoint ${res.status}${hint}: ${body}`);
   }
   const data = await res.json();
   return (data.choices?.[0]?.message?.content || '').trim();

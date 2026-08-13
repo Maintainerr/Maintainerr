@@ -131,6 +131,7 @@ jobs:
           BASE_REF: ${{ steps.base.outputs.ref }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           AI_MODEL_API_KEY: ${{ secrets.AI_MODEL_API_KEY }}
+          AI_MODEL: ${{ vars.AI_MODEL }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           OUTPUT_PATH: ${{ github.workspace }}/.drift-report.md
         run: node tools/docs-drift-ai.mjs
