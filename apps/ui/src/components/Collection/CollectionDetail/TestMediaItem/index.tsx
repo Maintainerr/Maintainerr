@@ -1,14 +1,14 @@
-import { ClipboardCopyIcon } from '@heroicons/react/solid'
+import { BeakerIcon, ClipboardCopyIcon } from '@heroicons/react/solid'
 import { useMemo, useRef, useState } from 'react'
 import { toast } from 'react-toastify'
 import YAML from 'yaml'
 import { useRuleGroupForCollection } from '../../../../api/rules'
 import GetApiHandler, { PostApiHandler } from '../../../../utils/ApiHandler'
 import Alert from '../../../Common/Alert'
-import Button from '../../../Common/Button'
 import FormItem from '../../../Common/FormItem'
 import LazyMonacoEditor from '../../../Common/LazyMonacoEditor'
 import Modal from '../../../Common/Modal'
+import PendingButton from '../../../Common/PendingButton'
 import SearchMediaItem, { IMediaOptions } from '../../../Common/SearchMediaITem'
 import { Select } from '../../../Forms/Select'
 
@@ -42,6 +42,7 @@ const TestMediaItem = (props: ITestMediaItem) => {
     emptyOption,
   ])
   const [comparisonResult, setComparisonResult] = useState<IComparisonResult>()
+  const [testing, setTesting] = useState(false)
   const editorRef = useRef(undefined)
 
   const ruleGroupQuery = useRuleGroupForCollection(props.collectionId)
@@ -150,12 +151,19 @@ const TestMediaItem = (props: ITestMediaItem) => {
 
     if (!ruleGroup) return
 
-    const result = await PostApiHandler(`/rules/test`, {
-      rulegroupId: ruleGroup.id,
-      mediaId: selectedMediaId,
-    })
+    setTesting(true)
+    try {
+      const result = await PostApiHandler(`/rules/test`, {
+        rulegroupId: ruleGroup.id,
+        mediaId: selectedMediaId,
+      })
 
-    setComparisonResult(result)
+      setComparisonResult(result)
+    } catch {
+      toast.error('Failed to test media')
+    } finally {
+      setTesting(false)
+    }
   }
 
   if (ruleGroupQuery.isLoading || !ruleGroup) {
@@ -201,14 +209,17 @@ const TestMediaItem = (props: ITestMediaItem) => {
         title={'Test Media'}
         iconSvg={''}
         footerActions={
-          <Button
+          <PendingButton
             buttonType="primary"
             className="ml-3"
-            disabled={!testable}
+            type="button"
+            disabled={!testable || testing}
+            isPending={testing}
+            idleLabel="Test"
+            pendingLabel="Testing..."
+            idleIcon={<BeakerIcon />}
             onClick={() => void onSubmit()}
-          >
-            Test
-          </Button>
+          />
         }
       >
         <div className="h-[80vh] overflow-hidden">

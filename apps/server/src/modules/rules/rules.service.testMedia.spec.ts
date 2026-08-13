@@ -10,6 +10,7 @@ import { RulesService } from './rules.service';
 describe('RulesService Test Media Tracearr freshness', () => {
   const createService = (firstValue: [number, number]) => {
     const tracearrApi = {
+      prefetchHistory: jest.fn().mockResolvedValue(undefined),
       invalidateHistory: jest.fn(),
     } as unknown as jest.Mocked<TracearrApiService>;
     const mediaServer = {
@@ -78,15 +79,17 @@ describe('RulesService Test Media Tracearr freshness', () => {
       result: [],
     });
 
-    expect(tracearrApi.invalidateHistory).toHaveBeenCalledTimes(1);
+    expect(tracearrApi.prefetchHistory).toHaveBeenCalledTimes(1);
+    // #3465: invalidating drops the snapshot the sweep resumes from.
+    expect(tracearrApi.invalidateHistory).not.toHaveBeenCalled();
     expect(comparator.executeRulesWithData).toHaveBeenCalledTimes(1);
   });
 
-  it('does not invalidate Tracearr history for other Test Media rules', async () => {
+  it('does not refresh Tracearr history for other Test Media rules', async () => {
     const { service, tracearrApi } = createService([Application.PLEX, 5]);
 
     await service.testRuleGroupWithData(1, 'movie-1');
 
-    expect(tracearrApi.invalidateHistory).not.toHaveBeenCalled();
+    expect(tracearrApi.prefetchHistory).not.toHaveBeenCalled();
   });
 });

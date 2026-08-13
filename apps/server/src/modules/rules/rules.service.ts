@@ -2417,11 +2417,14 @@ export class RulesService {
 
     if (mediaResp) {
       group.rules = await this.getRules(group.id);
-      if (group.rules && this.usesTracearr(group.rules)) {
-        this.tracearrApi.invalidateHistory();
-      }
       const ruleComparator = this.ruleComparatorServiceFactory.create();
       try {
+        if (group.rules && this.usesTracearr(group.rules)) {
+          // The same refresh a rule run does, which resumes at the newest known
+          // play. Discarding the snapshot instead re-read the whole history on
+          // every test (#3465).
+          await this.tracearrApi.prefetchHistory();
+        }
         const result = await ruleComparator.executeRulesWithData(
           group as RuleGroupDto,
           [mediaResp],

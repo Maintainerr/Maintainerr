@@ -297,7 +297,7 @@ describe('TracearrGetterService', () => {
     ).resolves.toEqual(new Date('2026-01-02T01:00:00.000Z'));
   });
 
-  it('prefetches and reads a fresh index after Test Media invalidates history', async () => {
+  it('prefetches and reads a fresh index when no snapshot is held', async () => {
     const { service, tracearrApi } = createService([]);
     const freshIndex = createHistoryIndex([
       historyItem('33333333-3333-4333-8333-333333333333', {
