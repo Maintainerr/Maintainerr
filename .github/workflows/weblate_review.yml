@@ -51,7 +51,7 @@ jobs:
             const fromWeblate =
               pr.user.login.startsWith('hosted-weblate') ||
               pr.head.ref.startsWith('weblate-')
-            const labels = fromWeblate ? ['i18n', 'do-not-squash'] : ['i18n']
+            const labels = fromWeblate ? ['l10n', 'do-not-squash'] : ['l10n']
             for (const name of labels) {
               await github.rest.issues.createLabel({
                 owner: context.repo.owner,
@@ -65,37 +65,6 @@ jobs:
               issue_number: pr.number,
               labels,
             })
-
-      # Squash and rebase both rewrite commit SHAs, after which Weblate no
-      # longer recognises its own commits upstream and every later sync
-      # conflicts. Auto-merge pins the method so nobody has to remember.
-      - name: Pin Weblate pull requests to a merge commit
-        if: >-
-          startsWith(github.event.pull_request.user.login, 'hosted-weblate') ||
-          startsWith(github.event.pull_request.head.ref, 'weblate-')
-        uses: actions/github-script@v9
-        with:
-          github-token: ${{ steps.app-token.outputs.token }}
-          script: |
-            try {
-              await github.graphql(
-                `mutation($id: ID!) {
-                   enablePullRequestAutoMerge(
-                     input: { pullRequestId: $id, mergeMethod: MERGE }
-                   ) { clientMutationId }
-                 }`,
-                { id: context.payload.pull_request.node_id },
-              )
-              core.info('Auto-merge enabled with a merge commit.')
-            } catch (error) {
-              core.warning(
-                'Could not pin auto-merge to a merge commit: ' +
-                  error.message +
-                  '. Merge commits must be enabled on the repository ' +
-                  '(Settings -> General -> Allow merge commits). ' +
-                  'Until then, do NOT squash this pull request.',
-              )
-            }
 
       - name: Back-translate changed strings
         env:
