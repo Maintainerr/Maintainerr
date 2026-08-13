@@ -72,7 +72,7 @@ msgstr "Ir a la vista general"
 
 #: src/components/Collection/CollectionOverview/index.tsx
 msgid "Handle Collections"
-msgstr ""
+msgstr "Gestionar colecciones"
 
 #: src/components/Layout/NavBar/index.tsx
 msgid "Maintainerr logo"
