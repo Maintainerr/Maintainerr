@@ -36,7 +36,7 @@ msgstr ""
 
 #: src/components/Layout/NavBar/index.tsx
 msgid "Collections"
-msgstr ""
+msgstr "Samlingar"
 
 #: src/components/Settings/index.tsx
 msgid "Connect your media server to finish setup."
@@ -88,7 +88,7 @@ msgstr ""
 
 #: src/components/Layout/NavBar/index.tsx
 msgid "Overlays"
-msgstr ""
+msgstr "Overlays"
 
 #: src/components/Layout/NavBar/index.tsx
 msgid "Overview"
