@@ -8,7 +8,7 @@ msgstr ""
 "Language: es\n"
 "Project-Id-Version: \n"
 "Report-Msgid-Bugs-To: \n"
-"PO-Revision-Date: 2026-08-13 20:50+0000\n"
+"PO-Revision-Date: 2026-08-13 21:08+0000\n"
 "Last-Translator: slx612 <sergiolazaro228@gmail.com>\n"
 "Language-Team: Spanish <https://hosted.weblate.org/projects/maintainerr/app/"
 "es/>\n"
@@ -96,7 +96,7 @@ msgstr "Superposiciones"
 
 #: src/components/Layout/NavBar/index.tsx
 msgid "Overview"
-msgstr "Resumen"
+msgstr "Vista general"
 
 #: src/pages/RulesListPage.tsx
 msgid "Requested to stop all rule executions."
@@ -128,7 +128,7 @@ msgstr "Pestaña seleccionada"
 
 #: src/components/Layout/NavBar/index.tsx
 msgid "Settings"
-msgstr "Configuración"
+msgstr "Ajustes"
 
 #: src/pages/RulesListPage.tsx
 msgid "Stop Rules"
