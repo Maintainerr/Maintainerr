@@ -8,7 +8,7 @@ msgstr ""
 "Language: sv\n"
 "Project-Id-Version: \n"
 "Report-Msgid-Bugs-To: \n"
-"PO-Revision-Date: 2026-08-13 20:05+0000\n"
+"PO-Revision-Date: 2026-08-13 20:28+0000\n"
 "Last-Translator: Maintainerr <get@maintainerr.info>\n"
 "Language-Team: Swedish <https://hosted.weblate.org/projects/maintainerr/app/"
 "sv/>\n"
@@ -16,11 +16,11 @@ msgstr ""
 
 #: src/components/Layout/index.tsx
 msgid "An unexpected error occurred."
-msgstr ""
+msgstr "Ett oväntat fel inträffade."
 
 #: src/components/Collection/CollectionOverview/index.tsx
 msgid "Automatic collections"
-msgstr ""
+msgstr "Automatiska samlingar"
 
 #: src/components/Layout/NavBar/index.tsx
 msgid "Calendar"
@@ -29,10 +29,12 @@ msgstr "Kalender"
 #: src/components/Settings/index.tsx
 msgid "Choose your media server, confirm the connection, and then you can continue configuring the rest of Maintainerr."
 msgstr ""
+"Välj din mediaserver, bekräfta anslutningen och sedan kan du fortsätta "
+"konfigurera resten av Maintainerr."
 
 #: src/components/Layout/NavBar/index.tsx
 msgid "Close sidebar"
-msgstr ""
+msgstr "Stäng sidofält"
 
 #: src/components/Layout/NavBar/index.tsx
 msgid "Collections"
@@ -40,7 +42,7 @@ msgstr "Samlingar"
 
 #: src/components/Settings/index.tsx
 msgid "Connect your media server to finish setup."
-msgstr ""
+msgstr "Anslut din mediaserver för att slutföra installationen."
 
 #: src/components/Settings/Main/LanguageSelector.tsx
 msgid "Display language"
