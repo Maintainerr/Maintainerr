@@ -76,11 +76,11 @@ msgstr "Gestionar colecciones"
 
 #: src/components/Layout/NavBar/index.tsx
 msgid "Maintainerr logo"
-msgstr ""
+msgstr "Logotipo de Maintainerr"
 
 #: src/pages/RulesListPage.tsx
 msgid "New Rule"
-msgstr ""
+msgstr "Nueva regla"
 
 #: src/components/Collection/CollectionOverview/index.tsx
 msgid "No collections found for this library."
