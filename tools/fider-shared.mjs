@@ -42,8 +42,12 @@ export const createModelCaller = ({
   endpoint,
   token,
   log,
-  minGapMs = 1000,
-  maxCalls = 800,
+  // Gemini's free tier allows 15 requests a minute and about 1000 a day.
+  // 4500ms gives roughly 13 a minute; 400 calls leaves the rest of the daily
+  // allowance for docs drift, release notes and translation review, which
+  // share the same key. Both are arguments, so a paid tier can raise them.
+  minGapMs = 4500,
+  maxCalls = 400,
   retryDelaysMs = [60000, 120000, 240000],
   // Cap on how long we'll honour a Retry-After header. Models can return
   // values measured in tens of thousands of seconds (~daily quota reset).

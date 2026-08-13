@@ -12,6 +12,7 @@ import {
   MODEL_ENDPOINT,
   hasModelAccess,
   modelHeaders,
+  throttleModelCall,
 } from "./ai/model-client.mjs";
 const DEP_SUBJECT_RE = /^build\(deps(?:-dev)?\):/i;
 const CHORE_SUBJECT_RE = /^chore(?:\([^)]*\))?!?:/i;
@@ -392,6 +393,7 @@ const stripOuterFence = (s) => {
 };
 
 const callModel = async (payload) => {
+  await throttleModelCall();
   const res = await fetch(MODEL_ENDPOINT, {
     method: "POST",
     headers: modelHeaders(),

@@ -31,13 +31,38 @@ export const modelHeaders = (token = modelToken()) => ({
 });
 
 /**
- * One chat completion. Throws on a non-2xx so callers can retry or report;
- * returns the assistant message content, trimmed.
+ * Gap between requests, sized for the provider's free tier.
+ *
+ * Gemini's free tier allows 15 requests per minute; 4500ms gives about 13,
+ * leaving headroom for clock skew and any retry that lands in the same window.
+ * Going faster does not fail outright - the provider returns 429 and callers
+ * back off - but a run then crawls through its retry ladder instead of
+ * finishing. Raise AI_MODEL_MIN_GAP_MS on a paid tier.
+ */
+export const MIN_GAP_MS = Number(process.env.AI_MODEL_MIN_GAP_MS ?? 4500);
+
+let lastCallAt = 0;
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/** Await this before any direct fetch to the model endpoint. */
+export const throttleModelCall = async () => {
+  const elapsed = Date.now() - lastCallAt;
+  if (elapsed < MIN_GAP_MS) {
+    await sleep(MIN_GAP_MS - elapsed);
+  }
+  lastCallAt = Date.now();
+};
+
+/**
+ * One chat completion, paced for the free tier. Throws on a non-2xx so callers
+ * can retry or report; returns the assistant message content, trimmed.
  */
 export const callModel = async (
   messages,
   { model = DEFAULT_MODEL, temperature = 0.1, token = modelToken() } = {},
 ) => {
+  await throttleModelCall();
   const res = await fetch(MODEL_ENDPOINT, {
     method: 'POST',
     headers: modelHeaders(token),

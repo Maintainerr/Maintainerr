@@ -17,7 +17,12 @@
 import { execFileSync } from 'node:child_process';
 import { readdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { MODEL_ENDPOINT, hasModelAccess, modelHeaders } from '../ai/model-client.mjs';
+import {
+  MODEL_ENDPOINT,
+  hasModelAccess,
+  modelHeaders,
+  throttleModelCall,
+} from '../ai/model-client.mjs';
 import { icuArguments, parsePo, readPo } from './po.mjs';
 
 const argv = process.argv.slice(2);
@@ -66,6 +71,7 @@ if (!hasModelAccess()) {
 }
 
 const callModel = async (messages) => {
+  await throttleModelCall();
   const res = await fetch(MODEL_ENDPOINT, {
     method: 'POST',
     headers: modelHeaders(),

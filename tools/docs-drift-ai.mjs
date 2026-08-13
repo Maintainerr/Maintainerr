@@ -8,7 +8,10 @@ import {
 } from "node:fs";
 import path from "node:path";
 
-import { MODEL_ENDPOINT, modelHeaders, modelToken } from "./ai/model-client.mjs";
+import {
+  callModel as sharedCallModel,
+  modelToken,
+} from "./ai/model-client.mjs";
 const MODEL = process.env.DOCS_DRIFT_MODEL || process.env.AI_MODEL || "gemini-3.1-flash-lite";
 const MAX_PROMPT_CHARS = 24000;
 const MAX_DOC_CHARS = 4000;
@@ -102,18 +105,8 @@ const readDocSnippet = (relPath) => {
   return text;
 };
 
-const callModel = async (messages) => {
-  const res = await fetch(MODEL_ENDPOINT, {
-    method: "POST",
-    headers: modelHeaders(modelToken() || token),
-    body: JSON.stringify({ model: MODEL, messages, temperature: 0.1 }),
-  });
-  if (!res.ok) {
-    throw new Error(`GitHub Models ${res.status}: ${await res.text()}`);
-  }
-  const data = await res.json();
-  return (data.choices?.[0]?.message?.content || "").trim();
-};
+const callModel = (messages) =>
+  sharedCallModel(messages, { model: MODEL, token: modelToken() || token });
 
 const header = () => [
   "",
