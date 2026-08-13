@@ -6,7 +6,7 @@
     "dev": "vite",
     "build": "vite build",
     "i18n:extract": "lingui extract --clean",
-    "i18n:check": "lingui extract --clean && git diff --exit-code -- src/locales",
+    "i18n:check": "node ../../tools/i18n/check-catalog.mjs",
     "test": "vitest run --shard=1/2 && vitest run --shard=2/2",
     "check-types": "tsc --noEmit",
     "preview": "vite preview",
