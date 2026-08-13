@@ -1,4 +1,4 @@
-name: Translation review
+name: Weblate review
 
 # Weblate opens a pull request for every batch of translations. This labels it
 # and posts a back-translation table so the whole review happens on GitHub.
@@ -14,7 +14,7 @@ permissions:
   models: read
 
 concurrency:
-  group: i18n-review-${{ github.event.pull_request.number }}
+  group: weblate-review-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
 jobs:
