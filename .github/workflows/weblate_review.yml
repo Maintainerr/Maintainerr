@@ -1,0 +1,72 @@
+name: Weblate review
+
+# Weblate opens a pull request for every batch of translations. This labels it
+# and posts a back-translation table so the whole review happens on GitHub.
+on:
+  pull_request:
+    branches: [development]
+    paths:
+      - 'apps/ui/src/locales/**'
+
+permissions:
+  contents: read
+  pull-requests: write
+  models: read
+
+concurrency:
+  group: weblate-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  review:
+    name: Back-translation review
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          # Needs the base commit so only changed translations are reviewed.
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      - name: Label the pull request
+        uses: actions/github-script@v9
+        with:
+          script: |
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              labels: ['i18n'],
+            })
+
+      - name: Back-translate changed strings
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          node tools/i18n/back-translate.mjs \
+            --base "origin/${{ github.event.pull_request.base.ref }}" \
+            --out .i18n-review.md
+
+      - name: Append to step summary
+        run: cat .i18n-review.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Find existing sticky comment
+        id: find-comment
+        uses: peter-evans/find-comment@v4
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          body-includes: '<!-- maintainerr-i18n-back-translation -->'
+
+      - name: Upsert review comment
+        uses: peter-evans/create-or-update-comment@v5
+        with:
+          comment-id: ${{ steps.find-comment.outputs.comment-id }}
+          issue-number: ${{ github.event.pull_request.number }}
+          body-path: .i18n-review.md
+          edit-mode: replace
