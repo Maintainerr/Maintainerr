@@ -3,8 +3,7 @@
  * for the pull request, so translations can be judged on GitHub without
  * opening Weblate.
  *
- * Uses GitHub Models with the workflow's own token, like the other AI tools in
- * this repo. No third-party translation account is involved.
+ * Uses whatever OpenAI-compatible endpoint tools/ai/model-client.mjs points at.
  *
  * This is a review aid, not a gate. Idiomatic translations routinely come back
  * with different wording; the hard guarantees live in validate-catalogs.mjs.
@@ -18,6 +17,7 @@
 import { execFileSync } from 'node:child_process';
 import { readdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
+import { MODEL_ENDPOINT, hasModelAccess, modelHeaders } from '../ai/model-client.mjs';
 import { icuArguments, parsePo, readPo } from './po.mjs';
 
 const argv = process.argv.slice(2);
@@ -30,11 +30,8 @@ const catalogDir = argv.find((v) => !v.startsWith('--') && v !== flagValue('--ba
 const baseRef = flagValue('--base');
 const outFile = flagValue('--out');
 
-const {
-  GITHUB_TOKEN,
-  I18N_REVIEW_MODEL = 'openai/gpt-4o-mini',
-  MODELS_ENDPOINT = 'https://models.github.ai/inference/chat/completions',
-} = process.env;
+const I18N_REVIEW_MODEL =
+  process.env.I18N_REVIEW_MODEL || process.env.AI_MODEL || 'gemini-2.0-flash';
 
 const SOURCE_LOCALE = 'en';
 const BATCH_SIZE = 40;
@@ -44,20 +41,15 @@ const SIMILARITY_FLOOR = 0.3;
 
 const log = (message) => console.log(message);
 
-if (!GITHUB_TOKEN) {
-  log('GITHUB_TOKEN not set; skipping back-translation review.');
+if (!hasModelAccess()) {
+  log('AI_MODEL_API_KEY not set; skipping back-translation review.');
   process.exit(0);
 }
 
 const callModel = async (messages) => {
-  const res = await fetch(MODELS_ENDPOINT, {
+  const res = await fetch(MODEL_ENDPOINT, {
     method: 'POST',
-    headers: {
-      Authorization: `Bearer ${GITHUB_TOKEN}`,
-      'Content-Type': 'application/json',
-      Accept: 'application/vnd.github+json',
-      'X-GitHub-Api-Version': '2022-11-28',
-    },
+    headers: modelHeaders(),
     body: JSON.stringify({
       model: I18N_REVIEW_MODEL,
       messages,
@@ -65,7 +57,7 @@ const callModel = async (messages) => {
     }),
   });
   if (!res.ok) {
-    throw new Error(`GitHub Models ${res.status}: ${await res.text()}`);
+    throw new Error(`Model endpoint ${res.status}: ${await res.text()}`);
   }
   const data = await res.json();
   return (data.choices?.[0]?.message?.content || '').trim();
@@ -266,7 +258,7 @@ if (problems.length > 0) {
 
 lines.push('');
 lines.push(
-  '_Back-translated by GitHub Models for review. Machine output, so read it as a hint._',
+  '_Back-translated by machine for review. Read it as a hint, not a verdict._',
 );
 
 const output = lines.join('\n') + '\n';

@@ -8,8 +8,8 @@ import {
 } from "node:fs";
 import path from "node:path";
 
-const MODELS_ENDPOINT = "https://models.github.ai/inference/chat/completions";
-const MODEL = process.env.DOCS_DRIFT_MODEL || "openai/gpt-4o";
+import { MODEL_ENDPOINT, modelHeaders, modelToken } from "./ai/model-client.mjs";
+const MODEL = process.env.DOCS_DRIFT_MODEL || process.env.AI_MODEL || "gemini-2.0-flash";
 const MAX_PROMPT_CHARS = 24000;
 const MAX_DOC_CHARS = 4000;
 const MAX_ISSUE_BODY_CHARS = 2000;
@@ -103,14 +103,9 @@ const readDocSnippet = (relPath) => {
 };
 
 const callModel = async (messages) => {
-  const res = await fetch(MODELS_ENDPOINT, {
+  const res = await fetch(MODEL_ENDPOINT, {
     method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-      Accept: "application/vnd.github+json",
-      "X-GitHub-Api-Version": "2022-11-28",
-    },
+    headers: modelHeaders(modelToken() || token),
     body: JSON.stringify({ model: MODEL, messages, temperature: 0.1 }),
   });
   if (!res.ok) {
