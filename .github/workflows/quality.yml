@@ -177,3 +177,17 @@ jobs:
       # leaves translators working from a stale catalog.
       - name: Check translation catalog is current
         run: yarn workspace @maintainerr/ui i18n:check
+      # Weblate enforces the same placeholder rules when a translation is
+      # saved, but that is a setting on someone else's server. This is the
+      # copy that runs on our PRs.
+      - name: Validate translation catalogs
+        run: yarn i18n:validate
+      # Advisory: machine-translates submissions back to English and reports
+      # ones that drift. Inert until a provider secret is configured.
+      - name: Back-translation review
+        if: ${{ !cancelled() }}
+        env:
+          LIBRETRANSLATE_URL: ${{ secrets.LIBRETRANSLATE_URL }}
+          LIBRETRANSLATE_API_KEY: ${{ secrets.LIBRETRANSLATE_API_KEY }}
+          DEEPL_API_KEY: ${{ secrets.DEEPL_API_KEY }}
+        run: yarn i18n:back-translate
