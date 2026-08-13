@@ -41,8 +41,27 @@ const SIMILARITY_FLOOR = 0.3;
 
 const log = (message) => console.log(message);
 
+// The workflow always consumes the --out file, so the skip path has to write
+// one too. Exiting early without it fails the step on a missing file.
+const emit = (body) => {
+  if (outFile) {
+    writeFileSync(outFile, body);
+    log(`Wrote review table to ${outFile}`);
+  } else {
+    console.log(body);
+  }
+};
+
+const SKIP_NOTE =
+  '<!-- maintainerr-i18n-back-translation -->\n' +
+  '## Translation review\n\n' +
+  'Back-translation is not configured, so these translations have not been ' +
+  'machine-reviewed. Set the `AI_MODEL_API_KEY` repository secret to enable it.\n\n' +
+  'The catalog and placeholder checks are unaffected and still gate this pull request.\n';
+
 if (!hasModelAccess()) {
   log('AI_MODEL_API_KEY not set; skipping back-translation review.');
+  emit(SKIP_NOTE);
   process.exit(0);
 }
 
@@ -261,10 +280,4 @@ lines.push(
   '_Back-translated by machine for review. Read it as a hint, not a verdict._',
 );
 
-const output = lines.join('\n') + '\n';
-if (outFile) {
-  writeFileSync(outFile, output);
-  log(`Wrote review table to ${outFile}`);
-} else {
-  console.log(output);
-}
+emit(lines.join('\n') + '\n');
