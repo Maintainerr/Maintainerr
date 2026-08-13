@@ -1,34 +1,51 @@
 name: Weblate merge
 
-# Merges Weblate's own pull requests once a maintainer approves one, following
-# the same shape as dependabot_merge.yml: wait for the required checks, then
+# Weblate opens a pull request for every batch of translations. Once a code
+# owner approves one, the bots do the rest: wait for the required checks, then
 # merge as the automation account.
 #
-# Unlike dependabot, nothing here self-approves. A human still reads the
-# translations; the automation only handles the merge, and always as a merge
-# commit. Squash and rebase rewrite commit SHAs, after which Weblate stops
-# recognising its own commits upstream and every later sync conflicts.
+# Nothing here self-approves. A human still reads the translations; the
+# automation only handles the merge, and always as a merge commit. Squash and
+# rebase rewrite commit SHAs, after which Weblate stops recognising its own
+# commits upstream and every later sync conflicts.
 on:
   pull_request_review:
     types: [submitted]
 
 permissions:
-  contents: write
-  pull-requests: write
+  contents: read
 
 concurrency:
   group: weblate-merge-${{ github.event.pull_request.number }}
   cancel-in-progress: false
 
 jobs:
-  merge:
-    name: Merge after approval
+  # pull_request_review fires for anyone who can leave a review, so the
+  # approving actor is checked against CODEOWNERS the same way the release
+  # flow does it.
+  guard_review_actor:
+    name: Guard approving actor
     if: >-
       github.event.review.state == 'approved' &&
       github.event.pull_request.base.ref == 'development' &&
       (startsWith(github.event.pull_request.user.login, 'hosted-weblate') ||
        startsWith(github.event.pull_request.head.ref, 'weblate-'))
+    uses: ./.github/workflows/guard-manual.yml
+    permissions:
+      contents: read
+    with:
+      enabled: true
+      actor: ${{ github.event.review.user.login }}
+      source: Weblate translation merge
+
+  merge:
+    name: Merge after approval
+    needs: guard_review_actor
+    if: ${{ needs.guard_review_actor.result == 'success' }}
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
     steps:
       - name: Create GitHub App token
         id: app-token
@@ -36,23 +53,6 @@ jobs:
         with:
           client-id: ${{ secrets.MERGE_APP_ID }}
           private-key: ${{ secrets.MERGE_APP_KEY }}
-
-      # An approval from someone without write access carries no authority,
-      # and pull_request_review fires for any user who can leave a review.
-      - name: Verify the approver can write to this repository
-        env:
-          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
-          REVIEWER: ${{ github.event.review.user.login }}
-        run: |
-          set -euo pipefail
-          permission=$(gh api "repos/${{ github.repository }}/collaborators/${REVIEWER}/permission" \
-            --jq .permission)
-          echo "${REVIEWER} has ${permission} permission."
-          case "$permission" in
-            admin|write|maintain) ;;
-            *) echo "::notice::Approval from ${REVIEWER} does not carry write access; not merging."
-               exit 1 ;;
-          esac
 
       - name: Wait for required checks, then merge
         env:
