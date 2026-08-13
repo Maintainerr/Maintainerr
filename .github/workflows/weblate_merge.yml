@@ -1,0 +1,67 @@
+name: Weblate merge
+
+# Weblate opens a pull request for every batch of translations. Once a code
+# owner approves one, the bots do the rest: wait for the required checks, then
+# merge as the automation account.
+#
+# Nothing here self-approves. A human still reads the translations; the
+# automation only handles the merge, and always as a merge commit. Squash and
+# rebase rewrite commit SHAs, after which Weblate stops recognising its own
+# commits upstream and every later sync conflicts.
+on:
+  pull_request_review:
+    types: [submitted]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: weblate-merge-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  # pull_request_review fires for anyone who can leave a review, so the
+  # approving actor is checked against CODEOWNERS the same way the release
+  # flow does it.
+  guard_review_actor:
+    name: Guard approving actor
+    if: >-
+      github.event.review.state == 'approved' &&
+      github.event.pull_request.base.ref == 'development' &&
+      (startsWith(github.event.pull_request.user.login, 'hosted-weblate') ||
+       startsWith(github.event.pull_request.head.ref, 'weblate-'))
+    uses: ./.github/workflows/guard-manual.yml
+    permissions:
+      contents: read
+    with:
+      enabled: true
+      actor: ${{ github.event.review.user.login }}
+      source: Weblate translation merge
+
+  merge:
+    name: Merge after approval
+    needs: guard_review_actor
+    if: ${{ needs.guard_review_actor.result == 'success' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Create GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ secrets.MERGE_APP_ID }}
+          private-key: ${{ secrets.MERGE_APP_KEY }}
+
+      - name: Wait for required checks, then merge
+        env:
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: |
+          set -euo pipefail
+          echo "Waiting for required checks to complete successfully..."
+          gh pr checks "$PR_URL" --required --watch
+
+          echo "Required checks passed. Merging as a merge commit..."
+          gh pr merge --admin --merge "$PR_URL"

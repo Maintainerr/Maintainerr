@@ -102,6 +102,14 @@ const declinePost = async (post, warnComment) => {
 };
 
 const sweepPost = async (post) => {
+  // Same reason as the triage bot: the queue is read once and worked through
+  // over minutes, so a post can be completed or declined mid-run while the
+  // object in hand still says "open".
+  const current = await fider(`/api/v1/posts/${post.number}`);
+  if (current && !SWEEPABLE_STATUSES.has(current.status)) {
+    return { skipped: `now-${current.status}` };
+  }
+
   if (isExempt(post)) return { skipped: 'exempt-tag' };
   if (ageInDays(post.createdAt) < STALE_AGE_DAYS) return { skipped: 'too-young' };
   if ((post.votesCount || 0) >= MAX_VOTES_FOR_STALE) return { skipped: 'enough-votes' };

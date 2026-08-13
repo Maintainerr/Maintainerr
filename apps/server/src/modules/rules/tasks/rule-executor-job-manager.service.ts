@@ -30,7 +30,6 @@ export class RuleExecutorJobManagerService implements OnApplicationShutdown {
   private readonly queue: QueueItem[] = [];
   private abortController: AbortController | undefined;
   private executingRuleGroupId: number | null = null;
-  private processingQueue = false; // true while the internal queue is being processed
   private processQueuePromise: Promise<void> | null = null;
   private isShuttingDown = false;
   private readonly reservedRuleGroupIds = new Set<number>();
@@ -97,7 +96,7 @@ export class RuleExecutorJobManagerService implements OnApplicationShutdown {
   }
 
   public isProcessing(): boolean {
-    return this.processingQueue;
+    return this.executionLock.isRuleQueueProcessing();
   }
 
   public isRuleGroupProcessingOrQueued(ruleGroupId: number): boolean {
@@ -175,8 +174,9 @@ export class RuleExecutorJobManagerService implements OnApplicationShutdown {
   }
 
   private async processQueue() {
-    if (this.processingQueue) return this.processQueuePromise;
-    this.processingQueue = true;
+    if (this.executionLock.isRuleQueueProcessing())
+      return this.processQueuePromise;
+    this.executionLock.setRuleQueueProcessing(true);
     this.processQueuePromise = (async () => {
       try {
         // Queue-level pre-flight: if the media server is unreachable at the
@@ -204,7 +204,7 @@ export class RuleExecutorJobManagerService implements OnApplicationShutdown {
           await this.executeJob(next);
         }
       } finally {
-        this.processingQueue = false;
+        this.executionLock.setRuleQueueProcessing(false);
         this.processQueuePromise = null;
         // Drop the run-scoped watch-history snapshots at batch end so the next
         // batch rebuilds them fresh (they are persistent, so the per-group
@@ -284,7 +284,7 @@ export class RuleExecutorJobManagerService implements OnApplicationShutdown {
 
   public getStatus() {
     return {
-      processingQueue: this.processingQueue,
+      processingQueue: this.executionLock.isRuleQueueProcessing(),
       executingRuleGroupId: this.executingRuleGroupId,
       pendingRuleGroupIds: this.getPendingRuleGroupIds(),
       queue: this.queue.map((q) => q.ruleGroupId),

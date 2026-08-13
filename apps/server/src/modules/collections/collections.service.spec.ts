@@ -19,6 +19,7 @@ import { MediaServerFactory } from '../api/media-server/media-server.factory';
 import { IMediaServerService } from '../api/media-server/media-server.interface';
 import { MaintainerrLogger } from '../logging/logs.service';
 import { MetadataService } from '../metadata/metadata.service';
+import { OverlayProcessorService } from '../overlays/overlay-processor.service';
 import { Exclusion } from '../rules/entities/exclusion.entities';
 import { RuleGroup } from '../rules/entities/rule-group.entities';
 import { SettingsDataService } from '../settings/settings-data.service';
@@ -47,6 +48,7 @@ describe('CollectionsService', () => {
   let mediaItemEnrichmentService: Mocked<MediaItemEnrichmentService>;
   let settingsDataService: Mocked<SettingsDataService>;
   let collectionPosterService: Mocked<CollectionPosterService>;
+  let overlayProcessor: Mocked<OverlayProcessorService>;
   let eventEmitter: Mocked<EventEmitter2>;
   let logger: Mocked<MaintainerrLogger>;
 
@@ -76,6 +78,7 @@ describe('CollectionsService', () => {
     );
     settingsDataService = unitRef.get(SettingsDataService);
     collectionPosterService = unitRef.get(CollectionPosterService);
+    overlayProcessor = unitRef.get(OverlayProcessorService);
     eventEmitter = unitRef.get(EventEmitter2);
     logger = unitRef.get(MaintainerrLogger);
     metadataService.resolveIds.mockResolvedValue({
@@ -498,6 +501,33 @@ describe('CollectionsService', () => {
     await expect(
       (service as any).RemoveCollectionFromDB(createCollection({ id: 78 })),
     ).resolves.toEqual({ status: 'OK', code: 1, message: 'Success' });
+  });
+
+  // The state rows cascade away with the collection row, so a poster not
+  // restored here stays overlaid with nothing left pointing at it.
+  it('restores the overlays of a collection before deleting it, and deletes it either way', async () => {
+    const deleteWithRevert = async (id: number, revert: Promise<unknown>) => {
+      const collection = createCollection({ id, mediaServerId: null });
+      collectionRepo.findOne.mockResolvedValue(collection);
+      collectionRepo.delete.mockResolvedValue({} as any);
+      jest
+        .spyOn(service as any, 'checkAutomaticMediaServerLink')
+        .mockResolvedValue(collection);
+      overlayProcessor.revertCollection.mockReturnValue(revert as any);
+
+      return service.deleteCollection(id);
+    };
+
+    expect(await deleteWithRevert(90, Promise.resolve(1))).toMatchObject({
+      code: 1,
+    });
+    expect(overlayProcessor.revertCollection).toHaveBeenCalledWith(90);
+    expect(collectionRepo.delete).toHaveBeenCalledWith(90);
+
+    expect(
+      await deleteWithRevert(91, Promise.reject(new Error('server down'))),
+    ).toMatchObject({ code: 1 });
+    expect(collectionRepo.delete).toHaveBeenCalledWith(91);
   });
 
   it('does not delete a collection when some removals fail', async () => {

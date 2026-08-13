@@ -853,7 +853,7 @@ async function bootstrapApp(): Promise<INestApplication> {
       },
       {
         provide: TracearrApiService,
-        useValue: { invalidateHistory: () => undefined },
+        useValue: { prefetchHistory: async () => undefined },
       },
       {
         provide: RuleUsersService,

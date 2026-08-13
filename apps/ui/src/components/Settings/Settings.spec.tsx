@@ -1,5 +1,5 @@
 import { MediaServerType } from '@maintainerr/contracts'
-import { act, fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen } from '../../test-utils/render'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { INTERACTION_DEBOUNCE_MS } from '../../utils/uiBehavior'
 import SettingsWrapper from './index'

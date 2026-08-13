@@ -15,6 +15,8 @@
     "lint": "turbo lint",
     "format": "turbo format",
     "format:changed": "node tools/format-changed.mjs",
+    "i18n:validate": "node tools/i18n/validate-catalogs.mjs",
+    "i18n:back-translate": "node tools/i18n/back-translate.mjs",
     "format:check": "turbo format:check",
     "knip": "knip",
     "check-types": "turbo check-types",
@@ -34,10 +36,10 @@
     "@semantic-release/commit-analyzer": "^13.0.1",
     "@semantic-release/exec": "^7.1.0",
     "@semantic-release/git": "^11.0.1",
-    "@types/node": "^26.1.2",
-    "knip": "^6.31.0",
-    "semantic-release": "^25.0.8",
-    "turbo": "^2.10.8",
+    "@types/node": "^26.2.0",
+    "knip": "^6.32.1",
+    "semantic-release": "^25.0.9",
+    "turbo": "^2.10.9",
     "typescript": "^6.0.3"
   },
   "release": {
@@ -100,6 +102,6 @@
     "multer": "2.2.0",
     "linkify-it": "5.0.2",
     "js-yaml@5.2.1": "5.2.3",
-    "nodemailer": "9.0.4"
+    "nodemailer": "9.0.5"
   }
 }

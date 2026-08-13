@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { prefetchRoute } from '../../../router'
 import { Select } from '../../Forms/Select'
 import { showMediaServerSetupRequiredToast } from '../../Layout/MediaServerSetupGuard'
+import { Trans, useLingui } from '@lingui/react/macro'
 
 export interface SettingsRoute {
   text: string
@@ -98,6 +99,7 @@ const SettingsTabs: React.FC<{
   isRouteDisabled,
   onBlockedNavigate = showMediaServerSetupRequiredToast,
 }) => {
+  const { t } = useLingui()
   const location = useLocation()
   const navigate = useNavigate()
 
@@ -114,7 +116,7 @@ const SettingsTabs: React.FC<{
     <>
       <div className="sm:hidden">
         <label htmlFor="tabs" className="sr-only">
-          Select a Tab
+          <Trans>Select a Tab</Trans>
         </label>
         <Select
           value={currentRoute}
@@ -146,7 +148,7 @@ const SettingsTabs: React.FC<{
               navigate(e.target.value)
             }
           }}
-          aria-label="Selected Tab"
+          aria-label={t`Selected Tab`}
         >
           {settingsRoutes.map((route, index) => (
             <SettingsLink

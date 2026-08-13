@@ -1,5 +1,45 @@
 import { MediaItem, MediaItemType } from '@maintainerr/contracts';
-import { resolveContextActionIds } from './context-action.util';
+import {
+  resolveContextActionIds,
+  resolveDescendants,
+  SEASON_READ_CONCURRENCY,
+} from './context-action.util';
+
+describe('resolveDescendants', () => {
+  // More seasons than one batch holds, so the order across batches and the
+  // in-flight cap are both exercised.
+  const seasonCount = SEASON_READ_CONCURRENCY + 2;
+
+  it('keeps depth-first order while capping the season reads in flight', async () => {
+    let inFlight = 0;
+    let maxInFlight = 0;
+    const getChildren = async (parentId: string, type: MediaItemType) => {
+      inFlight++;
+      maxInFlight = Math.max(maxInFlight, inFlight);
+      await new Promise((resolve) => setImmediate(resolve));
+      inFlight--;
+      return type === 'season'
+        ? Array.from(
+            { length: seasonCount },
+            (_, index) => ({ id: `s${index}` }) as MediaItem,
+          )
+        : [{ id: `${parentId}e` } as MediaItem];
+    };
+
+    const descendants = await resolveDescendants(
+      { type: 'show', id: 'series' },
+      getChildren,
+    );
+
+    expect(descendants.map((item) => item.id)).toEqual(
+      Array.from({ length: seasonCount }, (_, index) => [
+        `s${index}`,
+        `s${index}e`,
+      ]).flat(),
+    );
+    expect(maxInFlight).toBe(SEASON_READ_CONCURRENCY);
+  });
+});
 
 describe('resolveContextActionIds', () => {
   // show 'series' -> season 's1' -> episodes 'e1','e2'

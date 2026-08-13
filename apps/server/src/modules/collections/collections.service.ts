@@ -44,6 +44,7 @@ import {
 } from '../events/events.dto';
 import { MaintainerrLogger } from '../logging/logs.service';
 import { MetadataService } from '../metadata/metadata.service';
+import { OverlayProcessorService } from '../overlays/overlay-processor.service';
 import { Exclusion } from '../rules/entities/exclusion.entities';
 import { RuleGroup } from '../rules/entities/rule-group.entities';
 import { SettingsDataService } from '../settings/settings-data.service';
@@ -162,6 +163,7 @@ export class CollectionsService {
     private readonly metadataService: MetadataService,
     private readonly eventEmitter: EventEmitter2,
     private readonly collectionPosterService: CollectionPosterService,
+    private readonly overlayProcessor: OverlayProcessorService,
     private readonly logger: MaintainerrLogger,
   ) {
     logger.setContext(CollectionsService.name);
@@ -3805,6 +3807,17 @@ export class CollectionsService {
           };
         }
       }
+      // The state rows cascade away with the collection, so the posters have
+      // to be restored while they can still be found.
+      try {
+        await this.overlayProcessor.revertCollection(collection.id);
+      } catch (error) {
+        this.logger.warn(
+          `Failed to revert the overlays of collection "${collection.title}"; deleting it anyway`,
+        );
+        this.logger.debug(error);
+      }
+
       return await this.RemoveCollectionFromDB(collection);
     } catch (error) {
       this.logger.warn(
@@ -4662,26 +4675,5 @@ export class CollectionsService {
     }
 
     return total;
-  }
-
-  /**
-   * Get all active collections that have overlayEnabled=true,
-   * including their collectionMedia relation for processing.
-   */
-  async getCollectionsWithOverlayEnabled(): Promise<
-    (Collection & { collectionMedia: CollectionMedia[] })[]
-  > {
-    const collections = await this.collectionRepo.find({
-      where: { overlayEnabled: true, isActive: true },
-    });
-
-    for (const coll of collections) {
-      coll.collectionMedia =
-        (await this.CollectionMediaRepo.find({
-          where: { collectionId: coll.id },
-        })) ?? [];
-    }
-
-    return collections;
   }
 }

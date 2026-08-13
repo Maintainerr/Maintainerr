@@ -1,17 +1,25 @@
 import {
   MaintainerrEvent,
+  MediaItem,
+  MediaItemType,
   OverlayProcessorRunResult,
   OverlayResult,
+  overlayModeForType,
   OverlayTemplate,
   OverlayTemplateMode,
+  ServarrAction,
 } from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import { InjectRepository } from '@nestjs/typeorm';
 import * as fs from 'fs';
 import * as path from 'path';
+import { Repository } from 'typeorm';
 import { dataDir as configDataDir } from '../../app/config/dataDir';
+import { resolveDescendants } from '../api/media-server/context-action.util';
+import { readItemPresence } from '../api/media-server/item-presence.util';
 import { MediaServerFactory } from '../api/media-server/media-server.factory';
-import { CollectionsService } from '../collections/collections.service';
+import type { IMediaServerService } from '../api/media-server/media-server.interface';
 import { Collection } from '../collections/entities/collection.entities';
 import { CollectionMedia } from '../collections/entities/collection_media.entities';
 import { OverlayAppliedDto, OverlayRevertedDto } from '../events/events.dto';
@@ -31,6 +39,18 @@ export type ProcessorStatus = 'idle' | 'running' | 'error';
 export type ProcessorRunResult = OverlayProcessorRunResult;
 
 type RevertItemResult = 'restored' | 'failed' | 'no-backup' | 'item-gone';
+
+type OverlayTarget = {
+  itemId: string;
+  deleteDate: Date;
+  mode: OverlayTemplateMode;
+};
+
+type CoveredChildren = {
+  ids: Set<string>;
+  latest: Date;
+  showId?: string;
+};
 
 @Injectable()
 export class OverlayProcessorService {
@@ -63,7 +83,10 @@ export class OverlayProcessorService {
   constructor(
     private readonly providerFactory: OverlayProviderFactory,
     private readonly mediaServerFactory: MediaServerFactory,
-    private readonly collectionsService: CollectionsService,
+    @InjectRepository(Collection)
+    private readonly collectionRepo: Repository<Collection>,
+    @InjectRepository(CollectionMedia)
+    private readonly collectionMediaRepo: Repository<CollectionMedia>,
     private readonly settingsService: OverlaySettingsService,
     private readonly stateService: OverlayStateService,
     private readonly renderService: OverlayRenderService,
@@ -91,6 +114,221 @@ export class OverlayProcessorService {
     const now = new Date();
     const diff = deleteDate.getTime() - now.getTime();
     return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
+  }
+
+  private getMemberTargets(
+    collection: Collection & { collectionMedia: CollectionMedia[] },
+  ): OverlayTarget[] {
+    const mode = overlayModeForType(collection.type);
+    const targets: OverlayTarget[] = [];
+    for (const media of collection.collectionMedia) {
+      const deleteDate = this.getDeleteDate(
+        media.addDate,
+        collection.deleteAfterDays,
+      );
+      if (deleteDate) {
+        targets.push({ itemId: media.mediaServerId, deleteDate, mode });
+      }
+    }
+    return targets;
+  }
+
+  // ── Overlay inheritance ───────────────────────────────────────────────────
+
+  /** Only a deletion takes other items with it; an unmonitor leaves them. */
+  private actionDeletesFiles(action: ServarrAction): boolean {
+    return (
+      action === ServarrAction.DELETE ||
+      action === ServarrAction.DELETE_SHOW_IF_EMPTY ||
+      action === ServarrAction.UNMONITOR_DELETE_ALL ||
+      action === ServarrAction.UNMONITOR_DELETE_EXISTING
+    );
+  }
+
+  /**
+   * Null when the server could not be asked. throwOnError: an empty list reads
+   * as "no children", promoting a parent that merely could not be read.
+   */
+  private async readChildren(
+    mediaServer: IMediaServerService,
+    parentId: string,
+    childType: MediaItemType,
+  ): Promise<MediaItem[] | null> {
+    try {
+      return await mediaServer.getChildrenMetadata(parentId, childType, true);
+    } catch (error) {
+      this.logger.debug(error);
+      return null;
+    }
+  }
+
+  private cover(
+    covered: Map<string, CoveredChildren>,
+    parentId: string,
+    childId: string,
+    deleteDate: Date,
+    showId?: string,
+  ): void {
+    const entry = covered.get(parentId);
+    if (!entry) {
+      covered.set(parentId, {
+        ids: new Set([childId]),
+        latest: deleteDate,
+        showId,
+      });
+      return;
+    }
+    entry.ids.add(childId);
+    if (deleteDate > entry.latest) entry.latest = deleteDate;
+  }
+
+  /**
+   * A leftover special does not keep a parent alive - rules routinely skip
+   * season 0. A season with no index is not a special but Jellyfin/Emby's
+   * permanent "Season Unknown", so it still has to be covered.
+   */
+  private isFullyCovered(children: MediaItem[], covered: Set<string>): boolean {
+    let matched = 0;
+    for (const child of children) {
+      if (covered.has(child.id)) {
+        matched++;
+        continue;
+      }
+      if (child.type === 'season' && child.index === 0) continue;
+      return false;
+    }
+    // No match at all: no children, or only uncovered specials.
+    return matched > 0;
+  }
+
+  /**
+   * What leaves the library with this collection's members, and so inherits
+   * their countdown: everything under them, plus a parent left with nothing.
+   * These are only drawn on, never added to the collection. The date shown is
+   * the last child to go, when the parent empties.
+   *
+   * `complete` is false when part of the hierarchy could not be read, so the
+   * caller can keep what it drew instead of reverting on a transient failure.
+   */
+  private async collectInheritedTargets(
+    collection: Collection & { collectionMedia: CollectionMedia[] },
+  ): Promise<{ targets: OverlayTarget[]; complete: boolean }> {
+    if (
+      collection.type === 'movie' ||
+      collection.deleteAfterDays == null ||
+      !this.actionDeletesFiles(collection.arrAction)
+    ) {
+      return { targets: [], complete: true };
+    }
+
+    const memberDates = new Map<string, Date>();
+    for (const member of this.getMemberTargets(collection)) {
+      memberDates.set(member.itemId, member.deleteDate);
+    }
+    if (memberDates.size === 0) return { targets: [], complete: true };
+
+    let mediaServer: IMediaServerService;
+    try {
+      mediaServer = await this.mediaServerFactory.getService();
+    } catch (error) {
+      this.logger.warn(
+        `No media server to resolve what leaves with collection "${collection.title}", keeping the overlays already applied`,
+      );
+      this.logger.debug(error);
+      return { targets: [], complete: false };
+    }
+
+    const presence = await readItemPresence(
+      mediaServer,
+      [...memberDates.keys()],
+      (error) => this.logger.debug(error),
+    );
+
+    // A member that is neither readable nor confirmed gone leaves it unknown.
+    let complete =
+      presence.found.size + presence.missing.size === memberDates.size;
+
+    const targets = new Map<string, OverlayTarget>();
+    const addTarget = (item: MediaItem, deleteDate: Date) => {
+      if (memberDates.has(item.id)) return;
+      targets.set(item.id, {
+        itemId: item.id,
+        deleteDate,
+        mode: overlayModeForType(item.type),
+      });
+    };
+
+    // Down: the deletion takes everything under the member with it.
+    for (const member of presence.found.values()) {
+      const deleteDate = memberDates.get(member.id);
+      if (!deleteDate) continue;
+
+      const descendants = await resolveDescendants(
+        member,
+        async (parentId, childType) => {
+          const children = await this.readChildren(
+            mediaServer,
+            parentId,
+            childType,
+          );
+          if (!children) complete = false;
+          return children ?? [];
+        },
+      );
+      for (const descendant of descendants) addTarget(descendant, deleteDate);
+    }
+
+    // Up: group the members under the parent that is losing them.
+    const seasonsByShow = new Map<string, CoveredChildren>();
+    const episodesBySeason = new Map<string, CoveredChildren>();
+    for (const member of presence.found.values()) {
+      const deleteDate = memberDates.get(member.id);
+      if (!deleteDate || !member.parentId) continue;
+
+      if (member.type === 'season') {
+        this.cover(seasonsByShow, member.parentId, member.id, deleteDate);
+      }
+      if (member.type === 'episode') {
+        this.cover(
+          episodesBySeason,
+          member.parentId,
+          member.id,
+          deleteDate,
+          member.grandparentId,
+        );
+      }
+    }
+
+    for (const [seasonId, covered] of episodesBySeason) {
+      const episodes = await this.readChildren(
+        mediaServer,
+        seasonId,
+        'episode',
+      );
+      if (!episodes) {
+        complete = false;
+        continue;
+      }
+      if (!this.isFullyCovered(episodes, covered.ids)) continue;
+
+      addTarget({ id: seasonId, type: 'season' } as MediaItem, covered.latest);
+      if (covered.showId) {
+        this.cover(seasonsByShow, covered.showId, seasonId, covered.latest);
+      }
+    }
+
+    for (const [showId, covered] of seasonsByShow) {
+      const seasons = await this.readChildren(mediaServer, showId, 'season');
+      if (!seasons) {
+        complete = false;
+        continue;
+      }
+      if (!this.isFullyCovered(seasons, covered.ids)) continue;
+
+      addTarget({ id: showId, type: 'show' } as MediaItem, covered.latest);
+    }
+
+    return { targets: [...targets.values()], complete };
   }
 
   // ── Poster backup helpers ─────────────────────────────────────────────────
@@ -123,6 +361,21 @@ export class OverlayProcessorService {
   private deleteOriginalPoster(mediaServerId: string): void {
     const p = this.getOriginalPosterPath(mediaServerId);
     if (fs.existsSync(p)) fs.unlinkSync(p);
+  }
+
+  private async getOverlayCollections(): Promise<
+    (Collection & { collectionMedia: CollectionMedia[] })[]
+  > {
+    const collections = (await this.collectionRepo.find({
+      where: { overlayEnabled: true, isActive: true },
+    })) as (Collection & { collectionMedia: CollectionMedia[] })[];
+
+    for (const collection of collections) {
+      collection.collectionMedia = await this.collectionMediaRepo.find({
+        where: { collectionId: collection.id },
+      });
+    }
+    return collections;
   }
 
   // ── Revert ────────────────────────────────────────────────────────────────
@@ -246,7 +499,8 @@ export class OverlayProcessorService {
 
     const name =
       collectionName ??
-      (await this.collectionsService.getCollection(collectionId))?.title;
+      (await this.collectionRepo.findOne({ where: { id: collectionId } }))
+        ?.title;
     if (!name) return;
 
     this.eventEmitter.emit(
@@ -262,9 +516,13 @@ export class OverlayProcessorService {
 
   private async processCollectionInternal(
     collection: Collection & { collectionMedia: CollectionMedia[] },
-    appliedMediaItems?: { mediaServerId: string }[],
-    force = false,
+    options: {
+      inheritedTargets?: OverlayTarget[];
+      appliedMediaItems?: { mediaServerId: string }[];
+      force?: boolean;
+    } = {},
   ): Promise<ProcessorRunResult> {
+    const { appliedMediaItems, force = false } = options;
     const result = this.createEmptyResult();
     const processedMediaItems = appliedMediaItems ?? [];
 
@@ -292,9 +550,7 @@ export class OverlayProcessorService {
       return result;
     }
 
-    // Auto-detect title card vs poster based on collection type
-    const mode: OverlayTemplateMode =
-      collection.type === 'episode' ? 'titlecard' : 'poster';
+    const mode = overlayModeForType(collection.type);
 
     // Resolve the template: collection override → default for mode → null
     const template = await this.templateService.resolveForCollection(
@@ -314,15 +570,50 @@ export class OverlayProcessorService {
       `Collection "${collection.title}" using template "${template.name}" (${mode})`,
     );
 
-    for (const mediaItem of collection.collectionMedia) {
-      const itemId = mediaItem.mediaServerId;
-      const deleteDate = this.getDeleteDate(
-        mediaItem.addDate,
-        collection.deleteAfterDays,
-      );
-      if (!deleteDate) continue;
+    const inheritedTargets =
+      options.inheritedTargets ??
+      (await this.collectInheritedTargets(collection)).targets;
 
-      const daysLeft = this.getDaysLeft(deleteDate);
+    // Inherited items are not always of the collection's own kind, and one
+    // template cannot render onto both posters and stills.
+    const otherMode: OverlayTemplateMode =
+      mode === 'poster' ? 'titlecard' : 'poster';
+    let otherTemplate: OverlayTemplate | null = null;
+    if (inheritedTargets.some((target) => target.mode === otherMode)) {
+      otherTemplate = await this.templateService.resolveForCollection(
+        collection.overlayTemplateId ?? null,
+        otherMode,
+      );
+      if (!otherTemplate) {
+        this.logger.warn(
+          `No ${otherMode} overlay template found, skipping the inherited ${otherMode} items of "${collection.title}"`,
+        );
+      }
+    }
+
+    if (inheritedTargets.length > 0) {
+      this.logger.log(
+        `Collection "${collection.title}" also overlays ${inheritedTargets.length} item(s) that leave with it`,
+      );
+    }
+
+    const targets: (OverlayTarget & { template: OverlayTemplate })[] = [];
+    for (const member of this.getMemberTargets(collection)) {
+      targets.push({ ...member, template });
+    }
+    for (const inherited of inheritedTargets) {
+      const inheritedTemplate =
+        inherited.mode === mode ? template : otherTemplate;
+      if (!inheritedTemplate) {
+        result.skipped++;
+        continue;
+      }
+      targets.push({ ...inherited, template: inheritedTemplate });
+    }
+
+    for (const target of targets) {
+      const itemId = target.itemId;
+      const daysLeft = this.getDaysLeft(target.deleteDate);
       const existingState = await this.stateService.getItemState(
         collection.id,
         itemId,
@@ -339,8 +630,8 @@ export class OverlayProcessorService {
         const success = await this.applyTemplateOverlay(
           itemId,
           collection.id,
-          deleteDate,
-          template,
+          target.deleteDate,
+          target.template,
           provider,
         );
         if (success) {
@@ -379,7 +670,7 @@ export class OverlayProcessorService {
     this.status = 'running';
 
     try {
-      return await this.processCollectionInternal(collection, undefined, force);
+      return await this.processCollectionInternal(collection, { force });
     } finally {
       this.status = 'idle';
     }
@@ -424,8 +715,7 @@ export class OverlayProcessorService {
       this.logger.log('=== Overlay processor started ===');
 
       // Get all collections with overlay enabled
-      const collections =
-        await this.collectionsService.getCollectionsWithOverlayEnabled();
+      const collections = await this.getOverlayCollections();
 
       if (!collections.length) {
         this.logger.log('No collections have overlays enabled');
@@ -436,11 +726,32 @@ export class OverlayProcessorService {
         `Processing ${collections.length} overlay-enabled collection(s)`,
       );
 
-      // Build set of all current item ids across overlay-enabled collections
+      // Every id the overlay-enabled collections draw on: members + inherited.
       const allCurrentItemIds = new Set<string>();
       for (const coll of collections) {
         for (const item of coll.collectionMedia) {
           allCurrentItemIds.add(item.mediaServerId);
+        }
+      }
+
+      const inheritedByCollection = new Map<number, OverlayTarget[]>();
+      for (const coll of collections) {
+        const inherited = await this.collectInheritedTargets(coll);
+        // An item in an overlay collection keeps its own countdown.
+        const targets = inherited.targets.filter(
+          (target) => !allCurrentItemIds.has(target.itemId),
+        );
+        inheritedByCollection.set(coll.id, targets);
+        for (const target of targets) {
+          allCurrentItemIds.add(target.itemId);
+        }
+
+        // Hierarchy unresolved: hold what it drew instead of reverting it.
+        if (!inherited.complete) {
+          const states = await this.stateService.getCollectionStates(coll.id);
+          for (const state of states) {
+            allCurrentItemIds.add(state.mediaServerId);
+          }
         }
       }
 
@@ -479,11 +790,11 @@ export class OverlayProcessorService {
         this.logger.log(
           `--- Processing: "${coll.title}" (${coll.collectionMedia.length} items) ---`,
         );
-        const collResult = await this.processCollectionInternal(
-          coll,
+        const collResult = await this.processCollectionInternal(coll, {
+          inheritedTargets: inheritedByCollection.get(coll.id),
           appliedMediaItems,
           force,
-        );
+        });
         totalResult.processed += collResult.processed;
         totalResult.reverted += collResult.reverted;
         totalResult.skipped += collResult.skipped;

@@ -233,6 +233,16 @@ const getMediaTitle = (media: ICollectionMedia) => {
     return media.mediaServerId
   }
 
+  if (mediaData.type === 'season') {
+    const showTitle = mediaData.grandparentTitle || mediaData.parentTitle || ''
+    // A library can leave the number unset - Jellyfin files those under a
+    // "Season Unknown" container - so name the season itself instead.
+    const season =
+      mediaData.index != null ? `S${pad2(mediaData.index)}` : mediaData.title
+
+    return [showTitle, season].filter(Boolean).join(' - ')
+  }
+
   if (mediaData.type === 'episode') {
     const showTitle = mediaData.grandparentTitle || mediaData.parentTitle || ''
     const seasonEpisode =

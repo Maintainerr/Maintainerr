@@ -65,7 +65,12 @@ const CreateNotificationModal = (props: CreateNotificationModal) => {
 
   const [targetAgent, setTargetAgent] = useState<agentSpec>()
   const [targetTypes, setTargetTypes] = useState<typeSpec[]>([])
-  const [error, setError] = useState<string>()
+  // Severity travels with the message: deriving it by comparing the rendered
+  // text breaks the moment that text is translated.
+  const [error, setError] = useState<{
+    message: string
+    severity: 'warning' | 'error'
+  }>()
   const [saving, setSaving] = useState(false)
   const [testing, setTesting] = useState(false)
   const [testResult, setTestResult] = useState<TestStatus>()
@@ -101,7 +106,10 @@ const CreateNotificationModal = (props: CreateNotificationModal) => {
       clearFeedback()
       await postNotificationConfig(payload)
     } else {
-      setError('Not all fields contain values')
+      setError({
+        message: 'Not all fields contain values',
+        severity: 'warning',
+      })
     }
   }
 
@@ -141,7 +149,10 @@ const CreateNotificationModal = (props: CreateNotificationModal) => {
           setTesting(false)
         })
     } else {
-      setError('Not all fields contain values')
+      setError({
+        message: 'Not all fields contain values',
+        severity: 'warning',
+      })
     }
   }
 
@@ -190,9 +201,15 @@ const CreateNotificationModal = (props: CreateNotificationModal) => {
         return
       }
 
-      setError(status.message)
+      setError({
+        message: status.message ?? 'Failed to save notification agent',
+        severity: 'error',
+      })
     } catch {
-      setError('Failed to save notification agent')
+      setError({
+        message: 'Failed to save notification agent',
+        severity: 'error',
+      })
     } finally {
       setSaving(false)
     }
@@ -251,14 +268,7 @@ const CreateNotificationModal = (props: CreateNotificationModal) => {
               {error || testResult ? (
                 <div className="space-y-4">
                   {error ? (
-                    <Alert
-                      type={
-                        error === 'Not all fields contain values'
-                          ? 'warning'
-                          : 'error'
-                      }
-                      title={error}
-                    />
+                    <Alert type={error.severity} title={error.message} />
                   ) : null}
                   {testResult ? (
                     <Alert

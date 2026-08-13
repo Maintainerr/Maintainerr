@@ -32,7 +32,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      models: read
       pull-requests: read
     steps:
       - uses: actions/checkout@v7
@@ -46,6 +45,8 @@ jobs:
           FIDER_HOST: ${{ vars.FIDER_HOST || 'https://features.maintainerr.info' }}
           FIDER_API_KEY: ${{ secrets.FIDER_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          AI_MODEL_API_KEY: ${{ secrets.AI_MODEL_API_KEY }}
+          AI_MODEL: ${{ vars.AI_MODEL }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || 'false' }}
           FORCE_REEVAL: 'true'
@@ -56,7 +57,6 @@ jobs:
           # surface as candidates. Catches "user filed an FR for something
           # that already shipped years ago" cases the daily run can't see.
           CHECK_PRE_EXISTING: 'true'
-          FIDER_TRIAGE_MODEL: openai/gpt-4.1-mini
           DISCORD_FIDER_BOT_WEBHOOK: ${{ secrets.DISCORD_FIDER_BOT_WEBHOOK }}
           DISCORD_PING_ROLE_ID: ${{ secrets.DISCORD_PING_ROLE_ID }}
         run: node tools/fider-triage.mjs

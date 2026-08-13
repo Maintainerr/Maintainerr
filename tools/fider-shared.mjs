@@ -29,7 +29,7 @@ const summariseRateHeaders = (headers) => {
   return parts.length ? parts.join(' ') : '(no rate-limit headers returned)';
 };
 
-// Factory for a throttled, retrying GitHub Models caller with a per-run
+// Factory for a throttled, retrying model caller with a per-run
 // budget. Returns { call, count, BudgetExhaustedError }.
 //
 // Observed runner-token limits (GitHub Actions GITHUB_TOKEN, models: read):
@@ -42,8 +42,12 @@ export const createModelCaller = ({
   endpoint,
   token,
   log,
-  minGapMs = 1000,
-  maxCalls = 800,
+  // Gemini's free tier allows 15 requests a minute and about 1000 a day.
+  // 4500ms gives roughly 13 a minute; 400 calls leaves the rest of the daily
+  // allowance for docs drift, release notes and translation review, which
+  // share the same key. Both are arguments, so a paid tier can raise them.
+  minGapMs = 4500,
+  maxCalls = 400,
   retryDelaysMs = [60000, 120000, 240000],
   // Cap on how long we'll honour a Retry-After header. Models can return
   // values measured in tens of thousands of seconds (~daily quota reset).
@@ -79,8 +83,6 @@ export const createModelCaller = ({
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
-          Accept: 'application/vnd.github+json',
-          'X-GitHub-Api-Version': '2022-11-28',
         },
         body,
       });
@@ -94,7 +96,7 @@ export const createModelCaller = ({
       if (!transient || attempt >= retryDelaysMs.length) {
         const text = await res.text().catch(() => '');
         log(`models headers on final failure: ${summariseRateHeaders(res.headers)}`);
-        throw new Error(`GitHub Models ${res.status}: ${text}`);
+        throw new Error(`Model endpoint ${res.status}: ${text}`);
       }
       const retryAfterRaw = Number(res.headers.get('retry-after'));
       const retryAfterMs =
@@ -103,7 +105,7 @@ export const createModelCaller = ({
         const text = await res.text().catch(() => '');
         log(`models ${res.status} with retry-after=${retryAfterRaw}s exceeds ${Math.round(maxHonouredRetryAfterMs / 1000)}s cap - likely daily quota; giving up on this post`);
         log(`models headers on final failure: ${summariseRateHeaders(res.headers)}`);
-        throw new Error(`GitHub Models ${res.status}: retry-after ${retryAfterRaw}s; ${text}`);
+        throw new Error(`Model endpoint ${res.status}: retry-after ${retryAfterRaw}s; ${text}`);
       }
       const wait = retryAfterMs > 0 ? retryAfterMs : retryDelaysMs[attempt];
       log(`models ${res.status}, retrying in ${Math.round(wait / 1000)}s (attempt ${attempt + 1}/${retryDelaysMs.length}) - ${summariseRateHeaders(res.headers)}`);

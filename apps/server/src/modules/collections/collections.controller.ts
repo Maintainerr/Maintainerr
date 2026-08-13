@@ -51,7 +51,6 @@ import { ZodValidationPipe } from 'nestjs-zod';
 import { z } from 'zod';
 import { MaintainerrLogger } from '../logging/logs.service';
 import { ExclusionAction } from '../rules/dtos/exclusion.dto';
-import { RuleExecutorJobManagerService } from '../rules/tasks/rule-executor-job-manager.service';
 import {
   ExecutionLockService,
   RULES_COLLECTIONS_EXECUTION_LOCK_KEY,
@@ -271,7 +270,6 @@ export class CollectionsController {
   constructor(
     private readonly collectionService: CollectionsService,
     private readonly collectionWorkerService: CollectionWorkerService,
-    private readonly ruleExecutorJobManagerService: RuleExecutorJobManagerService,
     private readonly executionLock: ExecutionLockService,
     private readonly collectionHandler: CollectionHandler,
     private readonly collectionPosterService: CollectionPosterService,
@@ -481,7 +479,7 @@ export class CollectionsController {
   ) {
     if (
       this.collectionWorkerService.isRunning() ||
-      this.ruleExecutorJobManagerService.isProcessing()
+      this.executionLock.isRuleQueueProcessing()
     ) {
       throw new ConflictException(
         'Collection handling is already running. Try again when the current collection or rule execution finishes.',

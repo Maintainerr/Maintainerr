@@ -9,6 +9,7 @@ import {
   PhotographIcon,
   XIcon,
 } from '@heroicons/react/outline'
+import { useLingui } from '@lingui/react/macro'
 import { ReactNode, use, useMemo, useRef } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import SearchContext from '../../../contexts/search-context'
@@ -37,8 +38,9 @@ const NavBar: React.FC<NavBarProps> = ({ open, setClosed }) => {
   const location = useLocation()
   const { isRouteBlocked, showBlockedNavigationToast } =
     useMediaServerSetupNavigationGuard()
+  const { t } = useLingui()
   // Keep variable for potential future customization
-  const collectionsLabel = 'Collections'
+  const collectionsLabel = t`Collections`
 
   const navBarItems: NavBarLink[] = useMemo(() => {
     const items: NavBarLink[] = [
@@ -46,14 +48,14 @@ const NavBar: React.FC<NavBarProps> = ({ open, setClosed }) => {
         key: '0',
         href: '/overview',
         svgIcon: <EyeIcon className="mr-3 h-6 w-6" />,
-        name: 'Overview',
+        name: t`Overview`,
         matchPattern: /^\/(?:overview(?:\/.*)?|)$/,
       },
       {
         key: '1',
         href: '/rules',
         svgIcon: <ClipboardCheckIcon className="mr-3 h-6 w-6" />,
-        name: 'Rules',
+        name: t`Rules`,
         matchPattern: /^\/rules(?:\/.*)?$/,
       },
       {
@@ -67,21 +69,21 @@ const NavBar: React.FC<NavBarProps> = ({ open, setClosed }) => {
         key: '4',
         href: '/calendar',
         svgIcon: <CalendarIcon className="mr-3 h-6 w-6" />,
-        name: 'Calendar',
+        name: t`Calendar`,
         matchPattern: /^\/calendar(?:\/.*)?$/,
       },
       {
         key: '6',
         href: '/storage-metrics',
         svgIcon: <ChartBarIcon className="mr-3 h-6 w-6" />,
-        name: 'Storage',
+        name: t`Storage`,
         matchPattern: /^\/storage-metrics(?:\/.*)?$/,
       },
       {
         key: '3',
         href: '/settings',
         svgIcon: <CogIcon className="mr-3 h-6 w-6" />,
-        name: 'Settings',
+        name: t`Settings`,
         matchPattern: /^\/settings(?:\/.*)?$/,
       },
     ]
@@ -90,12 +92,12 @@ const NavBar: React.FC<NavBarProps> = ({ open, setClosed }) => {
       key: '5',
       href: '/overlays',
       svgIcon: <PhotographIcon className="mr-3 h-6 w-6" />,
-      name: 'Overlays',
+      name: t`Overlays`,
       matchPattern: /^\/overlays(?:\/.*)?$/,
     })
 
     return items
-  }, [collectionsLabel])
+  }, [collectionsLabel, t])
 
   const linkIsActive = (link: NavBarLink) => {
     if (link.matchPattern) {
@@ -154,7 +156,7 @@ const NavBar: React.FC<NavBarProps> = ({ open, setClosed }) => {
         <img
           className="block h-full w-full object-contain object-left"
           src={`${basePath}/logo.svg`}
-          alt="Maintainerr logo"
+          alt={t`Maintainerr logo`}
           width={340}
           height={100}
           decoding="sync"
@@ -177,7 +179,7 @@ const NavBar: React.FC<NavBarProps> = ({ open, setClosed }) => {
                 <div className="sidebar-close-button absolute top-0 right-0 -mr-14 p-1">
                   <button
                     className="flex h-12 w-12 items-center justify-center rounded-full text-white focus:bg-zinc-600 focus:outline-hidden"
-                    aria-label="Close sidebar"
+                    aria-label={t`Close sidebar`}
                     onClick={() => setClosed()}
                   >
                     <XIcon className="h-6 w-6 text-white" />

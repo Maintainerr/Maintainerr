@@ -52,7 +52,6 @@ jobs:
       contents: write
       issues: write
       pull-requests: write
-      models: read
     steps:
       - name: Create GitHub App token
         id: app-token
@@ -76,12 +75,23 @@ jobs:
         run: |
           corepack install
           corepack enable
+      # node-canvas downloads a prebuilt binary during install and falls back to
+      # a source build when that download fails. The runners have no pixman, so
+      # the fallback died and took the job with it. These make the fallback work.
+      - name: Install node-canvas build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libcairo2-dev libpango1.0-dev libjpeg-dev libgif-dev librsvg2-dev \
+            libpixman-1-dev
       - name: Install dependencies
         run: yarn --immutable
       - name: Release
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          AI_MODEL_API_KEY: ${{ secrets.AI_MODEL_API_KEY }}
+          AI_MODEL: ${{ vars.AI_MODEL }}
           DRY_RUN: ${{ github.event.inputs.dry-run-semantic-release }}
         run: |
           if [ "$DRY_RUN" == "true" ]; then
