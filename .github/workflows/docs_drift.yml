@@ -29,7 +29,6 @@ permissions:
   contents: read
   pull-requests: write
   issues: read
-  models: read
 
 jobs:
   guard_manual_run:
@@ -131,6 +130,7 @@ jobs:
           DOCS_ROOT: ${{ github.workspace }}/.maintainerr_docs
           BASE_REF: ${{ steps.base.outputs.ref }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          AI_MODEL_API_KEY: ${{ secrets.AI_MODEL_API_KEY }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           OUTPUT_PATH: ${{ github.workspace }}/.drift-report.md
         run: node tools/docs-drift-ai.mjs

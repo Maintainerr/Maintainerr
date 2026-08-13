@@ -1,4 +1,5 @@
 import { execFileSync } from 'node:child_process';
+import { MODEL_ENDPOINT, hasModelAccess, modelToken } from './ai/model-client.mjs';
 import {
   createFider,
   createModelCaller,
@@ -13,7 +14,7 @@ const {
   FIDER_API_KEY,
   GITHUB_TOKEN,
   GITHUB_REPOSITORY: repo,
-  FIDER_TRIAGE_MODEL = 'openai/gpt-4o-mini',
+  FIDER_TRIAGE_MODEL = process.env.AI_MODEL || 'gemini-2.0-flash',
   DRY_RUN = 'false',
   FORCE_REEVAL = 'false',
   CHECK_PRE_EXISTING = 'false',
@@ -26,7 +27,7 @@ const {
 const dryRun = DRY_RUN === 'true';
 const forceReeval = FORCE_REEVAL === 'true';
 const checkPreExisting = CHECK_PRE_EXISTING === 'true';
-const MODELS_ENDPOINT = 'https://models.github.ai/inference/chat/completions';
+const MODELS_ENDPOINT = MODEL_ENDPOINT;
 
 const TAG_CHECKED = 'triage-checked';
 const TAG_POSSIBLY_COMPLETED = 'possibly-completed';
@@ -75,6 +76,7 @@ const requireEnv = () => {
   if (!FIDER_HOST) missing.push('FIDER_HOST');
   if (!FIDER_API_KEY) missing.push('FIDER_API_KEY');
   if (!GITHUB_TOKEN) missing.push('GITHUB_TOKEN');
+  if (!hasModelAccess()) missing.push('AI_MODEL_API_KEY');
   if (!repo) missing.push('GITHUB_REPOSITORY');
   if (missing.length) throw new Error(`missing env: ${missing.join(', ')}`);
 };
@@ -83,7 +85,7 @@ const fider = createFider({ host: FIDER_HOST, apiKey: FIDER_API_KEY });
 
 const models = createModelCaller({
   endpoint: MODELS_ENDPOINT,
-  token: GITHUB_TOKEN,
+  token: modelToken(),
   log,
 });
 

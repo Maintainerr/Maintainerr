@@ -8,7 +8,11 @@ const MAX_MIGRATIONS_TOTAL_CHARS = 12000;
 const MAX_PR_BODY_CHARS = 400;
 const MAX_ORPHAN_BODY_CHARS = 300;
 const MIGRATION_PATH_PREFIX = "apps/server/src/database/migrations/";
-const MODELS_ENDPOINT = "https://models.github.ai/inference/chat/completions";
+import {
+  MODEL_ENDPOINT,
+  hasModelAccess,
+  modelHeaders,
+} from "./ai/model-client.mjs";
 const DEP_SUBJECT_RE = /^build\(deps(?:-dev)?\):/i;
 const CHORE_SUBJECT_RE = /^chore(?:\([^)]*\))?!?:/i;
 const SYNC_SUBJECT_RE = /^chore:\s*sync\s+development\s+to\s+main/i;
@@ -27,7 +31,7 @@ const {
   GITHUB_REPOSITORY: repo = "",
   GITHUB_TOKEN,
   GH_TOKEN,
-  RELEASE_NOTES_MODEL = "openai/gpt-4o",
+  RELEASE_NOTES_MODEL = process.env.AI_MODEL || "gemini-2.0-flash",
 } = process.env;
 
 const modelToken = GITHUB_TOKEN || GH_TOKEN || "";
@@ -388,14 +392,9 @@ const stripOuterFence = (s) => {
 };
 
 const callModel = async (payload) => {
-  const res = await fetch(MODELS_ENDPOINT, {
+  const res = await fetch(MODEL_ENDPOINT, {
     method: "POST",
-    headers: {
-      Authorization: `Bearer ${modelToken}`,
-      "Content-Type": "application/json",
-      Accept: "application/vnd.github+json",
-      "X-GitHub-Api-Version": "2022-11-28",
-    },
+    headers: modelHeaders(),
     body: JSON.stringify(payload),
   });
   if (!res.ok) {
@@ -489,8 +488,8 @@ const main = async () => {
   const migrations = files.filter((f) => f.startsWith(MIGRATION_PATH_PREFIX));
   const migrationDetails = readMigrationContents(migrations);
 
-  if (!modelToken) {
-    log("no GITHUB_TOKEN/GH_TOKEN available; emitting fallback notes");
+  if (!hasModelAccess()) {
+    log("no AI_MODEL_API_KEY available; emitting fallback notes");
     process.stdout.write(
       `${header}${fallbackNotes(commits, migrations)}${footer}`,
     );
