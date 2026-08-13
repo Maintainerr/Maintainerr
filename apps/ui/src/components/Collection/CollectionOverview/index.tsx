@@ -8,6 +8,7 @@ import LoadingSpinner, {
 } from '../../Common/LoadingSpinner'
 import PageControlRow from '../../Common/PageControlRow'
 import CollectionItem from '../CollectionItem'
+import { Trans, useLingui } from '@lingui/react/macro'
 
 interface ICollectionOverview {
   collections: ICollection[] | undefined
@@ -19,6 +20,7 @@ interface ICollectionOverview {
 }
 
 const CollectionOverview = (props: ICollectionOverview) => {
+  const { t } = useLingui()
   const { collectionHandlerRunning } = useTaskStatusContext()
   const {
     data: libraries,
@@ -39,10 +41,10 @@ const CollectionOverview = (props: ICollectionOverview) => {
           <ExecuteButton
             className="mx-0"
             onClick={props.doActions}
-            text="Handle Collections"
+            text={t`Handle Collections`}
             executing={collectionHandlerRunning}
             disabled={collectionHandlerRunning}
-            title="Executes each collection's configured action (Delete / Unmonitor / Do Nothing). Does not remove items from collections."
+            title={t`Executes each collection's configured action (Delete / Unmonitor / Do Nothing). Does not remove items from collections.`}
           />
         }
         controls={
@@ -61,7 +63,7 @@ const CollectionOverview = (props: ICollectionOverview) => {
       <div className="w-full">
         <div className="m-auto mb-3 flex items-center justify-between gap-3">
           <h1 className="m-auto text-lg font-bold text-zinc-200 sm:m-0 xl:m-0">
-            {'Automatic collections'}
+            {t`Automatic collections`}
           </h1>
           <div className="flex min-h-6 min-w-6 items-center justify-end">
             {showRefreshing ? (
@@ -92,7 +94,7 @@ const CollectionOverview = (props: ICollectionOverview) => {
           </ul>
         ) : (
           <div className="flex min-h-80 items-center justify-center rounded-xl border border-dashed border-zinc-700 bg-zinc-900/30 p-6 text-sm text-zinc-400">
-            No collections found for this library.
+            <Trans>No collections found for this library.</Trans>
           </div>
         )}
       </div>

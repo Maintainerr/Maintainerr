@@ -156,7 +156,7 @@ const NavBar: React.FC<NavBarProps> = ({ open, setClosed }) => {
         <img
           className="block h-full w-full object-contain object-left"
           src={`${basePath}/logo.svg`}
-          alt="Maintainerr logo"
+          alt={t`Maintainerr logo`}
           width={340}
           height={100}
           decoding="sync"
@@ -179,7 +179,7 @@ const NavBar: React.FC<NavBarProps> = ({ open, setClosed }) => {
                 <div className="sidebar-close-button absolute top-0 right-0 -mr-14 p-1">
                   <button
                     className="flex h-12 w-12 items-center justify-center rounded-full text-white focus:bg-zinc-600 focus:outline-hidden"
-                    aria-label="Close sidebar"
+                    aria-label={t`Close sidebar`}
                     onClick={() => setClosed()}
                   >
                     <XIcon className="h-6 w-6 text-white" />

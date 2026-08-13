@@ -26,6 +26,7 @@ import {
   showMediaServerSetupRequiredToast,
 } from '../Layout/MediaServerSetupGuard'
 import SettingsTabs, { SettingsRoute } from './Tabs'
+import { Trans, useLingui } from '@lingui/react/macro'
 
 const mediaServerTabContent = (label?: string) => {
   if (label) {
@@ -117,6 +118,7 @@ export const useSettingsOutletContext = () =>
   useOutletContext<SettingsOutletContext>()
 
 const SettingsWrapper = () => {
+  const { t } = useLingui()
   const location = useLocation()
   const { data: settings, isLoading, error } = useSettings()
   const [hasDismissedSetupWelcome, setHasDismissedSetupWelcome] =
@@ -274,7 +276,10 @@ const SettingsWrapper = () => {
           <SettingsTabs settingsRoutes={settingsRoutes} allEnabled={false} />
         </div>
         <div className="mt-10 flex">
-          <Alert type="error" title="There was a problem loading settings." />
+          <Alert
+            type="error"
+            title={t`There was a problem loading settings.`}
+          />
         </div>
       </>
     )
@@ -308,7 +313,7 @@ const SettingsWrapper = () => {
       <>
         {shouldShowSetupWelcome ? (
           <Modal
-            title="Welcome to Maintainerr!"
+            title={t`Welcome to Maintainerr!`}
             backgroundClickable={false}
             size="md"
             footerActions={
@@ -324,16 +329,20 @@ const SettingsWrapper = () => {
             <div className="space-y-4 text-zinc-100">
               <div className="rounded-md border border-info-500/40 bg-info-900/30 p-4 backdrop-blur-sm">
                 <p className="text-base font-medium text-info-100">
-                  Connect your media server to finish setup.
+                  <Trans>Connect your media server to finish setup.</Trans>
                 </p>
                 <p className="mt-2 leading-6 text-info-200">
-                  Choose your media server, confirm the connection, and then you
-                  can continue configuring the rest of Maintainerr.
+                  <Trans>
+                    Choose your media server, confirm the connection, and then
+                    you can continue configuring the rest of Maintainerr.
+                  </Trans>
                 </p>
               </div>
               <p className="text-sm leading-6 text-zinc-400">
-                The Logs page stays available during setup if you need to
-                troubleshoot your connection.
+                <Trans>
+                  The Logs page stays available during setup if you need to
+                  troubleshoot your connection.
+                </Trans>
               </p>
             </div>
           </Modal>
