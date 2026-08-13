@@ -1,18 +1,19 @@
 name: Weblate merge
 
-# Pins Weblate's own pull requests to a merge commit, but only once a human has
-# approved one. Squash and rebase both rewrite commit SHAs, after which Weblate
-# stops recognising its own commits upstream and every later sync conflicts.
+# Merges Weblate's own pull requests once a maintainer approves one, following
+# the same shape as dependabot_merge.yml: wait for the required checks, then
+# merge as the automation account.
 #
-# Deliberately triggered on review rather than on the pull request: development
-# requires zero approvals, so enabling auto-merge any earlier would merge
-# translations the moment CI went green, with nobody having read them.
+# Unlike dependabot, nothing here self-approves. A human still reads the
+# translations; the automation only handles the merge, and always as a merge
+# commit. Squash and rebase rewrite commit SHAs, after which Weblate stops
+# recognising its own commits upstream and every later sync conflicts.
 on:
   pull_request_review:
     types: [submitted]
 
 permissions:
-  contents: read
+  contents: write
   pull-requests: write
 
 concurrency:
@@ -20,8 +21,8 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  pin-merge-method:
-    name: Pin to a merge commit
+  merge:
+    name: Merge after approval
     if: >-
       github.event.review.state == 'approved' &&
       github.event.pull_request.base.ref == 'development' &&
@@ -36,26 +37,31 @@ jobs:
           client-id: ${{ secrets.MERGE_APP_ID }}
           private-key: ${{ secrets.MERGE_APP_KEY }}
 
-      - name: Enable auto-merge with a merge commit
-        uses: actions/github-script@v9
-        with:
-          github-token: ${{ steps.app-token.outputs.token }}
-          script: |
-            try {
-              await github.graphql(
-                `mutation($id: ID!) {
-                   enablePullRequestAutoMerge(
-                     input: { pullRequestId: $id, mergeMethod: MERGE }
-                   ) { clientMutationId }
-                 }`,
-                { id: context.payload.pull_request.node_id },
-              )
-              core.info('Auto-merge enabled with a merge commit.')
-            } catch (error) {
-              core.warning(
-                'Could not pin auto-merge to a merge commit: ' +
-                  error.message +
-                  '. Check that merge commits are allowed on the repository. ' +
-                  'Until then, merge this by hand and do NOT squash it.',
-              )
-            }
+      # An approval from someone without write access carries no authority,
+      # and pull_request_review fires for any user who can leave a review.
+      - name: Verify the approver can write to this repository
+        env:
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+          REVIEWER: ${{ github.event.review.user.login }}
+        run: |
+          set -euo pipefail
+          permission=$(gh api "repos/${{ github.repository }}/collaborators/${REVIEWER}/permission" \
+            --jq .permission)
+          echo "${REVIEWER} has ${permission} permission."
+          case "$permission" in
+            admin|write|maintain) ;;
+            *) echo "::notice::Approval from ${REVIEWER} does not carry write access; not merging."
+               exit 1 ;;
+          esac
+
+      - name: Wait for required checks, then merge
+        env:
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: |
+          set -euo pipefail
+          echo "Waiting for required checks to complete successfully..."
+          gh pr checks "$PR_URL" --required --watch
+
+          echo "Required checks passed. Merging as a merge commit..."
+          gh pr merge --admin --merge "$PR_URL"
