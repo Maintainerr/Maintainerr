@@ -58,7 +58,7 @@
     "not IE 11"
   ],
   "devDependencies": {
-    "@babel/core": "^7.29.0",
+    "@babel/core": "^8.0.1",
     "@eslint-react/eslint-plugin": "^5.18.3",
     "@eslint/js": "^10.0.1",
     "@lingui/babel-plugin-lingui-macro": "^6.6.0",
