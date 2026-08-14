@@ -1575,6 +1575,51 @@ export class JellyfinAdapterService implements IMediaServerService {
     return records;
   }
 
+  /**
+   * Return the newest playback timestamp across all users, including
+   * unfinished playback. This is intentionally separate from getWatchHistory,
+   * whose completed-watch semantics feed lastViewedAt, seenBy and viewCount.
+   */
+  async getLastPlayedAt(itemId: string): Promise<Date | null> {
+    if (!this.api) {
+      throw new Error('Jellyfin not initialized');
+    }
+
+    const users = await this.getUsers(true);
+    let latestMs: number | undefined;
+
+    for (
+      let i = 0;
+      i < users.length;
+      i += JELLYFIN_BATCH_SIZE.USER_WATCH_HISTORY
+    ) {
+      const batch = users.slice(i, i + JELLYFIN_BATCH_SIZE.USER_WATCH_HISTORY);
+      const responses = await Promise.all(
+        batch.map((user) =>
+          getUserLibraryApi(this.api!).getItem({
+            userId: user.id,
+            itemId,
+          }),
+        ),
+      );
+
+      for (const response of responses) {
+        const lastPlayedDate = response.data.UserData?.LastPlayedDate;
+        if (!lastPlayedDate) continue;
+
+        const playedMs = new Date(lastPlayedDate).getTime();
+        if (
+          !Number.isNaN(playedMs) &&
+          (latestMs === undefined || playedMs > latestMs)
+        ) {
+          latestMs = playedMs;
+        }
+      }
+    }
+
+    return latestMs === undefined ? null : new Date(latestMs);
+  }
+
   async getWatchState(itemId: string): Promise<MediaWatchState> {
     // Deliberately bypasses the prefetched snapshot: this is the is-watched /
     // viewCount read that feeds deletions, so it asks Jellyfin live and

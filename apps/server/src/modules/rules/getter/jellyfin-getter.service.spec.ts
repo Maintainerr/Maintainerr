@@ -1012,6 +1012,45 @@ describe('JellyfinGetterService', () => {
     });
   });
 
+  describe('lastPlayedAt (id 47)', () => {
+    it('aggregates the newest episode playback attempt for a season', async () => {
+      const season = createMediaItem({ id: 'season-1', type: 'season' });
+      const episodes = [
+        createMediaItem({ id: 'episode-1', type: 'episode' }),
+        createMediaItem({ id: 'episode-2', type: 'episode' }),
+      ];
+      jellyfinAdapter.getMetadata.mockResolvedValue(season);
+      jellyfinAdapter.getChildrenMetadata.mockResolvedValue(episodes);
+      jellyfinAdapter.getLastPlayedAt.mockImplementation(
+        async (itemId: string) =>
+          itemId === 'episode-1'
+            ? new Date('2024-06-01T00:00:00.000Z')
+            : new Date('2024-06-04T00:00:00.000Z'),
+      );
+
+      await expect(
+        jellyfinGetterService.get(47, season, 'season'),
+      ).resolves.toEqual(new Date('2024-06-04T00:00:00.000Z'));
+      expect(jellyfinAdapter.getChildrenMetadata).toHaveBeenCalledWith(
+        'season-1',
+        'episode',
+        true,
+      );
+    });
+
+    it('preserves lookup failure as undefined', async () => {
+      const mediaItem = createMediaItem({ id: 'movie-1', type: 'movie' });
+      jellyfinAdapter.getMetadata.mockResolvedValue(mediaItem);
+      jellyfinAdapter.getLastPlayedAt.mockRejectedValue(
+        new Error('lookup failed'),
+      );
+
+      await expect(
+        jellyfinGetterService.get(47, mediaItem, 'movie'),
+      ).resolves.toBeUndefined();
+    });
+  });
+
   describe('show and season traversal rules', () => {
     it('sw_allEpisodesSeenBy (id: 12) returns users that watched every episode', async () => {
       const showItem = createMediaItem({

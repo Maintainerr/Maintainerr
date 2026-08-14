@@ -233,6 +233,11 @@ export class JellyfinGetterService {
           return await this.getLastViewedAt(metadata.id, libraryId);
         }
 
+        case 'lastPlayedAt': {
+          // Get newest play attempt across all users (includes unfinished views)
+          return await this.getLastPlayedAt(metadata.id, metadata.type);
+        }
+
         case 'fileVideoResolution': {
           return metadata.mediaSources?.[0]?.videoResolution ?? null;
         }
@@ -568,6 +573,43 @@ export class JellyfinGetterService {
     return this.newestWatchedAt(
       await this.jellyfinAdapter.getWatchHistory(itemId, true, libraryId),
     );
+  }
+
+  private async getLastPlayedAt(
+    itemId: string,
+    type: MediaItemType,
+  ): Promise<Date | null> {
+    if (!isMediaType(type, 'show') && !isMediaType(type, 'season')) {
+      return this.jellyfinAdapter.getLastPlayedAt(itemId);
+    }
+
+    const seasons =
+      type === 'season'
+        ? [{ id: itemId }]
+        : await this.jellyfinAdapter.getChildrenMetadata(
+            itemId,
+            'season',
+            true,
+          );
+    let latestDate: Date | null = null;
+
+    for (const season of seasons) {
+      const episodes = await this.jellyfinAdapter.getChildrenMetadata(
+        season.id,
+        'episode',
+        true,
+      );
+      for (const episode of episodes) {
+        const lastPlayedAt = await this.jellyfinAdapter.getLastPlayedAt(
+          episode.id,
+        );
+        if (lastPlayedAt && (!latestDate || lastPlayedAt > latestDate)) {
+          latestDate = lastPlayedAt;
+        }
+      }
+    }
+
+    return latestDate;
   }
 
   private async getAllEpisodesSeenBy(

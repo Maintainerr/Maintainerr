@@ -1476,6 +1476,74 @@ describe('JellyfinAdapterService', () => {
     });
   });
 
+  describe('getLastPlayedAt', () => {
+    beforeEach(async () => {
+      settingsDataService.getSettings.mockResolvedValue(
+        mockSettings as unknown as Awaited<
+          ReturnType<SettingsDataService['getSettings']>
+        >,
+      );
+      await service.initialize();
+    });
+
+    it('returns the newest date regardless of the users Played values', async () => {
+      jellyfinApiMocks.getUsers.mockResolvedValue({
+        data: [
+          { Id: 'user-1', Name: 'Alice' },
+          { Id: 'user-2', Name: 'Bob' },
+        ],
+      });
+      jellyfinApiMocks.getItem.mockImplementation(
+        ({ userId }: { userId: string }) =>
+          Promise.resolve({
+            data: {
+              UserData: {
+                Played: userId === 'user-1',
+                LastPlayedDate:
+                  userId === 'user-1'
+                    ? '2024-06-01T00:00:00.000Z'
+                    : '2024-06-03T00:00:00.000Z',
+              },
+            },
+          }),
+      );
+
+      await expect(service.getLastPlayedAt('item-1')).resolves.toEqual(
+        new Date('2024-06-03T00:00:00.000Z'),
+      );
+      expect(jellyfinApiMocks.getItem).toHaveBeenCalledWith({
+        userId: 'user-1',
+        itemId: 'item-1',
+      });
+      expect(jellyfinApiMocks.getItem).toHaveBeenCalledWith({
+        userId: 'user-2',
+        itemId: 'item-1',
+      });
+    });
+
+    it('returns null when no user has playback history', async () => {
+      jellyfinApiMocks.getUsers.mockResolvedValue({
+        data: [{ Id: 'user-1', Name: 'Alice' }],
+      });
+      jellyfinApiMocks.getItem.mockResolvedValue({
+        data: { UserData: { Played: false } },
+      });
+
+      await expect(service.getLastPlayedAt('item-1')).resolves.toBeNull();
+    });
+
+    it('rejects an incomplete per-user lookup', async () => {
+      jellyfinApiMocks.getUsers.mockResolvedValue({
+        data: [{ Id: 'user-1', Name: 'Alice' }],
+      });
+      jellyfinApiMocks.getItem.mockRejectedValue(new Error('lookup failed'));
+
+      await expect(service.getLastPlayedAt('item-1')).rejects.toThrow(
+        'lookup failed',
+      );
+    });
+  });
+
   describe('prefetchWatchHistory', () => {
     beforeEach(async () => {
       settingsDataService.getSettings.mockResolvedValue(

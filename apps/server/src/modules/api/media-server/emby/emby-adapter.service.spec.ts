@@ -1285,6 +1285,102 @@ describe('EmbyAdapterService', () => {
     });
   });
 
+  describe('getLastPlayedAt', () => {
+    const users = [
+      { Id: 'user-1', Name: 'Alice' },
+      { Id: 'user-2', Name: 'Bob' },
+    ];
+
+    it('includes partial playback when Played is false', async () => {
+      http.get.mockImplementation(async (path: string) => {
+        if (path === '/Users/Query') return { data: [users[0]] };
+        return {
+          data: {
+            UserData: {
+              Played: false,
+              LastPlayedDate: '2024-06-01T00:00:00.000Z',
+            },
+          },
+        };
+      });
+
+      await expect(service.getLastPlayedAt('item-1')).resolves.toEqual(
+        new Date('2024-06-01T00:00:00.000Z'),
+      );
+    });
+
+    it('includes completed playback', async () => {
+      http.get.mockImplementation(async (path: string) => {
+        if (path === '/Users/Query') return { data: [users[0]] };
+        return {
+          data: {
+            UserData: {
+              Played: true,
+              LastPlayedDate: '2024-06-02T00:00:00.000Z',
+            },
+          },
+        };
+      });
+
+      await expect(service.getLastPlayedAt('item-1')).resolves.toEqual(
+        new Date('2024-06-02T00:00:00.000Z'),
+      );
+    });
+
+    it('returns the newest playback timestamp across multiple users', async () => {
+      http.get.mockImplementation(async (path: string) => {
+        if (path === '/Users/Query') return { data: users };
+        const isSecondUser = path.includes('/user-2/');
+        return {
+          data: {
+            UserData: {
+              Played: !isSecondUser,
+              LastPlayedDate: isSecondUser
+                ? '2024-06-03T00:00:00.000Z'
+                : '2024-06-01T00:00:00.000Z',
+            },
+          },
+        };
+      });
+
+      await expect(service.getLastPlayedAt('item-1')).resolves.toEqual(
+        new Date('2024-06-03T00:00:00.000Z'),
+      );
+      expect(http.get).toHaveBeenCalledWith('/Users/user-1/Items/item-1');
+      expect(http.get).toHaveBeenCalledWith('/Users/user-2/Items/item-1');
+    });
+
+    it('returns null when no user has playback history', async () => {
+      http.get.mockImplementation(async (path: string) =>
+        path === '/Users/Query'
+          ? { data: users }
+          : { data: { UserData: { Played: false } } },
+      );
+
+      await expect(service.getLastPlayedAt('item-1')).resolves.toBeNull();
+    });
+
+    it('rejects when a user-scoped item lookup fails', async () => {
+      http.get.mockImplementation(async (path: string) => {
+        if (path === '/Users/Query') return { data: users };
+        if (path.includes('/user-2/')) throw new Error('lookup failed');
+        return { data: { UserData: {} } };
+      });
+
+      await expect(service.getLastPlayedAt('item-1')).rejects.toThrow(
+        'lookup failed',
+      );
+    });
+
+    it('rejects when the user list lookup fails', async () => {
+      http.get.mockRejectedValue(new Error('users failed'));
+
+      await expect(service.getLastPlayedAt('item-1')).rejects.toThrow(
+        'users failed',
+      );
+    });
+  });
+
   describe('itemExists', () => {
     it('returns true when Emby returns the item, scoped to the user', async () => {
       http.get.mockResolvedValueOnce({ data: { Id: '42' } });
