@@ -29,7 +29,7 @@
     "packages/*"
   ],
   "engines": {
-    "node": "^22.13.0 || >=24.11.0"
+    "node": "^22.22.2 || ^24.15.0 || >=26.0.0"
   },
   "devDependencies": {
     "@semantic-release/changelog": "^7.0.0",
