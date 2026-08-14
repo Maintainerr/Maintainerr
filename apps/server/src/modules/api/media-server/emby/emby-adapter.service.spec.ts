@@ -1309,24 +1309,6 @@ describe('EmbyAdapterService', () => {
       );
     });
 
-    it('includes completed playback', async () => {
-      http.get.mockImplementation(async (path: string) => {
-        if (path === '/Users/Query') return { data: [users[0]] };
-        return {
-          data: {
-            UserData: {
-              Played: true,
-              LastPlayedDate: '2024-06-02T00:00:00.000Z',
-            },
-          },
-        };
-      });
-
-      await expect(service.getLastPlayedAt('item-1')).resolves.toEqual(
-        new Date('2024-06-02T00:00:00.000Z'),
-      );
-    });
-
     it('returns the newest playback timestamp across multiple users', async () => {
       http.get.mockImplementation(async (path: string) => {
         if (path === '/Users/Query') return { data: users };

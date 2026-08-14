@@ -235,7 +235,11 @@ export class JellyfinGetterService {
 
         case 'lastPlayedAt': {
           // Get newest play attempt across all users (includes unfinished views)
-          return await this.getLastPlayedAt(metadata.id, metadata.type);
+          return await this.getLastPlayedAt(
+            metadata.id,
+            metadata.type,
+            libraryId,
+          );
         }
 
         case 'fileVideoResolution': {
@@ -575,12 +579,20 @@ export class JellyfinGetterService {
     );
   }
 
+  /**
+   * Jellyfin resolves a parentId that is not a container by falling back to the
+   * whole library, so only a show or a season may be walked; anything else is
+   * read directly. Series and seasons carry no LastPlayedDate of their own,
+   * hence the walk. `libraryId` lets each episode read come from the
+   * prefetched snapshot rather than a per-user fan-out.
+   */
   private async getLastPlayedAt(
     itemId: string,
     type: MediaItemType,
+    libraryId: string | undefined,
   ): Promise<Date | null> {
     if (!isMediaType(type, 'show') && !isMediaType(type, 'season')) {
-      return this.jellyfinAdapter.getLastPlayedAt(itemId);
+      return this.jellyfinAdapter.getLastPlayedAt(itemId, libraryId);
     }
 
     const seasons =
@@ -602,6 +614,7 @@ export class JellyfinGetterService {
       for (const episode of episodes) {
         const lastPlayedAt = await this.jellyfinAdapter.getLastPlayedAt(
           episode.id,
+          libraryId,
         );
         if (lastPlayedAt && (!latestDate || lastPlayedAt > latestDate)) {
           latestDate = lastPlayedAt;

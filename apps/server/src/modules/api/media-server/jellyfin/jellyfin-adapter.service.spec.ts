@@ -1484,26 +1484,37 @@ describe('JellyfinAdapterService', () => {
         >,
       );
       await service.initialize();
+      mockSnapshotStore.clear();
     });
 
-    it('returns the newest date regardless of the users Played values', async () => {
+    afterEach(() => mockSnapshotStore.clear());
+
+    const twoUsers = () =>
       jellyfinApiMocks.getUsers.mockResolvedValue({
         data: [
           { Id: 'user-1', Name: 'Alice' },
           { Id: 'user-2', Name: 'Bob' },
         ],
       });
-      jellyfinApiMocks.getItem.mockImplementation(
+
+    it('returns the newest date regardless of the users Played values', async () => {
+      twoUsers();
+      jellyfinApiMocks.getItems.mockImplementation(
         ({ userId }: { userId: string }) =>
           Promise.resolve({
             data: {
-              UserData: {
-                Played: userId === 'user-1',
-                LastPlayedDate:
-                  userId === 'user-1'
-                    ? '2024-06-01T00:00:00.000Z'
-                    : '2024-06-03T00:00:00.000Z',
-              },
+              Items: [
+                {
+                  Id: 'item-1',
+                  UserData: {
+                    Played: userId === 'user-1',
+                    LastPlayedDate:
+                      userId === 'user-1'
+                        ? '2024-06-01T00:00:00.000Z'
+                        : '2024-06-03T00:00:00.000Z',
+                  },
+                },
+              ],
             },
           }),
       );
@@ -1511,36 +1522,128 @@ describe('JellyfinAdapterService', () => {
       await expect(service.getLastPlayedAt('item-1')).resolves.toEqual(
         new Date('2024-06-03T00:00:00.000Z'),
       );
-      expect(jellyfinApiMocks.getItem).toHaveBeenCalledWith({
+      // The per-item route 404s for users who cannot see the item; the list
+      // form answers 200 with an empty list instead.
+      expect(jellyfinApiMocks.getItems).toHaveBeenCalledWith({
         userId: 'user-1',
-        itemId: 'item-1',
+        ids: ['item-1'],
+        enableUserData: true,
       });
-      expect(jellyfinApiMocks.getItem).toHaveBeenCalledWith({
-        userId: 'user-2',
-        itemId: 'item-1',
-      });
+      expect(jellyfinApiMocks.getItem).not.toHaveBeenCalled();
     });
 
-    it('returns null when no user has playback history', async () => {
-      jellyfinApiMocks.getUsers.mockResolvedValue({
-        data: [{ Id: 'user-1', Name: 'Alice' }],
-      });
-      jellyfinApiMocks.getItem.mockResolvedValue({
-        data: { UserData: { Played: false } },
+    it('ignores rows Jellyfin returns for an id it did not filter on', async () => {
+      twoUsers();
+      jellyfinApiMocks.getItems.mockResolvedValue({
+        data: {
+          Items: [
+            {
+              Id: 'someone-else',
+              UserData: { LastPlayedDate: '2024-06-09T00:00:00.000Z' },
+            },
+          ],
+        },
       });
 
       await expect(service.getLastPlayedAt('item-1')).resolves.toBeNull();
     });
 
-    it('rejects an incomplete per-user lookup', async () => {
-      jellyfinApiMocks.getUsers.mockResolvedValue({
-        data: [{ Id: 'user-1', Name: 'Alice' }],
-      });
-      jellyfinApiMocks.getItem.mockRejectedValue(new Error('lookup failed'));
+    // A dropped user can only lower the newest date, which reads as "played
+    // longer ago" and makes a just-started item deletable.
+    it.each([
+      ['a per-user lookup fails', () => Promise.reject(new Error('boom'))],
+      ['a response carries no item list', () => Promise.resolve({ data: {} })],
+      [
+        'only some users answer',
+        (() => {
+          let first = true;
+          return () => {
+            const answer = first
+              ? Promise.resolve({ data: { Items: [{ Id: 'item-1' }] } })
+              : Promise.reject(new Error('boom'));
+            first = false;
+            return answer;
+          };
+        })(),
+      ],
+    ])('rejects when %s', async (_label, impl) => {
+      twoUsers();
+      jellyfinApiMocks.getItems.mockImplementation(impl);
 
       await expect(service.getLastPlayedAt('item-1')).rejects.toThrow(
-        'lookup failed',
+        /covered \d+ of 2 users/,
       );
+    });
+
+    it('answers a swept item from the snapshot without a per-user fan-out', async () => {
+      twoUsers();
+      jellyfinApiMocks.getItems.mockImplementation(
+        ({ userId }: { userId: string }) =>
+          Promise.resolve({
+            data: {
+              Items: [
+                {
+                  Id: 'ep-1',
+                  Type: 'Episode',
+                  // Never finished by either user, so no watch record - the
+                  // fold must still record the date.
+                  UserData: {
+                    Played: false,
+                    LastPlayedDate:
+                      userId === 'user-1'
+                        ? '2024-06-01T00:00:00.000Z'
+                        : '2024-06-05T00:00:00.000Z',
+                  },
+                },
+                { Id: 'ep-2', Type: 'Episode', UserData: { Played: false } },
+              ],
+              TotalRecordCount: 2,
+            },
+          }),
+      );
+      await service.prefetchWatchHistory({ libraryId: 'lib-1' });
+      jellyfinApiMocks.getItems.mockClear();
+
+      await expect(service.getLastPlayedAt('ep-1', 'lib-1')).resolves.toEqual(
+        new Date('2024-06-05T00:00:00.000Z'),
+      );
+      // Swept but never played is a confirmed null, not a live read.
+      await expect(
+        service.getLastPlayedAt('ep-2', 'lib-1'),
+      ).resolves.toBeNull();
+      expect(jellyfinApiMocks.getItems).not.toHaveBeenCalled();
+    });
+
+    it('falls back to a live read for an item the snapshot never saw', async () => {
+      twoUsers();
+      jellyfinApiMocks.getItems.mockResolvedValue({
+        data: {
+          Items: [
+            {
+              Id: 'added-since',
+              UserData: { LastPlayedDate: '2024-06-07T00:00:00.000Z' },
+            },
+          ],
+          TotalRecordCount: 1,
+        },
+      });
+      await service.prefetchWatchHistory({ libraryId: 'lib-1' });
+      jellyfinApiMocks.getItems.mockClear();
+      jellyfinApiMocks.getItems.mockResolvedValue({
+        data: {
+          Items: [
+            {
+              Id: 'unswept',
+              UserData: { LastPlayedDate: '2024-06-08T00:00:00.000Z' },
+            },
+          ],
+        },
+      });
+
+      await expect(
+        service.getLastPlayedAt('unswept', 'lib-1'),
+      ).resolves.toEqual(new Date('2024-06-08T00:00:00.000Z'));
+      expect(jellyfinApiMocks.getItems).toHaveBeenCalled();
     });
   });
 

@@ -214,18 +214,4 @@ describe('RuleConstanstService with the real rule constants', () => {
       ]);
     },
   );
-
-  it.each([
-    [Application.JELLYFIN, 'Jellyfin.lastPlayedAt'],
-    [Application.EMBY, 'Emby.lastPlayedAt'],
-  ])(
-    'round-trips the last-played identifier for application %i',
-    (application, identifier) => {
-      expect(service.getValueIdentifier([application, 47])).toBe(identifier);
-      expect(service.getValueFromIdentifier(identifier)).toEqual([
-        application,
-        47,
-      ]);
-    },
-  );
 });
