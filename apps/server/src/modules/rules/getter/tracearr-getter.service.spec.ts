@@ -24,6 +24,7 @@ const WATCHERS = 8;
 const VIEW_COUNT_BY_USER = 9;
 const WATCH_TIME_BY_USER = 10;
 const LAST_VIEWED_AT_BY_USER = 11;
+const LAST_PLAYED_AT = 12;
 
 const USER_ID = '22222222-2222-4222-8222-222222222222';
 
@@ -295,6 +296,28 @@ describe('TracearrGetterService', () => {
     await expect(
       service.get(LAST_VIEWED_AT, movie, ruleGroup),
     ).resolves.toEqual(new Date('2026-01-02T01:00:00.000Z'));
+  });
+
+  // The distinguishing behaviour: lastViewedAt only sees watched rows,
+  // lastPlayedAt sees every session Tracearr recorded.
+  it('reports a play that never reached the watched threshold for lastPlayedAt', async () => {
+    const { service } = createService([
+      historyItem('33333333-3333-4333-8333-333333333333', {
+        media_type: 'movie',
+        rating_key: 'movie-1',
+        grandparent_rating_key: null,
+        watched: false,
+        percent_complete: 25,
+        stopped_at: '2026-01-03T01:00:00.000Z',
+      }),
+    ]);
+
+    await expect(service.get(LAST_VIEWED_AT, movie, ruleGroup)).resolves.toBe(
+      null,
+    );
+    await expect(
+      service.get(LAST_PLAYED_AT, movie, ruleGroup),
+    ).resolves.toEqual(new Date('2026-01-03T01:00:00.000Z'));
   });
 
   it('prefetches and reads a fresh index when no snapshot is held', async () => {

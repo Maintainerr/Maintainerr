@@ -192,6 +192,17 @@ export class TautulliGetterService {
             ? new Date(sortedHistory[0] * 1000)
             : null;
         }
+        case 'lastPlayedAt': {
+          // Tautulli writes a row per playback session, so the newest stop
+          // time is the last play attempt regardless of watched status.
+          const stopped = (await this.getHistoryForMetadata(metadata))
+            .map((el) => el.stopped)
+            .filter((value) => typeof value === 'number');
+
+          return stopped.length > 0
+            ? new Date(Math.max(...stopped) * 1000)
+            : null;
+        }
         case 'sw_viewedEpisodes': {
           const history = await this.getHistoryForMetadata(metadata);
 
