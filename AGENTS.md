@@ -392,7 +392,7 @@ degrade gracefully.
 
 ### Environment Setup
 
-- **Node.js**: Version 22.13.0+ or 24.11.0+ (the floor is Node 22, raised from TypeORM 1.0.0's 20.19 requirement by the `@eslint-react` lint toolchain, which needs Node 22+; the Docker image and devcontainer ship Node 26)
+- **Node.js**: 22.22.2+, 24.15.0+, or 26+ (root `package.json` `engines` is the source of truth; Docker and the devcontainer ship Node 26)
 - **Package Manager**: Yarn 4.11 (managed via corepack)
 - **Data Directory**: Requires `data/` folder with proper permissions for development
 

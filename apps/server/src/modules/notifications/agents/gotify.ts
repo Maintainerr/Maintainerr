@@ -1,4 +1,4 @@
-import axios from 'axios';
+import { rateLimitAwareHttp } from '../../api/lib/httpRetry';
 import { MaintainerrLogger } from '../../logging/logs.service';
 import { SettingsDataService } from '../../settings/settings-data.service';
 import { Notification } from '../entities/notification.entities';
@@ -84,7 +84,7 @@ class GotifyAgent implements NotificationAgent {
       const endpoint = `${settings.options.url}/message?token=${settings.options.token}`;
       const notificationPayload = this.getNotificationPayload(type, payload);
 
-      await axios.post(endpoint, notificationPayload);
+      await rateLimitAwareHttp.post(endpoint, notificationPayload);
 
       return 'Success';
     } catch (error) {

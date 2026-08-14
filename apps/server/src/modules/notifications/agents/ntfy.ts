@@ -1,4 +1,4 @@
-import axios from 'axios';
+import { rateLimitAwareHttp } from '../../api/lib/httpRetry';
 import { MaintainerrLogger } from '../../logging/logs.service';
 import { SettingsDataService } from '../../settings/settings-data.service';
 import { Notification } from '../entities/notification.entities';
@@ -98,7 +98,7 @@ class NtfyAgent implements NotificationAgent {
         headers.Authorization = `Bearer ${settings.options.token}`;
       }
 
-      await axios.post(endpoint, notificationPayload.message, {
+      await rateLimitAwareHttp.post(endpoint, notificationPayload.message, {
         headers,
       });
 

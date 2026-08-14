@@ -1,4 +1,4 @@
-import axios from 'axios';
+import { rateLimitAwareHttp } from '../../api/lib/httpRetry';
 import { MaintainerrLogger } from '../../logging/logs.service';
 import { SettingsDataService } from '../../settings/settings-data.service';
 import { Notification } from '../entities/notification.entities';
@@ -69,7 +69,7 @@ class LunaSeaAgent implements NotificationAgent {
     this.logger.log('Sending LunaSea notification');
 
     try {
-      await axios.post(
+      await rateLimitAwareHttp.post(
         webhookUrl.url,
         this.buildPayload(type, payload),
         settings.options.profileName
