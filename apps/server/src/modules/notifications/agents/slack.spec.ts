@@ -1,4 +1,4 @@
-import axios from 'axios';
+import { rateLimitAwareHttp } from '../../api/lib/httpRetry';
 import { createMockLogger } from '../../../../test/utils/data';
 import { Notification } from '../entities/notification.entities';
 import {
@@ -8,12 +8,11 @@ import {
 } from '../notifications-interfaces';
 import SlackAgent from './slack';
 
-jest.mock('axios', () => ({
-  __esModule: true,
-  default: {
-    post: jest.fn(),
-  },
+jest.mock('../../api/lib/httpRetry', () => ({
+  rateLimitAwareHttp: { post: jest.fn() },
 }));
+
+const { post } = rateLimitAwareHttp as unknown as { post: jest.Mock };
 
 describe('SlackAgent', () => {
   const createAgent = (webhookUrl: string) => {
@@ -37,7 +36,7 @@ describe('SlackAgent', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    (axios.post as jest.Mock).mockResolvedValue({});
+    post.mockResolvedValue({});
   });
 
   it('rejects a non-http(s) webhook URL without posting', async () => {
@@ -49,7 +48,7 @@ describe('SlackAgent', () => {
     });
 
     expect(result).toBe('Failure: unsupported webhook URL scheme');
-    expect(axios.post).not.toHaveBeenCalled();
+    expect(post).not.toHaveBeenCalled();
   });
 
   it('posts to the normalised URL for a valid webhook', async () => {
@@ -60,9 +59,7 @@ describe('SlackAgent', () => {
       message: 'Test message',
     });
 
-    expect(axios.post).toHaveBeenCalledTimes(1);
-    expect((axios.post as jest.Mock).mock.calls[0][0]).toBe(
-      'https://example.com/',
-    );
+    expect(post).toHaveBeenCalledTimes(1);
+    expect(post.mock.calls[0][0]).toBe('https://example.com/');
   });
 });

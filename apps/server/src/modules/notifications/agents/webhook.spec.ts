@@ -1,4 +1,4 @@
-import axios from 'axios';
+import { rateLimitAwareHttp } from '../../api/lib/httpRetry';
 import { createMockLogger } from '../../../../test/utils/data';
 import { Notification } from '../entities/notification.entities';
 import {
@@ -8,12 +8,11 @@ import {
 } from '../notifications-interfaces';
 import WebhookAgent from './webhook';
 
-jest.mock('axios', () => ({
-  __esModule: true,
-  default: {
-    post: jest.fn(),
-  },
+jest.mock('../../api/lib/httpRetry', () => ({
+  rateLimitAwareHttp: { post: jest.fn() },
 }));
+
+const { post } = rateLimitAwareHttp as unknown as { post: jest.Mock };
 
 describe('WebhookAgent', () => {
   const createAgent = (
@@ -41,11 +40,11 @@ describe('WebhookAgent', () => {
     );
   };
 
-  const postedBody = () => (axios.post as jest.Mock).mock.calls[0][1];
+  const postedBody = () => post.mock.calls[0][1];
 
   beforeEach(() => {
     jest.clearAllMocks();
-    (axios.post as jest.Mock).mockResolvedValue({});
+    post.mockResolvedValue({});
   });
 
   it('rejects a non-http(s) webhook URL without posting', async () => {
@@ -57,7 +56,7 @@ describe('WebhookAgent', () => {
     });
 
     expect(result).toBe('Failure: unsupported webhook URL scheme');
-    expect(axios.post).not.toHaveBeenCalled();
+    expect(post).not.toHaveBeenCalled();
   });
 
   it('flattens extras onto the posted body', async () => {

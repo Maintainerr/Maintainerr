@@ -1,4 +1,4 @@
-import axios from 'axios';
+import { rateLimitAwareHttp } from '../../api/lib/httpRetry';
 import { MaintainerrLogger } from '../../logging/logs.service';
 import { SettingsDataService } from '../../settings/settings-data.service';
 import { Notification } from '../entities/notification.entities';
@@ -74,7 +74,7 @@ class PushbulletAgent implements NotificationAgent {
       this.logger.log('Sending Pushbullet notification');
 
       try {
-        await axios.post(
+        await rateLimitAwareHttp.post(
           endpoint,
           { ...notificationPayload, channel_tag: settings.options.channelTag },
           {
@@ -104,7 +104,7 @@ class PushbulletAgent implements NotificationAgent {
       this.logger.log('Sending Pushbullet notification');
 
       try {
-        await axios.post(endpoint, notificationPayload, {
+        await rateLimitAwareHttp.post(endpoint, notificationPayload, {
           headers: {
             'Access-Token': settings.options.accessToken,
           },

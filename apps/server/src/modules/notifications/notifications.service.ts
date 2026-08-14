@@ -80,6 +80,17 @@ export class NotificationService implements OnModuleInit {
   private batchActive = false;
   private readonly batchSeenKeys = new Set<string>();
 
+  // Collection handling acts on one item at a time, so every removal emits its
+  // own CollectionMedia_Removed - one webhook per item, which Discord answers
+  // with 429 and drops. Buffer them for the length of a handler run and send
+  // one notification per collection at the end. Rule runs already batch at the
+  // emitter, so they keep sending immediately.
+  private collectionRunActive = false;
+  private readonly collectionRunRemovals = new Map<
+    number,
+    CollectionMediaRemovedDto
+  >();
+
   constructor(
     @InjectRepository(Notification)
     private readonly notificationRepo: Repository<Notification>,
@@ -1156,6 +1167,31 @@ export class NotificationService implements OnModuleInit {
 
   @OnEvent(MaintainerrEvent.CollectionMedia_Removed)
   private async collectionMediaRemoved(data: CollectionMediaRemovedDto) {
+    if (this.collectionRunActive) {
+      // Appending is enough: an item can only be removed once, so the same id
+      // cannot arrive twice in one run.
+      const buffered = this.collectionRunRemovals.get(data.collectionId);
+      if (buffered) {
+        buffered.mediaItems.push(...data.mediaItems);
+      } else {
+        this.collectionRunRemovals.set(
+          data.collectionId,
+          new CollectionMediaRemovedDto(
+            [...data.mediaItems],
+            data.collectionName,
+            data.identifier,
+            data.collectionId,
+            data.dayAmount,
+          ),
+        );
+      }
+      return;
+    }
+
+    await this.notifyCollectionMediaRemoved(data);
+  }
+
+  private async notifyCollectionMediaRemoved(data: CollectionMediaRemovedDto) {
     const filteredMediaItems = this.dedupeBatchMediaItems(
       MaintainerrEvent.CollectionMedia_Removed,
       data.collectionName,
@@ -1171,6 +1207,23 @@ export class NotificationService implements OnModuleInit {
       undefined,
       data.identifier,
     );
+  }
+
+  @OnEvent(MaintainerrEvent.CollectionHandler_Started)
+  private collectionHandlerStarted() {
+    this.collectionRunRemovals.clear();
+    this.collectionRunActive = true;
+  }
+
+  @OnEvent(MaintainerrEvent.CollectionHandler_Finished)
+  private async collectionHandlerFinished() {
+    this.collectionRunActive = false;
+    const buffered = [...this.collectionRunRemovals.values()];
+    this.collectionRunRemovals.clear();
+
+    for (const data of buffered) {
+      await this.notifyCollectionMediaRemoved(data);
+    }
   }
 
   /**
