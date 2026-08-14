@@ -641,6 +641,73 @@ describe('NotificationService', () => {
     });
   });
 
+  describe('collection handler run batching', () => {
+    const removedDto = (
+      collectionId: number,
+      collectionName: string,
+      ids: string[],
+    ) =>
+      new CollectionMediaRemovedDto(
+        ids.map((mediaServerId) => ({ mediaServerId })),
+        collectionName,
+        { type: 'collection', value: collectionId },
+        collectionId,
+        7,
+      );
+
+    const runRemovals = async (
+      service: NotificationService,
+      dtos: CollectionMediaRemovedDto[],
+    ) => {
+      (service as any).collectionHandlerStarted();
+      for (const dto of dtos) {
+        await (service as any).collectionMediaRemoved(dto);
+      }
+      await (service as any).collectionHandlerFinished();
+    };
+
+    it('sends one notification per collection, per run', async () => {
+      const { service } = createService();
+      const handle = jest
+        .spyOn(service, 'handleNotification')
+        .mockResolvedValue('Success' as any);
+
+      await runRemovals(service, [
+        removedDto(1, 'Stale Movies', ['m1']),
+        removedDto(1, 'Stale Movies', ['m2']),
+        removedDto(2, 'Stale Shows', ['s1']),
+      ]);
+      // A second run must not resend the first one's items.
+      await runRemovals(service, [removedDto(1, 'Stale Movies', ['m3'])]);
+
+      expect(handle).toHaveBeenCalledTimes(3);
+      expect(handle).toHaveBeenNthCalledWith(
+        1,
+        NotificationType.MEDIA_REMOVED_FROM_COLLECTION,
+        [{ mediaServerId: 'm1' }, { mediaServerId: 'm2' }],
+        'Stale Movies',
+        7,
+        undefined,
+        { type: 'collection', value: 1 },
+      );
+      expect(handle.mock.calls[1][1]).toEqual([{ mediaServerId: 's1' }]);
+      expect(handle.mock.calls[2][1]).toEqual([{ mediaServerId: 'm3' }]);
+    });
+
+    it('sends immediately outside a run', async () => {
+      const { service } = createService();
+      const handle = jest
+        .spyOn(service, 'handleNotification')
+        .mockResolvedValue('Success' as any);
+
+      await (service as any).collectionMediaRemoved(
+        removedDto(1, 'Stale Movies', ['m1']),
+      );
+
+      expect(handle).toHaveBeenCalledTimes(1);
+    });
+  });
+
   it('defines content for overlay reverted notifications', () => {
     const { service } = createService();
 

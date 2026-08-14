@@ -706,6 +706,9 @@ export class RuleExecutorService {
           collectionMedia.length > 0 &&
           shouldCheckRemovals
         ) {
+          // Members the media server collection no longer lists.
+          const droppedByMediaServer: CollectionMediaChange[] = [];
+
           for (const mediaItem of collectionMedia) {
             if (!mediaItem?.mediaServerId) {
               continue;
@@ -726,19 +729,23 @@ export class RuleExecutorService {
               !children ||
               !children.find((e) => mediaItem.mediaServerId === e.id.toString())
             ) {
-              await this.collectionService.removeFromCollection(
-                collection.id,
-                [
-                  {
-                    mediaServerId: mediaItem.mediaServerId,
-                    reason: {
-                      type: 'media_removed_manually',
-                    },
-                  },
-                ] satisfies CollectionMediaChange[],
-                'manual',
-              );
+              droppedByMediaServer.push({
+                mediaServerId: mediaItem.mediaServerId,
+                reason: {
+                  type: 'media_removed_manually',
+                },
+              });
             }
+          }
+
+          // One call for the whole set, so emptying a collection by hand costs
+          // one media-server request and one notification, not N of each.
+          if (droppedByMediaServer.length > 0) {
+            await this.collectionService.removeFromCollection(
+              collection.id,
+              droppedByMediaServer,
+              'manual',
+            );
           }
         }
 

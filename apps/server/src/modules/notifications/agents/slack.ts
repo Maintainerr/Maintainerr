@@ -1,4 +1,4 @@
-import axios from 'axios';
+import { rateLimitAwareHttp } from '../../api/lib/httpRetry';
 import { MaintainerrLogger } from '../../logging/logs.service';
 import { SettingsDataService } from '../../settings/settings-data.service';
 import { Notification } from '../entities/notification.entities';
@@ -149,7 +149,10 @@ class SlackAgent implements NotificationAgent {
 
     this.logger.log('Sending Slack notification');
     try {
-      await axios.post(webhookUrl.url, this.buildEmbed(type, payload));
+      await rateLimitAwareHttp.post(
+        webhookUrl.url,
+        this.buildEmbed(type, payload),
+      );
 
       return 'Success';
     } catch (error) {

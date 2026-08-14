@@ -1,4 +1,4 @@
-import axios from 'axios';
+import { rateLimitAwareHttp } from '../../api/lib/httpRetry';
 import { createMockLogger } from '../../../../test/utils/data';
 import { Notification } from '../entities/notification.entities';
 import {
@@ -8,12 +8,11 @@ import {
 } from '../notifications-interfaces';
 import DiscordAgent from './discord';
 
-jest.mock('axios', () => ({
-  __esModule: true,
-  default: {
-    post: jest.fn(),
-  },
+jest.mock('../../api/lib/httpRetry', () => ({
+  rateLimitAwareHttp: { post: jest.fn() },
 }));
+
+const { post } = rateLimitAwareHttp as unknown as { post: jest.Mock };
 
 describe('DiscordAgent', () => {
   const webhookUrl = 'https://discord.com/api/webhooks/123/abc';
@@ -34,7 +33,7 @@ describe('DiscordAgent', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    (axios.post as jest.Mock).mockResolvedValue({});
+    post.mockResolvedValue({});
   });
 
   it('omits the thumbnail when no image is provided', async () => {
@@ -45,7 +44,7 @@ describe('DiscordAgent', () => {
       message: 'Test message',
     });
 
-    const [, body] = (axios.post as jest.Mock).mock.calls[0];
+    const [, body] = post.mock.calls[0];
     expect(body.embeds[0]).not.toHaveProperty('thumbnail');
   });
 
@@ -58,7 +57,7 @@ describe('DiscordAgent', () => {
       image: 'https://example.com/poster.jpg',
     });
 
-    const [, body] = (axios.post as jest.Mock).mock.calls[0];
+    const [, body] = post.mock.calls[0];
     expect(body.embeds[0].thumbnail).toEqual({
       url: 'https://example.com/poster.jpg',
     });
@@ -73,6 +72,19 @@ describe('DiscordAgent', () => {
     });
 
     expect(result).toBe('Failure: unsupported webhook URL scheme');
-    expect(axios.post).not.toHaveBeenCalled();
+    expect(post).not.toHaveBeenCalled();
+  });
+
+  it('trims a batched message to the embed description limit', async () => {
+    const agent = createAgent();
+
+    await agent.send(NotificationType.TEST_NOTIFICATION, {
+      subject: 'Test subject',
+      message: 'x'.repeat(5000),
+    });
+
+    const [, body] = post.mock.calls[0];
+    expect(body.embeds[0].description).toHaveLength(4096);
+    expect(body.embeds[0].description.endsWith('\n...')).toBe(true);
   });
 });

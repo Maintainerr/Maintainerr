@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { rateLimitAwareHttp } from '../../api/lib/httpRetry';
 import { MaintainerrLogger } from '../../logging/logs.service';
 import { SettingsDataService } from '../../settings/settings-data.service';
 import { Notification } from '../entities/notification.entities';
@@ -129,7 +130,7 @@ class PushoverAgent implements NotificationAgent {
       this.logger.log('Sending Pushover notification');
 
       try {
-        await axios.post(endpoint, {
+        await rateLimitAwareHttp.post(endpoint, {
           ...notificationPayload,
           token: settings.options.accessToken,
           user: settings.options.userToken,
