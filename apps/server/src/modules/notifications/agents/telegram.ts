@@ -1,4 +1,4 @@
-import axios from 'axios';
+import { rateLimitAwareHttp } from '../../api/lib/httpRetry';
 import { MaintainerrLogger } from '../../logging/logs.service';
 import { SettingsDataService } from '../../settings/settings-data.service';
 import { Notification } from '../entities/notification.entities';
@@ -100,7 +100,7 @@ class TelegramAgent implements NotificationAgent {
       this.logger.log('Sending Telegram notification');
 
       try {
-        await axios.post(endpoint, {
+        await rateLimitAwareHttp.post(endpoint, {
           ...notificationPayload,
           chat_id: settings.options.chatId,
           disable_notification: !!settings.options.sendSilently,

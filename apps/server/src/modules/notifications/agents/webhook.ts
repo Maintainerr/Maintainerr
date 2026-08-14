@@ -1,5 +1,5 @@
-import axios from 'axios';
 import { get } from 'lodash';
+import { rateLimitAwareHttp } from '../../api/lib/httpRetry';
 import { MaintainerrLogger } from '../../logging/logs.service';
 import { SettingsDataService } from '../../settings/settings-data.service';
 import { Notification } from '../entities/notification.entities';
@@ -129,7 +129,7 @@ class WebhookAgent implements NotificationAgent {
     this.logger.log('Sending webhook notification');
 
     try {
-      await axios.post(
+      await rateLimitAwareHttp.post(
         webhookUrl.url,
         this.buildPayload(type, payload),
         settings.options.authHeader
