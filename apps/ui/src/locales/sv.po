@@ -8,7 +8,7 @@ msgstr ""
 "Language: sv\n"
 "Project-Id-Version: \n"
 "Report-Msgid-Bugs-To: \n"
-"PO-Revision-Date: 2026-08-14 22:51+0000\n"
+"PO-Revision-Date: 2026-08-15 23:51+0000\n"
 "Last-Translator: Maintainerr <get@maintainerr.info>\n"
 "Language-Team: Swedish <https://hosted.weblate.org/projects/maintainerr/app/"
 "sv/>\n"
@@ -56,7 +56,7 @@ msgstr ""
 
 #: src/pages/RulesListPage.tsx
 msgid "Failed to initiate rule execution."
-msgstr "Misslyckades med a initiera körning av regler."
+msgstr "Misslyckades med att initiera körning av regler."
 
 #: src/pages/RulesListPage.tsx
 msgid "Failed to request stop of all rule executions."
