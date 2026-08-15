@@ -162,10 +162,6 @@ msgid "{elementCount, plural, one {# element} other {# elements}}"
 msgstr "{elementCount, plural, one {# element} other {# elements}}"
 
 #: src/components/OverlayEditor/PropertiesPanel.tsx
-msgid "{first} or {second}"
-msgstr "{first} or {second}"
-
-#: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "{formatList} - up to {imageUploadMaxLabel}."
 msgstr "{formatList} - up to {imageUploadMaxLabel}."
 
@@ -201,10 +197,6 @@ msgstr "{itemCount, plural, one {Remove exclusion applies to # item across every
 #: src/components/Common/MediaActionModal.tsx
 msgid "{itemCount, plural, one {Remove from collection applies to # item across every collection. For shows and seasons this covers everything they contain.} other {Remove from collection applies to # items across every collection. For shows and seasons this covers everything they contain.}}"
 msgstr "{itemCount, plural, one {Remove from collection applies to # item across every collection. For shows and seasons this covers everything they contain.} other {Remove from collection applies to # items across every collection. For shows and seasons this covers everything they contain.}}"
-
-#: src/components/OverlayEditor/PropertiesPanel.tsx
-msgid "{leading}, or {last}"
-msgstr "{leading}, or {last}"
 
 #: src/components/Settings/MediaServerSelector/index.tsx
 msgid "{migratableRules} of {totalRules} rules can be migrated."

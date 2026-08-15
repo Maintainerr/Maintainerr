@@ -162,10 +162,6 @@ msgid "{elementCount, plural, one {# element} other {# elements}}"
 msgstr ""
 
 #: src/components/OverlayEditor/PropertiesPanel.tsx
-msgid "{first} or {second}"
-msgstr ""
-
-#: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "{formatList} - up to {imageUploadMaxLabel}."
 msgstr ""
 
@@ -200,10 +196,6 @@ msgstr ""
 
 #: src/components/Common/MediaActionModal.tsx
 msgid "{itemCount, plural, one {Remove from collection applies to # item across every collection. For shows and seasons this covers everything they contain.} other {Remove from collection applies to # items across every collection. For shows and seasons this covers everything they contain.}}"
-msgstr ""
-
-#: src/components/OverlayEditor/PropertiesPanel.tsx
-msgid "{leading}, or {last}"
 msgstr ""
 
 #: src/components/Settings/MediaServerSelector/index.tsx

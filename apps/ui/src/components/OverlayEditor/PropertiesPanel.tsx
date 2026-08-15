@@ -1,4 +1,3 @@
-import { t as globalT } from '@lingui/core/macro'
 import { Trans, useLingui } from '@lingui/react/macro'
 import type { OverlayElement, VariableSegment } from '@maintainerr/contracts'
 import {
@@ -17,18 +16,19 @@ import {
 } from './editorFonts'
 import { ResourceField, type ResourceOption } from './ResourceField'
 
-function formatDisjunction(items: readonly string[]): string {
-  if (items.length === 0) return ''
-  if (items.length === 1) return items[0]
-  if (items.length === 2) {
-    const first = items[0]
-    const second = items[1]
-    return globalT`${{ first }} or ${{ second }}`
-  }
-  const leading = items.slice(0, -1).join(', ')
-  const last = items[items.length - 1]
-  return globalT`${{ leading }}, or ${{ last }}`
-}
+/**
+ * "PNG, JPG, or WebP" in the reader's language.
+ *
+ * `Intl.ListFormat` rather than a message: the items are file-format tokens
+ * that are never translated, and only the joining is locale-dependent. Built
+ * as messages this needed a `{leading}, or {last}` fragment - two words with no
+ * context for a translator, and the surrounding sentence then carried the whole
+ * list as one opaque placeholder.
+ */
+const formatDisjunction = (locale: string, items: readonly string[]): string =>
+  new Intl.ListFormat(locale, { style: 'long', type: 'disjunction' }).format(
+    items,
+  )
 
 // One source for the picker filter and its label, mirroring
 // OVERLAY_IMAGE_ACCEPT, so no translation can make them disagree.
@@ -445,8 +445,8 @@ function ImageProperties({
   images: ResourceOption[]
   onUploadImage: (file: File) => Promise<ResourceOption | null>
 }) {
-  const { t } = useLingui()
-  const formatList = formatDisjunction(OVERLAY_IMAGE_FORMAT_LABELS)
+  const { t, i18n } = useLingui()
+  const formatList = formatDisjunction(i18n.locale, OVERLAY_IMAGE_FORMAT_LABELS)
   const imageUploadMaxLabel = IMAGE_UPLOAD_MAX_LABEL
 
   return (
