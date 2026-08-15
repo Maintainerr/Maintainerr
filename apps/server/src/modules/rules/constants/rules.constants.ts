@@ -1726,6 +1726,13 @@ export class RuleConstants {
           mediaType: MediaType.BOTH,
           type: RuleType.TEXT_LIST,
         },
+        {
+          id: 47,
+          name: 'lastPlayedAt',
+          humanName: 'Last play date (including unfinished)',
+          mediaType: MediaType.BOTH,
+          type: RuleType.DATE,
+        },
       ],
     },
     {

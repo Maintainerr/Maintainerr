@@ -233,6 +233,15 @@ export class JellyfinGetterService {
           return await this.getLastViewedAt(metadata.id, libraryId);
         }
 
+        case 'lastPlayedAt': {
+          // Get newest play attempt across all users (includes unfinished views)
+          return await this.getLastPlayedAt(
+            metadata.id,
+            metadata.type,
+            libraryId,
+          );
+        }
+
         case 'fileVideoResolution': {
           return metadata.mediaSources?.[0]?.videoResolution ?? null;
         }
@@ -568,6 +577,52 @@ export class JellyfinGetterService {
     return this.newestWatchedAt(
       await this.jellyfinAdapter.getWatchHistory(itemId, true, libraryId),
     );
+  }
+
+  /**
+   * Jellyfin resolves a parentId that is not a container by falling back to the
+   * whole library, so only a show or a season may be walked; anything else is
+   * read directly. Series and seasons carry no LastPlayedDate of their own,
+   * hence the walk. `libraryId` lets each episode read come from the
+   * prefetched snapshot rather than a per-user fan-out.
+   */
+  private async getLastPlayedAt(
+    itemId: string,
+    type: MediaItemType,
+    libraryId: string | undefined,
+  ): Promise<Date | null> {
+    if (!isMediaType(type, 'show') && !isMediaType(type, 'season')) {
+      return this.jellyfinAdapter.getLastPlayedAt(itemId, libraryId);
+    }
+
+    const seasons =
+      type === 'season'
+        ? [{ id: itemId }]
+        : await this.jellyfinAdapter.getChildrenMetadata(
+            itemId,
+            'season',
+            true,
+          );
+    let latestDate: Date | null = null;
+
+    for (const season of seasons) {
+      const episodes = await this.jellyfinAdapter.getChildrenMetadata(
+        season.id,
+        'episode',
+        true,
+      );
+      for (const episode of episodes) {
+        const lastPlayedAt = await this.jellyfinAdapter.getLastPlayedAt(
+          episode.id,
+          libraryId,
+        );
+        if (lastPlayedAt && (!latestDate || lastPlayedAt > latestDate)) {
+          latestDate = lastPlayedAt;
+        }
+      }
+    }
+
+    return latestDate;
   }
 
   private async getAllEpisodesSeenBy(
