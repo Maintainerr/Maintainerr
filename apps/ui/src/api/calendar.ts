@@ -1,3 +1,4 @@
+import { plural, t } from '@lingui/core/macro'
 import { MediaItemType, ServarrAction } from '@maintainerr/contracts'
 import { useQuery, type UseQueryOptions } from '@tanstack/react-query'
 import type { ICollection, ICollectionMedia } from '../components/Collection'
@@ -11,8 +12,7 @@ export type CalendarEntryReference = {
 }
 
 export type CalendarEntry = {
-  id: string
-  title: string
+  id: CalendarActionKey
   count: number
   references: CalendarEntryReference[]
 }
@@ -36,121 +36,178 @@ const pad2 = (n: number) => String(n).padStart(2, '0')
 const startOfDay = (d: Date) =>
   new Date(d.getFullYear(), d.getMonth(), d.getDate())
 
-const DEFAULT_ACTION_LABEL = 'Scheduled Action'
+/**
+ * A calendar entry is keyed by what the action *is*, never by its label. The
+ * key groups entries and travels into a TanStack Query cache key, so a
+ * translated id would regroup the calendar and split the cache the moment the
+ * language changed. Distinct keys mirror the distinct English labels this
+ * screen has always merged on.
+ */
+export type CalendarActionKey =
+  | 'delete'
+  | 'unmonitor-delete'
+  | 'unmonitor-keep'
+  | 'unmonitor-delete-existing'
+  | 'unmonitor-delete-empty-show'
+  | 'unmonitor-keep-empty-show'
+  | 'delete-empty-show'
+  | 'unmonitor-empty-show'
+  | 'change-quality'
+  | 'do-nothing'
+  | 'scheduled'
 
-const formatCalendarItemTitle = (actionLabel: string, count: number) =>
-  `${actionLabel}: ${count} items`
-
-const getMovieActionLabel = (action: ServarrAction) => {
-  switch (action) {
-    case ServarrAction.DELETE:
-      return 'Delete'
-    case ServarrAction.UNMONITOR_DELETE_ALL:
-      return 'Unmonitor/Delete'
-    case ServarrAction.UNMONITOR:
-      return 'Unmonitor/Keep'
-    case ServarrAction.CHANGE_QUALITY_PROFILE:
-      return 'Change Quality'
-    case ServarrAction.DO_NOTHING:
-      return 'Do nothing'
+const actionLabelFor = (key: CalendarActionKey): string => {
+  switch (key) {
+    case 'delete':
+      return t`Delete`
+    case 'unmonitor-delete':
+      return t`Unmonitor/Delete`
+    case 'unmonitor-keep':
+      return t`Unmonitor/Keep`
+    case 'unmonitor-delete-existing':
+      return t`Unmonitor/Delete Existing`
+    case 'unmonitor-delete-empty-show':
+      return t`Unmonitor/Delete + Delete Empty Show`
+    case 'unmonitor-keep-empty-show':
+      return t`Unmonitor/Keep + Unmonitor Empty Show`
+    case 'delete-empty-show':
+      return t`Delete Empty Show`
+    case 'unmonitor-empty-show':
+      return t`Unmonitor Empty Show`
+    case 'change-quality':
+      return t`Change Quality`
+    case 'do-nothing':
+      return t`Do nothing`
     default:
-      return DEFAULT_ACTION_LABEL
+      return t`Scheduled Action`
   }
 }
 
-const getShowActionLabel = (action: ServarrAction) => {
+/**
+ * Resolved at render time by the (context-subscribed) calendar component, so
+ * the label follows a locale switch; entries themselves carry only the key.
+ */
+export const calendarEntryTitle = (
+  entry: Pick<CalendarEntry, 'id' | 'count'>,
+): string => {
+  const actionLabel = actionLabelFor(entry.id)
+  // Named so the count message merges with the identical one elsewhere
+  // instead of extracting a bare {0}.
+  const itemCount = entry.count
+  const itemCountText = plural(itemCount, { one: '# item', other: '# items' })
+  return t`${{ actionLabel }}: ${{ itemCount: itemCountText }}`
+}
+
+const getMovieActionKey = (action: ServarrAction): CalendarActionKey => {
   switch (action) {
     case ServarrAction.DELETE:
-      return 'Delete'
+      return 'delete'
     case ServarrAction.UNMONITOR_DELETE_ALL:
-      return 'Unmonitor/Delete'
+      return 'unmonitor-delete'
+    case ServarrAction.UNMONITOR:
+      return 'unmonitor-keep'
+    case ServarrAction.CHANGE_QUALITY_PROFILE:
+      return 'change-quality'
+    case ServarrAction.DO_NOTHING:
+      return 'do-nothing'
+    default:
+      return 'scheduled'
+  }
+}
+
+const getShowActionKey = (action: ServarrAction): CalendarActionKey => {
+  switch (action) {
+    case ServarrAction.DELETE:
+      return 'delete'
+    case ServarrAction.UNMONITOR_DELETE_ALL:
+      return 'unmonitor-delete'
     case ServarrAction.UNMONITOR_DELETE_EXISTING:
-      return 'Unmonitor/Delete Existing'
+      return 'unmonitor-delete-existing'
     case ServarrAction.UNMONITOR:
-      return 'Unmonitor/Keep'
+      return 'unmonitor-keep'
     case ServarrAction.CHANGE_QUALITY_PROFILE:
-      return 'Change Quality'
+      return 'change-quality'
     case ServarrAction.DO_NOTHING:
-      return 'Do nothing'
+      return 'do-nothing'
     default:
-      return DEFAULT_ACTION_LABEL
+      return 'scheduled'
   }
 }
 
-const getSeasonActionLabel = (action: ServarrAction) => {
+const getSeasonActionKey = (action: ServarrAction): CalendarActionKey => {
   switch (action) {
     case ServarrAction.DELETE:
-      return 'Unmonitor/Delete'
+      return 'unmonitor-delete'
     case ServarrAction.DELETE_SHOW_IF_EMPTY:
-      return 'Unmonitor/Delete + Delete Empty Show'
+      return 'unmonitor-delete-empty-show'
     case ServarrAction.UNMONITOR_DELETE_EXISTING:
-      return 'Unmonitor/Delete Existing'
+      return 'unmonitor-delete-existing'
     case ServarrAction.UNMONITOR:
-      return 'Unmonitor/Keep'
+      return 'unmonitor-keep'
     case ServarrAction.UNMONITOR_SHOW_IF_EMPTY:
-      return 'Unmonitor/Keep + Unmonitor Empty Show'
+      return 'unmonitor-keep-empty-show'
     case ServarrAction.DO_NOTHING:
-      return 'Do nothing'
+      return 'do-nothing'
     default:
-      return DEFAULT_ACTION_LABEL
+      return 'scheduled'
   }
 }
 
-const getEpisodeActionLabel = (action: ServarrAction) => {
+const getEpisodeActionKey = (action: ServarrAction): CalendarActionKey => {
   switch (action) {
     case ServarrAction.DELETE:
-      return 'Unmonitor/Delete'
+      return 'unmonitor-delete'
     case ServarrAction.UNMONITOR:
-      return 'Unmonitor/Keep'
+      return 'unmonitor-keep'
     case ServarrAction.DO_NOTHING:
-      return 'Do nothing'
+      return 'do-nothing'
     default:
-      return DEFAULT_ACTION_LABEL
+      return 'scheduled'
   }
 }
 
-const getGenericActionLabel = (action: ServarrAction) => {
+const getGenericActionKey = (action: ServarrAction): CalendarActionKey => {
   switch (action) {
     case ServarrAction.DELETE:
-      return 'Delete'
+      return 'delete'
     case ServarrAction.UNMONITOR_DELETE_ALL:
-      return 'Unmonitor/Delete'
+      return 'unmonitor-delete'
     case ServarrAction.UNMONITOR_DELETE_EXISTING:
-      return 'Unmonitor/Delete Existing'
+      return 'unmonitor-delete-existing'
     case ServarrAction.UNMONITOR:
-      return 'Unmonitor/Keep'
+      return 'unmonitor-keep'
     case ServarrAction.DELETE_SHOW_IF_EMPTY:
-      return 'Delete Empty Show'
+      return 'delete-empty-show'
     case ServarrAction.UNMONITOR_SHOW_IF_EMPTY:
-      return 'Unmonitor Empty Show'
+      return 'unmonitor-empty-show'
     case ServarrAction.CHANGE_QUALITY_PROFILE:
-      return 'Change Quality'
+      return 'change-quality'
     default:
-      return DEFAULT_ACTION_LABEL
+      return 'scheduled'
   }
 }
 
-const getActionLabel = (collection: ICollection) => {
+const getActionKey = (collection: ICollection): CalendarActionKey => {
   const action = collection.arrAction as ServarrAction
   const hasRadarr = collection.radarrSettingsId != null
 
   if (hasRadarr || collection.type === 'movie') {
-    return getMovieActionLabel(action)
+    return getMovieActionKey(action)
   }
 
   if (collection.type === 'show') {
-    return getShowActionLabel(action)
+    return getShowActionKey(action)
   }
 
   if (collection.type === 'season') {
-    return getSeasonActionLabel(action)
+    return getSeasonActionKey(action)
   }
 
   if (collection.type === 'episode') {
-    return getEpisodeActionLabel(action)
+    return getEpisodeActionKey(action)
   }
 
-  return getGenericActionLabel(action)
+  return getGenericActionKey(action)
 }
 
 const buildCalendarDays = (collections: ICollection[] | undefined) => {
@@ -179,16 +236,12 @@ const buildCalendarDays = (collections: ICollection[] | undefined) => {
       deleteDate.setDate(deleteDate.getDate() + deleteAfterDays)
 
       const key = `${deleteDate.getFullYear()}-${pad2(deleteDate.getMonth() + 1)}-${pad2(deleteDate.getDate())}`
-      const actionLabel = getActionLabel(collection)
+      const actionKey = getActionKey(collection)
       const items = itemsByKey.get(key) ?? []
-      const existingItem = items.find((item) => item.id === actionLabel)
+      const existingItem = items.find((item) => item.id === actionKey)
 
       if (existingItem) {
         existingItem.count += 1
-        existingItem.title = formatCalendarItemTitle(
-          actionLabel,
-          existingItem.count,
-        )
         existingItem.references.push({
           collectionId: collection.id!,
           mediaId: media.id,
@@ -197,8 +250,7 @@ const buildCalendarDays = (collections: ICollection[] | undefined) => {
         })
       } else {
         items.push({
-          id: actionLabel,
-          title: formatCalendarItemTitle(actionLabel, 1),
+          id: actionKey,
           count: 1,
           references: [
             {
@@ -222,7 +274,9 @@ const buildCalendarDays = (collections: ICollection[] | undefined) => {
     .map(([dayKey, items]) => ({
       dayKey,
       totalScheduledCount: items.reduce((sum, item) => sum + item.count, 0),
-      items: items.sort((left, right) => left.title.localeCompare(right.title)),
+      // Ordered by the stable key, so the chips keep one order per day in
+      // every language.
+      items: items.sort((left, right) => left.id.localeCompare(right.id)),
     }))
 }
 
@@ -428,7 +482,7 @@ export const useCalendarEntryDetails = (
                 collectionTitle:
                   collection?.title ??
                   media.collection?.title ??
-                  `Collection ${collectionId}`,
+                  t`Collection ${{ collectionId }}`,
                 mediaType: media.mediaData?.type ?? collection?.type ?? 'movie',
               }))
           },

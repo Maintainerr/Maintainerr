@@ -1,9 +1,11 @@
+import { useLingui } from '@lingui/react/macro'
 import Calendar from '../components/Calendar/index'
 
 const CalendarPage = () => {
+  const { t } = useLingui()
   return (
     <>
-      <title>Calendar - Maintainerr</title>
+      <title>{t`Calendar - Maintainerr`}</title>
       <Calendar />
     </>
   )

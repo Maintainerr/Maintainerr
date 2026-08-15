@@ -1,4 +1,5 @@
 import { ChevronDownIcon, ChevronUpIcon } from '@heroicons/react/solid'
+import { useLingui } from '@lingui/react/macro'
 import { ICommunityRule } from '../CommunityRuleModal'
 
 interface ICommunityRuleTableRow {
@@ -12,6 +13,8 @@ interface ICommunityRuleTableRow {
 }
 
 const CommunityRuleTableRow = (props: ICommunityRuleTableRow) => {
+  const { t } = useLingui()
+
   const onClick = () => {
     if (props.onClick) {
       props.onClick(props.rule.id!)
@@ -51,7 +54,7 @@ const CommunityRuleTableRow = (props: ICommunityRuleTableRow) => {
           title={
             props.thumbsActive
               ? ''
-              : 'You have already submitted karma for this rule.'
+              : t`You have already submitted karma for this rule.`
           }
         >
           <ChevronUpIcon

@@ -1,4 +1,5 @@
 import { DocumentRemoveIcon, TrashIcon } from '@heroicons/react/solid'
+import { Trans, useLingui } from '@lingui/react/macro'
 import { useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { postBulkExclusions } from '../../../../api/bulkMediaAction'
@@ -14,14 +15,15 @@ interface IRemoveFromCollectionButton {
   onRemove: () => void
 }
 const RemoveFromCollectionButton = (props: IRemoveFromCollectionButton) => {
+  const { t } = useLingui()
   const queryClient = useQueryClient()
   const [sure, setSure] = useState<boolean>(false)
   const [popup, setPopup] = useState<boolean>(false)
   const [removing, setRemoving] = useState<boolean>(false)
   const isCreatingExclusion = !props.exclusionId
-  const actionLabel = isCreatingExclusion ? 'Exclude' : 'Remove'
-  const confirmLabel = isCreatingExclusion ? 'Exclude?' : 'Remove?'
-  const inProgressLabel = isCreatingExclusion ? 'Excluding...' : 'Removing...'
+  const actionLabel = isCreatingExclusion ? t`Exclude` : t`Remove`
+  const confirmLabel = isCreatingExclusion ? t`Exclude?` : t`Remove?`
+  const inProgressLabel = isCreatingExclusion ? t`Excluding...` : t`Removing...`
 
   const handlePopup = (e?: React.MouseEvent<HTMLElement>) => {
     e?.stopPropagation()
@@ -68,7 +70,9 @@ const RemoveFromCollectionButton = (props: IRemoveFromCollectionButton) => {
           buttonSize="md"
           className="mt-2 mb-1 h-6 w-full text-zinc-200 shadow-md"
           title={
-            isCreatingExclusion ? 'Exclude from collection' : 'Remove exclusion'
+            isCreatingExclusion
+              ? t`Exclude from collection`
+              : t`Remove exclusion`
           }
           onClick={(e) => {
             e.stopPropagation() // Stops the MediaModal from also showing when clicked.
@@ -104,7 +108,7 @@ const RemoveFromCollectionButton = (props: IRemoveFromCollectionButton) => {
 
       {popup ? (
         <Modal
-          title="Warning"
+          title={t`Warning`}
           onCancel={handlePopup}
           footerActions={
             <Button
@@ -113,13 +117,15 @@ const RemoveFromCollectionButton = (props: IRemoveFromCollectionButton) => {
               disabled={removing}
               onClick={handle}
             >
-              {removing ? 'Removing...' : 'Ok'}
+              {removing ? t`Removing...` : t`OK`}
             </Button>
           }
         >
           <p>
-            This item is excluded <b>globally</b>. Removing this exclusion will
-            apply the change to all collections
+            <Trans>
+              This item is excluded <b>globally</b>. Removing this exclusion
+              will apply the change to all collections
+            </Trans>
           </p>
         </Modal>
       ) : undefined}

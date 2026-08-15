@@ -1,3 +1,4 @@
+import { Trans, useLingui } from '@lingui/react/macro'
 import { zodResolver } from '@hookform/resolvers/zod'
 import {
   type EmbySetting,
@@ -40,6 +41,7 @@ const EmbySettingFormSchema = z.union([
 type EmbySettingFormResult = z.infer<typeof EmbySettingFormSchema>
 
 const EmbySettings = () => {
+  const { t } = useLingui()
   const [testResult, setTestResult] = useState<{
     status: boolean
     message: string
@@ -51,8 +53,10 @@ const EmbySettings = () => {
   const [embyUsers, setEmbyUsers] = useState<
     Array<{ id: string; name: string }>
   >([])
-  const { feedback, showUpdated, showError, clearError } =
-    useSettingsFeedback('Emby settings')
+  const { feedback, showUpdated, showError, clearError } = useSettingsFeedback({
+    updated: t`Emby settings updated`,
+    updateError: t`Emby settings could not be updated`,
+  })
 
   const { settings } = useSettingsOutletContext()
 
@@ -134,7 +138,7 @@ const EmbySettings = () => {
         setTestResult({
           status: true,
           message: result.serverName
-            ? `Connected to ${result.serverName} (v${result.version})`
+            ? t`Connected to ${{ serverName: result.serverName }} (v${{ version: result.version }})`
             : result.message,
         })
         setTestedSettings({ url: embyUrl, apiKey: embyApiKey })
@@ -161,7 +165,7 @@ const EmbySettings = () => {
     } catch (error) {
       const message = getApiErrorMessage(
         error,
-        'Failed to connect to Emby. Verify URL and API key.',
+        t`Failed to connect to Emby. Verify URL and API key.`,
       )
       setTestResult({ status: false, message })
       setTestedSettings(null)
@@ -182,7 +186,7 @@ const EmbySettings = () => {
         showUpdated()
       } catch (error) {
         showError(
-          getApiErrorMessage(error, 'Emby settings could not be updated'),
+          getApiErrorMessage(error, t`Emby settings could not be updated`),
         )
       }
       return
@@ -193,21 +197,28 @@ const EmbySettings = () => {
       reset(data)
       showUpdated()
     } catch (error) {
-      showError(getApiErrorMessage(error, 'Emby settings could not be updated'))
+      showError(
+        getApiErrorMessage(error, t`Emby settings could not be updated`),
+      )
     }
   }
 
   const savedUserId = settings?.emby_user_id ?? ''
+  const maskedUserId = maskSecret(savedUserId)
 
   return (
     <>
-      <title>Emby settings - Maintainerr</title>
+      <title>{t`Emby settings - Maintainerr`}</title>
       <div className="h-full w-full">
         <div className="section h-full w-full">
-          <h3 className="heading">Emby Settings</h3>
+          <h3 className="heading">
+            <Trans>Emby Settings</Trans>
+          </h3>
           <p className="description">
-            Configure your Emby server connection. Enter the server URL plus an
-            API key, or sign in with admin credentials to obtain one.
+            <Trans>
+              Configure your Emby server connection. Enter the server URL plus
+              an API key, or sign in with admin credentials to obtain one.
+            </Trans>
           </p>
         </div>
 
@@ -234,7 +245,7 @@ const EmbySettings = () => {
               control={control}
               render={({ field }) => (
                 <InputGroup
-                  label="Emby URL"
+                  label={t`Emby URL`}
                   value={field.value}
                   placeholder="http://emby.local:8096"
                   onChange={(event) => {
@@ -254,23 +265,23 @@ const EmbySettings = () => {
             />
 
             <InputGroup
-              label="API Key"
+              label={t`API Key`}
               type="password"
               {...registerApiKey}
               error={errors.emby_api_key?.message}
               helpText={
-                <>
+                <Trans>
                   In Emby, go to{' '}
                   <strong>Dashboard &rarr; Advanced &rarr; API Keys</strong> and
                   create a new key named &quot;Maintainerr&quot;. Or use{' '}
                   <em>Sign in with Emby</em> below to obtain one automatically.
-                </>
+                </Trans>
               }
             />
 
             <div className="mt-6 max-w-6xl sm:mt-5 sm:grid sm:grid-cols-3 sm:items-start sm:gap-4">
               <label htmlFor="emby_user_id" className="sm:mt-2">
-                Admin User
+                <Trans>Admin User</Trans>
               </label>
               <div className="px-3 py-2 sm:col-span-2">
                 <div className="max-w-xl">
@@ -286,21 +297,21 @@ const EmbySettings = () => {
                     <Select disabled value={savedUserId}>
                       {savedUserId ? (
                         <option value={savedUserId}>
-                          Selected: {maskSecret(savedUserId)}
+                          <Trans>Selected: {maskedUserId}</Trans>
                         </option>
                       ) : (
                         <option value="">
-                          Test connection to load Emby admin users
+                          {t`Test connection to load Emby admin users`}
                         </option>
                       )}
                     </Select>
                   )}
                   <p className="mt-1 text-sm text-zinc-400">
                     {embyUsers.length > 0 && enteredSettingsHaveBeenTested
-                      ? 'Select the admin user for Maintainerr operations.'
+                      ? t`Select the admin user for Maintainerr operations.`
                       : savedUserId
-                        ? 'Saved admin user. Test connection to change.'
-                        : 'Test connection to load available admin users.'}
+                        ? t`Saved admin user. Test connection to change.`
+                        : t`Test connection to load available admin users.`}
                   </p>
                 </div>
               </div>
@@ -321,8 +332,8 @@ const EmbySettings = () => {
                       setTestResult({
                         status: true,
                         message: result.serverName
-                          ? `Authenticated against ${result.serverName}`
-                          : 'Authenticated',
+                          ? t`Authenticated against ${{ serverName: result.serverName }}`
+                          : t`Authenticated`,
                       })
                       setTestedSettings({
                         url: embyUrl,

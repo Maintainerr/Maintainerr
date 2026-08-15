@@ -12,7 +12,7 @@ import PageControlRow from '../components/Common/PageControlRow'
 import RuleGroup, { IRuleGroup } from '../components/Rules/RuleGroup'
 import { useTaskStatusContext } from '../contexts/taskstatus-context'
 import { PostApiHandler } from '../utils/ApiHandler'
-import { useLingui } from '@lingui/react/macro'
+import { Trans, useLingui } from '@lingui/react/macro'
 
 const RulesListPage = () => {
   const { t } = useLingui()
@@ -61,7 +61,7 @@ const RulesListPage = () => {
 
   return (
     <>
-      <title>Rules - Maintainerr</title>
+      <title>{t`Rules - Maintainerr`}</title>
       <div className="w-full px-4">
         <PageControlRow
           actions={
@@ -95,7 +95,9 @@ const RulesListPage = () => {
             />
           }
         />
-        <h1 className="mb-3 text-lg font-bold text-zinc-200">Rules</h1>
+        <h1 className="mb-3 text-lg font-bold text-zinc-200">
+          <Trans>Rules</Trans>
+        </h1>
         {isLoading ? (
           <LoadingSpinner />
         ) : (

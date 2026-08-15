@@ -1,3 +1,4 @@
+import { t } from '@lingui/core/macro'
 import axios from 'axios'
 import Bowser from 'bowser'
 
@@ -129,7 +130,7 @@ class PlexOAuth {
 
         if (Date.now() >= deadline) {
           this.closePopup()
-          reject(new Error('Authentication timed out. Please try again.'))
+          reject(new Error(t`Authentication timed out. Please try again.`))
           return
         }
 
@@ -146,18 +147,18 @@ class PlexOAuth {
           const expiresAt = new Date(response.data.expiresAt).getTime()
           if (expiresAt <= Date.now()) {
             this.closePopup()
-            reject(new Error('Authentication PIN expired. Please try again.'))
+            reject(new Error(t`Authentication PIN expired. Please try again.`))
             return
           }
           if (!this.popup?.closed) {
             setTimeout(executePoll, 1000, resolve, reject)
           } else {
-            reject(new Error('Popup closed without completing login'))
+            reject(new Error(t`Popup closed without completing login`))
           }
         } else if (!this.popup?.closed) {
           setTimeout(executePoll, 1000, resolve, reject)
         } else {
-          reject(new Error('Popup closed without completing login'))
+          reject(new Error(t`Popup closed without completing login`))
         }
       } catch (error) {
         this.closePopup()

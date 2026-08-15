@@ -1,3 +1,4 @@
+import { useLingui } from '@lingui/react/macro'
 import { type MediaItem, type MediaItemType } from '@maintainerr/contracts'
 import { SingleValue } from 'react-select'
 import AsyncSelect from 'react-select/async'
@@ -16,6 +17,8 @@ interface ISearchMediaITem {
 }
 
 const SearchMediaItem = (props: ISearchMediaITem) => {
+  const { t } = useLingui()
+
   const loadData = async (query: string): Promise<IMediaOptions[]> => {
     if (!props.libraryId) {
       return []
@@ -47,7 +50,7 @@ const SearchMediaItem = (props: ISearchMediaITem) => {
         defaultValue={[]}
         defaultOptions={undefined}
         loadOptions={loadData}
-        placeholder="Start typing... "
+        placeholder={`${t`Start typing...`} `}
         onChange={(selectedItem) => {
           props.onChange(selectedItem)
         }}

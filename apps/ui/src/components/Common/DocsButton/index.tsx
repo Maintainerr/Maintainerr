@@ -1,4 +1,5 @@
 import { DocumentTextIcon } from '@heroicons/react/solid'
+import { Trans } from '@lingui/react/macro'
 import Button from '../Button'
 
 interface IDocsButton {
@@ -20,7 +21,7 @@ const DocsButton = (props: IDocsButton) => {
         rel="noopener noreferrer"
       >
         <DocumentTextIcon />
-        <span>{props.text ? props.text : 'Docs'}</span>
+        <span>{props.text ? props.text : <Trans>Docs</Trans>}</span>
       </Button>
     </span>
   )

@@ -1,3 +1,5 @@
+import { t as globalT } from '@lingui/core/macro'
+import { Trans, useLingui } from '@lingui/react/macro'
 import { RefreshIcon } from '@heroicons/react/solid'
 import type {
   OverlayElement,
@@ -56,6 +58,7 @@ const OverlayTemplateEditorPage = () => {
 }
 
 const OverlayTemplateEditor = ({ routeId }: { routeId: string }) => {
+  const { t } = useLingui()
   const id = routeId
   const isNew = id === 'new'
   const navigate = useNavigate()
@@ -82,7 +85,7 @@ const OverlayTemplateEditor = ({ routeId }: { routeId: string }) => {
     'layers',
   )
   const { feedback, showSuccess, showError, showWarning } =
-    useSettingsFeedback('Overlay template')
+    useSettingsFeedback()
 
   const canvasDefaults = defaults(mode)
   const {
@@ -110,18 +113,23 @@ const OverlayTemplateEditor = ({ routeId }: { routeId: string }) => {
       navigate('/overlays/templates')
       return
     }
-    void getOverlayTemplate(templateId).then((t) => {
-      if (!t) {
-        showError('Template not found')
+    // Failures here use the core macro rather than the hook's `t`: a
+    // render-scoped `t` belongs in this effect's dependencies, and re-running
+    // it on a language switch would reload the template and discard unsaved
+    // edits.
+    // Named `template` rather than `t`, which the translation macro takes.
+    void getOverlayTemplate(templateId).then((template) => {
+      if (!template) {
+        showError(globalT`Template not found`)
         navigate('/overlays/templates')
         return
       }
-      setName(t.name)
-      setDescription(t.description)
-      setMode(t.mode)
-      setIsPreset(t.isPreset)
-      setSourcePresetName(t.isPreset ? t.name : '')
-      resetElements(t.elements)
+      setName(template.name)
+      setDescription(template.description)
+      setMode(template.mode)
+      setIsPreset(template.isPreset)
+      setSourcePresetName(template.isPreset ? template.name : '')
+      resetElements(template.elements)
       setIsLoading(false)
     })
   }, [id, isNew, navigate, resetElements, showError])
@@ -137,7 +145,7 @@ const OverlayTemplateEditor = ({ routeId }: { routeId: string }) => {
       })
       .catch(() => {
         showWarning(
-          'Could not load library sections. The preview background picker will be empty.',
+          globalT`Could not load library sections. The preview background picker will be empty.`,
         )
       })
   }, [showWarning])
@@ -152,7 +160,7 @@ const OverlayTemplateEditor = ({ routeId }: { routeId: string }) => {
       })
       .catch(() => {
         showWarning(
-          'Could not load font list. Text elements will fall back to the default font.',
+          globalT`Could not load font list. Text elements will fall back to the default font.`,
         )
       })
   }, [showWarning])
@@ -164,7 +172,7 @@ const OverlayTemplateEditor = ({ routeId }: { routeId: string }) => {
       })
       .catch(() => {
         showWarning(
-          'Could not load overlay image list. Image elements will only render if the filename exists on disk.',
+          globalT`Could not load overlay image list. Image elements will only render if the filename exists on disk.`,
         )
       })
   }, [showWarning])
@@ -195,15 +203,15 @@ const OverlayTemplateEditor = ({ routeId }: { routeId: string }) => {
           invalidateOverlayEditorFont(result.name)
           const updated = await getOverlayFonts()
           if (updated) setFonts(updated)
-          showSuccess(`Font "${result.name}" uploaded`)
+          showSuccess(t`Font "${{ fontName: result.name }}" uploaded`)
           return result
         }
       } catch {
-        showError('Failed to upload font')
+        showError(t`Failed to upload font`)
       }
       return null
     },
-    [showError, showSuccess],
+    [showError, showSuccess, t],
   )
 
   const handleUploadImage = useCallback(
@@ -216,7 +224,7 @@ const OverlayTemplateEditor = ({ routeId }: { routeId: string }) => {
       try {
         result = await uploadOverlayImage(file)
       } catch (err) {
-        showError(getApiErrorMessage(err, 'Failed to upload image'))
+        showError(getApiErrorMessage(err, t`Failed to upload image`))
         return null
       }
       if (!result) return null
@@ -224,7 +232,7 @@ const OverlayTemplateEditor = ({ routeId }: { routeId: string }) => {
       // Bust the canvas image cache so an in-place replacement of the
       // same filename actually shows the new bytes.
       setImageLoadVersion((v) => v + 1)
-      showSuccess(`Image "${result.name}" uploaded`)
+      showSuccess(t`Image "${{ imageName: result.name }}" uploaded`)
 
       // Best-effort list refresh. If it fails, the picker may not show the
       // newly uploaded option until the editor is reopened, but the upload
@@ -239,7 +247,7 @@ const OverlayTemplateEditor = ({ routeId }: { routeId: string }) => {
 
       return result
     },
-    [showError, showSuccess],
+    [showError, showSuccess, t],
   )
 
   const loadRandomPoster = useCallback(async () => {
@@ -309,7 +317,7 @@ const OverlayTemplateEditor = ({ routeId }: { routeId: string }) => {
   const createTemplateFromCurrent = async (newName: string) => {
     const trimmedName = newName.trim()
     if (!trimmedName) {
-      showError('Template name is required')
+      showError(t`Template name is required`)
       return false
     }
     setSaving(true)
@@ -331,10 +339,10 @@ const OverlayTemplateEditor = ({ routeId }: { routeId: string }) => {
         navigate(`/overlays/templates/${created.id}`, { replace: true })
         return true
       }
-      showError('Failed to create template')
+      showError(t`Failed to create template`)
       return false
     } catch (err) {
-      showError(getApiErrorMessage(err, 'Failed to save template'))
+      showError(getApiErrorMessage(err, t`Failed to save template`))
       return false
     } finally {
       setSaving(false)
@@ -348,7 +356,7 @@ const OverlayTemplateEditor = ({ routeId }: { routeId: string }) => {
     }
     const trimmedName = name.trim()
     if (!trimmedName) {
-      showError('Template name is required')
+      showError(t`Template name is required`)
       return
     }
     if (isNew) {
@@ -362,10 +370,10 @@ const OverlayTemplateEditor = ({ routeId }: { routeId: string }) => {
         description,
         elements,
       } satisfies OverlayTemplateUpdate)
-      if (updated) showSuccess('Template saved')
-      else showError('Failed to save template')
+      if (updated) showSuccess(t`Template saved`)
+      else showError(t`Failed to save template`)
     } catch (err) {
-      showError(getApiErrorMessage(err, 'Failed to save template'))
+      showError(getApiErrorMessage(err, t`Failed to save template`))
     } finally {
       setSaving(false)
     }
@@ -411,17 +419,19 @@ const OverlayTemplateEditor = ({ routeId }: { routeId: string }) => {
   return (
     <>
       <title>
-        {isNew ? 'New Template' : name} - Overlay Editor - Maintainerr
+        {isNew
+          ? t`New Template - Overlay Editor - Maintainerr`
+          : t`${{ templateName: name }} - Overlay Editor - Maintainerr`}
       </title>
       <div className="h-full w-full">
         <div className="section h-full w-full">
           <h3 className="heading">
-            {isNew ? 'New Template' : 'Edit Template'}
+            {isNew ? <Trans>New Template</Trans> : <Trans>Edit Template</Trans>}
           </h3>
           <p className="description">
             {isPreset
-              ? 'You’re editing a preset. Saving will create your own copy - the original preset is left unchanged.'
-              : 'Design overlay elements on the canvas. Enter a valid template name in the Template Name field before saving your changes.'}
+              ? t`You’re editing a preset. Saving will create your own copy - the original preset is left unchanged.`
+              : t`Design overlay elements on the canvas. Enter a valid template name in the Template Name field before saving your changes.`}
           </p>
         </div>
 
@@ -436,15 +446,15 @@ const OverlayTemplateEditor = ({ routeId }: { routeId: string }) => {
                 onClick={undo}
                 disabled={isLoading || !canUndo}
               >
-                Prev
+                <Trans>Prev</Trans>
               </Button>
               <SaveButton
                 type="button"
                 onClick={handleSave}
                 disabled={isLoading || saving || (!isPreset && !name.trim())}
                 isPending={saving}
-                label={isPreset ? 'Save as copy' : 'Save Changes'}
-                pendingLabel={isPreset ? 'Copying...' : 'Saving...'}
+                label={isPreset ? t`Save as copy` : t`Save Changes`}
+                pendingLabel={isPreset ? t`Copying...` : t`Saving...`}
               />
               <Button
                 className="h-10 px-3"
@@ -452,7 +462,7 @@ const OverlayTemplateEditor = ({ routeId }: { routeId: string }) => {
                 onClick={redo}
                 disabled={isLoading || !canRedo}
               >
-                Next
+                <Trans>Next</Trans>
               </Button>
               <div className="w-48">
                 <Input
@@ -461,7 +471,7 @@ const OverlayTemplateEditor = ({ routeId }: { routeId: string }) => {
                   value={isPreset ? sourcePresetName : name}
                   onChange={(e) => setName(e.target.value)}
                   disabled={isLoading || isPreset}
-                  placeholder="Template Name"
+                  placeholder={t`Template Name`}
                 />
               </div>
               {/* Fixed once created, but still shown: two templates can share
@@ -499,7 +509,7 @@ const OverlayTemplateEditor = ({ routeId }: { routeId: string }) => {
                     type="button"
                     className="shrink-0 rounded-sm p-1 text-zinc-400 transition hover:text-zinc-200"
                     onClick={loadRandomPoster}
-                    title="Load different poster"
+                    title={t`Load different poster`}
                   >
                     <RefreshIcon className="h-4 w-4" />
                   </button>
@@ -567,7 +577,7 @@ const OverlayTemplateEditor = ({ routeId }: { routeId: string }) => {
                     />
                   ) : (
                     <p className="text-center text-xs text-zinc-500">
-                      Select an element to edit its properties
+                      <Trans>Select an element to edit its properties</Trans>
                     </p>
                   )}
                 </div>
@@ -622,7 +632,7 @@ const OverlayTemplateEditor = ({ routeId }: { routeId: string }) => {
                       />
                     ) : (
                       <p className="text-center text-xs text-zinc-500">
-                        Select an element to edit its properties
+                        <Trans>Select an element to edit its properties</Trans>
                       </p>
                     ))}
                 </div>
@@ -634,7 +644,7 @@ const OverlayTemplateEditor = ({ routeId }: { routeId: string }) => {
 
       {copyModalOpen && (
         <Modal
-          title="Save preset as a copy"
+          title={t`Save preset as a copy`}
           size="sm"
           onCancel={saving ? undefined : () => setCopyModalOpen(false)}
           footerActions={
@@ -645,20 +655,22 @@ const OverlayTemplateEditor = ({ routeId }: { routeId: string }) => {
               disabled={saving || !copyName.trim()}
               onClick={() => void confirmSaveAsCopy()}
             >
-              {saving ? 'Saving...' : 'Save copy'}
+              {saving ? t`Saving...` : t`Save copy`}
             </Button>
           }
         >
           <p className="mb-3">
-            Presets can&rsquo;t be modified. Enter a name for your copy - it
-            will start from the current canvas and become editable.
+            <Trans>
+              Presets can&rsquo;t be modified. Enter a name for your copy - it
+              will start from the current canvas and become editable.
+            </Trans>
           </p>
           <Input
             name="copy-template-name"
             type="text"
             value={copyName}
             onChange={(e) => setCopyName(e.target.value)}
-            placeholder="Template Name"
+            placeholder={t`Template Name`}
             autoFocus
           />
         </Modal>

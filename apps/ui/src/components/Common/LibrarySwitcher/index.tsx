@@ -1,3 +1,4 @@
+import { useLingui } from '@lingui/react/macro'
 import { type MediaLibrary } from '@maintainerr/contracts'
 import { useEffect, useRef } from 'react'
 import { Select } from '../../Forms/Select'
@@ -14,6 +15,7 @@ interface ILibrarySwitcher {
 }
 
 const LibrarySwitcher = (props: ILibrarySwitcher) => {
+  const { t } = useLingui()
   const {
     onLibraryChange,
     selectedLibraryId,
@@ -63,16 +65,18 @@ const LibrarySwitcher = (props: ILibrarySwitcher) => {
         <Select name="library" onChange={onSwitchLibrary} value={selectValue}>
           {librariesLoading ? (
             <option disabled={true} value="">
-              Loading libraries...
+              {t`Loading libraries...`}
             </option>
           ) : librariesError ? (
             <option disabled={true} value="">
-              Could not fetch libraries
+              {t`Could not fetch libraries`}
             </option>
           ) : (
             <>
               {(props.shouldShowAllOption === undefined ||
-                props.shouldShowAllOption) && <option value="all">All</option>}
+                props.shouldShowAllOption) && (
+                <option value="all">{t`All`}</option>
+              )}
 
               {libraries?.map((lib) => {
                 return (

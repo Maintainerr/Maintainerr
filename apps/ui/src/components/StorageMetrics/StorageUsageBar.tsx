@@ -1,3 +1,4 @@
+import { Trans, useLingui } from '@lingui/react/macro'
 import {
   formatBytes,
   formatPercent,
@@ -17,6 +18,7 @@ const StorageUsageBar: React.FC<StorageUsageBarProps> = ({
   free,
   accurateTotalSpace,
 }) => {
+  const { t } = useLingui()
   const percent = getPercentValue(used, total, { clamp: true }) ?? 0
   const barColor =
     percent >= 90
@@ -29,13 +31,14 @@ const StorageUsageBar: React.FC<StorageUsageBarProps> = ({
     <div>
       <div className="flex items-end justify-between text-xs text-zinc-300">
         <span>
-          {formatBytes(used)} used
-          {accurateTotalSpace && total > 0 ? ` of ${formatBytes(total)}` : ''}
+          {accurateTotalSpace && total > 0
+            ? t`${{ usedSize: formatBytes(used) }} used of ${{ totalSize: formatBytes(total) }}`
+            : t`${{ usedSize: formatBytes(used) }} used`}
         </span>
         <span className="text-zinc-400">
           {accurateTotalSpace
             ? formatPercent(used, total)
-            : `${formatBytes(free)} free`}
+            : t`${{ freeSize: formatBytes(free) }} free`}
         </span>
       </div>
       <div
@@ -54,8 +57,10 @@ const StorageUsageBar: React.FC<StorageUsageBarProps> = ({
       </div>
       {!accurateTotalSpace ? (
         <p className="mt-1 text-[11px] text-zinc-500">
-          Total size not reported by this instance - only free space is
-          accurate.
+          <Trans>
+            Total size not reported by this instance - only free space is
+            accurate.
+          </Trans>
         </p>
       ) : null}
     </div>

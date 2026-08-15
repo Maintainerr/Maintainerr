@@ -9,6 +9,8 @@ import {
   PlayIcon,
   ServerIcon,
 } from '@heroicons/react/solid'
+import { plural } from '@lingui/core/macro'
+import { Trans, useLingui } from '@lingui/react/macro'
 import type {
   StorageDiskspaceEntry,
   StorageInstanceStatus,
@@ -21,6 +23,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { getApiErrorMessage } from '../../utils/ApiError'
 import GetApiHandler from '../../utils/ApiHandler'
 import { formatBytes, formatPercent } from '../../utils/formatBytes'
+import { mediaTypeLabel } from '../../utils/mediaTypeUtils'
 import BrandLink from '../Common/BrandLink'
 import Button from '../Common/Button'
 import LoadingSpinner, { SmallLoadingSpinner } from '../Common/LoadingSpinner'
@@ -33,6 +36,18 @@ interface SummaryCardProps {
   subtitle?: string
   icon: React.ReactNode
 }
+
+// Shared builders so each counted phrase extracts to a single message with a
+// named argument. A `<Plural value={obj.field}>` would emit a bare {0} and a
+// separate message per call site.
+const collectionCountLabel = (collectionCount: number) =>
+  plural(collectionCount, { one: '# collection', other: '# collections' })
+
+const itemCountLabel = (itemCount: number) =>
+  plural(itemCount, { one: '# item', other: '# items' })
+
+const mountCountLabel = (mountCount: number) =>
+  plural(mountCount, { one: '# mount', other: '# mounts' })
 
 const SummaryCard: React.FC<SummaryCardProps> = ({
   title,
@@ -70,9 +85,12 @@ const groupMountsByInstance = (mounts: StorageDiskspaceEntry[]) => {
 }
 
 const StorageMetrics: React.FC = () => {
+  const { t } = useLingui()
   const [metrics, setMetrics] = useState<StorageMetricsResponse | null>(null)
   const [isLoading, setIsLoading] = useState<boolean>(true)
-  const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  // A flag, not a message: translating inside the effect would put `t` in its
+  // dependency array and re-fetch the metrics every time the language changed.
+  const [loadFailed, setLoadFailed] = useState(false)
 
   useEffect(() => {
     let active = true
@@ -80,7 +98,7 @@ const StorageMetrics: React.FC = () => {
     const load = async () => {
       try {
         setIsLoading(true)
-        setErrorMessage(null)
+        setLoadFailed(false)
         const response =
           await GetApiHandler<StorageMetricsResponse>('/storage-metrics')
         if (active) {
@@ -88,9 +106,7 @@ const StorageMetrics: React.FC = () => {
         }
       } catch {
         if (active) {
-          setErrorMessage(
-            'Unable to load storage metrics. Check that Maintainerr can reach your Radarr and Sonarr instances.',
-          )
+          setLoadFailed(true)
         }
       } finally {
         if (active) {
@@ -114,7 +130,7 @@ const StorageMetrics: React.FC = () => {
   if (isLoading && !metrics) {
     return (
       <>
-        <title>Storage Metrics - Maintainerr</title>
+        <title>{t`Storage Metrics - Maintainerr`}</title>
         <div className="min-h-80">
           <LoadingSpinner />
         </div>
@@ -122,17 +138,19 @@ const StorageMetrics: React.FC = () => {
     )
   }
 
-  if (errorMessage || !metrics) {
+  if (loadFailed || !metrics) {
     return (
       <>
-        <title>Storage Metrics - Maintainerr</title>
+        <title>{t`Storage Metrics - Maintainerr`}</title>
         <div
           role="alert"
           className="mt-4 flex items-start gap-3 rounded-md border border-error-500/60 bg-error-500/10 p-4 text-error-100"
         >
           <ExclamationCircleIcon className="h-5 w-5 flex-shrink-0 text-error-300" />
           <p className="text-sm">
-            {errorMessage ?? 'Storage metrics are unavailable.'}
+            {loadFailed
+              ? t`Unable to load storage metrics. Check that Maintainerr can reach your Radarr and Sonarr instances.`
+              : t`Storage metrics are unavailable.`}
           </p>
         </div>
       </>
@@ -146,131 +164,153 @@ const StorageMetrics: React.FC = () => {
   const hasCleanupActivity = cleanupTotals.itemsHandled > 0
   const hasAnyTotal = totals.totalSpace > 0
   const hasAnyFree = totals.freeSpace > 0 || totals.mountCount > 0
-  const mountLabel = (count: number) =>
-    `${count} mount${count === 1 ? '' : 's'}`
+  const mountCount = totals.mountCount
+  const generatedAt = new Date(metrics.generatedAt).toLocaleString()
   const noTotalSubtitle = hasAnyFree
-    ? 'Free space only - Sonarr/Radarr do not report total size for NFS/CIFS mounts'
-    : 'No instance reports total capacity'
+    ? t`Free space only - Sonarr/Radarr do not report total size for NFS/CIFS mounts`
+    : t`No instance reports total capacity`
 
   return (
     <>
-      <title>Storage Metrics - Maintainerr</title>
+      <title>{t`Storage Metrics - Maintainerr`}</title>
       <div className="w-full px-0 pb-8">
         <div className="mb-4">
-          <h1 className="text-2xl font-semibold text-white">Storage Metrics</h1>
+          <h1 className="text-2xl font-semibold text-white">
+            <Trans>Storage Metrics</Trans>
+          </h1>
           <p className="mt-1 text-sm text-zinc-400">
-            Disk usage across your Radarr and Sonarr instances, plus how much
-            space Maintainerr can reclaim from collections with a delete rule.
-            Items appearing in multiple collections are counted once.
+            <Trans>
+              Disk usage across your Radarr and Sonarr instances, plus how much
+              space Maintainerr can reclaim from collections with a delete rule.
+              Items appearing in multiple collections are counted once.
+            </Trans>
           </p>
         </div>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <SummaryCard
-            title="Total capacity"
+            title={t`Total capacity`}
             value={hasAnyTotal ? formatBytes(totals.totalSpace) : '-'}
             subtitle={
               !hasAnyTotal
                 ? noTotalSubtitle
                 : totals.accurateTotalSpace
-                  ? mountLabel(totals.mountCount)
-                  : `${totals.accurateMountCount} of ${totals.mountCount} mounts report total capacity`
+                  ? mountCountLabel(totals.mountCount)
+                  : t`${{ accurateMountCount: totals.accurateMountCount }} of ${{ mountCount: totals.mountCount }} mounts report total capacity`
             }
             icon={<ServerIcon className="h-5 w-5" />}
           />
           <SummaryCard
-            title="Used"
+            title={t`Used`}
             value={hasAnyTotal ? formatBytes(totals.usedSpace) : '-'}
             subtitle={
               hasAnyTotal
                 ? formatPercent(totals.usedSpace, totals.totalSpace)
-                : 'Requires total-space reporting'
+                : t`Requires total-space reporting`
             }
             icon={<ChartBarIcon className="h-5 w-5" />}
           />
           <SummaryCard
-            title="Free"
+            title={t`Free`}
             value={formatBytes(totals.freeSpace)}
-            subtitle={`Aggregated across ${mountLabel(totals.mountCount)}`}
+            subtitle={plural(mountCount, {
+              one: 'Aggregated across # mount',
+              other: 'Aggregated across # mounts',
+            })}
             icon={<ChartBarIcon className="h-5 w-5" />}
           />
           <SummaryCard
-            title="Reclaimable from collections"
+            title={t`Reclaimable from collections`}
             value={formatBytes(metrics.collectionSummary.activeSizeBytes)}
             subtitle={
               metrics.collectionSummary.reclaimableUsingFallback
-                ? `${metrics.collectionSummary.reclaimableSizedCount} of ${metrics.collectionSummary.reclaimableCount} reclaimable collections sized - duplicates not yet deduplicated, refreshes after next collection run`
-                : `${metrics.collectionSummary.reclaimableSizedCount} of ${metrics.collectionSummary.reclaimableCount} reclaimable collections sized - duplicates counted once`
+                ? t`${{ sizedCount: metrics.collectionSummary.reclaimableSizedCount }} of ${{ reclaimableCount: metrics.collectionSummary.reclaimableCount }} reclaimable collections sized - duplicates not yet deduplicated, refreshes after next collection run`
+                : t`${{ sizedCount: metrics.collectionSummary.reclaimableSizedCount }} of ${{ reclaimableCount: metrics.collectionSummary.reclaimableCount }} reclaimable collections sized - duplicates counted once`
             }
             icon={<CollectionIcon className="h-5 w-5" />}
           />
         </div>
 
         <section className="mt-8">
-          <h2 className="sm-heading">Cleanup totals</h2>
+          <h2 className="sm-heading">
+            <Trans>Cleanup totals</Trans>
+          </h2>
           <p className="description">
-            Cumulative count of media items Maintainerr has handled across all
-            collections, with the on-disk space reclaimed by delete-style
-            actions. Unmonitor and quality-change actions do not contribute to
-            bytes reclaimed.
+            <Trans>
+              Cumulative count of media items Maintainerr has handled across all
+              collections, with the on-disk space reclaimed by delete-style
+              actions. Unmonitor and quality-change actions do not contribute to
+              bytes reclaimed.
+            </Trans>
           </p>
           <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
             <SummaryCard
-              title="Items handled"
+              title={t`Items handled`}
               value={cleanupTotals.itemsHandled.toLocaleString()}
               subtitle={
                 hasCleanupActivity
-                  ? `${formatBytes(cleanupTotals.bytesHandled)} reclaimed total`
-                  : 'No items processed yet'
+                  ? t`${{ size: formatBytes(cleanupTotals.bytesHandled) }} reclaimed total`
+                  : t`No items processed yet`
               }
               icon={<CheckCircleIcon className="h-5 w-5" />}
             />
             <SummaryCard
-              title="Movies handled"
+              title={t`Movies handled`}
               value={cleanupTotals.moviesHandled.toLocaleString()}
-              subtitle={`${formatBytes(cleanupTotals.movieBytesHandled)} reclaimed`}
+              subtitle={t`${{ size: formatBytes(cleanupTotals.movieBytesHandled) }} reclaimed`}
               icon={<FilmIcon className="h-5 w-5" />}
             />
             <SummaryCard
-              title="Shows handled"
+              title={t`Shows handled`}
               value={cleanupTotals.showsHandled.toLocaleString()}
-              subtitle={`${formatBytes(cleanupTotals.showBytesHandled)} reclaimed`}
+              subtitle={t`${{ size: formatBytes(cleanupTotals.showBytesHandled) }} reclaimed`}
               icon={<DesktopComputerIcon className="h-5 w-5" />}
             />
             <SummaryCard
-              title="Seasons handled"
+              title={t`Seasons handled`}
               value={cleanupTotals.seasonsHandled.toLocaleString()}
-              subtitle={`${formatBytes(cleanupTotals.seasonBytesHandled)} reclaimed`}
+              subtitle={t`${{ size: formatBytes(cleanupTotals.seasonBytesHandled) }} reclaimed`}
               icon={<CollectionIcon className="h-5 w-5" />}
             />
             <SummaryCard
-              title="Episodes handled"
+              title={t`Episodes handled`}
               value={cleanupTotals.episodesHandled.toLocaleString()}
-              subtitle={`${formatBytes(cleanupTotals.episodeBytesHandled)} reclaimed`}
+              subtitle={t`${{ size: formatBytes(cleanupTotals.episodeBytesHandled) }} reclaimed`}
               icon={<PlayIcon className="h-5 w-5" />}
             />
           </div>
         </section>
 
         <section className="mt-8">
-          <h2 className="sm-heading">Potential reclaim by type</h2>
+          <h2 className="sm-heading">
+            <Trans>Potential reclaim by type</Trans>
+          </h2>
           <p className="description">
-            {metrics.collectionSummary.reclaimableUsingFallback
-              ? 'Based on cached collection totals while per-item sizes are still backfilling. Duplicates across collections are resolved after the next collection size refresh.'
-              : 'Based on cached collection sizes, deduplicated across collections. Run collection processing jobs to refresh size data.'}
+            {metrics.collectionSummary.reclaimableUsingFallback ? (
+              <Trans>
+                Based on cached collection totals while per-item sizes are still
+                backfilling. Duplicates across collections are resolved after
+                the next collection size refresh.
+              </Trans>
+            ) : (
+              <Trans>
+                Based on cached collection sizes, deduplicated across
+                collections. Run collection processing jobs to refresh size
+                data.
+              </Trans>
+            )}
           </p>
           <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <div className="transparent-glass-bg rounded-lg border border-zinc-700 p-4">
               <div className="flex items-center justify-between text-sm text-zinc-300">
                 <span className="flex items-center gap-2">
                   <FilmIcon className="h-5 w-5 text-maintainerr-500" />
-                  Movies
+                  <Trans>Movies</Trans>
                 </span>
                 <span className="text-zinc-400">
-                  {metrics.collectionSummary.reclaimableMovieCount} collection
-                  {metrics.collectionSummary.reclaimableMovieCount === 1
-                    ? ''
-                    : 's'}
+                  {collectionCountLabel(
+                    metrics.collectionSummary.reclaimableMovieCount,
+                  )}
                 </span>
               </div>
               <div className="mt-2 text-2xl font-semibold text-white">
@@ -281,13 +321,12 @@ const StorageMetrics: React.FC = () => {
               <div className="flex items-center justify-between text-sm text-zinc-300">
                 <span className="flex items-center gap-2">
                   <DesktopComputerIcon className="h-5 w-5 text-maintainerrdark-500" />
-                  Shows
+                  <Trans>Shows</Trans>
                 </span>
                 <span className="text-zinc-400">
-                  {metrics.collectionSummary.reclaimableShowCount} collection
-                  {metrics.collectionSummary.reclaimableShowCount === 1
-                    ? ''
-                    : 's'}
+                  {collectionCountLabel(
+                    metrics.collectionSummary.reclaimableShowCount,
+                  )}
                 </span>
               </div>
               <div className="mt-2 text-2xl font-semibold text-white">
@@ -298,13 +337,12 @@ const StorageMetrics: React.FC = () => {
               <div className="flex items-center justify-between text-sm text-zinc-300">
                 <span className="flex items-center gap-2">
                   <CollectionIcon className="h-5 w-5 text-maintainerr-500" />
-                  Seasons
+                  <Trans>Seasons</Trans>
                 </span>
                 <span className="text-zinc-400">
-                  {metrics.collectionSummary.reclaimableSeasonCount} collection
-                  {metrics.collectionSummary.reclaimableSeasonCount === 1
-                    ? ''
-                    : 's'}
+                  {collectionCountLabel(
+                    metrics.collectionSummary.reclaimableSeasonCount,
+                  )}
                 </span>
               </div>
               <div className="mt-2 text-2xl font-semibold text-white">
@@ -315,13 +353,12 @@ const StorageMetrics: React.FC = () => {
               <div className="flex items-center justify-between text-sm text-zinc-300">
                 <span className="flex items-center gap-2">
                   <PlayIcon className="h-5 w-5 text-maintainerrdark-500" />
-                  Episodes
+                  <Trans>Episodes</Trans>
                 </span>
                 <span className="text-zinc-400">
-                  {metrics.collectionSummary.reclaimableEpisodeCount} collection
-                  {metrics.collectionSummary.reclaimableEpisodeCount === 1
-                    ? ''
-                    : 's'}
+                  {collectionCountLabel(
+                    metrics.collectionSummary.reclaimableEpisodeCount,
+                  )}
                 </span>
               </div>
               <div className="mt-2 text-2xl font-semibold text-white">
@@ -352,17 +389,23 @@ const StorageMetrics: React.FC = () => {
         />
 
         <section className="mt-8">
-          <h2 className="sm-heading">Mounts by instance</h2>
+          <h2 className="sm-heading">
+            <Trans>Mounts by instance</Trans>
+          </h2>
           <p className="description">
-            Disk space reported by each configured Radarr or Sonarr instance.
-            Headline totals count only root-folder-backed mounts and merge
-            shared filesystems per host.
+            <Trans>
+              Disk space reported by each configured Radarr or Sonarr instance.
+              Headline totals count only root-folder-backed mounts and merge
+              shared filesystems per host.
+            </Trans>
           </p>
 
           {!hasInstances ? (
             <p className="mt-3 text-sm text-zinc-400">
-              No Radarr or Sonarr instances are configured yet. Add one in
-              Settings to see disk usage here.
+              <Trans>
+                No Radarr or Sonarr instances are configured yet. Add one in
+                Settings to see disk usage here.
+              </Trans>
             </p>
           ) : null}
 
@@ -384,26 +427,35 @@ const StorageMetrics: React.FC = () => {
 
           {hasInstances && !hasAnyMounts ? (
             <p className="mt-3 text-sm text-zinc-400">
-              No mount data returned. Check that each instance has a root folder
-              configured.
+              <Trans>
+                No mount data returned. Check that each instance has a root
+                folder configured.
+              </Trans>
             </p>
           ) : null}
         </section>
 
         <section className="mt-8">
-          <h2 className="sm-heading">Largest collections</h2>
+          <h2 className="sm-heading">
+            <Trans>Largest collections</Trans>
+          </h2>
           <p className="description">
-            Top ten collections by cached total file size.
+            <Trans>Top ten collections by cached total file size.</Trans>
           </p>
 
           {!hasCollectionData ? (
             <p className="mt-3 text-sm text-zinc-400">
-              No collections yet. Create a rule to build your first collection.
+              <Trans>
+                No collections yet. Create a rule to build your first
+                collection.
+              </Trans>
             </p>
           ) : metrics.topCollections.length === 0 ? (
             <p className="mt-3 text-sm text-zinc-400">
-              Collection sizes have not been computed yet. They are calculated
-              as part of the regular collection processing job.
+              <Trans>
+                Collection sizes have not been computed yet. They are calculated
+                as part of the regular collection processing job.
+              </Trans>
             </p>
           ) : (
             <TopCollectionsTable collections={metrics.topCollections} />
@@ -411,7 +463,7 @@ const StorageMetrics: React.FC = () => {
         </section>
 
         <p className="mt-8 text-xs text-zinc-500">
-          Generated at {new Date(metrics.generatedAt).toLocaleString()}
+          <Trans>Generated at {generatedAt}</Trans>
         </p>
       </div>
     </>
@@ -432,6 +484,7 @@ const MediaServerSection: React.FC<MediaServerSectionProps> = ({
   mediaServer,
   onLibrarySizesComputed,
 }) => {
+  const { t } = useLingui()
   const [isConfirmOpen, setIsConfirmOpen] = useState(false)
   const [isComputing, setIsComputing] = useState(false)
   const [computeError, setComputeError] = useState<string | null>(null)
@@ -449,7 +502,7 @@ const MediaServerSection: React.FC<MediaServerSectionProps> = ({
       setComputeError(
         getApiErrorMessage(
           error,
-          'Failed to compute library sizes. Check that Maintainerr can reach your media server.',
+          t`Failed to compute library sizes. Check that Maintainerr can reach your media server.`,
         ),
       )
     } finally {
@@ -464,10 +517,14 @@ const MediaServerSection: React.FC<MediaServerSectionProps> = ({
   if (!mediaServer.configured) {
     return (
       <section className="mt-8">
-        <h2 className="sm-heading">Media server</h2>
+        <h2 className="sm-heading">
+          <Trans>Media server</Trans>
+        </h2>
         <p className="description">
-          Connect a Plex or Jellyfin server in Settings to see library item
-          counts here.
+          <Trans>
+            Connect a Plex or Jellyfin server in Settings to see library item
+            counts here.
+          </Trans>
         </p>
       </section>
     )
@@ -475,16 +532,20 @@ const MediaServerSection: React.FC<MediaServerSectionProps> = ({
 
   const typeLabel = mediaServer.serverType
     ? (mediaServerLabel[mediaServer.serverType] ?? mediaServer.serverType)
-    : 'Media server'
+    : t`Media server`
 
   const header = mediaServer.serverName ?? typeLabel
 
   return (
     <section className="mt-8">
-      <h2 className="sm-heading">Media server</h2>
+      <h2 className="sm-heading">
+        <Trans>Media server</Trans>
+      </h2>
       <p className="description">
-        Libraries reported by {typeLabel}. Counts reflect what Maintainerr sees
-        through the server API.
+        <Trans>
+          Libraries reported by {typeLabel}. Counts reflect what Maintainerr
+          sees through the server API.
+        </Trans>
       </p>
 
       <div className="transparent-glass-bg mt-3 rounded-lg border border-zinc-700 p-4">
@@ -508,33 +569,39 @@ const MediaServerSection: React.FC<MediaServerSectionProps> = ({
                 {isComputing ? (
                   <SmallLoadingSpinner className="mr-2 h-4 w-4" />
                 ) : null}
-                Compute library sizes
+                <Trans>Compute library sizes</Trans>
               </Button>
             ) : null}
             <span className="text-xs text-zinc-400">
-              {mediaServer.reachable
-                ? `${mediaServer.totalItemCount.toLocaleString()} items`
-                : 'Unavailable'}
+              {mediaServer.reachable ? (
+                itemCountLabel(mediaServer.totalItemCount)
+              ) : (
+                <Trans>Unavailable</Trans>
+              )}
             </span>
           </div>
         </div>
 
         {mediaServer.reachable && mediaServer.libraries.length > 0 ? (
           <p className="mt-2 text-xs text-zinc-500">
-            Sizes approximate on-disk bytes and may not fully reflect hardlinks,
-            sparse files, or filesystem snapshots.
+            <Trans>
+              Sizes approximate on-disk bytes and may not fully reflect
+              hardlinks, sparse files, or filesystem snapshots.
+            </Trans>
           </p>
         ) : null}
 
         {!mediaServer.reachable ? (
           <p className="mt-2 text-sm text-error-200">
             {mediaServer.error ??
-              'Media server is not reachable. Check your Settings.'}
+              t`Media server is not reachable. Check your Settings.`}
           </p>
         ) : mediaServer.libraries.length === 0 ? (
           <p className="mt-2 text-sm text-zinc-400">
-            No libraries reported. Add libraries in your media server, then
-            refresh.
+            <Trans>
+              No libraries reported. Add libraries in your media server, then
+              refresh.
+            </Trans>
           </p>
         ) : (
           <>
@@ -562,10 +629,16 @@ const MediaServerSection: React.FC<MediaServerSectionProps> = ({
                   </div>
                   <div className="flex items-center justify-between text-xs text-zinc-400">
                     <span className="capitalize">
-                      {library.type === 'movie' ? 'Movies' : 'Shows'}
+                      {library.type === 'movie' ? (
+                        <Trans>Movies</Trans>
+                      ) : (
+                        <Trans>Shows</Trans>
+                      )}
                     </span>
                     {library.sizeBytes != null ? (
-                      <span title="Size on disk reported by the media server">
+                      <span
+                        title={t`Size on disk reported by the media server`}
+                      >
                         {formatBytes(library.sizeBytes)}
                       </span>
                     ) : null}
@@ -579,10 +652,10 @@ const MediaServerSection: React.FC<MediaServerSectionProps> = ({
 
       {isConfirmOpen ? (
         <Modal
-          title="Compute library sizes"
+          title={t`Compute library sizes`}
           size="md"
           onCancel={closeConfirm}
-          cancelText="Cancel"
+          cancelText={t`Cancel`}
           footerActions={
             <Button
               buttonType="primary"
@@ -590,18 +663,22 @@ const MediaServerSection: React.FC<MediaServerSectionProps> = ({
                 void handleConfirm()
               }}
             >
-              Run scan
+              <Trans>Run scan</Trans>
             </Button>
           }
         >
           <p>
-            Maintainerr will iterate every movie and episode in your {typeLabel}{' '}
-            libraries to estimate size on disk. This can take a while on large
-            libraries.
+            <Trans>
+              Maintainerr will iterate every movie and episode in your{' '}
+              {typeLabel} libraries to estimate size on disk. This can take a
+              while on large libraries.
+            </Trans>
           </p>
           <p className="mt-3 text-sm text-zinc-300">
-            Sizes approximate on-disk bytes and may not fully reflect hardlinks,
-            sparse files, or filesystem snapshots.
+            <Trans>
+              Sizes approximate on-disk bytes and may not fully reflect
+              hardlinks, sparse files, or filesystem snapshots.
+            </Trans>
           </p>
         </Modal>
       ) : null}
@@ -615,6 +692,8 @@ interface InstanceCardProps {
 }
 
 const InstanceCard: React.FC<InstanceCardProps> = ({ instance, mounts }) => {
+  const { t } = useLingui()
+
   return (
     <div className="transparent-glass-bg rounded-lg border border-zinc-700 p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -629,19 +708,21 @@ const InstanceCard: React.FC<InstanceCardProps> = ({ instance, mounts }) => {
           </span>
         </div>
         <span className="text-xs text-zinc-400">
-          {instance.ok
-            ? `${instance.mountCount} mount${instance.mountCount === 1 ? '' : 's'}`
-            : 'Unavailable'}
+          {instance.ok ? (
+            mountCountLabel(instance.mountCount)
+          ) : (
+            <Trans>Unavailable</Trans>
+          )}
         </span>
       </div>
 
       {!instance.ok ? (
         <p className="mt-2 text-sm text-error-200">
-          {instance.error ?? 'Unknown error fetching disk space.'}
+          {instance.error ?? t`Unknown error fetching disk space.`}
         </p>
       ) : mounts.length === 0 ? (
         <p className="mt-2 text-sm text-zinc-400">
-          No mounts reported for this instance.
+          <Trans>No mounts reported for this instance.</Trans>
         </p>
       ) : (
         <div className="mt-3 flex flex-col gap-3">
@@ -655,7 +736,7 @@ const InstanceCard: React.FC<InstanceCardProps> = ({ instance, mounts }) => {
                 <div className="flex flex-wrap items-baseline justify-between gap-2 text-sm">
                   <span className="flex items-center gap-2 font-mono text-zinc-100">
                     <FolderIcon className="h-4 w-4 text-info-400" />
-                    {mount.path ?? 'Unknown path'}
+                    {mount.path ?? t`Unknown path`}
                   </span>
                   {mount.label ? (
                     <span className="text-xs text-zinc-400">{mount.label}</span>
@@ -691,19 +772,19 @@ const TopCollectionsTable: React.FC<TopCollectionsTableProps> = ({
         <thead className="bg-zinc-800/60 text-left text-xs tracking-wide text-zinc-400 uppercase">
           <tr>
             <th scope="col" className="px-3 py-2">
-              Collection
+              <Trans>Collection</Trans>
             </th>
             <th scope="col" className="px-3 py-2">
-              Type
+              <Trans>Type</Trans>
             </th>
             <th scope="col" className="px-3 py-2">
-              Items
+              <Trans>Items</Trans>
             </th>
             <th scope="col" className="px-3 py-2">
-              Size
+              <Trans>Size</Trans>
             </th>
             <th scope="col" className="px-3 py-2">
-              Status
+              <Trans>Status</Trans>
             </th>
           </tr>
         </thead>
@@ -716,7 +797,7 @@ const TopCollectionsTable: React.FC<TopCollectionsTableProps> = ({
                 </BrandLink>
               </td>
               <td className="px-3 py-2 text-zinc-300 capitalize">
-                {collection.type}
+                {mediaTypeLabel(collection.type)}
               </td>
               <td className="px-3 py-2 text-zinc-300">
                 {collection.mediaCount}
@@ -726,9 +807,13 @@ const TopCollectionsTable: React.FC<TopCollectionsTableProps> = ({
               </td>
               <td className="px-3 py-2">
                 {collection.isActive ? (
-                  <span className="text-success-500">Active</span>
+                  <span className="text-success-500">
+                    <Trans>Active</Trans>
+                  </span>
                 ) : (
-                  <span className="text-error-500">Inactive</span>
+                  <span className="text-error-500">
+                    <Trans>Inactive</Trans>
+                  </span>
                 )}
               </td>
             </tr>

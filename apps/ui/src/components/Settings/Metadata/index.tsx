@@ -1,3 +1,6 @@
+import type { MessageDescriptor } from '@lingui/core'
+import { msg, t as globalT } from '@lingui/core/macro'
+import { Trans, useLingui } from '@lingui/react/macro'
 import { zodResolver } from '@hookform/resolvers/zod'
 import {
   BasicResponseDto,
@@ -35,9 +38,9 @@ interface ProviderConfig {
   preference: MetadataProviderPreference
   title: string
   description: ReactNode
-  emptyStateLabel: string
-  helpText?: string
-  testFailureMessage: string
+  apiKeyEmptyText: MessageDescriptor
+  helpText?: MessageDescriptor
+  testFailureMessage: MessageDescriptor
   schema: typeof tmdbSettingSchema | typeof tvdbSettingSchema
 }
 
@@ -111,29 +114,34 @@ function getRefreshActionState({
   if (refreshing) {
     return {
       canRun: false,
-      label: 'Refreshing...',
+      label: globalT`Refreshing...`,
     }
   }
 
   if (hasChanges) {
     return {
       canRun: false,
-      label: 'Save to refresh',
+      label: globalT`Save to refresh`,
     }
   }
 
   if (providerKey === 'tvdb' && !isConfigured) {
     return {
       canRun: false,
-      label: 'Configure to refresh',
+      label: globalT`Configure to refresh`,
     }
   }
 
   return {
     canRun: !loadError && !isLoading && !isSubmitting,
-    label: 'Refresh metadata',
+    label: globalT`Refresh metadata`,
   }
 }
+
+// The visible link text rides through the messages as placeholders, so a
+// translation cannot show a different domain than the href opens.
+const tmdbDomain = 'themoviedb.org'
+const tvdbDomain = 'thetvdb.com'
 
 const providers: ProviderConfig[] = [
   {
@@ -141,17 +149,17 @@ const providers: ProviderConfig[] = [
     preference: MetadataProviderPreference.TMDB_PRIMARY,
     title: 'TMDB',
     description: (
-      <>
+      <Trans>
         You can create a free API key at{' '}
         <BrandLink external href="https://www.themoviedb.org/settings/api">
-          themoviedb.org
+          {tmdbDomain}
         </BrandLink>
         .
-      </>
+      </Trans>
     ),
-    emptyStateLabel: 'Built-in shared key',
-    helpText: 'Leave empty to use the built-in shared key.',
-    testFailureMessage: 'Failed to connect to TMDB. Verify the API key.',
+    apiKeyEmptyText: msg`API key not set; the built-in shared key is used.`,
+    helpText: msg`Leave empty to use the built-in shared key.`,
+    testFailureMessage: msg`Failed to connect to TMDB. Verify the API key.`,
     schema: tmdbSettingSchema,
   },
   {
@@ -159,21 +167,22 @@ const providers: ProviderConfig[] = [
     preference: MetadataProviderPreference.TVDB_PRIMARY,
     title: 'TVDB',
     description: (
-      <>
+      <Trans>
         You can create a free developer API key at{' '}
         <BrandLink external href="https://thetvdb.com/dashboard/account/apikey">
-          thetvdb.com
+          {tvdbDomain}
         </BrandLink>
         .
-      </>
+      </Trans>
     ),
-    emptyStateLabel: 'Not configured',
-    testFailureMessage: 'Failed to connect to TVDB. Verify the API key.',
+    apiKeyEmptyText: msg`API key not configured.`,
+    testFailureMessage: msg`Failed to connect to TVDB. Verify the API key.`,
     schema: tvdbSettingSchema,
   },
 ]
 
 function useProviderForm(config: ProviderConfig) {
+  const { t } = useLingui()
   const [testStatus, setTestStatus] = useState<boolean | undefined>()
   const [testing, setTesting] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
@@ -185,7 +194,10 @@ function useProviderForm(config: ProviderConfig) {
     showSuccess,
     showUpdated,
     showUpdateError,
-  } = useSettingsFeedback(`${config.title} settings`)
+  } = useSettingsFeedback({
+    updated: t`${{ providerTitle: config.title }} settings updated`,
+    updateError: t`${{ providerTitle: config.title }} settings could not be updated`,
+  })
 
   const {
     register,
@@ -268,12 +280,14 @@ function useProviderForm(config: ProviderConfig) {
       .then((response) => {
         const message = normalizeConnectionErrorMessage(
           response.message,
-          config.testFailureMessage,
+          t(config.testFailureMessage),
         )
 
         if (response.code === 1) {
           setTestStatus(true)
-          showSuccess(`Successfully connected to ${config.title}`)
+          showSuccess(
+            t`Successfully connected to ${{ providerTitle: config.title }}`,
+          )
         } else {
           setTestStatus(false)
           showError(message)
@@ -281,7 +295,7 @@ function useProviderForm(config: ProviderConfig) {
       })
       .catch((error: unknown) => {
         setTestStatus(false)
-        showError(getApiErrorMessage(error, config.testFailureMessage))
+        showError(getApiErrorMessage(error, t(config.testFailureMessage)))
       })
       .finally(() => {
         setTesting(false)
@@ -301,16 +315,20 @@ function useProviderForm(config: ProviderConfig) {
       .then((response) => {
         if (response.code === 1) {
           showSuccess(
-            response.message ?? `${config.title} metadata refresh started`,
+            response.message ??
+              t`${{ providerTitle: config.title }} metadata refresh started`,
           )
         } else {
           showError(
-            response.message ?? `Failed to refresh ${config.title} metadata`,
+            response.message ??
+              t`Failed to refresh ${{ providerTitle: config.title }} metadata`,
           )
         }
       })
       .catch(() => {
-        showError(`Failed to refresh ${config.title} metadata`)
+        showError(
+          t`Failed to refresh ${{ providerTitle: config.title }} metadata`,
+        )
       })
       .finally(() => {
         setRefreshing(false)
@@ -350,7 +368,7 @@ function getProviderAlertFeedback(
   if (provider.loadError) {
     return {
       type: 'warning',
-      title: `Failed to load ${config.title} settings`,
+      title: globalT`Failed to load ${{ providerTitle: config.title }} settings`,
     }
   }
 
@@ -439,7 +457,7 @@ function ProviderSection({
   performRefresh: ReturnType<typeof useProviderForm>['performRefresh']
   onTogglePrimary: () => void
 }) {
-  const apiKeyStatus = isConfigured ? 'Configured' : config.emptyStateLabel
+  const { t } = useLingui()
 
   return (
     <div className="flex h-full flex-col rounded-xl bg-zinc-800 px-4 pt-5 pb-4 text-zinc-400 shadow-sm ring-1 ring-zinc-700">
@@ -459,10 +477,12 @@ function ProviderSection({
           </Button>
         </div>
         <div className="flex items-center gap-3">
-          <span className="text-sm font-medium text-zinc-300">Primary</span>
+          <span className="text-sm font-medium text-zinc-300">
+            <Trans>Primary</Trans>
+          </span>
           <PrimarySwitch
             id={`${config.key}-primary`}
-            label={`${config.title} primary`}
+            label={t`${{ providerTitle: config.title }} primary`}
             checked={isPrimary}
             disabled={isPreferencePending || isPrimary || !canBePrimary}
             onToggle={onTogglePrimary}
@@ -476,7 +496,7 @@ function ProviderSection({
             htmlFor={`${config.key}-api-key`}
             className="block text-sm font-medium text-zinc-300"
           >
-            API Key
+            <Trans>API key</Trans>
           </label>
           <div className="mt-1">
             <Input
@@ -488,8 +508,10 @@ function ProviderSection({
           </div>
           <div className="mt-2 min-h-5 text-xs text-zinc-500">
             {errors.api_key?.message ??
-              config.helpText ??
-              `API key ${apiKeyStatus.toLowerCase()}.`}
+              (config.helpText ? t(config.helpText) : undefined) ??
+              (isConfigured
+                ? t`API key configured.`
+                : t(config.apiKeyEmptyText))}
           </div>
           <div className="mt-2 text-xs leading-5 text-zinc-400">
             {config.description}
@@ -505,7 +527,7 @@ function ProviderSection({
                 type="button"
                 onClick={performTest}
                 disabled={testing || isGoingToRemove || loadError || isLoading}
-                label="Test Connection"
+                label={t`Test Connection`}
                 isPending={testing}
                 feedbackStatus={testStatus}
               />
@@ -526,8 +548,12 @@ function ProviderSection({
 }
 
 const MetadataSettings = () => {
+  const { t } = useLingui()
   const { feedback, clear, showUpdated, showUpdateError, showWarning } =
-    useSettingsFeedback('Metadata provider preference')
+    useSettingsFeedback({
+      updated: t`Metadata provider preference updated`,
+      updateError: t`Metadata provider preference could not be updated`,
+    })
   const {
     data: preference = MetadataProviderPreference.TMDB_PRIMARY,
     isLoading: preferenceLoading,
@@ -574,7 +600,7 @@ const MetadataSettings = () => {
       !tvdbCanBePrimary
     ) {
       clearAllFeedback()
-      showWarning('TVDB must be configured before it can be primary')
+      showWarning(t`TVDB must be configured before it can be primary`)
       return
     }
 
@@ -592,17 +618,21 @@ const MetadataSettings = () => {
 
   return (
     <>
-      <title>Metadata settings - Maintainerr</title>
+      <title>{t`Metadata settings - Maintainerr`}</title>
       <div className="h-full w-full">
         <div className="section h-full w-full">
-          <h3 className="heading">Metadata Settings</h3>
+          <h3 className="heading">
+            <Trans>Metadata Settings</Trans>
+          </h3>
           <p className="description">
-            Configure metadata providers and set the primary source for posters,
-            backdrops, and metadata enrichment. Adding a TVDB developer API key
-            gives Maintainerr a fallback source for provider cross-references,
-            which helps recover missing IDs when the primary provider cannot
-            resolve a match and can provide a second opinion for some items
-            through existing external ID cross-references.
+            <Trans>
+              Configure metadata providers and set the primary source for
+              posters, backdrops, and metadata enrichment. Adding a TVDB
+              developer API key gives Maintainerr a fallback source for provider
+              cross-references, which helps recover missing IDs when the primary
+              provider cannot resolve a match and can provide a second opinion
+              for some items through existing external ID cross-references.
+            </Trans>
           </p>
         </div>
 

@@ -1,4 +1,4 @@
-import { act, render } from '@testing-library/react'
+import { act, render } from '../../../test-utils/render'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { LOG_STREAM_ERROR_DELAY_MS, Logs } from './index'
 

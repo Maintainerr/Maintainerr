@@ -1,3 +1,5 @@
+import { t as globalT } from '@lingui/core/macro'
+import { useLingui } from '@lingui/react/macro'
 import { useCallback } from 'react'
 import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import { toast } from 'react-toastify'
@@ -6,31 +8,10 @@ import { useMediaServerType } from '../../hooks/useMediaServerType'
 import LoadingSpinner from '../Common/LoadingSpinner'
 import SettingsTabs, { SettingsRoute } from '../Settings/Tabs'
 
-const overlayRoutes: SettingsRoute[] = [
-  {
-    text: 'Settings',
-    route: '/overlays/settings',
-    regex: /^\/overlays\/settings$/,
-  },
-  {
-    text: 'Existing Templates',
-    route: '/overlays/templates',
-    regex: /^\/overlays\/templates$/,
-    activeRegex: /^\/overlays\/templates(?:\/(?!new$).+)?$/,
-  },
-  {
-    text: 'New Template',
-    route: '/overlays/templates/new',
-    regex: /^\/overlays\/templates\/new$/,
-  },
-]
-
 const overlaysDisabledToastId = 'overlays-disabled'
-const overlaysDisabledMessage =
-  'Enable overlays in Settings to manage templates.'
 
 const showOverlaysDisabledToast = () => {
-  toast.error(overlaysDisabledMessage, {
+  toast.error(globalT`Enable overlays in Settings to manage templates.`, {
     toastId: overlaysDisabledToastId,
   })
 }
@@ -41,11 +22,32 @@ const showOverlaysDisabledToast = () => {
 // the overlay master switch is off, only the Settings tab stays clickable;
 // templates routes are disabled and any direct navigation redirects back.
 const OverlaysWrapper = () => {
+  const { t } = useLingui()
   const { isLoading: isMediaServerLoading } = useMediaServerType()
   const location = useLocation()
   const { data: overlaySettings, isLoading: isOverlaySettingsLoading } =
     useOverlaySettings()
 
+  // Rebuilt each render rather than memoized, so a language switch relabels
+  // the tabs.
+  const overlayRoutes: SettingsRoute[] = [
+    {
+      text: t`Settings`,
+      route: '/overlays/settings',
+      regex: /^\/overlays\/settings$/,
+    },
+    {
+      text: t`Existing Templates`,
+      route: '/overlays/templates',
+      regex: /^\/overlays\/templates$/,
+      activeRegex: /^\/overlays\/templates(?:\/(?!new$).+)?$/,
+    },
+    {
+      text: t`New Template`,
+      route: '/overlays/templates/new',
+      regex: /^\/overlays\/templates\/new$/,
+    },
+  ]
   const overlaysEnabled = overlaySettings?.enabled === true
   const isLoading = isMediaServerLoading || isOverlaySettingsLoading
 

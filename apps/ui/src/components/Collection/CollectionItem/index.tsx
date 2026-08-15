@@ -1,4 +1,7 @@
-import { MediaItemTypeLabels } from '@maintainerr/contracts'
+import type { MessageDescriptor } from '@lingui/core'
+import { msg } from '@lingui/core/macro'
+import { Trans, useLingui } from '@lingui/react/macro'
+import type { MediaItemType } from '@maintainerr/contracts'
 import { useEffect, useMemo, useState } from 'react'
 import { ICollection } from '..'
 import { useLibraryDisplay } from '../../../hooks/useLibraryDisplay'
@@ -10,20 +13,31 @@ import {
   toProviderIds,
 } from '../../../utils/mediaTypeUtils'
 
+// Contracts' MediaItemTypeLabels builds these by appending 's', which cannot
+// be translated; the display copy lives here as descriptors instead.
+const mediaTypeCountLabels: Record<MediaItemType, MessageDescriptor> = {
+  movie: msg`Movies`,
+  show: msg`Shows`,
+  season: msg`Seasons`,
+  episode: msg`Episodes`,
+}
+
 interface ICollectionItem {
   collection: ICollection
   onClick?: (collection: ICollection) => void
 }
 
 const CollectionItem = (props: ICollectionItem) => {
+  const { t } = useLingui()
   const { title: resolvedLibraryTitle, isUnreachable: libraryUnreachable } =
     useLibraryDisplay(props.collection.libraryId)
   const libraryTitle =
-    resolvedLibraryTitle ?? (libraryUnreachable ? 'Unavailable' : '-')
+    resolvedLibraryTitle ?? (libraryUnreachable ? t`Unavailable` : '-')
+  const days = props.collection.deleteAfterDays
+  // The day unit is formatted in code so no translation can drop or change it.
+  const dayCount = days == null ? null : `${days}d`
   const deleteAfterLabel =
-    props.collection.deleteAfterDays == null
-      ? 'Never'
-      : `After ${props.collection.deleteAfterDays}d`
+    dayCount == null ? t`Never` : t`After ${{ dayCount }}`
   const mediaCount =
     props.collection.mediaCount ?? props.collection.media?.length ?? 0
   const previewMedia = useMemo(
@@ -96,7 +110,7 @@ const CollectionItem = (props: ICollectionItem) => {
               width="600"
               height="800"
               src={resolvedPreviewImages[0]}
-              alt="img"
+              alt="Collection preview"
               loading="lazy"
               decoding="async"
             />
@@ -107,7 +121,7 @@ const CollectionItem = (props: ICollectionItem) => {
               width="600"
               height="800"
               src={resolvedPreviewImages[1]}
-              alt="img"
+              alt="Collection preview"
               loading="lazy"
               decoding="async"
             />
@@ -122,7 +136,7 @@ const CollectionItem = (props: ICollectionItem) => {
             width="1200"
             height="800"
             src={resolvedPreviewImages[0]}
-            alt="img"
+            alt="Collection preview"
             loading="lazy"
             decoding="async"
           />
@@ -133,13 +147,15 @@ const CollectionItem = (props: ICollectionItem) => {
         <div className="overflow-hidden text-base font-bold text-ellipsis whitespace-nowrap text-white sm:text-lg">
           <div>
             {props.collection.manualCollection
-              ? `${props.collection.manualCollectionName} (custom)`
+              ? t`${{ collectionName: props.collection.manualCollectionName }} (custom)`
               : props.collection.title}
           </div>
         </div>
         <div className="tiny-scrollbar mt-1 mb-2 h-12 max-h-12 overflow-y-hidden pr-2 text-base whitespace-normal text-zinc-400 hover:overflow-y-auto">
           {props.collection.manualCollection
-            ? `Handled by rule: '${props.collection.title}'`
+            ? // '' is the ICU escape for a literal apostrophe; a single one
+              // would quote the placeholder braces and print them verbatim.
+              t`Handled by rule: ''${{ ruleName: props.collection.title }}''`
             : props.collection.description}
         </div>
       </div>
@@ -148,7 +164,7 @@ const CollectionItem = (props: ICollectionItem) => {
         <div className="grid grid-cols-2 gap-x-3 gap-y-2.5 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.35fr)_minmax(0,1fr)] sm:gap-y-2 [&>div:nth-child(2n)]:text-right sm:[&>div:nth-child(2n)]:text-left sm:[&>div:nth-child(3n)]:text-right sm:[&>div:nth-child(3n-1)]:text-center">
           <div className="min-w-0">
             <p className="text-xs font-semibold tracking-wide text-zinc-400 uppercase">
-              Library
+              <Trans>Library</Trans>
             </p>
             <p
               className={
@@ -158,7 +174,7 @@ const CollectionItem = (props: ICollectionItem) => {
               }
               title={
                 libraryUnreachable
-                  ? 'Media server is unreachable. The stored library selection is preserved.'
+                  ? t`Media server is unreachable. The stored library selection is preserved.`
                   : libraryTitle
               }
             >
@@ -169,10 +185,10 @@ const CollectionItem = (props: ICollectionItem) => {
           {props.collection.type !== 'movie' ? (
             <div className="min-w-0">
               <p className="text-xs font-semibold tracking-wide text-zinc-400 uppercase">
-                Media Type
+                <Trans>Media Type</Trans>
               </p>
               <p className="text-maintainerr">
-                {MediaItemTypeLabels[props.collection.type]}
+                {t(mediaTypeCountLabels[props.collection.type])}
               </p>
             </div>
           ) : (
@@ -181,7 +197,7 @@ const CollectionItem = (props: ICollectionItem) => {
               className="pointer-events-none min-w-0 opacity-0 select-none"
             >
               <p className="text-xs font-semibold tracking-wide uppercase">
-                Media Type
+                <Trans>Media Type</Trans>
               </p>
               <p>-</p>
             </div>
@@ -189,14 +205,14 @@ const CollectionItem = (props: ICollectionItem) => {
 
           <div className="min-w-0">
             <p className="text-xs font-semibold tracking-wide text-zinc-400 uppercase">
-              Items
+              <Trans>Items</Trans>
             </p>
             <p className="text-maintainerr">{`${mediaCount}`}</p>
           </div>
 
           <div className="min-w-0">
             <p className="text-xs font-semibold tracking-wide text-zinc-400 uppercase">
-              Size
+              <Trans>Size</Trans>
             </p>
             <p className="text-maintainerr">
               {formatSizeCompact(props.collection.totalSizeBytes)}
@@ -205,7 +221,7 @@ const CollectionItem = (props: ICollectionItem) => {
 
           <div className="min-w-0">
             <p className="text-xs font-semibold tracking-wide text-zinc-400 uppercase">
-              Delete
+              <Trans>Delete</Trans>
             </p>
             <p
               className="truncate whitespace-nowrap text-maintainerr"
@@ -217,13 +233,17 @@ const CollectionItem = (props: ICollectionItem) => {
 
           <div className="min-w-0">
             <p className="text-xs font-semibold tracking-wide text-zinc-400 uppercase">
-              Status
+              <Trans>Status</Trans>
             </p>
             <p>
               {props.collection.isActive ? (
-                <span className="text-success-500">Active</span>
+                <span className="text-success-500">
+                  <Trans>Active</Trans>
+                </span>
               ) : (
-                <span className="text-error-500">Inactive</span>
+                <span className="text-error-500">
+                  <Trans>Inactive</Trans>
+                </span>
               )}
             </p>
           </div>

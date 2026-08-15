@@ -16,6 +16,7 @@
     "format": "turbo format",
     "format:changed": "node tools/format-changed.mjs",
     "i18n:validate": "node tools/i18n/validate-catalogs.mjs",
+    "i18n:verify": "node tools/i18n/verify-locale-switch.mjs",
     "i18n:back-translate": "node tools/i18n/back-translate.mjs",
     "format:check": "turbo format:check",
     "knip": "knip",

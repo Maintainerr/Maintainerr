@@ -61,8 +61,7 @@ describe('postBulkExclusions', () => {
       response.results
         .slice(25)
         .every(
-          (result) =>
-            result.code === 0 && result.message === 'Failed - request error',
+          (result) => result.code === 0 && result.message === 'request error',
         ),
     ).toBe(true)
   })

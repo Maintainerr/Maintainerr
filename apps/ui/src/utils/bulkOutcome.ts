@@ -1,50 +1,124 @@
+import { plural } from '@lingui/core/macro'
 import { toast } from 'react-toastify'
 import type { MediaActionOutcome } from '../components/Common/MediaActionModal'
 
-export const formatItemCount = (count: number): string =>
-  `${count} item${count === 1 ? '' : 's'}`
-
-/** No collection id means the action covered every collection, so say which. */
-export const bulkOutcomeVerb = ({
-  action,
-  collectionId,
-}: Pick<MediaActionOutcome, 'action' | 'collectionId'>): string => {
-  const everyCollection = collectionId === undefined
-
-  return {
-    'collection-add': 'added',
-    'collection-remove': everyCollection
-      ? 'removed from every collection'
-      : 'removed',
-    'exclusion-add': everyCollection ? 'excluded everywhere' : 'excluded',
-    'exclusion-remove': 'un-excluded',
-  }[action]
-}
+type BulkAction = MediaActionOutcome['action']
 
 /** The server prefixes its per-item messages; the count already says it failed. */
 const withoutFailedPrefix = (reason: string) =>
   reason.startsWith('Failed - ') ? reason.slice('Failed - '.length) : reason
 
 /**
- * `verb` is the past participle of what was attempted, so every bulk action
- * reads the same and says what happens to the items that failed.
+ * Each branch below spells out a whole sentence instead of interpolating a
+ * verb. English reuses "added" for both "5 items added." and "could not be
+ * added", but most languages inflect the two slots differently, so a shared
+ * verb fragment cannot be translated correctly in both.
+ *
+ * No collection id means the action covered every collection, so say which.
  */
-export const reportBulkOutcome = (
-  succeeded: number,
-  failed: number,
-  verb: string,
-  failureReasons: string[] = [],
-): void => {
+const successMessage = (
+  action: BulkAction,
+  everyCollection: boolean,
+  count: number,
+): string => {
+  switch (action) {
+    case 'collection-add':
+      return plural(count, { one: '# item added.', other: '# items added.' })
+    case 'collection-remove':
+      return everyCollection
+        ? plural(count, {
+            one: '# item removed from every collection.',
+            other: '# items removed from every collection.',
+          })
+        : plural(count, {
+            one: '# item removed.',
+            other: '# items removed.',
+          })
+    case 'exclusion-add':
+      return everyCollection
+        ? plural(count, {
+            one: '# item excluded everywhere.',
+            other: '# items excluded everywhere.',
+          })
+        : plural(count, {
+            one: '# item excluded.',
+            other: '# items excluded.',
+          })
+    default:
+      return plural(count, {
+        one: '# item un-excluded.',
+        other: '# items un-excluded.',
+      })
+  }
+}
+
+const failureMessage = (
+  action: BulkAction,
+  everyCollection: boolean,
+  count: number,
+  why: string,
+): string => {
+  switch (action) {
+    case 'collection-add':
+      return plural(count, {
+        one: `# item could not be added${why}; the failed items stay selected.`,
+        other: `# items could not be added${why}; the failed items stay selected.`,
+      })
+    case 'collection-remove':
+      return everyCollection
+        ? plural(count, {
+            one: `# item could not be removed from every collection${why}; the failed items stay selected.`,
+            other: `# items could not be removed from every collection${why}; the failed items stay selected.`,
+          })
+        : plural(count, {
+            one: `# item could not be removed${why}; the failed items stay selected.`,
+            other: `# items could not be removed${why}; the failed items stay selected.`,
+          })
+    case 'exclusion-add':
+      return everyCollection
+        ? plural(count, {
+            one: `# item could not be excluded everywhere${why}; the failed items stay selected.`,
+            other: `# items could not be excluded everywhere${why}; the failed items stay selected.`,
+          })
+        : plural(count, {
+            one: `# item could not be excluded${why}; the failed items stay selected.`,
+            other: `# items could not be excluded${why}; the failed items stay selected.`,
+          })
+    default:
+      return plural(count, {
+        one: `# item could not be un-excluded${why}; the failed items stay selected.`,
+        other: `# items could not be un-excluded${why}; the failed items stay selected.`,
+      })
+  }
+}
+
+export const reportBulkOutcome = ({
+  action,
+  collectionId,
+  succeeded,
+  failed,
+  failureReasons = [],
+}: {
+  action: BulkAction
+  /** undefined means every collection. */
+  collectionId?: number
+  succeeded: number
+  failed: number
+  failureReasons?: string[]
+}): void => {
+  const everyCollection = collectionId === undefined
+  const success = successMessage(action, everyCollection, succeeded)
+
   if (failed > 0) {
     const why = failureReasons.length
       ? ` (${failureReasons.map(withoutFailedPrefix).join('; ')})`
       : ''
 
     toast.error(
-      `${formatItemCount(succeeded)} ${verb}. ${formatItemCount(failed)} could not be ${verb}${why}; the failed items stay selected.`,
+      `${success} ${failureMessage(action, everyCollection, failed, why)}`,
     )
     return
   }
 
-  toast.success(`${formatItemCount(succeeded)} ${verb}.`)
+  toast.success(success)
 }

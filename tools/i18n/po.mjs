@@ -27,7 +27,7 @@ const quoted = (line) => {
   return line.slice(start, end + 1);
 };
 
-const FIELDS = ['msgid', 'msgid_plural', 'msgstr'];
+const FIELDS = ['msgctxt', 'msgid', 'msgid_plural', 'msgstr'];
 
 const fieldOf = (line) => {
   for (const field of FIELDS) {
@@ -66,10 +66,29 @@ export const parsePo = (text) => {
     }
     if (line.startsWith('#')) continue;
 
+    // Flag indexed plural forms (msgid_plural, msgstr[1]...). Lingui renders
+    // only msgstr[0], so a validator that reads the other variants would vouch
+    // for text the app never shows; the validator rejects flagged entries.
+    if (line.startsWith('msgid_plural')) {
+      if (current) current.hasPlural = true;
+    } else if (line.startsWith('msgstr[')) {
+      const close = line.indexOf(']');
+      const pluralIndex = Number(line.slice('msgstr['.length, close));
+      if (current && pluralIndex > 0) current.hasPlural = true;
+    }
+
     const next = fieldOf(line);
     if (next) {
-      if (next === 'msgid' && current && field === 'msgstr') flush();
-      if (!current) current = { msgid: '', msgstr: '', line: index + 1 };
+      // A new entry begins at msgctxt or msgid; flush the previous one if a
+      // blank line did not already (Lingui separates entries, but be safe).
+      if (
+        (next === 'msgctxt' || next === 'msgid') &&
+        current &&
+        field === 'msgstr'
+      ) {
+        flush();
+      }
+      if (!current) current = { msgctxt: '', msgid: '', msgstr: '', line: index + 1 };
       field = next;
       const value = quoted(line);
       if (value && field !== 'msgid_plural') current[field] += unescape(value);

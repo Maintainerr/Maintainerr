@@ -1,4 +1,5 @@
 import { BeakerIcon, CheckIcon, ExclamationIcon } from '@heroicons/react/solid'
+import { useLingui } from '@lingui/react/macro'
 import type { ButtonHTMLAttributes } from 'react'
 import { type ButtonType } from './Button'
 import PendingButton from './PendingButton'
@@ -46,19 +47,25 @@ export const getTestingButtonType = (
   return feedbackStatus ? 'success' : 'danger'
 }
 
+// The fallback resolves in the body rather than as a default parameter value:
+// a default runs before `useLingui()` can subscribe this component to the
+// active locale, so the label would keep the language loaded at first render.
 export const TestingButtonContent = ({
   isPending,
-  label = 'Test Connection',
+  label,
   feedbackStatus,
   contentSize,
 }: BaseTestingButtonProps) => {
+  const { t } = useLingui()
+  const idleLabel = label ?? t`Test Connection`
+
   return (
     <PendingButtonContent
       isPending={isPending}
-      idleLabel={label}
-      pendingLabel={label}
+      idleLabel={idleLabel}
+      pendingLabel={idleLabel}
       idleIcon={resolveTestingIcon(feedbackStatus)}
-      reserveLabel={label}
+      reserveLabel={idleLabel}
       contentSize={contentSize}
     />
   )
@@ -66,20 +73,23 @@ export const TestingButtonContent = ({
 
 const TestingButton = ({
   isPending,
-  label = 'Test Connection',
+  label,
   feedbackStatus,
   buttonType = 'success',
   contentSize,
   ...buttonProps
 }: TestingButtonProps) => {
+  const { t } = useLingui()
+  const idleLabel = label ?? t`Test Connection`
+
   return (
     <PendingButton
       buttonType={getTestingButtonType(buttonType, feedbackStatus, isPending)}
       isPending={isPending}
-      idleLabel={label}
-      pendingLabel={label}
+      idleLabel={idleLabel}
+      pendingLabel={idleLabel}
       idleIcon={resolveTestingIcon(feedbackStatus)}
-      reserveLabel={label}
+      reserveLabel={idleLabel}
       contentSize={contentSize}
       {...buttonProps}
     />

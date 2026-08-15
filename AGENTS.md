@@ -29,6 +29,7 @@ For the broader system architecture map, see [ARCHITECTURE.md](ARCHITECTURE.md).
 
 **Task-specific - read only when the task calls for it (don't load them every session):**
 
+- [i18n.instructions.md](.github/instructions/i18n.instructions.md) - when adding or changing any user-facing text in the UI: which macro to use, what must never be translated, and the ICU quoting trap.
 - [release-review.instructions.md](.github/instructions/release-review.instructions.md) - when auditing a release candidate before tagging.
 - [ARCHITECTURE.md](ARCHITECTURE.md) - before changing cross-module boundaries.
 

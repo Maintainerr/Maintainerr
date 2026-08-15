@@ -1,5 +1,5 @@
 import { MaintainerrEvent } from '@maintainerr/contracts'
-import { render } from '@testing-library/react'
+import { render } from '../test-utils/render'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { EventsProvider, useEvent } from './events-context'
 

@@ -47,9 +47,11 @@ export const storeLocale = (locale: string): void => {
   window.localStorage.setItem(STORAGE_KEY, locale)
 }
 
-// Called once before the first render, then again on every switch. Everything
-// under I18nProvider re-renders when a catalog activates, so no effect is
-// needed to keep the tree in sync.
+// Called once before the first render, then again on every switch. Activating
+// a catalog re-renders the components that *consume* the i18n context, not the
+// whole tree - React reuses the untouched children element. A component that
+// displays translated text must therefore call `useLingui()`, or it keeps the
+// language it mounted with.
 export const loadCatalog = async (locale: string): Promise<void> => {
   const { messages } = await import(`./locales/${locale}.po`)
   i18n.loadAndActivate({ locale, messages })

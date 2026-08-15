@@ -1,3 +1,6 @@
+import type { MessageDescriptor } from '@lingui/core'
+import { msg, plural } from '@lingui/core/macro'
+import { Plural, Trans, useLingui } from '@lingui/react/macro'
 import type { MediaItemType } from '@maintainerr/contracts'
 import { MediaServerFeature, supportsFeature } from '@maintainerr/contracts'
 import { useQueryClient } from '@tanstack/react-query'
@@ -31,11 +34,13 @@ const ALL_COLLECTIONS = -1
 export type MediaAction =
   'collection-add' | 'collection-remove' | 'exclusion-add' | 'exclusion-remove'
 
-const actionLabels: Record<MediaAction, string> = {
-  'collection-add': 'Add to collection',
-  'collection-remove': 'Remove from collection',
-  'exclusion-add': 'Add exclusion',
-  'exclusion-remove': 'Remove exclusion',
+// Lazy descriptors, translated where they are rendered: a module-scope string
+// would be frozen in whichever locale loaded first.
+const actionLabels: Record<MediaAction, MessageDescriptor> = {
+  'collection-add': msg`Add to collection`,
+  'collection-remove': msg`Remove from collection`,
+  'exclusion-add': msg`Add exclusion`,
+  'exclusion-remove': msg`Remove exclusion`,
 }
 
 export interface MediaActionOutcome {
@@ -73,6 +78,7 @@ const MediaActionModal = ({
   onCancel,
   onSubmitted,
 }: MediaActionModalProps) => {
+  const { t } = useLingui()
   const queryClient = useQueryClient()
   const navigate = useNavigate()
   const { mediaServerType } = useMediaServerType()
@@ -171,30 +177,30 @@ const MediaActionModal = ({
 
   const seasonOptions = useMemo(
     () => [
-      { id: '', title: 'All seasons' },
+      { id: '', title: t`All seasons` },
       ...(seasonsQuery.data ?? []).map((season) => ({
         id: season.id,
         title: season.title,
       })),
     ],
-    [seasonsQuery.data],
+    [seasonsQuery.data, t],
   )
 
   const episodeOptions = useMemo(
     () => [
-      { id: '', title: 'All episodes' },
+      { id: '', title: t`All episodes` },
       ...(episodesQuery.data ?? []).map((episode) => ({
         id: episode.id,
-        title: `Episode ${episode.index}`,
+        title: t`Episode ${{ index: episode.index }}`,
       })),
     ],
-    [episodesQuery.data],
+    [episodesQuery.data, t],
   )
 
   const collectionOptions = useMemo(
     (): { id: number; title: string }[] => [
       ...(allowsAllCollections
-        ? [{ id: ALL_COLLECTIONS, title: 'All collections' }]
+        ? [{ id: ALL_COLLECTIONS, title: t`All collections` }]
         : []),
       ...(collectionsQuery.data ?? []).flatMap((collection) =>
         collection.id !== undefined && collectionTypes.includes(collection.type)
@@ -202,7 +208,7 @@ const MediaActionModal = ({
           : [],
       ),
     ],
-    [allowsAllCollections, collectionsQuery.data, collectionTypes],
+    [allowsAllCollections, collectionsQuery.data, collectionTypes, t],
   )
 
   // Derived, not synced: narrowing or switching action drops options, so a
@@ -229,23 +235,23 @@ const MediaActionModal = ({
     if (seasonsQuery.error) {
       return getApiErrorMessage(
         seasonsQuery.error,
-        'Could not load the seasons',
+        t`Could not load the seasons`,
       )
     }
     if (episodesQuery.error) {
       return getApiErrorMessage(
         episodesQuery.error,
-        'Could not load the episodes',
+        t`Could not load the episodes`,
       )
     }
     if (collectionsQuery.error) {
       return getApiErrorMessage(
         collectionsQuery.error,
-        'Could not load the collections',
+        t`Could not load the collections`,
       )
     }
     return undefined
-  }, [seasonsQuery.error, episodesQuery.error, collectionsQuery.error])
+  }, [seasonsQuery.error, episodesQuery.error, collectionsQuery.error, t])
 
   const submit = async () => {
     if (submitting) return
@@ -305,7 +311,7 @@ const MediaActionModal = ({
     } catch (error) {
       setSubmitting(false)
       setErrorMessage(
-        getApiErrorMessage(error, 'The selected items could not be updated'),
+        getApiErrorMessage(error, t`The selected items could not be updated`),
       )
     }
   }
@@ -354,28 +360,56 @@ const MediaActionModal = ({
     await submit()
   }
 
-  const itemLabel = `${mediaIds.length} item${mediaIds.length === 1 ? '' : 's'}`
+  // Named so the catalog gets {itemCount} instead of a bare {0}, which tells
+  // a translator nothing about what is being counted.
+  const itemCount = mediaIds.length
+
+  // Whole sentences per action rather than "{actionLabel} applies to
+  // {itemLabel}": both slots are translated text, and no translator can make a
+  // spliced verb and count agree in case and number.
+  const everyCollectionExplanation = () => {
+    switch (selectedAction) {
+      case 'exclusion-add':
+        return plural(itemCount, {
+          one: 'Add exclusion applies to # item across every collection. For shows and seasons this covers everything they contain.',
+          other:
+            'Add exclusion applies to # items across every collection. For shows and seasons this covers everything they contain.',
+        })
+      case 'exclusion-remove':
+        return plural(itemCount, {
+          one: 'Remove exclusion applies to # item across every collection. For shows and seasons this covers everything they contain.',
+          other:
+            'Remove exclusion applies to # items across every collection. For shows and seasons this covers everything they contain.',
+        })
+      default:
+        return plural(itemCount, {
+          one: 'Remove from collection applies to # item across every collection. For shows and seasons this covers everything they contain.',
+          other:
+            'Remove from collection applies to # items across every collection. For shows and seasons this covers everything they contain.',
+        })
+    }
+  }
   const everyCollectionTitle =
     selectedAction === 'exclusion-add'
-      ? 'Confirm Global Exclusion'
+      ? t`Confirm Global Exclusion`
       : selectedAction === 'exclusion-remove'
-        ? 'Confirm Removing Every Exclusion'
-        : 'Confirm Removal From Every Collection'
+        ? t`Confirm Removing Every Exclusion`
+        : t`Confirm Removal From Every Collection`
 
   return (
     <Modal
       loading={loading}
       backgroundClickable={false}
       onCancel={onCancel}
-      title="Add / Remove Media"
+      title={t`Add / Remove Media`}
       footerActions={
         <PendingButton
           buttonType="primary"
           className="ml-3"
           disabled={submitting || noCollectionSelectable}
           isPending={submitting}
-          idleLabel="Submit"
-          pendingLabel="Submitting..."
+          idleLabel={t`Submit`}
+          pendingLabel={t`Submitting...`}
           onClick={() => {
             void handleSubmit()
           }}
@@ -394,8 +428,8 @@ const MediaActionModal = ({
               className="ml-3"
               disabled={submitting}
               isPending={submitting}
-              idleLabel="Proceed"
-              pendingLabel="Submitting..."
+              idleLabel={t`Proceed`}
+              pendingLabel={t`Submitting...`}
               onClick={() => {
                 void submit()
               }}
@@ -403,20 +437,26 @@ const MediaActionModal = ({
           }
         >
           <p>
-            {actionLabels[selectedAction]} applies to {itemLabel} across every
-            collection. For shows and seasons this covers everything they
-            contain.
-            {selectedAction === 'exclusion-add'
-              ? ' They are removed from every collection they are currently in as well.'
-              : ''}
+            {everyCollectionExplanation()}
+            {selectedAction === 'exclusion-add' ? (
+              <>
+                {' '}
+                <Trans>
+                  They are removed from every collection they are currently in
+                  as well.
+                </Trans>
+              </>
+            ) : null}
           </p>
 
           {affectedExclusions.length > 0 ? (
             <>
               <p className="mt-2">
-                Making this a global exclusion removes the following rule-group
-                exclusions, and they will not return if you later remove the
-                global exclusion:
+                <Trans>
+                  Making this a global exclusion removes the following
+                  rule-group exclusions, and they will not return if you later
+                  remove the global exclusion:
+                </Trans>
               </p>
               <ul className="mt-2 list-disc pl-5">
                 {affectedExclusions.map((exclusion) => (
@@ -447,7 +487,7 @@ const MediaActionModal = ({
 
       {noCollectionsAvailable ? (
         <Alert
-          title="No collection can take this selection. Create one from a rule first."
+          title={t`No collection can take this selection. Create one from a rule first.`}
           type="warning"
         />
       ) : null}
@@ -457,7 +497,7 @@ const MediaActionModal = ({
       ) : null}
 
       <div className="mt-6">
-        <FormItem label="Action">
+        <FormItem label={t`Action`}>
           <Select
             name="Action-field"
             id="Action-field"
@@ -468,14 +508,14 @@ const MediaActionModal = ({
           >
             {actionOptions.map((action) => (
               <option key={action} value={action}>
-                {actionLabels[action]}
+                {t(actionLabels[action])}
               </option>
             ))}
           </Select>
         </FormItem>
 
         {canNarrow ? (
-          <FormItem label="Seasons">
+          <FormItem label={t`Seasons`}>
             <Select
               name="Seasons-field"
               id="Seasons-field"
@@ -496,7 +536,7 @@ const MediaActionModal = ({
         ) : null}
 
         {canNarrow && selectedSeasons ? (
-          <FormItem label="Episodes">
+          <FormItem label={t`Episodes`}>
             <Select
               name="Episodes-field"
               id="Episodes-field"
@@ -514,7 +554,7 @@ const MediaActionModal = ({
           </FormItem>
         ) : null}
 
-        <FormItem label="Collection">
+        <FormItem label={t`Collection`}>
           <Select
             name="Collection-field"
             id="Collection-field"
@@ -532,17 +572,39 @@ const MediaActionModal = ({
         </FormItem>
 
         <p className="mt-4 text-sm text-zinc-400">
-          Applies to {itemLabel}.
-          {!mediaType
-            ? ' The selection mixes media types, so only exclusions can be applied to it.'
-            : !canPickCollection
-              ? ' The selection spans more than one library, so only exclusions can be applied to it.'
-              : ''}
+          <Plural
+            value={itemCount}
+            one="Applies to # item."
+            other="Applies to # items."
+          />
+          {!mediaType ? (
+            <>
+              {' '}
+              <Trans>
+                The selection mixes media types, so only exclusions can be
+                applied to it.
+              </Trans>
+            </>
+          ) : !canPickCollection ? (
+            <>
+              {' '}
+              <Trans>
+                The selection spans more than one library, so only exclusions
+                can be applied to it.
+              </Trans>
+            </>
+          ) : null}
           {/* An item is global or scoped, never both, so removing "its"
               exclusion here removes a global one if that is what it has. */}
-          {selectedAction === 'exclusion-remove' && !isAllCollections
-            ? ' An item excluded globally is un-excluded everywhere, not just here.'
-            : ''}
+          {selectedAction === 'exclusion-remove' && !isAllCollections ? (
+            <>
+              {' '}
+              <Trans>
+                An item excluded globally is un-excluded everywhere, not just
+                here.
+              </Trans>
+            </>
+          ) : null}
         </p>
       </div>
     </Modal>

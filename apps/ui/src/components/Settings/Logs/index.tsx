@@ -1,3 +1,4 @@
+import { Trans, useLingui } from '@lingui/react/macro'
 import { DownloadIcon } from '@heroicons/react/solid'
 import { zodResolver } from '@hookform/resolvers/zod'
 import {
@@ -30,9 +31,11 @@ const MAX_LOG_LINES = 1000
 export const LOG_STREAM_ERROR_DELAY_MS = 5000
 
 const LogSettings = () => {
+  const { t } = useLingui()
+
   return (
     <>
-      <title>Logs - Maintainerr</title>
+      <title>{t`Logs - Maintainerr`}</title>
       <div className="h-full w-full">
         <LogSettingsForm />
         <Logs />
@@ -43,8 +46,12 @@ const LogSettings = () => {
 }
 
 const LogSettingsForm = () => {
+  const { t } = useLingui()
   const { feedback, showUpdated, showUpdateError, clearError } =
-    useSettingsFeedback('Log settings')
+    useSettingsFeedback({
+      updated: t`Log settings updated`,
+      updateError: t`Log settings could not be updated`,
+    })
 
   const {
     register,
@@ -74,8 +81,12 @@ const LogSettingsForm = () => {
   return (
     <div className="section">
       <div className="section h-full w-full">
-        <h3 className="heading">Log Settings</h3>
-        <p className="description">Log configuration</p>
+        <h3 className="heading">
+          <Trans>Log Settings</Trans>
+        </h3>
+        <p className="description">
+          <Trans>Log configuration</Trans>
+        </p>
       </div>
 
       <SettingsFeedbackAlert feedback={feedback} />
@@ -83,22 +94,23 @@ const LogSettingsForm = () => {
       <div className="section">
         <form onSubmit={handleSubmit(onSubmit)}>
           <SelectGroup
-            label="Level"
+            label={t`Level`}
             error={errors.level?.message}
             {...register('level')}
           >
             {isLoading && <option value="" disabled></option>}
-            <option value="debug">Debug</option>
-            <option value="verbose">Verbose</option>
-            <option value="info">Info</option>
-            <option value="warn">Warn</option>
-            <option value="error">Error</option>
-            <option value="fatal">Fatal</option>
+            <option value="debug">{t`Debug`}</option>
+            <option value="verbose">{t`Verbose`}</option>
+            <option value="info">{t`Info`}</option>
+            <option value="warn">{t`Warn`}</option>
+            <option value="error">{t`Error`}</option>
+            <option value="fatal">{t`Fatal`}</option>
           </SelectGroup>
 
           <InputGroup
             type="number"
-            label="Max Size (MB)"
+            // The unit lives outside the message so no translation can alter it.
+            label={`${t`Max Size`} (MB)`}
             error={errors.max_size?.message}
             {...register('max_size', {
               valueAsNumber: true,
@@ -108,7 +120,7 @@ const LogSettingsForm = () => {
 
           <InputGroup
             type="number"
-            label="Max Backups"
+            label={t`Max Backups`}
             error={errors.max_files?.message}
             {...register('max_files', {
               valueAsNumber: true,
@@ -130,6 +142,7 @@ const LogSettingsForm = () => {
 }
 
 export const Logs = () => {
+  const { t } = useLingui()
   const [logLines, setLogLines] = useState<LogEvent[]>([])
   const [logFilter, setLogFilter] = useState<string>('')
   const [scrollToBottom, setScrollToBottom] = useState<boolean>(true)
@@ -247,7 +260,9 @@ export const Logs = () => {
   return (
     <div className="section">
       <div className="section h-full w-full">
-        <h3 className="heading">Logs</h3>
+        <h3 className="heading">
+          <Trans>Logs</Trans>
+        </h3>
       </div>
 
       <div className="section">
@@ -256,7 +271,7 @@ export const Logs = () => {
             <div className="form-input-field">
               <Input
                 name="logFilter"
-                placeholder="Log filter"
+                placeholder={t`Log filter`}
                 type="text"
                 value={logFilter}
                 onChange={(e) => setLogFilter(e.target.value)}
@@ -264,7 +279,9 @@ export const Logs = () => {
             </div>
           </div>
           <div className="flex items-center justify-end gap-4">
-            <label htmlFor="active">Scroll to bottom on new message</label>
+            <label htmlFor="active">
+              <Trans>Scroll to bottom on new message</Trans>
+            </label>
             <div className="form-input">
               <div className="form-input-field">
                 <input
@@ -350,14 +367,22 @@ const LogFiles = () => {
   return (
     <div className="section">
       <div className="section h-full w-full">
-        <h3 className="heading">Log Files</h3>
-        <p className="description">Download log files</p>
+        <h3 className="heading">
+          <Trans>Log Files</Trans>
+        </h3>
+        <p className="description">
+          <Trans>Download log files</Trans>
+        </p>
       </div>
       <table className="min-w-full border-collapse">
         <thead>
           <tr>
-            <Table.TH>Log file</Table.TH>
-            <Table.TH>Size</Table.TH>
+            <Table.TH>
+              <Trans>Log file</Trans>
+            </Table.TH>
+            <Table.TH>
+              <Trans>Size</Trans>
+            </Table.TH>
           </tr>
         </thead>
         <tbody className="divide-y divide-zinc-500 bg-zinc-700">
@@ -380,7 +405,7 @@ const LogFiles = () => {
           {!loading && logFiles.length === 0 && (
             <tr>
               <Table.TD colSpan={2} alignText="center">
-                No log files found
+                <Trans>No log files found</Trans>
               </Table.TD>
             </tr>
           )}
@@ -392,14 +417,14 @@ const LogFiles = () => {
           disabled={page === 1}
           onClick={() => setPage((prev) => prev - 1)}
         >
-          Previous
+          <Trans>Previous</Trans>
         </Button>
         <Button
           buttonType={page === lastPage ? 'default' : 'primary'}
           disabled={page === lastPage}
           onClick={() => setPage((prev) => prev + 1)}
         >
-          Next
+          <Trans>Next</Trans>
         </Button>
       </div>
     </div>

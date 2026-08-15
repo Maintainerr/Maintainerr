@@ -1,3 +1,4 @@
+import { useLingui } from '@lingui/react/macro'
 import { useCallback, useMemo, useState } from 'react'
 import Alert from '../Common/Alert'
 import SettingsAlertSlot from './SettingsAlertSlot'
@@ -7,7 +8,18 @@ export type SettingsFeedback = {
   title: string
 } | null
 
-export const useSettingsFeedback = (scope = 'Settings') => {
+/**
+ * `messages` holds whole sentences rather than a scope noun this hook splices
+ * into one. A noun dropped into "{scope} updated" cannot be translated: the
+ * article, case and gender all depend on the noun, and Swedish marks
+ * definiteness with a suffix that no placeholder can carry. Callers that never
+ * call `showUpdated`/`showUpdateError` pass nothing.
+ */
+export const useSettingsFeedback = (messages?: {
+  updated: string
+  updateError: string
+}) => {
+  const { t } = useLingui()
   const [feedback, setFeedback] = useState<SettingsFeedback>(null)
 
   const showFeedback = useCallback(
@@ -25,21 +37,20 @@ export const useSettingsFeedback = (scope = 'Settings') => {
     setFeedback((current) => (current?.type === 'error' ? null : current))
   }, [])
 
-  const scopedMessages = useMemo(
-    () => ({
-      updated: `${scope} updated`,
-      updateError: `${scope} could not be updated`,
-    }),
-    [scope],
-  )
+  // Resolved per render rather than memoized: a memo keyed on anything but the
+  // active locale would keep serving the language that was loaded when it
+  // first ran. The callbacks below stay stable anyway - their dependency is
+  // the string's value, not an object identity.
+  const updated = messages?.updated ?? t`Settings updated`
+  const updateError = messages?.updateError ?? t`Settings could not be updated`
 
   const showUpdated = useCallback(() => {
-    showFeedback('success', scopedMessages.updated)
-  }, [scopedMessages.updated, showFeedback])
+    showFeedback('success', updated)
+  }, [updated, showFeedback])
 
   const showUpdateError = useCallback(() => {
-    showFeedback('error', scopedMessages.updateError)
-  }, [scopedMessages.updateError, showFeedback])
+    showFeedback('error', updateError)
+  }, [updateError, showFeedback])
 
   const showInfo = useCallback(
     (title: string) => {

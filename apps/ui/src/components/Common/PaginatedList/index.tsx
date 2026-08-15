@@ -1,3 +1,4 @@
+import { Trans } from '@lingui/react/macro'
 import React, { useState } from 'react'
 
 interface ListItem {
@@ -50,7 +51,7 @@ const PaginatedList: React.FC<PaginatedListProps> = ({
                 onClick={() => onEdit(item.id)}
                 className="self-start font-bold text-zinc-400 underline transition-all hover:text-maintainerr-600"
               >
-                Edit
+                <Trans>Edit</Trans>
               </button>
             </div>
           </li>
@@ -63,11 +64,13 @@ const PaginatedList: React.FC<PaginatedListProps> = ({
           disabled={currentPage === 1}
           className={`rounded-md px-4 py-2 ${currentPage === 1 ? 'cursor-not-allowed bg-zinc-600 opacity-50' : 'bg-zinc-700 hover:bg-zinc-600'}`}
         >
-          Previous
+          <Trans>Previous</Trans>
         </button>
 
         <span className="text-sm">
-          Page {currentPage} of {totalPages}
+          <Trans>
+            Page {currentPage} of {totalPages}
+          </Trans>
         </span>
 
         <button
@@ -75,7 +78,7 @@ const PaginatedList: React.FC<PaginatedListProps> = ({
           disabled={currentPage === totalPages}
           className={`rounded-md px-4 py-2 ${currentPage === totalPages ? 'cursor-not-allowed bg-zinc-600 opacity-50' : 'bg-zinc-700 hover:bg-zinc-600'}`}
         >
-          Next
+          <Trans>Next</Trans>
         </button>
       </div>
 
@@ -84,7 +87,7 @@ const PaginatedList: React.FC<PaginatedListProps> = ({
           onClick={onAdd}
           className="button-md inline-flex cursor-pointer items-center justify-center rounded-md border border-maintainerr-600 border-transparent bg-maintainerr-600 px-4 py-2 text-sm leading-5 font-medium whitespace-nowrap text-white transition duration-150 ease-in-out hover:border-maintainerr hover:bg-maintainerr focus:border-maintainerr-700 focus:ring-maintainerr focus:outline-hidden active:border-maintainerr-700 active:bg-maintainerr-700 disabled:opacity-50"
         >
-          {addName ? addName : 'Add'}
+          {addName ? addName : <Trans>Add</Trans>}
         </button>
       </div>
     </div>

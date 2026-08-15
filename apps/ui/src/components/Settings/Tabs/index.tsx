@@ -167,7 +167,7 @@ const SettingsTabs: React.FC<{
       </div>
       {tabType === 'button' ? (
         <div className="hidden sm:block">
-          <nav className="-mx-2 -my-1 flex flex-wrap" aria-label="Tabs">
+          <nav className="-mx-2 -my-1 flex flex-wrap" aria-label={t`Tabs`}>
             {settingsRoutes.map((route, index) => (
               <SettingsLink
                 disabled={routeIsDisabled(route)}

@@ -1,3 +1,4 @@
+import { Trans, useLingui } from '@lingui/react/macro'
 import {
   DocumentAddIcon,
   PlusCircleIcon,
@@ -40,6 +41,7 @@ export interface IRadarrSetting {
 }
 
 const RadarrSettings = () => {
+  const { t } = useLingui()
   const [loaded, setLoaded] = useState(false)
   const [settings, setSettings] = useState<IRadarrSetting[]>([])
   const [settingsModalActive, setSettingsModalActive] = useState<
@@ -48,8 +50,7 @@ const RadarrSettings = () => {
   const [collectionsInUseWarning, setCollectionsInUseWarning] = useState<
     ICollection[] | undefined
   >()
-  const { feedback, clear, showError, showInfo } =
-    useSettingsFeedback('Radarr settings')
+  const { feedback, clear, showError, showInfo } = useSettingsFeedback()
 
   const handleSettingsSaved = (setting: IRadarrSetting) => {
     const newSettings = [...settings]
@@ -75,14 +76,14 @@ const RadarrSettings = () => {
           currentSettings.filter((setting) => setting.id !== id),
         )
         setSettingsModalActive(undefined)
-        showInfo('Radarr server removed')
+        showInfo(t`Radarr server removed`)
         return true
       }
 
       if (resp.data?.collectionsInUse) {
         setCollectionsInUseWarning(resp.data.collectionsInUse)
       } else {
-        showError('Failed to delete Radarr setting.')
+        showError(t`Failed to delete Radarr setting.`)
       }
     } catch (error: unknown) {
       void logClientError(
@@ -90,7 +91,7 @@ const RadarrSettings = () => {
         error,
         'Settings.Radarr.confirmedDelete',
       )
-      showError('Failed to delete Radarr setting. Check logs for details.')
+      showError(t`Failed to delete Radarr setting. Check logs for details.`)
     }
 
     return false
@@ -110,11 +111,15 @@ const RadarrSettings = () => {
 
   return (
     <>
-      <title>Radarr settings - Maintainerr</title>
+      <title>{t`Radarr settings - Maintainerr`}</title>
       <div className="h-full w-full">
         <div className="section h-full w-full">
-          <h3 className="heading">Radarr Settings</h3>
-          <p className="description">Radarr configuration</p>
+          <h3 className="heading">
+            <Trans>Radarr Settings</Trans>
+          </h3>
+          <p className="description">
+            <Trans>Radarr configuration</Trans>
+          </p>
         </div>
 
         <SettingsFeedbackAlert feedback={feedback} />
@@ -132,7 +137,9 @@ const RadarrSettings = () => {
                     {setting.serverName}
                   </div>
                   <p className="mb-4 space-x-2 truncate text-gray-300">
-                    <span className="font-semibold">Address</span>
+                    <span className="font-semibold">
+                      <Trans>Address</Trans>
+                    </span>
                     <a href={setting.url} className="hover:underline">
                       {setting.url}
                     </a>
@@ -148,7 +155,9 @@ const RadarrSettings = () => {
                       }}
                     >
                       {<DocumentAddIcon className="m-auto" />}{' '}
-                      <p className="m-auto font-semibold">Edit</p>
+                      <p className="m-auto font-semibold">
+                        <Trans>Edit</Trans>
+                      </p>
                     </Button>
                     <DeleteButton
                       onDeleteRequested={() => {
@@ -168,7 +177,9 @@ const RadarrSettings = () => {
                 onClick={showAddModal}
               >
                 {<PlusCircleIcon className="m-auto h-5" />}
-                <p className="m-auto ml-1 font-semibold">Add server</p>
+                <p className="m-auto ml-1 font-semibold">
+                  <Trans>Add server</Trans>
+                </p>
               </button>
             </li>
           ) : null}
@@ -178,7 +189,7 @@ const RadarrSettings = () => {
       </div>
       {settingsModalActive && (
         <ServarrSettingsModal
-          title="Radarr Settings"
+          title={t`Radarr Settings`}
           docsPage="Configuration/#radarr"
           settingsPath="/settings/radarr"
           testPath="/settings/test/radarr"
@@ -197,7 +208,7 @@ const RadarrSettings = () => {
       )}
       {collectionsInUseWarning ? (
         <Modal
-          title="Server in-use"
+          title={t`Server in-use`}
           size="sm"
           footerActions={
             <Button
@@ -205,19 +216,25 @@ const RadarrSettings = () => {
               className="ml-3"
               onClick={() => setCollectionsInUseWarning(undefined)}
             >
-              Ok
+              <Trans>Ok</Trans>
             </Button>
           }
         >
-          <p>This server is currently being used by the following rules:</p>
+          <p>
+            <Trans>
+              This server is currently being used by the following rules:
+            </Trans>
+          </p>
           <ul className="mb-4 list-inside list-disc">
             {collectionsInUseWarning.map((x) => (
               <li key={x.id}>{x.title}</li>
             ))}
           </ul>
           <p>
-            You must re-assign these rules to a different server before
-            deleting.
+            <Trans>
+              You must re-assign these rules to a different server before
+              deleting.
+            </Trans>
           </p>
         </Modal>
       ) : undefined}
@@ -248,7 +265,7 @@ const DeleteButton = ({
     >
       {<TrashIcon className="m-auto" />}{' '}
       <p className="m-auto font-semibold">
-        {showSureDelete ? <>Are you sure?</> : <>Delete</>}
+        {showSureDelete ? <Trans>Are you sure?</Trans> : <Trans>Delete</Trans>}
       </p>
     </Button>
   )

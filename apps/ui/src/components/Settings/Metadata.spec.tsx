@@ -1,5 +1,5 @@
 import { MetadataProviderPreference } from '@maintainerr/contracts'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '../../test-utils/render'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createDeferred } from '../../test-utils/createDeferred'
 import MetadataSettings from './Metadata'
@@ -206,7 +206,7 @@ describe('MetadataSettings', () => {
 
     render(<MetadataSettings />)
 
-    const [tmdbApiKeyInput] = await screen.findAllByLabelText('API Key')
+    const [tmdbApiKeyInput] = await screen.findAllByLabelText('API key')
     fireEvent.change(tmdbApiKeyInput, { target: { value: 'tmdb-key' } })
 
     fireEvent.click(
@@ -270,7 +270,7 @@ describe('MetadataSettings', () => {
   it('keeps Save Changes enabled regardless of whether the API key has changed', async () => {
     render(<MetadataSettings />)
 
-    await screen.findAllByLabelText('API Key')
+    await screen.findAllByLabelText('API key')
 
     expect(
       (
@@ -284,7 +284,7 @@ describe('MetadataSettings', () => {
   it('uses stacked full-width action buttons on mobile and keeps inline buttons on larger screens', async () => {
     const { container } = render(<MetadataSettings />)
 
-    await screen.findAllByLabelText('API Key')
+    await screen.findAllByLabelText('API key')
 
     const actionButtons = [
       ...screen.getAllByRole('button', { name: 'Test Connection' }),
@@ -340,7 +340,7 @@ describe('MetadataSettings', () => {
 
     render(<MetadataSettings />)
 
-    const [tmdbApiKeyInput] = await screen.findAllByLabelText('API Key')
+    const [tmdbApiKeyInput] = await screen.findAllByLabelText('API key')
 
     fireEvent.change(tmdbApiKeyInput, { target: { value: '' } })
 
@@ -410,7 +410,7 @@ describe('MetadataSettings', () => {
       await screen.findByText('Metadata provider preference updated'),
     ).toBeTruthy()
 
-    const [tmdbApiKeyInput] = await screen.findAllByLabelText('API Key')
+    const [tmdbApiKeyInput] = await screen.findAllByLabelText('API key')
     fireEvent.change(tmdbApiKeyInput, { target: { value: 'tmdb-key' } })
 
     await waitFor(() => {

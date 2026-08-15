@@ -148,7 +148,7 @@ const SettingsWrapper = () => {
   const settingsRoutes: SettingsRoute[] = useMemo(() => {
     const baseRoutes: SettingsRoute[] = [
       {
-        text: 'General',
+        text: t`General`,
         route: '/settings/main',
         regex: /^\/settings\/main$/,
       },
@@ -182,7 +182,7 @@ const SettingsWrapper = () => {
         regex: /^\/settings\/sportarr$/,
       },
       {
-        text: 'Metadata',
+        text: t`Metadata`,
         route: '/settings/metadata',
         regex: /^\/settings\/metadata$/,
       },
@@ -216,7 +216,7 @@ const SettingsWrapper = () => {
     // configured.
     if (hasArrConfigured) {
       baseRoutes.push({
-        text: 'Download client',
+        text: t`Download client`,
         route: '/settings/download-client',
         regex: /^\/settings\/download-client$/,
       })
@@ -224,29 +224,29 @@ const SettingsWrapper = () => {
 
     baseRoutes.push(
       {
-        text: 'Notifications',
+        text: t`Notifications`,
         route: '/settings/notifications',
         regex: /^\/settings\/notifications$/,
       },
       {
-        text: 'Logs',
+        text: t`Logs`,
         route: '/settings/logs',
         regex: /^\/settings\/logs$/,
       },
       {
-        text: 'Jobs',
+        text: t`Jobs`,
         route: '/settings/jobs',
         regex: /^\/settings\/jobs$/,
       },
       {
-        text: 'About',
+        text: t`About`,
         route: '/settings/about',
         regex: /^\/settings\/about$/,
       },
     )
 
     return baseRoutes
-  }, [isLoading, mediaServerType, hasArrConfigured])
+  }, [isLoading, mediaServerType, hasArrConfigured, t])
 
   const isMediaServerSetupComplete = hasCompletedMediaServerSetup(settings)
   const hasSelectedMediaServer = hasSelectedMediaServerType(settings)
@@ -322,7 +322,7 @@ const SettingsWrapper = () => {
                 className="ml-3"
                 onClick={() => setHasDismissedSetupWelcome(true)}
               >
-                Let&apos;s get started
+                <Trans>Let&apos;s get started</Trans>
               </Button>
             }
           >

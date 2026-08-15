@@ -1,3 +1,5 @@
+import { t as globalT } from '@lingui/core/macro'
+import { Trans, useLingui } from '@lingui/react/macro'
 import { BeakerIcon, ClipboardCopyIcon } from '@heroicons/react/solid'
 import { useMemo, useRef, useState } from 'react'
 import { toast } from 'react-toastify'
@@ -34,6 +36,7 @@ const emptyOption: IOptions = {
 }
 
 const TestMediaItem = (props: ITestMediaItem) => {
+  const { t } = useLingui()
   const [mediaItem, setMediaItem] = useState<IMediaOptions>()
   const [selectedSeasons, setSelectedSeasons] = useState<number | string>(-1)
   const [selectedEpisodes, setSelectedEpisodes] = useState<number | string>(-1)
@@ -122,7 +125,7 @@ const TestMediaItem = (props: ITestMediaItem) => {
             ...resp.map((el) => {
               return {
                 id: el.id,
-                title: `Episode ${el.index}`,
+                title: globalT`Episode ${{ index: el.index }}`,
               } as IOptions
             }),
           ])
@@ -160,7 +163,7 @@ const TestMediaItem = (props: ITestMediaItem) => {
 
       setComparisonResult(result)
     } catch {
-      toast.error('Failed to test media')
+      toast.error(t`Failed to test media`)
     } finally {
       setTesting(false)
     }
@@ -180,7 +183,7 @@ const TestMediaItem = (props: ITestMediaItem) => {
       } else {
         throw new Error('Clipboard not available')
       }
-      toast.success('Copied to clipboard')
+      toast.success(t`Copied to clipboard`)
     } catch {
       try {
         const textarea = document.createElement('textarea')
@@ -192,9 +195,9 @@ const TestMediaItem = (props: ITestMediaItem) => {
         textarea.select()
         document.execCommand('copy')
         document.body.removeChild(textarea)
-        toast.success('Copied to clipboard')
+        toast.success(t`Copied to clipboard`)
       } catch {
-        toast.error('Failed to copy to clipboard')
+        toast.error(t`Failed to copy to clipboard`)
       }
     }
   }
@@ -205,8 +208,8 @@ const TestMediaItem = (props: ITestMediaItem) => {
         loading={false}
         backgroundClickable={false}
         onCancel={props.onCancel}
-        cancelText="Close"
-        title={'Test Media'}
+        cancelText={t`Close`}
+        title={t`Test Media`}
         iconSvg={''}
         footerActions={
           <PendingButton
@@ -215,8 +218,8 @@ const TestMediaItem = (props: ITestMediaItem) => {
             type="button"
             disabled={!testable || testing}
             isPending={testing}
-            idleLabel="Test"
-            pendingLabel="Testing..."
+            idleLabel={t`Test`}
+            pendingLabel={t`Testing...`}
             idleIcon={<BeakerIcon />}
             onClick={() => void onSubmit()}
           />
@@ -225,24 +228,23 @@ const TestMediaItem = (props: ITestMediaItem) => {
         <div className="h-[80vh] overflow-hidden">
           <div className="mt-1">
             <Alert type="info">
-              {`Search for media items and validate them against the specified rule. The result will be a YAML document containing the validated steps.
-            `}
+              <Trans>
+                Search for media items and validate them against the specified
+                rule. The result will be a YAML document containing the
+                validated steps.
+              </Trans>
               <br />
               <br />
-              {`The rule group is of type ${
-                ruleGroup.dataType === 'movie'
-                  ? 'movies'
-                  : ruleGroup.dataType === 'season'
-                    ? 'seasons'
-                    : ruleGroup.dataType === 'episode'
-                      ? 'episodes'
-                      : 'series'
-              }, as a result only media of type ${
-                ruleGroup.dataType === 'movie' ? 'movies' : 'series'
-              } will be displayed in the search bar.`}
+              {ruleGroup.dataType === 'movie'
+                ? t`The rule group is of type movies, as a result only media of type movies will be displayed in the search bar.`
+                : ruleGroup.dataType === 'season'
+                  ? t`The rule group is of type seasons, as a result only media of type series will be displayed in the search bar.`
+                  : ruleGroup.dataType === 'episode'
+                    ? t`The rule group is of type episodes, as a result only media of type series will be displayed in the search bar.`
+                    : t`The rule group is of type series, as a result only media of type series will be displayed in the search bar.`}
             </Alert>
           </div>
-          <FormItem label="Media">
+          <FormItem label={t`Media`}>
             <SearchMediaItem
               mediatype={ruleGroup.dataType}
               libraryId={ruleGroup.libraryId}
@@ -256,7 +258,7 @@ const TestMediaItem = (props: ITestMediaItem) => {
           <div className="w-full">
             {ruleGroup.dataType === 'season' ||
             ruleGroup.dataType === 'episode' ? (
-              <FormItem label="Season">
+              <FormItem label={t`Season`}>
                 <Select
                   name={`Seasons-field`}
                   id={`Seasons-field`}
@@ -279,7 +281,7 @@ const TestMediaItem = (props: ITestMediaItem) => {
 
             {ruleGroup.dataType === 'episode' ? (
               // episodes
-              <FormItem label="Episode">
+              <FormItem label={t`Episode`}>
                 <Select
                   name={`episode-field`}
                   id={`episode-field`}
@@ -302,13 +304,13 @@ const TestMediaItem = (props: ITestMediaItem) => {
           </div>
           <div className="mb-2 flex justify-between">
             <label htmlFor="editor-field" className="text-label">
-              Output
+              <Trans>Output</Trans>
             </label>
             {comparisonResult && (
               <button
                 onClick={copyToClipboard}
-                title="Copy to clipboard"
-                aria-label="Copy to clipboard"
+                title={t`Copy to clipboard`}
+                aria-label={t`Copy to clipboard`}
               >
                 <ClipboardCopyIcon className="h-5 w-5 text-maintainerr-600 hover:text-maintainerr" />
               </button>

@@ -2,8 +2,14 @@ name: Weblate review
 
 # Weblate opens a pull request for every batch of translations. This labels it
 # and posts a back-translation table so the whole review happens on GitHub.
+#
+# pull_request_target runs this workflow (and the tools/ it executes) from the
+# BASE branch, and the back-translation step holds the AI key and a PR-write
+# token. A pull request must therefore never have its code executed here: the
+# steps below check out the base, then overlay ONLY the pull request's *.po
+# files as data. Nothing from the pull request head is ever run.
 on:
-  pull_request:
+  pull_request_target:
     branches: [development]
     paths:
       - 'apps/ui/src/locales/**'
@@ -30,12 +36,31 @@ jobs:
           client-id: ${{ secrets.MERGE_APP_ID }}
           private-key: ${{ secrets.MERGE_APP_KEY }}
 
-      - name: Checkout
+      # pull_request_target checks out the BASE by default, so tools/ and the
+      # workflow are trusted. fetch-depth 0 gives the back-translate step the
+      # base commit it diffs against.
+      - name: Check out the base branch
         uses: actions/checkout@v7
         with:
-          # Needs the base commit so only changed translations are reviewed.
           fetch-depth: 0
           persist-credentials: false
+
+      # The pull request's catalogs are DATA under review, never code. Fetch
+      # only apps/ui/src/locales into a scratch dir, then overlay just the .po
+      # files - so nothing executable from the head reaches the runner.
+      - name: Fetch the pull request's catalogs
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          path: pr-head
+          sparse-checkout: apps/ui/src/locales
+          sparse-checkout-cone-mode: false
+          persist-credentials: false
+
+      - name: Overlay the pull request's catalogs
+        run: |
+          set -euo pipefail
+          cp pr-head/apps/ui/src/locales/*.po apps/ui/src/locales/
 
       - name: Set up Node.js
         uses: actions/setup-node@v7

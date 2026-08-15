@@ -1,3 +1,4 @@
+import { t } from '@lingui/core/macro'
 import axios from 'axios'
 
 type ApiValidationIssue = {
@@ -11,6 +12,8 @@ type ApiErrorResponse = {
 }
 
 const formatValidationPath = (path: Array<string | number> | undefined) => {
+  // A path token beside untranslated segment names ("settings.url"), so it
+  // stays English like the rest of the path vocabulary.
   if (!path || path.length === 0) {
     return 'request'
   }
@@ -31,10 +34,13 @@ const formatValidationMessage = (issues: ApiValidationIssue[] | undefined) => {
 
   return issues
     .slice(0, 3)
-    .map(
-      (issue) =>
-        `${formatValidationPath(issue.path)}: ${issue.message ?? 'Invalid value'}`,
-    )
+    .map((issue) => {
+      const field = formatValidationPath(issue.path)
+      const reason = issue.message ?? t`Invalid value`
+      // Punctuation and two values, no words: nothing for a translator to do,
+      // and a message they could accidentally break.
+      return `${field}: ${reason}`
+    })
     .join('; ')
 }
 
@@ -71,7 +77,7 @@ const looksLikeHostResolutionError = (text: string) => {
 
 export const normalizeConnectionErrorMessage = (
   message: string | undefined,
-  fallback = 'Connection test failed. Verify URL and credentials.',
+  fallback = t`Connection test failed. Verify URL and credentials.`,
 ) => {
   if (!message || message.trim().length === 0) {
     return fallback
@@ -86,19 +92,19 @@ export const normalizeConnectionErrorMessage = (
   }
 
   if (looksLikeTlsMismatch(message)) {
-    return 'SSL/TLS handshake failed. Verify the URL protocol (http vs https) and SSL configuration.'
+    return t`SSL/TLS handshake failed. Verify the URL protocol (http vs https) and SSL configuration.`
   }
 
   if (looksLikeConnectionRefused(message)) {
-    return 'Connection refused. Verify host, port, and that the service is running.'
+    return t`Connection refused. Verify host, port, and that the service is running.`
   }
 
   if (looksLikeHostResolutionError(message)) {
-    return 'Unable to resolve host. Verify hostname or IP address.'
+    return t`Unable to resolve host. Verify hostname or IP address.`
   }
 
   if (looksLikeTimeout(message)) {
-    return 'Connection timed out after 5 seconds. Verify URL and network reachability.'
+    return t`Connection timed out after 5 seconds. Verify URL and network reachability.`
   }
 
   return message
@@ -106,14 +112,14 @@ export const normalizeConnectionErrorMessage = (
 
 export const getApiErrorMessage = (
   error: unknown,
-  fallback = 'Connection test failed. Verify URL and credentials.',
+  fallback = t`Connection test failed. Verify URL and credentials.`,
 ) => {
   if (axios.isAxiosError(error)) {
     const responseData = error.response?.data as ApiErrorResponse | undefined
     const validationMessage = formatValidationMessage(responseData?.errors)
 
     if (validationMessage) {
-      return `Validation failed: ${validationMessage}`
+      return t`Validation failed: ${{ validationMessage }}`
     }
 
     const rawMessage = responseData?.message
@@ -124,7 +130,7 @@ export const getApiErrorMessage = (
     const bestMessage =
       normalizedMessage ??
       error.message ??
-      (error.code ? `Request failed (${error.code})` : undefined)
+      (error.code ? t`Request failed (${{ code: error.code }})` : undefined)
 
     return normalizeConnectionErrorMessage(bestMessage, fallback)
   }

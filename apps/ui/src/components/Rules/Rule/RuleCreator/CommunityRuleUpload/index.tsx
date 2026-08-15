@@ -1,3 +1,4 @@
+import { Trans, useLingui } from '@lingui/react/macro'
 import { useRef, useState } from 'react'
 import { IRule } from '..'
 import { PostApiHandler } from '../../../../../utils/ApiHandler'
@@ -15,6 +16,7 @@ interface ICommunityRuleUpload {
 }
 
 const CommunityRuleUpload = (props: ICommunityRuleUpload) => {
+  const { t } = useLingui()
   const nameRef = useRef<any>(undefined)
   const descriptionRef = useRef<any>(undefined)
   const uploadedByRef = useRef<any>(undefined)
@@ -46,7 +48,7 @@ const CommunityRuleUpload = (props: ICommunityRuleUpload) => {
           }
         })
         .catch(() => {
-          setFailed('Failed to connect to the server. Please try again later.')
+          setFailed(t`Failed to connect to the server. Please try again later.`)
         })
     }
   }
@@ -56,8 +58,8 @@ const CommunityRuleUpload = (props: ICommunityRuleUpload) => {
         loading={false}
         backgroundClickable={false}
         onCancel={props.onCancel}
-        cancelText={'Cancel'}
-        title={'Upload Community Rule'}
+        cancelText={t`Cancel`}
+        title={t`Upload Community Rule`}
         iconSvg={''}
         footerActions={
           <Button
@@ -65,25 +67,24 @@ const CommunityRuleUpload = (props: ICommunityRuleUpload) => {
             className="ml-3"
             onClick={() => void handleUpload()}
           >
-            Upload
+            <Trans>Upload</Trans>
           </Button>
         }
       >
         <div className="mt-6">
           <Alert
-            title={`Every attempt should be made to only upload working rules.
-                    Rules with less than -100 karma and uploads with no rules, are removed nightly.`}
+            title={t`Every attempt should be made to only upload working rules. Rules with less than -100 karma and uploads with no rules, are removed nightly.`}
             type="warning"
           />
 
           {failed ? (
-            <Alert title={`Error: ${failed}`} type="warning" />
+            <Alert title={t`Error: ${{ reason: failed }}`} type="warning" />
           ) : undefined}
 
           <form>
             <div className="form-row items-center">
               <label htmlFor="name" className="text-label">
-                Community Short Name *
+                <Trans>Community Short Name *</Trans>
               </label>
               <div className="form-input">
                 <div className="form-input-field">
@@ -100,7 +101,7 @@ const CommunityRuleUpload = (props: ICommunityRuleUpload) => {
 
             <div className="form-row items-center">
               <label htmlFor="description" className="text-label">
-                Extended Description *
+                <Trans>Extended Description *</Trans>
               </label>
               <div className="form-input">
                 <div className="form-input-field">
@@ -117,7 +118,7 @@ const CommunityRuleUpload = (props: ICommunityRuleUpload) => {
 
             <div className="form-row items-center">
               <label htmlFor="uploadedBy" className="text-label">
-                Uploaded by (optional)
+                <Trans>Uploaded by (optional)</Trans>
               </label>
               <div className="form-input">
                 <div className="form-input-field items-center">
@@ -127,7 +128,7 @@ const CommunityRuleUpload = (props: ICommunityRuleUpload) => {
                     id="uploadedBy"
                     type="text"
                     maxLength={20}
-                    placeholder="Max 20 characters"
+                    placeholder={t`Max 20 characters`}
                     ref={uploadedByRef}
                   />
                 </div>
@@ -144,11 +145,11 @@ const CommunityRuleUpload = (props: ICommunityRuleUpload) => {
               setThanksModal(false)
               props.onSubmit()
             }}
-            cancelText={'Close'}
-            title={'Upload Successful'}
+            cancelText={t`Close`}
+            title={t`Upload Successful`}
             iconSvg={''}
           >
-            <Alert title={`Thank you for contributing.`} type="info" />
+            <Alert title={t`Thank you for contributing.`} type="info" />
           </Modal>
         ) : undefined}
       </Modal>
