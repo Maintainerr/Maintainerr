@@ -920,6 +920,45 @@ export class EmbyAdapterService implements IMediaServerService {
     return records;
   }
 
+  /**
+   * Return the newest playback timestamp across all users, including
+   * unfinished playback. Unlike watch history, this deliberately ignores
+   * UserData.Played and fails if any user-scoped item lookup fails because an
+   * incomplete sweep cannot prove the newest timestamp.
+   */
+  async getLastPlayedAt(itemId: string): Promise<Date | null> {
+    if (!this.http) {
+      throw new Error('Emby API not initialized');
+    }
+
+    const users = await this.fetchUsersQuery(this.http);
+    let latestMs: number | undefined;
+
+    for (let i = 0; i < users.length; i += EMBY_BATCH_SIZE.USER_WATCH_HISTORY) {
+      const batch = users.slice(i, i + EMBY_BATCH_SIZE.USER_WATCH_HISTORY);
+      const responses = await Promise.all(
+        batch.map((user) =>
+          this.http!.get<EmbyBaseItemDto>(`/Users/${user.Id}/Items/${itemId}`),
+        ),
+      );
+
+      for (const response of responses) {
+        const lastPlayedDate = response.data.UserData?.LastPlayedDate;
+        if (!lastPlayedDate) continue;
+
+        const playedMs = new Date(lastPlayedDate).getTime();
+        if (
+          !Number.isNaN(playedMs) &&
+          (latestMs === undefined || playedMs > latestMs)
+        ) {
+          latestMs = playedMs;
+        }
+      }
+    }
+
+    return latestMs === undefined ? null : new Date(latestMs);
+  }
+
   async getWatchState(
     itemId: string,
     nativeViewCount?: number,

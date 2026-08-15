@@ -1012,6 +1012,102 @@ describe('JellyfinGetterService', () => {
     });
   });
 
+  describe('lastPlayedAt (id 47)', () => {
+    it('aggregates the newest episode playback attempt for a season', async () => {
+      const season = createMediaItem({ id: 'season-1', type: 'season' });
+      const episodes = [
+        createMediaItem({ id: 'episode-1', type: 'episode' }),
+        createMediaItem({ id: 'episode-2', type: 'episode' }),
+      ];
+      jellyfinAdapter.getMetadata.mockResolvedValue(season);
+      jellyfinAdapter.getChildrenMetadata.mockResolvedValue(episodes);
+      jellyfinAdapter.getLastPlayedAt.mockImplementation(
+        async (itemId: string) =>
+          itemId === 'episode-1'
+            ? new Date('2024-06-01T00:00:00.000Z')
+            : new Date('2024-06-04T00:00:00.000Z'),
+      );
+
+      await expect(
+        jellyfinGetterService.get(47, season, 'season'),
+      ).resolves.toEqual(new Date('2024-06-04T00:00:00.000Z'));
+      expect(jellyfinAdapter.getChildrenMetadata).toHaveBeenCalledWith(
+        'season-1',
+        'episode',
+        true,
+      );
+    });
+
+    it('walks a show season by season and reads each episode once', async () => {
+      const show = createMediaItem({ id: 'show-1', type: 'show' });
+      jellyfinAdapter.getMetadata.mockResolvedValue(show);
+      jellyfinAdapter.getChildrenMetadata.mockImplementation(
+        async (itemId: string) =>
+          itemId === 'show-1'
+            ? [createMediaItem({ id: 'season-1', type: 'season' })]
+            : [createMediaItem({ id: 'episode-1', type: 'episode' })],
+      );
+      jellyfinAdapter.getLastPlayedAt.mockResolvedValue(
+        new Date('2024-06-02T00:00:00.000Z'),
+      );
+
+      await expect(
+        jellyfinGetterService.get(47, show, 'show'),
+      ).resolves.toEqual(new Date('2024-06-02T00:00:00.000Z'));
+      // A non-container parentId makes Jellyfin answer for the whole library,
+      // so only the show is expanded into seasons.
+      expect(jellyfinAdapter.getChildrenMetadata).toHaveBeenCalledWith(
+        'show-1',
+        'season',
+        true,
+      );
+      expect(jellyfinAdapter.getLastPlayedAt).toHaveBeenCalledTimes(1);
+      expect(jellyfinAdapter.getLastPlayedAt).toHaveBeenCalledWith(
+        'episode-1',
+        undefined,
+      );
+    });
+
+    // Only a container may be expanded: Jellyfin answers a non-container
+    // parentId with the whole library.
+    it.each(['movie', 'episode'] as const)(
+      'reads a %s directly, passing the library so the snapshot can answer',
+      async (type) => {
+        const mediaItem = createMediaItem({ id: `${type}-1`, type });
+        jellyfinAdapter.getMetadata.mockResolvedValue(mediaItem);
+        jellyfinAdapter.getLastPlayedAt.mockResolvedValue(
+          new Date('2024-06-01T00:00:00.000Z'),
+        );
+
+        await expect(
+          jellyfinGetterService.get(
+            47,
+            mediaItem,
+            type,
+            createRuleGroupDto({ dataType: type, libraryId: LIBRARY_ID }),
+          ),
+        ).resolves.toEqual(new Date('2024-06-01T00:00:00.000Z'));
+        expect(jellyfinAdapter.getChildrenMetadata).not.toHaveBeenCalled();
+        expect(jellyfinAdapter.getLastPlayedAt).toHaveBeenCalledWith(
+          `${type}-1`,
+          LIBRARY_ID,
+        );
+      },
+    );
+
+    it('preserves lookup failure as undefined', async () => {
+      const mediaItem = createMediaItem({ id: 'movie-1', type: 'movie' });
+      jellyfinAdapter.getMetadata.mockResolvedValue(mediaItem);
+      jellyfinAdapter.getLastPlayedAt.mockRejectedValue(
+        new Error('lookup failed'),
+      );
+
+      await expect(
+        jellyfinGetterService.get(47, mediaItem, 'movie'),
+      ).resolves.toBeUndefined();
+    });
+  });
+
   describe('show and season traversal rules', () => {
     it('sw_allEpisodesSeenBy (id: 12) returns users that watched every episode', async () => {
       const showItem = createMediaItem({
