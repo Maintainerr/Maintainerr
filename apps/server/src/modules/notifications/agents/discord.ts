@@ -1,4 +1,4 @@
-import axios from 'axios';
+import { rateLimitAwareHttp } from '../../api/lib/httpRetry';
 import { MaintainerrLogger } from '../../logging/logs.service';
 import { Notification } from '../entities/notification.entities';
 import {
@@ -9,6 +9,17 @@ import {
 import { hasNotificationType } from '../notifications.service';
 import type { NotificationAgent, NotificationPayload } from './agent';
 import { validateWebhookUrl } from './webhookUrl';
+
+// https://discord.com/developers/docs/resources/message#embed-object-embed-limits
+const EMBED_TITLE_LIMIT = 256;
+const EMBED_DESCRIPTION_LIMIT = 4096;
+
+const TRUNCATION_MARKER = '\n...';
+
+const truncate = (value: string | undefined, limit: number) =>
+  value && value.length > limit
+    ? `${value.slice(0, limit - TRUNCATION_MARKER.length)}${TRUNCATION_MARKER}`
+    : value;
 
 enum EmbedColors {
   DEFAULT = 0,
@@ -114,8 +125,10 @@ class DiscordAgent implements NotificationAgent {
     //   });
     // }
     return {
-      title: payload.subject,
-      description: payload.message,
+      title: truncate(payload.subject, EMBED_TITLE_LIMIT),
+      // A batch lists every item, and Discord answers 400 - dropping the whole
+      // message - once it outgrows the limit.
+      description: truncate(payload.message, EMBED_DESCRIPTION_LIMIT),
       color,
       timestamp: new Date().toISOString(),
       fields,
@@ -152,7 +165,7 @@ class DiscordAgent implements NotificationAgent {
     this.logger.log('Sending Discord notification');
 
     try {
-      await axios.post(webhookUrl.url, {
+      await rateLimitAwareHttp.post(webhookUrl.url, {
         username: this.getSettings().options.botUsername
           ? this.getSettings().options.botUsername
           : 'Maintainerr',

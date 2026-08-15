@@ -351,4 +351,73 @@ describe('EmbyGetterService', () => {
       );
     });
   });
+
+  describe('lastPlayedAt (id 47)', () => {
+    it('returns a movie playback attempt date', async () => {
+      const mediaItem = createMediaItem({ id: 'movie-1', type: 'movie' });
+      embyAdapter.getMetadata.mockResolvedValue(mediaItem);
+      embyAdapter.getLastPlayedAt.mockResolvedValue(
+        new Date('2024-06-01T00:00:00.000Z'),
+      );
+
+      await expect(
+        embyGetterService.get(47, mediaItem, 'movie'),
+      ).resolves.toEqual(new Date('2024-06-01T00:00:00.000Z'));
+    });
+
+    it('aggregates the newest episode playback attempt for a show', async () => {
+      const show = createMediaItem({ id: 'show-1', type: 'show' });
+      const season = createMediaItem({ id: 'season-1', type: 'season' });
+      const firstEpisode = createMediaItem({
+        id: 'episode-1',
+        type: 'episode',
+      });
+      const secondEpisode = createMediaItem({
+        id: 'episode-2',
+        type: 'episode',
+      });
+      embyAdapter.getMetadata.mockResolvedValue(show);
+      embyAdapter.getChildrenMetadata.mockImplementation(
+        async (itemId: string) =>
+          itemId === 'show-1' ? [season] : [firstEpisode, secondEpisode],
+      );
+      embyAdapter.getLastPlayedAt.mockImplementation(async (itemId: string) =>
+        itemId === 'episode-1'
+          ? new Date('2024-06-03T00:00:00.000Z')
+          : new Date('2024-06-02T00:00:00.000Z'),
+      );
+
+      await expect(embyGetterService.get(47, show, 'show')).resolves.toEqual(
+        new Date('2024-06-03T00:00:00.000Z'),
+      );
+      expect(embyAdapter.getChildrenMetadata).toHaveBeenCalledWith(
+        'show-1',
+        'season',
+        true,
+      );
+    });
+
+    it('returns null for a season with no playback history', async () => {
+      const season = createMediaItem({ id: 'season-1', type: 'season' });
+      embyAdapter.getMetadata.mockResolvedValue(season);
+      embyAdapter.getChildrenMetadata.mockResolvedValue([
+        createMediaItem({ id: 'episode-1', type: 'episode' }),
+      ]);
+      embyAdapter.getLastPlayedAt.mockResolvedValue(null);
+
+      await expect(
+        embyGetterService.get(47, season, 'season'),
+      ).resolves.toBeNull();
+    });
+
+    it('returns undefined when a playback lookup fails', async () => {
+      const mediaItem = createMediaItem({ id: 'movie-1', type: 'movie' });
+      embyAdapter.getMetadata.mockResolvedValue(mediaItem);
+      embyAdapter.getLastPlayedAt.mockRejectedValue(new Error('lookup failed'));
+
+      await expect(
+        embyGetterService.get(47, mediaItem, 'movie'),
+      ).resolves.toBeUndefined();
+    });
+  });
 });

@@ -115,6 +115,9 @@ export class TracearrGetterService {
           return watchedHistory.length;
         case 'lastViewedAt':
           return this.getLatestViewedAt(watchedHistory);
+        // Unfiltered: a session abandoned below the watched threshold counts.
+        case 'lastPlayedAt':
+          return this.getLatestViewedAt(history);
         case 'sw_viewedEpisodes':
           return new Set(
             watchedHistory

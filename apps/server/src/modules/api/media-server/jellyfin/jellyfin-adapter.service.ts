@@ -1285,6 +1285,7 @@ export class JellyfinAdapterService implements IMediaServerService {
       const descendants = new Map<string, string[]>();
       const favoritedBy = new Map<string, string[]>();
       const playCount = new Map<string, number>();
+      const lastPlayedAt = new Map<string, number>();
       let records = 0;
       // Checked while accumulating, not at the end: the point of the ceiling
       // is to stop before the snapshot grows large enough to matter. Users run
@@ -1349,6 +1350,16 @@ export class JellyfinAdapterService implements IMediaServerService {
                 (playCount.get(item.Id) ?? 0) + userData.PlayCount,
               );
             }
+            if (userData?.LastPlayedDate) {
+              const playedMs = new Date(userData.LastPlayedDate).getTime();
+              const newest = lastPlayedAt.get(item.Id);
+              if (
+                !Number.isNaN(playedMs) &&
+                (newest === undefined || playedMs > newest)
+              ) {
+                lastPlayedAt.set(item.Id, playedMs);
+              }
+            }
 
             if (!this.isCompletedWatch(userData, playedCompletionThreshold)) {
               continue;
@@ -1400,6 +1411,7 @@ export class JellyfinAdapterService implements IMediaServerService {
           descendants,
           favoritedBy,
           playCount,
+          lastPlayedAt,
           playedCompletionThreshold,
         } satisfies JellyfinWatchSnapshot);
 
@@ -1573,6 +1585,79 @@ export class JellyfinAdapterService implements IMediaServerService {
 
     this.cache.data.set(cacheKey, records, JELLYFIN_CACHE_TTL.WATCH_HISTORY);
     return records;
+  }
+
+  /**
+   * Return the newest playback timestamp across all users, including
+   * unfinished playback. This is intentionally separate from getWatchHistory,
+   * whose completed-watch semantics feed lastViewedAt, seenBy and viewCount.
+   *
+   * The live path is all-or-nothing (#2744): a dropped user lowers the newest
+   * date, which reads as "played longer ago" and can delete something that was
+   * just started.
+   */
+  async getLastPlayedAt(
+    itemId: string,
+    libraryId?: string,
+  ): Promise<Date | null> {
+    if (!this.api) {
+      throw new Error('Jellyfin not initialized');
+    }
+
+    const snapshot = this.getWatchSnapshot(
+      libraryId,
+      await this.getPlayedCompletionThreshold(),
+    );
+    if (snapshot?.watchHistory.has(itemId)) {
+      const sweptMs = snapshot.lastPlayedAt.get(itemId);
+      return sweptMs === undefined ? null : new Date(sweptMs);
+    }
+
+    const users = await this.getUsers(true);
+    const entries = await this.mapUsersBatched(async (user) => {
+      // The per-item route 404s for users the item is invisible to, which is
+      // no data for that user rather than a failed read; the list form answers
+      // 200 with an empty list. Mirrors getItemUserData.
+      const response = await getItemsApi(this.api!).getItems({
+        userId: user.id,
+        ids: [itemId],
+        enableUserData: true,
+      });
+
+      // A missing list is a broken read (proxy error page, auth interstitial),
+      // not "this user never played it".
+      const items = response.data.Items;
+      if (!Array.isArray(items)) {
+        throw new Error(`Jellyfin returned no item list for ${itemId}`);
+      }
+
+      // Jellyfin drops an ids filter it cannot parse and answers with the
+      // whole library, so the row is matched by id rather than taken first.
+      return items.find((el) => el.Id === itemId)?.UserData?.LastPlayedDate;
+    }, true);
+
+    // mapUsersBatched drops users whose request failed, which here would lower
+    // the newest date and read as "played longer ago".
+    if (entries.length !== users.length) {
+      throw new Error(
+        `Jellyfin last-played read for ${itemId} covered ${entries.length} of ${users.length} users`,
+      );
+    }
+
+    let latestMs: number | undefined;
+    for (const lastPlayedDate of entries) {
+      if (!lastPlayedDate) continue;
+
+      const playedMs = new Date(lastPlayedDate).getTime();
+      if (
+        !Number.isNaN(playedMs) &&
+        (latestMs === undefined || playedMs > latestMs)
+      ) {
+        latestMs = playedMs;
+      }
+    }
+
+    return latestMs === undefined ? null : new Date(latestMs);
   }
 
   async getWatchState(itemId: string): Promise<MediaWatchState> {

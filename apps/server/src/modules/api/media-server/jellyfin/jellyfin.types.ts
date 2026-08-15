@@ -29,6 +29,13 @@ export interface JellyfinWatchSnapshot {
   /** Item id -> PlayCount summed across users (includes partial plays). */
   playCount: Map<string, number>;
   /**
+   * Item id -> newest LastPlayedDate across users, as epoch ms. Ungated like
+   * playCount: starting something is not finishing it. Series and seasons
+   * never carry the field, so a container is absent here and is answered from
+   * `descendants` instead.
+   */
+  lastPlayedAt: Map<string, number>;
+  /**
    * PlayedPercentage threshold the records were built with. isCompletedWatch
    * depends on it, so a snapshot built under a different one is not reused.
    */

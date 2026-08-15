@@ -49,6 +49,18 @@ export class StreamystatsGetterService {
         return await this.getUserStat(prop.name, libItem, currentRule);
       }
 
+      if (prop.name === 'lastPlayedAt') {
+        // Streamystats records every observed session, so its aggregate
+        // lastWatched is the last play attempt. Null covers an unsynced item
+        // and a failed read alike, so it stays transient (as getUserStat).
+        const details = await this.streamystatsApi.getItemDetails(libItem.id);
+        if (!details) {
+          return undefined;
+        }
+
+        return details.lastWatched ? new Date(details.lastWatched) : null;
+      }
+
       const membership = await this.streamystatsApi.getWatchlistMembership();
       // `undefined` is the transient signal: Streamystats is unconfigured or
       // unreachable, so skip rather than report a false "not watchlisted".

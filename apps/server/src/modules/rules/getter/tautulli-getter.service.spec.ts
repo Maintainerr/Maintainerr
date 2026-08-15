@@ -16,6 +16,8 @@ const SW_LAST_WATCHED = 7;
 const VIEW_COUNT_BY_USER = 9;
 const WATCH_TIME_BY_USER = 10;
 const LAST_VIEWED_AT_BY_USER = 11;
+const LAST_VIEWED_AT = 4;
+const LAST_PLAYED_AT = 12;
 
 // Tautulli grades watched_status as 0 | 0.25 | 0.5 | 0.75 | 1; only 1 means the
 // item crossed the configured watched percent.
@@ -97,6 +99,32 @@ describe('TautulliGetterService', () => {
         service.get(SEEN_BY, showItem, undefined, ruleGroup),
       ).resolves.toBeUndefined();
     });
+  });
+
+  it('counts an abandoned play for lastPlayedAt but not lastViewedAt', async () => {
+    const service = createService([
+      historyItem({
+        watched_status: 1,
+        percent_complete: 100,
+        parent_media_index: 1,
+        media_index: 1,
+        stopped: 1_700_000_000,
+      }),
+      historyItem({
+        watched_status: 0.25,
+        percent_complete: 25,
+        parent_media_index: 1,
+        media_index: 1,
+        stopped: 1_700_000_500,
+      }),
+    ]);
+
+    await expect(
+      service.get(LAST_VIEWED_AT, showItem, undefined, ruleGroup),
+    ).resolves.toEqual(new Date(1_700_000_000 * 1000));
+    await expect(
+      service.get(LAST_PLAYED_AT, showItem, undefined, ruleGroup),
+    ).resolves.toEqual(new Date(1_700_000_500 * 1000));
   });
 
   describe('sw_lastWatched', () => {
