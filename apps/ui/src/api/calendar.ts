@@ -90,12 +90,14 @@ const actionLabelFor = (key: CalendarActionKey): string => {
 export const calendarEntryTitle = (
   entry: Pick<CalendarEntry, 'id' | 'count'>,
 ): string => {
-  const actionLabel = actionLabelFor(entry.id)
-  // Named so the count message merges with the identical one elsewhere
-  // instead of extracting a bare {0}.
+  // Assembled in code, not as a message: "{a}: {b}" carries no translatable
+  // words, so it would cost translator budget and give them a shape to break
+  // for nothing. Both halves are already translated on their own.
   const itemCount = entry.count
-  const itemCountText = plural(itemCount, { one: '# item', other: '# items' })
-  return t`${{ actionLabel }}: ${{ itemCount: itemCountText }}`
+  return `${actionLabelFor(entry.id)}: ${plural(itemCount, {
+    one: '# item',
+    other: '# items',
+  })}`
 }
 
 const getMovieActionKey = (action: ServarrAction): CalendarActionKey => {

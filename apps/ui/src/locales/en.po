@@ -41,10 +41,6 @@ msgstr "[Image]"
 msgid "{accurateMountCount} of {mountCount} mounts report total capacity"
 msgstr "{accurateMountCount} of {mountCount} mounts report total capacity"
 
-#: src/api/calendar.ts
-msgid "{actionLabel}: {itemCount}"
-msgstr "{actionLabel}: {itemCount}"
-
 #: src/components/Rules/RuleGroup/AddModal/ArrAction/index.tsx
 msgid "{actionOwnerName} action"
 msgstr "{actionOwnerName} action"
@@ -508,7 +504,6 @@ msgid "An unexpected error occurred."
 msgstr "An unexpected error occurred."
 
 #: src/components/Settings/Main/index.tsx
-#: src/components/Settings/Metadata/index.tsx
 #: src/components/Settings/Seerr/index.tsx
 #: src/components/Settings/Servarr/ServarrSettingsModal.tsx
 #: src/components/Settings/Tautulli/index.tsx
@@ -518,6 +513,7 @@ msgstr "API key"
 
 #: src/components/Settings/Emby/index.tsx
 #: src/components/Settings/Jellyfin/index.tsx
+#: src/components/Settings/Metadata/index.tsx
 msgid "API Key"
 msgstr "API Key"
 
@@ -2711,13 +2707,13 @@ msgstr "Number Of Rules"
 msgid "Off by default so a manually-set tag is never stripped. When on, Maintainerr removes only this label when an item is un-excluded."
 msgstr "Off by default so a manually-set tag is never stripped. When on, Maintainerr removes only this label when an item is un-excluded."
 
+#: src/components/Collection/CollectionDetail/RemoveFromCollectionButton/index.tsx
 #: src/components/Settings/Radarr/index.tsx
 #: src/components/Settings/Sonarr/index.tsx
 #: src/components/Settings/Sportarr/index.tsx
 msgid "Ok"
 msgstr "Ok"
 
-#: src/components/Collection/CollectionDetail/RemoveFromCollectionButton/index.tsx
 #: src/components/Rules/RuleGroup/AddModal/ConfigureNotificationModal/index.tsx
 msgid "OK"
 msgstr "OK"

@@ -1,4 +1,4 @@
-import { t } from '@lingui/core/macro'
+import { t as globalT } from '@lingui/core/macro'
 import { Plural, Trans, useLingui } from '@lingui/react/macro'
 import type { MediaItemType } from '@maintainerr/contracts'
 import { useEffect, useMemo, useRef, useState, type RefObject } from 'react'
@@ -84,7 +84,7 @@ const formatAddedAt = (value: Date | string, locale: string) => {
   const date = new Date(value)
 
   if (Number.isNaN(date.getTime())) {
-    return t`Unknown`
+    return globalT`Unknown`
   }
 
   return date.toLocaleDateString(locale, {
@@ -104,15 +104,15 @@ const formatScheduledDate = (value: Date, locale: string) =>
 const getMediaTypeLabel = (mediaType: MediaItemType) => {
   switch (mediaType) {
     case 'movie':
-      return t`Movie`
+      return globalT`Movie`
     case 'show':
-      return t`Show`
+      return globalT`Show`
     case 'season':
-      return t`Season`
+      return globalT`Season`
     case 'episode':
-      return t`Episode`
+      return globalT`Episode`
     default:
-      return t`Media`
+      return globalT`Media`
   }
 }
 
@@ -167,7 +167,7 @@ const useIsMobile = () => {
 }
 
 const Calendar = () => {
-  const { t: translate, i18n } = useLingui()
+  const { t, i18n } = useLingui()
   const locale = i18n.locale
   const isMobile = useIsMobile()
   const { data: calendarDays = [], isLoading } = useCalendarSchedule()
@@ -297,8 +297,8 @@ const Calendar = () => {
                 setViewMode(e.target.value as CalendarViewMode)
               }}
             >
-              <option value="month">{translate`Month`}</option>
-              <option value="week">{translate`Week`}</option>
+              <option value="month">{t`Month`}</option>
+              <option value="week">{t`Week`}</option>
             </Select>
           </div>
 
@@ -404,9 +404,7 @@ const Calendar = () => {
                 <div className="mt-2 flex flex-col gap-1">
                   {items.length === 0 ? (
                     <div className="text-xs text-zinc-400/70 select-none">
-                      {isLoading
-                        ? translate`Loading...`
-                        : translate`No scheduled actions`}
+                      {isLoading ? t`Loading...` : t`No scheduled actions`}
                     </div>
                   ) : (
                     visibleItems.map((item) => (
@@ -451,7 +449,7 @@ const Calendar = () => {
         <Modal
           title={calendarEntryTitle(selectedEntry.item)}
           onCancel={() => setSelectedEntry(null)}
-          cancelText={translate`Close`}
+          cancelText={t`Close`}
           size="4xl"
         >
           {modalLoading ? (

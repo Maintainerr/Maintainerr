@@ -41,10 +41,6 @@ msgstr ""
 msgid "{accurateMountCount} of {mountCount} mounts report total capacity"
 msgstr ""
 
-#: src/api/calendar.ts
-msgid "{actionLabel}: {itemCount}"
-msgstr ""
-
 #: src/components/Rules/RuleGroup/AddModal/ArrAction/index.tsx
 msgid "{actionOwnerName} action"
 msgstr ""
@@ -508,7 +504,6 @@ msgid "An unexpected error occurred."
 msgstr "Se ha producido un error inesperado."
 
 #: src/components/Settings/Main/index.tsx
-#: src/components/Settings/Metadata/index.tsx
 #: src/components/Settings/Seerr/index.tsx
 #: src/components/Settings/Servarr/ServarrSettingsModal.tsx
 #: src/components/Settings/Tautulli/index.tsx
@@ -518,6 +513,7 @@ msgstr ""
 
 #: src/components/Settings/Emby/index.tsx
 #: src/components/Settings/Jellyfin/index.tsx
+#: src/components/Settings/Metadata/index.tsx
 msgid "API Key"
 msgstr ""
 
@@ -2711,13 +2707,13 @@ msgstr ""
 msgid "Off by default so a manually-set tag is never stripped. When on, Maintainerr removes only this label when an item is un-excluded."
 msgstr ""
 
+#: src/components/Collection/CollectionDetail/RemoveFromCollectionButton/index.tsx
 #: src/components/Settings/Radarr/index.tsx
 #: src/components/Settings/Sonarr/index.tsx
 #: src/components/Settings/Sportarr/index.tsx
 msgid "Ok"
 msgstr ""
 
-#: src/components/Collection/CollectionDetail/RemoveFromCollectionButton/index.tsx
 #: src/components/Rules/RuleGroup/AddModal/ConfigureNotificationModal/index.tsx
 msgid "OK"
 msgstr ""

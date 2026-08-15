@@ -496,7 +496,7 @@ function ProviderSection({
             htmlFor={`${config.key}-api-key`}
             className="block text-sm font-medium text-zinc-300"
           >
-            <Trans>API key</Trans>
+            <Trans>API Key</Trans>
           </label>
           <div className="mt-1">
             <Input

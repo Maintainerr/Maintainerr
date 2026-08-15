@@ -63,6 +63,17 @@ const resolveBaseRef = () => {
 };
 const baseRef = resolveBaseRef();
 
+// Say so out loud. The integrity check is the half that cannot be inferred
+// from the catalogs themselves, so a silent skip would let "Catalogs valid"
+// report more than was actually checked.
+if (!baseRef && !noBase) {
+  console.warn(
+    'No base ref resolved (no git, or the base branch is not fetched) - ' +
+      'the msgstr integrity check was SKIPPED. Placeholder, URL and ' +
+      'character policy still ran.',
+  );
+}
+
 // The full Trojan Source (CVE-2021-42574) reordering set - overrides,
 // embeddings AND isolates - plus invisible characters that hide or fake
 // content. The plain direction marks U+200E/U+200F and the joiners

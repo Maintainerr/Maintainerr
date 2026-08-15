@@ -117,7 +117,7 @@ const RemoveFromCollectionButton = (props: IRemoveFromCollectionButton) => {
               disabled={removing}
               onClick={handle}
             >
-              {removing ? t`Removing...` : t`OK`}
+              {removing ? t`Removing...` : t`Ok`}
             </Button>
           }
         >

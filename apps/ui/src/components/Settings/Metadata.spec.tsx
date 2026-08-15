@@ -206,7 +206,7 @@ describe('MetadataSettings', () => {
 
     render(<MetadataSettings />)
 
-    const [tmdbApiKeyInput] = await screen.findAllByLabelText('API key')
+    const [tmdbApiKeyInput] = await screen.findAllByLabelText('API Key')
     fireEvent.change(tmdbApiKeyInput, { target: { value: 'tmdb-key' } })
 
     fireEvent.click(
@@ -270,7 +270,7 @@ describe('MetadataSettings', () => {
   it('keeps Save Changes enabled regardless of whether the API key has changed', async () => {
     render(<MetadataSettings />)
 
-    await screen.findAllByLabelText('API key')
+    await screen.findAllByLabelText('API Key')
 
     expect(
       (
@@ -284,7 +284,7 @@ describe('MetadataSettings', () => {
   it('uses stacked full-width action buttons on mobile and keeps inline buttons on larger screens', async () => {
     const { container } = render(<MetadataSettings />)
 
-    await screen.findAllByLabelText('API key')
+    await screen.findAllByLabelText('API Key')
 
     const actionButtons = [
       ...screen.getAllByRole('button', { name: 'Test Connection' }),
@@ -340,7 +340,7 @@ describe('MetadataSettings', () => {
 
     render(<MetadataSettings />)
 
-    const [tmdbApiKeyInput] = await screen.findAllByLabelText('API key')
+    const [tmdbApiKeyInput] = await screen.findAllByLabelText('API Key')
 
     fireEvent.change(tmdbApiKeyInput, { target: { value: '' } })
 
@@ -410,7 +410,7 @@ describe('MetadataSettings', () => {
       await screen.findByText('Metadata provider preference updated'),
     ).toBeTruthy()
 
-    const [tmdbApiKeyInput] = await screen.findAllByLabelText('API key')
+    const [tmdbApiKeyInput] = await screen.findAllByLabelText('API Key')
     fireEvent.change(tmdbApiKeyInput, { target: { value: 'tmdb-key' } })
 
     await waitFor(() => {
