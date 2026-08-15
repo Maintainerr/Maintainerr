@@ -108,6 +108,71 @@ export const parsePo = (text) => {
 
 export const readPo = (path) => parsePo(readFileSync(path, 'utf8'));
 
+/**
+ * Structural problems that make a catalog mean different things to different
+ * parsers.
+ *
+ * A checker is only worth what it reads, and Lingui is more forgiving than
+ * this parser. Two shapes proved to slip a translation past every content
+ * check while Lingui still bound it to a live message:
+ *
+ *   - an obsolete `#~` block. Comments are skipped here, so the live entry
+ *     reads as untranslated - but Lingui restores the commented msgstr onto
+ *     the live message id.
+ *   - `msgstr` written above its `msgid`. This parser starts an entry at
+ *     msgid and never sees the stray translation; Lingui binds it.
+ *
+ * Rather than chase Lingui's leniency, reject anything outside the canonical
+ * form. These catalogs are machine-written, so any deviation is either a
+ * corrupt file or someone shaping one by hand.
+ */
+export const poShapeProblems = (text) => {
+  const problems = [];
+  let sawMsgid = false;
+  let sawMsgstr = false;
+  const lines = text.split('\n');
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index].trim();
+
+    if (line.startsWith('#~')) {
+      problems.push({
+        line: index + 1,
+        reason:
+          'an obsolete "#~" entry - Lingui restores its translation onto the live message, so the content checks never see it',
+      });
+      continue;
+    }
+    if (line.startsWith('#')) continue;
+
+    if (line === '') {
+      sawMsgid = false;
+      sawMsgstr = false;
+      continue;
+    }
+
+    if (line.startsWith('msgid') && !line.startsWith('msgid_plural')) {
+      // A msgid after a msgstr opens the next entry even without a blank line.
+      if (sawMsgstr) sawMsgstr = false;
+      sawMsgid = true;
+      continue;
+    }
+
+    if (line.startsWith('msgstr')) {
+      if (!sawMsgid) {
+        problems.push({
+          line: index + 1,
+          reason:
+            'a "msgstr" before its "msgid" - parsers disagree on what it translates, and Lingui binds it to the entry that follows',
+        });
+      }
+      sawMsgstr = true;
+    }
+  }
+
+  return problems;
+};
+
 const isIdentifierChar = (char) =>
   (char >= 'a' && char <= 'z') ||
   (char >= 'A' && char <= 'Z') ||

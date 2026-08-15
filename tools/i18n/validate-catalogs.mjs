@@ -29,9 +29,9 @@
  * Usage: node tools/i18n/validate-catalogs.mjs [catalogDir] [--base <ref>] [--no-base]
  */
 import { execFileSync } from 'node:child_process';
-import { readdirSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { icuArguments, parsePo, readPo } from './po.mjs';
+import { icuArguments, parsePo, poShapeProblems, readPo } from './po.mjs';
 
 const args = process.argv.slice(2);
 const noBase = args.includes('--no-base');
@@ -155,6 +155,15 @@ const notes = [];
 const files = readdirSync(catalogDir)
   .filter((name) => name.endsWith('.po'))
   .sort();
+
+// Shape first: a catalog that parses differently here than in Lingui makes
+// every content check below meaningless for the entries that disagree.
+for (const file of files) {
+  const location = path.join(catalogDir, file);
+  for (const problem of poShapeProblems(readFileSync(location, 'utf8'))) {
+    errors.push(`${location}:${problem.line}\n    contains ${problem.reason}`);
+  }
+}
 
 if (files.length === 0) {
   console.error(`No catalogs found in ${catalogDir}`);

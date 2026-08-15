@@ -95,16 +95,20 @@ jobs:
         env:
           BASE_REF: ${{ github.event.pull_request.base.ref }}
           PR_LOGIN: ${{ github.event.pull_request.user.login }}
-          HEAD_REF: ${{ github.event.pull_request.head.ref }}
         run: |
           set -euo pipefail
           git checkout "origin/$BASE_REF" -- tools/i18n
           # The msgstr-integrity check is on by default (compares against the
           # base branch merge-base). A Weblate sync is the only PR allowed to
           # change translations, so it opts out with --no-base.
+          #
+          # Keyed on the author alone. The branch name is chosen by whoever
+          # opens the pull request, so accepting `weblate-*` would let any
+          # contributor switch off the check that judges their own
+          # translations. Weblate's own pull requests come from the
+          # hosted-weblate app, which a contributor cannot impersonate.
           from_weblate=false
           case "$PR_LOGIN" in hosted-weblate*) from_weblate=true ;; esac
-          case "$HEAD_REF" in weblate-*) from_weblate=true ;; esac
           if [ "$from_weblate" = true ]; then
             node tools/i18n/validate-catalogs.mjs apps/ui/src/locales --no-base
           else
