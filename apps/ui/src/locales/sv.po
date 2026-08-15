@@ -8,7 +8,7 @@ msgstr ""
 "Language: sv\n"
 "Project-Id-Version: \n"
 "Report-Msgid-Bugs-To: \n"
-"PO-Revision-Date: 2026-08-13 20:28+0000\n"
+"PO-Revision-Date: 2026-08-14 22:51+0000\n"
 "Last-Translator: Maintainerr <get@maintainerr.info>\n"
 "Language-Team: Swedish <https://hosted.weblate.org/projects/maintainerr/app/"
 "sv/>\n"
@@ -51,42 +51,44 @@ msgstr "Språk"
 #: src/components/Collection/CollectionOverview/index.tsx
 msgid "Executes each collection's configured action (Delete / Unmonitor / Do Nothing). Does not remove items from collections."
 msgstr ""
+"Utför varje samlings konfigurerade åtgärder (Delete / Unmonitor / Do Nothing)"
+". Tar inte bort objekt från samlingar."
 
 #: src/pages/RulesListPage.tsx
 msgid "Failed to initiate rule execution."
-msgstr ""
+msgstr "Misslyckades med a initiera körning av regler."
 
 #: src/pages/RulesListPage.tsx
 msgid "Failed to request stop of all rule executions."
-msgstr ""
+msgstr "Misslyckades med att stoppa åtgärden för att köra regler."
 
 #: src/components/Layout/index.tsx
 msgid "Go Back"
-msgstr ""
+msgstr "Gå tillbaka"
 
 #: src/components/Layout/index.tsx
 msgid "Go To Overview"
-msgstr ""
+msgstr "Gå till Översikt"
 
 #: src/components/Collection/CollectionOverview/index.tsx
 msgid "Handle Collections"
-msgstr ""
+msgstr "Hantera Samlingar"
 
 #: src/components/Layout/NavBar/index.tsx
 msgid "Maintainerr logo"
-msgstr ""
+msgstr "Maintainerr logotyp"
 
 #: src/pages/RulesListPage.tsx
 msgid "New Rule"
-msgstr ""
+msgstr "Ny regel"
 
 #: src/components/Collection/CollectionOverview/index.tsx
 msgid "No collections found for this library."
-msgstr ""
+msgstr "Inga samlingar hittades för detta bibliotek."
 
 #: src/components/Layout/index.tsx
 msgid "Open sidebar"
-msgstr ""
+msgstr "Öppna sidofält"
 
 #: src/components/Layout/NavBar/index.tsx
 msgid "Overlays"
