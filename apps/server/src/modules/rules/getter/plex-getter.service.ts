@@ -295,6 +295,13 @@ export class PlexGetterService {
           );
           return newest > 0 ? new Date(newest) : null;
         }
+        case 'lastPlayedAt': {
+          // Plex moves the item's own lastViewedAt on any playback but only
+          // writes a history row for a completed view, so the item field alone
+          // is the last play attempt (verified on 1.43). It therefore reports
+          // the same value lastViewedAt does on Plex.
+          return libItem.lastViewedAt ?? null;
+        }
         case 'fileVideoResolution': {
           return metadata.Media[0].videoResolution
             ? metadata.Media[0].videoResolution
