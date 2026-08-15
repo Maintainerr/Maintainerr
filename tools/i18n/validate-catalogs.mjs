@@ -105,7 +105,17 @@ const forbiddenRange = (codePoint) =>
 // Catch every remaining default-ignorable code point (U+180E, U+034F,
 // variation selectors, ...): invisible by design and a spoofing surface. Only
 // the join/direction controls a translation legitimately needs are allowed.
-const ALLOWED_FORMAT = new Set(['\u200C', '\u200D', '\u200E', '\u200F']);
+// U+FE0E/U+FE0F select text vs emoji presentation. They are visible-by-intent
+// rather than hiding anything, and rejecting them would fail any translation
+// containing a rendered emoji.
+const ALLOWED_FORMAT = new Set([
+  '\u200C',
+  '\u200D',
+  '\u200E',
+  '\u200F',
+  '\uFE0E',
+  '\uFE0F',
+]);
 const isDefaultIgnorable = (char) =>
   /\p{Default_Ignorable_Code_Point}/u.test(char);
 
@@ -118,7 +128,22 @@ const MAX_COMBINING_RUN = 8;
 
 // `://` and `www.` catch the common forms; `mailto:`/`tel:` are unambiguous
 // action schemes; the fullwidth colon is a homoglyph that dodges `://`.
-const URL_MARKERS = ['://', '\uFF1A//', 'www.', 'mailto:', 'tel:'];
+const URL_MARKERS = ['://', 'www.', 'mailto:', 'tel:'];
+
+// Fold case and the colon/slash homoglyphs before matching, so `WWW.`,
+// `MAILTO:` and `https\uFF1A//` cannot walk past a literal comparison.
+const COLON_HOMOGLYPHS = ['\uFF1A', '\u2236', '\uA789', '\u02D0'];
+const SLASH_HOMOGLYPHS = ['\uFF0F', '\u2215', '\u2044', '\u29F8'];
+const normalizeForMarkers = (text) => {
+  let out = text.toLowerCase();
+  for (const char of COLON_HOMOGLYPHS) out = out.replaceAll(char, ':');
+  for (const char of SLASH_HOMOGLYPHS) out = out.replaceAll(char, '/');
+  return out;
+};
+const markerIn = (text) => {
+  const normalized = normalizeForMarkers(text);
+  return URL_MARKERS.find((marker) => normalized.includes(marker)) ?? null;
+};
 
 const isCombiningMark = (codePoint) =>
   /\p{M}/u.test(String.fromCodePoint(codePoint));
@@ -213,14 +238,13 @@ const rejectPlural = (entry, location) => {
 
 for (const entry of sourceEntries) {
   if (rejectPlural(entry, sourceLocation)) continue;
-  for (const marker of URL_MARKERS) {
-    if (entry.msgid.includes(marker)) {
-      errors.push(
-        `${sourceLocation}:${entry.line}\n` +
-          `    source: ${entry.msgid}\n` +
-          `    contains "${marker}" - URLs stay in code or arrive as named placeholders, never as message text`,
-      );
-    }
+  const sourceMarker = markerIn(entry.msgid);
+  if (sourceMarker) {
+    errors.push(
+      `${sourceLocation}:${entry.line}\n` +
+        `    source: ${entry.msgid}\n` +
+        `    contains "${sourceMarker}" - URLs stay in code or arrive as named placeholders, never as message text`,
+    );
   }
   const forbidden = forbiddenCharIn(entry.msgid);
   if (forbidden) {
@@ -274,10 +298,9 @@ for (const file of files) {
       continue;
     }
 
-    const introducedMarker = URL_MARKERS.find(
-      (marker) =>
-        entry.msgstr.includes(marker) && !entry.msgid.includes(marker),
-    );
+    const translationMarker = markerIn(entry.msgstr);
+    const introducedMarker =
+      translationMarker && !markerIn(entry.msgid) ? translationMarker : null;
     if (introducedMarker) {
       errors.push(
         `${location}:${entry.line}\n` +

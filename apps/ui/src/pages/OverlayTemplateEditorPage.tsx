@@ -486,8 +486,8 @@ const OverlayTemplateEditor = ({ routeId }: { routeId: string }) => {
                     setMode(e.target.value as OverlayTemplateMode)
                   }
                 >
-                  <option value="poster">Poster</option>
-                  <option value="titlecard">Title Card</option>
+                  <option value="poster">{t`Poster`}</option>
+                  <option value="titlecard">{t`Title Card`}</option>
                 </Select>
               </div>
               <div className="flex w-56 items-center gap-2">
@@ -497,7 +497,7 @@ const OverlayTemplateEditor = ({ routeId }: { routeId: string }) => {
                   disabled={isLoading}
                   onChange={(e) => handleSectionChange(e.target.value)}
                 >
-                  <option value="">No background</option>
+                  <option value="">{t`No background`}</option>
                   {sections.map((s) => (
                     <option key={s.key} value={s.key}>
                       {s.title}

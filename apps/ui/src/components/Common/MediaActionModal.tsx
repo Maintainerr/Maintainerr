@@ -497,7 +497,7 @@ const MediaActionModal = ({
       ) : null}
 
       <div className="mt-6">
-        <FormItem label={t`Action`}>
+        <FormItem label={t`Action`} htmlField="Action">
           <Select
             name="Action-field"
             id="Action-field"
@@ -515,7 +515,7 @@ const MediaActionModal = ({
         </FormItem>
 
         {canNarrow ? (
-          <FormItem label={t`Seasons`}>
+          <FormItem label={t`Seasons`} htmlField="Seasons">
             <Select
               name="Seasons-field"
               id="Seasons-field"
@@ -536,7 +536,7 @@ const MediaActionModal = ({
         ) : null}
 
         {canNarrow && selectedSeasons ? (
-          <FormItem label={t`Episodes`}>
+          <FormItem label={t`Episodes`} htmlField="Episodes">
             <Select
               name="Episodes-field"
               id="Episodes-field"
@@ -554,7 +554,7 @@ const MediaActionModal = ({
           </FormItem>
         ) : null}
 
-        <FormItem label={t`Collection`}>
+        <FormItem label={t`Collection`} htmlField="Collection">
           <Select
             name="Collection-field"
             id="Collection-field"

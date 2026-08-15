@@ -2518,6 +2518,10 @@ msgstr "New Template - Overlay Editor - Maintainerr"
 msgid "Next"
 msgstr "Next"
 
+#: src/pages/OverlayTemplateEditorPage.tsx
+msgid "No background"
+msgstr "No background"
+
 #: src/components/Common/MediaActionModal.tsx
 msgid "No collection can take this selection. Create one from a rule first."
 msgstr "No collection can take this selection. Create one from a rule first."
@@ -2916,6 +2920,10 @@ msgstr "Port"
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "Position"
 msgstr "Position"
+
+#: src/pages/OverlayTemplateEditorPage.tsx
+msgid "Poster"
+msgstr "Poster"
 
 #: src/components/Rules/RuleGroup/AddModal/CollectionPosterPicker.tsx
 msgid "Poster saved and pushed to {mediaServerName}"
@@ -4054,6 +4062,10 @@ msgstr "Title (A-Z) Ascending"
 #: src/components/Common/MediaLibrarySortControl.tsx
 msgid "Title (Z-A) Descending"
 msgstr "Title (Z-A) Descending"
+
+#: src/pages/OverlayTemplateEditorPage.tsx
+msgid "Title Card"
+msgstr "Title Card"
 
 #: src/pages/OverlayTemplateListPage.tsx
 msgid "Title Card Templates"

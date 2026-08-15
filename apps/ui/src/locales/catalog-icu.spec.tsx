@@ -112,14 +112,20 @@ const argumentKind = (message: string, name: string): string => {
   }
 }
 
-const sentinelValues = (message: string, names: string[]) => {
+// One count per CLDR plural category across the 13 locales: a quoting bug
+// lives in a single branch, so rendering only `other` would miss it. 0/1/2
+// cover zero/one/two, 3 and 7 split few/many in Polish and Czech, 11 and 100
+// catch the Welsh-style outliers other locales may add later.
+const PLURAL_PROBES = [0, 1, 2, 3, 7, 11, 100]
+
+const sentinelValues = (message: string, names: string[], count: number) => {
   const values: Record<string, unknown> = {}
 
   for (const name of names) {
     const kind = argumentKind(message, name)
     // plural/ordinal arguments need a number, select needs a branch name, and
     // for both the sentinel is the value itself.
-    if (kind === 'plural' || kind === 'selectordinal') values[name] = 7
+    if (kind === 'plural' || kind === 'selectordinal') values[name] = count
     else if (kind === 'select') values[name] = 'other'
     else values[name] = `sentinel-${name}`
   }
@@ -142,16 +148,29 @@ const findBrokenMessages = (messages: string[]): string[] => {
   const withArguments = messages.filter(
     (message) => argumentNames(message).length > 0,
   )
+  // A message with no plural/ordinal argument renders the same at every count,
+  // so probe it once.
+  const rows = withArguments.flatMap((message) => {
+    const names = argumentNames(message)
+    const counted = names.some((name) => {
+      const kind = argumentKind(message, name)
+      return kind === 'plural' || kind === 'selectordinal'
+    })
+    return (counted ? PLURAL_PROBES : [0]).map((count) => ({ message, count }))
+  })
 
-  // One render for the batch: each message becomes a row, so a failure names
+  // One render for the batch: each probe becomes a row, so a failure names
   // the message rather than a row index.
   const { container } = render(
     <ul>
-      {withArguments.map((message) => (
-        <li key={message} data-message={message}>
+      {rows.map(({ message, count }, index) => (
+        // Addressed by index: a message is arbitrary text and makes a fragile
+        // attribute selector, and a lookup that silently misses would turn this
+        // whole spec green.
+        <li key={index} data-row={index}>
           <Trans
             id={message}
-            values={sentinelValues(message, argumentNames(message))}
+            values={sentinelValues(message, argumentNames(message), count)}
             components={markupSlots}
           />
         </li>
@@ -159,12 +178,15 @@ const findBrokenMessages = (messages: string[]): string[] => {
     </ul>,
   )
 
-  return withArguments.filter((message) => {
-    const rendered =
-      container.querySelector(`[data-message="${CSS.escape(message)}"]`)
-        ?.textContent ?? ''
+  const cells = container.querySelectorAll('[data-row]')
+  expect(cells).toHaveLength(rows.length)
+
+  const broken = rows.filter(({ message }, index) => {
+    const rendered = cells[index]?.textContent ?? ''
     return argumentNames(message).some((name) => rendered.includes(`{${name}}`))
   })
+
+  return [...new Set(broken.map(({ message }) => message))]
 }
 
 const explain = (broken: string[]) =>

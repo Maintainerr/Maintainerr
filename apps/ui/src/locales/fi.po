@@ -2518,6 +2518,10 @@ msgstr ""
 msgid "Next"
 msgstr ""
 
+#: src/pages/OverlayTemplateEditorPage.tsx
+msgid "No background"
+msgstr ""
+
 #: src/components/Common/MediaActionModal.tsx
 msgid "No collection can take this selection. Create one from a rule first."
 msgstr ""
@@ -2915,6 +2919,10 @@ msgstr ""
 
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "Position"
+msgstr ""
+
+#: src/pages/OverlayTemplateEditorPage.tsx
+msgid "Poster"
 msgstr ""
 
 #: src/components/Rules/RuleGroup/AddModal/CollectionPosterPicker.tsx
@@ -4053,6 +4061,10 @@ msgstr ""
 
 #: src/components/Common/MediaLibrarySortControl.tsx
 msgid "Title (Z-A) Descending"
+msgstr ""
+
+#: src/pages/OverlayTemplateEditorPage.tsx
+msgid "Title Card"
 msgstr ""
 
 #: src/pages/OverlayTemplateListPage.tsx

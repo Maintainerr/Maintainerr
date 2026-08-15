@@ -55,4 +55,9 @@ export const storeLocale = (locale: string): void => {
 export const loadCatalog = async (locale: string): Promise<void> => {
   const { messages } = await import(`./locales/${locale}.po`)
   i18n.loadAndActivate({ locale, messages })
+  // index.html ships lang="en". Without this every other locale would render
+  // Swedish or Polish text while still declaring English, so a screen reader
+  // picks the wrong voice and the browser offers to translate the page.
+  // Every supported locale is left-to-right, so `dir` needs no handling.
+  document.documentElement.lang = locale
 }
