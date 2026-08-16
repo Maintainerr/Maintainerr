@@ -298,6 +298,23 @@ describe('PlexGetterService', () => {
       expect(result).toEqual(lastViewedAt);
     });
 
+    // Plex writes a history row only for a completed view, so lastPlayedAt
+    // reads the item field alone rather than merging history.
+    it('reads lastPlayedAt from the item alone (id 47)', async () => {
+      const lastViewedAt = new Date(1_730_000_000 * 1000);
+      plexApi.getMetadata.mockResolvedValue(makeMetadata());
+
+      const result = await service.get(
+        47,
+        createMediaItem({ type: 'movie', lastViewedAt }),
+        'movie',
+        createRuleGroupDto({ dataType: 'movie' }),
+      );
+
+      expect(result).toEqual(lastViewedAt);
+      expect(plexApi.getWatchHistory).not.toHaveBeenCalled();
+    });
+
     it('prefers a newer history date over the item lastViewedAt (id 7)', async () => {
       plexApi.getMetadata.mockResolvedValue(makeMetadata());
       plexApi.getWatchHistory.mockResolvedValue([

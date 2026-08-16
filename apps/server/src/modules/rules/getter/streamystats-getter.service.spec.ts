@@ -13,6 +13,7 @@ const WATCHLISTED_BY_USERS_INCLUDING_PARENT_PROP_ID = 3;
 const VIEW_COUNT_BY_USER_PROP_ID = 4;
 const WATCH_TIME_BY_USER_PROP_ID = 5;
 const LAST_VIEWED_AT_BY_USER_PROP_ID = 6;
+const LAST_PLAYED_AT_PROP_ID = 7;
 
 const itemDetailsOf = (
   // Streamystats reports the Jellyfin user id; its copy of the name can lag a
@@ -24,6 +25,7 @@ const itemDetailsOf = (
     totalWatchTime: number;
     lastWatched: string | null;
   }[],
+  lastWatched: string | null = null,
 ) =>
   ({
     item: { id: 'item-1' },
@@ -31,7 +33,7 @@ const itemDetailsOf = (
     totalWatchTime: 0,
     completionRate: 0,
     firstWatched: null,
-    lastWatched: null,
+    lastWatched,
     watchHistory: [],
     watchCountByMonth: [],
     usersWatched: usersWatched.map(
@@ -335,6 +337,33 @@ describe('StreamystatsGetterService', () => {
           season,
         ),
       ).toEqual([]);
+    });
+  });
+
+  describe('lastPlayedAt (property id=7)', () => {
+    const libItem = createMediaItem({ type: 'movie', id: 'item-1' });
+
+    it('returns the aggregate last-played date without a watchlist read', async () => {
+      const { service, streamystatsApi } = createService();
+      streamystatsApi.getItemDetails.mockResolvedValue(
+        itemDetailsOf([], '2026-01-03T01:00:00.000Z'),
+      );
+
+      expect(await service.get(LAST_PLAYED_AT_PROP_ID, libItem)).toEqual(
+        new Date('2026-01-03T01:00:00.000Z'),
+      );
+      expect(streamystatsApi.getWatchlistMembership).not.toHaveBeenCalled();
+    });
+
+    // Null covers an unsynced item and a failed read alike, so it must skip
+    // rather than report a confirmed "never played".
+    it('returns undefined when item details cannot be read', async () => {
+      const { service, streamystatsApi } = createService();
+      streamystatsApi.getItemDetails.mockResolvedValue(null);
+
+      expect(
+        await service.get(LAST_PLAYED_AT_PROP_ID, libItem),
+      ).toBeUndefined();
     });
   });
 
