@@ -47,6 +47,15 @@ const getEventSource = (): EventSource => {
   return source
 }
 
+// Module state resets on a hot reload, so without this the previous stream
+// would stay open with nothing listening until the next full page load.
+if (import.meta.hot) {
+  import.meta.hot.dispose(() => {
+    sharedEventSource?.close()
+    sharedEventSource = undefined
+  })
+}
+
 export const EventsProvider = (props: any) => (
   <EventsContext value={getEventSource()} {...props} />
 )
