@@ -244,8 +244,9 @@ const TestMediaItem = (props: ITestMediaItem) => {
                     : t`The rule group is of type series, as a result only media of type series will be displayed in the search bar.`}
             </Alert>
           </div>
-          <FormItem label={t`Media`}>
+          <FormItem label={t`Media`} htmlField="media">
             <SearchMediaItem
+              inputId="media-field"
               mediatype={ruleGroup.dataType}
               libraryId={ruleGroup.libraryId}
               onChange={(el) => {
@@ -258,7 +259,7 @@ const TestMediaItem = (props: ITestMediaItem) => {
           <div className="w-full">
             {ruleGroup.dataType === 'season' ||
             ruleGroup.dataType === 'episode' ? (
-              <FormItem label={t`Season`}>
+              <FormItem label={t`Season`} htmlField="Seasons">
                 <Select
                   name={`Seasons-field`}
                   id={`Seasons-field`}
@@ -281,7 +282,7 @@ const TestMediaItem = (props: ITestMediaItem) => {
 
             {ruleGroup.dataType === 'episode' ? (
               // episodes
-              <FormItem label={t`Episode`}>
+              <FormItem label={t`Episode`} htmlField="episode">
                 <Select
                   name={`episode-field`}
                   id={`episode-field`}

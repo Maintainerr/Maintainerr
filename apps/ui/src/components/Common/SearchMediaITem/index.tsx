@@ -14,6 +14,8 @@ interface ISearchMediaITem {
   onChange: (item: SingleValue<IMediaOptions>) => void
   mediatype?: MediaItemType
   libraryId?: string
+  /** Id for the inner text input, so a label can point at it. */
+  inputId?: string
 }
 
 const SearchMediaItem = (props: ISearchMediaITem) => {
@@ -44,6 +46,7 @@ const SearchMediaItem = (props: ISearchMediaITem) => {
       <AsyncSelect
         className="react-select-container"
         classNamePrefix="react-select"
+        inputId={props.inputId}
         isClearable
         getOptionLabel={(option: IMediaOptions) => option.name}
         getOptionValue={(option: IMediaOptions) => option.id}

@@ -64,7 +64,14 @@ jobs:
                       | select(.filename | startswith("apps/ui/src/locales/"))
                       | .filename')"
           for f in $changed; do
+            # `*` in a case pattern matches slashes too, so the prefix alone
+            # would still admit a traversal. Git cannot store a '..' component,
+            # but this job is privileged - spell the rejection out.
             case "$f" in
+              *..*)
+                echo "::error title=Unexpected path::Path traversal in catalog name: $f"
+                exit 1
+                ;;
               apps/ui/src/locales/*.po) ;;
               *)
                 echo "::error title=Unexpected file::Only .po files may live under apps/ui/src/locales: $f"
@@ -73,6 +80,12 @@ jobs:
             esac
             gh api "repos/$REPO/contents/$f?ref=$HEAD_SHA" --jq '.content' \
               | base64 -d > "$f"
+            # The contents API returns an empty body for blobs over 1MB. Without
+            # this the job would review an empty catalog and report no changes.
+            if [ ! -s "$f" ]; then
+              echo "::error title=Empty catalog::$f downloaded empty - too large for the contents API?"
+              exit 1
+            fi
           done
 
       - name: Set up Node.js
