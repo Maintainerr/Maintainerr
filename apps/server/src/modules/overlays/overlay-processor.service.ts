@@ -116,6 +116,22 @@ export class OverlayProcessorService {
     return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
   }
 
+  /**
+   * A countdown only tells the truth when the collection takes the media on
+   * that date. An unmonitor, a quality-profile change or "do nothing" never
+   * does, so a collection set to one of those draws nothing at all - not its
+   * members, and nothing that would have inherited from them (#3511).
+   */
+  private deletesOnSchedule(collection: Collection): boolean {
+    return (
+      collection.deleteAfterDays != null &&
+      (collection.arrAction === ServarrAction.DELETE ||
+        collection.arrAction === ServarrAction.DELETE_SHOW_IF_EMPTY ||
+        collection.arrAction === ServarrAction.UNMONITOR_DELETE_ALL ||
+        collection.arrAction === ServarrAction.UNMONITOR_DELETE_EXISTING)
+    );
+  }
+
   private getMemberTargets(
     collection: Collection & { collectionMedia: CollectionMedia[] },
   ): OverlayTarget[] {
@@ -134,16 +150,6 @@ export class OverlayProcessorService {
   }
 
   // ── Overlay inheritance ───────────────────────────────────────────────────
-
-  /** Only a deletion takes other items with it; an unmonitor leaves them. */
-  private actionDeletesFiles(action: ServarrAction): boolean {
-    return (
-      action === ServarrAction.DELETE ||
-      action === ServarrAction.DELETE_SHOW_IF_EMPTY ||
-      action === ServarrAction.UNMONITOR_DELETE_ALL ||
-      action === ServarrAction.UNMONITOR_DELETE_EXISTING
-    );
-  }
 
   /**
    * Null when the server could not be asked. throwOnError: an empty list reads
@@ -183,22 +189,14 @@ export class OverlayProcessorService {
   }
 
   /**
-   * A leftover special does not keep a parent alive - rules routinely skip
-   * season 0. A season with no index is not a special but Jellyfin/Emby's
-   * permanent "Season Unknown", so it still has to be covered.
+   * Every child covered, or the parent stays in the library and must not be
+   * drawn on. Specials are no exception: a season 0 that keeps its episode
+   * files keeps the show, countdown expired and all (#3511).
    */
   private isFullyCovered(children: MediaItem[], covered: Set<string>): boolean {
-    let matched = 0;
-    for (const child of children) {
-      if (covered.has(child.id)) {
-        matched++;
-        continue;
-      }
-      if (child.type === 'season' && child.index === 0) continue;
-      return false;
-    }
-    // No match at all: no children, or only uncovered specials.
-    return matched > 0;
+    return (
+      children.length > 0 && children.every((child) => covered.has(child.id))
+    );
   }
 
   /**
@@ -213,13 +211,8 @@ export class OverlayProcessorService {
   private async collectInheritedTargets(
     collection: Collection & { collectionMedia: CollectionMedia[] },
   ): Promise<{ targets: OverlayTarget[]; complete: boolean }> {
-    if (
-      collection.type === 'movie' ||
-      collection.deleteAfterDays == null ||
-      !this.actionDeletesFiles(collection.arrAction)
-    ) {
-      return { targets: [], complete: true };
-    }
+    // Callers only reach this for a collection that deletes on a schedule.
+    if (collection.type === 'movie') return { targets: [], complete: true };
 
     const memberDates = new Map<string, Date>();
     for (const member of this.getMemberTargets(collection)) {
@@ -278,19 +271,14 @@ export class OverlayProcessorService {
       for (const descendant of descendants) addTarget(descendant, deleteDate);
     }
 
-    // Up: group the members under the parent that is losing them. A show only
-    // counts when the action deletes the show itself - otherwise Sonarr keeps
-    // the series and can re-fill it (#3511). A season has no such escape: it is
-    // not an entity in Sonarr, it goes with its episodes.
-    const actionDeletesShow =
-      collection.arrAction === ServarrAction.DELETE_SHOW_IF_EMPTY;
+    // Up: group the members under the parent that is losing them.
     const seasonsByShow = new Map<string, CoveredChildren>();
     const episodesBySeason = new Map<string, CoveredChildren>();
     for (const member of presence.found.values()) {
       const deleteDate = memberDates.get(member.id);
       if (!deleteDate || !member.parentId) continue;
 
-      if (member.type === 'season' && actionDeletesShow) {
+      if (member.type === 'season') {
         this.cover(seasonsByShow, member.parentId, member.id, deleteDate);
       }
       if (member.type === 'episode') {
@@ -317,7 +305,7 @@ export class OverlayProcessorService {
       if (!this.isFullyCovered(episodes, covered.ids)) continue;
 
       addTarget({ id: seasonId, type: 'season' } as MediaItem, covered.latest);
-      if (actionDeletesShow && covered.showId) {
+      if (covered.showId) {
         this.cover(seasonsByShow, covered.showId, seasonId, covered.latest);
       }
     }
@@ -371,9 +359,13 @@ export class OverlayProcessorService {
   private async getOverlayCollections(): Promise<
     (Collection & { collectionMedia: CollectionMedia[] })[]
   > {
-    const collections = (await this.collectionRepo.find({
-      where: { overlayEnabled: true, isActive: true },
-    })) as (Collection & { collectionMedia: CollectionMedia[] })[];
+    // Collections that never delete are dropped here rather than skipped later,
+    // so the run also reverts whatever they drew before their action changed.
+    const collections = (
+      (await this.collectionRepo.find({
+        where: { overlayEnabled: true, isActive: true },
+      })) as (Collection & { collectionMedia: CollectionMedia[] })[]
+    ).filter((collection) => this.deletesOnSchedule(collection));
 
     for (const collection of collections) {
       collection.collectionMedia = await this.collectionMediaRepo.find({
@@ -537,9 +529,9 @@ export class OverlayProcessorService {
       );
     }
 
-    if (collection.deleteAfterDays == null) {
+    if (!this.deletesOnSchedule(collection)) {
       this.logger.debug(
-        `Collection "${collection.title}" has no deleteAfterDays set, skipping`,
+        `Collection "${collection.title}" has no scheduled deletion to count down to, skipping`,
       );
       return result;
     }
@@ -719,13 +711,9 @@ export class OverlayProcessorService {
       this.eventEmitter.emit(MaintainerrEvent.OverlayHandler_Started);
       this.logger.log('=== Overlay processor started ===');
 
-      // Get all collections with overlay enabled
+      // An empty list still runs: what an earlier run drew has to come off once
+      // its collection stops drawing, and the revert loop below is what does it.
       const collections = await this.getOverlayCollections();
-
-      if (!collections.length) {
-        this.logger.log('No collections have overlays enabled');
-        return totalResult;
-      }
 
       this.logger.log(
         `Processing ${collections.length} overlay-enabled collection(s)`,
