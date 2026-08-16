@@ -1365,7 +1365,9 @@ describe('OverlayProcessorService', () => {
     expect(eventEmitter.emit).not.toHaveBeenCalled();
   });
   describe('overlay inheritance', () => {
-    const seasonCollection = (arrAction = ServarrAction.DELETE) => {
+    const seasonCollection = (
+      arrAction = ServarrAction.DELETE_SHOW_IF_EMPTY,
+    ) => {
       const collection = createCollection({
         id: 1,
         title: 'Leaving seasons',
@@ -1528,7 +1530,7 @@ describe('OverlayProcessorService', () => {
       );
     });
 
-    it('walks emptied episodes up to their season and its show', async () => {
+    it('walks emptied episodes up to their season, but not to the show', async () => {
       const collection = createCollection({
         id: 1,
         title: 'Leaving episodes',
@@ -1560,7 +1562,6 @@ describe('OverlayProcessorService', () => {
             makeItem('episode-1', 'episode'),
             makeItem('episode-2', 'episode'),
           ],
-          'show-1': [makeItem('season-1', 'season', { index: 1 })],
         }),
       });
       const { service, applySpy } = buildService(mediaServer);
@@ -1571,7 +1572,36 @@ describe('OverlayProcessorService', () => {
         ['episode-1', 'titlecard'],
         ['episode-2', 'titlecard'],
         ['season-1', 'poster'],
-        ['show-1', 'poster'],
+      ]);
+    });
+
+    it('leaves the show alone when the action does not delete it', async () => {
+      const collection = seasonCollection(ServarrAction.DELETE);
+      const mediaServer = makeMediaServer({
+        getMetadataBatch: jest
+          .fn()
+          .mockResolvedValue([
+            makeItem('season-1', 'season', { parentId: 'show-1', index: 1 }),
+            makeItem('season-2', 'season', { parentId: 'show-1', index: 2 }),
+          ]),
+        getChildrenMetadata: childrenOf({
+          'show-1': [
+            makeItem('season-1', 'season', { index: 1 }),
+            makeItem('season-2', 'season', { index: 2 }),
+          ],
+          'season-1': [makeItem('episode-1', 'episode')],
+          'season-2': [makeItem('episode-2', 'episode')],
+        }),
+      });
+      const { service, applySpy } = buildService(mediaServer);
+
+      await service.processCollection(collection as any);
+
+      expect(drawn(applySpy)).toEqual([
+        ['season-1', 'poster'],
+        ['season-2', 'poster'],
+        ['episode-1', 'titlecard'],
+        ['episode-2', 'titlecard'],
       ]);
     });
 

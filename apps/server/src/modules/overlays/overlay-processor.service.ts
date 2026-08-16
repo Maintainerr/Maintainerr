@@ -278,14 +278,19 @@ export class OverlayProcessorService {
       for (const descendant of descendants) addTarget(descendant, deleteDate);
     }
 
-    // Up: group the members under the parent that is losing them.
+    // Up: group the members under the parent that is losing them. A show only
+    // counts when the action deletes the show itself - otherwise Sonarr keeps
+    // the series and can re-fill it (#3511). A season has no such escape: it is
+    // not an entity in Sonarr, it goes with its episodes.
+    const actionDeletesShow =
+      collection.arrAction === ServarrAction.DELETE_SHOW_IF_EMPTY;
     const seasonsByShow = new Map<string, CoveredChildren>();
     const episodesBySeason = new Map<string, CoveredChildren>();
     for (const member of presence.found.values()) {
       const deleteDate = memberDates.get(member.id);
       if (!deleteDate || !member.parentId) continue;
 
-      if (member.type === 'season') {
+      if (member.type === 'season' && actionDeletesShow) {
         this.cover(seasonsByShow, member.parentId, member.id, deleteDate);
       }
       if (member.type === 'episode') {
@@ -312,7 +317,7 @@ export class OverlayProcessorService {
       if (!this.isFullyCovered(episodes, covered.ids)) continue;
 
       addTarget({ id: seasonId, type: 'season' } as MediaItem, covered.latest);
-      if (covered.showId) {
+      if (actionDeletesShow && covered.showId) {
         this.cover(seasonsByShow, covered.showId, seasonId, covered.latest);
       }
     }
