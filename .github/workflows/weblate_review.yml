@@ -45,27 +45,35 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      # The pull request's catalogs are DATA under review, never code. Checking
-      # the head out - even sparsely - is the pattern CodeQL flags in a
-      # privileged workflow, and it is more than this job needs. Fetch the
-      # commit and extract only the catalog blobs at a fixed path instead: HEAD
-      # never moves, no workflow or script from the head lands on disk, and a
-      # non-catalog file appearing under that path fails the job.
-      - name: Extract the pull request's catalogs
+      # The catalogs are DATA under review, never code. Checking the head out
+      # - with actions/checkout or git - is the pattern CodeQL flags in a
+      # privileged workflow, and it is more than this job needs. Download the
+      # blobs through the API instead: no untrusted ref is ever checked out, so
+      # there is nothing on disk for a later step to execute, and a non-catalog
+      # file under that path fails the job.
+      - name: Download the pull request's catalogs
         env:
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           set -euo pipefail
-          git fetch --no-tags --depth 1 origin "refs/pull/$PR_NUMBER/head"
-          unexpected="$(git ls-tree --name-only -r "$HEAD_SHA" -- apps/ui/src/locales \
-            | grep -v '\.po$' || true)"
-          if [ -n "$unexpected" ]; then
-            echo "::error title=Unexpected files::Only .po files may live under apps/ui/src/locales"
-            echo "$unexpected"
-            exit 1
-          fi
-          git checkout "$HEAD_SHA" -- apps/ui/src/locales
+          changed="$(gh api --paginate "repos/$REPO/pulls/$PR_NUMBER/files" \
+            --jq '.[] | select(.status != "removed")
+                      | select(.filename | startswith("apps/ui/src/locales/"))
+                      | .filename')"
+          for f in $changed; do
+            case "$f" in
+              apps/ui/src/locales/*.po) ;;
+              *)
+                echo "::error title=Unexpected file::Only .po files may live under apps/ui/src/locales: $f"
+                exit 1
+                ;;
+            esac
+            gh api "repos/$REPO/contents/$f?ref=$HEAD_SHA" --jq '.content' \
+              | base64 -d > "$f"
+          done
 
       - name: Set up Node.js
         uses: actions/setup-node@v7
