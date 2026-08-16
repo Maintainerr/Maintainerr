@@ -513,10 +513,6 @@ msgstr "API key configured."
 msgid "API key not configured."
 msgstr "API key not configured."
 
-#: src/components/Settings/Metadata/index.tsx
-msgid "API key not set; the built-in shared key is used."
-msgstr "API key not set; the built-in shared key is used."
-
 #: src/components/Settings/Servarr/ExclusionTagSettings.tsx
 msgid "Apply a protective tag to the matching {name} movie whenever Maintainerr excludes an item, so {name} carries a single source of truth for \"do not touch\"."
 msgstr "Apply a protective tag to the matching {name} movie whenever Maintainerr excludes an item, so {name} carries a single source of truth for \"do not touch\"."
@@ -2101,6 +2097,7 @@ msgid "Latest"
 msgstr "Latest"
 
 #: src/components/OverlayEditor/LayerPanel.tsx
+#: src/pages/OverlayTemplateEditorPage.tsx
 msgid "Layers"
 msgstr "Layers"
 
@@ -2161,6 +2158,10 @@ msgstr "Library is required"
 msgid "Load different poster"
 msgstr "Load different poster"
 
+#: src/components/Settings/ExternalServiceSettingsPage.tsx
+msgid "Loading {fieldLabel}..."
+msgstr "Loading {fieldLabel}..."
+
 #: src/components/Settings/Jobs/index.tsx
 msgid "Loading current overlay schedule..."
 msgstr "Loading current overlay schedule..."
@@ -2203,6 +2204,7 @@ msgid "Loading users..."
 msgstr "Loading users..."
 
 #: src/components/Calendar/index.tsx
+#: src/components/Common/SearchMediaITem/index.tsx
 msgid "Loading..."
 msgstr "Loading..."
 
@@ -2402,6 +2404,10 @@ msgstr "Migrate rules to {pendingName}"
 msgid "Minimum is 0"
 msgstr "Minimum is 0"
 
+#: src/utils/PlexAuth.ts
+msgid "Missing Plex client identifier. Refresh the page and try again."
+msgstr "Missing Plex client identifier. Refresh the page and try again."
+
 #: src/components/Calendar/index.tsx
 msgid "Month"
 msgstr "Month"
@@ -2587,6 +2593,10 @@ msgstr "No notification agents configured."
 #: src/components/StorageMetrics/index.tsx
 msgid "No Radarr or Sonarr instances are configured yet. Add one in Settings to see disk usage here."
 msgstr "No Radarr or Sonarr instances are configured yet. Add one in Settings to see disk usage here."
+
+#: src/components/Common/SearchMediaITem/index.tsx
+msgid "No results"
+msgstr "No results"
 
 #: src/components/Calendar/index.tsx
 msgid "No scheduled actions"
@@ -2978,6 +2988,7 @@ msgid "Processing: {ruleGroupName}"
 msgstr "Processing: {ruleGroupName}"
 
 #: src/components/OverlayEditor/PropertiesPanel.tsx
+#: src/pages/OverlayTemplateEditorPage.tsx
 msgid "Properties"
 msgstr "Properties"
 
@@ -4059,6 +4070,10 @@ msgstr "Toggle internal collection system"
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Toggle the rule system"
 msgstr "Toggle the rule system"
+
+#: src/pages/OverlayTemplateEditorPage.tsx
+msgid "Tools"
+msgstr "Tools"
 
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "top"

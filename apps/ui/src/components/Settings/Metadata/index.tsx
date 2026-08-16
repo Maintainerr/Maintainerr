@@ -38,7 +38,9 @@ interface ProviderConfig {
   preference: MetadataProviderPreference
   title: string
   description: ReactNode
-  apiKeyEmptyText: MessageDescriptor
+  // Only reached by a provider without helpText - the render prefers helpText
+  // whenever it exists, so giving a provider both would leave this one dead.
+  apiKeyEmptyText?: MessageDescriptor
   helpText?: MessageDescriptor
   testFailureMessage: MessageDescriptor
   schema: typeof tmdbSettingSchema | typeof tvdbSettingSchema
@@ -157,7 +159,6 @@ const providers: ProviderConfig[] = [
         .
       </Trans>
     ),
-    apiKeyEmptyText: msg`API key not set; the built-in shared key is used.`,
     helpText: msg`Leave empty to use the built-in shared key.`,
     testFailureMessage: msg`Failed to connect to TMDB. Verify the API key.`,
     schema: tmdbSettingSchema,
@@ -511,7 +512,9 @@ function ProviderSection({
               (config.helpText ? t(config.helpText) : undefined) ??
               (isConfigured
                 ? t`API key configured.`
-                : t(config.apiKeyEmptyText))}
+                : config.apiKeyEmptyText
+                  ? t(config.apiKeyEmptyText)
+                  : undefined)}
           </div>
           <div className="mt-2 text-xs leading-5 text-zinc-400">
             {config.description}

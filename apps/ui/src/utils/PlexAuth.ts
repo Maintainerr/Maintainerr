@@ -33,8 +33,10 @@ class PlexOAuth {
 
   public initializeHeaders(clientIdentifier: string): void {
     if (!clientIdentifier) {
+      // Surfaced to the user: the login button's catch renders error.message,
+      // exactly like the rejection messages further down this file.
       throw new Error(
-        'Missing Plex client identifier. Refresh the page and try again.',
+        t`Missing Plex client identifier. Refresh the page and try again.`,
       )
     }
 

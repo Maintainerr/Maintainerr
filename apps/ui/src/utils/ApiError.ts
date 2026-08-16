@@ -128,13 +128,17 @@ export const getApiErrorMessage = (
       : rawMessage
 
     // Nothing keyed off error.code: axios always populates message, so such a
-    // branch would be unreachable. An empty response message falls through to
-    // axios's own, and normalizeConnectionErrorMessage supplies the fallback
-    // when neither says anything useful.
-    return normalizeConnectionErrorMessage(
-      normalizedMessage || error.message,
-      fallback,
-    )
+    // branch would be unreachable.
+    //
+    // Deliberately not `||`: a response that carries an empty message must
+    // keep that empty string, so normalizeConnectionErrorMessage answers with
+    // the caller's own scoped fallback. Falling through to axios's generic
+    // "Request failed with status code 500" would replace a translated,
+    // specific sentence with untranslated boilerplate.
+    const bestMessage =
+      normalizedMessage === undefined ? error.message : normalizedMessage
+
+    return normalizeConnectionErrorMessage(bestMessage, fallback)
   }
 
   if (error instanceof Error) {

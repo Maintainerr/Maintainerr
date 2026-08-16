@@ -513,10 +513,6 @@ msgstr ""
 msgid "API key not configured."
 msgstr ""
 
-#: src/components/Settings/Metadata/index.tsx
-msgid "API key not set; the built-in shared key is used."
-msgstr ""
-
 #: src/components/Settings/Servarr/ExclusionTagSettings.tsx
 msgid "Apply a protective tag to the matching {name} movie whenever Maintainerr excludes an item, so {name} carries a single source of truth for \"do not touch\"."
 msgstr ""
@@ -2101,6 +2097,7 @@ msgid "Latest"
 msgstr ""
 
 #: src/components/OverlayEditor/LayerPanel.tsx
+#: src/pages/OverlayTemplateEditorPage.tsx
 msgid "Layers"
 msgstr ""
 
@@ -2161,6 +2158,10 @@ msgstr ""
 msgid "Load different poster"
 msgstr ""
 
+#: src/components/Settings/ExternalServiceSettingsPage.tsx
+msgid "Loading {fieldLabel}..."
+msgstr ""
+
 #: src/components/Settings/Jobs/index.tsx
 msgid "Loading current overlay schedule..."
 msgstr ""
@@ -2203,6 +2204,7 @@ msgid "Loading users..."
 msgstr ""
 
 #: src/components/Calendar/index.tsx
+#: src/components/Common/SearchMediaITem/index.tsx
 msgid "Loading..."
 msgstr ""
 
@@ -2402,6 +2404,10 @@ msgstr ""
 msgid "Minimum is 0"
 msgstr ""
 
+#: src/utils/PlexAuth.ts
+msgid "Missing Plex client identifier. Refresh the page and try again."
+msgstr ""
+
 #: src/components/Calendar/index.tsx
 msgid "Month"
 msgstr ""
@@ -2586,6 +2592,10 @@ msgstr ""
 
 #: src/components/StorageMetrics/index.tsx
 msgid "No Radarr or Sonarr instances are configured yet. Add one in Settings to see disk usage here."
+msgstr ""
+
+#: src/components/Common/SearchMediaITem/index.tsx
+msgid "No results"
 msgstr ""
 
 #: src/components/Calendar/index.tsx
@@ -2978,6 +2988,7 @@ msgid "Processing: {ruleGroupName}"
 msgstr ""
 
 #: src/components/OverlayEditor/PropertiesPanel.tsx
+#: src/pages/OverlayTemplateEditorPage.tsx
 msgid "Properties"
 msgstr ""
 
@@ -4058,6 +4069,10 @@ msgstr ""
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Toggle the rule system"
+msgstr ""
+
+#: src/pages/OverlayTemplateEditorPage.tsx
+msgid "Tools"
 msgstr ""
 
 #: src/components/OverlayEditor/PropertiesPanel.tsx

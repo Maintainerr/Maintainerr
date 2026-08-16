@@ -1,4 +1,5 @@
-import { t as globalT } from '@lingui/core/macro'
+import type { MessageDescriptor } from '@lingui/core'
+import { msg, t as globalT } from '@lingui/core/macro'
 import { Trans, useLingui } from '@lingui/react/macro'
 import { RefreshIcon } from '@heroicons/react/solid'
 import type {
@@ -47,6 +48,18 @@ import { getApiErrorMessage } from '../utils/ApiError'
 
 const defaults = (mode: OverlayTemplateMode) =>
   mode === 'poster' ? POSTER_CANVAS : TITLECARD_CANVAS
+
+// Labels for the mobile panel switcher. The tab ids double as state values and
+// React keys, so only the label is translated - and a literal descriptor map is
+// the shape Lingui can extract.
+const mobileTabLabels: Record<
+  'tools' | 'layers' | 'properties',
+  MessageDescriptor
+> = {
+  tools: msg`Tools`,
+  layers: msg`Layers`,
+  properties: msg`Properties`,
+}
 
 // Outer component remounts the inner editor whenever `id` changes. This keeps
 // useState initial values fresh on transitions (e.g. preset → /new) so we
@@ -589,6 +602,8 @@ const OverlayTemplateEditor = ({ routeId }: { routeId: string }) => {
                 <div className="flex">
                   {(['tools', 'layers', 'properties'] as const).map((tab) => (
                     <button
+                      // The tab id stays the key and the state value; only the
+                      // label below is translated.
                       key={tab}
                       type="button"
                       className={`flex-1 px-3 py-2 text-xs font-medium tracking-wider uppercase transition ${
@@ -598,7 +613,7 @@ const OverlayTemplateEditor = ({ routeId }: { routeId: string }) => {
                       }`}
                       onClick={() => setMobileTab(tab)}
                     >
-                      {tab}
+                      {t(mobileTabLabels[tab])}
                     </button>
                   ))}
                 </div>

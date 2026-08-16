@@ -53,6 +53,9 @@ const SearchMediaItem = (props: ISearchMediaITem) => {
         defaultValue={[]}
         defaultOptions={undefined}
         loadOptions={loadData}
+        // react-select ships its own English copy for these two states.
+        noOptionsMessage={() => t`No results`}
+        loadingMessage={() => t`Loading...`}
         placeholder={`${t`Start typing...`} `}
         onChange={(selectedItem) => {
           props.onChange(selectedItem)

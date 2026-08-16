@@ -381,7 +381,11 @@ const MediaActionModal = ({
           other:
             'Remove exclusion applies to # items across every collection. For shows and seasons this covers everything they contain.',
         })
-      default:
+      // collection-add never reaches the all-collections confirmation, so
+      // this arm covers collection-remove. Spelled out rather than left to
+      // `default` so a new action has to be given its own sentence.
+      case 'collection-remove':
+      case 'collection-add':
         return plural(itemCount, {
           one: 'Remove from collection applies to # item across every collection. For shows and seasons this covers everything they contain.',
           other:
