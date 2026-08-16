@@ -45,22 +45,27 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      # The pull request's catalogs are DATA under review, never code. Fetch
-      # only apps/ui/src/locales into a scratch dir, then overlay just the .po
-      # files - so nothing executable from the head reaches the runner.
-      - name: Fetch the pull request's catalogs
-        uses: actions/checkout@v7
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-          path: pr-head
-          sparse-checkout: apps/ui/src/locales
-          sparse-checkout-cone-mode: false
-          persist-credentials: false
-
-      - name: Overlay the pull request's catalogs
+      # The pull request's catalogs are DATA under review, never code. Checking
+      # the head out - even sparsely - is the pattern CodeQL flags in a
+      # privileged workflow, and it is more than this job needs. Fetch the
+      # commit and extract only the catalog blobs at a fixed path instead: HEAD
+      # never moves, no workflow or script from the head lands on disk, and a
+      # non-catalog file appearing under that path fails the job.
+      - name: Extract the pull request's catalogs
+        env:
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           set -euo pipefail
-          cp pr-head/apps/ui/src/locales/*.po apps/ui/src/locales/
+          git fetch --no-tags --depth 1 origin "refs/pull/$PR_NUMBER/head"
+          unexpected="$(git ls-tree --name-only -r "$HEAD_SHA" -- apps/ui/src/locales \
+            | grep -v '\.po$' || true)"
+          if [ -n "$unexpected" ]; then
+            echo "::error title=Unexpected files::Only .po files may live under apps/ui/src/locales"
+            echo "$unexpected"
+            exit 1
+          fi
+          git checkout "$HEAD_SHA" -- apps/ui/src/locales
 
       - name: Set up Node.js
         uses: actions/setup-node@v7
