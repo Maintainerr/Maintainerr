@@ -254,6 +254,20 @@ for (const entry of sourceEntries) {
         `    contains ${forbidden}`,
     );
   }
+  // The source catalog is not exempt from review just because it is the
+  // reference. Lingui compiles its msgstr like any other locale, so an edited
+  // msgstr here silently rewrites the English a user reads - and every other
+  // check in this file, plus i18n:check (which compares msgid sets only),
+  // would pass it. English changes belong in the components the extractor
+  // reads, never in the catalog.
+  if (entry.msgstr !== '' && entry.msgstr !== entry.msgid) {
+    errors.push(
+      `${sourceLocation}:${entry.line}\n` +
+        `    source: ${entry.msgid}\n` +
+        `    msgstr: ${entry.msgstr}\n` +
+        `    ${SOURCE_LOCALE}.po msgstr must repeat its msgid verbatim - edit the source string in the component and re-extract`,
+    );
+  }
 }
 
 for (const file of files) {

@@ -1,10 +1,13 @@
 import { fireEvent, render, screen } from '../../test-utils/render'
 import { describe, expect, it, vi } from 'vitest'
+import { logClientError } from '../../utils/ClientLogger'
 import ConfirmActionButton from './ConfirmActionButton'
 
 vi.mock('../../utils/ClientLogger', () => ({
   logClientError: vi.fn(),
 }))
+
+const logClientErrorMock = vi.mocked(logClientError)
 
 const renderButton = (
   onConfirm: () => Promise<void>,
@@ -17,7 +20,8 @@ const renderButton = (
       modalTitle="Are you sure?"
       confirmLabel="Confirm"
       pendingLabel="Working..."
-      errorMessage="The action failed."
+      errorMessage="Den handlingen mislyktes."
+      errorLogSummary="The action failed"
       errorContext="spec"
       onConfirm={onConfirm}
       {...props}
@@ -53,6 +57,25 @@ describe('ConfirmActionButton', () => {
 
     expect(await screen.findByText('nope')).toBeTruthy()
     expect(screen.getByText('Are you sure?')).toBeTruthy()
+  })
+
+  it('logs the English summary, never the translated message shown on screen', async () => {
+    logClientErrorMock.mockClear()
+    const onConfirm = vi.fn().mockRejectedValue(new Error('nope'))
+
+    renderButton(onConfirm)
+    openDialog()
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm' }))
+
+    await vi.waitFor(() => {
+      expect(logClientErrorMock).toHaveBeenCalledTimes(1)
+    })
+    // A server log line is read by whoever is debugging the install, so it
+    // must not follow the reader's language.
+    expect(logClientErrorMock.mock.calls[0][0]).toBe('The action failed')
+    expect(logClientErrorMock.mock.calls[0][0]).not.toBe(
+      'Den handlingen mislyktes.',
+    )
   })
 
   it('drops a previous failure when the dialog is cancelled and reopened', async () => {

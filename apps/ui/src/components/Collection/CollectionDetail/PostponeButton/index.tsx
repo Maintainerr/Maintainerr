@@ -63,6 +63,7 @@ const PostponeButton = ({
       pendingLabel={t`Postponing...`}
       confirmDisabled={!collection.id || daysInvalid}
       errorMessage={t`Failed to postpone the deletion for this item.`}
+      errorLogSummary="Failed to postpone the deletion for this item"
       errorContext="PostponeButton.handlePostpone"
       onConfirm={handlePostpone}
     >

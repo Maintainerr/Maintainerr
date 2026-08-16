@@ -9,6 +9,15 @@ const withoutFailedPrefix = (reason: string) =>
   reason.startsWith('Failed - ') ? reason.slice('Failed - '.length) : reason
 
 /**
+ * Every action gets its own sentence, so a new one must be given wording
+ * rather than inheriting whichever branch happened to sit under `default`.
+ * The `never` makes that a compile error; the throw can only be reached if
+ * something bypasses the type.
+ */
+const unhandledAction = (action: never) =>
+  `Unhandled bulk action: ${String(action)}`
+
+/**
  * Each branch below spells out a whole sentence instead of interpolating a
  * verb. English reuses "added" for both "5 items added." and "could not be
  * added", but most languages inflect the two slots differently, so a shared
@@ -44,11 +53,13 @@ const successMessage = (
             one: '# item excluded.',
             other: '# items excluded.',
           })
-    default:
+    case 'exclusion-remove':
       return plural(count, {
         one: '# item un-excluded.',
         other: '# items un-excluded.',
       })
+    default:
+      throw new Error(unhandledAction(action))
   }
 }
 
@@ -84,11 +95,13 @@ const failureMessage = (
             one: `# item could not be excluded${why}; the failed items stay selected.`,
             other: `# items could not be excluded${why}; the failed items stay selected.`,
           })
-    default:
+    case 'exclusion-remove':
       return plural(count, {
         one: `# item could not be un-excluded${why}; the failed items stay selected.`,
         other: `# items could not be un-excluded${why}; the failed items stay selected.`,
       })
+    default:
+      throw new Error(unhandledAction(action))
   }
 }
 

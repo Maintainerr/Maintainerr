@@ -304,9 +304,12 @@ const TestMediaItem = (props: ITestMediaItem) => {
             ) : undefined}
           </div>
           <div className="mb-2 flex justify-between">
-            <label htmlFor="editor-field" className="text-label">
+            {/* Not a <label htmlFor>: the output is a Monaco editor, not a
+                labelable control, so the association is made with
+                aria-labelledby on the editor container instead. */}
+            <span id="test-media-output-label" className="text-label">
               <Trans>Output</Trans>
-            </label>
+            </span>
             {comparisonResult && (
               <button
                 onClick={copyToClipboard}
@@ -317,7 +320,11 @@ const TestMediaItem = (props: ITestMediaItem) => {
               </button>
             )}
           </div>
-          <div className="editor-container h-full">
+          <div
+            className="editor-container h-full"
+            role="group"
+            aria-labelledby="test-media-output-label"
+          >
             <LazyMonacoEditor
               options={{ readOnly: true, minimap: { enabled: false } }}
               defaultLanguage="yaml"

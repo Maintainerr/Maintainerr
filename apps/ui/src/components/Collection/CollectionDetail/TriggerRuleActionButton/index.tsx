@@ -91,6 +91,7 @@ const TriggerRuleActionButton = ({
       pendingLabel={t`Triggering...`}
       confirmDisabled={!collection.id}
       errorMessage={t`Failed to trigger the collection action for this item.`}
+      errorLogSummary="Failed to trigger the collection action for this item"
       errorContext="TriggerRuleActionButton.handleTriggerAction"
       onConfirm={handleTriggerAction}
     >

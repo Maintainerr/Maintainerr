@@ -284,10 +284,17 @@ const LogMetaModal = (props: LogMetaModalProps) => {
               </Trans>
             </Alert>
           </div>
-          <label htmlFor={`editor-field`} className="text-label mb-3">
+          {/* Not a <label htmlFor>: the output is a Monaco editor, not a
+              labelable control, so the association is made with
+              aria-labelledby on the editor container instead. */}
+          <span id="collection-info-output-label" className="text-label mb-3">
             <Trans>Output</Trans>
-          </label>
-          <div className="editor-container h-full">
+          </span>
+          <div
+            className="editor-container h-full"
+            role="group"
+            aria-labelledby="collection-info-output-label"
+          >
             <LazyMonacoEditor
               options={{ readOnly: true, minimap: { enabled: false } }}
               defaultLanguage="yaml"

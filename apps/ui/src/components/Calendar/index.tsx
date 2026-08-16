@@ -241,6 +241,19 @@ const Calendar = () => {
     return Array.from({ length: 42 }, (_, i) => addDays(gridStart, i))
   }, [cursorDate, effectiveViewMode, isMobile])
 
+  // Built once per locale rather than per cell: the month grid renders 42 of
+  // them, and each call was constructing its own Intl formatter.
+  const weekdays = useMemo(() => weekdayNames(locale), [locale])
+  const cellDateFormat = useMemo(
+    () =>
+      new Intl.DateTimeFormat(locale, {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      }),
+    [locale],
+  )
+
   const onPrev = () => {
     setCursorDate((d) =>
       !isMobile && effectiveViewMode === 'month'
@@ -321,9 +334,12 @@ const Calendar = () => {
 
       <div className="mt-6 overflow-hidden rounded-xl border border-zinc-700/60 bg-zinc-700/40 shadow-lg backdrop-blur-sm">
         <div className="hidden grid-cols-7 border-b border-zinc-700/60 bg-zinc-700/70 sm:grid">
-          {weekdayNames(locale).map((weekday) => (
+          {weekdays.map((weekday, dayIndex) => (
             <div
-              key={weekday}
+              // Keyed by weekday index, not the label: the label is locale
+              // text, so keying on it remounts all seven cells on a language
+              // switch, and two abbreviations that collide would duplicate.
+              key={dayIndex}
               className="px-3 py-3 text-left text-xs font-semibold tracking-wide text-zinc-200 uppercase"
             >
               {weekday}
@@ -340,7 +356,16 @@ const Calendar = () => {
           {gridDates.map((date) => {
             const dayKey = getDayKey(date)
             const daySchedule = getScheduleForDay(date)
-            const items = daySchedule?.items ?? []
+            // Ordered by what the reader actually sees. The query can only
+            // order by the stable key - resolving labels there would freeze
+            // them in whichever language was active when it ran - so the
+            // alphabetical pass belongs here, where a locale switch re-renders.
+            const items = [...(daySchedule?.items ?? [])].sort((left, right) =>
+              calendarEntryTitle(left).localeCompare(
+                calendarEntryTitle(right),
+                locale,
+              ),
+            )
             const totalScheduledCount = daySchedule?.totalScheduledCount ?? 0
             const defaultVisibleCount = isMobile ? 5 : 2
             const isExpanded = expandedDayKey === dayKey
@@ -350,12 +375,8 @@ const Calendar = () => {
             const hiddenCount = Math.max(items.length - defaultVisibleCount, 0)
             const outside = isOutsideMonth(date)
             const isToday = isSameDay(date, today)
-            const weekdayLabel = weekdayNames(locale)[date.getDay()]
-            const dateLabel = date.toLocaleString(locale, {
-              month: 'short',
-              day: 'numeric',
-              year: 'numeric',
-            })
+            const weekdayLabel = weekdays[date.getDay()]
+            const dateLabel = cellDateFormat.format(date)
 
             return (
               <div

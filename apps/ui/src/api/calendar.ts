@@ -1,3 +1,4 @@
+import { i18n } from '@lingui/core'
 import { plural, t } from '@lingui/core/macro'
 import { MediaItemType, ServarrAction } from '@maintainerr/contracts'
 import { useQuery, type UseQueryOptions } from '@tanstack/react-query'
@@ -269,17 +270,23 @@ const buildCalendarDays = (collections: ICollection[] | undefined) => {
     })
   })
 
-  return [...itemsByKey.entries()]
-    .sort(([leftDayKey], [rightDayKey]) =>
-      leftDayKey.localeCompare(rightDayKey),
-    )
-    .map(([dayKey, items]) => ({
-      dayKey,
-      totalScheduledCount: items.reduce((sum, item) => sum + item.count, 0),
-      // Ordered by the stable key, so the chips keep one order per day in
-      // every language.
-      items: items.sort((left, right) => left.id.localeCompare(right.id)),
-    }))
+  return (
+    [...itemsByKey.entries()]
+      // Day keys are machine-formatted YYYY-MM-DD, so they sort as plain
+      // strings; locale collation would be both slower and locale-dependent for
+      // something no one reads.
+      .sort(([leftDayKey], [rightDayKey]) =>
+        leftDayKey < rightDayKey ? -1 : leftDayKey > rightDayKey ? 1 : 0,
+      )
+      .map(([dayKey, items]) => ({
+        dayKey,
+        totalScheduledCount: items.reduce((sum, item) => sum + item.count, 0),
+        // Ordered by the stable key only to make this query deterministic;
+        // the visible order is applied at render time, against the translated
+        // labels, so it follows a language switch.
+        items: items.sort((left, right) => (left.id < right.id ? -1 : 1)),
+      }))
+  )
 }
 
 const getMediaTitle = (media: ICollectionMedia) => {
@@ -491,9 +498,15 @@ export const useCalendarEntryDetails = (
         ),
       )
 
-      return collectionResults
-        .flat()
-        .sort((left, right) => left.mediaTitle.localeCompare(right.mediaTitle))
+      return (
+        collectionResults
+          .flat()
+          // Media titles are shown to the reader, so collate them the way their
+          // language orders letters rather than with the runtime default.
+          .sort((left, right) =>
+            left.mediaTitle.localeCompare(right.mediaTitle, i18n.locale),
+          )
+      )
     },
     enabled: queryEnabled && (options?.enabled ?? true),
     staleTime: 0,
