@@ -1,7 +1,6 @@
 import { MaintainerrEvent } from '@maintainerr/contracts'
 import { render } from '../test-utils/render'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { EventsProvider, useEvent } from './events-context'
 
 const logClientErrorMock = vi.fn((..._args: [string, unknown, string]) =>
   Promise.resolve(undefined),
@@ -68,17 +67,18 @@ vi.mock('../utils/ClientLogger', () => ({
     logClientErrorMock(message, error, context),
 }))
 
-const EventConsumer = () => {
-  useEvent(MaintainerrEvent.RuleHandler_Started)
-
-  return <div />
-}
-
 describe('EventsProvider', () => {
-  beforeEach(() => {
+  // The stream is a module-scope singleton, so each test needs a fresh module
+  // registry to get a fresh connection rather than the previous test's.
+  let EventsProvider: typeof import('./events-context').EventsProvider
+  let useEvent: typeof import('./events-context').useEvent
+
+  beforeEach(async () => {
     logClientErrorMock.mockClear()
     consoleWarnMock.mockClear()
     latestEventSource = undefined
+    vi.resetModules()
+    ;({ EventsProvider, useEvent } = await import('./events-context'))
   })
 
   afterEach(() => {
@@ -86,6 +86,12 @@ describe('EventsProvider', () => {
   })
 
   it('warns on reconnect churn without forwarding it to server logs, while still reporting payload parsing failures', () => {
+    const EventConsumer = () => {
+      useEvent(MaintainerrEvent.RuleHandler_Started)
+
+      return <div />
+    }
+
     render(
       <EventsProvider>
         <EventConsumer />

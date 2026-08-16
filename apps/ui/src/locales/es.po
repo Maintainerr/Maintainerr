@@ -358,10 +358,6 @@ msgstr ""
 msgid "Active"
 msgstr ""
 
-#: src/components/Common/PaginatedList/index.tsx
-msgid "Add"
-msgstr ""
-
 #: src/components/Common/MediaActionModal.tsx
 msgid "Add / Remove Media"
 msgstr ""
@@ -1321,7 +1317,6 @@ msgstr ""
 msgid "e.g., {sortPrefixExample} My Collection"
 msgstr ""
 
-#: src/components/Common/PaginatedList/index.tsx
 #: src/components/Rules/RuleGroup/index.tsx
 #: src/components/Settings/Notifications/index.tsx
 #: src/components/Settings/Radarr/index.tsx
@@ -1549,10 +1544,6 @@ msgstr ""
 
 #: src/components/StorageMetrics/index.tsx
 msgid "Failed to compute library sizes. Check that Maintainerr can reach your media server."
-msgstr ""
-
-#: src/components/Settings/Servarr/ServarrSettingsModal.tsx
-msgid "Failed to connect to {serviceName}"
 msgstr ""
 
 #: src/components/Settings/Servarr/ServarrSettingsModal.tsx
@@ -2170,10 +2161,6 @@ msgstr ""
 msgid "Load different poster"
 msgstr ""
 
-#: src/components/Settings/ExternalServiceSettingsPage.tsx
-msgid "Loading {fieldLabel}..."
-msgstr ""
-
 #: src/components/Settings/Jobs/index.tsx
 msgid "Loading current overlay schedule..."
 msgstr ""
@@ -2503,7 +2490,6 @@ msgid "New Template - Overlay Editor - Maintainerr"
 msgstr ""
 
 #: src/components/Calendar/index.tsx
-#: src/components/Common/PaginatedList/index.tsx
 #: src/components/Common/Pagination/index.tsx
 #: src/components/Settings/Logs/index.tsx
 #: src/pages/OverlayTemplateEditorPage.tsx
@@ -2811,10 +2797,6 @@ msgstr ""
 msgid "Padding"
 msgstr ""
 
-#: src/components/Common/PaginatedList/index.tsx
-msgid "Page {currentPage} of {totalPages}"
-msgstr ""
-
 #: src/components/Login/Emby/EmbyLoginButton.tsx
 #: src/components/Settings/DownloadClient/index.tsx
 msgid "Password"
@@ -2842,10 +2824,6 @@ msgstr ""
 
 #: src/components/Settings/Plex/index.tsx
 msgid "Please enter a valid port."
-msgstr ""
-
-#: src/components/Settings/Servarr/ServarrSettingsModal.tsx
-msgid "Please fill in all required {serviceName} fields or clear all fields to remove this server."
 msgstr ""
 
 #: src/components/Settings/Jobs/index.tsx
@@ -2975,7 +2953,6 @@ msgstr ""
 msgid "Prevents {listExclusionArrName} import lists re-adding removed show"
 msgstr ""
 
-#: src/components/Common/PaginatedList/index.tsx
 #: src/components/Settings/Logs/index.tsx
 msgid "Previous"
 msgstr ""
@@ -3138,10 +3115,6 @@ msgstr ""
 
 #: src/api/bulkMediaAction.ts
 msgid "request error"
-msgstr ""
-
-#: src/utils/ApiError.ts
-msgid "Request failed ({code})"
 msgstr ""
 
 #: src/components/Rules/RuleGroup/index.tsx

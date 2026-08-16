@@ -129,9 +129,6 @@ const ExternalServiceSettingsPage = ({
   const [loadedOptionsByFieldName, setLoadedOptionsByFieldName] = useState<
     Record<string, ExternalServiceSelectOption[]>
   >({})
-  const [loadingOptionsByFieldName, setLoadingOptionsByFieldName] = useState<
-    Record<string, boolean>
-  >({})
   const loadingOptionFieldNamesRef = useRef(new Set<string>())
   const selectOptionsVersionRef = useRef(0)
   const { feedback, showUpdated, showUpdateError, showError, clearError } =
@@ -191,10 +188,6 @@ const ExternalServiceSettingsPage = ({
 
     const optionsVersion = selectOptionsVersionRef.current
     loadingOptionFieldNamesRef.current.add(fieldConfig.name)
-    setLoadingOptionsByFieldName((current) => ({
-      ...current,
-      [fieldConfig.name]: true,
-    }))
 
     try {
       const options = await fieldConfig.loadOptions(values)
@@ -216,10 +209,6 @@ const ExternalServiceSettingsPage = ({
       }
     } finally {
       loadingOptionFieldNamesRef.current.delete(fieldConfig.name)
-      setLoadingOptionsByFieldName((current) => ({
-        ...current,
-        [fieldConfig.name]: false,
-      }))
     }
   }
 
@@ -445,12 +434,14 @@ const ExternalServiceSettingsPage = ({
                             : (fieldConfig.helpText ?? undefined)
                         }
                         required={fieldConfig.required}
-                        disabled={loadingOptionsByFieldName[fieldConfig.name]}
                       >
+                        {/* No loading state to show here: loadFieldOptions
+                            returns early while options are loaded, and the only
+                            path that refetches clears them first - which drops
+                            this field out of the tree entirely (see the guard
+                            above). Mounted therefore always means loaded. */}
                         <option value="" disabled>
-                          {loadingOptionsByFieldName[fieldConfig.name]
-                            ? t`Loading ${{ fieldLabel: fieldConfig.label.toLowerCase() }}...`
-                            : t`Select ${{ fieldLabel: fieldConfig.label.toLowerCase() }}`}
+                          {t`Select ${{ fieldLabel: fieldConfig.label.toLowerCase() }}`}
                         </option>
                         {selectOptions.map((option) => (
                           <option key={option.value} value={option.value}>

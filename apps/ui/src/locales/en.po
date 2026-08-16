@@ -358,10 +358,6 @@ msgstr "Action"
 msgid "Active"
 msgstr "Active"
 
-#: src/components/Common/PaginatedList/index.tsx
-msgid "Add"
-msgstr "Add"
-
 #: src/components/Common/MediaActionModal.tsx
 msgid "Add / Remove Media"
 msgstr "Add / Remove Media"
@@ -1321,7 +1317,6 @@ msgstr "Duration of days media remains in the collection before deletion/unmonit
 msgid "e.g., {sortPrefixExample} My Collection"
 msgstr "e.g., {sortPrefixExample} My Collection"
 
-#: src/components/Common/PaginatedList/index.tsx
 #: src/components/Rules/RuleGroup/index.tsx
 #: src/components/Settings/Notifications/index.tsx
 #: src/components/Settings/Radarr/index.tsx
@@ -1550,10 +1545,6 @@ msgstr "Extended Description *"
 #: src/components/StorageMetrics/index.tsx
 msgid "Failed to compute library sizes. Check that Maintainerr can reach your media server."
 msgstr "Failed to compute library sizes. Check that Maintainerr can reach your media server."
-
-#: src/components/Settings/Servarr/ServarrSettingsModal.tsx
-msgid "Failed to connect to {serviceName}"
-msgstr "Failed to connect to {serviceName}"
 
 #: src/components/Settings/Servarr/ServarrSettingsModal.tsx
 msgid "Failed to connect to {serviceName}. Verify URL and API key."
@@ -2170,10 +2161,6 @@ msgstr "Library is required"
 msgid "Load different poster"
 msgstr "Load different poster"
 
-#: src/components/Settings/ExternalServiceSettingsPage.tsx
-msgid "Loading {fieldLabel}..."
-msgstr "Loading {fieldLabel}..."
-
 #: src/components/Settings/Jobs/index.tsx
 msgid "Loading current overlay schedule..."
 msgstr "Loading current overlay schedule..."
@@ -2503,7 +2490,6 @@ msgid "New Template - Overlay Editor - Maintainerr"
 msgstr "New Template - Overlay Editor - Maintainerr"
 
 #: src/components/Calendar/index.tsx
-#: src/components/Common/PaginatedList/index.tsx
 #: src/components/Common/Pagination/index.tsx
 #: src/components/Settings/Logs/index.tsx
 #: src/pages/OverlayTemplateEditorPage.tsx
@@ -2811,10 +2797,6 @@ msgstr "Overview - Maintainerr"
 msgid "Padding"
 msgstr "Padding"
 
-#: src/components/Common/PaginatedList/index.tsx
-msgid "Page {currentPage} of {totalPages}"
-msgstr "Page {currentPage} of {totalPages}"
-
 #: src/components/Login/Emby/EmbyLoginButton.tsx
 #: src/components/Settings/DownloadClient/index.tsx
 msgid "Password"
@@ -2843,10 +2825,6 @@ msgstr "Please enter a hostname or IP address."
 #: src/components/Settings/Plex/index.tsx
 msgid "Please enter a valid port."
 msgstr "Please enter a valid port."
-
-#: src/components/Settings/Servarr/ServarrSettingsModal.tsx
-msgid "Please fill in all required {serviceName} fields or clear all fields to remove this server."
-msgstr "Please fill in all required {serviceName} fields or clear all fields to remove this server."
 
 #: src/components/Settings/Jobs/index.tsx
 msgid "Please make sure all values are valid"
@@ -2975,7 +2953,6 @@ msgstr "Prevents {listExclusionArrName} import lists re-adding removed movie"
 msgid "Prevents {listExclusionArrName} import lists re-adding removed show"
 msgstr "Prevents {listExclusionArrName} import lists re-adding removed show"
 
-#: src/components/Common/PaginatedList/index.tsx
 #: src/components/Settings/Logs/index.tsx
 msgid "Previous"
 msgstr "Previous"
@@ -3139,10 +3116,6 @@ msgstr "Replace poster"
 #: src/api/bulkMediaAction.ts
 msgid "request error"
 msgstr "request error"
-
-#: src/utils/ApiError.ts
-msgid "Request failed ({code})"
-msgstr "Request failed ({code})"
 
 #: src/components/Rules/RuleGroup/index.tsx
 msgid "Request stop execution"

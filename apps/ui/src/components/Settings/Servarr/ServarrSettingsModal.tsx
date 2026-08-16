@@ -263,19 +263,11 @@ const ServarrSettingsModal = <TSetting extends ServarrSettingShape>({
       return
     }
 
-    const { payload, port } = buildServarrPayload(values, settings)
-
-    if (
-      values.hostname === '' ||
-      port === '' ||
-      values.apiKey === '' ||
-      values.serverName === ''
-    ) {
-      setErrorMessage(
-        t`Please fill in all required ${{ serviceName }} fields or clear all fields to remove this server.`,
-      )
-      return
-    }
+    // No completeness check here on purpose: canSave already requires hostname,
+    // apiKey and serverName, and resolveServarrPort only yields an empty port
+    // when hostname is empty - which canSave rejects. The all-empty case is
+    // taken by the removal branch above before reaching this point.
+    const { payload } = buildServarrPayload(values, settings)
 
     const endpoint = settings?.id
       ? `${settingsPath}/${settings.id}`
@@ -387,8 +379,10 @@ const ServarrSettingsModal = <TSetting extends ServarrSettingShape>({
                 title={
                   testResult.status
                     ? t`Successfully connected to ${{ serviceName }} (${{ version: testResult.version }})`
-                    : testResult.version ||
-                      t`Failed to connect to ${{ serviceName }}`
+                    : // Always set on failure: both test paths run the message
+                      // through normalizeConnectionErrorMessage, which falls
+                      // back to its own sentence rather than returning empty.
+                      testResult.version
                 }
               />
             ) : null}
