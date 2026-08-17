@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { LeavingSoonMethod } from '@maintainerr/contracts'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import JellyfinSettings from './index'
 
@@ -80,5 +81,34 @@ describe('JellyfinSettings', () => {
 
     expect(showUpdated).not.toHaveBeenCalled()
     expect(showUpdateError).not.toHaveBeenCalled()
+  })
+
+  it('renders the leaving-soon method selector with both options', async () => {
+    render(<JellyfinSettings />)
+
+    const select = screen.getByLabelText(
+      'Leaving Soon collections',
+    ) as HTMLSelectElement
+    expect(
+      Array.from(select.querySelectorAll('option')).map((o) => o.textContent),
+    ).toEqual(['BoxSet collection', 'Leaving Soon plugin library'])
+  })
+
+  it('submits the selected leaving-soon method', async () => {
+    saveSettingsMock.mockResolvedValue(undefined)
+    render(<JellyfinSettings />)
+
+    fireEvent.change(screen.getByLabelText('Leaving Soon collections'), {
+      target: { value: LeavingSoonMethod.PLUGIN },
+    })
+    fireEvent.click(await screen.findByRole('button', { name: 'Save Changes' }))
+
+    await waitFor(() => {
+      expect(saveSettingsMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          leaving_soon_method: LeavingSoonMethod.PLUGIN,
+        }),
+      )
+    })
   })
 })

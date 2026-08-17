@@ -1,5 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import {
+  LeavingSoonMethod,
   type JellyfinSetting,
   jellyfinSettingSchema,
   maskSecret,
@@ -68,6 +69,8 @@ const JellyfinSettings = () => {
         jellyfin_url: jellyfinData.jellyfin_url ?? '',
         jellyfin_api_key: jellyfinData.jellyfin_api_key ?? '',
         jellyfin_user_id: jellyfinData.jellyfin_user_id ?? '',
+        leaving_soon_method:
+          jellyfinData.leaving_soon_method ?? LeavingSoonMethod.COLLECTION,
       }
     : undefined
 
@@ -93,6 +96,7 @@ const JellyfinSettings = () => {
       jellyfin_url: '',
       jellyfin_api_key: '',
       jellyfin_user_id: '',
+      leaving_soon_method: LeavingSoonMethod.COLLECTION,
     },
     values: formValues,
   })
@@ -181,6 +185,7 @@ const JellyfinSettings = () => {
           jellyfin_url: '',
           jellyfin_api_key: '',
           jellyfin_user_id: '',
+          leaving_soon_method: LeavingSoonMethod.COLLECTION,
         })
         setTestResult(null)
         setTestedSettings(null)
@@ -306,6 +311,31 @@ const JellyfinSettings = () => {
                       : savedUserId
                         ? 'Saved admin user. Test connection to change.'
                         : 'Test connection to load available admin users.'}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-6 max-w-6xl sm:mt-5 sm:grid sm:grid-cols-3 sm:items-start sm:gap-4">
+              <label htmlFor="leaving_soon_method" className="sm:mt-2">
+                Leaving Soon collections
+              </label>
+              <div className="px-3 py-2 sm:col-span-2">
+                <div className="max-w-xl">
+                  <Select {...register('leaving_soon_method')}>
+                    <option value={LeavingSoonMethod.COLLECTION}>
+                      BoxSet collection
+                    </option>
+                    <option value={LeavingSoonMethod.PLUGIN}>
+                      Leaving Soon plugin library
+                    </option>
+                  </Select>
+                  <p className="mt-1 text-sm text-zinc-400">
+                    How scheduled-deletion collections are shown in Jellyfin.
+                    BoxSet collections are native Jellyfin collections; the
+                    Leaving Soon plugin library is a symlink-backed library
+                    maintained by jellyfin-plugin-leaving-soon (no BoxSet is
+                    created, and existing BoxSets are removed).
                   </p>
                 </div>
               </div>
