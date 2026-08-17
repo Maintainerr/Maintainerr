@@ -1496,9 +1496,7 @@ describe('OverlayProcessorService', () => {
             makeItem('season-3', 'season', { parentId: 'show-2', index: 1 }),
           ]),
         getChildrenMetadata: childrenOf({
-          // Specials are left outside and must not disqualify show-1.
           'show-1': [
-            makeItem('season-0', 'season', { index: 0 }),
             makeItem('season-1', 'season', { index: 1 }),
             makeItem('season-2', 'season', { index: 2 }),
           ],
@@ -1526,6 +1524,33 @@ describe('OverlayProcessorService', () => {
       expect(dateFor(applySpy, 'show-1')).toEqual(
         dateFor(applySpy, 'season-2'),
       );
+    });
+
+    it('leaves the show alone when a Specials season stays behind', async () => {
+      const collection = seasonCollection();
+      const mediaServer = makeMediaServer({
+        getMetadataBatch: jest
+          .fn()
+          .mockResolvedValue([
+            makeItem('season-1', 'season', { parentId: 'show-1', index: 1 }),
+            makeItem('season-2', 'season', { parentId: 'show-1', index: 2 }),
+          ]),
+        getChildrenMetadata: childrenOf({
+          'show-1': [
+            makeItem('season-0', 'season', { index: 0 }),
+            makeItem('season-1', 'season', { index: 1 }),
+            makeItem('season-2', 'season', { index: 2 }),
+          ],
+        }),
+      });
+      const { service, applySpy } = buildService(mediaServer);
+
+      await service.processCollection(collection as any);
+
+      expect(drawn(applySpy)).toEqual([
+        ['season-1', 'poster'],
+        ['season-2', 'poster'],
+      ]);
     });
 
     it('walks emptied episodes up to their season and its show', async () => {
@@ -1575,18 +1600,21 @@ describe('OverlayProcessorService', () => {
       ]);
     });
 
-    it('inherits nothing for an action that keeps the files, and reverts what it drew before', async () => {
+    it('draws nothing for an action that keeps the files, and reverts what it drew before', async () => {
       const collection = seasonCollection(ServarrAction.UNMONITOR);
       const stateService = {
         getItemState: jest.fn().mockResolvedValue(null),
-        getAllStates: jest
-          .fn()
-          .mockResolvedValue([{ collectionId: 1, mediaServerId: 'show-1' }]),
+        // A member and an inherited parent, both drawn while the collection
+        // still deleted.
+        getAllStates: jest.fn().mockResolvedValue([
+          { collectionId: 1, mediaServerId: 'season-1' },
+          { collectionId: 1, mediaServerId: 'show-1' },
+        ]),
         removeState: jest.fn().mockResolvedValue(undefined),
       };
       const getMetadataBatch = jest.fn();
       const mediaServer = makeMediaServer({ getMetadataBatch });
-      const { service } = buildService(mediaServer, {
+      const { service, applySpy } = buildService(mediaServer, {
         stateService,
         collectionRepos: makeCollectionRepos([collection]),
       });
@@ -1600,8 +1628,20 @@ describe('OverlayProcessorService', () => {
       const result = await service.processAllCollections();
 
       expect(getMetadataBatch).not.toHaveBeenCalled();
+      expect(applySpy).not.toHaveBeenCalled();
+      expect(stateService.removeState).toHaveBeenCalledWith(1, 'season-1');
       expect(stateService.removeState).toHaveBeenCalledWith(1, 'show-1');
-      expect(result.reverted).toBe(1);
+      expect(result.reverted).toBe(2);
+    });
+
+    it('draws nothing when a single collection is processed on its own', async () => {
+      const collection = seasonCollection(ServarrAction.DO_NOTHING);
+      const mediaServer = makeMediaServer({ getMetadataBatch: jest.fn() });
+      const { service, applySpy } = buildService(mediaServer);
+
+      await service.processCollection(collection as any);
+
+      expect(applySpy).not.toHaveBeenCalled();
     });
 
     it('leaves a show that is itself in an overlay collection to its own countdown', async () => {
@@ -1610,7 +1650,7 @@ describe('OverlayProcessorService', () => {
         id: 2,
         title: 'Leaving shows',
         type: 'show',
-        arrAction: ServarrAction.DO_NOTHING,
+        arrAction: ServarrAction.DELETE,
         deleteAfterDays: 30,
         overlayTemplateId: null,
       });
@@ -1620,13 +1660,24 @@ describe('OverlayProcessorService', () => {
           addDate: new Date('2026-04-01T00:00:00.000Z'),
         }),
       ];
+      // Both collections read presence now, so answer per id.
+      const items: Record<string, MediaItem> = {
+        'season-1': makeItem('season-1', 'season', {
+          parentId: 'show-1',
+          index: 1,
+        }),
+        'season-2': makeItem('season-2', 'season', {
+          parentId: 'show-1',
+          index: 2,
+        }),
+        'show-1': makeItem('show-1', 'show'),
+      };
       const mediaServer = makeMediaServer({
         getMetadataBatch: jest
           .fn()
-          .mockResolvedValue([
-            makeItem('season-1', 'season', { parentId: 'show-1', index: 1 }),
-            makeItem('season-2', 'season', { parentId: 'show-1', index: 2 }),
-          ]),
+          .mockImplementation((ids: string[]) =>
+            ids.map((id) => items[id]).filter(Boolean),
+          ),
         getChildrenMetadata: childrenOf({
           'show-1': [
             makeItem('season-1', 'season', { index: 1 }),
