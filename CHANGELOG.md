@@ -1,3 +1,44 @@
+# [3.23.0](https://github.com/Maintainerr/Maintainerr/compare/v3.22.1...v3.23.0) (2026-08-17)
+
+
+## Highlights
+
+- Add `lastPlayedAt` rule for Plex, Tautulli, Tracearr, Streamystats, Jellyfin, and Emby (#3505, #3508).
+- Implement UI translation pipeline using Lingui and add initial translated strings (#3486, #3488).
+- Enable overlay countdowns on media items that leave the library alongside collection members (#3471).
+
+## Features
+
+- Include media type, title, and provider IDs in webhook media item payloads (#3464).
+
+## Fixes
+
+- Restrict overlay countdowns to only appear on media that the rule is configured to delete (#3514, #3515).
+- Batch collection removal notifications to prevent webhook rate limiting (#3500, #3506).
+- Ensure Fider bot re-checks post status before writing to prevent updates on closed requests (#3499).
+- Improve calendar display by correctly naming seasons scheduled for removal (#3472).
+- Clarify overlay template modes in the UI to distinguish between poster and title card templates (#3475).
+- Rescue missing Swedish translation strings and improve catalog validation (#3490, #3491).
+
+## Performance
+
+- Optimize Test Media runs by preventing redundant Tracearr history re-reads (#3483).
+
+## Internal
+
+- Update CI workflows to handle retired GitHub Models and Gemini endpoints (#3492, #3497).
+- Harden CI security and translation review processes (#3487, #3489, #3494, #3495, #3517).
+- Improve CI reliability with retry logic for model endpoints (#3528, #3529).
+
+## Dependencies
+
+- Update 25 dependencies including rolldown, turbo, and vite.
+
+## New Contributors
+* @jamcalli made their first contribution in https://github.com/Maintainerr/Maintainerr/pull/3464
+* @hosted-weblate[bot] made their first contribution in https://github.com/Maintainerr/Maintainerr/pull/3493
+* @dmunozv04 made their first contribution in https://github.com/Maintainerr/Maintainerr/pull/3505
+
 # [3.22.1](https://github.com/Maintainerr/Maintainerr/compare/v3.22.0...v3.22.1) (2026-08-09)
 
 
