@@ -202,7 +202,21 @@ jobs:
                 per_page: 100,
               });
 
+              // A workflow that cancels its own superseded runs leaves the
+              // cancelled check run on the commit forever, next to the one that
+              // actually finished. Both carry the same name, so without this the
+              // stale cancellation reads as a failure and stops the release even
+              // though the job succeeded on a later attempt. Check run ids
+              // increase, so the highest id per name is the current answer.
+              const latestByName = new Map();
               for (const checkRun of checkRuns) {
+                const seen = latestByName.get(checkRun.name);
+                if (!seen || checkRun.id > seen.id) {
+                  latestByName.set(checkRun.name, checkRun);
+                }
+              }
+
+              for (const checkRun of latestByName.values()) {
                 if (ignoredCheckNames.has(checkRun.name)) {
                   continue;
                 }

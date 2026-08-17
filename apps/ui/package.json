@@ -1,6 +1,6 @@
 {
   "name": "@maintainerr/ui",
-  "version": "3.22.1",
+  "version": "3.23.0",
   "private": true,
   "scripts": {
     "dev": "vite",
@@ -21,7 +21,7 @@
   "dependencies": {
     "@headlessui/react": "^2.2.10",
     "@heroicons/react": "^1.0.6",
-    "@hookform/resolvers": "^5.7.1",
+    "@hookform/resolvers": "^5.8.0",
     "@lingui/core": "^6.6.0",
     "@lingui/react": "^6.6.0",
     "@maintainerr/contracts": "workspace:^",
@@ -89,6 +89,6 @@
     "vitest": "^4.1.10"
   },
   "optionalDependencies": {
-    "rolldown": "^1.2.3"
+    "rolldown": "^1.2.4"
   }
 }
