@@ -86,11 +86,25 @@ const unknownField = (body = '') => {
 // answers 400 for something else from looping forever.
 const MAX_FIELD_STRIPS = 4;
 
+/**
+ * Statuses worth another attempt. The free tier answers 429 when it is being
+ * paced too hard and 503 when the model itself is busy, and both clear on their
+ * own. Without this a few busy seconds silently downgrade a release to the
+ * fallback notes, which is what happened to 3.23.0.
+ */
+const RETRYABLE_STATUSES = new Set([429, 500, 502, 503, 504]);
+
+// 2s, 4s, 8s, 16s: half a minute of patience, which is nothing next to a
+// release, and short enough that a genuinely dead endpoint still reports fast.
+const MAX_RETRIES = Number(process.env.AI_MODEL_MAX_RETRIES ?? 4);
+const RETRY_BASE_MS = Number(process.env.AI_MODEL_RETRY_BASE_MS ?? 2000);
+
 const log = (msg) => process.stderr.write(`[model-client] ${msg}\n`);
 
 /**
- * One chat completion, paced for the free tier. Throws on a non-2xx so callers
- * can retry or report; returns the assistant message content, trimmed.
+ * One chat completion, paced for the free tier. Retries a busy endpoint with
+ * exponential backoff and throws once it stops being worth waiting for, so a
+ * caller only sees a failure it cannot recover from.
  *
  * Temperature defaults to 0: every tool in this repo wants the same answer for
  * the same input, not a fresh sample.
@@ -107,7 +121,12 @@ export const callModel = async (
   const payload = { model, messages, temperature };
   if (reasoningEffort) payload.reasoning_effort = reasoningEffort;
 
-  for (let stripped = 0; ; stripped += 1) {
+  // Counted separately: dropping a rejected field is not an attempt at the same
+  // request, so a stripped field must not spend the transient-failure budget.
+  let stripped = 0;
+  let retries = 0;
+
+  for (;;) {
     await throttleModelCall();
     const res = await fetch(MODEL_ENDPOINT, {
       method: 'POST',
@@ -127,8 +146,19 @@ export const callModel = async (
       Object.hasOwn(payload, rejected) &&
       stripped < MAX_FIELD_STRIPS
     ) {
+      stripped += 1;
       delete payload[rejected];
       log(`endpoint rejected "${rejected}"; retrying without it`);
+      continue;
+    }
+
+    if (RETRYABLE_STATUSES.has(res.status) && retries < MAX_RETRIES) {
+      const waitMs = RETRY_BASE_MS * 2 ** retries;
+      retries += 1;
+      log(
+        `endpoint ${res.status}; retry ${retries}/${MAX_RETRIES} in ${waitMs}ms`,
+      );
+      await sleep(waitMs);
       continue;
     }
 
