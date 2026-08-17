@@ -40,7 +40,7 @@ env:
   REMOTE: origin
   MAIN_BRANCH: main
   DEVELOPMENT_BRANCH: development
-  RECONCILE_COMMIT_MESSAGE: "chore: reconcile with main after squash-merge"
+  RECONCILE_COMMIT_MESSAGE: "chore: reconcile main into development after release"
   POST_RELEASE_COMMIT_MESSAGE: "chore: sync release changes back from main"
 
 jobs:

@@ -317,7 +317,7 @@ jobs:
             }
 
   merge_pr:
-    name: Squash-merge release PR
+    name: Merge release PR
     needs:
       - resolve_pr
       - verify_pr_checks
@@ -374,7 +374,7 @@ jobs:
           echo "Waiting for GitHub to recalculate mergeable state…"
           sleep 10
 
-      - name: Squash-merge PR
+      - name: Merge PR
         id: merge
         uses: actions/github-script@v9
         with:
@@ -439,7 +439,13 @@ jobs:
                       owner,
                       repo,
                       pull_number: pullNumber,
-                      merge_method: 'squash',
+                      // Must stay a merge commit. A squash lands the content on
+                      // main under a new commit with no link to the originals,
+                      // so development's commits never enter main's history.
+                      // Release notes are generated over main, so everything
+                      // squashed ships without ever being described, and every
+                      // later sync PR re-lists the same commits.
+                      merge_method: 'merge',
                     });
 
                     if (!result.data.merged) {
@@ -509,7 +515,7 @@ jobs:
               const errorStack = error instanceof Error ? error.stack : '';
               await createComment(
                 [
-                  ':bangbang: `Release 2.5 - Execute Push PR To Main` crashed during squash-merge.',
+                  ':bangbang: `Release 2.5 - Execute Push PR To Main` crashed during merge.',
                   '',
                   '```',
                   truncate(errorMessage),
@@ -585,7 +591,7 @@ jobs:
           See the earlier blocker comment on this PR for specifics."
 
           elif [[ "$MERGE_RESULT" != "success" ]]; then
-            body=":bangbang: \`Release 2.5 - Execute Push PR To Main\` failed during squash-merge after approval.
+            body=":bangbang: \`Release 2.5 - Execute Push PR To Main\` failed during merge after approval.
 
           - Merge result: \`${MERGE_RESULT}\`
 
@@ -594,7 +600,7 @@ jobs:
           else
             body=":rocket: \`Release 2.5 - Execute Push PR To Main\` completed after approval.
 
-          - PR squash-merged into \`main\`
+          - PR merged into \`main\`
           - Sync back: ${SYNC_RESULT}
           - Build Main: ${BUILD_RESULT}"
           fi
