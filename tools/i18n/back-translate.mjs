@@ -18,10 +18,8 @@ import { execFileSync } from 'node:child_process';
 import { readdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import {
-  MODEL_ENDPOINT,
+  callModel as sharedCallModel,
   hasModelAccess,
-  modelHeaders,
-  throttleModelCall,
 } from '../ai/model-client.mjs';
 import { icuArguments, parsePo, readPo } from './po.mjs';
 
@@ -70,23 +68,8 @@ if (!hasModelAccess()) {
   process.exit(0);
 }
 
-const callModel = async (messages) => {
-  await throttleModelCall();
-  const res = await fetch(MODEL_ENDPOINT, {
-    method: 'POST',
-    headers: modelHeaders(),
-    body: JSON.stringify({
-      model: I18N_REVIEW_MODEL,
-      messages,
-      temperature: 0,
-    }),
-  });
-  if (!res.ok) {
-    throw new Error(`Model endpoint ${res.status}: ${await res.text()}`);
-  }
-  const data = await res.json();
-  return (data.choices?.[0]?.message?.content || '').trim();
-};
+const callModel = (messages) =>
+  sharedCallModel(messages, { model: I18N_REVIEW_MODEL });
 
 /** Translations as they stood at a git ref, so we can review only what changed. */
 const baselineFor = (file) => {
