@@ -16,7 +16,9 @@ import {
 const DEP_SUBJECT_RE = /^build\(deps(?:-dev)?\):/i;
 const CHORE_SUBJECT_RE = /^chore(?:\([^)]*\))?!?:/i;
 const SYNC_SUBJECT_RE = /^chore:\s*sync\s+development\s+to\s+main/i;
-const DEP_PKG_RE = /bump\s+([^\s]+)/i;
+// Grouped updates read "bump the nestjs group with 4 updates", so the optional
+// article has to be consumed or every grouped bump is listed as "the".
+const DEP_PKG_RE = /bump\s+(?:the\s+)?([^\s]+)/i;
 const BOT_LOGIN_RE = /\[bot\]$/i;
 
 const REC_SEP = String.fromCharCode(0x1e);
@@ -94,6 +96,39 @@ const extractNewContributorsSection = (body = "") => {
   const rest = body.slice(start);
   const nextSection = rest.search(/\n## |\n\*\*Full Changelog/);
   return (nextSection < 0 ? rest : rest.slice(0, nextSection)).trim();
+};
+
+/**
+ * GitHub's generate-notes counts bots as contributors, so a translation bot
+ * lands in a section meant to credit people. The local builder already skips
+ * them; this makes the API path agree. Drops the heading too when nothing but
+ * bots was listed, rather than leaving an empty section behind.
+ */
+const withoutBotContributors = (section = "") => {
+  if (!section) return "";
+
+  const kept = [];
+  let people = 0;
+
+  for (const line of section.split("\n")) {
+    const trimmed = line.trim();
+    const at = trimmed.indexOf("@");
+
+    if (!trimmed.startsWith("*") || at === -1) {
+      kept.push(line);
+      continue;
+    }
+
+    const after = trimmed.slice(at + 1);
+    const space = after.indexOf(" ");
+    const login = space === -1 ? after : after.slice(0, space);
+    if (isBotLogin(login)) continue;
+
+    people += 1;
+    kept.push(line);
+  }
+
+  return people ? kept.join("\n").trim() : "";
 };
 
 export const buildLocalNewContributorsSection = (
@@ -197,7 +232,10 @@ const fetchNewContributors = async (prMeta) => {
       return fallback;
     }
     const data = await res.json();
-    return extractNewContributorsSection(data.body || "") || fallback;
+    return (
+      withoutBotContributors(extractNewContributorsSection(data.body || "")) ||
+      fallback
+    );
   } catch (err) {
     log(`generate-notes fetch failed: ${err.message}`);
     return fallback;
@@ -399,6 +437,37 @@ const partitionCommits = (commits) => {
   return { deps, syncs, chores, main };
 };
 
+/**
+ * SYNC_SUBJECT_RE only catches a sync squash that kept the pull request title.
+ * When a sync pull request holds exactly one commit, GitHub squashes it under
+ * that commit's own message instead, so the change lands in the range twice:
+ * the original, and a twin carrying the sync pull request's number. The model
+ * is then handed the same work under two numbers and cites both, which is how
+ * 3.23.0 credited the retry fix to #3529, the sync pull request itself.
+ *
+ * Keep the oldest occurrence of a subject. A squash can only ever be newer than
+ * what it squashed, so the survivor is the real commit. Applied to the
+ * model-facing commits only: dependency and translation bumps legitimately
+ * repeat a subject across releases and are counted, not described.
+ */
+const dropSyncSquashTwins = (commits) => {
+  const seen = new Set();
+  const kept = [];
+
+  // git log is newest first, so walking backwards reaches the original first.
+  for (let i = commits.length - 1; i >= 0; i -= 1) {
+    const commit = commits[i];
+    if (seen.has(commit.cleanSubject)) continue;
+    seen.add(commit.cleanSubject);
+    kept.push(commit);
+  }
+
+  kept.reverse();
+  const dropped = commits.length - kept.length;
+  if (dropped) log(`dropped ${dropped} sync-squash duplicate(s)`);
+  return kept;
+};
+
 const depSummary = (deps) => {
   if (!deps.length) return null;
   const pkgs = new Set();
@@ -409,7 +478,10 @@ const depSummary = (deps) => {
   return { count: deps.length, pkgs: [...pkgs] };
 };
 
-const fallbackNotes = (commits, migrations) => {
+// Takes the already-partitioned commits rather than re-deriving them, so the
+// fallback describes exactly what the model would have been given. Re-running
+// partitionCommits here silently skipped the sync-squash dedupe.
+const fallbackNotes = ({ main, deps }, migrations) => {
   const groups = {
     feat: [],
     fix: [],
@@ -419,7 +491,6 @@ const fallbackNotes = (commits, migrations) => {
     test: [],
     other: [],
   };
-  const { deps, main } = partitionCommits(commits);
   for (const c of main) {
     const m = c.subject.match(/^(\w+)(\(.+?\))?!?:/);
     const type = m && groups[m[1]] ? m[1] : "other";
@@ -543,7 +614,12 @@ const main = async () => {
   const commits = resolvePrNumbers(parseCommits());
   log(`range=${range} commits=${commits.length} model=${RELEASE_NOTES_MODEL}`);
   const header = buildHeader();
-  const { deps, syncs, main: mainCommits } = partitionCommits(commits);
+  const {
+    deps,
+    syncs,
+    main: partitionedMain,
+  } = partitionCommits(commits);
+  const mainCommits = dropSyncSquashTwins(partitionedMain);
   const prMeta = fetchPrMeta(mainCommits);
   const newContribs = await fetchNewContributors(prMeta);
   const footer = newContribs ? `\n\n${newContribs}\n` : "";
@@ -561,7 +637,7 @@ const main = async () => {
   if (!hasModelAccess()) {
     log("no AI_MODEL_API_KEY available; emitting fallback notes");
     process.stdout.write(
-      `${header}${fallbackNotes(commits, migrations)}${footer}`,
+      `${header}${fallbackNotes({ main: mainCommits, deps }, migrations)}${footer}`,
     );
     return;
   }
@@ -579,7 +655,7 @@ const main = async () => {
       `prompt too large (${prompt.length} chars > ${MAX_PROMPT_CHARS}); emitting fallback notes`,
     );
     process.stdout.write(
-      `${header}${fallbackNotes(commits, migrations)}${footer}`,
+      `${header}${fallbackNotes({ main: mainCommits, deps }, migrations)}${footer}`,
     );
     return;
   }
@@ -600,7 +676,7 @@ const main = async () => {
   } catch (err) {
     log(`model call failed: ${err.message}; emitting fallback notes`);
     process.stdout.write(
-      `${header}${fallbackNotes(commits, migrations)}${footer}`,
+      `${header}${fallbackNotes({ main: mainCommits, deps }, migrations)}${footer}`,
     );
   }
 };
