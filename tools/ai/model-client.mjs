@@ -20,6 +20,18 @@ export const MODEL_ENDPOINT =
 
 export const DEFAULT_MODEL = process.env.AI_MODEL || 'gemini-3.1-flash-lite';
 
+/**
+ * How much the model may think before answering, as OpenAI's `reasoning_effort`
+ * ('none' | 'minimal' | 'low' | 'medium' | 'high'), which the compatibility
+ * layer maps onto Gemini's thinking levels.
+ *
+ * Empty means "send no field at all". Gemini then thinks dynamically, sizing
+ * the effort to the request against a per-model default, which is what every
+ * caller gets unless it opts in or the repository variable is set.
+ */
+export const DEFAULT_REASONING_EFFORT =
+  process.env.AI_MODEL_REASONING_EFFORT || '';
+
 export const modelToken = () => process.env.AI_MODEL_API_KEY || '';
 
 export const hasModelAccess = () => modelToken() !== '';
@@ -54,22 +66,72 @@ export const throttleModelCall = async () => {
   lastCallAt = Date.now();
 };
 
+const UNKNOWN_FIELD_MARKER = 'Unknown name "';
+
+/**
+ * Google's compatibility layer rejects any field it does not know rather than
+ * ignoring it, answering 400 with `Invalid JSON payload received. Unknown name
+ * "store": Cannot find field.` Pull the field name back out so the caller can
+ * drop it and retry instead of losing the run over an optional parameter.
+ */
+const unknownField = (body = '') => {
+  const start = body.indexOf(UNKNOWN_FIELD_MARKER);
+  if (start === -1) return '';
+  const from = start + UNKNOWN_FIELD_MARKER.length;
+  const end = body.indexOf('"', from);
+  return end === -1 ? '' : body.slice(from, end);
+};
+
+// Every optional field could be rejected in turn; the cap stops a provider that
+// answers 400 for something else from looping forever.
+const MAX_FIELD_STRIPS = 4;
+
+const log = (msg) => process.stderr.write(`[model-client] ${msg}\n`);
+
 /**
  * One chat completion, paced for the free tier. Throws on a non-2xx so callers
  * can retry or report; returns the assistant message content, trimmed.
+ *
+ * Temperature defaults to 0: every tool in this repo wants the same answer for
+ * the same input, not a fresh sample.
  */
 export const callModel = async (
   messages,
-  { model = DEFAULT_MODEL, temperature = 0.1, token = modelToken() } = {},
+  {
+    model = DEFAULT_MODEL,
+    temperature = 0,
+    token = modelToken(),
+    reasoningEffort = DEFAULT_REASONING_EFFORT,
+  } = {},
 ) => {
-  await throttleModelCall();
-  const res = await fetch(MODEL_ENDPOINT, {
-    method: 'POST',
-    headers: modelHeaders(token),
-    body: JSON.stringify({ model, messages, temperature }),
-  });
-  if (!res.ok) {
+  const payload = { model, messages, temperature };
+  if (reasoningEffort) payload.reasoning_effort = reasoningEffort;
+
+  for (let stripped = 0; ; stripped += 1) {
+    await throttleModelCall();
+    const res = await fetch(MODEL_ENDPOINT, {
+      method: 'POST',
+      headers: modelHeaders(token),
+      body: JSON.stringify(payload),
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      return (data.choices?.[0]?.message?.content || '').trim();
+    }
+
     const body = await res.text();
+    const rejected = res.status === 400 ? unknownField(body) : '';
+    if (
+      rejected &&
+      Object.hasOwn(payload, rejected) &&
+      stripped < MAX_FIELD_STRIPS
+    ) {
+      delete payload[rejected];
+      log(`endpoint rejected "${rejected}"; retrying without it`);
+      continue;
+    }
+
     // Model names get retired; make the fix obvious rather than cryptic.
     const hint =
       res.status === 404
@@ -77,6 +139,4 @@ export const callModel = async (
         : '';
     throw new Error(`Model endpoint ${res.status}${hint}: ${body}`);
   }
-  const data = await res.json();
-  return (data.choices?.[0]?.message?.content || '').trim();
 };

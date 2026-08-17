@@ -8,7 +8,11 @@ const MAX_MIGRATIONS_TOTAL_CHARS = 12000;
 const MAX_PR_BODY_CHARS = 400;
 const MAX_ORPHAN_BODY_CHARS = 300;
 const MIGRATION_PATH_PREFIX = "apps/server/src/database/migrations/";
-import { callModel, hasModelAccess } from "./ai/model-client.mjs";
+import {
+  DEFAULT_REASONING_EFFORT,
+  callModel,
+  hasModelAccess,
+} from "./ai/model-client.mjs";
 const DEP_SUBJECT_RE = /^build\(deps(?:-dev)?\):/i;
 const CHORE_SUBJECT_RE = /^chore(?:\([^)]*\))?!?:/i;
 const SYNC_SUBJECT_RE = /^chore:\s*sync\s+development\s+to\s+main/i;
@@ -464,7 +468,9 @@ const generateNotes = async (messages) =>
       // Rule 3 is the one this tool gets wrong when it guesses. Checking every
       // citation against the commit list is reasoning work, and this runs once
       // per release, so buy the thinking rather than the cheapest answer.
-      reasoningEffort: "high",
+      // AI_MODEL_REASONING_EFFORT still wins, so dialling it back stays a
+      // repository-variable change rather than a pull request.
+      reasoningEffort: DEFAULT_REASONING_EFFORT || "high",
     }),
   );
 
