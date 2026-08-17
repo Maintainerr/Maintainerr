@@ -8,6 +8,7 @@ import {
   type CompareMediaItemsOptions,
   ECollectionLogType,
   isMediaType,
+  LeavingSoonMethod,
   MaintainerrEvent,
   MediaCollection,
   MediaItem,
@@ -19,13 +20,15 @@ import {
   MediaServerType,
   MediaSortOrder,
   parseCollectionSortKey,
+  ServarrAction,
+  supportsFeature,
 } from '@maintainerr/contracts';
 import {
   BadGatewayException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { EventEmitter2 } from '@nestjs/event-emitter';
+import { EventEmitter2, OnEvent } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 import { chunk } from 'lodash';
 import { Brackets, DataSource, In, LessThan, Not, Repository } from 'typeorm';
@@ -45,6 +48,10 @@ import {
 import { MaintainerrLogger } from '../logging/logs.service';
 import { MetadataService } from '../metadata/metadata.service';
 import { OverlayProcessorService } from '../overlays/overlay-processor.service';
+import {
+  ExecutionLockService,
+  RULES_COLLECTIONS_EXECUTION_LOCK_KEY,
+} from '../tasks/execution-lock.service';
 import { Exclusion } from '../rules/entities/exclusion.entities';
 import { RuleGroup } from '../rules/entities/rule-group.entities';
 import { SettingsDataService } from '../settings/settings-data.service';
@@ -98,6 +105,10 @@ type CollectionMediaRemovalScope = 'all' | 'rule' | 'manual';
 // Each item resolves its own hierarchy against the media server, so this stays
 // modest to avoid over-driving it on a large selection.
 const BULK_COLLECTION_ACTION_CONCURRENCY = 5;
+
+// How long the leaving-soon BoxSet reconcile waits behind an in-flight
+// rule/collection run before giving up on the lock and proceeding anyway.
+const RECONCILE_LOCK_WAIT_MS = 30000;
 
 interface SharedManualCollectionReconciliationOptions {
   addedMediaServerIds?: Set<string>;
@@ -164,6 +175,7 @@ export class CollectionsService {
     private readonly eventEmitter: EventEmitter2,
     private readonly collectionPosterService: CollectionPosterService,
     private readonly overlayProcessor: OverlayProcessorService,
+    private readonly executionLock: ExecutionLockService,
     private readonly logger: MaintainerrLogger,
   ) {
     logger.setContext(CollectionsService.name);
@@ -1941,6 +1953,246 @@ export class CollectionsService {
     }
   }
 
+  /**
+   * Active collections that schedule deletion, with their currently-grace-period
+   * media and each item's precomputed deletion date. Consumed by the
+   * jellyfin-plugin-leaving-soon provider via `GET /api/collections/leaving-soon`.
+   *
+   * A collection IS the leaving-soon set: the worker removes an item once it
+   * handles it, so membership means the item is still inside its grace window.
+   * No per-item date filtering is needed.
+   *
+   * Only served while the Jellyfin "Leaving Soon collections" setting is set to
+   * the plugin: that setting is the switch that tells the plugin which media to
+   * symlink. Maintainerr's own collection behaviour is unchanged either way.
+   */
+  async getLeavingSoonCollections(libraryId?: string, typeId?: MediaItemType) {
+    try {
+      if (
+        this.settingsDataService.leaving_soon_method !==
+        LeavingSoonMethod.PLUGIN
+      ) {
+        return { collections: [], total: 0 };
+      }
+
+      const collections = (
+        await this.findCollections(libraryId, typeId)
+      ).filter(
+        (collection) =>
+          collection.isActive &&
+          collection.deleteAfterDays != null &&
+          // A DO_NOTHING collection never has its members handled, so its
+          // deletion dates never fire - listing it would leave permanent
+          // symlinks behind in the plugin library.
+          collection.arrAction !== ServarrAction.DO_NOTHING,
+      );
+
+      if (collections.length === 0) {
+        return { collections: [], total: 0 };
+      }
+
+      const mediaByCollection = await this.getCollectionMediaByCollection(
+        collections.map((collection) => collection.id),
+      );
+
+      const collectionsOut = collections.map((collection) => ({
+        id: collection.id,
+        title: collection.title,
+        type: collection.type,
+        libraryId: collection.libraryId,
+        mediaServerId: collection.mediaServerId,
+        deleteAfterDays: collection.deleteAfterDays,
+        arrAction: collection.arrAction,
+        media: (mediaByCollection.get(Number(collection.id)) ?? []).map(
+          (media) => ({
+            mediaServerId: media.mediaServerId,
+            addDate: media.addDate,
+            deletionDate:
+              collection.deleteAfterDays != null
+                ? new Date(
+                    new Date(media.addDate).getTime() +
+                      +collection.deleteAfterDays * 86400000,
+                  )
+                : null,
+            tmdbId: media.tmdbId ?? null,
+          }),
+        ),
+      }));
+
+      return { collections: collectionsOut, total: collectionsOut.length };
+    } catch (error) {
+      this.logger.warn(
+        'An error occurred while fetching leaving-soon collections.',
+      );
+      this.logger.debug(error);
+      return undefined;
+    }
+  }
+
+  /**
+   * Whether the configured Jellyfin "leaving soon method" keeps a scheduled
+   * deletion collection off the media server: when set to the plugin, the
+   * jellyfin-plugin-leaving-soon's symlink library is the surface and no BoxSet
+   * is created for collections that schedule deletion. Reads the in-memory
+   * settings snapshot - this runs once per collection on the rule-run hot path,
+   * so it must not hit the repository.
+   */
+  private usesLeavingSoonPluginForCollection(collection: {
+    deleteAfterDays?: number | null;
+  }): boolean {
+    return (
+      supportsFeature(
+        this.settingsDataService.media_server_type,
+        MediaServerFeature.SYMLINK_LIBRARY,
+      ) &&
+      this.settingsDataService.leaving_soon_method ===
+        LeavingSoonMethod.PLUGIN &&
+      collection.deleteAfterDays != null
+    );
+  }
+
+  /**
+   * Reconcile Jellyfin BoxSets when the leaving-soon method changes: switching
+   * to the plugin removes the BoxSets of scheduled-deletion collections (the
+   * plugin's symlink library replaces them); switching back recreates them with
+   * their current members. Fired from the Settings_Updated event, so it also
+   * covers the bulk settings endpoint. Runs under the shared collection/rule
+   * lock and never throws - a per-collection failure is logged and the rest
+   * still reconciles.
+   */
+  @OnEvent(MaintainerrEvent.Settings_Updated)
+  async handleLeavingSoonMethodSettingsUpdate(payload: {
+    oldSettings: { leaving_soon_method?: LeavingSoonMethod } | undefined;
+    settings: { leaving_soon_method?: LeavingSoonMethod };
+  }): Promise<void> {
+    const previous =
+      payload.oldSettings?.leaving_soon_method ?? LeavingSoonMethod.COLLECTION;
+    const next = payload.settings.leaving_soon_method;
+    if (next == null || previous === next) {
+      return;
+    }
+
+    // A rule/collection run can hold the lock for minutes. Wait a bounded
+    // amount of time for it instead of dropping the reconcile: deferring to
+    // "the next settings save" never fires, because the next save sees the new
+    // method already persisted and returns at the `previous === next` guard.
+    let release = this.executionLock.tryAcquire(
+      RULES_COLLECTIONS_EXECUTION_LOCK_KEY,
+    );
+    if (!release) {
+      release = await this.executionLock.acquireWithin(
+        RULES_COLLECTIONS_EXECUTION_LOCK_KEY,
+        RECONCILE_LOCK_WAIT_MS,
+      );
+    }
+    if (!release) {
+      // Still busy: reconcile anyway. It is idempotent and self-healing, and
+      // dropping it would leave stale BoxSets (or missing ones) behind.
+      this.logger.warn(
+        `Leaving-soon method changed to '${next}' while a long collection or rule run held the lock; reconciling BoxSets without it`,
+      );
+      await this.reconcileLeavingSoonBoxSets(next);
+      return;
+    }
+
+    try {
+      await this.reconcileLeavingSoonBoxSets(next);
+    } finally {
+      release();
+    }
+  }
+
+  private async reconcileLeavingSoonBoxSets(
+    method: LeavingSoonMethod,
+  ): Promise<void> {
+    // Everything below must never throw: the Settings_Updated handler runs
+    // fire-and-forget, and an unhandled rejection would surface as an
+    // unhandledRejection while the reconcile silently never happens.
+    try {
+      const usePlugin = method === LeavingSoonMethod.PLUGIN;
+      const mediaServer = await this.getMediaServer();
+      if (!mediaServer.supportsFeature(MediaServerFeature.SYMLINK_LIBRARY)) {
+        return;
+      }
+
+      const collections = (
+        await this.collectionRepo.find({
+          where: { mediaServerType: MediaServerType.JELLYFIN },
+        })
+      ).filter(
+        (collection) =>
+          collection.deleteAfterDays != null &&
+          // Manual collections reference a user-created BoxSet by name; the
+          // toggle must never delete or rename it.
+          !collection.manualCollection,
+      );
+
+      let failures = 0;
+      for (const collection of collections) {
+        try {
+          if (usePlugin && collection.mediaServerId) {
+            await mediaServer.deleteCollection(collection.mediaServerId);
+            await this.saveCollection({ ...collection, mediaServerId: null });
+            this.logger.log(
+              `Removed Jellyfin BoxSet for collection "${collection.title}" (leaving-soon plugin enabled)`,
+            );
+          } else if (
+            !usePlugin &&
+            !collection.mediaServerId &&
+            // Only active collections get a BoxSet recreated - a deactivated
+            // collection has had its BoxSet removed on purpose.
+            collection.isActive
+          ) {
+            const mediaCollection = await mediaServer.createCollection({
+              libraryId: collection.libraryId,
+              title: collection.title,
+              summary: collection.description,
+              sortTitle: collection.sortTitle,
+              type: collection.type,
+            });
+            const members = await this.CollectionMediaRepo.find({
+              where: { collectionId: collection.id },
+            });
+            if (members.length > 0) {
+              await mediaServer.addBatchToCollection(
+                mediaCollection.id,
+                members.map((member) => member.mediaServerId),
+              );
+            }
+            await this.saveCollection({
+              ...collection,
+              mediaServerId: mediaCollection.id,
+            });
+            this.logger.log(
+              `Recreated Jellyfin BoxSet for collection "${collection.title}" (leaving-soon plugin disabled)`,
+            );
+          }
+        } catch (error) {
+          failures++;
+          this.logger.warn(
+            `Failed to ${
+              usePlugin ? 'remove' : 'recreate'
+            } Jellyfin BoxSet for collection "${collection.title}"`,
+          );
+          this.logger.debug(error);
+        }
+      }
+
+      if (failures > 0) {
+        this.logger.warn(
+          `${failures} Jellyfin BoxSet(s) could not be ${
+            usePlugin ? 'removed' : 'recreated'
+          } during the leaving-soon method change`,
+        );
+      }
+    } catch (error) {
+      this.logger.warn(
+        'Failed to reconcile Jellyfin BoxSets during the leaving-soon method change',
+      );
+      this.logger.debug(error);
+    }
+  }
+
   async getAllCollections() {
     try {
       return await this.collectionRepo.find();
@@ -1950,7 +2202,6 @@ export class CollectionsService {
       return [];
     }
   }
-
   async createCollection(
     collection: ICollection,
     empty = true,
@@ -1968,7 +2219,8 @@ export class CollectionsService {
       if (
         !empty &&
         (collection.manualCollection == undefined ||
-          !collection.manualCollection)
+          !collection.manualCollection) &&
+        !this.usesLeavingSoonPluginForCollection(collection)
       ) {
         // Create collection via media server abstraction
         mediaCollection = await mediaServer.createCollection({
@@ -2084,6 +2336,8 @@ export class CollectionsService {
       }
 
       if (media && media.length > 0) {
+        // In plugin mode no BoxSet exists, so there is nothing to seed on the
+        // media server; persist membership only, like the add path does.
         await this.addChildrenToCollection(
           {
             mediaServerId:
@@ -2093,7 +2347,7 @@ export class CollectionsService {
           },
           media,
           false,
-          false,
+          this.usesLeavingSoonPluginForCollection(collection),
         );
       }
 
@@ -2990,7 +3244,13 @@ export class CollectionsService {
       let unpersistedIds: string[] = [];
 
       if (collection) {
-        if (!skipAutomaticLinkCheck) {
+        // In plugin mode a scheduled-deletion collection deliberately has no
+        // BoxSet; the title-based relink must not resurrect one that happened
+        // to keep the same name on the server.
+        if (
+          !skipAutomaticLinkCheck &&
+          !this.usesLeavingSoonPluginForCollection(collection)
+        ) {
           collection = await this.checkAutomaticMediaServerLink(collection);
         }
 
@@ -2998,7 +3258,8 @@ export class CollectionsService {
         // This happens when: 1) we have new items to add, OR 2) we have existing items but no media server collection
         const needsMediaServerCollection =
           !collection.mediaServerId &&
-          (newMedia.length > 0 || collectionMedia.length > 0);
+          (newMedia.length > 0 || collectionMedia.length > 0) &&
+          !this.usesLeavingSoonPluginForCollection(collection);
 
         // Create media server collection if needed
         if (needsMediaServerCollection) {
@@ -3176,14 +3437,25 @@ export class CollectionsService {
           );
         }
 
-        // add new children to collection
-        if (newMedia.length > 0 && collection.mediaServerId) {
+        // add new children to collection. In plugin mode a scheduled-deletion
+        // collection has no BoxSet (`mediaServerId` is null), but membership
+        // must still persist - that DB row is what feeds the leaving-soon API
+        // and the plugin library. Skip the media-server add in that case.
+        const usesLeavingSoonPlugin =
+          this.usesLeavingSoonPluginForCollection(collection);
+        if (
+          newMedia.length > 0 &&
+          (collection.mediaServerId || usesLeavingSoonPlugin)
+        ) {
           const { serverRejectedIds, persistedIds } =
             await this.addChildrenToCollection(
-              { mediaServerId: collection.mediaServerId, dbId: collection.id },
+              {
+                mediaServerId: collection.mediaServerId ?? '',
+                dbId: collection.id,
+              },
               newMedia,
               manual,
-              skipMediaServerAdd,
+              skipMediaServerAdd || usesLeavingSoonPlugin,
               manualMembershipSource,
             );
           rejectedByServer = [...serverRejectedIds];
@@ -3989,16 +4261,21 @@ export class CollectionsService {
         );
         this.logger.debug(error);
 
-        try {
-          await mediaServer.removeFromCollection(
-            collectionIds.mediaServerId,
-            childMedia.mediaServerId,
-          );
-        } catch (rollbackError) {
-          this.logger.warn(
-            `Failed to roll back media ${childMedia.mediaServerId} after local add failure`,
-          );
-          this.logger.debug(rollbackError);
+        // Roll back the media-server add only when one actually happened - in
+        // plugin mode (skipMediaServerAdd) the membership is persisted without
+        // a media-server collection, so there is nothing to undo.
+        if (!skipMediaServerAdd) {
+          try {
+            await mediaServer.removeFromCollection(
+              collectionIds.mediaServerId,
+              childMedia.mediaServerId,
+            );
+          } catch (rollbackError) {
+            this.logger.warn(
+              `Failed to roll back media ${childMedia.mediaServerId} after local add failure`,
+            );
+            this.logger.debug(rollbackError);
+          }
         }
       }
     }

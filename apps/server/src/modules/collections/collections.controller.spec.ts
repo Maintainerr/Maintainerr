@@ -42,6 +42,7 @@ describe('CollectionsController', () => {
     bulkMediaCollectionAction: jest.fn(),
     postponeCollectionMedia: jest.fn(),
     logPostponedCollectionMedia: jest.fn(),
+    getLeavingSoonCollections: jest.fn(),
   } as unknown as jest.Mocked<CollectionsService>;
 
   const collectionWorkerService = {
@@ -682,6 +683,38 @@ describe('CollectionsController', () => {
       await expect(
         controller.deleteCollectionPoster(collection.id),
       ).resolves.toEqual({ cleared: true, refreshRequested: false });
+    });
+  });
+
+  describe('getLeavingSoonCollections', () => {
+    it('delegates the leaving-soon query with the optional library and type filters', async () => {
+      collectionsService.getLeavingSoonCollections.mockResolvedValue({
+        collections: [],
+        total: 0,
+      });
+
+      await expect(
+        controller.getLeavingSoonCollections('library-1', 'show'),
+      ).resolves.toEqual({ collections: [], total: 0 });
+
+      expect(collectionsService.getLeavingSoonCollections).toHaveBeenCalledWith(
+        'library-1',
+        'show',
+      );
+    });
+
+    it('omits the filters when no query params are present', async () => {
+      collectionsService.getLeavingSoonCollections.mockResolvedValue({
+        collections: [],
+        total: 0,
+      });
+
+      await controller.getLeavingSoonCollections(undefined, undefined);
+
+      expect(collectionsService.getLeavingSoonCollections).toHaveBeenCalledWith(
+        undefined,
+        undefined,
+      );
     });
   });
 });
