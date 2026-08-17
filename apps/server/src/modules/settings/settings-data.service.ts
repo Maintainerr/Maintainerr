@@ -1,5 +1,6 @@
 import {
   BasicResponseDto,
+  LeavingSoonMethod,
   MaintainerrEvent,
   MediaServerType,
   MetadataProviderPreference,
@@ -76,6 +77,8 @@ export class SettingsDataService implements SettingDto {
   jellyfin_user_id?: string;
 
   jellyfin_server_name?: string;
+
+  leaving_soon_method?: LeavingSoonMethod;
 
   emby_url?: string;
 
@@ -172,6 +175,8 @@ export class SettingsDataService implements SettingDto {
       this.jellyfin_api_key = settingsDb?.jellyfin_api_key;
       this.jellyfin_user_id = settingsDb?.jellyfin_user_id;
       this.jellyfin_server_name = settingsDb?.jellyfin_server_name;
+      this.leaving_soon_method =
+        settingsDb?.leaving_soon_method ?? LeavingSoonMethod.COLLECTION;
       this.emby_url = settingsDb?.emby_url;
       this.emby_api_key = settingsDb?.emby_api_key;
       this.emby_user_id = settingsDb?.emby_user_id;

@@ -3,6 +3,7 @@ import {
   EmbySetting,
   JellyfinSetting,
   DownloadClientSetting,
+  LeavingSoonMethod,
   MediaServerType,
   MINIMUM_SPORTARR_VERSION,
   SeerrSetting,
@@ -665,6 +666,13 @@ export class SettingsOperationsService {
         jellyfin_api_key: settings.jellyfin_api_key,
         jellyfin_user_id: userId || null,
         jellyfin_server_name: testResult.serverName || null,
+        // The method is optional in the schema; keep the stored value when a
+        // caller (older client, automation) omits it, or a plugin-mode
+        // deployment would flip back to BoxSet mode on an unrelated save.
+        leaving_soon_method:
+          settings.leaving_soon_method ??
+          settingsDb?.leaving_soon_method ??
+          LeavingSoonMethod.COLLECTION,
         media_server_type: MediaServerType.JELLYFIN,
       });
 

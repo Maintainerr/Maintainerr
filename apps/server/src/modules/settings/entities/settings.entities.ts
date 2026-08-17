@@ -1,4 +1,5 @@
 import {
+  LeavingSoonMethod,
   MediaServerType,
   MetadataProviderPreference,
 } from '@maintainerr/contracts';
@@ -69,6 +70,15 @@ export class Settings implements SettingDto {
 
   @Column({ nullable: true })
   jellyfin_server_name?: string;
+
+  // How scheduled-deletion collections are surfaced on Jellyfin: native BoxSet
+  // collections, or the leaving-soon plugin's symlink-backed library.
+  @Column({
+    type: 'varchar',
+    nullable: false,
+    default: LeavingSoonMethod.COLLECTION,
+  })
+  leaving_soon_method: LeavingSoonMethod;
 
   // Emby settings
   @Column({ nullable: true })
