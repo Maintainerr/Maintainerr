@@ -40,6 +40,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           AI_MODEL_API_KEY: ${{ secrets.AI_MODEL_API_KEY }}
           AI_MODEL: ${{ vars.AI_MODEL }}
+          AI_MODEL_REASONING_EFFORT: ${{ vars.AI_MODEL_REASONING_EFFORT }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || 'false' }}
           DISCORD_FIDER_BOT_WEBHOOK: ${{ secrets.DISCORD_FIDER_BOT_WEBHOOK }}
