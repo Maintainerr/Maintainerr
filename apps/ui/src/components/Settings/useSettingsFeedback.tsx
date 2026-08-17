@@ -20,37 +20,57 @@ export const useSettingsFeedback = (messages?: {
   updateError: string
 }) => {
   const { t } = useLingui()
-  const [feedback, setFeedback] = useState<SettingsFeedback>(null)
+  // showUpdated/showUpdateError store which message to show, not its text: the
+  // submit handler that calls them was created in a pre-switch render, so a
+  // captured string would put the previous language's sentence on screen right
+  // after the user changed language and saved. The title resolves below, at
+  // render time, against the caller's freshly translated messages.
+  const [stored, setStored] = useState<
+    | { type: NonNullable<SettingsFeedback>['type']; title: string }
+    | {
+        type: NonNullable<SettingsFeedback>['type']
+        kind: 'updated' | 'updateError'
+      }
+    | null
+  >(null)
 
   const showFeedback = useCallback(
     (type: NonNullable<SettingsFeedback>['type'], title: string) => {
-      setFeedback({ type, title })
+      setStored({ type, title })
     },
     [],
   )
 
   const clear = useCallback(() => {
-    setFeedback(null)
+    setStored(null)
   }, [])
 
   const clearError = useCallback(() => {
-    setFeedback((current) => (current?.type === 'error' ? null : current))
+    setStored((current) => (current?.type === 'error' ? null : current))
   }, [])
 
   // Resolved per render rather than memoized: a memo keyed on anything but the
   // active locale would keep serving the language that was loaded when it
-  // first ran. The callbacks below stay stable anyway - their dependency is
-  // the string's value, not an object identity.
+  // first ran.
   const updated = messages?.updated ?? t`Settings updated`
   const updateError = messages?.updateError ?? t`Settings could not be updated`
 
   const showUpdated = useCallback(() => {
-    showFeedback('success', updated)
-  }, [updated, showFeedback])
+    setStored({ type: 'success', kind: 'updated' })
+  }, [])
 
   const showUpdateError = useCallback(() => {
-    showFeedback('error', updateError)
-  }, [updateError, showFeedback])
+    setStored({ type: 'error', kind: 'updateError' })
+  }, [])
+
+  const feedback: SettingsFeedback = useMemo(() => {
+    if (!stored) return null
+    if ('title' in stored) return stored
+    return {
+      type: stored.type,
+      title: stored.kind === 'updated' ? updated : updateError,
+    }
+  }, [stored, updated, updateError])
 
   const showInfo = useCallback(
     (title: string) => {

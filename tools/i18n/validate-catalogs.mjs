@@ -31,7 +31,13 @@
 import { execFileSync } from 'node:child_process';
 import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { icuArguments, parsePo, poShapeProblems, readPo } from './po.mjs';
+import {
+  icuArguments,
+  parsePo,
+  poShapeProblems,
+  readPo,
+  richTextSlots,
+} from './po.mjs';
 
 const args = process.argv.slice(2);
 const noBase = args.includes('--no-base');
@@ -206,6 +212,9 @@ const entryKey = (entry) => `${entry.msgctxt ?? ''}\u0000${entry.msgid}`;
 const sourceArguments = new Map(
   sourceEntries.map((entry) => [entryKey(entry), icuArguments(entry.msgid)]),
 );
+const sourceSlots = new Map(
+  sourceEntries.map((entry) => [entryKey(entry), richTextSlots(entry.msgid)]),
+);
 
 // Translations as they stood at --base, keyed the same way, so a hand-edited
 // or added msgstr in a non-Weblate PR can be caught. Null when no ref given;
@@ -260,6 +269,13 @@ for (const entry of sourceEntries) {
   // check in this file, plus i18n:check (which compares msgid sets only),
   // would pass it. English changes belong in the components the extractor
   // reads, never in the catalog.
+  if (!richTextSlots(entry.msgid).balanced) {
+    errors.push(
+      `${sourceLocation}:${entry.line}\n` +
+        `    source: ${entry.msgid}\n` +
+        `    has an unbalanced rich-text slot - every <n> needs its </n>`,
+    );
+  }
   if (entry.msgstr !== '' && entry.msgstr !== entry.msgid) {
     errors.push(
       `${sourceLocation}:${entry.line}\n` +
@@ -341,6 +357,43 @@ for (const file of files) {
           `    source:      ${entry.msgid}\n` +
           `    translation: ${entry.msgstr}\n` +
           `    placeholder ${parts.join(' and ')}`,
+      );
+      continue;
+    }
+
+    // Rich-text slots are part of the runtime contract just like ICU
+    // arguments: <Trans> resolves <0>...</0> against components supplied by
+    // index, and a slot the source never declared resolves to nothing - the
+    // text keeps rendering while its link or emphasis silently disappears.
+    const expectedSlots =
+      sourceSlots.get(entryKey(entry)) ?? richTextSlots(entry.msgid);
+    const actualSlots = richTextSlots(entry.msgstr);
+    if (!actualSlots.balanced) {
+      errors.push(
+        `${location}:${entry.line}\n` +
+          `    source:      ${entry.msgid}\n` +
+          `    translation: ${entry.msgstr}\n` +
+          `    has an unbalanced rich-text slot - every <n> needs its </n>`,
+      );
+      continue;
+    }
+    const missingSlots = [...expectedSlots.slots].filter(
+      (slot) => !actualSlots.slots.has(slot),
+    );
+    const unknownSlots = [...actualSlots.slots].filter(
+      (slot) => !expectedSlots.slots.has(slot),
+    );
+    if (missingSlots.length > 0 || unknownSlots.length > 0) {
+      const parts = [];
+      if (missingSlots.length > 0)
+        parts.push(`missing <${missingSlots.join('>, <')}>`);
+      if (unknownSlots.length > 0)
+        parts.push(`unexpected <${unknownSlots.join('>, <')}>`);
+      errors.push(
+        `${location}:${entry.line}\n` +
+          `    source:      ${entry.msgid}\n` +
+          `    translation: ${entry.msgstr}\n` +
+          `    rich-text slot ${parts.join(' and ')}`,
       );
       continue;
     }

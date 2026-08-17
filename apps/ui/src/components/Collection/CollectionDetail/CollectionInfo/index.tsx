@@ -29,7 +29,7 @@ interface ICollectionInfo {
 }
 
 const CollectionInfo = (props: ICollectionInfo) => {
-  const { t } = useLingui()
+  const { t, i18n } = useLingui()
   const [searchFilter, debouncedSearchFilter, setSearchFilter] =
     useDebouncedState('')
   const [currentSort, setCurrentSort] = useState<'ASC' | 'DESC'>('DESC')
@@ -49,7 +49,9 @@ const CollectionInfo = (props: ICollectionInfo) => {
             </span>
             <p className="collection-info-item">
               {props.collection.addDate
-                ? new Date(props.collection.addDate).toLocaleDateString()
+                ? new Date(props.collection.addDate).toLocaleDateString(
+                    i18n.locale,
+                  )
                 : '-'}
             </p>
           </li>

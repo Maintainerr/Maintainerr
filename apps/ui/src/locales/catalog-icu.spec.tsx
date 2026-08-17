@@ -134,10 +134,38 @@ const sentinelValues = (message: string, names: string[], count: number) => {
 }
 
 // Inline markup placeholders (<0>...</0>) need a component for each slot or
-// the runtime drops their text.
-const markupSlots = Object.fromEntries(
-  [0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((index) => [index, <span key={index} />]),
-)
+// the runtime drops their text. Only the slots the message itself declares are
+// supplied - a generic 0-9 spread would satisfy a slot number the app never
+// passes and hide it from this spec. validate-catalogs.mjs holds the
+// source-vs-translation slot parity; this keeps the render honest.
+const declaredSlots = (message: string): string[] => {
+  const slots = new Set<string>()
+  for (let i = 0; i < message.length; i += 1) {
+    if (message[i] !== '<') continue
+    let cursor = i + 1
+    if (message[cursor] === '/') cursor += 1
+    let digits = ''
+    while (
+      cursor < message.length &&
+      message[cursor] >= '0' &&
+      message[cursor] <= '9'
+    ) {
+      digits += message[cursor]
+      cursor += 1
+    }
+    if (digits === '') continue
+    if (message[cursor] === '/' && message[cursor + 1] === '>') cursor += 1
+    if (message[cursor] !== '>') continue
+    slots.add(digits)
+    i = cursor
+  }
+  return [...slots]
+}
+
+const markupSlots = (message: string) =>
+  Object.fromEntries(
+    declaredSlots(message).map((slot) => [slot, <span key={slot} />]),
+  )
 
 /**
  * Every message is rendered with `id` set to the message itself: with no
@@ -171,7 +199,7 @@ const findBrokenMessages = (messages: string[]): string[] => {
           <Trans
             id={message}
             values={sentinelValues(message, argumentNames(message), count)}
-            components={markupSlots}
+            components={markupSlots(message)}
           />
         </li>
       ))}

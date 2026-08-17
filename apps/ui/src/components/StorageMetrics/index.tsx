@@ -85,7 +85,7 @@ const groupMountsByInstance = (mounts: StorageDiskspaceEntry[]) => {
 }
 
 const StorageMetrics: React.FC = () => {
-  const { t } = useLingui()
+  const { t, i18n } = useLingui()
   const [metrics, setMetrics] = useState<StorageMetricsResponse | null>(null)
   const [isLoading, setIsLoading] = useState<boolean>(true)
   // A flag, not a message: translating inside the effect would put `t` in its
@@ -165,7 +165,9 @@ const StorageMetrics: React.FC = () => {
   const hasAnyTotal = totals.totalSpace > 0
   const hasAnyFree = totals.freeSpace > 0 || totals.mountCount > 0
   const mountCount = totals.mountCount
-  const generatedAt = new Date(metrics.generatedAt).toLocaleString()
+  // The app locale, not the browser's: the sentence around this date
+  // switches language with the picker, so the date format follows it too.
+  const generatedAt = new Date(metrics.generatedAt).toLocaleString(i18n.locale)
   const noTotalSubtitle = hasAnyFree
     ? t`Free space only - Sonarr/Radarr do not report total size for NFS/CIFS mounts`
     : t`No instance reports total capacity`
@@ -246,7 +248,7 @@ const StorageMetrics: React.FC = () => {
           <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
             <SummaryCard
               title={t`Items handled`}
-              value={cleanupTotals.itemsHandled.toLocaleString()}
+              value={cleanupTotals.itemsHandled.toLocaleString(i18n.locale)}
               subtitle={
                 hasCleanupActivity
                   ? t`${{ size: formatBytes(cleanupTotals.bytesHandled) }} reclaimed total`
@@ -256,25 +258,25 @@ const StorageMetrics: React.FC = () => {
             />
             <SummaryCard
               title={t`Movies handled`}
-              value={cleanupTotals.moviesHandled.toLocaleString()}
+              value={cleanupTotals.moviesHandled.toLocaleString(i18n.locale)}
               subtitle={t`${{ size: formatBytes(cleanupTotals.movieBytesHandled) }} reclaimed`}
               icon={<FilmIcon className="h-5 w-5" />}
             />
             <SummaryCard
               title={t`Shows handled`}
-              value={cleanupTotals.showsHandled.toLocaleString()}
+              value={cleanupTotals.showsHandled.toLocaleString(i18n.locale)}
               subtitle={t`${{ size: formatBytes(cleanupTotals.showBytesHandled) }} reclaimed`}
               icon={<DesktopComputerIcon className="h-5 w-5" />}
             />
             <SummaryCard
               title={t`Seasons handled`}
-              value={cleanupTotals.seasonsHandled.toLocaleString()}
+              value={cleanupTotals.seasonsHandled.toLocaleString(i18n.locale)}
               subtitle={t`${{ size: formatBytes(cleanupTotals.seasonBytesHandled) }} reclaimed`}
               icon={<CollectionIcon className="h-5 w-5" />}
             />
             <SummaryCard
               title={t`Episodes handled`}
-              value={cleanupTotals.episodesHandled.toLocaleString()}
+              value={cleanupTotals.episodesHandled.toLocaleString(i18n.locale)}
               subtitle={t`${{ size: formatBytes(cleanupTotals.episodeBytesHandled) }} reclaimed`}
               icon={<PlayIcon className="h-5 w-5" />}
             />
@@ -484,7 +486,7 @@ const MediaServerSection: React.FC<MediaServerSectionProps> = ({
   mediaServer,
   onLibrarySizesComputed,
 }) => {
-  const { t } = useLingui()
+  const { t, i18n } = useLingui()
   const [isConfirmOpen, setIsConfirmOpen] = useState(false)
   const [isComputing, setIsComputing] = useState(false)
   const [computeError, setComputeError] = useState<string | null>(null)
@@ -625,7 +627,7 @@ const MediaServerSection: React.FC<MediaServerSectionProps> = ({
                     </span>
                   </div>
                   <div className="mt-1 text-lg font-semibold text-white">
-                    {library.itemCount.toLocaleString()}
+                    {library.itemCount.toLocaleString(i18n.locale)}
                   </div>
                   <div className="flex items-center justify-between text-xs text-zinc-400">
                     <span className="capitalize">

@@ -142,7 +142,7 @@ const LogSettingsForm = () => {
 }
 
 export const Logs = () => {
-  const { t } = useLingui()
+  const { t, i18n } = useLingui()
   const [logLines, setLogLines] = useState<LogEvent[]>([])
   const [logFilter, setLogFilter] = useState<string>('')
   const [scrollToBottom, setScrollToBottom] = useState<boolean>(true)
@@ -315,7 +315,7 @@ export const Logs = () => {
             return (
               <div key={`log-list-${index}`} className="font-mono">
                 <span className="text-gray-400">
-                  {new Date(row.date).toLocaleTimeString()}
+                  {new Date(row.date).toLocaleTimeString(i18n.locale)}
                 </span>
                 <span className={`font-semibold ${levelColor} px-2`}>
                   {row.level}

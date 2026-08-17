@@ -18,6 +18,7 @@
  */
 import {
   copyFileSync,
+  existsSync,
   readFileSync,
   rmSync,
   writeFileSync,
@@ -82,6 +83,14 @@ const withSentinel = (contents, msgid, sentinel) => {
 }
 
 const patch = () => {
+  // A leftover backup means an earlier run died between patch and restore:
+  // the catalog on disk carries sentinels and the backup holds the last clean
+  // copy. Copying the current file over it here would destroy that only
+  // clean state, so recover it first.
+  if (existsSync(backup)) {
+    copyFileSync(backup, catalog)
+    console.warn('Recovered sv.po from an interrupted earlier run.')
+  }
   copyFileSync(catalog, backup)
   let contents = readFileSync(catalog, 'utf8')
 
@@ -93,8 +102,18 @@ const patch = () => {
 }
 
 const restore = () => {
+  if (!existsSync(backup)) return
   copyFileSync(backup, catalog)
   rmSync(backup, { force: true })
+}
+
+// `finally` does not run when a signal kills the process, and a dead run must
+// not leave sentinels in the working tree for the next commit to pick up.
+for (const signal of ['SIGINT', 'SIGTERM']) {
+  process.on(signal, () => {
+    restore()
+    process.exit(signal === 'SIGINT' ? 130 : 143)
+  })
 }
 
 const run = async () => {
@@ -110,16 +129,67 @@ const run = async () => {
   }
   const browser = await chromium.launch()
   const failures = []
+  const skipped = new Set()
 
   try {
     const context = await browser.newContext()
-    // Seed the stored preference before the app boots, so the first render is
-    // already Swedish rather than switching mid-session.
-    await context.addInitScript(() => {
-      window.localStorage.setItem('maintainerr.locale', 'sv')
-    })
     const page = await context.newPage()
 
+    // Boot with no stored preference: the app must come up in English, or a
+    // sentinel below would prove nothing about the switch.
+    await page.goto(`${baseUrl}/overview`, { waitUntil: 'networkidle' })
+    const beforeSwitch = await page.content()
+    for (const probe of probes) {
+      if (beforeSwitch.includes(probe.sentinel)) {
+        failures.push(
+          `${probe.form}: ${probe.sentinel} rendered before any switch - the instance did not start in English`,
+        )
+      }
+    }
+
+    // Switch in-session through the real picker. Seeding localStorage before
+    // boot would only exercise initial catalog loading; the regression this
+    // guards is a mounted tree that keeps its old language after the picker
+    // is used - a component missing its useLingui subscription.
+    await page.goto(`${baseUrl}/settings/main`, { waitUntil: 'networkidle' })
+    const picked = await page.evaluate(() => {
+      const selects = [...document.querySelectorAll('select')]
+      const select = selects.find((entry) =>
+        [...entry.options].some((option) => option.value === 'sv'),
+      )
+      if (!select) return false
+      const setValue = Object.getOwnPropertyDescriptor(
+        window.HTMLSelectElement.prototype,
+        'value',
+      ).set
+      setValue.call(select, 'sv')
+      select.dispatchEvent(new Event('change', { bubbles: true }))
+      return true
+    })
+    if (!picked) {
+      throw new Error('language picker not found on /settings/main')
+    }
+    // The save flow is how the choice applies. The PATCH it sends resubmits
+    // the form's unchanged values; the locale itself never reaches the server.
+    await page.getByRole('button', { name: 'Save Changes' }).click()
+
+    // PROBE-TRANS sits in the always-mounted navigation, so it must appear
+    // WITHOUT any navigation for this to count as an in-session switch.
+    const switched = await page
+      .waitForFunction(
+        (sentinel) => document.body.innerText.includes(sentinel),
+        probes[0].sentinel,
+        { timeout: 10_000 },
+      )
+      .then(() => true)
+      .catch(() => false)
+    if (!switched) {
+      failures.push(
+        `${probes[0].form}: ${probes[0].sentinel} did not appear in the mounted tree after the picker switch`,
+      )
+    }
+
+    // A fresh navigation then renders from the stored choice.
     await page.goto(`${baseUrl}/overview`, { waitUntil: 'networkidle' })
     const overview = await page.content()
 
@@ -150,6 +220,7 @@ const run = async () => {
     })
 
     if (!libraryPicked) {
+      skipped.add('PROBE-ALIAS')
       console.warn(
         '  skip  aliased core macro - no libraries configured on this instance',
       )
@@ -168,10 +239,11 @@ const run = async () => {
     await browser.close()
   }
 
-  return failures
+  return { failures, skipped }
 }
 
 let failures = []
+let skippedProbes = new Set()
 try {
   patch()
 
@@ -185,7 +257,7 @@ try {
       }
     }
   } else {
-    failures = await run()
+    ;({ failures, skipped: skippedProbes } = await run())
   }
 } finally {
   restore()
@@ -207,5 +279,8 @@ if (dryRun) {
   )
 } else {
   console.log(`Locale switch verified against ${baseUrl}:`)
-  for (const probe of probes) console.log(`  ok  ${probe.form}`)
+  for (const probe of probes) {
+    const status = skippedProbes.has(probe.sentinel) ? 'skip' : 'ok  '
+    console.log(`  ${status}  ${probe.form}`)
+  }
 }

@@ -38,6 +38,13 @@ const I18N_REVIEW_MODEL =
 
 const SOURCE_LOCALE = 'en';
 const BATCH_SIZE = 40;
+// Cost bounds, behind the workflow's author gate as defence in depth: a
+// runaway or malicious sync must not spend unbounded AI quota. A real Weblate
+// batch stays well under both; anything cut off is reported, never silent.
+const MAX_REVIEWED_STRINGS = 500;
+// Aligned with validate-catalogs' MAX_MSGSTR_LENGTH - longer entries fail the
+// catalog gate anyway, so there is nothing worth sending to a model.
+const MAX_ENTRY_LENGTH = 1000;
 // Token overlap below which a round-trip is worth a second look. Deliberately
 // low: this should surface nonsense, not quibble over word choice.
 const SIMILARITY_FLOOR = 0.3;
@@ -166,20 +173,43 @@ const files = readdirSync(catalogDir)
 
 const rows = [];
 const problems = [];
+const capNotes = [];
 let pendingTotal = 0;
+let reviewedTotal = 0;
 
 for (const file of files) {
   const locale = path.basename(file, '.po');
   const location = path.join(catalogDir, file);
   const baseline = baselineFor(location);
 
-  const pending = readPo(location).filter((entry) => {
+  const changed = readPo(location).filter((entry) => {
     if (entry.msgstr === '') return false;
     if (baseline && baseline.get(entry.msgid) === entry.msgstr) return false;
     return true;
   });
+  if (changed.length === 0) continue;
+  pendingTotal += changed.length;
+
+  const sized = changed.filter(
+    (entry) => entry.msgstr.length <= MAX_ENTRY_LENGTH,
+  );
+  if (sized.length < changed.length) {
+    capNotes.push(
+      `\`${locale}\`: ${changed.length - sized.length} ` +
+        `entr${changed.length - sized.length === 1 ? 'y' : 'ies'} over ` +
+        `${MAX_ENTRY_LENGTH} characters were not reviewed (the catalog gate rejects them regardless).`,
+    );
+  }
+
+  const budget = MAX_REVIEWED_STRINGS - reviewedTotal;
+  const pending = sized.slice(0, Math.max(budget, 0));
+  if (pending.length < sized.length) {
+    capNotes.push(
+      `\`${locale}\`: ${sized.length - pending.length} of ${sized.length} changed strings were NOT reviewed - the run's ${MAX_REVIEWED_STRINGS}-string cap was reached.`,
+    );
+  }
   if (pending.length === 0) continue;
-  pendingTotal += pending.length;
+  reviewedTotal += pending.length;
 
   log(`${locale}: reviewing ${pending.length} strings`);
 
@@ -219,13 +249,18 @@ lines.push('<!-- maintainerr-i18n-back-translation -->');
 lines.push('## Translation review');
 lines.push('');
 
-if (rows.length === 0 && pendingTotal > 0) {
+if (rows.length === 0 && reviewedTotal > 0) {
   // Never report "nothing changed" when there was something to review and the
   // provider refused: a silent pass here reads as a clean bill of health.
   lines.push(
     `:warning: **Could not review ${pendingTotal} changed translation` +
       `${pendingTotal === 1 ? '' : 's'}.** The back-translation provider did not ` +
       'respond, so these strings have NOT been checked. See the details below.',
+  );
+} else if (rows.length === 0 && pendingTotal > 0) {
+  lines.push(
+    `:warning: **${pendingTotal} changed translation${pendingTotal === 1 ? '' : 's'} ` +
+      'were NOT reviewed** - every one fell outside the review caps below.',
   );
 } else if (rows.length === 0) {
   lines.push('No new or changed translations in this pull request.');
@@ -253,6 +288,13 @@ if (rows.length === 0 && pendingTotal > 0) {
     '⚠️ marks a low round-trip similarity or a placeholder mismatch. ' +
       'Idiomatic translations score low too, so treat it as a prompt to look, not a verdict.',
   );
+}
+
+if (capNotes.length > 0) {
+  // Visible, not tucked into a details block: a capped run must never read as
+  // a complete review.
+  lines.push('');
+  for (const note of capNotes) lines.push(`- :warning: ${note}`);
 }
 
 if (problems.length > 0) {

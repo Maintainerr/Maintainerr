@@ -180,6 +180,61 @@ const isIdentifierChar = (char) =>
   char === '_';
 
 /**
+ * Numeric rich-text slots (`<0>...</0>`, `<1/>`) appearing in a message.
+ *
+ * Lingui replaces these with components the caller supplies by index, so a
+ * translation must use exactly the source's numbers: a renumbered slot finds
+ * no component and its wrapper - a link, emphasis, a button - silently
+ * disappears while the text still renders. Returns the set of slot numbers
+ * and whether every `<n>` has a matching `</n>` (a self-closing `<n/>` counts
+ * as both).
+ */
+export const richTextSlots = (text) => {
+  const opened = new Map();
+  const closed = new Map();
+  const slots = new Set();
+
+  for (let i = 0; i < text.length; i += 1) {
+    if (text[i] !== '<') continue;
+
+    let cursor = i + 1;
+    const isClosing = text[cursor] === '/';
+    if (isClosing) cursor += 1;
+
+    let digits = '';
+    while (
+      cursor < text.length &&
+      text[cursor] >= '0' &&
+      text[cursor] <= '9'
+    ) {
+      digits += text[cursor];
+      cursor += 1;
+    }
+    if (digits === '') continue;
+
+    const isSelfClosing =
+      !isClosing && text[cursor] === '/' && text[cursor + 1] === '>';
+    if (isSelfClosing) cursor += 1;
+    if (text[cursor] !== '>') continue;
+
+    slots.add(digits);
+    if (isSelfClosing || !isClosing) {
+      opened.set(digits, (opened.get(digits) ?? 0) + 1);
+    }
+    if (isSelfClosing || isClosing) {
+      closed.set(digits, (closed.get(digits) ?? 0) + 1);
+    }
+    i = cursor;
+  }
+
+  let balanced = true;
+  for (const slot of slots) {
+    if ((opened.get(slot) ?? 0) !== (closed.get(slot) ?? 0)) balanced = false;
+  }
+  return { slots, balanced };
+};
+
+/**
  * ICU argument names appearing anywhere in a message.
  *
  * Only records `{name}` and `{name, ...}`, so sub-messages inside a plural

@@ -1,4 +1,4 @@
-import { Trans } from '@lingui/react/macro'
+import { Trans, useLingui } from '@lingui/react/macro'
 import type { StreamystatsItemDetails } from '@maintainerr/contracts'
 import { useEffect, useState } from 'react'
 import GetApiHandler from '../../../../../utils/ApiHandler'
@@ -16,11 +16,16 @@ type FetchState =
   | { status: 'empty' }
   | { status: 'error' }
 
-const formatDate = (value: string | null | undefined): string => {
+// The app locale, not the browser's - the labels beside these dates follow
+// the language picker, so the date format has to follow it too.
+const formatDate = (
+  value: string | null | undefined,
+  locale: string,
+): string => {
   if (!value) return '-'
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return '-'
-  return date.toLocaleDateString()
+  return date.toLocaleDateString(locale)
 }
 
 const formatWatchTime = (seconds: number): string => {
@@ -36,6 +41,7 @@ const StreamystatsStatsPanel = ({
   itemId,
   itemUrl,
 }: StreamystatsStatsPanelProps) => {
+  const { i18n } = useLingui()
   const [state, setState] = useState<FetchState>({ status: 'loading' })
 
   useEffect(() => {
@@ -117,7 +123,7 @@ const StreamystatsStatsPanel = ({
                 <Trans>Last watched</Trans>
               </dt>
               <dd className="font-medium">
-                {formatDate(state.data.lastWatched)}
+                {formatDate(state.data.lastWatched, i18n.locale)}
               </dd>
             </div>
           </dl>
@@ -167,7 +173,7 @@ const StreamystatsStatsPanel = ({
                         {formatWatchTime(row.totalWatchTime)}
                       </td>
                       <td className="px-2 py-1 text-right">
-                        {formatDate(row.lastWatched)}
+                        {formatDate(row.lastWatched, i18n.locale)}
                       </td>
                     </tr>
                   ))}

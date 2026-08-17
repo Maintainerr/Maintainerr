@@ -46,7 +46,7 @@ const CollectionLogsTable = ({
   currentFilter,
   onShowMeta,
 }: CollectionLogsTableProps) => {
-  const { t } = useLingui()
+  const { t, i18n } = useLingui()
   const fetchAmount = 25
   const { data, isLoading, isLoadingExtra } = useInfinitePaginatedList<
     CollectionLogDto,
@@ -94,7 +94,7 @@ const CollectionLogsTable = ({
               return (
                 <tr key={`log-list-${index}`}>
                   <Table.TD className="text-gray-300">
-                    {new Date(row.timestamp).toLocaleString()}
+                    {new Date(row.timestamp).toLocaleString(i18n.locale)}
                   </Table.TD>
                   <Table.TD className="text-gray-300">
                     <Badge
