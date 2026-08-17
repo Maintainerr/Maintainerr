@@ -66,4 +66,11 @@ export enum MediaServerFeature {
    * bound to one library. Gates the cross-library lookup for manual collections.
    */
   CROSS_LIBRARY_COLLECTIONS = 'cross_library_collections',
+  /**
+   * Scheduled-deletion collections can be surfaced by the jellyfin-plugin-leaving-soon
+   * (a symlink-backed library) instead of a native BoxSet. Jellyfin-only: the
+   * plugin runs inside Jellyfin and polls Maintainerr's leaving-soon API, so no
+   * other media server can offer it.
+   */
+  SYMLINK_LIBRARY = 'symlink_library',
 }
