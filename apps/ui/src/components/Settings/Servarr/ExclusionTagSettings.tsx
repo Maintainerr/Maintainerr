@@ -35,6 +35,9 @@ const COPY: Record<ArrService, { name: string; entity: string }> = {
 const ExclusionTagSettings = ({ service }: ExclusionTagSettingsProps) => {
   const { t } = useLingui()
   const { name } = COPY[service]
+  // The charset rides through as a placeholder from the same constant the
+  // validator uses, so a translation can never advertise a different rule.
+  const chars = ARR_TAG_LABEL_HINT
   // Spelled out per service rather than composed from a noun, so the sentence
   // reads naturally once translated.
   const entityDescription =
@@ -73,8 +76,8 @@ const ExclusionTagSettings = ({ service }: ExclusionTagSettingsProps) => {
     if (data.enabled && !isValidArrTagLabel(trimmedLabel)) {
       showError(
         trimmedLabel === ''
-          ? t`A tag label is required when exclusion tagging is enabled. ${{ hint: ARR_TAG_LABEL_HINT }}.`
-          : t`"${{ label: trimmedLabel }}" is not a valid ${{ name }} tag. ${{ hint: ARR_TAG_LABEL_HINT }}, with no leading, trailing, or repeated hyphens.`,
+          ? t`A tag label is required when exclusion tagging is enabled. Lowercase letters, numbers and hyphens only (${{ chars }}).`
+          : t`"${{ label: trimmedLabel }}" is not a valid ${{ name }} tag. Lowercase letters, numbers and hyphens only (${{ chars }}), with no leading, trailing, or repeated hyphens.`,
       )
       return
     }
@@ -130,7 +133,11 @@ const ExclusionTagSettings = ({ service }: ExclusionTagSettingsProps) => {
             <Trans>Tag label</Trans>
             <p className="text-xs font-normal">
               <Trans>The {name} tag to apply, created if missing.</Trans>
-              <span className="block">{ARR_TAG_LABEL_HINT}.</span>
+              <span className="block">
+                <Trans>
+                  Lowercase letters, numbers and hyphens only ({chars}).
+                </Trans>
+              </span>
             </p>
           </label>
           <div className="form-input">

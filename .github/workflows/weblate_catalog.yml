@@ -39,7 +39,10 @@ jobs:
         run: |
           set -euo pipefail
           from_weblate=false
-          case "$PR_LOGIN" in hosted-weblate*) from_weblate=true ;; esac
+          case "$PR_LOGIN" in 'hosted-weblate[bot]') from_weblate=true ;; esac
+          # The branch name is attacker-chosen, but it only ever *adds* the
+          # restriction below, so a false match costs a contributor nothing
+          # more than a scope check they already pass.
           case "$HEAD_REF" in weblate-*) from_weblate=true ;; esac
           if [ "$from_weblate" != true ]; then
             echo "Not a Weblate pull request; scope restriction does not apply."
@@ -105,10 +108,12 @@ jobs:
           # Keyed on the author alone. The branch name is chosen by whoever
           # opens the pull request, so accepting `weblate-*` would let any
           # contributor switch off the check that judges their own
-          # translations. Weblate's own pull requests come from the
-          # hosted-weblate app, which a contributor cannot impersonate.
+          # translations. The login is matched in full: the `[bot]` suffix is
+          # an app identity that cannot be claimed as a user account, whereas a
+          # prefix would also have accepted `hosted-weblate-anything` - and
+          # `hosted-weblate` itself is an unregistered user name today.
           from_weblate=false
-          case "$PR_LOGIN" in hosted-weblate*) from_weblate=true ;; esac
+          case "$PR_LOGIN" in 'hosted-weblate[bot]') from_weblate=true ;; esac
           if [ "$from_weblate" = true ]; then
             node tools/i18n/validate-catalogs.mjs apps/ui/src/locales --no-base
           else

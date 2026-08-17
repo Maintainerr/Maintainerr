@@ -190,9 +190,13 @@ const isIdentifierChar = (char) =>
  * as both).
  */
 export const richTextSlots = (text) => {
-  const opened = new Map();
-  const closed = new Map();
   const slots = new Set();
+  // Order is as much a part of the contract as the count: `</0>x<0>` and
+  // `<0>a<1>b</0>c</1>` both have one open and one close per slot, yet the
+  // runtime resolves neither and prints the raw `</0>` to the user. A stack
+  // rejects both; counters cannot tell them from a well-formed message.
+  const open = [];
+  let ordered = true;
 
   for (let i = 0; i < text.length; i += 1) {
     if (text[i] !== '<') continue;
@@ -218,20 +222,16 @@ export const richTextSlots = (text) => {
     if (text[cursor] !== '>') continue;
 
     slots.add(digits);
-    if (isSelfClosing || !isClosing) {
-      opened.set(digits, (opened.get(digits) ?? 0) + 1);
-    }
-    if (isSelfClosing || isClosing) {
-      closed.set(digits, (closed.get(digits) ?? 0) + 1);
+    // A self-closing `<n/>` opens and closes at once, so it never nests.
+    if (isClosing) {
+      if (open.pop() !== digits) ordered = false;
+    } else if (!isSelfClosing) {
+      open.push(digits);
     }
     i = cursor;
   }
 
-  let balanced = true;
-  for (const slot of slots) {
-    if ((opened.get(slot) ?? 0) !== (closed.get(slot) ?? 0)) balanced = false;
-  }
-  return { slots, balanced };
+  return { slots, balanced: ordered && open.length === 0 };
 };
 
 /**

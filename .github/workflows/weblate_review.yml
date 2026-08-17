@@ -52,12 +52,14 @@ jobs:
       # there is nothing on disk for a later step to execute, and a non-catalog
       # file under that path fails the job.
       # Everything from here on serves the back-translation, which spends the
-      # AI budget. Only Weblate's own pull requests get it: the author login is
-      # the key, never the branch name - a contributor picks their own branch
-      # name, but cannot open a pull request as the hosted-weblate app. The
-      # labelling step above still runs for every localisation PR.
+      # AI budget. Only Weblate's own pull requests get it: the author's full
+      # login is the key, never the branch name and never a prefix - a
+      # contributor picks their own branch name and can register an account
+      # called `hosted-weblate-anything`, but only an app posts as
+      # `hosted-weblate[bot]`. The labelling step above, which spends nothing,
+      # still runs for every localisation PR.
       - name: Download the pull request's catalogs
-        if: ${{ startsWith(github.event.pull_request.user.login, 'hosted-weblate') }}
+        if: ${{ github.event.pull_request.user.login == 'hosted-weblate[bot]' }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
@@ -95,7 +97,7 @@ jobs:
           done
 
       - name: Set up Node.js
-        if: ${{ startsWith(github.event.pull_request.user.login, 'hosted-weblate') }}
+        if: ${{ github.event.pull_request.user.login == 'hosted-weblate[bot]' }}
         uses: actions/setup-node@v7
         with:
           node-version: 24
@@ -107,7 +109,7 @@ jobs:
           script: |
             const pr = context.payload.pull_request
             const fromWeblate =
-              pr.user.login.startsWith('hosted-weblate') ||
+              pr.user.login === 'hosted-weblate[bot]' ||
               pr.head.ref.startsWith('weblate-')
             const labels = fromWeblate ? ['l10n', 'do-not-squash'] : ['l10n']
             for (const name of labels) {
@@ -125,7 +127,7 @@ jobs:
             })
 
       - name: Back-translate changed strings
-        if: ${{ startsWith(github.event.pull_request.user.login, 'hosted-weblate') }}
+        if: ${{ github.event.pull_request.user.login == 'hosted-weblate[bot]' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           AI_MODEL_API_KEY: ${{ secrets.AI_MODEL_API_KEY }}
@@ -137,11 +139,11 @@ jobs:
             --out .i18n-review.md
 
       - name: Append to step summary
-        if: ${{ startsWith(github.event.pull_request.user.login, 'hosted-weblate') }}
+        if: ${{ github.event.pull_request.user.login == 'hosted-weblate[bot]' }}
         run: cat .i18n-review.md >> "$GITHUB_STEP_SUMMARY"
 
       - name: Find existing sticky comment
-        if: ${{ startsWith(github.event.pull_request.user.login, 'hosted-weblate') }}
+        if: ${{ github.event.pull_request.user.login == 'hosted-weblate[bot]' }}
         id: find-comment
         uses: peter-evans/find-comment@v4
         with:
@@ -150,7 +152,7 @@ jobs:
           token: ${{ steps.app-token.outputs.token }}
 
       - name: Upsert review comment
-        if: ${{ startsWith(github.event.pull_request.user.login, 'hosted-weblate') }}
+        if: ${{ github.event.pull_request.user.login == 'hosted-weblate[bot]' }}
         uses: peter-evans/create-or-update-comment@v5
         with:
           comment-id: ${{ steps.find-comment.outputs.comment-id }}

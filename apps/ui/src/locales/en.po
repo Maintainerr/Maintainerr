@@ -18,8 +18,8 @@ msgid "- uses {propertyName}"
 msgstr "- uses {propertyName}"
 
 #: src/components/Settings/Servarr/ExclusionTagSettings.tsx
-msgid "\"{label}\" is not a valid {name} tag. {hint}, with no leading, trailing, or repeated hyphens."
-msgstr "\"{label}\" is not a valid {name} tag. {hint}, with no leading, trailing, or repeated hyphens."
+msgid "\"{label}\" is not a valid {name} tag. Lowercase letters, numbers and hyphens only ({chars}), with no leading, trailing, or repeated hyphens."
+msgstr "\"{label}\" is not a valid {name} tag. Lowercase letters, numbers and hyphens only ({chars}), with no leading, trailing, or repeated hyphens."
 
 #: src/pages/OverlayTemplateListPage.tsx
 msgid "\"{templateName}\" set as the default poster template"
@@ -331,8 +331,8 @@ msgid "1 day text"
 msgstr "1 day text"
 
 #: src/components/Settings/Servarr/ExclusionTagSettings.tsx
-msgid "A tag label is required when exclusion tagging is enabled. {hint}."
-msgstr "A tag label is required when exclusion tagging is enabled. {hint}."
+msgid "A tag label is required when exclusion tagging is enabled. Lowercase letters, numbers and hyphens only ({chars})."
+msgstr "A tag label is required when exclusion tagging is enabled. Lowercase letters, numbers and hyphens only ({chars})."
 
 #: src/components/Settings/index.tsx
 msgid "About"
@@ -2262,6 +2262,10 @@ msgstr "Logs - Maintainerr"
 #: src/components/Settings/About/index.tsx
 msgid "Loving Maintainerr?"
 msgstr "Loving Maintainerr?"
+
+#: src/components/Settings/Servarr/ExclusionTagSettings.tsx
+msgid "Lowercase letters, numbers and hyphens only ({chars})."
+msgstr "Lowercase letters, numbers and hyphens only ({chars})."
 
 #: src/components/Common/CommunityRuleModal/index.tsx
 msgid "Made with Version"

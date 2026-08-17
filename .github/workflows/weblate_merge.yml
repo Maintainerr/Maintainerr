@@ -22,14 +22,16 @@ concurrency:
 jobs:
   # pull_request_review fires for anyone who can leave a review, so the
   # approving actor is checked against CODEOWNERS the same way the release
-  # flow does it.
+  # flow does it. Eligibility is the author's full login and nothing else: a
+  # branch name is chosen by whoever opens the pull request, and a prefix would
+  # match `hosted-weblate-anything`, which anyone can register. Only an app can
+  # post as `hosted-weblate[bot]`.
   guard_review_actor:
     name: Guard approving actor
     if: >-
       github.event.review.state == 'approved' &&
       github.event.pull_request.base.ref == 'development' &&
-      (startsWith(github.event.pull_request.user.login, 'hosted-weblate') ||
-       startsWith(github.event.pull_request.head.ref, 'weblate-'))
+      github.event.pull_request.user.login == 'hosted-weblate[bot]'
     uses: ./.github/workflows/guard-manual.yml
     permissions:
       contents: read
