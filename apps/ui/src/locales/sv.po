@@ -8,14 +8,15 @@ msgstr ""
 "Language: sv\n"
 "Project-Id-Version: \n"
 "Report-Msgid-Bugs-To: \n"
-"PO-Revision-Date: 2026-08-15 23:51+0000\n"
+"PO-Revision-Date: 2026-08-18 21:22+0000\n"
 "Last-Translator: Maintainerr <get@maintainerr.info>\n"
-"Language-Team: Swedish <https://hosted.weblate.org/projects/maintainerr/app/sv/>\n"
+"Language-Team: Swedish <https://hosted.weblate.org/projects/maintainerr/app/"
+"sv/>\n"
 "Plural-Forms: nplurals=2; plural=n != 1;\n"
 
 #: src/components/Settings/MediaServerSelector/index.tsx
 msgid "- uses {propertyName}"
-msgstr ""
+msgstr "- använder {propertyName}"
 
 #: src/components/Settings/Servarr/ExclusionTagSettings.tsx
 msgid "\"{label}\" is not a valid {name} tag. Lowercase letters, numbers and hyphens only ({chars}), with no leading, trailing, or repeated hyphens."
@@ -30,28 +31,32 @@ msgid "\"{templateName}\" set as the default title card template"
 msgstr ""
 
 #: src/components/Collection/CollectionDetail/CollectionInfo/CollectionLogsTable.tsx
+#, fuzzy
 msgid "(manual)"
-msgstr ""
+msgstr "(manuell)"
 
 #: src/components/OverlayEditor/OverlayCanvas.tsx
+#, fuzzy
 msgid "[Image]"
-msgstr ""
+msgstr "[Bild]"
 
 #: src/components/StorageMetrics/index.tsx
 msgid "{accurateMountCount} of {mountCount} mounts report total capacity"
 msgstr ""
 
 #: src/components/Rules/RuleGroup/AddModal/ArrAction/index.tsx
+#, fuzzy
 msgid "{actionOwnerName} action"
-msgstr ""
+msgstr "{actionOwnerName} åtgärd"
 
 #: src/components/Rules/RuleGroup/AddModal/ConfigureNotificationModal/index.tsx
+#, fuzzy
 msgid "{agentName} - {agentType} (disabled)"
-msgstr ""
+msgstr "{agentName} - {agentType} (inaktiverad)"
 
 #: src/components/Settings/MediaServerSelector/index.tsx
 msgid "{clearedCollectionLogs, plural, one {# log entry} other {# log entries}}"
-msgstr ""
+msgstr "{clearedCollectionLogs, plural, one {# loggpost} other {# loggposter}}"
 
 #: src/components/Settings/MediaServerSelector/index.tsx
 msgid "{clearedCollectionMedia, plural, one {# collection media item} other {# collection media items}}"
