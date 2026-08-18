@@ -7,6 +7,7 @@ import {
   type MediaProviderIds,
 } from '@maintainerr/contracts'
 import { XIcon } from '@heroicons/react/solid'
+import { Trans, useLingui } from '@lingui/react/macro'
 import React, { memo, useEffect, useMemo, useState } from 'react'
 import { useMetadataOverview } from '../../../../api/metadata'
 import { useLockBodyScroll } from '../../../../hooks/useLockBodyScroll'
@@ -127,6 +128,7 @@ const ProviderIdBadge = ({
   providerId: string
   mediaType: MediaItemType
 }) => {
+  const { t } = useLingui()
   const href = buildProviderUrl(provider, providerId, mediaType)
   const label = `${provider}://${providerId}`
 
@@ -139,7 +141,7 @@ const ProviderIdBadge = ({
       href={href}
       target="_blank"
       rel="noreferrer"
-      title={`Open on ${provider}`}
+      title={t`Open on ${{ provider }}`}
       className={`${providerBadgeClassName} underline transition hover:bg-zinc-600`}
       onClick={(event) => event.stopPropagation()}
     >
@@ -189,6 +191,8 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
     onCollectionItemRemoved,
     onCollectionItemPostponed,
   }) => {
+    const { t } = useLingui()
+
     useLockBodyScroll(true)
 
     const { isPlex, isJellyfin, isEmby } = useMediaServerType()
@@ -294,6 +298,7 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
       requesterResult?.requestKey === seerrRequestersPath
         ? requesterResult.users
         : []
+    const requesters = requestedBy.join(', ')
 
     const backdropRequestPath = buildMetadataPath(
       'backdrop',
@@ -318,7 +323,7 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
     const summaryText =
       mediaServerSummary ||
       providerOverview ||
-      (loading || isOverviewPending ? '' : 'No summary available.')
+      (loading || isOverviewPending ? '' : t`No summary available.`)
     const providerLogo = useMemo(() => {
       if (!isCurrentBackdrop || !backdropResult.provider) return null
       const cfg = metadataProviderLogos[backdropResult.provider]
@@ -581,7 +586,7 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
           <button
             type="button"
             onClick={onClose}
-            aria-label="Close"
+            aria-label={t`Close`}
             className={`${modalCloseButtonClassName} sm:hidden`}
           >
             <XIcon className="h-5 w-5" />
@@ -624,7 +629,7 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
                   </div>
                   {metadata?.contentRating && (
                     <div className="pointer-events-none mt-1 rounded-lg bg-black/70 p-2 text-xs font-medium text-zinc-200 uppercase">
-                      {`Rated: ${metadata.contentRating}`}
+                      {t`Rated: ${{ contentRating: metadata.contentRating }}`}
                     </div>
                   )}
                 </div>
@@ -806,8 +811,10 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
 
             {requestedBy.length > 0 ? (
               <div className="mt-2 text-sm text-zinc-400">
-                Requested by{' '}
-                <span className="text-zinc-200">{requestedBy.join(', ')}</span>
+                <Trans>
+                  Requested by{' '}
+                  <span className="text-zinc-200">{requesters}</span>
+                </Trans>
               </div>
             ) : null}
 
@@ -829,20 +836,20 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
                     <p
                       className={`text-sm font-semibold ${maintainerrStatusCardStyles.titleClassName}`}
                     >
-                      Excluded From
+                      <Trans>Excluded From</Trans>
                     </p>
                     <div className="mt-2">
                       {maintainerrDetailsLoading
                         ? renderMaintainerrStatusItems(
                             [],
-                            'Loading exclusion details...',
+                            t`Loading exclusion details...`,
                             maintainerrStatusCardStyles.contentClassName,
                             maintainerrStatusCardStyles.emptyClassName,
                             maintainerrStatusCardStyles.linkClassName,
                           )
                         : renderMaintainerrStatusItems(
                             excludedFromEntries,
-                            'Not excluded from any collection.',
+                            t`Not excluded from any collection.`,
                             maintainerrStatusCardStyles.contentClassName,
                             maintainerrStatusCardStyles.emptyClassName,
                             maintainerrStatusCardStyles.linkClassName,
@@ -857,20 +864,20 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
                     <p
                       className={`text-sm font-semibold ${maintainerrStatusCardStyles.titleClassName}`}
                     >
-                      Manually Added To
+                      <Trans>Manually Added To</Trans>
                     </p>
                     <div className="mt-2">
                       {maintainerrDetailsLoading
                         ? renderMaintainerrStatusItems(
                             [],
-                            'Loading manual collection details...',
+                            t`Loading manual collection details...`,
                             maintainerrStatusCardStyles.contentClassName,
                             maintainerrStatusCardStyles.emptyClassName,
                             maintainerrStatusCardStyles.linkClassName,
                           )
                         : renderMaintainerrStatusItems(
                             manuallyAddedToEntries,
-                            'Not manually added to any collection.',
+                            t`Not manually added to any collection.`,
                             maintainerrStatusCardStyles.contentClassName,
                             maintainerrStatusCardStyles.emptyClassName,
                             maintainerrStatusCardStyles.linkClassName,

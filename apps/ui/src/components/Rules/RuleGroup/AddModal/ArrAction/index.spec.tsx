@@ -1,5 +1,5 @@
 import { ServarrAction } from '@maintainerr/contracts'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor } from '../../../../../test-utils/render'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useServarrSettings } from '../../../../../api/settings'
 import {
@@ -33,6 +33,7 @@ describe('ArrAction', () => {
     render(
       <ArrAction
         type="Sonarr"
+        mediaServerName="Plex"
         arrAction={ServarrAction.DELETE}
         settingId={12}
         onUpdate={onUpdate}
@@ -61,6 +62,7 @@ describe('ArrAction', () => {
     render(
       <ArrAction
         type="Sonarr"
+        mediaServerName="Plex"
         arrAction={ServarrAction.DELETE}
         settingId={12}
         onUpdate={onUpdate}
@@ -76,10 +78,11 @@ describe('ArrAction', () => {
     })
   })
 
-  it('shows fallback media server actions until a Sonarr server is selected', async () => {
+  it('shows the media server actions until a Sonarr server is selected', async () => {
     render(
       <ArrAction
         type="Sonarr"
+        mediaServerName="Plex"
         arrAction={ServarrAction.DELETE}
         settingId={undefined}
         onUpdate={vi.fn()}
@@ -98,7 +101,7 @@ describe('ArrAction', () => {
       expect(useServarrSettingsMock).toHaveBeenCalledWith('sonarr')
     })
 
-    const actionSelect = screen.getByLabelText('Media server action')
+    const actionSelect = screen.getByLabelText('Plex action')
     const actionOptions = Array.from(
       (actionSelect as HTMLSelectElement).options,
     ).map((option) => option.text)
@@ -124,6 +127,7 @@ describe('ArrAction', () => {
     render(
       <ArrAction
         type="Sonarr"
+        mediaServerName="Plex"
         arrAction={ServarrAction.DELETE}
         settingId={12}
         onUpdate={vi.fn()}

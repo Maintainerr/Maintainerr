@@ -239,6 +239,64 @@ describe('OverlayRenderService', () => {
     expect(calledWith[3]).toBe(2);
   });
 
+  it('maps elements into the centered canvas-aspect region of odd-aspect artwork (issue #3533)', async () => {
+    const logger = createMockLogger();
+    const service = new OverlayRenderService(logger);
+
+    // 4:3 still with a 16:9 titlecard canvas. Clients cover-crop the still
+    // to 16:9 (visible rows 90..630 of 720), so the pill must land there.
+    const posterBuffer = await sharp({
+      create: {
+        width: 960,
+        height: 720,
+        channels: 3,
+        background: '#ffffff',
+      },
+    })
+      .jpeg()
+      .toBuffer();
+
+    const elements: TemplateElements = [
+      {
+        id: 'pill-bg',
+        type: 'shape',
+        x: 40,
+        y: 40,
+        width: 480,
+        height: 70,
+        rotation: 0,
+        layerOrder: 0,
+        opacity: 1,
+        visible: true,
+        shapeType: 'rectangle',
+        fillColor: '#ff0000',
+        strokeColor: null,
+        strokeWidth: 0,
+        cornerRadius: 0,
+      },
+    ];
+
+    const result = await service.renderFromTemplate(
+      posterBuffer,
+      elements,
+      1920,
+      1080,
+      {
+        deleteDate: new Date('2026-04-27T00:00:00.000Z'),
+        daysLeft: 14,
+      },
+    );
+
+    const { data, info } = await sharp(Buffer.from(result.buffer))
+      .raw()
+      .toBuffer({ resolveWithObject: true });
+
+    // scale 0.5, offsetY 90: pill occupies y 110..145 (visible band),
+    // not y 20..55 where the old full-image stretch placed it.
+    expect(isRedPixel(data, info.width, info.channels, 140, 127)).toBe(true);
+    expect(isRedPixel(data, info.width, info.channels, 140, 45)).toBe(false);
+  });
+
   it('rotates elements around top-left pivot to preserve template placement', async () => {
     const logger = createMockLogger();
     const service = new OverlayRenderService(logger);

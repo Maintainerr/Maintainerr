@@ -1,3 +1,4 @@
+import { Trans, useLingui } from '@lingui/react/macro'
 import { stripTrailingSlashes } from '@maintainerr/contracts'
 import { useMemo, useState } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
@@ -170,6 +171,7 @@ const ServarrSettingsModal = <TSetting extends ServarrSettingShape>({
   onDelete,
   onCancel,
 }: ServarrSettingsModalProps<TSetting>) => {
+  const { t } = useLingui()
   const initialState = useMemo(() => buildInitialState(settings), [settings])
   const savedConnectionState = settings
     ? toConnectionState(initialState)
@@ -250,10 +252,10 @@ const ServarrSettingsModal = <TSetting extends ServarrSettingShape>({
         const wasDeleted = await onDelete(settings.id)
 
         if (!wasDeleted) {
-          setErrorMessage(`Failed to remove ${serviceName} settings.`)
+          setErrorMessage(t`Failed to remove ${{ serviceName }} settings.`)
         }
       } catch {
-        setErrorMessage(`Failed to remove ${serviceName} settings.`)
+        setErrorMessage(t`Failed to remove ${{ serviceName }} settings.`)
       } finally {
         setSaving(false)
       }
@@ -261,19 +263,11 @@ const ServarrSettingsModal = <TSetting extends ServarrSettingShape>({
       return
     }
 
-    const { payload, port } = buildServarrPayload(values, settings)
-
-    if (
-      values.hostname === '' ||
-      port === '' ||
-      values.apiKey === '' ||
-      values.serverName === ''
-    ) {
-      setErrorMessage(
-        `Please fill in all required ${serviceName} fields or clear all fields to remove this server.`,
-      )
-      return
-    }
+    // No completeness check here on purpose: canSave already requires hostname,
+    // apiKey and serverName, and resolveServarrPort only yields an empty port
+    // when hostname is empty - which canSave rejects. The all-empty case is
+    // taken by the removal branch above before reaching this point.
+    const { payload } = buildServarrPayload(values, settings)
 
     const endpoint = settings?.id
       ? `${settingsPath}/${settings.id}`
@@ -291,10 +285,10 @@ const ServarrSettingsModal = <TSetting extends ServarrSettingShape>({
       if (response.code === 1) {
         onUpdate(response.data)
       } else {
-        setErrorMessage(`Failed to update ${serviceName} settings.`)
+        setErrorMessage(t`Failed to update ${{ serviceName }} settings.`)
       }
     } catch {
-      setErrorMessage(`Failed to update ${serviceName} settings.`)
+      setErrorMessage(t`Failed to update ${{ serviceName }} settings.`)
     } finally {
       setSaving(false)
     }
@@ -317,7 +311,7 @@ const ServarrSettingsModal = <TSetting extends ServarrSettingShape>({
           status: response.code === 1,
           version: normalizeConnectionErrorMessage(
             response.message,
-            `Failed to connect to ${serviceName}. Verify URL and API key.`,
+            t`Failed to connect to ${{ serviceName }}. Verify URL and API key.`,
           ),
         })
 
@@ -331,7 +325,7 @@ const ServarrSettingsModal = <TSetting extends ServarrSettingShape>({
           status: false,
           version: getApiErrorMessage(
             error,
-            `Failed to connect to ${serviceName}. Verify URL and API key.`,
+            t`Failed to connect to ${{ serviceName }}. Verify URL and API key.`,
           ),
         })
       })
@@ -366,7 +360,7 @@ const ServarrSettingsModal = <TSetting extends ServarrSettingShape>({
             type="button"
             onClick={() => void performTest()}
             disabled={testing || isClearingExistingSetting}
-            label="Test Connection"
+            label={t`Test Connection`}
             isPending={testing}
             feedbackStatus={testFeedbackStatus}
           />
@@ -384,9 +378,11 @@ const ServarrSettingsModal = <TSetting extends ServarrSettingShape>({
                 type={testResult.status ? 'success' : 'error'}
                 title={
                   testResult.status
-                    ? `Successfully connected to ${serviceName} (${testResult.version})`
-                    : testResult.version ||
-                      `Failed to connect to ${serviceName}`
+                    ? t`Successfully connected to ${{ serviceName }} (${{ version: testResult.version }})`
+                    : // Always set on failure: both test paths run the message
+                      // through normalizeConnectionErrorMessage, which falls
+                      // back to its own sentence rather than returning empty.
+                      testResult.version
                 }
               />
             ) : null}
@@ -396,7 +392,7 @@ const ServarrSettingsModal = <TSetting extends ServarrSettingShape>({
 
       <div className="form-row">
         <label htmlFor="serverName" className="text-label">
-          Server Name
+          <Trans>Server Name</Trans>
         </label>
         <div className="form-input">
           <div className="form-input-field">
@@ -411,7 +407,7 @@ const ServarrSettingsModal = <TSetting extends ServarrSettingShape>({
 
       <div className="form-row">
         <label htmlFor="hostname" className="text-label">
-          Hostname or IP
+          <Trans>Hostname or IP</Trans>
         </label>
         <div className="form-input">
           <div className="form-input-field">
@@ -426,7 +422,7 @@ const ServarrSettingsModal = <TSetting extends ServarrSettingShape>({
 
       <div className="form-row">
         <label htmlFor="port" className="text-label">
-          Port
+          <Trans>Port</Trans>
         </label>
         <div className="form-input">
           <div className="form-input-field">
@@ -441,8 +437,10 @@ const ServarrSettingsModal = <TSetting extends ServarrSettingShape>({
 
       <div className="form-row">
         <label htmlFor="baseUrl" className="text-label">
-          Base URL
-          <span className="label-tip">No Leading Slash</span>
+          <Trans>Base URL</Trans>
+          <span className="label-tip">
+            <Trans>No Leading Slash</Trans>
+          </span>
         </label>
         <div className="form-input">
           <div className="form-input-field">
@@ -457,7 +455,7 @@ const ServarrSettingsModal = <TSetting extends ServarrSettingShape>({
 
       <div className="form-row">
         <label htmlFor="apikey" className="text-label">
-          API key
+          <Trans>API key</Trans>
         </label>
         <div className="form-input">
           <div className="form-input-field">

@@ -1,3 +1,6 @@
+import type { MessageDescriptor } from '@lingui/core'
+import { msg } from '@lingui/core/macro'
+import { Trans, useLingui } from '@lingui/react/macro'
 import { TrashIcon } from '@heroicons/react/solid'
 import {
   Application,
@@ -9,7 +12,6 @@ import {
   MediaType,
   normalizeDiskPath,
   RulePossibility,
-  RulePossibilityTranslations,
 } from '@maintainerr/contracts'
 import { FormEvent, useEffect, useEffectEvent, useMemo, useState } from 'react'
 import { IRule } from '../'
@@ -28,6 +30,32 @@ import LoadingSpinner from '../../../../Common/LoadingSpinner'
 import { DatalistInput } from '../../../../Forms/DatalistInput'
 import { Input } from '../../../../Forms/Input'
 import { Select } from '../../../../Forms/Select'
+
+// The single source for these labels (the old contracts constant is gone):
+// Lingui can only extract literal descriptors, and the option value sent to
+// the server stays the numeric enum.
+const rulePossibilityLabels: Record<RulePossibility, MessageDescriptor> = {
+  [RulePossibility.BIGGER]: msg`Bigger`,
+  [RulePossibility.SMALLER]: msg`Smaller`,
+  [RulePossibility.EQUALS]: msg`Equals`,
+  [RulePossibility.NOT_EQUALS]: msg`Not Equals`,
+  [RulePossibility.CONTAINS]: msg`Contains (Exact list match)`,
+  [RulePossibility.BEFORE]: msg`Before`,
+  [RulePossibility.AFTER]: msg`After`,
+  [RulePossibility.IN_LAST]: msg`In Last`,
+  [RulePossibility.IN_NEXT]: msg`In Next`,
+  [RulePossibility.NOT_CONTAINS]: msg`Not Contains (Exact list match)`,
+  [RulePossibility.CONTAINS_PARTIAL]: msg`Contains (Partial list match)`,
+  [RulePossibility.NOT_CONTAINS_PARTIAL]: msg`Not Contains (Partial list match)`,
+  [RulePossibility.CONTAINS_ALL]: msg`Contains (All items)`,
+  [RulePossibility.NOT_CONTAINS_ALL]: msg`Not Contains (All items)`,
+  [RulePossibility.COUNT_EQUALS]: msg`Count Equals`,
+  [RulePossibility.COUNT_NOT_EQUALS]: msg`Count Does Not Equal`,
+  [RulePossibility.COUNT_BIGGER]: msg`Count Is Bigger Than`,
+  [RulePossibility.COUNT_SMALLER]: msg`Count Is Smaller Than`,
+  [RulePossibility.EXISTS]: msg`Exists`,
+  [RulePossibility.NOT_EXISTS]: msg`Does Not Exist`,
+}
 
 // One shared list of users for every rule card: the options are rendered once
 // by the rule creator, not per card, so a server with thousands of users does
@@ -294,6 +322,7 @@ const getInitialRuleState = (props: IRuleInput): InitialRuleState => {
 }
 
 const RuleInput = (props: IRuleInput) => {
+  const { t } = useLingui()
   const [initialRuleState] = useState(() => getInitialRuleState(props))
   const [operator, setOperator] = useState<string | undefined>(
     initialRuleState.operator,
@@ -478,10 +507,10 @@ const RuleInput = (props: IRuleInput) => {
     return {
       value: normalizedPath,
       label: isSelectedArrTotalDiskspaceRule
-        ? `${normalizedPath} (saved selection; total space unavailable)`
-        : `${normalizedPath} (saved selection)`,
+        ? t`${{ path: normalizedPath }} (saved selection; total space unavailable)`
+        : t`${{ path: normalizedPath }} (saved selection)`,
     }
-  }, [arrDiskPath, arrDiskspaceOptions, isSelectedArrTotalDiskspaceRule])
+  }, [arrDiskPath, arrDiskspaceOptions, isSelectedArrTotalDiskspaceRule, t])
 
   const { customValActive, customValType } = useMemo(
     () => getCustomValueState(secondVal),
@@ -695,21 +724,21 @@ const RuleInput = (props: IRuleInput) => {
       {/* Header Section */}
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold text-maintainerr-600">
-          {props.tagId
-            ? `Rule #${props.tagId}`
-            : props.id
-              ? `Rule #${props.id}`
-              : `Rule #1`}
+          {t`Rule #${{
+            // Truthiness, matching the original chain: a 0 falls through
+            // to the next candidate rather than being displayed.
+            ruleNumber: props.tagId || props.id || 1,
+          }}`}
         </h3>
 
         {props.allowDelete ? (
           <button
             className="flex items-center rounded-lg bg-error-600 px-3 py-1 text-zinc-100 shadow-md hover:bg-error-500"
             onClick={onDelete}
-            title={`Remove rule ${props.tagId}, section ${props.section}`}
+            title={t`Remove rule ${{ ruleNumber: props.tagId }}, section ${{ sectionNumber: props.section }}`}
           >
             <TrashIcon className="mr-1 h-5 w-5" />
-            Delete
+            <Trans>Delete</Trans>
           </button>
         ) : null}
       </div>
@@ -718,9 +747,13 @@ const RuleInput = (props: IRuleInput) => {
         (props.id && props.id > 0) || (props.section && props.section > 1) ? (
           <div className="mt-2 mb-3 md:flex md:items-center">
             {!props.id || (props.tagId ? props.tagId === 1 : props.id === 1) ? (
-              <label htmlFor="operator">Section Operator</label>
+              <label htmlFor="operator">
+                <Trans>Section Operator</Trans>
+              </label>
             ) : (
-              <label htmlFor="operator">Operator</label>
+              <label htmlFor="operator">
+                <Trans>Operator</Trans>
+              </label>
             )}
             <div className="md:ml-4">
               <div className="flex w-1/2 md:w-fit">
@@ -753,7 +786,7 @@ const RuleInput = (props: IRuleInput) => {
       <div className="mt-1 grid grid-cols-1 gap-x-3 gap-y-3 md:grid-cols-2">
         <div>
           <label htmlFor="first_val" className="block text-sm font-medium">
-            First Value
+            <Trans>First Value</Trans>
           </label>
           <Select
             name="first_val"
@@ -762,7 +795,7 @@ const RuleInput = (props: IRuleInput) => {
             value={validFirstVal}
           >
             <option value="" className="text-maintainerr-600">
-              Select First Value...
+              {t`Select First Value...`}
             </option>
             {availableApplications.map((app) =>
               app.props.length > 0 ? (
@@ -784,7 +817,7 @@ const RuleInput = (props: IRuleInput) => {
         {/* Action Selection */}
         <div>
           <label htmlFor="action" className="mb-1 block text-sm font-medium">
-            Action
+            <Trans>Action</Trans>
           </label>
           <Select
             name="action"
@@ -793,11 +826,11 @@ const RuleInput = (props: IRuleInput) => {
             value={action}
           >
             <option value="" className="text-maintainerr-600">
-              Select Action...
+              {t`Select Action...`}
             </option>
             {possibilities.map((action) => (
               <option key={action} value={action}>
-                {RulePossibilityTranslations[action]}
+                {t(rulePossibilityLabels[action])}
               </option>
             ))}
           </Select>
@@ -809,7 +842,7 @@ const RuleInput = (props: IRuleInput) => {
               htmlFor="second_val"
               className="mb-1 block text-sm font-medium"
             >
-              Second Value
+              <Trans>Second Value</Trans>
             </label>
             <Select
               name="second_val"
@@ -818,31 +851,35 @@ const RuleInput = (props: IRuleInput) => {
               value={secondVal}
             >
               <option value="" className="text-maintainerr-600">
-                Select Second Value...
+                {t`Select Second Value...`}
               </option>
-              <optgroup label="Custom values">
+              <optgroup label={t`Custom values`}>
                 {ruleType === RuleType.DATE ? (
                   <>
                     <option value={CustomParams.CUSTOM_DAYS}>
-                      Amount of days
+                      {t`Amount of days`}
                     </option>
                     {action != null &&
                     action !== RulePossibility.IN_LAST &&
                     action !== RulePossibility.IN_NEXT ? (
                       <option value={CustomParams.CUSTOM_DATE}>
-                        Specific date
+                        {t`Specific date`}
                       </option>
                     ) : undefined}
                   </>
                 ) : undefined}
                 {ruleType === RuleType.NUMBER ? (
-                  <option value={CustomParams.CUSTOM_NUMBER}>Number</option>
+                  <option
+                    value={CustomParams.CUSTOM_NUMBER}
+                  >{t`Number`}</option>
                 ) : undefined}
                 {ruleType === RuleType.BOOL ? (
-                  <option value={CustomParams.CUSTOM_BOOLEAN}>Boolean</option>
+                  <option value={CustomParams.CUSTOM_BOOLEAN}>
+                    {t`Boolean`}
+                  </option>
                 ) : undefined}
                 {ruleType === RuleType.TEXT ? (
-                  <option value={CustomParams.CUSTOM_TEXT}>Text</option>
+                  <option value={CustomParams.CUSTOM_TEXT}>{t`Text`}</option>
                 ) : undefined}
                 <MaybeTextListOptions ruleType={ruleType} action={action} />
               </optgroup>
@@ -883,14 +920,14 @@ const RuleInput = (props: IRuleInput) => {
               htmlFor={usernameFieldId}
               className="mb-1 block text-sm font-medium"
             >
-              User
+              <Trans>User</Trans>
             </label>
             <DatalistInput
               name="username"
               id={usernameFieldId}
               list={RULE_USERNAMES_DATALIST_ID}
               placeholder={
-                ruleUsernamesLoading ? 'Loading users...' : 'Select a user'
+                ruleUsernamesLoading ? t`Loading users...` : t`Select a user`
               }
               onChange={updateUsername}
               value={username}
@@ -900,15 +937,20 @@ const RuleInput = (props: IRuleInput) => {
               // The same reason the save would be rejected with - without it
               // the rule just never commits and nothing says why.
               <p className="mt-1 text-xs text-error-500">
-                The media server has no user named &apos;{username}&apos;
+                <Trans>
+                  {/* Doubled apostrophes are the ICU escape for a literal
+                      one; a single quote would swallow the placeholder. */}
+                  The media server has no user named &apos;&apos;{username}
+                  &apos;&apos;
+                </Trans>
               </p>
             ) : ruleUsernamesFailed ? (
               <p className="mt-1 text-xs text-zinc-400">
-                The user list could not be loaded
+                <Trans>The user list could not be loaded</Trans>
               </p>
             ) : !ruleUsernamesLoading && ruleUsernames.length === 0 ? (
               <p className="mt-1 text-xs text-zinc-400">
-                No users reported by the media server
+                <Trans>No users reported by the media server</Trans>
               </p>
             ) : null}
           </div>
@@ -920,7 +962,7 @@ const RuleInput = (props: IRuleInput) => {
               htmlFor="arr_disk_path"
               className="mb-1 block text-sm font-medium"
             >
-              Disk Target
+              <Trans>Disk Target</Trans>
             </label>
             <Select
               name="arr_disk_path"
@@ -928,7 +970,7 @@ const RuleInput = (props: IRuleInput) => {
               onChange={updateArrDiskPath}
               value={arrDiskPath}
             >
-              <option value="">Aggregate (all paths)</option>
+              <option value="">{t`Aggregate (all paths)`}</option>
               {preservedArrDiskPathOption ? (
                 <option
                   key={preservedArrDiskPathOption.value}
@@ -947,16 +989,18 @@ const RuleInput = (props: IRuleInput) => {
               arrDiskspaceOptions.length === 0 ? (
                 <option disabled value="__no_paths">
                   {isSelectedArrTotalDiskspaceRule
-                    ? 'No disk paths with total space reported by ARR'
-                    : 'No disk paths reported by ARR'}
+                    ? t`No disk paths with total space reported by ARR`
+                    : t`No disk paths reported by ARR`}
                 </option>
               ) : null}
             </Select>
             {isSelectedArrTotalDiskspaceRule ? (
               <p className="mt-1 text-xs text-zinc-400">
-                Total disk space only works for paths reported by ARR disk
-                space. Root-folder fallback paths can still be used for
-                remaining space, but they do not expose a reliable total size.
+                <Trans>
+                  Total disk space only works for paths reported by ARR disk
+                  space. Root-folder fallback paths can still be used for
+                  remaining space, but they do not expose a reliable total size.
+                </Trans>
               </p>
             ) : null}
           </div>
@@ -969,7 +1013,7 @@ const RuleInput = (props: IRuleInput) => {
               htmlFor="custom_val"
               className="mb-1 block text-sm font-medium"
             >
-              Custom Value
+              <Trans>Custom Value</Trans>
             </label>
             {customValType === RuleType.TEXT &&
             secondVal === CustomParams.CUSTOM_DAYS ? (
@@ -979,7 +1023,7 @@ const RuleInput = (props: IRuleInput) => {
                 id="custom_val"
                 onChange={updateCustomValue}
                 value={customVal ? +customVal / 86400 : ''}
-                placeholder="Amount of days"
+                placeholder={t`Amount of days`}
               />
             ) : (customValType === RuleType.TEXT &&
                 secondVal === CustomParams.CUSTOM_TEXT) ||
@@ -994,7 +1038,7 @@ const RuleInput = (props: IRuleInput) => {
                   ruleType === RuleType.TEXT_LIST ||
                   customValType === RuleType.TEXT_LIST
                     ? 'Value1 or ["Value1", "Value2"]'
-                    : 'Text'
+                    : t`Text`
                 }
               />
             ) : customValType === RuleType.DATE ? (
@@ -1004,7 +1048,7 @@ const RuleInput = (props: IRuleInput) => {
                 id="custom_val"
                 onChange={updateCustomValue}
                 value={customVal ?? ''}
-                placeholder="Date"
+                placeholder={t`Date`}
               />
             ) : customValType === RuleType.BOOL ? (
               <Select
@@ -1013,8 +1057,8 @@ const RuleInput = (props: IRuleInput) => {
                 onChange={updateCustomValue}
                 value={customVal}
               >
-                <option value={1}>True</option>
-                <option value={0}>False</option>
+                <option value={1}>{t`True`}</option>
+                <option value={0}>{t`False`}</option>
               </Select>
             ) : (
               <Input
@@ -1023,7 +1067,7 @@ const RuleInput = (props: IRuleInput) => {
                 id="custom_val"
                 onChange={updateCustomValue}
                 value={customVal ?? ''}
-                placeholder="Number"
+                placeholder={t`Number`}
               />
             )}
           </div>
@@ -1048,6 +1092,8 @@ function MaybeTextListOptions({
   ruleType: RuleType
   action: RulePossibility | undefined
 }) {
+  const { t } = useLingui()
+
   if (action == null || ruleType !== RuleType.TEXT_LIST) {
     return
   }
@@ -1060,18 +1106,20 @@ function MaybeTextListOptions({
       RulePossibility.COUNT_SMALLER,
     ].includes(action)
   ) {
-    return <option value={CustomParams.CUSTOM_NUMBER}>Count (number)</option>
+    return (
+      <option value={CustomParams.CUSTOM_NUMBER}>{t`Count (number)`}</option>
+    )
   }
 
   return (
     <>
-      <option value={CustomParams.CUSTOM_TEXT}>Text</option>
+      <option value={CustomParams.CUSTOM_TEXT}>{t`Text`}</option>
       {/* This was accidentally shipped - we keep it as a hidden option so that it still appears in
           the UI if somebody had already selected it, but we don't want it to be able to be selected
           in new rules. We should run a migration at some point to update all
           "customValue { type: 'text list' }" to "customValue { type: text }". */}
       <option hidden value={CustomParams.CUSTOM_TEXT_LIST}>
-        Text (legacy list option)
+        {t`Text (legacy list option)`}
       </option>
     </>
   )

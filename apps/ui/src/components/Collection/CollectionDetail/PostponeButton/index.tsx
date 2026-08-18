@@ -1,4 +1,5 @@
 import { ClockIcon } from '@heroicons/react/solid'
+import { Trans, useLingui } from '@lingui/react/macro'
 import { POSTPONE_MAX_DAYS, POSTPONE_MIN_DAYS } from '@maintainerr/contracts'
 import { useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
@@ -25,8 +26,9 @@ const PostponeButton = ({
   collection,
   mediaServerId,
   onPostponed,
-  buttonLabel = 'Postpone',
+  buttonLabel,
 }: PostponeButtonProps) => {
+  const { t } = useLingui()
   const queryClient = useQueryClient()
   const [days, setDays] = useState(DEFAULT_DAYS)
 
@@ -53,24 +55,27 @@ const PostponeButton = ({
 
   return (
     <ConfirmActionButton
-      buttonLabel={buttonLabel}
+      buttonLabel={buttonLabel ?? t`Postpone`}
       buttonIcon={<ClockIcon className="mr-2 h-4 w-4" />}
-      modalTitle="Postpone deletion"
+      modalTitle={t`Postpone deletion`}
       modalSize="md"
-      confirmLabel="Postpone now"
-      pendingLabel="Postponing..."
+      confirmLabel={t`Postpone now`}
+      pendingLabel={t`Postponing...`}
       confirmDisabled={!collection.id || daysInvalid}
-      errorMessage="Failed to postpone the deletion for this item."
+      errorMessage={t`Failed to postpone the deletion for this item.`}
+      errorLogSummary="Failed to postpone the deletion for this item"
       errorContext="PostponeButton.handlePostpone"
       onConfirm={handlePostpone}
     >
       <p>
-        Push this item&apos;s deletion further out by the number of days below.
-        An item already past its deletion date is counted from today.
+        <Trans>
+          Push this item&apos;s deletion further out by the number of days
+          below. An item already past its deletion date is counted from today.
+        </Trans>
       </p>
       <div className="form-row mt-3 mb-0!">
         <label className="text-label" htmlFor="postpone_days">
-          Days to postpone
+          <Trans>Days to postpone</Trans>
         </label>
         <div className="form-input">
           <div className="form-input-field flex w-32 flex-col">
@@ -87,8 +92,10 @@ const PostponeButton = ({
           </div>
           {daysInvalid ? (
             <p className="mt-1 text-xs text-error-400">
-              Enter a whole number between {POSTPONE_MIN_DAYS} and{' '}
-              {POSTPONE_MAX_DAYS}.
+              <Trans>
+                Enter a whole number between {POSTPONE_MIN_DAYS} and{' '}
+                {POSTPONE_MAX_DAYS}.
+              </Trans>
             </p>
           ) : null}
         </div>

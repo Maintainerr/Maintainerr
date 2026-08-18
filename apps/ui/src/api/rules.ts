@@ -1,3 +1,4 @@
+import { t } from '@lingui/core/macro'
 import type {
   ArrDiskspaceResource,
   MediaServerCollectionSort,
@@ -285,7 +286,7 @@ export const useCreateRuleGroup = (options?: UseCreateRuleGroupOptions) => {
       const response = await PostApiHandler<BasicResponseDto>('/rules', payload)
 
       if (response.code !== 1) {
-        throw new Error(response.message ?? 'Failed to create rule group')
+        throw new Error(response.message ?? t`Failed to create rule group`)
       }
 
       return response
@@ -318,7 +319,7 @@ export const useUpdateRuleGroup = (options?: UseUpdateRuleGroupOptions) => {
       const response = await PutApiHandler<BasicResponseDto>('/rules', payload)
 
       if (response.code !== 1) {
-        throw new Error(response.message ?? 'Failed to update rule group')
+        throw new Error(response.message ?? t`Failed to update rule group`)
       }
 
       return response

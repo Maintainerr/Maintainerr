@@ -1600,6 +1600,55 @@ describe('OverlayProcessorService', () => {
       ]);
     });
 
+    it('recovers the season through the show when episodes carry no season link (issue #3534)', async () => {
+      const collection = createCollection({
+        id: 1,
+        title: 'Leaving episodes',
+        type: 'episode',
+        arrAction: ServarrAction.DELETE,
+        deleteAfterDays: 5,
+        overlayTemplateId: null,
+      });
+      collection.collectionMedia = [
+        createCollectionMedia(collection, {
+          mediaServerId: 'episode-1',
+          addDate: new Date('2026-04-01T00:00:00.000Z'),
+        }),
+        createCollectionMedia(collection, {
+          mediaServerId: 'episode-2',
+          addDate: new Date('2026-04-01T00:00:00.000Z'),
+        }),
+      ];
+      // Plex "Seasons: Hide" strips parentId from episodes; the show id and
+      // the season number remain.
+      const parents = { grandparentId: 'show-1', parentIndex: 1 };
+      const mediaServer = makeMediaServer({
+        getMetadataBatch: jest
+          .fn()
+          .mockResolvedValue([
+            makeItem('episode-1', 'episode', parents),
+            makeItem('episode-2', 'episode', parents),
+          ]),
+        getChildrenMetadata: childrenOf({
+          'season-1': [
+            makeItem('episode-1', 'episode'),
+            makeItem('episode-2', 'episode'),
+          ],
+          'show-1': [makeItem('season-1', 'season', { index: 1 })],
+        }),
+      });
+      const { service, applySpy } = buildService(mediaServer);
+
+      await service.processCollection(collection as any);
+
+      expect(drawn(applySpy)).toEqual([
+        ['episode-1', 'titlecard'],
+        ['episode-2', 'titlecard'],
+        ['season-1', 'poster'],
+        ['show-1', 'poster'],
+      ]);
+    });
+
     it('draws nothing for an action that keeps the files, and reverts what it drew before', async () => {
       const collection = seasonCollection(ServarrAction.UNMONITOR);
       const stateService = {

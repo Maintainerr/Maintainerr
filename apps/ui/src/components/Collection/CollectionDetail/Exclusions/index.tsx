@@ -1,3 +1,4 @@
+import { useLingui } from '@lingui/react/macro'
 import {
   MediaServerFeature,
   supportsFeature,
@@ -9,10 +10,7 @@ import useInfinitePaginatedList from '../../../../hooks/useInfinitePaginatedList
 import useMediaSelection from '../../../../hooks/useMediaSelection'
 import { useMediaServerType } from '../../../../hooks/useMediaServerType'
 import GetApiHandler from '../../../../utils/ApiHandler'
-import {
-  bulkOutcomeVerb,
-  reportBulkOutcome,
-} from '../../../../utils/bulkOutcome'
+import { reportBulkOutcome } from '../../../../utils/bulkOutcome'
 import { invalidateMaintainerrStatusDetails } from '../../../Common/MediaCard/maintainerrStatus'
 import MediaSelectionActions from '../../../Common/MediaSelectionActions'
 import type { MediaActionOutcome } from '../../../Common/MediaActionModal'
@@ -39,6 +37,7 @@ export interface IExclusionMedia {
 }
 
 const CollectionExcludions = (props: ICollectionExclusions) => {
+  const { t } = useLingui()
   const fetchAmount = 30
   const { mediaServerType } = useMediaServerType()
   const {
@@ -52,7 +51,7 @@ const CollectionExcludions = (props: ICollectionExclusions) => {
   const libraryType = props.collection.type === 'movie' ? 'movie' : 'show'
   const sortConfig = getCollectionSortConfig(
     libraryType,
-    'Recently Excluded',
+    undefined,
     supportsFeature(mediaServerType, MediaServerFeature.LIBRARY_STUDIO_SORT),
   )
   const { sortValue, sortParams, onSortChange } =
@@ -148,12 +147,13 @@ const CollectionExcludions = (props: ICollectionExclusions) => {
       )
     }
 
-    reportBulkOutcome(
-      succeededIds.length,
-      failedIds.length,
-      bulkOutcomeVerb({ action, collectionId }),
+    reportBulkOutcome({
+      action,
+      collectionId,
+      succeeded: succeededIds.length,
+      failed: failedIds.length,
       failureReasons,
-    )
+    })
   }
 
   const showRefreshing = isLoading && data.length > 0
@@ -176,7 +176,7 @@ const CollectionExcludions = (props: ICollectionExclusions) => {
         }
         controls={
           <MediaLibrarySortControl
-            ariaLabel="Sort collection exclusions"
+            ariaLabel={t`Sort collection exclusions`}
             options={sortConfig.options}
             value={sortValue}
             onSortChange={handleSortChange}

@@ -1,4 +1,5 @@
 import { Transition } from '@headlessui/react'
+import { useLingui } from '@lingui/react/macro'
 import { MediaItemType, type MediaProviderIds } from '@maintainerr/contracts'
 import React, { memo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -88,6 +89,7 @@ const MediaCard: React.FC<IMediaCard> = ({
   onToggleSelection,
   forceStatusLoad = false,
 }) => {
+  const { t } = useLingui()
   const navigate = useNavigate()
   const [showDetail, setShowDetail] = useState(false)
   const [showMediaModal, setShowMediaModal] = useState(false)
@@ -131,7 +133,7 @@ const MediaCard: React.FC<IMediaCard> = ({
         }}
         role={selectionMode ? 'button' : 'link'}
         aria-pressed={selectionMode ? selected : undefined}
-        aria-label={selectionMode ? `Select ${title}` : undefined}
+        aria-label={selectionMode ? t`Select ${{ title }}` : undefined}
         tabIndex={0}
       >
         {(image) => (

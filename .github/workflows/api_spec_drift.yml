@@ -1,0 +1,125 @@
+name: "API spec drift"
+
+# Weekly check for endpoints added or removed in the upstream OpenAPI specs
+# Maintainerr integrates against (see tools/api-spec-drift.mjs).
+#
+# When upstream moves, this opens a PR carrying the refreshed baseline: the diff
+# is the report, and merging it accepts the change. A clean week does nothing at
+# all. A red run means a spec could not be fetched, which usually means its URL
+# moved.
+
+on:
+  schedule:
+    - cron: "0 7 * * 1"
+  workflow_dispatch:
+
+concurrency:
+  group: api-spec-drift
+  # This job pushes a branch, so let an in-flight run finish.
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  guard_manual_run:
+    uses: ./.github/workflows/guard-manual.yml
+    permissions:
+      contents: read
+    with:
+      enabled: ${{ github.event_name == 'workflow_dispatch' }}
+      actor: ${{ github.actor }}
+      source: api spec drift manual run
+
+  drift:
+    needs: guard_manual_run
+    name: Check upstream API specs
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    env:
+      BRANCH: chore/api-spec-drift
+      BASE_BRANCH: development
+      REPORT: .api-spec-drift.md
+    steps:
+      - name: Create GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ secrets.MERGE_APP_ID }}
+          private-key: ${{ secrets.MERGE_APP_KEY }}
+
+      # Scheduled runs check out the default branch, which is BASE_BRANCH.
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      - name: Activate corepack
+        run: |
+          corepack install
+          corepack enable
+
+      - name: Cache Yarn downloads
+        uses: actions/cache@v6
+        with:
+          path: .yarn/cache
+          key: yarn-${{ runner.os }}-${{ hashFiles('yarn.lock') }}
+          restore-keys: yarn-${{ runner.os }}-
+
+      # Only the yaml parser is needed, so skip the native build scripts that
+      # the full install would otherwise run.
+      - name: Install dependencies
+        run: yarn --immutable --mode=skip-build
+
+      - name: Refresh baseline and build report
+        run: OUTPUT_PATH="$REPORT" node tools/api-spec-drift.mjs --update
+
+      - name: Append report to step summary
+        if: ${{ !cancelled() }}
+        run: cat "$REPORT" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Open or update the drift pull request
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          if git diff --quiet -- tools/api-spec-drift.baseline.json; then
+            echo "No drift. Nothing to open."
+            exit 0
+          fi
+
+          git config user.name "maintainerr-automation[bot]"
+          git config user.email "261505141+maintainerr-automation[bot]@users.noreply.github.com"
+
+          git checkout -B "$BRANCH"
+          git add tools/api-spec-drift.baseline.json
+          git commit -m "chore(tools): accept upstream API spec drift"
+
+          # The branch is machine-owned and rebuilt from $BASE_BRANCH each run, so
+          # it has to be force-pushed. The lease needs an explicit value: this
+          # branch has no upstream link, and the bare --force-with-lease form
+          # cannot derive a baseline without one and rejects every push as stale.
+          git fetch origin "+$BRANCH:refs/remotes/origin/$BRANCH" || true
+          lease="$(git rev-parse --verify -q "refs/remotes/origin/$BRANCH" || true)"
+          if [ -n "$lease" ]; then
+            git push --force-with-lease="$BRANCH:$lease" origin "$BRANCH"
+          else
+            git push origin "$BRANCH"
+          fi
+
+          existing="$(gh pr list --head "$BRANCH" --state open --json number --jq '.[0].number // empty')"
+          if [ -n "$existing" ]; then
+            gh pr edit "$existing" --body-file "$REPORT"
+            echo "Updated PR #$existing"
+          else
+            gh pr create --base "$BASE_BRANCH" --head "$BRANCH" \
+              --title "chore(tools): upstream API spec drift" \
+              --body-file "$REPORT"
+          fi

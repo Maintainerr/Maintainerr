@@ -1,3 +1,4 @@
+import { Trans, useLingui } from '@lingui/react/macro'
 import { useState } from 'react'
 import { Input } from '../../Forms/Input'
 import Modal from '../Modal'
@@ -52,11 +53,15 @@ const normalizeHex = (value: string): string | null => {
 }
 
 const ColorPickerModal = ({
-  title = 'Choose a color',
+  title,
   initialValue,
   onCancel,
   onSave,
 }: ColorPickerModalProps) => {
+  const { t } = useLingui()
+  // Resolved in the body rather than as a default parameter, which would run
+  // before useLingui() and freeze the source locale.
+  const modalTitle = title ?? t`Choose a color`
   const [value, setValue] = useState(initialValue || '#ffffff')
   const [hexInput, setHexInput] = useState(initialValue || '#ffffff')
 
@@ -73,11 +78,11 @@ const ColorPickerModal = ({
 
   return (
     <Modal
-      title={title}
+      title={modalTitle}
       size="md"
       backgroundClickable={false}
       onCancel={onCancel}
-      cancelText="Cancel"
+      cancelText={t`Cancel`}
       footerActions={
         <SaveButton
           className="ml-3"
@@ -104,7 +109,7 @@ const ColorPickerModal = ({
           </div>
           <input
             type="color"
-            aria-label="Native color picker"
+            aria-label={t`Native color picker`}
             className="h-10 w-12 shrink-0 cursor-pointer rounded-md border border-zinc-500 bg-zinc-700"
             value={value.slice(0, 7)}
             onChange={(e) => {
@@ -115,14 +120,14 @@ const ColorPickerModal = ({
         </div>
         <div>
           <p className="mb-2 text-xs tracking-wider text-zinc-400 uppercase">
-            Presets
+            <Trans>Presets</Trans>
           </p>
           <div className="grid grid-cols-7 gap-2">
             {PRESET_COLORS.map((preset) => (
               <button
                 key={preset}
                 type="button"
-                aria-label={`Select ${preset}`}
+                aria-label={t`Select ${{ preset }}`}
                 className={`h-8 w-8 rounded-md border transition ${
                   value.toLowerCase() === preset
                     ? 'border-maintainerr-600 ring-2 ring-maintainerr-500'

@@ -1,3 +1,4 @@
+import { useLingui } from '@lingui/react/macro'
 import { AxiosError } from 'axios'
 import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
@@ -10,6 +11,7 @@ import useLibrarySelection from '../hooks/useLibrarySelection'
 import { PostApiHandler } from '../utils/ApiHandler'
 
 const CollectionsListPage = () => {
+  const { t } = useLingui()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [isSwitchingLibrary, setIsSwitchingLibrary] = useState(false)
@@ -53,16 +55,16 @@ const CollectionsListPage = () => {
     try {
       await PostApiHandler(`/collections/handle`, {})
 
-      toast.success('Initiated collection handling in the background.')
+      toast.success(t`Initiated collection handling in the background.`)
     } catch (error) {
       if (error instanceof AxiosError) {
         if (error.response?.status === 409) {
-          toast.error('Collection handling is already running.')
+          toast.error(t`Collection handling is already running.`)
           return
         }
       }
 
-      toast.error('Failed to initiate collection handling.')
+      toast.error(t`Failed to initiate collection handling.`)
     }
   }
 
@@ -72,7 +74,7 @@ const CollectionsListPage = () => {
 
   return (
     <>
-      <title>Collections - Maintainerr</title>
+      <title>{t`Collections - Maintainerr`}</title>
       <div className="w-full">
         <CollectionOverview
           onSwitchLibrary={onSwitchLibrary}
