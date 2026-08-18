@@ -261,15 +261,59 @@ const PLAYLISTS = [
 const PLAYLIST_ITEMS = { pl1: [{ ratingKey: 'p1' }] };
 
 // --- Watch history (drives getWatchState + seenBy + sw_watchers) -------------
-// keyed by metadataItemID
+const EPISODE_HISTORY = {
+  ep1: [
+    {
+      ratingKey: 'ep1',
+      type: 'episode',
+      accountID: 1,
+      viewedAt: daysAgo(5),
+      deviceID: 1,
+      parentIndex: 1,
+      index: 1,
+      parentKey: '/library/metadata/se1',
+      grandparentKey: '/library/metadata/sh1',
+    },
+    {
+      ratingKey: 'ep1',
+      type: 'episode',
+      accountID: 2,
+      viewedAt: daysAgo(210),
+      deviceID: 1,
+      parentIndex: 1,
+      index: 1,
+      parentKey: '/library/metadata/se1',
+      grandparentKey: '/library/metadata/sh1',
+    },
+  ],
+  ep2: [
+    {
+      ratingKey: 'ep2',
+      type: 'episode',
+      accountID: 1,
+      viewedAt: daysAgo(4),
+      deviceID: 1,
+      parentIndex: 1,
+      index: 2,
+      parentKey: '/library/metadata/se1',
+      grandparentKey: '/library/metadata/sh1',
+    },
+  ],
+};
+const SHOW_HISTORY = [...EPISODE_HISTORY.ep1, ...EPISODE_HISTORY.ep2];
+// Keyed by metadataItemID. Show and season entries mirror Plex's rolled-up
+// history response, while the unscoped endpoint below returns leaf rows only.
 const HISTORY = {
   p1: [
     { ratingKey: 'p1', accountID: 1, viewedAt: daysAgo(3), deviceID: 1 },
     { ratingKey: 'p1', accountID: 2, viewedAt: daysAgo(8), deviceID: 1 },
   ],
   p2: [{ ratingKey: 'p2', accountID: 1, viewedAt: daysAgo(10), deviceID: 1 }],
-  ep1: [{ ratingKey: 'ep1', accountID: 1, viewedAt: daysAgo(5), deviceID: 1 }],
+  ...EPISODE_HISTORY,
+  se1: SHOW_HISTORY,
+  sh1: SHOW_HISTORY,
 };
+const ALL_HISTORY = [...HISTORY.p1, ...HISTORY.p2, ...SHOW_HISTORY];
 
 // --- HTTP helpers ------------------------------------------------------------
 function send(res, status, body) {
@@ -394,7 +438,7 @@ const server = http.createServer((req, res) => {
   // Watch history: /status/sessions/history/all?metadataItemID=X
   if (path === '/status/sessions/history/all') {
     const id = u.searchParams.get('metadataItemID');
-    return send(res, 200, list('Metadata', (id && HISTORY[id]) || []));
+    return send(res, 200, list('Metadata', id ? HISTORY[id] || [] : ALL_HISTORY));
   }
 
   // Playlists list + items
