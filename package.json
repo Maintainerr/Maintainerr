@@ -41,7 +41,8 @@
     "knip": "^6.32.2",
     "semantic-release": "^25.0.9",
     "turbo": "^2.10.10",
-    "typescript": "^6.0.3"
+    "typescript": "^6.0.3",
+    "yaml": "^2.9.0"
   },
   "release": {
     "plugins": [
