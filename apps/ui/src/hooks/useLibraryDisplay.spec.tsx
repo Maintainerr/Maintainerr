@@ -1,5 +1,5 @@
 import type { MediaLibrary } from '@maintainerr/contracts'
-import { renderHook } from '@testing-library/react'
+import { renderHook } from '../test-utils/render'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useMediaServerLibraries } from '../api/media-server'
 import {

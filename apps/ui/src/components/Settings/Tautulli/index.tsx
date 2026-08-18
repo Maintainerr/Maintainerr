@@ -1,3 +1,5 @@
+import { t as globalT } from '@lingui/core/macro'
+import { Trans, useLingui } from '@lingui/react/macro'
 import {
   stripTrailingSlashes,
   tautulliSettingSchema,
@@ -17,14 +19,15 @@ const TautulliSettingFormSchema = z.union([
   TautulliSettingDeleteSchema,
 ])
 
-const fields: ExternalServiceFieldConfig[] = [
+// A function, so every label resolves in the locale active at render.
+const buildFields = (): ExternalServiceFieldConfig[] => [
   {
     name: 'url',
     label: 'URL',
     placeholder: 'http://localhost:8181',
     helpText: (
       <>
-        Example URL formats:{' '}
+        <Trans>Example URL formats:</Trans>{' '}
         <span className="whitespace-nowrap">http://localhost:8181</span>,{' '}
         <span className="whitespace-nowrap">http://192.168.1.5/tautulli</span>,{' '}
         <span className="whitespace-nowrap">https://tautulli.example.com</span>
@@ -35,25 +38,28 @@ const fields: ExternalServiceFieldConfig[] = [
   },
   {
     name: 'api_key',
-    label: 'API key',
+    label: globalT`API key`,
     type: 'password',
   },
 ]
 
 const TautulliSettings = () => {
+  const { t } = useLingui()
+
   return (
     <ExternalServiceSettingsPage
-      scope="Tautulli settings"
-      pageTitle="Tautulli settings - Maintainerr"
-      heading="Tautulli Settings"
-      description="Tautulli configuration"
+      updatedMessage={t`Tautulli settings updated`}
+      updateErrorMessage={t`Tautulli settings could not be updated`}
+      pageTitle={t`Tautulli settings - Maintainerr`}
+      heading={t`Tautulli Settings`}
+      description={t`Tautulli configuration`}
       docsPage="Configuration/#tautulli"
       settingsPath="/settings/tautulli"
       testPath="/settings/test/tautulli"
       schema={TautulliSettingFormSchema}
-      fields={fields}
+      fields={buildFields()}
       testSuccessTitle="Tautulli"
-      testFailureMessage="Failed to connect to Tautulli. Verify URL and API key."
+      testFailureMessage={t`Failed to connect to Tautulli. Verify URL and API key.`}
     />
   )
 }

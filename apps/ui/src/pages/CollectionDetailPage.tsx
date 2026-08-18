@@ -1,3 +1,5 @@
+import { t as globalT } from '@lingui/core/macro'
+import { useLingui } from '@lingui/react/macro'
 import { lazy, useEffect, useState } from 'react'
 import { Outlet, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'react-toastify'
@@ -20,6 +22,7 @@ export interface CollectionDetailOutletContext {
 }
 
 const CollectionDetailPage = () => {
+  const { t } = useLingui()
   const navigate = useNavigate()
   const location = useLocation()
   const { id } = useParams<{ id: string }>()
@@ -54,20 +57,20 @@ const CollectionDetailPage = () => {
       collectionError,
       'CollectionDetailPage.fetchData',
     )
-    toast.error('Failed to load collection. Check logs for details.')
+    toast.error(globalT`Failed to load collection. Check logs for details.`)
   }, [collectionError])
 
   const tabbedRoutes: TabbedRoute[] = [
     {
-      text: 'Media',
+      text: t`Media`,
       route: 'media',
     },
     {
-      text: 'Exclusions',
+      text: t`Exclusions`,
       route: 'exclusions',
     },
     {
-      text: 'Info',
+      text: t`Info`,
       route: 'info',
     },
   ]
@@ -100,7 +103,7 @@ const CollectionDetailPage = () => {
   if (isLoading || !collection || ruleGroupLoading) {
     return (
       <>
-        <title>Collection - Maintainerr</title>
+        <title>{t`Collection - Maintainerr`}</title>
         <LoadingSpinner />
       </>
     )
@@ -108,7 +111,7 @@ const CollectionDetailPage = () => {
 
   return (
     <>
-      <title>{collection.title} - Maintainerr</title>
+      <title>{t`${{ collectionTitle: collection.title }} - Maintainerr`}</title>
       <div className="w-full px-4">
         {/* Test Media belongs to this collection's rules, so it sits with its
             title: the same place on every tab, and out of the pinned row that
@@ -121,7 +124,7 @@ const CollectionDetailPage = () => {
             <ExecuteButton
               className="mx-0 shrink-0"
               onClick={() => setMediaTestModalOpen(true)}
-              text="Test Media"
+              text={t`Test Media`}
             />
           ) : null}
         </div>
@@ -143,7 +146,7 @@ const CollectionDetailPage = () => {
 
         {mediaTestModalOpen && collection?.id ? (
           <LazyModalBoundary
-            title="Test Media"
+            title={t`Test Media`}
             onCancel={() => {
               setMediaTestModalOpen(false)
             }}

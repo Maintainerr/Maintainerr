@@ -1,4 +1,5 @@
 import { CheckCircleIcon, PencilAltIcon } from '@heroicons/react/solid'
+import { Trans } from '@lingui/react/macro'
 import type { MediaItem } from '@maintainerr/contracts'
 import { useState } from 'react'
 import MediaActionModal, { type MediaActionOutcome } from './MediaActionModal'
@@ -73,11 +74,15 @@ const MediaSelectionActions = ({
             row - whitespace between flex items is dropped. */}
         {selectionMode ? (
           <span>
-            Done <span className="hidden sm:inline">selecting</span>
+            <Trans>
+              Done <span className="hidden sm:inline">selecting</span>
+            </Trans>
           </span>
         ) : (
           <span>
-            Select <span className="hidden sm:inline">items</span>
+            <Trans>
+              Select <span className="hidden sm:inline">items</span>
+            </Trans>
           </span>
         )}
       </Button>
@@ -92,7 +97,9 @@ const MediaSelectionActions = ({
       >
         <PencilAltIcon className="h-4 w-4" />
         <span>
-          Add/Exclude <span className="hidden sm:inline">selected</span>
+          <Trans>
+            Add/Exclude <span className="hidden sm:inline">selected</span>
+          </Trans>
           {selectedCount > 0 ? ` (${selectedCount})` : ''}
         </span>
       </Button>

@@ -1,3 +1,4 @@
+import { Trans, useLingui } from '@lingui/react/macro'
 import { ServarrAction } from '@maintainerr/contracts'
 import { useEffect } from 'react'
 import { useServarrSettings } from '../../../../../api/settings'
@@ -16,7 +17,7 @@ interface ArrActionProps {
   onUpdate: (arrAction: number, settingId?: number | null) => void
   accActionError?: string
   settingIdError?: string
-  mediaServerName?: string
+  mediaServerName: string
 }
 
 interface Option {
@@ -25,6 +26,7 @@ interface Option {
 }
 
 const ArrAction = (props: ArrActionProps) => {
+  const { t } = useLingui()
   const {
     type,
     arrAction,
@@ -69,16 +71,19 @@ const ArrAction = (props: ArrActionProps) => {
   }, [onUpdate, settingId, settings])
 
   const noneServerSelected = selectedSetting === ''
+  // Always a proper name (Plex, Radarr, ...) or the caller's translated
+  // fallback - never a bare translated noun assembled here.
+  const actionOwnerName = noneServerSelected ? mediaServerName : type
 
   const options: Option[] = noneServerSelected
     ? [
         {
           id: ServarrAction.DELETE,
-          name: 'Delete',
+          name: t`Delete`,
         },
         {
           id: ServarrAction.DO_NOTHING,
-          name: 'Do nothing',
+          name: t`Do nothing`,
         },
       ]
     : providedOptions
@@ -87,7 +92,7 @@ const ArrAction = (props: ArrActionProps) => {
     <div>
       <div className="form-row items-center">
         <label htmlFor={`${type}-server`} className="text-label">
-          {type} server *
+          <Trans>{type} server *</Trans>
         </label>
         <div className="form-input">
           <div className="form-input-field">
@@ -101,10 +106,10 @@ const ArrAction = (props: ArrActionProps) => {
                 )
               }}
             >
-              <option value="">None</option>
+              <option value="">{t`None`}</option>
               {(loading || (isFetching && settingsList.length === 0)) && (
                 <option value="" disabled>
-                  Loading servers...
+                  {t`Loading servers...`}
                 </option>
               )}
               {settingsList.map((e) => {
@@ -123,7 +128,7 @@ const ArrAction = (props: ArrActionProps) => {
       </div>
       <div className="form-row items-center">
         <label htmlFor={`${type}-action`} className="text-label">
-          {noneServerSelected ? mediaServerName || 'Media server' : type} action
+          <Trans>{actionOwnerName} action</Trans>
         </label>
         <div className="form-input">
           <div className="form-input-field">

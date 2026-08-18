@@ -1,3 +1,6 @@
+import type { MessageDescriptor } from '@lingui/core'
+import { msg, plural } from '@lingui/core/macro'
+import { Plural, Trans, useLingui } from '@lingui/react/macro'
 import {
   ArrowNarrowRightIcon,
   CheckCircleIcon,
@@ -31,25 +34,25 @@ const basePath = import.meta.env.VITE_BASE_PATH ?? ''
 const serverOptions: {
   value: MediaServerType
   name: string
-  description: string
+  description: MessageDescriptor
   icon: string
 }[] = [
   {
     value: MediaServerType.PLEX,
     name: 'Plex',
-    description: 'Plex Media Server',
+    description: msg`Plex Media Server`,
     icon: `${basePath}/icons_logos/plex_logo.svg`,
   },
   {
     value: MediaServerType.JELLYFIN,
     name: 'Jellyfin',
-    description: 'Jellyfin Media Server',
+    description: msg`Jellyfin Media Server`,
     icon: `${basePath}/icons_logos/jellyfin.svg`,
   },
   {
     value: MediaServerType.EMBY,
     name: 'Emby',
-    description: 'Emby Media Server',
+    description: msg`Emby Media Server`,
     icon: `${basePath}/icons_logos/emby.png`,
   },
 ]
@@ -64,6 +67,7 @@ const MediaServerSelector = ({
   onInfo,
   onError,
 }: MediaServerSelectorProps) => {
+  const { t } = useLingui()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [pendingType, setPendingType] = useState<MediaServerType | null>(null)
@@ -92,7 +96,9 @@ const MediaServerSelector = ({
         await switchServer({
           targetServerType: type,
         })
-        onInfo?.(`Selected ${nameOf(type)} as your media server`)
+        onInfo?.(
+          t`Selected ${{ serverName: nameOf(type) }} as your media server`,
+        )
 
         // Wait for settings to refetch before navigating
         await queryClient.invalidateQueries({ queryKey: ['settings'] })
@@ -109,7 +115,7 @@ const MediaServerSelector = ({
           error,
           'Settings.MediaServerSelector.handleServerChange',
         )
-        onError?.('Failed to set media server. Check logs for details.')
+        onError?.(t`Failed to set media server. Check logs for details.`)
         setPendingType(null)
       }
       return
@@ -121,7 +127,7 @@ const MediaServerSelector = ({
       setPreviewData(preview)
       setShowConfirmModal(true)
     } catch (error) {
-      onError?.('Failed to preview switch')
+      onError?.(t`Failed to preview switch`)
       setPendingType(null)
     }
   }
@@ -138,7 +144,7 @@ const MediaServerSelector = ({
       })
 
       if (result.status === 'NOK') {
-        setSwitchError(result.message || 'Failed to switch media server')
+        setSwitchError(result.message || t`Failed to switch media server`)
       } else {
         setIsSwitchComplete(true)
       }
@@ -146,7 +152,7 @@ const MediaServerSelector = ({
       const message =
         error?.response?.data?.message ||
         error?.message ||
-        'Failed to switch media server'
+        t`Failed to switch media server`
       setSwitchError(message)
     }
   }
@@ -188,14 +194,37 @@ const MediaServerSelector = ({
   const hasRulesToMigrate =
     previewData?.ruleMigration && previewData.ruleMigration.totalRules > 0
 
+  // Named locals so the extracted messages read with real placeholder names.
+  const currentName = nameOf(currentType)
+  const pendingName = nameOf(pendingType)
+  const migratableRules = previewData?.ruleMigration?.migratableRules
+  const totalRules = previewData?.ruleMigration?.totalRules
+  const skippedRules = previewData?.ruleMigration?.skippedRules
+  const skippedRuleCount = skippedRules ?? 0
+  const clearedCollections = previewData?.dataToBeCleared.collections ?? 0
+  const clearedCollectionMedia =
+    previewData?.dataToBeCleared.collectionMedia ?? 0
+  const clearedExclusions = previewData?.dataToBeCleared.exclusions ?? 0
+  const clearedCollectionLogs = previewData?.dataToBeCleared.collectionLogs ?? 0
+  const furtherSkippedRules =
+    (previewData?.ruleMigration?.skippedDetails.length ?? 0) - 5
+  // plural() rather than <Plural>, so the server name stays a bound ICU
+  // argument inside each plural form instead of literal text.
+  const skippedRulesNotice = plural(skippedRuleCount, {
+    one: `# rule uses properties not available in ${{ pendingName }}.`,
+    other: `# rules use properties not available in ${{ pendingName }}.`,
+  })
+
   return (
     <>
       <div className="section">
-        <h3 className="heading">Media Server</h3>
+        <h3 className="heading">
+          <Trans>Media Server</Trans>
+        </h3>
         <p className="description">
           {currentType
-            ? 'Select your media server type. Switching will reset media server-specific data.'
-            : 'Select your media server to get started with Maintainerr.'}
+            ? t`Select your media server type. Switching will reset media server-specific data.`
+            : t`Select your media server to get started with Maintainerr.`}
         </p>
 
         <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -227,7 +256,7 @@ const MediaServerSelector = ({
                     <div className="ml-4 text-left">
                       <p className="font-medium text-zinc-100">{option.name}</p>
                       <p className="text-sm text-zinc-400">
-                        {option.description}
+                        {t(option.description)}
                       </p>
                     </div>
                   </div>
@@ -252,7 +281,7 @@ const MediaServerSelector = ({
       {showConfirmModal && (
         <Modal
           onCancel={isSwitchComplete ? undefined : handleCancelSwitch}
-          cancelText={isSwitchComplete ? undefined : 'Cancel'}
+          cancelText={isSwitchComplete ? undefined : t`Cancel`}
           loading={isSwitchPending}
           footerActions={
             <Button
@@ -264,10 +293,10 @@ const MediaServerSelector = ({
               disabled={isSwitchPending && !isSwitchComplete}
             >
               {isSwitchComplete
-                ? 'Done'
+                ? t`Done`
                 : isSwitchPending
-                  ? 'Switching...'
-                  : 'Switch'}
+                  ? t`Switching...`
+                  : t`Switch`}
             </Button>
           }
         >
@@ -315,25 +344,16 @@ const MediaServerSelector = ({
 
             <p className="mb-2 text-lg font-medium text-zinc-100">
               {isSwitchComplete ? (
-                <>
+                <Trans>
                   Successfully switched to{' '}
-                  <strong className="text-zinc-100">
-                    {nameOf(pendingType)}
-                  </strong>
-                  !
-                </>
+                  <strong className="text-zinc-100">{pendingName}</strong>!
+                </Trans>
               ) : (
-                <>
+                <Trans>
                   We will now switch from{' '}
-                  <strong className="text-zinc-100">
-                    {nameOf(currentType)}
-                  </strong>{' '}
-                  to{' '}
-                  <strong className="text-zinc-100">
-                    {nameOf(pendingType)}
-                  </strong>
-                  .
-                </>
+                  <strong className="text-zinc-100">{currentName}</strong> to{' '}
+                  <strong className="text-zinc-100">{pendingName}</strong>.
+                </Trans>
               )}
             </p>
 
@@ -342,45 +362,60 @@ const MediaServerSelector = ({
                 <>
                   <p className="mb-3 text-zinc-100">
                     {migrateRules
-                      ? 'The following data will be cleared or reset:'
-                      : 'The following data will be permanently deleted:'}
+                      ? t`The following data will be cleared or reset:`
+                      : t`The following data will be permanently deleted:`}
                   </p>
                   <ul className="mb-4 list-inside list-disc space-y-1 text-sm text-zinc-100">
                     {previewData!.dataToBeCleared.collections > 0 &&
                       (migrateRules ? (
                         <li>
-                          {previewData!.dataToBeCleared.collections}{' '}
-                          collection(s) will be preserved (media server
-                          references reset)
+                          <Plural
+                            value={clearedCollections}
+                            one="# collection will be preserved (media server references reset)"
+                            other="# collections will be preserved (media server references reset)"
+                          />
                         </li>
                       ) : (
                         <li>
-                          {previewData!.dataToBeCleared.collections}{' '}
-                          collection(s)
+                          <Plural
+                            value={clearedCollections}
+                            one="# collection"
+                            other="# collections"
+                          />
                         </li>
                       ))}
                     {previewData!.dataToBeCleared.collectionMedia > 0 && (
                       <li>
-                        {previewData!.dataToBeCleared.collectionMedia}{' '}
-                        collection media item(s)
+                        <Plural
+                          value={clearedCollectionMedia}
+                          one="# collection media item"
+                          other="# collection media items"
+                        />
                       </li>
                     )}
                     {previewData!.dataToBeCleared.exclusions > 0 && (
                       <li>
-                        {previewData!.dataToBeCleared.exclusions} exclusion(s)
+                        <Plural
+                          value={clearedExclusions}
+                          one="# exclusion"
+                          other="# exclusions"
+                        />
                       </li>
                     )}
                     {previewData!.dataToBeCleared.collectionLogs > 0 && (
                       <li>
-                        {previewData!.dataToBeCleared.collectionLogs} log
-                        entries
+                        <Plural
+                          value={clearedCollectionLogs}
+                          one="# log entry"
+                          other="# log entries"
+                        />
                       </li>
                     )}
                   </ul>
                 </>
               ) : (
                 <p className="mb-4 text-zinc-100">
-                  No data will be deleted (no collections exist).
+                  <Trans>No data will be deleted (no collections exist).</Trans>
                 </p>
               ))}
 
@@ -388,7 +423,9 @@ const MediaServerSelector = ({
             {isSwitchComplete && (
               <div className="mb-4 flex items-center justify-center space-x-2 rounded-sm bg-success-900/30 p-3 text-success-400">
                 <CheckCircleIcon className="h-5 w-5" />
-                <span className="text-sm font-medium">Success</span>
+                <span className="text-sm font-medium">
+                  <Trans>Success</Trans>
+                </span>
               </div>
             )}
             {switchError && (
@@ -396,11 +433,13 @@ const MediaServerSelector = ({
                 <div className="flex items-center space-x-2">
                   <XCircleIcon className="h-5 w-5 shrink-0" />
                   <span className="text-sm font-medium">
-                    Media server switch could not be completed: {switchError}
+                    <Trans>
+                      Media server switch could not be completed: {switchError}
+                    </Trans>
                   </span>
                 </div>
                 <p className="mt-1 pl-7 text-xs text-error-400/70">
-                  Close this dialog and try again.
+                  <Trans>Close this dialog and try again.</Trans>
                 </p>
               </div>
             )}
@@ -419,17 +458,16 @@ const MediaServerSelector = ({
                   />
                   <label htmlFor="migrateRules" className="ml-3 cursor-pointer">
                     <span className="block font-medium text-zinc-100">
-                      Migrate rules to {nameOf(pendingType)}
+                      <Trans>Migrate rules to {pendingName}</Trans>
                     </span>
                     <span className="block text-sm text-zinc-400">
-                      {previewData!.ruleMigration!.migratableRules} of{' '}
-                      {previewData!.ruleMigration!.totalRules} rules can be
-                      migrated.
+                      <Trans>
+                        {migratableRules} of {totalRules} rules can be migrated.
+                      </Trans>
                       {previewData!.ruleMigration!.skippedRules > 0 && (
                         <span className="text-maintainerr-400">
                           {' '}
-                          {previewData!.ruleMigration!.skippedRules} rule(s) use
-                          properties not available in {nameOf(pendingType)}.
+                          {skippedRulesNotice}
                         </span>
                       )}
                     </span>
@@ -441,29 +479,37 @@ const MediaServerSelector = ({
                   previewData!.ruleMigration!.skippedDetails.length > 0 && (
                     <details className="mt-2 text-xs">
                       <summary className="cursor-pointer text-zinc-400 hover:text-zinc-300">
-                        Show incompatible rules (
-                        {previewData!.ruleMigration!.skippedRules})
+                        <Trans>Show incompatible rules ({skippedRules})</Trans>
                       </summary>
                       <ul className="mt-1 space-y-1 pl-4 text-zinc-500">
                         {previewData!
                           .ruleMigration!.skippedDetails.slice(0, 5)
-                          .map((detail, idx) => (
-                            <li key={idx}>
-                              <span className="text-zinc-400">
-                                {detail.ruleGroupName}
-                              </span>
-                              {detail.propertyName && (
-                                <span> - uses {detail.propertyName}</span>
-                              )}
-                            </li>
-                          ))}
+                          .map((detail, idx) => {
+                            // Named so the message carries {propertyName}
+                            // rather than an opaque {0}.
+                            const propertyName = detail.propertyName
+                            return (
+                              <li key={idx}>
+                                <span className="text-zinc-400">
+                                  {detail.ruleGroupName}
+                                </span>
+                                {propertyName && (
+                                  <span>
+                                    {' '}
+                                    <Trans>- uses {propertyName}</Trans>
+                                  </span>
+                                )}
+                              </li>
+                            )
+                          })}
                         {previewData!.ruleMigration!.skippedDetails.length >
                           5 && (
                           <li className="text-zinc-400">
-                            ...and{' '}
-                            {previewData!.ruleMigration!.skippedDetails.length -
-                              5}{' '}
-                            more
+                            <Plural
+                              value={furtherSkippedRules}
+                              one="...and # more"
+                              other="...and # more"
+                            />
                           </li>
                         )}
                       </ul>
@@ -473,10 +519,14 @@ const MediaServerSelector = ({
             )}
 
             <p className="mb-4 text-maintainerr-400">
-              <span className="font-bold">Important:</span>{' '}
+              <span className="font-bold">
+                <Trans>Important:</Trans>
+              </span>{' '}
               <span className="text-zinc-100">
-                After migration, you must manually assign a library to each rule
-                group before rules can run.
+                <Trans>
+                  After migration, you must manually assign a library to each
+                  rule group before rules can run.
+                </Trans>
               </span>
             </p>
           </div>

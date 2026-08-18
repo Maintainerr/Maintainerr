@@ -1,3 +1,4 @@
+import { t } from '@lingui/core/macro'
 import { MediaServerType } from '@maintainerr/contracts'
 import { useCallback } from 'react'
 import { Navigate, Outlet } from 'react-router-dom'
@@ -11,8 +12,10 @@ export const bypassMediaServerSetupGuard =
 
 export const mediaServerSetupRequiredToastId = 'media-server-setup-required'
 
-export const mediaServerSetupRequiredMessage =
-  'You need to set up the media server first.'
+// A function rather than a constant: translating at module load would freeze
+// the message in whichever locale happened to be active on first import.
+export const mediaServerSetupRequiredMessage = () =>
+  t`You need to set up the media server first.`
 
 export const getMediaServerSetupRoute = (
   mediaServerType?: MediaServerType | null,
@@ -51,7 +54,7 @@ export const showMediaServerSetupRequiredToast = () => {
     return
   }
 
-  toast.error(mediaServerSetupRequiredMessage, {
+  toast.error(mediaServerSetupRequiredMessage(), {
     toastId: mediaServerSetupRequiredToastId,
   })
 }

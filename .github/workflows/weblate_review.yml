@@ -2,8 +2,14 @@ name: Weblate review
 
 # Weblate opens a pull request for every batch of translations. This labels it
 # and posts a back-translation table so the whole review happens on GitHub.
+#
+# pull_request_target runs this workflow (and the tools/ it executes) from the
+# BASE branch, and the back-translation step holds the AI key and a PR-write
+# token. A pull request must therefore never have its code executed here: the
+# steps below check out the base, then overlay ONLY the pull request's *.po
+# files as data. Nothing from the pull request head is ever run.
 on:
-  pull_request:
+  pull_request_target:
     branches: [development]
     paths:
       - 'apps/ui/src/locales/**'
@@ -30,14 +36,68 @@ jobs:
           client-id: ${{ secrets.MERGE_APP_ID }}
           private-key: ${{ secrets.MERGE_APP_KEY }}
 
-      - name: Checkout
+      # pull_request_target checks out the BASE by default, so tools/ and the
+      # workflow are trusted. fetch-depth 0 gives the back-translate step the
+      # base commit it diffs against.
+      - name: Check out the base branch
         uses: actions/checkout@v7
         with:
-          # Needs the base commit so only changed translations are reviewed.
           fetch-depth: 0
           persist-credentials: false
 
+      # The catalogs are DATA under review, never code. Checking the head out
+      # - with actions/checkout or git - is the pattern CodeQL flags in a
+      # privileged workflow, and it is more than this job needs. Download the
+      # blobs through the API instead: no untrusted ref is ever checked out, so
+      # there is nothing on disk for a later step to execute, and a non-catalog
+      # file under that path fails the job.
+      # Everything from here on serves the back-translation, which spends the
+      # AI budget. Only Weblate's own pull requests get it: the author's full
+      # login is the key, never the branch name and never a prefix - a
+      # contributor picks their own branch name and can register an account
+      # called `hosted-weblate-anything`, but only an app posts as
+      # `hosted-weblate[bot]`. The labelling step above, which spends nothing,
+      # still runs for every localisation PR.
+      - name: Download the pull request's catalogs
+        if: ${{ github.event.pull_request.user.login == 'hosted-weblate[bot]' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          changed="$(gh api --paginate "repos/$REPO/pulls/$PR_NUMBER/files" \
+            --jq '.[] | select(.status != "removed")
+                      | select(.filename | startswith("apps/ui/src/locales/"))
+                      | .filename')"
+          for f in $changed; do
+            # `*` in a case pattern matches slashes too, so the prefix alone
+            # would still admit a traversal. Git cannot store a '..' component,
+            # but this job is privileged - spell the rejection out.
+            case "$f" in
+              *..*)
+                echo "::error title=Unexpected path::Path traversal in catalog name: $f"
+                exit 1
+                ;;
+              apps/ui/src/locales/*.po) ;;
+              *)
+                echo "::error title=Unexpected file::Only .po files may live under apps/ui/src/locales: $f"
+                exit 1
+                ;;
+            esac
+            gh api "repos/$REPO/contents/$f?ref=$HEAD_SHA" --jq '.content' \
+              | base64 -d > "$f"
+            # The contents API returns an empty body for blobs over 1MB. Without
+            # this the job would review an empty catalog and report no changes.
+            if [ ! -s "$f" ]; then
+              echo "::error title=Empty catalog::$f downloaded empty - too large for the contents API?"
+              exit 1
+            fi
+          done
+
       - name: Set up Node.js
+        if: ${{ github.event.pull_request.user.login == 'hosted-weblate[bot]' }}
         uses: actions/setup-node@v7
         with:
           node-version: 24
@@ -49,7 +109,7 @@ jobs:
           script: |
             const pr = context.payload.pull_request
             const fromWeblate =
-              pr.user.login.startsWith('hosted-weblate') ||
+              pr.user.login === 'hosted-weblate[bot]' ||
               pr.head.ref.startsWith('weblate-')
             const labels = fromWeblate ? ['l10n', 'do-not-squash'] : ['l10n']
             for (const name of labels) {
@@ -67,6 +127,7 @@ jobs:
             })
 
       - name: Back-translate changed strings
+        if: ${{ github.event.pull_request.user.login == 'hosted-weblate[bot]' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           AI_MODEL_API_KEY: ${{ secrets.AI_MODEL_API_KEY }}
@@ -78,9 +139,11 @@ jobs:
             --out .i18n-review.md
 
       - name: Append to step summary
+        if: ${{ github.event.pull_request.user.login == 'hosted-weblate[bot]' }}
         run: cat .i18n-review.md >> "$GITHUB_STEP_SUMMARY"
 
       - name: Find existing sticky comment
+        if: ${{ github.event.pull_request.user.login == 'hosted-weblate[bot]' }}
         id: find-comment
         uses: peter-evans/find-comment@v4
         with:
@@ -89,6 +152,7 @@ jobs:
           token: ${{ steps.app-token.outputs.token }}
 
       - name: Upsert review comment
+        if: ${{ github.event.pull_request.user.login == 'hosted-weblate[bot]' }}
         uses: peter-evans/create-or-update-comment@v5
         with:
           comment-id: ${{ steps.find-comment.outputs.comment-id }}

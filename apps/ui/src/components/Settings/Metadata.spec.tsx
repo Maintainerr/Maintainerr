@@ -1,5 +1,5 @@
 import { MetadataProviderPreference } from '@maintainerr/contracts'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '../../test-utils/render'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createDeferred } from '../../test-utils/createDeferred'
 import MetadataSettings from './Metadata'

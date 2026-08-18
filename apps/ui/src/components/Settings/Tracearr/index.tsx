@@ -1,3 +1,5 @@
+import { t as globalT } from '@lingui/core/macro'
+import { Trans, useLingui } from '@lingui/react/macro'
 import {
   serviceUrlSchema,
   stripTrailingSlashes,
@@ -9,7 +11,8 @@ import ExternalServiceSettingsPage, {
   type ExternalServiceFieldConfig,
 } from '../ExternalServiceSettingsPage'
 
-const fields: ExternalServiceFieldConfig[] = [
+// A function, so every label resolves in the locale active at render.
+const buildFields = (): ExternalServiceFieldConfig[] => [
   {
     name: 'url',
     label: 'URL',
@@ -19,7 +22,7 @@ const fields: ExternalServiceFieldConfig[] = [
   },
   {
     name: 'api_key',
-    label: 'API key',
+    label: globalT`API key`,
     type: 'password',
     required: true,
     // The field is still being typed, so it is only a link once it parses as a
@@ -32,10 +35,10 @@ const fields: ExternalServiceFieldConfig[] = [
           target="_blank"
           rel="noreferrer"
         >
-          Find it in Tracearr under Settings, General, API Key.
+          <Trans>Find it in Tracearr under Settings, General, API Key.</Trans>
         </a>
       ) : (
-        'Find it in Tracearr under Settings, General, API Key.'
+        globalT`Find it in Tracearr under Settings, General, API Key.`
       ),
   },
   // Only rendered when Tracearr has more than one server of the configured
@@ -43,7 +46,7 @@ const fields: ExternalServiceFieldConfig[] = [
   // resolve on its own.
   {
     name: 'server_id',
-    label: 'Tracearr server',
+    label: globalT`Tracearr server`,
     type: 'select',
     loadOptions: async (values) => {
       if (!values.url || !values.api_key) {
@@ -63,19 +66,22 @@ const fields: ExternalServiceFieldConfig[] = [
 ]
 
 const TracearrSettings = () => {
+  const { t } = useLingui()
+
   return (
     <ExternalServiceSettingsPage
-      scope="Tracearr settings"
-      pageTitle="Tracearr settings - Maintainerr"
-      heading="Tracearr Settings"
-      description="Maintainerr picks the Tracearr media server backend automatically: the one tracking the media server configured in Maintainerr."
+      updatedMessage={t`Tracearr settings updated`}
+      updateErrorMessage={t`Tracearr settings could not be updated`}
+      pageTitle={t`Tracearr settings - Maintainerr`}
+      heading={t`Tracearr Settings`}
+      description={t`Maintainerr picks the Tracearr media server backend automatically: the one tracking the media server configured in Maintainerr.`}
       docsPage="Configuration/#tracearr"
       settingsPath="/settings/tracearr"
       testPath="/settings/test/tracearr"
       schema={tracearrSettingSchema}
-      fields={fields}
+      fields={buildFields()}
       testSuccessTitle="Tracearr"
-      testFailureMessage="Failed to connect to Tracearr. Verify the URL and API key."
+      testFailureMessage={t`Failed to connect to Tracearr. Verify the URL and API key.`}
     />
   )
 }

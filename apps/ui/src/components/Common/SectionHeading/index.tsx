@@ -1,15 +1,13 @@
 export interface ISectionHeading {
-  id: number
-  name: string
+  /** The complete heading, numbering included - fragments cannot be translated. */
+  label: string
   description?: string
 }
 
 const SectionHeading = (props: ISectionHeading) => {
   return (
     <div className="section mt-4 mb-4 h-full w-full">
-      <h3 className="sm-heading flex max-w-6xl">
-        {props.id ? `${props.name} #${props.id}` : `${props.name} #1`}
-      </h3>
+      <h3 className="sm-heading flex max-w-6xl">{props.label}</h3>
       {props.description ? (
         <p className="description">{props.description}</p>
       ) : undefined}

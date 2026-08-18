@@ -1,5 +1,5 @@
 import { QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, type RenderResult } from '@testing-library/react'
+import { render, screen, type RenderResult } from '../../test-utils/render'
 import type { ReactElement } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createDeferred } from '../../test-utils/createDeferred'

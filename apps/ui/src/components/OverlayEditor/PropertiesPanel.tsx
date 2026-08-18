@@ -1,3 +1,4 @@
+import { Trans, useLingui } from '@lingui/react/macro'
 import type { OverlayElement, VariableSegment } from '@maintainerr/contracts'
 import {
   IMAGE_UPLOAD_MAX_LABEL,
@@ -15,12 +16,23 @@ import {
 } from './editorFonts'
 import { ResourceField, type ResourceOption } from './ResourceField'
 
-function formatDisjunction(items: readonly string[]): string {
-  if (items.length === 0) return ''
-  if (items.length === 1) return items[0]
-  if (items.length === 2) return `${items[0]} or ${items[1]}`
-  return `${items.slice(0, -1).join(', ')}, or ${items[items.length - 1]}`
-}
+/**
+ * "PNG, JPG, or WebP" in the reader's language.
+ *
+ * `Intl.ListFormat` rather than a message: the items are file-format tokens
+ * that are never translated, and only the joining is locale-dependent. Built
+ * as messages this needed a `{leading}, or {last}` fragment - two words with no
+ * context for a translator, and the surrounding sentence then carried the whole
+ * list as one opaque placeholder.
+ */
+const formatDisjunction = (locale: string, items: readonly string[]): string =>
+  new Intl.ListFormat(locale, { style: 'long', type: 'disjunction' }).format(
+    items,
+  )
+
+// One source for the picker filter and its label, mirroring
+// OVERLAY_IMAGE_ACCEPT, so no translation can make them disagree.
+const FONT_UPLOAD_EXTENSIONS = ['.ttf', '.otf', '.woff']
 
 interface PropertiesPanelProps {
   element: OverlayElement
@@ -39,6 +51,7 @@ export function PropertiesPanel({
   images,
   onUploadImage,
 }: PropertiesPanelProps) {
+  const { t } = useLingui()
   const update = <K extends keyof OverlayElement>(
     key: K,
     value: OverlayElement[K],
@@ -49,11 +62,11 @@ export function PropertiesPanel({
   return (
     <div className="flex flex-col gap-3 text-xs">
       <h3 className="font-medium tracking-wider text-zinc-400 uppercase">
-        Properties
+        <Trans>Properties</Trans>
       </h3>
 
       {/* Common: position & size */}
-      <FieldGroup label="Position">
+      <FieldGroup label={t`Position`}>
         <div className="grid grid-cols-2 gap-2">
           <NumberField
             label="X"
@@ -80,17 +93,17 @@ export function PropertiesPanel({
         </div>
       </FieldGroup>
 
-      <FieldGroup label="Transform">
+      <FieldGroup label={t`Transform`}>
         <div className="grid grid-cols-2 gap-2">
           <NumberField
-            label="Rotation"
+            label={t`Rotation`}
             value={el.rotation}
             onChange={(v) => update('rotation', v)}
             min={-360}
             max={360}
           />
           <NumberField
-            label="Opacity"
+            label={t`Opacity`}
             value={el.opacity}
             onChange={(v) => update('opacity', v)}
             min={0}
@@ -143,12 +156,13 @@ function TextProperties({
   fonts: { name: string; path: string }[]
   onUploadFont: (file: File) => Promise<{ name: string; path: string } | null>
 }) {
+  const { t } = useLingui()
   const update = <K extends keyof typeof el>(key: K, value: (typeof el)[K]) =>
     onChange({ ...el, [key]: value })
 
   return (
     <>
-      <FieldGroup label="Text">
+      <FieldGroup label={t`Text`}>
         <textarea
           className="block field-sizing-content min-h-14 w-full min-w-0 flex-1 rounded-md border border-zinc-500 bg-zinc-700 px-3 py-1.5 text-sm text-white shadow-xs transition duration-150 ease-in-out focus:border-maintainerr-600 focus:ring-0 focus:outline-hidden disabled:opacity-50"
           rows={2}
@@ -162,34 +176,34 @@ function TextProperties({
         fonts={fonts}
         onUploadFont={onUploadFont}
       />
-      <FieldGroup label="Background">
+      <FieldGroup label={t`Background`}>
         <ColorField
-          label="Color"
+          label={t`Color`}
           value={el.backgroundColor ?? '#00000000'}
           onChange={(v) =>
             update('backgroundColor', v === '#00000000' ? null : v)
           }
         />
         <NumberField
-          label="Radius"
+          label={t`Radius`}
           value={el.backgroundRadius}
           onChange={(v) => update('backgroundRadius', v)}
           min={0}
         />
         <NumberField
-          label="Padding"
+          label={t`Padding`}
           value={el.backgroundPadding}
           onChange={(v) => update('backgroundPadding', v)}
           min={0}
         />
       </FieldGroup>
       <CheckboxField
-        label="Shadow"
+        label={t`Shadow`}
         checked={el.shadow}
         onChange={(v) => update('shadow', v)}
       />
       <CheckboxField
-        label="Uppercase"
+        label={t`Uppercase`}
         checked={el.uppercase}
         onChange={(v) => update('uppercase', v)}
       />
@@ -208,6 +222,7 @@ function VariableProperties({
   fonts: { name: string; path: string }[]
   onUploadFont: (file: File) => Promise<{ name: string; path: string } | null>
 }) {
+  const { t } = useLingui()
   const update = <K extends keyof typeof el>(key: K, value: (typeof el)[K]) =>
     onChange({ ...el, [key]: value })
 
@@ -235,7 +250,7 @@ function VariableProperties({
 
   return (
     <>
-      <FieldGroup label="Segments">
+      <FieldGroup label={t`Segments`}>
         {el.segments.map((seg, i) => (
           <div key={i} className="mb-1 flex items-center gap-1">
             {seg.type === 'text' ? (
@@ -246,7 +261,7 @@ function VariableProperties({
                 onChange={(e) =>
                   updateSegment(i, { type: 'text', value: e.target.value })
                 }
-                placeholder="Text..."
+                placeholder={t`Text...`}
               />
             ) : (
               <Select
@@ -268,7 +283,7 @@ function VariableProperties({
               type="button"
               className="shrink-0 text-red-400 hover:text-red-300"
               onClick={() => removeSegment(i)}
-              title="Remove"
+              title={t`Remove`}
             >
               ×
             </button>
@@ -280,14 +295,14 @@ function VariableProperties({
             className="rounded-sm bg-zinc-700 px-2 py-0.5 text-zinc-300 hover:bg-zinc-600"
             onClick={() => addSegment('text')}
           >
-            + Text
+            <Trans>+ Text</Trans>
           </button>
           <button
             type="button"
             className="rounded-sm bg-zinc-700 px-2 py-0.5 text-zinc-300 hover:bg-zinc-600"
             onClick={() => addSegment('variable')}
           >
-            + Variable
+            <Trans>+ Variable</Trans>
           </button>
         </div>
       </FieldGroup>
@@ -297,66 +312,66 @@ function VariableProperties({
         fonts={fonts}
         onUploadFont={onUploadFont}
       />
-      <FieldGroup label="Background">
+      <FieldGroup label={t`Background`}>
         <ColorField
-          label="Color"
+          label={t`Color`}
           value={el.backgroundColor ?? '#00000000'}
           onChange={(v) =>
             update('backgroundColor', v === '#00000000' ? null : v)
           }
         />
         <NumberField
-          label="Radius"
+          label={t`Radius`}
           value={el.backgroundRadius}
           onChange={(v) => update('backgroundRadius', v)}
           min={0}
         />
         <NumberField
-          label="Padding"
+          label={t`Padding`}
           value={el.backgroundPadding}
           onChange={(v) => update('backgroundPadding', v)}
           min={0}
         />
       </FieldGroup>
-      <FieldGroup label="Date / Days Config">
+      <FieldGroup label={t`Date / Days Config`}>
         <TextField
-          label="Date Format"
+          label={t`Date Format`}
           value={el.dateFormat}
           onChange={(v) => update('dateFormat', v)}
         />
         <TextField
-          label="Language"
+          label={t`Language`}
           value={el.language}
           onChange={(v) => update('language', v)}
         />
         <TextField
-          label="Today text"
+          label={t`Today text`}
           value={el.textToday}
           onChange={(v) => update('textToday', v)}
         />
         <TextField
-          label="1 day text"
+          label={t`1 day text`}
           value={el.textDay}
           onChange={(v) => update('textDay', v)}
         />
         <TextField
-          label="N days text"
+          label={t`N days text`}
           value={el.textDays}
           onChange={(v) => update('textDays', v)}
         />
         <CheckboxField
-          label="Day Suffix"
+          label={t`Day Suffix`}
           checked={el.enableDaySuffix}
           onChange={(v) => update('enableDaySuffix', v)}
         />
       </FieldGroup>
       <CheckboxField
-        label="Shadow"
+        label={t`Shadow`}
         checked={el.shadow}
         onChange={(v) => update('shadow', v)}
       />
       <CheckboxField
-        label="Uppercase"
+        label={t`Uppercase`}
         checked={el.uppercase}
         onChange={(v) => update('uppercase', v)}
       />
@@ -371,12 +386,13 @@ function ShapeProperties({
   el: Extract<OverlayElement, { type: 'shape' }>
   onChange: (el: OverlayElement) => void
 }) {
+  const { t } = useLingui()
   const update = <K extends keyof typeof el>(key: K, value: (typeof el)[K]) =>
     onChange({ ...el, [key]: value })
 
   return (
     <>
-      <FieldGroup label="Shape">
+      <FieldGroup label={t`Shape`}>
         <Select
           name="shape-type"
           value={el.shapeType}
@@ -384,23 +400,23 @@ function ShapeProperties({
             update('shapeType', e.target.value as 'rectangle' | 'ellipse')
           }
         >
-          <option value="rectangle">Rectangle</option>
-          <option value="ellipse">Ellipse</option>
+          <option value="rectangle">{t`Rectangle`}</option>
+          <option value="ellipse">{t`Ellipse`}</option>
         </Select>
       </FieldGroup>
-      <FieldGroup label="Fill & Stroke">
+      <FieldGroup label={t`Fill & Stroke`}>
         <ColorField
-          label="Fill"
+          label={t`Fill`}
           value={el.fillColor}
           onChange={(v) => update('fillColor', v)}
         />
         <ColorField
-          label="Stroke"
+          label={t`Stroke`}
           value={el.strokeColor ?? '#00000000'}
           onChange={(v) => update('strokeColor', v === '#00000000' ? null : v)}
         />
         <NumberField
-          label="Stroke Width"
+          label={t`Stroke Width`}
           value={el.strokeWidth}
           onChange={(v) => update('strokeWidth', v)}
           min={0}
@@ -408,7 +424,7 @@ function ShapeProperties({
       </FieldGroup>
       {el.shapeType === 'rectangle' && (
         <NumberField
-          label="Corner Radius"
+          label={t`Corner Radius`}
           value={el.cornerRadius}
           onChange={(v) => update('cornerRadius', v)}
           min={0}
@@ -429,22 +445,26 @@ function ImageProperties({
   images: ResourceOption[]
   onUploadImage: (file: File) => Promise<ResourceOption | null>
 }) {
-  const formatList = formatDisjunction(OVERLAY_IMAGE_FORMAT_LABELS)
+  const { t, i18n } = useLingui()
+  const formatList = formatDisjunction(i18n.locale, OVERLAY_IMAGE_FORMAT_LABELS)
+  const imageUploadMaxLabel = IMAGE_UPLOAD_MAX_LABEL
 
   return (
-    <FieldGroup label="Image">
+    <FieldGroup label={t`Image`}>
       <ResourceField
-        label="Image"
+        label={t`Image`}
         value={el.imagePath}
         options={images}
         onSelect={(name) => onChange({ ...el, imagePath: name })}
         onUpload={onUploadImage}
         accept={OVERLAY_IMAGE_ACCEPT}
-        uploadTitle={`Upload image (${formatList} - up to ${IMAGE_UPLOAD_MAX_LABEL})`}
-        placeholder="Select image..."
+        uploadTitle={t`Upload image (${{ formatList }} - up to ${{ maxSize: IMAGE_UPLOAD_MAX_LABEL }})`}
+        placeholder={t`Select image...`}
       />
       <p className="text-[10px] text-zinc-500">
-        {formatList} - up to {IMAGE_UPLOAD_MAX_LABEL}.
+        <Trans>
+          {formatList} - up to {imageUploadMaxLabel}.
+        </Trans>
       </p>
     </FieldGroup>
   )
@@ -473,6 +493,7 @@ function FontFields<
   fonts: OverlayEditorFont[]
   onUploadFont: (file: File) => Promise<OverlayEditorFont | null>
 }) {
+  const { t } = useLingui()
   const currentFont = findOverlayFont(fonts, el.fontPath)
   const selectValue = currentFont ? currentFont.name : el.fontPath
 
@@ -483,46 +504,57 @@ function FontFields<
   }
 
   return (
-    <FieldGroup label="Font">
+    <FieldGroup label={t`Font`}>
       <ResourceField
-        label="Font"
+        label={t`Font`}
         value={selectValue}
         options={fonts}
         onSelect={applyFontByName}
         onUpload={onUploadFont}
-        accept=".ttf,.otf,.woff"
-        uploadTitle="Upload font (.ttf, .otf, .woff)"
-        placeholder={el.fontPath || 'Select font...'}
+        accept={FONT_UPLOAD_EXTENSIONS.join(',')}
+        uploadTitle={t`Upload font (${{ fontExtensions: FONT_UPLOAD_EXTENSIONS.join(', ') }})`}
+        placeholder={el.fontPath || t`Select font...`}
       />
       <NumberField
-        label="Size"
+        label={t`Size`}
         value={el.fontSize}
         onChange={(v) => update('fontSize', v as T['fontSize'])}
         min={1}
       />
       <ColorField
-        label="Color"
+        label={t`Color`}
         value={el.fontColor}
         onChange={(v) => update('fontColor', v as T['fontColor'])}
       />
       <div className="grid grid-cols-2 gap-2">
         <SelectField
-          label="Weight"
+          label={t`Weight`}
           value={el.fontWeight}
-          options={['normal', 'bold']}
+          options={[
+            { value: 'normal', label: t`normal` },
+            { value: 'bold', label: t`bold` },
+          ]}
           onChange={(v) => update('fontWeight', v as T['fontWeight'])}
         />
         <SelectField
-          label="Align"
+          label={t`Align`}
           value={el.textAlign}
-          options={['left', 'center', 'right']}
+          options={[
+            { value: 'left', label: t`left` },
+            { value: 'center', label: t`center` },
+            { value: 'right', label: t`right` },
+          ]}
           onChange={(v) => update('textAlign', v as T['textAlign'])}
         />
       </div>
       <SelectField
-        label="V-Align"
+        label={t`V-Align`}
         value={el.verticalAlign}
-        options={['top', 'middle', 'bottom']}
+        options={[
+          { value: 'top', label: t`top` },
+          { value: 'middle', label: t`middle` },
+          { value: 'bottom', label: t`bottom` },
+        ]}
         onChange={(v) => update('verticalAlign', v as T['verticalAlign'])}
       />
     </FieldGroup>
@@ -608,6 +640,7 @@ function ColorField({
   value: string
   onChange: (v: string) => void
 }) {
+  const { t } = useLingui()
   const [isPickerOpen, setIsPickerOpen] = useState(false)
   return (
     <>
@@ -615,7 +648,7 @@ function ColorField({
         <span className="w-12 shrink-0 text-zinc-400">{label}</span>
         <button
           type="button"
-          aria-label={`Pick ${label} color`}
+          aria-label={t`Choose a color for ${{ fieldLabel: label }}`}
           className="h-8 w-10 shrink-0 cursor-pointer rounded-md border border-zinc-500 bg-zinc-700"
           style={{ backgroundColor: value }}
           onClick={() => setIsPickerOpen(true)}
@@ -629,7 +662,6 @@ function ColorField({
       </label>
       {isPickerOpen && (
         <ColorPickerModal
-          title={`Choose ${label.toLowerCase()} color`}
           initialValue={value}
           onCancel={() => setIsPickerOpen(false)}
           onSave={(next) => {
@@ -650,7 +682,7 @@ function SelectField({
 }: {
   label: string
   value: string
-  options: string[]
+  options: { value: string; label: string }[]
   onChange: (v: string) => void
 }) {
   return (
@@ -662,8 +694,8 @@ function SelectField({
         onChange={(e) => onChange(e.target.value)}
       >
         {options.map((opt) => (
-          <option key={opt} value={opt}>
-            {opt}
+          <option key={opt.value} value={opt.value}>
+            {opt.label}
           </option>
         ))}
       </Select>

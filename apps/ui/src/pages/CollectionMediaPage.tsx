@@ -1,3 +1,4 @@
+import { useLingui } from '@lingui/react/macro'
 import {
   MediaServerFeature,
   supportsFeature,
@@ -19,7 +20,7 @@ import OverviewContent from '../components/Overview/Content'
 import useInfinitePaginatedList from '../hooks/useInfinitePaginatedList'
 import useMediaSelection from '../hooks/useMediaSelection'
 import { useMediaServerType } from '../hooks/useMediaServerType'
-import { bulkOutcomeVerb, reportBulkOutcome } from '../utils/bulkOutcome'
+import { reportBulkOutcome } from '../utils/bulkOutcome'
 import type { CollectionDetailOutletContext } from './CollectionDetailPage'
 import GetApiHandler from '../utils/ApiHandler'
 
@@ -39,6 +40,7 @@ export const mapCollectionMediaItemsToMediaData = (
 }
 
 const CollectionMediaPage = () => {
+  const { t } = useLingui()
   const { collection } = useOutletContext<CollectionDetailOutletContext>()
   const { id } = useParams<{ id: string }>()
   const [media, setMedia] = useState<ICollectionMedia[]>([])
@@ -175,12 +177,13 @@ const CollectionMediaPage = () => {
       }
     }
 
-    reportBulkOutcome(
-      succeededIds.length,
-      failedIds.length,
-      bulkOutcomeVerb({ action, collectionId }),
+    reportBulkOutcome({
+      action,
+      collectionId,
+      succeeded: succeededIds.length,
+      failed: failedIds.length,
       failureReasons,
-    )
+    })
   }
 
   const showRefreshing = isLoading && data.length > 0
@@ -203,7 +206,7 @@ const CollectionMediaPage = () => {
         }
         controls={
           <MediaLibrarySortControl
-            ariaLabel="Sort collection items"
+            ariaLabel={t`Sort collection items`}
             options={sortConfig.options}
             value={sortValue}
             onSortChange={handleSortChange}

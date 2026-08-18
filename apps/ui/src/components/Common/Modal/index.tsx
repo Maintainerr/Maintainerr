@@ -1,5 +1,6 @@
 import { Transition } from '@headlessui/react'
 import { XIcon } from '@heroicons/react/solid'
+import { Trans, useLingui } from '@lingui/react/macro'
 import React, { MouseEvent, ReactNode, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import useClickOutside from '../../../hooks/useClickOutside'
@@ -57,6 +58,7 @@ const Modal: React.FC<ModalProps> = ({
   footerActions,
   size = '3xl',
 }) => {
+  const { t } = useLingui()
   const modalRef = useRef<HTMLDivElement>(null)
   useClickOutside(modalRef, () => {
     if (typeof onCancel === 'function' && backgroundClickable) {
@@ -110,7 +112,7 @@ const Modal: React.FC<ModalProps> = ({
           <button
             type="button"
             onClick={onCancel}
-            aria-label="Close"
+            aria-label={t`Close`}
             className={`${modalCloseButtonClassName} sm:hidden`}
           >
             <XIcon className="h-5 w-5" />
@@ -150,7 +152,7 @@ const Modal: React.FC<ModalProps> = ({
                 className="ml-3"
                 type="button"
               >
-                {cancelText ? cancelText : 'Cancel'}
+                {cancelText ? cancelText : <Trans>Cancel</Trans>}
               </Button>
             )}
           </div>

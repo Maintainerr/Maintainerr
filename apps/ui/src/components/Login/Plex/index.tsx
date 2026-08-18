@@ -1,4 +1,5 @@
 import { LoginIcon } from '@heroicons/react/outline'
+import { useLingui } from '@lingui/react/macro'
 import React, { useState } from 'react'
 import PlexOAuth from '../../../utils/PlexAuth'
 
@@ -17,6 +18,7 @@ const PlexLoginButton: React.FC<PlexLoginButtonProps> = ({
   isProcessing,
   clientIdentifier,
 }) => {
+  const { t } = useLingui()
   const [loading, setLoading] = useState(false)
 
   const getPlexLogin = async () => {
@@ -24,7 +26,7 @@ const PlexLoginButton: React.FC<PlexLoginButtonProps> = ({
       const authToken = await plexOAuth.login(clientIdentifier)
       onAuthToken(authToken)
     } catch (error) {
-      onError?.(error instanceof Error ? error.message : 'Unknown error')
+      onError?.(error instanceof Error ? error.message : t`Unknown error`)
     } finally {
       setLoading(false)
     }
@@ -37,8 +39,7 @@ const PlexLoginButton: React.FC<PlexLoginButtonProps> = ({
     plexOAuth.preparePopup()
 
     if (!plexOAuth.hasPopup()) {
-      const message =
-        'Plex login popup was blocked. Please allow popups for this site.'
+      const message = t`Plex login popup was blocked. Please allow popups for this site.`
       onError?.(message)
       setLoading(false)
       return
@@ -58,10 +59,10 @@ const PlexLoginButton: React.FC<PlexLoginButtonProps> = ({
         <LoginIcon />
         <span>
           {loading
-            ? 'Loading…'
+            ? t`Loading…`
             : isProcessing
-              ? 'Authenticating…'
-              : 'Authenticate with Plex'}
+              ? t`Authenticating…`
+              : t`Authenticate with Plex`}
         </span>
       </button>
     </span>

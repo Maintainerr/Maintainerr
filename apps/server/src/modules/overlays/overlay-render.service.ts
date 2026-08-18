@@ -522,15 +522,14 @@ export class OverlayRenderService {
     const imgW = meta.width!;
     const imgH = meta.height!;
 
-    // Scale factor: template canvas → actual poster dimensions.
-    // Geometry (positions/sizes) use `scaleX`/`scaleY` to map to pixel
-    // coordinates. Style values (fontSize, padding, radii, strokeWidth)
-    // should scale uniformly to preserve visual proportions when the
-    // poster and template aspect ratios differ. Use the smaller axis
-    // scale to avoid overstretching style metrics.
-    const scaleX = imgW / canvasWidth;
-    const scaleY = imgH / canvasHeight;
-    const uniformScale = Math.min(scaleX, scaleY);
+    // Map the template canvas onto the largest centered canvas-aspect
+    // region of the artwork instead of stretching it over the full image.
+    // Media-server clients cover-crop artwork to the canvas shape when
+    // rendering cards, so anything drawn outside that region is invisible
+    // (#3533: 4:3 or 21:9 episode stills on a 16:9 titlecard canvas).
+    const uniformScale = Math.min(imgW / canvasWidth, imgH / canvasHeight);
+    const offsetX = Math.round((imgW - canvasWidth * uniformScale) / 2);
+    const offsetY = Math.round((imgH - canvasHeight * uniformScale) / 2);
 
     // Sort elements by layerOrder, then render bottom-up
     const sorted = [...elements]
@@ -540,10 +539,10 @@ export class OverlayRenderService {
     const layers: Array<{ input: Buffer; left: number; top: number }> = [];
 
     for (const el of sorted) {
-      const sx = Math.round(el.x * scaleX);
-      const sy = Math.round(el.y * scaleY);
-      const sw = Math.max(1, Math.round(el.width * scaleX));
-      const sh = Math.max(1, Math.round(el.height * scaleY));
+      const sx = offsetX + Math.round(el.x * uniformScale);
+      const sy = offsetY + Math.round(el.y * uniformScale);
+      const sw = Math.max(1, Math.round(el.width * uniformScale));
+      const sh = Math.max(1, Math.round(el.height * uniformScale));
 
       let layerBuf: Buffer | null = null;
 

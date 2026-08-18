@@ -1,3 +1,4 @@
+import { useLingui } from '@lingui/react/macro'
 import { BasicResponseDto } from '@maintainerr/contracts'
 import {
   type ChangeEvent,
@@ -58,7 +59,9 @@ interface TestStatus {
 }
 
 interface ExternalServiceSettingsPageProps {
-  scope: string
+  // Whole sentences rather than a scope noun: see useSettingsFeedback.
+  updatedMessage: string
+  updateErrorMessage: string
   pageTitle: string
   heading: string
   description: ReactNode
@@ -106,7 +109,8 @@ const valuesEqual = (a: SettingsValues, b: SettingsValues): boolean =>
   Object.keys(a).every((key) => a[key] === b[key])
 
 const ExternalServiceSettingsPage = ({
-  scope,
+  updatedMessage,
+  updateErrorMessage,
   pageTitle,
   heading,
   description,
@@ -118,6 +122,7 @@ const ExternalServiceSettingsPage = ({
   testSuccessTitle,
   testFailureMessage,
 }: ExternalServiceSettingsPageProps) => {
+  const { t } = useLingui()
   const [testedSettings, setTestedSettings] = useState<SettingsValues>()
   const [testing, setTesting] = useState(false)
   const [testResult, setTestResult] = useState<TestStatus>()
@@ -130,7 +135,10 @@ const ExternalServiceSettingsPage = ({
   const loadingOptionFieldNamesRef = useRef(new Set<string>())
   const selectOptionsVersionRef = useRef(0)
   const { feedback, showUpdated, showUpdateError, showError, clearError } =
-    useSettingsFeedback(scope)
+    useSettingsFeedback({
+      updated: updatedMessage,
+      updateError: updateErrorMessage,
+    })
 
   const {
     control,
@@ -183,6 +191,8 @@ const ExternalServiceSettingsPage = ({
 
     const optionsVersion = selectOptionsVersionRef.current
     loadingOptionFieldNamesRef.current.add(fieldConfig.name)
+    // State, not just the ref: a field left mounted by a load error repaints
+    // its placeholder while the retry runs, and only state triggers that.
     setLoadingOptionsByFieldName((current) => ({
       ...current,
       [fieldConfig.name]: true,
@@ -200,10 +210,7 @@ const ExternalServiceSettingsPage = ({
       if (optionsVersion === selectOptionsVersionRef.current) {
         setError(fieldConfig.name, {
           type: 'manual',
-          message: getApiErrorMessage(
-            error,
-            `Failed to load ${fieldConfig.label.toLowerCase()} options.`,
-          ),
+          message: getApiErrorMessage(error, t`Failed to load options.`),
         })
       }
     } finally {
@@ -351,7 +358,7 @@ const ExternalServiceSettingsPage = ({
                   type={testResult.status ? 'success' : 'error'}
                   title={
                     testResult.status
-                      ? `Successfully connected to ${testSuccessTitle} (${testResult.message})`
+                      ? t`Successfully connected to ${{ serviceName: testSuccessTitle }} (${{ version: testResult.message }})`
                       : testResult.message
                   }
                 />
@@ -439,10 +446,15 @@ const ExternalServiceSettingsPage = ({
                         required={fieldConfig.required}
                         disabled={loadingOptionsByFieldName[fieldConfig.name]}
                       >
+                        {/* A load error keeps this field mounted (see the
+                            guard above) without ever filling
+                            loadedOptionsByFieldName, so focusing it starts a
+                            real retry on a visible select - that is when this
+                            loading placeholder is on screen. */}
                         <option value="" disabled>
                           {loadingOptionsByFieldName[fieldConfig.name]
-                            ? `Loading ${fieldConfig.label.toLowerCase()}...`
-                            : `Select ${fieldConfig.label.toLowerCase()}`}
+                            ? t`Loading...`
+                            : t`Select an option`}
                         </option>
                         {selectOptions.map((option) => (
                           <option key={option.value} value={option.value}>
