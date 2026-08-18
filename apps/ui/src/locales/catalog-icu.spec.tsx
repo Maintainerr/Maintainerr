@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest'
 import {
   icuArgumentKind,
   icuArguments,
+  icuStructureProblems,
   parsePo,
   richTextSlots,
 } from '../../../../tools/i18n/po.mjs'
@@ -170,6 +171,45 @@ describe('ICU MessageFormat validity', () => {
   it('flags a renamed plural category, accepts a valid one', () => {
     expect(validateIcu('{n, plural, one {# x} andra {# y}}').valid).toBe(false)
     expect(validateIcu('{n, plural, one {# x} other {# y}}').valid).toBe(true)
+  })
+
+  // Valid ICU can still change an argument's structure behind its name: a
+  // plural rewritten as plain `{count}` renders the same wording at every
+  // count, a dropped `one` renders "1 saker", a stripped `percent` format
+  // shows 0.42 instead of 42 %. All compile, so the checks above pass them.
+  it.each(catalogs)('%s keeps every argument structure', (name) => {
+    const locale = path.basename(name, '.po')
+    const broken = parsePo(readFileSync(path.join(localesDir, name), 'utf8'))
+      .filter((entry: { msgstr: string }) => entry.msgstr.length > 0)
+      .flatMap((entry: { msgid: string; msgstr: string }) =>
+        icuStructureProblems(entry.msgid, entry.msgstr, locale),
+      )
+    expect(broken).toEqual([])
+  })
+
+  it('flags a structure change, accepts a locale-shaped plural', () => {
+    const plural = '{n, plural, one {# item} other {# items}}'
+    expect(icuStructureProblems(plural, '{n} saker', 'sv')).not.toEqual([])
+    expect(
+      icuStructureProblems(plural, '{n, plural, other {# saker}}', 'sv'),
+    ).not.toEqual([])
+    expect(
+      icuStructureProblems('{p, number, percent}', '{p}', 'sv'),
+    ).not.toEqual([])
+    // The parser accepts extension types like `list`, but the runtime has no
+    // formatter for them and throws mid-render.
+    expect(icuStructureProblems('Hello {x}', '{x, list}', 'sv')).not.toEqual([])
+    // Japanese has no `one` category and French is not forced to add `many`.
+    expect(
+      icuStructureProblems(plural, '{n, plural, other {# ko}}', 'ja'),
+    ).toEqual([])
+    expect(
+      icuStructureProblems(
+        plural,
+        '{n, plural, one {# fichier} other {# fichiers}}',
+        'fr',
+      ),
+    ).toEqual([])
   })
 })
 

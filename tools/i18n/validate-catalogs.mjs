@@ -13,6 +13,10 @@
  * - a message that does not compile as ICU MessageFormat (a renamed plural
  *   category, a missing `other`, mangled syntax) - it keeps its argument names
  *   so placeholder parity passes, but the runtime prints the raw source;
+ * - a translation that keeps an argument's name but changes its structure (a
+ *   plural rewritten as a plain value, a dropped plural category the locale
+ *   needs, a stripped number format, a dropped select branch) - it compiles
+ *   and passes parity, then renders believable text with the wrong grammar;
  * - a translation that introduces a URL marker the source does not carry
  *   (phishing via translated copy);
  * - any URL marker in a source message at all - URLs live in code and reach
@@ -37,6 +41,7 @@ import path from 'node:path';
 import { validateIcu } from 'pofile-ts';
 import {
   icuArguments,
+  icuStructureProblems,
   parsePo,
   poShapeProblems,
   readPo,
@@ -448,6 +453,23 @@ for (const file of files) {
           `    rich-text slot ${parts.join(' and ')}`,
       );
       continue;
+    }
+
+    // Same argument names, but a different shape behind one of them: a plural
+    // rewritten as a plain `{count}`, a dropped `one` category, a stripped
+    // number format. All compile and pass parity, then render believable text
+    // with the wrong grammar or formatting.
+    for (const problem of icuStructureProblems(
+      entry.msgid,
+      entry.msgstr,
+      locale,
+    )) {
+      errors.push(
+        `${location}:${entry.line}\n` +
+          `    source:      ${entry.msgid}\n` +
+          `    translation: ${entry.msgstr}\n` +
+          `    ${problem}`,
+      );
     }
 
     if (entry.msgstr === entry.msgid) {
