@@ -210,10 +210,7 @@ const ExternalServiceSettingsPage = ({
       if (optionsVersion === selectOptionsVersionRef.current) {
         setError(fieldConfig.name, {
           type: 'manual',
-          message: getApiErrorMessage(
-            error,
-            t`Failed to load options.`,
-          ),
+          message: getApiErrorMessage(error, t`Failed to load options.`),
         })
       }
     } finally {

@@ -71,7 +71,8 @@ const markupSlots = (message: string) =>
  * the ICU parse the app performs.
  */
 const findBrokenMessages = (messages: string[]): string[] => {
-  const argumentsOf = (message: string) => [...icuArguments(message)] as string[]
+  const argumentsOf = (message: string) =>
+    [...icuArguments(message)] as string[]
   const withArguments = messages.filter(
     (message) => argumentsOf(message).length > 0,
   )
