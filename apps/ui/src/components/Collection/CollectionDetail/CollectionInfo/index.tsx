@@ -4,6 +4,8 @@ import {
   SortAscendingIcon,
   SortDescendingIcon,
 } from '@heroicons/react/outline'
+import { plural } from '@lingui/core/macro'
+import { Trans, useLingui } from '@lingui/react/macro'
 import {
   CollectionLogMetaMediaAddedByRule,
   CollectionLogMetaMediaRemovedByRule,
@@ -12,6 +14,7 @@ import {
 import { useRef, useState } from 'react'
 import YAML from 'yaml'
 import { ICollection } from '../..'
+import { collectionLogTypeLabels } from './collectionLogLabels'
 import CollectionLogsTable from './CollectionLogsTable'
 import useDebouncedState from '../../../..//hooks/useDebouncedState'
 import Alert from '../../../Common/Alert'
@@ -26,6 +29,7 @@ interface ICollectionInfo {
 }
 
 const CollectionInfo = (props: ICollectionInfo) => {
+  const { t, i18n } = useLingui()
   const [searchFilter, debouncedSearchFilter, setSearchFilter] =
     useDebouncedState('')
   const [currentSort, setCurrentSort] = useState<'ASC' | 'DESC'>('DESC')
@@ -40,21 +44,29 @@ const CollectionInfo = (props: ICollectionInfo) => {
       <div className="w-full">
         <ul className="collection-info">
           <li key={`collection-info-added`}>
-            <span>Date Added</span>
+            <span>
+              <Trans>Date Added</Trans>
+            </span>
             <p className="collection-info-item">
               {props.collection.addDate
-                ? new Date(props.collection.addDate).toLocaleDateString()
+                ? new Date(props.collection.addDate).toLocaleDateString(
+                    i18n.locale,
+                  )
                 : '-'}
             </p>
           </li>
           <li key={`collection-info-handled`}>
-            <span>Handled media items</span>
+            <span>
+              <Trans>Handled media items</Trans>
+            </span>
             <p className="collection-info-item">
               {props.collection.handledMediaAmount}
             </p>
           </li>
           <li key={`collection-info-duration`}>
-            <span>Last duration</span>
+            <span>
+              <Trans>Last duration</Trans>
+            </span>
             <p className="collection-info-item">
               {props.collection.lastDurationInSeconds
                 ? formatDuration(props.collection.lastDurationInSeconds)
@@ -64,7 +76,9 @@ const CollectionInfo = (props: ICollectionInfo) => {
         </ul>
 
         <div className="heading mt-5 font-bold text-zinc-300">
-          <h2>{'Logs'}</h2>
+          <h2>
+            <Trans>Logs</Trans>
+          </h2>
         </div>
 
         <div className="w-full pr-2 pl-2">
@@ -108,8 +122,8 @@ const CollectionInfo = (props: ICollectionInfo) => {
                       value={currentSort}
                       join="right"
                     >
-                      <option value="DESC">{'Descending'}</option>
-                      <option value="ASC">{'Ascending'}</option>
+                      <option value="DESC">{t`Descending`}</option>
+                      <option value="ASC">{t`Ascending`}</option>
                     </Select>
                   </div>
                 </FieldJoin>
@@ -134,7 +148,7 @@ const CollectionInfo = (props: ICollectionInfo) => {
                       <option
                         key={`filter-option-all`}
                         value={-1}
-                        aria-label="No filter"
+                        aria-label={t`No filter`}
                       />
 
                       {Object.values(ECollectionLogType)
@@ -145,12 +159,11 @@ const CollectionInfo = (props: ICollectionInfo) => {
                               key={`filter-option-${index}`}
                               value={+value}
                             >
-                              {ECollectionLogType[+value]
-                                .charAt(0)
-                                .toUpperCase() +
-                                ECollectionLogType[+value]
-                                  .slice(1)
-                                  .toLowerCase()}
+                              {t(
+                                collectionLogTypeLabels[
+                                  +value as ECollectionLogType
+                                ],
+                              )}
                             </option>
                           )
                         })}
@@ -179,28 +192,60 @@ const CollectionInfo = (props: ICollectionInfo) => {
   )
 }
 
-const formatDuration = (seconds: number) => {
-  const intervals = [
-    { label: 'year', seconds: 31536000 },
-    { label: 'month', seconds: 2592000 },
-    { label: 'day', seconds: 86400 },
-    { label: 'hour', seconds: 3600 },
-    { label: 'minute', seconds: 60 },
-    { label: 'second', seconds: 1 },
-  ]
+// Each unit is its own plural message: languages pluralise "2 minutes"
+// differently, and a suffixed "s" only works in English.
+const durationUnits = [
+  {
+    seconds: 31536000,
+    format: (count: number) =>
+      plural(count, { one: '# year', other: '# years' }),
+  },
+  {
+    seconds: 2592000,
+    format: (count: number) =>
+      plural(count, { one: '# month', other: '# months' }),
+  },
+  {
+    seconds: 86400,
+    format: (count: number) => plural(count, { one: '# day', other: '# days' }),
+  },
+  {
+    seconds: 3600,
+    format: (count: number) =>
+      plural(count, { one: '# hour', other: '# hours' }),
+  },
+  {
+    seconds: 60,
+    format: (count: number) =>
+      plural(count, { one: '# minute', other: '# minutes' }),
+  },
+  {
+    seconds: 1,
+    format: (count: number) =>
+      plural(count, { one: '# second', other: '# seconds' }),
+  },
+]
 
+const formatDuration = (seconds: number) => {
   const parts = []
 
-  for (const interval of intervals) {
-    const value = Math.floor(seconds / interval.seconds)
+  for (const unit of durationUnits) {
+    const value = Math.floor(seconds / unit.seconds)
 
     if (value > 0) {
-      parts.push(`${value} ${interval.label}${value !== 1 ? 's' : ''}`)
-      seconds -= value * interval.seconds
+      parts.push(unit.format(value))
+      seconds -= value * unit.seconds
     }
   }
 
-  return parts.length > 0 ? parts.join(', ') : '0 seconds'
+  if (parts.length > 0) {
+    return parts.join(', ')
+  }
+
+  // Named `count` so this extracts to the same message the unit formatter
+  // above produces, rather than a second copy keyed on a bare {0}.
+  const count = 0
+  return plural(count, { one: '# second', other: '# seconds' })
 }
 
 export default CollectionInfo
@@ -212,6 +257,7 @@ interface LogMetaModalProps {
 }
 
 const LogMetaModal = (props: LogMetaModalProps) => {
+  const { t } = useLingui()
   const editorRef = useRef(undefined)
 
   function handleEditorDidMount(editor: any) {
@@ -223,25 +269,34 @@ const LogMetaModal = (props: LogMetaModalProps) => {
       <Modal
         loading={false}
         backgroundClickable={false}
-        title={'Metadata'}
+        title={t`Metadata`}
         footerActions={
           <Button buttonType="primary" className="ml-3" onClick={props.onClose}>
-            Close
+            <Trans>Close</Trans>
           </Button>
         }
       >
         <div className="h-[80vh] overflow-hidden">
           <div className="mt-1">
             <Alert type="info">
-              Below are the rule evaluation results that triggered this action.
-              The output follows the same format as Test Media. Refer to the
-              documentation for guidance on interpreting this output.
+              <Trans>
+                Below are the rule evaluation results that triggered this
+                action. The output follows the same format as Test Media. Refer
+                to the documentation for guidance on interpreting this output.
+              </Trans>
             </Alert>
           </div>
-          <label htmlFor={`editor-field`} className="text-label mb-3">
-            Output
-          </label>
-          <div className="editor-container h-full">
+          {/* Not a <label htmlFor>: the output is a Monaco editor, not a
+              labelable control, so the association is made with
+              aria-labelledby on the editor container instead. */}
+          <span id="collection-info-output-label" className="text-label mb-3">
+            <Trans>Output</Trans>
+          </span>
+          <div
+            className="editor-container h-full"
+            role="group"
+            aria-labelledby="collection-info-output-label"
+          >
             <LazyMonacoEditor
               options={{ readOnly: true, minimap: { enabled: false } }}
               defaultLanguage="yaml"

@@ -20,9 +20,12 @@ interface ConfirmActionButtonProps {
   pendingLabel: string
   disabled?: boolean
   confirmDisabled?: boolean
-  // Shown when the action throws without a usable message, and logged as the
-  // client-error summary.
+  // Shown when the action throws without a usable message. Translated.
   errorMessage: string
+  // Summary written to the server log. Deliberately separate from
+  // errorMessage: a log line is read by whoever is debugging the install, not
+  // by the user, so it must stay English whatever the UI language is.
+  errorLogSummary: string
   // Identifies the call site in the client error log.
   errorContext: string
   onConfirm: () => Promise<void>
@@ -47,6 +50,7 @@ const ConfirmActionButton = ({
   disabled = false,
   confirmDisabled = false,
   errorMessage,
+  errorLogSummary,
   errorContext,
   onConfirm,
   children,
@@ -69,7 +73,7 @@ const ConfirmActionButton = ({
       setExecuting(false)
       setConfirmOpen(false)
     } catch (error) {
-      void logClientError(errorMessage, error, errorContext)
+      void logClientError(errorLogSummary, error, errorContext)
 
       setError(getApiErrorMessage(error, errorMessage))
       setExecuting(false)

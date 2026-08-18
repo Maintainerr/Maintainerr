@@ -1,3 +1,4 @@
+import { useLingui } from '@lingui/react/macro'
 import type {
   MediaItem,
   MediaLibrary,
@@ -18,7 +19,7 @@ import useLibrarySelection from '../../hooks/useLibrarySelection'
 import useMediaSelection from '../../hooks/useMediaSelection'
 import { useMediaServerType } from '../../hooks/useMediaServerType'
 import { useRequestGeneration } from '../../hooks/useRequestGeneration'
-import { bulkOutcomeVerb, reportBulkOutcome } from '../../utils/bulkOutcome'
+import { reportBulkOutcome } from '../../utils/bulkOutcome'
 import GetApiHandler from '../../utils/ApiHandler'
 import LibrarySwitcher from '../Common/LibrarySwitcher'
 import LoadingSpinner from '../Common/LoadingSpinner'
@@ -63,6 +64,7 @@ export const buildLibraryContentQuery = ({
 }
 
 const Overview = () => {
+  const { t } = useLingui()
   const loadingRef = useRef<boolean>(false)
   const loadingExtraRef = useRef<boolean>(false)
   const [isLoading, setIsLoading] = useState(false)
@@ -491,12 +493,13 @@ const Overview = () => {
       setStatusChangedIds((current) => new Set([...current, ...invalidated]))
     }
 
-    reportBulkOutcome(
-      succeededIds.size,
-      failed.length,
-      bulkOutcomeVerb({ action, collectionId }),
+    reportBulkOutcome({
+      action,
+      collectionId,
+      succeeded: succeededIds.size,
+      failed: failed.length,
       failureReasons,
-    )
+    })
   }
 
   useEffect(() => {
@@ -578,7 +581,7 @@ const Overview = () => {
 
   return (
     <>
-      <title>Overview - Maintainerr</title>
+      <title>{t`Overview - Maintainerr`}</title>
       <div className="w-full px-4">
         <PageControlRow
           sticky
@@ -615,7 +618,7 @@ const Overview = () => {
                 </div>
                 <div className="w-full sm:w-[18rem]">
                   <MediaLibrarySortControl
-                    ariaLabel="Sort overview items"
+                    ariaLabel={t`Sort overview items`}
                     options={sortConfig.options}
                     value={sortValue}
                     onSortChange={handleSortChange}

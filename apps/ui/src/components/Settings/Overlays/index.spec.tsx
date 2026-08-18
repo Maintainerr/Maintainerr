@@ -1,5 +1,5 @@
 import { DEFAULT_OVERLAY_SETTINGS } from '@maintainerr/contracts'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '../../../test-utils/render'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import OverlaySettings from './index'
 

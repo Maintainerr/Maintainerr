@@ -1,3 +1,4 @@
+import { Trans, useLingui } from '@lingui/react/macro'
 import {
   DownloadClientSetting,
   downloadClientSettingSchema,
@@ -46,14 +47,16 @@ const emptyValues: DownloadClientFormValues = {
 // (src/components/Settings/Metadata) - a single selector plus the chosen
 // backend's fields is the clean reference for "pick one of several backends".
 const DownloadClientSettings = () => {
+  const { t } = useLingui()
   const [testResult, setTestResult] = useState<{
     status: boolean
     message: string
   } | null>(null)
   const [testedConnection, setTestedConnection] = useState<string | null>(null)
-  const { feedback, showUpdated, showError, clearError } = useSettingsFeedback(
-    'Download client settings',
-  )
+  const { feedback, showUpdated, showError, clearError } = useSettingsFeedback({
+    updated: t`Download client settings updated`,
+    updateError: t`Download client settings could not be updated`,
+  })
 
   const { settings } = useSettingsOutletContext()
 
@@ -132,7 +135,7 @@ const DownloadClientSettings = () => {
     ) {
       setError('download_client_fallback_ratio', {
         type: 'manual',
-        message: 'Enter a ratio of 0.5 or higher',
+        message: t`Enter a ratio of 0.5 or higher`,
       })
       return null
     }
@@ -176,7 +179,7 @@ const DownloadClientSettings = () => {
         showError(
           getApiErrorMessage(
             error,
-            'Download client settings could not be updated',
+            t`Download client settings could not be updated`,
           ),
         )
       }
@@ -196,7 +199,7 @@ const DownloadClientSettings = () => {
       showError(
         getApiErrorMessage(
           error,
-          'Download client settings could not be updated',
+          t`Download client settings could not be updated`,
         ),
       )
     }
@@ -229,7 +232,7 @@ const DownloadClientSettings = () => {
           status: false,
           message:
             result.message ||
-            'Failed to connect to the download client. Verify URL and credentials.',
+            t`Failed to connect to the download client. Verify URL and credentials.`,
         })
         setTestedConnection(null)
       }
@@ -238,7 +241,7 @@ const DownloadClientSettings = () => {
         status: false,
         message: getApiErrorMessage(
           error,
-          'Failed to connect to the download client. Verify URL and credentials.',
+          t`Failed to connect to the download client. Verify URL and credentials.`,
         ),
       })
       setTestedConnection(null)
@@ -247,22 +250,24 @@ const DownloadClientSettings = () => {
 
   return (
     <>
-      <title>Download client settings - Maintainerr</title>
+      <title>{t`Download client settings - Maintainerr`}</title>
       <div className="h-full w-full">
         <div className="section h-full w-full">
           <h3 className="heading flex items-center gap-2">
-            Download Client
+            <Trans>Download Client</Trans>
             <span className="ml-1.5 rounded-full bg-maintainerr-600 px-3 text-sm font-medium text-white">
               BETA
             </span>
           </h3>
           <p className="description">
-            When media is removed through Radarr, Sonarr or Sportarr,
-            Maintainerr can remove the completed download (and optionally its
-            data) from your download client. The download is matched via that
-            service&apos;s download history, so media removed without one of
-            them is left untouched. qBittorrent is currently the only supported
-            client.
+            <Trans>
+              When media is removed through Radarr, Sonarr or Sportarr,
+              Maintainerr can remove the completed download (and optionally its
+              data) from your download client. The download is matched via that
+              service&apos;s download history, so media removed without one of
+              them is left untouched. qBittorrent is currently the only
+              supported client.
+            </Trans>
           </p>
         </div>
 
@@ -277,7 +282,9 @@ const DownloadClientSettings = () => {
                   type={testResult.status ? 'success' : 'error'}
                   title={
                     testResult.status
-                      ? `Successfully connected to the download client${testResult.message ? ` (${testResult.message})` : ''}`
+                      ? testResult.message
+                        ? t`Successfully connected to the download client (${{ version: testResult.message }})`
+                        : t`Successfully connected to the download client`
                       : testResult.message
                   }
                 />
@@ -317,7 +324,7 @@ const DownloadClientSettings = () => {
               control={control}
               render={({ field }) => (
                 <InputGroup
-                  label="Username"
+                  label={t`Username`}
                   value={field.value}
                   onChange={(event) => {
                     clearTransientState()
@@ -328,7 +335,7 @@ const DownloadClientSettings = () => {
                   name={field.name}
                   type="text"
                   error={errors.download_client_username?.message}
-                  helpText="Leave blank if the client's WebUI allows unauthenticated access."
+                  helpText={t`Leave blank if the client's WebUI allows unauthenticated access.`}
                 />
               )}
             />
@@ -338,7 +345,7 @@ const DownloadClientSettings = () => {
               control={control}
               render={({ field }) => (
                 <InputGroup
-                  label="Password"
+                  label={t`Password`}
                   value={field.value}
                   onChange={(event) => {
                     clearTransientState()
@@ -355,10 +362,12 @@ const DownloadClientSettings = () => {
 
             <div className="mt-6 max-w-6xl sm:mt-5 sm:grid sm:grid-cols-3 sm:items-start sm:gap-4">
               <label htmlFor="download_client_delete_data" className="sm:mt-2">
-                Delete downloaded data
+                <Trans>Delete downloaded data</Trans>
                 <p className="text-xs font-normal">
-                  Also delete the download&apos;s data from disk when removing
-                  it. Turn off if you cross-seed.
+                  <Trans>
+                    Also delete the download&apos;s data from disk when removing
+                    it. Turn off if you cross-seed.
+                  </Trans>
                 </p>
               </label>
               <div className="px-3 py-2 sm:col-span-2">
@@ -386,7 +395,7 @@ const DownloadClientSettings = () => {
               control={control}
               render={({ field }) => (
                 <InputGroup
-                  label="Fallback seeding ratio"
+                  label={t`Fallback seeding ratio`}
                   value={field.value}
                   placeholder="0.5"
                   onChange={(event) => {
@@ -400,7 +409,7 @@ const DownloadClientSettings = () => {
                   step="0.1"
                   min="0.5"
                   error={errors.download_client_fallback_ratio?.message}
-                  helpText="Whether a download has finished seeding is decided by qBittorrent's own ratio/seed-time limits. This ratio only applies to downloads qBittorrent isn't limiting, and can't be set below 0.5."
+                  helpText={t`Whether a download has finished seeding is decided by qBittorrent's own ratio/seed-time limits. This ratio only applies to downloads qBittorrent isn't limiting, and can't be set below 0.5.`}
                 />
               )}
             />

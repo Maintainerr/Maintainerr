@@ -1,4 +1,5 @@
 import { DocumentTextIcon } from '@heroicons/react/solid'
+import { Trans, useLingui } from '@lingui/react/macro'
 import {
   CollectionLogDto,
   CollectionLogMetaMediaAddedByRule,
@@ -7,6 +8,7 @@ import {
   isMetaActionedByRule,
 } from '@maintainerr/contracts'
 import type { ICollection } from '../..'
+import { collectionLogTypeLabels } from './collectionLogLabels'
 import useInfinitePaginatedList from '../../../../hooks/useInfinitePaginatedList'
 import GetApiHandler from '../../../../utils/ApiHandler'
 import Badge from '../../../Common/Badge'
@@ -44,6 +46,7 @@ const CollectionLogsTable = ({
   currentFilter,
   onShowMeta,
 }: CollectionLogsTableProps) => {
+  const { t, i18n } = useLingui()
   const fetchAmount = 25
   const { data, isLoading, isLoadingExtra } = useInfinitePaginatedList<
     CollectionLogDto,
@@ -66,9 +69,15 @@ const CollectionLogsTable = ({
     <Table>
       <thead>
         <tr>
-          <Table.TH>{'DATE'}</Table.TH>
-          <Table.TH>{'LABEL'}</Table.TH>
-          <Table.TH>{'EVENT'}</Table.TH>
+          <Table.TH>
+            <Trans>Date</Trans>
+          </Table.TH>
+          <Table.TH>
+            <Trans>Label</Trans>
+          </Table.TH>
+          <Table.TH>
+            <Trans>Event</Trans>
+          </Table.TH>
           <Table.TH></Table.TH>
         </tr>
       </thead>
@@ -85,7 +94,7 @@ const CollectionLogsTable = ({
               return (
                 <tr key={`log-list-${index}`}>
                   <Table.TD className="text-gray-300">
-                    {new Date(row.timestamp).toLocaleString()}
+                    {new Date(row.timestamp).toLocaleString(i18n.locale)}
                   </Table.TD>
                   <Table.TD className="text-gray-300">
                     <Badge
@@ -99,7 +108,7 @@ const CollectionLogsTable = ({
                               : 'default'
                       }
                     >
-                      {ECollectionLogType[row.type].toUpperCase()}
+                      {t(collectionLogTypeLabels[row.type]).toUpperCase()}
                     </Badge>
                   </Table.TD>
                   <Table.TD className="text-gray-300">
@@ -111,7 +120,9 @@ const CollectionLogsTable = ({
                           'media_added_manually',
                           'media_removed_manually',
                         ].includes(row.meta.type) && (
-                          <span className="text-gray-400">(manual)</span>
+                          <span className="text-gray-400">
+                            <Trans>(manual)</Trans>
+                          </span>
                         )}
                       </>
                     )}
@@ -123,7 +134,7 @@ const CollectionLogsTable = ({
                         <button
                           type="button"
                           className="rounded-md bg-maintainerr-600 px-2 py-1 text-white shadow-md hover:bg-maintainerr"
-                          title="View Metadata"
+                          title={t`View Metadata`}
                           onClick={() => {
                             if (!isMetaActionedByRule(row.meta)) return
 

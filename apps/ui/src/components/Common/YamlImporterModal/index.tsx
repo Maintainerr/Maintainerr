@@ -1,5 +1,6 @@
 import { UploadIcon } from '@heroicons/react/outline'
 import { ClipboardCopyIcon } from '@heroicons/react/solid'
+import { Trans, useLingui } from '@lingui/react/macro'
 import { useRef } from 'react'
 import { toast } from 'react-toastify'
 import Alert from '../Alert'
@@ -14,6 +15,7 @@ export interface IYamlImporterModal {
 }
 
 const YamlImporterModal = (props: IYamlImporterModal) => {
+  const { t } = useLingui()
   const editorRef = useRef(undefined)
   const uploadRef = useRef<HTMLInputElement>(null)
 
@@ -28,7 +30,12 @@ const YamlImporterModal = (props: IYamlImporterModal) => {
     const validExtensions = ['.yaml', '.yml']
     const lowerName = file.name.toLowerCase()
     if (!validExtensions.some((ext) => lowerName.endsWith(ext))) {
-      toast.error('Only .yaml or .yml files are allowed.')
+      // Placeholders from the validated list, so the message cannot disagree
+      // with what the check accepts.
+      const [yamlExtension, ymlExtension] = validExtensions
+      toast.error(
+        t`Only ${{ yamlExtension }} or ${{ ymlExtension }} files are allowed.`,
+      )
       uploadRef.current!.value = ''
       return
     }
@@ -38,7 +45,7 @@ const YamlImporterModal = (props: IYamlImporterModal) => {
       const text = event.target?.result
       if (typeof text === 'string') {
         if (text.trim().length === 0) {
-          toast.error('Uploaded YAML file is empty.')
+          toast.error(t`Uploaded YAML file is empty.`)
           uploadRef.current!.value = ''
           return
         }
@@ -71,7 +78,7 @@ const YamlImporterModal = (props: IYamlImporterModal) => {
       } else {
         throw new Error('Clipboard not available')
       }
-      toast.success('Copied to clipboard')
+      toast.success(t`Copied to clipboard`)
     } catch {
       try {
         const textarea = document.createElement('textarea')
@@ -83,9 +90,9 @@ const YamlImporterModal = (props: IYamlImporterModal) => {
         textarea.select()
         document.execCommand('copy')
         document.body.removeChild(textarea)
-        toast.success('Copied to clipboard')
+        toast.success(t`Copied to clipboard`)
       } catch (fallbackError) {
-        toast.error('Failed to copy to clipboard')
+        toast.error(t`Failed to copy to clipboard`)
       }
     }
   }
@@ -96,7 +103,7 @@ const YamlImporterModal = (props: IYamlImporterModal) => {
         loading={false}
         backgroundClickable={false}
         onCancel={() => props.onCancel()}
-        title={'Yaml Rule Editor'}
+        title={t`Yaml Rule Editor`}
         iconSvg={''}
         footerActions={
           <Button
@@ -108,7 +115,7 @@ const YamlImporterModal = (props: IYamlImporterModal) => {
                 : props.onImport((editorRef.current as any).getValue())
             }
           >
-            {props.yaml ? 'Download' : 'Import'}
+            {props.yaml ? <Trans>Download</Trans> : <Trans>Import</Trans>}
           </Button>
         }
       >
@@ -120,28 +127,33 @@ const YamlImporterModal = (props: IYamlImporterModal) => {
           onChange={upload}
         />
         <Alert type="info">
-          {props.yaml
-            ? 'Export your rules to a YAML document'
-            : 'Import rules from a YAML document. This will override your current rules'}
+          {props.yaml ? (
+            <Trans>Export your rules to a YAML document</Trans>
+          ) : (
+            <Trans>
+              Import rules from a YAML document. This will override your current
+              rules
+            </Trans>
+          )}
         </Alert>
         <div className="mb-2 flex justify-between">
           <label htmlFor="editor-field" className="text-label">
-            Rules YAML
+            <Trans>Rules YAML</Trans>
           </label>
 
           {props.yaml ? (
             <button
               onClick={copyToClipboard}
-              title="Copy YAML"
-              aria-label="Copy YAML"
+              title={t`Copy YAML`}
+              aria-label={t`Copy YAML`}
             >
               <ClipboardCopyIcon className="h-5 w-5 text-maintainerr-600 hover:text-maintainerr" />
             </button>
           ) : (
             <button
               onClick={() => uploadRef.current?.click()}
-              title="Upload YAML"
-              aria-label="Upload YAML"
+              title={t`Upload YAML`}
+              aria-label={t`Upload YAML`}
             >
               <span className="flex justify-center font-semibold text-maintainerr-600 hover:text-maintainerr">
                 <UploadIcon className="h-5 w-5" />

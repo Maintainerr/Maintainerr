@@ -1,3 +1,4 @@
+import { useLingui } from '@lingui/react/macro'
 import type { OverlayElement } from '@maintainerr/contracts'
 import Konva from 'konva'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -385,6 +386,7 @@ function ElementRenderer({
   onDragEnd: (e: Konva.KonvaEventObject<DragEvent>) => void
   onTransformEnd: (e: Konva.KonvaEventObject<Event>) => void
 }) {
+  const { t } = useLingui()
   const x = el.x * scale
   const y = el.y * scale
   const w = el.width * scale
@@ -552,7 +554,7 @@ function ElementRenderer({
           <Text
             width={w}
             height={h}
-            text={el.imagePath ? 'Loading…' : '[Image]'}
+            text={el.imagePath ? t`Loading…` : t`[Image]`}
             fontSize={14 * scale}
             fill="#888"
             align="center"

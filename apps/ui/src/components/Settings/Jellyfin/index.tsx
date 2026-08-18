@@ -1,3 +1,4 @@
+import { Trans, useLingui } from '@lingui/react/macro'
 import { zodResolver } from '@hookform/resolvers/zod'
 import {
   type JellyfinSetting,
@@ -39,6 +40,7 @@ const JellyfinSettingFormSchema = z.union([
 type JellyfinSettingFormResult = z.infer<typeof JellyfinSettingFormSchema>
 
 const JellyfinSettings = () => {
+  const { t } = useLingui()
   const [testResult, setTestResult] = useState<{
     status: boolean
     message: string
@@ -50,8 +52,10 @@ const JellyfinSettings = () => {
   const [jellyfinUsers, setJellyfinUsers] = useState<
     Array<{ id: string; name: string }>
   >([])
-  const { feedback, showUpdated, showError, clearError } =
-    useSettingsFeedback('Jellyfin settings')
+  const { feedback, showUpdated, showError, clearError } = useSettingsFeedback({
+    updated: t`Jellyfin settings updated`,
+    updateError: t`Jellyfin settings could not be updated`,
+  })
 
   const { settings } = useSettingsOutletContext()
 
@@ -136,7 +140,7 @@ const JellyfinSettings = () => {
         setTestResult({
           status: true,
           message: result.serverName
-            ? `Connected to ${result.serverName} (v${result.version})`
+            ? t`Connected to ${{ serverName: result.serverName }} (v${{ version: result.version }})`
             : result.message,
         })
         setTestedSettings({ url: jellyfinUrl, apiKey: jellyfinApiKey })
@@ -163,7 +167,7 @@ const JellyfinSettings = () => {
     } catch (error) {
       const message = getApiErrorMessage(
         error,
-        'Failed to connect to Jellyfin. Verify URL and API key.',
+        t`Failed to connect to Jellyfin. Verify URL and API key.`,
       )
       setTestResult({ status: false, message })
       setTestedSettings(null)
@@ -188,7 +192,7 @@ const JellyfinSettings = () => {
         showUpdated()
       } catch (error) {
         showError(
-          getApiErrorMessage(error, 'Jellyfin settings could not be updated'),
+          getApiErrorMessage(error, t`Jellyfin settings could not be updated`),
         )
       }
       return
@@ -200,21 +204,24 @@ const JellyfinSettings = () => {
       showUpdated()
     } catch (error) {
       showError(
-        getApiErrorMessage(error, 'Jellyfin settings could not be updated'),
+        getApiErrorMessage(error, t`Jellyfin settings could not be updated`),
       )
     }
   }
 
   const savedUserId = settings?.jellyfin_user_id ?? ''
+  const maskedUserId = maskSecret(savedUserId)
 
   return (
     <>
-      <title>Jellyfin settings - Maintainerr</title>
+      <title>{t`Jellyfin settings - Maintainerr`}</title>
       <div className="h-full w-full">
         <div className="section h-full w-full">
-          <h3 className="heading">Jellyfin Settings</h3>
+          <h3 className="heading">
+            <Trans>Jellyfin Settings</Trans>
+          </h3>
           <p className="description">
-            Configure your Jellyfin server connection
+            <Trans>Configure your Jellyfin server connection</Trans>
           </p>
         </div>
 
@@ -241,7 +248,7 @@ const JellyfinSettings = () => {
               control={control}
               render={({ field }) => (
                 <InputGroup
-                  label="Jellyfin URL"
+                  label={t`Jellyfin URL`}
                   value={field.value}
                   placeholder="http://jellyfin.local:8096"
                   onChange={(event) => {
@@ -261,21 +268,21 @@ const JellyfinSettings = () => {
             />
 
             <InputGroup
-              label="API Key"
+              label={t`API Key`}
               type="password"
               {...registerApiKey}
               error={errors.jellyfin_api_key?.message}
               helpText={
-                <>
+                <Trans>
                   In Jellyfin, go to <strong>Dashboard &rarr; API Keys</strong>{' '}
                   and create a new API key named &quot;Maintainerr&quot;.
-                </>
+                </Trans>
               }
             />
 
             <div className="mt-6 max-w-6xl sm:mt-5 sm:grid sm:grid-cols-3 sm:items-start sm:gap-4">
               <label htmlFor="jellyfin_user_id" className="sm:mt-2">
-                Admin User
+                <Trans>Admin User</Trans>
               </label>
               <div className="px-3 py-2 sm:col-span-2">
                 <div className="max-w-xl">
@@ -291,21 +298,21 @@ const JellyfinSettings = () => {
                     <Select disabled value={savedUserId}>
                       {savedUserId ? (
                         <option value={savedUserId}>
-                          Selected: {maskSecret(savedUserId)}
+                          <Trans>Selected: {maskedUserId}</Trans>
                         </option>
                       ) : (
                         <option value="">
-                          Test connection to load Jellyfin admin users
+                          {t`Test connection to load Jellyfin admin users`}
                         </option>
                       )}
                     </Select>
                   )}
                   <p className="mt-1 text-sm text-zinc-400">
                     {jellyfinUsers.length > 0 && enteredSettingsHaveBeenTested
-                      ? 'Select the admin user for Maintainerr operations.'
+                      ? t`Select the admin user for Maintainerr operations.`
                       : savedUserId
-                        ? 'Saved admin user. Test connection to change.'
-                        : 'Test connection to load available admin users.'}
+                        ? t`Saved admin user. Test connection to change.`
+                        : t`Test connection to load available admin users.`}
                   </p>
                 </div>
               </div>

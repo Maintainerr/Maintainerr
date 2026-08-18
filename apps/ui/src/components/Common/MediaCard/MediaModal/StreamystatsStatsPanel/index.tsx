@@ -1,3 +1,4 @@
+import { Trans, useLingui } from '@lingui/react/macro'
 import type { StreamystatsItemDetails } from '@maintainerr/contracts'
 import { useEffect, useState } from 'react'
 import GetApiHandler from '../../../../../utils/ApiHandler'
@@ -13,13 +14,18 @@ type FetchState =
   | { status: 'loading' }
   | { status: 'ready'; data: StreamystatsItemDetails }
   | { status: 'empty' }
-  | { status: 'error'; message: string }
+  | { status: 'error' }
 
-const formatDate = (value: string | null | undefined): string => {
+// The app locale, not the browser's - the labels beside these dates follow
+// the language picker, so the date format has to follow it too.
+const formatDate = (
+  value: string | null | undefined,
+  locale: string,
+): string => {
   if (!value) return '-'
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return '-'
-  return date.toLocaleDateString()
+  return date.toLocaleDateString(locale)
 }
 
 const formatWatchTime = (seconds: number): string => {
@@ -35,6 +41,7 @@ const StreamystatsStatsPanel = ({
   itemId,
   itemUrl,
 }: StreamystatsStatsPanelProps) => {
+  const { i18n } = useLingui()
   const [state, setState] = useState<FetchState>({ status: 'loading' })
 
   useEffect(() => {
@@ -58,10 +65,7 @@ const StreamystatsStatsPanel = ({
           setState({ status: 'empty' })
           return
         }
-        setState({
-          status: 'error',
-          message: 'Failed to load Streamystats data',
-        })
+        setState({ status: 'error' })
       })
 
     return () => {
@@ -69,12 +73,19 @@ const StreamystatsStatsPanel = ({
     }
   }, [itemId])
 
+  // Named locals so the counts reach the catalog as readable placeholders.
+  const episodeStats = state.status === 'ready' ? state.data.episodeStats : null
+  const watchedEpisodes = episodeStats?.watchedEpisodes
+  const totalEpisodes = episodeStats?.totalEpisodes
+  const watchedSeasons = episodeStats?.watchedSeasons
+  const totalSeasons = episodeStats?.totalSeasons
+
   return (
     <div className="mt-4 min-h-30 rounded-xl bg-zinc-900/70 p-3">
       <div className="flex items-center justify-between">
         <p className="text-sm font-semibold text-white">Streamystats</p>
         <BrandLink external href={itemUrl} className="text-xs no-underline">
-          View on Streamystats →
+          <Trans>View on Streamystats</Trans> &rarr;
         </BrandLink>
       </div>
 
@@ -83,23 +94,25 @@ const StreamystatsStatsPanel = ({
           <SmallLoadingSpinner className="h-6 w-6" />
         </div>
       ) : state.status === 'error' ? (
-        <p className="mt-2 text-sm text-error-400">{state.message}</p>
+        <p className="mt-2 text-sm text-error-400">
+          <Trans>Failed to load Streamystats data</Trans>
+        </p>
       ) : state.status === 'empty' ? (
         <p className="mt-2 text-sm text-zinc-100/80">
-          No watch history recorded yet.
+          <Trans>No watch history recorded yet.</Trans>
         </p>
       ) : (
         <div className="mt-2 space-y-3 text-sm text-zinc-100">
           <dl className="grid grid-cols-3 gap-3">
             <div>
               <dt className="text-xs tracking-wide text-zinc-100/60 uppercase">
-                Plays
+                <Trans>Plays</Trans>
               </dt>
               <dd className="font-medium">{state.data.totalViews}</dd>
             </div>
             <div>
               <dt className="text-xs tracking-wide text-zinc-100/60 uppercase">
-                Completion
+                <Trans>Completion</Trans>
               </dt>
               <dd className="font-medium">
                 {Math.round(state.data.completionRate)}%
@@ -107,20 +120,23 @@ const StreamystatsStatsPanel = ({
             </div>
             <div>
               <dt className="text-xs tracking-wide text-zinc-100/60 uppercase">
-                Last watched
+                <Trans>Last watched</Trans>
               </dt>
               <dd className="font-medium">
-                {formatDate(state.data.lastWatched)}
+                {formatDate(state.data.lastWatched, i18n.locale)}
               </dd>
             </div>
           </dl>
 
-          {state.data.episodeStats ? (
+          {episodeStats ? (
             <p className="text-xs text-zinc-100/60">
-              {state.data.episodeStats.watchedEpisodes}/
-              {state.data.episodeStats.totalEpisodes} episodes watched ·{' '}
-              {state.data.episodeStats.watchedSeasons}/
-              {state.data.episodeStats.totalSeasons} seasons complete
+              <Trans>
+                {watchedEpisodes}/{totalEpisodes} episodes watched
+              </Trans>{' '}
+              &middot;{' '}
+              <Trans>
+                {watchedSeasons}/{totalSeasons} seasons complete
+              </Trans>
             </p>
           ) : null}
 
@@ -129,13 +145,17 @@ const StreamystatsStatsPanel = ({
               <table className="w-full text-left text-xs">
                 <thead className="bg-zinc-800/60 text-zinc-100">
                   <tr>
-                    <th className="px-2 py-1 font-medium">User</th>
-                    <th className="px-2 py-1 text-right font-medium">Plays</th>
-                    <th className="px-2 py-1 text-right font-medium">
-                      Watch time
+                    <th className="px-2 py-1 font-medium">
+                      <Trans>User</Trans>
                     </th>
                     <th className="px-2 py-1 text-right font-medium">
-                      Last watched
+                      <Trans>Plays</Trans>
+                    </th>
+                    <th className="px-2 py-1 text-right font-medium">
+                      <Trans>Watch time</Trans>
+                    </th>
+                    <th className="px-2 py-1 text-right font-medium">
+                      <Trans>Last watched</Trans>
                     </th>
                   </tr>
                 </thead>
@@ -153,7 +173,7 @@ const StreamystatsStatsPanel = ({
                         {formatWatchTime(row.totalWatchTime)}
                       </td>
                       <td className="px-2 py-1 text-right">
-                        {formatDate(row.lastWatched)}
+                        {formatDate(row.lastWatched, i18n.locale)}
                       </td>
                     </tr>
                   ))}

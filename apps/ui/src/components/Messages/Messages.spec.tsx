@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen } from '../../test-utils/render'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { MaintainerrEvent } from '@maintainerr/contracts'
 import { useEffect } from 'react'

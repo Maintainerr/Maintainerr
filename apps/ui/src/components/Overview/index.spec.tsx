@@ -1,5 +1,5 @@
 import { MediaServerType, type MediaLibrary } from '@maintainerr/contracts'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '../../test-utils/render'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { toast } from 'react-toastify'
 import { SearchContextProvider } from '../../contexts/search-context'

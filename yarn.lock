@@ -12787,6 +12787,7 @@ __metadata:
     "@semantic-release/git": "npm:^11.0.1"
     "@types/node": "npm:^26.2.0"
     knip: "npm:^6.32.2"
+    pofile-ts: "npm:^4.0.3"
     semantic-release: "npm:^25.0.9"
     turbo: "npm:^2.10.10"
     typescript: "npm:^6.0.3"

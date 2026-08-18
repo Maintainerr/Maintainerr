@@ -5,7 +5,7 @@ import {
   render as renderComponent,
   screen,
   waitFor,
-} from '@testing-library/react'
+} from '../../../../test-utils/render'
 import type { ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useMediaServerType } from '../../../../hooks/useMediaServerType'
