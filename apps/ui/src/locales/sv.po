@@ -8,7 +8,7 @@ msgstr ""
 "Language: sv\n"
 "Project-Id-Version: \n"
 "Report-Msgid-Bugs-To: \n"
-"PO-Revision-Date: 2026-08-18 21:22+0000\n"
+"PO-Revision-Date: 2026-08-18 22:07+0000\n"
 "Last-Translator: Maintainerr <get@maintainerr.info>\n"
 "Language-Team: Swedish <https://hosted.weblate.org/projects/maintainerr/app/"
 "sv/>\n"
@@ -21,6 +21,9 @@ msgstr "- använder {propertyName}"
 #: src/components/Settings/Servarr/ExclusionTagSettings.tsx
 msgid "\"{label}\" is not a valid {name} tag. Lowercase letters, numbers and hyphens only ({chars}), with no leading, trailing, or repeated hyphens."
 msgstr ""
+"\"{label}\" är inte en giltig {name}-tagg. Endast små bokstäver, siffror och "
+"bindestreck ({chars}), utan inledande, avslutande eller upprepade "
+"bindestreck."
 
 #: src/pages/OverlayTemplateListPage.tsx
 msgid "\"{templateName}\" set as the default poster template"
@@ -4466,16 +4469,18 @@ msgid "We will now switch from <0>{currentName}</0> to <1>{pendingName}</1>."
 msgstr ""
 
 #: src/components/Calendar/index.tsx
+#, fuzzy
 msgid "Week"
-msgstr ""
+msgstr "Vecka"
 
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "Weight"
 msgstr ""
 
 #: src/components/Settings/index.tsx
+#, fuzzy
 msgid "Welcome to Maintainerr!"
-msgstr ""
+msgstr "Välkommen till Maintainerr!"
 
 #: src/components/Settings/DownloadClient/index.tsx
 msgid "When media is removed through Radarr, Sonarr or Sportarr, Maintainerr can remove the completed download (and optionally its data) from your download client. The download is matched via that service's download history, so media removed without one of them is left untouched. qBittorrent is currently the only supported client."
@@ -4487,31 +4492,37 @@ msgstr ""
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Will also be the name of the collection in {mediaServerName}."
-msgstr ""
+msgstr "Kommer också att vara namnet på samlingen på {mediaServerName}."
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
+#, fuzzy
 msgid "Will this rule be included in rule runs"
-msgstr ""
+msgstr "Kommer denna regel att ingå i regelkörningar"
 
 #: src/components/Common/YamlImporterModal/index.tsx
 msgid "Yaml Rule Editor"
 msgstr ""
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
+#, fuzzy
 msgid "You are cloning the rule group ''{clonedRuleGroupName}''."
-msgstr ""
+msgstr "Du klonar regelgruppen \"{clonedRuleGroupName}\"."
 
 #: src/components/Settings/Metadata/index.tsx
+#, fuzzy
 msgid "You can create a free API key at <0>{tmdbDomain}</0>."
-msgstr ""
+msgstr "Du kan skapa en gratis API-nyckel på <0>{tmdbDomain}</0>."
 
 #: src/components/Settings/Metadata/index.tsx
 msgid "You can create a free developer API key at <0>{tvdbDomain}</0>."
-msgstr ""
+msgstr "Du kan skapa en gratis developer API-nyckel på <0>{tvdbDomain}</0>."
 
 #: src/components/Layout/index.tsx
+#, fuzzy
 msgid "You can try going back or reloading the page. If the problem persists, please check the browser console for more details."
 msgstr ""
+"Du kan försöka gå tillbaka eller ladda om sidan. Om problemet kvarstår, "
+"kontrollera webbläsarens konsol för mer information."
 
 #: src/components/Common/CommunityRowTableRow/index.tsx
 msgid "You have already submitted karma for this rule."
@@ -4533,4 +4544,4 @@ msgstr ""
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "your media server"
-msgstr ""
+msgstr "din mediaserver"
