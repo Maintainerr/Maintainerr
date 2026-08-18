@@ -648,7 +648,7 @@ function ColorField({
         <span className="w-12 shrink-0 text-zinc-400">{label}</span>
         <button
           type="button"
-          aria-label={t`Pick ${{ label }} color`}
+          aria-label={t`Choose a color for ${{ fieldLabel: label }}`}
           className="h-8 w-10 shrink-0 cursor-pointer rounded-md border border-zinc-500 bg-zinc-700"
           style={{ backgroundColor: value }}
           onClick={() => setIsPickerOpen(true)}
@@ -662,7 +662,6 @@ function ColorField({
       </label>
       {isPickerOpen && (
         <ColorPickerModal
-          title={t`Choose ${{ fieldLabel: label.toLowerCase() }} color`}
           initialValue={value}
           onCancel={() => setIsPickerOpen(false)}
           onSave={(next) => {

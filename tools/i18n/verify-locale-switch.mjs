@@ -82,14 +82,23 @@ const withSentinel = (contents, msgid, sentinel) => {
   )
 }
 
+const isPatched = (contents) =>
+  probes.some((probe) => contents.includes(probe.sentinel))
+
 const patch = () => {
-  // A leftover backup means an earlier run died between patch and restore:
-  // the catalog on disk carries sentinels and the backup holds the last clean
-  // copy. Copying the current file over it here would destroy that only
-  // clean state, so recover it first.
+  // A leftover backup means an earlier run died between patch and restore, and
+  // the backup is then the only clean copy. Recover it - but only when the
+  // catalog on disk is actually still patched. A backup left behind by a run
+  // whose sentinels are long gone is stale, and restoring it would revert a
+  // catalog that has legitimately moved on since (a Weblate sync, say).
   if (existsSync(backup)) {
-    copyFileSync(backup, catalog)
-    console.warn('Recovered sv.po from an interrupted earlier run.')
+    if (isPatched(readFileSync(catalog, 'utf8'))) {
+      copyFileSync(backup, catalog)
+      console.warn('Recovered sv.po from an interrupted earlier run.')
+    } else {
+      console.warn('Discarded a stale sv.po backup; the catalog was not patched.')
+    }
+    rmSync(backup, { force: true })
   }
   copyFileSync(catalog, backup)
   let contents = readFileSync(catalog, 'utf8')

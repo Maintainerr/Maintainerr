@@ -256,3 +256,34 @@ export const icuArguments = (text) => {
   }
   return names;
 };
+
+/**
+ * The format type of one ICU argument - `plural`, `select`, `selectordinal`,
+ * or '' for a plain value. Callers need it to supply a value of the right
+ * shape: a plural branch is chosen by a number, a select by a branch name.
+ */
+export const icuArgumentKind = (text, name) => {
+  const marker = `{${name}`;
+  let from = 0;
+
+  for (;;) {
+    const at = text.indexOf(marker, from);
+    if (at === -1) return '';
+
+    let cursor = at + marker.length;
+    while (text[cursor] === ' ') cursor += 1;
+    // No comma means this is a plain `{name}`, but the same name may appear
+    // again later with a format type, so keep looking.
+    if (text[cursor] !== ',') {
+      from = at + 1;
+      continue;
+    }
+
+    cursor += 1;
+    while (text[cursor] === ' ') cursor += 1;
+
+    let end = cursor;
+    while (end < text.length && isIdentifierChar(text[end])) end += 1;
+    return text.slice(cursor, end);
+  }
+};

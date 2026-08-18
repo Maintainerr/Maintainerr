@@ -700,12 +700,12 @@ msgstr ""
 msgid "Checking authentication..."
 msgstr ""
 
-#: src/components/OverlayEditor/PropertiesPanel.tsx
-msgid "Choose {fieldLabel} color"
-msgstr ""
-
 #: src/components/Common/ColorPickerModal/index.tsx
 msgid "Choose a color"
+msgstr ""
+
+#: src/components/OverlayEditor/PropertiesPanel.tsx
+msgid "Choose a color for {fieldLabel}"
 msgstr ""
 
 #: src/components/Settings/Main/DatabaseBackupModal.tsx
@@ -1659,16 +1659,16 @@ msgstr ""
 msgid "Failed to initiate rule execution."
 msgstr "Misslyckades med att initiera körning av regler."
 
-#: src/components/Settings/ExternalServiceSettingsPage.tsx
-msgid "Failed to load {fieldLabel} options."
-msgstr ""
-
 #: src/components/Settings/Metadata/index.tsx
 msgid "Failed to load {providerTitle} settings"
 msgstr ""
 
 #: src/pages/CollectionDetailPage.tsx
 msgid "Failed to load collection. Check logs for details."
+msgstr ""
+
+#: src/components/Settings/ExternalServiceSettingsPage.tsx
+msgid "Failed to load options."
 msgstr ""
 
 #: src/pages/OverlayTemplateListPage.tsx
@@ -2158,10 +2158,6 @@ msgstr ""
 msgid "Load different poster"
 msgstr ""
 
-#: src/components/Settings/ExternalServiceSettingsPage.tsx
-msgid "Loading {fieldLabel}..."
-msgstr ""
-
 #: src/components/Settings/Jobs/index.tsx
 msgid "Loading current overlay schedule..."
 msgstr ""
@@ -2205,6 +2201,7 @@ msgstr ""
 
 #: src/components/Calendar/index.tsx
 #: src/components/Common/SearchMediaITem/index.tsx
+#: src/components/Settings/ExternalServiceSettingsPage.tsx
 msgid "Loading..."
 msgstr ""
 
@@ -2816,10 +2813,6 @@ msgstr ""
 msgid "Password"
 msgstr ""
 
-#: src/components/OverlayEditor/PropertiesPanel.tsx
-msgid "Pick {label} color"
-msgstr ""
-
 #: src/components/Common/MediaCard/MediaModal/StreamystatsStatsPanel/index.tsx
 msgid "Plays"
 msgstr ""
@@ -3367,10 +3360,6 @@ msgstr ""
 msgid "Segments"
 msgstr ""
 
-#: src/components/Settings/ExternalServiceSettingsPage.tsx
-msgid "Select {fieldLabel}"
-msgstr ""
-
 #: src/components/Common/ColorPickerModal/index.tsx
 msgid "Select {preset}"
 msgstr ""
@@ -3409,6 +3398,10 @@ msgstr ""
 
 #: src/pages/OverlayTemplateEditorPage.tsx
 msgid "Select an element to edit its properties"
+msgstr ""
+
+#: src/components/Settings/ExternalServiceSettingsPage.tsx
+msgid "Select an option"
 msgstr ""
 
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx

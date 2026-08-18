@@ -212,7 +212,7 @@ const ExternalServiceSettingsPage = ({
           type: 'manual',
           message: getApiErrorMessage(
             error,
-            t`Failed to load ${{ fieldLabel: fieldConfig.label.toLowerCase() }} options.`,
+            t`Failed to load options.`,
           ),
         })
       }
@@ -456,8 +456,8 @@ const ExternalServiceSettingsPage = ({
                             loading placeholder is on screen. */}
                         <option value="" disabled>
                           {loadingOptionsByFieldName[fieldConfig.name]
-                            ? t`Loading ${{ fieldLabel: fieldConfig.label.toLowerCase() }}...`
-                            : t`Select ${{ fieldLabel: fieldConfig.label.toLowerCase() }}`}
+                            ? t`Loading...`
+                            : t`Select an option`}
                         </option>
                         {selectOptions.map((option) => (
                           <option key={option.value} value={option.value}>

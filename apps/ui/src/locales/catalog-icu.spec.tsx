@@ -2,6 +2,12 @@ import { Trans } from '@lingui/react'
 import { readdirSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
+import {
+  icuArgumentKind,
+  icuArguments,
+  parsePo,
+  richTextSlots,
+} from '../../../../tools/i18n/po.mjs'
 import { render } from '../test-utils/render'
 
 /**
@@ -17,100 +23,13 @@ import { render } from '../test-utils/render'
  * quote next to a placeholder breaks the message for their language only, and
  * placeholder-parity validation cannot see it because the placeholder is still
  * textually present.
+ *
+ * The catalog and ICU parsing come from tools/i18n/po.mjs, the same module
+ * yarn i18n:validate uses. A second implementation here would decide which
+ * messages this spec renders, so the two drifting apart would narrow the guard
+ * without failing anything.
  */
 const localesDir = path.dirname(new URL(import.meta.url).pathname)
-
-type CatalogEntry = { id: string; translation: string }
-
-/** Reads `msgid`/`msgstr` pairs, joining the continuation lines of each. */
-const catalogEntries = (contents: string): CatalogEntry[] => {
-  const entries: CatalogEntry[] = []
-  let id: string | null = null
-  let translation = ''
-  let field: 'id' | 'translation' | null = null
-
-  const flush = () => {
-    if (id) entries.push({ id, translation })
-    id = null
-    translation = ''
-    field = null
-  }
-
-  for (const line of contents.split('\n')) {
-    if (line.startsWith('msgid ')) {
-      flush()
-      id = JSON.parse(line.slice('msgid '.length)) as string
-      field = 'id'
-    } else if (line.startsWith('msgstr ')) {
-      translation = JSON.parse(line.slice('msgstr '.length)) as string
-      field = 'translation'
-    } else if (line.startsWith('"') && field) {
-      const chunk = JSON.parse(line) as string
-      if (field === 'id') id += chunk
-      else translation += chunk
-    } else if (line.trim() === '') {
-      flush()
-    }
-  }
-
-  flush()
-  // The header entry carries an empty id.
-  return entries.filter((entry) => entry.id.length > 0)
-}
-
-/** Names declared by `{name}`, `{name, plural, ...}` and friends. */
-const argumentNames = (message: string): string[] => {
-  const names = new Set<string>()
-
-  for (let i = 0; i < message.length; i += 1) {
-    if (message[i] !== '{') continue
-
-    let end = i + 1
-    while (
-      end < message.length &&
-      message[end] !== ',' &&
-      message[end] !== '}'
-    ) {
-      end += 1
-    }
-
-    const name = message.slice(i + 1, end).trim()
-    if (name.length > 0 && [...name].every(isWordChar)) names.add(name)
-  }
-
-  return [...names]
-}
-
-const isWordChar = (char: string) =>
-  (char >= 'a' && char <= 'z') ||
-  (char >= 'A' && char <= 'Z') ||
-  (char >= '0' && char <= '9') ||
-  char === '_'
-
-/** `plural`, `select`, `selectordinal`, or '' for a plain value. */
-const argumentKind = (message: string, name: string): string => {
-  const marker = `{${name}`
-  let from = 0
-
-  for (;;) {
-    const at = message.indexOf(marker, from)
-    if (at === -1) return ''
-
-    let cursor = at + marker.length
-    while (message[cursor] === ' ') cursor += 1
-    if (message[cursor] !== ',') {
-      from = at + 1
-      continue
-    }
-
-    cursor += 1
-    while (message[cursor] === ' ') cursor += 1
-
-    let end = cursor
-    while (end < message.length && isWordChar(message[end])) end += 1
-    return message.slice(cursor, end)
-  }
-}
 
 // One count per CLDR plural category across the 13 locales: a quoting bug
 // lives in a single branch, so rendering only `other` would miss it. 0/1/2
@@ -122,7 +41,7 @@ const sentinelValues = (message: string, names: string[], count: number) => {
   const values: Record<string, unknown> = {}
 
   for (const name of names) {
-    const kind = argumentKind(message, name)
+    const kind = icuArgumentKind(message, name)
     // plural/ordinal arguments need a number, select needs a branch name, and
     // for both the sentinel is the value itself.
     if (kind === 'plural' || kind === 'selectordinal') values[name] = count
@@ -138,33 +57,12 @@ const sentinelValues = (message: string, names: string[], count: number) => {
 // supplied - a generic 0-9 spread would satisfy a slot number the app never
 // passes and hide it from this spec. validate-catalogs.mjs holds the
 // source-vs-translation slot parity; this keeps the render honest.
-const declaredSlots = (message: string): string[] => {
-  const slots = new Set<string>()
-  for (let i = 0; i < message.length; i += 1) {
-    if (message[i] !== '<') continue
-    let cursor = i + 1
-    if (message[cursor] === '/') cursor += 1
-    let digits = ''
-    while (
-      cursor < message.length &&
-      message[cursor] >= '0' &&
-      message[cursor] <= '9'
-    ) {
-      digits += message[cursor]
-      cursor += 1
-    }
-    if (digits === '') continue
-    if (message[cursor] === '/' && message[cursor + 1] === '>') cursor += 1
-    if (message[cursor] !== '>') continue
-    slots.add(digits)
-    i = cursor
-  }
-  return [...slots]
-}
-
 const markupSlots = (message: string) =>
   Object.fromEntries(
-    declaredSlots(message).map((slot) => [slot, <span key={slot} />]),
+    [...richTextSlots(message).slots].map((slot: string) => [
+      slot,
+      <span key={slot} />,
+    ]),
   )
 
 /**
@@ -173,15 +71,15 @@ const markupSlots = (message: string) =>
  * the ICU parse the app performs.
  */
 const findBrokenMessages = (messages: string[]): string[] => {
+  const argumentsOf = (message: string) => [...icuArguments(message)] as string[]
   const withArguments = messages.filter(
-    (message) => argumentNames(message).length > 0,
+    (message) => argumentsOf(message).length > 0,
   )
   // A message with no plural/ordinal argument renders the same at every count,
   // so probe it once.
   const rows = withArguments.flatMap((message) => {
-    const names = argumentNames(message)
-    const counted = names.some((name) => {
-      const kind = argumentKind(message, name)
+    const counted = argumentsOf(message).some((name) => {
+      const kind = icuArgumentKind(message, name)
       return kind === 'plural' || kind === 'selectordinal'
     })
     return (counted ? PLURAL_PROBES : [0]).map((count) => ({ message, count }))
@@ -198,7 +96,7 @@ const findBrokenMessages = (messages: string[]): string[] => {
         <li key={index} data-row={index}>
           <Trans
             id={message}
-            values={sentinelValues(message, argumentNames(message), count)}
+            values={sentinelValues(message, argumentsOf(message), count)}
             components={markupSlots(message)}
           />
         </li>
@@ -211,7 +109,7 @@ const findBrokenMessages = (messages: string[]): string[] => {
 
   const broken = rows.filter(({ message }, index) => {
     const rendered = cells[index]?.textContent ?? ''
-    return argumentNames(message).some((name) => rendered.includes(`{${name}}`))
+    return argumentsOf(message).some((name) => rendered.includes(`{${name}}`))
   })
 
   return [...new Set(broken.map(({ message }) => message))]
@@ -227,20 +125,20 @@ describe('translation catalogs', () => {
   )
 
   it('renders every argument in the source text', () => {
-    const messages = catalogEntries(
+    const messages = parsePo(
       readFileSync(path.join(localesDir, 'en.po'), 'utf8'),
-    ).map((entry) => entry.id)
+    ).map((entry: { msgid: string }) => entry.msgid)
 
     const broken = findBrokenMessages(messages)
     expect(broken, explain(broken)).toEqual([])
   })
 
   it.each(catalogs)('renders every argument in the %s translations', (name) => {
-    const translations = catalogEntries(
+    const translations = parsePo(
       readFileSync(path.join(localesDir, name), 'utf8'),
     )
-      .map((entry) => entry.translation)
-      .filter((translation) => translation.length > 0)
+      .map((entry: { msgstr: string }) => entry.msgstr)
+      .filter((translation: string) => translation.length > 0)
 
     const broken = findBrokenMessages(translations)
     expect(broken, explain(broken)).toEqual([])

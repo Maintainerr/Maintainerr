@@ -700,13 +700,13 @@ msgstr "Change the quality profile and trigger a search"
 msgid "Checking authentication..."
 msgstr "Checking authentication..."
 
-#: src/components/OverlayEditor/PropertiesPanel.tsx
-msgid "Choose {fieldLabel} color"
-msgstr "Choose {fieldLabel} color"
-
 #: src/components/Common/ColorPickerModal/index.tsx
 msgid "Choose a color"
 msgstr "Choose a color"
+
+#: src/components/OverlayEditor/PropertiesPanel.tsx
+msgid "Choose a color for {fieldLabel}"
+msgstr "Choose a color for {fieldLabel}"
 
 #: src/components/Settings/Main/DatabaseBackupModal.tsx
 msgid "Choose the filename for your database backup."
@@ -1659,10 +1659,6 @@ msgstr "Failed to initiate collection handling."
 msgid "Failed to initiate rule execution."
 msgstr "Failed to initiate rule execution."
 
-#: src/components/Settings/ExternalServiceSettingsPage.tsx
-msgid "Failed to load {fieldLabel} options."
-msgstr "Failed to load {fieldLabel} options."
-
 #: src/components/Settings/Metadata/index.tsx
 msgid "Failed to load {providerTitle} settings"
 msgstr "Failed to load {providerTitle} settings"
@@ -1670,6 +1666,10 @@ msgstr "Failed to load {providerTitle} settings"
 #: src/pages/CollectionDetailPage.tsx
 msgid "Failed to load collection. Check logs for details."
 msgstr "Failed to load collection. Check logs for details."
+
+#: src/components/Settings/ExternalServiceSettingsPage.tsx
+msgid "Failed to load options."
+msgstr "Failed to load options."
 
 #: src/pages/OverlayTemplateListPage.tsx
 msgid "Failed to load overlay templates"
@@ -2158,10 +2158,6 @@ msgstr "Library is required"
 msgid "Load different poster"
 msgstr "Load different poster"
 
-#: src/components/Settings/ExternalServiceSettingsPage.tsx
-msgid "Loading {fieldLabel}..."
-msgstr "Loading {fieldLabel}..."
-
 #: src/components/Settings/Jobs/index.tsx
 msgid "Loading current overlay schedule..."
 msgstr "Loading current overlay schedule..."
@@ -2205,6 +2201,7 @@ msgstr "Loading users..."
 
 #: src/components/Calendar/index.tsx
 #: src/components/Common/SearchMediaITem/index.tsx
+#: src/components/Settings/ExternalServiceSettingsPage.tsx
 msgid "Loading..."
 msgstr "Loading..."
 
@@ -2816,10 +2813,6 @@ msgstr "Padding"
 msgid "Password"
 msgstr "Password"
 
-#: src/components/OverlayEditor/PropertiesPanel.tsx
-msgid "Pick {label} color"
-msgstr "Pick {label} color"
-
 #: src/components/Common/MediaCard/MediaModal/StreamystatsStatsPanel/index.tsx
 msgid "Plays"
 msgstr "Plays"
@@ -3367,10 +3360,6 @@ msgstr "Seerr settings updated"
 msgid "Segments"
 msgstr "Segments"
 
-#: src/components/Settings/ExternalServiceSettingsPage.tsx
-msgid "Select {fieldLabel}"
-msgstr "Select {fieldLabel}"
-
 #: src/components/Common/ColorPickerModal/index.tsx
 msgid "Select {preset}"
 msgstr "Select {preset}"
@@ -3410,6 +3399,10 @@ msgstr "Select Action..."
 #: src/pages/OverlayTemplateEditorPage.tsx
 msgid "Select an element to edit its properties"
 msgstr "Select an element to edit its properties"
+
+#: src/components/Settings/ExternalServiceSettingsPage.tsx
+msgid "Select an option"
+msgstr "Select an option"
 
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "Select First Value..."
