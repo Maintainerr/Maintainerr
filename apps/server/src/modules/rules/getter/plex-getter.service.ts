@@ -424,6 +424,64 @@ export class PlexGetterService {
           newestSeason.sort((a, b) => b.index - a.index);
           return new Date(+newestSeason[0].viewedAt * 1000);
         }
+        case 'sw_lastViewedAtThroughSeason': {
+          if (metadata.type !== 'season') {
+            return null;
+          }
+
+          const currentSeason = metadata.index;
+          const showRatingKey = metadata.parentRatingKey;
+          if (
+            !Number.isSafeInteger(currentSeason) ||
+            currentSeason! < 0 ||
+            typeof showRatingKey !== 'string' ||
+            showRatingKey !== showRatingKey.trim() ||
+            !showRatingKey
+          ) {
+            throw new Error('Plex season metadata is missing its valid scope');
+          }
+
+          const watchHistory = await this.plexApi.getWatchHistory(
+            showRatingKey,
+            true,
+            'show',
+            libraryId,
+          );
+          let latestViewedAtMs: number | undefined;
+
+          for (const view of watchHistory) {
+            const viewedSeason = view.parentIndex;
+            const viewedAtMs = view.viewedAt * 1000;
+            if (
+              view.type !== 'episode' ||
+              !Number.isSafeInteger(viewedSeason) ||
+              viewedSeason! < 0 ||
+              !Number.isFinite(view.viewedAt) ||
+              Math.abs(viewedAtMs) > 8.64e15
+            ) {
+              throw new Error(
+                'Plex history row has invalid season or view date',
+              );
+            }
+
+            const qualifies =
+              currentSeason === 0
+                ? viewedSeason === 0
+                : viewedSeason > 0 && viewedSeason <= currentSeason;
+            if (
+              qualifies &&
+              (latestViewedAtMs === undefined || viewedAtMs > latestViewedAtMs)
+            ) {
+              latestViewedAtMs = viewedAtMs;
+            }
+          }
+
+          if (latestViewedAtMs === undefined) {
+            return null;
+          }
+
+          return new Date(latestViewedAtMs);
+        }
         case 'sw_episodes': {
           if (metadata.type === 'season') {
             const eps = await this.plexApi.getChildrenMetadata(
