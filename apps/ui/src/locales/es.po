@@ -8,7 +8,7 @@ msgstr ""
 "Language: es\n"
 "Project-Id-Version: \n"
 "Report-Msgid-Bugs-To: \n"
-"PO-Revision-Date: 2026-08-18 22:25+0000\n"
+"PO-Revision-Date: 2026-08-19 06:00+0000\n"
 "Last-Translator: slx612 <sergiolazaro228@gmail.com>\n"
 "Language-Team: Spanish <https://hosted.weblate.org/projects/maintainerr/app/"
 "es/>\n"
@@ -1260,7 +1260,7 @@ msgstr "Plantilla de tarjeta de título predeterminada"
 #: src/components/Settings/Sportarr/index.tsx
 #: src/pages/OverlayTemplateListPage.tsx
 msgid "Delete"
-msgstr "Borrar"
+msgstr "Eliminar"
 
 #: src/components/Settings/DownloadClient/index.tsx
 msgid "Delete downloaded data"
@@ -1387,7 +1387,7 @@ msgstr "no hacer nada"
 
 #: src/components/Common/DocsButton/index.tsx
 msgid "Docs"
-msgstr "Documentos"
+msgstr "Documentación"
 
 #: src/components/Settings/About/index.tsx
 msgid "Documentation"
@@ -1619,7 +1619,7 @@ msgstr "Episodios gestionados"
 
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "Equals"
-msgstr "igual"
+msgstr "Igual a"
 
 #: src/components/Settings/Logs/index.tsx
 msgid "Error"
@@ -1676,7 +1676,7 @@ msgstr "Excluido de"
 
 #: src/components/Collection/CollectionDetail/RemoveFromCollectionButton/index.tsx
 msgid "Excluding..."
-msgstr "A excepción de..."
+msgstr "Excluyendo..."
 
 #: src/components/Settings/Servarr/ExclusionTagSettings.tsx
 msgid "Exclusion tag"
@@ -1954,11 +1954,11 @@ msgstr "No se pudo actualizar el grupo de reglas"
 
 #: src/pages/OverlayTemplateEditorPage.tsx
 msgid "Failed to upload font"
-msgstr "No se pudo cargar la fuente"
+msgstr "No se pudo subir la fuente"
 
 #: src/pages/OverlayTemplateEditorPage.tsx
 msgid "Failed to upload image"
-msgstr "No se pudo cargar la imagen"
+msgstr "No se pudo subir la imagen"
 
 #: src/components/Settings/DownloadClient/index.tsx
 msgid "Fallback seeding ratio"
@@ -2067,7 +2067,7 @@ msgstr "Ir a la vista general"
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 #: src/components/Settings/Overlays/index.tsx
 msgid "Got it"
-msgstr "Entiendo"
+msgstr "Entendido"
 
 #: src/components/Collection/CollectionOverview/index.tsx
 msgid "Handle Collections"
@@ -2273,7 +2273,7 @@ msgstr "Karma"
 
 #: src/components/VersionStatus/index.tsx
 msgid "Keep it up! 👍"
-msgstr "¡Avanza! 👍"
+msgstr "¡Sigue así! 👍"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Keep logs for months must be 0 or greater"
