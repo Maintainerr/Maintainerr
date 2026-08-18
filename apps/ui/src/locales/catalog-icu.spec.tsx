@@ -1,6 +1,7 @@
 import { Trans } from '@lingui/react'
 import { readdirSync, readFileSync } from 'node:fs'
 import path from 'node:path'
+import { validateIcu } from 'pofile-ts'
 import { describe, expect, it } from 'vitest'
 import {
   icuArgumentKind,
@@ -143,6 +144,32 @@ describe('translation catalogs', () => {
 
     const broken = findBrokenMessages(translations)
     expect(broken, explain(broken)).toEqual([])
+  })
+})
+
+describe('ICU MessageFormat validity', () => {
+  const catalogs = readdirSync(localesDir).filter((name) =>
+    name.endsWith('.po'),
+  )
+
+  // A message that will not compile as ICU (a renamed plural category, a
+  // missing `other`, mangled syntax) keeps its argument names, so placeholder
+  // parity passes - but Lingui then prints the raw source on screen. The render
+  // checks above miss it: the fallback text still contains the argument name.
+  // validate-catalogs rejects it; this enforces the same on the real catalogs.
+  it.each(catalogs)('%s compiles as ICU MessageFormat', (name) => {
+    const invalid = parsePo(readFileSync(path.join(localesDir, name), 'utf8'))
+      .flatMap((entry: { msgid: string; msgstr: string }) => [
+        entry.msgid,
+        entry.msgstr,
+      ])
+      .filter((text: string) => text.length > 0 && !validateIcu(text).valid)
+    expect(invalid).toEqual([])
+  })
+
+  it('flags a renamed plural category, accepts a valid one', () => {
+    expect(validateIcu('{n, plural, one {# x} andra {# y}}').valid).toBe(false)
+    expect(validateIcu('{n, plural, one {# x} other {# y}}').valid).toBe(true)
   })
 })
 
