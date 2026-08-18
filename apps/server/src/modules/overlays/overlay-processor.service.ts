@@ -274,17 +274,38 @@ export class OverlayProcessorService {
     // Up: group the members under the parent that is losing them.
     const seasonsByShow = new Map<string, CoveredChildren>();
     const episodesBySeason = new Map<string, CoveredChildren>();
+    const seasonsOfShow = new Map<string, MediaItem[] | null>();
     for (const member of presence.found.values()) {
       const deleteDate = memberDates.get(member.id);
-      if (!deleteDate || !member.parentId) continue;
+      if (!deleteDate) continue;
 
-      if (member.type === 'season') {
+      if (member.type === 'season' && member.parentId) {
         this.cover(seasonsByShow, member.parentId, member.id, deleteDate);
       }
       if (member.type === 'episode') {
+        let seasonId = member.parentId;
+        if (!seasonId && member.grandparentId && member.parentIndex != null) {
+          // Plex omits the episode -> season link when the show hides its
+          // seasons (Seasons: Hide, #3534). The show and the season number
+          // survive, so recover the season from the show's children.
+          if (!seasonsOfShow.has(member.grandparentId)) {
+            seasonsOfShow.set(
+              member.grandparentId,
+              await this.readChildren(
+                mediaServer,
+                member.grandparentId,
+                'season',
+              ),
+            );
+          }
+          const seasons = seasonsOfShow.get(member.grandparentId);
+          if (!seasons) complete = false;
+          seasonId = seasons?.find((s) => s.index === member.parentIndex)?.id;
+        }
+        if (!seasonId) continue;
         this.cover(
           episodesBySeason,
-          member.parentId,
+          seasonId,
           member.id,
           deleteDate,
           member.grandparentId,
@@ -311,7 +332,9 @@ export class OverlayProcessorService {
     }
 
     for (const [showId, covered] of seasonsByShow) {
-      const seasons = await this.readChildren(mediaServer, showId, 'season');
+      const seasons =
+        seasonsOfShow.get(showId) ??
+        (await this.readChildren(mediaServer, showId, 'season'));
       if (!seasons) {
         complete = false;
         continue;
