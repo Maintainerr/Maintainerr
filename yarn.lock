@@ -12790,6 +12790,7 @@ __metadata:
     semantic-release: "npm:^25.0.9"
     turbo: "npm:^2.10.10"
     typescript: "npm:^6.0.3"
+    yaml: "npm:^2.9.0"
   languageName: unknown
   linkType: soft
 
