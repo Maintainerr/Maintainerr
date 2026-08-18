@@ -162,6 +162,20 @@ const forbiddenCharIn = (text) => {
   let combiningRun = 0;
   for (const char of text) {
     const codePoint = char.codePointAt(0);
+    // Raw control characters never belong in UI copy: a NUL truncates a
+    // C-string consumer and the rest are invisible. Only tab, newline and
+    // carriage return are legitimate whitespace. A "\0" octal escape now
+    // decodes to a real NUL here (matching the runtime), so this is the gate
+    // that stops it rather than the escape being silently read as a digit.
+    if (
+      (codePoint < 0x20 &&
+        codePoint !== 0x09 &&
+        codePoint !== 0x0a &&
+        codePoint !== 0x0d) ||
+      (codePoint >= 0x7f && codePoint <= 0x9f)
+    ) {
+      return `U+${codePoint.toString(16).toUpperCase().padStart(4, '0')} - a control character`;
+    }
     for (const [forbidden, name] of FORBIDDEN_CHARS) {
       if (char === forbidden)
         return `${name} - it can visually reorder or hide text`;

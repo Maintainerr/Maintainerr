@@ -145,3 +145,21 @@ describe('translation catalogs', () => {
     expect(broken, explain(broken)).toEqual([])
   })
 })
+
+describe('PO escape decoding matches the runtime', () => {
+  // A hand-rolled decoder used to read the octal escape "\0" as the digit "0",
+  // so a source-locale msgstr of "<\0>x</\0>" looked identical to a "<0>x</0>"
+  // msgid and slipped past the integrity, character and slot checks - while
+  // Lingui decoded it to a real NUL, injecting a control character and dropping
+  // the rich-text slot at runtime. Delegating the parse to pofile-ts removes
+  // the gap; this locks it so a future decoder swap cannot reopen it.
+  it('decodes an octal escape to a NUL, not the digit zero', () => {
+    const po =
+      'msgid ""\nmsgstr ""\n"Language: en\\n"\n\n' +
+      'msgid "Frame <0>x</0>"\n' +
+      'msgstr "Frame <\\0>x</\\0>"\n'
+    const [entry] = parsePo(po) as Array<{ msgstr: string }>
+    expect(entry.msgstr).toContain('\u0000')
+    expect(entry.msgstr).not.toContain('<0>')
+  })
+})
