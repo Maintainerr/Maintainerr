@@ -19,9 +19,7 @@ msgstr "- utiliza {propertyName}"
 
 #: src/components/Settings/Servarr/ExclusionTagSettings.tsx
 msgid "\"{label}\" is not a valid {name} tag. Lowercase letters, numbers and hyphens only ({chars}), with no leading, trailing, or repeated hyphens."
-msgstr ""
-"\"{label}\" no es una etiqueta {name} válida. Solo letras minúsculas, "
-"números y guiones ({chars}), sin guiones iniciales, finales ni repetidos."
+msgstr "\"{label}\" no es una etiqueta {name} válida. Solo letras minúsculas, números y guiones ({chars}), sin guiones iniciales, finales ni repetidos."
 
 #: src/pages/OverlayTemplateListPage.tsx
 msgid "\"{templateName}\" set as the default poster template"
@@ -29,9 +27,7 @@ msgstr "\"{templateName}\" establecida como plantilla de póster predeterminada"
 
 #: src/pages/OverlayTemplateListPage.tsx
 msgid "\"{templateName}\" set as the default title card template"
-msgstr ""
-"\"{templateName}\" establecida como plantilla de tarjeta de título "
-"predeterminada"
+msgstr "\"{templateName}\" establecida como plantilla de tarjeta de título predeterminada"
 
 #: src/components/Collection/CollectionDetail/CollectionInfo/CollectionLogsTable.tsx
 msgid "(manual)"
@@ -43,8 +39,7 @@ msgstr "[Imagen]"
 
 #: src/components/StorageMetrics/index.tsx
 msgid "{accurateMountCount} of {mountCount} mounts report total capacity"
-msgstr ""
-"{accurateMountCount} de {mountCount} montajes informan la capacidad total"
+msgstr "{accurateMountCount} de {mountCount} montajes informan la capacidad total"
 
 #: src/components/Rules/RuleGroup/AddModal/ArrAction/index.tsx
 msgid "{actionOwnerName} action"
@@ -56,22 +51,15 @@ msgstr "{agentName} - {agentType} (deshabilitado)"
 
 #: src/components/Settings/MediaServerSelector/index.tsx
 msgid "{clearedCollectionLogs, plural, one {# log entry} other {# log entries}}"
-msgstr ""
-"{clearedCollectionLogs, plural, one {# entrada de registro} other {# "
-"entradas de registro}}"
+msgstr "{clearedCollectionLogs, plural, one {# entrada de registro} other {# entradas de registro}}"
 
 #: src/components/Settings/MediaServerSelector/index.tsx
 msgid "{clearedCollectionMedia, plural, one {# collection media item} other {# collection media items}}"
-msgstr ""
-"{clearedCollectionMedia, plural, one {# elemento multimedia de la colección} "
-"other {# elementos multimedia de la colección}}"
+msgstr "{clearedCollectionMedia, plural, one {# elemento multimedia de la colección} other {# elementos multimedia de la colección}}"
 
 #: src/components/Settings/MediaServerSelector/index.tsx
 msgid "{clearedCollections, plural, one {# collection will be preserved (media server references reset)} other {# collections will be preserved (media server references reset)}}"
-msgstr ""
-"{clearedCollections, plural, one {Se conservará la colección # (se "
-"restablecen las referencias del servidor de medios)} other {Se conservarán "
-"las colecciones # (se restablecen las referencias del servidor de medios)}}"
+msgstr "{clearedCollections, plural, one {Se conservará la colección # (se restablecen las referencias del servidor de medios)} other {Se conservarán las colecciones # (se restablecen las referencias del servidor de medios)}}"
 
 #: src/components/Settings/MediaServerSelector/index.tsx
 msgid "{clearedCollections, plural, one {# collection} other {# collections}}"
@@ -103,45 +91,27 @@ msgstr "{count, plural, one {# hora} other {# horas}}"
 
 #: src/utils/bulkOutcome.ts
 msgid "{count, plural, one {# item added.} other {# items added.}}"
-msgstr ""
-"{count, plural, one {# elemento agregado.} other {# elementos agregados.}}"
+msgstr "{count, plural, one {# elemento agregado.} other {# elementos agregados.}}"
 
 #: src/utils/bulkOutcome.ts
 msgid "{count, plural, one {# item could not be added{why}; the failed items stay selected.} other {# items could not be added{why}; the failed items stay selected.}}"
-msgstr ""
-"{count, plural, one {No se pudo agregar el elemento #{why}; los elementos "
-"fallidos permanecen seleccionados.} other {No se pudieron agregar # "
-"elementos {why}; los elementos fallidos permanecen seleccionados.}}"
+msgstr "{count, plural, one {No se pudo agregar el elemento #{why}; los elementos fallidos permanecen seleccionados.} other {No se pudieron agregar # elementos {why}; los elementos fallidos permanecen seleccionados.}}"
 
 #: src/utils/bulkOutcome.ts
 msgid "{count, plural, one {# item could not be excluded everywhere{why}; the failed items stay selected.} other {# items could not be excluded everywhere{why}; the failed items stay selected.}}"
-msgstr ""
-"{count, plural, one {El elemento # no se pudo excluir en todas partes{why}; "
-"los elementos fallidos permanecen seleccionados.} other {# elementos no se "
-"pudieron excluir en todas partes{why}; los elementos fallidos permanecen "
-"seleccionados.}}"
+msgstr "{count, plural, one {El elemento # no se pudo excluir en todas partes{why}; los elementos fallidos permanecen seleccionados.} other {# elementos no se pudieron excluir en todas partes{why}; los elementos fallidos permanecen seleccionados.}}"
 
 #: src/utils/bulkOutcome.ts
 msgid "{count, plural, one {# item could not be excluded{why}; the failed items stay selected.} other {# items could not be excluded{why}; the failed items stay selected.}}"
-msgstr ""
-"{count, plural, one {No se pudo excluir el elemento #{why}; los elementos "
-"fallidos permanecen seleccionados.} other {No se pudieron excluir # elementos"
-"{why}; los elementos fallidos permanecen seleccionados.}}"
+msgstr "{count, plural, one {No se pudo excluir el elemento #{why}; los elementos fallidos permanecen seleccionados.} other {No se pudieron excluir # elementos{why}; los elementos fallidos permanecen seleccionados.}}"
 
 #: src/utils/bulkOutcome.ts
 msgid "{count, plural, one {# item could not be removed from every collection{why}; the failed items stay selected.} other {# items could not be removed from every collection{why}; the failed items stay selected.}}"
-msgstr ""
-"{count, plural, one {El elemento # no se pudo eliminar de cada colección{why}"
-"; los elementos fallidos permanecen seleccionados.} other {No se pudieron "
-"eliminar # elementos de cada colección{why}; los elementos fallidos "
-"permanecen seleccionados.}}"
+msgstr "{count, plural, one {El elemento # no se pudo eliminar de cada colección{why}; los elementos fallidos permanecen seleccionados.} other {No se pudieron eliminar # elementos de cada colección{why}; los elementos fallidos permanecen seleccionados.}}"
 
 #: src/utils/bulkOutcome.ts
 msgid "{count, plural, one {# item could not be removed{why}; the failed items stay selected.} other {# items could not be removed{why}; the failed items stay selected.}}"
-msgstr ""
-"{count, plural, one {No se pudo eliminar el elemento #{why}; los elementos "
-"fallidos permanecen seleccionados.} other {No se pudieron eliminar # "
-"elementos{why}; los elementos fallidos permanecen seleccionados.}}"
+msgstr "{count, plural, one {No se pudo eliminar el elemento #{why}; los elementos fallidos permanecen seleccionados.} other {No se pudieron eliminar # elementos{why}; los elementos fallidos permanecen seleccionados.}}"
 
 #: src/utils/bulkOutcome.ts
 msgid "{count, plural, one {# item could not be un-excluded{why}; the failed items stay selected.} other {# items could not be un-excluded{why}; the failed items stay selected.}}"
@@ -149,25 +119,19 @@ msgstr "{count, plural, one {No se pudo quitar la exclusión de # elemento{why};
 
 #: src/utils/bulkOutcome.ts
 msgid "{count, plural, one {# item excluded everywhere.} other {# items excluded everywhere.}}"
-msgstr ""
-"{count, plural, one {# elemento excluido en todas partes.} other {# "
-"elementos excluidos en todas partes.}}"
+msgstr "{count, plural, one {# elemento excluido en todas partes.} other {# elementos excluidos en todas partes.}}"
 
 #: src/utils/bulkOutcome.ts
 msgid "{count, plural, one {# item excluded.} other {# items excluded.}}"
-msgstr ""
-"{count, plural, one {# elemento excluido.} other {# elementos excluidos.}}"
+msgstr "{count, plural, one {# elemento excluido.} other {# elementos excluidos.}}"
 
 #: src/utils/bulkOutcome.ts
 msgid "{count, plural, one {# item removed from every collection.} other {# items removed from every collection.}}"
-msgstr ""
-"{count, plural, one {# elemento eliminado de cada colección.} other {# "
-"elementos eliminados de cada colección.}}"
+msgstr "{count, plural, one {# elemento eliminado de cada colección.} other {# elementos eliminados de cada colección.}}"
 
 #: src/utils/bulkOutcome.ts
 msgid "{count, plural, one {# item removed.} other {# items removed.}}"
-msgstr ""
-"{count, plural, one {# elemento eliminado.} other {# elementos eliminados.}}"
+msgstr "{count, plural, one {# elemento eliminado.} other {# elementos eliminados.}}"
 
 #: src/utils/bulkOutcome.ts
 msgid "{count, plural, one {# item un-excluded.} other {# items un-excluded.}}"
@@ -220,33 +184,19 @@ msgstr "{itemCount, plural, one {# elemento} other {# elementos}}"
 
 #: src/components/Common/MediaActionModal.tsx
 msgid "{itemCount, plural, one {Add exclusion applies to # item across every collection. For shows and seasons this covers everything they contain.} other {Add exclusion applies to # items across every collection. For shows and seasons this covers everything they contain.}}"
-msgstr ""
-"{itemCount, plural, one {La exclusión adicional se aplica al elemento # en "
-"cada colección. Para series y temporadas esto cubre todo lo que contienen.} "
-"other {La exclusión adicional se aplica a # elementos en cada colección. "
-"Para series y temporadas esto cubre todo lo que contienen.}}"
+msgstr "{itemCount, plural, one {La exclusión adicional se aplica al elemento # en cada colección. Para series y temporadas esto cubre todo lo que contienen.} other {La exclusión adicional se aplica a # elementos en cada colección. Para series y temporadas esto cubre todo lo que contienen.}}"
 
 #: src/components/Common/MediaActionModal.tsx
 msgid "{itemCount, plural, one {Applies to # item.} other {Applies to # items.}}"
-msgstr ""
-"{itemCount, plural, one {Se aplica al elemento #.} other {Se aplica a # "
-"elementos.}}"
+msgstr "{itemCount, plural, one {Se aplica al elemento #.} other {Se aplica a # elementos.}}"
 
 #: src/components/Common/MediaActionModal.tsx
 msgid "{itemCount, plural, one {Remove exclusion applies to # item across every collection. For shows and seasons this covers everything they contain.} other {Remove exclusion applies to # items across every collection. For shows and seasons this covers everything they contain.}}"
-msgstr ""
-"{itemCount, plural, one {La exclusión de eliminación se aplica al elemento # "
-"en cada colección. Para series y temporadas esto cubre todo lo que "
-"contienen.} other {La exclusión de eliminación se aplica a # elementos en "
-"cada colección. Para series y temporadas esto cubre todo lo que contienen.}}"
+msgstr "{itemCount, plural, one {La exclusión de eliminación se aplica al elemento # en cada colección. Para series y temporadas esto cubre todo lo que contienen.} other {La exclusión de eliminación se aplica a # elementos en cada colección. Para series y temporadas esto cubre todo lo que contienen.}}"
 
 #: src/components/Common/MediaActionModal.tsx
 msgid "{itemCount, plural, one {Remove from collection applies to # item across every collection. For shows and seasons this covers everything they contain.} other {Remove from collection applies to # items across every collection. For shows and seasons this covers everything they contain.}}"
-msgstr ""
-"{itemCount, plural, one {Quitar de la colección se aplica al elemento # en "
-"cada colección. Para series y temporadas esto cubre todo lo que contienen.} "
-"other {Quitar de la colección se aplica a # elementos en cada colección. "
-"Para series y temporadas esto cubre todo lo que contienen.}}"
+msgstr "{itemCount, plural, one {Quitar de la colección se aplica al elemento # en cada colección. Para series y temporadas esto cubre todo lo que contienen.} other {Quitar de la colección se aplica a # elementos en cada colección. Para series y temporadas esto cubre todo lo que contienen.}}"
 
 #: src/components/Settings/MediaServerSelector/index.tsx
 msgid "{migratableRules} of {totalRules} rules can be migrated."
@@ -266,8 +216,7 @@ msgstr "{mountCount, plural, one {Agregado en # montaje} other {Agregado en # mo
 
 #: src/components/Settings/Servarr/ExclusionTagSettings.tsx
 msgid "{name} exclusion tag settings could not be updated"
-msgstr ""
-"No se pudo actualizar la configuración de la etiqueta de exclusión {name}"
+msgstr "No se pudo actualizar la configuración de la etiqueta de exclusión {name}"
 
 #: src/components/Settings/Servarr/ExclusionTagSettings.tsx
 msgid "{name} exclusion tag settings updated"
@@ -315,23 +264,15 @@ msgstr "{size} total reclamado"
 
 #: src/components/StorageMetrics/index.tsx
 msgid "{sizedCount} of {reclaimableCount} reclaimable collections sized - duplicates counted once"
-msgstr ""
-"{sizedCount} de {reclaimableCount} colecciones recuperables de tamaño: los "
-"duplicados se cuentan una vez"
+msgstr "{sizedCount} de {reclaimableCount} colecciones recuperables de tamaño: los duplicados se cuentan una vez"
 
 #: src/components/StorageMetrics/index.tsx
 msgid "{sizedCount} of {reclaimableCount} reclaimable collections sized - duplicates not yet deduplicated, refreshes after next collection run"
-msgstr ""
-"{sizedCount} de {reclaimableCount} colecciones recuperables de tamaño: "
-"duplicados aún no deduplicados, se actualiza después de la siguiente "
-"ejecución de colección"
+msgstr "{sizedCount} de {reclaimableCount} colecciones recuperables de tamaño: duplicados aún no deduplicados, se actualiza después de la siguiente ejecución de colección"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "{skipped, plural, one {# rule was skipped - it uses a property that isn't available.} other {# rules were skipped - they use properties that aren't available.}}"
-msgstr ""
-"{skipped, plural, one {Se omitió la regla #: utiliza una propiedad que no "
-"está disponible.} other {Se omitieron # reglas: utilizan propiedades que no "
-"están disponibles.}}"
+msgstr "{skipped, plural, one {Se omitió la regla #: utiliza una propiedad que no está disponible.} other {Se omitieron # reglas: utilizan propiedades que no están disponibles.}}"
 
 #: src/components/Settings/MediaServerSelector/index.tsx
 msgid "{skippedRuleCount, plural, one {# rule uses properties not available in {pendingName}.} other {# rules use properties not available in {pendingName}.}}"
@@ -391,9 +332,7 @@ msgstr "Texto de 1 día"
 
 #: src/components/Settings/Servarr/ExclusionTagSettings.tsx
 msgid "A tag label is required when exclusion tagging is enabled. Lowercase letters, numbers and hyphens only ({chars})."
-msgstr ""
-"Se requiere una etiqueta cuando el etiquetado de exclusión está habilitado. "
-"Sólo letras minúsculas, números y guiones ({chars})."
+msgstr "Se requiere una etiqueta cuando el etiquetado de exclusión está habilitado. Sólo letras minúsculas, números y guiones ({chars})."
 
 #: src/components/Settings/index.tsx
 msgid "About"
@@ -494,9 +433,7 @@ msgstr "Después de {dayCount}"
 
 #: src/components/Settings/MediaServerSelector/index.tsx
 msgid "After migration, you must manually assign a library to each rule group before rules can run."
-msgstr ""
-"Después de la migración, debe asignar manualmente una biblioteca a cada "
-"grupo de reglas antes de que se puedan ejecutar las reglas."
+msgstr "Después de la migración, debe asignar manualmente una biblioteca a cada grupo de reglas antes de que se puedan ejecutar las reglas."
 
 #: src/components/Settings/Notifications/CreateNotificationModal/index.tsx
 msgid "Agent *"
@@ -544,9 +481,7 @@ msgstr "Cantidad de días"
 
 #: src/components/Common/CommunityRuleModal/index.tsx
 msgid "An error occurred fetching community rules. Please try again later."
-msgstr ""
-"Se produjo un error al obtener las reglas de la comunidad. Inténtelo de "
-"nuevo más tarde."
+msgstr "Se produjo un error al obtener las reglas de la comunidad. Inténtelo de nuevo más tarde."
 
 #: src/components/Common/MediaActionModal.tsx
 msgid "An item excluded globally is un-excluded everywhere, not just here."
@@ -580,17 +515,11 @@ msgstr "Clave API no configurada."
 
 #: src/components/Settings/Servarr/ExclusionTagSettings.tsx
 msgid "Apply a protective tag to the matching {name} movie whenever Maintainerr excludes an item, so {name} carries a single source of truth for \"do not touch\"."
-msgstr ""
-"Aplique una etiqueta protectora a la película {name} coincidente siempre que "
-"Maintainerr excluya un elemento, de modo que {name} tenga una única fuente "
-"de verdad para \"no tocar\"."
+msgstr "Aplique una etiqueta protectora a la película {name} coincidente siempre que Maintainerr excluya un elemento, de modo que {name} tenga una única fuente de verdad para \"no tocar\"."
 
 #: src/components/Settings/Servarr/ExclusionTagSettings.tsx
 msgid "Apply a protective tag to the matching {name} series whenever Maintainerr excludes an item, so {name} carries a single source of truth for \"do not touch\"."
-msgstr ""
-"Aplique una etiqueta protectora a la serie {name} coincidente siempre que "
-"Maintainerr excluya un elemento, de modo que {name} tenga una única fuente "
-"de verdad para \"no tocar\"."
+msgstr "Aplique una etiqueta protectora a la serie {name} coincidente siempre que Maintainerr excluya un elemento, de modo que {name} tenga una única fuente de verdad para \"no tocar\"."
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Apply date overlays to posters in this collection"
@@ -631,10 +560,7 @@ msgstr "Autenticado contra {serverName}"
 
 #: src/components/Login/Emby/EmbyLoginButton.tsx
 msgid "Authenticates against <0>{embyUrl}</0> with an admin username and password. The resulting access token is stored as the API key."
-msgstr ""
-"Se autentica contra <0>{embyUrl}</0> con un nombre de usuario y contraseña "
-"de administrador. El token de acceso resultante se almacena como la clave "
-"API."
+msgstr "Se autentica contra <0>{embyUrl}</0> con un nombre de usuario y contraseña de administrador. El token de acceso resultante se almacena como la clave API."
 
 #: src/components/Login/Plex/index.tsx
 msgid "Authenticating…"
@@ -658,9 +584,7 @@ msgstr "Se agotó el tiempo de autenticación. Por favor inténtalo de nuevo."
 
 #: src/components/Settings/Plex/index.tsx
 msgid "Authentication with the server's admin account is required to access the Plex API"
-msgstr ""
-"Se requiere autenticación con la cuenta de administrador del servidor para "
-"acceder a la API de Plex"
+msgstr "Se requiere autenticación con la cuenta de administrador del servidor para acceder a la API de Plex"
 
 #: src/components/Collection/CollectionOverview/index.tsx
 msgid "Automatic collections"
@@ -689,18 +613,11 @@ msgstr "URL base"
 
 #: src/components/StorageMetrics/index.tsx
 msgid "Based on cached collection sizes, deduplicated across collections. Run collection processing jobs to refresh size data."
-msgstr ""
-"Basado en tamaños de colecciones almacenadas en caché, deduplicadas entre "
-"colecciones. Ejecute trabajos de procesamiento de colecciones para "
-"actualizar los datos de tamaño."
+msgstr "Basado en tamaños de colecciones almacenadas en caché, deduplicadas entre colecciones. Ejecute trabajos de procesamiento de colecciones para actualizar los datos de tamaño."
 
 #: src/components/StorageMetrics/index.tsx
 msgid "Based on cached collection totals while per-item sizes are still backfilling. Duplicates across collections are resolved after the next collection size refresh."
-msgstr ""
-"Basado en los totales de la colección almacenada en caché mientras los "
-"tamaños por elemento aún se están reponiendo. Los duplicados entre "
-"colecciones se resuelven después de la siguiente actualización del tamaño de "
-"la colección."
+msgstr "Basado en los totales de la colección almacenada en caché mientras los tamaños por elemento aún se están reponiendo. Los duplicados entre colecciones se resuelven después de la siguiente actualización del tamaño de la colección."
 
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "Before"
@@ -708,11 +625,7 @@ msgstr "Antes"
 
 #: src/components/Collection/CollectionDetail/CollectionInfo/index.tsx
 msgid "Below are the rule evaluation results that triggered this action. The output follows the same format as Test Media. Refer to the documentation for guidance on interpreting this output."
-msgstr ""
-"A continuación se muestran los resultados de la evaluación de reglas que "
-"desencadenaron esta acción. La salida sigue el mismo formato que Test Media. "
-"Consulte la documentación para obtener orientación sobre cómo interpretar "
-"este resultado."
+msgstr "A continuación se muestran los resultados de la evaluación de reglas que desencadenaron esta acción. La salida sigue el mismo formato que Test Media. Consulte la documentación para obtener orientación sobre cómo interpretar este resultado."
 
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "Bigger"
@@ -797,14 +710,11 @@ msgstr "Elige un color para {fieldLabel}"
 
 #: src/components/Settings/Main/DatabaseBackupModal.tsx
 msgid "Choose the filename for your database backup."
-msgstr ""
-"Elige el nombre de archivo para la copia de seguridad de su base de datos."
+msgstr "Elige el nombre de archivo para la copia de seguridad de su base de datos."
 
 #: src/components/Settings/index.tsx
 msgid "Choose your media server, confirm the connection, and then you can continue configuring the rest of Maintainerr."
-msgstr ""
-"Selecciona tu servidor multimedia, confirma la conexión y después podrás "
-"continuar configurando el resto de Maintainerr."
+msgstr "Selecciona tu servidor multimedia, confirma la conexión y después podrás continuar configurando el resto de Maintainerr."
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Clean up leftover folders"
@@ -883,9 +793,7 @@ msgstr "La colección debe existir en {mediaServerName}"
 
 #: src/components/StorageMetrics/index.tsx
 msgid "Collection sizes have not been computed yet. They are calculated as part of the regular collection processing job."
-msgstr ""
-"Los tamaños de las colecciones aún no se han calculado. Se calculan como "
-"parte del trabajo habitual de procesamiento de colecciones."
+msgstr "Los tamaños de las colecciones aún no se han calculado. Se calculan como parte del trabajo habitual de procesamiento de colecciones."
 
 #: src/components/Layout/NavBar/index.tsx
 msgid "Collections"
@@ -930,9 +838,7 @@ msgstr "Configurar"
 
 #: src/components/Settings/Overlays/index.tsx
 msgid "Configure automatic poster and title card overlays for collections"
-msgstr ""
-"Configurar superposiciones automáticas de carteles y tarjetas de título para "
-"colecciones"
+msgstr "Configurar superposiciones automáticas de carteles y tarjetas de título para colecciones"
 
 #: src/components/Settings/Main/index.tsx
 msgid "Configure global settings"
@@ -940,14 +846,7 @@ msgstr "Configurar ajustes globales"
 
 #: src/components/Settings/Metadata/index.tsx
 msgid "Configure metadata providers and set the primary source for posters, backdrops, and metadata enrichment. Adding a TVDB developer API key gives Maintainerr a fallback source for provider cross-references, which helps recover missing IDs when the primary provider cannot resolve a match and can provide a second opinion for some items through existing external ID cross-references."
-msgstr ""
-"Configura los proveedores de metadatos y establece la fuente principal para "
-"pósters, fondos y enriquecimiento de metadatos. Añadir una clave API de "
-"desarrollador de TVDB da a Maintainerr una fuente alternativa para "
-"referencias cruzadas de proveedores, lo que ayuda a recuperar IDs faltantes "
-"cuando el proveedor principal no puede resolver una coincidencia y puede "
-"aportar una segunda opinión para algunos elementos mediante referencias "
-"cruzadas de IDs externos existentes."
+msgstr "Configura los proveedores de metadatos y establece la fuente principal para pósters, fondos y enriquecimiento de metadatos. Añadir una clave API de desarrollador de TVDB da a Maintainerr una fuente alternativa para referencias cruzadas de proveedores, lo que ayuda a recuperar IDs faltantes cuando el proveedor principal no puede resolver una coincidencia y puede aportar una segunda opinión para algunos elementos mediante referencias cruzadas de IDs externos existentes."
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Configure Notifications"
@@ -959,10 +858,7 @@ msgstr "Configurar para actualizar"
 
 #: src/components/Settings/Emby/index.tsx
 msgid "Configure your Emby server connection. Enter the server URL plus an API key, or sign in with admin credentials to obtain one."
-msgstr ""
-"Configura la conexión de tu servidor Emby. Introduce la URL del servidor y "
-"una clave API, o inicia sesión con credenciales de administrador para "
-"obtener una."
+msgstr "Configura la conexión de tu servidor Emby. Introduce la URL del servidor y una clave API, o inicia sesión con credenciales de administrador para obtener una."
 
 #: src/components/Settings/Jellyfin/index.tsx
 msgid "Configure your Jellyfin server connection"
@@ -982,9 +878,7 @@ msgstr "Confirmar la eliminación de todas las exclusiones"
 
 #: src/components/StorageMetrics/index.tsx
 msgid "Connect a Plex or Jellyfin server in Settings to see library item counts here."
-msgstr ""
-"Conecta un servidor Plex o Jellyfin en Ajustes para ver aquí el recuento de "
-"elementos de la biblioteca."
+msgstr "Conecta un servidor Plex o Jellyfin en Ajustes para ver aquí el recuento de elementos de la biblioteca."
 
 #: src/components/Settings/index.tsx
 msgid "Connect your media server to finish setup."
@@ -997,9 +891,7 @@ msgstr "Conectado a {serverName} (v{version})"
 
 #: src/utils/ApiError.ts
 msgid "Connection refused. Verify host, port, and that the service is running."
-msgstr ""
-"Conexión rechazada. Verifique el host, el puerto y que el servicio se esté "
-"ejecutando."
+msgstr "Conexión rechazada. Verifique el host, el puerto y que el servicio se esté ejecutando."
 
 #: src/utils/ApiError.ts
 msgid "Connection test failed. Verify URL and credentials."
@@ -1007,9 +899,7 @@ msgstr "La prueba de conexión falló. Verifique la URL y las credenciales."
 
 #: src/utils/ApiError.ts
 msgid "Connection timed out after 5 seconds. Verify URL and network reachability."
-msgstr ""
-"La conexión se agotó después de 5 segundos. Verifique la accesibilidad de la "
-"URL y la red."
+msgstr "La conexión se agotó después de 5 segundos. Verifique la accesibilidad de la URL y la red."
 
 #: src/components/Settings/About/index.tsx
 msgid "Container Config Path"
@@ -1062,28 +952,19 @@ msgstr "No se pudieron recuperar las bibliotecas"
 
 #: src/pages/OverlayTemplateEditorPage.tsx
 msgid "Could not load font list. Text elements will fall back to the default font."
-msgstr ""
-"No se pudo cargar la lista de fuentes. Los elementos de texto volverán a la "
-"fuente predeterminada."
+msgstr "No se pudo cargar la lista de fuentes. Los elementos de texto volverán a la fuente predeterminada."
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Could not load libraries from {mediaServerName}. The saved library selection is preserved - cancel editing to avoid losing rules."
-msgstr ""
-"No se pudieron cargar bibliotecas desde {mediaServerName}. La selección de "
-"biblioteca guardada se conserva; cancele la edición para evitar perder "
-"reglas."
+msgstr "No se pudieron cargar bibliotecas desde {mediaServerName}. La selección de biblioteca guardada se conserva; cancele la edición para evitar perder reglas."
 
 #: src/pages/OverlayTemplateEditorPage.tsx
 msgid "Could not load library sections. The preview background picker will be empty."
-msgstr ""
-"No se pudieron cargar las secciones de la biblioteca. El selector de fondo "
-"de vista previa estará vacío."
+msgstr "No se pudieron cargar las secciones de la biblioteca. El selector de fondo de vista previa estará vacío."
 
 #: src/pages/OverlayTemplateEditorPage.tsx
 msgid "Could not load overlay image list. Image elements will only render if the filename exists on disk."
-msgstr ""
-"No se pudo cargar la lista de imágenes superpuestas. Los elementos de la "
-"imagen solo se representarán si el nombre del archivo existe en el disco."
+msgstr "No se pudo cargar la lista de imágenes superpuestas. Los elementos de la imagen solo se representarán si el nombre del archivo existe en el disco."
 
 #: src/components/Common/MediaActionModal.tsx
 msgid "Could not load the collections"
@@ -1099,14 +980,11 @@ msgstr "No se pudieron cargar las temporadas"
 
 #: src/components/Rules/RuleGroup/AddModal/CollectionPosterPicker.tsx
 msgid "Could not upload poster - check that the file is a valid image"
-msgstr ""
-"No se pudo cargar el póster: verifique que el archivo sea una imagen válida"
+msgstr "No se pudo cargar el póster: verifique que el archivo sea una imagen válida"
 
 #: src/components/Settings/Plex/index.tsx
 msgid "Couldn't reach {plexTv} to verify your credentials - retrying. Your saved token is still in use."
-msgstr ""
-"No se pudo contactar con {plexTv} para verificar tus credenciales; "
-"reintentando. Tu token guardado sigue en uso."
+msgstr "No se pudo contactar con {plexTv} para verificar tus credenciales; reintentando. Tu token guardado sigue en uso."
 
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "Count (number)"
@@ -1130,11 +1008,7 @@ msgstr "El recuento es menor que"
 
 #: src/components/StorageMetrics/index.tsx
 msgid "Cumulative count of media items Maintainerr has handled across all collections, with the on-disk space reclaimed by delete-style actions. Unmonitor and quality-change actions do not contribute to bytes reclaimed."
-msgstr ""
-"Recuento acumulado de elementos multimedia que Maintainerr ha gestionado en "
-"todas las colecciones, junto con el espacio en disco recuperado por acciones "
-"de eliminación. Las acciones de dejar de supervisar y cambio de calidad no "
-"contribuyen a los bytes recuperados."
+msgstr "Recuento acumulado de elementos multimedia que Maintainerr ha gestionado en todas las colecciones, junto con el espacio en disco recuperado por acciones de eliminación. Las acciones de dejar de supervisar y cambio de calidad no contribuyen a los bytes recuperados."
 
 #: src/components/Settings/About/Releases/index.tsx
 msgid "Current"
@@ -1158,21 +1032,15 @@ msgstr "Póster de colección personalizado."
 
 #: src/components/Rules/RuleGroup/AddModal/CollectionPosterPicker.tsx
 msgid "Custom poster cleared. {mediaServerName} metadata refresh requested - artwork may update depending on {mediaServerName} behavior and configured agents."
-msgstr ""
-"Póster personalizado borrado. {mediaServerName} actualización de metadatos "
-"solicitada: el diseño gráfico puede actualizarse según el comportamiento de "
-"{mediaServerName} y los agentes configurados."
+msgstr "Póster personalizado borrado. {mediaServerName} actualización de metadatos solicitada: el diseño gráfico puede actualizarse según el comportamiento de {mediaServerName} y los agentes configurados."
 
 #: src/components/Rules/RuleGroup/AddModal/CollectionPosterPicker.tsx
 msgid "Custom poster cleared. The artwork on {mediaServerName} is unchanged - refresh metadata there if you want the original back."
-msgstr ""
-"Póster personalizado borrado. La obra de arte en {mediaServerName} no ha "
-"cambiado; actualice los metadatos allí si desea recuperar el original."
+msgstr "Póster personalizado borrado. La obra de arte en {mediaServerName} no ha cambiado; actualice los metadatos allí si desea recuperar el original."
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Custom sort title for the collection in {mediaServerName}"
-msgstr ""
-"Título de clasificación personalizado para la colección en {mediaServerName}"
+msgstr "Título de clasificación personalizado para la colección en {mediaServerName}"
 
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "Custom Value"
@@ -1276,9 +1144,7 @@ msgstr "Eliminación más próxima"
 
 #: src/pages/OverlayTemplateListPage.tsx
 msgid "Delete template <0>“{templateName}”</0>? This action cannot be undone."
-msgstr ""
-"¿Eliminar plantilla <0>“{templateName}”</0>? Esta acción no se puede "
-"deshacer."
+msgstr "¿Eliminar plantilla <0>“{templateName}”</0>? Esta acción no se puede deshacer."
 
 #: src/pages/OverlayTemplateListPage.tsx
 msgid "Delete template?"
@@ -1286,10 +1152,7 @@ msgstr "¿Eliminar plantilla?"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Delete the folder {cleanupArrName} leaves behind and its sidecars (subtitles, .nfo, artwork). Requires the library mounted at the same path {cleanupArrName} uses"
-msgstr ""
-"Elimina la carpeta que {cleanupArrName} deja y sus sidecars (subtítulos, "
-".nfo, imágenes). Requiere que la biblioteca esté montada en la misma ruta "
-"que usa {cleanupArrName}"
+msgstr "Elimina la carpeta que {cleanupArrName} deja y sus sidecars (subtítulos, .nfo, imágenes). Requiere que la biblioteca esté montada en la misma ruta que usa {cleanupArrName}"
 
 #: src/components/Collection/CollectionDetail/TriggerRuleActionButton/index.tsx
 msgid "Delete this item"
@@ -1321,9 +1184,7 @@ msgstr "Descripción"
 
 #: src/pages/OverlayTemplateEditorPage.tsx
 msgid "Design overlay elements on the canvas. Enter a valid template name in the Template Name field before saving your changes."
-msgstr ""
-"Diseñe elementos superpuestos en el lienzo. Ingrese un nombre de plantilla "
-"válido en el campo Nombre de plantilla antes de guardar los cambios."
+msgstr "Diseñe elementos superpuestos en el lienzo. Ingrese un nombre de plantilla válido en el campo Nombre de plantilla antes de guardar los cambios."
 
 #: src/components/Settings/Notifications/index.tsx
 msgid "Disabled"
@@ -1335,17 +1196,11 @@ msgstr "Deshabilitar este grupo de reglas"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Disabling won't remove items already tracked by this rule group. The linked collection will keep them until this rule group is re-enabled or deleted."
-msgstr ""
-"La desactivación no eliminará los elementos que ya rastrea este grupo de "
-"reglas. La colección vinculada los conservará hasta que este grupo de reglas "
-"se vuelve a habilitar o se elimine."
+msgstr "La desactivación no eliminará los elementos que ya rastrea este grupo de reglas. La colección vinculada los conservará hasta que este grupo de reglas se vuelve a habilitar o se elimine."
 
 #: src/components/StorageMetrics/index.tsx
 msgid "Disk space reported by each configured Radarr or Sonarr instance. Headline totals count only root-folder-backed mounts and merge shared filesystems per host."
-msgstr ""
-"Espacio en disco informado por cada instancia de Radarr o Sonarr "
-"configurada. Los totales de titulares cuentan solo los montajes respaldados "
-"por carpetas raíz y fusionan sistemas de archivos compartidos por host."
+msgstr "Espacio en disco informado por cada instancia de Radarr o Sonarr configurada. Los totales de titulares cuentan solo los montajes respaldados por carpetas raíz y fusionan sistemas de archivos compartidos por host."
 
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "Disk Target"
@@ -1353,11 +1208,7 @@ msgstr "Destino del disco"
 
 #: src/components/StorageMetrics/index.tsx
 msgid "Disk usage across your Radarr and Sonarr instances, plus how much space Maintainerr can reclaim from collections with a delete rule. Items appearing in multiple collections are counted once."
-msgstr ""
-"Uso del disco en sus instancias de Radarr y Sonarr, además de la cantidad de "
-"espacio que Maintainerr puede recuperar de las colecciones con una regla de "
-"eliminación. Los elementos que aparecen en varias colecciones se cuentan una "
-"vez."
+msgstr "Uso del disco en sus instancias de Radarr y Sonarr, además de la cantidad de espacio que Maintainerr puede recuperar de las colecciones con una regla de eliminación. Los elementos que aparecen en varias colecciones se cuentan una vez."
 
 #: src/components/Settings/Main/LanguageSelector.tsx
 msgid "Display language"
@@ -1424,8 +1275,7 @@ msgstr "Descargar archivos de registro"
 
 #: src/components/Rules/Rule/RuleCreator/index.tsx
 msgid "Drag handle for rule {tagId} in section {sectionNumber}"
-msgstr ""
-"Arrastre el controlador para la regla {tagId} en la sección {sectionNumber}"
+msgstr "Arrastre el controlador para la regla {tagId} en la sección {sectionNumber}"
 
 #: src/components/Rules/Rule/RuleCreator/index.tsx
 msgid "Drag handle for section {sectionNumber}"
@@ -1453,15 +1303,11 @@ msgstr "Duplicar"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Duration for which collection logs should be retained, measured in months (0 = forever)"
-msgstr ""
-"Duración durante la cual se deben conservar los registros de colección, "
-"medida en meses (0 = para siempre)"
+msgstr "Duración durante la cual se deben conservar los registros de colección, medida en meses (0 = para siempre)"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Duration of days media remains in the collection before deletion/unmonitor"
-msgstr ""
-"Duración en días que el contenido multimedia permanece en la colección antes "
-"de eliminarse o dejar de supervisarse"
+msgstr "Duración en días que el contenido multimedia permanece en la colección antes de eliminarse o dejar de supervisarse"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "e.g., {sortPrefixExample} My Collection"
@@ -1546,8 +1392,7 @@ msgstr "Habilite las superposiciones y guárdelas para ejecutarlas manualmente"
 
 #: src/components/Overlays/index.tsx
 msgid "Enable overlays in Settings to manage templates."
-msgstr ""
-"Habilite las superposiciones en Configuración para administrar plantillas."
+msgstr "Habilite las superposiciones en Configuración para administrar plantillas."
 
 #: src/components/Settings/Notifications/CreateNotificationModal/index.tsx
 msgid "Enabled"
@@ -1555,9 +1400,7 @@ msgstr "Activado"
 
 #: src/components/Settings/Plex/index.tsx
 msgid "Ensure DNS is properly configured since Plex depends on working DNS resolution"
-msgstr ""
-"Asegúrese de que DNS esté configurado correctamente, ya que Plex depende de "
-"la resolución de DNS que funcione"
+msgstr "Asegúrese de que DNS esté configurado correctamente, ya que Plex depende de la resolución de DNS que funcione"
 
 #: src/components/Settings/DownloadClient/index.tsx
 msgid "Enter a ratio of 0.5 or higher"
@@ -1565,8 +1408,7 @@ msgstr "Introduce una proporción de 0,5 o superior"
 
 #: src/components/Collection/CollectionDetail/PostponeButton/index.tsx
 msgid "Enter a whole number between {POSTPONE_MIN_DAYS} and {POSTPONE_MAX_DAYS}."
-msgstr ""
-"Ingrese un número entero entre {POSTPONE_MIN_DAYS} y {POSTPONE_MAX_DAYS}."
+msgstr "Ingrese un número entero entre {POSTPONE_MIN_DAYS} y {POSTPONE_MAX_DAYS}."
 
 #: src/components/Login/Emby/EmbyLoginButton.tsx
 msgid "Enter your Emby server URL first."
@@ -1623,10 +1465,7 @@ msgstr "Evento"
 
 #: src/components/Rules/Rule/RuleCreator/CommunityRuleUpload/index.tsx
 msgid "Every attempt should be made to only upload working rules. Rules with less than -100 karma and uploads with no rules, are removed nightly."
-msgstr ""
-"Se debe hacer todo lo posible para cargar únicamente reglas de trabajo. Las "
-"reglas con menos de -100 karma y las cargas sin reglas se eliminan todas las "
-"noches."
+msgstr "Se debe hacer todo lo posible para cargar únicamente reglas de trabajo. Las reglas con menos de -100 karma y las cargas sin reglas se eliminan todas las noches."
 
 #: src/components/Settings/Seerr/index.tsx
 #: src/components/Settings/Streamystats/index.tsx
@@ -1672,9 +1511,7 @@ msgstr "Exclusiones"
 
 #: src/components/Collection/CollectionOverview/index.tsx
 msgid "Executes each collection's configured action (Delete / Unmonitor / Do Nothing). Does not remove items from collections."
-msgstr ""
-"Ejecuta la acción configurada de cada colección (Eliminar / Dejar de "
-"supervisar / No hacer nada). No elimina elementos de las colecciones."
+msgstr "Ejecuta la acción configurada de cada colección (Eliminar / Dejar de supervisar / No hacer nada). No elimina elementos de las colecciones."
 
 #: src/components/Overlays/index.tsx
 msgid "Existing Templates"
@@ -1703,9 +1540,7 @@ msgstr "Descripción ampliada *"
 
 #: src/components/StorageMetrics/index.tsx
 msgid "Failed to compute library sizes. Check that Maintainerr can reach your media server."
-msgstr ""
-"No se pudieron calcular los tamaños de la biblioteca. Compruebe que "
-"Maintainerr pueda comunicarse con su servidor de contenido multimedia."
+msgstr "No se pudieron calcular los tamaños de la biblioteca. Compruebe que Maintainerr pueda comunicarse con su servidor de contenido multimedia."
 
 #: src/components/Settings/Servarr/ServarrSettingsModal.tsx
 msgid "Failed to connect to {serviceName}. Verify URL and API key."
@@ -1729,9 +1564,7 @@ msgstr "No se pudo conectar con Seerr. Verifique la URL y la clave API."
 
 #: src/components/Settings/Streamystats/index.tsx
 msgid "Failed to connect to Streamystats. Verify URL and that the service is running."
-msgstr ""
-"No se pudo conectar a Streamystats. Verifique la URL y que el servicio se "
-"esté ejecutando."
+msgstr "No se pudo conectar a Streamystats. Verifique la URL y que el servicio se esté ejecutando."
 
 #: src/components/Settings/Tautulli/index.tsx
 msgid "Failed to connect to Tautulli. Verify URL and API key."
@@ -1739,9 +1572,7 @@ msgstr "No se pudo conectar con Tautulli. Verifique la URL y la clave API."
 
 #: src/components/Settings/DownloadClient/index.tsx
 msgid "Failed to connect to the download client. Verify URL and credentials."
-msgstr ""
-"No se pudo conectar con el cliente de descargas. Verifique la URL y las "
-"credenciales."
+msgstr "No se pudo conectar con el cliente de descargas. Verifique la URL y las credenciales."
 
 #: src/components/Rules/Rule/RuleCreator/CommunityRuleUpload/index.tsx
 msgid "Failed to connect to the server. Please try again later."
@@ -1778,9 +1609,7 @@ msgstr "No se pudo eliminar la configuración de Radarr."
 
 #: src/components/Settings/Radarr/index.tsx
 msgid "Failed to delete Radarr setting. Check logs for details."
-msgstr ""
-"No se pudo eliminar la configuración de Radarr. Consulte los registros para "
-"obtener más detalles."
+msgstr "No se pudo eliminar la configuración de Radarr. Consulte los registros para obtener más detalles."
 
 #: src/components/Rules/RuleGroup/index.tsx
 msgid "Failed to delete rule group."
@@ -1788,9 +1617,7 @@ msgstr "No se pudo eliminar el grupo de reglas."
 
 #: src/components/Rules/RuleGroup/index.tsx
 msgid "Failed to delete rule group. Check logs for details."
-msgstr ""
-"No se pudo eliminar el grupo de reglas. Consulte los registros para obtener "
-"más detalles."
+msgstr "No se pudo eliminar el grupo de reglas. Consulte los registros para obtener más detalles."
 
 #: src/components/Settings/Sonarr/index.tsx
 msgid "Failed to delete Sonarr setting."
@@ -1798,9 +1625,7 @@ msgstr "No se pudo eliminar la configuración de Sonarr."
 
 #: src/components/Settings/Sonarr/index.tsx
 msgid "Failed to delete Sonarr setting. Check logs for details."
-msgstr ""
-"No se pudo eliminar la configuración de Sonarr. Consulte los registros para "
-"obtener más detalles."
+msgstr "No se pudo eliminar la configuración de Sonarr. Consulte los registros para obtener más detalles."
 
 #: src/components/Settings/Sportarr/index.tsx
 msgid "Failed to delete Sportarr setting."
@@ -1808,9 +1633,7 @@ msgstr "No se pudo eliminar la configuración de Sportarr."
 
 #: src/components/Settings/Sportarr/index.tsx
 msgid "Failed to delete Sportarr setting. Check logs for details."
-msgstr ""
-"No se pudo eliminar la configuración de Sportarr. Consulte los registros "
-"para obtener más detalles."
+msgstr "No se pudo eliminar la configuración de Sportarr. Consulte los registros para obtener más detalles."
 
 #: src/pages/OverlayTemplateListPage.tsx
 msgid "Failed to duplicate template"
@@ -1842,9 +1665,7 @@ msgstr "No se pudo cargar la configuración de {providerTitle}"
 
 #: src/pages/CollectionDetailPage.tsx
 msgid "Failed to load collection. Check logs for details."
-msgstr ""
-"No se pudo cargar la colección. Consulte los registros para obtener más "
-"detalles."
+msgstr "No se pudo cargar la colección. Consulte los registros para obtener más detalles."
 
 #: src/components/Settings/ExternalServiceSettingsPage.tsx
 msgid "Failed to load options."
@@ -1856,9 +1677,7 @@ msgstr "No se pudieron cargar las plantillas superpuestas"
 
 #: src/components/Settings/Plex/index.tsx
 msgid "Failed to load servers - press refresh to retry"
-msgstr ""
-"No se pudieron cargar los servidores: presione actualizar para volver a "
-"intentarlo"
+msgstr "No se pudieron cargar los servidores: presione actualizar para volver a intentarlo"
 
 #: src/components/Common/MediaCard/MediaModal/StreamystatsStatsPanel/index.tsx
 msgid "Failed to load Streamystats data"
@@ -1910,9 +1729,7 @@ msgstr "No se pudo establecer la plantilla predeterminada"
 
 #: src/components/Settings/MediaServerSelector/index.tsx
 msgid "Failed to set media server. Check logs for details."
-msgstr ""
-"No se pudo configurar el servidor de contenido multimedia. Consulte los "
-"registros para obtener más detalles."
+msgstr "No se pudo configurar el servidor de contenido multimedia. Consulte los registros para obtener más detalles."
 
 #: src/components/Rules/RuleGroup/index.tsx
 msgid "Failed to start rule execution."
@@ -2012,9 +1829,7 @@ msgstr "Libre"
 
 #: src/components/StorageMetrics/index.tsx
 msgid "Free space only - Sonarr/Radarr do not report total size for NFS/CIFS mounts"
-msgstr ""
-"Sólo espacio libre: Sonarr/Radarr no informan el tamaño total para montajes "
-"NFS/CIFS"
+msgstr "Sólo espacio libre: Sonarr/Radarr no informan el tamaño total para montajes NFS/CIFS"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 #: src/components/Settings/index.tsx
@@ -2071,8 +1886,9 @@ msgid "Help"
 msgstr "Ayuda"
 
 #: src/components/OverlayEditor/LayerPanel.tsx
+msgctxt "Toggle layer visibility"
 msgid "Hide"
-msgstr "Esconder"
+msgstr ""
 
 #: src/components/Settings/Main/index.tsx
 msgid "Hostname"
@@ -2088,15 +1904,15 @@ msgstr "Nombre de host o IP"
 
 #: src/components/Collection/CollectionDetail/TriggerRuleActionButton/index.tsx
 msgid "If the action succeeds, the item will be removed from the collection right away instead of waiting for the normal schedule."
-msgstr ""
-"Si la acción tiene éxito, el elemento se eliminará de la colección de "
-"inmediato en lugar de esperar el cronograma normal."
+msgstr "Si la acción tiene éxito, el elemento se eliminará de la colección de inmediato en lugar de esperar el cronograma normal."
 
 #: src/components/Settings/Overlays/index.tsx
 msgid "If you do not set a schedule, you will need to use Run Now in Overlay Settings each time."
+msgstr "Si no establece una programación, deberá usar Ejecutar ahora en Configuración de superposición cada vez."
+
+#: src/components/Settings/About/index.tsx
+msgid "If you find any broken features and/or are experiencing instability, please report it on GitHub!"
 msgstr ""
-"Si no establece una programación, deberá usar Ejecutar ahora en "
-"Configuración de superposición cada vez."
 
 #: src/components/OverlayEditor/ElementToolbox.tsx
 #: src/components/OverlayEditor/LayerPanel.tsx
@@ -2117,14 +1933,11 @@ msgstr "Importar"
 
 #: src/components/Common/YamlImporterModal/index.tsx
 msgid "Import rules from a YAML document. This will override your current rules"
-msgstr ""
-"Importar reglas desde un documento YAML. Esto anulará tus reglas actuales."
+msgstr "Importar reglas desde un documento YAML. Esto anulará tus reglas actuales."
 
 #: src/components/Common/CommunityRuleModal/index.tsx
 msgid "Import rules made by the community. This will override your current rules."
-msgstr ""
-"Reglas de importación hechas por la comunidad. Esto anulará sus reglas "
-"actuales."
+msgstr "Reglas de importación hechas por la comunidad. Esto anulará sus reglas actuales."
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Import Rules YAML"
@@ -2140,16 +1953,11 @@ msgstr "Plantilla importada \"{templateName}\""
 
 #: src/components/Settings/Emby/index.tsx
 msgid "In Emby, go to <0>Dashboard → Advanced → API Keys</0> and create a new key named \"Maintainerr\". Or use <1>Sign in with Emby</1> below to obtain one automatically."
-msgstr ""
-"En Emby, vaya a <0>Panel → Avanzado → Claves API</0> y cree una nueva clave "
-"llamada \"Maintainerr\". O usa <1>Iniciar sesión con Emby</1> a continuación "
-"para obtener uno automáticamente."
+msgstr "En Emby, vaya a <0>Panel → Avanzado → Claves API</0> y cree una nueva clave llamada \"Maintainerr\". O usa <1>Iniciar sesión con Emby</1> a continuación para obtener uno automáticamente."
 
 #: src/components/Settings/Jellyfin/index.tsx
 msgid "In Jellyfin, go to <0>Dashboard → API Keys</0> and create a new API key named \"Maintainerr\"."
-msgstr ""
-"En Jellyfin, vaya a <0>Panel → Claves API</0> y cree una nueva clave API "
-"llamada \"Maintainerr\"."
+msgstr "En Jellyfin, vaya a <0>Panel → Claves API</0> y cree una nueva clave API llamada \"Maintainerr\"."
 
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "In Last"
@@ -2227,9 +2035,7 @@ msgstr "URL de Jellyfin"
 
 #: src/components/Settings/Jobs/index.tsx
 msgid "Job configuration. All schedules support standard <0>cron</0> patterns."
-msgstr ""
-"Configuración del trabajo. Todas las programaciones admiten patrones <0>"
-"cron</0> estándar."
+msgstr "Configuración del trabajo. Todas las programaciones admiten patrones <0>cron</0> estándar."
 
 #: src/components/Settings/Jobs/index.tsx
 msgid "Job Settings"
@@ -2306,13 +2112,11 @@ msgstr "Menos visto"
 
 #: src/components/Settings/DownloadClient/index.tsx
 msgid "Leave blank if the client's WebUI allows unauthenticated access."
-msgstr ""
-"Déjelo en blanco si la WebUI del cliente permite el acceso no autenticado."
+msgstr "Déjelo en blanco si la WebUI del cliente permite el acceso no autenticado."
 
 #: src/components/Settings/Jobs/index.tsx
 msgid "Leave empty to disable scheduled overlay runs."
-msgstr ""
-"Déjelo vacío para deshabilitar las ejecuciones de superposición programadas."
+msgstr "Déjelo vacío para deshabilitar las ejecuciones de superposición programadas."
 
 #: src/components/Settings/Metadata/index.tsx
 msgid "Leave empty to use the built-in shared key."
@@ -2324,9 +2128,7 @@ msgstr "Déjelo sin configurar para usar la plantilla de póster predeterminada"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Leave unset to use the default title card template"
-msgstr ""
-"Déjelo sin configurar para usar la plantilla de tarjeta de título "
-"predeterminada"
+msgstr "Déjelo sin configurar para usar la plantilla de tarjeta de título predeterminada"
 
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "left"
@@ -2342,9 +2144,7 @@ msgstr "Nivel"
 
 #: src/components/StorageMetrics/index.tsx
 msgid "Libraries reported by {typeLabel}. Counts reflect what Maintainerr sees through the server API."
-msgstr ""
-"Bibliotecas reportadas por {typeLabel}. Los recuentos reflejan lo que "
-"Maintainerr ve a través del servidor API."
+msgstr "Bibliotecas reportadas por {typeLabel}. Los recuentos reflejan lo que Maintainerr ve a través del servidor API."
 
 #: src/components/Collection/CollectionItem/index.tsx
 #: src/components/Rules/RuleGroup/index.tsx
@@ -2479,9 +2279,7 @@ msgstr "Logotipo de Maintainerr"
 
 #: src/components/Settings/Tracearr/index.tsx
 msgid "Maintainerr picks the Tracearr media server backend automatically: the one tracking the media server configured in Maintainerr."
-msgstr ""
-"Maintainerr elige automáticamente el backend de servidor multimedia de "
-"Tracearr: el que sigue el servidor multimedia configurado en Maintainerr."
+msgstr "Maintainerr elige automáticamente el backend de servidor multimedia de Tracearr: el que sigue el servidor multimedia configurado en Maintainerr."
 
 #: src/components/VersionStatus/index.tsx
 msgid "Maintainerr Pre-Release"
@@ -2489,23 +2287,15 @@ msgstr "Prelanzamiento de Maintainerr"
 
 #: src/components/StorageMetrics/index.tsx
 msgid "Maintainerr will iterate every movie and episode in your {typeLabel} libraries to estimate size on disk. This can take a while on large libraries."
-msgstr ""
-"Maintainerr iterará cada película y episodio en sus bibliotecas {typeLabel} "
-"para estimar el tamaño en el disco. Esto puede llevar algún tiempo en "
-"bibliotecas grandes."
+msgstr "Maintainerr iterará cada película y episodio en sus bibliotecas {typeLabel} para estimar el tamaño en el disco. Esto puede llevar algún tiempo en bibliotecas grandes."
 
 #: src/components/Common/MediaActionModal.tsx
 msgid "Making this a global exclusion removes the following rule-group exclusions, and they will not return if you later remove the global exclusion:"
-msgstr ""
-"Al convertir esto en una exclusión global, se eliminan las siguientes "
-"exclusiones de grupos de reglas, que no volverán a aparecer si luego elimina "
-"la exclusión global:"
+msgstr "Al convertir esto en una exclusión global, se eliminan las siguientes exclusiones de grupos de reglas, que no volverán a aparecer si luego elimina la exclusión global:"
 
 #: src/pages/OverlayTemplateListPage.tsx
 msgid "Manage the templates used by overlay-enabled collections. Each mode keeps its own default."
-msgstr ""
-"Administre las plantillas utilizadas por las colecciones habilitadas para "
-"superposición. Cada modo mantiene su propio valor predeterminado."
+msgstr "Administre las plantillas utilizadas por las colecciones habilitadas para superposición. Cada modo mantiene su propio valor predeterminado."
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Managed by"
@@ -2564,16 +2354,12 @@ msgstr "Servidor de contenido multimedia"
 
 #: src/components/StorageMetrics/index.tsx
 msgid "Media server is not reachable. Check your Settings."
-msgstr ""
-"No se puede acceder al servidor de contenido multimedia. Verifique su "
-"configuración."
+msgstr "No se puede acceder al servidor de contenido multimedia. Verifique su configuración."
 
 #: src/components/Collection/CollectionItem/index.tsx
 #: src/components/Rules/RuleGroup/index.tsx
 msgid "Media server is unreachable. The stored library selection is preserved."
-msgstr ""
-"El servidor de contenido multimedia es inalcanzable. Se conserva la "
-"selección de biblioteca almacenada."
+msgstr "El servidor de contenido multimedia es inalcanzable. Se conserva la selección de biblioteca almacenada."
 
 #: src/components/Settings/MediaServerSelector/index.tsx
 msgid "Media server switch could not be completed: {switchError}"
@@ -2626,9 +2412,7 @@ msgstr "El mínimo es 0"
 
 #: src/utils/PlexAuth.ts
 msgid "Missing Plex client identifier. Refresh the page and try again."
-msgstr ""
-"Falta el identificador del cliente Plex. Actualiza la página y vuelve a "
-"intentarlo."
+msgstr "Falta el identificador del cliente Plex. Actualiza la página y vuelve a intentarlo."
 
 #: src/components/Calendar/index.tsx
 msgid "Month"
@@ -2730,9 +2514,7 @@ msgstr "Sin fondo"
 
 #: src/components/Common/MediaActionModal.tsx
 msgid "No collection can take this selection. Create one from a rule first."
-msgstr ""
-"Ninguna colección puede aceptar esta selección. Primero cree uno a partir de "
-"una regla."
+msgstr "Ninguna colección puede aceptar esta selección. Primero cree uno a partir de una regla."
 
 #: src/components/Collection/CollectionOverview/index.tsx
 msgid "No collections found for this library."
@@ -2740,8 +2522,7 @@ msgstr "No se han encontrado colecciones para esta biblioteca."
 
 #: src/components/StorageMetrics/index.tsx
 msgid "No collections yet. Create a rule to build your first collection."
-msgstr ""
-"Aún no hay colecciones. Crea una regla para construir tu primera colección."
+msgstr "Aún no hay colecciones. Crea una regla para construir tu primera colección."
 
 #: src/components/Common/CommunityRuleModal/index.tsx
 msgid "No community rules found for this search."
@@ -2749,9 +2530,7 @@ msgstr "No se encontraron reglas comunitarias para esta búsqueda."
 
 #: src/components/Common/CommunityRuleModal/index.tsx
 msgid "No community rules found for this type & Maintainerr version."
-msgstr ""
-"No se encontraron reglas comunitarias para este tipo y versión de "
-"Maintainerr."
+msgstr "No se encontraron reglas comunitarias para este tipo y versión de Maintainerr."
 
 #: src/components/Rules/RuleGroup/AddModal/CollectionPosterPicker.tsx
 msgid "No custom poster"
@@ -2795,9 +2574,7 @@ msgstr "Sin barra diagonal inicial"
 
 #: src/components/StorageMetrics/index.tsx
 msgid "No libraries reported. Add libraries in your media server, then refresh."
-msgstr ""
-"No se informaron bibliotecas. Añade bibliotecas en su servidor de contenido "
-"multimedia y luego actualice."
+msgstr "No se informaron bibliotecas. Añade bibliotecas en su servidor de contenido multimedia y luego actualice."
 
 #: src/components/Settings/Logs/index.tsx
 msgid "No log files found"
@@ -2809,9 +2586,7 @@ msgstr "No se encontraron elementos multimedia para esta acción programada."
 
 #: src/components/StorageMetrics/index.tsx
 msgid "No mount data returned. Check that each instance has a root folder configured."
-msgstr ""
-"No se devolvieron datos de montaje. Verifique que cada instancia tenga una "
-"carpeta raíz configurada."
+msgstr "No se devolvieron datos de montaje. Verifique que cada instancia tenga una carpeta raíz configurada."
 
 #: src/components/StorageMetrics/index.tsx
 msgid "No mounts reported for this instance."
@@ -2823,9 +2598,7 @@ msgstr "No hay agentes de notificación configurados."
 
 #: src/components/StorageMetrics/index.tsx
 msgid "No Radarr or Sonarr instances are configured yet. Add one in Settings to see disk usage here."
-msgstr ""
-"Todavía no hay instancias de Radarr o Sonarr configuradas. Añade una en "
-"Ajustes para ver aquí el uso de disco."
+msgstr "Todavía no hay instancias de Radarr o Sonarr configuradas. Añade una en Ajustes para ver aquí el uso de disco."
 
 #: src/components/Common/SearchMediaITem/index.tsx
 msgid "No results"
@@ -2861,9 +2634,7 @@ msgstr "No todos los campos contienen valores"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Not all required (*) fields contain values and at least 1 valid rule is required"
-msgstr ""
-"No todos los campos obligatorios (*) contienen valores y se requiere al "
-"menos 1 regla válida"
+msgstr "No todos los campos obligatorios (*) contienen valores y se requiere al menos 1 regla válida"
 
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "Not Contains (All items)"
@@ -2932,10 +2703,7 @@ msgstr "Número de reglas"
 
 #: src/components/Settings/Servarr/ExclusionTagSettings.tsx
 msgid "Off by default so a manually-set tag is never stripped. When on, Maintainerr removes only this label when an item is un-excluded."
-msgstr ""
-"Está desactivado de forma predeterminada, por lo que una etiqueta "
-"configurada manualmente nunca se elimina. Cuando está activado, Maintainerr "
-"elimina solo esta etiqueta cuando un elemento no está excluido."
+msgstr "Está desactivado de forma predeterminada, por lo que una etiqueta configurada manualmente nunca se elimina. Cuando está activado, Maintainerr elimina solo esta etiqueta cuando un elemento no está excluido."
 
 #: src/components/Collection/CollectionDetail/RemoveFromCollectionButton/index.tsx
 #: src/components/Settings/Radarr/index.tsx
@@ -3027,15 +2795,11 @@ msgstr "Las superposiciones ahora están habilitadas"
 
 #: src/components/Settings/Plex/index.tsx
 msgid "Override the connection discovered by Plex.<0/>Disables automatic reconnection - you manage the connection."
-msgstr ""
-"Anula la conexión descubierta por Plex.<0/>Deshabilita la reconexión "
-"automática: tú administras la conexión."
+msgstr "Anula la conexión descubierta por Plex.<0/>Deshabilita la reconexión automática: tú administras la conexión."
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Overrides the configured Watched Percent in Tautulli, which is used to determine when media is counted as watched"
-msgstr ""
-"Anula el porcentaje visto configurado en Tautulli, que se utiliza para "
-"determinar cuándo el contenido multimedia se cuentan como vistos."
+msgstr "Anula el porcentaje visto configurado en Tautulli, que se utiliza para determinar cuándo el contenido multimedia se cuentan como vistos."
 
 #: src/components/Layout/NavBar/index.tsx
 msgid "Overview"
@@ -3060,9 +2824,7 @@ msgstr "Reproducciones"
 
 #: src/components/Settings/Plex/index.tsx
 msgid "Please complete server setup by selecting a server from the dropdown."
-msgstr ""
-"Complete la configuración del servidor seleccionando un servidor del menú "
-"desplegable."
+msgstr "Complete la configuración del servidor seleccionando un servidor del menú desplegable."
 
 #: src/components/Rules/RuleGroup/index.tsx
 msgid "Please edit this rule and select a library"
@@ -3094,8 +2856,7 @@ msgstr "La autenticación Plex (arriba) aún es necesaria"
 
 #: src/components/Settings/Plex/index.tsx
 msgid "Plex authentication could not be verified. Please try again."
-msgstr ""
-"No se pudo verificar la autenticación de Plex. Por favor inténtalo de nuevo."
+msgstr "No se pudo verificar la autenticación de Plex. Por favor inténtalo de nuevo."
 
 #: src/components/Settings/Plex/index.tsx
 msgid "Plex configuration"
@@ -3107,9 +2868,7 @@ msgstr "Se requiere configuración Plex. Autentíquese con Plex para comenzar."
 
 #: src/components/Login/Plex/index.tsx
 msgid "Plex login popup was blocked. Please allow popups for this site."
-msgstr ""
-"La ventana emergente de inicio de sesión de Plex fue bloqueada. Permita "
-"ventanas emergentes para este sitio."
+msgstr "La ventana emergente de inicio de sesión de Plex fue bloqueada. Permita ventanas emergentes para este sitio."
 
 #: src/components/Settings/MediaServerSelector/index.tsx
 msgid "Plex Media Server"
@@ -3154,9 +2913,7 @@ msgstr "Póster guardado y enviado a {mediaServerName}"
 
 #: src/components/Rules/RuleGroup/AddModal/CollectionPosterPicker.tsx
 msgid "Poster saved locally. Maintainerr could not apply it to {mediaServerName} yet."
-msgstr ""
-"Póster guardado localmente. Maintainerr aún no pudo aplicarlo a "
-"{mediaServerName}."
+msgstr "Póster guardado localmente. Maintainerr aún no pudo aplicarlo a {mediaServerName}."
 
 #: src/pages/OverlayTemplateListPage.tsx
 msgid "Poster Templates"
@@ -3192,9 +2949,7 @@ msgstr "Preajustes"
 
 #: src/pages/OverlayTemplateEditorPage.tsx
 msgid "Presets can’t be modified. Enter a name for your copy - it will start from the current canvas and become editable."
-msgstr ""
-"Los ajustes preestablecidos no se pueden modificar. Ingrese un nombre para "
-"su copia: comenzará desde el lienzo actual y será editable."
+msgstr "Los ajustes preestablecidos no se pueden modificar. Ingrese un nombre para su copia: comenzará desde el lienzo actual y será editable."
 
 #: src/components/Calendar/index.tsx
 #: src/components/Common/Pagination/index.tsx
@@ -3224,9 +2979,7 @@ msgstr "Proceder"
 
 #: src/utils/overlayProcessResult.ts
 msgid "Processed: {processed}, Reverted: {reverted}, Skipped: {skipped}, Errors: {errors}"
-msgstr ""
-"Procesado: {processed}, Revertido: {reverted}, Omitido: {skipped}, Errores: "
-"{errors}"
+msgstr "Procesado: {processed}, Revertido: {reverted}, Omitido: {skipped}, Errores: {errors}"
 
 #: src/components/Messages/Messages.tsx
 msgid "Processing: {collectionName}"
@@ -3363,9 +3116,7 @@ msgstr "¿Eliminar?"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Removes the related Seerr request immediately. Otherwise, Maintainerr waits for Seerr availability sync."
-msgstr ""
-"Elimina inmediatamente la solicitud de Seerr relacionada. De lo contrario, "
-"Maintainerr espera la sincronización de disponibilidad de Seerr."
+msgstr "Elimina inmediatamente la solicitud de Seerr relacionada. De lo contrario, Maintainerr espera la sincronización de disponibilidad de Seerr."
 
 #: src/components/Collection/CollectionDetail/RemoveFromCollectionButton/index.tsx
 msgid "Removing..."
@@ -3527,10 +3278,7 @@ msgstr "Guardado en este navegador. El texto sin traducir se muestra en inglés.
 
 #: src/components/Rules/RuleGroup/AddModal/CollectionPosterPicker.tsx
 msgid "Saved locally. Maintainerr couldn't push to {mediaServerName} right now; it'll re-apply automatically next time the collection is recreated there."
-msgstr ""
-"Guardado localmente. Maintainerr no pudo pasar a {mediaServerName} en este "
-"momento; se volverá a aplicar automáticamente la próxima vez que se vuelve a "
-"crear la colección allí."
+msgstr "Guardado localmente. Maintainerr no pudo pasar a {mediaServerName} en este momento; se volverá a aplicar automáticamente la próxima vez que se vuelve a crear la colección allí."
 
 #: src/components/Common/SaveButton.tsx
 #: src/pages/OverlayTemplateEditorPage.tsx
@@ -3551,9 +3299,7 @@ msgstr "Buscar"
 
 #: src/components/Collection/CollectionDetail/TestMediaItem/index.tsx
 msgid "Search for media items and validate them against the specified rule. The result will be a YAML document containing the validated steps."
-msgstr ""
-"Busque elementos multimedia y valídelos según la regla especificada. El "
-"resultado será un documento YAML que contiene los pasos validados."
+msgstr "Busque elementos multimedia y valídelos según la regla especificada. El resultado será un documento YAML que contiene los pasos validados."
 
 #: src/utils/mediaTypeUtils.ts
 msgid "season"
@@ -3682,8 +3428,7 @@ msgstr "Selecciona el segundo valor..."
 #: src/components/Settings/Emby/index.tsx
 #: src/components/Settings/Jellyfin/index.tsx
 msgid "Select the admin user for Maintainerr operations."
-msgstr ""
-"Selecciona el usuario administrador para las operaciones de Maintainerr."
+msgstr "Selecciona el usuario administrador para las operaciones de Maintainerr."
 
 #: src/components/Settings/MediaServerSelector/index.tsx
 msgid "Select your media server to get started with Maintainerr."
@@ -3691,9 +3436,7 @@ msgstr "Selecciona tu servidor multimedia para empezar con Maintainerr."
 
 #: src/components/Settings/MediaServerSelector/index.tsx
 msgid "Select your media server type. Switching will reset media server-specific data."
-msgstr ""
-"Selecciona su tipo de servidor de contenido multimedia. El cambio "
-"restablecerá los datos específicos del servidor de contenido multimedia."
+msgstr "Selecciona su tipo de servidor de contenido multimedia. El cambio restablecerá los datos específicos del servidor de contenido multimedia."
 
 #: src/components/OverlayEditor/ResourceField.tsx
 msgid "Select..."
@@ -3760,9 +3503,13 @@ msgid "show"
 msgstr "serie"
 
 #: src/components/Calendar/index.tsx
-#: src/components/OverlayEditor/LayerPanel.tsx
 msgid "Show"
 msgstr "Serie"
+
+#: src/components/OverlayEditor/LayerPanel.tsx
+msgctxt "Toggle layer visibility"
+msgid "Show"
+msgstr ""
 
 #: src/components/Settings/MediaServerSelector/index.tsx
 msgid "Show incompatible rules ({skippedRules})"
@@ -3786,15 +3533,11 @@ msgstr "Mostrar la colección en la pantalla de inicio de {mediaServerName}"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Show the collection on the {mediaServerName} library recommended screen"
-msgstr ""
-"Mostrar la colección en la pantalla recomendada de la biblioteca "
-"{mediaServerName}"
+msgstr "Mostrar la colección en la pantalla recomendada de la biblioteca {mediaServerName}"
 
 #: src/components/Common/Pagination/index.tsx
 msgid "Showing <0>{firstItem}</0> to <1>{lastItem}</1> of <2>{totalItems}</2> Rules"
-msgstr ""
-"Mostrando <0>{firstItem}</0> a <1>{lastItem}</1> de <2>{totalItems}</2> "
-"reglas"
+msgstr "Mostrando <0>{firstItem}</0> a <1>{lastItem}</1> de <2>{totalItems}</2> reglas"
 
 #: src/components/Collection/CollectionItem/index.tsx
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
@@ -3831,10 +3574,7 @@ msgstr "Tamaño en disco informado por el servidor de contenido multimedia"
 
 #: src/components/StorageMetrics/index.tsx
 msgid "Sizes approximate on-disk bytes and may not fully reflect hardlinks, sparse files, or filesystem snapshots."
-msgstr ""
-"Los tamaños se aproximan a los bytes en el disco y es posible que no "
-"reflejen completamente los enlaces físicos, los archivos dispersos o las "
-"instantáneas del sistema de archivos."
+msgstr "Los tamaños se aproximan a los bytes en el disco y es posible que no reflejen completamente los enlaces físicos, los archivos dispersos o las instantáneas del sistema de archivos."
 
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "Smaller"
@@ -3902,9 +3642,7 @@ msgstr "Configuración de Sportarr - Maintainerr"
 
 #: src/utils/ApiError.ts
 msgid "SSL/TLS handshake failed. Verify the URL protocol (http vs https) and SSL configuration."
-msgstr ""
-"Error en el protocolo de enlace SSL/TLS. Verifique el protocolo URL (http vs "
-"https) y la configuración SSL."
+msgstr "Error en el protocolo de enlace SSL/TLS. Verifique el protocolo URL (http vs https) y la configuración SSL."
 
 #: src/components/Rules/RuleGroup/index.tsx
 msgid "Start execution"
@@ -3947,15 +3685,11 @@ msgstr "Biblioteca almacenada (no disponible)"
 #: src/api/settings.ts
 #: src/components/Settings/Plex/index.tsx
 msgid "Stored Plex credentials are invalid. Re-authenticate with Plex."
-msgstr ""
-"Las credenciales de Plex almacenadas no son válidas. Vuelve a autenticarse "
-"con Plex."
+msgstr "Las credenciales de Plex almacenadas no son válidas. Vuelve a autenticarse con Plex."
 
 #: src/components/Settings/Streamystats/index.tsx
 msgid "Streamystats configuration. Authentication reuses the configured Jellyfin API key."
-msgstr ""
-"Configuración de Streamystats. La autenticación reutiliza la clave API "
-"Jellyfin configurada."
+msgstr "Configuración de Streamystats. La autenticación reutiliza la clave API Jellyfin configurada."
 
 #: src/components/Settings/Streamystats/index.tsx
 msgid "Streamystats Settings"
@@ -4155,8 +3889,7 @@ msgstr "Probar conexión"
 #: src/components/Settings/Emby/index.tsx
 #: src/components/Settings/Jellyfin/index.tsx
 msgid "Test connection to load available admin users."
-msgstr ""
-"Prueba la conexión para cargar los usuarios administradores disponibles."
+msgstr "Prueba la conexión para cargar los usuarios administradores disponibles."
 
 #: src/components/Settings/Emby/index.tsx
 msgid "Test connection to load Emby admin users"
@@ -4208,9 +3941,7 @@ msgstr "Los siguientes datos serán eliminados definitivamente:"
 
 #: src/components/Settings/index.tsx
 msgid "The Logs page stays available during setup if you need to troubleshoot your connection."
-msgstr ""
-"La página «Registros» permanece disponible durante la configuración por si "
-"necesitas solucionar algún problema con tu conexión."
+msgstr "La página «Registros» permanece disponible durante la configuración por si necesitas solucionar algún problema con tu conexión."
 
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "The media server has no user named ''{username}''"
@@ -4222,34 +3953,23 @@ msgstr "No se pudo guardar el grupo de reglas"
 
 #: src/components/Collection/CollectionDetail/TestMediaItem/index.tsx
 msgid "The rule group is of type episodes, as a result only media of type series will be displayed in the search bar."
-msgstr ""
-"El grupo de reglas es de tipo episodios, como resultado solo se mostrarán "
-"contenido multimedia de tipo serie en la barra de búsqueda."
+msgstr "El grupo de reglas es de tipo episodios, como resultado solo se mostrarán contenido multimedia de tipo serie en la barra de búsqueda."
 
 #: src/components/Collection/CollectionDetail/TestMediaItem/index.tsx
 msgid "The rule group is of type movies, as a result only media of type movies will be displayed in the search bar."
-msgstr ""
-"El grupo de reglas es de tipo películas; como resultado, solo se mostrarán "
-"contenido multimedia de tipo películas en la barra de búsqueda."
+msgstr "El grupo de reglas es de tipo películas; como resultado, solo se mostrarán contenido multimedia de tipo películas en la barra de búsqueda."
 
 #: src/components/Collection/CollectionDetail/TestMediaItem/index.tsx
 msgid "The rule group is of type seasons, as a result only media of type series will be displayed in the search bar."
-msgstr ""
-"El grupo de reglas es del tipo temporadas, como resultado solo se mostrarán "
-"contenido multimedia del tipo serie en la barra de búsqueda."
+msgstr "El grupo de reglas es del tipo temporadas, como resultado solo se mostrarán contenido multimedia del tipo serie en la barra de búsqueda."
 
 #: src/components/Collection/CollectionDetail/TestMediaItem/index.tsx
 msgid "The rule group is of type series, as a result only media of type series will be displayed in the search bar."
-msgstr ""
-"El grupo de reglas es de tipo serie; como resultado, solo se mostrarán "
-"contenido multimedia de tipo serie en la barra de búsqueda."
+msgstr "El grupo de reglas es de tipo serie; como resultado, solo se mostrarán contenido multimedia de tipo serie en la barra de búsqueda."
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "The saved library could not be found in the current library list. Re-select it once your media server is reachable."
-msgstr ""
-"La biblioteca guardada no se pudo encontrar en la lista de bibliotecas "
-"actual. Vuelve a seleccionarlo una vez que se pueda acceder a su servidor de "
-"contenido multimedia."
+msgstr "La biblioteca guardada no se pudo encontrar en la lista de bibliotecas actual. Vuelve a seleccionarlo una vez que se pueda acceder a su servidor de contenido multimedia."
 
 #: src/components/Common/MediaActionModal.tsx
 msgid "The selected items could not be updated"
@@ -4257,15 +3977,11 @@ msgstr "Los elementos seleccionados no se pudieron actualizar."
 
 #: src/components/Common/MediaActionModal.tsx
 msgid "The selection mixes media types, so only exclusions can be applied to it."
-msgstr ""
-"La selección mezcla tipos de contenido multimedia, por lo que solo se le "
-"pueden aplicar exclusiones."
+msgstr "La selección mezcla tipos de contenido multimedia, por lo que solo se le pueden aplicar exclusiones."
 
 #: src/components/Common/MediaActionModal.tsx
 msgid "The selection spans more than one library, so only exclusions can be applied to it."
-msgstr ""
-"La selección abarca más de una biblioteca, por lo que solo se le pueden "
-"aplicar exclusiones."
+msgstr "La selección abarca más de una biblioteca, por lo que solo se le pueden aplicar exclusiones."
 
 #: src/components/Layout/index.tsx
 msgid "The server returned an unexpected response."
@@ -4293,38 +4009,25 @@ msgstr "Se produjo un error al actualizar la autenticación Plex."
 
 #: src/components/Common/MediaActionModal.tsx
 msgid "They are removed from every collection they are currently in as well."
-msgstr ""
-"También se eliminan de todas las colecciones en las que se encuentran "
-"actualmente."
-
-#: src/components/Settings/About/index.tsx
-msgid "If you find any broken features and/or are experiencing instability, please report it on GitHub!"
-msgstr ""
+msgstr "También se eliminan de todas las colecciones en las que se encuentran actualmente."
 
 #: src/components/Collection/CollectionDetail/RemoveFromCollectionButton/index.tsx
 msgid "This item is excluded <0>globally</0>. Removing this exclusion will apply the change to all collections"
-msgstr ""
-"Este elemento está excluido <0>globalmente</0>. Al eliminar esta exclusión "
-"se aplicará el cambio a todas las colecciones."
+msgstr "Este elemento está excluido <0>globalmente</0>. Al eliminar esta exclusión se aplicará el cambio a todas las colecciones."
 
 #: src/components/Settings/Radarr/index.tsx
 #: src/components/Settings/Sonarr/index.tsx
 #: src/components/Settings/Sportarr/index.tsx
 msgid "This server is currently being used by the following rules:"
-msgstr ""
-"Este servidor está siendo utilizado actualmente por las siguientes reglas:"
+msgstr "Este servidor está siendo utilizado actualmente por las siguientes reglas:"
 
 #: src/components/Collection/CollectionDetail/TriggerRuleActionButton/index.tsx
 msgid "This will immediately run the collection action for this item:<0> {actionSummary}</0>."
-msgstr ""
-"Esto ejecutará inmediatamente la acción de colección para este elemento:<0> "
-"{actionSummary}</0>."
+msgstr "Esto ejecutará inmediatamente la acción de colección para este elemento:<0> {actionSummary}</0>."
 
 #: src/components/Settings/Overlays/index.tsx
 msgid "This will revert every applied overlay and restore the original posters for all collections."
-msgstr ""
-"Esto revertirá todas las superposiciones aplicadas y restaurará los carteles "
-"originales de todas las colecciones."
+msgstr "Esto revertirá todas las superposiciones aplicadas y restaurará los carteles originales de todas las colecciones."
 
 #: src/components/Settings/About/index.tsx
 msgid "Time Zone"
@@ -4348,15 +4051,11 @@ msgstr "Plantillas de tarjetas de título"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "To clear them first, edit the rule's criteria so it matches nothing, run the rule, and then disable it."
-msgstr ""
-"Para borrarlos primero, edite los criterios de la regla para que no "
-"coincidan con nada, ejecute la regla y luego deshabilítela."
+msgstr "Para borrarlos primero, edite los criterios de la regla para que no coincidan con nada, ejecute la regla y luego deshabilítela."
 
 #: src/components/Settings/Overlays/index.tsx
 msgid "To run them automatically, set a schedule in Job Settings."
-msgstr ""
-"Para ejecutarlos automáticamente, configura una programación en "
-"Configuración del trabajo."
+msgstr "Para ejecutarlos automáticamente, configura una programación en Configuración del trabajo."
 
 #: src/components/Calendar/index.tsx
 msgid "Today"
@@ -4384,9 +4083,7 @@ msgstr "arriba"
 
 #: src/components/StorageMetrics/index.tsx
 msgid "Top ten collections by cached total file size."
-msgstr ""
-"Diez colecciones principales por tamaño total de archivos almacenados en "
-"caché."
+msgstr "Diez colecciones principales por tamaño total de archivos almacenados en caché."
 
 #: src/components/StorageMetrics/index.tsx
 msgid "Total capacity"
@@ -4394,10 +4091,7 @@ msgstr "Capacidad total"
 
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "Total disk space only works for paths reported by ARR disk space. Root-folder fallback paths can still be used for remaining space, but they do not expose a reliable total size."
-msgstr ""
-"El espacio total en disco solo funciona para las rutas informadas por el "
-"espacio en disco ARR. Las rutas de reserva de la carpeta raíz aún se pueden "
-"utilizar para el espacio restante, pero no exponen un tamaño total confiable."
+msgstr "El espacio total en disco solo funciona para las rutas informadas por el espacio en disco ARR. Las rutas de reserva de la carpeta raíz aún se pueden utilizar para el espacio restante, pero no exponen un tamaño total confiable."
 
 #: src/components/Settings/About/index.tsx
 msgid "Total Media in Collections"
@@ -4405,8 +4099,7 @@ msgstr "Contenido multimedia totales en colecciones"
 
 #: src/components/StorageMetrics/StorageUsageBar.tsx
 msgid "Total size not reported by this instance - only free space is accurate."
-msgstr ""
-"Esta instancia no informa el tamaño total; solo el espacio libre es exacto."
+msgstr "Esta instancia no informa el tamaño total; solo el espacio libre es exacto."
 
 #: src/components/Settings/Tracearr/index.tsx
 msgid "Tracearr server"
@@ -4463,14 +4156,11 @@ msgstr "Tipos *"
 
 #: src/components/StorageMetrics/index.tsx
 msgid "Unable to load storage metrics. Check that Maintainerr can reach your Radarr and Sonarr instances."
-msgstr ""
-"No se pueden cargar métricas de almacenamiento. Compruebe que Maintainerr "
-"pueda llegar a sus instancias de Radarr y Sonarr."
+msgstr "No se pueden cargar métricas de almacenamiento. Compruebe que Maintainerr pueda llegar a sus instancias de Radarr y Sonarr."
 
 #: src/utils/ApiError.ts
 msgid "Unable to resolve host. Verify hostname or IP address."
-msgstr ""
-"No se puede resolver el host. Verifique el nombre de host o la dirección IP."
+msgstr "No se puede resolver el host. Verifique el nombre de host o la dirección IP."
 
 #: src/components/Settings/Plex/index.tsx
 msgid "unavailable"
@@ -4525,8 +4215,7 @@ msgstr "Dejar de supervisar y eliminar temporada"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Unmonitor and delete season + delete show if empty"
-msgstr ""
-"Dejar de supervisar y eliminar temporada + eliminar serie si queda vacía"
+msgstr "Dejar de supervisar y eliminar temporada + eliminar serie si queda vacía"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Unmonitor and keep file"
@@ -4550,8 +4239,7 @@ msgstr "Dejar de supervisar liga, conservar archivos"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Unmonitor season + unmonitor show if empty"
-msgstr ""
-"Dejar de supervisar temporada + dejar de supervisar serie si queda vacía"
+msgstr "Dejar de supervisar temporada + dejar de supervisar serie si queda vacía"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Unmonitor season and keep files"
@@ -4603,9 +4291,7 @@ msgstr "Dejar de supervisar esta temporada"
 
 #: src/components/Collection/CollectionDetail/TriggerRuleActionButton/index.tsx
 msgid "Unmonitor this season and unmonitor the show if it becomes empty"
-msgstr ""
-"Dejar de supervisar esta temporada y dejar de supervisar la serie si queda "
-"vacía"
+msgstr "Dejar de supervisar esta temporada y dejar de supervisar la serie si queda vacía"
 
 #: src/components/Collection/CollectionDetail/TriggerRuleActionButton/index.tsx
 msgid "Unmonitor this show"
@@ -4638,12 +4324,7 @@ msgstr "Subir"
 
 #: src/components/Rules/RuleGroup/AddModal/CollectionPosterPicker.tsx
 msgid "Upload a JPEG, PNG, or WebP up to {maxPosterSize}. The image is re-encoded to JPEG and stored locally; Maintainerr pushes it to {mediaServerName} as a one-shot write. Other tools that manage {lowerMediaServerName} collection artwork (e.g. Kometa, Posterizarr) may overwrite it."
-msgstr ""
-"Sube un archivo JPEG, PNG o WebP hasta {maxPosterSize}. La imagen se vuelve "
-"a codificar en JPEG y se almacena localmente; Maintainerr lo envía a "
-"{mediaServerName} como una escritura de una sola vez. Otras herramientas que "
-"administran imágenes de la colección {lowerMediaServerName} (por ejemplo, "
-"Kometa, Posterizarr) pueden sobrescribirlas."
+msgstr "Sube un archivo JPEG, PNG o WebP hasta {maxPosterSize}. La imagen se vuelve a codificar en JPEG y se almacena localmente; Maintainerr lo envía a {mediaServerName} como una escritura de una sola vez. Otras herramientas que administran imágenes de la colección {lowerMediaServerName} (por ejemplo, Kometa, Posterizarr) pueden sobrescribirlas."
 
 #: src/components/Rules/Rule/RuleCreator/CommunityRuleUpload/index.tsx
 msgid "Upload Community Rule"
@@ -4766,8 +4447,7 @@ msgstr "Espere a que finalice la autenticación de Plex antes de guardar."
 
 #: src/components/Settings/Plex/index.tsx
 msgid "Wait for Plex authentication to finish before testing."
-msgstr ""
-"Espere a que finalice la autenticación de Plex antes de realizar la prueba."
+msgstr "Espere a que finalice la autenticación de Plex antes de realizar la prueba."
 
 #: src/components/Settings/Logs/index.tsx
 msgid "Warn"
@@ -4799,20 +4479,11 @@ msgstr "¡Bienvenido a Maintainerr!"
 
 #: src/components/Settings/DownloadClient/index.tsx
 msgid "When media is removed through Radarr, Sonarr or Sportarr, Maintainerr can remove the completed download (and optionally its data) from your download client. The download is matched via that service's download history, so media removed without one of them is left untouched. qBittorrent is currently the only supported client."
-msgstr ""
-"Cuando se elimina contenido multimedia mediante Radarr, Sonarr o Sportarr, "
-"Maintainerr puede eliminar la descarga completada y, opcionalmente, sus "
-"datos, del cliente de descargas. La descarga se identifica mediante el "
-"historial de descargas de ese servicio, por lo que el contenido eliminado "
-"sin uno de ellos no se toca. qBittorrent es actualmente el único cliente "
-"compatible."
+msgstr "Cuando se elimina contenido multimedia mediante Radarr, Sonarr o Sportarr, Maintainerr puede eliminar la descarga completada y, opcionalmente, sus datos, del cliente de descargas. La descarga se identifica mediante el historial de descargas de ese servicio, por lo que el contenido eliminado sin uno de ellos no se toca. qBittorrent es actualmente el único cliente compatible."
 
 #: src/components/Settings/DownloadClient/index.tsx
 msgid "Whether a download has finished seeding is decided by qBittorrent's own ratio/seed-time limits. This ratio only applies to downloads qBittorrent isn't limiting, and can't be set below 0.5."
-msgstr ""
-"Si una descarga ha terminado de compartir se decide por los límites de ratio "
-"y tiempo de semilla de qBittorrent. Este ratio solo se aplica a descargas "
-"que qBittorrent no esté limitando y no puede ser inferior a 0,5."
+msgstr "Si una descarga ha terminado de compartir se decide por los límites de ratio y tiempo de semilla de qBittorrent. Este ratio solo se aplica a descargas que qBittorrent no esté limitando y no puede ser inferior a 0,5."
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Will also be the name of the collection in {mediaServerName}."
@@ -4836,14 +4507,11 @@ msgstr "Puede crear una clave API gratuita en <0>{tmdbDomain}</0>."
 
 #: src/components/Settings/Metadata/index.tsx
 msgid "You can create a free developer API key at <0>{tvdbDomain}</0>."
-msgstr ""
-"Puede crear una clave API de desarrollador gratuita en <0>{tvdbDomain}</0>."
+msgstr "Puede crear una clave API de desarrollador gratuita en <0>{tvdbDomain}</0>."
 
 #: src/components/Layout/index.tsx
 msgid "You can try going back or reloading the page. If the problem persists, please check the browser console for more details."
-msgstr ""
-"Puedes intentar volver atrás o actualizar la página. Si el problema "
-"persiste, comprueba la consola del navegador para obtener más detalles."
+msgstr "Puedes intentar volver atrás o actualizar la página. Si el problema persiste, comprueba la consola del navegador para obtener más detalles."
 
 #: src/components/Common/CommunityRowTableRow/index.tsx
 msgid "You have already submitted karma for this rule."
@@ -4853,8 +4521,7 @@ msgstr "Ya has enviado karma para esta regla."
 #: src/components/Settings/Sonarr/index.tsx
 #: src/components/Settings/Sportarr/index.tsx
 msgid "You must re-assign these rules to a different server before deleting."
-msgstr ""
-"Debe reasignar estas reglas a un servidor diferente antes de eliminarlas."
+msgstr "Debe reasignar estas reglas a un servidor diferente antes de eliminarlas."
 
 #: src/components/Layout/MediaServerSetupGuard.tsx
 msgid "You need to set up the media server first."
@@ -4862,9 +4529,7 @@ msgstr "Primero debe configurar el servidor de contenido multimedia."
 
 #: src/pages/OverlayTemplateEditorPage.tsx
 msgid "You’re editing a preset. Saving will create your own copy - the original preset is left unchanged."
-msgstr ""
-"Estás editando un ajuste preestablecido. Al guardar se creará su propia "
-"copia; el ajuste preestablecido original no se modifica."
+msgstr "Estás editando un ajuste preestablecido. Al guardar se creará su propia copia; el ajuste preestablecido original no se modifica."
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "your media server"

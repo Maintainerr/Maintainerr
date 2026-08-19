@@ -10,8 +10,7 @@ msgstr ""
 "Report-Msgid-Bugs-To: \n"
 "PO-Revision-Date: 2026-08-19 06:03+0000\n"
 "Last-Translator: Anonymous <noreply@weblate.org>\n"
-"Language-Team: Finnish <https://hosted.weblate.org/projects/maintainerr/app/"
-"fi/>\n"
+"Language-Team: Finnish <https://hosted.weblate.org/projects/maintainerr/app/fi/>\n"
 "Plural-Forms: nplurals=2; plural=n != 1;\n"
 
 #: src/components/Settings/MediaServerSelector/index.tsx
@@ -1887,6 +1886,7 @@ msgid "Help"
 msgstr ""
 
 #: src/components/OverlayEditor/LayerPanel.tsx
+msgctxt "Toggle layer visibility"
 msgid "Hide"
 msgstr ""
 
@@ -1908,6 +1908,10 @@ msgstr ""
 
 #: src/components/Settings/Overlays/index.tsx
 msgid "If you do not set a schedule, you will need to use Run Now in Overlay Settings each time."
+msgstr ""
+
+#: src/components/Settings/About/index.tsx
+msgid "If you find any broken features and/or are experiencing instability, please report it on GitHub!"
 msgstr ""
 
 #: src/components/OverlayEditor/ElementToolbox.tsx
@@ -3499,7 +3503,11 @@ msgid "show"
 msgstr ""
 
 #: src/components/Calendar/index.tsx
+msgid "Show"
+msgstr ""
+
 #: src/components/OverlayEditor/LayerPanel.tsx
+msgctxt "Toggle layer visibility"
 msgid "Show"
 msgstr ""
 
@@ -4001,10 +4009,6 @@ msgstr ""
 
 #: src/components/Common/MediaActionModal.tsx
 msgid "They are removed from every collection they are currently in as well."
-msgstr ""
-
-#: src/components/Settings/About/index.tsx
-msgid "If you find any broken features and/or are experiencing instability, please report it on GitHub!"
 msgstr ""
 
 #: src/components/Collection/CollectionDetail/RemoveFromCollectionButton/index.tsx
