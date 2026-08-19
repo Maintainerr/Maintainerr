@@ -80,7 +80,6 @@ const LayoutShell: React.FC<LayoutShellProps> = ({ children }) => {
           <div className="relative inset-0 h-full w-full bg-linear-to-t from-zinc-900 to-transparent" />
         </div>
         <NavBar open={navBarOpen} setClosed={handleNavbar}></NavBar>
-        <div className="relative mb-16 flex w-0 min-w-0 flex-1 flex-col lg:ml-64"></div>
         <div
           className={`searchbar fixed top-0 right-0 left-0 z-10 flex shrink-0 bg-transparent transition duration-300 lg:ml-64`}
         >
@@ -109,7 +108,7 @@ const LayoutShell: React.FC<LayoutShellProps> = ({ children }) => {
         </div>
 
         <main
-          className="relative top-16 mt-2 w-full focus:outline-hidden"
+          className="relative top-16 mt-2 mb-16 w-0 min-w-0 flex-1 focus:outline-hidden lg:ml-64"
           tabIndex={0}
         >
           <div className="mb-6">

@@ -56,7 +56,7 @@ export function ResourceField({
 
   return (
     <label className="flex items-center gap-1.5">
-      <span className="w-12 shrink-0 text-zinc-400">{label}</span>
+      <span className="min-w-12 shrink-0 text-zinc-400">{label}</span>
       <Select
         name={`resource-${label}`}
         value={known ? value : ''}
