@@ -8,10 +8,9 @@ msgstr ""
 "Language: es\n"
 "Project-Id-Version: \n"
 "Report-Msgid-Bugs-To: \n"
-"PO-Revision-Date: 2026-08-19 06:03+0000\n"
-"Last-Translator: Anonymous <noreply@weblate.org>\n"
-"Language-Team: Spanish <https://hosted.weblate.org/projects/maintainerr/app/"
-"es/>\n"
+"PO-Revision-Date: 2026-08-19 16:42+0000\n"
+"Last-Translator: Maintainerr <get@maintainerr.info>\n"
+"Language-Team: Spanish <https://hosted.weblate.org/projects/maintainerr/app/es/>\n"
 "Plural-Forms: nplurals=2; plural=n != 1;\n"
 
 #: src/components/Settings/MediaServerSelector/index.tsx
@@ -49,7 +48,7 @@ msgstr ""
 
 #: src/components/Rules/RuleGroup/AddModal/ArrAction/index.tsx
 msgid "{actionOwnerName} action"
-msgstr "{actionOwnerName} acción"
+msgstr "Acción de {actionOwnerName}"
 
 #: src/components/Rules/RuleGroup/AddModal/ConfigureNotificationModal/index.tsx
 msgid "{agentName} - {agentType} (disabled)"
@@ -76,7 +75,7 @@ msgstr ""
 
 #: src/components/Settings/MediaServerSelector/index.tsx
 msgid "{clearedCollections, plural, one {# collection} other {# collections}}"
-msgstr "{clearedCollections, plural, one {colección #} other {colecciones #}}"
+msgstr "{clearedCollections, plural, one {# colección} other {# colecciones}}"
 
 #: src/components/Settings/MediaServerSelector/index.tsx
 msgid "{clearedExclusions, plural, one {# exclusion} other {# exclusions}}"
@@ -84,7 +83,7 @@ msgstr "{clearedExclusions, plural, one {# exclusión} other {# exclusiones}}"
 
 #: src/components/StorageMetrics/index.tsx
 msgid "{collectionCount, plural, one {# collection} other {# collections}}"
-msgstr "{collectionCount, plural, one {colección #} other {colecciones #}}"
+msgstr "{collectionCount, plural, one {# colección} other {# colecciones}}"
 
 #: src/components/Collection/CollectionItem/index.tsx
 msgid "{collectionName} (custom)"
@@ -146,10 +145,7 @@ msgstr ""
 
 #: src/utils/bulkOutcome.ts
 msgid "{count, plural, one {# item could not be un-excluded{why}; the failed items stay selected.} other {# items could not be un-excluded{why}; the failed items stay selected.}}"
-msgstr ""
-"{count, plural, one {El elemento # no se pudo eliminar{why}; los elementos "
-"fallidos permanecen seleccionados.} other {# elementos no se pudieron "
-"eliminar{why}; los elementos fallidos permanecen seleccionados.}}"
+msgstr "{count, plural, one {No se pudo quitar la exclusión de # elemento{why}; los elementos fallidos permanecen seleccionados.} other {No se pudo quitar la exclusión de # elementos{why}; los elementos fallidos permanecen seleccionados.}}"
 
 #: src/utils/bulkOutcome.ts
 msgid "{count, plural, one {# item excluded everywhere.} other {# items excluded everywhere.}}"
@@ -175,9 +171,7 @@ msgstr ""
 
 #: src/utils/bulkOutcome.ts
 msgid "{count, plural, one {# item un-excluded.} other {# items un-excluded.}}"
-msgstr ""
-"{count, plural, one {# elemento no excluido.} other {# elementos no "
-"excluidos.}}"
+msgstr "{count, plural, one {Se quitó la exclusión de # elemento.} other {Se quitó la exclusión de # elementos.}}"
 
 #: src/components/Collection/CollectionDetail/CollectionInfo/index.tsx
 msgid "{count, plural, one {# minute} other {# minutes}}"
@@ -201,7 +195,7 @@ msgstr "{daysAgo, plural, one {Hace # día} other {Hace # días}}"
 
 #: src/pages/OverlayTemplateListPage.tsx
 msgid "{elementCount, plural, one {# element} other {# elements}}"
-msgstr "{elementCount, plural, one {elemento #} other {# elementos}}"
+msgstr "{elementCount, plural, one {# elemento} other {# elementos}}"
 
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "{formatList} - up to {imageUploadMaxLabel}."
@@ -209,7 +203,7 @@ msgstr "{formatList} - hasta {imageUploadMaxLabel}."
 
 #: src/components/StorageMetrics/StorageUsageBar.tsx
 msgid "{freeSize} free"
-msgstr "{freeSize} gratis"
+msgstr "{freeSize} libres"
 
 #: src/components/Settings/MediaServerSelector/index.tsx
 msgid "{furtherSkippedRules, plural, one {...and # more} other {...and # more}}"
@@ -217,7 +211,7 @@ msgstr "{furtherSkippedRules, plural, one {...y # más} other {...y # más}}"
 
 #: src/components/Settings/About/Releases/index.tsx
 msgid "{hoursAgo, plural, one {# hour ago} other {# hours ago}}"
-msgstr "{hoursAgo, plural, one {# hace horas} other {Hace # horas}}"
+msgstr "{hoursAgo, plural, one {Hace # hora} other {Hace # horas}}"
 
 #: src/api/calendar.ts
 #: src/components/StorageMetrics/index.tsx
@@ -260,7 +254,7 @@ msgstr "Se pueden migrar {migratableRules} de {totalRules} reglas."
 
 #: src/components/Settings/About/Releases/index.tsx
 msgid "{minutesAgo, plural, one {# minute ago} other {# minutes ago}}"
-msgstr "{minutesAgo, plural, one {# hace minutos} other {Hace # minutos}}"
+msgstr "{minutesAgo, plural, one {Hace # minuto} other {Hace # minutos}}"
 
 #: src/components/StorageMetrics/index.tsx
 msgid "{mountCount, plural, one {# mount} other {# mounts}}"
@@ -268,9 +262,7 @@ msgstr "{mountCount, plural, one {# montaje} other {# montajes}}"
 
 #: src/components/StorageMetrics/index.tsx
 msgid "{mountCount, plural, one {Aggregated across # mount} other {Aggregated across # mounts}}"
-msgstr ""
-"{mountCount, plural, one {Agregado en el montaje #} other {Agregado en "
-"montajes #}}"
+msgstr "{mountCount, plural, one {Agregado en # montaje} other {Agregado en # montajes}}"
 
 #: src/components/Settings/Servarr/ExclusionTagSettings.tsx
 msgid "{name} exclusion tag settings could not be updated"
@@ -279,7 +271,7 @@ msgstr ""
 
 #: src/components/Settings/Servarr/ExclusionTagSettings.tsx
 msgid "{name} exclusion tag settings updated"
-msgstr "{name} configuración de etiqueta de exclusión actualizada"
+msgstr "Configuración de etiqueta de exclusión de {name} actualizada"
 
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "{path} (saved selection; total space unavailable)"
@@ -291,7 +283,7 @@ msgstr "{path} (selección guardada)"
 
 #: src/components/Settings/Metadata/index.tsx
 msgid "{providerTitle} metadata refresh started"
-msgstr "{providerTitle} se inició la actualización de metadatos"
+msgstr "Actualización de metadatos de {providerTitle} iniciada"
 
 #: src/components/Settings/Metadata/index.tsx
 msgid "{providerTitle} primary"
@@ -311,7 +303,7 @@ msgstr "{secondsAgo, plural, one {Hace # segundo} other {Hace # segundos}}"
 
 #: src/components/Rules/RuleGroup/AddModal/QualityProfileSelector.tsx
 msgid "{serviceName} quality profile *"
-msgstr "{serviceName} perfil de calidad *"
+msgstr "Perfil de calidad de {serviceName} *"
 
 #: src/components/StorageMetrics/index.tsx
 msgid "{size} reclaimed"
@@ -343,10 +335,7 @@ msgstr ""
 
 #: src/components/Settings/MediaServerSelector/index.tsx
 msgid "{skippedRuleCount, plural, one {# rule uses properties not available in {pendingName}.} other {# rules use properties not available in {pendingName}.}}"
-msgstr ""
-"{skippedRuleCount, plural, one {La regla # utiliza propiedades no "
-"disponibles en {pendingName}.} other {Las reglas # utilizan propiedades no "
-"disponibles en {pendingName}.}}"
+msgstr "{skippedRuleCount, plural, one {# regla utiliza propiedades no disponibles en {pendingName}.} other {# reglas utilizan propiedades no disponibles en {pendingName}.}}"
 
 #: src/pages/OverlayTemplateEditorPage.tsx
 msgid "{templateName} - Overlay Editor - Maintainerr"
@@ -358,11 +347,11 @@ msgstr "{templateName} (predeterminado)"
 
 #: src/components/Calendar/index.tsx
 msgid "{totalScheduledCount, plural, one {# scheduled} other {# scheduled}}"
-msgstr "{totalScheduledCount, plural, one {# programado} other {# programado}}"
+msgstr "{totalScheduledCount, plural, one {# programado} other {# programados}}"
 
 #: src/components/Rules/RuleGroup/AddModal/ArrAction/index.tsx
 msgid "{type} server *"
-msgstr "{type} servidor *"
+msgstr "Servidor {type} *"
 
 #: src/components/StorageMetrics/StorageUsageBar.tsx
 msgid "{usedSize} used"
@@ -519,7 +508,7 @@ msgstr "Agentes"
 
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "Aggregate (all paths)"
-msgstr "Agregado (todos los caminos)"
+msgstr "Agregado (todas las rutas)"
 
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "Align"
@@ -547,13 +536,11 @@ msgstr "Todas las temporadas"
 
 #: src/components/Settings/DownloadClient/index.tsx
 msgid "Also delete the download's data from disk when removing it. Turn off if you cross-seed."
-msgstr ""
-"También elimine los datos de la descarga del disco al eliminarla. Desactiva "
-"si cruza semillas."
+msgstr "Eliminar también los datos de la descarga del disco al quitarla. Desactívalo si haces cross-seed."
 
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "Amount of days"
-msgstr "cantidad de dias"
+msgstr "Cantidad de días"
 
 #: src/components/Common/CommunityRuleModal/index.tsx
 msgid "An error occurred fetching community rules. Please try again later."
@@ -563,9 +550,7 @@ msgstr ""
 
 #: src/components/Common/MediaActionModal.tsx
 msgid "An item excluded globally is un-excluded everywhere, not just here."
-msgstr ""
-"Un elemento excluido globalmente no está excluido en todas partes, no sólo "
-"aquí."
+msgstr "La exclusión global de un elemento se quita en todas partes, no solo aquí."
 
 #: src/components/Layout/index.tsx
 msgid "An unexpected error occurred."
@@ -683,10 +668,7 @@ msgstr "Colecciones automáticas"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Automatically sort items inside the collection on {mediaServerName}. Disabling later does not restore the default order - change it in {mediaServerName} if needed."
-msgstr ""
-"Ordene automáticamente los elementos dentro de la colección el "
-"{mediaServerName}. Deshabilitarlo más tarde no restaura el orden "
-"predeterminado; cámbielo en {mediaServerName} si es necesario."
+msgstr "Ordena automáticamente los elementos dentro de la colección en {mediaServerName}. Deshabilitarlo más tarde no restaura el orden predeterminado; cámbialo en {mediaServerName} si es necesario."
 
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "Background"
@@ -699,7 +681,7 @@ msgstr "Respaldo"
 #: src/components/Settings/Main/DatabaseBackupModal.tsx
 #: src/components/Settings/Main/index.tsx
 msgid "Backup Database"
-msgstr "Base de datos de respaldo"
+msgstr "Respaldar base de datos"
 
 #: src/components/Settings/Servarr/ServarrSettingsModal.tsx
 msgid "Base URL"
@@ -738,7 +720,7 @@ msgstr "Más grande"
 
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "bold"
-msgstr "atrevido"
+msgstr "negrita"
 
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "Boolean"
@@ -834,19 +816,19 @@ msgstr "Totales de limpieza"
 
 #: src/components/Rules/RuleGroup/AddModal/CollectionPosterPicker.tsx
 msgid "Clear"
-msgstr "Claro"
+msgstr "Borrar"
 
 #: src/components/Settings/Plex/index.tsx
 msgid "Clear credentials?"
-msgstr "¿Credenciales claras?"
+msgstr "¿Borrar las credenciales?"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Clone"
-msgstr "Clon"
+msgstr "Clonar"
 
 #: src/pages/RuleFormPage.tsx
 msgid "Clone rule - Maintainerr"
-msgstr "Regla de clonación: Maintainerr"
+msgstr "Clonar regla - Maintainerr"
 
 #: src/components/Calendar/index.tsx
 #: src/components/Collection/CollectionDetail/CollectionInfo/index.tsx
@@ -858,7 +840,7 @@ msgstr "Regla de clonación: Maintainerr"
 #: src/components/Rules/Rule/RuleCreator/CommunityRuleUpload/index.tsx
 #: src/components/Settings/About/Releases/index.tsx
 msgid "Close"
-msgstr "Cerca"
+msgstr "Cerrar"
 
 #: src/components/Layout/NavBar/index.tsx
 msgid "Close sidebar"
@@ -936,7 +918,7 @@ msgstr "Nombre corto de la comunidad *"
 
 #: src/components/Common/MediaCard/MediaModal/StreamystatsStatsPanel/index.tsx
 msgid "Completion"
-msgstr "Terminación"
+msgstr "Progreso"
 
 #: src/components/StorageMetrics/index.tsx
 msgid "Compute library sizes"
@@ -1060,7 +1042,7 @@ msgstr "Copiar YAML"
 
 #: src/pages/OverlayTemplateEditorPage.tsx
 msgid "Copying..."
-msgstr "Proceso de copiar..."
+msgstr "Copiando..."
 
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "Corner Radius"
@@ -1136,7 +1118,7 @@ msgstr "El recuento no es igual"
 
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "Count Equals"
-msgstr "contar es igual"
+msgstr "El recuento es igual"
 
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "Count Is Bigger Than"
@@ -1286,11 +1268,11 @@ msgstr "Eliminar archivo de evento"
 
 #: src/components/Common/MediaLibrarySortControl.tsx
 msgid "Delete Latest"
-msgstr "Eliminar lo último"
+msgstr "Eliminación más tardía"
 
 #: src/components/Common/MediaLibrarySortControl.tsx
 msgid "Delete Soonest"
-msgstr "Eliminar lo antes posible"
+msgstr "Eliminación más próxima"
 
 #: src/pages/OverlayTemplateListPage.tsx
 msgid "Delete template <0>“{templateName}”</0>? This action cannot be undone."
@@ -1385,7 +1367,7 @@ msgstr "Idioma de visualización"
 #: src/components/Rules/RuleGroup/AddModal/ArrAction/index.tsx
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Do nothing"
-msgstr "no hacer nada"
+msgstr "No hacer nada"
 
 #: src/components/Common/DocsButton/index.tsx
 msgid "Docs"
@@ -1459,15 +1441,15 @@ msgstr "Arrastrar para reordenar la sección"
 
 #: src/pages/OverlayTemplateListPage.tsx
 msgid "Drawn on episodes."
-msgstr "Dibujado en episodios."
+msgstr "Se dibuja en episodios."
 
 #: src/pages/OverlayTemplateListPage.tsx
 msgid "Drawn on movies, shows and seasons."
-msgstr "Basado en películas, series y temporadas."
+msgstr "Se dibuja en películas, series y temporadas."
 
 #: src/pages/OverlayTemplateListPage.tsx
 msgid "Duplicate"
-msgstr "Duplicado"
+msgstr "Duplicar"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Duration for which collection logs should be retained, measured in months (0 = forever)"
@@ -1700,7 +1682,7 @@ msgstr "Plantillas existentes"
 
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "Exists"
-msgstr "existe"
+msgstr "Existe"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 #: src/pages/OverlayTemplateListPage.tsx
@@ -1727,7 +1709,7 @@ msgstr ""
 
 #: src/components/Settings/Servarr/ServarrSettingsModal.tsx
 msgid "Failed to connect to {serviceName}. Verify URL and API key."
-msgstr "No se pudo conectar a {serviceName}. Verifique las claves URL y API."
+msgstr "No se pudo conectar con {serviceName}. Verifique la URL y la clave API."
 
 #: src/components/Settings/Emby/index.tsx
 msgid "Failed to connect to Emby. Verify URL and API key."
@@ -1888,7 +1870,7 @@ msgstr "No se pudo posponer la eliminación de este elemento."
 
 #: src/components/Settings/MediaServerSelector/index.tsx
 msgid "Failed to preview switch"
-msgstr "No se pudo obtener una vista previa del interruptor"
+msgstr "No se pudo previsualizar el cambio"
 
 #: src/components/Settings/Overlays/index.tsx
 msgid "Failed to process overlays"
@@ -1973,7 +1955,6 @@ msgid "False"
 msgstr "FALSO"
 
 #: src/components/Settings/Logs/index.tsx
-#, fuzzy
 msgid "Fatal"
 msgstr "Fatal"
 
@@ -2027,7 +2008,7 @@ msgstr "Forzar la eliminación de la solicitud de Seerr"
 
 #: src/components/StorageMetrics/index.tsx
 msgid "Free"
-msgstr "Gratis"
+msgstr "Libre"
 
 #: src/components/StorageMetrics/index.tsx
 msgid "Free space only - Sonarr/Radarr do not report total size for NFS/CIFS mounts"
@@ -2058,7 +2039,7 @@ msgstr "Configuración general actualizada"
 
 #: src/components/StorageMetrics/index.tsx
 msgid "Generated at {generatedAt}"
-msgstr "Generado en {generatedAt}"
+msgstr "Generado el {generatedAt}"
 
 #: src/components/Layout/index.tsx
 msgid "Go Back"
@@ -2172,11 +2153,11 @@ msgstr ""
 
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "In Last"
-msgstr "En el último"
+msgstr "En los últimos"
 
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "In Next"
-msgstr "En siguiente"
+msgstr "En los próximos"
 
 #: src/components/Collection/CollectionItem/index.tsx
 #: src/components/Rules/RuleGroup/index.tsx
@@ -2192,7 +2173,7 @@ msgstr "Información"
 
 #: src/pages/CollectionsListPage.tsx
 msgid "Initiated collection handling in the background."
-msgstr "Manejo de cobranza iniciado en segundo plano."
+msgstr "Procesamiento de colecciones iniciado en segundo plano."
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Invalid action"
@@ -2268,10 +2249,9 @@ msgstr "Configuración del trabajo actualizada"
 
 #: src/components/Settings/index.tsx
 msgid "Jobs"
-msgstr "Empleos"
+msgstr "Tareas"
 
 #: src/components/Common/CommunityRuleModal/index.tsx
-#, fuzzy
 msgid "Karma"
 msgstr "Karma"
 
@@ -2309,16 +2289,16 @@ msgstr "Última duración"
 
 #: src/components/Common/MediaCard/MediaModal/StreamystatsStatsPanel/index.tsx
 msgid "Last watched"
-msgstr "visto por última vez"
+msgstr "Visto por última vez"
 
 #: src/components/Settings/About/Releases/index.tsx
 msgid "Latest"
-msgstr "El último"
+msgstr "Más reciente"
 
 #: src/components/OverlayEditor/LayerPanel.tsx
 #: src/pages/OverlayTemplateEditorPage.tsx
 msgid "Layers"
-msgstr "capas"
+msgstr "Capas"
 
 #: src/components/Common/MediaLibrarySortControl.tsx
 msgid "Least Watched"
@@ -2385,7 +2365,7 @@ msgstr "Cargar cartel diferente"
 
 #: src/components/Settings/Jobs/index.tsx
 msgid "Loading current overlay schedule..."
-msgstr "Cargando calendario superpuesto actual..."
+msgstr "Cargando la programación de superposiciones actual..."
 
 #: src/components/Common/MediaCard/MediaModal/index.tsx
 msgid "Loading exclusion details..."
@@ -2397,7 +2377,7 @@ msgstr "Cargando bibliotecas..."
 
 #: src/components/Common/MediaCard/MediaModal/index.tsx
 msgid "Loading manual collection details..."
-msgstr "Cargando detalles de recolección manual..."
+msgstr "Cargando detalles de colección manual..."
 
 #: src/components/Overview/Content/index.tsx
 msgid "Loading more items"
@@ -2899,7 +2879,7 @@ msgstr "No contiene (coincidencia de lista parcial)"
 
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "Not Equals"
-msgstr "No iguales"
+msgstr "No es igual"
 
 #: src/components/Common/MediaCard/MediaModal/index.tsx
 msgid "Not excluded from any collection."
@@ -2962,11 +2942,11 @@ msgstr ""
 #: src/components/Settings/Sonarr/index.tsx
 #: src/components/Settings/Sportarr/index.tsx
 msgid "Ok"
-msgstr "De acuerdo"
+msgstr "Aceptar"
 
 #: src/components/Rules/RuleGroup/AddModal/ConfigureNotificationModal/index.tsx
 msgid "OK"
-msgstr "DE ACUERDO"
+msgstr "Aceptar"
 
 #: src/components/Common/YamlImporterModal/index.tsx
 msgid "Only {yamlExtension} or {ymlExtension} files are allowed."
@@ -2982,7 +2962,7 @@ msgstr "Abrir configuración de trabajo"
 
 #: src/components/Common/MediaCard/MediaModal/index.tsx
 msgid "Open on {provider}"
-msgstr "Abierto el {provider}"
+msgstr "Abrir en {provider}"
 
 #: src/components/Layout/index.tsx
 msgid "Open sidebar"
@@ -2998,12 +2978,12 @@ msgstr "Opciones"
 
 #: src/components/VersionStatus/index.tsx
 msgid "Out of Date"
-msgstr "Fuera de fecha"
+msgstr "Desactualizado"
 
 #: src/components/Collection/CollectionDetail/CollectionInfo/index.tsx
 #: src/components/Collection/CollectionDetail/TestMediaItem/index.tsx
 msgid "Output"
-msgstr "Producción"
+msgstr "Resultado"
 
 #: src/components/Settings/Jobs/index.tsx
 msgid "Overlay Handler"
@@ -3076,7 +3056,7 @@ msgstr "Contraseña"
 
 #: src/components/Common/MediaCard/MediaModal/StreamystatsStatsPanel/index.tsx
 msgid "Plays"
-msgstr "juega"
+msgstr "Reproducciones"
 
 #: src/components/Settings/Plex/index.tsx
 msgid "Please complete server setup by selecting a server from the dropdown."
@@ -3224,15 +3204,11 @@ msgstr "Anterior"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Prevents {listExclusionArrName} import lists re-adding removed movie"
-msgstr ""
-"Evita que las listas de importación {listExclusionArrName} vuelvan a agregar "
-"películas eliminadas"
+msgstr "Evita que las listas de importación de {listExclusionArrName} vuelvan a agregar películas eliminadas"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Prevents {listExclusionArrName} import lists re-adding removed show"
-msgstr ""
-"Evita que {listExclusionArrName} importen listas que se vuelvan a agregar "
-"series eliminados"
+msgstr "Evita que las listas de importación de {listExclusionArrName} vuelvan a agregar series eliminadas"
 
 #: src/components/Settings/Logs/index.tsx
 msgid "Previous"
@@ -3254,11 +3230,11 @@ msgstr ""
 
 #: src/components/Messages/Messages.tsx
 msgid "Processing: {collectionName}"
-msgstr "Procesamiento: {collectionName}"
+msgstr "Procesando: {collectionName}"
 
 #: src/components/Messages/Messages.tsx
 msgid "Processing: {ruleGroupName}"
-msgstr "Procesamiento: {ruleGroupName}"
+msgstr "Procesando: {ruleGroupName}"
 
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 #: src/pages/OverlayTemplateEditorPage.tsx
@@ -3267,10 +3243,7 @@ msgstr "Propiedades"
 
 #: src/components/Collection/CollectionDetail/PostponeButton/index.tsx
 msgid "Push this item's deletion further out by the number of days below. An item already past its deletion date is counted from today."
-msgstr ""
-"Posiciona la eliminación de este elemento en la cantidad de días que se "
-"indica a continuación. Un elemento que ya pasó su fecha de eliminación se "
-"cuenta a partir de hoy."
+msgstr "Retrasa la eliminación de este elemento la cantidad de días indicada a continuación. Un elemento que ya pasó su fecha de eliminación se cuenta a partir de hoy."
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Quality profile is required for this action"
@@ -3332,7 +3305,7 @@ msgstr "Actualizar metadatos"
 
 #: src/components/Settings/Metadata/index.tsx
 msgid "Refreshing..."
-msgstr "Refrescante..."
+msgstr "Actualizando..."
 
 #: src/components/Settings/Main/index.tsx
 msgid "Regenerate API key"
@@ -3428,7 +3401,7 @@ msgstr "Requiere informes de espacio total"
 
 #: src/components/Settings/Overlays/index.tsx
 msgid "Reset"
-msgstr "Reiniciar"
+msgstr "Restablecer"
 
 #: src/components/Settings/Overlays/index.tsx
 msgid "Reset All Overlays"
@@ -3448,7 +3421,7 @@ msgstr "Recuperando servidores..."
 
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "right"
-msgstr "bien"
+msgstr "derecha"
 
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "Rotation"
@@ -3508,15 +3481,15 @@ msgstr "Ejecutar la acción de la colección"
 
 #: src/components/Settings/Overlays/index.tsx
 msgid "Running"
-msgstr "Correr"
+msgstr "En ejecución"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Save"
-msgstr "Ahorrar"
+msgstr "Guardar"
 
 #: src/pages/OverlayTemplateEditorPage.tsx
 msgid "Save as copy"
-msgstr "guardar como copia"
+msgstr "Guardar como copia"
 
 #: src/components/Common/SaveButton.tsx
 #: src/pages/OverlayTemplateEditorPage.tsx
@@ -3525,7 +3498,7 @@ msgstr "Guardar cambios"
 
 #: src/pages/OverlayTemplateEditorPage.tsx
 msgid "Save copy"
-msgstr "guardar copia"
+msgstr "Guardar copia"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Save first to enable poster upload."
@@ -3562,7 +3535,7 @@ msgstr ""
 #: src/components/Common/SaveButton.tsx
 #: src/pages/OverlayTemplateEditorPage.tsx
 msgid "Saving..."
-msgstr "Ahorro..."
+msgstr "Guardando..."
 
 #: src/api/calendar.ts
 msgid "Scheduled Action"
@@ -3570,7 +3543,7 @@ msgstr "Acción programada"
 
 #: src/components/Settings/Logs/index.tsx
 msgid "Scroll to bottom on new message"
-msgstr "Desplácese hacia abajo en el mensaje nuevo"
+msgstr "Desplazarse al final con cada mensaje nuevo"
 
 #: src/components/Common/SearchBar/index.tsx
 msgid "Search"
@@ -3801,11 +3774,11 @@ msgstr "Mostrar menos"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Show on {mediaServerName} home"
-msgstr "Mostrar en {mediaServerName} inicio"
+msgstr "Mostrar en la pantalla de inicio de {mediaServerName}"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Show on {mediaServerName} library recommended"
-msgstr "Mostrar en la biblioteca {mediaServerName} recomendada"
+msgstr "Mostrar en los recomendados de la biblioteca de {mediaServerName}"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Show the collection on the {mediaServerName} home screen"
@@ -3905,7 +3878,7 @@ msgstr "Ordenar título"
 
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "Specific date"
-msgstr "fecha especifica"
+msgstr "Fecha específica"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Specify the rules this group needs to enforce"
@@ -3913,7 +3886,7 @@ msgstr "Especificar las reglas que este grupo debe hacer cumplir"
 
 #: src/components/Settings/Sportarr/index.tsx
 msgid "Sportarr configuration"
-msgstr "Configuración deportiva"
+msgstr "Configuración de Sportarr"
 
 #: src/components/Settings/Sportarr/index.tsx
 msgid "Sportarr server removed"
@@ -3921,7 +3894,7 @@ msgstr "Servidor Sportarr eliminado"
 
 #: src/components/Settings/Sportarr/index.tsx
 msgid "Sportarr Settings"
-msgstr "Configuración deportiva"
+msgstr "Configuración de Sportarr"
 
 #: src/components/Settings/Sportarr/index.tsx
 msgid "Sportarr settings - Maintainerr"
@@ -4002,7 +3975,7 @@ msgstr "Configuración de Streamystats actualizada"
 
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "Stroke"
-msgstr "Ataque"
+msgstr "Trazo"
 
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "Stroke Width"
@@ -4018,7 +3991,7 @@ msgstr "Estudio (Z-A) Descendente"
 
 #: src/components/Common/MediaActionModal.tsx
 msgid "Submit"
-msgstr "Entregar"
+msgstr "Enviar"
 
 #: src/components/Common/MediaActionModal.tsx
 msgid "Submitting..."
@@ -4071,11 +4044,11 @@ msgstr "Cambiar"
 
 #: src/components/Settings/MediaServerSelector/index.tsx
 msgid "Switching..."
-msgstr "Traspuesta..."
+msgstr "Cambiando..."
 
 #: src/components/Settings/Tabs/index.tsx
 msgid "Tabs"
-msgstr "Cortina a la italiana"
+msgstr "Pestañas"
 
 #: src/components/Settings/Servarr/ExclusionTagSettings.tsx
 msgid "Tag excluded content"
@@ -4083,21 +4056,15 @@ msgstr "Etiquetar contenido excluido"
 
 #: src/components/Settings/Servarr/ExclusionTagSettings.tsx
 msgid "Tag label"
-msgstr "Etiqueta de etiqueta"
+msgstr "Texto de la etiqueta"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Tag matching movies in {tagArrName} with a tag based on this rule group's name while they're in the collection, removed when they leave"
-msgstr ""
-"Etiquetar películas coincidentes en {tagArrName} con una etiqueta basada en "
-"el nombre de este grupo de reglas mientras están en la colección, eliminada "
-"cuando salen"
+msgstr "Etiquetar películas coincidentes en {tagArrName} con una etiqueta basada en el nombre de este grupo de reglas mientras están en la colección; se elimina cuando salen"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Tag matching shows in {tagArrName} with a tag based on this rule group's name while they're in the collection, removed when they leave"
-msgstr ""
-"La coincidencia de etiquetas se muestra en {tagArrName} con una etiqueta "
-"basada en el nombre de este grupo de reglas mientras están en la colección, "
-"que se elimina cuando salen"
+msgstr "Etiquetar series coincidentes en {tagArrName} con una etiqueta basada en el nombre de este grupo de reglas mientras están en la colección; se elimina cuando salen"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Tag this content in {tagArrName}"
@@ -4105,19 +4072,19 @@ msgstr "Etiqueta este contenido en {tagArrName}"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Take action after days is required for this action"
-msgstr "Tomar medidas después de que se requieran días para esta acción."
+msgstr "Ejecutar la acción después de (días) es obligatorio para esta acción"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Take action after days must be 0 or greater"
-msgstr "Tomar medidas después de que los días deben ser 0 o más"
+msgstr "Ejecutar la acción después de (días) debe ser 0 o mayor"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Take action after days must be a whole number"
-msgstr "Tomar medidas después de que los días deben ser un número entero"
+msgstr "Ejecutar la acción después de (días) debe ser un número entero"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Take action after days*"
-msgstr "Tome medidas después de días*"
+msgstr "Ejecutar la acción después de (días)*"
 
 #: src/components/Rules/RuleGroup/AddModal/QualityProfileSelector.tsx
 msgid "Target quality profile to change to"
@@ -4183,7 +4150,7 @@ msgstr "Prueba"
 #: src/components/Settings/Metadata/index.tsx
 #: src/components/Settings/Servarr/ServarrSettingsModal.tsx
 msgid "Test Connection"
-msgstr "Conexión de prueba"
+msgstr "Probar conexión"
 
 #: src/components/Settings/Emby/index.tsx
 #: src/components/Settings/Jellyfin/index.tsx
@@ -4202,11 +4169,11 @@ msgstr "Pruebe la conexión para cargar los usuarios administradores de Jellyfin
 #: src/components/Collection/CollectionDetail/TestMediaItem/index.tsx
 #: src/pages/CollectionDetailPage.tsx
 msgid "Test Media"
-msgstr "Contenido multimedia de prueba"
+msgstr "Probar contenido multimedia"
 
 #: src/components/Collection/CollectionDetail/TestMediaItem/index.tsx
 msgid "Testing..."
-msgstr "Pruebas..."
+msgstr "Probando..."
 
 #: src/components/OverlayEditor/ElementToolbox.tsx
 #: src/components/OverlayEditor/LayerPanel.tsx
@@ -4306,7 +4273,7 @@ msgstr "El servidor ha devuelto una respuesta inesperada."
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "The type of TV media rules should apply to"
-msgstr "El tipo de reglas de contenido multimedia televisivos deben aplicarse a"
+msgstr "El tipo de contenido de TV al que deben aplicarse las reglas"
 
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "The user list could not be loaded"
@@ -4403,7 +4370,7 @@ msgstr "Texto de hoy"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Toggle internal collection system"
-msgstr "Alternar sistema de recolección interno"
+msgstr "Alternar el sistema de colecciones interno"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Toggle the rule system"
@@ -4473,7 +4440,7 @@ msgstr "Activar ahora"
 
 #: src/components/Collection/CollectionDetail/TriggerRuleActionButton/index.tsx
 msgid "Trigger Rule Action"
-msgstr "Acción de regla de activación"
+msgstr "Ejecutar acción de la regla"
 
 #: src/components/Collection/CollectionDetail/TriggerRuleActionButton/index.tsx
 msgid "Triggering..."
@@ -4536,7 +4503,7 @@ msgstr "Error desconocido al obtener espacio en disco."
 
 #: src/components/StorageMetrics/index.tsx
 msgid "Unknown path"
-msgstr "Camino desconocido"
+msgstr "Ruta desconocida"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Unmonitor and delete episode"
@@ -4814,7 +4781,7 @@ msgstr "Advertencia"
 
 #: src/components/Common/MediaCard/MediaModal/StreamystatsStatsPanel/index.tsx
 msgid "Watch time"
-msgstr "tiempo de visualización"
+msgstr "Tiempo de visualización"
 
 #: src/components/Settings/MediaServerSelector/index.tsx
 msgid "We will now switch from <0>{currentName}</0> to <1>{pendingName}</1>."
