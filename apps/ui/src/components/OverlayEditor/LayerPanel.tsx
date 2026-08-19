@@ -144,7 +144,11 @@ export function LayerPanel({
                 e.stopPropagation()
                 toggleVisibility(el.id)
               }}
-              title={el.visible ? t`Hide` : t`Show`}
+              title={
+                el.visible
+                  ? t({ message: 'Hide', context: 'Toggle layer visibility' })
+                  : t({ message: 'Show', context: 'Toggle layer visibility' })
+              }
             >
               {el.visible ? (
                 <EyeIcon className="h-3.5 w-3.5" />

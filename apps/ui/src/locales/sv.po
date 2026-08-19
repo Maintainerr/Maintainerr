@@ -10,8 +10,7 @@ msgstr ""
 "Report-Msgid-Bugs-To: \n"
 "PO-Revision-Date: 2026-08-19 06:05+0000\n"
 "Last-Translator: Maintainerr <get@maintainerr.info>\n"
-"Language-Team: Swedish <https://hosted.weblate.org/projects/maintainerr/app/"
-"sv/>\n"
+"Language-Team: Swedish <https://hosted.weblate.org/projects/maintainerr/app/sv/>\n"
 "Plural-Forms: nplurals=2; plural=n != 1;\n"
 
 #: src/components/Settings/MediaServerSelector/index.tsx
@@ -20,10 +19,7 @@ msgstr "- använder {propertyName}"
 
 #: src/components/Settings/Servarr/ExclusionTagSettings.tsx
 msgid "\"{label}\" is not a valid {name} tag. Lowercase letters, numbers and hyphens only ({chars}), with no leading, trailing, or repeated hyphens."
-msgstr ""
-"\"{label}\" är inte en giltig {name}-tagg. Endast små bokstäver, siffror och "
-"bindestreck ({chars}), utan inledande, avslutande eller upprepade "
-"bindestreck."
+msgstr "\"{label}\" är inte en giltig {name}-tagg. Endast små bokstäver, siffror och bindestreck ({chars}), utan inledande, avslutande eller upprepade bindestreck."
 
 #: src/pages/OverlayTemplateListPage.tsx
 msgid "\"{templateName}\" set as the default poster template"
@@ -722,9 +718,7 @@ msgstr ""
 
 #: src/components/Settings/index.tsx
 msgid "Choose your media server, confirm the connection, and then you can continue configuring the rest of Maintainerr."
-msgstr ""
-"Välj din mediaserver, bekräfta anslutningen och sedan kan du fortsätta "
-"konfigurera resten av Maintainerr."
+msgstr "Välj din mediaserver, bekräfta anslutningen och sedan kan du fortsätta konfigurera resten av Maintainerr."
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Clean up leftover folders"
@@ -1521,9 +1515,7 @@ msgstr ""
 
 #: src/components/Collection/CollectionOverview/index.tsx
 msgid "Executes each collection's configured action (Delete / Unmonitor / Do Nothing). Does not remove items from collections."
-msgstr ""
-"Utför varje samlings konfigurerade åtgärder (Delete / Unmonitor / Do Nothing)"
-". Tar inte bort objekt från samlingar."
+msgstr "Utför varje samlings konfigurerade åtgärder (Delete / Unmonitor / Do Nothing). Tar inte bort objekt från samlingar."
 
 #: src/components/Overlays/index.tsx
 msgid "Existing Templates"
@@ -1898,6 +1890,7 @@ msgid "Help"
 msgstr ""
 
 #: src/components/OverlayEditor/LayerPanel.tsx
+msgctxt "Toggle layer visibility"
 msgid "Hide"
 msgstr ""
 
@@ -1919,6 +1912,10 @@ msgstr ""
 
 #: src/components/Settings/Overlays/index.tsx
 msgid "If you do not set a schedule, you will need to use Run Now in Overlay Settings each time."
+msgstr ""
+
+#: src/components/Settings/About/index.tsx
+msgid "If you find any broken features and/or are experiencing instability, please report it on GitHub!"
 msgstr ""
 
 #: src/components/OverlayEditor/ElementToolbox.tsx
@@ -3281,8 +3278,7 @@ msgstr ""
 
 #: src/components/Settings/Main/LanguageSelector.tsx
 msgid "Saved in this browser. Untranslated text falls back to English."
-msgstr ""
-"Sparas i den här webbläsaren. Text som inte är översatt visas på Engelska."
+msgstr "Sparas i den här webbläsaren. Text som inte är översatt visas på Engelska."
 
 #: src/components/Rules/RuleGroup/AddModal/CollectionPosterPicker.tsx
 msgid "Saved locally. Maintainerr couldn't push to {mediaServerName} right now; it'll re-apply automatically next time the collection is recreated there."
@@ -3511,7 +3507,11 @@ msgid "show"
 msgstr ""
 
 #: src/components/Calendar/index.tsx
+msgid "Show"
+msgstr ""
+
 #: src/components/OverlayEditor/LayerPanel.tsx
+msgctxt "Toggle layer visibility"
 msgid "Show"
 msgstr ""
 
@@ -4013,10 +4013,6 @@ msgstr ""
 
 #: src/components/Common/MediaActionModal.tsx
 msgid "They are removed from every collection they are currently in as well."
-msgstr ""
-
-#: src/components/Settings/About/index.tsx
-msgid "If you find any broken features and/or are experiencing instability, please report it on GitHub!"
 msgstr ""
 
 #: src/components/Collection/CollectionDetail/RemoveFromCollectionButton/index.tsx
@@ -4525,9 +4521,7 @@ msgstr "Du kan skapa en gratis developer API-nyckel på <0>{tvdbDomain}</0>."
 #: src/components/Layout/index.tsx
 #, fuzzy
 msgid "You can try going back or reloading the page. If the problem persists, please check the browser console for more details."
-msgstr ""
-"Du kan försöka gå tillbaka eller ladda om sidan. Om problemet kvarstår, "
-"kontrollera webbläsarens konsol för mer information."
+msgstr "Du kan försöka gå tillbaka eller ladda om sidan. Om problemet kvarstår, kontrollera webbläsarens konsol för mer information."
 
 #: src/components/Common/CommunityRowTableRow/index.tsx
 msgid "You have already submitted karma for this rule."
