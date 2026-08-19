@@ -1,3 +1,4 @@
+import { t } from '@lingui/core/macro'
 import type {
   BulkCollectionMediaRequest,
   BulkExclusionRequest,
@@ -33,7 +34,14 @@ const postInChunks = async (
     } catch {
       for (const remaining of batches.slice(index)) {
         for (const mediaId of remaining) {
-          results.push({ mediaId, code: 0, message: 'Failed - request error' })
+          results.push({
+            mediaId,
+            code: 0,
+            // No "Failed - " prefix: that prefix is the server's, and the
+            // toast strips it by matching the English text. A translated
+            // prefix would survive the strip and read twice.
+            message: t`request error`,
+          })
         }
       }
       break

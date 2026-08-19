@@ -1,5 +1,5 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { LeavingSoonMethod } from '@maintainerr/contracts'
+import { fireEvent, render, screen, waitFor } from '../../../test-utils/render'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import JellyfinSettings from './index'
 

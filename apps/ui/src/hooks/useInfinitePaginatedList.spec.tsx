@@ -1,4 +1,4 @@
-import { act, renderHook, waitFor } from '@testing-library/react'
+import { act, renderHook, waitFor } from '../test-utils/render'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('lodash-es', () => ({

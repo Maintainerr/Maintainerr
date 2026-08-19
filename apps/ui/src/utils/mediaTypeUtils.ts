@@ -1,3 +1,4 @@
+import { t } from '@lingui/core/macro'
 import {
   SPORTARR_TVDB_ALIAS_LEAGUE_OFFSET,
   SPORTARR_TVDB_ALIAS_RANGE,
@@ -54,14 +55,26 @@ export function mediaTypeLabel(
   mediaType: MediaItemType,
   numbers: { seasonNumber?: number; episodeNumber?: number } = {},
 ): string {
-  const itemNumber =
-    mediaType === 'season'
-      ? numbers.seasonNumber
-      : mediaType === 'episode'
-        ? numbers.episodeNumber
-        : undefined
+  if (mediaType === 'season' && numbers.seasonNumber != null) {
+    const itemNumber = numbers.seasonNumber
+    return t`season ${{ itemNumber }}`
+  }
 
-  return itemNumber != null ? `${mediaType} ${itemNumber}` : mediaType
+  if (mediaType === 'episode' && numbers.episodeNumber != null) {
+    const itemNumber = numbers.episodeNumber
+    return t`episode ${{ itemNumber }}`
+  }
+
+  switch (mediaType) {
+    case 'movie':
+      return t`movie`
+    case 'show':
+      return t`show`
+    case 'season':
+      return t`season`
+    default:
+      return t`episode`
+  }
 }
 
 export function buildMetadataPath(

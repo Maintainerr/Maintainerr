@@ -9,6 +9,7 @@ import {
   RuleHandlerProgressedEventDto,
   RuleHandlerStartedEventDto,
 } from '@maintainerr/contracts'
+import { Trans } from '@lingui/react/macro'
 import { useRef, useState } from 'react'
 import { useEvent } from '../../contexts/events-context'
 import { getPercentValue } from '../../utils/formatBytes'
@@ -103,6 +104,12 @@ const RuleHandlerMessages = () => {
     },
   )
 
+  // Named here so the extracted message reads "Processing: {ruleGroupName}".
+  const ruleGroupName =
+    event && isRuleHandlerProgressedEvent(event)
+      ? event.ruleGroupName
+      : undefined
+
   return (
     <Transition
       as="div"
@@ -124,7 +131,9 @@ const RuleHandlerMessages = () => {
           </div>
           {event && isStartedOrFinishedEvent(event) && <>{event.message}</>}
           {event && isRuleHandlerProgressedEvent(event) && (
-            <div>Processing: {event.ruleGroupName}</div>
+            <div>
+              <Trans>Processing: {ruleGroupName}</Trans>
+            </div>
           )}
         </div>
         {event && isRuleHandlerProgressedEvent(event) && (
@@ -188,6 +197,12 @@ const CollectionHandlerMessages = () => {
     isCollectionHandlerProgressedEvent(event) &&
     event.totalMediaToHandle > 0
 
+  // Named here so the extracted message reads "Processing: {collectionName}".
+  const collectionName =
+    event && isCollectionHandlerProgressedEvent(event)
+      ? event.processingCollection?.name
+      : undefined
+
   return (
     <Transition
       as="div"
@@ -208,7 +223,9 @@ const CollectionHandlerMessages = () => {
         {event &&
           isCollectionHandlerProgressedEvent(event) &&
           event.processingCollection && (
-            <div>Processing: {event.processingCollection.name}</div>
+            <div>
+              <Trans>Processing: {collectionName}</Trans>
+            </div>
           )}
       </div>
       {showCollectionProgressBars && (

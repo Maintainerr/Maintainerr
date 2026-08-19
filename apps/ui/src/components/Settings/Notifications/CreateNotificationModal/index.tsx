@@ -1,3 +1,4 @@
+import { Trans, useLingui } from '@lingui/react/macro'
 import { BasicResponseDto } from '@maintainerr/contracts'
 import { useEffect, useState } from 'react'
 import GetApiHandler, { PostApiHandler } from '../../../../utils/ApiHandler'
@@ -54,6 +55,7 @@ interface TestStatus {
 }
 
 const CreateNotificationModal = (props: CreateNotificationModal) => {
+  const { t } = useLingui()
   const [availableAgents, setAvailableAgents] = useState<agentSpec[]>()
   const [availableTypes, setAvailableTypes] = useState<typeSpec[]>()
   const [name, setName] = useState(props.selected?.name ?? '')
@@ -91,7 +93,7 @@ const CreateNotificationModal = (props: CreateNotificationModal) => {
   }
 
   const handleSubmit = async () => {
-    const types = targetTypes ? targetTypes.map((t) => t.id) : []
+    const types = targetTypes ? targetTypes.map((type) => type.id) : []
 
     if (hasValidTargetAgent && name.trim() !== '') {
       const payload: AgentConfiguration = {
@@ -107,7 +109,7 @@ const CreateNotificationModal = (props: CreateNotificationModal) => {
       await postNotificationConfig(payload)
     } else {
       setError({
-        message: 'Not all fields contain values',
+        message: t`Not all fields contain values`,
         severity: 'warning',
       })
     }
@@ -117,7 +119,7 @@ const CreateNotificationModal = (props: CreateNotificationModal) => {
     if (testing) return
 
     if (hasValidTargetAgent && name.trim() !== '') {
-      const types = targetTypes ? targetTypes.map((t) => t.id) : []
+      const types = targetTypes ? targetTypes.map((type) => type.id) : []
       clearFeedback()
       setTesting(true)
 
@@ -135,14 +137,14 @@ const CreateNotificationModal = (props: CreateNotificationModal) => {
             status: resp === 'Success',
             message:
               resp === 'Success'
-                ? 'Successfully fired the notification!'
+                ? t`Successfully fired the notification!`
                 : resp,
           })
         })
         .catch(() => {
           setTestResult({
             status: false,
-            message: 'Failed to fire the notification.',
+            message: t`Failed to fire the notification.`,
           })
         })
         .finally(() => {
@@ -150,7 +152,7 @@ const CreateNotificationModal = (props: CreateNotificationModal) => {
         })
     } else {
       setError({
-        message: 'Not all fields contain values',
+        message: t`Not all fields contain values`,
         severity: 'warning',
       })
     }
@@ -202,12 +204,12 @@ const CreateNotificationModal = (props: CreateNotificationModal) => {
       }
 
       setError({
-        message: status.message ?? 'Failed to save notification agent',
+        message: status.message ?? t`Failed to save notification agent`,
         severity: 'error',
       })
     } catch {
       setError({
-        message: 'Failed to save notification agent',
+        message: t`Failed to save notification agent`,
         severity: 'error',
       })
     } finally {
@@ -224,8 +226,8 @@ const CreateNotificationModal = (props: CreateNotificationModal) => {
   }
 
   const modalTitle = props.selected?.id
-    ? 'Edit Notification Agent'
-    : 'New Notification Agent'
+    ? t`Edit Notification Agent`
+    : t`New Notification Agent`
 
   return (
     <Modal
@@ -283,7 +285,7 @@ const CreateNotificationModal = (props: CreateNotificationModal) => {
             {/* Config Name */}
             <div className="form-row">
               <label htmlFor="name" className="text-label">
-                Name *
+                <Trans>Name *</Trans>
               </label>
               <div className="form-input">
                 <div className="form-input-field">
@@ -303,7 +305,7 @@ const CreateNotificationModal = (props: CreateNotificationModal) => {
             {/* Enabled */}
             <div className="form-row">
               <label htmlFor="enabled" className="text-label">
-                Enabled
+                <Trans>Enabled</Trans>
               </label>
               <div className="form-input">
                 <div className="form-input-field">
@@ -324,7 +326,7 @@ const CreateNotificationModal = (props: CreateNotificationModal) => {
             {/* Select agent */}
             <div className="form-row">
               <label htmlFor="agent" className="text-label">
-                Agent *
+                <Trans>Agent *</Trans>
               </label>
               <div className="form-input">
                 <div className="form-input-field">
@@ -445,7 +447,9 @@ const CreateNotificationModal = (props: CreateNotificationModal) => {
 
               {/* Select types */}
               <div className="form-row">
-                <label className="text-label">Types *</label>
+                <label className="text-label">
+                  <Trans>Types *</Trans>
+                </label>
                 <div className="form-input">
                   {availableTypes.map((n) => (
                     <div key={n.id}>
@@ -474,7 +478,7 @@ const CreateNotificationModal = (props: CreateNotificationModal) => {
                       {targetTypes.find((el) => el.id === 8) && n.id === 8 && (
                         <div className="form-row mt-0 mb-0 ml-9">
                           <label htmlFor="about-scale" className="text-label">
-                            Notify x days before removal
+                            <Trans>Notify x days before removal</Trans>
                           </label>
                           <div className="form-input">
                             <div className="form-input-field">

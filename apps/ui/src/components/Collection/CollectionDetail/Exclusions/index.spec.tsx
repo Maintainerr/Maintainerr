@@ -1,4 +1,9 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '../../../../test-utils/render'
 import { toast } from 'react-toastify'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useMediaServerType } from '../../../../hooks/useMediaServerType'

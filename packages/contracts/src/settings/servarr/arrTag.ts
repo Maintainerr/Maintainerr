@@ -9,9 +9,12 @@
  * the format). Manual char checks, not regex (repo convention).
  */
 
-/** Human-readable hint shown next to tag-label inputs. */
-export const ARR_TAG_LABEL_HINT =
-  'Lowercase letters, numbers and hyphens only (a-z, 0-9, -)'
+/**
+ * The allowed characters, as the hint beside a tag-label input spells them out.
+ * The sentence around them is a translated message in the UI; only this
+ * notation is shared, so the wording and the rule below cannot drift apart.
+ */
+export const ARR_TAG_LABEL_HINT = 'a-z, 0-9, -'
 
 /**
  * True when `label` is a valid *arr tag label the server applies verbatim: it's

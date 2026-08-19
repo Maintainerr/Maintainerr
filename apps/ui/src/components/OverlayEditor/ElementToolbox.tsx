@@ -5,6 +5,7 @@ import {
   TemplateIcon,
   VariableIcon,
 } from '@heroicons/react/outline'
+import { Trans, useLingui } from '@lingui/react/macro'
 import type {
   OverlayElement,
   OverlayTemplateMode,
@@ -20,6 +21,8 @@ let uidCounter = 0
 const uid = () => `el-${Date.now()}-${++uidCounter}`
 
 export function ElementToolbox({ onAdd, nextLayerOrder }: ElementToolboxProps) {
+  const { t } = useLingui()
+
   const addText = () => {
     onAdd({
       id: uid(),
@@ -124,26 +127,26 @@ export function ElementToolbox({ onAdd, nextLayerOrder }: ElementToolboxProps) {
   return (
     <div>
       <h3 className="mb-2 text-xs font-medium tracking-wider text-zinc-400 uppercase">
-        Elements
+        <Trans>Elements</Trans>
       </h3>
       <div className="flex flex-col gap-1.5">
-        <ToolButton icon={AnnotationIcon} label="Text" onClick={addText} />
+        <ToolButton icon={AnnotationIcon} label={t`Text`} onClick={addText} />
         <ToolButton
           icon={VariableIcon}
-          label="Variable"
+          label={t`Variable`}
           onClick={addVariable}
         />
         <ToolButton
           icon={TemplateIcon}
-          label="Rectangle"
+          label={t`Rectangle`}
           onClick={() => addShape('rectangle')}
         />
         <ToolButton
           icon={CursorClickIcon}
-          label="Ellipse"
+          label={t`Ellipse`}
           onClick={() => addShape('ellipse')}
         />
-        <ToolButton icon={PhotographIcon} label="Image" onClick={addImage} />
+        <ToolButton icon={PhotographIcon} label={t`Image`} onClick={addImage} />
       </div>
     </div>
   )

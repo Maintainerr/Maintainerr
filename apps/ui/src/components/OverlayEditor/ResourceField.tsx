@@ -1,3 +1,4 @@
+import { Trans, useLingui } from '@lingui/react/macro'
 import { useRef } from 'react'
 import { Select } from '../Forms/Select'
 import Button from '../Common/Button'
@@ -36,9 +37,13 @@ export function ResourceField({
   onUpload,
   accept,
   uploadTitle,
-  placeholder = 'Select...',
+  placeholder,
 }: ResourceFieldProps) {
+  const { t } = useLingui()
   const fileRef = useRef<HTMLInputElement>(null)
+  // Resolved in the body rather than as a default parameter, which would run
+  // before useLingui().
+  const emptyLabel = placeholder ?? t`Select...`
   const known = options.some((opt) => opt.name === value)
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -58,7 +63,7 @@ export function ResourceField({
         onChange={(e) => onSelect(e.target.value)}
       >
         <option value="" disabled={known}>
-          {placeholder}
+          {emptyLabel}
         </option>
         {options.map((opt) => (
           <option key={opt.path} value={opt.name}>
@@ -74,7 +79,7 @@ export function ResourceField({
         onClick={() => fileRef.current?.click()}
         title={uploadTitle}
       >
-        Upload
+        <Trans>Upload</Trans>
       </Button>
       <input
         ref={fileRef}

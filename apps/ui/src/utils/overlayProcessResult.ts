@@ -1,3 +1,4 @@
+import { t } from '@lingui/core/macro'
 import type { OverlayProcessorRunResult } from '@maintainerr/contracts'
 
 export const formatOverlayProcessSummary = ({
@@ -6,4 +7,4 @@ export const formatOverlayProcessSummary = ({
   skipped,
   errors,
 }: OverlayProcessorRunResult) =>
-  `Processed: ${processed}, Reverted: ${reverted}, Skipped: ${skipped}, Errors: ${errors}`
+  t`Processed: ${{ processed }}, Reverted: ${{ reverted }}, Skipped: ${{ skipped }}, Errors: ${{ errors }}`

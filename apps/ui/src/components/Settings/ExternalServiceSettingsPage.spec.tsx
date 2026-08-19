@@ -4,7 +4,7 @@ import {
   render,
   screen,
   waitFor,
-} from '@testing-library/react'
+} from '../../test-utils/render'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { z } from 'zod'
 import ExternalServiceSettingsPage, {
@@ -87,7 +87,8 @@ describe('ExternalServiceSettingsPage', () => {
   it('keeps Save Changes enabled regardless of whether connection values have changed', async () => {
     render(
       <ExternalServiceSettingsPage
-        scope="Seerr settings"
+        updatedMessage="Seerr settings updated"
+        updateErrorMessage="Seerr settings could not be updated"
         pageTitle="Seerr settings - Maintainerr"
         heading="Seerr Settings"
         description="Seerr configuration"
@@ -125,7 +126,8 @@ describe('ExternalServiceSettingsPage', () => {
 
     render(
       <ExternalServiceSettingsPage
-        scope="Seerr settings"
+        updatedMessage="Seerr settings updated"
+        updateErrorMessage="Seerr settings could not be updated"
         pageTitle="Seerr settings - Maintainerr"
         heading="Seerr Settings"
         description="Seerr configuration"
@@ -172,7 +174,8 @@ describe('ExternalServiceSettingsPage', () => {
 
     render(
       <ExternalServiceSettingsPage
-        scope="Streamystats settings"
+        updatedMessage="Streamystats settings updated"
+        updateErrorMessage="Streamystats settings could not be updated"
         pageTitle="Streamystats settings - Maintainerr"
         heading="Streamystats Settings"
         description="Streamystats configuration"
@@ -217,7 +220,8 @@ describe('ExternalServiceSettingsPage', () => {
 
     render(
       <ExternalServiceSettingsPage
-        scope="Tracearr settings"
+        updatedMessage="Tracearr settings updated"
+        updateErrorMessage="Tracearr settings could not be updated"
         pageTitle="Tracearr settings - Maintainerr"
         heading="Tracearr Settings"
         description="Tracearr configuration"
@@ -270,7 +274,8 @@ describe('ExternalServiceSettingsPage', () => {
 
     render(
       <ExternalServiceSettingsPage
-        scope="Tracearr settings"
+        updatedMessage="Tracearr settings updated"
+        updateErrorMessage="Tracearr settings could not be updated"
         pageTitle="Tracearr settings - Maintainerr"
         heading="Tracearr Settings"
         description="Tracearr configuration"
@@ -307,7 +312,8 @@ describe('ExternalServiceSettingsPage', () => {
 
     render(
       <ExternalServiceSettingsPage
-        scope="Tracearr settings"
+        updatedMessage="Tracearr settings updated"
+        updateErrorMessage="Tracearr settings could not be updated"
         pageTitle="Tracearr settings - Maintainerr"
         heading="Tracearr Settings"
         description="Tracearr configuration"
@@ -357,7 +363,8 @@ describe('ExternalServiceSettingsPage', () => {
 
     render(
       <ExternalServiceSettingsPage
-        scope="Tracearr settings"
+        updatedMessage="Tracearr settings updated"
+        updateErrorMessage="Tracearr settings could not be updated"
         pageTitle="Tracearr settings - Maintainerr"
         heading="Tracearr Settings"
         description="Tracearr configuration"
@@ -396,7 +403,8 @@ describe('ExternalServiceSettingsPage', () => {
 
     render(
       <ExternalServiceSettingsPage
-        scope="Seerr settings"
+        updatedMessage="Seerr settings updated"
+        updateErrorMessage="Seerr settings could not be updated"
         pageTitle="Seerr settings - Maintainerr"
         heading="Seerr Settings"
         description="Seerr configuration"
@@ -426,7 +434,8 @@ describe('ExternalServiceSettingsPage', () => {
 
     render(
       <ExternalServiceSettingsPage
-        scope="Seerr settings"
+        updatedMessage="Seerr settings updated"
+        updateErrorMessage="Seerr settings could not be updated"
         pageTitle="Seerr settings - Maintainerr"
         heading="Seerr Settings"
         description="Seerr configuration"
@@ -470,7 +479,8 @@ describe('ExternalServiceSettingsPage', () => {
 
     render(
       <ExternalServiceSettingsPage
-        scope="Tracearr settings"
+        updatedMessage="Tracearr settings updated"
+        updateErrorMessage="Tracearr settings could not be updated"
         pageTitle="Tracearr settings - Maintainerr"
         heading="Tracearr Settings"
         description="Tracearr configuration"

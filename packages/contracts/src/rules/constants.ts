@@ -25,32 +25,6 @@ export enum RulePossibility {
 }
 
 /**
- * Human-readable translations for rule possibilities
- */
-export const RulePossibilityTranslations: Record<RulePossibility, string> = {
-  [RulePossibility.BIGGER]: 'Bigger',
-  [RulePossibility.SMALLER]: 'Smaller',
-  [RulePossibility.EQUALS]: 'Equals',
-  [RulePossibility.NOT_EQUALS]: 'Not Equals',
-  [RulePossibility.CONTAINS]: 'Contains (Exact list match)',
-  [RulePossibility.BEFORE]: 'Before',
-  [RulePossibility.AFTER]: 'After',
-  [RulePossibility.IN_LAST]: 'In Last',
-  [RulePossibility.IN_NEXT]: 'In Next',
-  [RulePossibility.NOT_CONTAINS]: 'Not Contains (Exact list match)',
-  [RulePossibility.CONTAINS_PARTIAL]: 'Contains (Partial list match)',
-  [RulePossibility.NOT_CONTAINS_PARTIAL]: 'Not Contains (Partial list match)',
-  [RulePossibility.CONTAINS_ALL]: 'Contains (All items)',
-  [RulePossibility.NOT_CONTAINS_ALL]: 'Not Contains (All items)',
-  [RulePossibility.COUNT_EQUALS]: 'Count Equals',
-  [RulePossibility.COUNT_NOT_EQUALS]: 'Count Does Not Equal',
-  [RulePossibility.COUNT_BIGGER]: 'Count Is Bigger Than',
-  [RulePossibility.COUNT_SMALLER]: 'Count Is Smaller Than',
-  [RulePossibility.EXISTS]: 'Exists',
-  [RulePossibility.NOT_EXISTS]: 'Does Not Exist',
-}
-
-/**
  * Rule operators for combining rule conditions
  */
 export enum RuleOperators {

@@ -1,5 +1,8 @@
 import {
+  renderHook as rtlRenderHook,
   render as rtlRender,
+  RenderHookOptions,
+  RenderHookResult,
   RenderOptions,
   RenderResult,
 } from '@testing-library/react'
@@ -19,6 +22,13 @@ export const render = (
   ui: ReactElement,
   options?: Omit<RenderOptions, 'wrapper'>,
 ): RenderResult => rtlRender(ui, { wrapper: Wrapper, ...options })
+
+/** Same treatment for hooks that translate through useLingui. */
+export const renderHook = <Result, Props>(
+  callback: (props: Props) => Result,
+  options?: Omit<RenderHookOptions<Props>, 'wrapper'>,
+): RenderHookResult<Result, Props> =>
+  rtlRenderHook(callback, { wrapper: Wrapper, ...options })
 
 // Explicit local exports win over the star re-export, so `render` above is
 // the one callers get while screen/fireEvent/waitFor pass straight through.

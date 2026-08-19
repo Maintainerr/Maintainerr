@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen } from '../test-utils/render'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useCollection } from '../api/collections'
 import { useRuleGroupForCollection } from '../api/rules'

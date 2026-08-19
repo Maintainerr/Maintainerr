@@ -1,3 +1,5 @@
+import { t as globalT } from '@lingui/core/macro'
+import { Plural, Trans, useLingui } from '@lingui/react/macro'
 import {
   DownloadIcon,
   DuplicateIcon,
@@ -30,6 +32,7 @@ import {
 } from '../components/Settings/useSettingsFeedback'
 
 const OverlayTemplateListPage = () => {
+  const { t } = useLingui()
   const navigate = useNavigate()
   const [templates, setTemplates] = useState<OverlayTemplate[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -38,8 +41,7 @@ const OverlayTemplateListPage = () => {
     name: string
   } | null>(null)
   const importInputRef = useRef<HTMLInputElement>(null)
-  const { feedback, showSuccess, showError } =
-    useSettingsFeedback('Overlay templates')
+  const { feedback, showSuccess, showError } = useSettingsFeedback()
 
   const fetchTemplates = useCallback(async () => {
     try {
@@ -57,7 +59,7 @@ const OverlayTemplateListPage = () => {
     // call site (rather than inside fetchTemplates) avoids adding a
     // setState branch that react-hooks/set-state-in-effect flags.
     fetchTemplates().catch(() => {
-      showError('Failed to load overlay templates')
+      showError(globalT`Failed to load overlay templates`)
     })
   }, [fetchTemplates, showError])
 
@@ -68,10 +70,10 @@ const OverlayTemplateListPage = () => {
   const handleDuplicate = async (id: number) => {
     const result = await duplicateOverlayTemplate(id)
     if (result) {
-      showSuccess('Template duplicated')
+      showSuccess(t`Template duplicated`)
       void fetchTemplates()
     } else {
-      showError('Failed to duplicate template')
+      showError(t`Failed to duplicate template`)
     }
   }
 
@@ -85,10 +87,10 @@ const OverlayTemplateListPage = () => {
     setTemplateToDelete(null)
     const result = await deleteOverlayTemplate(id)
     if (result?.success) {
-      showSuccess('Template deleted')
+      showSuccess(t`Template deleted`)
       void fetchTemplates()
     } else {
-      showError('Cannot delete preset templates')
+      showError(t`Cannot delete preset templates`)
     }
   }
 
@@ -96,13 +98,13 @@ const OverlayTemplateListPage = () => {
     const result = await setDefaultOverlayTemplate(id)
     if (result) {
       showSuccess(
-        `"${result.name}" set as the default ${
-          result.mode === 'titlecard' ? 'title card' : 'poster'
-        } template`,
+        result.mode === 'titlecard'
+          ? t`"${{ templateName: result.name }}" set as the default title card template`
+          : t`"${{ templateName: result.name }}" set as the default poster template`,
       )
       void fetchTemplates()
     } else {
-      showError('Failed to set default template')
+      showError(t`Failed to set default template`)
     }
   }
 
@@ -128,30 +130,39 @@ const OverlayTemplateListPage = () => {
       const data = JSON.parse(text) as OverlayTemplateExport
       const result = await importOverlayTemplate(data)
       if (result) {
-        showSuccess(`Imported template "${result.name}"`)
+        showSuccess(t`Imported template "${{ templateName: result.name }}"`)
         void fetchTemplates()
       } else {
-        showError('Failed to import template')
+        showError(t`Failed to import template`)
       }
     } catch {
-      showError('Invalid template file')
+      showError(t`Invalid template file`)
     }
     // Reset input so the same file can be re-imported
     if (importInputRef.current) importInputRef.current.value = ''
   }
 
-  const posterTemplates = templates.filter((t) => t.mode === 'poster')
-  const titleCardTemplates = templates.filter((t) => t.mode === 'titlecard')
+  const templateName = templateToDelete?.name
+  const posterTemplates = templates.filter(
+    (template) => template.mode === 'poster',
+  )
+  const titleCardTemplates = templates.filter(
+    (template) => template.mode === 'titlecard',
+  )
 
   return (
     <>
-      <title>Overlay Templates - Maintainerr</title>
+      <title>{t`Overlay Templates - Maintainerr`}</title>
       <div className="h-full w-full">
         <div className="section h-full w-full">
-          <h3 className="heading">Overlay Templates</h3>
+          <h3 className="heading">
+            <Trans>Overlay Templates</Trans>
+          </h3>
           <p className="description">
-            Manage the templates used by overlay-enabled collections. Each mode
-            keeps its own default.
+            <Trans>
+              Manage the templates used by overlay-enabled collections. Each
+              mode keeps its own default.
+            </Trans>
           </p>
         </div>
 
@@ -172,7 +183,9 @@ const OverlayTemplateListPage = () => {
               onClick={() => importInputRef.current?.click()}
             >
               <UploadIcon />
-              <span>Import</span>
+              <span>
+                <Trans>Import</Trans>
+              </span>
             </Button>
           }
         />
@@ -185,8 +198,8 @@ const OverlayTemplateListPage = () => {
           <>
             {/* Poster templates */}
             <TemplateSection
-              title="Poster Templates"
-              description="Drawn on movies, shows and seasons."
+              title={t`Poster Templates`}
+              description={t`Drawn on movies, shows and seasons.`}
               templates={posterTemplates}
               onEdit={handleEdit}
               onDuplicate={handleDuplicate}
@@ -197,8 +210,8 @@ const OverlayTemplateListPage = () => {
 
             {/* Title card templates */}
             <TemplateSection
-              title="Title Card Templates"
-              description="Drawn on episodes."
+              title={t`Title Card Templates`}
+              description={t`Drawn on episodes.`}
               templates={titleCardTemplates}
               onEdit={handleEdit}
               onDuplicate={handleDuplicate}
@@ -212,7 +225,7 @@ const OverlayTemplateListPage = () => {
 
       {templateToDelete && (
         <Modal
-          title="Delete template?"
+          title={t`Delete template?`}
           size="sm"
           onCancel={() => setTemplateToDelete(null)}
           footerActions={
@@ -221,16 +234,18 @@ const OverlayTemplateListPage = () => {
               className="ml-3"
               onClick={() => void handleDeleteConfirm()}
             >
-              Delete
+              <Trans>Delete</Trans>
             </Button>
           }
         >
           <p>
-            Delete template{' '}
-            <span className="font-semibold">
-              &ldquo;{templateToDelete.name}&rdquo;
-            </span>
-            ? This action cannot be undone.
+            <Trans>
+              Delete template{' '}
+              <span className="font-semibold">
+                &ldquo;{templateName}&rdquo;
+              </span>
+              ? This action cannot be undone.
+            </Trans>
           </p>
         </Modal>
       )}
@@ -266,10 +281,10 @@ function TemplateSection({
       </h3>
       <p className="mb-3 text-xs text-zinc-500">{description}</p>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {templates.map((t) => (
+        {templates.map((template) => (
           <TemplateCard
-            key={t.id}
-            template={t}
+            key={template.id}
+            template={template}
             onEdit={onEdit}
             onDuplicate={onDuplicate}
             onDelete={onDelete}
@@ -283,7 +298,7 @@ function TemplateSection({
 }
 
 function TemplateCard({
-  template: t,
+  template,
   onEdit,
   onDuplicate,
   onDelete,
@@ -297,35 +312,40 @@ function TemplateCard({
   onSetDefault: (id: number) => void
   onExport: (id: number) => void
 }) {
+  const { t } = useLingui()
+  const elementCount = template.elements.length
+
   return (
     <div className="rounded-lg border border-zinc-700 bg-zinc-800 p-4 transition hover:border-zinc-500">
       <div className="mb-2 flex items-start justify-between gap-2">
         <div>
           <div className="flex flex-wrap items-center gap-2">
-            <span className="font-medium text-zinc-100">{t.name}</span>
-            {t.isDefault && (
+            <span className="font-medium text-zinc-100">{template.name}</span>
+            {template.isDefault && (
               <span className="rounded-sm bg-amber-600 px-1.5 py-0.5 text-xs whitespace-nowrap text-white">
-                Default
+                <Trans>Default</Trans>
               </span>
             )}
-            {t.isPreset && (
+            {template.isPreset && (
               <span className="rounded-sm bg-zinc-600/50 px-1.5 py-0.5 text-xs whitespace-nowrap text-zinc-400">
-                Preset
+                <Trans>Preset</Trans>
               </span>
             )}
           </div>
-          {t.description && (
-            <p className="mt-0.5 text-xs text-zinc-400">{t.description}</p>
+          {template.description && (
+            <p className="mt-0.5 text-xs text-zinc-400">
+              {template.description}
+            </p>
           )}
         </div>
         <span className="shrink-0 rounded-sm bg-zinc-700 px-1.5 py-0.5 text-xs whitespace-nowrap text-zinc-300">
-          {t.elements.length} element{t.elements.length !== 1 ? 's' : ''}
+          <Plural value={elementCount} one="# element" other="# elements" />
         </span>
       </div>
 
       {/* Canvas info */}
       <p className="mb-3 text-xs text-zinc-500">
-        {t.canvasWidth}&times;{t.canvasHeight}
+        {template.canvasWidth}&times;{template.canvasHeight}
       </p>
 
       {/* Actions */}
@@ -333,26 +353,28 @@ function TemplateCard({
         <button
           type="button"
           className="flex items-center gap-1 rounded-sm bg-zinc-700 px-2 py-1 text-xs text-zinc-300 transition hover:bg-zinc-600"
-          onClick={() => onEdit(t.id)}
-          title={t.isPreset ? 'Editing a preset will save a copy' : 'Edit'}
+          onClick={() => onEdit(template.id)}
+          title={
+            template.isPreset ? t`Editing a preset will save a copy` : t`Edit`
+          }
         >
           <PencilAltIcon className="h-3.5 w-3.5" />
-          Edit
+          <Trans>Edit</Trans>
         </button>
         <button
           type="button"
           className="flex items-center gap-1 rounded-sm bg-zinc-700 px-2 py-1 text-xs text-zinc-300 transition hover:bg-zinc-600"
-          onClick={() => onDuplicate(t.id)}
-          title="Duplicate"
+          onClick={() => onDuplicate(template.id)}
+          title={t`Duplicate`}
         >
           <DuplicateIcon className="h-3.5 w-3.5" />
         </button>
-        {!t.isDefault && (
+        {!template.isDefault && (
           <button
             type="button"
             className="flex items-center gap-1 rounded-sm bg-zinc-700 px-2 py-1 text-xs text-zinc-300 transition hover:bg-amber-600/30 hover:text-amber-300"
-            onClick={() => onSetDefault(t.id)}
-            title="Set as default"
+            onClick={() => onSetDefault(template.id)}
+            title={t`Set as default`}
           >
             <StarIcon className="h-3.5 w-3.5" />
           </button>
@@ -360,17 +382,17 @@ function TemplateCard({
         <button
           type="button"
           className="flex items-center gap-1 rounded-sm bg-zinc-700 px-2 py-1 text-xs text-zinc-300 transition hover:bg-zinc-600"
-          onClick={() => onExport(t.id)}
-          title="Export"
+          onClick={() => onExport(template.id)}
+          title={t`Export`}
         >
           <DownloadIcon className="h-3.5 w-3.5" />
         </button>
-        {!t.isPreset && (
+        {!template.isPreset && (
           <button
             type="button"
             className="flex items-center gap-1 rounded-sm bg-zinc-700 px-2 py-1 text-xs text-red-400 transition hover:bg-red-600/20"
-            onClick={() => onDelete(t.id, t.name)}
-            title="Delete"
+            onClick={() => onDelete(template.id, template.name)}
+            title={t`Delete`}
           >
             <TrashIcon className="h-3.5 w-3.5" />
           </button>
