@@ -8,7 +8,7 @@ import PendingButton from './PendingButton'
 
 interface ConfirmActionButtonProps {
   buttonLabel: string
-  buttonIcon: ReactNode
+  buttonIcon?: ReactNode
   buttonType?: ButtonType
   buttonClassName?: string
   // Destructive callers pass 'danger' so the dialog's confirm carries the

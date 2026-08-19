@@ -9,6 +9,7 @@ import {
   CollectionPosterUploadResponse,
   CollectionLogMeta,
   CollectionMediaSortField,
+  DELETE_AFTER_MAX_DAYS,
   ECollectionLogType,
   MediaItemType,
   MediaItemTypes,
@@ -157,7 +158,12 @@ const collectionBaseShape = {
   listExclusions: z.boolean().optional(),
   cleanupLeftoverFolders: z.boolean().optional(),
   forceSeerr: z.boolean().optional(),
-  deleteAfterDays: z.coerce.number().int().optional(),
+  deleteAfterDays: z.coerce
+    .number()
+    .int()
+    .min(0)
+    .max(DELETE_AFTER_MAX_DAYS)
+    .optional(),
   manualCollection: z.boolean().optional(),
   manualCollectionName: z.string().optional().nullable(),
   keepLogsForMonths: z.coerce.number().int().optional(),

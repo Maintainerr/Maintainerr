@@ -21,6 +21,7 @@ import {
   Controller,
   Delete,
   Get,
+  HttpCode,
   HttpException,
   HttpStatus,
   Param,
@@ -196,21 +197,27 @@ export class OverlaysController {
     };
   }
 
+  /**
+   * Started, not awaited. A full run outlives any browser or reverse-proxy
+   * response timeout, and a severed response read as a failed run while the
+   * run itself carried on (#3549). Callers follow it on GET status.
+   */
   @Post('process')
-  async processAll(
+  @HttpCode(HttpStatus.ACCEPTED)
+  processAll(
     @Body(new ZodValidationPipe(overlayProcessRequestSchema))
     request: OverlayProcessRequest,
   ) {
     if (this.processorService.status === 'running') {
       throw new HttpException(
-        'Overlay processing is already running',
+        'An overlay run is already in progress',
         HttpStatus.CONFLICT,
       );
     }
-    const result = await this.processorService.processAllCollections(
-      request.force ?? false,
-    );
-    return result;
+
+    this.processorService
+      .processAllCollections(request.force ?? false)
+      .catch((error) => this.logger.error('Overlay processing failed', error));
   }
 
   @Post('process/:collectionId')
@@ -219,7 +226,7 @@ export class OverlaysController {
   ) {
     if (this.processorService.status === 'running') {
       throw new HttpException(
-        'Overlay processing is already running',
+        'An overlay run is already in progress',
         HttpStatus.CONFLICT,
       );
     }
@@ -251,15 +258,18 @@ export class OverlaysController {
   }
 
   @Delete('reset')
-  async resetAll() {
+  @HttpCode(HttpStatus.ACCEPTED)
+  resetAll() {
     if (this.processorService.status === 'running') {
       throw new HttpException(
-        'Overlay processing is already running',
+        'An overlay run is already in progress',
         HttpStatus.CONFLICT,
       );
     }
-    await this.processorService.resetAllOverlays();
-    return { success: true };
+
+    this.processorService
+      .resetAllOverlays()
+      .catch((error) => this.logger.error('Overlay reset failed', error));
   }
 
   // ── Fonts ───────────────────────────────────────────────────────────────

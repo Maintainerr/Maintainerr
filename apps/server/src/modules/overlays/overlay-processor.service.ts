@@ -100,6 +100,12 @@ export class OverlayProcessorService {
 
   // ── Date helpers ──────────────────────────────────────────────────────────
 
+  /**
+   * Null when the window cannot name a day. `DELETE_AFTER_MAX_DAYS` bounds it
+   * where it is entered, but the rule-group body is not schema-validated, so
+   * this stays the invariant: an Invalid Date is truthy and would be drawn as
+   * "Leaving Invalid Date" (#3549).
+   */
   private getDeleteDate(
     addDate: string | Date,
     deleteAfterDays: number | null,
@@ -107,7 +113,7 @@ export class OverlayProcessorService {
     if (deleteAfterDays == null) return null;
     const d = new Date(addDate);
     d.setDate(d.getDate() + deleteAfterDays);
-    return d;
+    return Number.isNaN(d.getTime()) ? null : d;
   }
 
   private getDaysLeft(deleteDate: Date): number {
@@ -349,13 +355,12 @@ export class OverlayProcessorService {
 
   // ── Poster backup helpers ─────────────────────────────────────────────────
 
+  private getOriginalsDir(): string {
+    return path.join(this.dataDir, 'overlays', 'originals');
+  }
+
   private getOriginalPosterPath(mediaServerId: string): string {
-    return path.join(
-      this.dataDir,
-      'overlays',
-      'originals',
-      `${mediaServerId}.jpg`,
-    );
+    return path.join(this.getOriginalsDir(), `${mediaServerId}.jpg`);
   }
 
   private async saveOriginalPoster(
@@ -377,6 +382,17 @@ export class OverlayProcessorService {
   private deleteOriginalPoster(mediaServerId: string): void {
     const p = this.getOriginalPosterPath(mediaServerId);
     if (fs.existsSync(p)) fs.unlinkSync(p);
+  }
+
+  /** Every item whose original poster is still saved on disk. */
+  private listBackedUpItemIds(): string[] {
+    const dir = this.getOriginalsDir();
+    if (!fs.existsSync(dir)) return [];
+    const suffix = '.jpg';
+    return fs
+      .readdirSync(dir)
+      .filter((name) => name.length > suffix.length && name.endsWith(suffix))
+      .map((name) => name.slice(0, -suffix.length));
   }
 
   private async getOverlayCollections(): Promise<
@@ -416,17 +432,23 @@ export class OverlayProcessorService {
    *  - Backup on disk, upload succeeds → clear backup and state (revert done).
    */
   private async revertItemInternal(
-    collectionId: number,
+    collectionId: number | null,
     mediaServerId: string,
     provider: IOverlayProvider,
   ): Promise<RevertItemResult> {
+    // Null for a saved poster no state row claims - there is nothing to clear.
+    const clearState = () =>
+      collectionId == null
+        ? Promise.resolve()
+        : this.stateService.removeState(collectionId, mediaServerId);
+
     const originalBuf = this.loadOriginalPoster(mediaServerId);
 
     if (!originalBuf) {
       this.logger.warn(
         `No saved original poster for ${mediaServerId}, cannot restore`,
       );
-      await this.stateService.removeState(collectionId, mediaServerId);
+      await clearState();
       return 'no-backup';
     }
 
@@ -448,7 +470,7 @@ export class OverlayProcessorService {
         `Item ${mediaServerId} no longer exists on the media server, dropping overlay state and backup`,
       );
       this.deleteOriginalPoster(mediaServerId);
-      await this.stateService.removeState(collectionId, mediaServerId);
+      await clearState();
       return 'item-gone';
     }
 
@@ -464,7 +486,7 @@ export class OverlayProcessorService {
 
     this.logger.log(`Restored original poster for item ${mediaServerId}`);
     this.deleteOriginalPoster(mediaServerId);
-    await this.stateService.removeState(collectionId, mediaServerId);
+    await clearState();
     return 'restored';
   }
 
@@ -743,10 +765,12 @@ export class OverlayProcessorService {
       );
 
       // Every id the overlay-enabled collections draw on: members + inherited.
+      // Read from the member targets, not the raw membership, so a member the
+      // run no longer draws on has its old overlay reverted below.
       const allCurrentItemIds = new Set<string>();
       for (const coll of collections) {
-        for (const item of coll.collectionMedia) {
-          allCurrentItemIds.add(item.mediaServerId);
+        for (const member of this.getMemberTargets(coll)) {
+          allCurrentItemIds.add(member.itemId);
         }
       }
 
@@ -854,46 +878,84 @@ export class OverlayProcessorService {
 
   // ── Reset all overlays ────────────────────────────────────────────────────
 
+  /**
+   * Takes the same running flag as a run: a reset restores originals and drops
+   * the backups a concurrent run would be reading, so the two must never
+   * interleave. The controller's own check cannot guarantee that on its own.
+   */
   async resetAllOverlays(): Promise<void> {
-    this.logger.warn('Resetting all overlays...');
-
-    const provider = await this.providerFactory.getProvider();
-    if (!provider) {
-      this.logger.warn(
-        'Cannot reset overlays: no overlay provider for configured media server',
-      );
+    if (this.status === 'running') {
+      this.logger.warn('Overlay processor is already running, skipping reset');
       return;
     }
 
-    const allStates = await this.stateService.getAllStates();
-    const revertedMediaItems: { mediaServerId: string }[] = [];
-    for (const state of allStates) {
-      try {
-        const result = await this.revertItemInternal(
-          state.collectionId,
-          state.mediaServerId,
-          provider,
-        );
+    this.status = 'running';
+    this.logger.warn('Resetting all overlays...');
+    // Reported through the same summary as a run, so a reset that could not
+    // restore everything cannot read as a clean success.
+    const summary = this.createEmptyResult();
 
-        if (result === 'restored') {
-          this.addUniqueMediaItem(revertedMediaItems, state.mediaServerId);
-        }
-      } catch (error) {
+    try {
+      const provider = await this.providerFactory.getProvider();
+      if (!provider) {
         this.logger.warn(
-          `Failed to reset overlay for ${state.mediaServerId}; keeping state for retry`,
+          'Cannot reset overlays: no overlay provider for configured media server',
         );
-        this.logger.debug(error);
+        return;
       }
-    }
 
-    if (revertedMediaItems.length > 0) {
-      this.eventEmitter.emit(
-        MaintainerrEvent.Overlay_Reverted,
-        new OverlayRevertedDto(revertedMediaItems, 'All Collections'),
-      );
-    }
+      const allStates = await this.stateService.getAllStates();
+      const tracked = new Set(allStates.map((state) => state.mediaServerId));
+      // A saved original no state row claims is an upload whose state write
+      // failed; the backup is the only record left that the artwork may have
+      // been changed, so reset owns it too (#3549).
+      const targets = [
+        ...allStates.map((state) => ({
+          collectionId: state.collectionId as number | null,
+          mediaServerId: state.mediaServerId,
+        })),
+        ...this.listBackedUpItemIds()
+          .filter((mediaServerId) => !tracked.has(mediaServerId))
+          .map((mediaServerId) => ({ collectionId: null, mediaServerId })),
+      ];
 
-    this.logger.log('Overlay reset complete');
+      const revertedMediaItems: { mediaServerId: string }[] = [];
+      for (const target of targets) {
+        try {
+          const result = await this.revertItemInternal(
+            target.collectionId,
+            target.mediaServerId,
+            provider,
+          );
+
+          if (result === 'restored') {
+            this.addUniqueMediaItem(revertedMediaItems, target.mediaServerId);
+            summary.reverted++;
+          } else if (result === 'failed') {
+            summary.errors++;
+          }
+        } catch (error) {
+          this.logger.warn(
+            `Failed to reset overlay for ${target.mediaServerId}; keeping state for retry`,
+          );
+          this.logger.debug(error);
+          summary.errors++;
+        }
+      }
+
+      if (revertedMediaItems.length > 0) {
+        this.eventEmitter.emit(
+          MaintainerrEvent.Overlay_Reverted,
+          new OverlayRevertedDto(revertedMediaItems, 'All Collections'),
+        );
+      }
+
+      this.logger.log('Overlay reset complete');
+    } finally {
+      this.status = 'idle';
+      this.lastRun = new Date();
+      this.lastResult = summary;
+    }
   }
 
   // ── Template-based overlay application ────────────────────────────────────
@@ -951,6 +1013,10 @@ export class OverlayProcessorService {
         `Template overlay rendering failed for ${itemId}: ${error instanceof Error ? error.message : String(error)}`,
       );
       this.logger.debug(error);
+      // Nothing was uploaded, so a backup this pass just took records no
+      // change. Leaving it would have reset restoring - and on Plex selecting
+      // - a poster the item still has.
+      if (!savedOriginal) this.deleteOriginalPoster(itemId);
       return false;
     }
 

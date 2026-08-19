@@ -14,9 +14,12 @@ import {
   processAllOverlays,
   resetAllOverlays,
   useUpdateOverlaySettings,
+  waitForOverlayRun,
 } from '../../../api/overlays'
+import { getApiErrorMessage } from '../../../utils/ApiError'
 import { formatOverlayProcessSummary } from '../../../utils/overlayProcessResult'
 import Button from '../../Common/Button'
+import ConfirmActionButton from '../../Common/ConfirmActionButton'
 import DocsButton from '../../Common/DocsButton'
 import Modal from '../../Common/Modal'
 import PageControlRow from '../../Common/PageControlRow'
@@ -73,8 +76,6 @@ const OverlaySettings = () => {
   const { t } = useLingui()
   const navigate = useNavigate()
   const [processing, setProcessing] = useState(false)
-  const [resetting, setResetting] = useState(false)
-  const [confirmResetOpen, setConfirmResetOpen] = useState(false)
   const [missingCronModalOpen, setMissingCronModalOpen] = useState(false)
 
   const {
@@ -136,29 +137,31 @@ const OverlaySettings = () => {
   const handleProcessAll = async () => {
     setProcessing(true)
     try {
-      const result = await processAllOverlays({ force: true })
-      showInfo(formatOverlayProcessSummary(result))
-    } catch {
-      showError(t`Failed to process overlays`)
+      await processAllOverlays({ force: true })
+      const { status, lastResult } = await waitForOverlayRun()
+      // A run that died mid-way leaves no summary, or a zeroed one that reads
+      // as a clean pass; the status is the only thing that says otherwise.
+      if (status === 'error' || !lastResult) {
+        showError(t`Failed to process overlays`)
+      } else {
+        showInfo(formatOverlayProcessSummary(lastResult))
+      }
+    } catch (error) {
+      showError(getApiErrorMessage(error, t`Failed to process overlays`))
     } finally {
       setProcessing(false)
     }
   }
 
-  const handleResetAllRequest = () => {
-    setConfirmResetOpen(true)
-  }
-
-  const handleResetAllConfirm = async () => {
-    setConfirmResetOpen(false)
-    setResetting(true)
-    try {
-      await resetAllOverlays()
+  const handleResetAll = async () => {
+    await resetAllOverlays()
+    // Items whose artwork could not be restored keep their state for a later
+    // retry, so a plain success would hide them.
+    const { lastResult } = await waitForOverlayRun()
+    if (lastResult?.errors) {
+      showInfo(formatOverlayProcessSummary(lastResult))
+    } else {
       showSuccess(t`All overlays have been reset`)
-    } catch {
-      showError(t`Failed to reset overlays`)
-    } finally {
-      setResetting(false)
     }
   }
 
@@ -225,16 +228,27 @@ const OverlaySettings = () => {
                       />
                     </span>
                     <span className="flex rounded-md shadow-xs">
-                      <Button
+                      <ConfirmActionButton
+                        buttonLabel={t`Reset All Overlays`}
                         buttonType="danger"
-                        type="button"
-                        onClick={handleResetAllRequest}
-                        disabled={processing || resetting}
+                        confirmButtonType="danger"
+                        modalTitle={t`Restore original artwork for all collections?`}
+                        modalSize="sm"
+                        confirmLabel={t`Reset`}
+                        pendingLabel={t`Resetting...`}
+                        disabled={processing}
+                        errorMessage={t`Failed to reset overlays`}
+                        errorLogSummary="Failed to reset overlays"
+                        errorContext="OverlaySettings.handleResetAll"
+                        onConfirm={handleResetAll}
                       >
-                        <span>
-                          {resetting ? t`Resetting...` : t`Reset All Overlays`}
-                        </span>
-                      </Button>
+                        <p>
+                          <Trans>
+                            This will revert every applied overlay and restore
+                            the original posters for all collections.
+                          </Trans>
+                        </p>
+                      </ConfirmActionButton>
                     </span>
                   </>
                 }
@@ -253,30 +267,6 @@ const OverlaySettings = () => {
           </form>
         </div>
       </div>
-
-      {confirmResetOpen && (
-        <Modal
-          title={t`Restore original artwork for all collections?`}
-          size="sm"
-          onCancel={() => setConfirmResetOpen(false)}
-          footerActions={
-            <Button
-              buttonType="danger"
-              className="ml-3"
-              onClick={() => void handleResetAllConfirm()}
-            >
-              <Trans>Reset</Trans>
-            </Button>
-          }
-        >
-          <p>
-            <Trans>
-              This will revert every applied overlay and restore the original
-              posters for all collections.
-            </Trans>
-          </p>
-        </Modal>
-      )}
 
       {missingCronModalOpen && (
         <Modal
