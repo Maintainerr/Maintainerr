@@ -8,7 +8,7 @@ msgstr ""
 "Language: es\n"
 "Project-Id-Version: \n"
 "Report-Msgid-Bugs-To: \n"
-"PO-Revision-Date: 2026-08-19 06:00+0000\n"
+"PO-Revision-Date: 2026-08-19 06:03+0000\n"
 "Last-Translator: slx612 <sergiolazaro228@gmail.com>\n"
 "Language-Team: Spanish <https://hosted.weblate.org/projects/maintainerr/app/"
 "es/>\n"
@@ -820,7 +820,9 @@ msgstr ""
 
 #: src/components/Settings/index.tsx
 msgid "Choose your media server, confirm the connection, and then you can continue configuring the rest of Maintainerr."
-msgstr "Selecciona tu servidor multimedia, confirma la conexión y después podrás continuar configurando el resto de Maintainerr."
+msgstr ""
+"Selecciona tu servidor multimedia, confirma la conexión y después podrás "
+"continuar configurando el resto de Maintainerr."
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Clean up leftover folders"
@@ -1688,7 +1690,9 @@ msgstr "Exclusiones"
 
 #: src/components/Collection/CollectionOverview/index.tsx
 msgid "Executes each collection's configured action (Delete / Unmonitor / Do Nothing). Does not remove items from collections."
-msgstr "Ejecuta la acción configurada de cada colección (Eliminar / Dejar de supervisar / No hacer nada). No elimina elementos de las colecciones."
+msgstr ""
+"Ejecuta la acción configurada de cada colección (Eliminar / Dejar de "
+"supervisar / No hacer nada). No elimina elementos de las colecciones."
 
 #: src/components/Overlays/index.tsx
 msgid "Existing Templates"
@@ -4237,7 +4241,9 @@ msgstr "Los siguientes datos serán eliminados definitivamente:"
 
 #: src/components/Settings/index.tsx
 msgid "The Logs page stays available during setup if you need to troubleshoot your connection."
-msgstr "La página «Registros» permanece disponible durante la configuración por si necesitas solucionar algún problema con tu conexión."
+msgstr ""
+"La página «Registros» permanece disponible durante la configuración por si "
+"necesitas solucionar algún problema con tu conexión."
 
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "The media server has no user named ''{username}''"
@@ -4870,7 +4876,9 @@ msgstr ""
 
 #: src/components/Layout/index.tsx
 msgid "You can try going back or reloading the page. If the problem persists, please check the browser console for more details."
-msgstr "Puedes intentar volver atrás o actualizar la página. Si el problema persiste, comprueba la consola del navegador para obtener más detalles."
+msgstr ""
+"Puedes intentar volver atrás o actualizar la página. Si el problema "
+"persiste, comprueba la consola del navegador para obtener más detalles."
 
 #: src/components/Common/CommunityRowTableRow/index.tsx
 msgid "You have already submitted karma for this rule."
