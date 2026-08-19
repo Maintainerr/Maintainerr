@@ -8,7 +8,7 @@ msgstr ""
 "Language: es\n"
 "Project-Id-Version: \n"
 "Report-Msgid-Bugs-To: \n"
-"PO-Revision-Date: 2026-08-19 16:42+0000\n"
+"PO-Revision-Date: 2026-08-19 19:17+0000\n"
 "Last-Translator: Maintainerr <get@maintainerr.info>\n"
 "Language-Team: Spanish <https://hosted.weblate.org/projects/maintainerr/app/es/>\n"
 "Plural-Forms: nplurals=2; plural=n != 1;\n"
@@ -465,7 +465,7 @@ msgstr "Todos los episodios"
 
 #: src/components/Settings/Overlays/index.tsx
 msgid "All overlays have been reset"
-msgstr "Se han restablecido todas las superposiciones."
+msgstr "Se han restablecido todas las superposiciones"
 
 #: src/components/Common/MediaActionModal.tsx
 msgid "All seasons"
