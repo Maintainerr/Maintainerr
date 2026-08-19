@@ -8,7 +8,7 @@ msgstr ""
 "Language: sv\n"
 "Project-Id-Version: \n"
 "Report-Msgid-Bugs-To: \n"
-"PO-Revision-Date: 2026-08-19 18:13+0000\n"
+"PO-Revision-Date: 2026-08-19 18:51+0000\n"
 "Last-Translator: Maintainerr <get@maintainerr.info>\n"
 "Language-Team: Swedish <https://hosted.weblate.org/projects/maintainerr/app/sv/>\n"
 "Plural-Forms: nplurals=2; plural=n != 1;\n"
@@ -4012,7 +4012,7 @@ msgstr "De tas även bort från alla samlingar de för närvarande finns i."
 
 #: src/components/Settings/About/index.tsx
 msgid "If you find any broken features and/or are experiencing instability, please report it on GitHub!"
-msgstr ""
+msgstr "Om du hittar trasiga funktioner och/eller upplever instabilitet, rapportera det gärna på GitHub!"
 
 #: src/components/Collection/CollectionDetail/RemoveFromCollectionButton/index.tsx
 msgid "This item is excluded <0>globally</0>. Removing this exclusion will apply the change to all collections"
