@@ -8,7 +8,7 @@ msgstr ""
 "Language: es\n"
 "Project-Id-Version: \n"
 "Report-Msgid-Bugs-To: \n"
-"PO-Revision-Date: 2026-08-19 19:17+0000\n"
+"PO-Revision-Date: 2026-08-19 21:35+0000\n"
 "Last-Translator: Maintainerr <get@maintainerr.info>\n"
 "Language-Team: Spanish <https://hosted.weblate.org/projects/maintainerr/app/es/>\n"
 "Plural-Forms: nplurals=2; plural=n != 1;\n"
@@ -3274,7 +3274,7 @@ msgstr "Usuario administrador guardado. Pruebe la conexión para cambiar."
 
 #: src/components/Settings/Main/LanguageSelector.tsx
 msgid "Saved in this browser. <0>Untranslated text</0> falls back to English."
-msgstr ""
+msgstr "Guardado en este navegador. <0>El texto sin traducir</0> se muestra en inglés."
 
 #: src/components/Rules/RuleGroup/AddModal/CollectionPosterPicker.tsx
 msgid "Saved locally. Maintainerr couldn't push to {mediaServerName} right now; it'll re-apply automatically next time the collection is recreated there."
