@@ -8,7 +8,7 @@ msgstr ""
 "Language: sv\n"
 "Project-Id-Version: \n"
 "Report-Msgid-Bugs-To: \n"
-"PO-Revision-Date: 2026-08-18 22:07+0000\n"
+"PO-Revision-Date: 2026-08-19 06:05+0000\n"
 "Last-Translator: Maintainerr <get@maintainerr.info>\n"
 "Language-Team: Swedish <https://hosted.weblate.org/projects/maintainerr/app/"
 "sv/>\n"
@@ -722,7 +722,9 @@ msgstr ""
 
 #: src/components/Settings/index.tsx
 msgid "Choose your media server, confirm the connection, and then you can continue configuring the rest of Maintainerr."
-msgstr "Välj din mediaserver, bekräfta anslutningen och sedan kan du fortsätta konfigurera resten av Maintainerr."
+msgstr ""
+"Välj din mediaserver, bekräfta anslutningen och sedan kan du fortsätta "
+"konfigurera resten av Maintainerr."
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Clean up leftover folders"
@@ -1519,7 +1521,9 @@ msgstr ""
 
 #: src/components/Collection/CollectionOverview/index.tsx
 msgid "Executes each collection's configured action (Delete / Unmonitor / Do Nothing). Does not remove items from collections."
-msgstr "Utför varje samlings konfigurerade åtgärder (Delete / Unmonitor / Do Nothing). Tar inte bort objekt från samlingar."
+msgstr ""
+"Utför varje samlings konfigurerade åtgärder (Delete / Unmonitor / Do Nothing)"
+". Tar inte bort objekt från samlingar."
 
 #: src/components/Overlays/index.tsx
 msgid "Existing Templates"
@@ -3277,7 +3281,8 @@ msgstr ""
 
 #: src/components/Settings/Main/LanguageSelector.tsx
 msgid "Saved in this browser. Untranslated text falls back to English."
-msgstr "Sparas i den här webbläsaren. Text som inte är översatt visas på Engelska."
+msgstr ""
+"Sparas i den här webbläsaren. Text som inte är översatt visas på Engelska."
 
 #: src/components/Rules/RuleGroup/AddModal/CollectionPosterPicker.tsx
 msgid "Saved locally. Maintainerr couldn't push to {mediaServerName} right now; it'll re-apply automatically next time the collection is recreated there."
