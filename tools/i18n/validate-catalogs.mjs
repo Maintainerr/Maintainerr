@@ -10,6 +10,13 @@
  *   reorder or hide text (direction marks U+200E/U+200F and joiners
  *   U+200C/U+200D stay allowed - RTL and complex scripts need them);
  * - Zalgo combining runs and oversized entries, which overflow adjacent UI;
+ * - a message that does not compile as ICU MessageFormat (a renamed plural
+ *   category, a missing `other`, mangled syntax) - it keeps its argument names
+ *   so placeholder parity passes, but the runtime prints the raw source;
+ * - a translation that keeps an argument's name but changes its structure (a
+ *   plural rewritten as a plain value, a dropped plural category the locale
+ *   needs, a stripped number format, a dropped select branch) - it compiles
+ *   and passes parity, then renders believable text with the wrong grammar;
  * - a translation that introduces a URL marker the source does not carry
  *   (phishing via translated copy);
  * - any URL marker in a source message at all - URLs live in code and reach
@@ -31,8 +38,10 @@
 import { execFileSync } from 'node:child_process';
 import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
+import { validateIcu } from 'pofile-ts';
 import {
   icuArguments,
+  icuStructureProblems,
   parsePo,
   poShapeProblems,
   readPo,
@@ -259,6 +268,21 @@ const rejectPlural = (entry, location) => {
   return true;
 };
 
+// The message must compile as ICU MessageFormat. A translation that renames a
+// plural category (`other` -> `andra`), drops the required `other`, or mangles
+// the syntax keeps its argument names intact - so the placeholder check passes
+// - but Lingui then fails to compile it and prints the raw
+// `{clearedCollectionMedia, plural, ...}` source on screen. `validateIcu` is the
+// same parser Lingui compiles through, and returns valid for plain (non-ICU)
+// text, so a catalog that passes here renders. Weblate's own ICU check only
+// warns; it does not block a save, which is why this repo-side copy exists.
+const icuError = (text) => {
+  const result = validateIcu(text);
+  return result.valid
+    ? null
+    : (result.errors[0]?.message ?? 'invalid ICU MessageFormat');
+};
+
 for (const entry of sourceEntries) {
   if (rejectPlural(entry, sourceLocation)) continue;
   const sourceMarker = markerIn(entry.msgid);
@@ -288,6 +312,14 @@ for (const entry of sourceEntries) {
       `${sourceLocation}:${entry.line}\n` +
         `    source: ${entry.msgid}\n` +
         `    has an unbalanced rich-text slot - every <n> needs its </n>`,
+    );
+  }
+  const sourceIcu = icuError(entry.msgid);
+  if (sourceIcu) {
+    errors.push(
+      `${sourceLocation}:${entry.line}\n` +
+        `    source: ${entry.msgid}\n` +
+        `    is not valid ICU MessageFormat - ${sourceIcu}`,
     );
   }
   if (entry.msgstr !== '' && entry.msgstr !== entry.msgid) {
@@ -355,6 +387,17 @@ for (const file of files) {
       continue;
     }
 
+    const translationIcu = icuError(entry.msgstr);
+    if (translationIcu) {
+      errors.push(
+        `${location}:${entry.line}\n` +
+          `    source:      ${entry.msgid}\n` +
+          `    translation: ${entry.msgstr}\n` +
+          `    is not valid ICU MessageFormat - ${translationIcu}`,
+      );
+      continue;
+    }
+
     const expected =
       sourceArguments.get(entryKey(entry)) ?? icuArguments(entry.msgid);
     const actual = icuArguments(entry.msgstr);
@@ -410,6 +453,23 @@ for (const file of files) {
           `    rich-text slot ${parts.join(' and ')}`,
       );
       continue;
+    }
+
+    // Same argument names, but a different shape behind one of them: a plural
+    // rewritten as a plain `{count}`, a dropped `one` category, a stripped
+    // number format. All compile and pass parity, then render believable text
+    // with the wrong grammar or formatting.
+    for (const problem of icuStructureProblems(
+      entry.msgid,
+      entry.msgstr,
+      locale,
+    )) {
+      errors.push(
+        `${location}:${entry.line}\n` +
+          `    source:      ${entry.msgid}\n` +
+          `    translation: ${entry.msgstr}\n` +
+          `    ${problem}`,
+      );
     }
 
     if (entry.msgstr === entry.msgid) {

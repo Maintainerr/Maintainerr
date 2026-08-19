@@ -2,6 +2,7 @@ import { Trans } from '@lingui/react/macro'
 import { use } from 'react'
 import { UseFormRegisterReturn } from 'react-hook-form'
 import LocaleContext from '../../../contexts/locale-context'
+import BrandLink from '../../Common/BrandLink'
 import { Select } from '../../Forms/Select'
 
 /**
@@ -35,7 +36,14 @@ const LanguageSelector = ({
         </div>
         <p className="sm-description">
           <Trans>
-            Saved in this browser. Untranslated text falls back to English.
+            Saved in this browser.{' '}
+            <BrandLink
+              external
+              href="https://hosted.weblate.org/engage/maintainerr/"
+            >
+              Untranslated text
+            </BrandLink>{' '}
+            falls back to English.
           </Trans>
         </p>
       </div>

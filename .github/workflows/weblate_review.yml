@@ -126,6 +126,19 @@ jobs:
               labels,
             })
 
+      - name: Activate corepack
+        if: ${{ github.event.pull_request.user.login == 'hosted-weblate[bot]' }}
+        run: |
+          corepack install
+          corepack enable
+
+      # back-translate imports tools/i18n/po.mjs, which decodes through
+      # pofile-ts. Focusing the root workspace installs that dependency without
+      # building apps/server's native canvas, which back-translation never uses.
+      - name: Install the back-translation dependencies
+        if: ${{ github.event.pull_request.user.login == 'hosted-weblate[bot]' }}
+        run: yarn workspaces focus
+
       - name: Back-translate changed strings
         if: ${{ github.event.pull_request.user.login == 'hosted-weblate[bot]' }}
         env:
