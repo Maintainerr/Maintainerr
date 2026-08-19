@@ -8,7 +8,7 @@ msgstr ""
 "Language: sv\n"
 "Project-Id-Version: \n"
 "Report-Msgid-Bugs-To: \n"
-"PO-Revision-Date: 2026-08-19 19:27+0000\n"
+"PO-Revision-Date: 2026-08-19 21:20+0000\n"
 "Last-Translator: Maintainerr <get@maintainerr.info>\n"
 "Language-Team: Swedish <https://hosted.weblate.org/projects/maintainerr/app/sv/>\n"
 "Plural-Forms: nplurals=2; plural=n != 1;\n"
@@ -1136,7 +1136,7 @@ msgstr "Radera eventfil"
 
 #: src/components/Common/MediaLibrarySortControl.tsx
 msgid "Delete Latest"
-msgstr "Raderas senast"
+msgstr "Raderas sist"
 
 #: src/components/Common/MediaLibrarySortControl.tsx
 msgid "Delete Soonest"
@@ -2035,27 +2035,27 @@ msgstr "Jellyfin-URL"
 
 #: src/components/Settings/Jobs/index.tsx
 msgid "Job configuration. All schedules support standard <0>cron</0> patterns."
-msgstr "Konfiguration av schemalagda aktiviteter. Alla scheman stöder standardmönster för <0>cron</0>."
+msgstr "Jobbkonfiguration. Alla scheman stöder standardmönster för <0>cron</0>."
 
 #: src/components/Settings/Jobs/index.tsx
 msgid "Job Settings"
-msgstr "Schemalagda aktiviteter"
+msgstr "Jobbinställningar"
 
 #: src/components/Settings/Jobs/index.tsx
 msgid "Job settings - Maintainerr"
-msgstr "Schemalagda aktiviteter - Maintainerr"
+msgstr "Jobbinställningar - Maintainerr"
 
 #: src/components/Settings/Jobs/index.tsx
 msgid "Job settings could not be updated"
-msgstr "Inställningarna för schemalagda aktiviteter kunde inte uppdateras"
+msgstr "Jobbinställningarna kunde inte uppdateras"
 
 #: src/components/Settings/Jobs/index.tsx
 msgid "Job settings updated"
-msgstr "Inställningarna för schemalagda aktiviteter uppdaterade"
+msgstr "Jobbinställningarna uppdaterade"
 
 #: src/components/Settings/index.tsx
 msgid "Jobs"
-msgstr "Schemalagda aktiviteter"
+msgstr "Jobb"
 
 #: src/components/Common/CommunityRuleModal/index.tsx
 msgid "Karma"
@@ -2726,7 +2726,7 @@ msgstr "Opacitet"
 
 #: src/components/Settings/Overlays/index.tsx
 msgid "Open Job Settings"
-msgstr "Öppna schemalagda aktiviteter"
+msgstr "Öppna jobbinställningarna"
 
 #: src/components/Common/MediaCard/MediaModal/index.tsx
 msgid "Open on {provider}"
@@ -4055,7 +4055,7 @@ msgstr "För att först rensa dem: redigera regelns villkor så att den inte mat
 
 #: src/components/Settings/Overlays/index.tsx
 msgid "To run them automatically, set a schedule in Job Settings."
-msgstr "För att köra dem automatiskt, ange ett schema under Schemalagda aktiviteter."
+msgstr "För att köra dem automatiskt, ange ett schema i Jobbinställningar."
 
 #: src/components/Calendar/index.tsx
 msgid "Today"
