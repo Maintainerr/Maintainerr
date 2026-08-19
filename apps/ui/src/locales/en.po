@@ -4003,8 +4003,8 @@ msgid "They are removed from every collection they are currently in as well."
 msgstr "They are removed from every collection they are currently in as well."
 
 #: src/components/Settings/About/index.tsx
-msgid "This is BETA software. Features may be broken and/or unstable. Please report any issues on GitHub!"
-msgstr "This is BETA software. Features may be broken and/or unstable. Please report any issues on GitHub!"
+msgid "If you find any broken features and/or are experiencing instability, please report it on GitHub!"
+msgstr "If you find any broken features and/or are experiencing instability, please report it on GitHub!"
 
 #: src/components/Collection/CollectionDetail/RemoveFromCollectionButton/index.tsx
 msgid "This item is excluded <0>globally</0>. Removing this exclusion will apply the change to all collections"

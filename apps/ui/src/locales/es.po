@@ -4325,10 +4325,8 @@ msgstr ""
 "actualmente."
 
 #: src/components/Settings/About/index.tsx
-msgid "This is BETA software. Features may be broken and/or unstable. Please report any issues on GitHub!"
+msgid "If you find any broken features and/or are experiencing instability, please report it on GitHub!"
 msgstr ""
-"Este es un software BETA. Las funciones pueden estar rotas y/o inestables. ¡"
-"Informe cualquier problema en GitHub!"
 
 #: src/components/Collection/CollectionDetail/RemoveFromCollectionButton/index.tsx
 msgid "This item is excluded <0>globally</0>. Removing this exclusion will apply the change to all collections"

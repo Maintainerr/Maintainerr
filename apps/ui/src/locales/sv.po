@@ -4011,7 +4011,7 @@ msgid "They are removed from every collection they are currently in as well."
 msgstr ""
 
 #: src/components/Settings/About/index.tsx
-msgid "This is BETA software. Features may be broken and/or unstable. Please report any issues on GitHub!"
+msgid "If you find any broken features and/or are experiencing instability, please report it on GitHub!"
 msgstr ""
 
 #: src/components/Collection/CollectionDetail/RemoveFromCollectionButton/index.tsx
