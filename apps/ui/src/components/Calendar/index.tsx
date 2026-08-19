@@ -412,12 +412,14 @@ const Calendar = () => {
                   </div>
 
                   {totalScheduledCount > 0 && (
-                    <Badge badgeType="maintainerrdark">
-                      <Plural
-                        value={totalScheduledCount}
-                        one="# scheduled"
-                        other="# scheduled"
-                      />
+                    <Badge badgeType="maintainerrdark" className="min-w-0">
+                      <span className="truncate">
+                        <Plural
+                          value={totalScheduledCount}
+                          one="# scheduled"
+                          other="# scheduled"
+                        />
+                      </span>
                     </Badge>
                   )}
                 </div>

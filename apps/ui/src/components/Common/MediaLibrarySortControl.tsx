@@ -91,6 +91,10 @@ const getMediaLibrarySortOptions = (
     )
   }
 
+  options.push(
+    createMediaLibrarySortOption('title.desc', globalT`Title (Z-A) Descending`),
+  )
+
   if (includeStudioSort) {
     options.push(
       createMediaLibrarySortOption(
@@ -107,7 +111,6 @@ const getMediaLibrarySortOptions = (
   // The air-date pair is spelled out per library type rather than composed
   // from a shared noun, so each reads naturally once translated.
   options.push(
-    createMediaLibrarySortOption('title.desc', globalT`Title (Z-A) Descending`),
     createMediaLibrarySortOption(
       'airDate.desc',
       libraryType === 'show'
