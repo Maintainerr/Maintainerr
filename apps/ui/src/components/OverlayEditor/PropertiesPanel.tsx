@@ -595,7 +595,7 @@ function NumberField({
 }) {
   return (
     <label className="flex items-center gap-1.5">
-      <span className="w-12 shrink-0 text-zinc-400">{label}</span>
+      <span className="min-w-12 shrink-0 text-zinc-400">{label}</span>
       <Input
         name={`number-${label}`}
         type="number"
@@ -620,7 +620,7 @@ function TextField({
 }) {
   return (
     <label className="flex items-center gap-1.5">
-      <span className="w-12 shrink-0 text-zinc-400">{label}</span>
+      <span className="min-w-12 shrink-0 text-zinc-400">{label}</span>
       <Input
         name={`text-${label}`}
         type="text"
@@ -645,7 +645,7 @@ function ColorField({
   return (
     <>
       <label className="flex items-center gap-1.5">
-        <span className="w-12 shrink-0 text-zinc-400">{label}</span>
+        <span className="min-w-12 shrink-0 text-zinc-400">{label}</span>
         <button
           type="button"
           aria-label={t`Choose a color for ${{ fieldLabel: label }}`}
@@ -687,7 +687,7 @@ function SelectField({
 }) {
   return (
     <label className="flex items-center gap-1.5">
-      <span className="w-12 shrink-0 text-zinc-400">{label}</span>
+      <span className="min-w-12 shrink-0 text-zinc-400">{label}</span>
       <Select
         name={`select-${label}`}
         value={value}
