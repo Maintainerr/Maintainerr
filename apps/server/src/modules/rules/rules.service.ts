@@ -1,6 +1,7 @@
 import {
   type BulkMediaItemResult,
   type BulkMediaResponse,
+  DELETE_AFTER_MAX_DAYS,
   ECollectionLogType,
   isPerUserProperty,
   leftoverCleanupScope,
@@ -425,6 +426,10 @@ export class RulesService {
       if (managerState.code !== 1) {
         return managerState;
       }
+      const windowState = this.validateDeletionWindow(params);
+      if (windowState.code !== 1) {
+        return windowState;
+      }
       let state: ReturnStatus = this.createReturnStatus(true, 'Success');
       const knownUsernames = await this.getKnownUsernames(
         params.rules as RuleDto[],
@@ -558,6 +563,10 @@ export class RulesService {
       const managerState = this.validateSingleShowManager(params);
       if (managerState.code !== 1) {
         return managerState;
+      }
+      const windowState = this.validateDeletionWindow(params);
+      if (windowState.code !== 1) {
+        return windowState;
       }
       let state: ReturnStatus = this.createReturnStatus(true, 'Success');
       // Same gate getKnownUsernames applies internally: no rule names a user,
@@ -1898,6 +1907,26 @@ export class RulesService {
       return this.createReturnStatus(
         false,
         'A collection can be managed by either Sonarr or Sportarr, not both',
+      );
+    }
+    return this.createReturnStatus(true, 'Success');
+  }
+
+  /**
+   * The overlay countdown turns this window into a real date, so a value past
+   * Date range would draw "Leaving Invalid Date" on the artwork (#3549). The
+   * rule-group body is not schema-validated, so the bound is checked here as
+   * well as in the form.
+   */
+  private validateDeletionWindow(params: RuleGroupDto): ReturnStatus {
+    const days = params.collection?.deleteAfterDays;
+    if (
+      days != null &&
+      (!Number.isInteger(days) || days < 0 || days > DELETE_AFTER_MAX_DAYS)
+    ) {
+      return this.createReturnStatus(
+        false,
+        `Take action after days must be a whole number between 0 and ${DELETE_AFTER_MAX_DAYS}`,
       );
     }
     return this.createReturnStatus(true, 'Success');

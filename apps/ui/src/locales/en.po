@@ -3809,6 +3809,10 @@ msgid "Take action after days is required for this action"
 msgstr "Take action after days is required for this action"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Take action after days must be {max} or less"
+msgstr "Take action after days must be {max} or less"
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Take action after days must be 0 or greater"
 msgstr "Take action after days must be 0 or greater"
 

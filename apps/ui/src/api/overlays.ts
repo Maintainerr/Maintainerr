@@ -137,26 +137,39 @@ export const deleteOverlayImage = (imageName: string) =>
     `/overlays/images/${encodeURIComponent(imageName)}`,
   )
 
+export type OverlayRunStatus = {
+  status: 'idle' | 'running' | 'error'
+  lastRun: string | null
+  lastResult: OverlayProcessorRunResult | null
+}
+
+// Both endpoints answer as soon as the work is started, so the caller follows
+// it here instead of holding a request open for the whole run.
 export const processAllOverlays = (options?: { force?: boolean }) =>
-  PostApiHandler<OverlayProcessorRunResult>(
+  PostApiHandler<void>(
     '/overlays/process',
     options?.force ? { force: true } : {},
   )
 
-export const resetAllOverlays = () =>
-  DeleteApiHandler<{ success: boolean }>('/overlays/reset')
+export const resetAllOverlays = () => DeleteApiHandler<void>('/overlays/reset')
 
 export const getOverlayStatus = () =>
-  GetApiHandler<{
-    status: string
-    lastRun: string | null
-    lastResult: {
-      processed: number
-      reverted: number
-      skipped: number
-      errors: number
-    } | null
-  }>('/overlays/status')
+  GetApiHandler<OverlayRunStatus>('/overlays/status')
+
+const OVERLAY_STATUS_POLL_MS = 2000
+
+/**
+ * Resolve once no overlay work is in progress. The run is already marked as
+ * running by the time the start request answers, so the first poll cannot read
+ * the previous run's result.
+ */
+export const waitForOverlayRun = async (): Promise<OverlayRunStatus> => {
+  for (;;) {
+    const status = await getOverlayStatus()
+    if (status.status !== 'running') return status
+    await new Promise((resolve) => setTimeout(resolve, OVERLAY_STATUS_POLL_MS))
+  }
+}
 
 // ── Template API ──────────────────────────────────────────────────────────
 

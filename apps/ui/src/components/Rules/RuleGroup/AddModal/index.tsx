@@ -13,6 +13,7 @@ import {
 import { zodResolver } from '@hookform/resolvers/zod'
 import {
   Application,
+  DELETE_AFTER_MAX_DAYS,
   isValidMediaItemType,
   leftoverCleanupScope,
   MediaItemType,
@@ -363,6 +364,10 @@ export const ruleGroupFormSchema = z
           })
           .min(0, {
             error: () => globalT`Take action after days must be 0 or greater`,
+          })
+          .max(DELETE_AFTER_MAX_DAYS, {
+            error: () =>
+              globalT`Take action after days must be ${{ max: DELETE_AFTER_MAX_DAYS }} or less`,
           })
           .optional(),
       )
@@ -1485,6 +1490,8 @@ const AddModal = (props: AddModal) => {
                             <Input
                               type="number"
                               id="collection_deleteDays"
+                              min={0}
+                              max={DELETE_AFTER_MAX_DAYS}
                               {...register('deleteAfterDays')}
                             />
                           </div>
