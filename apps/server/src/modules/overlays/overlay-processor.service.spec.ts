@@ -148,6 +148,58 @@ describe('OverlayProcessorService', () => {
     expect(result.processed).toBe(1);
   });
 
+  it('draws nothing when the collection window cannot name a day', async () => {
+    const settingsService = {
+      getSettings: jest.fn().mockResolvedValue({ enabled: true }),
+    };
+    const stateService = { getItemState: jest.fn().mockResolvedValue(null) };
+    const templateService = {
+      resolveForCollection: jest.fn().mockResolvedValue(makeTemplate()),
+    };
+    const provider = makeProvider();
+
+    const service = new OverlayProcessorService(
+      makeProviderFactory(provider) as any,
+      makeMediaServerFactory() as any,
+      {} as any,
+      {} as any,
+      settingsService as any,
+      stateService as any,
+      {} as any,
+      templateService as any,
+      { emit: jest.fn() } as any,
+      createMockLogger(),
+    );
+
+    // Out of Date's range: the sum used to be an Invalid Date, which is truthy,
+    // so it reached the artwork as "Leaving Invalid Date" (#3549).
+    const collection = createCollection({
+      id: 1,
+      title: 'Impossible window',
+      type: 'movie',
+      deleteAfterDays: 999999999,
+      overlayTemplateId: null,
+    });
+    collection.collectionMedia = [
+      createCollectionMedia(collection, {
+        mediaServerId: 'media-1',
+        addDate: new Date('2026-04-01T00:00:00.000Z'),
+      }),
+    ];
+
+    jest.spyOn(service, 'applyTemplateOverlay').mockResolvedValue(true);
+
+    const result = await service.processCollection(collection as any);
+
+    expect(service.applyTemplateOverlay).not.toHaveBeenCalled();
+    expect(result).toEqual({
+      processed: 0,
+      reverted: 0,
+      skipped: 0,
+      errors: 0,
+    });
+  });
+
   it('resolves a titlecard template when the collection is of type episode', async () => {
     const settingsService = {
       getSettings: jest.fn().mockResolvedValue({ enabled: true }),
@@ -809,6 +861,8 @@ describe('OverlayProcessorService', () => {
       .spyOn(service as any, 'deleteOriginalPoster')
       .mockImplementation(() => {});
 
+    jest.spyOn(service as any, 'listBackedUpItemIds').mockReturnValue([]);
+
     await service.resetAllOverlays();
 
     expect(stateService.removeState).toHaveBeenNthCalledWith(1, 1, 'media-1');
@@ -831,6 +885,124 @@ describe('OverlayProcessorService', () => {
         ([eventName]) => eventName === MaintainerrEvent.Overlay_Reverted,
       ),
     ).toHaveLength(1);
+  });
+
+  it('drops the backup it just took when the render fails, so reset cannot restore it', async () => {
+    const provider = makeProvider({
+      downloadImage: jest.fn().mockResolvedValue(Buffer.from('poster')),
+    });
+    const renderService = {
+      renderFromTemplate: jest
+        .fn()
+        .mockRejectedValue(new Error('sharp missing')),
+    };
+
+    const service = new OverlayProcessorService(
+      makeProviderFactory(provider) as any,
+      makeMediaServerFactory() as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      renderService as any,
+      {} as any,
+      { emit: jest.fn() } as any,
+      createMockLogger(),
+    );
+
+    jest.spyOn(service as any, 'loadOriginalPoster').mockReturnValue(null);
+    const saveOriginal = jest
+      .spyOn(service as any, 'saveOriginalPoster')
+      .mockResolvedValue('/backup.jpg');
+    const deleteOriginal = jest
+      .spyOn(service as any, 'deleteOriginalPoster')
+      .mockImplementation(() => {});
+
+    const applied = await service.applyTemplateOverlay(
+      'media-1',
+      1,
+      new Date(),
+      makeTemplate(),
+      provider as any,
+    );
+
+    expect(applied).toBe(false);
+    expect(saveOriginal).toHaveBeenCalled();
+    expect(deleteOriginal).toHaveBeenCalledWith('media-1');
+    expect(provider.uploadImage).not.toHaveBeenCalled();
+  });
+
+  it('restores a saved original that no state row claims during reset-all', async () => {
+    const stateService = {
+      getAllStates: jest
+        .fn()
+        .mockResolvedValue([{ collectionId: 1, mediaServerId: 'media-1' }]),
+      removeState: jest.fn().mockResolvedValue(undefined),
+    };
+    const provider = makeProvider();
+    const collectionRepos = makeCollectionRepos([]);
+
+    const service = new OverlayProcessorService(
+      makeProviderFactory(provider) as any,
+      makeMediaServerFactory() as any,
+      collectionRepos.collectionRepo as any,
+      collectionRepos.collectionMediaRepo as any,
+      {} as any,
+      stateService as any,
+      {} as any,
+      {} as any,
+      { emit: jest.fn() } as any,
+      createMockLogger(),
+    );
+
+    // media-2 was uploaded but its state write failed: without this, nothing
+    // ever takes it off the media server again (#3549).
+    jest
+      .spyOn(service as any, 'listBackedUpItemIds')
+      .mockReturnValue(['media-1', 'media-2']);
+    jest
+      .spyOn(service as any, 'loadOriginalPoster')
+      .mockReturnValue(Buffer.from('poster'));
+    jest
+      .spyOn(service as any, 'deleteOriginalPoster')
+      .mockImplementation(() => {});
+
+    await service.resetAllOverlays();
+
+    expect(provider.uploadImage).toHaveBeenCalledTimes(2);
+    expect(provider.uploadImage).toHaveBeenNthCalledWith(
+      2,
+      'media-2',
+      expect.any(Buffer),
+      'image/jpeg',
+    );
+    expect(stateService.removeState).toHaveBeenCalledTimes(1);
+    expect(stateService.removeState).toHaveBeenCalledWith(1, 'media-1');
+  });
+
+  it('leaves a run alone when reset is asked for while one is in progress', async () => {
+    const stateService = { getAllStates: jest.fn() };
+    const provider = makeProvider();
+
+    const service = new OverlayProcessorService(
+      makeProviderFactory(provider) as any,
+      makeMediaServerFactory() as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      stateService as any,
+      {} as any,
+      {} as any,
+      { emit: jest.fn() } as any,
+      createMockLogger(),
+    );
+
+    service.status = 'running';
+
+    await service.resetAllOverlays();
+
+    expect(stateService.getAllStates).not.toHaveBeenCalled();
+    expect(service.status).toBe('running');
   });
 
   it('keeps overlay state on reset when individual uploads fail so retries are possible', async () => {
@@ -866,6 +1038,8 @@ describe('OverlayProcessorService', () => {
     const deleteSpy = jest
       .spyOn(service as any, 'deleteOriginalPoster')
       .mockImplementation(() => {});
+
+    jest.spyOn(service as any, 'listBackedUpItemIds').mockReturnValue([]);
 
     await service.resetAllOverlays();
 
@@ -911,6 +1085,8 @@ describe('OverlayProcessorService', () => {
     jest
       .spyOn(service as any, 'deleteOriginalPoster')
       .mockImplementation(() => {});
+
+    jest.spyOn(service as any, 'listBackedUpItemIds').mockReturnValue([]);
 
     await service.resetAllOverlays();
 
@@ -1573,6 +1749,55 @@ describe('OverlayProcessorService', () => {
         }),
       ];
       const parents = { parentId: 'season-1', grandparentId: 'show-1' };
+      const mediaServer = makeMediaServer({
+        getMetadataBatch: jest
+          .fn()
+          .mockResolvedValue([
+            makeItem('episode-1', 'episode', parents),
+            makeItem('episode-2', 'episode', parents),
+          ]),
+        getChildrenMetadata: childrenOf({
+          'season-1': [
+            makeItem('episode-1', 'episode'),
+            makeItem('episode-2', 'episode'),
+          ],
+          'show-1': [makeItem('season-1', 'season', { index: 1 })],
+        }),
+      });
+      const { service, applySpy } = buildService(mediaServer);
+
+      await service.processCollection(collection as any);
+
+      expect(drawn(applySpy)).toEqual([
+        ['episode-1', 'titlecard'],
+        ['episode-2', 'titlecard'],
+        ['season-1', 'poster'],
+        ['show-1', 'poster'],
+      ]);
+    });
+
+    it('recovers the season through the show when episodes carry no season link (issue #3534)', async () => {
+      const collection = createCollection({
+        id: 1,
+        title: 'Leaving episodes',
+        type: 'episode',
+        arrAction: ServarrAction.DELETE,
+        deleteAfterDays: 5,
+        overlayTemplateId: null,
+      });
+      collection.collectionMedia = [
+        createCollectionMedia(collection, {
+          mediaServerId: 'episode-1',
+          addDate: new Date('2026-04-01T00:00:00.000Z'),
+        }),
+        createCollectionMedia(collection, {
+          mediaServerId: 'episode-2',
+          addDate: new Date('2026-04-01T00:00:00.000Z'),
+        }),
+      ];
+      // Plex "Seasons: Hide" strips parentId from episodes; the show id and
+      // the season number remain.
+      const parents = { grandparentId: 'show-1', parentIndex: 1 };
       const mediaServer = makeMediaServer({
         getMetadataBatch: jest
           .fn()

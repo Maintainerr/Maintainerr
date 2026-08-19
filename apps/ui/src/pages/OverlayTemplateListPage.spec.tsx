@@ -1,5 +1,5 @@
 import type { OverlayTemplate } from '@maintainerr/contracts'
-import { render, screen } from '@testing-library/react'
+import { render, screen } from '../test-utils/render'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import OverlayTemplateListPage from './OverlayTemplateListPage'
 

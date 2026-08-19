@@ -1,3 +1,5 @@
+import { t as globalT } from '@lingui/core/macro'
+import { useLingui } from '@lingui/react/macro'
 import {
   compareMediaItemsBySort,
   type CollectionMediaSortParams,
@@ -13,7 +15,9 @@ import { SmallLoadingSpinner } from './LoadingSpinner'
 
 const defaultSortValue = ''
 const defaultOverviewSortValue: MediaLibrarySortKey = 'title.asc'
-const titleAscendingSortLabel = 'Title (A-Z) Ascending'
+// Functions, not constants: a label resolved at module load would be stuck in
+// whichever locale was active on first import.
+const titleAscendingSortLabel = () => globalT`Title (A-Z) Ascending`
 
 type SortParams = {
   sort: string
@@ -79,32 +83,50 @@ const getMediaLibrarySortOptions = (
     includeStudioSort?: boolean
   } = {},
 ): Array<SortOption<MediaLibrarySortParams>> => {
-  const airDateLabel =
-    libraryType === 'show' ? 'First Air Date' : 'Release Date'
-
   const options: Array<SortOption<MediaLibrarySortParams>> = []
 
   if (includeTitleAscending) {
     options.push(
-      createMediaLibrarySortOption('title.asc', titleAscendingSortLabel),
-    )
-  }
-
-  if (includeStudioSort) {
-    options.push(
-      createMediaLibrarySortOption('studio.asc', 'Studio (A-Z) Ascending'),
-      createMediaLibrarySortOption('studio.desc', 'Studio (Z-A) Descending'),
+      createMediaLibrarySortOption('title.asc', titleAscendingSortLabel()),
     )
   }
 
   options.push(
-    createMediaLibrarySortOption('title.desc', 'Title (Z-A) Descending'),
-    createMediaLibrarySortOption('airDate.desc', `${airDateLabel} Descending`),
-    createMediaLibrarySortOption('airDate.asc', `${airDateLabel} Ascending`),
-    createMediaLibrarySortOption('rating.desc', 'Rating Descending'),
-    createMediaLibrarySortOption('rating.asc', 'Rating Ascending'),
-    createMediaLibrarySortOption('watchCount.desc', 'Most Watched'),
-    createMediaLibrarySortOption('watchCount.asc', 'Least Watched'),
+    createMediaLibrarySortOption('title.desc', globalT`Title (Z-A) Descending`),
+  )
+
+  if (includeStudioSort) {
+    options.push(
+      createMediaLibrarySortOption(
+        'studio.asc',
+        globalT`Studio (A-Z) Ascending`,
+      ),
+      createMediaLibrarySortOption(
+        'studio.desc',
+        globalT`Studio (Z-A) Descending`,
+      ),
+    )
+  }
+
+  // The air-date pair is spelled out per library type rather than composed
+  // from a shared noun, so each reads naturally once translated.
+  options.push(
+    createMediaLibrarySortOption(
+      'airDate.desc',
+      libraryType === 'show'
+        ? globalT`First Air Date Descending`
+        : globalT`Release Date Descending`,
+    ),
+    createMediaLibrarySortOption(
+      'airDate.asc',
+      libraryType === 'show'
+        ? globalT`First Air Date Ascending`
+        : globalT`Release Date Ascending`,
+    ),
+    createMediaLibrarySortOption('rating.desc', globalT`Rating Descending`),
+    createMediaLibrarySortOption('rating.asc', globalT`Rating Ascending`),
+    createMediaLibrarySortOption('watchCount.desc', globalT`Most Watched`),
+    createMediaLibrarySortOption('watchCount.asc', globalT`Least Watched`),
   )
 
   return options
@@ -119,21 +141,21 @@ export const getMediaLibrarySortConfig = (
     options: [
       createMediaLibrarySortOption(
         defaultOverviewSortValue,
-        titleAscendingSortLabel,
+        titleAscendingSortLabel(),
       ),
       ...getMediaLibrarySortOptions(libraryType, {
         includeTitleAscending: false,
         includeStudioSort,
       }),
-      createMediaLibrarySortOption('manual.desc', 'Manual Added First'),
-      createMediaLibrarySortOption('excluded.desc', 'Excluded First'),
+      createMediaLibrarySortOption('manual.desc', globalT`Manual Added First`),
+      createMediaLibrarySortOption('excluded.desc', globalT`Excluded First`),
     ],
   }
 }
 
 export const getCollectionSortConfig = (
   libraryType?: MediaLibrary['type'],
-  defaultLabel: string = 'Recently Excluded',
+  defaultLabel?: string,
   includeStudioSort: boolean = false,
 ): SortConfig<MediaLibrarySortParams> => {
   return {
@@ -141,26 +163,26 @@ export const getCollectionSortConfig = (
     options: [
       {
         value: defaultSortValue,
-        label: defaultLabel,
+        label: defaultLabel ?? globalT`Recently Excluded`,
       },
       ...getMediaLibrarySortOptions(libraryType, { includeStudioSort }),
     ],
   }
 }
 
-const collectionDeleteSoonestSortOption: SortOption<CollectionMediaSortParams> =
-  {
+const collectionDeleteSoonestSortOption =
+  (): SortOption<CollectionMediaSortParams> => ({
     value: 'deleteSoonest.asc',
-    label: 'Delete Soonest',
+    label: globalT`Delete Soonest`,
     sortParams: { sort: 'deleteSoonest', sortOrder: 'asc' },
-  }
+  })
 
-const collectionDeleteLatestSortOption: SortOption<CollectionMediaSortParams> =
-  {
+const collectionDeleteLatestSortOption =
+  (): SortOption<CollectionMediaSortParams> => ({
     value: 'deleteSoonest.desc',
-    label: 'Delete Latest',
+    label: globalT`Delete Latest`,
     sortParams: { sort: 'deleteSoonest', sortOrder: 'desc' },
-  }
+  })
 
 export const getCollectionMediaSortConfig = (
   libraryType?: MediaLibrary['type'],
@@ -170,7 +192,7 @@ export const getCollectionMediaSortConfig = (
 ): SortConfig<CollectionMediaSortParams> => {
   const options = getCollectionSortConfig(
     libraryType,
-    'Recently Added',
+    globalT`Recently Added`,
     includeStudioSort,
   )
     .options.map((option) => ({
@@ -191,15 +213,15 @@ export const getCollectionMediaSortConfig = (
 
   const resolvedOptions = includeDeleteSoonest
     ? [
-        collectionDeleteSoonestSortOption,
-        collectionDeleteLatestSortOption,
+        collectionDeleteSoonestSortOption(),
+        collectionDeleteLatestSortOption(),
         ...options,
       ]
     : options
 
   return {
     defaultValue: includeDeleteSoonest
-      ? collectionDeleteSoonestSortOption.value
+      ? collectionDeleteSoonestSortOption().value
       : defaultSortValue,
     // Opt-in, and only the collection media page opts in. The rule group form
     // persists its selection as the order pushed to the media server, which is
@@ -208,8 +230,14 @@ export const getCollectionMediaSortConfig = (
     options: includeStatusSorts
       ? [
           ...resolvedOptions,
-          createMediaLibrarySortOption('manual.desc', 'Manual Added First'),
-          createMediaLibrarySortOption('excluded.desc', 'Excluded First'),
+          createMediaLibrarySortOption(
+            'manual.desc',
+            globalT`Manual Added First`,
+          ),
+          createMediaLibrarySortOption(
+            'excluded.desc',
+            globalT`Excluded First`,
+          ),
         ]
       : resolvedOptions,
   }
@@ -281,6 +309,8 @@ export const MediaLibrarySortControl = ({
   onSortChange,
   isLoading = false,
 }: MediaLibrarySortControlProps) => {
+  const { t } = useLingui()
+
   return (
     <div className="relative w-full">
       <Select
@@ -299,7 +329,7 @@ export const MediaLibrarySortControl = ({
       {isLoading ? (
         <div
           role="status"
-          aria-label="Loading sorted items"
+          aria-label={t`Loading sorted items`}
           className="pointer-events-none absolute top-1/2 right-8 -translate-y-1/2"
         >
           <SmallLoadingSpinner className="h-4 w-4" />

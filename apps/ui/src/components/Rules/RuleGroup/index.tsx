@@ -1,3 +1,4 @@
+import { Trans, useLingui } from '@lingui/react/macro'
 import {
   PencilIcon,
   PlayIcon,
@@ -43,6 +44,7 @@ const RuleGroup = (props: {
   onDelete: () => void
   onEdit: (group: IRuleGroup) => void
 }) => {
+  const { t } = useLingui()
   const [showSureDelete, setShowSureDelete] = useState<boolean>(false)
   const {
     title: libraryTitle,
@@ -54,19 +56,19 @@ const RuleGroup = (props: {
     onError(error) {
       if (isAxiosError(error) && error.response?.data?.message) {
         toast.error(
-          error.response?.data?.message || 'Failed to start rule execution.',
+          error.response?.data?.message || t`Failed to start rule execution.`,
         )
       } else {
-        toast.error('Failed to start rule execution.')
+        toast.error(t`Failed to start rule execution.`)
       }
     },
   })
   const { mutate: stopExecution } = useStopRuleGroupExecution({
     onSuccess() {
-      toast.success('Requested to stop rule execution.')
+      toast.success(t`Requested to stop rule execution.`)
     },
     onError() {
-      toast.error('Failed to request stop of rule execution.')
+      toast.error(t`Failed to request stop of rule execution.`)
     },
   })
 
@@ -84,7 +86,7 @@ const RuleGroup = (props: {
         if (resp.code === 1) props.onDelete()
         // The media server explains a refused delete, and it stays refused
         // until the user acts on the reason.
-        else toast.error(resp.message || 'Failed to delete rule group.')
+        else toast.error(resp.message || t`Failed to delete rule group.`)
       })
       .catch((error: unknown) => {
         void logClientError(
@@ -92,7 +94,7 @@ const RuleGroup = (props: {
           error,
           'RuleGroup.confirmedDelete',
         )
-        toast.error('Failed to delete rule group. Check logs for details.')
+        toast.error(t`Failed to delete rule group. Check logs for details.`)
       })
   }
 
@@ -122,13 +124,13 @@ const RuleGroup = (props: {
               }
               title={
                 ruleExecutingOrQueued
-                  ? 'Request stop execution'
-                  : 'Start execution'
+                  ? t`Request stop execution`
+                  : t`Start execution`
               }
               aria-label={
                 ruleExecutingOrQueued
-                  ? 'Request stop execution'
-                  : 'Start execution'
+                  ? t`Request stop execution`
+                  : t`Start execution`
               }
             >
               {!ruleExecutingOrQueued ? (
@@ -152,33 +154,37 @@ const RuleGroup = (props: {
           <div className="grid grid-cols-2 gap-x-3 gap-y-2.5 sm:grid-cols-3 sm:gap-y-2 [&>div:nth-child(2n)]:text-right sm:[&>div:nth-child(2n)]:text-left sm:[&>div:nth-child(3n)]:text-right sm:[&>div:nth-child(3n-1)]:text-center">
             <div className="min-w-0">
               <p className="text-xs font-semibold tracking-wide text-zinc-400 uppercase">
-                Status
+                <Trans>Status</Trans>
               </p>
               <p>
                 {props.group.isActive ? (
-                  <span className="text-success-500">Active</span>
+                  <span className="text-success-500">
+                    <Trans>Active</Trans>
+                  </span>
                 ) : (
-                  <span className="text-error-500">Inactive</span>
+                  <span className="text-error-500">
+                    <Trans>Inactive</Trans>
+                  </span>
                 )}
               </p>
             </div>
             <div className="min-w-0">
               <p className="text-xs font-semibold tracking-wide text-zinc-400 uppercase">
-                Library
+                <Trans>Library</Trans>
               </p>
               {hasNoLibrary ? (
                 <p
                   className="truncate text-error-500"
-                  title="Please edit this rule and select a library"
+                  title={t`Please edit this rule and select a library`}
                 >
-                  Not set
+                  <Trans>Not set</Trans>
                 </p>
               ) : libraryUnreachable ? (
                 <p
                   className="truncate text-warning-500"
-                  title="Media server is unreachable. The stored library selection is preserved."
+                  title={t`Media server is unreachable. The stored library selection is preserved.`}
                 >
-                  Unavailable
+                  <Trans>Unavailable</Trans>
                 </p>
               ) : (
                 <p className="truncate text-maintainerr">
@@ -188,7 +194,7 @@ const RuleGroup = (props: {
             </div>
             <div className="min-w-0">
               <p className="text-xs font-semibold tracking-wide text-zinc-400 uppercase">
-                Rules
+                <Trans>Rules</Trans>
               </p>
               <p className="text-maintainerr">{props.group.rules.length}</p>
             </div>
@@ -198,17 +204,17 @@ const RuleGroup = (props: {
           <div>
             <EditButton
               onClick={onEdit}
-              text="Edit"
+              text={t`Edit`}
               svgIcon={<PencilIcon className="m-auto h-5 text-zinc-200" />}
             />
           </div>
           <div>
             {showSureDelete ? (
-              <DeleteButton onClick={confirmedDelete} text="Are you sure?" />
+              <DeleteButton onClick={confirmedDelete} text={t`Are you sure?`} />
             ) : (
               <DeleteButton
                 onClick={onRemove}
-                text="Delete"
+                text={t`Delete`}
                 svgIcon={<TrashIcon className="m-auto h-5 text-zinc-200" />}
               />
             )}

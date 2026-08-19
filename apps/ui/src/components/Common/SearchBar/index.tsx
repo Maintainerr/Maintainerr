@@ -1,3 +1,4 @@
+import { useLingui } from '@lingui/react/macro'
 import { ChangeEvent, useState } from 'react'
 import { Input } from '../../Forms/Input'
 
@@ -9,6 +10,7 @@ interface ISearchBar {
 }
 
 const SearchBar = (props: ISearchBar) => {
+  const { t } = useLingui()
   const { initialValue = '', onSearch, placeholder, value } = props
   const [text, setText] = useState(initialValue)
   const displayedValue = value ?? text
@@ -41,7 +43,7 @@ const SearchBar = (props: ISearchBar) => {
         type="search"
         name="search"
         onChange={(e) => inputHandler(e)}
-        placeholder={placeholder ? placeholder : 'Search'}
+        placeholder={placeholder ? placeholder : t`Search`}
         value={displayedValue}
         className="pl-10"
       />

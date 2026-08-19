@@ -26,22 +26,20 @@ When implementing against any external API or SDK (Plex, Jellyfin, TypeORM, etc.
 
 ### API documentation references
 
-#### Media management services
+Machine-readable OpenAPI specs are deliberately not listed here. They live in
+`SPECS` in [tools/api-spec-drift.mjs](../../tools/api-spec-drift.mjs), which
+fetches every one of them weekly, so that list is verified rather than trusted.
+Duplicating it in prose only creates a second copy that goes stale.
 
-- Sonarr: https://raw.githubusercontent.com/Sonarr/Sonarr/develop/src/Sonarr.Api.V3/openapi.json
-- Radarr: https://raw.githubusercontent.com/Radarr/Radarr/develop/src/Radarr.Api.V3/openapi.json
-- Tautulli: https://docs.tautulli.com/extending-tautulli/api-reference
+The references below are the ones with no fetchable spec, or that say something
+the spec does not:
 
-#### Request management services
-
+- Tautulli: https://docs.tautulli.com/extending-tautulli/api-reference - no machine-readable spec, a single `/api/v2?cmd=` endpoint
 - Seerr: https://docs.seerr.dev/
-
-#### Media server services
-
-- Plex (python-plexapi): https://python-plexapi.readthedocs.io/en/latest/index.html
-- Plex (official PMS reference): https://developer.plex.tv/pms/ - authoritative for what Plex guarantees; rendered page only, no spec file to fetch
-- Plex (OpenAPI, community): https://raw.githubusercontent.com/LukasParke/plex-api-spec/refs/heads/main/plex-api-spec.yaml - machine-readable; its `required` lists are looser than the official reference (e.g. it requires `addedAt`, the official schema does not), so confirm guarantees against the official page
 - Jellyfin: https://api.jellyfin.org/
+- Plex (python-plexapi): https://python-plexapi.readthedocs.io/en/latest/index.html
+- Plex (additional): https://www.plexopedia.com/plex-media-server/api/
+- Plex (official PMS reference): https://developer.plex.tv/pms/ - authoritative for what Plex guarantees; rendered page only, no spec file to fetch. The community OpenAPI spec's `required` lists are looser (e.g. it requires `addedAt`, the official schema does not), so confirm guarantees against this page.
 
 ## Rules
 

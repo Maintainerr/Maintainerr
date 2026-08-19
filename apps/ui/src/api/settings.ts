@@ -1,3 +1,4 @@
+import { t } from '@lingui/core/macro'
 import {
   BasicResponseDto,
   DownloadClientSetting,
@@ -304,9 +305,15 @@ export const usePlexAuthValidation = (
       return {
         valid: false,
         unreachable: result.unreachable === true,
+        // No invented message when plex.tv simply could not be reached: the
+        // saved token may be perfectly good, and claiming the credentials are
+        // invalid sends people off to re-authenticate for nothing. Leaving it
+        // unset lets the caller show its softer "still retrying" wording.
         errorMessage:
           result.message ||
-          'Stored Plex credentials are invalid. Re-authenticate with Plex.',
+          (result.unreachable
+            ? undefined
+            : t`Stored Plex credentials are invalid. Re-authenticate with Plex.`),
       }
     },
     staleTime: 0,
@@ -446,7 +453,7 @@ export const useSaveJellyfinSettings = (
 
       return assertSettingsMutationSucceeded(
         response,
-        'Jellyfin settings could not be updated',
+        t`Jellyfin settings could not be updated`,
       )
     },
     onSuccess: () => {
@@ -480,7 +487,7 @@ export const useDeleteJellyfinSettings = (
 
       return assertSettingsMutationSucceeded(
         response,
-        'Jellyfin settings could not be updated',
+        t`Jellyfin settings could not be updated`,
       )
     },
     onSuccess: () => {
@@ -580,7 +587,7 @@ export const useSaveDownloadClientSettings = (
 
       return assertSettingsMutationSucceeded(
         response,
-        'Download client settings could not be updated',
+        t`Download client settings could not be updated`,
       )
     },
     onSuccess: () => {
@@ -621,7 +628,7 @@ export const useDeleteDownloadClientSettings = (
 
       return assertSettingsMutationSucceeded(
         response,
-        'Download client settings could not be updated',
+        t`Download client settings could not be updated`,
       )
     },
     onSuccess: () => {
@@ -705,7 +712,7 @@ export const useSaveEmbySettings = (options?: UseSaveEmbySettingsOptions) => {
 
       return assertSettingsMutationSucceeded(
         response,
-        'Emby settings could not be updated',
+        t`Emby settings could not be updated`,
       )
     },
     onSuccess: () => {
@@ -737,7 +744,7 @@ export const useDeleteEmbySettings = (
 
       return assertSettingsMutationSucceeded(
         response,
-        'Emby settings could not be updated',
+        t`Emby settings could not be updated`,
       )
     },
     onSuccess: () => {

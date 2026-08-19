@@ -26,6 +26,37 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
+      # A Weblate pull request is auto-mergeable after one code-owner approval,
+      # so it must not carry anything but translations. Nothing else constrains
+      # its diff. This runs inside the already-required check, so it needs no
+      # extra branch-protection wiring. Non-Weblate PRs are unaffected and go
+      # through normal review.
+      - name: Restrict Weblate pull requests to translation catalogs
+        env:
+          PR_LOGIN: ${{ github.event.pull_request.user.login }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+        run: |
+          set -euo pipefail
+          from_weblate=false
+          case "$PR_LOGIN" in 'hosted-weblate[bot]') from_weblate=true ;; esac
+          # The branch name is attacker-chosen, but it only ever *adds* the
+          # restriction below, so a false match costs a contributor nothing
+          # more than a scope check they already pass.
+          case "$HEAD_REF" in weblate-*) from_weblate=true ;; esac
+          if [ "$from_weblate" != true ]; then
+            echo "Not a Weblate pull request; scope restriction does not apply."
+            exit 0
+          fi
+          outside="$(git diff --name-only "origin/$BASE_REF...HEAD" \
+            -- ':!apps/ui/src/locales/**' || true)"
+          if [ -n "$outside" ]; then
+            echo "::error title=Weblate PR out of scope::A Weblate pull request may only change apps/ui/src/locales/."
+            echo "Out-of-scope files:"
+            echo "$outside"
+            exit 1
+          fi
+          echo "Weblate pull request is limited to translation catalogs."
       - name: Set up Node.js
         uses: actions/setup-node@v7
         with:
@@ -58,5 +89,33 @@ jobs:
       # Weblate enforces the same placeholder rules when a translation is
       # saved, but that is a setting on someone else's server. This is the
       # copy that runs on our pull requests.
+      #
+      # Run the validator from the base branch, not the PR: a pull request must
+      # not be able to weaken the gate that judges its own catalogs. The .po
+      # files stay the PR's (they are the data under test); only the checker is
+      # pinned to trusted code. origin/<base> is already local (fetch-depth: 0).
       - name: Validate translation catalogs
-        run: yarn i18n:validate
+        env:
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+          PR_LOGIN: ${{ github.event.pull_request.user.login }}
+        run: |
+          set -euo pipefail
+          git checkout "origin/$BASE_REF" -- tools/i18n
+          # The msgstr-integrity check is on by default (compares against the
+          # base branch merge-base). A Weblate sync is the only PR allowed to
+          # change translations, so it opts out with --no-base.
+          #
+          # Keyed on the author alone. The branch name is chosen by whoever
+          # opens the pull request, so accepting `weblate-*` would let any
+          # contributor switch off the check that judges their own
+          # translations. The login is matched in full: the `[bot]` suffix is
+          # an app identity that cannot be claimed as a user account, whereas a
+          # prefix would also have accepted `hosted-weblate-anything` - and
+          # `hosted-weblate` itself is an unregistered user name today.
+          from_weblate=false
+          case "$PR_LOGIN" in 'hosted-weblate[bot]') from_weblate=true ;; esac
+          if [ "$from_weblate" = true ]; then
+            node tools/i18n/validate-catalogs.mjs apps/ui/src/locales --no-base
+          else
+            node tools/i18n/validate-catalogs.mjs apps/ui/src/locales
+          fi

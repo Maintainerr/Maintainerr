@@ -1,3 +1,4 @@
+import { Trans, useLingui } from '@lingui/react/macro'
 import {
   COLLECTION_POSTER_MAX_BYTES,
   COLLECTION_POSTER_MAX_LABEL,
@@ -14,7 +15,6 @@ import Button from '../../../Common/Button'
 
 interface Props {
   collectionId: number
-  collectionTerm: string
   mediaServerName: string
 }
 
@@ -33,9 +33,9 @@ const ACCEPT = 'image/jpeg,image/png,image/webp'
  */
 export const CollectionPosterPicker = ({
   collectionId,
-  collectionTerm,
   mediaServerName,
 }: Props) => {
+  const { t } = useLingui()
   // cacheBust seeds at mount and is bumped on upload/clear so the rendered
   // URL is always unique enough to bypass cached 404s from prior sessions.
   const [cacheBust, setCacheBust] = useState<number>(() => Date.now())
@@ -49,6 +49,8 @@ export const CollectionPosterPicker = ({
   const probeTokenRef = useRef(0)
 
   const previewUrl = buildCollectionPosterUrl(collectionId, cacheBust)
+  const maxPosterSize = COLLECTION_POSTER_MAX_LABEL
+  const lowerMediaServerName = mediaServerName.toLowerCase()
   const hasPosterForCurrentCollection =
     hasPoster && posterStateCollectionId === collectionId
 
@@ -98,7 +100,7 @@ export const CollectionPosterPicker = ({
     if (file.size > COLLECTION_POSTER_MAX_BYTES) {
       setStatus({
         type: 'error',
-        title: `File is larger than ${COLLECTION_POSTER_MAX_LABEL}`,
+        title: t`File is larger than ${{ maxSize: COLLECTION_POSTER_MAX_LABEL }}`,
       })
       return
     }
@@ -114,17 +116,17 @@ export const CollectionPosterPicker = ({
       if (result.pushed) {
         setStatus({
           type: 'success',
-          title: `Poster saved and pushed to ${mediaServerName}`,
+          title: t`Poster saved and pushed to ${{ mediaServerName }}`,
         })
       } else if (result.attempted) {
         setStatus({
           type: 'warning',
-          title: `Saved locally. Maintainerr couldn't push to ${mediaServerName} right now; it'll re-apply automatically next time the ${collectionTerm} is recreated there.`,
+          title: t`Saved locally. Maintainerr couldn't push to ${{ mediaServerName }} right now; it'll re-apply automatically next time the collection is recreated there.`,
         })
       } else {
         setStatus({
           type: 'info',
-          title: `Poster saved locally. Maintainerr could not apply it to ${mediaServerName} yet.`,
+          title: t`Poster saved locally. Maintainerr could not apply it to ${{ mediaServerName }} yet.`,
         })
       }
     } catch (error) {
@@ -135,7 +137,7 @@ export const CollectionPosterPicker = ({
       )
       setStatus({
         type: 'error',
-        title: 'Could not upload poster - check that the file is a valid image',
+        title: t`Could not upload poster - check that the file is a valid image`,
       })
     } finally {
       setBusy(false)
@@ -154,8 +156,8 @@ export const CollectionPosterPicker = ({
       setStatus({
         type: 'info',
         title: refreshRequested
-          ? `Custom poster cleared. ${mediaServerName} metadata refresh requested - artwork may update depending on ${mediaServerName} behavior and configured agents.`
-          : `Custom poster cleared. The artwork on ${mediaServerName} is unchanged - refresh metadata there if you want the original back.`,
+          ? t`Custom poster cleared. ${{ mediaServerName }} metadata refresh requested - artwork may update depending on ${{ mediaServerName }} behavior and configured agents.`
+          : t`Custom poster cleared. The artwork on ${{ mediaServerName }} is unchanged - refresh metadata there if you want the original back.`,
       })
     } catch (error) {
       void logClientError(
@@ -165,7 +167,7 @@ export const CollectionPosterPicker = ({
       )
       setStatus({
         type: 'error',
-        title: 'Could not clear the stored poster',
+        title: t`Could not clear the stored poster`,
       })
     } finally {
       setBusy(false)
@@ -178,7 +180,7 @@ export const CollectionPosterPicker = ({
         <div className="relative h-36 w-24 shrink-0 overflow-hidden rounded-md bg-zinc-700 ring-1 ring-zinc-600">
           {hasPosterForCurrentCollection && (
             <img
-              alt={`Custom ${collectionTerm} poster`}
+              alt="Custom collection poster"
               src={previewUrl}
               className="absolute inset-0 h-full w-full object-cover"
               loading="lazy"
@@ -187,17 +189,19 @@ export const CollectionPosterPicker = ({
           )}
           {!hasPosterForCurrentCollection && (
             <div className="absolute inset-0 flex items-center justify-center text-center text-xs text-zinc-400">
-              No custom poster
+              <Trans>No custom poster</Trans>
             </div>
           )}
         </div>
         <div className="flex flex-1 flex-col gap-2">
           <p className="text-xs text-zinc-400">
-            Upload a JPEG, PNG, or WebP up to {COLLECTION_POSTER_MAX_LABEL}. The
-            image is re-encoded to JPEG and stored locally; Maintainerr pushes
-            it to {mediaServerName} as a one-shot write. Other tools that manage{' '}
-            {mediaServerName.toLowerCase()} collection artwork (e.g. Kometa,
-            Posterizarr) may overwrite it.
+            <Trans>
+              Upload a JPEG, PNG, or WebP up to {maxPosterSize}. The image is
+              re-encoded to JPEG and stored locally; Maintainerr pushes it to{' '}
+              {mediaServerName} as a one-shot write. Other tools that manage{' '}
+              {lowerMediaServerName} collection artwork (e.g. Kometa,
+              Posterizarr) may overwrite it.
+            </Trans>
           </p>
           <div className="flex flex-wrap gap-2">
             <input
@@ -215,8 +219,8 @@ export const CollectionPosterPicker = ({
               onClick={() => fileInputRef.current?.click()}
             >
               {hasPosterForCurrentCollection
-                ? 'Replace poster'
-                : 'Upload poster'}
+                ? t`Replace poster`
+                : t`Upload poster`}
             </Button>
             {hasPosterForCurrentCollection && (
               <Button
@@ -225,7 +229,7 @@ export const CollectionPosterPicker = ({
                 disabled={busy}
                 onClick={handleClear}
               >
-                Clear
+                <Trans>Clear</Trans>
               </Button>
             )}
           </div>

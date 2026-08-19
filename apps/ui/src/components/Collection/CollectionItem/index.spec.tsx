@@ -1,5 +1,5 @@
 import type { MediaLibrary } from '@maintainerr/contracts'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '../../../test-utils/render'
 import type { ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useMediaServerLibraries } from '../../../api/media-server'
@@ -73,7 +73,7 @@ describe('CollectionItem', () => {
     )
 
     await waitFor(() => {
-      expect(screen.getAllByAltText('img')).toHaveLength(2)
+      expect(screen.getAllByAltText('Collection preview')).toHaveLength(2)
     })
 
     expect(getApiHandlerMock).not.toHaveBeenCalled()
@@ -104,7 +104,7 @@ describe('CollectionItem', () => {
     )
 
     await waitFor(() => {
-      expect(screen.getAllByAltText('img')).toHaveLength(1)
+      expect(screen.getAllByAltText('Collection preview')).toHaveLength(1)
     })
 
     expect(getApiHandlerMock).not.toHaveBeenCalled()

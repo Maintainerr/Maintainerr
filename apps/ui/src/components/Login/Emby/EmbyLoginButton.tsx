@@ -1,4 +1,5 @@
 import { LoginIcon } from '@heroicons/react/outline'
+import { Trans, useLingui } from '@lingui/react/macro'
 import { useState } from 'react'
 import { type EmbyLoginResult, useLoginEmby } from '../../../api/settings'
 import { getApiErrorMessage } from '../../../utils/ApiError'
@@ -36,6 +37,7 @@ const EmbyLoginButton: React.FC<EmbyLoginButtonProps> = ({
   embyUrl,
   onAuthenticated,
 }) => {
+  const { t } = useLingui()
   const [open, setOpen] = useState(false)
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
@@ -55,7 +57,7 @@ const EmbyLoginButton: React.FC<EmbyLoginButtonProps> = ({
 
   const handleSubmit = async () => {
     if (!embyUrl) {
-      setError('Enter your Emby server URL first.')
+      setError(t`Enter your Emby server URL first.`)
       return
     }
     setError(null)
@@ -66,7 +68,7 @@ const EmbyLoginButton: React.FC<EmbyLoginButtonProps> = ({
         password,
       })
       if (result.code !== 1 || !result.token || !result.userId) {
-        setError(result.message || 'Authentication failed')
+        setError(result.message || t`Authentication failed`)
         return
       }
       onAuthenticated({
@@ -76,7 +78,7 @@ const EmbyLoginButton: React.FC<EmbyLoginButtonProps> = ({
       })
       handleClose()
     } catch (err) {
-      setError(getApiErrorMessage(err, 'Authentication failed'))
+      setError(getApiErrorMessage(err, t`Authentication failed`))
     }
   }
 
@@ -89,13 +91,13 @@ const EmbyLoginButton: React.FC<EmbyLoginButtonProps> = ({
         disabled={!embyUrl}
       >
         <LoginIcon className="mr-1 h-5 w-5" />
-        Sign in with Emby
+        <Trans>Sign in with Emby</Trans>
       </Button>
 
       {open ? (
         <Modal
           onCancel={handleClose}
-          cancelText="Close"
+          cancelText={t`Close`}
           loading={isPending}
           footerActions={
             <Button
@@ -104,29 +106,33 @@ const EmbyLoginButton: React.FC<EmbyLoginButtonProps> = ({
               onClick={() => void handleSubmit()}
               disabled={isPending || !username || !password}
             >
-              {isPending ? 'Signing in…' : 'Sign in'}
+              {isPending ? t`Signing in…` : t`Sign in`}
             </Button>
           }
         >
           <div className="text-zinc-100">
-            <h3 className="mb-2 text-lg font-medium">Sign in with Emby</h3>
+            <h3 className="mb-2 text-lg font-medium">
+              <Trans>Sign in with Emby</Trans>
+            </h3>
             <p className="mb-4 text-sm text-zinc-400">
-              Authenticates against{' '}
-              <strong className="text-zinc-200">{embyUrl}</strong> with an admin
-              username and password. The resulting access token is stored as the
-              API key.
+              <Trans>
+                Authenticates against{' '}
+                <strong className="text-zinc-200">{embyUrl}</strong> with an
+                admin username and password. The resulting access token is
+                stored as the API key.
+              </Trans>
             </p>
             <div className="space-y-3">
               <InputGroup
                 name="username"
-                label="Username"
+                label={t`Username`}
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
               />
               <InputGroup
                 name="password"
-                label="Password"
+                label={t`Password`}
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}

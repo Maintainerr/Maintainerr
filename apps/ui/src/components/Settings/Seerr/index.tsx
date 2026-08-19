@@ -1,3 +1,5 @@
+import { t as globalT } from '@lingui/core/macro'
+import { Trans, useLingui } from '@lingui/react/macro'
 import {
   seerrSettingSchema,
   stripTrailingSlashes,
@@ -17,14 +19,15 @@ const SeerrSettingFormSchema = z.union([
   SeerrSettingDeleteSchema,
 ])
 
-const fields: ExternalServiceFieldConfig[] = [
+// A function, so every label resolves in the locale active at render.
+const buildFields = (): ExternalServiceFieldConfig[] => [
   {
     name: 'url',
     label: 'URL',
     placeholder: 'http://localhost:5055',
     helpText: (
       <>
-        Example URL formats:{' '}
+        <Trans>Example URL formats:</Trans>{' '}
         <span className="whitespace-nowrap">http://localhost:5055</span>,{' '}
         <span className="whitespace-nowrap">http://192.168.1.5/seerr</span>,{' '}
         <span className="whitespace-nowrap">https://seerr.example.com</span>
@@ -35,25 +38,28 @@ const fields: ExternalServiceFieldConfig[] = [
   },
   {
     name: 'api_key',
-    label: 'API key',
+    label: globalT`API key`,
     type: 'password',
   },
 ]
 
 const SeerrSettings = () => {
+  const { t } = useLingui()
+
   return (
     <ExternalServiceSettingsPage
-      scope="Seerr settings"
-      pageTitle="Seerr settings - Maintainerr"
-      heading="Seerr Settings"
-      description="Seerr configuration"
+      updatedMessage={t`Seerr settings updated`}
+      updateErrorMessage={t`Seerr settings could not be updated`}
+      pageTitle={t`Seerr settings - Maintainerr`}
+      heading={t`Seerr Settings`}
+      description={t`Seerr configuration`}
       docsPage="Configuration/#seerr"
       settingsPath="/settings/seerr"
       testPath="/settings/test/seerr"
       schema={SeerrSettingFormSchema}
-      fields={fields}
+      fields={buildFields()}
       testSuccessTitle="Seerr"
-      testFailureMessage="Failed to connect to Seerr. Verify URL and API key."
+      testFailureMessage={t`Failed to connect to Seerr. Verify URL and API key.`}
     />
   )
 }

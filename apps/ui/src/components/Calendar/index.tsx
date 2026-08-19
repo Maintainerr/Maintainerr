@@ -1,6 +1,9 @@
+import { t as globalT } from '@lingui/core/macro'
+import { Plural, Trans, useLingui } from '@lingui/react/macro'
 import type { MediaItemType } from '@maintainerr/contracts'
 import { useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import {
+  calendarEntryTitle,
   useCalendarEntryDetails,
   useCalendarOverlayData,
   useCalendarSchedule,
@@ -21,35 +24,15 @@ type SelectedCalendarEntry = {
   date: Date
 }
 
-const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-const MONTH_NAMES_SHORT = [
-  'Jan',
-  'Feb',
-  'Mar',
-  'Apr',
-  'May',
-  'Jun',
-  'Jul',
-  'Aug',
-  'Sep',
-  'Oct',
-  'Nov',
-  'Dec',
-]
-const MONTH_NAMES_LONG = [
-  'January',
-  'February',
-  'March',
-  'April',
-  'May',
-  'June',
-  'July',
-  'August',
-  'September',
-  'October',
-  'November',
-  'December',
-]
+// Dates come from Intl with the app locale, never from catalog messages: one
+// locale source for the whole screen, and nothing for a translator to drift.
+// 2023-01-01 is a Sunday, so formatting that week yields Sun..Sat labels.
+const weekdayNames = (locale: string) => {
+  const format = new Intl.DateTimeFormat(locale, { weekday: 'short' })
+  return [0, 1, 2, 3, 4, 5, 6].map((day) =>
+    format.format(new Date(2023, 0, 1 + day)),
+  )
+}
 
 const pad2 = (n: number) => String(n).padStart(2, '0')
 
@@ -82,44 +65,37 @@ const addMonths = (d: Date, months: number) => {
 const getDayKey = (d: Date) =>
   `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`
 
-const formatMonthTitle = (d: Date) =>
-  d.toLocaleString(undefined, { month: 'long', year: 'numeric' })
+const formatMonthTitle = (d: Date, locale: string) =>
+  d.toLocaleString(locale, { month: 'long', year: 'numeric' })
 
-const formatShortMonthDay = (date: Date) =>
-  `${MONTH_NAMES_SHORT[date.getMonth()]} ${date.getDate()}`
+const formatWeekTitle = (
+  start: Date,
+  end: Date,
+  locale: string,
+  useShortMonths = false,
+) =>
+  new Intl.DateTimeFormat(locale, {
+    month: useShortMonths ? 'short' : 'long',
+    day: 'numeric',
+    year: 'numeric',
+  }).formatRange(start, end)
 
-const formatLongMonthDay = (date: Date) =>
-  `${MONTH_NAMES_LONG[date.getMonth()]} ${date.getDate()}`
-
-const formatWeekTitle = (start: Date, end: Date, useShortMonths = false) => {
-  const formatMonthDay = useShortMonths
-    ? formatShortMonthDay
-    : formatLongMonthDay
-  const sameYear = start.getFullYear() === end.getFullYear()
-
-  if (sameYear) {
-    return `${formatMonthDay(start)} - ${formatMonthDay(end)}, ${start.getFullYear()}`
-  }
-
-  return `${formatMonthDay(start)}, ${start.getFullYear()} - ${formatMonthDay(end)}, ${end.getFullYear()}`
-}
-
-const formatAddedAt = (value: Date | string) => {
+const formatAddedAt = (value: Date | string, locale: string) => {
   const date = new Date(value)
 
   if (Number.isNaN(date.getTime())) {
-    return 'Unknown'
+    return globalT`Unknown`
   }
 
-  return date.toLocaleDateString(undefined, {
+  return date.toLocaleDateString(locale, {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
   })
 }
 
-const formatScheduledDate = (value: Date) =>
-  value.toLocaleDateString(undefined, {
+const formatScheduledDate = (value: Date, locale: string) =>
+  value.toLocaleDateString(locale, {
     year: 'numeric',
     month: 'long',
     day: 'numeric',
@@ -128,15 +104,15 @@ const formatScheduledDate = (value: Date) =>
 const getMediaTypeLabel = (mediaType: MediaItemType) => {
   switch (mediaType) {
     case 'movie':
-      return 'Movie'
+      return globalT`Movie`
     case 'show':
-      return 'Show'
+      return globalT`Show`
     case 'season':
-      return 'Season'
+      return globalT`Season`
     case 'episode':
-      return 'Episode'
+      return globalT`Episode`
     default:
-      return 'Media'
+      return globalT`Media`
   }
 }
 
@@ -191,6 +167,8 @@ const useIsMobile = () => {
 }
 
 const Calendar = () => {
+  const { t, i18n } = useLingui()
+  const locale = i18n.locale
   const isMobile = useIsMobile()
   const { data: calendarDays = [], isLoading } = useCalendarSchedule()
   const { data: collections = [] } = useCalendarOverlayData()
@@ -236,17 +214,17 @@ const Calendar = () => {
 
   const headerTitle = useMemo(() => {
     if (!isMobile && effectiveViewMode === 'month') {
-      return formatMonthTitle(cursorDate)
+      return formatMonthTitle(cursorDate, locale)
     }
 
-    return formatWeekTitle(weekRange.weekStart, weekRange.weekEnd)
-  }, [cursorDate, effectiveViewMode, isMobile, weekRange])
+    return formatWeekTitle(weekRange.weekStart, weekRange.weekEnd, locale)
+  }, [cursorDate, effectiveViewMode, isMobile, locale, weekRange])
 
   const mobileWeekHeaderTitle = useMemo(() => {
     if (!isMobile && effectiveViewMode === 'month') return null
 
-    return formatWeekTitle(weekRange.weekStart, weekRange.weekEnd, true)
-  }, [effectiveViewMode, isMobile, weekRange])
+    return formatWeekTitle(weekRange.weekStart, weekRange.weekEnd, locale, true)
+  }, [effectiveViewMode, isMobile, locale, weekRange])
 
   const gridDates = useMemo(() => {
     if (isMobile || effectiveViewMode === 'week') {
@@ -262,6 +240,19 @@ const Calendar = () => {
     const gridStart = startOfWeekSunday(firstOfMonth)
     return Array.from({ length: 42 }, (_, i) => addDays(gridStart, i))
   }, [cursorDate, effectiveViewMode, isMobile])
+
+  // Built once per locale rather than per cell: the month grid renders 42 of
+  // them, and each call was constructing its own Intl formatter.
+  const weekdays = useMemo(() => weekdayNames(locale), [locale])
+  const cellDateFormat = useMemo(
+    () =>
+      new Intl.DateTimeFormat(locale, {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      }),
+    [locale],
+  )
 
   const onPrev = () => {
     setCursorDate((d) =>
@@ -319,13 +310,13 @@ const Calendar = () => {
                 setViewMode(e.target.value as CalendarViewMode)
               }}
             >
-              <option value="month">Month</option>
-              <option value="week">Week</option>
+              <option value="month">{t`Month`}</option>
+              <option value="week">{t`Week`}</option>
             </Select>
           </div>
 
           <Button className="h-10 px-3" type="button" onClick={onPrev}>
-            Prev
+            <Trans>Prev</Trans>
           </Button>
           <Button
             buttonType="primary"
@@ -333,22 +324,25 @@ const Calendar = () => {
             type="button"
             onClick={onToday}
           >
-            Today
+            <Trans>Today</Trans>
           </Button>
           <Button className="h-10 px-3" type="button" onClick={onNext}>
-            Next
+            <Trans>Next</Trans>
           </Button>
         </div>
       </div>
 
       <div className="mt-6 overflow-hidden rounded-xl border border-zinc-700/60 bg-zinc-700/40 shadow-lg backdrop-blur-sm">
         <div className="hidden grid-cols-7 border-b border-zinc-700/60 bg-zinc-700/70 sm:grid">
-          {DAY_NAMES.map((d) => (
+          {weekdays.map((weekday, dayIndex) => (
             <div
-              key={d}
+              // Keyed by weekday index, not the label: the label is locale
+              // text, so keying on it remounts all seven cells on a language
+              // switch, and two abbreviations that collide would duplicate.
+              key={dayIndex}
               className="px-3 py-3 text-left text-xs font-semibold tracking-wide text-zinc-200 uppercase"
             >
-              {d}
+              {weekday}
             </div>
           ))}
         </div>
@@ -362,7 +356,16 @@ const Calendar = () => {
           {gridDates.map((date) => {
             const dayKey = getDayKey(date)
             const daySchedule = getScheduleForDay(date)
-            const items = daySchedule?.items ?? []
+            // Ordered by what the reader actually sees. The query can only
+            // order by the stable key - resolving labels there would freeze
+            // them in whichever language was active when it ran - so the
+            // alphabetical pass belongs here, where a locale switch re-renders.
+            const items = [...(daySchedule?.items ?? [])].sort((left, right) =>
+              calendarEntryTitle(left).localeCompare(
+                calendarEntryTitle(right),
+                locale,
+              ),
+            )
             const totalScheduledCount = daySchedule?.totalScheduledCount ?? 0
             const defaultVisibleCount = isMobile ? 5 : 2
             const isExpanded = expandedDayKey === dayKey
@@ -372,12 +375,8 @@ const Calendar = () => {
             const hiddenCount = Math.max(items.length - defaultVisibleCount, 0)
             const outside = isOutsideMonth(date)
             const isToday = isSameDay(date, today)
-            const dayName = DAY_NAMES[date.getDay()]
-            const dateLabel = date.toLocaleString(undefined, {
-              month: 'short',
-              day: 'numeric',
-              year: 'numeric',
-            })
+            const weekdayLabel = weekdays[date.getDay()]
+            const dateLabel = cellDateFormat.format(date)
 
             return (
               <div
@@ -397,14 +396,14 @@ const Calendar = () => {
                           ? 'bg-maintainerr-600 text-white'
                           : 'border border-zinc-700/60 bg-zinc-800 text-zinc-100',
                       ].join(' ')}
-                      title={date.toDateString()}
+                      title={date.toLocaleDateString(locale)}
                     >
                       {date.getDate()}
                     </div>
 
                     <div className="sm:hidden">
                       <div className="text-sm font-semibold text-zinc-100">
-                        {dayName}
+                        {weekdayLabel}
                       </div>
                       <div className="text-xs text-zinc-300/80">
                         {dateLabel}
@@ -413,8 +412,14 @@ const Calendar = () => {
                   </div>
 
                   {totalScheduledCount > 0 && (
-                    <Badge badgeType="maintainerrdark">
-                      {totalScheduledCount} scheduled
+                    <Badge badgeType="maintainerrdark" className="min-w-0">
+                      <span className="truncate">
+                        <Plural
+                          value={totalScheduledCount}
+                          one="# scheduled"
+                          other="# scheduled"
+                        />
+                      </span>
                     </Badge>
                   )}
                 </div>
@@ -422,18 +427,18 @@ const Calendar = () => {
                 <div className="mt-2 flex flex-col gap-1">
                   {items.length === 0 ? (
                     <div className="text-xs text-zinc-400/70 select-none">
-                      {isLoading ? 'Loading...' : 'No scheduled actions'}
+                      {isLoading ? t`Loading...` : t`No scheduled actions`}
                     </div>
                   ) : (
                     visibleItems.map((item) => (
                       <button
                         key={item.id}
                         className="truncate rounded-md bg-maintainerr-600 px-2 py-1 text-left text-xs text-white hover:bg-maintainerr"
-                        title={item.title}
+                        title={calendarEntryTitle(item)}
                         type="button"
                         onClick={() => openEntryModal(item, date)}
                       >
-                        {item.title}
+                        {calendarEntryTitle(item)}
                       </button>
                     ))
                   )}
@@ -444,7 +449,7 @@ const Calendar = () => {
                       type="button"
                       onClick={() => setExpandedDayKey(dayKey)}
                     >
-                      +{hiddenCount} more...
+                      <Trans>+{hiddenCount} more...</Trans>
                     </button>
                   )}
 
@@ -454,7 +459,7 @@ const Calendar = () => {
                       type="button"
                       onClick={() => setExpandedDayKey(null)}
                     >
-                      Show less
+                      <Trans>Show less</Trans>
                     </button>
                   )}
                 </div>
@@ -465,20 +470,22 @@ const Calendar = () => {
       </div>
       {selectedEntry && (
         <Modal
-          title={selectedEntry.item.title}
+          title={calendarEntryTitle(selectedEntry.item)}
           onCancel={() => setSelectedEntry(null)}
-          cancelText="Close"
+          cancelText={t`Close`}
           size="4xl"
         >
           {modalLoading ? (
             <div className="flex min-h-48 flex-col items-center justify-center gap-3 py-6 text-center text-sm text-zinc-300">
               <SmallLoadingSpinner className="h-8 w-8" />
-              <div>Loading scheduled items...</div>
+              <div>
+                <Trans>Loading scheduled items...</Trans>
+              </div>
             </div>
           ) : modalItems.length > 0 ? (
             <div className="-mt-1 space-y-2">
               <div className="text-center text-sm font-medium text-zinc-300">
-                {formatScheduledDate(selectedEntry.date)}
+                {formatScheduledDate(selectedEntry.date, locale)}
               </div>
               <div className="space-y-2 sm:hidden">
                 {modalItems.map((item, index) => (
@@ -491,19 +498,25 @@ const Calendar = () => {
                     </div>
                     <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-2 text-xs">
                       <div>
-                        <div className="text-zinc-400">Added On</div>
+                        <div className="text-zinc-400">
+                          <Trans>Added On</Trans>
+                        </div>
                         <div className="text-zinc-300">
-                          {formatAddedAt(item.addedAt)}
+                          {formatAddedAt(item.addedAt, locale)}
                         </div>
                       </div>
                       <div>
-                        <div className="text-zinc-400">Type</div>
+                        <div className="text-zinc-400">
+                          <Trans>Type</Trans>
+                        </div>
                         <div className="text-zinc-300">
                           {getMediaTypeLabel(item.mediaType)}
                         </div>
                       </div>
                       <div className="col-span-2">
-                        <div className="text-zinc-400">Collection</div>
+                        <div className="text-zinc-400">
+                          <Trans>Collection</Trans>
+                        </div>
                         <BrandLink to={`/collections/${item.collectionId}`}>
                           {item.collectionTitle}
                         </BrandLink>
@@ -524,16 +537,16 @@ const Calendar = () => {
                     <thead>
                       <tr className="text-xs font-semibold tracking-wide text-zinc-400 uppercase">
                         <th className="border-b border-zinc-600 px-3 pb-2 text-left">
-                          Media
+                          <Trans>Media</Trans>
                         </th>
                         <th className="border-b border-zinc-600 px-3 pb-2 text-center">
-                          Added On
+                          <Trans>Added On</Trans>
                         </th>
                         <th className="border-b border-zinc-600 px-3 pb-2 text-center">
-                          Collection
+                          <Trans>Collection</Trans>
                         </th>
                         <th className="border-b border-zinc-600 px-3 pb-2 text-center">
-                          Type
+                          <Trans>Type</Trans>
                         </th>
                       </tr>
                     </thead>
@@ -564,9 +577,9 @@ const Calendar = () => {
                           </td>
                           <td
                             className="border-y border-zinc-600/60 bg-zinc-800/40 px-3 py-2 text-center text-zinc-300"
-                            title={formatAddedAt(item.addedAt)}
+                            title={formatAddedAt(item.addedAt, locale)}
                           >
-                            {formatAddedAt(item.addedAt)}
+                            {formatAddedAt(item.addedAt, locale)}
                           </td>
                           <td className="border-y border-zinc-600/60 bg-zinc-800/40 px-3 py-2 text-center">
                             <BrandLink to={`/collections/${item.collectionId}`}>
@@ -585,7 +598,7 @@ const Calendar = () => {
             </div>
           ) : (
             <div className="py-6 text-center text-sm text-zinc-400">
-              No media items found for this scheduled action.
+              <Trans>No media items found for this scheduled action.</Trans>
             </div>
           )}
         </Modal>

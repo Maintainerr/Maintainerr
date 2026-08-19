@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '../../test-utils/render'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
@@ -12,7 +12,10 @@ import { buildQuerySuccessResult } from '../../test-utils/queryResults'
 import type { ICollection } from '../Collection'
 import Calendar from './index'
 
-vi.mock('../../api/calendar', () => ({
+// Partial mock: the query hooks are stubbed, but calendarEntryTitle stays
+// real so the rendered entry titles go through the actual catalog lookup.
+vi.mock('../../api/calendar', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../api/calendar')>()),
   useCalendarSchedule: vi.fn(),
   useCalendarOverlayData: vi.fn(),
   useCalendarEntryDetails: vi.fn(),
@@ -42,8 +45,7 @@ describe('Calendar', () => {
         totalScheduledCount: 2,
         items: [
           {
-            id: 'Delete',
-            title: 'Delete: 2 items',
+            id: 'delete',
             count: 2,
             references: [],
           },

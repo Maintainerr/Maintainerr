@@ -1,3 +1,6 @@
+import { i18n } from '@lingui/core'
+import { plural, t as globalT } from '@lingui/core/macro'
+import { Trans, useLingui } from '@lingui/react/macro'
 import { CloudDownloadIcon } from '@heroicons/react/outline'
 import {
   ChevronDownIcon,
@@ -10,6 +13,7 @@ import {
 import { zodResolver } from '@hookform/resolvers/zod'
 import {
   Application,
+  DELETE_AFTER_MAX_DAYS,
   isValidMediaItemType,
   leftoverCleanupScope,
   MediaItemType,
@@ -171,160 +175,183 @@ const numberOrUndefined = (value: unknown): number | undefined => {
 }
 
 const sortActionOptions = <T extends { name: string }>(options: T[]): T[] => {
-  return [...options].sort((left, right) => left.name.localeCompare(right.name))
+  // Collate with the app locale: the names are translated, and the browser
+  // default would order Swedish labels with English rules.
+  return [...options].sort((left, right) =>
+    left.name.localeCompare(right.name, i18n.locale),
+  )
 }
 
-const RADARR_ACTION_OPTIONS = sortActionOptions([
-  {
-    id: ServarrAction.DELETE,
-    name: 'Delete',
-  },
-  {
-    id: ServarrAction.UNMONITOR_DELETE_ALL,
-    name: 'Unmonitor and delete files',
-  },
-  {
-    id: ServarrAction.UNMONITOR,
-    name: 'Unmonitor and keep files',
-  },
-  {
-    id: ServarrAction.DO_NOTHING,
-    name: 'Do nothing',
-  },
-  {
-    id: ServarrAction.CHANGE_QUALITY_PROFILE,
-    name: 'Change quality profile and search',
-  },
-])
+const buildRadarrActionOptions = () =>
+  sortActionOptions([
+    {
+      id: ServarrAction.DELETE,
+      name: globalT`Delete`,
+    },
+    {
+      id: ServarrAction.UNMONITOR_DELETE_ALL,
+      name: globalT`Unmonitor and delete files`,
+    },
+    {
+      id: ServarrAction.UNMONITOR,
+      name: globalT`Unmonitor and keep files`,
+    },
+    {
+      id: ServarrAction.DO_NOTHING,
+      name: globalT`Do nothing`,
+    },
+    {
+      id: ServarrAction.CHANGE_QUALITY_PROFILE,
+      name: globalT`Change quality profile and search`,
+    },
+  ])
 
-const SONARR_SHOW_ACTION_OPTIONS = sortActionOptions([
-  {
-    id: ServarrAction.DELETE,
-    name: 'Delete entire show',
-  },
-  {
-    id: ServarrAction.UNMONITOR_DELETE_ALL,
-    name: 'Unmonitor show + seasons, delete all episodes',
-  },
-  {
-    id: ServarrAction.UNMONITOR_DELETE_EXISTING,
-    name: 'Unmonitor show, delete existing episodes',
-  },
-  {
-    id: ServarrAction.UNMONITOR,
-    name: 'Unmonitor show + seasons, keep files',
-  },
-  {
-    id: ServarrAction.DO_NOTHING,
-    name: 'Do nothing',
-  },
-  {
-    id: ServarrAction.CHANGE_QUALITY_PROFILE,
-    name: 'Change quality profile and search',
-  },
-])
+const buildSonarrShowActionOptions = () =>
+  sortActionOptions([
+    {
+      id: ServarrAction.DELETE,
+      name: globalT`Delete entire show`,
+    },
+    {
+      id: ServarrAction.UNMONITOR_DELETE_ALL,
+      name: globalT`Unmonitor show + seasons, delete all episodes`,
+    },
+    {
+      id: ServarrAction.UNMONITOR_DELETE_EXISTING,
+      name: globalT`Unmonitor show, delete existing episodes`,
+    },
+    {
+      id: ServarrAction.UNMONITOR,
+      name: globalT`Unmonitor show + seasons, keep files`,
+    },
+    {
+      id: ServarrAction.DO_NOTHING,
+      name: globalT`Do nothing`,
+    },
+    {
+      id: ServarrAction.CHANGE_QUALITY_PROFILE,
+      name: globalT`Change quality profile and search`,
+    },
+  ])
 
-const SONARR_SEASON_ACTION_OPTIONS = sortActionOptions([
-  {
-    id: ServarrAction.DELETE,
-    name: 'Unmonitor and delete season',
-  },
-  {
-    id: ServarrAction.DELETE_SHOW_IF_EMPTY,
-    name: 'Unmonitor and delete season + delete show if empty',
-  },
-  {
-    id: ServarrAction.UNMONITOR_DELETE_EXISTING,
-    name: 'Unmonitor and delete existing episodes',
-  },
-  {
-    id: ServarrAction.UNMONITOR,
-    name: 'Unmonitor season and keep files',
-  },
-  {
-    id: ServarrAction.UNMONITOR_SHOW_IF_EMPTY,
-    name: 'Unmonitor season + unmonitor show if empty',
-  },
-  {
-    id: ServarrAction.DO_NOTHING,
-    name: 'Do nothing',
-  },
-])
+const buildSonarrSeasonActionOptions = () =>
+  sortActionOptions([
+    {
+      id: ServarrAction.DELETE,
+      name: globalT`Unmonitor and delete season`,
+    },
+    {
+      id: ServarrAction.DELETE_SHOW_IF_EMPTY,
+      name: globalT`Unmonitor and delete season + delete show if empty`,
+    },
+    {
+      id: ServarrAction.UNMONITOR_DELETE_EXISTING,
+      name: globalT`Unmonitor and delete existing episodes`,
+    },
+    {
+      id: ServarrAction.UNMONITOR,
+      name: globalT`Unmonitor season and keep files`,
+    },
+    {
+      id: ServarrAction.UNMONITOR_SHOW_IF_EMPTY,
+      name: globalT`Unmonitor season + unmonitor show if empty`,
+    },
+    {
+      id: ServarrAction.DO_NOTHING,
+      name: globalT`Do nothing`,
+    },
+  ])
 
-const SONARR_EPISODE_ACTION_OPTIONS = sortActionOptions([
-  {
-    id: ServarrAction.DELETE,
-    name: 'Unmonitor and delete episode',
-  },
-  {
-    id: ServarrAction.UNMONITOR,
-    name: 'Unmonitor and keep file',
-  },
-  {
-    id: ServarrAction.DO_NOTHING,
-    name: 'Do nothing',
-  },
-])
+const buildSonarrEpisodeActionOptions = () =>
+  sortActionOptions([
+    {
+      id: ServarrAction.DELETE,
+      name: globalT`Unmonitor and delete episode`,
+    },
+    {
+      id: ServarrAction.UNMONITOR,
+      name: globalT`Unmonitor and keep file`,
+    },
+    {
+      id: ServarrAction.DO_NOTHING,
+      name: globalT`Do nothing`,
+    },
+  ])
 
-const SPORTARR_SHOW_ACTION_OPTIONS = sortActionOptions([
-  {
-    id: ServarrAction.DELETE,
-    name: 'Delete entire league',
-  },
-  {
-    id: ServarrAction.UNMONITOR,
-    name: 'Unmonitor league, keep files',
-  },
-  {
-    id: ServarrAction.DO_NOTHING,
-    name: 'Do nothing',
-  },
-  {
-    id: ServarrAction.CHANGE_QUALITY_PROFILE,
-    name: 'Change quality profile',
-  },
-])
+const buildSportarrShowActionOptions = () =>
+  sortActionOptions([
+    {
+      id: ServarrAction.DELETE,
+      name: globalT`Delete entire league`,
+    },
+    {
+      id: ServarrAction.UNMONITOR,
+      name: globalT`Unmonitor league, keep files`,
+    },
+    {
+      id: ServarrAction.DO_NOTHING,
+      name: globalT`Do nothing`,
+    },
+    {
+      id: ServarrAction.CHANGE_QUALITY_PROFILE,
+      name: globalT`Change quality profile`,
+    },
+  ])
 
-const SPORTARR_SEASON_ACTION_OPTIONS = sortActionOptions([
-  {
-    id: ServarrAction.DELETE,
-    name: 'Unmonitor season, delete event files',
-  },
-  {
-    id: ServarrAction.UNMONITOR,
-    name: 'Unmonitor season, keep files',
-  },
-  {
-    id: ServarrAction.DO_NOTHING,
-    name: 'Do nothing',
-  },
-])
+const buildSportarrSeasonActionOptions = () =>
+  sortActionOptions([
+    {
+      id: ServarrAction.DELETE,
+      name: globalT`Unmonitor season, delete event files`,
+    },
+    {
+      id: ServarrAction.UNMONITOR,
+      name: globalT`Unmonitor season, keep files`,
+    },
+    {
+      id: ServarrAction.DO_NOTHING,
+      name: globalT`Do nothing`,
+    },
+  ])
 
-const SPORTARR_EPISODE_ACTION_OPTIONS = sortActionOptions([
-  {
-    id: ServarrAction.DELETE,
-    name: 'Delete event file',
-  },
-  {
-    id: ServarrAction.UNMONITOR,
-    name: 'Unmonitor event, keep file',
-  },
-  {
-    id: ServarrAction.DO_NOTHING,
-    name: 'Do nothing',
-  },
-])
+const buildSportarrEpisodeActionOptions = () =>
+  sortActionOptions([
+    {
+      id: ServarrAction.DELETE,
+      name: globalT`Delete event file`,
+    },
+    {
+      id: ServarrAction.UNMONITOR,
+      name: globalT`Unmonitor event, keep file`,
+    },
+    {
+      id: ServarrAction.DO_NOTHING,
+      name: globalT`Do nothing`,
+    },
+  ])
 
 export const ruleGroupFormSchema = z
   .object({
-    name: z.string().trim().min(1, 'Name is required'),
+    name: z
+      .string()
+      .trim()
+      .min(1, { error: () => globalT`Name is required` }),
     description: z.string().optional(),
-    libraryId: z.string().trim().min(1, 'Library is required'),
-    dataType: z.string().trim().min(1, 'Media type is required'),
+    libraryId: z
+      .string()
+      .trim()
+      .min(1, { error: () => globalT`Library is required` }),
+    dataType: z
+      .string()
+      .trim()
+      .min(1, { error: () => globalT`Media type is required` }),
     arrAction: z
       .preprocess(
         numberOrUndefined,
-        z.number().int('Invalid action').optional(),
+        z
+          .number()
+          .int({ error: () => globalT`Invalid action` })
+          .optional(),
       )
       .optional(),
     deleteAfterDays: z
@@ -332,8 +359,16 @@ export const ruleGroupFormSchema = z
         numberOrUndefined,
         z
           .number()
-          .int('Take action after days must be a whole number')
-          .min(0, 'Take action after days must be 0 or greater')
+          .int({
+            error: () => globalT`Take action after days must be a whole number`,
+          })
+          .min(0, {
+            error: () => globalT`Take action after days must be 0 or greater`,
+          })
+          .max(DELETE_AFTER_MAX_DAYS, {
+            error: () =>
+              globalT`Take action after days must be ${{ max: DELETE_AFTER_MAX_DAYS }} or less`,
+          })
           .optional(),
       )
       .optional(),
@@ -341,17 +376,24 @@ export const ruleGroupFormSchema = z
       numberOrUndefined,
       z
         .number()
-        .int('Keep logs for months must be a whole number')
-        .min(0, 'Keep logs for months must be 0 or greater'),
+        .int({
+          error: () => globalT`Keep logs for months must be a whole number`,
+        })
+        .min(0, {
+          error: () => globalT`Keep logs for months must be 0 or greater`,
+        }),
     ),
     tautulliWatchedPercentOverride: z
       .preprocess(
         numberOrUndefined,
         z
           .number()
-          .int('Tautulli watched percent override must be a whole number')
-          .min(0, 'Minimum is 0')
-          .max(100, 'Maximum is 100')
+          .int({
+            error: () =>
+              globalT`Tautulli watched percent override must be a whole number`,
+          })
+          .min(0, { error: () => globalT`Minimum is 0` })
+          .max(100, { error: () => globalT`Maximum is 100` })
           .optional(),
       )
       .optional(),
@@ -380,7 +422,9 @@ export const ruleGroupFormSchema = z
       z
         .string()
         .refine((val) => (val != null ? isValidCron(val) : true), {
-          message: 'Invalid cron schedule',
+          // A function, so validation messages resolve in the active locale
+          // rather than the one loaded when this module was imported.
+          error: () => globalT`Invalid cron schedule`,
         })
         .nullable(),
     ),
@@ -391,7 +435,7 @@ export const ruleGroupFormSchema = z
       (data.manualCollectionName ?? '').trim().length > 0,
     {
       path: ['manualCollectionName'],
-      message: 'Custom collection name is required',
+      error: () => globalT`Custom collection name is required`,
     },
   )
   .refine(
@@ -402,7 +446,7 @@ export const ruleGroupFormSchema = z
       data.deleteAfterDays !== undefined,
     {
       path: ['deleteAfterDays'],
-      message: 'Take action after days is required for this action',
+      error: () => globalT`Take action after days is required for this action`,
     },
   )
   .superRefine((data, ctx) => {
@@ -414,7 +458,7 @@ export const ruleGroupFormSchema = z
         ctx.addIssue({
           code: 'custom',
           path: ['radarrQualityProfileId'],
-          message: 'Quality profile is required for this action',
+          message: globalT`Quality profile is required for this action`,
         })
       }
 
@@ -425,14 +469,14 @@ export const ruleGroupFormSchema = z
           ctx.addIssue({
             code: 'custom',
             path: ['sportarrQualityProfileId'],
-            message: 'Quality profile is required for this action',
+            message: globalT`Quality profile is required for this action`,
           })
         }
       } else if (isShow && data.sonarrQualityProfileId == null) {
         ctx.addIssue({
           code: 'custom',
           path: ['sonarrQualityProfileId'],
-          message: 'Quality profile is required for this action',
+          message: globalT`Quality profile is required for this action`,
         })
       }
     }
@@ -493,35 +537,40 @@ const buildFormDefaults = (editData?: IRuleGroup): RuleGroupFormValues => ({
  * Shared by the community import, YAML import and YAML export paths, so the copy
  * stays neutral about direction.
  */
+// Persisted as the collection's real name on the media server, so it must not
+// change with the UI locale. The field's placeholder previews this same stored
+// value, which is why neither is translated.
+const DEFAULT_MANUAL_COLLECTION_NAME = 'My custom collection'
+
 const notifySkippedRules = (skipped: number) => {
   if (skipped <= 0) return
-  const plural = skipped !== 1
   toast.warn(
-    `${skipped} rule${plural ? 's' : ''} ${plural ? 'were' : 'was'} skipped - ${
-      plural
-        ? "they use properties that aren't available"
-        : "it uses a property that isn't available"
-    }.`,
+    plural(skipped, {
+      one: "# rule was skipped - it uses a property that isn't available.",
+      other:
+        "# rules were skipped - they use properties that aren't available.",
+    }),
     { autoClose: 6000 },
   )
 }
 
 const AddModal = (props: AddModal) => {
+  const { t } = useLingui()
   const navigate = useNavigate()
   const { isPlex, isJellyfin, mediaServerType } = useMediaServerType()
   const mediaServerName = isPlex
     ? 'Plex'
     : isJellyfin
       ? 'Jellyfin'
-      : 'your media server'
+      : t`your media server`
   const supportsCollectionSort = supportsFeature(
     mediaServerType,
     MediaServerFeature.COLLECTION_SORT,
   )
-  // Both Plex and Jellyfin call them "Collections" in their GUI
-  // (Jellyfin's internal API type is "BoxSet" but the user-facing term is "Collection")
-  const collectionTerm = 'collection'
-  const collectionTermCapitalized = 'Collection'
+  // Both Plex and Jellyfin call them "Collections" in their GUI (Jellyfin's
+  // internal API type is "BoxSet" but the user-facing term is "Collection"), so
+  // the word is written into each sentence below rather than interpolated: a
+  // bare noun dropped into a sentence cannot be declined by a translator.
   const {
     register,
     handleSubmit,
@@ -550,7 +599,7 @@ const AddModal = (props: AddModal) => {
   // guess which of the form's values it meant.
   const saveError = createError ?? updateError
   const saveErrorMessage = saveError
-    ? getApiErrorMessage(saveError, 'The rule group could not be saved')
+    ? getApiErrorMessage(saveError, t`The rule group could not be saved`)
     : undefined
 
   const selectedLibraryId = useWatch({ control, name: 'libraryId' }) ?? ''
@@ -607,6 +656,13 @@ const AddModal = (props: AddModal) => {
   // type (show, season, episode) is Sonarr's.
   const cleanupArrName = selectedType === 'movie' ? 'Radarr' : 'Sonarr'
   const hasSelectedSportarrServer = sportarrSettingsId != null
+  // Named locals so the extracted sentences carry readable placeholders.
+  const tagArrName = selectedLibraryType === 'movie' ? 'Radarr' : 'Sonarr'
+  const listExclusionArrName = radarrSettingsId
+    ? 'Radarr'
+    : sonarrSettingsId
+      ? 'Sonarr'
+      : ''
   const [showCommunityModal, setShowCommunityModal] = useState(false)
   const [yamlImporterModal, setYamlImporterModal] = useState(false)
   const [configureNotificationModal, setConfigureNotificationModal] =
@@ -646,8 +702,6 @@ const AddModal = (props: AddModal) => {
   const overlayTemplateMode = isValidMediaItemType(selectedType)
     ? overlayModeForType(selectedType)
     : 'poster'
-  const overlayTemplateModeLabel =
-    overlayTemplateMode === 'titlecard' ? 'title card' : 'poster'
   const availableOverlayTemplates = overlayTemplates.filter(
     (template) => template.mode === overlayTemplateMode,
   )
@@ -875,7 +929,7 @@ const AddModal = (props: AddModal) => {
 
   const toggleCommunityRuleModal = () => {
     if (selectedLibraryType == null) {
-      alert('Please select a library first.')
+      alert(t`Please select a library first.`)
     } else {
       setShowCommunityModal(!showCommunityModal)
     }
@@ -901,7 +955,7 @@ const AddModal = (props: AddModal) => {
 
   const toggleYamlImporter = () => {
     if (selectedLibraryType == null) {
-      alert('Please select a library first.')
+      alert(t`Please select a library first.`)
     } else {
       setYaml(undefined)
       if (!yamlImporterModal) {
@@ -923,7 +977,7 @@ const AddModal = (props: AddModal) => {
         response.result,
       )
       handleLoadRulesFromYaml(result.rules)
-      toast.success('Successfully imported rules from Yaml.', {
+      toast.success(t`Successfully imported rules from Yaml.`, {
         autoClose: 5000,
       })
       notifySkippedRules(response.skipped ?? 0)
@@ -1018,7 +1072,7 @@ const AddModal = (props: AddModal) => {
             : data.deleteAfterDays,
         manualCollection: data.manualCollection,
         manualCollectionName:
-          data.manualCollectionName ?? `My custom ${collectionTerm}`,
+          data.manualCollectionName ?? DEFAULT_MANUAL_COLLECTION_NAME,
         keepLogsForMonths: data.keepLogsForMonths,
         sortTitle: data.sortTitle?.trim() ? data.sortTitle : undefined,
         mediaServerSort: parseCollectionSortKey(data.mediaServerSort ?? '')
@@ -1047,7 +1101,7 @@ const AddModal = (props: AddModal) => {
         'RuleGroup.AddModal.handleSave',
       )
       toast.error(
-        getApiErrorMessage(mutationError, 'The rule group could not be saved'),
+        getApiErrorMessage(mutationError, t`The rule group could not be saved`),
       )
     }
   }
@@ -1068,18 +1122,24 @@ const AddModal = (props: AddModal) => {
     return <LoadingSpinner />
   }
 
+  const clonedRuleGroupName = props.editData?.name
+
   return (
     <>
       <div className="h-full w-full">
         <div className="mb-5 flex flex-col items-center justify-between gap-4 text-center sm:flex-row sm:items-start sm:text-left">
           <div className="ml-0">
-            <h3 className="heading">Rule Group Settings</h3>
+            <h3 className="heading">
+              <Trans>Rule Group Settings</Trans>
+            </h3>
           </div>
           <div className="flex flex-wrap justify-center gap-2">
             {props.editData && !props.isCloneMode && (
               <Button buttonType="primary" type="button" onClick={handleClone}>
                 <DocumentDuplicateIcon />
-                <span>Clone</span>
+                <span>
+                  <Trans>Clone</Trans>
+                </span>
               </Button>
             )}
             <Button
@@ -1091,14 +1151,21 @@ const AddModal = (props: AddModal) => {
               href="https://docs.maintainerr.info/rules"
             >
               <QuestionMarkCircleIcon />
-              <span>Help</span>
+              <span>
+                <Trans>Help</Trans>
+              </span>
             </Button>
           </div>
         </div>
 
         {props.editData && props.isCloneMode && (
           <Alert type="info">
-            You are cloning the rule group &apos;{props.editData.name}&apos;.
+            <Trans>
+              {/* Doubled apostrophes are the ICU escape for a literal one;
+                  a single quote would swallow the placeholder. */}
+              You are cloning the rule group &apos;&apos;{clonedRuleGroupName}
+              &apos;&apos;.
+            </Trans>
           </Alert>
         )}
 
@@ -1106,8 +1173,10 @@ const AddModal = (props: AddModal) => {
 
         {formIncomplete && (
           <Alert>
-            Not all required (*) fields contain values and at least 1 valid rule
-            is required
+            <Trans>
+              Not all required (*) fields contain values and at least 1 valid
+              rule is required
+            </Trans>
           </Alert>
         )}
         <form className="flex flex-col" onSubmit={handleSubmit(onSubmit)}>
@@ -1115,16 +1184,18 @@ const AddModal = (props: AddModal) => {
             {/* Start Left side of top section */}
             <div className="flex flex-col items-center">
               <h2 className="mb-2 flex justify-center font-semibold text-zinc-100">
-                General
+                <Trans>General</Trans>
               </h2>
               <div className="flex w-full flex-col rounded-lg bg-zinc-800 px-3 py-1">
                 <div className="md:p-4">
                   <div className="form-row items-center">
                     <label htmlFor="name" className="text-label">
-                      Name *
+                      <Trans>Name *</Trans>
                       <p className="text-xs font-normal">
-                        Will also be the name of the {collectionTerm} in{' '}
-                        {mediaServerName}.
+                        <Trans>
+                          Will also be the name of the collection in{' '}
+                          {mediaServerName}.
+                        </Trans>
                       </p>
                     </label>
                     <div className="form-input">
@@ -1141,7 +1212,7 @@ const AddModal = (props: AddModal) => {
 
                   <div className="form-row items-center">
                     <label htmlFor="description" className="text-label">
-                      Description
+                      <Trans>Description</Trans>
                     </label>
                     <div className="form-input">
                       <div className="form-input-field">
@@ -1157,7 +1228,7 @@ const AddModal = (props: AddModal) => {
 
                   <div className="form-row items-center">
                     <label htmlFor="library" className="text-label">
-                      Library *
+                      <Trans>Library *</Trans>
                     </label>
                     <div className="form-input">
                       <div className="form-input-field">
@@ -1173,7 +1244,7 @@ const AddModal = (props: AddModal) => {
                           )}
                           {showStoredLibraryFallback && storedLibraryId && (
                             <option value={storedLibraryId}>
-                              Stored library (unavailable)
+                              {t`Stored library (unavailable)`}
                             </option>
                           )}
                           {libraries?.map((data: MediaLibrary) => {
@@ -1188,8 +1259,8 @@ const AddModal = (props: AddModal) => {
                       {(librariesError || storedLibraryMissing) && (
                         <p className="mt-1 text-xs text-warning-500">
                           {librariesError
-                            ? `Could not load libraries from ${mediaServerName}. The saved library selection is preserved - cancel editing to avoid losing rules.`
-                            : 'The saved library could not be found in the current library list. Re-select it once your media server is reachable.'}
+                            ? t`Could not load libraries from ${{ mediaServerName }}. The saved library selection is preserved - cancel editing to avoid losing rules.`
+                            : t`The saved library could not be found in the current library list. Re-select it once your media server is reachable.`}
                         </p>
                       )}
                       {errors.libraryId && (
@@ -1213,7 +1284,7 @@ const AddModal = (props: AddModal) => {
                       ) => {
                         handleUpdateArrAction('Radarr', arrAction, settingId)
                       }}
-                      options={RADARR_ACTION_OPTIONS}
+                      options={buildRadarrActionOptions()}
                     />
                   )}
 
@@ -1236,9 +1307,11 @@ const AddModal = (props: AddModal) => {
                     <>
                       <div className="form-row items-center">
                         <label htmlFor="type" className="text-label">
-                          Media type*
+                          <Trans>Media type*</Trans>
                           <p className="text-xs font-normal">
-                            The type of TV media rules should apply to
+                            <Trans>
+                              The type of TV media rules should apply to
+                            </Trans>
                           </p>
                         </label>
                         <div className="form-input">
@@ -1251,15 +1324,9 @@ const AddModal = (props: AddModal) => {
                               })}
                             >
                               {/* Show TV-related types: show, season, episode */}
-                              {(['show', 'season', 'episode'] as const).map(
-                                (mediaType) => (
-                                  <option key={mediaType} value={mediaType}>
-                                    {mediaType[0].toUpperCase() +
-                                      mediaType.slice(1) +
-                                      's'}
-                                  </option>
-                                ),
-                              )}
+                              <option value="show">{t`Shows`}</option>
+                              <option value="season">{t`Seasons`}</option>
+                              <option value="episode">{t`Episodes`}</option>
                             </Select>
                           </div>
                           {errors.dataType && (
@@ -1280,7 +1347,7 @@ const AddModal = (props: AddModal) => {
                             htmlFor="show-library-manager"
                             className="text-label"
                           >
-                            Managed by
+                            <Trans>Managed by</Trans>
                           </label>
                           <div className="form-input">
                             <div className="form-input-field">
@@ -1318,11 +1385,11 @@ const AddModal = (props: AddModal) => {
                             }}
                             options={
                               selectedType === 'show'
-                                ? SONARR_SHOW_ACTION_OPTIONS
+                                ? buildSonarrShowActionOptions()
                                 : selectedType === 'season'
-                                  ? SONARR_SEASON_ACTION_OPTIONS
+                                  ? buildSonarrSeasonActionOptions()
                                   : // episodes
-                                    SONARR_EPISODE_ACTION_OPTIONS
+                                    buildSonarrEpisodeActionOptions()
                             }
                           />
                           {errors.sonarrSettingsId && (
@@ -1366,11 +1433,11 @@ const AddModal = (props: AddModal) => {
                               }}
                               options={
                                 selectedType === 'show'
-                                  ? SPORTARR_SHOW_ACTION_OPTIONS
+                                  ? buildSportarrShowActionOptions()
                                   : selectedType === 'season'
-                                    ? SPORTARR_SEASON_ACTION_OPTIONS
+                                    ? buildSportarrSeasonActionOptions()
                                     : // episodes
-                                      SPORTARR_EPISODE_ACTION_OPTIONS
+                                      buildSportarrEpisodeActionOptions()
                               }
                             />
                             {errors.sportarrSettingsId && (
@@ -1410,10 +1477,12 @@ const AddModal = (props: AddModal) => {
                           htmlFor="collection_deleteDays"
                           className="text-label"
                         >
-                          Take action after days*
+                          <Trans>Take action after days*</Trans>
                           <p className="text-xs font-normal">
-                            Duration of days media remains in the{' '}
-                            {collectionTerm} before deletion/unmonitor
+                            <Trans>
+                              Duration of days media remains in the collection
+                              before deletion/unmonitor
+                            </Trans>
                           </p>
                         </label>
                         <div className="form-input">
@@ -1421,6 +1490,8 @@ const AddModal = (props: AddModal) => {
                             <Input
                               type="number"
                               id="collection_deleteDays"
+                              min={0}
+                              max={DELETE_AFTER_MAX_DAYS}
                               {...register('deleteAfterDays')}
                             />
                           </div>
@@ -1438,7 +1509,7 @@ const AddModal = (props: AddModal) => {
             {/* Start Right side of top section */}
             <div className="flex flex-col items-center">
               <h2 className="mb-2 flex justify-center font-semibold text-zinc-100">
-                Options
+                <Trans>Options</Trans>
               </h2>
               <div className="flex w-full flex-col rounded-lg bg-zinc-800 px-3 py-1">
                 <div className="grid grid-cols-1 md:grid-cols-2 md:gap-3">
@@ -1446,9 +1517,9 @@ const AddModal = (props: AddModal) => {
                   <div className="flex flex-col p-2 md:my-2 md:border-r-2 md:border-dashed md:border-zinc-700 md:p-4">
                     <div className="flex flex-row items-center justify-between py-4">
                       <label htmlFor="is_active" className="text-label">
-                        Active
+                        <Trans>Active</Trans>
                         <p className="text-xs font-normal">
-                          Will this rule be included in rule runs
+                          <Trans>Will this rule be included in rule runs</Trans>
                         </p>
                       </label>
                       <div className="form-input">
@@ -1471,10 +1542,14 @@ const AddModal = (props: AddModal) => {
                             htmlFor="collection_visible_library"
                             className="text-label"
                           >
-                            Show on {mediaServerName} library recommended
+                            <Trans>
+                              Show on {mediaServerName} library recommended
+                            </Trans>
                             <p className="text-xs font-normal">
-                              Show the {collectionTerm} on the {mediaServerName}{' '}
-                              library recommended screen
+                              <Trans>
+                                Show the collection on the {mediaServerName}{' '}
+                                library recommended screen
+                              </Trans>
                             </p>
                           </label>
                           <div className="form-input">
@@ -1494,10 +1569,12 @@ const AddModal = (props: AddModal) => {
                             htmlFor="collection_visible"
                             className="text-label"
                           >
-                            Show on {mediaServerName} home
+                            <Trans>Show on {mediaServerName} home</Trans>
                             <p className="text-xs font-normal">
-                              Show the {collectionTerm} on the {mediaServerName}{' '}
-                              home screen
+                              <Trans>
+                                Show the collection on the {mediaServerName}{' '}
+                                home screen
+                              </Trans>
                             </p>
                           </label>
                           <div className="form-input">
@@ -1516,10 +1593,11 @@ const AddModal = (props: AddModal) => {
 
                     <div className="flex flex-row items-center justify-between py-4">
                       <label htmlFor="overlay_enabled" className="text-label">
-                        Enable overlays
+                        <Trans>Enable overlays</Trans>
                         <p className="text-xs font-normal">
-                          Apply date overlays to posters in this{' '}
-                          {collectionTerm}
+                          <Trans>
+                            Apply date overlays to posters in this collection
+                          </Trans>
                         </p>
                       </label>
                       <div className="form-input">
@@ -1540,10 +1618,18 @@ const AddModal = (props: AddModal) => {
                           htmlFor="overlay_template_id"
                           className="text-label"
                         >
-                          Overlay template
+                          <Trans>Overlay template</Trans>
                           <p className="text-xs font-normal">
-                            Leave unset to use the default{' '}
-                            {overlayTemplateModeLabel} template
+                            {overlayTemplateMode === 'titlecard' ? (
+                              <Trans>
+                                Leave unset to use the default title card
+                                template
+                              </Trans>
+                            ) : (
+                              <Trans>
+                                Leave unset to use the default poster template
+                              </Trans>
+                            )}
                           </p>
                         </label>
                         <div className="form-input">
@@ -1563,15 +1649,18 @@ const AddModal = (props: AddModal) => {
                                   }}
                                 >
                                   <option value="">
-                                    Default {overlayTemplateModeLabel} template
+                                    {overlayTemplateMode === 'titlecard'
+                                      ? t`Default title card template`
+                                      : t`Default poster template`}
                                   </option>
                                   {availableOverlayTemplates.map((template) => (
                                     <option
                                       key={template.id}
                                       value={template.id}
                                     >
-                                      {template.name}
-                                      {template.isDefault ? ' (default)' : ''}
+                                      {template.isDefault
+                                        ? t`${{ templateName: template.name }} (default)`
+                                        : template.name}
                                     </option>
                                   ))}
                                 </Select>
@@ -1591,18 +1680,19 @@ const AddModal = (props: AddModal) => {
                             selectedType === 'season')))) && (
                       <div className="flex flex-row items-center justify-between py-4">
                         <label htmlFor="list_exclusions" className="text-label">
-                          Add import list exclusions
+                          <Trans>Add import list exclusions</Trans>
                           <p className="text-xs font-normal">
-                            Prevents{' '}
-                            {radarrSettingsId
-                              ? 'Radarr '
-                              : sonarrSettingsId
-                                ? 'Sonarr '
-                                : ''}
-                            import lists re-adding removed{' '}
-                            {selectedLibraryType
-                              ? selectedLibraryType
-                              : 'movie'}
+                            {selectedLibraryType === 'show' ? (
+                              <Trans>
+                                Prevents {listExclusionArrName} import lists
+                                re-adding removed show
+                              </Trans>
+                            ) : (
+                              <Trans>
+                                Prevents {listExclusionArrName} import lists
+                                re-adding removed movie
+                              </Trans>
+                            )}
                           </p>
                         </label>
                         <div className="form-input">
@@ -1630,15 +1720,17 @@ const AddModal = (props: AddModal) => {
                             htmlFor="cleanup_leftover_folders"
                             className="text-label"
                           >
-                            Clean up leftover folders
+                            <Trans>Clean up leftover folders</Trans>
                             <span className="ml-1.5 rounded-full bg-maintainerr-600 px-3 text-sm font-medium text-white">
                               BETA
                             </span>
                             <p className="text-xs font-normal">
-                              Delete the folder {cleanupArrName} leaves behind
-                              and its sidecars (subtitles, .nfo, artwork).
-                              Requires the library mounted at the same path{' '}
-                              {cleanupArrName} uses
+                              <Trans>
+                                Delete the folder {cleanupArrName} leaves behind
+                                and its sidecars (subtitles, .nfo, artwork).
+                                Requires the library mounted at the same path{' '}
+                                {cleanupArrName} uses
+                              </Trans>
                             </p>
                           </label>
                           <div className="form-input">
@@ -1662,22 +1754,23 @@ const AddModal = (props: AddModal) => {
                       (selectedType === 'show' && hasSelectedSonarrServer)) && (
                       <div className="flex flex-row items-center justify-between py-4">
                         <label htmlFor="tag_in_arr" className="text-label">
-                          Tag this content in{' '}
-                          {selectedLibraryType === 'movie'
-                            ? 'Radarr'
-                            : 'Sonarr'}
+                          <Trans>Tag this content in {tagArrName}</Trans>
                           <p className="text-xs font-normal">
-                            Tag matching{' '}
-                            {selectedLibraryType === 'movie'
-                              ? 'movies'
-                              : 'shows'}{' '}
-                            in{' '}
-                            {selectedLibraryType === 'movie'
-                              ? 'Radarr'
-                              : 'Sonarr'}{' '}
-                            with a tag based on this rule group&apos;s name
-                            while they&apos;re in the {collectionTerm}, removed
-                            when they leave
+                            {selectedLibraryType === 'movie' ? (
+                              <Trans>
+                                Tag matching movies in {tagArrName} with a tag
+                                based on this rule group&apos;s name while
+                                they&apos;re in the collection, removed when
+                                they leave
+                              </Trans>
+                            ) : (
+                              <Trans>
+                                Tag matching shows in {tagArrName} with a tag
+                                based on this rule group&apos;s name while
+                                they&apos;re in the collection, removed when
+                                they leave
+                              </Trans>
+                            )}
                           </p>
                         </label>
                         <div className="form-input">
@@ -1696,11 +1789,13 @@ const AddModal = (props: AddModal) => {
                     {seerrEnabled && selectedType !== 'episode' && (
                       <div className="flex flex-row items-center justify-between py-4">
                         <label htmlFor="force_seerr" className="text-label">
-                          Force delete Seerr request
+                          <Trans>Force delete Seerr request</Trans>
                           <p className="text-xs font-normal">
-                            Removes the related Seerr request immediately.
-                            Otherwise, Maintainerr waits for Seerr availability
-                            sync.
+                            <Trans>
+                              Removes the related Seerr request immediately.
+                              Otherwise, Maintainerr waits for Seerr
+                              availability sync.
+                            </Trans>
                           </p>
                         </label>
                         <div className="form-input">
@@ -1718,9 +1813,9 @@ const AddModal = (props: AddModal) => {
 
                     <div className="flex flex-row items-center justify-between py-4">
                       <label htmlFor="use_rules" className="text-label">
-                        Use rules
+                        <Trans>Use rules</Trans>
                         <p className="text-xs font-normal">
-                          Toggle the rule system
+                          <Trans>Toggle the rule system</Trans>
                         </p>
                       </label>
                       <div className="form-input">
@@ -1736,9 +1831,9 @@ const AddModal = (props: AddModal) => {
                     </div>
                     <div className="flex flex-row items-center justify-between py-4">
                       <label htmlFor="manual_collection" className="text-label">
-                        Custom {collectionTerm}
+                        <Trans>Custom collection</Trans>
                         <p className="text-xs font-normal">
-                          Toggle internal {collectionTerm} system
+                          <Trans>Toggle internal collection system</Trans>
                         </p>
                       </label>
                       <div className="form-input">
@@ -1759,10 +1854,11 @@ const AddModal = (props: AddModal) => {
                         htmlFor="manual_collection_name"
                         className="text-label"
                       >
-                        Custom {collectionTerm} name
+                        <Trans>Custom collection name</Trans>
                         <p className="text-xs font-normal">
-                          {collectionTermCapitalized} must exist in{' '}
-                          {mediaServerName}
+                          <Trans>
+                            Collection must exist in {mediaServerName}
+                          </Trans>
                         </p>
                       </label>
 
@@ -1771,7 +1867,7 @@ const AddModal = (props: AddModal) => {
                           <Input
                             type="text"
                             id="manual_collection_name"
-                            placeholder={`My custom ${collectionTerm}`}
+                            placeholder={DEFAULT_MANUAL_COLLECTION_NAME}
                             {...register('manualCollectionName')}
                           />
                         </div>
@@ -1791,7 +1887,7 @@ const AddModal = (props: AddModal) => {
                         htmlFor="notifications"
                         className="text-label flex flex-wrap gap-1"
                       >
-                        Notifications
+                        <Trans>Notifications</Trans>
                       </label>
                       <div className="flex justify-end px-2 py-2">
                         <div className="form-input-field w-32">
@@ -1806,7 +1902,7 @@ const AddModal = (props: AddModal) => {
                               )
                             }}
                           >
-                            Configure
+                            <Trans>Configure</Trans>
                           </Button>
                         </div>
                       </div>
@@ -1817,10 +1913,12 @@ const AddModal = (props: AddModal) => {
                         htmlFor="collection_logs_months"
                         className="text-label text-left"
                       >
-                        Keep logs for months*
+                        <Trans>Keep logs for months*</Trans>
                         <p className="text-xs font-normal">
-                          Duration for which {collectionTerm} logs should be
-                          retained, measured in months (0 = forever)
+                          <Trans>
+                            Duration for which collection logs should be
+                            retained, measured in months (0 = forever)
+                          </Trans>
                         </p>
                       </label>
                       <div className="form-input">
@@ -1845,10 +1943,12 @@ const AddModal = (props: AddModal) => {
                         htmlFor="sort_title"
                         className="text-label text-left"
                       >
-                        Sort title
+                        <Trans>Sort title</Trans>
                         <p className="text-xs font-normal">
-                          Custom sort title for the {collectionTerm} in{' '}
-                          {mediaServerName}
+                          <Trans>
+                            Custom sort title for the collection in{' '}
+                            {mediaServerName}
+                          </Trans>
                         </p>
                       </label>
                       <div className="flex justify-end px-2 py-2">
@@ -1856,7 +1956,7 @@ const AddModal = (props: AddModal) => {
                           <Input
                             type="text"
                             id="sort_title"
-                            placeholder={`e.g., 001 My ${collectionTermCapitalized}`}
+                            placeholder={t`e.g., ${{ sortPrefixExample: '001' }} My Collection`}
                             {...register('sortTitle')}
                           />
                         </div>
@@ -1869,12 +1969,14 @@ const AddModal = (props: AddModal) => {
                           htmlFor="media_server_sort"
                           className="text-label text-left"
                         >
-                          {collectionTermCapitalized} items sort
+                          <Trans>Collection items sort</Trans>
                           <p className="text-xs font-normal">
-                            Automatically sort items inside the {collectionTerm}{' '}
-                            on {mediaServerName}. Disabling later does not
-                            restore the default order - change it in{' '}
-                            {mediaServerName} if needed.
+                            <Trans>
+                              Automatically sort items inside the collection on{' '}
+                              {mediaServerName}. Disabling later does not
+                              restore the default order - change it in{' '}
+                              {mediaServerName} if needed.
+                            </Trans>
                           </p>
                         </label>
                         <div className="flex justify-end px-2 py-2">
@@ -1883,7 +1985,7 @@ const AddModal = (props: AddModal) => {
                               id="media_server_sort"
                               {...register('mediaServerSort')}
                             >
-                              <option value="">Default (no custom sort)</option>
+                              <option value="">{t`Default (no custom sort)`}</option>
                               {getCollectionMediaSortConfig(
                                 selectedLibraryType,
                                 true,
@@ -1904,11 +2006,13 @@ const AddModal = (props: AddModal) => {
                           htmlFor="tautulli_watched_percent_override"
                           className="text-label text-left"
                         >
-                          Tautulli watched percent override
+                          <Trans>Tautulli watched percent override</Trans>
                           <p className="text-xs font-normal">
-                            Overrides the configured Watched Percent in
-                            Tautulli, which is used to determine when media is
-                            counted as watched
+                            <Trans>
+                              Overrides the configured Watched Percent in
+                              Tautulli, which is used to determine when media is
+                              counted as watched
+                            </Trans>
                           </p>
                         </label>
                         <div className="form-input">
@@ -1935,13 +2039,15 @@ const AddModal = (props: AddModal) => {
                         htmlFor="rule_handler_cron_schedule"
                         className="text-label text-left"
                       >
-                        Rule handler schedule override
+                        <Trans>Rule handler schedule override</Trans>
                         <p className="text-xs font-normal">
-                          Supports all standard{' '}
-                          <BrandLink external href="https://crontab.guru/">
-                            cron
-                          </BrandLink>{' '}
-                          patterns
+                          <Trans>
+                            Supports all standard{' '}
+                            <BrandLink external href="https://crontab.guru/">
+                              cron
+                            </BrandLink>{' '}
+                            patterns
+                          </Trans>
                         </p>
                       </label>
                       <div className="form-input">
@@ -1962,22 +2068,23 @@ const AddModal = (props: AddModal) => {
 
                     <div className="flex flex-col py-2 md:py-4">
                       <label className="text-label text-left">
-                        Custom {collectionTerm} poster
+                        <Trans>Custom collection poster</Trans>
                         <p className="text-xs font-normal">
-                          Upload your own cover art for the {collectionTerm} on{' '}
-                          {mediaServerName}
+                          <Trans>
+                            Upload your own cover art for the collection on{' '}
+                            {mediaServerName}
+                          </Trans>
                         </p>
                       </label>
                       <div className="py-2">
                         {props.editData?.collection?.id ? (
                           <CollectionPosterPicker
                             collectionId={props.editData.collection.id}
-                            collectionTerm={collectionTerm}
                             mediaServerName={mediaServerName}
                           />
                         ) : (
                           <p className="text-xs text-zinc-400">
-                            Save first to enable poster upload.
+                            <Trans>Save first to enable poster upload.</Trans>
                           </p>
                         )}
                       </div>
@@ -1996,9 +2103,13 @@ const AddModal = (props: AddModal) => {
                 <div className="section max-w-full">
                   <div className="flex">
                     <div className="ml-0">
-                      <h3 className="heading">Rules</h3>
+                      <h3 className="heading">
+                        <Trans>Rules</Trans>
+                      </h3>
                       <p className="description">
-                        Specify the rules this group needs to enforce
+                        <Trans>
+                          Specify the rules this group needs to enforce
+                        </Trans>
                       </p>
                     </div>
                     <div className="ml-auto">
@@ -2009,7 +2120,7 @@ const AddModal = (props: AddModal) => {
                         type="button"
                       >
                         <CloudDownloadIcon className="mr-2 h-5 w-5" />
-                        Community
+                        <Trans>Community</Trans>
                       </Button>
                     </div>
                   </div>
@@ -2021,7 +2132,7 @@ const AddModal = (props: AddModal) => {
                       type="button"
                     >
                       <DownloadIcon className="mr-2 h-5 w-5" />
-                      Import
+                      <Trans>Import</Trans>
                     </Button>
 
                     <Button
@@ -2031,7 +2142,7 @@ const AddModal = (props: AddModal) => {
                       type="button"
                     >
                       <UploadIcon className="mr-2 h-5 w-5" />
-                      Export
+                      <Trans>Export</Trans>
                     </Button>
                   </div>
                 </div>
@@ -2045,7 +2156,7 @@ const AddModal = (props: AddModal) => {
                 )}
                 {yamlImporterModal && (
                   <LazyModalBoundary
-                    title={yaml ? 'Export Rules YAML' : 'Import Rules YAML'}
+                    title={yaml ? t`Export Rules YAML` : t`Import Rules YAML`}
                     onCancel={() => {
                       setYamlImporterModal(false)
                     }}
@@ -2066,7 +2177,7 @@ const AddModal = (props: AddModal) => {
 
                 {configureNotificationModal && (
                   <LazyModalBoundary
-                    title="Configure Notifications"
+                    title={t`Configure Notifications`}
                     onCancel={() => {
                       setConfigureNotificationModal(false)
                     }}
@@ -2107,8 +2218,8 @@ const AddModal = (props: AddModal) => {
           <div className="mt-5 hidden h-full w-full md:flex">
             <div className="m-auto flex xl:m-0">
               <SaveButton
-                label="Save"
-                pendingLabel="Save"
+                label={t`Save`}
+                pendingLabel={t`Save`}
                 className="mr-3 ml-auto"
                 isPending={isCreatePending || isUpdatePending}
                 disabled={isCreatePending || isUpdatePending}
@@ -2121,15 +2232,15 @@ const AddModal = (props: AddModal) => {
                 type="button"
                 disabled={isCreatePending || isUpdatePending}
               >
-                Cancel
+                <Trans>Cancel</Trans>
               </Button>
             </div>
           </div>
           <div className="fixed right-0 bottom-0 left-0 z-40 bg-zinc-800 px-4 py-3 shadow-[0_-2px_6px_rgba(0,0,0,0.4)] md:hidden">
             <div className="flex justify-center gap-3">
               <SaveButton
-                label="Save"
-                pendingLabel="Save"
+                label={t`Save`}
+                pendingLabel={t`Save`}
                 contentSize="compact"
                 className="w-full max-w-40"
                 isPending={isCreatePending || isUpdatePending}
@@ -2144,7 +2255,7 @@ const AddModal = (props: AddModal) => {
                 onClick={cancel}
                 disabled={isCreatePending || isUpdatePending}
               >
-                Cancel
+                <Trans>Cancel</Trans>
               </Button>
             </div>
           </div>
@@ -2177,11 +2288,11 @@ const AddModal = (props: AddModal) => {
       </div>
       {pendingDisableSubmit && (
         <Modal
-          title="Disabling this rule group"
+          title={t`Disabling this rule group`}
           size="md"
           backgroundClickable={false}
           onCancel={() => setPendingDisableSubmit(null)}
-          cancelText="Cancel"
+          cancelText={t`Cancel`}
           footerActions={
             <Button
               buttonType="primary"
@@ -2192,18 +2303,22 @@ const AddModal = (props: AddModal) => {
                 void performSubmit(data)
               }}
             >
-              Got it
+              <Trans>Got it</Trans>
             </Button>
           }
         >
           <p>
-            Disabling won&apos;t remove items already tracked by this rule
-            group. The linked collection will keep them until this rule group is
-            re-enabled or deleted.
+            <Trans>
+              Disabling won&apos;t remove items already tracked by this rule
+              group. The linked collection will keep them until this rule group
+              is re-enabled or deleted.
+            </Trans>
           </p>
           <p className="mt-2">
-            To clear them first, edit the rule&apos;s criteria so it matches
-            nothing, run the rule, and then disable it.
+            <Trans>
+              To clear them first, edit the rule&apos;s criteria so it matches
+              nothing, run the rule, and then disable it.
+            </Trans>
           </p>
         </Modal>
       )}

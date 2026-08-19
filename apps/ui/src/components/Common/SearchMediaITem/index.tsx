@@ -1,3 +1,4 @@
+import { useLingui } from '@lingui/react/macro'
 import { type MediaItem, type MediaItemType } from '@maintainerr/contracts'
 import { SingleValue } from 'react-select'
 import AsyncSelect from 'react-select/async'
@@ -13,9 +14,13 @@ interface ISearchMediaITem {
   onChange: (item: SingleValue<IMediaOptions>) => void
   mediatype?: MediaItemType
   libraryId?: string
+  /** Id for the inner text input, so a label can point at it. */
+  inputId?: string
 }
 
 const SearchMediaItem = (props: ISearchMediaITem) => {
+  const { t } = useLingui()
+
   const loadData = async (query: string): Promise<IMediaOptions[]> => {
     if (!props.libraryId) {
       return []
@@ -41,13 +46,17 @@ const SearchMediaItem = (props: ISearchMediaITem) => {
       <AsyncSelect
         className="react-select-container"
         classNamePrefix="react-select"
+        inputId={props.inputId}
         isClearable
         getOptionLabel={(option: IMediaOptions) => option.name}
         getOptionValue={(option: IMediaOptions) => option.id}
         defaultValue={[]}
         defaultOptions={undefined}
         loadOptions={loadData}
-        placeholder="Start typing... "
+        // react-select ships its own English copy for these two states.
+        noOptionsMessage={() => t`No results`}
+        loadingMessage={() => t`Loading...`}
+        placeholder={`${t`Start typing...`} `}
         onChange={(selectedItem) => {
           props.onChange(selectedItem)
         }}

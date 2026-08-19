@@ -100,6 +100,56 @@ describe('RulesService.setRules', () => {
     jest.clearAllMocks();
   });
 
+  // The overlay countdown turns this window into a real date; past Date range
+  // it drew "Leaving Invalid Date" on the artwork (#3549). Nothing else
+  // schema-validates the rule-group body.
+  it('refuses a deletion window that cannot become a real date', async () => {
+    const createCollection = jest.fn();
+    const service = createRulesService({
+      collectionService: { createCollection },
+      mediaServerFactory: createMediaServerFactory(),
+    });
+
+    const result = await service.setRules({
+      libraryId: '1',
+      name: 'Impossible window',
+      description: '',
+      useRules: true,
+      isActive: true,
+      rules: validRules,
+      collection: { keepLogsForMonths: 6, deleteAfterDays: 99999999 },
+    } as any);
+
+    expect(result.code).toBe(0);
+    expect(result.message).toContain('36500');
+    expect(createCollection).not.toHaveBeenCalled();
+  });
+
+  // Editing an existing rule group is the common path, and it validates
+  // separately from create.
+  it('refuses an impossible deletion window on update too', async () => {
+    const updateCollection = jest.fn();
+    const service = createRulesService({
+      collectionService: { updateCollection },
+      mediaServerFactory: createMediaServerFactory(),
+    });
+
+    const result = await service.updateRules({
+      id: 1,
+      libraryId: '1',
+      name: 'Impossible window',
+      description: '',
+      useRules: true,
+      isActive: true,
+      rules: validRules,
+      collection: { keepLogsForMonths: 6, deleteAfterDays: 99999999 },
+    } as any);
+
+    expect(result.code).toBe(0);
+    expect(result.message).toContain('36500');
+    expect(updateCollection).not.toHaveBeenCalled();
+  });
+
   // Without the user, a saved rule would skip every item at run time.
   // The community list is public and shared between installs; a rule must not
   // carry the uploader's media-server user into it.

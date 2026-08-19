@@ -68,6 +68,7 @@ export default defineConfig(({ mode }) => {
       setupFiles: [
         './src/test-utils/browser-apis.ts',
         './src/test-utils/react-cleanup.ts',
+        './src/test-utils/i18n.tsx',
       ],
     },
     // Ensure environment variables are available and can be replaced at runtime

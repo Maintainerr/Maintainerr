@@ -1,3 +1,4 @@
+import { Trans, useLingui } from '@lingui/react/macro'
 import { ARR_TAG_LABEL_HINT, isValidArrTagLabel } from '@maintainerr/contracts'
 import { useForm, useWatch } from 'react-hook-form'
 import { usePatchSettings, useSettings } from '../../../api/settings'
@@ -32,12 +33,25 @@ const COPY: Record<ArrService, { name: string; entity: string }> = {
  * the apply/remove logic is shared on the server.
  */
 const ExclusionTagSettings = ({ service }: ExclusionTagSettingsProps) => {
-  const { name, entity } = COPY[service]
+  const { t } = useLingui()
+  const { name } = COPY[service]
+  // The charset rides through as a placeholder from the same constant the
+  // validator uses, so a translation can never advertise a different rule.
+  const chars = ARR_TAG_LABEL_HINT
+  // Spelled out per service rather than composed from a noun, so the sentence
+  // reads naturally once translated.
+  const entityDescription =
+    service === 'radarr'
+      ? t`Apply a protective tag to the matching ${{ name }} movie whenever Maintainerr excludes an item, so ${{ name }} carries a single source of truth for "do not touch".`
+      : t`Apply a protective tag to the matching ${{ name }} series whenever Maintainerr excludes an item, so ${{ name }} carries a single source of truth for "do not touch".`
   // A non-zero staleTime stops the shared settings query refetching on every tab
   // mount, which is what made the section flicker when switching Radarr/Sonarr.
   const { data: settings } = useSettings({ staleTime: 30_000 })
   const { feedback, showError, showUpdated, showUpdateError, clearError } =
-    useSettingsFeedback(`${name} exclusion tag settings`)
+    useSettingsFeedback({
+      updated: t`${{ name }} exclusion tag settings updated`,
+      updateError: t`${{ name }} exclusion tag settings could not be updated`,
+    })
   const { mutateAsync: updateSettings, isPending } = usePatchSettings()
 
   // `values` keeps the form in sync with loaded settings without a useEffect.
@@ -62,8 +76,8 @@ const ExclusionTagSettings = ({ service }: ExclusionTagSettingsProps) => {
     if (data.enabled && !isValidArrTagLabel(trimmedLabel)) {
       showError(
         trimmedLabel === ''
-          ? `A tag label is required when exclusion tagging is enabled. ${ARR_TAG_LABEL_HINT}.`
-          : `"${trimmedLabel}" is not a valid ${name} tag. ${ARR_TAG_LABEL_HINT}, with no leading, trailing, or repeated hyphens.`,
+          ? t`A tag label is required when exclusion tagging is enabled. Lowercase letters, numbers and hyphens only (${{ chars }}).`
+          : t`"${{ label: trimmedLabel }}" is not a valid ${{ name }} tag. Lowercase letters, numbers and hyphens only (${{ chars }}), with no leading, trailing, or repeated hyphens.`,
       )
       return
     }
@@ -87,19 +101,19 @@ const ExclusionTagSettings = ({ service }: ExclusionTagSettingsProps) => {
       {/* Status always at the very top of the section. */}
       <SettingsFeedbackAlert feedback={feedback} />
 
-      <h3 className="heading">Exclusion tag</h3>
-      <p className="description">
-        Apply a protective tag to the matching {name} {entity} whenever
-        Maintainerr excludes an item, so {name} carries a single source of truth
-        for &quot;do not touch&quot;.
-      </p>
+      <h3 className="heading">
+        <Trans>Exclusion tag</Trans>
+      </h3>
+      <p className="description">{entityDescription}</p>
 
       <form onSubmit={handleSubmit(submit)}>
         <div className="form-row items-center">
           <label htmlFor={`${service}_tag_exclusions`} className="text-label">
-            Tag excluded content
+            <Trans>Tag excluded content</Trans>
             <p className="text-xs font-normal">
-              Add the tag below to {name} when an item is excluded
+              <Trans>
+                Add the tag below to {name} when an item is excluded
+              </Trans>
             </p>
           </label>
           <div className="form-input">
@@ -116,10 +130,14 @@ const ExclusionTagSettings = ({ service }: ExclusionTagSettingsProps) => {
 
         <div className="form-row">
           <label htmlFor={`${service}_exclusion_tag`} className="text-label">
-            Tag label
+            <Trans>Tag label</Trans>
             <p className="text-xs font-normal">
-              The {name} tag to apply, created if missing.
-              <span className="block">{ARR_TAG_LABEL_HINT}.</span>
+              <Trans>The {name} tag to apply, created if missing.</Trans>
+              <span className="block">
+                <Trans>
+                  Lowercase letters, numbers and hyphens only ({chars}).
+                </Trans>
+              </span>
             </p>
           </label>
           <div className="form-input">
@@ -140,10 +158,12 @@ const ExclusionTagSettings = ({ service }: ExclusionTagSettingsProps) => {
             htmlFor={`${service}_untag_on_unexclude`}
             className="text-label"
           >
-            Remove tag on un-exclude
+            <Trans>Remove tag on un-exclude</Trans>
             <p className="text-xs font-normal">
-              Off by default so a manually-set tag is never stripped. When on,
-              Maintainerr removes only this label when an item is un-excluded.
+              <Trans>
+                Off by default so a manually-set tag is never stripped. When on,
+                Maintainerr removes only this label when an item is un-excluded.
+              </Trans>
             </p>
           </label>
           <div className="form-input">

@@ -1,3 +1,4 @@
+import { Trans, useLingui } from '@lingui/react/macro'
 import { isValidCron } from 'cron-validator'
 import { useEffect, useState } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
@@ -35,9 +36,13 @@ interface JobSettingsFormValues {
 }
 
 const JobSettings = () => {
+  const { t } = useLingui()
   const { settings } = useSettingsOutletContext()
   const { feedback, showError, showUpdated, showUpdateError, clearError } =
-    useSettingsFeedback('Job settings')
+    useSettingsFeedback({
+      updated: t`Job settings updated`,
+      updateError: t`Job settings could not be updated`,
+    })
   const { mutateAsync: updateSettings, isPending: updateSettingsPending } =
     usePatchSettings()
   const [overlayLoaded, setOverlayLoaded] = useState(false)
@@ -191,22 +196,26 @@ const JobSettings = () => {
         setOverlayPending(false)
       }
     } else {
-      showError('Please make sure all values are valid')
+      showError(t`Please make sure all values are valid`)
     }
   }
 
   return (
     <>
-      <title>Job settings - Maintainerr</title>
+      <title>{t`Job settings - Maintainerr`}</title>
       <div className="h-full w-full">
         <div className="section h-full w-full">
-          <h3 className="heading">Job Settings</h3>
+          <h3 className="heading">
+            <Trans>Job Settings</Trans>
+          </h3>
           <p className="description">
-            Job configuration. All schedules support standard{' '}
-            <BrandLink external href="https://crontab.guru/">
-              cron
-            </BrandLink>{' '}
-            patterns.
+            <Trans>
+              Job configuration. All schedules support standard{' '}
+              <BrandLink external href="https://crontab.guru/">
+                cron
+              </BrandLink>{' '}
+              patterns.
+            </Trans>
           </p>
         </div>
 
@@ -216,9 +225,9 @@ const JobSettings = () => {
           <form onSubmit={handleSubmit(submit)}>
             <div className="form-row">
               <label htmlFor="rules_handler_job_cron" className="text-label">
-                Rule Handler
+                <Trans>Rule Handler</Trans>
                 <p className="text-xs font-normal">
-                  Can be overridden by individual rule groups.
+                  <Trans>Can be overridden by individual rule groups.</Trans>
                 </p>
               </label>
               <div className="form-input">
@@ -249,7 +258,7 @@ const JobSettings = () => {
                 htmlFor="collection_handler_job_cron"
                 className="text-label"
               >
-                Collection Handler
+                <Trans>Collection Handler</Trans>
               </label>
 
               <div className="form-input">
@@ -277,9 +286,9 @@ const JobSettings = () => {
 
             <div className="form-row">
               <label htmlFor="overlay_handler_job_cron" className="text-label">
-                Overlay Handler
+                <Trans>Overlay Handler</Trans>
                 <p className="text-xs font-normal">
-                  Leave empty to disable scheduled overlay runs.
+                  <Trans>Leave empty to disable scheduled overlay runs.</Trans>
                 </p>
               </label>
 
@@ -308,7 +317,9 @@ const JobSettings = () => {
                   {!overlayLoaded && showOverlayLoadingHint ? (
                     <div className="flex items-center gap-2 text-xs text-zinc-400">
                       <SmallLoadingSpinner className="h-4 w-4" />
-                      <span>Loading current overlay schedule...</span>
+                      <span>
+                        <Trans>Loading current overlay schedule...</Trans>
+                      </span>
                     </div>
                   ) : null}
                 </div>

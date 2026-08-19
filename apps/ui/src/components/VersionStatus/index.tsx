@@ -4,6 +4,7 @@ import {
   CodeIcon,
   ServerIcon,
 } from '@heroicons/react/outline'
+import { Trans, useLingui } from '@lingui/react/macro'
 import { type VersionResponse } from '@maintainerr/contracts'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
@@ -12,18 +13,20 @@ import GetApiHandler from '../../utils/ApiHandler'
 import { startsWithDigit } from '../../utils/version'
 import { useMediaServerSetupNavigationGuard } from '../Layout/MediaServerSetupGuard'
 
-enum messages {
-  LOCAL = 'Keep it up! 👍',
-  LATEST = 'Maintainerr',
-  PRE_RELEASE = 'Maintainerr Pre-Release',
-  OUT_OF_DATE = 'Out of Date',
-}
-
 interface VersionStatusProps {
   onClick?: () => void
 }
 
 const VersionStatus = ({ onClick }: VersionStatusProps) => {
+  const { t } = useLingui()
+  // Resolved per render rather than as module-scope constants, so switching
+  // language re-labels the badge.
+  const messages = {
+    LOCAL: t`Keep it up! 👍`,
+    LATEST: 'Maintainerr',
+    PRE_RELEASE: t`Maintainerr Pre-Release`,
+    OUT_OF_DATE: t`Out of Date`,
+  }
   const { isRouteBlocked, showBlockedNavigationToast } =
     useMediaServerSetupNavigationGuard()
   const [version, setVersion] = useState<string>('0.0.1')
@@ -136,7 +139,9 @@ const VersionStatus = ({ onClick }: VersionStatusProps) => {
         <ServerIcon className="h-6 w-6" />
         <div className="flex min-w-0 flex-1 flex-col truncate px-2 last:pr-0">
           <span className="font-bold">Maintainerr</span>
-          <span className="truncate">Version unavailable</span>
+          <span className="truncate">
+            <Trans>Version unavailable</Trans>
+          </span>
         </div>
       </Link>
     )

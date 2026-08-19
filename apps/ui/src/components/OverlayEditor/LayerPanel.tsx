@@ -1,3 +1,4 @@
+import { Trans, useLingui } from '@lingui/react/macro'
 import { EyeIcon, EyeOffIcon, TrashIcon } from '@heroicons/react/solid'
 import type { OverlayElement } from '@maintainerr/contracts'
 
@@ -16,6 +17,7 @@ export function LayerPanel({
   onReorder,
   onDelete,
 }: LayerPanelProps) {
+  const { t } = useLingui()
   // Display in reverse order (top-most layer first)
   const sorted = [...elements].sort((a, b) => b.layerOrder - a.layerOrder)
 
@@ -56,30 +58,32 @@ export function LayerPanel({
   const getLabel = (el: OverlayElement): string => {
     switch (el.type) {
       case 'text':
-        return el.text.slice(0, 20) || 'Text'
+        return el.text.slice(0, 20) || t`Text`
       case 'variable':
         return (
           el.segments
             .map((s) => (s.type === 'text' ? s.value : `{${s.field}}`))
             .join('')
-            .slice(0, 20) || 'Variable'
+            .slice(0, 20) || t`Variable`
         )
       case 'shape':
-        return el.shapeType === 'ellipse' ? 'Ellipse' : 'Rectangle'
+        return el.shapeType === 'ellipse' ? t`Ellipse` : t`Rectangle`
       case 'image':
-        return 'Image'
+        return t`Image`
       default:
-        return 'Element'
+        return t`Element`
     }
   }
 
   return (
     <div>
       <h3 className="mb-2 text-xs font-medium tracking-wider text-zinc-400 uppercase">
-        Layers
+        <Trans>Layers</Trans>
       </h3>
       {sorted.length === 0 && (
-        <p className="text-xs text-zinc-500">No elements yet</p>
+        <p className="text-xs text-zinc-500">
+          <Trans>No elements yet</Trans>
+        </p>
       )}
       <div className="flex flex-col gap-0.5">
         {sorted.map((el, idx) => (
@@ -116,7 +120,7 @@ export function LayerPanel({
                 moveUp(el.id)
               }}
               disabled={idx === 0}
-              title="Move up"
+              title={t`Move up`}
             >
               ▲
             </button>
@@ -128,7 +132,7 @@ export function LayerPanel({
                 moveDown(el.id)
               }}
               disabled={idx === sorted.length - 1}
-              title="Move down"
+              title={t`Move down`}
             >
               ▼
             </button>
@@ -140,7 +144,11 @@ export function LayerPanel({
                 e.stopPropagation()
                 toggleVisibility(el.id)
               }}
-              title={el.visible ? 'Hide' : 'Show'}
+              title={
+                el.visible
+                  ? t({ message: 'Hide', context: 'Toggle layer visibility' })
+                  : t({ message: 'Show', context: 'Toggle layer visibility' })
+              }
             >
               {el.visible ? (
                 <EyeIcon className="h-3.5 w-3.5" />
@@ -155,7 +163,7 @@ export function LayerPanel({
                 e.stopPropagation()
                 onDelete(el.id)
               }}
-              title="Delete"
+              title={t`Delete`}
             >
               <TrashIcon className="h-3.5 w-3.5" />
             </button>

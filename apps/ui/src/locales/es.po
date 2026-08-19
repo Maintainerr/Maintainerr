@@ -8,59 +8,1853 @@ msgstr ""
 "Language: es\n"
 "Project-Id-Version: \n"
 "Report-Msgid-Bugs-To: \n"
-"PO-Revision-Date: 2026-08-13 21:08+0000\n"
-"Last-Translator: slx612 <sergiolazaro228@gmail.com>\n"
-"Language-Team: Spanish <https://hosted.weblate.org/projects/maintainerr/app/"
-"es/>\n"
+"PO-Revision-Date: 2026-08-19 21:36+0000\n"
+"Last-Translator: Maintainerr <get@maintainerr.info>\n"
+"Language-Team: Spanish <https://hosted.weblate.org/projects/maintainerr/app/es/>\n"
 "Plural-Forms: nplurals=2; plural=n != 1;\n"
+
+#: src/components/Settings/MediaServerSelector/index.tsx
+msgid "- uses {propertyName}"
+msgstr "- utiliza {propertyName}"
+
+#: src/components/Settings/Servarr/ExclusionTagSettings.tsx
+msgid "\"{label}\" is not a valid {name} tag. Lowercase letters, numbers and hyphens only ({chars}), with no leading, trailing, or repeated hyphens."
+msgstr "\"{label}\" no es una etiqueta {name} válida. Solo letras minúsculas, números y guiones ({chars}), sin guiones iniciales, finales ni repetidos."
+
+#: src/pages/OverlayTemplateListPage.tsx
+msgid "\"{templateName}\" set as the default poster template"
+msgstr "\"{templateName}\" establecida como plantilla de póster predeterminada"
+
+#: src/pages/OverlayTemplateListPage.tsx
+msgid "\"{templateName}\" set as the default title card template"
+msgstr "\"{templateName}\" establecida como plantilla de tarjeta de título predeterminada"
+
+#: src/components/Collection/CollectionDetail/CollectionInfo/CollectionLogsTable.tsx
+msgid "(manual)"
+msgstr "(manual)"
+
+#: src/components/OverlayEditor/OverlayCanvas.tsx
+msgid "[Image]"
+msgstr "[Imagen]"
+
+#: src/components/StorageMetrics/index.tsx
+msgid "{accurateMountCount} of {mountCount} mounts report total capacity"
+msgstr "{accurateMountCount} de {mountCount} montajes informan la capacidad total"
+
+#: src/components/Rules/RuleGroup/AddModal/ArrAction/index.tsx
+msgid "{actionOwnerName} action"
+msgstr "Acción de {actionOwnerName}"
+
+#: src/components/Rules/RuleGroup/AddModal/ConfigureNotificationModal/index.tsx
+msgid "{agentName} - {agentType} (disabled)"
+msgstr "{agentName} - {agentType} (deshabilitado)"
+
+#: src/components/Settings/MediaServerSelector/index.tsx
+msgid "{clearedCollectionLogs, plural, one {# log entry} other {# log entries}}"
+msgstr "{clearedCollectionLogs, plural, one {# entrada de registro} other {# entradas de registro}}"
+
+#: src/components/Settings/MediaServerSelector/index.tsx
+msgid "{clearedCollectionMedia, plural, one {# collection media item} other {# collection media items}}"
+msgstr "{clearedCollectionMedia, plural, one {# elemento multimedia de la colección} other {# elementos multimedia de la colección}}"
+
+#: src/components/Settings/MediaServerSelector/index.tsx
+msgid "{clearedCollections, plural, one {# collection will be preserved (media server references reset)} other {# collections will be preserved (media server references reset)}}"
+msgstr "{clearedCollections, plural, one {Se conservará la colección # (se restablecen las referencias del servidor de medios)} other {Se conservarán las colecciones # (se restablecen las referencias del servidor de medios)}}"
+
+#: src/components/Settings/MediaServerSelector/index.tsx
+msgid "{clearedCollections, plural, one {# collection} other {# collections}}"
+msgstr "{clearedCollections, plural, one {# colección} other {# colecciones}}"
+
+#: src/components/Settings/MediaServerSelector/index.tsx
+msgid "{clearedExclusions, plural, one {# exclusion} other {# exclusions}}"
+msgstr "{clearedExclusions, plural, one {# exclusión} other {# exclusiones}}"
+
+#: src/components/StorageMetrics/index.tsx
+msgid "{collectionCount, plural, one {# collection} other {# collections}}"
+msgstr "{collectionCount, plural, one {# colección} other {# colecciones}}"
+
+#: src/components/Collection/CollectionItem/index.tsx
+msgid "{collectionName} (custom)"
+msgstr "{collectionName} (personalizado)"
+
+#: src/pages/CollectionDetailPage.tsx
+msgid "{collectionTitle} - Maintainerr"
+msgstr "{collectionTitle} - Maintainerr"
+
+#: src/components/Collection/CollectionDetail/CollectionInfo/index.tsx
+msgid "{count, plural, one {# day} other {# days}}"
+msgstr "{count, plural, one {# día} other {# días}}"
+
+#: src/components/Collection/CollectionDetail/CollectionInfo/index.tsx
+msgid "{count, plural, one {# hour} other {# hours}}"
+msgstr "{count, plural, one {# hora} other {# horas}}"
+
+#: src/utils/bulkOutcome.ts
+msgid "{count, plural, one {# item added.} other {# items added.}}"
+msgstr "{count, plural, one {# elemento agregado.} other {# elementos agregados.}}"
+
+#: src/utils/bulkOutcome.ts
+msgid "{count, plural, one {# item could not be added{why}; the failed items stay selected.} other {# items could not be added{why}; the failed items stay selected.}}"
+msgstr "{count, plural, one {No se pudo agregar el elemento #{why}; los elementos fallidos permanecen seleccionados.} other {No se pudieron agregar # elementos {why}; los elementos fallidos permanecen seleccionados.}}"
+
+#: src/utils/bulkOutcome.ts
+msgid "{count, plural, one {# item could not be excluded everywhere{why}; the failed items stay selected.} other {# items could not be excluded everywhere{why}; the failed items stay selected.}}"
+msgstr "{count, plural, one {El elemento # no se pudo excluir en todas partes{why}; los elementos fallidos permanecen seleccionados.} other {# elementos no se pudieron excluir en todas partes{why}; los elementos fallidos permanecen seleccionados.}}"
+
+#: src/utils/bulkOutcome.ts
+msgid "{count, plural, one {# item could not be excluded{why}; the failed items stay selected.} other {# items could not be excluded{why}; the failed items stay selected.}}"
+msgstr "{count, plural, one {No se pudo excluir el elemento #{why}; los elementos fallidos permanecen seleccionados.} other {No se pudieron excluir # elementos{why}; los elementos fallidos permanecen seleccionados.}}"
+
+#: src/utils/bulkOutcome.ts
+msgid "{count, plural, one {# item could not be removed from every collection{why}; the failed items stay selected.} other {# items could not be removed from every collection{why}; the failed items stay selected.}}"
+msgstr "{count, plural, one {El elemento # no se pudo eliminar de cada colección{why}; los elementos fallidos permanecen seleccionados.} other {No se pudieron eliminar # elementos de cada colección{why}; los elementos fallidos permanecen seleccionados.}}"
+
+#: src/utils/bulkOutcome.ts
+msgid "{count, plural, one {# item could not be removed{why}; the failed items stay selected.} other {# items could not be removed{why}; the failed items stay selected.}}"
+msgstr "{count, plural, one {No se pudo eliminar el elemento #{why}; los elementos fallidos permanecen seleccionados.} other {No se pudieron eliminar # elementos{why}; los elementos fallidos permanecen seleccionados.}}"
+
+#: src/utils/bulkOutcome.ts
+msgid "{count, plural, one {# item could not be un-excluded{why}; the failed items stay selected.} other {# items could not be un-excluded{why}; the failed items stay selected.}}"
+msgstr "{count, plural, one {No se pudo quitar la exclusión de # elemento{why}; los elementos fallidos permanecen seleccionados.} other {No se pudo quitar la exclusión de # elementos{why}; los elementos fallidos permanecen seleccionados.}}"
+
+#: src/utils/bulkOutcome.ts
+msgid "{count, plural, one {# item excluded everywhere.} other {# items excluded everywhere.}}"
+msgstr "{count, plural, one {# elemento excluido en todas partes.} other {# elementos excluidos en todas partes.}}"
+
+#: src/utils/bulkOutcome.ts
+msgid "{count, plural, one {# item excluded.} other {# items excluded.}}"
+msgstr "{count, plural, one {# elemento excluido.} other {# elementos excluidos.}}"
+
+#: src/utils/bulkOutcome.ts
+msgid "{count, plural, one {# item removed from every collection.} other {# items removed from every collection.}}"
+msgstr "{count, plural, one {# elemento eliminado de cada colección.} other {# elementos eliminados de cada colección.}}"
+
+#: src/utils/bulkOutcome.ts
+msgid "{count, plural, one {# item removed.} other {# items removed.}}"
+msgstr "{count, plural, one {# elemento eliminado.} other {# elementos eliminados.}}"
+
+#: src/utils/bulkOutcome.ts
+msgid "{count, plural, one {# item un-excluded.} other {# items un-excluded.}}"
+msgstr "{count, plural, one {Se quitó la exclusión de # elemento.} other {Se quitó la exclusión de # elementos.}}"
+
+#: src/components/Collection/CollectionDetail/CollectionInfo/index.tsx
+msgid "{count, plural, one {# minute} other {# minutes}}"
+msgstr "{count, plural, one {# minuto} other {# minutos}}"
+
+#: src/components/Collection/CollectionDetail/CollectionInfo/index.tsx
+msgid "{count, plural, one {# month} other {# months}}"
+msgstr "{count, plural, one {# mes} other {# meses}}"
+
+#: src/components/Collection/CollectionDetail/CollectionInfo/index.tsx
+msgid "{count, plural, one {# second} other {# seconds}}"
+msgstr "{count, plural, one {# segundo} other {# segundos}}"
+
+#: src/components/Collection/CollectionDetail/CollectionInfo/index.tsx
+msgid "{count, plural, one {# year} other {# years}}"
+msgstr "{count, plural, one {# año} other {# años}}"
+
+#: src/components/Settings/About/Releases/index.tsx
+msgid "{daysAgo, plural, one {# day ago} other {# days ago}}"
+msgstr "{daysAgo, plural, one {Hace # día} other {Hace # días}}"
+
+#: src/pages/OverlayTemplateListPage.tsx
+msgid "{elementCount, plural, one {# element} other {# elements}}"
+msgstr "{elementCount, plural, one {# elemento} other {# elementos}}"
+
+#: src/components/OverlayEditor/PropertiesPanel.tsx
+msgid "{formatList} - up to {imageUploadMaxLabel}."
+msgstr "{formatList} - hasta {imageUploadMaxLabel}."
+
+#: src/components/StorageMetrics/StorageUsageBar.tsx
+msgid "{freeSize} free"
+msgstr "{freeSize} libres"
+
+#: src/components/Settings/MediaServerSelector/index.tsx
+msgid "{furtherSkippedRules, plural, one {...and # more} other {...and # more}}"
+msgstr "{furtherSkippedRules, plural, one {...y # más} other {...y # más}}"
+
+#: src/components/Settings/About/Releases/index.tsx
+msgid "{hoursAgo, plural, one {# hour ago} other {# hours ago}}"
+msgstr "{hoursAgo, plural, one {Hace # hora} other {Hace # horas}}"
+
+#: src/api/calendar.ts
+#: src/components/StorageMetrics/index.tsx
+msgid "{itemCount, plural, one {# item} other {# items}}"
+msgstr "{itemCount, plural, one {# elemento} other {# elementos}}"
+
+#: src/components/Common/MediaActionModal.tsx
+msgid "{itemCount, plural, one {Add exclusion applies to # item across every collection. For shows and seasons this covers everything they contain.} other {Add exclusion applies to # items across every collection. For shows and seasons this covers everything they contain.}}"
+msgstr "{itemCount, plural, one {La exclusión adicional se aplica al elemento # en cada colección. Para series y temporadas esto cubre todo lo que contienen.} other {La exclusión adicional se aplica a # elementos en cada colección. Para series y temporadas esto cubre todo lo que contienen.}}"
+
+#: src/components/Common/MediaActionModal.tsx
+msgid "{itemCount, plural, one {Applies to # item.} other {Applies to # items.}}"
+msgstr "{itemCount, plural, one {Se aplica al elemento #.} other {Se aplica a # elementos.}}"
+
+#: src/components/Common/MediaActionModal.tsx
+msgid "{itemCount, plural, one {Remove exclusion applies to # item across every collection. For shows and seasons this covers everything they contain.} other {Remove exclusion applies to # items across every collection. For shows and seasons this covers everything they contain.}}"
+msgstr "{itemCount, plural, one {La exclusión de eliminación se aplica al elemento # en cada colección. Para series y temporadas esto cubre todo lo que contienen.} other {La exclusión de eliminación se aplica a # elementos en cada colección. Para series y temporadas esto cubre todo lo que contienen.}}"
+
+#: src/components/Common/MediaActionModal.tsx
+msgid "{itemCount, plural, one {Remove from collection applies to # item across every collection. For shows and seasons this covers everything they contain.} other {Remove from collection applies to # items across every collection. For shows and seasons this covers everything they contain.}}"
+msgstr "{itemCount, plural, one {Quitar de la colección se aplica al elemento # en cada colección. Para series y temporadas esto cubre todo lo que contienen.} other {Quitar de la colección se aplica a # elementos en cada colección. Para series y temporadas esto cubre todo lo que contienen.}}"
+
+#: src/components/Settings/MediaServerSelector/index.tsx
+msgid "{migratableRules} of {totalRules} rules can be migrated."
+msgstr "Se pueden migrar {migratableRules} de {totalRules} reglas."
+
+#: src/components/Settings/About/Releases/index.tsx
+msgid "{minutesAgo, plural, one {# minute ago} other {# minutes ago}}"
+msgstr "{minutesAgo, plural, one {Hace # minuto} other {Hace # minutos}}"
+
+#: src/components/StorageMetrics/index.tsx
+msgid "{mountCount, plural, one {# mount} other {# mounts}}"
+msgstr "{mountCount, plural, one {# montaje} other {# montajes}}"
+
+#: src/components/StorageMetrics/index.tsx
+msgid "{mountCount, plural, one {Aggregated across # mount} other {Aggregated across # mounts}}"
+msgstr "{mountCount, plural, one {Agregado en # montaje} other {Agregado en # montajes}}"
+
+#: src/components/Settings/Servarr/ExclusionTagSettings.tsx
+msgid "{name} exclusion tag settings could not be updated"
+msgstr "No se pudo actualizar la configuración de la etiqueta de exclusión {name}"
+
+#: src/components/Settings/Servarr/ExclusionTagSettings.tsx
+msgid "{name} exclusion tag settings updated"
+msgstr "Configuración de etiqueta de exclusión de {name} actualizada"
+
+#: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
+msgid "{path} (saved selection; total space unavailable)"
+msgstr "{path} (selección guardada; espacio total no disponible)"
+
+#: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
+msgid "{path} (saved selection)"
+msgstr "{path} (selección guardada)"
+
+#: src/components/Settings/Metadata/index.tsx
+msgid "{providerTitle} metadata refresh started"
+msgstr "Actualización de metadatos de {providerTitle} iniciada"
+
+#: src/components/Settings/Metadata/index.tsx
+msgid "{providerTitle} primary"
+msgstr "{providerTitle} primaria"
+
+#: src/components/Settings/Metadata/index.tsx
+msgid "{providerTitle} settings could not be updated"
+msgstr "La configuración de {providerTitle} no se pudo actualizar"
+
+#: src/components/Settings/Metadata/index.tsx
+msgid "{providerTitle} settings updated"
+msgstr "Configuración de {providerTitle} actualizada"
+
+#: src/components/Settings/About/Releases/index.tsx
+msgid "{secondsAgo, plural, one {# second ago} other {# seconds ago}}"
+msgstr "{secondsAgo, plural, one {Hace # segundo} other {Hace # segundos}}"
+
+#: src/components/Rules/RuleGroup/AddModal/QualityProfileSelector.tsx
+msgid "{serviceName} quality profile *"
+msgstr "Perfil de calidad de {serviceName} *"
+
+#: src/components/StorageMetrics/index.tsx
+msgid "{size} reclaimed"
+msgstr "{size} reclamado"
+
+#: src/components/StorageMetrics/index.tsx
+msgid "{size} reclaimed total"
+msgstr "{size} total reclamado"
+
+#: src/components/StorageMetrics/index.tsx
+msgid "{sizedCount} of {reclaimableCount} reclaimable collections sized - duplicates counted once"
+msgstr "{sizedCount} de {reclaimableCount} colecciones recuperables de tamaño: los duplicados se cuentan una vez"
+
+#: src/components/StorageMetrics/index.tsx
+msgid "{sizedCount} of {reclaimableCount} reclaimable collections sized - duplicates not yet deduplicated, refreshes after next collection run"
+msgstr "{sizedCount} de {reclaimableCount} colecciones recuperables de tamaño: duplicados aún no deduplicados, se actualiza después de la siguiente ejecución de colección"
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "{skipped, plural, one {# rule was skipped - it uses a property that isn't available.} other {# rules were skipped - they use properties that aren't available.}}"
+msgstr "{skipped, plural, one {Se omitió la regla #: utiliza una propiedad que no está disponible.} other {Se omitieron # reglas: utilizan propiedades que no están disponibles.}}"
+
+#: src/components/Settings/MediaServerSelector/index.tsx
+msgid "{skippedRuleCount, plural, one {# rule uses properties not available in {pendingName}.} other {# rules use properties not available in {pendingName}.}}"
+msgstr "{skippedRuleCount, plural, one {# regla utiliza propiedades no disponibles en {pendingName}.} other {# reglas utilizan propiedades no disponibles en {pendingName}.}}"
+
+#: src/pages/OverlayTemplateEditorPage.tsx
+msgid "{templateName} - Overlay Editor - Maintainerr"
+msgstr "{templateName} - Editor de superposición - Maintainerr"
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "{templateName} (default)"
+msgstr "{templateName} (predeterminado)"
+
+#: src/components/Calendar/index.tsx
+msgid "{totalScheduledCount, plural, one {# scheduled} other {# scheduled}}"
+msgstr "{totalScheduledCount, plural, one {# programado} other {# programados}}"
+
+#: src/components/Rules/RuleGroup/AddModal/ArrAction/index.tsx
+msgid "{type} server *"
+msgstr "Servidor {type} *"
+
+#: src/components/StorageMetrics/StorageUsageBar.tsx
+msgid "{usedSize} used"
+msgstr "{usedSize} usado"
+
+#: src/components/StorageMetrics/StorageUsageBar.tsx
+msgid "{usedSize} used of {totalSize}"
+msgstr "{usedSize} usado de {totalSize}"
+
+#: src/components/Settings/About/Releases/index.tsx
+msgid "{version} Changelog"
+msgstr "{version} Registro de cambios"
+
+#: src/components/Common/MediaCard/MediaModal/StreamystatsStatsPanel/index.tsx
+msgid "{watchedEpisodes}/{totalEpisodes} episodes watched"
+msgstr "{watchedEpisodes}/{totalEpisodes} episodios vistos"
+
+#: src/components/Common/MediaCard/MediaModal/StreamystatsStatsPanel/index.tsx
+msgid "{watchedSeasons}/{totalSeasons} seasons complete"
+msgstr "{watchedSeasons}/{totalSeasons} temporadas completas"
+
+#: src/components/OverlayEditor/PropertiesPanel.tsx
+msgid "+ Text"
+msgstr "+ Texto"
+
+#: src/components/OverlayEditor/PropertiesPanel.tsx
+msgid "+ Variable"
+msgstr "+ Variable"
+
+#: src/components/Calendar/index.tsx
+msgid "+{hiddenCount} more..."
+msgstr "+{hiddenCount} más..."
+
+#: src/components/OverlayEditor/PropertiesPanel.tsx
+msgid "1 day text"
+msgstr "Texto de 1 día"
+
+#: src/components/Settings/Servarr/ExclusionTagSettings.tsx
+msgid "A tag label is required when exclusion tagging is enabled. Lowercase letters, numbers and hyphens only ({chars})."
+msgstr "Se requiere una etiqueta cuando el etiquetado de exclusión está habilitado. Sólo letras minúsculas, números y guiones ({chars})."
+
+#: src/components/Settings/index.tsx
+msgid "About"
+msgstr "Acerca de"
+
+#: src/components/Settings/About/index.tsx
+msgid "About - Maintainerr"
+msgstr "Acerca de - Maintainerr"
+
+#: src/components/Settings/About/index.tsx
+msgid "About Maintainerr"
+msgstr "Acerca de Maintainerr"
+
+#: src/components/Common/MediaActionModal.tsx
+#: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
+msgid "Action"
+msgstr "Acción"
+
+#: src/components/Collection/CollectionItem/index.tsx
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+#: src/components/Rules/RuleGroup/index.tsx
+#: src/components/StorageMetrics/index.tsx
+msgid "Active"
+msgstr "Activo"
+
+#: src/components/Common/MediaActionModal.tsx
+msgid "Add / Remove Media"
+msgstr "Agregar o quitar contenido multimedia"
+
+#: src/components/Rules/Rule/RuleCreator/index.tsx
+msgid "Add a new rule to Section {sectionNumber}"
+msgstr "Agregar una nueva regla a la Sección {sectionNumber}"
+
+#: src/components/Rules/Rule/RuleCreator/index.tsx
+msgid "Add a new section"
+msgstr "Agregar una nueva sección"
+
+#: src/components/Settings/Notifications/index.tsx
+msgid "Add Agent"
+msgstr "Agregar agente"
+
+#: src/components/Common/MediaActionModal.tsx
+msgid "Add exclusion"
+msgstr "Agregar exclusión"
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Add import list exclusions"
+msgstr "Agregar exclusiones de lista de importación"
+
+#: src/components/Rules/Rule/RuleCreator/index.tsx
+msgid "Add Rule"
+msgstr "Agregar regla"
+
+#: src/components/Settings/Radarr/index.tsx
+#: src/components/Settings/Sonarr/index.tsx
+#: src/components/Settings/Sportarr/index.tsx
+msgid "Add server"
+msgstr "Agregar servidor"
+
+#: src/components/Settings/Servarr/ExclusionTagSettings.tsx
+msgid "Add the tag below to {name} when an item is excluded"
+msgstr "Añade la siguiente etiqueta a {name} cuando se excluya un elemento"
+
+#: src/components/Common/MediaActionModal.tsx
+msgid "Add to collection"
+msgstr "Añadir a la colección"
+
+#: src/components/Common/MediaSelectionActions.tsx
+msgid "Add/Exclude <0>selected</0>"
+msgstr "Agregar/Excluir <0>seleccionados</0>"
+
+#: src/components/Calendar/index.tsx
+msgid "Added On"
+msgstr "Añadido"
+
+#: src/components/Settings/Radarr/index.tsx
+#: src/components/Settings/Sonarr/index.tsx
+#: src/components/Settings/Sportarr/index.tsx
+msgid "Address"
+msgstr "Dirección"
+
+#: src/components/Settings/Emby/index.tsx
+#: src/components/Settings/Jellyfin/index.tsx
+msgid "Admin User"
+msgstr "Usuario administrador"
+
+#: src/components/Settings/Plex/index.tsx
+msgid "Advanced Settings"
+msgstr "Configuración avanzada"
+
+#: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
+msgid "After"
+msgstr "Después"
+
+#: src/components/Collection/CollectionItem/index.tsx
+msgid "After {dayCount}"
+msgstr "Después de {dayCount}"
+
+#: src/components/Settings/MediaServerSelector/index.tsx
+msgid "After migration, you must manually assign a library to each rule group before rules can run."
+msgstr "Después de la migración, debe asignar manualmente una biblioteca a cada grupo de reglas antes de que se puedan ejecutar las reglas."
+
+#: src/components/Settings/Notifications/CreateNotificationModal/index.tsx
+msgid "Agent *"
+msgstr "Agente *"
+
+#: src/components/Rules/RuleGroup/AddModal/ConfigureNotificationModal/index.tsx
+msgid "Agents"
+msgstr "Agentes"
+
+#: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
+msgid "Aggregate (all paths)"
+msgstr "Agregado (todas las rutas)"
+
+#: src/components/OverlayEditor/PropertiesPanel.tsx
+msgid "Align"
+msgstr "Alinear"
+
+#: src/components/Common/LibrarySwitcher/index.tsx
+msgid "All"
+msgstr "Todo"
+
+#: src/components/Common/MediaActionModal.tsx
+msgid "All collections"
+msgstr "Todas las colecciones"
+
+#: src/components/Common/MediaActionModal.tsx
+msgid "All episodes"
+msgstr "Todos los episodios"
+
+#: src/components/Settings/Overlays/index.tsx
+msgid "All overlays have been reset"
+msgstr "Se han restablecido todas las superposiciones"
+
+#: src/components/Common/MediaActionModal.tsx
+msgid "All seasons"
+msgstr "Todas las temporadas"
+
+#: src/components/Settings/DownloadClient/index.tsx
+msgid "Also delete the download's data from disk when removing it. Turn off if you cross-seed."
+msgstr "Eliminar también los datos de la descarga del disco al quitarla. Desactívalo si haces cross-seed."
+
+#: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
+msgid "Amount of days"
+msgstr "Cantidad de días"
+
+#: src/components/Common/CommunityRuleModal/index.tsx
+msgid "An error occurred fetching community rules. Please try again later."
+msgstr "Se produjo un error al obtener las reglas de la comunidad. Inténtelo de nuevo más tarde."
+
+#: src/components/Common/MediaActionModal.tsx
+msgid "An item excluded globally is un-excluded everywhere, not just here."
+msgstr "La exclusión global de un elemento se quita en todas partes, no solo aquí."
 
 #: src/components/Layout/index.tsx
 msgid "An unexpected error occurred."
 msgstr "Se ha producido un error inesperado."
 
+#: src/components/Settings/Main/index.tsx
+#: src/components/Settings/Seerr/index.tsx
+#: src/components/Settings/Servarr/ServarrSettingsModal.tsx
+#: src/components/Settings/Tautulli/index.tsx
+#: src/components/Settings/Tracearr/index.tsx
+msgid "API key"
+msgstr "Clave API"
+
+#: src/components/Settings/Emby/index.tsx
+#: src/components/Settings/Jellyfin/index.tsx
+#: src/components/Settings/Metadata/index.tsx
+msgid "API Key"
+msgstr "Clave API"
+
+#: src/components/Settings/Metadata/index.tsx
+msgid "API key configured."
+msgstr "Clave API configurada."
+
+#: src/components/Settings/Metadata/index.tsx
+msgid "API key not configured."
+msgstr "Clave API no configurada."
+
+#: src/components/Settings/Servarr/ExclusionTagSettings.tsx
+msgid "Apply a protective tag to the matching {name} movie whenever Maintainerr excludes an item, so {name} carries a single source of truth for \"do not touch\"."
+msgstr "Aplique una etiqueta protectora a la película {name} coincidente siempre que Maintainerr excluya un elemento, de modo que {name} tenga una única fuente de verdad para \"no tocar\"."
+
+#: src/components/Settings/Servarr/ExclusionTagSettings.tsx
+msgid "Apply a protective tag to the matching {name} series whenever Maintainerr excludes an item, so {name} carries a single source of truth for \"do not touch\"."
+msgstr "Aplique una etiqueta protectora a la serie {name} coincidente siempre que Maintainerr excluya un elemento, de modo que {name} tenga una única fuente de verdad para \"no tocar\"."
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Apply date overlays to posters in this collection"
+msgstr "Aplicar superposiciones de fechas a los carteles de esta colección."
+
+#: src/components/Rules/RuleGroup/index.tsx
+#: src/components/Settings/Notifications/index.tsx
+#: src/components/Settings/Radarr/index.tsx
+#: src/components/Settings/Sonarr/index.tsx
+#: src/components/Settings/Sportarr/index.tsx
+msgid "Are you sure?"
+msgstr "¿Está seguro?"
+
+#: src/components/Collection/CollectionDetail/CollectionInfo/index.tsx
+msgid "Ascending"
+msgstr "Ascendente"
+
+#: src/components/Login/Plex/index.tsx
+msgid "Authenticate with Plex"
+msgstr "Autenticar con Plex"
+
+#: src/components/Settings/Plex/index.tsx
+msgid "Authenticate with Plex before saving server settings."
+msgstr "Autentíquese con Plex antes de guardar la configuración del servidor."
+
+#: src/components/Settings/Plex/index.tsx
+msgid "Authenticate with Plex before testing the connection."
+msgstr "Autentíquese con Plex antes de probar la conexión."
+
+#: src/components/Settings/Emby/index.tsx
+#: src/components/Settings/Plex/index.tsx
+msgid "Authenticated"
+msgstr "Autenticado"
+
+#: src/components/Settings/Emby/index.tsx
+msgid "Authenticated against {serverName}"
+msgstr "Autenticado contra {serverName}"
+
+#: src/components/Login/Emby/EmbyLoginButton.tsx
+msgid "Authenticates against <0>{embyUrl}</0> with an admin username and password. The resulting access token is stored as the API key."
+msgstr "Se autentica contra <0>{embyUrl}</0> con un nombre de usuario y contraseña de administrador. El token de acceso resultante se almacena como la clave API."
+
+#: src/components/Login/Plex/index.tsx
+msgid "Authenticating…"
+msgstr "Autenticando…"
+
+#: src/components/Settings/Plex/index.tsx
+msgid "Authentication"
+msgstr "Autenticación"
+
+#: src/components/Login/Emby/EmbyLoginButton.tsx
+msgid "Authentication failed"
+msgstr "Error de autenticación"
+
+#: src/utils/PlexAuth.ts
+msgid "Authentication PIN expired. Please try again."
+msgstr "El PIN de autenticación expiró. Por favor inténtalo de nuevo."
+
+#: src/utils/PlexAuth.ts
+msgid "Authentication timed out. Please try again."
+msgstr "Se agotó el tiempo de autenticación. Por favor inténtalo de nuevo."
+
+#: src/components/Settings/Plex/index.tsx
+msgid "Authentication with the server's admin account is required to access the Plex API"
+msgstr "Se requiere autenticación con la cuenta de administrador del servidor para acceder a la API de Plex"
+
 #: src/components/Collection/CollectionOverview/index.tsx
 msgid "Automatic collections"
 msgstr "Colecciones automáticas"
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Automatically sort items inside the collection on {mediaServerName}. Disabling later does not restore the default order - change it in {mediaServerName} if needed."
+msgstr "Ordena automáticamente los elementos dentro de la colección en {mediaServerName}. Deshabilitarlo más tarde no restaura el orden predeterminado; cámbialo en {mediaServerName} si es necesario."
+
+#: src/components/OverlayEditor/PropertiesPanel.tsx
+msgid "Background"
+msgstr "Fondo"
+
+#: src/components/Settings/Main/DatabaseBackupModal.tsx
+msgid "Backup"
+msgstr "Respaldo"
+
+#: src/components/Settings/Main/DatabaseBackupModal.tsx
+#: src/components/Settings/Main/index.tsx
+msgid "Backup Database"
+msgstr "Respaldar base de datos"
+
+#: src/components/Settings/Servarr/ServarrSettingsModal.tsx
+msgid "Base URL"
+msgstr "URL base"
+
+#: src/components/StorageMetrics/index.tsx
+msgid "Based on cached collection sizes, deduplicated across collections. Run collection processing jobs to refresh size data."
+msgstr "Basado en tamaños de colecciones almacenadas en caché, deduplicadas entre colecciones. Ejecute trabajos de procesamiento de colecciones para actualizar los datos de tamaño."
+
+#: src/components/StorageMetrics/index.tsx
+msgid "Based on cached collection totals while per-item sizes are still backfilling. Duplicates across collections are resolved after the next collection size refresh."
+msgstr "Basado en los totales de la colección almacenada en caché mientras los tamaños por elemento aún se están reponiendo. Los duplicados entre colecciones se resuelven después de la siguiente actualización del tamaño de la colección."
+
+#: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
+msgid "Before"
+msgstr "Antes"
+
+#: src/components/Collection/CollectionDetail/CollectionInfo/index.tsx
+msgid "Below are the rule evaluation results that triggered this action. The output follows the same format as Test Media. Refer to the documentation for guidance on interpreting this output."
+msgstr "A continuación se muestran los resultados de la evaluación de reglas que desencadenaron esta acción. La salida sigue el mismo formato que Test Media. Consulte la documentación para obtener orientación sobre cómo interpretar este resultado."
+
+#: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
+msgid "Bigger"
+msgstr "Más grande"
+
+#: src/components/OverlayEditor/PropertiesPanel.tsx
+msgid "bold"
+msgstr "negrita"
+
+#: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
+msgid "Boolean"
+msgstr "Booleano"
+
+#: src/components/OverlayEditor/PropertiesPanel.tsx
+msgid "bottom"
+msgstr "abajo"
 
 #: src/components/Layout/NavBar/index.tsx
 msgid "Calendar"
 msgstr "Calendario"
 
+#: src/pages/CalendarPage.tsx
+msgid "Calendar - Maintainerr"
+msgstr "Calendario - Maintainerr"
+
+#: src/components/Settings/Jobs/index.tsx
+msgid "Can be overridden by individual rule groups."
+msgstr "Puede ser anulado por grupos de reglas individuales."
+
+#: src/components/Common/ColorPickerModal/index.tsx
+#: src/components/Common/Modal/index.tsx
+#: src/components/Rules/Rule/RuleCreator/CommunityRuleUpload/index.tsx
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+#: src/components/Settings/MediaServerSelector/index.tsx
+#: src/components/StorageMetrics/index.tsx
+msgid "Cancel"
+msgstr "Cancelar"
+
+#: src/pages/OverlayTemplateListPage.tsx
+msgid "Cannot delete preset templates"
+msgstr "No se pueden eliminar plantillas preestablecidas"
+
+#: src/components/OverlayEditor/PropertiesPanel.tsx
+msgid "center"
+msgstr "centro"
+
+#: src/components/Settings/Plex/index.tsx
+msgid "Change"
+msgstr "Cambiar"
+
+#: src/api/calendar.ts
+msgid "Change Quality"
+msgstr "Cambiar calidad"
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Change quality profile"
+msgstr "Cambiar perfil de calidad"
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Change quality profile and search"
+msgstr "Cambiar perfil de calidad y buscar"
+
+#: src/components/Collection/CollectionDetail/TriggerRuleActionButton/index.tsx
+msgid "Change the quality profile"
+msgstr "Cambiar el perfil de calidad"
+
+#: src/components/Collection/CollectionDetail/TriggerRuleActionButton/index.tsx
+msgid "Change the quality profile and trigger a search"
+msgstr "Cambiar el perfil de calidad y activar una búsqueda"
+
+#: src/components/Settings/Plex/index.tsx
+msgid "Checking authentication..."
+msgstr "Comprobando autenticación..."
+
+#: src/components/Common/ColorPickerModal/index.tsx
+msgid "Choose a color"
+msgstr "Elige un color"
+
+#: src/components/OverlayEditor/PropertiesPanel.tsx
+msgid "Choose a color for {fieldLabel}"
+msgstr "Elige un color para {fieldLabel}"
+
+#: src/components/Settings/Main/DatabaseBackupModal.tsx
+msgid "Choose the filename for your database backup."
+msgstr "Elige el nombre de archivo para la copia de seguridad de su base de datos."
+
 #: src/components/Settings/index.tsx
 msgid "Choose your media server, confirm the connection, and then you can continue configuring the rest of Maintainerr."
-msgstr ""
-"Selecciona tu servidor multimedia, confirma la conexión y después podrás "
-"continuar configurando el resto de Maintainerr."
+msgstr "Selecciona tu servidor multimedia, confirma la conexión y después podrás continuar configurando el resto de Maintainerr."
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Clean up leftover folders"
+msgstr "Limpiar carpetas sobrantes"
+
+#: src/components/StorageMetrics/index.tsx
+msgid "Cleanup totals"
+msgstr "Totales de limpieza"
+
+#: src/components/Rules/RuleGroup/AddModal/CollectionPosterPicker.tsx
+msgid "Clear"
+msgstr "Borrar"
+
+#: src/components/Settings/Plex/index.tsx
+msgid "Clear credentials?"
+msgstr "¿Borrar las credenciales?"
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Clone"
+msgstr "Clonar"
+
+#: src/pages/RuleFormPage.tsx
+msgid "Clone rule - Maintainerr"
+msgstr "Clonar regla - Maintainerr"
+
+#: src/components/Calendar/index.tsx
+#: src/components/Collection/CollectionDetail/CollectionInfo/index.tsx
+#: src/components/Collection/CollectionDetail/TestMediaItem/index.tsx
+#: src/components/Common/CommunityRuleModal/index.tsx
+#: src/components/Common/MediaCard/MediaModal/index.tsx
+#: src/components/Common/Modal/index.tsx
+#: src/components/Login/Emby/EmbyLoginButton.tsx
+#: src/components/Rules/Rule/RuleCreator/CommunityRuleUpload/index.tsx
+#: src/components/Settings/About/Releases/index.tsx
+msgid "Close"
+msgstr "Cerrar"
 
 #: src/components/Layout/NavBar/index.tsx
 msgid "Close sidebar"
 msgstr "Cerrar barra lateral"
 
+#: src/components/Settings/MediaServerSelector/index.tsx
+msgid "Close this dialog and try again."
+msgstr "Cierre este cuadro de diálogo e inténtelo de nuevo."
+
+#: src/components/Calendar/index.tsx
+#: src/components/Collection/CollectionDetail/CollectionInfo/collectionLogLabels.ts
+#: src/components/Common/MediaActionModal.tsx
+#: src/components/StorageMetrics/index.tsx
+msgid "Collection"
+msgstr "Colección"
+
+#: src/pages/CollectionDetailPage.tsx
+msgid "Collection - Maintainerr"
+msgstr "Colección - Maintainerr"
+
+#: src/api/calendar.ts
+msgid "Collection {collectionId}"
+msgstr "Colección {collectionId}"
+
+#: src/components/Settings/Jobs/index.tsx
+msgid "Collection Handler"
+msgstr "Controlador de colección"
+
+#: src/pages/CollectionsListPage.tsx
+msgid "Collection handling is already running."
+msgstr "El procesamiento de colecciones ya está en marcha."
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Collection items sort"
+msgstr "Orden de elementos de colección"
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Collection must exist in {mediaServerName}"
+msgstr "La colección debe existir en {mediaServerName}"
+
+#: src/components/StorageMetrics/index.tsx
+msgid "Collection sizes have not been computed yet. They are calculated as part of the regular collection processing job."
+msgstr "Los tamaños de las colecciones aún no se han calculado. Se calculan como parte del trabajo habitual de procesamiento de colecciones."
+
 #: src/components/Layout/NavBar/index.tsx
 msgid "Collections"
 msgstr "Colecciones"
+
+#: src/pages/CollectionsListPage.tsx
+msgid "Collections - Maintainerr"
+msgstr "Colecciones - Maintainerr"
+
+#: src/components/OverlayEditor/PropertiesPanel.tsx
+msgid "Color"
+msgstr "Color"
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Community"
+msgstr "Comunidad"
+
+#: src/components/Common/CommunityRuleModal/index.tsx
+msgid "Community Rule Description"
+msgstr "Descripción de la regla comunitaria"
+
+#: src/components/Common/CommunityRuleModal/index.tsx
+#: src/components/Settings/About/index.tsx
+msgid "Community Rules"
+msgstr "Reglas de la comunidad"
+
+#: src/components/Rules/Rule/RuleCreator/CommunityRuleUpload/index.tsx
+msgid "Community Short Name *"
+msgstr "Nombre corto de la comunidad *"
+
+#: src/components/Common/MediaCard/MediaModal/StreamystatsStatsPanel/index.tsx
+msgid "Completion"
+msgstr "Progreso"
+
+#: src/components/StorageMetrics/index.tsx
+msgid "Compute library sizes"
+msgstr "Calcular tamaños de biblioteca"
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Configure"
+msgstr "Configurar"
+
+#: src/components/Settings/Overlays/index.tsx
+msgid "Configure automatic poster and title card overlays for collections"
+msgstr "Configurar superposiciones automáticas de carteles y tarjetas de título para colecciones"
+
+#: src/components/Settings/Main/index.tsx
+msgid "Configure global settings"
+msgstr "Configurar ajustes globales"
+
+#: src/components/Settings/Metadata/index.tsx
+msgid "Configure metadata providers and set the primary source for posters, backdrops, and metadata enrichment. Adding a TVDB developer API key gives Maintainerr a fallback source for provider cross-references, which helps recover missing IDs when the primary provider cannot resolve a match and can provide a second opinion for some items through existing external ID cross-references."
+msgstr "Configura los proveedores de metadatos y establece la fuente principal para pósters, fondos y enriquecimiento de metadatos. Añadir una clave API de desarrollador de TVDB da a Maintainerr una fuente alternativa para referencias cruzadas de proveedores, lo que ayuda a recuperar IDs faltantes cuando el proveedor principal no puede resolver una coincidencia y puede aportar una segunda opinión para algunos elementos mediante referencias cruzadas de IDs externos existentes."
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Configure Notifications"
+msgstr "Configurar notificaciones"
+
+#: src/components/Settings/Metadata/index.tsx
+msgid "Configure to refresh"
+msgstr "Configurar para actualizar"
+
+#: src/components/Settings/Emby/index.tsx
+msgid "Configure your Emby server connection. Enter the server URL plus an API key, or sign in with admin credentials to obtain one."
+msgstr "Configura la conexión de tu servidor Emby. Introduce la URL del servidor y una clave API, o inicia sesión con credenciales de administrador para obtener una."
+
+#: src/components/Settings/Jellyfin/index.tsx
+msgid "Configure your Jellyfin server connection"
+msgstr "Configura la conexión de tu servidor Jellyfin"
+
+#: src/components/Common/MediaActionModal.tsx
+msgid "Confirm Global Exclusion"
+msgstr "Confirmar exclusión global"
+
+#: src/components/Common/MediaActionModal.tsx
+msgid "Confirm Removal From Every Collection"
+msgstr "Confirmar la eliminación de cada colección"
+
+#: src/components/Common/MediaActionModal.tsx
+msgid "Confirm Removing Every Exclusion"
+msgstr "Confirmar la eliminación de todas las exclusiones"
+
+#: src/components/StorageMetrics/index.tsx
+msgid "Connect a Plex or Jellyfin server in Settings to see library item counts here."
+msgstr "Conecta un servidor Plex o Jellyfin en Ajustes para ver aquí el recuento de elementos de la biblioteca."
 
 #: src/components/Settings/index.tsx
 msgid "Connect your media server to finish setup."
 msgstr "Conecta tu servidor multimedia para terminar la configuración."
 
+#: src/components/Settings/Emby/index.tsx
+#: src/components/Settings/Jellyfin/index.tsx
+msgid "Connected to {serverName} (v{version})"
+msgstr "Conectado a {serverName} (v{version})"
+
+#: src/utils/ApiError.ts
+msgid "Connection refused. Verify host, port, and that the service is running."
+msgstr "Conexión rechazada. Verifique el host, el puerto y que el servicio se esté ejecutando."
+
+#: src/utils/ApiError.ts
+msgid "Connection test failed. Verify URL and credentials."
+msgstr "La prueba de conexión falló. Verifique la URL y las credenciales."
+
+#: src/utils/ApiError.ts
+msgid "Connection timed out after 5 seconds. Verify URL and network reachability."
+msgstr "La conexión se agotó después de 5 segundos. Verifique la accesibilidad de la URL y la red."
+
+#: src/components/Settings/About/index.tsx
+msgid "Container Config Path"
+msgstr "Ruta de configuración del contenedor"
+
+#: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
+msgid "Contains (All items)"
+msgstr "Contiene (todos los elementos)"
+
+#: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
+msgid "Contains (Exact list match)"
+msgstr "Contiene (coincidencia de lista exacta)"
+
+#: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
+msgid "Contains (Partial list match)"
+msgstr "Contiene (coincidencia de lista parcial)"
+
+#: src/components/Collection/CollectionDetail/TestMediaItem/index.tsx
+#: src/components/Common/YamlImporterModal/index.tsx
+msgid "Copied to clipboard"
+msgstr "Copiado al portapapeles"
+
+#: src/components/Collection/CollectionDetail/TestMediaItem/index.tsx
+msgid "Copy to clipboard"
+msgstr "Copiar al portapapeles"
+
+#: src/components/Common/YamlImporterModal/index.tsx
+msgid "Copy YAML"
+msgstr "Copiar YAML"
+
+#: src/pages/OverlayTemplateEditorPage.tsx
+msgid "Copying..."
+msgstr "Copiando..."
+
+#: src/components/OverlayEditor/PropertiesPanel.tsx
+msgid "Corner Radius"
+msgstr "Radio de esquina"
+
+#: src/components/Settings/Main/DatabaseBackupModal.tsx
+msgid "Could not backup the database"
+msgstr "No se pudo hacer una copia de seguridad de la base de datos"
+
+#: src/components/Rules/RuleGroup/AddModal/CollectionPosterPicker.tsx
+msgid "Could not clear the stored poster"
+msgstr "No se pudo borrar el cartel almacenado"
+
+#: src/components/Common/LibrarySwitcher/index.tsx
+msgid "Could not fetch libraries"
+msgstr "No se pudieron recuperar las bibliotecas"
+
+#: src/pages/OverlayTemplateEditorPage.tsx
+msgid "Could not load font list. Text elements will fall back to the default font."
+msgstr "No se pudo cargar la lista de fuentes. Los elementos de texto volverán a la fuente predeterminada."
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Could not load libraries from {mediaServerName}. The saved library selection is preserved - cancel editing to avoid losing rules."
+msgstr "No se pudieron cargar bibliotecas desde {mediaServerName}. La selección de biblioteca guardada se conserva; cancele la edición para evitar perder reglas."
+
+#: src/pages/OverlayTemplateEditorPage.tsx
+msgid "Could not load library sections. The preview background picker will be empty."
+msgstr "No se pudieron cargar las secciones de la biblioteca. El selector de fondo de vista previa estará vacío."
+
+#: src/pages/OverlayTemplateEditorPage.tsx
+msgid "Could not load overlay image list. Image elements will only render if the filename exists on disk."
+msgstr "No se pudo cargar la lista de imágenes superpuestas. Los elementos de la imagen solo se representarán si el nombre del archivo existe en el disco."
+
+#: src/components/Common/MediaActionModal.tsx
+msgid "Could not load the collections"
+msgstr "No se pudieron cargar las colecciones."
+
+#: src/components/Common/MediaActionModal.tsx
+msgid "Could not load the episodes"
+msgstr "No se pudieron cargar los episodios."
+
+#: src/components/Common/MediaActionModal.tsx
+msgid "Could not load the seasons"
+msgstr "No se pudieron cargar las temporadas"
+
+#: src/components/Rules/RuleGroup/AddModal/CollectionPosterPicker.tsx
+msgid "Could not upload poster - check that the file is a valid image"
+msgstr "No se pudo cargar el póster: verifique que el archivo sea una imagen válida"
+
+#: src/components/Settings/Plex/index.tsx
+msgid "Couldn't reach {plexTv} to verify your credentials - retrying. Your saved token is still in use."
+msgstr "No se pudo contactar con {plexTv} para verificar tus credenciales; reintentando. Tu token guardado sigue en uso."
+
+#: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
+msgid "Count (number)"
+msgstr "Contar (número)"
+
+#: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
+msgid "Count Does Not Equal"
+msgstr "El recuento no es igual"
+
+#: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
+msgid "Count Equals"
+msgstr "El recuento es igual"
+
+#: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
+msgid "Count Is Bigger Than"
+msgstr "El recuento es mayor que"
+
+#: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
+msgid "Count Is Smaller Than"
+msgstr "El recuento es menor que"
+
+#: src/components/StorageMetrics/index.tsx
+msgid "Cumulative count of media items Maintainerr has handled across all collections, with the on-disk space reclaimed by delete-style actions. Unmonitor and quality-change actions do not contribute to bytes reclaimed."
+msgstr "Recuento acumulado de elementos multimedia que Maintainerr ha gestionado en todas las colecciones, junto con el espacio en disco recuperado por acciones de eliminación. Las acciones de dejar de supervisar y cambio de calidad no contribuyen a los bytes recuperados."
+
+#: src/components/Settings/About/Releases/index.tsx
+msgid "Current"
+msgstr "Actual"
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Custom collection"
+msgstr "Colección personalizada"
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Custom collection name"
+msgstr "Nombre de colección personalizado"
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Custom collection name is required"
+msgstr "Se requiere un nombre de colección personalizado"
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Custom collection poster"
+msgstr "Póster de colección personalizado."
+
+#: src/components/Rules/RuleGroup/AddModal/CollectionPosterPicker.tsx
+msgid "Custom poster cleared. {mediaServerName} metadata refresh requested - artwork may update depending on {mediaServerName} behavior and configured agents."
+msgstr "Póster personalizado borrado. {mediaServerName} actualización de metadatos solicitada: el diseño gráfico puede actualizarse según el comportamiento de {mediaServerName} y los agentes configurados."
+
+#: src/components/Rules/RuleGroup/AddModal/CollectionPosterPicker.tsx
+msgid "Custom poster cleared. The artwork on {mediaServerName} is unchanged - refresh metadata there if you want the original back."
+msgstr "Póster personalizado borrado. La obra de arte en {mediaServerName} no ha cambiado; actualice los metadatos allí si desea recuperar el original."
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Custom sort title for the collection in {mediaServerName}"
+msgstr "Título de clasificación personalizado para la colección en {mediaServerName}"
+
+#: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
+msgid "Custom Value"
+msgstr "Valor personalizado"
+
+#: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
+msgid "Custom values"
+msgstr "Valores personalizados"
+
+#: src/components/Settings/Main/index.tsx
+msgid "Database backup downloaded"
+msgstr "Copia de seguridad de la base de datos descargada"
+
+#: src/components/Collection/CollectionDetail/CollectionInfo/CollectionLogsTable.tsx
+#: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
+msgid "Date"
+msgstr "Fecha"
+
+#: src/components/OverlayEditor/PropertiesPanel.tsx
+msgid "Date / Days Config"
+msgstr "Configuración de fecha/días"
+
+#: src/components/Collection/CollectionDetail/CollectionInfo/index.tsx
+msgid "Date Added"
+msgstr "Fecha agregada"
+
+#: src/components/OverlayEditor/PropertiesPanel.tsx
+msgid "Date Format"
+msgstr "Formato de fecha"
+
+#: src/components/OverlayEditor/PropertiesPanel.tsx
+msgid "Day Suffix"
+msgstr "Sufijo del día"
+
+#: src/components/Collection/CollectionDetail/PostponeButton/index.tsx
+msgid "Days to postpone"
+msgstr "Días para posponer"
+
+#: src/components/Settings/Logs/index.tsx
+msgid "Debug"
+msgstr "Depurar"
+
+#: src/pages/OverlayTemplateListPage.tsx
+msgid "Default"
+msgstr "Por defecto"
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Default (no custom sort)"
+msgstr "Predeterminado (sin clasificación personalizada)"
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Default poster template"
+msgstr "Plantilla de póster predeterminada"
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Default title card template"
+msgstr "Plantilla de tarjeta de título predeterminada"
+
+#: src/api/calendar.ts
+#: src/components/Collection/CollectionItem/index.tsx
+#: src/components/OverlayEditor/LayerPanel.tsx
+#: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
+#: src/components/Rules/RuleGroup/AddModal/ArrAction/index.tsx
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+#: src/components/Rules/RuleGroup/index.tsx
+#: src/components/Settings/Notifications/index.tsx
+#: src/components/Settings/Radarr/index.tsx
+#: src/components/Settings/Sonarr/index.tsx
+#: src/components/Settings/Sportarr/index.tsx
+#: src/pages/OverlayTemplateListPage.tsx
+msgid "Delete"
+msgstr "Eliminar"
+
+#: src/components/Settings/DownloadClient/index.tsx
+msgid "Delete downloaded data"
+msgstr "Eliminar datos descargados"
+
+#: src/api/calendar.ts
+msgid "Delete Empty Show"
+msgstr "Eliminar serie vacía"
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Delete entire league"
+msgstr "Eliminar toda la liga"
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Delete entire show"
+msgstr "Eliminar toda la serie"
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Delete event file"
+msgstr "Eliminar archivo de evento"
+
+#: src/components/Common/MediaLibrarySortControl.tsx
+msgid "Delete Latest"
+msgstr "Eliminación más tardía"
+
+#: src/components/Common/MediaLibrarySortControl.tsx
+msgid "Delete Soonest"
+msgstr "Eliminación más próxima"
+
+#: src/pages/OverlayTemplateListPage.tsx
+msgid "Delete template <0>“{templateName}”</0>? This action cannot be undone."
+msgstr "¿Eliminar plantilla <0>“{templateName}”</0>? Esta acción no se puede deshacer."
+
+#: src/pages/OverlayTemplateListPage.tsx
+msgid "Delete template?"
+msgstr "¿Eliminar plantilla?"
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Delete the folder {cleanupArrName} leaves behind and its sidecars (subtitles, .nfo, artwork). Requires the library mounted at the same path {cleanupArrName} uses"
+msgstr "Elimina la carpeta que {cleanupArrName} deja y sus sidecars (subtítulos, .nfo, imágenes). Requiere que la biblioteca esté montada en la misma ruta que usa {cleanupArrName}"
+
+#: src/components/Collection/CollectionDetail/TriggerRuleActionButton/index.tsx
+msgid "Delete this item"
+msgstr "Eliminar este elemento"
+
+#: src/components/Collection/CollectionDetail/TriggerRuleActionButton/index.tsx
+msgid "Delete this league"
+msgstr "Eliminar esta liga"
+
+#: src/components/Collection/CollectionDetail/TriggerRuleActionButton/index.tsx
+msgid "Delete this movie"
+msgstr "Eliminar esta película"
+
+#: src/components/Collection/CollectionDetail/TriggerRuleActionButton/index.tsx
+msgid "Delete this season and remove the show if it becomes empty"
+msgstr "Elimina esta temporada y elimina la serie si queda vacía."
+
+#: src/components/Collection/CollectionDetail/TriggerRuleActionButton/index.tsx
+msgid "Delete this show"
+msgstr "Eliminar esta serie"
+
+#: src/components/Collection/CollectionDetail/CollectionInfo/index.tsx
+msgid "Descending"
+msgstr "Descendente"
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Description"
+msgstr "Descripción"
+
+#: src/pages/OverlayTemplateEditorPage.tsx
+msgid "Design overlay elements on the canvas. Enter a valid template name in the Template Name field before saving your changes."
+msgstr "Diseñe elementos superpuestos en el lienzo. Ingrese un nombre de plantilla válido en el campo Nombre de plantilla antes de guardar los cambios."
+
+#: src/components/Settings/Notifications/index.tsx
+msgid "Disabled"
+msgstr "Desactivado"
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Disabling this rule group"
+msgstr "Deshabilitar este grupo de reglas"
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Disabling won't remove items already tracked by this rule group. The linked collection will keep them until this rule group is re-enabled or deleted."
+msgstr "La desactivación no eliminará los elementos que ya rastrea este grupo de reglas. La colección vinculada los conservará hasta que este grupo de reglas se vuelve a habilitar o se elimine."
+
+#: src/components/StorageMetrics/index.tsx
+msgid "Disk space reported by each configured Radarr or Sonarr instance. Headline totals count only root-folder-backed mounts and merge shared filesystems per host."
+msgstr "Espacio en disco informado por cada instancia de Radarr o Sonarr configurada. Los totales de titulares cuentan solo los montajes respaldados por carpetas raíz y fusionan sistemas de archivos compartidos por host."
+
+#: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
+msgid "Disk Target"
+msgstr "Destino del disco"
+
+#: src/components/StorageMetrics/index.tsx
+msgid "Disk usage across your Radarr and Sonarr instances, plus how much space Maintainerr can reclaim from collections with a delete rule. Items appearing in multiple collections are counted once."
+msgstr "Uso del disco en sus instancias de Radarr y Sonarr, además de la cantidad de espacio que Maintainerr puede recuperar de las colecciones con una regla de eliminación. Los elementos que aparecen en varias colecciones se cuentan una vez."
+
 #: src/components/Settings/Main/LanguageSelector.tsx
 msgid "Display language"
 msgstr "Idioma de visualización"
 
+#: src/api/calendar.ts
+#: src/components/Rules/RuleGroup/AddModal/ArrAction/index.tsx
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Do nothing"
+msgstr "No hacer nada"
+
+#: src/components/Common/DocsButton/index.tsx
+msgid "Docs"
+msgstr "Documentación"
+
+#: src/components/Settings/About/index.tsx
+msgid "Documentation"
+msgstr "Documentación"
+
+#: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
+msgid "Does Not Exist"
+msgstr "No existe"
+
+#: src/components/Settings/About/index.tsx
+msgid "Donations Welcome"
+msgstr "Donaciones bienvenidas"
+
+#: src/components/Settings/MediaServerSelector/index.tsx
+msgid "Done"
+msgstr "Hecho"
+
+#: src/components/Common/MediaSelectionActions.tsx
+msgid "Done <0>selecting</0>"
+msgstr "Hecho <0>seleccionando</0>"
+
+#: src/components/Common/YamlImporterModal/index.tsx
+msgid "Download"
+msgstr "Descargar"
+
+#: src/components/Settings/index.tsx
+msgid "Download client"
+msgstr "Cliente de descargas"
+
+#: src/components/Settings/DownloadClient/index.tsx
+msgid "Download Client"
+msgstr "Cliente de descargas"
+
+#: src/components/Settings/DownloadClient/index.tsx
+msgid "Download client settings - Maintainerr"
+msgstr "Configuración del cliente de descargas - Maintainerr"
+
+#: src/api/settings.ts
+#: src/components/Settings/DownloadClient/index.tsx
+msgid "Download client settings could not be updated"
+msgstr "La configuración del cliente de descargas no se pudo actualizar"
+
+#: src/components/Settings/DownloadClient/index.tsx
+msgid "Download client settings updated"
+msgstr "Configuración del cliente de descargas actualizada"
+
+#: src/components/Settings/Logs/index.tsx
+msgid "Download log files"
+msgstr "Descargar archivos de registro"
+
+#: src/components/Rules/Rule/RuleCreator/index.tsx
+msgid "Drag handle for rule {tagId} in section {sectionNumber}"
+msgstr "Arrastre el controlador para la regla {tagId} en la sección {sectionNumber}"
+
+#: src/components/Rules/Rule/RuleCreator/index.tsx
+msgid "Drag handle for section {sectionNumber}"
+msgstr "Controlador de arrastre para la sección {sectionNumber}"
+
+#: src/components/Rules/Rule/RuleCreator/index.tsx
+msgid "Drag to reorder rule"
+msgstr "Arrastrar para reordenar la regla"
+
+#: src/components/Rules/Rule/RuleCreator/index.tsx
+msgid "Drag to reorder section"
+msgstr "Arrastrar para reordenar la sección"
+
+#: src/pages/OverlayTemplateListPage.tsx
+msgid "Drawn on episodes."
+msgstr "Se dibuja en episodios."
+
+#: src/pages/OverlayTemplateListPage.tsx
+msgid "Drawn on movies, shows and seasons."
+msgstr "Se dibuja en películas, series y temporadas."
+
+#: src/pages/OverlayTemplateListPage.tsx
+msgid "Duplicate"
+msgstr "Duplicar"
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Duration for which collection logs should be retained, measured in months (0 = forever)"
+msgstr "Duración durante la cual se deben conservar los registros de colección, medida en meses (0 = para siempre)"
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Duration of days media remains in the collection before deletion/unmonitor"
+msgstr "Duración en días que el contenido multimedia permanece en la colección antes de eliminarse o dejar de supervisarse"
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "e.g., {sortPrefixExample} My Collection"
+msgstr "por ejemplo, {sortPrefixExample} Mi colección"
+
+#: src/components/Rules/RuleGroup/index.tsx
+#: src/components/Settings/Notifications/index.tsx
+#: src/components/Settings/Radarr/index.tsx
+#: src/components/Settings/Sonarr/index.tsx
+#: src/components/Settings/Sportarr/index.tsx
+#: src/pages/OverlayTemplateListPage.tsx
+msgid "Edit"
+msgstr "Editar"
+
+#: src/components/Settings/Notifications/CreateNotificationModal/index.tsx
+msgid "Edit Notification Agent"
+msgstr "Editar agente de notificación"
+
+#: src/pages/RuleFormPage.tsx
+msgid "Edit rule - Maintainerr"
+msgstr "Editar regla - Maintainerr"
+
+#: src/pages/OverlayTemplateEditorPage.tsx
+msgid "Edit Template"
+msgstr "Editar plantilla"
+
+#: src/pages/OverlayTemplateListPage.tsx
+msgid "Editing a preset will save a copy"
+msgstr "Editar un ajuste preestablecido guardará una copia"
+
+#: src/components/OverlayEditor/LayerPanel.tsx
+msgid "Element"
+msgstr "Elemento"
+
+#: src/components/OverlayEditor/ElementToolbox.tsx
+msgid "Elements"
+msgstr "Elementos"
+
+#: src/components/OverlayEditor/ElementToolbox.tsx
+#: src/components/OverlayEditor/LayerPanel.tsx
+#: src/components/OverlayEditor/PropertiesPanel.tsx
+msgid "Ellipse"
+msgstr "Elipse"
+
+#: src/components/Settings/MediaServerSelector/index.tsx
+msgid "Emby Media Server"
+msgstr "Servidor de contenido multimedia Emby"
+
+#: src/components/Settings/Emby/index.tsx
+msgid "Emby Settings"
+msgstr "Configuración de Emby"
+
+#: src/components/Settings/Emby/index.tsx
+msgid "Emby settings - Maintainerr"
+msgstr "Configuración de Emby - Maintainerr"
+
+#: src/api/settings.ts
+#: src/components/Settings/Emby/index.tsx
+msgid "Emby settings could not be updated"
+msgstr "La configuración de Emby no se pudo actualizar"
+
+#: src/components/Settings/Emby/index.tsx
+msgid "Emby settings updated"
+msgstr "Configuración de Emby actualizada"
+
+#: src/components/Settings/Emby/index.tsx
+msgid "Emby URL"
+msgstr "URL de Emby"
+
+#: src/components/Settings/Plex/index.tsx
+msgid "Enable manual mode"
+msgstr "Habilitar modo manual"
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+#: src/components/Settings/Overlays/index.tsx
+msgid "Enable overlays"
+msgstr "Habilitar superposiciones"
+
+#: src/components/Settings/Overlays/index.tsx
+msgid "Enable overlays and save to run manually"
+msgstr "Habilite las superposiciones y guárdelas para ejecutarlas manualmente"
+
+#: src/components/Overlays/index.tsx
+msgid "Enable overlays in Settings to manage templates."
+msgstr "Habilite las superposiciones en Configuración para administrar plantillas."
+
+#: src/components/Settings/Notifications/CreateNotificationModal/index.tsx
+msgid "Enabled"
+msgstr "Activado"
+
+#: src/components/Settings/Plex/index.tsx
+msgid "Ensure DNS is properly configured since Plex depends on working DNS resolution"
+msgstr "Asegúrese de que DNS esté configurado correctamente, ya que Plex depende de la resolución de DNS que funcione"
+
+#: src/components/Settings/DownloadClient/index.tsx
+msgid "Enter a ratio of 0.5 or higher"
+msgstr "Introduce una proporción de 0,5 o superior"
+
+#: src/components/Collection/CollectionDetail/PostponeButton/index.tsx
+msgid "Enter a whole number between {POSTPONE_MIN_DAYS} and {POSTPONE_MAX_DAYS}."
+msgstr "Ingrese un número entero entre {POSTPONE_MIN_DAYS} y {POSTPONE_MAX_DAYS}."
+
+#: src/components/Login/Emby/EmbyLoginButton.tsx
+msgid "Enter your Emby server URL first."
+msgstr "Ingrese primero la URL de su servidor Emby."
+
+#: src/utils/mediaTypeUtils.ts
+msgid "episode"
+msgstr "episodio"
+
+#: src/components/Calendar/index.tsx
+#: src/components/Collection/CollectionDetail/TestMediaItem/index.tsx
+msgid "Episode"
+msgstr "Episodio"
+
+#: src/components/Collection/CollectionDetail/TestMediaItem/index.tsx
+#: src/components/Common/MediaActionModal.tsx
+msgid "Episode {index}"
+msgstr "Episodio {index}"
+
+#: src/utils/mediaTypeUtils.ts
+msgid "episode {itemNumber}"
+msgstr "episodio {itemNumber}"
+
+#: src/components/Collection/CollectionItem/index.tsx
+#: src/components/Common/MediaActionModal.tsx
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+#: src/components/StorageMetrics/index.tsx
+msgid "Episodes"
+msgstr "Episodios"
+
+#: src/components/StorageMetrics/index.tsx
+msgid "Episodes handled"
+msgstr "Episodios gestionados"
+
+#: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
+msgid "Equals"
+msgstr "Igual a"
+
+#: src/components/Settings/Logs/index.tsx
+msgid "Error"
+msgstr "Error"
+
+#: src/pages/RuleFormPage.tsx
+msgid "Error loading rule data"
+msgstr "Error al cargar los datos de la regla"
+
+#: src/components/Rules/Rule/RuleCreator/CommunityRuleUpload/index.tsx
+msgid "Error: {reason}"
+msgstr "Error: {reason}"
+
+#: src/components/Collection/CollectionDetail/CollectionInfo/CollectionLogsTable.tsx
+msgid "Event"
+msgstr "Evento"
+
+#: src/components/Rules/Rule/RuleCreator/CommunityRuleUpload/index.tsx
+msgid "Every attempt should be made to only upload working rules. Rules with less than -100 karma and uploads with no rules, are removed nightly."
+msgstr "Se debe hacer todo lo posible para cargar únicamente reglas de trabajo. Las reglas con menos de -100 karma y las cargas sin reglas se eliminan todas las noches."
+
+#: src/components/Settings/Seerr/index.tsx
+#: src/components/Settings/Streamystats/index.tsx
+#: src/components/Settings/Tautulli/index.tsx
+msgid "Example URL formats:"
+msgstr "Formatos de URL de ejemplo:"
+
+#: src/components/Settings/Overlays/index.tsx
+msgid "Example: <0>{cronExample}</0> (4:45 AM every day)."
+msgstr "Ejemplo: <0>{cronExample}</0> (4:45 a. m. todos los días)."
+
+#: src/components/Collection/CollectionDetail/RemoveFromCollectionButton/index.tsx
+msgid "Exclude"
+msgstr "Excluir"
+
+#: src/components/Collection/CollectionDetail/RemoveFromCollectionButton/index.tsx
+msgid "Exclude from collection"
+msgstr "Excluir de la colección"
+
+#: src/components/Collection/CollectionDetail/RemoveFromCollectionButton/index.tsx
+msgid "Exclude?"
+msgstr "¿Excluir?"
+
+#: src/components/Common/MediaLibrarySortControl.tsx
+msgid "Excluded First"
+msgstr "Excluido primero"
+
+#: src/components/Common/MediaCard/MediaModal/index.tsx
+msgid "Excluded From"
+msgstr "Excluido de"
+
+#: src/components/Collection/CollectionDetail/RemoveFromCollectionButton/index.tsx
+msgid "Excluding..."
+msgstr "Excluyendo..."
+
+#: src/components/Settings/Servarr/ExclusionTagSettings.tsx
+msgid "Exclusion tag"
+msgstr "Etiqueta de exclusión"
+
+#: src/pages/CollectionDetailPage.tsx
+msgid "Exclusions"
+msgstr "Exclusiones"
+
 #: src/components/Collection/CollectionOverview/index.tsx
 msgid "Executes each collection's configured action (Delete / Unmonitor / Do Nothing). Does not remove items from collections."
-msgstr ""
-"Ejecuta la acción configurada de cada colección (Eliminar / Dejar de "
-"supervisar / No hacer nada). No elimina elementos de las colecciones."
+msgstr "Ejecuta la acción configurada de cada colección (Eliminar / Dejar de supervisar / No hacer nada). No elimina elementos de las colecciones."
+
+#: src/components/Overlays/index.tsx
+msgid "Existing Templates"
+msgstr "Plantillas existentes"
+
+#: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
+msgid "Exists"
+msgstr "Existe"
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+#: src/pages/OverlayTemplateListPage.tsx
+msgid "Export"
+msgstr "Exportar"
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Export Rules YAML"
+msgstr "Exportar reglas YAML"
+
+#: src/components/Common/YamlImporterModal/index.tsx
+msgid "Export your rules to a YAML document"
+msgstr "Exporta tus reglas a un documento YAML"
+
+#: src/components/Rules/Rule/RuleCreator/CommunityRuleUpload/index.tsx
+msgid "Extended Description *"
+msgstr "Descripción ampliada *"
+
+#: src/components/StorageMetrics/index.tsx
+msgid "Failed to compute library sizes. Check that Maintainerr can reach your media server."
+msgstr "No se pudieron calcular los tamaños de la biblioteca. Compruebe que Maintainerr pueda comunicarse con su servidor de contenido multimedia."
+
+#: src/components/Settings/Servarr/ServarrSettingsModal.tsx
+msgid "Failed to connect to {serviceName}. Verify URL and API key."
+msgstr "No se pudo conectar con {serviceName}. Verifique la URL y la clave API."
+
+#: src/components/Settings/Emby/index.tsx
+msgid "Failed to connect to Emby. Verify URL and API key."
+msgstr "No se pudo conectar con Emby. Verifique la URL y la clave API."
+
+#: src/components/Settings/Jellyfin/index.tsx
+msgid "Failed to connect to Jellyfin. Verify URL and API key."
+msgstr "No se pudo conectar con Jellyfin. Verifique la URL y la clave API."
+
+#: src/components/Settings/Plex/index.tsx
+msgid "Failed to connect to Plex. Verify your Plex configuration."
+msgstr "No se pudo conectar a Plex. Verifique su configuración de Plex."
+
+#: src/components/Settings/Seerr/index.tsx
+msgid "Failed to connect to Seerr. Verify URL and API key."
+msgstr "No se pudo conectar con Seerr. Verifique la URL y la clave API."
+
+#: src/components/Settings/Streamystats/index.tsx
+msgid "Failed to connect to Streamystats. Verify URL and that the service is running."
+msgstr "No se pudo conectar a Streamystats. Verifique la URL y que el servicio se esté ejecutando."
+
+#: src/components/Settings/Tautulli/index.tsx
+msgid "Failed to connect to Tautulli. Verify URL and API key."
+msgstr "No se pudo conectar con Tautulli. Verifique la URL y la clave API."
+
+#: src/components/Settings/DownloadClient/index.tsx
+msgid "Failed to connect to the download client. Verify URL and credentials."
+msgstr "No se pudo conectar con el cliente de descargas. Verifique la URL y las credenciales."
+
+#: src/components/Rules/Rule/RuleCreator/CommunityRuleUpload/index.tsx
+msgid "Failed to connect to the server. Please try again later."
+msgstr "No se pudo conectar con el servidor. Inténtelo de nuevo más tarde."
+
+#: src/components/Settings/Metadata/index.tsx
+msgid "Failed to connect to TMDB. Verify the API key."
+msgstr "No se pudo conectar a TMDB. Verifique la clave API."
+
+#: src/components/Settings/Tracearr/index.tsx
+msgid "Failed to connect to Tracearr. Verify the URL and API key."
+msgstr "No se pudo conectar con Tracearr. Verifique la URL y la clave API."
+
+#: src/components/Settings/Metadata/index.tsx
+msgid "Failed to connect to TVDB. Verify the API key."
+msgstr "No se pudo conectar con TVDB. Verifica la clave API."
+
+#: src/components/Collection/CollectionDetail/TestMediaItem/index.tsx
+#: src/components/Common/YamlImporterModal/index.tsx
+msgid "Failed to copy to clipboard"
+msgstr "No se pudo copiar al portapapeles"
+
+#: src/api/rules.ts
+msgid "Failed to create rule group"
+msgstr "No se pudo crear el grupo de reglas"
+
+#: src/pages/OverlayTemplateEditorPage.tsx
+msgid "Failed to create template"
+msgstr "No se pudo crear la plantilla"
+
+#: src/components/Settings/Radarr/index.tsx
+msgid "Failed to delete Radarr setting."
+msgstr "No se pudo eliminar la configuración de Radarr."
+
+#: src/components/Settings/Radarr/index.tsx
+msgid "Failed to delete Radarr setting. Check logs for details."
+msgstr "No se pudo eliminar la configuración de Radarr. Consulte los registros para obtener más detalles."
+
+#: src/components/Rules/RuleGroup/index.tsx
+msgid "Failed to delete rule group."
+msgstr "No se pudo eliminar el grupo de reglas."
+
+#: src/components/Rules/RuleGroup/index.tsx
+msgid "Failed to delete rule group. Check logs for details."
+msgstr "No se pudo eliminar el grupo de reglas. Consulte los registros para obtener más detalles."
+
+#: src/components/Settings/Sonarr/index.tsx
+msgid "Failed to delete Sonarr setting."
+msgstr "No se pudo eliminar la configuración de Sonarr."
+
+#: src/components/Settings/Sonarr/index.tsx
+msgid "Failed to delete Sonarr setting. Check logs for details."
+msgstr "No se pudo eliminar la configuración de Sonarr. Consulte los registros para obtener más detalles."
+
+#: src/components/Settings/Sportarr/index.tsx
+msgid "Failed to delete Sportarr setting."
+msgstr "No se pudo eliminar la configuración de Sportarr."
+
+#: src/components/Settings/Sportarr/index.tsx
+msgid "Failed to delete Sportarr setting. Check logs for details."
+msgstr "No se pudo eliminar la configuración de Sportarr. Consulte los registros para obtener más detalles."
+
+#: src/pages/OverlayTemplateListPage.tsx
+msgid "Failed to duplicate template"
+msgstr "No se pudo duplicar la plantilla"
+
+#: src/components/Settings/About/Releases/index.tsx
+msgid "Failed to fetch releases"
+msgstr "No se han podido recuperar las versiones"
+
+#: src/components/Settings/Notifications/CreateNotificationModal/index.tsx
+msgid "Failed to fire the notification."
+msgstr "No se pudo activar la notificación."
+
+#: src/pages/OverlayTemplateListPage.tsx
+msgid "Failed to import template"
+msgstr "No se pudo importar la plantilla"
+
+#: src/pages/CollectionsListPage.tsx
+msgid "Failed to initiate collection handling."
+msgstr "No se pudo iniciar el manejo de colección."
 
 #: src/pages/RulesListPage.tsx
 msgid "Failed to initiate rule execution."
 msgstr "No se ha podido iniciar la ejecución de la regla."
 
+#: src/components/Settings/Metadata/index.tsx
+msgid "Failed to load {providerTitle} settings"
+msgstr "No se pudo cargar la configuración de {providerTitle}"
+
+#: src/pages/CollectionDetailPage.tsx
+msgid "Failed to load collection. Check logs for details."
+msgstr "No se pudo cargar la colección. Consulte los registros para obtener más detalles."
+
+#: src/components/Settings/ExternalServiceSettingsPage.tsx
+msgid "Failed to load options."
+msgstr "No se pudieron cargar las opciones."
+
+#: src/pages/OverlayTemplateListPage.tsx
+msgid "Failed to load overlay templates"
+msgstr "No se pudieron cargar las plantillas superpuestas"
+
+#: src/components/Settings/Plex/index.tsx
+msgid "Failed to load servers - press refresh to retry"
+msgstr "No se pudieron cargar los servidores: presione actualizar para volver a intentarlo"
+
+#: src/components/Common/MediaCard/MediaModal/StreamystatsStatsPanel/index.tsx
+msgid "Failed to load Streamystats data"
+msgstr "No se pudieron cargar los datos de Streamystats"
+
+#: src/components/Collection/CollectionDetail/PostponeButton/index.tsx
+msgid "Failed to postpone the deletion for this item."
+msgstr "No se pudo posponer la eliminación de este elemento."
+
+#: src/components/Settings/MediaServerSelector/index.tsx
+msgid "Failed to preview switch"
+msgstr "No se pudo previsualizar el cambio"
+
+#: src/components/Settings/Overlays/index.tsx
+msgid "Failed to process overlays"
+msgstr "No se pudieron procesar las superposiciones"
+
+#: src/components/Settings/Metadata/index.tsx
+msgid "Failed to refresh {providerTitle} metadata"
+msgstr "No se pudieron actualizar los metadatos {providerTitle}"
+
+#: src/components/Settings/Servarr/ServarrSettingsModal.tsx
+msgid "Failed to remove {serviceName} settings."
+msgstr "No se pudo eliminar la configuración de {serviceName}."
+
 #: src/pages/RulesListPage.tsx
 msgid "Failed to request stop of all rule executions."
 msgstr "No se pudieron detener todas las ejecuciones de reglas."
+
+#: src/components/Rules/RuleGroup/index.tsx
+msgid "Failed to request stop of rule execution."
+msgstr "No se pudo solicitar la detención de la ejecución de la regla."
+
+#: src/components/Settings/Overlays/index.tsx
+msgid "Failed to reset overlays"
+msgstr "No se pudieron restablecer las superposiciones"
+
+#: src/components/Settings/Notifications/CreateNotificationModal/index.tsx
+msgid "Failed to save notification agent"
+msgstr "No se pudo guardar el agente de notificación"
+
+#: src/pages/OverlayTemplateEditorPage.tsx
+msgid "Failed to save template"
+msgstr "No se pudo guardar la plantilla"
+
+#: src/pages/OverlayTemplateListPage.tsx
+msgid "Failed to set default template"
+msgstr "No se pudo establecer la plantilla predeterminada"
+
+#: src/components/Settings/MediaServerSelector/index.tsx
+msgid "Failed to set media server. Check logs for details."
+msgstr "No se pudo configurar el servidor de contenido multimedia. Consulte los registros para obtener más detalles."
+
+#: src/components/Rules/RuleGroup/index.tsx
+msgid "Failed to start rule execution."
+msgstr "No se pudo iniciar la ejecución de la regla."
+
+#: src/components/Settings/MediaServerSelector/index.tsx
+msgid "Failed to switch media server"
+msgstr "No se pudo cambiar el servidor de contenido multimedia"
+
+#: src/components/Collection/CollectionDetail/TestMediaItem/index.tsx
+msgid "Failed to test media"
+msgstr "No se pudo probar el contenido multimedia"
+
+#: src/components/Collection/CollectionDetail/TriggerRuleActionButton/index.tsx
+msgid "Failed to trigger the collection action for this item."
+msgstr "No se pudo activar la acción de colección para este elemento."
+
+#: src/components/Settings/Servarr/ServarrSettingsModal.tsx
+msgid "Failed to update {serviceName} settings."
+msgstr "No se pudo actualizar la configuración de {serviceName}."
+
+#: src/api/rules.ts
+msgid "Failed to update rule group"
+msgstr "No se pudo actualizar el grupo de reglas"
+
+#: src/pages/OverlayTemplateEditorPage.tsx
+msgid "Failed to upload font"
+msgstr "No se pudo subir la fuente"
+
+#: src/pages/OverlayTemplateEditorPage.tsx
+msgid "Failed to upload image"
+msgstr "No se pudo subir la imagen"
+
+#: src/components/Settings/DownloadClient/index.tsx
+msgid "Fallback seeding ratio"
+msgstr "Proporción de siembra alternativa"
+
+#: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
+msgid "False"
+msgstr "FALSO"
+
+#: src/components/Settings/Logs/index.tsx
+msgid "Fatal"
+msgstr "Fatal"
+
+#: src/components/Settings/About/index.tsx
+msgid "Feature Requests"
+msgstr "Solicitudes de funciones"
+
+#: src/components/Rules/RuleGroup/AddModal/CollectionPosterPicker.tsx
+msgid "File is larger than {maxSize}"
+msgstr "El archivo es mayor que {maxSize}"
+
+#: src/components/Settings/Main/DatabaseBackupModal.tsx
+msgid "File name"
+msgstr "Nombre del archivo"
+
+#: src/components/OverlayEditor/PropertiesPanel.tsx
+msgid "Fill"
+msgstr "Llenar"
+
+#: src/components/OverlayEditor/PropertiesPanel.tsx
+msgid "Fill & Stroke"
+msgstr "Rellenar y trazar"
+
+#: src/components/Settings/Tracearr/index.tsx
+msgid "Find it in Tracearr under Settings, General, API Key."
+msgstr "Encuéntrelo en Tracearr en Configuración, General, Clave API."
+
+#: src/components/Common/MediaLibrarySortControl.tsx
+msgid "First Air Date Ascending"
+msgstr "Primera fecha de emisión ascendente"
+
+#: src/components/Common/MediaLibrarySortControl.tsx
+msgid "First Air Date Descending"
+msgstr "Primera fecha de emisión descendente"
+
+#: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
+msgid "First Value"
+msgstr "Primer valor"
+
+#: src/components/OverlayEditor/PropertiesPanel.tsx
+msgid "Font"
+msgstr "Fuente"
+
+#: src/pages/OverlayTemplateEditorPage.tsx
+msgid "Font \"{fontName}\" uploaded"
+msgstr "Fuente \"{fontName}\" cargada"
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Force delete Seerr request"
+msgstr "Forzar la eliminación de la solicitud de Seerr"
+
+#: src/components/StorageMetrics/index.tsx
+msgid "Free"
+msgstr "Libre"
+
+#: src/components/StorageMetrics/index.tsx
+msgid "Free space only - Sonarr/Radarr do not report total size for NFS/CIFS mounts"
+msgstr "Sólo espacio libre: Sonarr/Radarr no informan el tamaño total para montajes NFS/CIFS"
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+#: src/components/Settings/index.tsx
+msgid "General"
+msgstr "General"
+
+#: src/components/Settings/Main/index.tsx
+msgid "General Settings"
+msgstr "Configuraciones generales"
+
+#: src/components/Settings/Main/index.tsx
+msgid "General settings - Maintainerr"
+msgstr "Configuración general - Maintainerr"
+
+#: src/components/Settings/Main/index.tsx
+msgid "General settings could not be updated"
+msgstr "No se pudo actualizar la configuración general"
+
+#: src/components/Settings/Main/index.tsx
+msgid "General settings updated"
+msgstr "Configuración general actualizada"
+
+#: src/components/StorageMetrics/index.tsx
+msgid "Generated at {generatedAt}"
+msgstr "Generado el {generatedAt}"
 
 #: src/components/Layout/index.tsx
 msgid "Go Back"
@@ -70,65 +1864,1799 @@ msgstr "Volver"
 msgid "Go To Overview"
 msgstr "Ir a la vista general"
 
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+#: src/components/Settings/Overlays/index.tsx
+msgid "Got it"
+msgstr "Entendido"
+
 #: src/components/Collection/CollectionOverview/index.tsx
 msgid "Handle Collections"
 msgstr "Gestionar colecciones"
+
+#: src/components/Collection/CollectionItem/index.tsx
+msgid "Handled by rule: ''{ruleName}''"
+msgstr "Manejado por regla: ''{ruleName}''"
+
+#: src/components/Collection/CollectionDetail/CollectionInfo/index.tsx
+msgid "Handled media items"
+msgstr "Elementos multimedia manejados"
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Help"
+msgstr "Ayuda"
+
+#: src/components/OverlayEditor/LayerPanel.tsx
+msgctxt "Toggle layer visibility"
+msgid "Hide"
+msgstr "Ocultar"
+
+#: src/components/Settings/Main/index.tsx
+msgid "Hostname"
+msgstr "Nombre de host"
+
+#: src/components/Settings/Plex/index.tsx
+msgid "Hostname / IP"
+msgstr "Nombre de host/IP"
+
+#: src/components/Settings/Servarr/ServarrSettingsModal.tsx
+msgid "Hostname or IP"
+msgstr "Nombre de host o IP"
+
+#: src/components/Collection/CollectionDetail/TriggerRuleActionButton/index.tsx
+msgid "If the action succeeds, the item will be removed from the collection right away instead of waiting for the normal schedule."
+msgstr "Si la acción tiene éxito, el elemento se eliminará de la colección de inmediato en lugar de esperar el cronograma normal."
+
+#: src/components/Settings/Overlays/index.tsx
+msgid "If you do not set a schedule, you will need to use Run Now in Overlay Settings each time."
+msgstr "Si no establece una programación, deberá usar Ejecutar ahora en Configuración de superposición cada vez."
+
+#: src/components/Settings/About/index.tsx
+msgid "If you find any broken features and/or are experiencing instability, please report it on GitHub!"
+msgstr "Si encuentras funciones rotas y/o experimentas inestabilidad, ¡repórtalo en GitHub!"
+
+#: src/components/OverlayEditor/ElementToolbox.tsx
+#: src/components/OverlayEditor/LayerPanel.tsx
+#: src/components/OverlayEditor/PropertiesPanel.tsx
+msgid "Image"
+msgstr "Imagen"
+
+#: src/pages/OverlayTemplateEditorPage.tsx
+msgid "Image \"{imageName}\" uploaded"
+msgstr "Imagen \"{imageName}\" cargada"
+
+#: src/components/Common/CommunityRuleModal/index.tsx
+#: src/components/Common/YamlImporterModal/index.tsx
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+#: src/pages/OverlayTemplateListPage.tsx
+msgid "Import"
+msgstr "Importar"
+
+#: src/components/Common/YamlImporterModal/index.tsx
+msgid "Import rules from a YAML document. This will override your current rules"
+msgstr "Importar reglas desde un documento YAML. Esto anulará tus reglas actuales."
+
+#: src/components/Common/CommunityRuleModal/index.tsx
+msgid "Import rules made by the community. This will override your current rules."
+msgstr "Reglas de importación hechas por la comunidad. Esto anulará sus reglas actuales."
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Import Rules YAML"
+msgstr "Importar reglas YAML"
+
+#: src/components/Settings/MediaServerSelector/index.tsx
+msgid "Important:"
+msgstr "Importante:"
+
+#: src/pages/OverlayTemplateListPage.tsx
+msgid "Imported template \"{templateName}\""
+msgstr "Plantilla importada \"{templateName}\""
+
+#: src/components/Settings/Emby/index.tsx
+msgid "In Emby, go to <0>Dashboard → Advanced → API Keys</0> and create a new key named \"Maintainerr\". Or use <1>Sign in with Emby</1> below to obtain one automatically."
+msgstr "En Emby, vaya a <0>Panel → Avanzado → Claves API</0> y cree una nueva clave llamada \"Maintainerr\". O usa <1>Iniciar sesión con Emby</1> a continuación para obtener uno automáticamente."
+
+#: src/components/Settings/Jellyfin/index.tsx
+msgid "In Jellyfin, go to <0>Dashboard → API Keys</0> and create a new API key named \"Maintainerr\"."
+msgstr "En Jellyfin, vaya a <0>Panel → Claves API</0> y cree una nueva clave API llamada \"Maintainerr\"."
+
+#: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
+msgid "In Last"
+msgstr "En los últimos"
+
+#: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
+msgid "In Next"
+msgstr "En los próximos"
+
+#: src/components/Collection/CollectionItem/index.tsx
+#: src/components/Rules/RuleGroup/index.tsx
+#: src/components/StorageMetrics/index.tsx
+msgid "Inactive"
+msgstr "Inactivo"
+
+#: src/components/Common/CommunityRuleModal/index.tsx
+#: src/components/Settings/Logs/index.tsx
+#: src/pages/CollectionDetailPage.tsx
+msgid "Info"
+msgstr "Información"
+
+#: src/pages/CollectionsListPage.tsx
+msgid "Initiated collection handling in the background."
+msgstr "Procesamiento de colecciones iniciado en segundo plano."
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Invalid action"
+msgstr "Acción no válida"
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Invalid cron schedule"
+msgstr "Programación cron no válida"
+
+#: src/pages/OverlayTemplateListPage.tsx
+msgid "Invalid template file"
+msgstr "Archivo de plantilla no válido"
+
+#: src/utils/ApiError.ts
+msgid "Invalid value"
+msgstr "Valor no válido"
+
+#: src/components/Collection/CollectionItem/index.tsx
+#: src/components/StorageMetrics/index.tsx
+msgid "Items"
+msgstr "Elementos"
+
+#: src/components/StorageMetrics/index.tsx
+msgid "Items handled"
+msgstr "Elementos gestionados"
+
+#: src/components/Settings/MediaServerSelector/index.tsx
+msgid "Jellyfin Media Server"
+msgstr "Servidor de contenido multimedia Jellyfin"
+
+#: src/components/Settings/Jellyfin/index.tsx
+msgid "Jellyfin Settings"
+msgstr "Configuración de Jellyfin"
+
+#: src/components/Settings/Jellyfin/index.tsx
+msgid "Jellyfin settings - Maintainerr"
+msgstr "Configuración de Jellyfin - Maintainerr"
+
+#: src/api/settings.ts
+#: src/components/Settings/Jellyfin/index.tsx
+msgid "Jellyfin settings could not be updated"
+msgstr "La configuración de Jellyfin no se pudo actualizar"
+
+#: src/components/Settings/Jellyfin/index.tsx
+msgid "Jellyfin settings updated"
+msgstr "Configuración de Jellyfin actualizada"
+
+#: src/components/Settings/Jellyfin/index.tsx
+msgid "Jellyfin URL"
+msgstr "URL de Jellyfin"
+
+#: src/components/Settings/Jobs/index.tsx
+msgid "Job configuration. All schedules support standard <0>cron</0> patterns."
+msgstr "Configuración del trabajo. Todas las programaciones admiten patrones <0>cron</0> estándar."
+
+#: src/components/Settings/Jobs/index.tsx
+msgid "Job Settings"
+msgstr "Configuración de trabajo"
+
+#: src/components/Settings/Jobs/index.tsx
+msgid "Job settings - Maintainerr"
+msgstr "Configuración del trabajo - Maintainerr"
+
+#: src/components/Settings/Jobs/index.tsx
+msgid "Job settings could not be updated"
+msgstr "La configuración del trabajo no se pudo actualizar"
+
+#: src/components/Settings/Jobs/index.tsx
+msgid "Job settings updated"
+msgstr "Configuración del trabajo actualizada"
+
+#: src/components/Settings/index.tsx
+msgid "Jobs"
+msgstr "Tareas"
+
+#: src/components/Common/CommunityRuleModal/index.tsx
+msgid "Karma"
+msgstr "Karma"
+
+#: src/components/VersionStatus/index.tsx
+msgid "Keep it up! 👍"
+msgstr "¡Sigue así! 👍"
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Keep logs for months must be 0 or greater"
+msgstr "Mantener registros durante meses debe ser 0 o mayor"
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Keep logs for months must be a whole number"
+msgstr "Mantener registros durante meses debe ser un número entero."
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Keep logs for months*"
+msgstr "Mantenga registros durante meses*"
+
+#: src/components/Collection/CollectionDetail/CollectionInfo/CollectionLogsTable.tsx
+msgid "Label"
+msgstr "Etiqueta"
+
+#: src/components/OverlayEditor/PropertiesPanel.tsx
+msgid "Language"
+msgstr "Idioma"
+
+#: src/components/StorageMetrics/index.tsx
+msgid "Largest collections"
+msgstr "Colecciones más grandes"
+
+#: src/components/Collection/CollectionDetail/CollectionInfo/index.tsx
+msgid "Last duration"
+msgstr "Última duración"
+
+#: src/components/Common/MediaCard/MediaModal/StreamystatsStatsPanel/index.tsx
+msgid "Last watched"
+msgstr "Visto por última vez"
+
+#: src/components/Settings/About/Releases/index.tsx
+msgid "Latest"
+msgstr "Más reciente"
+
+#: src/components/OverlayEditor/LayerPanel.tsx
+#: src/pages/OverlayTemplateEditorPage.tsx
+msgid "Layers"
+msgstr "Capas"
+
+#: src/components/Common/MediaLibrarySortControl.tsx
+msgid "Least Watched"
+msgstr "Menos visto"
+
+#: src/components/Settings/DownloadClient/index.tsx
+msgid "Leave blank if the client's WebUI allows unauthenticated access."
+msgstr "Déjelo en blanco si la WebUI del cliente permite el acceso no autenticado."
+
+#: src/components/Settings/Jobs/index.tsx
+msgid "Leave empty to disable scheduled overlay runs."
+msgstr "Déjelo vacío para deshabilitar las ejecuciones de superposición programadas."
+
+#: src/components/Settings/Metadata/index.tsx
+msgid "Leave empty to use the built-in shared key."
+msgstr "Déjelo vacío para usar la clave compartida incorporada."
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Leave unset to use the default poster template"
+msgstr "Déjelo sin configurar para usar la plantilla de póster predeterminada"
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Leave unset to use the default title card template"
+msgstr "Déjelo sin configurar para usar la plantilla de tarjeta de título predeterminada"
+
+#: src/components/OverlayEditor/PropertiesPanel.tsx
+msgid "left"
+msgstr "izquierda"
+
+#: src/components/Settings/index.tsx
+msgid "Let's get started"
+msgstr "Empecemos"
+
+#: src/components/Settings/Logs/index.tsx
+msgid "Level"
+msgstr "Nivel"
+
+#: src/components/StorageMetrics/index.tsx
+msgid "Libraries reported by {typeLabel}. Counts reflect what Maintainerr sees through the server API."
+msgstr "Bibliotecas reportadas por {typeLabel}. Los recuentos reflejan lo que Maintainerr ve a través del servidor API."
+
+#: src/components/Collection/CollectionItem/index.tsx
+#: src/components/Rules/RuleGroup/index.tsx
+msgid "Library"
+msgstr "Biblioteca"
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Library *"
+msgstr "Biblioteca *"
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Library is required"
+msgstr "Se requiere biblioteca"
+
+#: src/pages/OverlayTemplateEditorPage.tsx
+msgid "Load different poster"
+msgstr "Cargar cartel diferente"
+
+#: src/components/Settings/Jobs/index.tsx
+msgid "Loading current overlay schedule..."
+msgstr "Cargando la programación de superposiciones actual..."
+
+#: src/components/Common/MediaCard/MediaModal/index.tsx
+msgid "Loading exclusion details..."
+msgstr "Cargando detalles de exclusión..."
+
+#: src/components/Common/LibrarySwitcher/index.tsx
+msgid "Loading libraries..."
+msgstr "Cargando bibliotecas..."
+
+#: src/components/Common/MediaCard/MediaModal/index.tsx
+msgid "Loading manual collection details..."
+msgstr "Cargando detalles de colección manual..."
+
+#: src/components/Overview/Content/index.tsx
+msgid "Loading more items"
+msgstr "Cargando más elementos"
+
+#: src/components/Rules/RuleGroup/AddModal/QualityProfileSelector.tsx
+msgid "Loading profiles..."
+msgstr "Cargando perfiles..."
+
+#: src/components/Calendar/index.tsx
+msgid "Loading scheduled items..."
+msgstr "Cargando elementos programados..."
+
+#: src/components/Rules/RuleGroup/AddModal/ArrAction/index.tsx
+#: src/components/Settings/Plex/index.tsx
+msgid "Loading servers..."
+msgstr "Cargando servidores..."
+
+#: src/components/Common/MediaLibrarySortControl.tsx
+msgid "Loading sorted items"
+msgstr "Cargando elementos ordenados"
+
+#: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
+msgid "Loading users..."
+msgstr "Cargando usuarios..."
+
+#: src/components/Calendar/index.tsx
+#: src/components/Common/SearchMediaITem/index.tsx
+#: src/components/Settings/ExternalServiceSettingsPage.tsx
+msgid "Loading..."
+msgstr "Cargando..."
+
+#: src/components/Login/Plex/index.tsx
+#: src/components/OverlayEditor/OverlayCanvas.tsx
+msgid "Loading…"
+msgstr "Cargando…"
+
+#: src/components/Settings/Plex/index.tsx
+msgid "local"
+msgstr "local"
+
+#: src/components/Settings/Plex/index.tsx
+msgid "Local"
+msgstr "Local"
+
+#: src/components/Settings/Logs/index.tsx
+msgid "Log configuration"
+msgstr "Configuración de registro"
+
+#: src/components/Settings/Logs/index.tsx
+msgid "Log file"
+msgstr "Archivo de registro"
+
+#: src/components/Settings/Logs/index.tsx
+msgid "Log Files"
+msgstr "Archivos de registro"
+
+#: src/components/Settings/Logs/index.tsx
+msgid "Log filter"
+msgstr "Filtro de registro"
+
+#: src/components/Settings/Logs/index.tsx
+msgid "Log Settings"
+msgstr "Configuración de registro"
+
+#: src/components/Settings/Logs/index.tsx
+msgid "Log settings could not be updated"
+msgstr "La configuración del registro no se pudo actualizar"
+
+#: src/components/Settings/Logs/index.tsx
+msgid "Log settings updated"
+msgstr "Configuración de registro actualizada"
+
+#: src/components/Collection/CollectionDetail/CollectionInfo/index.tsx
+#: src/components/Settings/index.tsx
+#: src/components/Settings/Logs/index.tsx
+msgid "Logs"
+msgstr "Registros"
+
+#: src/components/Settings/Logs/index.tsx
+msgid "Logs - Maintainerr"
+msgstr "Registros - Maintainerr"
+
+#: src/components/Settings/About/index.tsx
+msgid "Loving Maintainerr?"
+msgstr "¿Te gusta Maintainerr?"
+
+#: src/components/Settings/Servarr/ExclusionTagSettings.tsx
+msgid "Lowercase letters, numbers and hyphens only ({chars})."
+msgstr "Sólo letras minúsculas, números y guiones ({chars})."
+
+#: src/components/Common/CommunityRuleModal/index.tsx
+msgid "Made with Version"
+msgstr "Hecho con versión"
 
 #: src/components/Layout/NavBar/index.tsx
 msgid "Maintainerr logo"
 msgstr "Logotipo de Maintainerr"
 
+#: src/components/Settings/Tracearr/index.tsx
+msgid "Maintainerr picks the Tracearr media server backend automatically: the one tracking the media server configured in Maintainerr."
+msgstr "Maintainerr elige automáticamente el backend de servidor multimedia de Tracearr: el que sigue el servidor multimedia configurado en Maintainerr."
+
+#: src/components/VersionStatus/index.tsx
+msgid "Maintainerr Pre-Release"
+msgstr "Prelanzamiento de Maintainerr"
+
+#: src/components/StorageMetrics/index.tsx
+msgid "Maintainerr will iterate every movie and episode in your {typeLabel} libraries to estimate size on disk. This can take a while on large libraries."
+msgstr "Maintainerr iterará cada película y episodio en sus bibliotecas {typeLabel} para estimar el tamaño en el disco. Esto puede llevar algún tiempo en bibliotecas grandes."
+
+#: src/components/Common/MediaActionModal.tsx
+msgid "Making this a global exclusion removes the following rule-group exclusions, and they will not return if you later remove the global exclusion:"
+msgstr "Al convertir esto en una exclusión global, se eliminan las siguientes exclusiones de grupos de reglas, que no volverán a aparecer si luego elimina la exclusión global:"
+
+#: src/pages/OverlayTemplateListPage.tsx
+msgid "Manage the templates used by overlay-enabled collections. Each mode keeps its own default."
+msgstr "Administre las plantillas utilizadas por las colecciones habilitadas para superposición. Cada modo mantiene su propio valor predeterminado."
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Managed by"
+msgstr "Gestionado por"
+
+#: src/components/Settings/Plex/index.tsx
+msgid "Manual"
+msgstr "Manual"
+
+#: src/components/Common/MediaLibrarySortControl.tsx
+msgid "Manual Added First"
+msgstr "Manual agregado primero"
+
+#: src/components/Settings/Plex/index.tsx
+msgid "Manual connection override"
+msgstr "Anulación de conexión manual"
+
+#: src/components/Common/MediaCard/MediaModal/index.tsx
+msgid "Manually Added To"
+msgstr "Agregado manualmente a"
+
+#: src/components/Settings/Overlays/index.tsx
+msgid "Master switch for overlay processing"
+msgstr "Interruptor maestro para procesamiento de superposición"
+
+#: src/components/Rules/Rule/RuleCreator/CommunityRuleUpload/index.tsx
+msgid "Max 20 characters"
+msgstr "Máximo 20 caracteres"
+
+#: src/components/Settings/Logs/index.tsx
+msgid "Max Backups"
+msgstr "Copias de seguridad máximas"
+
+#: src/components/Settings/Logs/index.tsx
+msgid "Max Size"
+msgstr "Tamaño máximo"
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Maximum is 100"
+msgstr "El máximo es 100."
+
+#: src/components/Calendar/index.tsx
+#: src/components/Collection/CollectionDetail/CollectionInfo/collectionLogLabels.ts
+#: src/components/Collection/CollectionDetail/TestMediaItem/index.tsx
+#: src/pages/CollectionDetailPage.tsx
+msgid "Media"
+msgstr "Contenido multimedia"
+
+#: src/components/StorageMetrics/index.tsx
+msgid "Media server"
+msgstr "Servidor de contenido multimedia"
+
+#: src/components/Settings/MediaServerSelector/index.tsx
+msgid "Media Server"
+msgstr "Servidor de contenido multimedia"
+
+#: src/components/StorageMetrics/index.tsx
+msgid "Media server is not reachable. Check your Settings."
+msgstr "No se puede acceder al servidor de contenido multimedia. Verifique su configuración."
+
+#: src/components/Collection/CollectionItem/index.tsx
+#: src/components/Rules/RuleGroup/index.tsx
+msgid "Media server is unreachable. The stored library selection is preserved."
+msgstr "El servidor de contenido multimedia es inalcanzable. Se conserva la selección de biblioteca almacenada."
+
+#: src/components/Settings/MediaServerSelector/index.tsx
+msgid "Media server switch could not be completed: {switchError}"
+msgstr "No se pudo completar el cambio del servidor de medios: {switchError}"
+
+#: src/components/Collection/CollectionItem/index.tsx
+msgid "Media Type"
+msgstr "Tipo de medio"
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Media type is required"
+msgstr "Se requiere el tipo de medio"
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Media type*"
+msgstr "Tipo de medio*"
+
+#: src/components/Collection/CollectionDetail/CollectionInfo/index.tsx
+#: src/components/Settings/index.tsx
+msgid "Metadata"
+msgstr "Metadatos"
+
+#: src/components/Settings/Metadata/index.tsx
+msgid "Metadata provider preference could not be updated"
+msgstr "No se pudo actualizar la preferencia del proveedor de metadatos"
+
+#: src/components/Settings/Metadata/index.tsx
+msgid "Metadata provider preference updated"
+msgstr "Preferencia de proveedor de metadatos actualizada"
+
+#: src/components/Settings/Metadata/index.tsx
+msgid "Metadata Settings"
+msgstr "Configuración de metadatos"
+
+#: src/components/Settings/Metadata/index.tsx
+msgid "Metadata settings - Maintainerr"
+msgstr "Configuración de metadatos - Maintainerr"
+
+#: src/components/OverlayEditor/PropertiesPanel.tsx
+msgid "middle"
+msgstr "medio"
+
+#: src/components/Settings/MediaServerSelector/index.tsx
+msgid "Migrate rules to {pendingName}"
+msgstr "Migrar reglas a {pendingName}"
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Minimum is 0"
+msgstr "El mínimo es 0"
+
+#: src/utils/PlexAuth.ts
+msgid "Missing Plex client identifier. Refresh the page and try again."
+msgstr "Falta el identificador del cliente Plex. Actualiza la página y vuelve a intentarlo."
+
+#: src/components/Calendar/index.tsx
+msgid "Month"
+msgstr "Mes"
+
+#: src/components/Common/MediaLibrarySortControl.tsx
+msgid "Most Watched"
+msgstr "Más visto"
+
+#: src/components/StorageMetrics/index.tsx
+msgid "Mounts by instance"
+msgstr "Montajes por instancia"
+
+#: src/components/OverlayEditor/LayerPanel.tsx
+msgid "Move down"
+msgstr "Bajar"
+
+#: src/components/OverlayEditor/LayerPanel.tsx
+msgid "Move up"
+msgstr "Subir"
+
+#: src/utils/mediaTypeUtils.ts
+msgid "movie"
+msgstr "película"
+
+#: src/components/Calendar/index.tsx
+msgid "Movie"
+msgstr "Película"
+
+#: src/components/Collection/CollectionItem/index.tsx
+#: src/components/StorageMetrics/index.tsx
+msgid "Movies"
+msgstr "Películas"
+
+#: src/components/StorageMetrics/index.tsx
+msgid "Movies handled"
+msgstr "Películas gestionadas"
+
+#: src/components/OverlayEditor/PropertiesPanel.tsx
+msgid "N days text"
+msgstr "Texto de N días"
+
+#: src/components/Common/CommunityRuleModal/index.tsx
+msgid "Name"
+msgstr "Nombre"
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+#: src/components/Settings/Notifications/CreateNotificationModal/index.tsx
+msgid "Name *"
+msgstr "Nombre *"
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Name is required"
+msgstr "El nombre es obligatorio"
+
+#: src/components/Common/ColorPickerModal/index.tsx
+msgid "Native color picker"
+msgstr "Selector de color nativo"
+
+#: src/components/Collection/CollectionItem/index.tsx
+msgid "Never"
+msgstr "Nunca"
+
+#: src/components/Settings/Notifications/CreateNotificationModal/index.tsx
+msgid "New Notification Agent"
+msgstr "Nuevo agente de notificación"
+
 #: src/pages/RulesListPage.tsx
 msgid "New Rule"
 msgstr "Nueva regla"
+
+#: src/pages/RuleFormPage.tsx
+msgid "New rule - Maintainerr"
+msgstr "Nueva regla - Maintainerr"
+
+#: src/components/Rules/Rule/RuleCreator/index.tsx
+msgid "New Section"
+msgstr "Nueva sección"
+
+#: src/components/Overlays/index.tsx
+#: src/pages/OverlayTemplateEditorPage.tsx
+msgid "New Template"
+msgstr "Nueva plantilla"
+
+#: src/pages/OverlayTemplateEditorPage.tsx
+msgid "New Template - Overlay Editor - Maintainerr"
+msgstr "Nueva plantilla - Editor de superposición - Maintainerr"
+
+#: src/components/Calendar/index.tsx
+#: src/components/Common/Pagination/index.tsx
+#: src/components/Settings/Logs/index.tsx
+#: src/pages/OverlayTemplateEditorPage.tsx
+msgid "Next"
+msgstr "Próximo"
+
+#: src/pages/OverlayTemplateEditorPage.tsx
+msgid "No background"
+msgstr "Sin fondo"
+
+#: src/components/Common/MediaActionModal.tsx
+msgid "No collection can take this selection. Create one from a rule first."
+msgstr "Ninguna colección puede aceptar esta selección. Primero cree uno a partir de una regla."
 
 #: src/components/Collection/CollectionOverview/index.tsx
 msgid "No collections found for this library."
 msgstr "No se han encontrado colecciones para esta biblioteca."
 
+#: src/components/StorageMetrics/index.tsx
+msgid "No collections yet. Create a rule to build your first collection."
+msgstr "Aún no hay colecciones. Crea una regla para construir tu primera colección."
+
+#: src/components/Common/CommunityRuleModal/index.tsx
+msgid "No community rules found for this search."
+msgstr "No se encontraron reglas comunitarias para esta búsqueda."
+
+#: src/components/Common/CommunityRuleModal/index.tsx
+msgid "No community rules found for this type & Maintainerr version."
+msgstr "No se encontraron reglas comunitarias para este tipo y versión de Maintainerr."
+
+#: src/components/Rules/RuleGroup/AddModal/CollectionPosterPicker.tsx
+msgid "No custom poster"
+msgstr "Sin cartel personalizado"
+
+#: src/components/Settings/MediaServerSelector/index.tsx
+msgid "No data will be deleted (no collections exist)."
+msgstr "No se eliminarán datos (no existen colecciones)."
+
+#: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
+msgid "No disk paths reported by ARR"
+msgstr "No hay rutas de disco reportadas por ARR"
+
+#: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
+msgid "No disk paths with total space reported by ARR"
+msgstr "No hay rutas de disco con espacio total informado por ARR"
+
+#: src/components/OverlayEditor/LayerPanel.tsx
+msgid "No elements yet"
+msgstr "Aún no hay elementos"
+
+#: src/components/Collection/CollectionDetail/CollectionInfo/index.tsx
+msgid "No filter"
+msgstr "Sin filtro"
+
+#: src/components/StorageMetrics/index.tsx
+msgid "No instance reports total capacity"
+msgstr "Ninguna instancia informa la capacidad total"
+
+#: src/components/Overview/Content/index.tsx
+msgid "No items found."
+msgstr "No se encontraron elementos."
+
+#: src/components/StorageMetrics/index.tsx
+msgid "No items processed yet"
+msgstr "Aún no hay elementos procesados"
+
+#: src/components/Settings/Servarr/ServarrSettingsModal.tsx
+msgid "No Leading Slash"
+msgstr "Sin barra diagonal inicial"
+
+#: src/components/StorageMetrics/index.tsx
+msgid "No libraries reported. Add libraries in your media server, then refresh."
+msgstr "No se informaron bibliotecas. Añade bibliotecas en su servidor de contenido multimedia y luego actualice."
+
+#: src/components/Settings/Logs/index.tsx
+msgid "No log files found"
+msgstr "No se encontraron archivos de registro"
+
+#: src/components/Calendar/index.tsx
+msgid "No media items found for this scheduled action."
+msgstr "No se encontraron elementos multimedia para esta acción programada."
+
+#: src/components/StorageMetrics/index.tsx
+msgid "No mount data returned. Check that each instance has a root folder configured."
+msgstr "No se devolvieron datos de montaje. Verifique que cada instancia tenga una carpeta raíz configurada."
+
+#: src/components/StorageMetrics/index.tsx
+msgid "No mounts reported for this instance."
+msgstr "No se informaron montajes para esta instancia."
+
+#: src/components/Rules/RuleGroup/AddModal/ConfigureNotificationModal/index.tsx
+msgid "No notification agents configured."
+msgstr "No hay agentes de notificación configurados."
+
+#: src/components/StorageMetrics/index.tsx
+msgid "No Radarr or Sonarr instances are configured yet. Add one in Settings to see disk usage here."
+msgstr "Todavía no hay instancias de Radarr o Sonarr configuradas. Añade una en Ajustes para ver aquí el uso de disco."
+
+#: src/components/Common/SearchMediaITem/index.tsx
+msgid "No results"
+msgstr "Sin resultados"
+
+#: src/components/Calendar/index.tsx
+msgid "No scheduled actions"
+msgstr "No hay acciones programadas"
+
+#: src/components/Common/MediaCard/MediaModal/index.tsx
+msgid "No summary available."
+msgstr "No hay resumen disponible."
+
+#: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
+msgid "No users reported by the media server"
+msgstr "No hay usuarios reportados por el servidor de contenido multimedia."
+
+#: src/components/Common/MediaCard/MediaModal/StreamystatsStatsPanel/index.tsx
+msgid "No watch history recorded yet."
+msgstr "Aún no se ha registrado ningún historial de reproducciones."
+
+#: src/components/Rules/RuleGroup/AddModal/ArrAction/index.tsx
+msgid "None"
+msgstr "Ninguno"
+
+#: src/components/OverlayEditor/PropertiesPanel.tsx
+msgid "normal"
+msgstr "normal"
+
+#: src/components/Settings/Notifications/CreateNotificationModal/index.tsx
+msgid "Not all fields contain values"
+msgstr "No todos los campos contienen valores"
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Not all required (*) fields contain values and at least 1 valid rule is required"
+msgstr "No todos los campos obligatorios (*) contienen valores y se requiere al menos 1 regla válida"
+
+#: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
+msgid "Not Contains (All items)"
+msgstr "No contiene (todos los elementos)"
+
+#: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
+msgid "Not Contains (Exact list match)"
+msgstr "No contiene (coincidencia exacta de la lista)"
+
+#: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
+msgid "Not Contains (Partial list match)"
+msgstr "No contiene (coincidencia de lista parcial)"
+
+#: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
+msgid "Not Equals"
+msgstr "No es igual"
+
+#: src/components/Common/MediaCard/MediaModal/index.tsx
+msgid "Not excluded from any collection."
+msgstr "No excluido de ninguna colección."
+
+#: src/components/Common/MediaCard/MediaModal/index.tsx
+msgid "Not manually added to any collection."
+msgstr "No agregado manualmente a ninguna colección."
+
+#: src/components/Rules/RuleGroup/index.tsx
+msgid "Not set"
+msgstr "No establecido"
+
+#: src/components/Settings/Notifications/index.tsx
+msgid "Notification Agent configuration"
+msgstr "Configuración del agente de notificación"
+
+#: src/components/Settings/Notifications/index.tsx
+msgid "Notification agent saved"
+msgstr "Agente de notificación guardado"
+
+#: src/components/Rules/RuleGroup/AddModal/ConfigureNotificationModal/index.tsx
+msgid "Notification Agents"
+msgstr "Agentes de notificación"
+
+#: src/components/Settings/Notifications/index.tsx
+msgid "Notification Settings"
+msgstr "Configuración de notificaciones"
+
+#: src/components/Settings/Notifications/index.tsx
+msgid "Notification settings - Maintainerr"
+msgstr "Configuración de notificaciones - Maintainerr"
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+#: src/components/Settings/index.tsx
+msgid "Notifications"
+msgstr "Notificaciones"
+
+#: src/components/Settings/Notifications/CreateNotificationModal/index.tsx
+msgid "Notify x days before removal"
+msgstr "Notificar x días antes de la eliminación"
+
+#: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
+msgid "Number"
+msgstr "Número"
+
+#: src/components/Settings/About/index.tsx
+msgid "Number Of Rules"
+msgstr "Número de reglas"
+
+#: src/components/Settings/Servarr/ExclusionTagSettings.tsx
+msgid "Off by default so a manually-set tag is never stripped. When on, Maintainerr removes only this label when an item is un-excluded."
+msgstr "Está desactivado de forma predeterminada, por lo que una etiqueta configurada manualmente nunca se elimina. Cuando está activado, Maintainerr elimina solo esta etiqueta cuando un elemento no está excluido."
+
+#: src/components/Collection/CollectionDetail/RemoveFromCollectionButton/index.tsx
+#: src/components/Settings/Radarr/index.tsx
+#: src/components/Settings/Sonarr/index.tsx
+#: src/components/Settings/Sportarr/index.tsx
+msgid "Ok"
+msgstr "Aceptar"
+
+#: src/components/Rules/RuleGroup/AddModal/ConfigureNotificationModal/index.tsx
+msgid "OK"
+msgstr "Aceptar"
+
+#: src/components/Common/YamlImporterModal/index.tsx
+msgid "Only {yamlExtension} or {ymlExtension} files are allowed."
+msgstr "Sólo se permiten archivos {yamlExtension} o {ymlExtension}."
+
+#: src/components/OverlayEditor/PropertiesPanel.tsx
+msgid "Opacity"
+msgstr "Opacidad"
+
+#: src/components/Settings/Overlays/index.tsx
+msgid "Open Job Settings"
+msgstr "Abrir configuración de trabajo"
+
+#: src/components/Common/MediaCard/MediaModal/index.tsx
+msgid "Open on {provider}"
+msgstr "Abrir en {provider}"
+
 #: src/components/Layout/index.tsx
 msgid "Open sidebar"
 msgstr "Abrir barra lateral"
+
+#: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
+msgid "Operator"
+msgstr "Operador"
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Options"
+msgstr "Opciones"
+
+#: src/components/VersionStatus/index.tsx
+msgid "Out of Date"
+msgstr "Desactualizado"
+
+#: src/components/Collection/CollectionDetail/CollectionInfo/index.tsx
+#: src/components/Collection/CollectionDetail/TestMediaItem/index.tsx
+msgid "Output"
+msgstr "Resultado"
+
+#: src/components/Settings/Jobs/index.tsx
+msgid "Overlay Handler"
+msgstr "Controlador de superposición"
+
+#: src/components/Settings/Overlays/index.tsx
+msgid "Overlay Settings"
+msgstr "Configuración de superposición"
+
+#: src/components/Settings/Overlays/index.tsx
+msgid "Overlay settings - Maintainerr"
+msgstr "Configuración de superposición - Maintainerr"
+
+#: src/components/Settings/Overlays/index.tsx
+msgid "Overlay settings could not be updated"
+msgstr "No se pudo actualizar la configuración de superposición"
+
+#: src/components/Settings/Overlays/index.tsx
+msgid "Overlay settings updated"
+msgstr "Configuración de superposición actualizada"
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Overlay template"
+msgstr "Plantilla de superposición"
+
+#: src/pages/OverlayTemplateListPage.tsx
+msgid "Overlay Templates"
+msgstr "Plantillas de superposición"
+
+#: src/pages/OverlayTemplateListPage.tsx
+msgid "Overlay Templates - Maintainerr"
+msgstr "Plantillas de superposición - Maintainerr"
 
 #: src/components/Layout/NavBar/index.tsx
 msgid "Overlays"
 msgstr "Superposiciones"
 
+#: src/components/Settings/Overlays/index.tsx
+msgid "Overlays are now enabled"
+msgstr "Las superposiciones ahora están habilitadas"
+
+#: src/components/Settings/Plex/index.tsx
+msgid "Override the connection discovered by Plex.<0/>Disables automatic reconnection - you manage the connection."
+msgstr "Anula la conexión descubierta por Plex.<0/>Deshabilita la reconexión automática: tú administras la conexión."
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Overrides the configured Watched Percent in Tautulli, which is used to determine when media is counted as watched"
+msgstr "Anula el porcentaje visto configurado en Tautulli, que se utiliza para determinar cuándo el contenido multimedia se cuentan como vistos."
+
 #: src/components/Layout/NavBar/index.tsx
 msgid "Overview"
 msgstr "Vista general"
+
+#: src/components/Overview/index.tsx
+msgid "Overview - Maintainerr"
+msgstr "Descripción general: Maintainerr"
+
+#: src/components/OverlayEditor/PropertiesPanel.tsx
+msgid "Padding"
+msgstr "Relleno"
+
+#: src/components/Login/Emby/EmbyLoginButton.tsx
+#: src/components/Settings/DownloadClient/index.tsx
+msgid "Password"
+msgstr "Contraseña"
+
+#: src/components/Common/MediaCard/MediaModal/StreamystatsStatsPanel/index.tsx
+msgid "Plays"
+msgstr "Reproducciones"
+
+#: src/components/Settings/Plex/index.tsx
+msgid "Please complete server setup by selecting a server from the dropdown."
+msgstr "Complete la configuración del servidor seleccionando un servidor del menú desplegable."
+
+#: src/components/Rules/RuleGroup/index.tsx
+msgid "Please edit this rule and select a library"
+msgstr "Edite esta regla y selecciona una biblioteca."
+
+#: src/components/Settings/Plex/index.tsx
+msgid "Please enter a hostname or IP address."
+msgstr "Introduce un nombre de host o una dirección IP."
+
+#: src/components/Settings/Plex/index.tsx
+msgid "Please enter a valid port."
+msgstr "Por favor ingrese un puerto válido."
+
+#: src/components/Settings/Jobs/index.tsx
+msgid "Please make sure all values are valid"
+msgstr "Por favor asegúrese de que todos los valores sean válidos"
+
+#: src/components/Settings/Main/DatabaseBackupModal.tsx
+msgid "Please provide a valid file name"
+msgstr "Por favor proporcione un nombre de archivo válido"
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Please select a library first."
+msgstr "Primero selecciona una biblioteca."
+
+#: src/components/Settings/Plex/index.tsx
+msgid "Plex authentication (above) is still required"
+msgstr "La autenticación Plex (arriba) aún es necesaria"
+
+#: src/components/Settings/Plex/index.tsx
+msgid "Plex authentication could not be verified. Please try again."
+msgstr "No se pudo verificar la autenticación de Plex. Por favor inténtalo de nuevo."
+
+#: src/components/Settings/Plex/index.tsx
+msgid "Plex configuration"
+msgstr "configuración Plex"
+
+#: src/components/Settings/Plex/index.tsx
+msgid "Plex configuration is required. Authenticate with Plex to get started."
+msgstr "Se requiere configuración Plex. Autentíquese con Plex para comenzar."
+
+#: src/components/Login/Plex/index.tsx
+msgid "Plex login popup was blocked. Please allow popups for this site."
+msgstr "La ventana emergente de inicio de sesión de Plex fue bloqueada. Permita ventanas emergentes para este sitio."
+
+#: src/components/Settings/MediaServerSelector/index.tsx
+msgid "Plex Media Server"
+msgstr "Servidor multimedia Plex"
+
+#: src/components/Settings/Plex/index.tsx
+msgid "Plex Settings"
+msgstr "Configuración de Plex"
+
+#: src/components/Settings/Plex/index.tsx
+msgid "Plex settings - Maintainerr"
+msgstr "Configuración de Plex - Maintainerr"
+
+#: src/components/Settings/Plex/index.tsx
+msgid "Plex settings could not be updated"
+msgstr "La configuración de Plex no se pudo actualizar"
+
+#: src/components/Settings/Plex/index.tsx
+msgid "Plex settings updated"
+msgstr "Configuración de Plex actualizada"
+
+#: src/utils/PlexAuth.ts
+msgid "Popup closed without completing login"
+msgstr "Ventana emergente cerrada sin completar el inicio de sesión"
+
+#: src/components/Settings/Plex/index.tsx
+#: src/components/Settings/Servarr/ServarrSettingsModal.tsx
+msgid "Port"
+msgstr "Puerto"
+
+#: src/components/OverlayEditor/PropertiesPanel.tsx
+msgid "Position"
+msgstr "Posición"
+
+#: src/pages/OverlayTemplateEditorPage.tsx
+msgid "Poster"
+msgstr "Póster"
+
+#: src/components/Rules/RuleGroup/AddModal/CollectionPosterPicker.tsx
+msgid "Poster saved and pushed to {mediaServerName}"
+msgstr "Póster guardado y enviado a {mediaServerName}"
+
+#: src/components/Rules/RuleGroup/AddModal/CollectionPosterPicker.tsx
+msgid "Poster saved locally. Maintainerr could not apply it to {mediaServerName} yet."
+msgstr "Póster guardado localmente. Maintainerr aún no pudo aplicarlo a {mediaServerName}."
+
+#: src/pages/OverlayTemplateListPage.tsx
+msgid "Poster Templates"
+msgstr "Plantillas de carteles"
+
+#: src/components/Collection/CollectionDetail/PostponeButton/index.tsx
+msgid "Postpone"
+msgstr "Posponer"
+
+#: src/components/Collection/CollectionDetail/PostponeButton/index.tsx
+msgid "Postpone deletion"
+msgstr "Posponer la eliminación"
+
+#: src/components/Collection/CollectionDetail/PostponeButton/index.tsx
+msgid "Postpone now"
+msgstr "Posponer ahora"
+
+#: src/components/Collection/CollectionDetail/PostponeButton/index.tsx
+msgid "Postponing..."
+msgstr "Posponiendo..."
+
+#: src/components/StorageMetrics/index.tsx
+msgid "Potential reclaim by type"
+msgstr "Recuperación potencial por tipo"
+
+#: src/pages/OverlayTemplateListPage.tsx
+msgid "Preset"
+msgstr "Preajuste"
+
+#: src/components/Common/ColorPickerModal/index.tsx
+msgid "Presets"
+msgstr "Preajustes"
+
+#: src/pages/OverlayTemplateEditorPage.tsx
+msgid "Presets can’t be modified. Enter a name for your copy - it will start from the current canvas and become editable."
+msgstr "Los ajustes preestablecidos no se pueden modificar. Ingrese un nombre para su copia: comenzará desde el lienzo actual y será editable."
+
+#: src/components/Calendar/index.tsx
+#: src/components/Common/Pagination/index.tsx
+#: src/pages/OverlayTemplateEditorPage.tsx
+msgid "Prev"
+msgstr "Anterior"
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Prevents {listExclusionArrName} import lists re-adding removed movie"
+msgstr "Evita que las listas de importación de {listExclusionArrName} vuelvan a agregar películas eliminadas"
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Prevents {listExclusionArrName} import lists re-adding removed show"
+msgstr "Evita que las listas de importación de {listExclusionArrName} vuelvan a agregar series eliminadas"
+
+#: src/components/Settings/Logs/index.tsx
+msgid "Previous"
+msgstr "Anterior"
+
+#: src/components/Settings/Metadata/index.tsx
+msgid "Primary"
+msgstr "Primario"
+
+#: src/components/Common/MediaActionModal.tsx
+msgid "Proceed"
+msgstr "Proceder"
+
+#: src/utils/overlayProcessResult.ts
+msgid "Processed: {processed}, Reverted: {reverted}, Skipped: {skipped}, Errors: {errors}"
+msgstr "Procesado: {processed}, Revertido: {reverted}, Omitido: {skipped}, Errores: {errors}"
+
+#: src/components/Messages/Messages.tsx
+msgid "Processing: {collectionName}"
+msgstr "Procesando: {collectionName}"
+
+#: src/components/Messages/Messages.tsx
+msgid "Processing: {ruleGroupName}"
+msgstr "Procesando: {ruleGroupName}"
+
+#: src/components/OverlayEditor/PropertiesPanel.tsx
+#: src/pages/OverlayTemplateEditorPage.tsx
+msgid "Properties"
+msgstr "Propiedades"
+
+#: src/components/Collection/CollectionDetail/PostponeButton/index.tsx
+msgid "Push this item's deletion further out by the number of days below. An item already past its deletion date is counted from today."
+msgstr "Retrasa la eliminación de este elemento la cantidad de días indicada a continuación. Un elemento que ya pasó su fecha de eliminación se cuenta a partir de hoy."
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Quality profile is required for this action"
+msgstr "Se requiere perfil de calidad para esta acción"
+
+#: src/components/Settings/Radarr/index.tsx
+msgid "Radarr configuration"
+msgstr "Configuración de Radarr"
+
+#: src/components/Settings/Radarr/index.tsx
+msgid "Radarr server removed"
+msgstr "Servidor Radarr eliminado"
+
+#: src/components/Settings/Radarr/index.tsx
+msgid "Radarr Settings"
+msgstr "Configuración de Radarr"
+
+#: src/components/Settings/Radarr/index.tsx
+msgid "Radarr settings - Maintainerr"
+msgstr "Configuración de Radarr - Maintainerr"
+
+#: src/components/OverlayEditor/PropertiesPanel.tsx
+msgid "Radius"
+msgstr "Radio"
+
+#: src/components/Common/MediaCard/MediaModal/index.tsx
+msgid "Rated: {contentRating}"
+msgstr "Clasificado: {contentRating}"
+
+#: src/components/Common/MediaLibrarySortControl.tsx
+msgid "Rating Ascending"
+msgstr "Calificación ascendente"
+
+#: src/components/Common/MediaLibrarySortControl.tsx
+msgid "Rating Descending"
+msgstr "Calificación descendente"
+
+#: src/components/Common/MediaLibrarySortControl.tsx
+msgid "Recently Added"
+msgstr "Agregado recientemente"
+
+#: src/components/Common/MediaLibrarySortControl.tsx
+msgid "Recently Excluded"
+msgstr "Recientemente excluido"
+
+#: src/components/StorageMetrics/index.tsx
+msgid "Reclaimable from collections"
+msgstr "Recuperable de colecciones"
+
+#: src/components/OverlayEditor/ElementToolbox.tsx
+#: src/components/OverlayEditor/LayerPanel.tsx
+#: src/components/OverlayEditor/PropertiesPanel.tsx
+msgid "Rectangle"
+msgstr "Rectángulo"
+
+#: src/components/Settings/Metadata/index.tsx
+msgid "Refresh metadata"
+msgstr "Actualizar metadatos"
+
+#: src/components/Settings/Metadata/index.tsx
+msgid "Refreshing..."
+msgstr "Actualizando..."
+
+#: src/components/Settings/Main/index.tsx
+msgid "Regenerate API key"
+msgstr "Regenerar clave API"
+
+#: src/components/Settings/About/Releases/index.tsx
+msgid "Release data is currently unavailable."
+msgstr "Los datos de lanzamiento no están disponibles actualmente."
+
+#: src/components/Common/MediaLibrarySortControl.tsx
+msgid "Release Date Ascending"
+msgstr "Fecha de lanzamiento ascendente"
+
+#: src/components/Common/MediaLibrarySortControl.tsx
+msgid "Release Date Descending"
+msgstr "Fecha de lanzamiento descendente"
+
+#: src/components/Settings/About/Releases/index.tsx
+msgid "Releases"
+msgstr "Lanzamientos"
+
+#: src/components/Settings/Plex/index.tsx
+msgid "remote"
+msgstr "remoto"
+
+#: src/components/Settings/Plex/index.tsx
+msgid "Remote"
+msgstr "Remoto"
+
+#: src/components/Collection/CollectionDetail/RemoveFromCollectionButton/index.tsx
+#: src/components/OverlayEditor/PropertiesPanel.tsx
+msgid "Remove"
+msgstr "Eliminar"
+
+#: src/components/Collection/CollectionDetail/RemoveFromCollectionButton/index.tsx
+#: src/components/Common/MediaActionModal.tsx
+msgid "Remove exclusion"
+msgstr "Eliminar exclusión"
+
+#: src/components/Common/MediaActionModal.tsx
+msgid "Remove from collection"
+msgstr "Quitar de la colección"
+
+#: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
+msgid "Remove rule {ruleNumber}, section {sectionNumber}"
+msgstr "Eliminar regla {ruleNumber}, sección {sectionNumber}"
+
+#: src/components/Settings/Servarr/ExclusionTagSettings.tsx
+msgid "Remove tag on un-exclude"
+msgstr "Eliminar etiqueta al cancelar la exclusión"
+
+#: src/components/Collection/CollectionDetail/RemoveFromCollectionButton/index.tsx
+msgid "Remove?"
+msgstr "¿Eliminar?"
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Removes the related Seerr request immediately. Otherwise, Maintainerr waits for Seerr availability sync."
+msgstr "Elimina inmediatamente la solicitud de Seerr relacionada. De lo contrario, Maintainerr espera la sincronización de disponibilidad de Seerr."
+
+#: src/components/Collection/CollectionDetail/RemoveFromCollectionButton/index.tsx
+msgid "Removing..."
+msgstr "Eliminando..."
+
+#: src/components/Rules/RuleGroup/AddModal/CollectionPosterPicker.tsx
+msgid "Replace poster"
+msgstr "Reemplazar cartel"
+
+#: src/api/bulkMediaAction.ts
+msgid "request error"
+msgstr "error de solicitud"
+
+#: src/components/Rules/RuleGroup/index.tsx
+msgid "Request stop execution"
+msgstr "Solicitar detener la ejecución"
+
+#: src/components/Common/MediaCard/MediaModal/index.tsx
+msgid "Requested by <0>{requesters}</0>"
+msgstr "Solicitado por <0>{requesters}</0>"
 
 #: src/pages/RulesListPage.tsx
 msgid "Requested to stop all rule executions."
 msgstr "Se ha solicitado detener todas las ejecuciones de reglas."
 
+#: src/components/Rules/RuleGroup/index.tsx
+msgid "Requested to stop rule execution."
+msgstr "Se solicitó detener la ejecución de la regla."
+
+#: src/components/StorageMetrics/index.tsx
+msgid "Requires total-space reporting"
+msgstr "Requiere informes de espacio total"
+
+#: src/components/Settings/Overlays/index.tsx
+msgid "Reset"
+msgstr "Restablecer"
+
+#: src/components/Settings/Overlays/index.tsx
+msgid "Reset All Overlays"
+msgstr "Restablecer todas las superposiciones"
+
+#: src/components/Settings/Overlays/index.tsx
+msgid "Resetting..."
+msgstr "Restableciendo..."
+
+#: src/components/Settings/Overlays/index.tsx
+msgid "Restore original artwork for all collections?"
+msgstr "¿Restaurar imágenes originales para todas las colecciones?"
+
+#: src/components/Settings/Plex/index.tsx
+msgid "Retrieving servers..."
+msgstr "Recuperando servidores..."
+
+#: src/components/OverlayEditor/PropertiesPanel.tsx
+msgid "right"
+msgstr "derecha"
+
+#: src/components/OverlayEditor/PropertiesPanel.tsx
+msgid "Rotation"
+msgstr "Rotación"
+
+#: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
+msgid "Rule #{ruleNumber}"
+msgstr "Regla #{ruleNumber}"
+
 #: src/pages/RulesListPage.tsx
 msgid "Rule execution started."
 msgstr "Se ha iniciado la ejecución de la regla."
 
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Rule Group Settings"
+msgstr "Configuración del grupo de reglas"
+
+#: src/components/Settings/Jobs/index.tsx
+msgid "Rule Handler"
+msgstr "Controlador de reglas"
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Rule handler schedule override"
+msgstr "Anulación de programación del controlador de reglas"
+
+#: src/components/Collection/CollectionDetail/CollectionInfo/collectionLogLabels.ts
 #: src/components/Layout/NavBar/index.tsx
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+#: src/components/Rules/RuleGroup/index.tsx
+#: src/pages/RulesListPage.tsx
 msgid "Rules"
 msgstr "Reglas"
+
+#: src/pages/RulesListPage.tsx
+msgid "Rules - Maintainerr"
+msgstr "Reglas - Maintainerr"
+
+#: src/components/Common/YamlImporterModal/index.tsx
+msgid "Rules YAML"
+msgstr "Reglas YAML"
+
+#: src/components/Settings/Overlays/index.tsx
+msgid "Run Now"
+msgstr "Ejecutar ahora"
 
 #: src/pages/RulesListPage.tsx
 msgid "Run Rules"
 msgstr "Ejecutar reglas"
 
+#: src/components/StorageMetrics/index.tsx
+msgid "Run scan"
+msgstr "Ejecutar escaneo"
+
+#: src/components/Collection/CollectionDetail/TriggerRuleActionButton/index.tsx
+msgid "Run the collection action"
+msgstr "Ejecutar la acción de la colección"
+
+#: src/components/Settings/Overlays/index.tsx
+msgid "Running"
+msgstr "En ejecución"
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Save"
+msgstr "Guardar"
+
+#: src/pages/OverlayTemplateEditorPage.tsx
+msgid "Save as copy"
+msgstr "Guardar como copia"
+
+#: src/components/Common/SaveButton.tsx
+#: src/pages/OverlayTemplateEditorPage.tsx
+msgid "Save Changes"
+msgstr "Guardar cambios"
+
+#: src/pages/OverlayTemplateEditorPage.tsx
+msgid "Save copy"
+msgstr "Guardar copia"
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Save first to enable poster upload."
+msgstr "Guarde primero para permitir la carga de carteles."
+
+#: src/pages/OverlayTemplateEditorPage.tsx
+msgid "Save preset as a copy"
+msgstr "Guardar preset como una copia"
+
+#: src/components/Settings/Metadata/index.tsx
+msgid "Save to refresh"
+msgstr "Guardar para actualizar"
+
+#: src/components/Settings/Plex/index.tsx
+msgid "Save your settings before testing."
+msgstr "Guarde su configuración antes de realizar la prueba."
+
+#: src/components/Settings/Emby/index.tsx
+#: src/components/Settings/Jellyfin/index.tsx
+msgid "Saved admin user. Test connection to change."
+msgstr "Usuario administrador guardado. Pruebe la conexión para cambiar."
+
 #: src/components/Settings/Main/LanguageSelector.tsx
-msgid "Saved in this browser. Untranslated text falls back to English."
-msgstr "Guardado en este navegador. El texto sin traducir se muestra en inglés."
+msgid "Saved in this browser. <0>Untranslated text</0> falls back to English."
+msgstr "Guardado en este navegador. <0>El texto sin traducir</0> se muestra en inglés."
+
+#: src/components/Rules/RuleGroup/AddModal/CollectionPosterPicker.tsx
+msgid "Saved locally. Maintainerr couldn't push to {mediaServerName} right now; it'll re-apply automatically next time the collection is recreated there."
+msgstr "Guardado localmente. Maintainerr no pudo pasar a {mediaServerName} en este momento; se volverá a aplicar automáticamente la próxima vez que se vuelve a crear la colección allí."
+
+#: src/components/Common/SaveButton.tsx
+#: src/pages/OverlayTemplateEditorPage.tsx
+msgid "Saving..."
+msgstr "Guardando..."
+
+#: src/api/calendar.ts
+msgid "Scheduled Action"
+msgstr "Acción programada"
+
+#: src/components/Settings/Logs/index.tsx
+msgid "Scroll to bottom on new message"
+msgstr "Desplazarse al final con cada mensaje nuevo"
+
+#: src/components/Common/SearchBar/index.tsx
+msgid "Search"
+msgstr "Buscar"
+
+#: src/components/Collection/CollectionDetail/TestMediaItem/index.tsx
+msgid "Search for media items and validate them against the specified rule. The result will be a YAML document containing the validated steps."
+msgstr "Busque elementos multimedia y valídelos según la regla especificada. El resultado será un documento YAML que contiene los pasos validados."
+
+#: src/utils/mediaTypeUtils.ts
+msgid "season"
+msgstr "temporada"
+
+#: src/components/Calendar/index.tsx
+#: src/components/Collection/CollectionDetail/TestMediaItem/index.tsx
+msgid "Season"
+msgstr "Temporada"
+
+#: src/utils/mediaTypeUtils.ts
+msgid "season {itemNumber}"
+msgstr "temporada {itemNumber}"
+
+#: src/components/Collection/CollectionItem/index.tsx
+#: src/components/Common/MediaActionModal.tsx
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+#: src/components/StorageMetrics/index.tsx
+msgid "Seasons"
+msgstr "Temporadas"
+
+#: src/components/StorageMetrics/index.tsx
+msgid "Seasons handled"
+msgstr "Temporadas gestionadas"
+
+#: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
+msgid "Second Value"
+msgstr "Segundo valor"
+
+#: src/components/Rules/Rule/RuleCreator/index.tsx
+msgid "Section #{sectionNumber}"
+msgstr "Sección #{sectionNumber}"
+
+#: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
+msgid "Section Operator"
+msgstr "Operador de sección"
+
+#: src/components/Settings/Plex/index.tsx
+msgid "secure"
+msgstr "seguro"
+
+#: src/components/Settings/Seerr/index.tsx
+msgid "Seerr configuration"
+msgstr "Configuración de Seerr"
+
+#: src/components/Settings/Seerr/index.tsx
+msgid "Seerr Settings"
+msgstr "Configuración de Seerr"
+
+#: src/components/Settings/Seerr/index.tsx
+msgid "Seerr settings - Maintainerr"
+msgstr "Configuración de Seerr - Maintainerr"
+
+#: src/components/Settings/Seerr/index.tsx
+msgid "Seerr settings could not be updated"
+msgstr "La configuración de Seerr no se pudo actualizar"
+
+#: src/components/Settings/Seerr/index.tsx
+msgid "Seerr settings updated"
+msgstr "Configuración de Seerr actualizada"
+
+#: src/components/OverlayEditor/PropertiesPanel.tsx
+msgid "Segments"
+msgstr "Segmentos"
+
+#: src/components/Common/ColorPickerModal/index.tsx
+msgid "Select {preset}"
+msgstr "Selecciona {preset}"
+
+#: src/components/Common/MediaCard/index.tsx
+msgid "Select {title}"
+msgstr "Selecciona {title}"
+
+#: src/components/Common/MediaSelectionActions.tsx
+msgid "Select <0>items</0>"
+msgstr "Selecciona <0>elementos</0>"
+
+#: src/components/Settings/Plex/index.tsx
+msgid "Select a Plex server before testing."
+msgstr "Selecciona un servidor Plex antes de realizar la prueba."
+
+#: src/components/Rules/RuleGroup/AddModal/QualityProfileSelector.tsx
+msgid "Select a quality profile"
+msgstr "Selecciona un perfil de calidad"
+
+#: src/components/Settings/Plex/index.tsx
+msgid "Select a server..."
+msgstr "Selecciona un servidor..."
 
 #: src/components/Settings/Tabs/index.tsx
 msgid "Select a Tab"
 msgstr "Selecciona una pestaña"
 
+#: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
+msgid "Select a user"
+msgstr "Selecciona un usuario"
+
+#: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
+msgid "Select Action..."
+msgstr "Selecciona Acción..."
+
+#: src/pages/OverlayTemplateEditorPage.tsx
+msgid "Select an element to edit its properties"
+msgstr "Selecciona un elemento para editar sus propiedades"
+
+#: src/components/Settings/ExternalServiceSettingsPage.tsx
+msgid "Select an option"
+msgstr "Selecciona una opción"
+
+#: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
+msgid "Select First Value..."
+msgstr "Selecciona el primer valor..."
+
+#: src/components/OverlayEditor/PropertiesPanel.tsx
+msgid "Select font..."
+msgstr "Seleccionar fuente..."
+
+#: src/components/OverlayEditor/PropertiesPanel.tsx
+msgid "Select image..."
+msgstr "Seleccionar imagen..."
+
+#: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
+msgid "Select Second Value..."
+msgstr "Selecciona el segundo valor..."
+
+#: src/components/Settings/Emby/index.tsx
+#: src/components/Settings/Jellyfin/index.tsx
+msgid "Select the admin user for Maintainerr operations."
+msgstr "Selecciona el usuario administrador para las operaciones de Maintainerr."
+
+#: src/components/Settings/MediaServerSelector/index.tsx
+msgid "Select your media server to get started with Maintainerr."
+msgstr "Selecciona tu servidor multimedia para empezar con Maintainerr."
+
+#: src/components/Settings/MediaServerSelector/index.tsx
+msgid "Select your media server type. Switching will reset media server-specific data."
+msgstr "Selecciona su tipo de servidor de contenido multimedia. El cambio restablecerá los datos específicos del servidor de contenido multimedia."
+
+#: src/components/OverlayEditor/ResourceField.tsx
+msgid "Select..."
+msgstr "Seleccionar..."
+
+#: src/components/Settings/MediaServerSelector/index.tsx
+msgid "Selected {serverName} as your media server"
+msgstr "Seleccionó {serverName} como su servidor de medios."
+
 #: src/components/Settings/Tabs/index.tsx
 msgid "Selected Tab"
 msgstr "Pestaña seleccionada"
 
+#: src/components/Settings/Emby/index.tsx
+#: src/components/Settings/Jellyfin/index.tsx
+msgid "Selected: {maskedUserId}"
+msgstr "Seleccionado: {maskedUserId}"
+
+#: src/components/Settings/Plex/index.tsx
+msgid "Server"
+msgstr "Servidor"
+
+#: src/components/Settings/Radarr/index.tsx
+#: src/components/Settings/Sonarr/index.tsx
+#: src/components/Settings/Sportarr/index.tsx
+msgid "Server in-use"
+msgstr "Servidor en uso"
+
+#: src/components/Settings/Servarr/ServarrSettingsModal.tsx
+msgid "Server Name"
+msgstr "Nombre del servidor"
+
+#: src/components/Settings/About/index.tsx
+msgid "Services Status"
+msgstr "Estado de los servicios"
+
+#: src/pages/OverlayTemplateListPage.tsx
+msgid "Set as default"
+msgstr "Establecer como predeterminado"
+
 #: src/components/Layout/NavBar/index.tsx
+#: src/components/Overlays/index.tsx
 msgid "Settings"
 msgstr "Ajustes"
+
+#: src/components/Settings/useSettingsFeedback.tsx
+msgid "Settings could not be updated"
+msgstr "No se pudo actualizar la configuración"
+
+#: src/components/Settings/useSettingsFeedback.tsx
+msgid "Settings updated"
+msgstr "Configuraciones actualizadas"
+
+#: src/components/OverlayEditor/PropertiesPanel.tsx
+msgid "Shadow"
+msgstr "Sombra"
+
+#: src/components/OverlayEditor/PropertiesPanel.tsx
+msgid "Shape"
+msgstr "Forma"
+
+#: src/utils/mediaTypeUtils.ts
+msgid "show"
+msgstr "serie"
+
+#: src/components/Calendar/index.tsx
+msgid "Show"
+msgstr "Serie"
+
+#: src/components/OverlayEditor/LayerPanel.tsx
+msgctxt "Toggle layer visibility"
+msgid "Show"
+msgstr "Mostrar"
+
+#: src/components/Settings/MediaServerSelector/index.tsx
+msgid "Show incompatible rules ({skippedRules})"
+msgstr "Mostrar reglas incompatibles ({skippedRules})"
+
+#: src/components/Calendar/index.tsx
+msgid "Show less"
+msgstr "Mostrar menos"
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Show on {mediaServerName} home"
+msgstr "Mostrar en la pantalla de inicio de {mediaServerName}"
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Show on {mediaServerName} library recommended"
+msgstr "Mostrar en los recomendados de la biblioteca de {mediaServerName}"
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Show the collection on the {mediaServerName} home screen"
+msgstr "Mostrar la colección en la pantalla de inicio de {mediaServerName}"
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Show the collection on the {mediaServerName} library recommended screen"
+msgstr "Mostrar la colección en la pantalla recomendada de la biblioteca {mediaServerName}"
+
+#: src/components/Common/Pagination/index.tsx
+msgid "Showing <0>{firstItem}</0> to <1>{lastItem}</1> of <2>{totalItems}</2> Rules"
+msgstr "Mostrando <0>{firstItem}</0> a <1>{lastItem}</1> de <2>{totalItems}</2> reglas"
+
+#: src/components/Collection/CollectionItem/index.tsx
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+#: src/components/StorageMetrics/index.tsx
+msgid "Shows"
+msgstr "Series"
+
+#: src/components/StorageMetrics/index.tsx
+msgid "Shows handled"
+msgstr "Series gestionadas"
+
+#: src/components/Login/Emby/EmbyLoginButton.tsx
+msgid "Sign in"
+msgstr "Iniciar sesión"
+
+#: src/components/Login/Emby/EmbyLoginButton.tsx
+msgid "Sign in with Emby"
+msgstr "Iniciar sesión con Emby"
+
+#: src/components/Login/Emby/EmbyLoginButton.tsx
+msgid "Signing in…"
+msgstr "Iniciando sesión…"
+
+#: src/components/Collection/CollectionItem/index.tsx
+#: src/components/OverlayEditor/PropertiesPanel.tsx
+#: src/components/Settings/Logs/index.tsx
+#: src/components/StorageMetrics/index.tsx
+msgid "Size"
+msgstr "Tamaño"
+
+#: src/components/StorageMetrics/index.tsx
+msgid "Size on disk reported by the media server"
+msgstr "Tamaño en disco informado por el servidor de contenido multimedia"
+
+#: src/components/StorageMetrics/index.tsx
+msgid "Sizes approximate on-disk bytes and may not fully reflect hardlinks, sparse files, or filesystem snapshots."
+msgstr "Los tamaños se aproximan a los bytes en el disco y es posible que no reflejen completamente los enlaces físicos, los archivos dispersos o las instantáneas del sistema de archivos."
+
+#: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
+msgid "Smaller"
+msgstr "Menor"
+
+#: src/components/Rules/Rule/RuleCreator/index.tsx
+msgid "Some incomplete rules won't be saved"
+msgstr "Algunas reglas incompletas no se guardarán"
+
+#: src/components/Settings/Sonarr/index.tsx
+msgid "Sonarr configuration"
+msgstr "Configuración de Sonarr"
+
+#: src/components/Settings/Sonarr/index.tsx
+msgid "Sonarr server removed"
+msgstr "Servidor Sonarr eliminado"
+
+#: src/components/Settings/Sonarr/index.tsx
+msgid "Sonarr Settings"
+msgstr "Configuración de Sonarr"
+
+#: src/components/Settings/Sonarr/index.tsx
+msgid "Sonarr settings - Maintainerr"
+msgstr "Configuración de Sonarr - Maintainerr"
+
+#: src/components/Collection/CollectionDetail/Exclusions/index.tsx
+msgid "Sort collection exclusions"
+msgstr "Ordenar exclusiones de colección"
+
+#: src/pages/CollectionMediaPage.tsx
+msgid "Sort collection items"
+msgstr "Ordenar elementos de la colección"
+
+#: src/components/Overview/index.tsx
+msgid "Sort overview items"
+msgstr "Ordenar elementos de descripción general"
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Sort title"
+msgstr "Ordenar título"
+
+#: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
+msgid "Specific date"
+msgstr "Fecha específica"
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Specify the rules this group needs to enforce"
+msgstr "Especificar las reglas que este grupo debe hacer cumplir"
+
+#: src/components/Settings/Sportarr/index.tsx
+msgid "Sportarr configuration"
+msgstr "Configuración de Sportarr"
+
+#: src/components/Settings/Sportarr/index.tsx
+msgid "Sportarr server removed"
+msgstr "Servidor Sportarr eliminado"
+
+#: src/components/Settings/Sportarr/index.tsx
+msgid "Sportarr Settings"
+msgstr "Configuración de Sportarr"
+
+#: src/components/Settings/Sportarr/index.tsx
+msgid "Sportarr settings - Maintainerr"
+msgstr "Configuración de Sportarr - Maintainerr"
+
+#: src/utils/ApiError.ts
+msgid "SSL/TLS handshake failed. Verify the URL protocol (http vs https) and SSL configuration."
+msgstr "Error en el protocolo de enlace SSL/TLS. Verifique el protocolo URL (http vs https) y la configuración SSL."
+
+#: src/components/Rules/RuleGroup/index.tsx
+msgid "Start execution"
+msgstr "Iniciar ejecución"
+
+#: src/components/Common/SearchMediaITem/index.tsx
+msgid "Start typing..."
+msgstr "Empieza a escribir..."
+
+#: src/components/Collection/CollectionItem/index.tsx
+#: src/components/Rules/RuleGroup/index.tsx
+#: src/components/StorageMetrics/index.tsx
+msgid "Status"
+msgstr "Estado"
 
 #: src/pages/RulesListPage.tsx
 msgid "Stop Rules"
@@ -138,34 +3666,875 @@ msgstr "Detener reglas"
 msgid "Storage"
 msgstr "Almacenamiento"
 
+#: src/components/StorageMetrics/index.tsx
+msgid "Storage Metrics"
+msgstr "Métricas de almacenamiento"
+
+#: src/components/StorageMetrics/index.tsx
+msgid "Storage Metrics - Maintainerr"
+msgstr "Métricas de almacenamiento - Maintainerr"
+
+#: src/components/StorageMetrics/index.tsx
+msgid "Storage metrics are unavailable."
+msgstr "Las métricas de almacenamiento no están disponibles."
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Stored library (unavailable)"
+msgstr "Biblioteca almacenada (no disponible)"
+
+#: src/api/settings.ts
+#: src/components/Settings/Plex/index.tsx
+msgid "Stored Plex credentials are invalid. Re-authenticate with Plex."
+msgstr "Las credenciales de Plex almacenadas no son válidas. Vuelve a autenticarse con Plex."
+
+#: src/components/Settings/Streamystats/index.tsx
+msgid "Streamystats configuration. Authentication reuses the configured Jellyfin API key."
+msgstr "Configuración de Streamystats. La autenticación reutiliza la clave API Jellyfin configurada."
+
+#: src/components/Settings/Streamystats/index.tsx
+msgid "Streamystats Settings"
+msgstr "Configuración de Streamystats"
+
+#: src/components/Settings/Streamystats/index.tsx
+msgid "Streamystats settings - Maintainerr"
+msgstr "Configuración de Streamystats - Maintainerr"
+
+#: src/components/Settings/Streamystats/index.tsx
+msgid "Streamystats settings could not be updated"
+msgstr "La configuración de Streamystats no se pudo actualizar"
+
+#: src/components/Settings/Streamystats/index.tsx
+msgid "Streamystats settings updated"
+msgstr "Configuración de Streamystats actualizada"
+
+#: src/components/OverlayEditor/PropertiesPanel.tsx
+msgid "Stroke"
+msgstr "Trazo"
+
+#: src/components/OverlayEditor/PropertiesPanel.tsx
+msgid "Stroke Width"
+msgstr "Ancho de trazo"
+
+#: src/components/Common/MediaLibrarySortControl.tsx
+msgid "Studio (A-Z) Ascending"
+msgstr "Estudio (A-Z) Ascendente"
+
+#: src/components/Common/MediaLibrarySortControl.tsx
+msgid "Studio (Z-A) Descending"
+msgstr "Estudio (Z-A) Descendente"
+
+#: src/components/Common/MediaActionModal.tsx
+msgid "Submit"
+msgstr "Enviar"
+
+#: src/components/Common/MediaActionModal.tsx
+msgid "Submitting..."
+msgstr "Enviando..."
+
+#: src/components/Settings/MediaServerSelector/index.tsx
+msgid "Success"
+msgstr "Éxito"
+
+#: src/components/Settings/Metadata/index.tsx
+msgid "Successfully connected to {providerTitle}"
+msgstr "Conectado exitosamente a {providerTitle}"
+
+#: src/components/Settings/ExternalServiceSettingsPage.tsx
+#: src/components/Settings/Servarr/ServarrSettingsModal.tsx
+msgid "Successfully connected to {serviceName} ({version})"
+msgstr "Conectado exitosamente a {serviceName} ({version})"
+
+#: src/components/Settings/Plex/index.tsx
+msgid "Successfully connected to Plex ({version})"
+msgstr "Conectado exitosamente a Plex ({version})"
+
+#: src/components/Settings/DownloadClient/index.tsx
+msgid "Successfully connected to the download client"
+msgstr "Conectado exitosamente al cliente de descargas"
+
+#: src/components/Settings/DownloadClient/index.tsx
+msgid "Successfully connected to the download client ({version})"
+msgstr "Conectado exitosamente al cliente de descargas ({version})"
+
+#: src/components/Settings/Notifications/CreateNotificationModal/index.tsx
+msgid "Successfully fired the notification!"
+msgstr "¡Se disparó con éxito la notificación!"
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Successfully imported rules from Yaml."
+msgstr "Reglas importadas correctamente desde Yaml."
+
+#: src/components/Settings/MediaServerSelector/index.tsx
+msgid "Successfully switched to <0>{pendingName}</0>!"
+msgstr "¡Cambiado exitosamente a <0>{pendingName}</0>!"
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Supports all standard <0>cron</0> patterns"
+msgstr "Soporta todos los patrones <0>cron</0> estándar"
+
+#: src/components/Settings/MediaServerSelector/index.tsx
+msgid "Switch"
+msgstr "Cambiar"
+
+#: src/components/Settings/MediaServerSelector/index.tsx
+msgid "Switching..."
+msgstr "Cambiando..."
+
+#: src/components/Settings/Tabs/index.tsx
+msgid "Tabs"
+msgstr "Pestañas"
+
+#: src/components/Settings/Servarr/ExclusionTagSettings.tsx
+msgid "Tag excluded content"
+msgstr "Etiquetar contenido excluido"
+
+#: src/components/Settings/Servarr/ExclusionTagSettings.tsx
+msgid "Tag label"
+msgstr "Texto de la etiqueta"
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Tag matching movies in {tagArrName} with a tag based on this rule group's name while they're in the collection, removed when they leave"
+msgstr "Etiquetar películas coincidentes en {tagArrName} con una etiqueta basada en el nombre de este grupo de reglas mientras están en la colección; se elimina cuando salen"
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Tag matching shows in {tagArrName} with a tag based on this rule group's name while they're in the collection, removed when they leave"
+msgstr "Etiquetar series coincidentes en {tagArrName} con una etiqueta basada en el nombre de este grupo de reglas mientras están en la colección; se elimina cuando salen"
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Tag this content in {tagArrName}"
+msgstr "Etiqueta este contenido en {tagArrName}"
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Take action after days is required for this action"
+msgstr "Ejecutar la acción después de (días) es obligatorio para esta acción"
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Take action after days must be {max} or less"
+msgstr ""
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Take action after days must be 0 or greater"
+msgstr "Ejecutar la acción después de (días) debe ser 0 o mayor"
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Take action after days must be a whole number"
+msgstr "Ejecutar la acción después de (días) debe ser un número entero"
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Take action after days*"
+msgstr "Ejecutar la acción después de (días)*"
+
+#: src/components/Rules/RuleGroup/AddModal/QualityProfileSelector.tsx
+msgid "Target quality profile to change to"
+msgstr "Perfil de calidad objetivo al que cambiar"
+
+#: src/components/Settings/Tautulli/index.tsx
+msgid "Tautulli configuration"
+msgstr "Configuración de Tautulli"
+
+#: src/components/Settings/Tautulli/index.tsx
+msgid "Tautulli Settings"
+msgstr "Configuración de Tautulli"
+
+#: src/components/Settings/Tautulli/index.tsx
+msgid "Tautulli settings - Maintainerr"
+msgstr "Configuración de Tautulli - Maintainerr"
+
+#: src/components/Settings/Tautulli/index.tsx
+msgid "Tautulli settings could not be updated"
+msgstr "La configuración de Tautulli no se pudo actualizar"
+
+#: src/components/Settings/Tautulli/index.tsx
+msgid "Tautulli settings updated"
+msgstr "Configuración de Tautulli actualizada"
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Tautulli watched percent override"
+msgstr "Anulación del porcentaje visto de Tautulli"
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Tautulli watched percent override must be a whole number"
+msgstr "La anulación del porcentaje visto de Tautulli debe ser un número entero"
+
+#: src/pages/OverlayTemplateListPage.tsx
+msgid "Template deleted"
+msgstr "Plantilla eliminada"
+
+#: src/pages/OverlayTemplateListPage.tsx
+msgid "Template duplicated"
+msgstr "Plantilla duplicada"
+
+#: src/pages/OverlayTemplateEditorPage.tsx
+msgid "Template Name"
+msgstr "Nombre de la plantilla"
+
+#: src/pages/OverlayTemplateEditorPage.tsx
+msgid "Template name is required"
+msgstr "El nombre de la plantilla es obligatorio"
+
+#: src/pages/OverlayTemplateEditorPage.tsx
+msgid "Template not found"
+msgstr "Plantilla no encontrada"
+
+#: src/pages/OverlayTemplateEditorPage.tsx
+msgid "Template saved"
+msgstr "Plantilla guardada"
+
+#: src/components/Collection/CollectionDetail/TestMediaItem/index.tsx
+msgid "Test"
+msgstr "Prueba"
+
+#: src/components/Common/TestingButton.tsx
+#: src/components/Settings/Metadata/index.tsx
+#: src/components/Settings/Servarr/ServarrSettingsModal.tsx
+msgid "Test Connection"
+msgstr "Probar conexión"
+
+#: src/components/Settings/Emby/index.tsx
+#: src/components/Settings/Jellyfin/index.tsx
+msgid "Test connection to load available admin users."
+msgstr "Prueba la conexión para cargar los usuarios administradores disponibles."
+
+#: src/components/Settings/Emby/index.tsx
+msgid "Test connection to load Emby admin users"
+msgstr "Conexión de prueba para cargar usuarios administradores de Emby"
+
+#: src/components/Settings/Jellyfin/index.tsx
+msgid "Test connection to load Jellyfin admin users"
+msgstr "Pruebe la conexión para cargar los usuarios administradores de Jellyfin"
+
+#: src/components/Collection/CollectionDetail/TestMediaItem/index.tsx
+#: src/pages/CollectionDetailPage.tsx
+msgid "Test Media"
+msgstr "Probar contenido multimedia"
+
+#: src/components/Collection/CollectionDetail/TestMediaItem/index.tsx
+msgid "Testing..."
+msgstr "Probando..."
+
+#: src/components/OverlayEditor/ElementToolbox.tsx
+#: src/components/OverlayEditor/LayerPanel.tsx
+#: src/components/OverlayEditor/PropertiesPanel.tsx
+#: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
+msgid "Text"
+msgstr "Texto"
+
+#: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
+msgid "Text (legacy list option)"
+msgstr "Texto (opción de lista heredada)"
+
+#: src/components/OverlayEditor/PropertiesPanel.tsx
+msgid "Text..."
+msgstr "Texto..."
+
+#: src/components/Rules/Rule/RuleCreator/CommunityRuleUpload/index.tsx
+msgid "Thank you for contributing."
+msgstr "Gracias por contribuir."
+
+#: src/components/Settings/Servarr/ExclusionTagSettings.tsx
+msgid "The {name} tag to apply, created if missing."
+msgstr "La etiqueta {name} a aplicar, creada si falta."
+
+#: src/components/Settings/MediaServerSelector/index.tsx
+msgid "The following data will be cleared or reset:"
+msgstr "Los siguientes datos se borrarán o restablecerán:"
+
+#: src/components/Settings/MediaServerSelector/index.tsx
+msgid "The following data will be permanently deleted:"
+msgstr "Los siguientes datos serán eliminados definitivamente:"
+
 #: src/components/Settings/index.tsx
 msgid "The Logs page stays available during setup if you need to troubleshoot your connection."
-msgstr ""
-"La página «Registros» permanece disponible durante la configuración por si "
-"necesitas solucionar algún problema con tu conexión."
+msgstr "La página «Registros» permanece disponible durante la configuración por si necesitas solucionar algún problema con tu conexión."
+
+#: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
+msgid "The media server has no user named ''{username}''"
+msgstr "El servidor de medios no tiene ningún usuario llamado ''{username}''"
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "The rule group could not be saved"
+msgstr "No se pudo guardar el grupo de reglas"
+
+#: src/components/Collection/CollectionDetail/TestMediaItem/index.tsx
+msgid "The rule group is of type episodes, as a result only media of type series will be displayed in the search bar."
+msgstr "El grupo de reglas es de tipo episodios, como resultado solo se mostrarán contenido multimedia de tipo serie en la barra de búsqueda."
+
+#: src/components/Collection/CollectionDetail/TestMediaItem/index.tsx
+msgid "The rule group is of type movies, as a result only media of type movies will be displayed in the search bar."
+msgstr "El grupo de reglas es de tipo películas; como resultado, solo se mostrarán contenido multimedia de tipo películas en la barra de búsqueda."
+
+#: src/components/Collection/CollectionDetail/TestMediaItem/index.tsx
+msgid "The rule group is of type seasons, as a result only media of type series will be displayed in the search bar."
+msgstr "El grupo de reglas es del tipo temporadas, como resultado solo se mostrarán contenido multimedia del tipo serie en la barra de búsqueda."
+
+#: src/components/Collection/CollectionDetail/TestMediaItem/index.tsx
+msgid "The rule group is of type series, as a result only media of type series will be displayed in the search bar."
+msgstr "El grupo de reglas es de tipo serie; como resultado, solo se mostrarán contenido multimedia de tipo serie en la barra de búsqueda."
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "The saved library could not be found in the current library list. Re-select it once your media server is reachable."
+msgstr "La biblioteca guardada no se pudo encontrar en la lista de bibliotecas actual. Vuelve a seleccionarlo una vez que se pueda acceder a su servidor de contenido multimedia."
+
+#: src/components/Common/MediaActionModal.tsx
+msgid "The selected items could not be updated"
+msgstr "Los elementos seleccionados no se pudieron actualizar."
+
+#: src/components/Common/MediaActionModal.tsx
+msgid "The selection mixes media types, so only exclusions can be applied to it."
+msgstr "La selección mezcla tipos de contenido multimedia, por lo que solo se le pueden aplicar exclusiones."
+
+#: src/components/Common/MediaActionModal.tsx
+msgid "The selection spans more than one library, so only exclusions can be applied to it."
+msgstr "La selección abarca más de una biblioteca, por lo que solo se le pueden aplicar exclusiones."
 
 #: src/components/Layout/index.tsx
 msgid "The server returned an unexpected response."
 msgstr "El servidor ha devuelto una respuesta inesperada."
 
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "The type of TV media rules should apply to"
+msgstr "El tipo de contenido de TV al que deben aplicarse las reglas"
+
+#: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
+msgid "The user list could not be loaded"
+msgstr "No se pudo cargar la lista de usuarios"
+
 #: src/components/Settings/index.tsx
 msgid "There was a problem loading settings."
 msgstr "Ha surgido un problema al cargar la configuración."
+
+#: src/components/Settings/Plex/index.tsx
+msgid "There was an error clearing Plex authentication."
+msgstr "Se produjo un error al borrar la autenticación de Plex."
+
+#: src/components/Settings/Plex/index.tsx
+msgid "There was an error updating Plex authentication."
+msgstr "Se produjo un error al actualizar la autenticación Plex."
+
+#: src/components/Common/MediaActionModal.tsx
+msgid "They are removed from every collection they are currently in as well."
+msgstr "También se eliminan de todas las colecciones en las que se encuentran actualmente."
+
+#: src/components/Collection/CollectionDetail/RemoveFromCollectionButton/index.tsx
+msgid "This item is excluded <0>globally</0>. Removing this exclusion will apply the change to all collections"
+msgstr "Este elemento está excluido <0>globalmente</0>. Al eliminar esta exclusión se aplicará el cambio a todas las colecciones."
+
+#: src/components/Settings/Radarr/index.tsx
+#: src/components/Settings/Sonarr/index.tsx
+#: src/components/Settings/Sportarr/index.tsx
+msgid "This server is currently being used by the following rules:"
+msgstr "Este servidor está siendo utilizado actualmente por las siguientes reglas:"
+
+#: src/components/Collection/CollectionDetail/TriggerRuleActionButton/index.tsx
+msgid "This will immediately run the collection action for this item:<0> {actionSummary}</0>."
+msgstr "Esto ejecutará inmediatamente la acción de colección para este elemento:<0> {actionSummary}</0>."
+
+#: src/components/Settings/Overlays/index.tsx
+msgid "This will revert every applied overlay and restore the original posters for all collections."
+msgstr "Esto revertirá todas las superposiciones aplicadas y restaurará los carteles originales de todas las colecciones."
+
+#: src/components/Settings/About/index.tsx
+msgid "Time Zone"
+msgstr "Huso horario"
+
+#: src/components/Common/MediaLibrarySortControl.tsx
+msgid "Title (A-Z) Ascending"
+msgstr "Título (A-Z) Ascendente"
+
+#: src/components/Common/MediaLibrarySortControl.tsx
+msgid "Title (Z-A) Descending"
+msgstr "Título (Z-A) Descendente"
+
+#: src/pages/OverlayTemplateEditorPage.tsx
+msgid "Title Card"
+msgstr "Tarjeta de título"
+
+#: src/pages/OverlayTemplateListPage.tsx
+msgid "Title Card Templates"
+msgstr "Plantillas de tarjetas de título"
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "To clear them first, edit the rule's criteria so it matches nothing, run the rule, and then disable it."
+msgstr "Para borrarlos primero, edite los criterios de la regla para que no coincidan con nada, ejecute la regla y luego deshabilítela."
+
+#: src/components/Settings/Overlays/index.tsx
+msgid "To run them automatically, set a schedule in Job Settings."
+msgstr "Para ejecutarlos automáticamente, configura una programación en Configuración del trabajo."
+
+#: src/components/Calendar/index.tsx
+msgid "Today"
+msgstr "Hoy"
+
+#: src/components/OverlayEditor/PropertiesPanel.tsx
+msgid "Today text"
+msgstr "Texto de hoy"
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Toggle internal collection system"
+msgstr "Alternar el sistema de colecciones interno"
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Toggle the rule system"
+msgstr "Alternar el sistema de reglas"
+
+#: src/pages/OverlayTemplateEditorPage.tsx
+msgid "Tools"
+msgstr "Herramientas"
+
+#: src/components/OverlayEditor/PropertiesPanel.tsx
+msgid "top"
+msgstr "arriba"
+
+#: src/components/StorageMetrics/index.tsx
+msgid "Top ten collections by cached total file size."
+msgstr "Diez colecciones principales por tamaño total de archivos almacenados en caché."
+
+#: src/components/StorageMetrics/index.tsx
+msgid "Total capacity"
+msgstr "Capacidad total"
+
+#: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
+msgid "Total disk space only works for paths reported by ARR disk space. Root-folder fallback paths can still be used for remaining space, but they do not expose a reliable total size."
+msgstr "El espacio total en disco solo funciona para las rutas informadas por el espacio en disco ARR. Las rutas de reserva de la carpeta raíz aún se pueden utilizar para el espacio restante, pero no exponen un tamaño total confiable."
+
+#: src/components/Settings/About/index.tsx
+msgid "Total Media in Collections"
+msgstr "Contenido multimedia totales en colecciones"
+
+#: src/components/StorageMetrics/StorageUsageBar.tsx
+msgid "Total size not reported by this instance - only free space is accurate."
+msgstr "Esta instancia no informa el tamaño total; solo el espacio libre es exacto."
+
+#: src/components/Settings/Tracearr/index.tsx
+msgid "Tracearr server"
+msgstr "Servidor de Tracearr"
+
+#: src/components/Settings/Tracearr/index.tsx
+msgid "Tracearr Settings"
+msgstr "Configuración de Tracearr"
+
+#: src/components/Settings/Tracearr/index.tsx
+msgid "Tracearr settings - Maintainerr"
+msgstr "Configuración de Tracearr - Maintainerr"
+
+#: src/components/Settings/Tracearr/index.tsx
+msgid "Tracearr settings could not be updated"
+msgstr "La configuración de Tracearr no se pudo actualizar"
+
+#: src/components/Settings/Tracearr/index.tsx
+msgid "Tracearr settings updated"
+msgstr "Configuración de Tracearr actualizada"
+
+#: src/components/OverlayEditor/PropertiesPanel.tsx
+msgid "Transform"
+msgstr "Transformar"
+
+#: src/components/Collection/CollectionDetail/TriggerRuleActionButton/index.tsx
+msgid "Trigger now"
+msgstr "Activar ahora"
+
+#: src/components/Collection/CollectionDetail/TriggerRuleActionButton/index.tsx
+msgid "Trigger Rule Action"
+msgstr "Ejecutar acción de la regla"
+
+#: src/components/Collection/CollectionDetail/TriggerRuleActionButton/index.tsx
+msgid "Triggering..."
+msgstr "Desencadenando..."
+
+#: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
+msgid "True"
+msgstr "Verdadero"
+
+#: src/components/Settings/Metadata/index.tsx
+msgid "TVDB must be configured before it can be primary"
+msgstr "TVDB debe configurarse antes de que pueda ser primario"
+
+#: src/components/Calendar/index.tsx
+#: src/components/StorageMetrics/index.tsx
+msgid "Type"
+msgstr "Tipo"
+
+#: src/components/Settings/Notifications/CreateNotificationModal/index.tsx
+msgid "Types *"
+msgstr "Tipos *"
+
+#: src/components/StorageMetrics/index.tsx
+msgid "Unable to load storage metrics. Check that Maintainerr can reach your Radarr and Sonarr instances."
+msgstr "No se pueden cargar métricas de almacenamiento. Compruebe que Maintainerr pueda llegar a sus instancias de Radarr y Sonarr."
+
+#: src/utils/ApiError.ts
+msgid "Unable to resolve host. Verify hostname or IP address."
+msgstr "No se puede resolver el host. Verifique el nombre de host o la dirección IP."
+
+#: src/components/Settings/Plex/index.tsx
+msgid "unavailable"
+msgstr "no disponible"
+
+#: src/components/Collection/CollectionItem/index.tsx
+#: src/components/Rules/RuleGroup/index.tsx
+#: src/components/StorageMetrics/index.tsx
+msgid "Unavailable"
+msgstr "No disponible"
 
 #: src/components/Layout/index.tsx
 msgid "Unexpected error"
 msgstr "Error inesperado"
 
+#: src/components/Calendar/index.tsx
+msgid "Unknown"
+msgstr "Desconocido"
+
 #: src/components/Layout/index.tsx
+#: src/components/Login/Plex/index.tsx
 msgid "Unknown error"
 msgstr "Error desconocido"
+
+#: src/components/StorageMetrics/index.tsx
+msgid "Unknown error fetching disk space."
+msgstr "Error desconocido al obtener espacio en disco."
+
+#: src/components/StorageMetrics/index.tsx
+msgid "Unknown path"
+msgstr "Ruta desconocida"
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Unmonitor and delete episode"
+msgstr "Dejar de supervisar y eliminar episodio"
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Unmonitor and delete existing episodes"
+msgstr "Dejar de supervisar y eliminar episodios existentes"
+
+#: src/components/Collection/CollectionDetail/TriggerRuleActionButton/index.tsx
+msgid "Unmonitor and delete existing files"
+msgstr "Dejar de supervisar y eliminar archivos existentes"
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Unmonitor and delete files"
+msgstr "Dejar de supervisar y eliminar archivos"
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Unmonitor and delete season"
+msgstr "Dejar de supervisar y eliminar temporada"
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Unmonitor and delete season + delete show if empty"
+msgstr "Dejar de supervisar y eliminar temporada + eliminar serie si queda vacía"
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Unmonitor and keep file"
+msgstr "Dejar de supervisar y conservar archivo"
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Unmonitor and keep files"
+msgstr "Dejar de supervisar y conservar archivos"
+
+#: src/api/calendar.ts
+msgid "Unmonitor Empty Show"
+msgstr "Dejar de supervisar serie vacía"
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Unmonitor event, keep file"
+msgstr "Dejar de supervisar evento, conservar archivo"
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Unmonitor league, keep files"
+msgstr "Dejar de supervisar liga, conservar archivos"
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Unmonitor season + unmonitor show if empty"
+msgstr "Dejar de supervisar temporada + dejar de supervisar serie si queda vacía"
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Unmonitor season and keep files"
+msgstr "Dejar de supervisar temporada y conservar archivos"
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Unmonitor season, delete event files"
+msgstr "Dejar de supervisar temporada, eliminar archivos de eventos"
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Unmonitor season, keep files"
+msgstr "Dejar de supervisar temporada, conservar archivos"
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Unmonitor show + seasons, delete all episodes"
+msgstr "Dejar de supervisar serie + temporadas, eliminar todos los episodios"
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Unmonitor show + seasons, keep files"
+msgstr "Dejar de supervisar serie + temporadas, conservar archivos"
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Unmonitor show, delete existing episodes"
+msgstr "Dejar de supervisar serie, eliminar episodios existentes"
+
+#: src/components/Collection/CollectionDetail/TriggerRuleActionButton/index.tsx
+msgid "Unmonitor the show and delete all existing episodes"
+msgstr "Dejar de supervisar la serie y eliminar todos los episodios existentes."
+
+#: src/components/Collection/CollectionDetail/TriggerRuleActionButton/index.tsx
+msgid "Unmonitor this episode"
+msgstr "Dejar de supervisar este episodio"
+
+#: src/components/Collection/CollectionDetail/TriggerRuleActionButton/index.tsx
+msgid "Unmonitor this league"
+msgstr "Dejar de supervisar esta liga"
+
+#: src/components/Collection/CollectionDetail/TriggerRuleActionButton/index.tsx
+msgid "Unmonitor this movie"
+msgstr "Dejar de supervisar esta película"
+
+#: src/components/Collection/CollectionDetail/TriggerRuleActionButton/index.tsx
+msgid "Unmonitor this movie and delete its files"
+msgstr "Dejar de supervisar esta película y eliminar sus archivos"
+
+#: src/components/Collection/CollectionDetail/TriggerRuleActionButton/index.tsx
+msgid "Unmonitor this season"
+msgstr "Dejar de supervisar esta temporada"
+
+#: src/components/Collection/CollectionDetail/TriggerRuleActionButton/index.tsx
+msgid "Unmonitor this season and unmonitor the show if it becomes empty"
+msgstr "Dejar de supervisar esta temporada y dejar de supervisar la serie si queda vacía"
+
+#: src/components/Collection/CollectionDetail/TriggerRuleActionButton/index.tsx
+msgid "Unmonitor this show"
+msgstr "Dejar de supervisar esta serie"
+
+#: src/api/calendar.ts
+msgid "Unmonitor/Delete"
+msgstr "Dejar de supervisar/Eliminar"
+
+#: src/api/calendar.ts
+msgid "Unmonitor/Delete + Delete Empty Show"
+msgstr "Dejar de supervisar/Eliminar + eliminar serie vacía"
+
+#: src/api/calendar.ts
+msgid "Unmonitor/Delete Existing"
+msgstr "Dejar de supervisar/Eliminar existente"
+
+#: src/api/calendar.ts
+msgid "Unmonitor/Keep"
+msgstr "Dejar de supervisar/Conservar"
+
+#: src/api/calendar.ts
+msgid "Unmonitor/Keep + Unmonitor Empty Show"
+msgstr "Dejar de supervisar/Conservar + dejar de supervisar serie vacía"
+
+#: src/components/OverlayEditor/ResourceField.tsx
+#: src/components/Rules/Rule/RuleCreator/CommunityRuleUpload/index.tsx
+msgid "Upload"
+msgstr "Subir"
+
+#: src/components/Rules/RuleGroup/AddModal/CollectionPosterPicker.tsx
+msgid "Upload a JPEG, PNG, or WebP up to {maxPosterSize}. The image is re-encoded to JPEG and stored locally; Maintainerr pushes it to {mediaServerName} as a one-shot write. Other tools that manage {lowerMediaServerName} collection artwork (e.g. Kometa, Posterizarr) may overwrite it."
+msgstr "Sube un archivo JPEG, PNG o WebP hasta {maxPosterSize}. La imagen se vuelve a codificar en JPEG y se almacena localmente; Maintainerr lo envía a {mediaServerName} como una escritura de una sola vez. Otras herramientas que administran imágenes de la colección {lowerMediaServerName} (por ejemplo, Kometa, Posterizarr) pueden sobrescribirlas."
+
+#: src/components/Rules/Rule/RuleCreator/CommunityRuleUpload/index.tsx
+msgid "Upload Community Rule"
+msgstr "Cargar regla comunitaria"
+
+#: src/components/OverlayEditor/PropertiesPanel.tsx
+msgid "Upload font ({fontExtensions})"
+msgstr "Cargar fuente ({fontExtensions})"
+
+#: src/components/OverlayEditor/PropertiesPanel.tsx
+msgid "Upload image ({formatList} - up to {maxSize})"
+msgstr "Subir imagen ({formatList} - hasta {maxSize})"
+
+#: src/components/Common/CommunityRuleModal/index.tsx
+msgid "Upload my rules"
+msgstr "Sube mis reglas"
+
+#: src/components/Rules/RuleGroup/AddModal/CollectionPosterPicker.tsx
+msgid "Upload poster"
+msgstr "Subir cartel"
+
+#: src/components/Rules/Rule/RuleCreator/CommunityRuleUpload/index.tsx
+msgid "Upload Successful"
+msgstr "Subida exitosa"
+
+#: src/components/Common/YamlImporterModal/index.tsx
+msgid "Upload YAML"
+msgstr "Subir YAML"
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Upload your own cover art for the collection on {mediaServerName}"
+msgstr "Sube tu propia portada para la colección en {mediaServerName}"
+
+#: src/components/Common/CommunityRuleModal/index.tsx
+msgid "Uploaded By"
+msgstr "Subido por"
+
+#: src/components/Rules/Rule/RuleCreator/CommunityRuleUpload/index.tsx
+msgid "Uploaded by (optional)"
+msgstr "Subido por (opcional)"
+
+#: src/components/Common/YamlImporterModal/index.tsx
+msgid "Uploaded YAML file is empty."
+msgstr "El archivo YAML cargado está vacío."
+
+#: src/components/OverlayEditor/PropertiesPanel.tsx
+msgid "Uppercase"
+msgstr "Mayúsculas"
+
+#: src/components/Settings/Plex/index.tsx
+msgid "Use HTTPS"
+msgstr "Usar HTTPS"
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Use rules"
+msgstr "Usar reglas"
+
+#: src/components/StorageMetrics/index.tsx
+msgid "Used"
+msgstr "Usado"
+
+#: src/components/Settings/About/index.tsx
+msgid "Useful Links"
+msgstr "Enlaces útiles"
+
+#: src/components/Common/MediaCard/MediaModal/StreamystatsStatsPanel/index.tsx
+#: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
+msgid "User"
+msgstr "Usuario"
+
+#: src/components/Login/Emby/EmbyLoginButton.tsx
+#: src/components/Settings/DownloadClient/index.tsx
+msgid "Username"
+msgstr "Nombre de usuario"
+
+#: src/components/OverlayEditor/PropertiesPanel.tsx
+msgid "V-Align"
+msgstr "Alineación V"
+
+#: src/utils/ApiError.ts
+msgid "Validation failed: {validationMessage}"
+msgstr "Error de validación: {validationMessage}"
+
+#: src/components/OverlayEditor/ElementToolbox.tsx
+#: src/components/OverlayEditor/LayerPanel.tsx
+msgid "Variable"
+msgstr "Variable"
+
+#: src/components/Settings/Logs/index.tsx
+msgid "Verbose"
+msgstr "Verboso"
+
+#: src/components/Settings/About/index.tsx
+msgid "Version"
+msgstr "Versión"
+
+#: src/components/VersionStatus/index.tsx
+msgid "Version unavailable"
+msgstr "Versión no disponible"
+
+#: src/components/Settings/About/Releases/index.tsx
+msgid "View Changelog"
+msgstr "Ver registro de cambios"
+
+#: src/components/Collection/CollectionDetail/CollectionInfo/CollectionLogsTable.tsx
+msgid "View Metadata"
+msgstr "Ver metadatos"
+
+#: src/components/Settings/About/Releases/index.tsx
+msgid "View on GitHub"
+msgstr "Ver en GitHub"
+
+#: src/components/Common/MediaCard/MediaModal/StreamystatsStatsPanel/index.tsx
+msgid "View on Streamystats"
+msgstr "Ver en Streamystats"
+
+#: src/components/Settings/Plex/index.tsx
+msgid "Wait for Plex authentication to finish before saving."
+msgstr "Espere a que finalice la autenticación de Plex antes de guardar."
+
+#: src/components/Settings/Plex/index.tsx
+msgid "Wait for Plex authentication to finish before testing."
+msgstr "Espere a que finalice la autenticación de Plex antes de realizar la prueba."
+
+#: src/components/Settings/Logs/index.tsx
+msgid "Warn"
+msgstr "Advertir"
+
+#: src/components/Collection/CollectionDetail/RemoveFromCollectionButton/index.tsx
+msgid "Warning"
+msgstr "Advertencia"
+
+#: src/components/Common/MediaCard/MediaModal/StreamystatsStatsPanel/index.tsx
+msgid "Watch time"
+msgstr "Tiempo de visualización"
+
+#: src/components/Settings/MediaServerSelector/index.tsx
+msgid "We will now switch from <0>{currentName}</0> to <1>{pendingName}</1>."
+msgstr "Ahora cambiaremos de <0>{currentName}</0> a <1>{pendingName}</1>."
+
+#: src/components/Calendar/index.tsx
+msgid "Week"
+msgstr "Semana"
+
+#: src/components/OverlayEditor/PropertiesPanel.tsx
+msgid "Weight"
+msgstr "Peso"
 
 #: src/components/Settings/index.tsx
 msgid "Welcome to Maintainerr!"
 msgstr "¡Bienvenido a Maintainerr!"
 
+#: src/components/Settings/DownloadClient/index.tsx
+msgid "When media is removed through Radarr, Sonarr or Sportarr, Maintainerr can remove the completed download (and optionally its data) from your download client. The download is matched via that service's download history, so media removed without one of them is left untouched. qBittorrent is currently the only supported client."
+msgstr "Cuando se elimina contenido multimedia mediante Radarr, Sonarr o Sportarr, Maintainerr puede eliminar la descarga completada y, opcionalmente, sus datos, del cliente de descargas. La descarga se identifica mediante el historial de descargas de ese servicio, por lo que el contenido eliminado sin uno de ellos no se toca. qBittorrent es actualmente el único cliente compatible."
+
+#: src/components/Settings/DownloadClient/index.tsx
+msgid "Whether a download has finished seeding is decided by qBittorrent's own ratio/seed-time limits. This ratio only applies to downloads qBittorrent isn't limiting, and can't be set below 0.5."
+msgstr "Si una descarga ha terminado de compartir se decide por los límites de ratio y tiempo de semilla de qBittorrent. Este ratio solo se aplica a descargas que qBittorrent no esté limitando y no puede ser inferior a 0,5."
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Will also be the name of the collection in {mediaServerName}."
+msgstr "También será el nombre de la colección en {mediaServerName}."
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Will this rule be included in rule runs"
+msgstr "¿Se incluirá esta regla en las ejecuciones de reglas?"
+
+#: src/components/Common/YamlImporterModal/index.tsx
+msgid "Yaml Rule Editor"
+msgstr "Editor de reglas de Yaml"
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "You are cloning the rule group ''{clonedRuleGroupName}''."
+msgstr "Está clonando el grupo de reglas ''{clonedRuleGroupName}''."
+
+#: src/components/Settings/Metadata/index.tsx
+msgid "You can create a free API key at <0>{tmdbDomain}</0>."
+msgstr "Puede crear una clave API gratuita en <0>{tmdbDomain}</0>."
+
+#: src/components/Settings/Metadata/index.tsx
+msgid "You can create a free developer API key at <0>{tvdbDomain}</0>."
+msgstr "Puede crear una clave API de desarrollador gratuita en <0>{tvdbDomain}</0>."
+
 #: src/components/Layout/index.tsx
 msgid "You can try going back or reloading the page. If the problem persists, please check the browser console for more details."
-msgstr ""
-"Puedes intentar volver atrás o actualizar la página. Si el problema "
-"persiste, comprueba la consola del navegador para obtener más detalles."
+msgstr "Puedes intentar volver atrás o actualizar la página. Si el problema persiste, comprueba la consola del navegador para obtener más detalles."
+
+#: src/components/Common/CommunityRowTableRow/index.tsx
+msgid "You have already submitted karma for this rule."
+msgstr "Ya has enviado karma para esta regla."
+
+#: src/components/Settings/Radarr/index.tsx
+#: src/components/Settings/Sonarr/index.tsx
+#: src/components/Settings/Sportarr/index.tsx
+msgid "You must re-assign these rules to a different server before deleting."
+msgstr "Debe reasignar estas reglas a un servidor diferente antes de eliminarlas."
+
+#: src/components/Layout/MediaServerSetupGuard.tsx
+msgid "You need to set up the media server first."
+msgstr "Primero debe configurar el servidor de contenido multimedia."
+
+#: src/pages/OverlayTemplateEditorPage.tsx
+msgid "You’re editing a preset. Saving will create your own copy - the original preset is left unchanged."
+msgstr "Estás editando un ajuste preestablecido. Al guardar se creará su propia copia; el ajuste preestablecido original no se modifica."
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "your media server"
+msgstr "su servidor de contenido multimedia"

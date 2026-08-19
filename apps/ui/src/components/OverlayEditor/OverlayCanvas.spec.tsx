@@ -1,5 +1,5 @@
 import type { OverlayElement } from '@maintainerr/contracts'
-import { render, waitFor } from '@testing-library/react'
+import { render, waitFor } from '../../test-utils/render'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { OverlayCanvas } from './OverlayCanvas'
 

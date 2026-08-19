@@ -1,4 +1,4 @@
-import { act, renderHook } from '@testing-library/react'
+import { act, renderHook } from '../test-utils/render'
 import { describe, expect, it } from 'vitest'
 import useLibrarySelection from './useLibrarySelection'
 

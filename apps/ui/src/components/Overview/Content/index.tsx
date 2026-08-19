@@ -1,3 +1,4 @@
+import { Trans, useLingui } from '@lingui/react/macro'
 import {
   type MediaItem,
   type MediaItemWithParent,
@@ -58,6 +59,7 @@ function extractProviderIds(
 }
 
 const OverviewContent = (props: IOverviewContent) => {
+  const { t } = useLingui()
   const { data, dataFinished, extrasLoading, fetchData, loading } = props
 
   const isNearBottom = () =>
@@ -212,7 +214,7 @@ const OverviewContent = (props: IOverviewContent) => {
                 className="flex min-h-10 items-center justify-center"
                 style={{ overflowAnchor: 'none' }}
               >
-                <div role="status" aria-label="Loading more items">
+                <div role="status" aria-label={t`Loading more items`}>
                   <SmallLoadingSpinner className="h-10 w-10" />
                 </div>
               </li>
@@ -221,7 +223,7 @@ const OverviewContent = (props: IOverviewContent) => {
         </div>
       ) : (
         <div className="flex min-h-80 items-center justify-center rounded-xl border border-dashed border-zinc-700 bg-zinc-900/30 p-6 text-sm text-zinc-400">
-          No items found.
+          <Trans>No items found.</Trans>
         </div>
       )}
     </>
