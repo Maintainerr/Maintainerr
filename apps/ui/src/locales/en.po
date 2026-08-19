@@ -3273,8 +3273,8 @@ msgid "Saved admin user. Test connection to change."
 msgstr "Saved admin user. Test connection to change."
 
 #: src/components/Settings/Main/LanguageSelector.tsx
-msgid "Saved in this browser. Untranslated text falls back to English."
-msgstr "Saved in this browser. Untranslated text falls back to English."
+msgid "Saved in this browser. <0>Untranslated text</0> falls back to English."
+msgstr "Saved in this browser. <0>Untranslated text</0> falls back to English."
 
 #: src/components/Rules/RuleGroup/AddModal/CollectionPosterPicker.tsx
 msgid "Saved locally. Maintainerr couldn't push to {mediaServerName} right now; it'll re-apply automatically next time the collection is recreated there."
