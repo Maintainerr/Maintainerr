@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { parsePo as parseLinguiPo } from 'pofile-ts';
+import { parseIcu, parsePo as parseLinguiPo } from 'pofile-ts';
 
 /**
  * Start line of every PO entry block, in file order, so a validator error can
@@ -206,6 +206,146 @@ export const icuArguments = (text) => {
     if (text[j] === '}' || text[j] === ',') names.add(name);
   }
   return names;
+};
+
+// How one argument shapes its value, from the parsed AST. `kind` separates
+// cardinal and ordinal plurals (the parser stores both as "plural" nodes);
+// `categories` holds the plural/select branch keywords, `style` the
+// number/date/time format. Later duplicates of a name win, matching how the
+// runtime resolves a repeated argument.
+const structuresIn = (nodes, byName) => {
+  for (const node of nodes) {
+    if (node.type === 'plural' || node.type === 'select') {
+      const ordinal = node.type === 'plural' && node.pluralType === 'ordinal';
+      byName.set(node.value, {
+        kind: ordinal ? 'selectordinal' : node.type,
+        style: null,
+        offset: node.type === 'plural' ? node.offset : 0,
+        categories: new Set(Object.keys(node.options)),
+      });
+      for (const option of Object.values(node.options)) {
+        structuresIn(option.value, byName);
+      }
+    } else if (node.type === 'tag') {
+      structuresIn(node.children, byName);
+    } else if (node.type !== 'literal' && node.type !== 'pound') {
+      // argument, number, date, time - and the parser's extension types
+      // (list, duration, ago, name), which pofile-ts accepts but the Lingui
+      // runtime has no formatter for: it throws mid-render. Recording them
+      // means converting a plain `{x}` into one is a structure change.
+      byName.set(node.value, {
+        kind: node.type,
+        style: node.style ?? null,
+        offset: 0,
+        categories: null,
+      });
+    }
+  }
+  return byName;
+};
+
+const describeStructure = ({ kind, style }) => {
+  if (kind === 'plural') return 'a plural';
+  if (kind === 'selectordinal') return 'an ordinal plural';
+  if (kind === 'select') return 'a select';
+  if (kind === 'argument') return 'a plain argument';
+  return style ? `a ${kind} formatted as "${style}"` : `an unformatted ${kind}`;
+};
+
+// `=0`-style exact matches are a translator's own refinement; keywords are
+// what the locale's grammar selects between.
+const keywordsOf = (categories) =>
+  new Set([...categories].filter((key) => !key.startsWith('=')));
+
+const pluralCategoriesFor = (locale, kind) => {
+  try {
+    return new Set(
+      new Intl.PluralRules(locale.replaceAll('_', '-'), {
+        type: kind === 'selectordinal' ? 'ordinal' : 'cardinal',
+      }).resolvedOptions().pluralCategories,
+    );
+  } catch {
+    return null;
+  }
+};
+
+/**
+ * Ways a translation changes an ICU argument's structure while keeping its
+ * name, so both the compile check and placeholder parity pass.
+ *
+ * Each survives as valid ICU yet renders subtly wrong text: a plural rewritten
+ * as `{count}` shows the same wording for every count, a dropped `one` branch
+ * shows "1 items", a stripped `percent` format loses the % sign, a dropped
+ * select branch shows its `other` text. The plural-category rule is
+ * source-relative and locale-aware: the translation must keep every category
+ * the source distinguishes that exists in the target locale (Japanese
+ * legitimately collapses to `other` alone), and may only use categories the
+ * locale's grammar can ever select (a `few` branch in Swedish is dead text).
+ * Messages that do not parse are skipped - the compile check owns those.
+ */
+export const icuStructureProblems = (source, translation, locale) => {
+  const sourceParse = parseIcu(source);
+  const translationParse = parseIcu(translation);
+  if (!sourceParse.success || !translationParse.success) return [];
+
+  const sourceShapes = structuresIn(sourceParse.ast, new Map());
+  const translationShapes = structuresIn(translationParse.ast, new Map());
+  const problems = [];
+
+  for (const [name, shape] of translationShapes) {
+    const expected = sourceShapes.get(name);
+    if (!expected) continue;
+
+    if (expected.kind !== shape.kind || expected.style !== shape.style) {
+      problems.push(
+        `"${name}" is ${describeStructure(expected)} in the source but ${describeStructure(shape)} in the translation`,
+      );
+      continue;
+    }
+
+    if (expected.offset !== shape.offset) {
+      problems.push(
+        `"${name}" changes the plural offset from ${expected.offset} to ${shape.offset} - every # renders a shifted count`,
+      );
+    }
+
+    if (shape.kind === 'plural' || shape.kind === 'selectordinal') {
+      const localeCategories = pluralCategoriesFor(locale, shape.kind);
+      if (!localeCategories) continue;
+      const actual = keywordsOf(shape.categories);
+      for (const category of keywordsOf(expected.categories)) {
+        if (localeCategories.has(category) && !actual.has(category)) {
+          problems.push(
+            `"${name}" is missing the plural category "${category}" - those counts fall back to "other" and render the wrong grammar`,
+          );
+        }
+      }
+      for (const category of actual) {
+        if (!localeCategories.has(category)) {
+          problems.push(
+            `"${name}" uses the plural category "${category}", which "${locale}" never selects - that branch is dead text`,
+          );
+        }
+      }
+    } else if (shape.kind === 'select') {
+      for (const branch of expected.categories) {
+        if (!shape.categories.has(branch)) {
+          problems.push(
+            `"${name}" is missing the select branch "${branch}" - that value renders the "other" text`,
+          );
+        }
+      }
+      for (const branch of shape.categories) {
+        if (!expected.categories.has(branch)) {
+          problems.push(
+            `"${name}" adds the select branch "${branch}", which the app never passes`,
+          );
+        }
+      }
+    }
+  }
+
+  return problems;
 };
 
 /**

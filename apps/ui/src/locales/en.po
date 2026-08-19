@@ -1886,6 +1886,7 @@ msgid "Help"
 msgstr "Help"
 
 #: src/components/OverlayEditor/LayerPanel.tsx
+msgctxt "Toggle layer visibility"
 msgid "Hide"
 msgstr "Hide"
 
@@ -1908,6 +1909,10 @@ msgstr "If the action succeeds, the item will be removed from the collection rig
 #: src/components/Settings/Overlays/index.tsx
 msgid "If you do not set a schedule, you will need to use Run Now in Overlay Settings each time."
 msgstr "If you do not set a schedule, you will need to use Run Now in Overlay Settings each time."
+
+#: src/components/Settings/About/index.tsx
+msgid "If you find any broken features and/or are experiencing instability, please report it on GitHub!"
+msgstr "If you find any broken features and/or are experiencing instability, please report it on GitHub!"
 
 #: src/components/OverlayEditor/ElementToolbox.tsx
 #: src/components/OverlayEditor/LayerPanel.tsx
@@ -3268,8 +3273,8 @@ msgid "Saved admin user. Test connection to change."
 msgstr "Saved admin user. Test connection to change."
 
 #: src/components/Settings/Main/LanguageSelector.tsx
-msgid "Saved in this browser. Untranslated text falls back to English."
-msgstr "Saved in this browser. Untranslated text falls back to English."
+msgid "Saved in this browser. <0>Untranslated text</0> falls back to English."
+msgstr "Saved in this browser. <0>Untranslated text</0> falls back to English."
 
 #: src/components/Rules/RuleGroup/AddModal/CollectionPosterPicker.tsx
 msgid "Saved locally. Maintainerr couldn't push to {mediaServerName} right now; it'll re-apply automatically next time the collection is recreated there."
@@ -3498,7 +3503,11 @@ msgid "show"
 msgstr "show"
 
 #: src/components/Calendar/index.tsx
+msgid "Show"
+msgstr "Show"
+
 #: src/components/OverlayEditor/LayerPanel.tsx
+msgctxt "Toggle layer visibility"
 msgid "Show"
 msgstr "Show"
 
@@ -4001,10 +4010,6 @@ msgstr "There was an error updating Plex authentication."
 #: src/components/Common/MediaActionModal.tsx
 msgid "They are removed from every collection they are currently in as well."
 msgstr "They are removed from every collection they are currently in as well."
-
-#: src/components/Settings/About/index.tsx
-msgid "This is BETA software. Features may be broken and/or unstable. Please report any issues on GitHub!"
-msgstr "This is BETA software. Features may be broken and/or unstable. Please report any issues on GitHub!"
 
 #: src/components/Collection/CollectionDetail/RemoveFromCollectionButton/index.tsx
 msgid "This item is excluded <0>globally</0>. Removing this exclusion will apply the change to all collections"
