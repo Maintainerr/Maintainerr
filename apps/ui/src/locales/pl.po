@@ -3273,7 +3273,7 @@ msgid "Saved admin user. Test connection to change."
 msgstr ""
 
 #: src/components/Settings/Main/LanguageSelector.tsx
-msgid "Saved in this browser. Untranslated text falls back to English."
+msgid "Saved in this browser. <0>Untranslated text</0> falls back to English."
 msgstr ""
 
 #: src/components/Rules/RuleGroup/AddModal/CollectionPosterPicker.tsx
