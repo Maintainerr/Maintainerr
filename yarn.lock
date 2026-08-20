@@ -1290,9 +1290,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@hookform/resolvers@npm:^5.9.0":
-  version: 5.9.0
-  resolution: "@hookform/resolvers@npm:5.9.0"
+"@hookform/resolvers@npm:^5.9.1":
+  version: 5.9.1
+  resolution: "@hookform/resolvers@npm:5.9.1"
   dependencies:
     "@standard-schema/utils": "npm:^0.3.0"
   peerDependencies:
@@ -1370,7 +1370,7 @@ __metadata:
       optional: true
     zod:
       optional: true
-  checksum: 10c0/6f579fe35713236e6a483d6afcfa4deea9c7826a9e09ce0da7e7a77af64af11e88ea09269e0f342a12e31ebaf604f917630e3cc6108c50146b60d1fe20d750b5
+  checksum: 10c0/08d4e1455a072bea182468d878527e2e99c6d079fe56ffc5297e03a8219fe7544db092afcdf7a950e5421390d4dae3a21398c8ccd0b2c8639d0e0ff9e21410c2
   languageName: node
   linkType: hard
 
@@ -2802,7 +2802,7 @@ __metadata:
     "@eslint/js": "npm:^10.0.1"
     "@headlessui/react": "npm:^2.2.10"
     "@heroicons/react": "npm:^1.0.6"
-    "@hookform/resolvers": "npm:^5.9.0"
+    "@hookform/resolvers": "npm:^5.9.1"
     "@lingui/babel-plugin-lingui-macro": "npm:^6.6.0"
     "@lingui/cli": "npm:^6.6.0"
     "@lingui/core": "npm:^6.6.0"
