@@ -255,6 +255,51 @@ describe('MediaServerController', () => {
       });
     });
 
+    // A page comes back short when the adapter drops a row of a kind the query
+    // did not ask for (#3550), so the next page re-reads the difference.
+    it('does not duplicate the overlap after a short page', async () => {
+      const showItem = (id: string, title: string): MediaItem => ({
+        id,
+        title,
+        guid: `guid-${id}`,
+        type: 'show',
+        addedAt: new Date(),
+        providerIds: {},
+        mediaSources: [],
+        library: { id: 'lib1', title: 'Shows' },
+      });
+      const alpha = showItem('1', 'Alpha');
+      const zulu = showItem('2', 'Zulu');
+      const bravo = showItem('3', 'Bravo');
+
+      mockMediaServerService.getLibraryContents
+        .mockResolvedValueOnce({
+          items: [alpha, zulu],
+          totalSize: 3,
+          offset: 0,
+          limit: 250,
+        })
+        .mockResolvedValueOnce({
+          items: [zulu, bravo],
+          totalSize: 3,
+          offset: 2,
+          limit: 250,
+        });
+      mediaItemEnrichmentService.enrichItems.mockResolvedValueOnce([
+        alpha,
+        zulu,
+        bravo,
+      ]);
+
+      await controller.getLibraryContent('lib1', 1, 10, 'show', 'excluded');
+
+      expect(mediaItemEnrichmentService.enrichItems).toHaveBeenCalledWith([
+        alpha,
+        zulu,
+        bravo,
+      ]);
+    });
+
     it('should warn when status sorting requires a large pre-pagination fetch', async () => {
       const alpha = {
         id: '1',
