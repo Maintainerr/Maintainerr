@@ -92,7 +92,6 @@ jobs:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           AI_MODEL_API_KEY: ${{ secrets.AI_MODEL_API_KEY }}
-          AI_MODEL_ENDPOINT: ${{ vars.AI_MODEL_ENDPOINT }}
           AI_MODEL: ${{ vars.AI_MODEL }}
           AI_MODEL_REASONING_EFFORT: ${{ vars.AI_MODEL_REASONING_EFFORT }}
           ITEM_NUMBERS: ${{ github.event_name == 'workflow_dispatch' && inputs.item_numbers || '' }}
