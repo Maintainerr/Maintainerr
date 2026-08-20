@@ -366,8 +366,20 @@ Quick checks (Jellyfin server configured):
   own scripts rather than Maintainerr, and it is worth naming in a support
   reply. Checked against 12.0-rc5 with 10.11.11 as a control: public system
   info, users, media folders, item listings and `GET /System/Info/Storage` all
-  answer on both, on the pinned `@jellyfin/sdk` 0.13.0. The one behaviour that
-  does differ is BoxSet collapsing (#3550).
+  answer on both, on the pinned `@jellyfin/sdk` 0.13.0.
+- **Collection collapsing is where 12 does behave differently, and
+  `collapseBoxSetItems=false` is what makes that safe.**
+  `Folder.CollapseBoxSetItems` is identical on both branches and short-circuits
+  on an explicit parameter, so `false` beats the server's own grouping setting
+  everywhere - which is the only reason a grouped library does not feed
+  collections into rule matching. Without the parameter the two diverge: 10.11
+  collapses in memory and only when `EnableGroupingMoviesIntoCollections` is on,
+  while 12 collapses in the new database query path, where the empty
+  collapse-type list you get with grouping off reads as "collapse everything"
+  and only name filters are re-applied after the substitution, never the type
+  filter. So on 12 a Movie-typed listing can answer with BoxSet rows on a
+  default-configured server. Send the parameter on every library-scoped query;
+  never rely on the server's grouping setting being off (#3550).
 
 ---
 
