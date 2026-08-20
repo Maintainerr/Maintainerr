@@ -227,12 +227,35 @@ integration or behaviour:
 - the bug happens on that server, or is caused by how that server behaves
 - the change is scoped to that server or must be implemented per-server
 - it is setup, configuration, authentication or connection trouble for that server
-- the diff touches that server's files or its settings UI
+- the diff changes how that server behaves, in its own files or its settings UI
 
 Do NOT label a server that is only mentioned in passing: background colour on a bug
 that is plainly in the rule engine, the scheduler, the UI or a migration; an unrelated
 line inside a pasted log; a "supports Plex/Jellyfin/Emby" capability blurb; or the
 unfilled template line marked [UNFILLED TEMPLATE LINE], which is worth nothing.
+
+Before you emit a label, test it. For each label you are about to apply, ask: would a
+maintainer open THAT SERVER'S OWN integration code to resolve this item? If not, drop it.
+Drop the label when any of these is true:
+
+a. The server appears only in the reporter's environment - a "Server:" line, a "Device"
+   section, a version string, "I run X". That is background, not the defect.
+b. The server appears only as a branch name, a rule-option string, a capability list, a
+   README blurb, or an unfilled template line.
+c. The item is really about an adjacent service - Seerr, Tautulli, Streamystats, Tracearr -
+   and that service's own code is what changes. Needing Jellyfin in order to run Jellyseerr
+   does not make a Jellyseerr request a Jellyfin item.
+d. The whole diff sits in shared code - rule engine, scheduler, notifications, collection
+   bookkeeping, comparators - AND nothing in the item turns on how that server itself
+   behaves. Judge by where the fix lives, not where the symptom was seen. This one has a
+   limit: when the item does turn on that server's own behaviour - a BoxSet it re-resolves,
+   a URL shape it rejects, an id only it issues, an endpoint only it serves - the label
+   stands even though the fix lands in shared code.
+e. The change is behaviour-neutral for that server: a rename, a lint or formatting pass, a
+   framework or dependency upgrade, a type-only change, or a release sync. These sweep
+   server files without changing how any server behaves, however many paths they touch.
+
+Only when none of a to e applies does the label stand.
 
 Return no labels when nothing points at a specific server. That is the correct and
 common answer - most rule-engine, UI, docs, CI, dependency and *arr/Seerr work is
