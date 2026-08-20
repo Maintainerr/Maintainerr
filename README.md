@@ -262,6 +262,7 @@ Maintainerr is community-driven, and we're always looking for more hands. You do
 Start with [CONTRIBUTING.md](CONTRIBUTING.md), then dive into the [issues](https://github.com/Maintainerr/Maintainerr/issues) or our [Discord](https://discord.maintainerr.info). New contributors are genuinely welcome.
 
 ## Translations
+[![Translation status](https://hosted.weblate.org/widget/maintainerr/matrix-auto.svg)](https://hosted.weblate.org/engage/maintainerr/)
 
 Maintainerr uses [Weblate](https://hosted.weblate.org/engage/maintainerr/) for translations. Pick your language, edit in the browser, and your work reaches everyone in the next release - no git, no pull request, no build tooling.
 
