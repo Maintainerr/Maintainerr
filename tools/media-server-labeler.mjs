@@ -245,8 +245,11 @@ Traps:
    without proving it: an item purely about the Tautulli API is about Tautulli. These
    arrive flagged adjacentOnly. Tracearr is the one to watch - it is also a watch-history
    service, but it binds to whichever media server you run, so it hints at NONE of them.
-3. "BoxSet" belongs to both Jellyfin and Emby, which share an API lineage, so it
-   usually earns both labels unless the text pins it to one. It is never a Plex term.
+3. "BoxSet" is Jellyfin and Emby vocabulary and never a Plex term, but the shared
+   lineage does NOT mean both labels by default. Decide on what the text names: if it
+   names only one of the two, label ONLY that one, even though the code behind it is
+   shared - the reporter is telling you which server they actually run. Label both only
+   when the text names both, or names neither and the change is plainly in shared code.
 4. Jellyfin and Emby share code paths here. Shared logic earns both; a fix guarded by
    an emby-only branch earns only emby.
 5. Plex is the original backend. Jellyfin arrived in PR #2330 (Feb 2026) and Emby in
@@ -467,11 +470,15 @@ const main = async () => {
       }
     }
 
+    // "no labels" must mean the model found none, not that the item already carried
+    // them - conflating the two makes a working run read as a broken one.
     const outcome = add.length
       ? `${dryRun ? 'would add' : 'added'} ${add.join(', ')}`
       : withheld.length
         ? `withheld ${withheld.join(', ')} (low confidence)`
-        : 'no labels';
+        : verdict.labels.length
+          ? `already carries ${verdict.labels.join(', ')}`
+          : 'no labels';
     log(`#${number}: ${outcome} - ${verdict.why}`);
   }
 
@@ -486,7 +493,9 @@ const main = async () => {
           ? r.add.join(', ')
           : r.withheld.length
             ? `_withheld: ${r.withheld.join(', ')}_`
-            : '_none_';
+            : r.verdict.labels.length
+              ? `_already carries: ${r.verdict.labels.join(', ')}_`
+              : '_none_';
         return `| #${r.number} | ${verdict} | ${r.verdict.confidence} | ${r.verdict.why.split('|').join('\\|')} |`;
       }),
     ];
