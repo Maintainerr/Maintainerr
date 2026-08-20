@@ -1,5 +1,6 @@
 import { Trans, useLingui } from '@lingui/react/macro'
 import {
+  getCollectionDeleteDate,
   type MediaItem,
   type MediaItemWithParent,
   type MediaProviderIds,
@@ -105,10 +106,15 @@ const OverviewContent = (props: IOverviewContent) => {
       return undefined
     }
 
-    const date = new Date(collectionData.addDate)
-    date.setDate(date.getDate() + resolvedCollection.deleteAfterDays)
+    const deleteDate = getCollectionDeleteDate(
+      collectionData.addDate,
+      resolvedCollection.deleteAfterDays,
+    )
+    if (!deleteDate) {
+      return undefined
+    }
 
-    const diffTime = date.getTime() - new Date().getTime()
+    const diffTime = deleteDate.getTime() - new Date().getTime()
     return Math.ceil(diffTime / (1000 * 60 * 60 * 24))
   }
 
