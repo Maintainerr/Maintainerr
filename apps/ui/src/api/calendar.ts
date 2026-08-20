@@ -1,6 +1,10 @@
 import { i18n } from '@lingui/core'
 import { plural, t } from '@lingui/core/macro'
-import { MediaItemType, ServarrAction } from '@maintainerr/contracts'
+import {
+  getCollectionDeleteDate,
+  MediaItemType,
+  ServarrAction,
+} from '@maintainerr/contracts'
 import { useQuery, type UseQueryOptions } from '@tanstack/react-query'
 import type { ICollection, ICollectionMedia } from '../components/Collection'
 import GetApiHandler from '../utils/ApiHandler'
@@ -213,7 +217,7 @@ const getActionKey = (collection: ICollection): CalendarActionKey => {
   return getGenericActionKey(action)
 }
 
-const buildCalendarDays = (collections: ICollection[] | undefined) => {
+export const buildCalendarDays = (collections: ICollection[] | undefined) => {
   const itemsByKey = new Map<string, CalendarEntry[]>()
 
   if (!collections) {
@@ -235,8 +239,13 @@ const buildCalendarDays = (collections: ICollection[] | undefined) => {
         return
       }
 
-      const deleteDate = startOfDay(new Date(media.addDate))
-      deleteDate.setDate(deleteDate.getDate() + deleteAfterDays)
+      const deleteDate = getCollectionDeleteDate(
+        startOfDay(new Date(media.addDate)),
+        deleteAfterDays,
+      )
+      if (!deleteDate) {
+        return
+      }
 
       const key = `${deleteDate.getFullYear()}-${pad2(deleteDate.getMonth() + 1)}-${pad2(deleteDate.getDate())}`
       const actionKey = getActionKey(collection)

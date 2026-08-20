@@ -1,4 +1,5 @@
 import {
+  getCollectionDeleteDate,
   MaintainerrEvent,
   MediaItem,
   MediaItemType,
@@ -16,6 +17,10 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { Repository } from 'typeorm';
 import { dataDir as configDataDir } from '../../app/config/dataDir';
+import {
+  ExecutionLockService,
+  OVERLAY_EXECUTION_LOCK_KEY,
+} from '../tasks/execution-lock.service';
 import { resolveDescendants } from '../api/media-server/context-action.util';
 import { readItemPresence } from '../api/media-server/item-presence.util';
 import { MediaServerFactory } from '../api/media-server/media-server.factory';
@@ -93,28 +98,13 @@ export class OverlayProcessorService {
     private readonly templateService: OverlayTemplateService,
     private readonly eventEmitter: EventEmitter2,
     private readonly logger: MaintainerrLogger,
+    private readonly executionLock: ExecutionLockService,
   ) {
     this.logger.setContext(OverlayProcessorService.name);
     this.dataDir = configDataDir;
   }
 
   // ── Date helpers ──────────────────────────────────────────────────────────
-
-  /**
-   * Null when the window cannot name a day. `DELETE_AFTER_MAX_DAYS` bounds it
-   * where it is entered, but the rule-group body is not schema-validated, so
-   * this stays the invariant: an Invalid Date is truthy and would be drawn as
-   * "Leaving Invalid Date" (#3549).
-   */
-  private getDeleteDate(
-    addDate: string | Date,
-    deleteAfterDays: number | null,
-  ): Date | null {
-    if (deleteAfterDays == null) return null;
-    const d = new Date(addDate);
-    d.setDate(d.getDate() + deleteAfterDays);
-    return Number.isNaN(d.getTime()) ? null : d;
-  }
 
   private getDaysLeft(deleteDate: Date): number {
     const now = new Date();
@@ -144,7 +134,7 @@ export class OverlayProcessorService {
     const mode = overlayModeForType(collection.type);
     const targets: OverlayTarget[] = [];
     for (const media of collection.collectionMedia) {
-      const deleteDate = this.getDeleteDate(
+      const deleteDate = getCollectionDeleteDate(
         media.addDate,
         collection.deleteAfterDays,
       );
@@ -490,10 +480,69 @@ export class OverlayProcessorService {
     return 'restored';
   }
 
+  /**
+   * A revert restores originals and deletes the backups a run is reading, so
+   * the two must not interleave, the same reason a reset takes the lock. It
+   * cannot skip like a run does, though: the caller deletes the collection
+   * next and the state rows cascade with it, so a revert that never happens
+   * leaves an overlay that nothing can take off afterwards - neither a later
+   * run nor a reset, since both work from those rows (#3558).
+   *
+   * So it queues instead, on the same lock the runs take. The ids and the name
+   * are read here, before the rows go, and the revert works from those.
+   */
   async revertCollection(collectionId: number): Promise<number> {
     const states = await this.stateService.getCollectionStates(collectionId);
-    await this.revertMultipleItems(collectionId, states);
+    const collectionName = (
+      await this.collectionRepo.findOne({ where: { id: collectionId } })
+    )?.title;
+
+    const release = this.executionLock.tryAcquire(OVERLAY_EXECUTION_LOCK_KEY);
+    if (!release) {
+      // Queued rather than awaited: the caller is a collection delete, which
+      // should not hang for the length of a run.
+      this.logger.log(
+        `Overlay processor is busy; reverting ${states.length} overlay(s) when it frees up`,
+      );
+      void this.revertWhenFree(collectionId, states, collectionName);
+      return states.length;
+    }
+
+    await this.revertHolding(release, collectionId, states, collectionName);
     return states.length;
+  }
+
+  private async revertWhenFree(
+    collectionId: number,
+    states: { mediaServerId: string }[],
+    collectionName?: string,
+  ): Promise<void> {
+    const release = await this.executionLock.acquire(
+      OVERLAY_EXECUTION_LOCK_KEY,
+    );
+    try {
+      await this.revertHolding(release, collectionId, states, collectionName);
+    } catch (error) {
+      this.logger.warn(
+        `Failed to revert the overlays of "${collectionName ?? collectionId}"`,
+      );
+      this.logger.debug(error);
+    }
+  }
+
+  private async revertHolding(
+    release: () => void,
+    collectionId: number,
+    states: { mediaServerId: string }[],
+    collectionName?: string,
+  ): Promise<void> {
+    this.status = 'running';
+    try {
+      await this.revertMultipleItems(collectionId, states, collectionName);
+    } finally {
+      this.status = 'idle';
+      release();
+    }
   }
 
   /**
@@ -704,7 +753,8 @@ export class OverlayProcessorService {
     collection: Collection & { collectionMedia: CollectionMedia[] },
     force = false,
   ): Promise<ProcessorRunResult> {
-    if (this.status === 'running') {
+    const release = this.executionLock.tryAcquire(OVERLAY_EXECUTION_LOCK_KEY);
+    if (!release) {
       this.logger.warn('Overlay processor is already running, skipping');
       return this.createEmptyResult();
     }
@@ -715,13 +765,15 @@ export class OverlayProcessorService {
       return await this.processCollectionInternal(collection, { force });
     } finally {
       this.status = 'idle';
+      release();
     }
   }
 
   // ── Process all enabled collections ───────────────────────────────────────
 
   async processAllCollections(force = false): Promise<ProcessorRunResult> {
-    if (this.status === 'running') {
+    const release = this.executionLock.tryAcquire(OVERLAY_EXECUTION_LOCK_KEY);
+    if (!release) {
       this.logger.warn('Overlay processor is already running, skipping');
       return this.createEmptyResult();
     }
@@ -869,6 +921,7 @@ export class OverlayProcessorService {
       finalStatus = 'error';
     } finally {
       this.status = finalStatus;
+      release();
       this.lastRun = new Date();
       this.lastResult = totalResult;
     }
@@ -879,12 +932,13 @@ export class OverlayProcessorService {
   // ── Reset all overlays ────────────────────────────────────────────────────
 
   /**
-   * Takes the same running flag as a run: a reset restores originals and drops
+   * Takes the same lock as a run: a reset restores originals and drops
    * the backups a concurrent run would be reading, so the two must never
    * interleave. The controller's own check cannot guarantee that on its own.
    */
   async resetAllOverlays(): Promise<void> {
-    if (this.status === 'running') {
+    const release = this.executionLock.tryAcquire(OVERLAY_EXECUTION_LOCK_KEY);
+    if (!release) {
       this.logger.warn('Overlay processor is already running, skipping reset');
       return;
     }
@@ -953,6 +1007,7 @@ export class OverlayProcessorService {
       this.logger.log('Overlay reset complete');
     } finally {
       this.status = 'idle';
+      release();
       this.lastRun = new Date();
       this.lastResult = summary;
     }
