@@ -28,3 +28,20 @@ export const POSTPONE_MAX_DAYS = 3650
 // artwork as "Leaving Invalid Date" (#3549). A century is far beyond any
 // retention policy, and everything under it is a valid date.
 export const DELETE_AFTER_MAX_DAYS = 36500
+
+/**
+ * The day a collection acts on an item, or null when that day does not exist.
+ * A window saved before DELETE_AFTER_MAX_DAYS bounded it puts addDate + days
+ * outside Date range, and an Invalid Date is truthy, so callers that do this
+ * arithmetic themselves render NaN instead of nothing (#3549, #3558). Shared so
+ * the server and the UI cannot drift on it.
+ */
+export const getCollectionDeleteDate = (
+  addDate: string | Date,
+  deleteAfterDays: number | null | undefined,
+): Date | null => {
+  if (deleteAfterDays == null) return null
+  const deleteDate = new Date(addDate)
+  deleteDate.setDate(deleteDate.getDate() + deleteAfterDays)
+  return Number.isNaN(deleteDate.getTime()) ? null : deleteDate
+}

@@ -2,6 +2,10 @@ import { Injectable } from '@nestjs/common';
 
 export const RULES_COLLECTIONS_EXECUTION_LOCK_KEY = 'rules-collections-lock';
 
+// Overlay runs, resets and reverts all read and write the same posters and
+// backups, so they take turns on this one.
+export const OVERLAY_EXECUTION_LOCK_KEY = 'overlay-lock';
+
 /*
  * A lightweight async lock for coordinating exclusive execution between tasks.
  * Acquiring returns a release function that must be called in a finally block.

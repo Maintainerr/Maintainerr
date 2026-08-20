@@ -64,6 +64,7 @@ import {
   isForeignServerId,
 } from '../media-server-id.utils';
 import { resolveContextActionIds } from '../context-action.util';
+import { onlyRequestedItemKinds } from '../item-kinds.util';
 import { supportsFeature } from '../media-server.constants';
 import type {
   IMediaServerService,
@@ -796,6 +797,9 @@ export class JellyfinAdapterService implements IMediaServerService {
 
     try {
       const userId = await this.getUserId();
+      const includeItemTypes = JellyfinMapper.toBaseItemKinds(
+        options?.type ? [options.type] : undefined,
+      );
       const response = await this.retryLibraryRequestOnce(
         `get Jellyfin library contents for ${libraryId}`,
         async () =>
@@ -808,9 +812,7 @@ export class JellyfinAdapterService implements IMediaServerService {
             limit: options?.limit || JELLYFIN_BATCH_SIZE.DEFAULT_PAGE_SIZE,
             // Keep library listings lean. Full metadata is fetched lazily via /meta/:id.
             fields: [...JELLYFIN_LIBRARY_LIST_FIELDS],
-            includeItemTypes: options?.type
-              ? JellyfinMapper.toBaseItemKinds([options.type])
-              : [BaseItemKind.Movie, BaseItemKind.Series],
+            includeItemTypes,
             enableUserData: true,
             sortBy: [toJellyfinSortBy(options?.sort)],
             sortOrder: [
@@ -821,7 +823,10 @@ export class JellyfinAdapterService implements IMediaServerService {
           }),
       );
 
-      const items = (response.data.Items || []).map(JellyfinMapper.toMediaItem);
+      const items = onlyRequestedItemKinds(
+        response.data.Items,
+        includeItemTypes,
+      ).map(JellyfinMapper.toMediaItem);
 
       return {
         items,
@@ -852,9 +857,9 @@ export class JellyfinAdapterService implements IMediaServerService {
         parentId: libraryId,
         recursive: true,
         limit: 0,
-        includeItemTypes: type
-          ? JellyfinMapper.toBaseItemKinds([type])
-          : [BaseItemKind.Movie, BaseItemKind.Series],
+        includeItemTypes: JellyfinMapper.toBaseItemKinds(
+          type ? [type] : undefined,
+        ),
       });
 
       return response.data.TotalRecordCount || 0;
@@ -875,6 +880,9 @@ export class JellyfinAdapterService implements IMediaServerService {
 
     try {
       const userId = await this.getUserId();
+      const includeItemTypes = JellyfinMapper.toBaseItemKinds(
+        type ? [type] : undefined,
+      );
       const response = await getItemsApi(this.api).getItems({
         ...JELLYFIN_LIBRARY_QUERY_DEFAULTS,
         userId,
@@ -887,13 +895,13 @@ export class JellyfinAdapterService implements IMediaServerService {
           ItemFields.DateCreated,
           ItemFields.MediaSources,
         ],
-        includeItemTypes: type
-          ? JellyfinMapper.toBaseItemKinds([type])
-          : [BaseItemKind.Movie, BaseItemKind.Series],
+        includeItemTypes,
         enableUserData: true,
       });
 
-      return (response.data.Items || []).map(JellyfinMapper.toMediaItem);
+      return onlyRequestedItemKinds(response.data.Items, includeItemTypes).map(
+        JellyfinMapper.toMediaItem,
+      );
     } catch (error) {
       this.logLibraryError(libraryId, 'search library', error);
       return [];
@@ -1145,6 +1153,9 @@ export class JellyfinAdapterService implements IMediaServerService {
 
     try {
       const userId = await this.getUserId();
+      const includeItemTypes = JellyfinMapper.toBaseItemKinds(
+        options?.type ? [options.type] : undefined,
+      );
       const response = await getItemsApi(this.api).getItems({
         ...JELLYFIN_LIBRARY_QUERY_DEFAULTS,
         userId,
@@ -1153,9 +1164,7 @@ export class JellyfinAdapterService implements IMediaServerService {
         sortBy: [ItemSortBy.DateCreated],
         sortOrder: [SortOrder.Descending],
         limit: options?.limit || 50,
-        includeItemTypes: options?.type
-          ? JellyfinMapper.toBaseItemKinds([options.type])
-          : [BaseItemKind.Movie, BaseItemKind.Series],
+        includeItemTypes,
         fields: [
           ItemFields.ProviderIds,
           ItemFields.Path,
@@ -1164,7 +1173,9 @@ export class JellyfinAdapterService implements IMediaServerService {
         enableUserData: true,
       });
 
-      return (response.data.Items || []).map(JellyfinMapper.toMediaItem);
+      return onlyRequestedItemKinds(response.data.Items, includeItemTypes).map(
+        JellyfinMapper.toMediaItem,
+      );
     } catch (error) {
       this.logLibraryError(libraryId, 'get recently added', error);
       return [];
@@ -1176,6 +1187,11 @@ export class JellyfinAdapterService implements IMediaServerService {
 
     try {
       const userId = await this.getUserId();
+      const includeItemTypes = [
+        BaseItemKind.Movie,
+        BaseItemKind.Series,
+        BaseItemKind.Episode,
+      ];
       const response = await getItemsApi(this.api).getItems({
         ...JELLYFIN_LIBRARY_QUERY_DEFAULTS,
         userId,
@@ -1188,16 +1204,14 @@ export class JellyfinAdapterService implements IMediaServerService {
           ItemFields.MediaSources,
           ItemFields.Studios,
         ],
-        includeItemTypes: [
-          BaseItemKind.Movie,
-          BaseItemKind.Series,
-          BaseItemKind.Episode,
-        ],
+        includeItemTypes,
         limit: 50,
         enableUserData: true,
       });
 
-      return (response.data.Items || []).map(JellyfinMapper.toMediaItem);
+      return onlyRequestedItemKinds(response.data.Items, includeItemTypes).map(
+        JellyfinMapper.toMediaItem,
+      );
     } catch (error) {
       this.logger.error('Failed to search Jellyfin content');
       this.logger.debug(error);

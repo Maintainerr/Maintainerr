@@ -24,6 +24,7 @@ import { SettingsDataService } from '../../../settings/settings-data.service';
 import { EmbyApi } from '../../emby-api/emby-api.helper';
 import cacheManager, { type Cache } from '../../lib/cache';
 import { resolveContextActionIds } from '../context-action.util';
+import { onlyRequestedItemKinds } from '../item-kinds.util';
 import { supportsFeature } from '../media-server.constants';
 import type {
   IMediaServerService,
@@ -348,13 +349,14 @@ export class EmbyAdapterService implements IMediaServerService {
     const offset = options?.offset ?? 0;
 
     try {
+      const includeItemTypes = options?.type
+        ? EmbyMapper.toEmbyItemKind(options.type)
+        : 'Movie,Series';
       const { data } = await this.http.get<EmbyItemsQueryResponse>('/Items', {
         params: {
           ParentId: libraryId,
           Recursive: true,
-          IncludeItemTypes: options?.type
-            ? EmbyMapper.toEmbyItemKind(options.type)
-            : 'Movie,Series',
+          IncludeItemTypes: includeItemTypes,
           Fields: 'ProviderIds,DateCreated,Overview,Tags',
           SortBy: this.toEmbySortBy(options?.sort),
           SortOrder: options?.sortOrder === 'desc' ? 'Descending' : 'Ascending',
@@ -364,7 +366,9 @@ export class EmbyAdapterService implements IMediaServerService {
         },
       });
       return {
-        items: (data.Items ?? []).map(EmbyMapper.toMediaItem),
+        items: onlyRequestedItemKinds(data.Items, includeItemTypes).map(
+          EmbyMapper.toMediaItem,
+        ),
         totalSize: data.TotalRecordCount ?? data.Items?.length ?? 0,
         offset,
         limit,
@@ -395,6 +399,7 @@ export class EmbyAdapterService implements IMediaServerService {
             : 'Movie,Series',
           Limit: 0,
           EnableTotalRecordCount: true,
+          ...this.libraryQueryDefaults(),
         },
       });
       return data.TotalRecordCount ?? 0;
@@ -415,19 +420,23 @@ export class EmbyAdapterService implements IMediaServerService {
   ): Promise<MediaItem[]> {
     if (!this.http) return [];
     try {
+      const includeItemTypes = type
+        ? EmbyMapper.toEmbyItemKind(type)
+        : 'Movie,Series';
       const { data } = await this.http.get<EmbyItemsQueryResponse>('/Items', {
         params: {
           ParentId: libraryId,
           Recursive: true,
           SearchTerm: query,
-          IncludeItemTypes: type
-            ? EmbyMapper.toEmbyItemKind(type)
-            : 'Movie,Series',
+          IncludeItemTypes: includeItemTypes,
           Fields: 'ProviderIds,DateCreated,Overview',
           Limit: EMBY_BATCH_SIZE.DEFAULT_PAGE_SIZE,
+          ...this.libraryQueryDefaults(),
         },
       });
-      return (data.Items ?? []).map(EmbyMapper.toMediaItem);
+      return onlyRequestedItemKinds(data.Items, includeItemTypes).map(
+        EmbyMapper.toMediaItem,
+      );
     } catch (error) {
       this.logger.debug(
         `Emby searchLibraryContents failed: ${formatConnectionFailureMessage(error, 'Connection failed')}`,
@@ -747,20 +756,31 @@ export class EmbyAdapterService implements IMediaServerService {
       return [];
     }
     try {
+      const includeItemTypes = options?.type
+        ? EmbyMapper.toEmbyItemKind(options.type)
+        : 'Movie,Episode';
+      // Latest groups episodes under their series, so an Episode request comes
+      // back as Series rows (Emby 4.9.5). Allow the grouped kind through: the
+      // filter is here to drop BoxSets, not to unpick grouping.
+      const returnedItemTypes = includeItemTypes.includes('Episode')
+        ? `${includeItemTypes},Series`
+        : includeItemTypes;
       const { data } = await this.http.get<EmbyBaseItemDto[]>(
         `/Users/${this.embyUserId}/Items/Latest`,
         {
           params: {
             ParentId: libraryId,
-            IncludeItemTypes: options?.type
-              ? EmbyMapper.toEmbyItemKind(options.type)
-              : 'Movie,Episode',
+            IncludeItemTypes: includeItemTypes,
             Fields: 'ProviderIds,DateCreated,Overview',
             Limit: options?.limit ?? 20,
+            ...this.libraryQueryDefaults(),
           },
         },
       );
-      return (Array.isArray(data) ? data : []).map(EmbyMapper.toMediaItem);
+      return onlyRequestedItemKinds(
+        Array.isArray(data) ? data : [],
+        returnedItemTypes,
+      ).map(EmbyMapper.toMediaItem);
     } catch (error) {
       this.logger.debug(
         `Emby getRecentlyAdded(${libraryId}) failed: ${formatConnectionFailureMessage(error, 'Connection failed')}`,
@@ -772,16 +792,20 @@ export class EmbyAdapterService implements IMediaServerService {
   async searchContent(query: string): Promise<MediaItem[]> {
     if (!this.http) return [];
     try {
+      const includeItemTypes = 'Movie,Series,Episode';
       const { data } = await this.http.get<EmbyItemsQueryResponse>('/Items', {
         params: {
           Recursive: true,
           SearchTerm: query,
-          IncludeItemTypes: 'Movie,Series,Episode',
+          IncludeItemTypes: includeItemTypes,
           Fields: 'ProviderIds,DateCreated,Overview,Studios',
           Limit: EMBY_BATCH_SIZE.DEFAULT_PAGE_SIZE,
+          ...this.libraryQueryDefaults(),
         },
       });
-      return (data.Items ?? []).map(EmbyMapper.toMediaItem);
+      return onlyRequestedItemKinds(data.Items, includeItemTypes).map(
+        EmbyMapper.toMediaItem,
+      );
     } catch (error) {
       this.logger.debug(
         `Emby searchContent failed: ${formatConnectionFailureMessage(error, 'Connection failed')}`,
@@ -816,6 +840,7 @@ export class EmbyAdapterService implements IMediaServerService {
           ExcludeLocationTypes: 'Virtual',
           Fields: 'ProviderIds,DateCreated,Overview',
           ImageTypeLimit: 1,
+          ...this.libraryQueryDefaults(),
         },
       });
       return data.Items?.[0] ?? null;
@@ -1835,6 +1860,12 @@ export class EmbyAdapterService implements IMediaServerService {
     }
   }
 
+  /**
+   * Spread into every library-scoped query that surfaces real media items.
+   * Without it, a library that groups films into collections answers with the
+   * BoxSet instead of its members (#2554), and reportedly alongside them
+   * (#3550). Mirrors JELLYFIN_LIBRARY_QUERY_DEFAULTS.
+   */
   private libraryQueryDefaults(): Record<string, unknown> {
     return { CollapseBoxSetItems: false };
   }

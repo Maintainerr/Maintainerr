@@ -11,6 +11,10 @@ import {
   createCollectionMedia,
   createMockLogger,
 } from '../../../test/utils/data';
+import {
+  ExecutionLockService,
+  OVERLAY_EXECUTION_LOCK_KEY,
+} from '../tasks/execution-lock.service';
 import { OverlayProcessorService } from './overlay-processor.service';
 
 const makeTemplate = (
@@ -114,6 +118,7 @@ describe('OverlayProcessorService', () => {
       templateService as any,
       { emit: jest.fn() } as any,
       createMockLogger(),
+      new ExecutionLockService(),
     );
 
     const collection = createCollection({
@@ -169,6 +174,7 @@ describe('OverlayProcessorService', () => {
       templateService as any,
       { emit: jest.fn() } as any,
       createMockLogger(),
+      new ExecutionLockService(),
     );
 
     // Out of Date's range: the sum used to be an Invalid Date, which is truthy,
@@ -225,6 +231,7 @@ describe('OverlayProcessorService', () => {
       templateService as any,
       { emit: jest.fn() } as any,
       createMockLogger(),
+      new ExecutionLockService(),
     );
 
     const collection = createCollection({
@@ -283,6 +290,7 @@ describe('OverlayProcessorService', () => {
       templateService as any,
       { emit: jest.fn() } as any,
       createMockLogger(),
+      new ExecutionLockService(),
     );
 
     const collection = createCollection({
@@ -337,6 +345,7 @@ describe('OverlayProcessorService', () => {
       templateService as any,
       { emit: jest.fn() } as any,
       createMockLogger(),
+      new ExecutionLockService(),
     );
 
     const collection = createCollection({
@@ -397,6 +406,7 @@ describe('OverlayProcessorService', () => {
       templateService as any,
       { emit: jest.fn() } as any,
       createMockLogger(),
+      new ExecutionLockService(),
     );
 
     const collection = createCollection({
@@ -481,6 +491,7 @@ describe('OverlayProcessorService', () => {
       templateService as any,
       eventEmitter as any,
       createMockLogger(),
+      new ExecutionLockService(),
     );
 
     jest.spyOn(service, 'applyTemplateOverlay').mockResolvedValue(true);
@@ -537,6 +548,7 @@ describe('OverlayProcessorService', () => {
       templateService as any,
       eventEmitter as any,
       createMockLogger(),
+      new ExecutionLockService(),
     );
 
     jest.spyOn(service, 'applyTemplateOverlay').mockResolvedValue(true);
@@ -603,6 +615,7 @@ describe('OverlayProcessorService', () => {
       templateService as any,
       eventEmitter as any,
       createMockLogger(),
+      new ExecutionLockService(),
     );
 
     jest.spyOn(service, 'applyTemplateOverlay').mockResolvedValue(true);
@@ -685,6 +698,7 @@ describe('OverlayProcessorService', () => {
       templateService as any,
       eventEmitter as any,
       createMockLogger(),
+      new ExecutionLockService(),
     );
 
     jest.spyOn(service, 'applyTemplateOverlay').mockResolvedValue(true);
@@ -718,6 +732,7 @@ describe('OverlayProcessorService', () => {
       {} as any,
       eventEmitter as any,
       createMockLogger(),
+      new ExecutionLockService(),
     );
 
     const result = await service.processAllCollections();
@@ -753,6 +768,7 @@ describe('OverlayProcessorService', () => {
       {} as any,
       eventEmitter as any,
       createMockLogger(),
+      new ExecutionLockService(),
     );
 
     const result = await service.processAllCollections();
@@ -800,6 +816,7 @@ describe('OverlayProcessorService', () => {
       {} as any,
       eventEmitter as any,
       createMockLogger(),
+      new ExecutionLockService(),
     );
 
     jest
@@ -852,6 +869,7 @@ describe('OverlayProcessorService', () => {
       {} as any,
       eventEmitter as any,
       createMockLogger(),
+      new ExecutionLockService(),
     );
 
     jest
@@ -908,6 +926,7 @@ describe('OverlayProcessorService', () => {
       {} as any,
       { emit: jest.fn() } as any,
       createMockLogger(),
+      new ExecutionLockService(),
     );
 
     jest.spyOn(service as any, 'loadOriginalPoster').mockReturnValue(null);
@@ -953,6 +972,7 @@ describe('OverlayProcessorService', () => {
       {} as any,
       { emit: jest.fn() } as any,
       createMockLogger(),
+      new ExecutionLockService(),
     );
 
     // media-2 was uploaded but its state write failed: without this, nothing
@@ -983,6 +1003,7 @@ describe('OverlayProcessorService', () => {
   it('leaves a run alone when reset is asked for while one is in progress', async () => {
     const stateService = { getAllStates: jest.fn() };
     const provider = makeProvider();
+    const executionLock = new ExecutionLockService();
 
     const service = new OverlayProcessorService(
       makeProviderFactory(provider) as any,
@@ -995,14 +1016,18 @@ describe('OverlayProcessorService', () => {
       {} as any,
       { emit: jest.fn() } as any,
       createMockLogger(),
+      executionLock,
     );
 
+    // The lock is what a run holds, so that is what reset has to find taken.
+    const runHolds = executionLock.tryAcquire(OVERLAY_EXECUTION_LOCK_KEY)!;
     service.status = 'running';
 
     await service.resetAllOverlays();
 
     expect(stateService.getAllStates).not.toHaveBeenCalled();
     expect(service.status).toBe('running');
+    runHolds();
   });
 
   it('keeps overlay state on reset when individual uploads fail so retries are possible', async () => {
@@ -1030,6 +1055,7 @@ describe('OverlayProcessorService', () => {
       {} as any,
       eventEmitter as any,
       createMockLogger(),
+      new ExecutionLockService(),
     );
 
     jest
@@ -1077,6 +1103,7 @@ describe('OverlayProcessorService', () => {
       {} as any,
       eventEmitter as any,
       createMockLogger(),
+      new ExecutionLockService(),
     );
 
     jest
@@ -1097,6 +1124,90 @@ describe('OverlayProcessorService', () => {
         collectionName: 'All Collections',
       }),
     );
+  });
+
+  // The caller deletes the collection next and the state rows cascade with it,
+  // so a revert that is skipped leaves overlays nothing can take off (#3558).
+  it('queues a revert behind the work in flight, and keeps the name', async () => {
+    const stateService = {
+      getCollectionStates: jest
+        .fn()
+        .mockResolvedValue([{ mediaServerId: 'media-1' }]),
+      removeState: jest.fn().mockResolvedValue(undefined),
+    };
+    const collectionRepos = makeCollectionRepos([
+      { id: 7, type: 'movie', title: 'Target collection' },
+    ]);
+    const executionLock = new ExecutionLockService();
+    const service = new OverlayProcessorService(
+      makeProviderFactory(makeProvider()) as any,
+      makeMediaServerFactory() as any,
+      collectionRepos.collectionRepo as any,
+      collectionRepos.collectionMediaRepo as any,
+      {} as any,
+      stateService as any,
+      {} as any,
+      {} as any,
+      { emit: jest.fn() } as any,
+      createMockLogger(),
+      executionLock,
+    );
+    const revert = jest
+      .spyOn(service as any, 'revertMultipleItems')
+      .mockResolvedValue(undefined);
+
+    const runHolds = executionLock.tryAcquire(OVERLAY_EXECUTION_LOCK_KEY)!;
+    const count = await service.revertCollection(7);
+
+    expect(count).toBe(1);
+    expect(revert).not.toHaveBeenCalled();
+
+    runHolds();
+    await new Promise((resolve) => setImmediate(resolve));
+
+    expect(revert).toHaveBeenCalledWith(
+      7,
+      [{ mediaServerId: 'media-1' }],
+      'Target collection',
+    );
+  });
+
+  it('holds the lock while reverting, and gives it back', async () => {
+    const stateService = {
+      getCollectionStates: jest
+        .fn()
+        .mockResolvedValue([{ mediaServerId: 'media-1' }]),
+      removeState: jest.fn().mockResolvedValue(undefined),
+    };
+    const collectionRepos = makeCollectionRepos([
+      { id: 7, type: 'movie', title: 'Target collection' },
+    ]);
+    const executionLock = new ExecutionLockService();
+    const service = new OverlayProcessorService(
+      makeProviderFactory(makeProvider()) as any,
+      makeMediaServerFactory() as any,
+      collectionRepos.collectionRepo as any,
+      collectionRepos.collectionMediaRepo as any,
+      {} as any,
+      stateService as any,
+      {} as any,
+      {} as any,
+      { emit: jest.fn() } as any,
+      createMockLogger(),
+      executionLock,
+    );
+    let lockedDuringRevert: boolean | undefined;
+    jest
+      .spyOn(service as any, 'revertMultipleItems')
+      .mockImplementation(async () => {
+        lockedDuringRevert =
+          executionLock.tryAcquire(OVERLAY_EXECUTION_LOCK_KEY) === null;
+      });
+
+    await service.revertCollection(7);
+
+    expect(lockedDuringRevert).toBe(true);
+    expect(executionLock.tryAcquire(OVERLAY_EXECUTION_LOCK_KEY)).not.toBeNull();
   });
 
   it('emits one aggregated overlay reverted notification for revertCollection', async () => {
@@ -1127,6 +1238,7 @@ describe('OverlayProcessorService', () => {
       {} as any,
       eventEmitter as any,
       createMockLogger(),
+      new ExecutionLockService(),
     );
 
     jest
@@ -1182,6 +1294,7 @@ describe('OverlayProcessorService', () => {
       {} as any,
       eventEmitter as any,
       createMockLogger(),
+      new ExecutionLockService(),
     );
 
     jest
@@ -1227,6 +1340,7 @@ describe('OverlayProcessorService', () => {
       {} as any,
       eventEmitter as any,
       createMockLogger(),
+      new ExecutionLockService(),
     );
 
     jest
@@ -1281,6 +1395,7 @@ describe('OverlayProcessorService', () => {
       {} as any,
       eventEmitter as any,
       createMockLogger(),
+      new ExecutionLockService(),
     );
 
     jest
@@ -1337,6 +1452,7 @@ describe('OverlayProcessorService', () => {
       {} as any,
       eventEmitter as any,
       createMockLogger(),
+      new ExecutionLockService(),
     );
 
     jest
@@ -1386,6 +1502,7 @@ describe('OverlayProcessorService', () => {
       {} as any,
       eventEmitter as any,
       createMockLogger(),
+      new ExecutionLockService(),
     );
 
     jest.spyOn(service as any, 'loadOriginalPoster').mockReturnValue(null);
@@ -1423,6 +1540,7 @@ describe('OverlayProcessorService', () => {
       {} as any,
       eventEmitter as any,
       createMockLogger(),
+      new ExecutionLockService(),
     );
 
     jest
@@ -1481,6 +1599,7 @@ describe('OverlayProcessorService', () => {
       {} as any,
       eventEmitter as any,
       createMockLogger(),
+      new ExecutionLockService(),
     );
 
     jest
@@ -1524,6 +1643,7 @@ describe('OverlayProcessorService', () => {
       {} as any,
       eventEmitter as any,
       createMockLogger(),
+      new ExecutionLockService(),
     );
 
     // No original poster stored → revertItemInternal reports no restore
@@ -1601,6 +1721,7 @@ describe('OverlayProcessorService', () => {
         templateService as any,
         { emit: jest.fn() } as any,
         createMockLogger(),
+        new ExecutionLockService(),
       );
       const applySpy = jest
         .spyOn(service, 'applyTemplateOverlay')

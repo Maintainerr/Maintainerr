@@ -7,6 +7,7 @@ import {
   compareMediaItemsBySort,
   type CompareMediaItemsOptions,
   ECollectionLogType,
+  getCollectionDeleteDate,
   isMediaType,
   MaintainerrEvent,
   MediaCollection,
@@ -275,13 +276,10 @@ export class CollectionsService {
 
     // Surface the resulting deadline (addDate + deleteAfterDays) so the caller
     // can confirm it. Null when the collection has no deletion window.
-    let deletionDate: Date | null = null;
-    if (collection.deleteAfterDays != null) {
-      deletionDate = new Date(newAddDate);
-      deletionDate.setDate(
-        deletionDate.getDate() + +collection.deleteAfterDays,
-      );
-    }
+    const deletionDate = getCollectionDeleteDate(
+      newAddDate,
+      collection.deleteAfterDays,
+    );
 
     return {
       collectionId,

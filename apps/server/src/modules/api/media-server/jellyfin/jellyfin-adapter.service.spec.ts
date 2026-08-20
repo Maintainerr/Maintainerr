@@ -719,6 +719,53 @@ describe('JellyfinAdapterService', () => {
     });
   });
 
+  // #3550: a library grouping films into collections answered a Movie-typed
+  // listing with BoxSet rows, which the mapper turns into a movie with no
+  // external IDs.
+  describe('listings drop kinds the query did not ask for', () => {
+    beforeEach(async () => {
+      settingsDataService.getSettings.mockResolvedValue({
+        ...mockSettings,
+        jellyfin_user_id: 'user-1',
+      } as unknown as Awaited<ReturnType<SettingsDataService['getSettings']>>);
+      await service.initialize();
+      jellyfinApiMocks.getItems.mockResolvedValue({
+        data: {
+          Items: [
+            { Id: 'movie-1', Type: 'Movie' },
+            { Id: 'boxset-1', Type: 'BoxSet' },
+          ],
+          TotalRecordCount: 2,
+        },
+      });
+    });
+
+    it.each([
+      [
+        'getLibraryContents',
+        async () =>
+          (
+            await service.getLibraryContents('library-1', {
+              offset: 0,
+              limit: 30,
+              type: 'movie' as const,
+            })
+          ).items,
+      ],
+      [
+        'searchLibraryContents',
+        () => service.searchLibraryContents('library-1', 'query', 'movie'),
+      ],
+      [
+        'getRecentlyAdded',
+        () => service.getRecentlyAdded('library-1', { limit: 10 }),
+      ],
+      ['searchContent', () => service.searchContent('query')],
+    ])('%s drops the BoxSet row', async (_method, read) => {
+      expect((await read()).map((item) => item.id)).toEqual(['movie-1']);
+    });
+  });
+
   describe('getLibraries', () => {
     beforeEach(async () => {
       settingsDataService.getSettings.mockResolvedValue(
