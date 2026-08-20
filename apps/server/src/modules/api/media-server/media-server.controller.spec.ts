@@ -300,6 +300,45 @@ describe('MediaServerController', () => {
       ]);
     });
 
+    it('keeps walking when a whole page was dropped rows', async () => {
+      const bravo = {
+        id: '3',
+        title: 'Bravo',
+        guid: 'guid-3',
+        type: 'show',
+        addedAt: new Date(),
+        providerIds: {},
+        mediaSources: [],
+        library: { id: 'lib1', title: 'Shows' },
+      } satisfies MediaItem;
+
+      mockMediaServerService.getLibraryContents
+        .mockResolvedValueOnce({
+          items: [],
+          totalSize: 600,
+          offset: 0,
+          limit: 250,
+        })
+        .mockResolvedValueOnce({
+          items: [bravo],
+          totalSize: 600,
+          offset: 250,
+          limit: 250,
+        });
+      mediaItemEnrichmentService.enrichItems.mockResolvedValueOnce([bravo]);
+
+      await controller.getLibraryContent('lib1', 1, 10, 'show', 'excluded');
+
+      expect(mockMediaServerService.getLibraryContents).toHaveBeenNthCalledWith(
+        2,
+        'lib1',
+        expect.objectContaining({ offset: 250 }),
+      );
+      expect(mediaItemEnrichmentService.enrichItems).toHaveBeenCalledWith([
+        bravo,
+      ]);
+    });
+
     it('should warn when status sorting requires a large pre-pagination fetch', async () => {
       const alpha = {
         id: '1',

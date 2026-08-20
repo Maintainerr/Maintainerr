@@ -192,7 +192,15 @@ export class MediaServerController {
       }
 
       if (!result.items.length) {
-        break;
+        // A grouped library can answer a whole window with rows of a kind the
+        // query did not ask for, which the adapter drops (#3550), so an empty
+        // page mid-library is not the end of it. Skip that window and keep
+        // walking; only a page at or past the end stops the loop.
+        if (nextOffset + maintainerrServerSortBatchSize >= totalSize) {
+          break;
+        }
+        nextOffset += maintainerrServerSortBatchSize;
+        continue;
       }
 
       // Adapters drop rows of a kind the query did not ask for (#3550), so a
