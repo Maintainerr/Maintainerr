@@ -796,6 +796,101 @@ describe('EmbyAdapterService', () => {
     });
   });
 
+  // #3550: a library grouping films into collections answered a Movie-typed
+  // listing with BoxSet rows, which the mapper turns into a movie with no
+  // external IDs.
+  describe('listings drop kinds the query did not ask for', () => {
+    beforeEach(() => {
+      http.get.mockResolvedValue({
+        data: {
+          Items: [
+            { Id: 'movie-1', Type: 'Movie' },
+            { Id: 'boxset-1', Type: 'BoxSet' },
+          ],
+          TotalRecordCount: 2,
+        },
+      });
+    });
+
+    it.each([
+      [
+        'getLibraryContents',
+        async () =>
+          (
+            await service.getLibraryContents('library-1', {
+              offset: 0,
+              limit: 30,
+              type: 'movie' as const,
+            })
+          ).items,
+      ],
+      [
+        'searchLibraryContents',
+        () => service.searchLibraryContents('library-1', 'query', 'movie'),
+      ],
+      ['searchContent', () => service.searchContent('query')],
+    ])('%s drops the BoxSet row', async (_method, read) => {
+      expect((await read()).map((item) => item.id)).toEqual(['movie-1']);
+    });
+
+    // /Users/{id}/Items/Latest groups episodes under their series, so an
+    // Episode request answers with Series rows (Emby 4.9.5). Filtering to the
+    // requested kinds alone would empty recently-added TV.
+    it('getRecentlyAdded keeps grouped Series rows', async () => {
+      http.get.mockResolvedValue({
+        data: [
+          { Id: 'series-1', Type: 'Series' },
+          { Id: 'boxset-1', Type: 'BoxSet' },
+        ],
+      });
+
+      const items = await service.getRecentlyAdded('library-1', { limit: 10 });
+
+      expect(items.map((item) => item.id)).toEqual(['series-1']);
+    });
+  });
+
+  // Every library-scoped Emby query opts out of BoxSet collapsing, as
+  // JELLYFIN_LIBRARY_QUERY_DEFAULTS does on the Jellyfin side (#2554, #3550).
+  describe('library queries opt out of BoxSet collapsing', () => {
+    beforeEach(() => {
+      http.get.mockResolvedValue({ data: { Items: [], TotalRecordCount: 0 } });
+    });
+
+    it.each([
+      [
+        'getLibraryContents',
+        () => service.getLibraryContents('library-1', { offset: 0, limit: 30 }),
+      ],
+      [
+        'getLibraryContentCount',
+        () => service.getLibraryContentCount('library-1', 'movie'),
+      ],
+      [
+        'searchLibraryContents',
+        () => service.searchLibraryContents('library-1', 'query', 'movie'),
+      ],
+      ['searchContent', () => service.searchContent('query')],
+      [
+        'findRandomItem',
+        () => service.findRandomItem(['library-1'], ['Movie']),
+      ],
+      [
+        'getRecentlyAdded',
+        () => {
+          http.get.mockResolvedValue({ data: [] });
+          return service.getRecentlyAdded('library-1', { limit: 10 });
+        },
+      ],
+    ])('%s opts out', async (_method, read) => {
+      await read();
+
+      expect(http.get.mock.calls.at(-1)?.[1]?.params).toEqual(
+        expect.objectContaining({ CollapseBoxSetItems: false }),
+      );
+    });
+  });
+
   describe('getLibraryContents', () => {
     it('uses Emby native studio sorting', async () => {
       http.get

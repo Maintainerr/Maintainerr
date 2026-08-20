@@ -105,6 +105,10 @@ export interface IMediaServerService {
    * An empty page means the server confirmed there are no (more) items -
    * never "the read failed".
    *
+   * A page can hold fewer items than the limit asked for, mid-library: rows of
+   * a kind the query did not ask for are dropped (#3550). Page by offset
+   * window or resume from the rows returned; a short page is not the end.
+   *
    * @throws Error on any failure to read the page (connection, 4xx/5xx).
    * Like getCollectionChildren: a fabricated empty page would read as
    * end-of-library and let rule evaluation truncate silently, mass-removing
