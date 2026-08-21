@@ -269,6 +269,35 @@ const HISTORY = {
   ],
   p2: [{ ratingKey: 'p2', accountID: 1, viewedAt: daysAgo(10), deviceID: 1 }],
   ep1: [{ ratingKey: 'ep1', accountID: 1, viewedAt: daysAgo(5), deviceID: 1 }],
+  sh1: [
+    {
+      ratingKey: 'special-1',
+      type: 'episode',
+      accountID: 1,
+      viewedAt: daysAgo(7),
+      deviceID: 1,
+      parentIndex: 0,
+      index: 1,
+    },
+    {
+      ratingKey: 'ep1',
+      type: 'episode',
+      accountID: 1,
+      viewedAt: daysAgo(5),
+      deviceID: 1,
+      parentIndex: 1,
+      index: 1,
+    },
+    {
+      ratingKey: 'season-3-episode-1',
+      type: 'episode',
+      accountID: 1,
+      viewedAt: daysAgo(1),
+      deviceID: 1,
+      parentIndex: 3,
+      index: 1,
+    },
+  ],
 };
 
 // --- HTTP helpers ------------------------------------------------------------
