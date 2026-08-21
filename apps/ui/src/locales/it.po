@@ -643,6 +643,10 @@ msgstr ""
 msgid "bottom"
 msgstr ""
 
+#: src/components/Settings/Jellyfin/index.tsx
+msgid "BoxSet collection"
+msgstr ""
+
 #: src/components/Layout/NavBar/index.tsx
 msgid "Calendar"
 msgstr ""
@@ -1902,6 +1906,10 @@ msgstr ""
 msgid "Hostname or IP"
 msgstr ""
 
+#: src/components/Settings/Jellyfin/index.tsx
+msgid "How scheduled-deletion collections are shown in Jellyfin. BoxSet collections are native Jellyfin collections; the Leaving Soon plugin library is a symlink-backed library maintained by {leavingSoonPluginName} (no BoxSet is created, and existing BoxSets are removed)."
+msgstr ""
+
 #: src/components/Collection/CollectionDetail/TriggerRuleActionButton/index.tsx
 msgid "If the action succeeds, the item will be removed from the collection right away instead of waiting for the normal schedule."
 msgstr ""
@@ -2128,6 +2136,14 @@ msgstr ""
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Leave unset to use the default title card template"
+msgstr ""
+
+#: src/components/Settings/Jellyfin/index.tsx
+msgid "Leaving Soon collections"
+msgstr ""
+
+#: src/components/Settings/Jellyfin/index.tsx
+msgid "Leaving Soon plugin library"
 msgstr ""
 
 #: src/components/OverlayEditor/PropertiesPanel.tsx

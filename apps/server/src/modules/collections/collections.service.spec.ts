@@ -1,9 +1,11 @@
 import {
   ECollectionLogType,
+  LeavingSoonMethod,
   MaintainerrEvent,
   MediaCollection,
   MediaServerFeature,
   MediaServerType,
+  ServarrAction,
 } from '@maintainerr/contracts';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { getRepositoryToken } from '@nestjs/typeorm';
@@ -23,6 +25,10 @@ import { OverlayProcessorService } from '../overlays/overlay-processor.service';
 import { Exclusion } from '../rules/entities/exclusion.entities';
 import { RuleGroup } from '../rules/entities/rule-group.entities';
 import { SettingsDataService } from '../settings/settings-data.service';
+import {
+  ExecutionLockService,
+  RULES_COLLECTIONS_EXECUTION_LOCK_KEY,
+} from '../tasks/execution-lock.service';
 import { CollectionPosterService } from './collection-poster.service';
 import { CollectionsService } from './collections.service';
 import { Collection } from './entities/collection.entities';
@@ -50,6 +56,7 @@ describe('CollectionsService', () => {
   let collectionPosterService: Mocked<CollectionPosterService>;
   let overlayProcessor: Mocked<OverlayProcessorService>;
   let eventEmitter: Mocked<EventEmitter2>;
+  let executionLock: Mocked<ExecutionLockService>;
   let logger: Mocked<MaintainerrLogger>;
 
   beforeEach(async () => {
@@ -80,6 +87,8 @@ describe('CollectionsService', () => {
     collectionPosterService = unitRef.get(CollectionPosterService);
     overlayProcessor = unitRef.get(OverlayProcessorService);
     eventEmitter = unitRef.get(EventEmitter2);
+    executionLock = unitRef.get(ExecutionLockService);
+    executionLock.tryAcquire.mockReturnValue(jest.fn());
     logger = unitRef.get(MaintainerrLogger);
     metadataService.resolveIds.mockResolvedValue({
       tmdb: 1,
@@ -3159,6 +3168,445 @@ describe('CollectionsService', () => {
         mediaCount: secondCollectionMedia.length,
       }),
     ]);
+  });
+
+  describe('getLeavingSoonCollections', () => {
+    beforeEach(() => {
+      settingsDataService.leaving_soon_method = LeavingSoonMethod.PLUGIN;
+    });
+
+    it('returns nothing when the leaving-soon method is not set to the plugin', async () => {
+      settingsDataService.leaving_soon_method = LeavingSoonMethod.COLLECTION;
+
+      const result = await service.getLeavingSoonCollections();
+
+      expect(collectionRepo.find).not.toHaveBeenCalled();
+      expect(result).toEqual({ collections: [], total: 0 });
+    });
+
+    it('returns only active collections with a deletion window and precomputed deletion dates', async () => {
+      const scheduled = createCollection({
+        id: 1,
+        title: 'Scheduled',
+        type: 'movie',
+        isActive: true,
+        deleteAfterDays: 30,
+      });
+      const inactive = createCollection({
+        id: 2,
+        title: 'Inactive',
+        type: 'show',
+        isActive: false,
+        deleteAfterDays: 30,
+      });
+      const noWindow = createCollection({
+        id: 3,
+        title: 'No window',
+        type: 'show',
+        isActive: true,
+        deleteAfterDays: null,
+      });
+      const doNothing = createCollection({
+        id: 4,
+        title: 'Do nothing',
+        type: 'show',
+        isActive: true,
+        deleteAfterDays: 30,
+        arrAction: ServarrAction.DO_NOTHING,
+      });
+      const scheduledMedia = [
+        createCollectionMedia(scheduled, {
+          mediaServerId: 'item-1',
+          addDate: new Date(2026, 0, 1),
+          tmdbId: 101,
+        }),
+        createCollectionMedia(scheduled, {
+          mediaServerId: 'item-2',
+          addDate: new Date(2026, 0, 15),
+          tmdbId: 102,
+        }),
+      ];
+
+      collectionRepo.find.mockResolvedValue([
+        scheduled as Collection,
+        inactive as Collection,
+        noWindow as Collection,
+        doNothing as Collection,
+      ]);
+      collectionMediaRepo.find.mockResolvedValue(scheduledMedia);
+
+      const result = await service.getLeavingSoonCollections();
+
+      expect(collectionRepo.find).toHaveBeenCalledWith(undefined);
+      expect(collectionMediaRepo.find).toHaveBeenCalledWith({
+        where: { collectionId: expect.anything() },
+        order: {
+          collectionId: 'ASC',
+          addDate: 'DESC',
+          id: 'DESC',
+        },
+      });
+      expect(result).toEqual({
+        collections: [
+          expect.objectContaining({
+            id: scheduled.id,
+            title: 'Scheduled',
+            type: 'movie',
+            deleteAfterDays: 30,
+            media: [
+              expect.objectContaining({
+                mediaServerId: 'item-1',
+                addDate: new Date(2026, 0, 1),
+                deletionDate: new Date(2026, 0, 31),
+                tmdbId: 101,
+              }),
+              expect.objectContaining({
+                mediaServerId: 'item-2',
+                addDate: new Date(2026, 0, 15),
+                deletionDate: new Date(2026, 1, 14),
+                tmdbId: 102,
+              }),
+            ],
+          }),
+        ],
+        total: 1,
+      });
+    });
+
+    it('returns an empty result when no collection schedules deletion', async () => {
+      collectionRepo.find.mockResolvedValue([
+        createCollection({
+          isActive: true,
+          deleteAfterDays: null,
+        }) as Collection,
+        createCollection({
+          isActive: false,
+          deleteAfterDays: 30,
+        }) as Collection,
+      ]);
+
+      const result = await service.getLeavingSoonCollections();
+
+      expect(collectionMediaRepo.find).not.toHaveBeenCalled();
+      expect(result).toEqual({ collections: [], total: 0 });
+    });
+
+    it('passes library and type filters through to the collection query', async () => {
+      collectionRepo.find.mockResolvedValue([]);
+
+      await service.getLeavingSoonCollections('library-1', 'show');
+
+      expect(collectionRepo.find).toHaveBeenCalledWith({
+        where: { libraryId: 'library-1', type: 'show' },
+      });
+    });
+  });
+
+  describe('leaving-soon plugin collection method', () => {
+    beforeEach(() => {
+      mediaServerFactory.getConfiguredServerType.mockResolvedValue(
+        MediaServerType.JELLYFIN,
+      );
+      settingsDataService.media_server_type = MediaServerType.JELLYFIN;
+      settingsDataService.leaving_soon_method = LeavingSoonMethod.COLLECTION;
+      mediaServer.supportsFeature.mockReturnValue(true);
+    });
+
+    it('skips the remote BoxSet when the plugin method is set on a scheduled-deletion collection', async () => {
+      settingsDataService.leaving_soon_method = LeavingSoonMethod.PLUGIN;
+
+      const collection = createCollection({
+        id: 60,
+        mediaServerId: null,
+        manualCollection: false,
+        libraryId: 'library-1',
+        title: 'Leaving Soon Collection',
+        type: 'movie',
+        deleteAfterDays: 30,
+      });
+      const media = [{ mediaServerId: 'item-1' }];
+
+      jest.spyOn(service as any, 'addCollectionToDB').mockResolvedValue({
+        id: collection.id,
+        mediaServerId: null,
+      });
+      const addChildrenToCollectionSpy = jest
+        .spyOn(service as any, 'addChildrenToCollection')
+        .mockResolvedValue(undefined);
+
+      await service.createCollectionWithChildren(collection, media);
+
+      expect(mediaServer.createCollection).not.toHaveBeenCalled();
+      expect(addChildrenToCollectionSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ dbId: collection.id }),
+        media,
+        false,
+        true, // skip the media-server add: plugin mode has no BoxSet
+      );
+    });
+
+    it('still creates the remote BoxSet when the plugin method is set but the collection has no deletion window', async () => {
+      settingsDataService.leaving_soon_method = LeavingSoonMethod.PLUGIN;
+
+      const collection = createCollection({
+        id: 61,
+        mediaServerId: null,
+        manualCollection: false,
+        libraryId: 'library-1',
+        title: 'No Window Collection',
+        type: 'movie',
+        deleteAfterDays: null,
+      });
+      const media = [{ mediaServerId: 'item-1' }];
+
+      jest.spyOn(service as any, 'addCollectionToDB').mockResolvedValue({
+        id: collection.id,
+        mediaServerId: 'remote-collection',
+      });
+      jest
+        .spyOn(service as any, 'addChildrenToCollection')
+        .mockResolvedValue(undefined);
+
+      await service.createCollectionWithChildren(collection, media);
+
+      expect(mediaServer.createCollection).toHaveBeenCalledWith(
+        expect.objectContaining({ initialItemId: 'item-1' }),
+      );
+    });
+
+    it('still creates the remote BoxSet when the collection method is selected', async () => {
+      const collection = createCollection({
+        id: 62,
+        mediaServerId: null,
+        manualCollection: false,
+        libraryId: 'library-1',
+        title: 'BoxSet Collection',
+        type: 'movie',
+        deleteAfterDays: 30,
+      });
+      const media = [{ mediaServerId: 'item-1' }];
+
+      jest.spyOn(service as any, 'addCollectionToDB').mockResolvedValue({
+        id: collection.id,
+        mediaServerId: 'remote-collection',
+      });
+      jest
+        .spyOn(service as any, 'addChildrenToCollection')
+        .mockResolvedValue(undefined);
+
+      await service.createCollectionWithChildren(collection, media);
+
+      expect(mediaServer.createCollection).toHaveBeenCalledWith(
+        expect.objectContaining({ initialItemId: 'item-1' }),
+      );
+    });
+
+    it('removes the BoxSets of scheduled-deletion collections when switching to the plugin', async () => {
+      settingsDataService.leaving_soon_method = LeavingSoonMethod.PLUGIN;
+
+      const scheduled = createCollection({
+        id: 70,
+        mediaServerId: 'boxset-70',
+        manualCollection: false,
+        libraryId: 'library-1',
+        title: 'Scheduled',
+        type: 'movie',
+        isActive: true,
+        deleteAfterDays: 30,
+      });
+      const inactiveScheduled = createCollection({
+        id: 75,
+        mediaServerId: 'boxset-75',
+        manualCollection: false,
+        libraryId: 'library-1',
+        title: 'Inactive scheduled',
+        type: 'movie',
+        isActive: false,
+        deleteAfterDays: 30,
+      });
+      const notScheduled = createCollection({
+        id: 71,
+        mediaServerId: 'boxset-71',
+        manualCollection: false,
+        libraryId: 'library-1',
+        title: 'Not scheduled',
+        type: 'movie',
+        isActive: true,
+        deleteAfterDays: null,
+      });
+      collectionRepo.find.mockResolvedValue([
+        scheduled as Collection,
+        inactiveScheduled as Collection,
+        notScheduled as Collection,
+      ]);
+
+      await service.handleLeavingSoonMethodSettingsUpdate({
+        oldSettings: { leaving_soon_method: LeavingSoonMethod.COLLECTION },
+        settings: { leaving_soon_method: LeavingSoonMethod.PLUGIN },
+      });
+
+      expect(executionLock.tryAcquire).toHaveBeenCalledWith(
+        RULES_COLLECTIONS_EXECUTION_LOCK_KEY,
+      );
+      expect(mediaServer.deleteCollection).toHaveBeenCalledWith('boxset-70');
+      expect(mediaServer.deleteCollection).toHaveBeenCalledWith('boxset-75');
+      expect(mediaServer.deleteCollection).not.toHaveBeenCalledWith(
+        'boxset-71',
+      );
+      expect(collectionRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 70, mediaServerId: null }),
+      );
+    });
+
+    it('recreates the BoxSets of scheduled-deletion collections when switching back to collections', async () => {
+      const scheduled = createCollection({
+        id: 72,
+        mediaServerId: null,
+        manualCollection: false,
+        libraryId: 'library-1',
+        title: 'Scheduled',
+        type: 'movie',
+        isActive: true,
+        deleteAfterDays: 30,
+      });
+      collectionRepo.find.mockResolvedValue([scheduled as Collection]);
+      collectionMediaRepo.find.mockResolvedValue([
+        createCollectionMedia(scheduled, { mediaServerId: 'member-1' }),
+        createCollectionMedia(scheduled, { mediaServerId: 'member-2' }),
+      ]);
+      mediaServer.createCollection.mockResolvedValue({
+        id: 'recreated-boxset',
+        title: 'Scheduled',
+        childCount: 0,
+        smart: false,
+        libraryId: 'library-1',
+      } as MediaCollection);
+
+      await service.handleLeavingSoonMethodSettingsUpdate({
+        oldSettings: { leaving_soon_method: LeavingSoonMethod.PLUGIN },
+        settings: { leaving_soon_method: LeavingSoonMethod.COLLECTION },
+      });
+
+      expect(mediaServer.createCollection).toHaveBeenCalledWith(
+        expect.objectContaining({
+          libraryId: 'library-1',
+          title: 'Scheduled',
+          type: 'movie',
+        }),
+      );
+      expect(mediaServer.addBatchToCollection).toHaveBeenCalledWith(
+        'recreated-boxset',
+        ['member-1', 'member-2'],
+      );
+      expect(collectionRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 72, mediaServerId: 'recreated-boxset' }),
+      );
+    });
+
+    it('does nothing when the leaving-soon method is unchanged', async () => {
+      await service.handleLeavingSoonMethodSettingsUpdate({
+        oldSettings: { leaving_soon_method: LeavingSoonMethod.COLLECTION },
+        settings: { leaving_soon_method: LeavingSoonMethod.COLLECTION },
+      });
+
+      expect(executionLock.tryAcquire).not.toHaveBeenCalled();
+      expect(mediaServer.deleteCollection).not.toHaveBeenCalled();
+    });
+
+    it('never deletes or recreates the BoxSet of a manual collection', async () => {
+      const manual = createCollection({
+        id: 73,
+        mediaServerId: 'user-boxset',
+        manualCollection: true,
+        manualCollectionName: 'My User Collection',
+        libraryId: 'library-1',
+        title: 'My User Collection',
+        type: 'movie',
+        isActive: true,
+        deleteAfterDays: 30,
+      });
+      collectionRepo.find.mockResolvedValue([manual as Collection]);
+
+      await service.handleLeavingSoonMethodSettingsUpdate({
+        oldSettings: { leaving_soon_method: LeavingSoonMethod.COLLECTION },
+        settings: { leaving_soon_method: LeavingSoonMethod.PLUGIN },
+      });
+
+      expect(mediaServer.deleteCollection).not.toHaveBeenCalled();
+      expect(collectionRepo.save).not.toHaveBeenCalled();
+    });
+
+    it('persists rule-matched media without a media-server add when the plugin method is set', async () => {
+      settingsDataService.leaving_soon_method = LeavingSoonMethod.PLUGIN;
+
+      const collection = createCollection({
+        id: 74,
+        mediaServerId: null,
+        manualCollection: false,
+        libraryId: 'library-1',
+        title: 'Scheduled',
+        type: 'movie',
+        isActive: true,
+        deleteAfterDays: 30,
+      });
+      collectionRepo.findOne.mockResolvedValue(collection);
+      collectionMediaRepo.find.mockResolvedValue([]);
+      const linkCheckSpy = jest
+        .spyOn(service as any, 'checkAutomaticMediaServerLink')
+        .mockResolvedValue(collection);
+      const addChildrenSpy = jest
+        .spyOn(service as any, 'addChildrenToCollection')
+        .mockResolvedValue({
+          serverRejectedIds: new Set<string>(),
+          persistedIds: new Set(['item-1']),
+        });
+
+      await service.addToCollection(collection.id, [
+        { mediaServerId: 'item-1' },
+      ]);
+
+      // The title-based relink must not resurrect a same-titled BoxSet.
+      expect(linkCheckSpy).not.toHaveBeenCalled();
+      expect(addChildrenSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ mediaServerId: '', dbId: collection.id }),
+        [{ mediaServerId: 'item-1' }],
+        false,
+        true, // skipMediaServerAdd: plugin mode has no BoxSet
+        CollectionMediaManualMembershipSource.LOCAL,
+      );
+      expect(mediaServer.addBatchToCollection).not.toHaveBeenCalled();
+    });
+
+    it('waits for a busy lock and reconciles anyway when it stays held', async () => {
+      executionLock.tryAcquire.mockReturnValue(null);
+      executionLock.acquireWithin.mockResolvedValue(null);
+      collectionRepo.find.mockResolvedValue([]);
+
+      await service.handleLeavingSoonMethodSettingsUpdate({
+        oldSettings: { leaving_soon_method: LeavingSoonMethod.COLLECTION },
+        settings: { leaving_soon_method: LeavingSoonMethod.PLUGIN },
+      });
+
+      expect(executionLock.acquireWithin).toHaveBeenCalledWith(
+        RULES_COLLECTIONS_EXECUTION_LOCK_KEY,
+        expect.any(Number),
+      );
+      expect(collectionRepo.find).toHaveBeenCalled();
+    });
+
+    it('does not reject when the media server is unavailable during a reconcile', async () => {
+      mediaServerFactory.getService.mockRejectedValue(
+        new Error('Jellyfin not initialized'),
+      );
+
+      await expect(
+        service.handleLeavingSoonMethodSettingsUpdate({
+          oldSettings: { leaving_soon_method: LeavingSoonMethod.COLLECTION },
+          settings: { leaving_soon_method: LeavingSoonMethod.PLUGIN },
+        }),
+      ).resolves.toBeUndefined();
+      expect(mediaServer.deleteCollection).not.toHaveBeenCalled();
+    });
   });
 
   it('enriches collection previews with fallback artwork when stored poster data is missing', async () => {

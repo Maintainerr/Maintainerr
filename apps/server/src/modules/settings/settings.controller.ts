@@ -583,6 +583,7 @@ export class SettingsController {
       jellyfin_url: settings.jellyfin_url,
       jellyfin_api_key: settings.jellyfin_api_key,
       jellyfin_user_id: settings.jellyfin_user_id,
+      leaving_soon_method: settings.leaving_soon_method,
     };
   }
 

@@ -1,5 +1,6 @@
 import z from 'zod'
 import { MediaServerType } from '../media-server/enums'
+import { leavingSoonMethods } from '../media-server/jellyfin/jellyfinSetting'
 import { MetadataProviderPreference } from './metadata'
 import { serviceUrlSchema } from './serviceUrl'
 
@@ -38,6 +39,9 @@ export const settingsUpdateSchema = z.object({
   jellyfin_api_key: z.string().trim().optional(),
   jellyfin_user_id: z.string().trim().optional(),
   jellyfin_server_name: z.string().trim().optional(),
+  // How scheduled-deletion collections are surfaced on Jellyfin: native BoxSet
+  // collections, or the leaving-soon plugin's symlink-backed library.
+  leaving_soon_method: z.enum(leavingSoonMethods).optional(),
 
   emby_url: serviceUrlSchema.optional(),
   emby_api_key: z.string().trim().optional(),

@@ -1,4 +1,8 @@
-import { MediaServerType, TracearrSetting } from '@maintainerr/contracts';
+import {
+  LeavingSoonMethod,
+  MediaServerType,
+  TracearrSetting,
+} from '@maintainerr/contracts';
 import { TestBed, type Mocked } from '@suites/unit';
 import { Repository } from 'typeorm';
 import { InternalApiService } from '../api/internal-api/internal-api.service';
@@ -208,6 +212,64 @@ describe('SettingsOperationsService', () => {
     });
 
     expect(tracearr.invalidateHistory).toHaveBeenCalledTimes(1);
+  });
+
+  it('persists the leaving-soon method when saving Jellyfin settings', async () => {
+    settingsRepo.findOne.mockResolvedValue(
+      createSettings({
+        media_server_type: MediaServerType.JELLYFIN,
+        jellyfin_url: 'http://jellyfin.local',
+        jellyfin_api_key: 'jellyfin-key',
+      }),
+    );
+    jest.spyOn(service, 'testJellyfin').mockResolvedValue({
+      status: 'OK',
+      code: 1,
+      message: 'Success',
+      users: [{ id: 'user-1', name: 'admin' }],
+    });
+
+    await service.saveJellyfinSettings({
+      jellyfin_url: 'http://jellyfin.local',
+      jellyfin_api_key: 'jellyfin-key',
+      jellyfin_user_id: 'user-1',
+      leaving_soon_method: LeavingSoonMethod.PLUGIN,
+    });
+
+    expect(settingsDataService.saveSettings).toHaveBeenCalledWith(
+      expect.objectContaining({
+        leaving_soon_method: LeavingSoonMethod.PLUGIN,
+      }),
+    );
+  });
+
+  it('keeps the stored leaving-soon method when a Jellyfin save omits it', async () => {
+    settingsRepo.findOne.mockResolvedValue(
+      createSettings({
+        media_server_type: MediaServerType.JELLYFIN,
+        jellyfin_url: 'http://jellyfin.local',
+        jellyfin_api_key: 'jellyfin-key',
+        leaving_soon_method: LeavingSoonMethod.PLUGIN,
+      }),
+    );
+    jest.spyOn(service, 'testJellyfin').mockResolvedValue({
+      status: 'OK',
+      code: 1,
+      message: 'Success',
+      users: [{ id: 'user-1', name: 'admin' }],
+    });
+
+    await service.saveJellyfinSettings({
+      jellyfin_url: 'http://jellyfin.local',
+      jellyfin_api_key: 'jellyfin-key',
+      jellyfin_user_id: 'user-1',
+    });
+
+    expect(settingsDataService.saveSettings).toHaveBeenCalledWith(
+      expect.objectContaining({
+        leaving_soon_method: LeavingSoonMethod.PLUGIN,
+      }),
+    );
   });
 
   it('rejects Plex server setting changes when no Plex credentials are stored', async () => {

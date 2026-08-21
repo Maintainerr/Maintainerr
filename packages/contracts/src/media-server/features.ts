@@ -29,6 +29,9 @@ export const MEDIA_SERVER_FEATURES: Record<
     // Jellyfin has no central history endpoint, but /Items answers watch state
     // in bulk per user, which is all this flag gates (#3337).
     MediaServerFeature.CENTRAL_WATCH_HISTORY,
+    // Scheduled-deletion collections can be surfaced by the leaving-soon
+    // plugin (symlink-backed library) instead of a BoxSet. Jellyfin-only.
+    MediaServerFeature.SYMLINK_LIBRARY,
     // Note: COLLECTION_VISIBILITY not supported
     // Note: WATCHLIST not supported (no API)
     // Note: COLLECTION_SORT not supported - no boxset reorder API; ForcedSortName has global side-effects.

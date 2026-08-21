@@ -408,6 +408,37 @@ export class CollectionsController {
     );
   }
 
+  @Get('/leaving-soon')
+  @ApiOperation({
+    summary:
+      'Get collections scheduled for deletion with their leaving-soon media',
+  })
+  @ApiQuery({
+    name: 'libraryId',
+    required: false,
+    description: 'Filter collections by library id.',
+  })
+  @ApiQuery({
+    name: 'typeId',
+    required: false,
+    enum: MediaItemTypes,
+    description: 'Filter collections by media item type.',
+  })
+  @ApiResponse({
+    status: 200,
+    description:
+      'Returns active collections that schedule deletion, with their member media and precomputed deletion dates.',
+  })
+  getLeavingSoonCollections(
+    @Query('libraryId') libraryId: string,
+    @Query('typeId') typeId: MediaItemType,
+  ) {
+    return this.collectionService.getLeavingSoonCollections(
+      libraryId || undefined,
+      typeId || undefined,
+    );
+  }
+
   @Get('/collection/:id')
   getCollection(@Param('id', ParseIntPipe) collectionId: number) {
     return this.collectionService.getCollection(collectionId);

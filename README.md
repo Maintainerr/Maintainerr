@@ -177,6 +177,7 @@ spec:
 - Smart metadata matching - resolves every item across your media server, the \*arrs and Seerr by external IDs (IMDB/TMDB/TVDB), bridges missing IDs, and sanity-checks each match by release year so the right title is acted on.
 - Bring your own TVDB key for a second metadata source alongside the built-in TMDB - Maintainerr cross-checks IDs and years between providers and fills the gaps from whichever has the data.
 - Collect rule-matched media into a Maintainerr collection that is held for a configurable period before action - optionally pinned to the Plex home screen as a "Leaving soon" shelf.
+- Surface the media in your scheduled-deletion collections as Jellyfin "Leaving Soon" symlink libraries via the [jellyfin-plugin-leaving-soon](https://github.com/ramonskie/jellyfin-plugin-leaving-soon) plugin - a per-server selection in the Jellyfin settings switches scheduled-deletion collections from native BoxSets to the plugin's library (see below).
 - Run automatic collections, or manual ones you manage; add or exclude individual items even when they match a rule.
 - Delete items from your download client.
 - Manage collection membership from within your media server - Maintainerr syncs manual changes back.
@@ -205,6 +206,51 @@ Maintainerr builds rules from data across these apps:
 [![Tracearr](https://img.shields.io/badge/Tracearr-1F7A8C?style=for-the-badge)](https://github.com/connorgallopo/Tracearr)
 
 <sub>Tautulli is Plex-only; Streamystats is Jellyfin-only; Tracearr supports Plex, Jellyfin, and Emby; Sportarr manages sports libraries.</sub>
+
+### Jellyfin "Leaving Soon" plugin
+
+A collection with a deletion window (`deleteAfterDays`) is "leaving soon": its members sit in the collection for the configured grace period before the collection action fires. Maintainerr exposes that set through a read-only endpoint:
+
+```
+GET /api/collections/leaving-soon?libraryId=&typeId=
+```
+
+It returns only **active** collections that actually schedule deletion (not set to "Do nothing"), each with its member media (`mediaServerId`, `addDate`, `deletionDate`, `tmdbId`). `deletionDate` is precomputed as `addDate + deleteAfterDays`, matching the collection worker's due-date predicate.
+
+The [jellyfin-plugin-leaving-soon](https://github.com/ramonskie/jellyfin-plugin-leaving-soon) polls this endpoint on an interval and manages the Jellyfin side itself: it builds symlink-backed `Movies - Leaving Soon` and `Shows - Leaving Soon` libraries, resolves each item's on-disk path from Jellyfin's own metadata (no file paths leave your media server), removes symlinks once items are handled, and hides empty libraries instead of showing them empty. No push integration is needed on the Maintainerr side.
+
+**Install the plugin**
+
+1. In Jellyfin, open **Dashboard -> Plugins -> Catalog**, add a repository pointing at `https://raw.githubusercontent.com/ramonskie/jellyfin-plugin-leaving-soon/main/manifest.json`, and install the **Leaving Soon** plugin.
+2. Restart Jellyfin. (Alternatively, drop the release DLL from the [releases page](https://github.com/ramonskie/jellyfin-plugin-leaving-soon/releases) into `<Jellyfin config>/plugins/Leaving Soon/` and restart.)
+
+**Configure the plugin provider**
+
+In the plugin's **Settings** page (**Dashboard -> Plugins -> Leaving Soon**):
+
+1. Under **Libraries**, set the **Base Path** (host directory for symlinks; `movies` and `tv` subdirectories are created under it), the **Movies Library Name** and **TV Library Name**, and whether empty libraries are hidden.
+2. Under **Sync**, set how often to poll Maintainerr (**Sync Interval**).
+3. Under **Providers**, click **Add Provider** and select type `maintainerr`, then fill in the **Name**, **URL**, and **Include Collections** fields and click **Save**.
+
+Notes:
+
+- The **URL** must reach Maintainerr from the Jellyfin container - use the container network hostname (e.g. `http://maintainerr:6246`).
+- **Include Collections** (comma-separated collection ids) restricts which scheduled-deletion collections feed the libraries; empty means all of them.
+- **Base Path** defaults to `<Jellyfin config>/leaving-soon`, which the container user can always write. To host the libraries on the media mount instead, set it to e.g. `/data/leaving-soon` and pre-create the directory with Jellyfin's UID/GID.
+- Use the per-provider **Test** button to verify the connection before saving.
+
+**Enable the plugin from Maintainerr**
+
+In Maintainerr, open **Settings -> Jellyfin** and set **Leaving Soon collections** to **Leaving Soon plugin library** (the default is **BoxSet collection**). This is a simple gate - it decides how scheduled-deletion collections are surfaced on Jellyfin:
+
+- **BoxSet collection** (default): Maintainerr behaves exactly as always - every collection is created as a Jellyfin BoxSet and managed normally. The leaving-soon endpoint returns nothing, so the plugin mirrors nothing.
+- **Leaving Soon plugin library**: scheduled-deletion collections (active, with a deletion window) are **not** created as Jellyfin BoxSets - the plugin's symlink library is their surface. Collections without a deletion window keep their BoxSet.
+
+When you switch to the plugin, the BoxSets of existing scheduled-deletion collections are removed; switching back to **BoxSet collection** recreates them (with their current members). The leaving-soon endpoint only returns data while the plugin method is selected - the plugin polls it and symlinks whatever it returns, nothing more.
+
+**Behavior**
+
+Items drop out of the leaving-soon libraries on the next poll once the collection action handles them (the worker removes the membership), a postponed item stays listed with its later `deletionDate`, and deactivated collections stop contributing immediately. Uninstalling the plugin removes the symlinks and libraries it created.
 
 # API
 
