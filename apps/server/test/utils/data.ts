@@ -84,6 +84,7 @@ export const createCollection = (
     sportarrQualityProfileId: undefined,
     tagInArr: false,
     listExclusions: false,
+    keepInMaintainerrOnly: false,
     cleanupLeftoverFolders: false,
     ruleGroup: undefined,
     visibleOnHome: false,

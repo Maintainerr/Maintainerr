@@ -178,6 +178,7 @@ spec:
 - Bring your own TVDB key for a second metadata source alongside the built-in TMDB - Maintainerr cross-checks IDs and years between providers and fills the gaps from whichever has the data.
 - Collect rule-matched media into a Maintainerr collection that is held for a configurable period before action - optionally pinned to the Plex home screen as a "Leaving soon" shelf.
 - Run automatic collections, or manual ones you manage; add or exclude individual items even when they match a rule.
+- Keep a collection inside Maintainerr, with no collection created on your media server - the rule, its actions, overlays and \*arr tags all still run. Per collection, off by default.
 - Delete items from your download client.
 - Manage collection membership from within your media server - Maintainerr syncs manual changes back.
 - On handling: delete files from disk, unmonitor or delete in Radarr/Sonarr/Sportarr, change quality profile, and clear requests in Seerr.

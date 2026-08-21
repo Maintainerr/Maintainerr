@@ -417,6 +417,7 @@ export const ruleGroupFormSchema = z
     sonarrQualityProfileId: z.number().int().nullable().optional(),
     sportarrQualityProfileId: z.number().int().nullable().optional(),
     tagInArr: z.boolean().optional(),
+    keepInMaintainerrOnly: z.boolean().optional(),
     ruleHandlerCronSchedule: z.preprocess(
       (val) => (val === '' ? null : val),
       z
@@ -528,6 +529,7 @@ const buildFormDefaults = (editData?: IRuleGroup): RuleGroupFormValues => ({
     ? (editData.collection?.sportarrQualityProfileId ?? undefined)
     : undefined,
   tagInArr: editData?.collection?.tagInArr ?? false,
+  keepInMaintainerrOnly: editData?.collection?.keepInMaintainerrOnly ?? false,
   ruleHandlerCronSchedule: editData?.ruleHandlerCronSchedule ?? null,
 })
 
@@ -1059,6 +1061,9 @@ const AddModal = (props: AddModal) => {
       sonarrQualityProfileId: data.sonarrQualityProfileId ?? undefined,
       sportarrQualityProfileId: data.sportarrQualityProfileId ?? undefined,
       tagInArr: data.tagInArr ?? false,
+      keepInMaintainerrOnly: data.manualCollection
+        ? false
+        : (data.keepInMaintainerrOnly ?? false),
       collection: {
         visibleOnRecommended: data.showRecommended,
         visibleOnHome: data.showHome,
@@ -1847,6 +1852,33 @@ const AddModal = (props: AddModal) => {
                         </div>
                       </div>
                     </div>
+                    {!manualCollectionEnabled && (
+                      <div className="flex flex-row items-center justify-between py-4">
+                        <label
+                          htmlFor="keep_in_maintainerr_only"
+                          className="text-label"
+                        >
+                          <Trans>Keep in Maintainerr only</Trans>
+                          <p className="text-xs font-normal">
+                            <Trans>
+                              Don&apos;t create this collection in{' '}
+                              {mediaServerName}. Rules, actions, overlays and
+                              tags keep working.
+                            </Trans>
+                          </p>
+                        </label>
+                        <div className="form-input">
+                          <div className="form-input-field">
+                            <input
+                              type="checkbox"
+                              id="keep_in_maintainerr_only"
+                              className="checkbox"
+                              {...register('keepInMaintainerrOnly')}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )}
                     <div
                       className={`flex flex-col ${manualCollectionEnabled ? `` : `hidden`} `}
                     >

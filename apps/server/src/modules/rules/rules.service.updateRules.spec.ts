@@ -927,4 +927,118 @@ describe('RulesService.updateRules', () => {
       });
     });
   });
+  // #11: turning "keep in Maintainerr only" on tears down the media-server
+  // collection once, on save. Turning it back off needs nothing - the next run
+  // recreates it through the ordinary add path.
+  it('removes the media server collection when keep-in-Maintainerr-only is turned on', async () => {
+    const group = { id: 5, collectionId: 42, dataType: 'movie' };
+    const savedCollection = { id: 42, keepInMaintainerrOnly: true };
+    const collectionService = {
+      getCollection: jest
+        .fn()
+        .mockResolvedValue({ id: 42, keepInMaintainerrOnly: false }),
+      saveCollection: jest.fn().mockResolvedValue(undefined),
+      addLogRecord: jest.fn().mockResolvedValue(undefined),
+      updateCollection: jest
+        .fn()
+        .mockResolvedValue({ dbCollection: savedCollection }),
+      stopMediaServerSync: jest.fn().mockResolvedValue(undefined),
+    };
+
+    const service = createRulesService({
+      rulesRepository: { delete: jest.fn(), save: jest.fn() },
+      ruleGroupRepository: { findOne: jest.fn().mockResolvedValue(group) },
+      collectionMediaRepository: { delete: jest.fn() },
+      exclusionRepo: { delete: jest.fn() },
+      collectionService,
+      mediaServerFactory: {
+        getService: jest.fn().mockReturnValue({
+          getLibraries: jest
+            .fn()
+            .mockResolvedValue([
+              { id: 'lib-1', title: 'Movies', type: 'movie' },
+            ]),
+        }),
+      },
+    });
+    jest
+      .spyOn(service as any, 'createOrUpdateGroup')
+      .mockResolvedValue(group.id);
+
+    await service.updateRules({
+      id: group.id,
+      libraryId: 'lib-1',
+      dataType: 'movie',
+      name: 'Kept local',
+      description: '',
+      rules: [],
+      useRules: true,
+      isActive: true,
+      keepInMaintainerrOnly: true,
+      collection: { keepLogsForMonths: 6 },
+    } as any);
+
+    expect(collectionService.updateCollection).toHaveBeenCalledWith(
+      expect.objectContaining({ keepInMaintainerrOnly: true }),
+    );
+    expect(collectionService.stopMediaServerSync).toHaveBeenCalledWith(
+      savedCollection,
+    );
+  });
+
+  it('never keeps a custom collection in Maintainerr only - the two are exclusive', async () => {
+    const group = { id: 5, collectionId: 42, dataType: 'movie' };
+    const collectionService = {
+      getCollection: jest.fn().mockResolvedValue({ id: 42 }),
+      saveCollection: jest.fn().mockResolvedValue(undefined),
+      addLogRecord: jest.fn().mockResolvedValue(undefined),
+      updateCollection: jest
+        .fn()
+        .mockResolvedValue({ dbCollection: { id: 42 } }),
+      stopMediaServerSync: jest.fn().mockResolvedValue(undefined),
+    };
+
+    const service = createRulesService({
+      rulesRepository: { delete: jest.fn(), save: jest.fn() },
+      ruleGroupRepository: { findOne: jest.fn().mockResolvedValue(group) },
+      collectionMediaRepository: { delete: jest.fn() },
+      exclusionRepo: { delete: jest.fn() },
+      collectionService,
+      mediaServerFactory: {
+        getService: jest.fn().mockReturnValue({
+          cleanupCollectionForLibrary: jest.fn().mockResolvedValue(undefined),
+          getLibraries: jest
+            .fn()
+            .mockResolvedValue([
+              { id: 'lib-1', title: 'Movies', type: 'movie' },
+            ]),
+        }),
+      },
+    });
+    jest
+      .spyOn(service as any, 'createOrUpdateGroup')
+      .mockResolvedValue(group.id);
+
+    await service.updateRules({
+      id: group.id,
+      libraryId: 'lib-1',
+      dataType: 'movie',
+      name: 'Custom collection',
+      description: '',
+      rules: [],
+      useRules: true,
+      isActive: true,
+      keepInMaintainerrOnly: true,
+      collection: {
+        manualCollection: true,
+        manualCollectionName: 'Shared Collection',
+        keepLogsForMonths: 6,
+      },
+    } as any);
+
+    expect(collectionService.updateCollection).toHaveBeenCalledWith(
+      expect.objectContaining({ keepInMaintainerrOnly: false }),
+    );
+    expect(collectionService.stopMediaServerSync).not.toHaveBeenCalled();
+  });
 });

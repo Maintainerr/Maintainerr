@@ -65,6 +65,13 @@ export class Collection {
   @Column({ nullable: false, default: false })
   listExclusions: boolean;
 
+  // Opt-in: run this collection inside Maintainerr only, without creating or
+  // syncing a collection on the media server. Rules, membership, actions,
+  // overlays and *arr tags are unaffected - only the media-server collection is
+  // left out. Off by default, so existing collections keep syncing.
+  @Column({ nullable: false, default: false })
+  keepInMaintainerrOnly: boolean;
+
   // Opt-in: after this collection's action deletes the item's files one at a
   // time, remove the folder the *arr strands and the sidecars left in it.
   // Off by default - it deletes from disk, and only the actions that strand a

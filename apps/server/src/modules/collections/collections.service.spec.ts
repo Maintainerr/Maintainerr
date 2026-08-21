@@ -4254,4 +4254,104 @@ describe('CollectionsService', () => {
       });
     });
   });
+  // #11: a collection can be kept inside Maintainerr, with no collection created
+  // or synced on the media server. Everything local (membership, rules, actions,
+  // overlays, *arr tags) still runs, so only the media-server calls drop out.
+  describe('keepInMaintainerrOnly', () => {
+    it('persists membership without creating or touching a media server collection', async () => {
+      const collection = createCollection({
+        id: 30,
+        mediaServerId: null,
+        keepInMaintainerrOnly: true,
+      });
+      collectionRepo.findOne.mockResolvedValue(collection);
+      collectionMediaRepo.find.mockResolvedValue([]);
+      const relink = jest.spyOn(
+        service as any,
+        'checkAutomaticMediaServerLink',
+      );
+      jest
+        .spyOn(service as any, 'insertCollectionMediaMembership')
+        .mockResolvedValue(undefined);
+
+      await service.addToCollection(collection.id, [
+        { mediaServerId: 'item-1' },
+      ]);
+
+      // The title-based relink would adopt a same-titled collection on the
+      // server and undo the opt-in, so it must not run at all.
+      expect(relink).not.toHaveBeenCalled();
+      expect(mediaServer.createCollection).not.toHaveBeenCalled();
+      expect(mediaServer.addBatchToCollection).not.toHaveBeenCalled();
+      expect(eventEmitter.emit).toHaveBeenCalledWith(
+        MaintainerrEvent.CollectionMedia_Added,
+        expect.objectContaining({
+          mediaItems: [expect.objectContaining({ mediaServerId: 'item-1' })],
+        }),
+      );
+    });
+
+    it('does not relink while removing members', async () => {
+      const collection = createCollection({
+        id: 31,
+        mediaServerId: null,
+        keepInMaintainerrOnly: true,
+      });
+      collectionRepo.findOne.mockResolvedValue(collection);
+      collectionMediaRepo.find.mockResolvedValue([
+        createCollectionMedia(collection, { mediaServerId: 'item-1' }),
+      ]);
+      const relink = jest.spyOn(
+        service as any,
+        'checkAutomaticMediaServerLink',
+      );
+
+      await service.removeFromCollection(collection.id, [
+        { mediaServerId: 'item-1' },
+      ]);
+
+      expect(relink).not.toHaveBeenCalled();
+      expect(mediaServer.removeBatchFromCollection).not.toHaveBeenCalled();
+    });
+
+    it('stopMediaServerSync removes the media server collection and clears the link', async () => {
+      const collection = createCollection({
+        id: 32,
+        mediaServerId: 'remote-collection',
+      });
+
+      await service.stopMediaServerSync(collection);
+
+      expect(mediaServer.deleteCollection).toHaveBeenCalledWith(
+        'remote-collection',
+      );
+      expect(collectionRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 32, mediaServerId: null }),
+      );
+    });
+
+    it('stopMediaServerSync keeps the link when the delete fails, so it is not orphaned', async () => {
+      const collection = createCollection({
+        id: 33,
+        mediaServerId: 'remote-collection',
+      });
+      mediaServer.deleteCollection.mockRejectedValue(new Error('unreachable'));
+
+      await service.stopMediaServerSync(collection);
+
+      expect(collectionRepo.save).not.toHaveBeenCalled();
+    });
+
+    it('stopMediaServerSync leaves a custom collection alone', async () => {
+      const collection = createCollection({
+        id: 34,
+        mediaServerId: 'user-made-collection',
+        manualCollection: true,
+      });
+
+      await service.stopMediaServerSync(collection);
+
+      expect(mediaServer.deleteCollection).not.toHaveBeenCalled();
+    });
+  });
 });
