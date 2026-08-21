@@ -341,7 +341,7 @@ describe('RadarrApi', () => {
       jest.spyOn(api as any, 'getWithoutCache').mockResolvedValue([]);
 
       await expect(api.getMovieByTmdbId(123)).resolves.toBeNull();
-      expect(logger.warn).toHaveBeenCalledWith(
+      expect(logger.debug).toHaveBeenCalledWith(
         'Could not find Movie with TMDb id 123 in Radarr',
       );
     });

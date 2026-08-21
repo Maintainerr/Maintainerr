@@ -5,7 +5,10 @@ import { SonarrApi } from '../api/servarr-api/helpers/sonarr.helper';
 import { ServarrService } from '../api/servarr-api/servarr.service';
 import { Collection } from '../collections/entities/collection.entities';
 import { MaintainerrLogger } from '../logging/logs.service';
-import { findMetadataLookupMatch } from '../metadata/metadata-lookup.util';
+import {
+  findMetadataLookupMatch,
+  MetadataLookupCandidate,
+} from '../metadata/metadata-lookup.util';
 import { MetadataService } from '../metadata/metadata.service';
 import { SettingsDataService } from '../settings/settings-data.service';
 
@@ -48,7 +51,8 @@ const EDITOR_BATCH_SIZE = 100;
  * - **Exclusion (Behavior B,
  *   https://features.maintainerr.info/posts/81):** when an item is excluded, the
  *   matching *arr entity gets a protective tag (default "dnd"); removal on
- *   un-exclude is opt-in.
+ *   un-exclude is opt-in. A collection exclusion targets that collection's
+ *   instance, a global one every configured instance that tracks the item.
  *
  * Everything here is strictly best-effort: it logs and swallows failures, never
  * throws, never mutates collection membership, and resolves items with the #3125
@@ -235,14 +239,14 @@ export class ServarrTagService {
 
   /**
    * Behavior B - apply the protective exclusion tag to the excluded item's *arr
-   * entity. No-ops unless exclusion tagging is enabled. The caller resolves the
-   * instance: a collection-scoped exclusion uses its rule group's collection, a
-   * global one the single configured instance (skipped when ambiguous). Adding on
-   * exclude is unconditional when enabled.
+   * entity. No-ops unless exclusion tagging is enabled. `instance` scopes a
+   * collection exclusion to its rule group's instance; omitting it (a global
+   * exclusion) covers every configured instance. Adding on exclude is
+   * unconditional when enabled.
    */
   public async applyExclusionTag(
     target: ExclusionTagTarget,
-    instance: ArrInstanceRef,
+    instance?: ArrInstanceRef,
   ): Promise<void> {
     if (!this.exclusionTaggingEnabled(target.type)) {
       return;
@@ -259,7 +263,7 @@ export class ServarrTagService {
    */
   public async removeExclusionTag(
     target: ExclusionTagTarget,
-    instance: ArrInstanceRef,
+    instance?: ArrInstanceRef,
   ): Promise<void> {
     if (!this.exclusionUntaggingEnabled(target.type)) {
       return;
@@ -269,7 +273,7 @@ export class ServarrTagService {
 
   private async tagExclusionTarget(
     target: ExclusionTagTarget,
-    instance: ArrInstanceRef,
+    instance: ArrInstanceRef | undefined,
     mode: 'add' | 'remove',
   ): Promise<void> {
     try {
@@ -277,17 +281,6 @@ export class ServarrTagService {
       if (!service) {
         this.logger.debug(
           `Skipping *arr exclusion tagging for item ${target.mediaServerId}: type '${target.type}' is not taggable (movie/show only).`,
-        );
-        return;
-      }
-
-      const settingsId =
-        service === 'radarr'
-          ? instance.radarrSettingsId
-          : instance.sonarrSettingsId;
-      if (!settingsId) {
-        this.logger.debug(
-          `Skipping *arr exclusion tagging for item ${target.mediaServerId}: no ${service} instance associated with the exclusion.`,
         );
         return;
       }
@@ -302,36 +295,65 @@ export class ServarrTagService {
         return;
       }
 
-      const client = await this.getClient(service, settingsId);
-      if (!client) {
-        return;
-      }
-
-      const tagId = await client.ensureTag(label);
-      if (tagId === undefined) {
-        this.logger.warn(
-          `Couldn't ensure ${service} tag '${label}'; skipping exclusion ${mode} for item ${target.mediaServerId}.`,
+      const instances = await this.exclusionInstances(service, instance);
+      if (instances.length === 0) {
+        this.logger.debug(
+          `Skipping *arr exclusion tagging for item ${target.mediaServerId}: no ${service} instance associated with the exclusion.`,
         );
         return;
       }
 
-      const arrId = await this.resolveArrId(client, service, target);
-      if (arrId == null) {
-        // undefined = transient (retried on the next exclude/un-exclude),
-        // null = the item isn't tracked in *arr - nothing to tag either way.
-        return;
+      // Resolved once and reused: the candidate ids describe the item, not the
+      // instance, so a fan-out must not re-read its metadata per instance.
+      const candidates = await this.lookupCandidates(target, service);
+
+      const tagged: string[] = [];
+      let matched = false;
+      for (const settings of instances) {
+        const client = await this.getClient(service, settings.id);
+        if (!client) {
+          continue;
+        }
+
+        const arrId = await this.matchArrId(client, service, candidates);
+        if (arrId == null) {
+          // undefined = transient (retried on the next exclude/un-exclude),
+          // null = this instance doesn't track the item - nothing to tag.
+          continue;
+        }
+
+        matched = true;
+
+        // Created only on add, and only after the match, so an instance that
+        // doesn't hold the item never gets a stray label. A removal looks the
+        // label up instead: an instance without it has nothing to strip.
+        const tagId =
+          mode === 'add'
+            ? await client.ensureTag(label)
+            : await this.findTagId(client, label);
+        if (tagId === undefined) {
+          if (mode === 'add') {
+            this.logger.warn(
+              `Couldn't ensure ${service} tag '${label}' on '${settings.serverName}'; skipping exclusion add for item ${target.mediaServerId}.`,
+            );
+          }
+          continue;
+        }
+
+        if ((await this.writeTags(client, service, [arrId], tagId, mode)) > 0) {
+          tagged.push(settings.serverName);
+        }
       }
 
-      const written = await this.writeTags(
-        client,
-        service,
-        [arrId],
-        tagId,
-        mode,
-      );
-      if (written > 0) {
+      if (tagged.length > 0) {
         this.logger.log(
-          `${mode === 'add' ? 'Applied' : 'Removed'} ${service} exclusion tag '${label}' ${mode === 'add' ? 'to' : 'from'} item ${target.mediaServerId}.`,
+          `${mode === 'add' ? 'Applied' : 'Removed'} ${service} exclusion tag '${label}' ${mode === 'add' ? 'to' : 'from'} item ${target.mediaServerId} on ${tagged.join(', ')}.`,
+        );
+      } else if (!matched) {
+        // The write failing is already reported by the *arr client, so only the
+        // "nothing to tag" outcome needs a line of its own.
+        this.logger.debug(
+          `No ${service} match for item ${target.mediaServerId} on ${instances.map((settings) => settings.serverName).join(', ')}; exclusion tag ${mode} skipped.`,
         );
       }
     } catch (error) {
@@ -340,6 +362,47 @@ export class ServarrTagService {
       );
       this.logger.debug(error);
     }
+  }
+
+  /** An existing tag's id, without creating it. */
+  private async findTagId(
+    client: RadarrApi | SonarrApi,
+    label: string,
+  ): Promise<number | undefined> {
+    const target = label.toLowerCase();
+    return (await client.getTags()).find(
+      (tag) => tag.label?.toLowerCase() === target,
+    )?.id;
+  }
+
+  /**
+   * The instances an exclusion tags: the one its collection is bound to, or -
+   * for a global exclusion, which has no collection to inherit from - every
+   * configured instance of the service, so the item is tagged wherever it is
+   * actually tracked.
+   */
+  private async exclusionInstances(
+    service: ArrService,
+    instance: ArrInstanceRef | undefined,
+  ): Promise<{ id: number; serverName: string }[]> {
+    const configured =
+      service === 'radarr'
+        ? await this.settings.getRadarrSettings()
+        : await this.settings.getSonarrSettings();
+    // The getters answer with an error DTO instead of throwing.
+    const all = Array.isArray(configured) ? configured : [];
+
+    if (!instance) {
+      return all;
+    }
+
+    const settingsId =
+      service === 'radarr'
+        ? instance.radarrSettingsId
+        : instance.sonarrSettingsId;
+    return settingsId
+      ? all.filter((settings) => settings.id === settingsId)
+      : [];
   }
 
   private serviceForType(
@@ -409,15 +472,34 @@ export class ServarrTagService {
     service: ArrService,
     item: ArrTagItem,
   ): Promise<number | null | undefined> {
-    const candidates =
-      await this.metadataService.resolveLookupCandidatesForService(
-        item.mediaServerId,
-        service,
-        {
-          ...(item.tmdbId != null ? { tmdb: item.tmdbId } : {}),
-          ...(item.tvdbId != null ? { tvdb: item.tvdbId } : {}),
-        },
-      );
+    return this.matchArrId(
+      client,
+      service,
+      await this.lookupCandidates(item, service),
+    );
+  }
+
+  /** The item's provider ids to look up, cached ids included as fallbacks. */
+  private lookupCandidates(
+    item: ArrTagItem,
+    service: ArrService,
+  ): Promise<MetadataLookupCandidate[]> {
+    return this.metadataService.resolveLookupCandidatesForService(
+      item.mediaServerId,
+      service,
+      {
+        ...(item.tmdbId != null ? { tmdb: item.tmdbId } : {}),
+        ...(item.tvdbId != null ? { tvdb: item.tvdbId } : {}),
+      },
+    );
+  }
+
+  /** Match resolved candidates against one instance; see `resolveArrId`. */
+  private async matchArrId(
+    client: RadarrApi | SonarrApi,
+    service: ArrService,
+    candidates: MetadataLookupCandidate[],
+  ): Promise<number | null | undefined> {
     if (candidates.length === 0) {
       return null;
     }
