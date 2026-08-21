@@ -30,4 +30,5 @@ export class RuleGroupDto {
   sonarrQualityProfileId?: number;
   sportarrQualityProfileId?: number;
   tagInArr?: boolean;
+  keepInMaintainerrOnly?: boolean;
 }

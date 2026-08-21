@@ -832,6 +832,45 @@ describe('RuleExecutorService', () => {
     );
   });
 
+  // #11: a collection kept in Maintainerr only has no media-server collection.
+  // The sync must not run, or its title-based relink would adopt one.
+  it('skips the media server sync for a collection kept in Maintainerr only', async () => {
+    const { service, collectionService, mediaServer } = createService(
+      MediaServerType.JELLYFIN,
+    );
+
+    collectionService.getCollection.mockResolvedValue({
+      id: 1,
+      title: 'Local Only',
+      mediaServerId: null,
+      keepInMaintainerrOnly: true,
+    } as any);
+
+    await (
+      service as unknown as {
+        syncManualMediaServerToCollectionDB: (
+          ruleGroup: { id: number; collectionId: number },
+          collectionSyncChanges: {
+            addedMediaServerIds: Set<string>;
+            removedMediaServerIds: Set<string>;
+          },
+        ) => Promise<void>;
+      }
+    ).syncManualMediaServerToCollectionDB(
+      { id: 10, collectionId: 1 },
+      {
+        addedMediaServerIds: new Set(),
+        removedMediaServerIds: new Set(),
+      },
+    );
+
+    expect(
+      collectionService.checkAutomaticMediaServerLink,
+    ).not.toHaveBeenCalled();
+    expect(collectionService.relinkManualCollection).not.toHaveBeenCalled();
+    expect(mediaServer.getCollectionChildren).not.toHaveBeenCalled();
+  });
+
   it('removes collection items on Plex when children are empty', async () => {
     const { service, collectionService } = createService(MediaServerType.PLEX);
 

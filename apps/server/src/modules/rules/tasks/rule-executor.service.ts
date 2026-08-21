@@ -772,6 +772,12 @@ export class RuleExecutorService {
       return {};
     }
 
+    // Kept in Maintainerr only: there is no media-server collection to sync
+    // with, and the title-based relink below would adopt a same-titled one.
+    if (collection.keepInMaintainerrOnly) {
+      return {};
+    }
+
     if (collection.manualCollection) {
       const relinkedCollection =
         await this.collectionService.relinkManualCollection(collection);

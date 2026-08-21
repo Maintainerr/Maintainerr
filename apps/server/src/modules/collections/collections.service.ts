@@ -1966,7 +1966,8 @@ export class CollectionsService {
       if (
         !empty &&
         (collection.manualCollection == undefined ||
-          !collection.manualCollection)
+          !collection.manualCollection) &&
+        !collection.keepInMaintainerrOnly
       ) {
         // Create collection via media server abstraction
         mediaCollection = await mediaServer.createCollection({
@@ -2082,6 +2083,8 @@ export class CollectionsService {
       }
 
       if (media && media.length > 0) {
+        // No media-server collection exists to seed when the collection is kept
+        // in Maintainerr only; persist membership locally, as the add path does.
         await this.addChildrenToCollection(
           {
             mediaServerId:
@@ -2091,7 +2094,7 @@ export class CollectionsService {
           },
           media,
           false,
-          false,
+          Boolean(collection.keepInMaintainerrOnly),
         );
       }
 
@@ -2988,7 +2991,10 @@ export class CollectionsService {
       let unpersistedIds: string[] = [];
 
       if (collection) {
-        if (!skipAutomaticLinkCheck) {
+        // A collection kept in Maintainerr only deliberately has no media-server
+        // collection; the title-based relink must not adopt one that happens to
+        // carry the same name on the server.
+        if (!skipAutomaticLinkCheck && !collection.keepInMaintainerrOnly) {
           collection = await this.checkAutomaticMediaServerLink(collection);
         }
 
@@ -2996,7 +3002,8 @@ export class CollectionsService {
         // This happens when: 1) we have new items to add, OR 2) we have existing items but no media server collection
         const needsMediaServerCollection =
           !collection.mediaServerId &&
-          (newMedia.length > 0 || collectionMedia.length > 0);
+          (newMedia.length > 0 || collectionMedia.length > 0) &&
+          !collection.keepInMaintainerrOnly;
 
         // Create media server collection if needed
         if (needsMediaServerCollection) {
@@ -3174,14 +3181,23 @@ export class CollectionsService {
           );
         }
 
-        // add new children to collection
-        if (newMedia.length > 0 && collection.mediaServerId) {
+        // add new children to collection. Kept in Maintainerr only means there is
+        // no media-server collection to add to, but membership must still persist
+        // locally - that row is what rules, actions and overlays run on.
+        const keepInMaintainerrOnly = Boolean(collection.keepInMaintainerrOnly);
+        if (
+          newMedia.length > 0 &&
+          (collection.mediaServerId || keepInMaintainerrOnly)
+        ) {
           const { serverRejectedIds, persistedIds } =
             await this.addChildrenToCollection(
-              { mediaServerId: collection.mediaServerId, dbId: collection.id },
+              {
+                mediaServerId: collection.mediaServerId ?? '',
+                dbId: collection.id,
+              },
               newMedia,
               manual,
-              skipMediaServerAdd,
+              skipMediaServerAdd || keepInMaintainerrOnly,
               manualMembershipSource,
             );
           rejectedByServer = [...serverRejectedIds];
@@ -3411,7 +3427,7 @@ export class CollectionsService {
         return undefined;
       }
 
-      if (!skipAutomaticLinkCheck) {
+      if (!skipAutomaticLinkCheck && !collection.keepInMaintainerrOnly) {
         collection = await this.checkAutomaticMediaServerLink(collection);
       }
 
@@ -3783,7 +3799,11 @@ export class CollectionsService {
         return { status: 'OK', code: 1, message: 'Success' };
       }
 
-      collection = await this.checkAutomaticMediaServerLink(collection);
+      // Never relink a collection kept in Maintainerr only: it has no media
+      // server collection, and adopting a same-titled one here would delete it.
+      if (!collection.keepInMaintainerrOnly) {
+        collection = await this.checkAutomaticMediaServerLink(collection);
+      }
 
       if (collection.mediaServerId && !collection.manualCollection) {
         try {
@@ -3826,27 +3846,63 @@ export class CollectionsService {
     }
   }
 
-  public async deactivateCollection(collectionDbId: number) {
+  /**
+   * Tear down a collection's media-server collection, keeping the local rows.
+   * Never blocks on an unreachable server, and reports failure so the caller can
+   * keep the link rather than orphaning it (#3344). Manual collections point at
+   * a user-created collection, so they are left alone.
+   *
+   * Returns true when no media-server collection is left behind.
+   */
+  private async deleteMediaServerCollection(
+    collection: Collection,
+    context: string,
+  ): Promise<boolean> {
+    if (collection.manualCollection || !collection.mediaServerId) {
+      return true;
+    }
+
     try {
       const mediaServer = await this.getMediaServer();
+      await mediaServer.deleteCollection(collection.mediaServerId);
+      return true;
+    } catch (error) {
+      this.logger.warn(
+        `Failed to delete media server collection ${collection.mediaServerId} for '${collection.title}' - ${context} anyway and keeping the link`,
+      );
+      this.logger.debug(error);
+      return false;
+    }
+  }
+
+  /**
+   * Turning "keep in Maintainerr only" on removes the collection from the media
+   * server while every local row stays: membership, rules, actions, overlays and
+   * *arr tags are unaffected. Called from the rule-group save, mirroring the
+   * `tagInArr` toggle reconcile. Best-effort - a failed delete keeps the link, so
+   * the next save or run retries instead of orphaning it.
+   */
+  public async stopMediaServerSync(collection: Collection): Promise<void> {
+    if (!collection.mediaServerId) {
+      return;
+    }
+
+    if (await this.deleteMediaServerCollection(collection, 'continuing')) {
+      await this.saveCollection({ ...collection, mediaServerId: null });
+      this.logger.log(
+        `Removed the media server collection for '${collection.title}' - it is now kept in Maintainerr only`,
+      );
+    }
+  }
+
+  public async deactivateCollection(collectionDbId: number) {
+    try {
       const collection = await this.collectionRepo.findOne({
         where: { id: collectionDbId },
       });
 
-      // Deactivating must not be blocked by an unreachable server, but
-      // dropping the link on a failed delete orphans the collection (#3344).
-      let mediaServerCollectionRemoved = true;
-      if (!collection.manualCollection && collection.mediaServerId) {
-        try {
-          await mediaServer.deleteCollection(collection.mediaServerId);
-        } catch (error) {
-          mediaServerCollectionRemoved = false;
-          this.logger.warn(
-            `Failed to delete media server collection ${collection.mediaServerId} for '${collection.title}' - deactivating anyway and keeping the link`,
-          );
-          this.logger.debug(error);
-        }
-      }
+      const mediaServerCollectionRemoved =
+        await this.deleteMediaServerCollection(collection, 'deactivating');
 
       await this.CollectionMediaRepo.delete({ collectionId: collection.id });
       // Deactivation tears down the media-server collection but keeps the
@@ -4176,6 +4232,7 @@ export class CollectionsService {
             sportarrQualityProfileId:
               collection.sportarrQualityProfileId ?? null,
             tagInArr: collection.tagInArr ?? false,
+            keepInMaintainerrOnly: collection.keepInMaintainerrOnly ?? false,
             sortTitle: collection.sortTitle,
             mediaServerSort: collection.mediaServerSort ?? null,
             overlayEnabled: collection.overlayEnabled ?? false,

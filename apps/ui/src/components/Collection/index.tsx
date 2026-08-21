@@ -36,6 +36,7 @@ export interface ICollection {
   sonarrQualityProfileId?: number
   sportarrQualityProfileId?: number
   tagInArr?: boolean
+  keepInMaintainerrOnly?: boolean
   sortTitle?: string
   mediaServerSort?: MediaServerCollectionSort | null
   totalSizeBytes?: number | null
