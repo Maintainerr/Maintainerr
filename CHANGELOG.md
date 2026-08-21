@@ -1,3 +1,36 @@
+# [3.24.0](https://github.com/Maintainerr/Maintainerr/compare/v3.23.0...v3.24.0) (2026-08-21)
+
+
+## Highlights
+- Make the remaining UI strings translatable to support full localization (#3510).
+- Automatically label issues and pull requests by media server to improve triage (#3562).
+
+## Features
+- Report upstream API endpoint drift to detect breaking changes early (#3541).
+- Link untranslated text hints to the Weblate engagement page (#3560).
+
+## Fixes
+- Overlays: queue reverts behind runs, guard countdown math (#3558), and ensure reset removes all drawn elements (#3557).
+- Overlays: propagate episode countdowns to series when Plex hides seasons (#3534) and map templates to visible artwork regions (#3533).
+- Prevent collections from being incorrectly matched as movies (#3550).
+- CI: gate labels on precision checks (#3567), honour pinned servers on BoxSet reports, and drop unused AI_MODEL_ENDPOINT passthrough (#3566).
+- UI: fix layout viewport overflow, clipped panel labels, and sort order (#3560).
+- UI: remove BETA wording from the About page (#3553).
+- i18n: give layer-visibility toggle unique Show/Hide strings (#3554).
+- i18n: reject translations that change ICU argument structures (#3548) or fail to compile (#3546).
+- i18n: decode catalogs using pofile-ts to ensure validator matches runtime (#3510).
+- CI: fix review job crashes by installing pofile-ts dependencies (#3547).
+- UI: restore reachable loading states and fix event stream handling (#3510).
+
+## Internal
+- Document Jellyfin 12 changes and collection collapsing safety (#3572, #3573).
+- Add translation status badge to README (#3572).
+- Refactor i18n parsers, apply formatting, and harden review tooling (#3510).
+- Fix release sync issues and judge checks by newest runs (#3541).
+
+## Dependencies
+- Bump 10 dependencies including @nestjs/swagger, konva, and @swc/core.
+
 # [3.23.0](https://github.com/Maintainerr/Maintainerr/compare/v3.22.1...v3.23.0) (2026-08-17)
 
 
