@@ -1244,6 +1244,7 @@
     "PUT /:/scrobble",
     "PUT /:/unscrobble",
     "PUT /actions/removeFromContinueWatching",
+    "PUT /api/invites/requests/{inviteId}",
     "PUT /home/users/restricted/{userId}",
     "PUT /home/users/{userId}",
     "PUT /hubs/sections/{sectionId}/manage/move",
