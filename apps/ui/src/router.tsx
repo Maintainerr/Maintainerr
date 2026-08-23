@@ -118,6 +118,9 @@ const settingsJobsRoute = createLazyRoute(
 const settingsLogsRoute = createLazyRoute(
   () => import('./components/Settings/Logs'),
 )
+const settingsTelemetryRoute = createLazyRoute(
+  () => import('./components/Settings/Telemetry'),
+)
 const settingsAboutRoute = createLazyRoute(
   () => import('./components/Settings/About'),
 )
@@ -334,6 +337,11 @@ const appRoutes: AppRoute[] = [
         path: 'logs',
         lazy: settingsLogsRoute.lazy,
         preload: settingsLogsRoute.preload,
+      },
+      {
+        path: 'telemetry',
+        lazy: settingsTelemetryRoute.lazy,
+        preload: settingsTelemetryRoute.preload,
       },
       {
         path: 'about',

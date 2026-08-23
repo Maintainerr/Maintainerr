@@ -92,4 +92,6 @@ export class SettingDto {
   sonarr_exclusion_tag: string;
 
   sonarr_untag_on_unexclude: boolean;
+
+  telemetryEnabled: boolean | null;
 }

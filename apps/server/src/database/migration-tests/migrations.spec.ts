@@ -157,6 +157,14 @@ describe('database migrations', () => {
         notnull: 1,
         dflt_value: '0',
       });
+
+      // AddTelemetryEnabled: nullable with no default, so an existing install
+      // is grandfathered to "not asked yet" rather than opted in silently.
+      expect(settings.telemetryEnabled).toMatchObject({
+        type: 'boolean',
+        notnull: 0,
+        dflt_value: null,
+      });
     } finally {
       await ds.destroy();
     }
@@ -169,8 +177,8 @@ describe('database migrations', () => {
     // emits a full create-temporary-table / copy / drop / rename rebuild for the
     // changed tables. A hand-written ALTER shortcut lacks it - this is the
     // cheapest signal the migration was generated rather than authored. The
-    // newest migration adds a collection column, so it rebuilds that table.
-    expect(src).toContain('CREATE TABLE "temporary_collection"');
+    // newest migration adds a settings column, so it rebuilds that table.
+    expect(src).toContain('CREATE TABLE "temporary_settings"');
   });
 
   // We don't revert the whole chain: several pre-existing migrations have
@@ -182,8 +190,8 @@ describe('database migrations', () => {
     try {
       await ds.runMigrations();
       const has = async () =>
-        (await columns(ds, 'collection')).some(
-          (c) => c.name === 'keepInMaintainerrOnly',
+        (await columns(ds, 'settings')).some(
+          (c) => c.name === 'telemetryEnabled',
         );
       expect(await has()).toBe(true);
 

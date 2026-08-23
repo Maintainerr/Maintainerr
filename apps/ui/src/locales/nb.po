@@ -1889,6 +1889,14 @@ msgstr ""
 msgid "Help"
 msgstr ""
 
+#: src/components/Layout/TelemetryConsentModal.tsx
+msgid "Help shape Maintainerr?"
+msgstr ""
+
+#: src/components/Settings/About/index.tsx
+msgid "Help us improve it"
+msgstr ""
+
 #: src/components/OverlayEditor/LayerPanel.tsx
 msgctxt "Toggle layer visibility"
 msgid "Hide"
@@ -2003,6 +2011,10 @@ msgstr ""
 msgid "Invalid value"
 msgstr ""
 
+#: src/components/Layout/TelemetryConsentModal.tsx
+msgid "It is on, and you can turn it off right here. Maintainerr is built in our spare time and the server bill comes out of our own pockets, so leaving it on is a free way to help. Either way you are only asked once, and you can change your mind and see exactly what is sent under <0>About, Help us improve it</0>."
+msgstr ""
+
 #: src/components/Collection/CollectionItem/index.tsx
 #: src/components/StorageMetrics/index.tsx
 msgid "Items"
@@ -2067,6 +2079,10 @@ msgstr ""
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Keep in Maintainerr only"
+msgstr ""
+
+#: src/components/Layout/TelemetryConsentModal.tsx
+msgid "Keep it on"
 msgstr ""
 
 #: src/components/VersionStatus/index.tsx
@@ -2281,6 +2297,14 @@ msgstr ""
 msgid "Made with Version"
 msgstr ""
 
+#: src/components/Settings/Telemetry/index.tsx
+msgid "Maintainerr counts how many servers are running, which version they are on, and roughly which features get used, so development can follow what people actually run. No identifier for your server is ever sent, so one week's report cannot be tied to the next or to any other server. The collector does not read or store IP addresses, its <0>source code</0> is public, and so is <1>every number it publishes</1>."
+msgstr ""
+
+#: src/components/Settings/About/index.tsx
+msgid "Maintainerr is built in our spare time, and donations do not cover the server costs, so we make up the difference ourselves. An anonymous weekly report of the version and features you run costs you nothing and tells us what to work on. It is on until you turn it off, and the page shows exactly what is sent."
+msgstr ""
+
 #: src/components/Layout/NavBar/index.tsx
 msgid "Maintainerr logo"
 msgstr ""
@@ -2291,6 +2315,10 @@ msgstr ""
 
 #: src/components/VersionStatus/index.tsx
 msgid "Maintainerr Pre-Release"
+msgstr ""
+
+#: src/components/Layout/TelemetryConsentModal.tsx
+msgid "Maintainerr reports a weekly count of which version it runs and roughly which features get used, so development follows what people actually run. Nothing identifies your server, and no IP address is read or stored."
 msgstr ""
 
 #: src/components/StorageMetrics/index.tsx
@@ -3463,6 +3491,10 @@ msgstr ""
 msgid "Selected: {maskedUserId}"
 msgstr ""
 
+#: src/components/Settings/Telemetry/index.tsx
+msgid "Send anonymous usage data"
+msgstr ""
+
 #: src/components/Settings/Plex/index.tsx
 msgid "Server"
 msgstr ""
@@ -3483,6 +3515,10 @@ msgstr ""
 
 #: src/pages/OverlayTemplateListPage.tsx
 msgid "Set as default"
+msgstr ""
+
+#: src/components/Settings/Telemetry/index.tsx
+msgid "Setting {DISABLE_ENV} in the environment turns this off too, whatever is saved here."
 msgstr ""
 
 #: src/components/Layout/NavBar/index.tsx
@@ -3864,6 +3900,23 @@ msgstr ""
 msgid "Tautulli watched percent override must be a whole number"
 msgstr ""
 
+#: src/components/Settings/About/index.tsx
+#: src/components/Settings/Telemetry/index.tsx
+msgid "Telemetry"
+msgstr ""
+
+#: src/components/Settings/Telemetry/index.tsx
+msgid "Telemetry settings - Maintainerr"
+msgstr ""
+
+#: src/components/Settings/Telemetry/index.tsx
+msgid "Telemetry settings could not be updated"
+msgstr ""
+
+#: src/components/Settings/Telemetry/index.tsx
+msgid "Telemetry settings updated"
+msgstr ""
+
 #: src/pages/OverlayTemplateListPage.tsx
 msgid "Template deleted"
 msgstr ""
@@ -3959,6 +4012,10 @@ msgstr ""
 msgid "The media server has no user named ''{username}''"
 msgstr ""
 
+#: src/components/Settings/Telemetry/index.tsx
+msgid "The preview could not be loaded."
+msgstr ""
+
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "The rule group could not be saved"
 msgstr ""
@@ -3997,6 +4054,10 @@ msgstr ""
 
 #: src/components/Layout/index.tsx
 msgid "The server returned an unexpected response."
+msgstr ""
+
+#: src/components/Settings/Telemetry/index.tsx
+msgid "The top section is sent weekly. The {SAMPLE_KEY} section is included roughly once every {SAMPLE_YEARS} years per server, and is stored only as anonymous counters."
 msgstr ""
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
@@ -4151,6 +4212,10 @@ msgstr ""
 
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "True"
+msgstr ""
+
+#: src/components/Layout/TelemetryConsentModal.tsx
+msgid "Turn it off"
 msgstr ""
 
 #: src/components/Settings/Metadata/index.tsx
@@ -4487,6 +4552,10 @@ msgstr ""
 
 #: src/components/Settings/index.tsx
 msgid "Welcome to Maintainerr!"
+msgstr ""
+
+#: src/components/Settings/Telemetry/index.tsx
+msgid "What would be sent"
 msgstr ""
 
 #: src/components/Settings/DownloadClient/index.tsx

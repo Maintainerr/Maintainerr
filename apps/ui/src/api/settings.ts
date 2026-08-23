@@ -10,6 +10,8 @@ import {
   MetadataProviderSetting,
   SwitchMediaServerRequest,
   SwitchMediaServerResponse,
+  TelemetryPing,
+  TelemetrySetting,
 } from '@maintainerr/contracts'
 import {
   useMutation,
@@ -81,6 +83,7 @@ export interface ISettings {
   sonarr_tag_exclusions?: boolean
   sonarr_exclusion_tag?: string
   sonarr_untag_on_unexclude?: boolean
+  telemetryEnabled?: boolean | null
 }
 
 // Jellyfin test result (not in contracts as it's UI-specific)
@@ -914,6 +917,81 @@ export const useUpdateMetadataProviderPreference = (
 
 export type UseUpdateMetadataProviderPreferenceResult = ReturnType<
   typeof useUpdateMetadataProviderPreference
+>
+
+type UseTelemetryPreviewQueryKey = ['settings', 'telemetry', 'preview']
+
+type UseTelemetryPreviewOptions = Omit<
+  UseQueryOptions<
+    TelemetryPing,
+    Error,
+    TelemetryPing,
+    UseTelemetryPreviewQueryKey
+  >,
+  'queryKey' | 'queryFn'
+>
+
+/**
+ * The exact ping this server would send, sample block included. There is no
+ * send-now endpoint on purpose: every real post increments the census, so a
+ * test button would let an instance inflate the instance count. This preview
+ * is the verification mechanism.
+ */
+export const useTelemetryPreview = (options?: UseTelemetryPreviewOptions) => {
+  return useQuery<
+    TelemetryPing,
+    Error,
+    TelemetryPing,
+    UseTelemetryPreviewQueryKey
+  >({
+    queryKey: ['settings', 'telemetry', 'preview'],
+    queryFn: async () => {
+      return await GetApiHandler<TelemetryPing>('/settings/telemetry/preview')
+    },
+    staleTime: 0,
+    ...options,
+  })
+}
+
+export type UseTelemetryPreviewResult = ReturnType<typeof useTelemetryPreview>
+
+type UseUpdateTelemetrySettingOptions = Omit<
+  UseMutationOptions<BasicResponseDto, Error, boolean>,
+  'mutationFn' | 'mutationKey' | 'onSuccess'
+>
+
+export const useUpdateTelemetrySetting = (
+  options?: UseUpdateTelemetrySettingOptions,
+) => {
+  const queryClient = useQueryClient()
+
+  return useMutation<BasicResponseDto, Error, boolean>({
+    mutationKey: ['settings', 'updateTelemetrySetting'],
+    mutationFn: async (enabled) => {
+      const response = await PostApiHandler<BasicResponseDto>(
+        '/settings/telemetry',
+        { enabled } satisfies TelemetrySetting,
+      )
+
+      // A failed write answers 2xx with code 0, so without this the page would
+      // report a save that did not happen.
+      if (response?.code !== 1) {
+        throw new Error(response?.message ?? 'Failed to update telemetry')
+      }
+
+      return response
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ['settings'] satisfies UseSettingsQueryKey,
+      })
+    },
+    ...options,
+  })
+}
+
+export type UseUpdateTelemetrySettingResult = ReturnType<
+  typeof useUpdateTelemetrySetting
 >
 
 export const downloadDatabase = async (
