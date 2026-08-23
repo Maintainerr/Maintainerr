@@ -76,6 +76,7 @@ services:
 #          - UI_HOSTNAME=:: # uncomment if you want to listen on IPv6 instead (default 0.0.0.0)
 #          - UI_PORT=6247 # uncomment to change the UI port (default 6246)
 #          - GITHUB_TOKEN=ghp_yourtoken # Optional: GitHub Personal Access Token for higher API rate limits (60/hr without, 5000/hr with token)
+#          - TELEMETRY=off # uncomment to switch off the anonymous weekly usage report
         ports:
           - 6246:6246
         restart: unless-stopped
@@ -99,6 +100,7 @@ A list of all available environment variables are below. No other env variables 
 | UI_PORT | 6246 | The listen port of the web server. |
 | BASE_PATH | (*none*) | If reverse proxying with a subfolder you'll want to set this. Must be in the format of `/subfolder` |
 | GITHUB_TOKEN | (*none*) | GitHub Personal Access Token for higher API rate limits |
+| TELEMETRY | (*none*) | Set to `off` to disable the anonymous weekly usage report, whatever the stored setting says. |
 | CORS_ALLOWED_ORIGINS | (*none*) | Comma-separated list of origins allowed to call the API cross-origin, e.g. `https://maintainerr.example.com`. The bundled UI is served from the same origin as the API and does not need this; only set it if a separate front end calls the API. |
 
 # Features

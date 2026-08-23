@@ -14,6 +14,7 @@ import { MetadataSettingsService } from './metadata-settings.service';
 import { SettingsController } from './settings.controller';
 import { SettingsOperationsService } from './settings-operations.service';
 import { SettingsDataService } from './settings-data.service';
+import { TelemetryService } from '../telemetry/telemetry.service';
 
 describe('SettingsController', () => {
   let controller: SettingsController;
@@ -55,6 +56,10 @@ describe('SettingsController', () => {
     getDatabaseDownload: jest.fn(),
   } as unknown as jest.Mocked<DatabaseDownloadService>;
 
+  const telemetryService = {
+    buildPayload: jest.fn(),
+  } as unknown as jest.Mocked<TelemetryService>;
+
   const createSettings = (overrides: Partial<Settings> = {}): Settings =>
     Object.assign(new Settings(), {
       tautulli_api_key: null,
@@ -75,6 +80,7 @@ describe('SettingsController', () => {
       metadataSettingsService,
       mediaServerSwitchService,
       databaseDownloadService,
+      telemetryService,
     );
   });
 

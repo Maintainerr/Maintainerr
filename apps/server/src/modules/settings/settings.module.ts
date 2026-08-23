@@ -27,6 +27,7 @@ import { MetadataSettingsService } from './metadata-settings.service';
 import { RuleMigrationService } from './rule-migration.service';
 import { SettingsController } from './settings.controller';
 import { SettingsOperationsService } from './settings-operations.service';
+import { TelemetryModule } from '../telemetry/telemetry.module';
 import { SettingsDataService } from './settings-data.service';
 
 @Global()
@@ -43,6 +44,7 @@ import { SettingsDataService } from './settings-data.service';
     TmdbApiModule,
     TvdbApiModule,
     InternalApiModule,
+    TelemetryModule,
     TypeOrmModule.forFeature([
       Settings,
       RadarrSettings,

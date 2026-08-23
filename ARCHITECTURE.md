@@ -112,6 +112,8 @@ integrations, and production static serving.
   and quality profile changes, plus the opt-in leftover-folder cleanup - the one
   place in the module that writes to the local filesystem.
 - `src/modules/tasks/` creates and tracks scheduled jobs.
+- `src/modules/telemetry/` builds and sends the anonymous weekly usage
+  report, scheduled on a per-instance jitter slot.
 - `src/modules/events/` exposes server-sent events for rule and collection job
   progress.
 - `src/modules/version/` resolves the running build against GitHub, for the
@@ -160,6 +162,8 @@ Maintainerr integrates with:
   upstream.
 - TMDB and TVDB for metadata resolution.
 - GitHub for release/version checks.
+- The Maintainerr telemetry collector for the anonymous weekly usage report,
+  when it is enabled (see the Telemetry section of the README).
 - Notification providers such as Discord, Slack, Telegram, Pushover, Gotify,
   ntfy, email, Pushbullet, LunaSea, and webhooks.
 
@@ -180,6 +184,8 @@ Important runtime environment variables include:
 - `UI_HOSTNAME`: HTTP bind host, default `0.0.0.0`.
 - `BASE_PATH`: optional subdirectory mount path for both API and UI serving.
 - `GITHUB_TOKEN`: optional token for higher GitHub API rate limits.
+- `TELEMETRY`: set to `off` to disable the anonymous weekly usage report,
+  whatever the stored setting says.
 - `VERSION_TAG` and `GIT_SHA`: release metadata surfaced by the app.
 - `LOG_LEVEL`: optional process-local log level override; recognised values
   take precedence over the saved setting without writing the database.

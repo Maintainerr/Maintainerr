@@ -4,6 +4,7 @@ import { type VersionResponse } from '@maintainerr/contracts'
 import { useEffect, useState } from 'react'
 import GetApiHandler from '../../../utils/ApiHandler'
 import { startsWithDigit } from '../../../utils/version'
+import BrandLink from '../../Common/BrandLink'
 import Releases from './Releases'
 
 const AboutSettings = () => {
@@ -295,6 +296,30 @@ const AboutSettings = () => {
               </div>
             </div>
           </div>
+        </div>
+        <hr className="my-2 h-px border-0 bg-gray-200 dark:bg-gray-700"></hr>
+        <div className="section my-2">
+          <div className="form-row my-2">
+            <label className="text-label">
+              <Trans>Telemetry</Trans>
+            </label>
+            <div className="form-input">
+              <div className="form-input-field font-bold text-maintainerr-600">
+                <BrandLink to="/settings/telemetry">
+                  <Trans>Help us improve it</Trans>
+                </BrandLink>
+              </div>
+            </div>
+          </div>
+          <p className="text-sm text-zinc-400">
+            <Trans>
+              Maintainerr is built in our spare time, and donations do not cover
+              the server costs, so we make up the difference ourselves. An
+              anonymous weekly report of the version and features you run costs
+              you nothing and tells us what to work on. It is on until you turn
+              it off, and the page shows exactly what is sent.
+            </Trans>
+          </p>
         </div>
         <hr className="h-px border-0 bg-gray-200 dark:bg-gray-700"></hr>
         {/* End Userful Links */}

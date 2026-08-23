@@ -79,6 +79,7 @@ services:
 #          - UI_HOSTNAME=:: # uncomment if you want to listen on IPv6 instead (default 0.0.0.0)
 #          - UI_PORT=6247 # uncomment to change the UI port (default 6246)
 #          - GITHUB_TOKEN=ghp_yourtoken # Optional: GitHub Personal Access Token for higher API rate limits (60/hr without, 5000/hr with token)
+#          - TELEMETRY=off # uncomment to switch off the anonymous weekly usage report
         ports:
           - 6246:6246
         restart: unless-stopped
@@ -238,6 +239,28 @@ Compatibility:
 Maintainerr serves health probes under `/api/health` (prefixed with `BASE_PATH` when set): `/live` (process only), `/ready` (also checks the database, returns `503` if it's unreachable), and `/api/health` (alias of `/ready`). The Docker image already ships a `HEALTHCHECK` against `/api/health/ready`, and the Kubernetes example above wires the liveness and readiness probes.
 
 [See the documentation for response shapes and full details.](https://docs.maintainerr.info/)
+
+# Telemetry
+
+Help us help you. Maintainerr is built in our spare time, and donations do not cover the server costs, so we make up the difference ourselves. We do it because we love free software and this is how we give back. The one thing we cannot buy is a picture of what people actually run, and that is what decides where the effort goes. An anonymous weekly report gives us exactly that. It costs you nothing and needs neither code nor time.
+
+It is on until you turn it off. Every install asks once the next time you open the web interface, and never asks again.
+
+Nothing identifies your server: no account, no instance id, no hostname, no URL, no API key, no library or media name, and no IP address is read or stored. A report carries the version and platform every week, and one week in 32 a bucketed picture of which features and rule properties are in use.
+
+We looked at how our friends in the community handle this before settling on the design. Reporting by default is normal for tools like ours. Where we differ is in what a report is allowed to contain.
+
+|                         | Common practice                    | Maintainerr              |
+| ----------------------- | ---------------------------------- | ------------------------ |
+| Goes to a third party   | Yes, an analytics or error service | No, our own collector    |
+| Identifies your install | Yes, a permanent id per install    | No, no id at all         |
+| Sees your IP address    | Yes, the receiving service does    | No, never read or stored |
+| How often               | Every action                       | Once a week              |
+| Asks you first          | No                                 | Yes, once                |
+
+The exact shape of a report is one TypeScript interface, [`TelemetryPing`](packages/contracts/src/telemetry/telemetryEvent.ts). What happens to it after it arrives, and the answers to the privacy questions worth asking, are documented in the [collector repository](https://github.com/Maintainerr/telemetry-collector). The [dashboard](https://telemetry.maintainerr.info) shows what it all adds up to.
+
+Change it at any time under **Settings > About > Help us improve it**, which also shows the exact report your server would send. Setting `TELEMETRY=off` in the environment turns it off whatever the setting says.
 
 # Documentation
 
