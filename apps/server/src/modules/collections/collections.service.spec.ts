@@ -3116,11 +3116,27 @@ describe('CollectionsService', () => {
   });
 
   it('returns full collection media for the explicit overlay data endpoint', async () => {
-    const firstCollection = createCollection({ id: 1, title: 'First' });
-    const secondCollection = createCollection({ id: 2, title: 'Second' });
+    const firstCollection = createCollection({
+      id: 1,
+      title: 'First',
+      deleteAfterDays: 30,
+    });
+    const secondCollection = createCollection({
+      id: 2,
+      title: 'Second',
+      deleteAfterDays: null,
+    });
+    const firstAddDate = new Date(2026, 7, 1); // Aug 1
+    const secondAddDate = new Date(2026, 7, 2); // Aug 2
     const firstCollectionMedia = [
-      createCollectionMedia(firstCollection, { mediaServerId: 'item-1' }),
-      createCollectionMedia(firstCollection, { mediaServerId: 'item-2' }),
+      createCollectionMedia(firstCollection, {
+        mediaServerId: 'item-1',
+        addDate: firstAddDate,
+      }),
+      createCollectionMedia(firstCollection, {
+        mediaServerId: 'item-2',
+        addDate: secondAddDate,
+      }),
     ];
     const secondCollectionMedia = [
       createCollectionMedia(secondCollection, { mediaServerId: 'item-3' }),
@@ -3151,12 +3167,28 @@ describe('CollectionsService', () => {
     expect(result).toEqual([
       expect.objectContaining({
         id: firstCollection.id,
-        media: firstCollectionMedia,
+        media: [
+          expect.objectContaining({
+            mediaServerId: 'item-1',
+            // addDate + deleteAfterDays (30 days), matching the overlay processor.
+            deletionDate: new Date(2026, 7, 31),
+          }),
+          expect.objectContaining({
+            mediaServerId: 'item-2',
+            deletionDate: new Date(2026, 8, 1),
+          }),
+        ],
         mediaCount: firstCollectionMedia.length,
       }),
       expect.objectContaining({
         id: secondCollection.id,
-        media: secondCollectionMedia,
+        media: [
+          expect.objectContaining({
+            mediaServerId: 'item-3',
+            // No deletion window -> no deletion date.
+            deletionDate: null,
+          }),
+        ],
         mediaCount: secondCollectionMedia.length,
       }),
     ]);

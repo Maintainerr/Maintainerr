@@ -1942,7 +1942,16 @@ export class CollectionsService {
 
         return {
           ...collection,
-          media,
+          // Surface the per-member deletion date (addDate + deleteAfterDays) so
+          // helper integrations can render "leaving soon" without re-deriving
+          // the arithmetic, matching the overlay processor's own countdown.
+          media: media.map((member) => ({
+            ...member,
+            deletionDate: getCollectionDeleteDate(
+              member.addDate,
+              collection.deleteAfterDays,
+            ),
+          })),
           mediaCount: media.length,
         };
       });
