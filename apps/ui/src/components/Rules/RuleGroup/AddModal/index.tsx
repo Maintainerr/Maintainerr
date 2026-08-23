@@ -559,12 +559,14 @@ const notifySkippedRules = (skipped: number) => {
 const AddModal = (props: AddModal) => {
   const { t } = useLingui()
   const navigate = useNavigate()
-  const { isPlex, isJellyfin, mediaServerType } = useMediaServerType()
+  const { isPlex, isJellyfin, isEmby, mediaServerType } = useMediaServerType()
   const mediaServerName = isPlex
     ? 'Plex'
     : isJellyfin
       ? 'Jellyfin'
-      : t`your media server`
+      : isEmby
+        ? 'Emby'
+        : t`your media server`
   const supportsCollectionSort = supportsFeature(
     mediaServerType,
     MediaServerFeature.COLLECTION_SORT,

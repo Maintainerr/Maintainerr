@@ -4266,10 +4266,7 @@ describe('CollectionsService', () => {
       });
       collectionRepo.findOne.mockResolvedValue(collection);
       collectionMediaRepo.find.mockResolvedValue([]);
-      const relink = jest.spyOn(
-        service as any,
-        'checkAutomaticMediaServerLink',
-      );
+      const adopt = jest.spyOn(service, 'findMediaServerCollection');
       jest
         .spyOn(service as any, 'insertCollectionMediaMembership')
         .mockResolvedValue(undefined);
@@ -4278,9 +4275,9 @@ describe('CollectionsService', () => {
         { mediaServerId: 'item-1' },
       ]);
 
-      // The title-based relink would adopt a same-titled collection on the
-      // server and undo the opt-in, so it must not run at all.
-      expect(relink).not.toHaveBeenCalled();
+      // The title search behind the relink would adopt a same-titled collection
+      // on the server and undo the opt-in, so it must never run.
+      expect(adopt).not.toHaveBeenCalled();
       expect(mediaServer.createCollection).not.toHaveBeenCalled();
       expect(mediaServer.addBatchToCollection).not.toHaveBeenCalled();
       expect(eventEmitter.emit).toHaveBeenCalledWith(
@@ -4291,7 +4288,7 @@ describe('CollectionsService', () => {
       );
     });
 
-    it('does not relink while removing members', async () => {
+    it('does not adopt a same-titled collection while removing members', async () => {
       const collection = createCollection({
         id: 31,
         mediaServerId: null,
@@ -4301,17 +4298,155 @@ describe('CollectionsService', () => {
       collectionMediaRepo.find.mockResolvedValue([
         createCollectionMedia(collection, { mediaServerId: 'item-1' }),
       ]);
-      const relink = jest.spyOn(
-        service as any,
-        'checkAutomaticMediaServerLink',
-      );
+      const adopt = jest.spyOn(service, 'findMediaServerCollection');
 
       await service.removeFromCollection(collection.id, [
         { mediaServerId: 'item-1' },
       ]);
 
-      expect(relink).not.toHaveBeenCalled();
+      expect(adopt).not.toHaveBeenCalled();
       expect(mediaServer.removeBatchFromCollection).not.toHaveBeenCalled();
+    });
+
+    // The removals never reached the server, so unlinking would strand them for
+    // the sibling to adopt. stopMediaServerSync owns this teardown.
+    it('does not unlink a drained local-only collection that shares a link', async () => {
+      const collection = createCollection({
+        id: 46,
+        mediaServerId: 'shared-collection',
+        keepInMaintainerrOnly: true,
+      });
+      collectionRepo.findOne.mockResolvedValue(collection);
+      // isolate the drained branch from the reconcile that runs before it
+      jest
+        .spyOn(service, 'checkAutomaticMediaServerLink')
+        .mockImplementation(async (c) => c);
+      collectionMediaRepo.find
+        .mockResolvedValueOnce([
+          createCollectionMedia(collection, { mediaServerId: 'item-1' }),
+        ])
+        .mockResolvedValue([]); // drained after the removal
+      collectionRepo.count.mockResolvedValue(1); // a sibling shares the link
+
+      await service.removeFromCollection(collection.id, [
+        { mediaServerId: 'item-1' },
+      ]);
+
+      // teardown stays the sole owner of the unlink
+      expect(collectionRepo.save).not.toHaveBeenCalledWith(
+        expect.objectContaining({ id: 46, mediaServerId: null }),
+      );
+    });
+
+    // The teardown has not landed while the link is retained, so our items must
+    // still come off the collection - otherwise the leave unlinks over them.
+    it('still removes members from the media server while the teardown is failing', async () => {
+      const collection = createCollection({
+        id: 38,
+        mediaServerId: 'stale-link',
+        keepInMaintainerrOnly: true,
+      });
+      collectionRepo.findOne.mockResolvedValue(collection);
+      collectionMediaRepo.find.mockResolvedValue([
+        createCollectionMedia(collection, { mediaServerId: 'item-1' }),
+      ]);
+      jest
+        .spyOn(service, 'checkAutomaticMediaServerLink')
+        .mockImplementation(async (c) => c);
+      mediaServer.removeBatchFromCollection.mockResolvedValue([]);
+
+      await service.removeFromCollection(collection.id, [
+        { mediaServerId: 'item-1' },
+      ]);
+
+      expect(mediaServer.removeBatchFromCollection).toHaveBeenCalledWith(
+        'stale-link',
+        ['item-1'],
+      );
+    });
+
+    // With no collection on the server there is nothing that could retain an
+    // orphan, and nothing ever reconciles the marker - it would just accumulate.
+    it('writes no rule-removal marker when there is no media server collection', async () => {
+      const collection = createCollection({
+        id: 51,
+        mediaServerId: null,
+        keepInMaintainerrOnly: true,
+      });
+      collectionRepo.findOne.mockResolvedValue(collection);
+      collectionMediaRepo.find.mockResolvedValue([
+        createCollectionMedia(collection, { mediaServerId: 'item-1' }),
+      ]);
+      const deleteQb = {
+        delete: jest.fn().mockReturnThis(),
+        from: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        execute: jest.fn().mockResolvedValue({ affected: 1 }),
+      };
+      dataSource.createQueryBuilder.mockReturnValue(deleteQb as any);
+      jest
+        .spyOn(service, 'checkAutomaticMediaServerLink')
+        .mockImplementation(async (c) => c);
+      jest
+        .spyOn(service, 'CollectionLogRecordForChild')
+        .mockResolvedValue(undefined);
+      const mark = jest.spyOn(service, 'markRuleRemoved');
+
+      await service.removeFromCollection(collection.id, [
+        {
+          mediaServerId: 'item-1',
+          reason: { type: 'media_removed_by_rule', data: undefined },
+        },
+      ]);
+
+      // the row really was removed, so a linked collection would have marked it
+      expect(deleteQb.execute).toHaveBeenCalled();
+      expect(mark).toHaveBeenCalledWith(collection.id, []);
+    });
+
+    // The add never reached the media server, so there is nothing to undo -
+    // removing the item would destroy server state over a local write failure.
+    it('does not roll back against the media server when the add was skipped', async () => {
+      const collection = createCollection({
+        id: 36,
+        mediaServerId: null,
+        keepInMaintainerrOnly: true,
+      });
+      collectionRepo.findOne.mockResolvedValue(collection);
+      collectionMediaRepo.find.mockResolvedValue([]);
+      jest
+        .spyOn(service as any, 'insertCollectionMediaMembership')
+        .mockRejectedValue(new Error('metadata lookup failed'));
+
+      await service.addToCollection(collection.id, [
+        { mediaServerId: 'item-1' },
+      ]);
+
+      expect(mediaServer.removeFromCollection).not.toHaveBeenCalled();
+    });
+
+    // The link is about to be torn down; pushing metadata or Plex visibility to
+    // it is a remote write the collection opted out of.
+    it('updateCollection does not push metadata or visibility when opting out', async () => {
+      const dbCollection = createCollection({
+        id: 44,
+        mediaServerId: 'remote-collection',
+        keepInMaintainerrOnly: false,
+      });
+      collectionRepo.findOne.mockResolvedValue(dbCollection);
+      collectionRepo.save.mockImplementation(async (c) => c as Collection);
+      jest.spyOn(service, 'addLogRecord').mockResolvedValue(undefined);
+      mediaServer.getCollection.mockResolvedValue({
+        id: 'remote-collection',
+        childCount: 1,
+      } as any);
+
+      await service.updateCollection({
+        ...dbCollection,
+        keepInMaintainerrOnly: true,
+      } as any);
+
+      expect(mediaServer.updateCollection).not.toHaveBeenCalled();
     });
 
     it('stopMediaServerSync removes the media server collection and clears the link', async () => {
@@ -4342,6 +4477,276 @@ describe('CollectionsService', () => {
       expect(collectionRepo.save).not.toHaveBeenCalled();
     });
 
+    // Same-titled rule groups share one media server collection; opting one out
+    // must not take the sibling's collection with it, and must not leave its own
+    // items behind for the sibling to adopt as manual members (#2766).
+    // Every terminal path goes through the same teardown, so none of them can
+    // delete a collection a sibling rule group still points at (#2766/#3344).
+    it('deleting a collection leaves a shared media server collection standing', async () => {
+      const collection = createCollection({
+        id: 47,
+        mediaServerId: 'shared-collection',
+      });
+      collectionRepo.findOne.mockResolvedValue(collection);
+      collectionRepo.count.mockResolvedValue(1);
+      collectionRepo.find.mockResolvedValue([
+        createCollection({ id: 92, mediaServerId: 'shared-collection' }),
+      ]);
+      collectionMediaRepo.find.mockResolvedValue([]);
+      ruleRemovalRepo.createQueryBuilder.mockReturnValue(
+        makeRuleRemovalQb([]) as any,
+      );
+      jest
+        .spyOn(service, 'checkAutomaticMediaServerLink')
+        .mockImplementation(async (c) => c);
+
+      await service.deleteCollection(collection.id);
+
+      expect(mediaServer.deleteCollection).not.toHaveBeenCalled();
+    });
+
+    it('deactivating a collection leaves a shared media server collection standing', async () => {
+      const collection = createCollection({
+        id: 48,
+        mediaServerId: 'shared-collection',
+      });
+      collectionRepo.findOne.mockResolvedValue(collection);
+      collectionRepo.count.mockResolvedValue(1);
+      collectionRepo.find.mockResolvedValue([
+        createCollection({ id: 91, mediaServerId: 'shared-collection' }),
+      ]);
+      collectionMediaRepo.find.mockResolvedValue([]);
+      ruleRemovalRepo.createQueryBuilder.mockReturnValue(
+        makeRuleRemovalQb([]) as any,
+      );
+
+      await service.deactivateCollection(collection.id);
+
+      expect(mediaServer.deleteCollection).not.toHaveBeenCalled();
+    });
+
+    // A failed shared leave leaves our items on the sibling's collection. The
+    // rows and markers are the only record of them, and an inactive collection
+    // never retries - so deactivation must refuse rather than erase them.
+    it('refuses to deactivate when it cannot leave a shared collection', async () => {
+      const collection = createCollection({
+        id: 49,
+        mediaServerId: 'shared-collection',
+      });
+      collectionRepo.findOne.mockResolvedValue(collection);
+      collectionRepo.count.mockResolvedValue(1);
+      collectionRepo.find.mockResolvedValue([
+        createCollection({ id: 90, mediaServerId: 'shared-collection' }),
+      ]);
+      collectionMediaRepo.find.mockImplementation(
+        async (options: any) =>
+          options?.where?.collectionId === 49
+            ? [createCollectionMedia(collection, { mediaServerId: 'item-1' })]
+            : [], // the sibling does not hold it, so it has to come out
+      );
+      ruleRemovalRepo.createQueryBuilder.mockReturnValue(
+        makeRuleRemovalQb([]) as any,
+      );
+      mediaServer.removeBatchFromCollection.mockResolvedValue(['item-1']);
+      collectionMediaRepo.delete.mockClear();
+      ruleRemovalRepo.delete.mockClear();
+      collectionRepo.save.mockClear();
+
+      const result = await service.deactivateCollection(collection.id);
+
+      expect(result.status).toBe('NOK');
+      expect(collectionMediaRepo.delete).not.toHaveBeenCalled();
+      expect(ruleRemovalRepo.delete).not.toHaveBeenCalled();
+      expect(collectionRepo.save).not.toHaveBeenCalled();
+    });
+
+    // An unreachable server must still not block an ordinary deactivation.
+    it('deactivates anyway when an unshared delete fails, keeping the link', async () => {
+      const collection = createCollection({
+        id: 50,
+        mediaServerId: 'own-collection',
+      });
+      collectionRepo.findOne.mockResolvedValue(collection);
+      collectionRepo.count.mockResolvedValue(0);
+      collectionRepo.save.mockImplementation(async (c) => c as Collection);
+      collectionRepo.save.mockClear();
+      jest.spyOn(service, 'addLogRecord').mockResolvedValue(undefined);
+      mediaServer.deleteCollection.mockRejectedValue(new Error('unreachable'));
+
+      const result = await service.deactivateCollection(collection.id);
+
+      expect(result.status).toBe('OK');
+      expect(collectionRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: 50,
+          isActive: false,
+          mediaServerId: 'own-collection',
+        }),
+      );
+    });
+
+    it('stopMediaServerSync leaves a shared collection instead of deleting it', async () => {
+      const collection = createCollection({
+        id: 37,
+        mediaServerId: 'shared-collection',
+        keepInMaintainerrOnly: true,
+      });
+      const sibling = createCollection({
+        id: 99,
+        mediaServerId: 'shared-collection',
+      });
+      ruleRemovalRepo.createQueryBuilder.mockReturnValue(
+        makeRuleRemovalQb([]) as any,
+      );
+      collectionRepo.count.mockResolvedValue(1);
+      collectionRepo.find.mockResolvedValue([sibling]);
+      collectionRepo.save.mockImplementation(async (c) => c as Collection);
+      collectionMediaRepo.find.mockImplementation(async (options: any) => {
+        const id = options?.where?.collectionId;
+        // ours: item-1 (only us) and item-shared (the sibling holds it too)
+        return id === 37
+          ? [
+              createCollectionMedia(collection, { mediaServerId: 'item-1' }),
+              createCollectionMedia(collection, {
+                mediaServerId: 'item-shared',
+              }),
+            ]
+          : [createCollectionMedia(sibling, { mediaServerId: 'item-shared' })];
+      });
+
+      const result = await service.stopMediaServerSync(collection);
+
+      expect(mediaServer.deleteCollection).not.toHaveBeenCalled();
+      // only what the sibling does not hold comes out
+      expect(mediaServer.removeBatchFromCollection).toHaveBeenCalledWith(
+        'shared-collection',
+        ['item-1'],
+      );
+      expect(result.mediaServerId).toBeNull();
+    });
+
+    // removeBatchFromCollection reports failures by returning ids, not by
+    // throwing. An item left behind is a foreign child to the sibling (#2766).
+    // A rule-removed item has no collection_media row; only its marker says the
+    // server may still hold it. Leaving without it strands the item for the
+    // sibling to adopt (#2766/#3298).
+    it('stopMediaServerSync takes pending rule-removal markers out too', async () => {
+      const collection = createCollection({
+        id: 41,
+        mediaServerId: 'shared-collection',
+        keepInMaintainerrOnly: true,
+      });
+      ruleRemovalRepo.createQueryBuilder.mockReturnValue(
+        makeRuleRemovalQb([{ mediaServerId: 'item-ghost' }]) as any,
+      );
+      collectionRepo.count.mockResolvedValue(1);
+      collectionRepo.find.mockResolvedValue([
+        createCollection({ id: 96, mediaServerId: 'shared-collection' }),
+      ]);
+      collectionRepo.save.mockImplementation(async (c) => c as Collection);
+      collectionMediaRepo.find.mockImplementation(async (options: any) =>
+        options?.where?.collectionId === 41
+          ? [createCollectionMedia(collection, { mediaServerId: 'item-1' })]
+          : [],
+      );
+      mediaServer.removeBatchFromCollection.mockResolvedValue([]);
+
+      const result = await service.stopMediaServerSync(collection);
+
+      expect(mediaServer.removeBatchFromCollection).toHaveBeenCalledWith(
+        'shared-collection',
+        ['item-1', 'item-ghost'],
+      );
+      expect(result.mediaServerId).toBeNull();
+    });
+
+    // Partial success is normal for the batch API. An id that did come out is
+    // resolved; only the ones left behind keep their marker (#3344).
+    it('stopMediaServerSync clears only the markers whose removal landed', async () => {
+      const collection = createCollection({
+        id: 45,
+        mediaServerId: 'shared-collection',
+        keepInMaintainerrOnly: true,
+      });
+      const qb = makeRuleRemovalQb([
+        { mediaServerId: 'ghost-gone' },
+        { mediaServerId: 'ghost-kept' },
+      ]);
+      ruleRemovalRepo.createQueryBuilder.mockReturnValue(qb as any);
+      collectionRepo.count.mockResolvedValue(1);
+      collectionRepo.find.mockResolvedValue([
+        createCollection({ id: 93, mediaServerId: 'shared-collection' }),
+      ]);
+      collectionMediaRepo.find.mockResolvedValue([]);
+      mediaServer.removeBatchFromCollection.mockResolvedValue(['ghost-kept']);
+
+      const result = await service.stopMediaServerSync(collection);
+
+      expect(qb.andWhere).toHaveBeenCalledWith('mediaServerId IN (:...ids)', {
+        ids: ['ghost-gone'],
+      });
+      expect(result.mediaServerId).toBe('shared-collection');
+    });
+
+    // Nothing came out, so nothing is resolved: the link and every marker stay
+    // for the next run to retry.
+    it('stopMediaServerSync keeps the link and its markers when nothing came out', async () => {
+      const collection = createCollection({
+        id: 40,
+        mediaServerId: 'shared-collection',
+        keepInMaintainerrOnly: true,
+      });
+      const qb = makeRuleRemovalQb([{ mediaServerId: 'item-ghost' }]);
+      ruleRemovalRepo.createQueryBuilder.mockReturnValue(qb as any);
+      collectionRepo.count.mockResolvedValue(1);
+      collectionRepo.find.mockResolvedValue([
+        createCollection({ id: 97, mediaServerId: 'shared-collection' }),
+      ]);
+      collectionMediaRepo.find.mockImplementation(async (options: any) =>
+        options?.where?.collectionId === 40
+          ? [createCollectionMedia(collection, { mediaServerId: 'item-1' })]
+          : [],
+      );
+      mediaServer.removeBatchFromCollection.mockResolvedValue([
+        'item-1',
+        'item-ghost',
+      ]);
+
+      const result = await service.stopMediaServerSync(collection);
+
+      expect(result.mediaServerId).toBe('shared-collection');
+      expect(collectionRepo.save).not.toHaveBeenCalled();
+      expect(qb.delete).not.toHaveBeenCalled();
+    });
+
+    it('stopMediaServerSync keeps the link when it cannot leave a shared collection', async () => {
+      const collection = createCollection({
+        id: 39,
+        mediaServerId: 'shared-collection',
+        keepInMaintainerrOnly: true,
+      });
+      ruleRemovalRepo.createQueryBuilder.mockReturnValue(
+        makeRuleRemovalQb([]) as any,
+      );
+      collectionRepo.count.mockResolvedValue(1);
+      collectionRepo.find.mockResolvedValue([
+        createCollection({ id: 98, mediaServerId: 'shared-collection' }),
+      ]);
+      collectionMediaRepo.find.mockImplementation(async (options: any) =>
+        options?.where?.collectionId === 39
+          ? [createCollectionMedia(collection, { mediaServerId: 'item-1' })]
+          : [],
+      );
+      mediaServer.removeBatchFromCollection.mockRejectedValue(
+        new Error('unreachable'),
+      );
+
+      const result = await service.stopMediaServerSync(collection);
+
+      expect(result.mediaServerId).toBe('shared-collection');
+      expect(collectionRepo.save).not.toHaveBeenCalled();
+    });
+
     it('stopMediaServerSync leaves a custom collection alone', async () => {
       const collection = createCollection({
         id: 34,
@@ -4352,6 +4757,28 @@ describe('CollectionsService', () => {
       await service.stopMediaServerSync(collection);
 
       expect(mediaServer.deleteCollection).not.toHaveBeenCalled();
+    });
+
+    // A refused delete keeps the link (#3344). The reconcile is what runs again
+    // on its own, so it has to retry - otherwise the collection stays on the
+    // media server for good.
+    it('retries a refused teardown on the next reconcile', async () => {
+      const collection = createCollection({
+        id: 35,
+        mediaServerId: 'remote-collection',
+        keepInMaintainerrOnly: true,
+      });
+      collectionRepo.save.mockImplementation(async (c) => c as Collection);
+      const adopt = jest.spyOn(service, 'findMediaServerCollection');
+
+      const reconciled =
+        await service.checkAutomaticMediaServerLink(collection);
+
+      expect(mediaServer.deleteCollection).toHaveBeenCalledWith(
+        'remote-collection',
+      );
+      expect(reconciled.mediaServerId).toBeNull();
+      expect(adopt).not.toHaveBeenCalled();
     });
   });
 });

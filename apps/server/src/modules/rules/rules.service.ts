@@ -797,21 +797,20 @@ export class RulesService {
           await this.collectionService.applyCollectionSort(savedCollection);
         }
 
+        // Turning "keep in Maintainerr only" on removes the collection from the
+        // media server; the local rows stay, so the rule keeps working. Keyed on
+        // the flag rather than on the toggle transition, because a failed delete
+        // keeps the link and this is where the next save retries it - the call
+        // is a no-op once the link is gone. Turning it off needs nothing here:
+        // the next run recreates the collection through the ordinary add path.
+        if (savedCollection?.keepInMaintainerrOnly) {
+          await this.collectionService.stopMediaServerSync(savedCollection);
+        }
+
         // Behavior A: one-time *arr membership-tag reconcile on a tagInArr toggle
         // - enabling tags current members, disabling untags them (ongoing changes
         // are handled by the executor's per-run deltas). Best-effort; awaited so
         // the backfill completes before the save returns.
-        // Turning "keep in Maintainerr only" on removes the collection from the
-        // media server; the local rows stay, so the rule keeps working. Turning
-        // it off needs nothing here - the next run recreates the collection
-        // through the ordinary add path.
-        if (
-          savedCollection?.keepInMaintainerrOnly &&
-          !(dbCollection?.keepInMaintainerrOnly ?? false)
-        ) {
-          await this.collectionService.stopMediaServerSync(savedCollection);
-        }
-
         if (
           savedCollection &&
           (dbCollection?.tagInArr ?? false) !== savedCollection.tagInArr

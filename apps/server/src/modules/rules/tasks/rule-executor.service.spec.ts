@@ -434,7 +434,7 @@ describe('RuleExecutorService', () => {
     expect(collectionService.addToCollection).not.toHaveBeenCalled();
     expect(collectionService.removeFromCollection).not.toHaveBeenCalled();
     expect(logger.debug).toHaveBeenCalledWith(
-      "Skipping media server sync for 'Test Collection' - no media server collection exists because no items currently match the rule.",
+      "Skipping media server sync for 'Test Collection' - no media server collection exists.",
     );
   });
 
@@ -832,17 +832,18 @@ describe('RuleExecutorService', () => {
     );
   });
 
-  // #11: a collection kept in Maintainerr only has no media-server collection.
-  // The sync must not run, or its title-based relink would adopt one.
-  it('skips the media server sync for a collection kept in Maintainerr only', async () => {
+  // A refused teardown leaves the link in place. The collection is still opted
+  // out, so the sync must not run against it.
+  it('does not sync a collection kept in Maintainerr only whose teardown failed', async () => {
     const { service, collectionService, mediaServer } = createService(
       MediaServerType.JELLYFIN,
     );
 
-    collectionService.getCollection.mockResolvedValue({
+    collectionService.checkAutomaticMediaServerLink.mockResolvedValue({
       id: 1,
       title: 'Local Only',
-      mediaServerId: null,
+      mediaServerId: 'stale-link',
+      manualCollection: false,
       keepInMaintainerrOnly: true,
     } as any);
 
@@ -858,17 +859,16 @@ describe('RuleExecutorService', () => {
       }
     ).syncManualMediaServerToCollectionDB(
       { id: 10, collectionId: 1 },
-      {
-        addedMediaServerIds: new Set(),
-        removedMediaServerIds: new Set(),
-      },
+      { addedMediaServerIds: new Set(), removedMediaServerIds: new Set() },
     );
 
-    expect(
-      collectionService.checkAutomaticMediaServerLink,
-    ).not.toHaveBeenCalled();
-    expect(collectionService.relinkManualCollection).not.toHaveBeenCalled();
+    // The reconcile still ran - that is what retries the teardown.
+    expect(collectionService.checkAutomaticMediaServerLink).toHaveBeenCalled();
     expect(mediaServer.getCollectionChildren).not.toHaveBeenCalled();
+    expect(
+      collectionService.syncMediaServerChildrenToCollection,
+    ).not.toHaveBeenCalled();
+    expect(collectionService.removeFromCollection).not.toHaveBeenCalled();
   });
 
   it('removes collection items on Plex when children are empty', async () => {
@@ -1317,6 +1317,43 @@ describe('RuleExecutorService', () => {
       ],
       'rule',
     );
+  });
+
+  // The resync exists to rebuild a media-server collection that went missing. A
+  // collection kept in Maintainerr only has none by design, so running it every
+  // time just re-marks every member and writes an "Added" log record per item.
+  it('does not resync a collection kept in Maintainerr only', async () => {
+    const { service, collectionService } = createService(MediaServerType.PLEX);
+
+    const localOnly = {
+      id: 1,
+      title: 'Local Only',
+      libraryId: '1',
+      mediaServerId: null,
+      manualCollection: false,
+      keepInMaintainerrOnly: true,
+      deleteAfterDays: 0,
+    };
+
+    collectionService.getCollection.mockResolvedValue(localOnly as any);
+    collectionService.getCollectionMedia.mockResolvedValue([
+      { mediaServerId: 'm1' },
+    ] as any);
+    collectionService.saveCollection.mockImplementation(
+      async (collection) => collection as any,
+    );
+    collectionService.removeFromCollection.mockResolvedValue(localOnly as any);
+    collectionService.removeFromCollectionWithResolvedLink.mockResolvedValue(
+      localOnly as any,
+    );
+
+    (service as any).startTime = new Date();
+    (service as any).resultData = [];
+    (service as any).statisticsData = [];
+
+    await (service as any).handleCollection({ id: 10, collectionId: 1 });
+
+    expect(collectionService.addToCollection).not.toHaveBeenCalled();
   });
 
   it('reuses the reconciled collection link for additions later in the same run', async () => {
