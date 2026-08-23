@@ -2,15 +2,19 @@ import {
   bucket,
   MediaItemTypes,
   ServarrAction,
+  sizeBucket,
   TELEMETRY_MAX_RULE_PROPERTIES,
   TELEMETRY_MAX_RULE_PROPERTY_LENGTH,
+  TELEMETRY_SAMPLE_DIVISOR,
   TelemetryPing,
+  TelemetryStatus,
 } from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { existsSync } from 'fs';
 import { Repository } from 'typeorm';
 import { Collection } from '../collections/entities/collection.entities';
+import { CollectionMedia } from '../collections/entities/collection_media.entities';
 import { MaintainerrLogger } from '../logging/logs.service';
 import { Notification } from '../notifications/entities/notification.entities';
 import { NotificationAgentKey } from '../notifications/notifications-interfaces';
@@ -19,13 +23,23 @@ import { Exclusion } from '../rules/entities/exclusion.entities';
 import { RuleGroup } from '../rules/entities/rule-group.entities';
 import { Rules } from '../rules/entities/rules.entities';
 import { SettingsDataService } from '../settings/settings-data.service';
+import { TasksService } from '../tasks/tasks.service';
 import {
   RELEASE_VERSION_TAGS,
   VersionService,
 } from '../version/version.service';
 import { TelemetryApi } from './telemetry-api.helper';
+import { TELEMETRY_TASK_NAME } from './telemetry.constants';
 
 type TelemetrySample = NonNullable<TelemetryPing['sample']>;
+
+const MILLISECONDS_PER_WEEK = 7 * 24 * 60 * 60 * 1000;
+/**
+ * The gap between sampled weeks is geometric, so a short bound silently returns
+ * null for the unlucky tail: at 5x, 1 install in 157 had no date despite having
+ * one scheduled.
+ */
+const SAMPLE_SCAN_WEEKS = TELEMETRY_SAMPLE_DIVISOR * 50;
 
 /** Sorted so the surviving subset is deterministic rather than row order. */
 const finalizeList = (values: string[], max: number): string[] =>
@@ -40,6 +54,8 @@ export class TelemetryService {
     private readonly ruleGroupRepo: Repository<RuleGroup>,
     @InjectRepository(Collection)
     private readonly collectionRepo: Repository<Collection>,
+    @InjectRepository(CollectionMedia)
+    private readonly collectionMediaRepo: Repository<CollectionMedia>,
     @InjectRepository(Exclusion)
     private readonly exclusionRepo: Repository<Exclusion>,
     @InjectRepository(Notification)
@@ -47,9 +63,39 @@ export class TelemetryService {
     private readonly settings: SettingsDataService,
     private readonly versionService: VersionService,
     private readonly ruleConstants: RuleConstanstService,
+    private readonly taskService: TasksService,
     private readonly logger: MaintainerrLogger,
   ) {
     logger.setContext(TelemetryService.name);
+  }
+
+  /**
+   * Whether the week containing `date` carries the sample. Deterministic per
+   * (install, week) rather than a coin flip, so the settings page can show a
+   * real date; seeding on the week keeps the sampled subset rotating instead of
+   * fixing a panel that would only ever report its own habits.
+   */
+  sampledOn(date: Date): boolean {
+    const week = Math.floor(date.getTime() / MILLISECONDS_PER_WEEK);
+    let seed = 0;
+    for (const character of this.settings.clientId ?? '') {
+      seed = (seed * 31 + character.charCodeAt(0)) >>> 0;
+    }
+
+    // Avalanche rather than appending the week to the string: hashing
+    // "<id>:<week>" leaves consecutive weeks correlated in the low bits, which
+    // starved a quarter of installs of any sample across a decade.
+    let mixed = (seed ^ Math.imul(week, 0x9e3779b1)) >>> 0;
+    mixed = Math.imul(mixed ^ (mixed >>> 16), 0x21f0aaad) >>> 0;
+    mixed = Math.imul(mixed ^ (mixed >>> 15), 0x735a2d97) >>> 0;
+    mixed = (mixed ^ (mixed >>> 15)) >>> 0;
+
+    return mixed % TELEMETRY_SAMPLE_DIVISOR === 0;
+  }
+
+  /** The environment override, which beats whatever is stored. */
+  forcedOff(): boolean {
+    return process.env.TELEMETRY === 'off';
   }
 
   /**
@@ -58,9 +104,41 @@ export class TelemetryService {
    * `false` stops it. TELEMETRY=off wins over the setting.
    */
   enabled(): boolean {
-    return process.env.TELEMETRY === 'off'
-      ? false
-      : this.settings.telemetryEnabled !== false;
+    return this.forcedOff() ? false : this.settings.telemetryEnabled !== false;
+  }
+
+  /**
+   * Schedule the settings page shows. Both dates are null when nothing is
+   * going out, so the page never promises a report that will not happen.
+   */
+  status(): TelemetryStatus {
+    const nextWeekly = this.enabled()
+      ? this.taskService.getNextRun(TELEMETRY_TASK_NAME)
+      : null;
+
+    return {
+      forcedOff: this.forcedOff(),
+      nextSendAtWeekly: nextWeekly?.toISOString() ?? null,
+      nextSendAtRich: this.nextSampledRun(nextWeekly)?.toISOString() ?? null,
+    };
+  }
+
+  /** First upcoming weekly slot whose draw hits, walking one week at a time. */
+  private nextSampledRun(nextWeekly: Date | null): Date | null {
+    if (!nextWeekly) {
+      return null;
+    }
+
+    for (let week = 0; week < SAMPLE_SCAN_WEEKS; week++) {
+      const candidate = new Date(
+        nextWeekly.getTime() + week * MILLISECONDS_PER_WEEK,
+      );
+      if (this.sampledOn(candidate)) {
+        return candidate;
+      }
+    }
+
+    return null;
   }
 
   async buildPayload(includeSample: boolean): Promise<TelemetryPing> {
@@ -94,7 +172,6 @@ export class TelemetryService {
       ]);
 
     ping.sample = {
-      locale: this.settings.locale ?? 'en',
       usage,
       rulesApps: ruleValues.apps,
       ruleProperties: ruleValues.properties,
@@ -130,6 +207,7 @@ export class TelemetryService {
       manualCollections,
       exclusions,
       notifications,
+      collectionItems,
     ] = await Promise.all([
       this.ruleGroupRepo.count(),
       this.ruleGroupRepo.count({ where: { isActive: true } }),
@@ -137,6 +215,7 @@ export class TelemetryService {
       this.collectionRepo.count({ where: { manualCollection: true } }),
       this.exclusionRepo.count(),
       this.notificationRepo.count(),
+      this.collectionMediaRepo.count(),
     ]);
 
     return {
@@ -146,6 +225,8 @@ export class TelemetryService {
       manualCollections: bucket(manualCollections),
       exclusions: bucket(exclusions),
       notifications: bucket(notifications),
+      // A wider scale: item counts run to thousands, where bucket() stops at 25+.
+      collectionItems: sizeBucket(collectionItems),
     };
   }
 
@@ -277,12 +358,19 @@ export class TelemetryService {
   }
 
   private async collectFeatures(): Promise<string[]> {
-    const overlays = await this.collectionRepo.count({
-      where: { overlayEnabled: true },
-    });
+    // Counted rather than read from a setting: each is a per-collection opt-in,
+    // so the only question worth reporting is whether anyone turned it on.
+    const [overlays, keepInMaintainerrOnly, leftoverCleanup] =
+      await Promise.all([
+        this.collectionRepo.count({ where: { overlayEnabled: true } }),
+        this.collectionRepo.count({ where: { keepInMaintainerrOnly: true } }),
+        this.collectionRepo.count({ where: { cleanupLeftoverFolders: true } }),
+      ]);
 
     const features: Array<[string, boolean]> = [
       ['overlays', overlays > 0],
+      ['keepInMaintainerrOnly', keepInMaintainerrOnly > 0],
+      ['leftoverCleanup', leftoverCleanup > 0],
       ['arrTagExclusionsRadarr', Boolean(this.settings.radarr_tag_exclusions)],
       ['arrTagExclusionsSonarr', Boolean(this.settings.sonarr_tag_exclusions)],
     ];

@@ -12,6 +12,7 @@ import {
   SwitchMediaServerResponse,
   TelemetryPing,
   TelemetrySetting,
+  TelemetryStatus,
 } from '@maintainerr/contracts'
 import {
   useMutation,
@@ -950,6 +951,16 @@ export const useTelemetryPreview = (options?: UseTelemetryPreviewOptions) => {
     },
     staleTime: 0,
     ...options,
+  })
+}
+
+export const useTelemetryStatus = () => {
+  return useQuery<TelemetryStatus, Error, TelemetryStatus, string[]>({
+    queryKey: ['settings', 'telemetry', 'status'],
+    queryFn: async () => {
+      return await GetApiHandler<TelemetryStatus>('/settings/telemetry/status')
+    },
+    staleTime: 0,
   })
 }
 

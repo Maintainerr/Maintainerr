@@ -15,7 +15,7 @@
  *  - each value must match ^[\w.\-+]+$ - word chars, dots, dashes, plus. A
  *    space, slash, colon or comma discards the value.
  *  - version and versionTag <= 32 chars; arch, platform and mediaServer <= 16;
- *    locale and every usage bucket <= 8; each rulesApps entry <= 16;
+ *    every usage bucket <= 8; each rulesApps entry <= 16;
  *    ruleProperties <= 48; integrations and notificationAgents <= 24;
  *    features and arrActions <= 32; mediaTypes <= 8.
  *  - per-list cardinality: rulesApps 10, ruleProperties 25, integrations 16,
@@ -54,8 +54,9 @@ export interface TelemetryPing {
    * another sample.
    */
   sample?: {
-    /** UI language, so translation effort follows the users who need it. */
-    locale: string
+    // No locale: the display language is a per-browser preference and there
+    // are no user accounts, so the server has no value it could report that
+    // would be true for everyone using it.
     /** Every value is a bucket() string. Raw counts are never sent. */
     usage: {
       ruleGroups: string
@@ -64,6 +65,11 @@ export interface TelemetryPing {
       manualCollections: string
       exclusions: string
       notifications: string
+      /**
+       * Total rows across every collection, as a sizeBucket(). Answers how big
+       * an install is, which decides caching and prefetch behaviour.
+       */
+      collectionItems: string
     }
     /** Apps rules target, lowercased, e.g. ['plex', 'radarr']. */
     rulesApps: string[]
@@ -109,6 +115,27 @@ export const bucket = (n: number): string =>
  * versions are gone.
  */
 export const TELEMETRY_SAMPLE_DIVISOR = 32
+
+/**
+ * Wider scale for item counts, whose interesting range is thousands rather than
+ * the tens bucket() covers. Boundaries follow where behaviour actually changes:
+ * 500 is RULE_REMOVAL_MARKER_CHUNK, 2k is ENRICHMENT_ID_CHUNK (measured flat
+ * from 500 to 16000), and 15k is the library size that drove the cache key
+ * bound in #3284. Every label is <= 8 characters, the collector's cap on a
+ * usage value.
+ */
+export const sizeBucket = (n: number): string =>
+  n <= 0
+    ? '0'
+    : n < 500
+      ? '1-499'
+      : n < 2000
+        ? '500-2k'
+        : n < 5000
+          ? '2k-5k'
+          : n < 15000
+            ? '5k-15k'
+            : '15k+'
 
 /**
  * Cardinality cap on ruleProperties. MUST match the collector, which

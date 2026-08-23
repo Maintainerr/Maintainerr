@@ -9,6 +9,7 @@ import { Mocked, TestBed } from '@suites/unit';
 import { Repository } from 'typeorm';
 import { ExternalApiService } from '../api/external-api/external-api.service';
 import { Collection } from '../collections/entities/collection.entities';
+import { CollectionMedia } from '../collections/entities/collection_media.entities';
 import { MaintainerrLogger } from '../logging/logs.service';
 import { Notification } from '../notifications/entities/notification.entities';
 import { RuleConstanstService } from '../rules/constants/constants.service';
@@ -39,6 +40,7 @@ describe('TelemetryService', () => {
   let rulesRepo: Mocked<Repository<Rules>>;
   let ruleGroupRepo: Mocked<Repository<RuleGroup>>;
   let collectionRepo: Mocked<Repository<Collection>>;
+  let collectionMediaRepo: Mocked<Repository<CollectionMedia>>;
   let exclusionRepo: Mocked<Repository<Exclusion>>;
   let notificationRepo: Mocked<Repository<Notification>>;
   let settings: Mocked<SettingsDataService>;
@@ -58,6 +60,7 @@ describe('TelemetryService', () => {
     rulesRepo = unitRef.get('RulesRepository');
     ruleGroupRepo = unitRef.get('RuleGroupRepository');
     collectionRepo = unitRef.get('CollectionRepository');
+    collectionMediaRepo = unitRef.get('CollectionMediaRepository');
     exclusionRepo = unitRef.get('ExclusionRepository');
     notificationRepo = unitRef.get('NotificationRepository');
     settings = unitRef.get(SettingsDataService);
@@ -72,6 +75,7 @@ describe('TelemetryService', () => {
     notificationRepo.find.mockResolvedValue([]);
     ruleGroupRepo.count.mockResolvedValue(0);
     collectionRepo.count.mockResolvedValue(0);
+    collectionMediaRepo.count.mockResolvedValue(0);
     exclusionRepo.count.mockResolvedValue(0);
     notificationRepo.count.mockResolvedValue(0);
 
@@ -88,7 +92,6 @@ describe('TelemetryService', () => {
     versionService.getVersionTag.mockReturnValue('latest');
 
     settings.telemetryEnabled = true;
-    settings.locale = 'en';
     settings.media_server_type = MediaServerType.PLEX;
     settings.metadata_provider_preference =
       MetadataProviderPreference.TMDB_PRIMARY;
@@ -182,6 +185,8 @@ describe('TelemetryService', () => {
       });
       exclusionRepo.count.mockResolvedValue(25);
       notificationRepo.count.mockResolvedValue(0);
+      // Item counts run to thousands, so this one uses the wider sizeBucket.
+      collectionMediaRepo.count.mockResolvedValue(7400);
 
       const { sample } = await service.buildPayload(true);
 
@@ -192,6 +197,7 @@ describe('TelemetryService', () => {
         manualCollections: '1',
         exclusions: '25+',
         notifications: '0',
+        collectionItems: '5k-15k',
       });
     });
   });
@@ -369,6 +375,35 @@ describe('TelemetryService', () => {
       ]);
     });
 
+    /**
+     * The collector accepts any token in `features`, so a new one ships and is
+     * stored with nothing failing, while the collector README goes on listing
+     * the old set. That README is a published privacy disclosure, so the drift
+     * is only ever in the wrong direction: it understates what is collected.
+     *
+     * Pinned here rather than there because this is the side that decides.
+     * If this fails, the token list changed - update the `features` sentence
+     * in the collector README in the same release.
+     */
+    it('emits only the feature tokens the collector README discloses', async () => {
+      collectionRepo.count.mockResolvedValue(1); // every per-collection opt-in on
+      settings.radarr_tag_exclusions = true;
+      settings.sonarr_tag_exclusions = true;
+      settings.metadata_provider_preference =
+        MetadataProviderPreference.TMDB_PRIMARY;
+
+      const { sample } = await service.buildPayload(true);
+
+      expect(sample.features).toEqual([
+        'arrTagExclusionsRadarr',
+        'arrTagExclusionsSonarr',
+        'keepInMaintainerrOnly',
+        'leftoverCleanup',
+        'metadata_tmdb_primary',
+        'overlays',
+      ]);
+    });
+
     it('sends whether an integration is configured, never its URL or key', async () => {
       settings.seerrConfigured.mockReturnValue(true);
       settings.tautulliConfigured.mockReturnValue(true);
@@ -391,12 +426,6 @@ describe('TelemetryService', () => {
         expect(serialized).not.toContain(secret);
       }
     });
-
-    it('falls back to en when no locale is stored', async () => {
-      settings.locale = undefined;
-
-      expect((await service.buildPayload(true)).sample.locale).toBe('en');
-    });
   });
 
   describe('collector contract', () => {
@@ -408,7 +437,6 @@ describe('TelemetryService', () => {
       ping.mediaServer,
       ...(ping.sample
         ? [
-            ping.sample.locale,
             ...Object.values(ping.sample.usage),
             ...ping.sample.rulesApps,
             ...ping.sample.ruleProperties,

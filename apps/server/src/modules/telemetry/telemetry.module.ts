@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Collection } from '../collections/entities/collection.entities';
+import { CollectionMedia } from '../collections/entities/collection_media.entities';
 import { Notification } from '../notifications/entities/notification.entities';
 import { RuleConstanstService } from '../rules/constants/constants.service';
 import { Exclusion } from '../rules/entities/exclusion.entities';
@@ -17,6 +18,7 @@ import { TelemetryTaskService } from './telemetry-task.service';
       Rules,
       RuleGroup,
       Collection,
+      CollectionMedia,
       Exclusion,
       Notification,
     ]),

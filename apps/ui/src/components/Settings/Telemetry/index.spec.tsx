@@ -1,4 +1,4 @@
-import { TelemetryPing } from '@maintainerr/contracts'
+import { TelemetryPing, TelemetryStatus } from '@maintainerr/contracts'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '../../../test-utils/render'
 import TelemetrySettings from './index'
@@ -11,9 +11,11 @@ let currentPreview: {
   isLoading: boolean
   isError: boolean
 } = { data: undefined, isLoading: true, isError: false }
+let currentStatus: TelemetryStatus | undefined
 
 vi.mock('../../../api/settings', () => ({
   useTelemetryPreview: () => currentPreview,
+  useTelemetryStatus: () => ({ data: currentStatus }),
   useUpdateTelemetrySetting: () => ({ mutateAsync: updateTelemetrySetting }),
 }))
 
@@ -30,7 +32,6 @@ const ping: TelemetryPing = {
   platform: 'linux',
   mediaServer: 'plex',
   sample: {
-    locale: 'en',
     usage: {
       ruleGroups: '2-4',
       activeRuleGroups: '1',
@@ -38,6 +39,7 @@ const ping: TelemetryPing = {
       manualCollections: '0',
       exclusions: '5-9',
       notifications: '1',
+      collectionItems: '500-2k',
     },
     rulesApps: ['plex', 'radarr'],
     ruleProperties: ['plex.seenBy', 'radarr.monitored'],
@@ -55,6 +57,11 @@ describe('TelemetrySettings', () => {
     updateTelemetrySetting.mockResolvedValue({ code: 1 })
     currentSettings = { telemetryEnabled: true }
     currentPreview = { data: ping, isLoading: false, isError: false }
+    currentStatus = {
+      forcedOff: false,
+      nextSendAtWeekly: '2026-08-25T07:33:00.000Z',
+      nextSendAtRich: '2026-09-22T07:33:00.000Z',
+    }
   })
 
   const toggle = () =>
@@ -110,24 +117,60 @@ describe('TelemetrySettings', () => {
    * The preview is the verification mechanism, so it has to show the payload
    * whole rather than a summary a reader would have to trust.
    */
-  it('shows the exact payload that would be sent', () => {
+  it('shows the exact payload that would be sent, split by cadence', () => {
     const { container } = render(<TelemetrySettings />)
 
-    const block = container.querySelector('pre')
-    expect(block?.textContent).toBe(JSON.stringify(ping, null, 2))
+    const [weekly, sampled] = Array.from(container.querySelectorAll('pre'))
+    const { sample, ...census } = ping
+
+    expect(weekly?.textContent).toBe(JSON.stringify(census, null, 2))
+    expect(sampled?.textContent).toBe(JSON.stringify(sample, null, 2))
+    // Reassembled from what is on screen, so a field dropped by either panel
+    // fails here rather than passing on a fixture identity.
+    expect({
+      ...JSON.parse(weekly!.textContent!),
+      sample: JSON.parse(sampled!.textContent!),
+    }).toEqual(ping)
   })
 
-  it('links to the public collector source and its published numbers', () => {
+  it('links to the public collector source', () => {
     render(<TelemetrySettings />)
 
     expect(
-      screen.getByRole('link', { name: 'source code' }).getAttribute('href'),
-    ).toBe('https://github.com/Maintainerr/telemetry-collector')
-    expect(
       screen
-        .getByRole('link', { name: 'every number it publishes' })
+        .getByRole('link', { name: 'Collector source code' })
         .getAttribute('href'),
-    ).toBe('https://telemetry.maintainerr.info/')
+    ).toBe(
+      'https://github.com/Maintainerr/telemetry-collector/blob/development/README.md',
+    )
+  })
+
+  /**
+   * TELEMETRY=off decides the outcome on the server, so the control must not
+   * invite a save that would change nothing.
+   */
+  it('disables the control when the environment overrides it', () => {
+    currentStatus = {
+      forcedOff: true,
+      nextSendAtWeekly: null,
+      nextSendAtRich: null,
+    }
+
+    render(<TelemetrySettings />)
+
+    expect(toggle().disabled).toBe(true)
+    expect(toggle().checked).toBe(false)
+    expect(screen.getByRole('button', { name: 'Save Changes' })).toHaveProperty(
+      'disabled',
+      true,
+    )
+  })
+
+  it('shows the next run for each cadence', () => {
+    render(<TelemetrySettings />)
+
+    // Two panels, each captioned with its own next run.
+    expect(screen.getAllByText(/^\(Next: /)).toHaveLength(2)
   })
 
   it('falls back to a message when the preview cannot be loaded', () => {
@@ -135,7 +178,11 @@ describe('TelemetrySettings', () => {
 
     render(<TelemetrySettings />)
 
-    expect(screen.getByText('The preview could not be loaded.')).toBeTruthy()
+    // One message per panel: both boxes keep their place and both report the
+    // failure, rather than the section collapsing and moving the controls.
+    expect(
+      screen.getAllByText('The preview could not be loaded.'),
+    ).toHaveLength(2)
     expect(document.querySelector('pre')).toBeNull()
   })
 })

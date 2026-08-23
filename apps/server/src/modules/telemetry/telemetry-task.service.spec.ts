@@ -1,4 +1,3 @@
-import { TELEMETRY_SAMPLE_DIVISOR } from '@maintainerr/contracts';
 import { Mocked, TestBed } from '@suites/unit';
 import { isValidCron } from 'cron-validator';
 import { MaintainerrLogger } from '../logging/logs.service';
@@ -10,7 +9,6 @@ import { TelemetryTaskService } from './telemetry-task.service';
 /** Reach the protected members TaskBase exposes to Nest, not to callers. */
 interface TaskInternals {
   cronSchedule: string;
-  rng: () => number;
   onBootstrapHook(): void;
   executeTask(): Promise<void>;
 }
@@ -134,32 +132,20 @@ describe('TelemetryTaskService', () => {
   });
 
   describe('sampling', () => {
-    it('sends census only when the draw misses', async () => {
-      internals.rng = () => 0.5;
+    it('asks the service whether this run carries the sample', async () => {
+      telemetry.sampledOn.mockReturnValue(false);
 
       await internals.executeTask();
 
       expect(telemetry.send).toHaveBeenCalledWith(false);
     });
 
-    it('includes the sample when the draw hits', async () => {
-      internals.rng = () => 0;
+    it('includes the sample on a run the service selects', async () => {
+      telemetry.sampledOn.mockReturnValue(true);
 
       await internals.executeTask();
 
       expect(telemetry.send).toHaveBeenCalledWith(true);
-    });
-
-    it('draws at exactly 1 in TELEMETRY_SAMPLE_DIVISOR', async () => {
-      // Just inside the window.
-      internals.rng = () => 0.99 / TELEMETRY_SAMPLE_DIVISOR;
-      await internals.executeTask();
-      expect(telemetry.send).toHaveBeenLastCalledWith(true);
-
-      // Just outside it.
-      internals.rng = () => 1 / TELEMETRY_SAMPLE_DIVISOR;
-      await internals.executeTask();
-      expect(telemetry.send).toHaveBeenLastCalledWith(false);
     });
   });
 });

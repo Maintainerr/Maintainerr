@@ -45,7 +45,12 @@ describe('settings body validation', () => {
         { provide: MetadataSettingsService, useValue: {} },
         { provide: MediaServerSwitchService, useValue: {} },
         { provide: DatabaseDownloadService, useValue: {} },
-        { provide: TelemetryService, useValue: {} },
+        {
+          // The controller consults this before storing, so the stub has to
+          // answer it or every telemetry POST 500s.
+          provide: TelemetryService,
+          useValue: { forcedOff: () => false },
+        },
       ],
     }).compile();
 

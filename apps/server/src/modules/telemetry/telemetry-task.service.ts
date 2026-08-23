@@ -1,8 +1,8 @@
-import { TELEMETRY_SAMPLE_DIVISOR } from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
 import { MaintainerrLogger } from '../logging/logs.service';
 import { SettingsDataService } from '../settings/settings-data.service';
 import { TaskBase } from '../tasks/task.base';
+import { TELEMETRY_TASK_NAME } from './telemetry.constants';
 import { TasksService } from '../tasks/tasks.service';
 import { TelemetryService } from './telemetry.service';
 
@@ -11,10 +11,7 @@ const DAYS_PER_WEEK = 7;
 
 @Injectable()
 export class TelemetryTaskService extends TaskBase {
-  protected name = 'Telemetry Ping';
-
-  /** Seam for tests. */
-  protected rng: () => number = Math.random;
+  protected name = TELEMETRY_TASK_NAME;
 
   constructor(
     protected readonly taskService: TasksService,
@@ -50,7 +47,8 @@ export class TelemetryTaskService extends TaskBase {
   }
 
   protected async executeTask() {
-    // Drawn fresh each week so the sampled cohort is not fixed per instance.
-    await this.telemetry.send(this.rng() * TELEMETRY_SAMPLE_DIVISOR < 1);
+    // Seeded from the install and the week, so the settings page can show which
+    // future run carries the sample. See TelemetryService.sampledOn.
+    await this.telemetry.send(this.telemetry.sampledOn(new Date()));
   }
 }

@@ -42,6 +42,7 @@ import {
   TelemetryPing,
   TelemetrySetting,
   telemetrySettingSchema,
+  TelemetryStatus,
   TmdbSetting,
   TmdbSettingForm,
   tmdbSettingSchema,
@@ -541,6 +542,11 @@ export class SettingsController {
     return this.telemetryService.buildPayload(true);
   }
 
+  @Get('/telemetry/status')
+  telemetryStatus(): TelemetryStatus {
+    return this.telemetryService.status();
+  }
+
   // There is deliberately no send-now endpoint: every real POST increments the
   // exact census, so a test button would let an instance inflate the count.
   // The preview above is the verification mechanism.
@@ -549,6 +555,16 @@ export class SettingsController {
     @Body(new ZodValidationPipe(telemetrySettingSchema))
     payload: TelemetrySetting,
   ): Promise<BasicResponseDto> {
+    // Refused rather than stored: TELEMETRY=off already decides the outcome, so
+    // accepting a value here would confirm a save that changes nothing.
+    if (this.telemetryService.forcedOff()) {
+      return {
+        status: 'NOK',
+        code: 0,
+        message: 'TELEMETRY=off is set in the environment',
+      };
+    }
+
     return this.settingsOperationsService.updateTelemetrySetting(
       payload.enabled,
     );

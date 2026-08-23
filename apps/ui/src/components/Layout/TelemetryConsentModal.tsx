@@ -6,6 +6,9 @@ import Button from '../Common/Button'
 import Modal from '../Common/Modal'
 
 const TELEMETRY_SETTINGS_ROUTE = '/settings/telemetry'
+// Protocol term, not prose: a translated "IP" would name something the report
+// does not contain. See issue #3585.
+const TERM_IP = 'IP'
 
 /**
  * Telemetry is stored as null - "not answered yet" - on every install, and
@@ -58,8 +61,8 @@ const TelemetryConsentModal = () => {
           <Trans>
             Maintainerr reports a weekly count of which version it runs and
             roughly which features get used, so development follows what people
-            actually run. Nothing identifies your server, and no IP address is
-            read or stored.
+            actually run. Nothing identifies your server, and no {TERM_IP}{' '}
+            address is read or stored.
           </Trans>
         </p>
         <p>

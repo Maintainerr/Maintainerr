@@ -242,7 +242,7 @@ Maintainerr serves health probes under `/api/health` (prefixed with `BASE_PATH` 
 
 # Telemetry
 
-Help us help you. Maintainerr is built in our spare time, and donations do not cover the server costs, so we make up the difference ourselves. We do it because we love free software and this is how we give back. The one thing we cannot buy is a picture of what people actually run, and that is what decides where the effort goes. An anonymous weekly report gives us exactly that. It costs you nothing and needs neither code nor time.
+Help us help you. Maintainerr is built in our spare time, and we pay the server costs from our own pockets since donations do not cover it. We do it because we love free software and keeping Maintainerr alive is how we give back. The one thing we cannot buy is a picture of what people actually run, and that is what decides where the effort goes. An anonymous weekly report gives us exactly that. It costs you nothing and needs neither code nor time.
 
 It is on until you turn it off. Every install asks once the next time you open the web interface, and never asks again.
 
