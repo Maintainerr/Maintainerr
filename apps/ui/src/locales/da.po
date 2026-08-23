@@ -2301,10 +2301,6 @@ msgstr ""
 msgid "Maintainerr counts how many servers are running, which version they are on, and roughly which features get used, so development can follow what people actually run. No identifier for your server is ever sent, so one week's report cannot be tied to the next or to any other server. The collector does not read or store IP addresses, its <0>source code</0> is public, and so is <1>every number it publishes</1>."
 msgstr ""
 
-#: src/components/Settings/About/index.tsx
-msgid "Maintainerr is built in our spare time, and donations do not cover the server costs, so we make up the difference ourselves. An anonymous weekly report of the version and features you run costs you nothing and tells us what to work on. It is on until you turn it off, and the page shows exactly what is sent."
-msgstr ""
-
 #: src/components/Layout/NavBar/index.tsx
 msgid "Maintainerr logo"
 msgstr ""

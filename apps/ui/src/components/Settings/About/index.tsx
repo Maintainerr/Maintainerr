@@ -311,15 +311,6 @@ const AboutSettings = () => {
               </div>
             </div>
           </div>
-          <p className="text-sm text-zinc-400">
-            <Trans>
-              Maintainerr is built in our spare time, and donations do not cover
-              the server costs, so we make up the difference ourselves. An
-              anonymous weekly report of the version and features you run costs
-              you nothing and tells us what to work on. It is on until you turn
-              it off, and the page shows exactly what is sent.
-            </Trans>
-          </p>
         </div>
         <hr className="h-px border-0 bg-gray-200 dark:bg-gray-700"></hr>
         {/* End Userful Links */}
