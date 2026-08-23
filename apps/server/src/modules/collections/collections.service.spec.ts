@@ -108,6 +108,7 @@ describe('CollectionsService', () => {
       itemExists: jest.fn().mockResolvedValue(true),
       removeFromCollection: jest.fn().mockResolvedValue(undefined),
       deleteCollection: jest.fn().mockResolvedValue(undefined),
+      cleanupCollectionForLibrary: jest.fn().mockResolvedValue(undefined),
       updateCollection: jest.fn().mockResolvedValue(undefined),
     } as unknown as Mocked<IMediaServerService>;
 
@@ -4447,6 +4448,60 @@ describe('CollectionsService', () => {
       } as any);
 
       expect(mediaServer.updateCollection).not.toHaveBeenCalled();
+    });
+
+    // A crucial setting change repurposes the collection, so its media server
+    // collection is released first. A sibling rule group pointing at the same
+    // one must keep it (#2766); otherwise the old library is cleaned up.
+    it('releases the old library when nothing else shares the collection', async () => {
+      const collection = createCollection({
+        id: 60,
+        libraryId: 'old-library',
+        mediaServerId: 'server-collection',
+        manualCollection: true,
+      });
+      collectionRepo.count.mockResolvedValue(0);
+
+      const released =
+        await service.releaseMediaServerCollectionForReset(collection);
+
+      expect(released).toBe(true);
+      expect(mediaServer.cleanupCollectionForLibrary).toHaveBeenCalledWith(
+        'server-collection',
+        'old-library',
+        true,
+      );
+    });
+
+    it('leaves a shared collection standing on a crucial setting change', async () => {
+      const collection = createCollection({
+        id: 61,
+        libraryId: 'old-library',
+        mediaServerId: 'shared-collection',
+      });
+      collectionRepo.count.mockResolvedValue(1);
+      collectionRepo.find.mockResolvedValue([
+        createCollection({ id: 89, mediaServerId: 'shared-collection' }),
+      ]);
+      ruleRemovalRepo.createQueryBuilder.mockReturnValue(
+        makeRuleRemovalQb([]) as any,
+      );
+      collectionMediaRepo.find.mockImplementation(async (options: any) =>
+        options?.where?.collectionId === 61
+          ? [createCollectionMedia(collection, { mediaServerId: 'item-1' })]
+          : [],
+      );
+      mediaServer.removeBatchFromCollection.mockResolvedValue([]);
+
+      const released =
+        await service.releaseMediaServerCollectionForReset(collection);
+
+      expect(released).toBe(true);
+      expect(mediaServer.cleanupCollectionForLibrary).not.toHaveBeenCalled();
+      expect(mediaServer.removeBatchFromCollection).toHaveBeenCalledWith(
+        'shared-collection',
+        ['item-1'],
+      );
     });
 
     it('stopMediaServerSync removes the media server collection and clears the link', async () => {

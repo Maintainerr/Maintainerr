@@ -2211,9 +2211,21 @@ export class CollectionsService {
               dbCollection.manualCollectionName ||
             collection.libraryId !== dbCollection.libraryId
           ) {
-            if (!dbCollection.manualCollection) {
-              // Don't remove the collections if it was a manual one
-              await mediaServer.deleteCollection(dbCollection.mediaServerId);
+            // A manual collection is left alone entirely; one a sibling rule
+            // group shares is left standing with only this collection's items
+            // taken out (#2766). The link is dropped either way, so say when
+            // something was left behind.
+            if (
+              !(
+                await this.deleteMediaServerCollection(
+                  dbCollection,
+                  'resetting',
+                )
+              ).ok
+            ) {
+              this.logger.warn(
+                `Media server collection ${dbCollection.mediaServerId} for '${dbCollection.title}' may need to be removed manually`,
+              );
             }
             collection.mediaServerId = null;
           }
@@ -3981,6 +3993,39 @@ export class CollectionsService {
       this.logger.warn(
         `Could not take '${collection.title}' out of the media server collection it shares - keeping the link so the next run retries`,
       );
+      this.logger.debug(error);
+      return false;
+    }
+  }
+
+  /**
+   * Release this collection's media server collection before a crucial setting
+   * change repurposes it. A sibling rule group may point at the same collection,
+   * so that one is left standing with only this collection's items taken out;
+   * otherwise the old library's items are cleaned up, which drops a per-library
+   * collection outright. Must run before the local rows go, since those are how
+   * we know which items are ours. False means something was left behind.
+   */
+  public async releaseMediaServerCollectionForReset(
+    collection: Collection,
+  ): Promise<boolean> {
+    if (!collection.mediaServerId) {
+      return true;
+    }
+
+    if (await this.isMediaServerCollectionShared(collection)) {
+      return this.leaveSharedMediaServerCollection(collection);
+    }
+
+    try {
+      const mediaServer = await this.getMediaServer();
+      await mediaServer.cleanupCollectionForLibrary(
+        collection.mediaServerId,
+        collection.libraryId,
+        !!collection.manualCollection,
+      );
+      return true;
+    } catch (error) {
       this.logger.debug(error);
       return false;
     }

@@ -661,34 +661,28 @@ export class RulesService {
                 group.collectionId,
               )) ?? [];
           }
+          // Release the media server collection BEFORE the rows go: leaving a
+          // collection a sibling shares takes only this collection's items out,
+          // and the rows are how we know which ones are ours. dbCollection still
+          // carries the OLD library, which is what has to be cleaned up.
+          const released =
+            await this.collectionService.releaseMediaServerCollectionForReset(
+              dbCollection,
+            );
+
+          if (!released) {
+            // The link is dropped below either way, so a failure here leaves a
+            // collection behind that Maintainerr no longer tracks. Say so: it
+            // has to be removed by hand.
+            this.logger.warn(
+              `Failed to clean up media server collection ${dbCollection.mediaServerId} for '${dbCollection.title}' - it may need to be removed manually`,
+            );
+          }
+
           await this.collectionMediaRepository.delete({
             collectionId: group.collectionId,
           });
 
-          // Clean up the media server collection if it exists, then clear mediaServerId.
-          // For Jellyfin: removes only items from this library, keeps the collection
-          //   if other libraries still have items in it (shared manual collections).
-          // For Plex: collections are per-library, so the entire collection is deleted.
-          if (dbCollection.mediaServerId) {
-            const mediaServer = await this.getMediaServer();
-            try {
-              // Use the OLD library ID - we're cleaning up items that belonged
-              // to the previous library, not the one the rule is moving to.
-              await mediaServer.cleanupCollectionForLibrary(
-                dbCollection.mediaServerId,
-                dbCollection.libraryId,
-                !!dbCollection.manualCollection,
-              );
-            } catch (error) {
-              // The link is dropped below either way, so a failure here leaves
-              // a collection behind that Maintainerr no longer tracks. Say so:
-              // it has to be removed by hand.
-              this.logger.warn(
-                `Failed to clean up media server collection ${dbCollection.mediaServerId} for '${dbCollection.title}' - it may need to be removed manually`,
-              );
-              this.logger.debug(error);
-            }
-          }
           await this.collectionService.saveCollection({
             ...dbCollection,
             mediaServerId: null,
