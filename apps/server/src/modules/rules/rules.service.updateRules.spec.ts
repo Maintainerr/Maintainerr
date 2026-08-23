@@ -337,6 +337,7 @@ describe('RulesService.updateRules', () => {
     const collectionService = {
       getCollection: jest.fn().mockResolvedValue(dbCollection),
       saveCollection: jest.fn().mockResolvedValue(undefined),
+      releaseMediaServerCollectionForReset: jest.fn().mockResolvedValue(true),
       addLogRecord: jest.fn().mockResolvedValue(undefined),
       updateCollection: jest.fn().mockResolvedValue({
         dbCollection: { id: 42 },
@@ -386,11 +387,10 @@ describe('RulesService.updateRules', () => {
       notifications: [],
     } as any);
 
-    expect(mediaServer.cleanupCollectionForLibrary).toHaveBeenCalledWith(
-      'server-collection-id',
-      'old-library',
-      true,
-    );
+    // the old library and the manual flag travel on dbCollection
+    expect(
+      collectionService.releaseMediaServerCollectionForReset,
+    ).toHaveBeenCalledWith(dbCollection);
     expect(collectionMediaRepository.delete).toHaveBeenCalledWith({
       collectionId: group.collectionId,
     });
@@ -433,6 +433,7 @@ describe('RulesService.updateRules', () => {
     const collectionService = {
       getCollection: jest.fn().mockResolvedValue(dbCollection),
       saveCollection: jest.fn().mockResolvedValue(undefined),
+      releaseMediaServerCollectionForReset: jest.fn().mockResolvedValue(true),
       addLogRecord: jest.fn().mockResolvedValue(undefined),
       updateCollection: jest
         .fn()
@@ -499,6 +500,7 @@ describe('RulesService.updateRules', () => {
       const collectionService = {
         getCollection: jest.fn().mockResolvedValue({ id: 42 }),
         saveCollection: jest.fn().mockResolvedValue(undefined),
+        releaseMediaServerCollectionForReset: jest.fn().mockResolvedValue(true),
         addLogRecord: jest.fn().mockResolvedValue(undefined),
         updateCollection: jest
           .fn()
@@ -576,6 +578,7 @@ describe('RulesService.updateRules', () => {
     const collectionService = {
       getCollection: jest.fn().mockResolvedValue(dbCollection),
       saveCollection: jest.fn().mockResolvedValue(undefined),
+      releaseMediaServerCollectionForReset: jest.fn().mockResolvedValue(true),
       addLogRecord: jest.fn().mockResolvedValue(undefined),
       updateCollection: jest.fn().mockResolvedValue({
         dbCollection: freshCollection,
@@ -717,6 +720,7 @@ describe('RulesService.updateRules', () => {
     const collectionService = {
       getCollection: jest.fn().mockResolvedValue(dbCollection),
       saveCollection: jest.fn().mockResolvedValue(undefined),
+      releaseMediaServerCollectionForReset: jest.fn().mockResolvedValue(true),
       addLogRecord: jest.fn().mockResolvedValue(undefined),
       updateCollection: jest
         .fn()
@@ -800,6 +804,7 @@ describe('RulesService.updateRules', () => {
     const collectionService = {
       getCollection: jest.fn().mockResolvedValue(dbCollection),
       saveCollection: jest.fn().mockResolvedValue(undefined),
+      releaseMediaServerCollectionForReset: jest.fn().mockResolvedValue(true),
       addLogRecord: jest.fn().mockResolvedValue(undefined),
       updateCollection: jest
         .fn()
@@ -945,6 +950,7 @@ describe('RulesService.updateRules', () => {
       const collectionService = {
         getCollection: jest.fn().mockResolvedValue(dbCollection),
         saveCollection: jest.fn().mockResolvedValue(undefined),
+        releaseMediaServerCollectionForReset: jest.fn().mockResolvedValue(true),
         addLogRecord: jest.fn().mockResolvedValue(undefined),
         updateCollection: jest
           .fn()
