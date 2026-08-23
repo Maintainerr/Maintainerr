@@ -927,4 +927,122 @@ describe('RulesService.updateRules', () => {
       });
     });
   });
+  // #11: turning "keep in Maintainerr only" on tears down the media-server
+  // collection. Keyed on the flag, not on the toggle transition: a failed delete
+  // keeps the link, so every later save retries it. Turning it back off needs
+  // nothing - the next run recreates it through the ordinary add path.
+  describe('keep in Maintainerr only', () => {
+    const saveWith = async ({
+      dbCollection,
+      savedCollection,
+      params = {},
+    }: {
+      dbCollection: Record<string, unknown>;
+      savedCollection: Record<string, unknown>;
+      params?: Record<string, unknown>;
+    }) => {
+      const group = { id: 5, collectionId: 42, dataType: 'movie' };
+      const collectionService = {
+        getCollection: jest.fn().mockResolvedValue(dbCollection),
+        saveCollection: jest.fn().mockResolvedValue(undefined),
+        addLogRecord: jest.fn().mockResolvedValue(undefined),
+        updateCollection: jest
+          .fn()
+          .mockResolvedValue({ dbCollection: savedCollection }),
+        stopMediaServerSync: jest.fn().mockResolvedValue(undefined),
+      };
+
+      const service = createRulesService({
+        rulesRepository: { delete: jest.fn(), save: jest.fn() },
+        ruleGroupRepository: { findOne: jest.fn().mockResolvedValue(group) },
+        collectionMediaRepository: { delete: jest.fn() },
+        exclusionRepo: { delete: jest.fn() },
+        collectionService,
+        mediaServerFactory: {
+          getService: jest.fn().mockReturnValue({
+            cleanupCollectionForLibrary: jest.fn().mockResolvedValue(undefined),
+            getLibraries: jest
+              .fn()
+              .mockResolvedValue([
+                { id: 'lib-1', title: 'Movies', type: 'movie' },
+              ]),
+          }),
+        },
+      });
+      jest
+        .spyOn(service as any, 'createOrUpdateGroup')
+        .mockResolvedValue(group.id);
+
+      await service.updateRules({
+        id: group.id,
+        libraryId: 'lib-1',
+        dataType: 'movie',
+        name: 'Kept local',
+        description: '',
+        rules: [],
+        useRules: true,
+        isActive: true,
+        keepInMaintainerrOnly: true,
+        collection: { keepLogsForMonths: 6 },
+        ...params,
+      } as any);
+
+      return collectionService;
+    };
+
+    it('removes the media server collection when it is turned on', async () => {
+      const savedCollection = {
+        id: 42,
+        keepInMaintainerrOnly: true,
+        mediaServerId: 'coll-1',
+      };
+      const collectionService = await saveWith({
+        dbCollection: { id: 42, keepInMaintainerrOnly: false },
+        savedCollection,
+      });
+
+      expect(collectionService.updateCollection).toHaveBeenCalledWith(
+        expect.objectContaining({ keepInMaintainerrOnly: true }),
+      );
+      expect(collectionService.stopMediaServerSync).toHaveBeenCalledWith(
+        savedCollection,
+      );
+    });
+
+    it('retries on a later save when an earlier delete left the link behind', async () => {
+      const savedCollection = {
+        id: 42,
+        keepInMaintainerrOnly: true,
+        mediaServerId: 'coll-1',
+      };
+      const collectionService = await saveWith({
+        dbCollection: { id: 42, keepInMaintainerrOnly: true },
+        savedCollection,
+      });
+
+      expect(collectionService.stopMediaServerSync).toHaveBeenCalledWith(
+        savedCollection,
+      );
+    });
+
+    it('never keeps a custom collection in Maintainerr only - the two are exclusive', async () => {
+      const collectionService = await saveWith({
+        dbCollection: { id: 42 },
+        savedCollection: { id: 42 },
+        params: {
+          name: 'Custom collection',
+          collection: {
+            manualCollection: true,
+            manualCollectionName: 'Shared Collection',
+            keepLogsForMonths: 6,
+          },
+        },
+      });
+
+      expect(collectionService.updateCollection).toHaveBeenCalledWith(
+        expect.objectContaining({ keepInMaintainerrOnly: false }),
+      );
+      expect(collectionService.stopMediaServerSync).not.toHaveBeenCalled();
+    });
+  });
 });

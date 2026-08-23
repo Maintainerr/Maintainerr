@@ -1232,6 +1232,10 @@ msgstr "Dokumentation"
 msgid "Does Not Exist"
 msgstr "Finns inte"
 
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Don't create this collection in {mediaServerName}. Rules, actions, overlays and tags keep working."
+msgstr ""
+
 #: src/components/Settings/About/index.tsx
 msgid "Donations Welcome"
 msgstr "Donationer välkomnas"
@@ -2060,6 +2064,10 @@ msgstr "Jobb"
 #: src/components/Common/CommunityRuleModal/index.tsx
 msgid "Karma"
 msgstr "Karma"
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Keep in Maintainerr only"
+msgstr ""
 
 #: src/components/VersionStatus/index.tsx
 msgid "Keep it up! 👍"

@@ -149,6 +149,14 @@ describe('database migrations', () => {
       expect(settings.tracearr_url).toMatchObject(nullableVarchar);
       expect(settings.tracearr_api_key).toMatchObject(nullableVarchar);
       expect(settings.tracearr_server_id).toMatchObject(nullableVarchar);
+
+      // AddKeepCollectionInMaintainerrOnly: the per-collection opt-in, off by
+      // default so every existing collection keeps syncing.
+      expect(collection.keepInMaintainerrOnly).toMatchObject({
+        type: 'boolean',
+        notnull: 1,
+        dflt_value: '0',
+      });
     } finally {
       await ds.destroy();
     }
@@ -161,8 +169,8 @@ describe('database migrations', () => {
     // emits a full create-temporary-table / copy / drop / rename rebuild for the
     // changed tables. A hand-written ALTER shortcut lacks it - this is the
     // cheapest signal the migration was generated rather than authored. The
-    // newest migration adds settings columns, so it rebuilds that table.
-    expect(src).toContain('CREATE TABLE "temporary_settings"');
+    // newest migration adds a collection column, so it rebuilds that table.
+    expect(src).toContain('CREATE TABLE "temporary_collection"');
   });
 
   // We don't revert the whole chain: several pre-existing migrations have
@@ -174,8 +182,8 @@ describe('database migrations', () => {
     try {
       await ds.runMigrations();
       const has = async () =>
-        (await columns(ds, 'settings')).some(
-          (c) => c.name === 'tracearr_server_id',
+        (await columns(ds, 'collection')).some(
+          (c) => c.name === 'keepInMaintainerrOnly',
         );
       expect(await has()).toBe(true);
 

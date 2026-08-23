@@ -501,6 +501,12 @@ export class RulesService {
           sonarrQualityProfileId: params.sonarrQualityProfileId ?? null,
           sportarrQualityProfileId: params.sportarrQualityProfileId ?? null,
           tagInArr: params.tagInArr ?? false,
+          // A custom collection points at a collection that already exists on
+          // the media server, so the two are mutually exclusive. The UI hides
+          // the checkbox; this keeps the API honest too.
+          keepInMaintainerrOnly: params.collection?.manualCollection
+            ? false
+            : (params.keepInMaintainerrOnly ?? false),
           visibleOnRecommended: params.collection?.visibleOnRecommended,
           visibleOnHome: params.collection?.visibleOnHome,
           deleteAfterDays: params.collection?.deleteAfterDays ?? null,
@@ -731,6 +737,11 @@ export class RulesService {
           sonarrQualityProfileId: params.sonarrQualityProfileId ?? null,
           sportarrQualityProfileId: params.sportarrQualityProfileId ?? null,
           tagInArr: params.tagInArr ?? false,
+          keepInMaintainerrOnly:
+            (params.collection?.manualCollection ??
+            dbCollection?.manualCollection)
+              ? false
+              : (params.keepInMaintainerrOnly ?? false),
           // If the collection block is left out of an update, keep the saved
           // values instead of sending undefined - otherwise we'd unlink a manual
           // collection or switch off Plex visibility.
@@ -784,6 +795,16 @@ export class RulesService {
         const newSort = collectionData.mediaServerSort ?? null;
         if (newSort && previousSort !== newSort && savedCollection) {
           await this.collectionService.applyCollectionSort(savedCollection);
+        }
+
+        // Turning "keep in Maintainerr only" on removes the collection from the
+        // media server; the local rows stay, so the rule keeps working. Keyed on
+        // the flag rather than on the toggle transition, because a failed delete
+        // keeps the link and this is where the next save retries it - the call
+        // is a no-op once the link is gone. Turning it off needs nothing here:
+        // the next run recreates the collection through the ordinary add path.
+        if (savedCollection?.keepInMaintainerrOnly) {
+          await this.collectionService.stopMediaServerSync(savedCollection);
         }
 
         // Behavior A: one-time *arr membership-tag reconcile on a tagInArr toggle

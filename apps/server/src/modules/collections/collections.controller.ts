@@ -175,6 +175,8 @@ const collectionBaseShape = {
   sonarrQualityProfileId: z.coerce.number().int().optional().nullable(),
   sportarrQualityProfileId: z.coerce.number().int().optional().nullable(),
   tagInArr: z.boolean().optional(),
+  // keepInMaintainerrOnly is deliberately absent: it is a rule-group option, and
+  // a collection created here has no rule group to turn it back off with.
   sortTitle: z.string().optional().nullable(),
   mediaServerSort: collectionMediaSortKeySchema.optional().nullable(),
   overlayEnabled: z.boolean().optional(),
