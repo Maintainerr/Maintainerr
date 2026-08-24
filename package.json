@@ -21,6 +21,7 @@
     "format:check": "turbo format:check",
     "knip": "knip",
     "check-types": "turbo check-types",
+    "check-node-version": "node tools/check-node-version.mjs",
     "test": "turbo test --concurrency=1 --",
     "test:watch": "turbo test:watch"
   },

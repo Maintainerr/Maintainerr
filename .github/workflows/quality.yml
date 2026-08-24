@@ -101,6 +101,8 @@ jobs:
         run: yarn --immutable
       - name: Run linter
         run: yarn lint
+      - name: Check Node version consistency
+        run: yarn check-node-version
 
   type-checking:
     name: Type checking

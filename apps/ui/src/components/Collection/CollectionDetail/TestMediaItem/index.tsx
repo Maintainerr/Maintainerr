@@ -321,7 +321,7 @@ const TestMediaItem = (props: ITestMediaItem) => {
             )}
           </div>
           <div
-            className="editor-container h-full"
+            className="h-full"
             role="group"
             aria-labelledby="test-media-output-label"
           >
