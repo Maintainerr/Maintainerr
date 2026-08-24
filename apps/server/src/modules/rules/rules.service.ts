@@ -501,6 +501,12 @@ export class RulesService {
           sonarrQualityProfileId: params.sonarrQualityProfileId ?? null,
           sportarrQualityProfileId: params.sportarrQualityProfileId ?? null,
           tagInArr: params.tagInArr ?? false,
+          // A custom collection points at a collection that already exists on
+          // the media server, so the two are mutually exclusive. The UI hides
+          // the checkbox; this keeps the API honest too.
+          keepInMaintainerrOnly: params.collection?.manualCollection
+            ? false
+            : (params.keepInMaintainerrOnly ?? false),
           visibleOnRecommended: params.collection?.visibleOnRecommended,
           visibleOnHome: params.collection?.visibleOnHome,
           deleteAfterDays: params.collection?.deleteAfterDays ?? null,
@@ -655,34 +661,28 @@ export class RulesService {
                 group.collectionId,
               )) ?? [];
           }
+          // Release the media server collection BEFORE the rows go: leaving a
+          // collection a sibling shares takes only this collection's items out,
+          // and the rows are how we know which ones are ours. dbCollection still
+          // carries the OLD library, which is what has to be cleaned up.
+          const released =
+            await this.collectionService.releaseMediaServerCollectionForReset(
+              dbCollection,
+            );
+
+          if (!released) {
+            // The link is dropped below either way, so a failure here leaves a
+            // collection behind that Maintainerr no longer tracks. Say so: it
+            // has to be removed by hand.
+            this.logger.warn(
+              `Failed to clean up media server collection ${dbCollection.mediaServerId} for '${dbCollection.title}' - it may need to be removed manually`,
+            );
+          }
+
           await this.collectionMediaRepository.delete({
             collectionId: group.collectionId,
           });
 
-          // Clean up the media server collection if it exists, then clear mediaServerId.
-          // For Jellyfin: removes only items from this library, keeps the collection
-          //   if other libraries still have items in it (shared manual collections).
-          // For Plex: collections are per-library, so the entire collection is deleted.
-          if (dbCollection.mediaServerId) {
-            const mediaServer = await this.getMediaServer();
-            try {
-              // Use the OLD library ID - we're cleaning up items that belonged
-              // to the previous library, not the one the rule is moving to.
-              await mediaServer.cleanupCollectionForLibrary(
-                dbCollection.mediaServerId,
-                dbCollection.libraryId,
-                !!dbCollection.manualCollection,
-              );
-            } catch (error) {
-              // The link is dropped below either way, so a failure here leaves
-              // a collection behind that Maintainerr no longer tracks. Say so:
-              // it has to be removed by hand.
-              this.logger.warn(
-                `Failed to clean up media server collection ${dbCollection.mediaServerId} for '${dbCollection.title}' - it may need to be removed manually`,
-              );
-              this.logger.debug(error);
-            }
-          }
           await this.collectionService.saveCollection({
             ...dbCollection,
             mediaServerId: null,
@@ -731,6 +731,11 @@ export class RulesService {
           sonarrQualityProfileId: params.sonarrQualityProfileId ?? null,
           sportarrQualityProfileId: params.sportarrQualityProfileId ?? null,
           tagInArr: params.tagInArr ?? false,
+          keepInMaintainerrOnly:
+            (params.collection?.manualCollection ??
+            dbCollection?.manualCollection)
+              ? false
+              : (params.keepInMaintainerrOnly ?? false),
           // If the collection block is left out of an update, keep the saved
           // values instead of sending undefined - otherwise we'd unlink a manual
           // collection or switch off Plex visibility.
@@ -784,6 +789,16 @@ export class RulesService {
         const newSort = collectionData.mediaServerSort ?? null;
         if (newSort && previousSort !== newSort && savedCollection) {
           await this.collectionService.applyCollectionSort(savedCollection);
+        }
+
+        // Turning "keep in Maintainerr only" on removes the collection from the
+        // media server; the local rows stay, so the rule keeps working. Keyed on
+        // the flag rather than on the toggle transition, because a failed delete
+        // keeps the link and this is where the next save retries it - the call
+        // is a no-op once the link is gone. Turning it off needs nothing here:
+        // the next run recreates the collection through the ordinary add path.
+        if (savedCollection?.keepInMaintainerrOnly) {
+          await this.collectionService.stopMediaServerSync(savedCollection);
         }
 
         // Behavior A: one-time *arr membership-tag reconcile on a tagInArr toggle
@@ -906,53 +921,37 @@ export class RulesService {
 
   // The provider ids cached on a collection_media row, used as *arr tag
   // resolution fallbacks (Behavior B) so an item resolves even when its
-  // media-server metadata omits tmdb/tvdb. Returns nulls when not found.
+  // media-server metadata omits tmdb/tvdb. A global exclusion has no collection
+  // to read, so any row for the item serves - the ids describe the item itself.
+  // Returns nulls when not found.
   private async getCollectionMediaProviderIds(
-    collectionId: number,
     mediaServerId: string,
+    collectionId?: number,
   ): Promise<{ tmdbId?: number | null; tvdbId?: number | null }> {
     const row = await this.collectionMediaRepository.findOne({
-      where: { collectionId, mediaServerId },
+      where: { mediaServerId, ...(collectionId ? { collectionId } : {}) },
     });
     return { tmdbId: row?.tmdbId ?? null, tvdbId: row?.tvdbId ?? null };
-  }
-
-  // Behavior B: resolve the single configured *arr instance for a GLOBAL
-  // exclusion (no collection). Skipped (null) when none or several instances of
-  // the item's type exist, since the tag target would then be ambiguous.
-  private async resolveGlobalExclusionInstance(
-    type: MediaItemType | undefined,
-  ): Promise<{ radarrSettingsId?: number; sonarrSettingsId?: number } | null> {
-    if (type === 'movie') {
-      const all = await this.radarrSettingsRepo.find();
-      return all.length === 1 ? { radarrSettingsId: all[0].id } : null;
-    }
-    if (type === 'show') {
-      const all = await this.sonarrSettingsRepo.find();
-      return all.length === 1 ? { sonarrSettingsId: all[0].id } : null;
-    }
-    return null;
   }
 
   // Behavior B: apply or remove the protective *arr tag for one excluded
   // top-level item, shared by every exclusion entry/exit path (scoped + global,
   // POST + DELETE). The settings gate is checked by the caller. A scoped exclusion
   // takes its instance and (authoritative, non-null) type from the rule group's
-  // collection; a global one resolves the single configured instance. Removal is
-  // conservative and must run AFTER the rows are deleted: it leaves the tag in
-  // place if any exclusion for the item survives (another rule group or a global
-  // one), so a still-excluded item keeps its protection - last-exclusion-wins.
+  // collection; a global one has none, and is left for ServarrTagService to cover
+  // across every configured instance. Removal is conservative and must run AFTER
+  // the rows are deleted: it leaves the tag in place if any exclusion for the item
+  // survives (another rule group or a global one), so a still-excluded item keeps
+  // its protection - last-exclusion-wins.
   private async syncExclusionTag(
     mode: 'add' | 'remove',
     item: { mediaServerId: string; type: MediaItemType | undefined },
     collectionId: number | undefined,
   ): Promise<void> {
-    let instance: {
-      radarrSettingsId?: number | null;
-      sonarrSettingsId?: number | null;
-    } | null;
+    let instance:
+      | { radarrSettingsId?: number | null; sonarrSettingsId?: number | null }
+      | undefined;
     let type = item.type;
-    let hints: { tmdbId?: number | null; tvdbId?: number | null } = {};
 
     if (collectionId) {
       const collection =
@@ -967,15 +966,6 @@ export class RulesService {
       // collection.type is always set; prefer it over the exclusion row's nullable
       // type (old rows predate the type column) so the right service is chosen.
       type = collection.type ?? item.type;
-      hints = await this.getCollectionMediaProviderIds(
-        collectionId,
-        item.mediaServerId,
-      );
-    } else {
-      instance = await this.resolveGlobalExclusionInstance(item.type);
-      if (!instance) {
-        return;
-      }
     }
 
     if (mode === 'remove') {
@@ -987,6 +977,10 @@ export class RulesService {
       }
     }
 
+    const hints = await this.getCollectionMediaProviderIds(
+      item.mediaServerId,
+      collectionId,
+    );
     const target = { mediaServerId: item.mediaServerId, type, ...hints };
     if (mode === 'add') {
       await this.servarrTagService.applyExclusionTag(target, instance);
@@ -1688,9 +1682,8 @@ export class RulesService {
 
       // Behavior B (https://features.maintainerr.info/posts/81): opt-in removal of
       // the protective *arr tag once every exclusion for the item is cleared.
-      // Global instance resolution; the guard always passes (no rows remain).
-      // Known limitation: with multiple *arr instances the global resolver is
-      // ambiguous (skips), so a scoped-excluded item's tag may linger here.
+      // Instance-wide, so a scoped exclusion's tag is cleared too; the guard
+      // always passes (no rows remain).
       if (this.servarrTagService.anyExclusionUntaggingEnabled()) {
         await this.syncExclusionTag(
           'remove',

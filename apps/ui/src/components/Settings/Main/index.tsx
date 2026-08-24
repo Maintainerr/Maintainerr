@@ -125,7 +125,8 @@ const MainSettingsForm = ({
     onClearError()
 
     // The locale rides along in the form so it follows the usual Save flow,
-    // but it is a browser preference rather than a server setting.
+    // but it stays a browser preference: there are no user accounts, so a
+    // server-wide value would let one person change what everyone else sees.
     const { locale, ...settingsPayload } = data
 
     try {

@@ -18,8 +18,6 @@ describe('RulesService exclusions - global (null ruleGroupId) handling', () => {
     collectionService?: any;
     mediaServerFactory?: any;
     servarrTagService?: any;
-    radarrSettingsRepo?: any;
-    sonarrSettingsRepo?: any;
   }) => {
     const exclusionRepo = overrides?.exclusionRepo ?? {
       find: jest.fn().mockResolvedValue([]),
@@ -27,12 +25,6 @@ describe('RulesService exclusions - global (null ruleGroupId) handling', () => {
       delete: jest.fn().mockResolvedValue(undefined),
       // default: no exclusion survives a removal, so the shared-tag guard passes
       count: jest.fn().mockResolvedValue(0),
-    };
-    const radarrSettingsRepo = overrides?.radarrSettingsRepo ?? {
-      find: jest.fn().mockResolvedValue([]),
-    };
-    const sonarrSettingsRepo = overrides?.sonarrSettingsRepo ?? {
-      find: jest.fn().mockResolvedValue([]),
     };
     const collectionMediaRepository = overrides?.collectionMediaRepository ?? {
       findOne: jest.fn().mockResolvedValue(undefined),
@@ -56,8 +48,8 @@ describe('RulesService exclusions - global (null ruleGroupId) handling', () => {
       {} as any, // communityRuleKarmaRepository
       exclusionRepo as any,
       {} as any, // settingsRepo
-      radarrSettingsRepo as any,
-      sonarrSettingsRepo as any,
+      {} as any, // radarrSettingsRepo
+      {} as any, // sonarrSettingsRepo
       {} as any, // sportarrSettingsRepo
       collectionService as any,
       mediaServerFactory as any,
@@ -79,8 +71,6 @@ describe('RulesService exclusions - global (null ruleGroupId) handling', () => {
       collectionService,
       mediaServerFactory,
       servarrTagService,
-      radarrSettingsRepo,
-      sonarrSettingsRepo,
     };
   };
 
@@ -321,7 +311,10 @@ describe('RulesService exclusions - global (null ruleGroupId) handling', () => {
     );
   });
 
-  it('setExclusion(global) tags the single configured radarr instance', async () => {
+  // A global exclusion has no collection to inherit an instance from, so it
+  // names none: the tag service covers every configured instance, which is what
+  // makes the tag land for users running more than one Radarr/Sonarr.
+  it("setExclusion(global) names no instance, and passes the item's cached ids", async () => {
     const exclusionRepo = {
       findOne: jest.fn().mockResolvedValue(undefined),
       save: jest.fn().mockResolvedValue(undefined),
@@ -335,8 +328,9 @@ describe('RulesService exclusions - global (null ruleGroupId) handling', () => {
     const mediaServerFactory = {
       getService: jest.fn().mockResolvedValue(mediaServer),
     };
-    const radarrSettingsRepo = {
-      find: jest.fn().mockResolvedValue([{ id: 3 }]),
+    // Any collection_media row for the item carries its provider ids.
+    const collectionMediaRepository = {
+      findOne: jest.fn().mockResolvedValue({ tmdbId: 4242, tvdbId: null }),
     };
     const servarrTagService = createMockServarrTagService();
     servarrTagService.anyExclusionTaggingEnabled.mockReturnValue(true);
@@ -344,48 +338,19 @@ describe('RulesService exclusions - global (null ruleGroupId) handling', () => {
     const { service } = createService({
       exclusionRepo,
       mediaServerFactory,
-      radarrSettingsRepo,
+      collectionMediaRepository,
       servarrTagService,
     });
 
     await service.setExclusion({ mediaId: 'movie-1' } as any);
 
     expect(servarrTagService.applyExclusionTag).toHaveBeenCalledWith(
-      expect.objectContaining({ mediaServerId: 'movie-1', type: 'movie' }),
-      { radarrSettingsId: 3 },
+      { mediaServerId: 'movie-1', type: 'movie', tmdbId: 4242, tvdbId: null },
+      undefined,
     );
-  });
-
-  it('setExclusion(global) does not tag when several radarr instances exist (ambiguous)', async () => {
-    const exclusionRepo = {
-      findOne: jest.fn().mockResolvedValue(undefined),
-      save: jest.fn().mockResolvedValue(undefined),
-      delete: jest.fn().mockResolvedValue(undefined),
-      count: jest.fn().mockResolvedValue(0),
-    };
-    const mediaServer = {
-      getMetadata: jest.fn().mockResolvedValue({ type: 'movie' }),
-      getAllIdsForContextAction: jest.fn().mockResolvedValue(['movie-1']),
-    };
-    const mediaServerFactory = {
-      getService: jest.fn().mockResolvedValue(mediaServer),
-    };
-    const radarrSettingsRepo = {
-      find: jest.fn().mockResolvedValue([{ id: 3 }, { id: 4 }]),
-    };
-    const servarrTagService = createMockServarrTagService();
-    servarrTagService.anyExclusionTaggingEnabled.mockReturnValue(true);
-
-    const { service } = createService({
-      exclusionRepo,
-      mediaServerFactory,
-      radarrSettingsRepo,
-      servarrTagService,
+    expect(collectionMediaRepository.findOne).toHaveBeenCalledWith({
+      where: { mediaServerId: 'movie-1' },
     });
-
-    await service.setExclusion({ mediaId: 'movie-1' } as any);
-
-    expect(servarrTagService.applyExclusionTag).not.toHaveBeenCalled();
   });
 
   it('removeExclusionWitData removes the tag for the top-level item (the media-modal remove path)', async () => {
@@ -400,16 +365,12 @@ describe('RulesService exclusions - global (null ruleGroupId) handling', () => {
     const mediaServerFactory = {
       getService: jest.fn().mockResolvedValue(mediaServer),
     };
-    const radarrSettingsRepo = {
-      find: jest.fn().mockResolvedValue([{ id: 3 }]),
-    };
     const servarrTagService = createMockServarrTagService();
     servarrTagService.anyExclusionUntaggingEnabled.mockReturnValue(true);
 
     const { service } = createService({
       exclusionRepo,
       mediaServerFactory,
-      radarrSettingsRepo,
       servarrTagService,
     });
 
@@ -420,7 +381,7 @@ describe('RulesService exclusions - global (null ruleGroupId) handling', () => {
 
     expect(servarrTagService.removeExclusionTag).toHaveBeenCalledWith(
       expect.objectContaining({ mediaServerId: 'movie-1', type: 'movie' }),
-      { radarrSettingsId: 3 },
+      undefined,
     );
   });
 
@@ -436,16 +397,12 @@ describe('RulesService exclusions - global (null ruleGroupId) handling', () => {
     const mediaServerFactory = {
       getService: jest.fn().mockResolvedValue(mediaServer),
     };
-    const sonarrSettingsRepo = {
-      find: jest.fn().mockResolvedValue([{ id: 9 }]),
-    };
     const servarrTagService = createMockServarrTagService();
     servarrTagService.anyExclusionUntaggingEnabled.mockReturnValue(true);
 
     const { service } = createService({
       exclusionRepo,
       mediaServerFactory,
-      sonarrSettingsRepo,
       servarrTagService,
     });
 
@@ -453,7 +410,7 @@ describe('RulesService exclusions - global (null ruleGroupId) handling', () => {
 
     expect(servarrTagService.removeExclusionTag).toHaveBeenCalledWith(
       expect.objectContaining({ mediaServerId: 'show-1', type: 'show' }),
-      { sonarrSettingsId: 9 },
+      undefined,
     );
   });
 

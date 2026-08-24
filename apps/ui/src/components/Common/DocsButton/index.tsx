@@ -5,6 +5,8 @@ import Button from '../Button'
 interface IDocsButton {
   text?: string
   page?: string
+  /** Documentation that does not live on docs.maintainerr.info, such as a repo README. */
+  href?: string
 }
 
 const DocsButton = (props: IDocsButton) => {
@@ -17,7 +19,7 @@ const DocsButton = (props: IDocsButton) => {
         type="button"
         as="a"
         target="_blank"
-        href={`https://docs.maintainerr.info/${page}`}
+        href={props.href ?? `https://docs.maintainerr.info/${page}`}
         rel="noopener noreferrer"
       >
         <DocumentTextIcon />

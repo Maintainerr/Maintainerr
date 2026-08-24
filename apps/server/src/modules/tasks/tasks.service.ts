@@ -107,6 +107,18 @@ export class TasksService {
     return task?.running ?? false;
   }
 
+  /**
+   * Next fire time for a registered job, or null if it has none. Reads the
+   * live CronJob so it cannot drift from the schedule actually in effect.
+   */
+  public getNextRun(name: string): Date | null {
+    try {
+      return this.schedulerRegistry.getCronJob(name).nextDate().toJSDate();
+    } catch {
+      return null;
+    }
+  }
+
   public getTask(name: string): TaskState | undefined {
     return this.runningTasks.get(name);
   }

@@ -293,7 +293,7 @@ const LogMetaModal = (props: LogMetaModalProps) => {
             <Trans>Output</Trans>
           </span>
           <div
-            className="editor-container h-full"
+            className="h-full"
             role="group"
             aria-labelledby="collection-info-output-label"
           >

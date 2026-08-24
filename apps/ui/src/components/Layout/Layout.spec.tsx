@@ -4,6 +4,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import SearchContext, {
   SearchContextProvider,
 } from '../../contexts/search-context'
+import { QueryClientProvider } from '@tanstack/react-query'
+import { createTestQueryClient } from '../../test-utils/queryClient'
 import Layout from './index'
 
 const navigate = vi.fn()
@@ -59,10 +61,12 @@ describe('Layout search', () => {
 
   it('keeps the full typed value and only updates shared search after the debounce', () => {
     render(
-      <SearchContextProvider>
-        <Layout />
-        <SearchProbe />
-      </SearchContextProvider>,
+      <QueryClientProvider client={createTestQueryClient()}>
+        <SearchContextProvider>
+          <Layout />
+          <SearchProbe />
+        </SearchContextProvider>
+      </QueryClientProvider>,
     )
 
     const input = screen.getByPlaceholderText('Search') as HTMLInputElement

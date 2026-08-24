@@ -301,6 +301,27 @@ export class SettingsOperationsService {
     }
   }
 
+  public async updateTelemetrySetting(
+    enabled: boolean,
+  ): Promise<BasicResponseDto> {
+    try {
+      const settingsDb = await this.settingsRepo.findOne({ where: {} });
+
+      await this.settingsDataService.saveSettings({
+        ...settingsDb,
+        telemetryEnabled: enabled,
+      });
+
+      await this.settingsDataService.init();
+
+      return { status: 'OK', code: 1, message: 'Success' };
+    } catch (error) {
+      this.logger.error('Error while updating telemetry settings');
+      this.logger.debug(error);
+      return { status: 'NOK', code: 0, message: 'Failed' };
+    }
+  }
+
   public async removeStreamystatsSetting() {
     try {
       const settingsDb = await this.settingsRepo.findOne({ where: {} });

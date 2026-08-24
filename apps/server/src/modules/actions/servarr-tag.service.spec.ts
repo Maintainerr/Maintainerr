@@ -37,6 +37,15 @@ describe('ServarrTagService', () => {
         { providerKey: service === 'radarr' ? 'tmdb' : 'tvdb', id: 100 },
       ],
     );
+
+    // One configured instance of each; exclusion tagging reads these to know
+    // which instances to cover.
+    settings.getRadarrSettings.mockResolvedValue([
+      { id: 1, serverName: 'Radarr' },
+    ] as any);
+    settings.getSonarrSettings.mockResolvedValue([
+      { id: 1, serverName: 'Sonarr' },
+    ] as any);
   });
 
   describe('Behavior A - membership tagging', () => {
@@ -439,7 +448,9 @@ describe('ServarrTagService', () => {
       jest
         .spyOn(radarr, 'getMovieByTmdbId')
         .mockResolvedValue(createRadarrMovie({ id: 31 }));
-      jest.spyOn(radarr, 'ensureTag').mockResolvedValue(9);
+      jest
+        .spyOn(radarr, 'getTags')
+        .mockResolvedValue([{ id: 9, label: 'dnd' }]);
       settings.radarr_tag_exclusions = true;
       settings.radarr_exclusion_tag = 'dnd';
       settings.radarr_untag_on_unexclude = true;
@@ -447,9 +458,11 @@ describe('ServarrTagService', () => {
       await service.removeExclusionTag(movieTarget, { radarrSettingsId: 1 });
 
       expect(radarr.setMovieTags).toHaveBeenCalledWith([31], 9, 'remove');
+      // A removal must not create the label it is trying to strip.
+      expect(radarr.ensureTag).not.toHaveBeenCalled();
     });
 
-    it('skips when no *arr instance is associated (e.g. a global exclusion)', async () => {
+    it('skips when the collection names no *arr instance', async () => {
       const radarr = mockRadarrApi(servarrService, logger);
       settings.radarr_tag_exclusions = true;
       settings.radarr_exclusion_tag = 'dnd';
@@ -460,6 +473,40 @@ describe('ServarrTagService', () => {
       });
 
       expect(radarr.ensureTag).not.toHaveBeenCalled();
+    });
+
+    // A global exclusion names no instance. Picking one is impossible, and
+    // skipping left multi-instance setups (a 4K + HD Radarr split) untagged,
+    // so it covers them all and tags wherever the item is actually tracked.
+    it('a global exclusion tags every instance tracking the item, and only those', async () => {
+      const tracking = mockRadarrApi(servarrService, logger);
+      const other = mockRadarrApi(servarrService, logger);
+      jest
+        .spyOn(tracking, 'getMovieByTmdbId')
+        .mockResolvedValue(createRadarrMovie({ id: 30 }));
+      jest.spyOn(tracking, 'ensureTag').mockResolvedValue(9);
+      // The second instance confirms it doesn't track the movie.
+      jest.spyOn(other, 'getMovieByTmdbId').mockResolvedValue(null);
+      servarrService.getRadarrApiClient.mockImplementation(async (id) =>
+        id === 1 ? tracking : other,
+      );
+      settings.getRadarrSettings.mockResolvedValue([
+        { id: 1, serverName: 'HD' },
+        { id: 2, serverName: '4K' },
+      ] as any);
+      settings.radarr_tag_exclusions = true;
+      settings.radarr_exclusion_tag = 'dnd';
+
+      await service.applyExclusionTag(movieTarget);
+
+      expect(tracking.setMovieTags).toHaveBeenCalledWith([30], 9, 'add');
+      expect(other.setMovieTags).not.toHaveBeenCalled();
+      // No stray label created in an instance that doesn't hold the movie.
+      expect(other.ensureTag).not.toHaveBeenCalled();
+      // The item is resolved once, not per instance.
+      expect(
+        metadataService.resolveLookupCandidatesForService,
+      ).toHaveBeenCalledTimes(1);
     });
   });
 });

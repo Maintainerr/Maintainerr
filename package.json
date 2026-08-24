@@ -21,6 +21,7 @@
     "format:check": "turbo format:check",
     "knip": "knip",
     "check-types": "turbo check-types",
+    "check-node-version": "node tools/check-node-version.mjs",
     "test": "turbo test --concurrency=1 --",
     "test:watch": "turbo test:watch"
   },
@@ -30,7 +31,7 @@
     "packages/*"
   ],
   "engines": {
-    "node": "^22.22.2 || ^24.15.0 || >=26.0.0"
+    "node": ">=26.0.0"
   },
   "devDependencies": {
     "@semantic-release/changelog": "^7.0.0",
@@ -41,7 +42,7 @@
     "knip": "^6.32.2",
     "pofile-ts": "^4.0.3",
     "semantic-release": "^25.0.9",
-    "turbo": "^2.10.10",
+    "turbo": "^2.10.11",
     "typescript": "^6.0.3",
     "yaml": "^2.9.0"
   },

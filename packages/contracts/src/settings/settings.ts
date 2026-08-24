@@ -12,8 +12,10 @@ import { serviceUrlSchema } from './serviceUrl'
  * a URL cannot be smuggled past it through the bulk route.
  *
  * `id` is deliberately absent: letting it through made TypeORM write a second
- * settings row. Everything else `GET /api/settings` returns is accepted, so a
- * read-modify-write round trip does not silently drop fields.
+ * settings row. `telemetryEnabled` is absent too, so a read-modify-write of
+ * unrelated settings can never flip a privacy choice; it has its own
+ * `POST /api/settings/telemetry`. Everything else `GET /api/settings` returns
+ * is accepted, so a round trip does not silently drop fields.
  */
 export const settingsUpdateSchema = z.object({
   clientId: z.string().trim().optional(),

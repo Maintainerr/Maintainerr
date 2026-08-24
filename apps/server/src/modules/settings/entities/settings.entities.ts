@@ -167,4 +167,12 @@ export class Settings implements SettingDto {
 
   @Column({ type: 'boolean', nullable: false, default: false })
   sonarr_untag_on_unexclude: boolean;
+
+  // Anonymous weekly telemetry (https://telemetry.maintainerr.info). Null means
+  // nobody has answered the prompt yet, and reports: every install starts
+  // there, new or upgraded, and is asked once in the web interface. Only an
+  // explicit false stops it. TELEMETRY=off overrides this without touching the
+  // database.
+  @Column({ type: 'boolean', nullable: true, default: null })
+  telemetryEnabled: boolean | null;
 }
