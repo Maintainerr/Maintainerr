@@ -13,6 +13,14 @@ let currentPreview: {
 } = { data: undefined, isLoading: true, isError: false }
 let currentStatus: TelemetryStatus | undefined
 
+// Monaco does not render under jsdom, so the viewer is stood in for by the
+// plain element the payload assertions read back out of.
+vi.mock('../../Common/PayloadViewer', () => ({
+  default: ({ value }: { value: unknown }) => (
+    <pre>{JSON.stringify(value, null, 2)}</pre>
+  ),
+}))
+
 vi.mock('../../../api/settings', () => ({
   useTelemetryPreview: () => currentPreview,
   useTelemetryStatus: () => ({ data: currentStatus }),

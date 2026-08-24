@@ -1,6 +1,6 @@
 import { Trans, useLingui } from '@lingui/react/macro'
 import { TELEMETRY_SAMPLE_DIVISOR } from '@maintainerr/contracts'
-import { Fragment, type ReactNode } from 'react'
+import { type ReactNode } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { useSettingsOutletContext } from '..'
 import {
@@ -10,7 +10,7 @@ import {
 } from '../../../api/settings'
 import BrandLink from '../../Common/BrandLink'
 import DocsButton from '../../Common/DocsButton'
-import { SmallLoadingSpinner } from '../../Common/LoadingSpinner'
+import PayloadViewer from '../../Common/PayloadViewer'
 import SaveButton from '../../Common/SaveButton'
 import {
   SettingsFeedbackAlert,
@@ -39,56 +39,6 @@ interface TelemetryFormValues {
   enabled: boolean
 }
 
-/**
- * Colours the preview by walking the parsed payload, not by tokenising the
- * JSON text, so there is no second parser that could disagree with what the
- * server actually sends. Indentation matches JSON.stringify(value, null, 2).
- * Palette is the one the log viewer already uses.
- */
-const renderJson = (value: unknown, depth: number): ReactNode => {
-  if (value === null) return <span className="text-gray-400">null</span>
-  if (typeof value === 'boolean')
-    return <span className="text-indigo-400">{String(value)}</span>
-  if (typeof value === 'number')
-    return <span className="text-yellow-400">{value}</span>
-  if (typeof value === 'string')
-    return <span className="text-green-400">{JSON.stringify(value)}</span>
-
-  const isArray = Array.isArray(value)
-  const entries: [string, unknown][] = isArray
-    ? value.map((item, index) => [String(index), item])
-    : Object.entries(value as Record<string, unknown>)
-  const [open, close] = isArray ? ['[', ']'] : ['{', '}']
-
-  if (entries.length === 0)
-    return <span className="text-gray-400">{open + close}</span>
-
-  return (
-    <>
-      <span className="text-gray-400">{open}</span>
-      {'\n'}
-      {entries.map(([key, item], index) => (
-        <Fragment key={key}>
-          {'  '.repeat(depth + 1)}
-          {!isArray && (
-            <>
-              <span className="text-zinc-100">{JSON.stringify(key)}</span>
-              <span className="text-gray-400">: </span>
-            </>
-          )}
-          {renderJson(item, depth + 1)}
-          {index < entries.length - 1 && (
-            <span className="text-gray-400">,</span>
-          )}
-          {'\n'}
-        </Fragment>
-      ))}
-      {'  '.repeat(depth)}
-      <span className="text-gray-400">{close}</span>
-    </>
-  )
-}
-
 /** Fixed height so the loading, error and loaded states all occupy one box. */
 const PreviewPanel = ({
   label,
@@ -108,9 +58,10 @@ const PreviewPanel = ({
     <div className="mb-2 text-xs text-zinc-400">
       {nextAt ? <Trans>(Next: {formatWhen(nextAt, locale)})</Trans> : '\u00a0'}
     </div>
-    {/* Same flat panel the log stream uses, rather than a bordered card:
-        read-only output, not something to interact with. */}
-    <div className="h-80 overflow-auto rounded-sm bg-zinc-700 p-3">
+    {/* Painted the editor's own colour so the spinner sits on the background
+        the editor will paint, rather than the box flashing from a lighter
+        panel to darker once monaco mounts. */}
+    <div className="h-80 overflow-hidden rounded-sm border border-zinc-700 bg-editor">
       {children}
     </div>
   </div>
@@ -217,16 +168,12 @@ const TelemetrySettings = () => {
               nextAt={status?.nextSendAtWeekly}
               locale={i18n.locale}
             >
-              {previewLoading ? (
-                <SmallLoadingSpinner />
-              ) : previewFailed || !preview ? (
-                <p className="text-sm text-zinc-400">
+              {previewLoading ? null : previewFailed || !preview ? (
+                <p className="p-3 text-sm text-zinc-400">
                   <Trans>The preview could not be loaded.</Trans>
                 </p>
               ) : (
-                <pre className="text-xs leading-relaxed text-zinc-200">
-                  {renderJson(census, 0)}
-                </pre>
+                <PayloadViewer value={census} />
               )}
             </PreviewPanel>
 
@@ -235,22 +182,16 @@ const TelemetrySettings = () => {
               nextAt={status?.nextSendAtRich}
               locale={i18n.locale}
             >
-              {previewLoading ? (
-                <SmallLoadingSpinner />
-              ) : previewFailed || !preview ? (
-                <p className="text-sm text-zinc-400">
+              {previewLoading ? null : previewFailed || !preview ? (
+                <p className="p-3 text-sm text-zinc-400">
                   <Trans>The preview could not be loaded.</Trans>
                 </p>
+              ) : sample === undefined ? (
+                <p className="p-3 text-sm text-zinc-400">
+                  <Trans>Nothing extra is configured to send.</Trans>
+                </p>
               ) : (
-                <pre className="text-xs leading-relaxed text-zinc-200">
-                  {sample === undefined ? (
-                    <span className="text-gray-400">
-                      <Trans>Nothing extra is configured to send.</Trans>
-                    </span>
-                  ) : (
-                    renderJson(sample, 0)
-                  )}
-                </pre>
+                <PayloadViewer value={sample} />
               )}
             </PreviewPanel>
           </div>
@@ -262,13 +203,10 @@ const TelemetrySettings = () => {
           </h3>
           <p className="description leading-relaxed">
             <Trans>
-              Maintainerr is built in our spare time, and we pay the server
-              costs from our own pockets since donations do not cover it. We do
-              it because we love free software and keeping Maintainerr alive is
-              how we give back. The one thing we cannot buy is a picture of what
-              people actually run, and that is what decides where the effort
-              goes. An anonymous weekly report gives us exactly that. It costs
-              you nothing and needs neither code nor time.
+              Maintainerr reports anonymous usage once a week. It is the only
+              signal we have about which versions, media servers and features
+              are actually in use, and it decides what gets built, fixed and
+              kept.
             </Trans>
           </p>
 
