@@ -39,7 +39,7 @@ If you prefer to set up your development environment manually (specific to a Win
 
 - HTML/TypeScript/JavaScript editor
 - [VSCode](https://code.visualstudio.com/) is recommended. Upon opening the project, a few extensions will be automatically recommended for install.
-- [NodeJS](https://nodejs.org/en/download/) (Node 22.22.2+, 24.15.0+, or 26+)
+- [NodeJS](https://nodejs.org/en/download/) (Node 26+)
 - [Git](https://git-scm.com/downloads)
 
 #### Getting Started
