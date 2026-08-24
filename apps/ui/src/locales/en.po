@@ -2032,10 +2032,6 @@ msgstr "Invalid template file"
 msgid "Invalid value"
 msgstr "Invalid value"
 
-#: src/components/Layout/TelemetryConsentModal.tsx
-msgid "It is on, and you can turn it off right here. Maintainerr is built in our spare time and the server bill comes out of our own pockets, so leaving it on is a free way to help. Either way you are only asked once, and you can change your mind and see exactly what is sent under <0>About, Help us improve it</0>."
-msgstr "It is on, and you can turn it off right here. Maintainerr is built in our spare time and the server bill comes out of our own pockets, so leaving it on is a free way to help. Either way you are only asked once, and you can change your mind and see exactly what is sent under <0>About, Help us improve it</0>."
-
 #: src/components/Collection/CollectionItem/index.tsx
 #: src/components/StorageMetrics/index.tsx
 msgid "Items"
@@ -2105,6 +2101,10 @@ msgstr "Keep in Maintainerr only"
 #: src/components/Layout/TelemetryConsentModal.tsx
 msgid "Keep it on"
 msgstr "Keep it on"
+
+#: src/components/Layout/TelemetryConsentModal.tsx
+msgid "Keep it on and we will not ask again. The settings page shows the same report, the occasional extra detail, and the off switch."
+msgstr "Keep it on and we will not ask again. The settings page shows the same report, the occasional extra detail, and the off switch."
 
 #: src/components/VersionStatus/index.tsx
 msgid "Keep it up! 👍"
@@ -2318,10 +2318,6 @@ msgstr "Lowercase letters, numbers and hyphens only ({chars})."
 msgid "Made with Version"
 msgstr "Made with Version"
 
-#: src/components/Settings/Telemetry/index.tsx
-msgid "Maintainerr is built in our spare time, and we pay the server costs from our own pockets since donations do not cover it. We do it because we love free software and keeping Maintainerr alive is how we give back. The one thing we cannot buy is a picture of what people actually run, and that is what decides where the effort goes. An anonymous weekly report gives us exactly that. It costs you nothing and needs neither code nor time."
-msgstr "Maintainerr is built in our spare time, and we pay the server costs from our own pockets since donations do not cover it. We do it because we love free software and keeping Maintainerr alive is how we give back. The one thing we cannot buy is a picture of what people actually run, and that is what decides where the effort goes. An anonymous weekly report gives us exactly that. It costs you nothing and needs neither code nor time."
-
 #: src/components/Layout/NavBar/index.tsx
 msgid "Maintainerr logo"
 msgstr "Maintainerr logo"
@@ -2334,9 +2330,9 @@ msgstr "Maintainerr picks the Tracearr media server backend automatically: the o
 msgid "Maintainerr Pre-Release"
 msgstr "Maintainerr Pre-Release"
 
-#: src/components/Layout/TelemetryConsentModal.tsx
-msgid "Maintainerr reports a weekly count of which version it runs and roughly which features get used, so development follows what people actually run. Nothing identifies your server, and no {TERM_IP} address is read or stored."
-msgstr "Maintainerr reports a weekly count of which version it runs and roughly which features get used, so development follows what people actually run. Nothing identifies your server, and no {TERM_IP} address is read or stored."
+#: src/components/Settings/Telemetry/index.tsx
+msgid "Maintainerr reports anonymous usage once a week. It is the only signal we have about which versions, media servers and features are actually in use, and it decides what gets built, fixed and kept."
+msgstr "Maintainerr reports anonymous usage once a week. It is the only signal we have about which versions, media servers and features are actually in use, and it decides what gets built, fixed and kept."
 
 #: src/components/StorageMetrics/index.tsx
 msgid "Maintainerr will iterate every movie and episode in your {typeLabel} libraries to estimate size on disk. This can take a while on large libraries."
@@ -2780,6 +2776,10 @@ msgstr "Ok"
 #: src/components/Rules/RuleGroup/AddModal/ConfigureNotificationModal/index.tsx
 msgid "OK"
 msgstr "OK"
+
+#: src/components/Layout/TelemetryConsentModal.tsx
+msgid "Once a week we log which version and platform people actually run. The payload below is the whole of it. It carries no server identifier, no {TERM_IP}, no hostname, no {TERM_MAC} address and no account id: nothing that can be traced back to you, your network or your machine."
+msgstr "Once a week we log which version and platform people actually run. The payload below is the whole of it. It carries no server identifier, no {TERM_IP}, no hostname, no {TERM_MAC} address and no account id: nothing that can be traced back to you, your network or your machine."
 
 #: src/components/Common/YamlImporterModal/index.tsx
 msgid "Only {yamlExtension} or {ymlExtension} files are allowed."
@@ -4240,8 +4240,8 @@ msgid "True"
 msgstr "True"
 
 #: src/components/Layout/TelemetryConsentModal.tsx
-msgid "Turn it off"
-msgstr "Turn it off"
+msgid "Turn it off in settings"
+msgstr "Turn it off in settings"
 
 #: src/components/Settings/Metadata/index.tsx
 msgid "TVDB must be configured before it can be primary"
@@ -4562,6 +4562,10 @@ msgstr "Warning"
 #: src/components/Common/MediaCard/MediaModal/StreamystatsStatsPanel/index.tsx
 msgid "Watch time"
 msgstr "Watch time"
+
+#: src/components/Layout/TelemetryConsentModal.tsx
+msgid "We build Maintainerr in our spare time, and leaving this on is a free way to help shape what comes next."
+msgstr "We build Maintainerr in our spare time, and leaving this on is a free way to help shape what comes next."
 
 #: src/components/Settings/MediaServerSelector/index.tsx
 msgid "We will now switch from <0>{currentName}</0> to <1>{pendingName}</1>."

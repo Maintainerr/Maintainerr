@@ -28,9 +28,8 @@
  *
  * Changing what is sent is a change to a published privacy commitment: the
  * data table in the collector's README, the LABELS map in its src/page.ts and
- * the release notes all have to change with it. That sync is deliberately
- * manual - derive every value written there by reading the code, never by
- * inference.
+ * the release notes all have to change with it. Nothing checks that sync, so
+ * derive every value written there by reading the code, never by inference.
  */
 export interface TelemetryPing {
   // Census. Sent by every instance, every week, and exact - this is what makes

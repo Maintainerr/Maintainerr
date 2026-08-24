@@ -1,4 +1,4 @@
-import { MediaServerType } from '@maintainerr/contracts'
+import { MediaServerType, TelemetryPing } from '@maintainerr/contracts'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { render, screen, waitFor } from '../../test-utils/render'
@@ -23,8 +23,30 @@ const CONFIGURED = {
 }
 let currentSettings: Record<string, unknown> | undefined
 
+// The prompt shows the weekly block, so the preview has to resolve.
+const preview: TelemetryPing = {
+  version: '3.24.0',
+  versionTag: 'latest',
+  isDocker: true,
+  nodeMajor: 26,
+  arch: 'x64',
+  platform: 'linux',
+  mediaServer: 'jellyfin',
+}
+
+// Monaco does not render under jsdom, so the payload is captured from the
+// props instead of read back out of the DOM.
+let editorValue: string | undefined
+vi.mock('../Common/PayloadViewer', () => ({
+  default: ({ value }: { value: unknown }) => {
+    editorValue = JSON.stringify(value, null, 2)
+    return <pre>{editorValue}</pre>
+  },
+}))
+
 vi.mock('../../api/settings', () => ({
   useSettings: () => ({ data: currentSettings }),
+  useTelemetryPreview: () => ({ data: preview }),
   useUpdateTelemetrySetting: () => ({
     mutateAsync: updateTelemetrySetting,
     isPending: false,
@@ -39,9 +61,9 @@ describe('TelemetryConsentModal', () => {
   })
 
   it.each([
-    ['already on', true],
-    ['already off', false],
-  ])('stays hidden when the install is %s', (_label, telemetryEnabled) => {
+    { state: 'already on', telemetryEnabled: true },
+    { state: 'already off', telemetryEnabled: false },
+  ])('stays hidden when the install is $state', ({ telemetryEnabled }) => {
     currentSettings = { ...CONFIGURED, telemetryEnabled }
 
     renderModal()
@@ -71,6 +93,17 @@ describe('TelemetryConsentModal', () => {
     expect(screen.getByText('Help shape Maintainerr?')).toBeTruthy()
   })
 
+  /**
+   * The prompt is the only place many people will look, so it has to show the
+   * payload itself rather than describe it.
+   */
+  it('shows the weekly payload, without the sampled block', () => {
+    renderModal()
+
+    expect(editorValue).toBe(JSON.stringify(preview, null, 2))
+    expect(editorValue).not.toContain('sample')
+  })
+
   it('records keeping it on so it is not asked again', async () => {
     renderModal()
 
@@ -81,13 +114,19 @@ describe('TelemetryConsentModal', () => {
     )
   })
 
-  it('turns telemetry off when opted out', async () => {
+  /**
+   * Opting out goes through the settings page rather than ending here, so this
+   * button must record nothing: an install that walks away is unanswered, not
+   * opted out, and gets asked again.
+   */
+  it('sends the user to settings without recording an answer', async () => {
     renderModal()
 
-    screen.getByRole('button', { name: 'Turn it off' }).click()
+    screen.getByRole('button', { name: 'Turn it off in settings' }).click()
 
     await waitFor(() =>
-      expect(updateTelemetrySetting).toHaveBeenCalledWith(false),
+      expect(screen.queryByText('Help shape Maintainerr?')).toBeNull(),
     )
+    expect(updateTelemetrySetting).not.toHaveBeenCalled()
   })
 })

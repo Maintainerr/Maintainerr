@@ -102,6 +102,12 @@ If you prefer to set up your development environment manually (specific to a Win
    ```
 
    - If the build fails with PowerShell, try to use cmd instead.
+   - `yarn dev` skips the media server setup guard so you land straight in the
+     app. To work on the first-run experience, use `yarn dev:fresh-setup`
+     instead: it sets `VITE_BYPASS_MEDIA_SERVER_SETUP_GUARD=false`, which turns
+     the guard back on. You also need a database with no media server
+     configured, otherwise setup is already complete and nothing is gated. The
+     guard is always active in production builds.
 
 8. Make your code changes/improvements and test that they work as intended.
    - Be sure to follow both the [code](#contributing-code) and [UI text](#ui-text-style) guidelines.
