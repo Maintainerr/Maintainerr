@@ -225,7 +225,7 @@ Closest quality gates should run in this order where applicable: lint,
 typecheck, tests, then build. For doc-only changes, a targeted Prettier check is
 usually enough.
 
-GitHub CI mirrors the root workspace workflow on Node.js 24: the formatting
+GitHub CI mirrors the root workspace workflow on Node.js 26: the formatting
 and TypeScript lint jobs run `corepack install`, `corepack enable`, and
 `yarn --immutable`, while the quality workflow also includes a separate
 `yaml-lint` job running `yamllint -s .`; the test workflow builds `packages/*`

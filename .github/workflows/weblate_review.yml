@@ -100,7 +100,7 @@ jobs:
         if: ${{ github.event.pull_request.user.login == 'hosted-weblate[bot]' }}
         uses: actions/setup-node@v7
         with:
-          node-version: 24
+          node-version: 26
 
       - name: Label the pull request
         uses: actions/github-script@v9

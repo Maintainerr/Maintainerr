@@ -162,7 +162,7 @@ GitHub quality workflows include a separate YAML lint job:
 yamllint -s .
 ```
 
-The formatting, TypeScript lint, and test workflows use Node.js 24, then run:
+The formatting, TypeScript lint, and test workflows use Node.js 26, then run:
 
 ```bash
 corepack install
@@ -402,7 +402,7 @@ degrade gracefully.
 
 ### Environment Setup
 
-- **Node.js**: 22.22.2+, 24.15.0+, or 26+ (root `package.json` `engines` is the source of truth; Docker and the devcontainer ship Node 26)
+- **Node.js**: 26+ (root `package.json` `engines` is the source of truth; Docker, the devcontainer and every workflow ship Node 26)
 - **Package Manager**: Yarn 4.11 (managed via corepack)
 - **Data Directory**: Requires `data/` folder with proper permissions for development
 
