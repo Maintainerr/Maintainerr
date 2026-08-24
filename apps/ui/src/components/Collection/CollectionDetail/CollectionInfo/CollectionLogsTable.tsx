@@ -28,7 +28,6 @@ interface CollectionLogsTableProps {
           meta:
             | CollectionLogMetaMediaAddedByRule
             | CollectionLogMetaMediaRemovedByRule
-          title: string
         }
       | undefined,
   ) => void
@@ -138,10 +137,7 @@ const CollectionLogsTable = ({
                           onClick={() => {
                             if (!isMetaActionedByRule(row.meta)) return
 
-                            onShowMeta({
-                              meta: row.meta,
-                              title: row.message,
-                            })
+                            onShowMeta({ meta: row.meta })
                           }}
                         >
                           <DocumentTextIcon className="h-5 w-5" />

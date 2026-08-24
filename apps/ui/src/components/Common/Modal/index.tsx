@@ -1,20 +1,12 @@
 import { Transition } from '@headlessui/react'
-import { XIcon } from '@heroicons/react/solid'
-import { Trans, useLingui } from '@lingui/react/macro'
-import React, { MouseEvent, ReactNode, useRef } from 'react'
+import { Trans } from '@lingui/react/macro'
+import React, { MouseEvent, ReactNode, useId, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import useClickOutside from '../../../hooks/useClickOutside'
+import useCloseOnEscape from '../../../hooks/useCloseOnEscape'
 import { useLockBodyScroll } from '../../../hooks/useLockBodyScroll'
 import Button, { ButtonType } from '../Button'
 import LoadingSpinner from '../LoadingSpinner'
-
-/**
- * Shared with the media backdrop modal, which builds its own overlay, so both
- * look and sit the same. Add `sm:hidden` where a footer Cancel already covers
- * the wider screens.
- */
-export const modalCloseButtonClassName =
-  'absolute top-3 right-3 z-20 cursor-pointer rounded-full border border-zinc-600 bg-zinc-800/90 p-2 text-zinc-300 shadow-md transition hover:text-white focus:text-white focus:outline-hidden'
 
 interface ModalProps {
   title?: string
@@ -25,14 +17,12 @@ interface ModalProps {
   backgroundClickable?: boolean
   iconSvg?: ReactNode
   loading?: boolean
-  backdrop?: string
   children: React.ReactNode
   footerActions?: ReactNode
   size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '4xl' | '5xl'
 }
 
 const maxWidthMap = {
-  xs: 'sm:max-w-xs',
   sm: 'sm:max-w-sm',
   md: 'sm:max-w-md',
   lg: 'sm:max-w-lg',
@@ -41,8 +31,6 @@ const maxWidthMap = {
   '3xl': 'sm:max-w-3xl',
   '4xl': 'sm:max-w-4xl',
   '5xl': 'sm:max-w-5xl',
-  '6xl': 'sm:max-w-6xl',
-  '7xl': 'sm:max-w-7xl',
 }
 
 const Modal: React.FC<ModalProps> = ({
@@ -58,93 +46,66 @@ const Modal: React.FC<ModalProps> = ({
   footerActions,
   size = '3xl',
 }) => {
-  const { t } = useLingui()
+  const headlineId = useId()
   const modalRef = useRef<HTMLDivElement>(null)
+  const dismissable = typeof onCancel === 'function' && backgroundClickable
   useClickOutside(modalRef, () => {
-    if (typeof onCancel === 'function' && backgroundClickable) {
+    if (dismissable) {
       onCancel()
     }
   })
+  useCloseOnEscape(dismissable, () => onCancel?.())
   useLockBodyScroll(true, disableScrollLock)
 
   return createPortal(
-    <div
-      className="fixed top-0 right-0 bottom-0 left-0 z-50 flex h-full w-full items-center justify-center bg-zinc-800/70"
-      onKeyDown={(e) => {
-        if (e.key === 'Escape') {
-          if (typeof onCancel === 'function' && backgroundClickable) {
-            onCancel()
-          }
-        }
-      }}
-    >
-      <Transition
-        as="div"
-        className="absolute"
-        enter="transition opacity-0 duration-1000 transform scale-75"
-        enterFrom="opacity-0 scale-75"
-        enterTo="opacity-100 scale-100"
-        leave="transition opacity-100 duration-300"
-        leaveFrom="opacity-100"
-        leaveTo="opacity-0"
-        show={loading}
-      >
-        <LoadingSpinner />
-      </Transition>
+    <div className="fixed top-0 right-0 bottom-0 left-0 z-50 flex h-full w-full items-center justify-center bg-zinc-800/70">
+      {/* A column, so the body is the only part that scrolls and the footer -
+          which carries the close - stays on screen however tall the content
+          gets. */}
       <Transition
         appear
         as="div"
-        className={`relative inline-block w-full transform overflow-auto bg-zinc-700 px-4 pt-5 pb-4 text-left align-bottom shadow-xl ring-1 ring-zinc-700 transition duration-300 sm:my-8 ${maxWidthMap[size]} sm:rounded-lg sm:align-middle`}
+        className={`relative flex max-h-full w-full transform flex-col overflow-hidden bg-zinc-700 text-left shadow-xl ring-1 ring-zinc-700 transition duration-300 sm:max-h-[calc(100%-4rem)] ${maxWidthMap[size]} sm:rounded-lg`}
         enterFrom="scale-75 opacity-0"
         enterTo="scale-100 opacity-100"
-        leaveFrom="opacity-100"
-        leaveTo="opacity-0"
-        show={!loading}
+        show
         role="dialog"
         aria-modal="true"
-        aria-labelledby="modal-headline"
-        style={{
-          maxHeight: 'calc(100% - env(safe-area-inset-top) * 2)',
-        }}
+        aria-labelledby={title ? headlineId : undefined}
         ref={modalRef}
       >
-        {typeof onCancel === 'function' && (
-          <button
-            type="button"
-            onClick={onCancel}
-            aria-label={t`Close`}
-            className={`${modalCloseButtonClassName} sm:hidden`}
-          >
-            <XIcon className="h-5 w-5" />
-          </button>
-        )}
-        {/* Padded both sides below `sm`, so the close button takes its room
-            without pushing the centred title off centre. */}
-        <div className="relative overflow-x-hidden px-8 sm:flex sm:items-center sm:px-0">
-          {iconSvg && <div className="modal-icon">{iconSvg}</div>}
-          <div
-            className={`mt-3 truncate text-center text-white sm:mt-0 sm:text-left ${
-              iconSvg ? 'sm:ml-4' : 'sm:mb-4'
-            }`}
-          >
-            {title && (
-              <span
-                className="truncate text-lg leading-6 font-bold"
-                id="modal-headline"
-              >
-                {title}
-              </span>
-            )}
-          </div>
-        </div>
-        {children && (
-          <div className="relative mt-4 text-sm leading-5 text-zinc-300">
-            {children}
+        {(title || iconSvg) && (
+          <div className="shrink-0 px-4 pt-5 sm:flex sm:items-center">
+            {iconSvg && <div className="modal-icon">{iconSvg}</div>}
+            <div
+              className={`mt-3 truncate text-center text-white sm:mt-0 sm:text-left ${
+                iconSvg ? 'sm:ml-4' : ''
+              }`}
+            >
+              {title && (
+                <span
+                  className="truncate text-lg leading-6 font-bold"
+                  id={headlineId}
+                >
+                  {title}
+                </span>
+              )}
+            </div>
           </div>
         )}
+        {/* Loading keeps the shell rather than replacing it with a bare
+            spinner: the close has to stay reachable for a fetch that never
+            comes back, and the actions have nothing to act on yet. */}
+        {(loading || children) && (
+          <div className="flex-1 overflow-y-auto px-4 py-4 text-sm leading-5 text-zinc-300">
+            {loading ? <LoadingSpinner /> : children}
+          </div>
+        )}
+        {/* Wraps: a footer with a save and a test beside the close is wider
+            than a phone, and the panel no longer scrolls sideways to it. */}
         {(onCancel || footerActions) && (
-          <div className="relative mt-5 flex flex-row-reverse justify-center sm:mt-4 sm:justify-start">
-            {footerActions}
+          <div className="flex shrink-0 flex-row-reverse flex-wrap justify-center gap-y-2 border-t border-zinc-600 p-4 sm:justify-start">
+            {loading ? undefined : footerActions}
             {typeof onCancel === 'function' && (
               <Button
                 buttonType={cancelButtonType}

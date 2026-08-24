@@ -16,7 +16,6 @@ import {
   hasSelectedMediaServerType,
 } from '../../hooks/useMediaServerType'
 import Alert from '../Common/Alert'
-import Button from '../Common/Button'
 import LoadingSpinner from '../Common/LoadingSpinner'
 import Modal from '../Common/Modal'
 import {
@@ -316,15 +315,9 @@ const SettingsWrapper = () => {
             title={t`Welcome to Maintainerr!`}
             backgroundClickable={false}
             size="md"
-            footerActions={
-              <Button
-                buttonType="primary"
-                className="ml-3"
-                onClick={() => setHasDismissedSetupWelcome(true)}
-              >
-                <Trans>Let&apos;s get started</Trans>
-              </Button>
-            }
+            onCancel={() => setHasDismissedSetupWelcome(true)}
+            cancelText={t`Let's get started`}
+            cancelButtonType="primary"
           >
             <div className="space-y-4 text-zinc-100">
               <div className="rounded-md border border-info-500/40 bg-info-900/30 p-4 backdrop-blur-sm">

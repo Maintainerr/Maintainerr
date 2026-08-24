@@ -63,26 +63,24 @@ const Release = ({ currentVersion, release, isLatest }: ReleaseProps) => {
   return (
     <div className="flex w-full flex-col space-y-3 rounded-md bg-zinc-700 px-4 py-2 shadow-md ring-1 ring-gray-700 sm:flex-row sm:space-y-0 sm:space-x-3">
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <Modal
-            onCancel={() => setIsModalOpen(false)}
-            title={translate`${{ version: release.name }} Changelog`}
-            cancelText={translate`Close`}
-            footerActions={
-              <Button
-                buttonType="primary"
-                className="ml-3"
-                onClick={() => window.open(release.html_url, '_blank')}
-              >
-                <Trans>View on GitHub</Trans>
-              </Button>
-            }
-          >
-            <div className="prose:sm prose">
-              <ReactMarkdown>{release.body}</ReactMarkdown>
-            </div>
-          </Modal>
-        </div>
+        <Modal
+          onCancel={() => setIsModalOpen(false)}
+          title={translate`${{ version: release.name }} Changelog`}
+          cancelText={translate`Close`}
+          footerActions={
+            <Button
+              buttonType="primary"
+              className="ml-3"
+              onClick={() => window.open(release.html_url, '_blank')}
+            >
+              <Trans>View on GitHub</Trans>
+            </Button>
+          }
+        >
+          <div className="prose:sm prose">
+            <ReactMarkdown>{release.body}</ReactMarkdown>
+          </div>
+        </Modal>
       )}
       <div className="flex w-full grow items-center justify-center space-x-2 truncate sm:justify-start">
         <span className="truncate text-lg font-bold">
