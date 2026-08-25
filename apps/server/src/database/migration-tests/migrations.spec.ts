@@ -181,6 +181,38 @@ describe('database migrations', () => {
     expect(src).toContain('CREATE TABLE "temporary_settings"');
   });
 
+  // The rebuild in (3) drops and recreates the table, so its INSERT...SELECT is
+  // the only thing carrying an existing install's settings across. Every other
+  // test here migrates an empty DB, where a rebuild that copies nothing looks
+  // identical to one that copies correctly.
+  it('carry an existing settings row through the newest rebuild', async () => {
+    const newest = all[all.length - 1];
+    const ds = await makeDS(all.slice(0, -1).map((m) => m.cls)).initialize();
+    try {
+      await ds.runMigrations();
+      await ds.query(
+        `INSERT INTO settings ("apikey", "media_server_type", "jellyfin_api_key") VALUES ('key', 'jellyfin', 'jf')`,
+      );
+
+      const runner = ds.createQueryRunner();
+      await new newest.cls().up(runner);
+      await runner.release();
+
+      const rows = await ds.query(`SELECT * FROM settings`);
+      expect(rows).toHaveLength(1);
+      expect(rows[0]).toMatchObject({
+        apikey: 'key',
+        media_server_type: 'jellyfin',
+        jellyfin_api_key: 'jf',
+        // Grandfathered: the carry-over leaves the new column unset, which is
+        // what the consent prompt keys on.
+        telemetryEnabled: null,
+      });
+    } finally {
+      await ds.destroy();
+    }
+  });
+
   // We don't revert the whole chain: several pre-existing migrations have
   // non-reversible down() paths (production only ever migrates up). We do confirm
   // the newest migration's down() is symmetric - the regression this catches when

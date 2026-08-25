@@ -249,6 +249,10 @@ export class SettingsDataService implements SettingDto {
       await this.settingsRepo.insert({
         apikey: this.generateApiKey(),
         clientId: randomUUID(),
+        // Seeded here rather than as a column default, which would rebuild
+        // the table on every existing install to hold a value only a new row
+        // can take. Null stays "predates the setting, still to be asked".
+        telemetryEnabled: true,
       });
       await this.init();
     }
