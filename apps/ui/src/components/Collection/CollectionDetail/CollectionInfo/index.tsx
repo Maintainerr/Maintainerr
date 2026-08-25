@@ -11,14 +11,13 @@ import {
   CollectionLogMetaMediaRemovedByRule,
   ECollectionLogType,
 } from '@maintainerr/contracts'
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import YAML from 'yaml'
 import { ICollection } from '../..'
 import { collectionLogTypeLabels } from './collectionLogLabels'
 import CollectionLogsTable from './CollectionLogsTable'
 import useDebouncedState from '../../../..//hooks/useDebouncedState'
 import Alert from '../../../Common/Alert'
-import Button from '../../../Common/Button'
 import LazyMonacoEditor from '../../../Common/LazyMonacoEditor'
 import Modal from '../../../Common/Modal'
 import { FieldJoin, Input, InputAdornment } from '../../../Forms/Input'
@@ -36,8 +35,7 @@ const CollectionInfo = (props: ICollectionInfo) => {
   const [currentFilter, setCurrentFilter] = useState<ECollectionLogType | -1>(
     -1,
   )
-  const [showMeta, setShowMeta] =
-    useState<Pick<LogMetaModalProps, 'meta' | 'title'>>()
+  const [showMeta, setShowMeta] = useState<Pick<LogMetaModalProps, 'meta'>>()
 
   return (
     <>
@@ -252,30 +250,15 @@ export default CollectionInfo
 
 interface LogMetaModalProps {
   onClose: () => void
-  title: string
   meta: CollectionLogMetaMediaAddedByRule | CollectionLogMetaMediaRemovedByRule
 }
 
 const LogMetaModal = (props: LogMetaModalProps) => {
   const { t } = useLingui()
-  const editorRef = useRef(undefined)
-
-  function handleEditorDidMount(editor: any) {
-    editorRef.current = editor
-  }
 
   return (
     <div className={'h-full w-full'}>
-      <Modal
-        loading={false}
-        backgroundClickable={false}
-        title={t`Metadata`}
-        footerActions={
-          <Button buttonType="primary" className="ml-3" onClick={props.onClose}>
-            <Trans>Close</Trans>
-          </Button>
-        }
-      >
+      <Modal title={t`Metadata`} onCancel={props.onClose} cancelText={t`Close`}>
         <div className="h-[80vh] overflow-hidden">
           <div className="mt-1">
             <Alert type="info">
@@ -302,7 +285,6 @@ const LogMetaModal = (props: LogMetaModalProps) => {
               defaultLanguage="yaml"
               theme="vs-dark"
               value={YAML.stringify(props.meta.data)}
-              onMount={handleEditorDidMount}
             />
           </div>
         </div>

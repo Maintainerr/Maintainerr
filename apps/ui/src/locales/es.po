@@ -750,7 +750,6 @@ msgstr "Clonar regla - Maintainerr"
 #: src/components/Collection/CollectionDetail/TestMediaItem/index.tsx
 #: src/components/Common/CommunityRuleModal/index.tsx
 #: src/components/Common/MediaCard/MediaModal/index.tsx
-#: src/components/Common/Modal/index.tsx
 #: src/components/Login/Emby/EmbyLoginButton.tsx
 #: src/components/Rules/Rule/RuleCreator/CommunityRuleUpload/index.tsx
 #: src/components/Settings/About/Releases/index.tsx
@@ -2767,9 +2766,7 @@ msgid "Off by default so a manually-set tag is never stripped. When on, Maintain
 msgstr "Está desactivado de forma predeterminada, por lo que una etiqueta configurada manualmente nunca se elimina. Cuando está activado, Maintainerr elimina solo esta etiqueta cuando un elemento no está excluido."
 
 #: src/components/Collection/CollectionDetail/RemoveFromCollectionButton/index.tsx
-#: src/components/Settings/Radarr/index.tsx
-#: src/components/Settings/Sonarr/index.tsx
-#: src/components/Settings/Sportarr/index.tsx
+#: src/components/Settings/Servarr/ServerInUseModal.tsx
 msgid "Ok"
 msgstr "Aceptar"
 
@@ -3528,9 +3525,7 @@ msgstr ""
 msgid "Server"
 msgstr "Servidor"
 
-#: src/components/Settings/Radarr/index.tsx
-#: src/components/Settings/Sonarr/index.tsx
-#: src/components/Settings/Sportarr/index.tsx
+#: src/components/Settings/Servarr/ServerInUseModal.tsx
 msgid "Server in-use"
 msgstr "Servidor en uso"
 
@@ -4113,9 +4108,7 @@ msgstr ""
 msgid "This item is excluded <0>globally</0>. Removing this exclusion will apply the change to all collections"
 msgstr "Este elemento está excluido <0>globalmente</0>. Al eliminar esta exclusión se aplicará el cambio a todas las colecciones."
 
-#: src/components/Settings/Radarr/index.tsx
-#: src/components/Settings/Sonarr/index.tsx
-#: src/components/Settings/Sportarr/index.tsx
+#: src/components/Settings/Servarr/ServerInUseModal.tsx
 msgid "This server is currently being used by the following rules:"
 msgstr "Este servidor está siendo utilizado actualmente por las siguientes reglas:"
 
@@ -4631,9 +4624,7 @@ msgstr "Puedes intentar volver atrás o actualizar la página. Si el problema pe
 msgid "You have already submitted karma for this rule."
 msgstr "Ya has enviado karma para esta regla."
 
-#: src/components/Settings/Radarr/index.tsx
-#: src/components/Settings/Sonarr/index.tsx
-#: src/components/Settings/Sportarr/index.tsx
+#: src/components/Settings/Servarr/ServerInUseModal.tsx
 msgid "You must re-assign these rules to a different server before deleting."
 msgstr "Debe reasignar estas reglas a un servidor diferente antes de eliminarlas."
 

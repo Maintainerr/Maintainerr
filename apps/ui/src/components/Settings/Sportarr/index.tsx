@@ -9,12 +9,12 @@ import GetApiHandler, { DeleteApiHandler } from '../../../utils/ApiHandler'
 import { logClientError } from '../../../utils/ClientLogger'
 import { ICollection } from '../../Collection'
 import Button from '../../Common/Button'
-import Modal from '../../Common/Modal'
 import {
   SettingsFeedbackAlert,
   useSettingsFeedback,
 } from '../useSettingsFeedback'
 import ServarrSettingsModal from '../Servarr/ServarrSettingsModal'
+import ServerInUseModal from '../Servarr/ServerInUseModal'
 
 type DeleteSportarrSettingResponseDto =
   | {
@@ -204,36 +204,10 @@ const SportarrSettings = () => {
         />
       )}
       {collectionsInUseWarning ? (
-        <Modal
-          title={t`Server in-use`}
-          size="sm"
-          footerActions={
-            <Button
-              buttonType="primary"
-              className="ml-3"
-              onClick={() => setCollectionsInUseWarning(undefined)}
-            >
-              <Trans>Ok</Trans>
-            </Button>
-          }
-        >
-          <p>
-            <Trans>
-              This server is currently being used by the following rules:
-            </Trans>
-          </p>
-          <ul className="mb-4 list-inside list-disc">
-            {collectionsInUseWarning.map((x) => (
-              <li key={x.id}>{x.title}</li>
-            ))}
-          </ul>
-          <p>
-            <Trans>
-              You must re-assign these rules to a different server before
-              deleting.
-            </Trans>
-          </p>
-        </Modal>
+        <ServerInUseModal
+          collections={collectionsInUseWarning}
+          onClose={() => setCollectionsInUseWarning(undefined)}
+        />
       ) : undefined}
     </>
   )

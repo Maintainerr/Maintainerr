@@ -280,24 +280,21 @@ const MediaServerSelector = ({
       {/* Confirmation Modal */}
       {showConfirmModal && (
         <Modal
-          onCancel={isSwitchComplete ? undefined : handleCancelSwitch}
-          cancelText={isSwitchComplete ? undefined : t`Cancel`}
+          onCancel={isSwitchComplete ? handleFinish : handleCancelSwitch}
+          cancelText={isSwitchComplete ? t`Done` : t`Cancel`}
+          cancelButtonType={isSwitchComplete ? 'primary' : 'default'}
           loading={isSwitchPending}
           footerActions={
-            <Button
-              buttonType={isSwitchComplete ? 'primary' : 'danger'}
-              className="ml-3"
-              onClick={() =>
-                void (isSwitchComplete ? handleFinish() : handleConfirmSwitch())
-              }
-              disabled={isSwitchPending && !isSwitchComplete}
-            >
-              {isSwitchComplete
-                ? t`Done`
-                : isSwitchPending
-                  ? t`Switching...`
-                  : t`Switch`}
-            </Button>
+            isSwitchComplete ? undefined : (
+              <Button
+                buttonType="danger"
+                className="ml-3"
+                onClick={() => void handleConfirmSwitch()}
+                disabled={isSwitchPending}
+              >
+                {isSwitchPending ? t`Switching...` : t`Switch`}
+              </Button>
+            )
           }
         >
           <div className="text-zinc-100">
