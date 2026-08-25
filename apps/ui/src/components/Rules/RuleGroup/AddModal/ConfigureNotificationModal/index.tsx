@@ -2,6 +2,7 @@ import { Trans, useLingui } from '@lingui/react/macro'
 import { useEffect, useState } from 'react'
 import GetApiHandler from '../../../../../utils/ApiHandler'
 import Button from '../../../../Common/Button'
+import { SmallLoadingSpinner } from '../../../../Common/LoadingSpinner'
 import Modal from '../../../../Common/Modal'
 import ToggleItem from '../../../../Common/ToggleButton'
 import type { AgentConfiguration } from '../../../../Settings/Notifications/CreateNotificationModal'
@@ -33,7 +34,6 @@ const ConfigureNotificationModal = (props: ConfigureNotificationModal) => {
 
   return (
     <Modal
-      loading={isLoading}
       backgroundClickable={false}
       onCancel={() => props.onCancel()}
       title={t`Notification Agents`}
@@ -42,6 +42,7 @@ const ConfigureNotificationModal = (props: ConfigureNotificationModal) => {
         <Button
           buttonType="primary"
           className="ml-3"
+          disabled={isLoading}
           onClick={() => props.onSuccess(activatedNotifications)}
         >
           <Trans>OK</Trans>
@@ -57,6 +58,9 @@ const ConfigureNotificationModal = (props: ConfigureNotificationModal) => {
             </label>
             <div className="form-input">
               <div className="form-input-field flex flex-col gap-2">
+                {/* Immediate: the delayed spinner may just have shown for
+                    the chunk, and a fresh one would restart its timer. */}
+                {isLoading && <SmallLoadingSpinner className="h-6 w-6" />}
                 {!isLoading &&
                   notifications!.map((n) => (
                     <ToggleItem
