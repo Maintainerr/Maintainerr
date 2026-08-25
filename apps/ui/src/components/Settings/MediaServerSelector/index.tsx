@@ -18,7 +18,7 @@ import {
   useSwitchMediaServer,
 } from '../../../api/settings'
 import { logClientError } from '../../../utils/ClientLogger'
-import Button from '../../Common/Button'
+import PendingButton from '../../Common/PendingButton'
 import Modal from '../../Common/Modal'
 
 interface MediaServerSelectorProps {
@@ -280,20 +280,29 @@ const MediaServerSelector = ({
       {/* Confirmation Modal */}
       {showConfirmModal && (
         <Modal
-          onCancel={isSwitchComplete ? handleFinish : handleCancelSwitch}
+          // No close while the switch runs: the request cannot be cancelled,
+          // and closing here left the finish step, which reloads settings,
+          // unreachable.
+          onCancel={
+            isSwitchPending
+              ? undefined
+              : isSwitchComplete
+                ? handleFinish
+                : handleCancelSwitch
+          }
           cancelText={isSwitchComplete ? t`Done` : t`Cancel`}
           cancelButtonType={isSwitchComplete ? 'primary' : 'default'}
-          loading={isSwitchPending}
           footerActions={
             isSwitchComplete ? undefined : (
-              <Button
+              <PendingButton
                 buttonType="danger"
                 className="ml-3"
-                onClick={() => void handleConfirmSwitch()}
+                isPending={isSwitchPending}
+                idleLabel={t`Switch`}
+                pendingLabel={t`Switching...`}
                 disabled={isSwitchPending}
-              >
-                {isSwitchPending ? t`Switching...` : t`Switch`}
-              </Button>
+                onClick={() => void handleConfirmSwitch()}
+              />
             )
           }
         >
