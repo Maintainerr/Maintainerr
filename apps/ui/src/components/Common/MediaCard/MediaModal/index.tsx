@@ -581,7 +581,10 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
         >
           {/* Short on a small phone: at h-72 the backdrop took two thirds of
               the sheet and pushed the title and summary below the fold. */}
-          <div className="relative h-40 w-full shrink-0 overflow-hidden p-2 sm:h-72 xl:h-96">
+          {/* Capped by height too: the sm height is keyed on width, so a phone
+              in landscape got the tablet backdrop and it pushed the footer
+              out of the sheet. */}
+          <div className="relative h-40 max-h-[50vh] w-full shrink-0 overflow-hidden p-2 sm:h-72 xl:h-96">
             <div
               className="h-full w-full rounded-xl bg-cover bg-center bg-no-repeat"
               style={{
