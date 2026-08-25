@@ -661,7 +661,9 @@ const OverlayTemplateEditor = ({ routeId }: { routeId: string }) => {
         <Modal
           title={t`Save preset as a copy`}
           size="sm"
-          onCancel={saving ? undefined : () => setCopyModalOpen(false)}
+          onCancel={() => {
+            if (!saving) setCopyModalOpen(false)
+          }}
           footerActions={
             <Button
               buttonType="primary"
