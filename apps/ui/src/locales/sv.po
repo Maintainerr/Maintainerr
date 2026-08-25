@@ -8,7 +8,7 @@ msgstr ""
 "Language: sv\n"
 "Project-Id-Version: \n"
 "Report-Msgid-Bugs-To: \n"
-"PO-Revision-Date: 2026-08-19 21:35+0000\n"
+"PO-Revision-Date: 2026-08-25 19:14+0000\n"
 "Last-Translator: Maintainerr <get@maintainerr.info>\n"
 "Language-Team: Swedish <https://hosted.weblate.org/projects/maintainerr/app/sv/>\n"
 "Plural-Forms: nplurals=2; plural=n != 1;\n"
@@ -36,7 +36,7 @@ msgstr "(manuell)"
 #. placeholder {0}: formatWhen(nextAt, locale)
 #: src/components/Settings/Telemetry/index.tsx
 msgid "(Next: {0})"
-msgstr ""
+msgstr "(Nästa: {0})"
 
 #: src/components/OverlayEditor/OverlayCanvas.tsx
 msgid "[Image]"
@@ -809,7 +809,7 @@ msgstr "Samlingar - Maintainerr"
 
 #: src/components/Settings/Telemetry/index.tsx
 msgid "Collector source code"
-msgstr ""
+msgstr "Insamlarens källkod"
 
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "Color"
@@ -1196,7 +1196,7 @@ msgstr "Inaktiverad"
 
 #: src/components/Settings/Telemetry/index.tsx
 msgid "Disabled by {DISABLE_ENV} in the environment, which overrides this setting."
-msgstr ""
+msgstr "Inaktiverad av {DISABLE_ENV} i miljön, vilket åsidosätter den här inställningen."
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Disabling this rule group"
@@ -1242,7 +1242,7 @@ msgstr "Finns inte"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Don't create this collection in {mediaServerName}. Rules, actions, overlays and tags keep working."
-msgstr ""
+msgstr "Skapa inte den här samlingen i {mediaServerName}. Regler, åtgärder, overlays och taggar fortsätter att fungera."
 
 #: src/components/Settings/About/index.tsx
 msgid "Donations Welcome"
@@ -1477,7 +1477,7 @@ msgstr "Händelse"
 
 #: src/components/Settings/Telemetry/index.tsx
 msgid "Every ~{SAMPLE_MONTHS} months"
-msgstr ""
+msgstr "Ungefär var {SAMPLE_MONTHS}:e månad"
 
 #: src/components/Rules/Rule/RuleCreator/CommunityRuleUpload/index.tsx
 msgid "Every attempt should be made to only upload working rules. Rules with less than -100 karma and uploads with no rules, are removed nightly."
@@ -1899,15 +1899,15 @@ msgstr "Hjälp"
 
 #: src/components/Layout/TelemetryConsentModal.tsx
 msgid "Help shape Maintainerr?"
-msgstr ""
+msgstr "Vill du hjälpa till att forma Maintainerr?"
 
 #: src/components/Settings/Telemetry/index.tsx
 msgid "Help us help you"
-msgstr ""
+msgstr "Hjälp oss att hjälpa dig"
 
 #: src/components/Settings/About/index.tsx
 msgid "Help us improve it"
-msgstr ""
+msgstr "Hjälp oss att förbättra det"
 
 #: src/components/OverlayEditor/LayerPanel.tsx
 msgctxt "Toggle layer visibility"
@@ -2083,15 +2083,15 @@ msgstr "Karma"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Keep in Maintainerr only"
-msgstr ""
+msgstr "Behåll endast i Maintainerr"
 
 #: src/components/Layout/TelemetryConsentModal.tsx
 msgid "Keep it on"
-msgstr ""
+msgstr "Behåll påslaget"
 
 #: src/components/Layout/TelemetryConsentModal.tsx
 msgid "Keep it on and we will not ask again. The settings page shows the same report, the occasional extra detail, and the off switch."
-msgstr ""
+msgstr "Behåll det påslaget så frågar vi inte igen. Inställningssidan visar samma rapport, periodisk extra data och knappen för att stänga av."
 
 #: src/components/VersionStatus/index.tsx
 msgid "Keep it up! 👍"
@@ -2319,7 +2319,7 @@ msgstr "Förhandsversion av Maintainerr"
 
 #: src/components/Settings/Telemetry/index.tsx
 msgid "Maintainerr reports anonymous usage once a week. It is the only signal we have about which versions, media servers and features are actually in use, and it decides what gets built, fixed and kept."
-msgstr ""
+msgstr "Maintainerr rapporterar anonym användning en gång i veckan. Det är den enda signal vi har om vilka versioner, mediaservrar och funktioner som faktiskt används, och den avgör vad som byggs, fixas och behålls."
 
 #: src/components/StorageMetrics/index.tsx
 msgid "Maintainerr will iterate every movie and episode in your {typeLabel} libraries to estimate size on disk. This can take a while on large libraries."
@@ -2546,7 +2546,7 @@ msgstr "Nästa"
 
 #: src/components/Settings/Telemetry/index.tsx
 msgid "No account, no id, no hostname, no {TERM_URL}, no {TERM_API} key, and nothing from your library."
-msgstr ""
+msgstr "Inget konto, inget id, inget värdnamn, ingen {TERM_URL}, ingen {TERM_API}-nyckel och ingenting från ditt bibliotek."
 
 #: src/pages/OverlayTemplateEditorPage.tsx
 msgid "No background"
@@ -2666,7 +2666,7 @@ msgstr "Ingen"
 
 #: src/components/Settings/Telemetry/index.tsx
 msgid "None of the data sent can be tied to your server."
-msgstr ""
+msgstr "Ingenting av det som skickas kan kopplas till din server."
 
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "normal"
@@ -2710,7 +2710,7 @@ msgstr "Inte inställd"
 
 #: src/components/Settings/Telemetry/index.tsx
 msgid "Nothing extra is configured to send."
-msgstr ""
+msgstr "Inget extra är konfigurerat att skickas."
 
 #: src/components/Settings/Notifications/index.tsx
 msgid "Notification Agent configuration"
@@ -2764,7 +2764,7 @@ msgstr "OK"
 
 #: src/components/Layout/TelemetryConsentModal.tsx
 msgid "Once a week we log which version and platform people actually run. The payload below is the whole of it. It carries no server identifier, no {TERM_IP}, no hostname, no {TERM_MAC} address and no account id: nothing that can be traced back to you, your network or your machine."
-msgstr ""
+msgstr "En gång i veckan loggar vi vilken version och plattform folk faktiskt kör. Exempeldatan nedan är allt som skickas. Den innehåller ingen serveridentifierare, ingen {TERM_IP}, inget värdnamn, ingen {TERM_MAC}-adress och inget konto-id: ingenting som kan spåras tillbaka till dig, ditt nätverk eller din maskin."
 
 #: src/components/Common/YamlImporterModal/index.tsx
 msgid "Only {yamlExtension} or {ymlExtension} files are allowed."
@@ -3507,7 +3507,7 @@ msgstr "Vald: {maskedUserId}"
 
 #: src/components/Settings/Telemetry/index.tsx
 msgid "Send anonymous usage data"
-msgstr ""
+msgstr "Skicka anonym användningsdata"
 
 #: src/components/Settings/Plex/index.tsx
 msgid "Server"
@@ -3862,7 +3862,7 @@ msgstr "Utför åtgärden efter (dagar) är obligatoriskt för den här åtgärd
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Take action after days must be {max} or less"
-msgstr ""
+msgstr "Utför åtgärden efter (dagar) måste vara {max} eller mindre"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Take action after days must be 0 or greater"
@@ -3911,19 +3911,19 @@ msgstr "Åsidosättningen av Tautullis watched percent måste vara ett heltal"
 #: src/components/Settings/About/index.tsx
 #: src/components/Settings/Telemetry/index.tsx
 msgid "Telemetry"
-msgstr ""
+msgstr "Telemetri"
 
 #: src/components/Settings/Telemetry/index.tsx
 msgid "Telemetry settings - Maintainerr"
-msgstr ""
+msgstr "Telemetriinställningar - Maintainerr"
 
 #: src/components/Settings/Telemetry/index.tsx
 msgid "Telemetry settings could not be updated"
-msgstr ""
+msgstr "Telemetriinställningarna kunde inte uppdateras"
 
 #: src/components/Settings/Telemetry/index.tsx
 msgid "Telemetry settings updated"
-msgstr ""
+msgstr "Telemetriinställningarna uppdaterade"
 
 #: src/pages/OverlayTemplateListPage.tsx
 msgid "Template deleted"
@@ -4022,7 +4022,7 @@ msgstr "Mediaservern har ingen användare med namnet ''{username}''"
 
 #: src/components/Settings/Telemetry/index.tsx
 msgid "The preview could not be loaded."
-msgstr ""
+msgstr "Förhandsgranskningen kunde inte läsas in."
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "The rule group could not be saved"
@@ -4090,7 +4090,7 @@ msgstr "De tas även bort från alla samlingar de för närvarande finns i."
 
 #: src/components/Settings/Telemetry/index.tsx
 msgid "This is the exact report your server would send, stored only as anonymous counters."
-msgstr ""
+msgstr "Det här är exakt den rapport som din server skulle skicka, lagrad enbart som anonyma räknare."
 
 #: src/components/Collection/CollectionDetail/RemoveFromCollectionButton/index.tsx
 msgid "This item is excluded <0>globally</0>. Removing this exclusion will apply the change to all collections"
@@ -4222,7 +4222,7 @@ msgstr "Sant"
 
 #: src/components/Layout/TelemetryConsentModal.tsx
 msgid "Turn it off in settings"
-msgstr ""
+msgstr "Stäng av under inställningar"
 
 #: src/components/Settings/Metadata/index.tsx
 msgid "TVDB must be configured before it can be primary"
@@ -4546,7 +4546,7 @@ msgstr "Visningstid"
 
 #: src/components/Layout/TelemetryConsentModal.tsx
 msgid "We build Maintainerr in our spare time, and leaving this on is a free way to help shape what comes next."
-msgstr ""
+msgstr "Vi bygger Maintainerr på vår fritid, och att låta det här vara påslaget är ett gratis sätt att hjälpa till att forma vad som kommer härnäst."
 
 #: src/components/Settings/MediaServerSelector/index.tsx
 msgid "We will now switch from <0>{currentName}</0> to <1>{pendingName}</1>."
@@ -4558,7 +4558,7 @@ msgstr "Vecka"
 
 #: src/components/Settings/Telemetry/index.tsx
 msgid "Weekly"
-msgstr ""
+msgstr "Varje vecka"
 
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "Weight"
@@ -4570,7 +4570,7 @@ msgstr "Välkommen till Maintainerr!"
 
 #: src/components/Settings/Telemetry/index.tsx
 msgid "What we send"
-msgstr ""
+msgstr "Vad vi skickar"
 
 #: src/components/Settings/DownloadClient/index.tsx
 msgid "When media is removed through Radarr, Sonarr or Sportarr, Maintainerr can remove the completed download (and optionally its data) from your download client. The download is matched via that service's download history, so media removed without one of them is left untouched. qBittorrent is currently the only supported client."
@@ -4626,7 +4626,7 @@ msgstr "Du redigerar en förinställd mall. När du sparar skapas en egen kopia 
 
 #: src/components/Settings/Telemetry/index.tsx
 msgid "Your <0>{TERM_IP} address is never read or stored</0>, so one week's report cannot be tied to the next or to any other server."
-msgstr ""
+msgstr "Din <0>{TERM_IP}-adress varken läses eller lagras</0>, så en veckas rapport kan inte kopplas till nästa eller till någon annan server."
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "your media server"
