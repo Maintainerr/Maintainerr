@@ -254,7 +254,6 @@ We checked, and reporting by default is normal for tools like ours. Where we dif
 | Identifies your install | Yes, a permanent id per install | No, no id at all         |
 | Sees your IP address    | Yes, the receiving service does | No, never read or stored |
 | How often               | Every action                    | Once a week              |
-| Asks you first          | No                              | Yes, once                |
 
 The exact shape of a report is one TypeScript interface, [`TelemetryPing`](packages/contracts/src/telemetry/telemetryEvent.ts). What happens to it after it arrives is documented in the [collector repository](https://github.com/Maintainerr/telemetry-collector), and the [dashboard](https://telemetry.maintainerr.info) shows what it adds up to.
 

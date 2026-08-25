@@ -18,9 +18,9 @@ const TERM_IP = 'IP'
 const TERM_MAC = 'MAC'
 
 /**
- * Telemetry is stored as null - "not answered yet" - on every install, and
- * reports until it is turned off, so this prompt is the opt-out. It waits for
- * media server setup to finish rather than interrupting it.
+ * Null is an install that predates the setting, and it reports until turned
+ * off, so this prompt is their opt-out. New installs start on and never see
+ * it. Waits for media server setup rather than interrupting it.
  *
  * Switching it off happens on the settings page, beside the payload it applies
  * to. Nothing is recorded on that path, so an install that leaves without
@@ -32,19 +32,21 @@ const TelemetryConsentModal = () => {
   const { data: settings } = useSettings()
   const { mutateAsync: updateTelemetrySetting, isPending } =
     useUpdateTelemetrySetting()
-  const { data: preview } = useTelemetryPreview()
-  // The weekly block only: the sampled one rides along a few times a year and
-  // has its own panel on the settings page.
-  const { sample, ...weekly } = preview ?? {}
   // The modal lives in Layout, so without this it stays over the page it just
   // sent the user to, scroll locked and the toggle unreachable.
   const [dismissed, setDismissed] = useState(false)
+  const prompting =
+    !dismissed &&
+    settings?.telemetryEnabled === null &&
+    hasCompletedMediaServerSetup(settings)
+  // Mounted on every page, so the payload is only fetched for the installs
+  // that can still be asked.
+  const { data: preview } = useTelemetryPreview({ enabled: prompting })
+  // The weekly block only: the sampled one rides along a few times a year and
+  // has its own panel on the settings page.
+  const { sample, ...weekly } = preview ?? {}
 
-  if (
-    dismissed ||
-    settings?.telemetryEnabled !== null ||
-    !hasCompletedMediaServerSetup(settings)
-  ) {
+  if (!prompting) {
     return null
   }
 
@@ -61,7 +63,6 @@ const TelemetryConsentModal = () => {
     <Modal
       title={t`Help shape Maintainerr?`}
       backgroundClickable={false}
-      loading={isPending}
       size="lg"
       cancelText={t`Turn it off in settings`}
       onCancel={() => {
@@ -74,6 +75,7 @@ const TelemetryConsentModal = () => {
         <Button
           buttonType="primary"
           className="ml-3"
+          disabled={isPending}
           onClick={() => void keepOn()}
         >
           <Trans>Keep it on</Trans>
