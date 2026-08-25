@@ -856,10 +856,6 @@ msgstr ""
 msgid "Configure metadata providers and set the primary source for posters, backdrops, and metadata enrichment. Adding a TVDB developer API key gives Maintainerr a fallback source for provider cross-references, which helps recover missing IDs when the primary provider cannot resolve a match and can provide a second opinion for some items through existing external ID cross-references."
 msgstr ""
 
-#: src/components/Rules/RuleGroup/AddModal/index.tsx
-msgid "Configure Notifications"
-msgstr ""
-
 #: src/components/Settings/Metadata/index.tsx
 msgid "Configure to refresh"
 msgstr ""
@@ -1546,10 +1542,6 @@ msgstr ""
 msgid "Export"
 msgstr ""
 
-#: src/components/Rules/RuleGroup/AddModal/index.tsx
-msgid "Export Rules YAML"
-msgstr ""
-
 #: src/components/Common/YamlImporterModal/index.tsx
 msgid "Export your rules to a YAML document"
 msgstr ""
@@ -1969,10 +1961,6 @@ msgstr ""
 
 #: src/components/Common/CommunityRuleModal/index.tsx
 msgid "Import rules made by the community. This will override your current rules."
-msgstr ""
-
-#: src/components/Rules/RuleGroup/AddModal/index.tsx
-msgid "Import Rules YAML"
 msgstr ""
 
 #: src/components/Settings/MediaServerSelector/index.tsx

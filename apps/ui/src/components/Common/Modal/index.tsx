@@ -58,7 +58,7 @@ const Modal: React.FC<ModalProps> = ({
   useLockBodyScroll(true, disableScrollLock)
 
   return createPortal(
-    <div className="fixed top-0 right-0 bottom-0 left-0 z-50 flex h-full w-full items-center justify-center bg-zinc-800/70">
+    <div className="modal-backdrop">
       {/* A column, so the body is the only part that scrolls and the footer -
           which carries the close - stays on screen however tall the content
           gets. */}

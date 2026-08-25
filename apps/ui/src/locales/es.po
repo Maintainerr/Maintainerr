@@ -856,10 +856,6 @@ msgstr "Configurar ajustes globales"
 msgid "Configure metadata providers and set the primary source for posters, backdrops, and metadata enrichment. Adding a TVDB developer API key gives Maintainerr a fallback source for provider cross-references, which helps recover missing IDs when the primary provider cannot resolve a match and can provide a second opinion for some items through existing external ID cross-references."
 msgstr "Configura los proveedores de metadatos y establece la fuente principal para pósters, fondos y enriquecimiento de metadatos. Añadir una clave API de desarrollador de TVDB da a Maintainerr una fuente alternativa para referencias cruzadas de proveedores, lo que ayuda a recuperar IDs faltantes cuando el proveedor principal no puede resolver una coincidencia y puede aportar una segunda opinión para algunos elementos mediante referencias cruzadas de IDs externos existentes."
 
-#: src/components/Rules/RuleGroup/AddModal/index.tsx
-msgid "Configure Notifications"
-msgstr "Configurar notificaciones"
-
 #: src/components/Settings/Metadata/index.tsx
 msgid "Configure to refresh"
 msgstr "Configurar para actualizar"
@@ -1546,10 +1542,6 @@ msgstr "Existe"
 msgid "Export"
 msgstr "Exportar"
 
-#: src/components/Rules/RuleGroup/AddModal/index.tsx
-msgid "Export Rules YAML"
-msgstr "Exportar reglas YAML"
-
 #: src/components/Common/YamlImporterModal/index.tsx
 msgid "Export your rules to a YAML document"
 msgstr "Exporta tus reglas a un documento YAML"
@@ -1970,10 +1962,6 @@ msgstr "Importar reglas desde un documento YAML. Esto anulará tus reglas actual
 #: src/components/Common/CommunityRuleModal/index.tsx
 msgid "Import rules made by the community. This will override your current rules."
 msgstr "Reglas de importación hechas por la comunidad. Esto anulará sus reglas actuales."
-
-#: src/components/Rules/RuleGroup/AddModal/index.tsx
-msgid "Import Rules YAML"
-msgstr "Importar reglas YAML"
 
 #: src/components/Settings/MediaServerSelector/index.tsx
 msgid "Important:"
