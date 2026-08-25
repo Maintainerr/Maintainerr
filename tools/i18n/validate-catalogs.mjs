@@ -30,8 +30,10 @@
  * only what the branch itself changed is compared and a branch merely behind on
  * translations is not flagged. The source locale is exempt (its msgstr mirrors
  * the msgid). `--base <ref>` overrides the comparison point; `--no-base`
- * disables it, which CI does for Weblate syncs. If no base can be resolved (no
- * git, ref not fetched) the check is skipped rather than flag every string.
+ * disables it, which CI does for a Weblate sync and for the development -> main
+ * release pull request, which only forwards translations already gated on
+ * development. If no base can be resolved (no git, ref not fetched) the check
+ * is skipped rather than flag every string.
  *
  * Usage: node tools/i18n/validate-catalogs.mjs [catalogDir] [--base <ref>] [--no-base]
  */

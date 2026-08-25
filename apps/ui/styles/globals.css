@@ -643,6 +643,10 @@
     @apply mr-1.5 ml-1.5 h-4 w-4 first:ml-0 last:mr-0;
   }
 
+  .modal-backdrop {
+    @apply fixed top-0 right-0 bottom-0 left-0 z-50 flex h-full w-full items-center justify-center bg-zinc-800/70;
+  }
+
   .modal-icon {
     @apply mx-auto flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-zinc-800 text-white ring-1 ring-zinc-500 sm:mx-0 sm:h-10 sm:w-10;
   }

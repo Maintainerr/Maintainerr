@@ -99,9 +99,9 @@ export class TelemetryService {
   }
 
   /**
-   * Null means nobody has answered the prompt yet, which reports: a census only
-   * some people take part in describes only those people. Only an explicit
-   * `false` stops it. TELEMETRY=off wins over the setting.
+   * Null - an install that predates the setting - reports: a census only some
+   * people take part in describes only those people. Only an explicit `false`
+   * stops it. TELEMETRY=off wins over the setting.
    */
   enabled(): boolean {
     return this.forcedOff() ? false : this.settings.telemetryEnabled !== false;

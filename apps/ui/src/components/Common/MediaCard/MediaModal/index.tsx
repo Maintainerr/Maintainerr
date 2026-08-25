@@ -568,10 +568,7 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
       )
 
     return (
-      <div
-        className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-3"
-        onClick={onClose}
-      >
+      <div className="modal-backdrop px-3" onClick={onClose}>
         {/* A column, like the shared Modal: only the body scrolls, so the
             actions and the close stay on screen on a phone, where the sheet
             fills the height. */}
@@ -584,7 +581,10 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
         >
           {/* Short on a small phone: at h-72 the backdrop took two thirds of
               the sheet and pushed the title and summary below the fold. */}
-          <div className="relative h-40 w-full shrink-0 overflow-hidden p-2 sm:h-72 xl:h-96">
+          {/* Capped by height too: the sm height is keyed on width, so a phone
+              in landscape got the tablet backdrop and it pushed the footer
+              out of the sheet. */}
+          <div className="relative h-40 max-h-[50vh] w-full shrink-0 overflow-hidden p-2 sm:h-72 xl:h-96">
             <div
               className="h-full w-full rounded-xl bg-cover bg-center bg-no-repeat"
               style={{
@@ -876,7 +876,7 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
           </div>
           {/* Wraps: side by side these actions are wider than a phone, and
               the sheet scrolled sideways to reach the last one. */}
-          <div className="flex shrink-0 flex-row flex-wrap items-center justify-between gap-4 border-t border-zinc-700 p-4">
+          <div className="flex shrink-0 flex-row flex-wrap items-center justify-between gap-4 p-4">
             {providerIds &&
               ['movie', 'show'].includes(mediaType) &&
               (providerIds.tmdb?.length ||

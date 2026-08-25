@@ -146,11 +146,9 @@ const CollectionDetailPage = () => {
 
         {mediaTestModalOpen && collection?.id ? (
           <LazyModalBoundary
-            title={t`Test Media`}
             onCancel={() => {
               setMediaTestModalOpen(false)
             }}
-            size="5xl"
           >
             <TestMediaItem
               collectionId={+collection.id}

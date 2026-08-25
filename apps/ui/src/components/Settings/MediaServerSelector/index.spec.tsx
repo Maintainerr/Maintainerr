@@ -1,5 +1,5 @@
 import { MediaServerType } from '@maintainerr/contracts'
-import { render, screen } from '../../../test-utils/render'
+import { fireEvent, render, screen, within } from '../../../test-utils/render'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import MediaServerSelector from './index'
 
@@ -8,6 +8,7 @@ const invalidateQueries = vi.fn()
 const refetchQueries = vi.fn()
 const previewSwitch = vi.fn()
 const switchServer = vi.fn()
+let switchPending = false
 
 vi.mock('react-router-dom', () => ({
   useNavigate: () => navigate,
@@ -34,7 +35,7 @@ vi.mock('../../../api/settings', () => ({
   }),
   useSwitchMediaServer: () => ({
     mutateAsync: switchServer,
-    isPending: false,
+    isPending: switchPending,
   }),
 }))
 
@@ -49,6 +50,47 @@ describe('MediaServerSelector', () => {
     refetchQueries.mockReset()
     previewSwitch.mockReset()
     switchServer.mockReset()
+    switchPending = false
+  })
+
+  // Closing mid-switch cannot stop the request, and skipped the finish step
+  // that reloads settings, so the dialog offers no close until it is done.
+  it('cannot be closed while the switch is running', async () => {
+    previewSwitch.mockResolvedValue({
+      currentServerType: MediaServerType.JELLYFIN,
+      targetServerType: MediaServerType.PLEX,
+      dataToBeCleared: {
+        collections: 0,
+        collectionMedia: 0,
+        exclusions: 0,
+        collectionLogs: 0,
+      },
+      dataToBeKept: {
+        generalSettings: true,
+        radarrSettings: 0,
+        sonarrSettings: 0,
+        sportarrSettings: 0,
+        seerrSettings: false,
+        tautulliSettings: false,
+        notificationSettings: false,
+      },
+    })
+    const { rerender } = render(
+      <MediaServerSelector currentType={MediaServerType.JELLYFIN} />,
+    )
+    fireEvent.click(screen.getByRole('button', { name: /Plex/ }))
+    await screen.findByRole('dialog')
+
+    switchPending = true
+    rerender(<MediaServerSelector currentType={MediaServerType.JELLYFIN} />)
+    const dialog = screen.getByRole('dialog')
+
+    expect(within(dialog).queryByRole('button', { name: 'Cancel' })).toBeNull()
+    expect(
+      within(dialog).getByRole('button', { name: /Switching/ }),
+    ).toHaveProperty('disabled', true)
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(screen.getByRole('dialog')).toBeTruthy()
   })
 
   it('uses the shared icon placement classes for all media server options', () => {

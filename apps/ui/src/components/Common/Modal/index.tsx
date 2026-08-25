@@ -58,7 +58,7 @@ const Modal: React.FC<ModalProps> = ({
   useLockBodyScroll(true, disableScrollLock)
 
   return createPortal(
-    <div className="fixed top-0 right-0 bottom-0 left-0 z-50 flex h-full w-full items-center justify-center bg-zinc-800/70">
+    <div className="modal-backdrop">
       {/* A column, so the body is the only part that scrolls and the footer -
           which carries the close - stays on screen however tall the content
           gets. */}
@@ -104,7 +104,7 @@ const Modal: React.FC<ModalProps> = ({
         {/* Wraps: a footer with a save and a test beside the close is wider
             than a phone, and the panel no longer scrolls sideways to it. */}
         {(onCancel || footerActions) && (
-          <div className="flex shrink-0 flex-row-reverse flex-wrap justify-center gap-y-2 border-t border-zinc-600 p-4 sm:justify-start">
+          <div className="flex shrink-0 flex-row-reverse flex-wrap justify-center gap-y-2 p-4 sm:justify-start">
             {loading ? undefined : footerActions}
             {typeof onCancel === 'function' && (
               <Button

@@ -2190,11 +2190,9 @@ const AddModal = (props: AddModal) => {
                 )}
                 {yamlImporterModal && (
                   <LazyModalBoundary
-                    title={yaml ? t`Export Rules YAML` : t`Import Rules YAML`}
                     onCancel={() => {
                       setYamlImporterModal(false)
                     }}
-                    size="5xl"
                   >
                     <YamlImporterModal
                       yaml={yaml}
@@ -2211,7 +2209,6 @@ const AddModal = (props: AddModal) => {
 
                 {configureNotificationModal && (
                   <LazyModalBoundary
-                    title={t`Configure Notifications`}
                     onCancel={() => {
                       setConfigureNotificationModal(false)
                     }}
