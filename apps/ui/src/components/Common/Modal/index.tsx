@@ -104,7 +104,7 @@ const Modal: React.FC<ModalProps> = ({
         {/* Wraps: a footer with a save and a test beside the close is wider
             than a phone, and the panel no longer scrolls sideways to it. */}
         {(onCancel || footerActions) && (
-          <div className="flex shrink-0 flex-row-reverse flex-wrap justify-center gap-y-2 border-t border-zinc-600 p-4 sm:justify-start">
+          <div className="flex shrink-0 flex-row-reverse flex-wrap justify-center gap-y-2 p-4 sm:justify-start">
             {loading ? undefined : footerActions}
             {typeof onCancel === 'function' && (
               <Button

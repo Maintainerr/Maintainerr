@@ -876,7 +876,7 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
           </div>
           {/* Wraps: side by side these actions are wider than a phone, and
               the sheet scrolled sideways to reach the last one. */}
-          <div className="flex shrink-0 flex-row flex-wrap items-center justify-between gap-4 border-t border-zinc-700 p-4">
+          <div className="flex shrink-0 flex-row flex-wrap items-center justify-between gap-4 p-4">
             {providerIds &&
               ['movie', 'show'].includes(mediaType) &&
               (providerIds.tmdb?.length ||
