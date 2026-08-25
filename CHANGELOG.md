@@ -1,3 +1,31 @@
+# [3.25.0](https://github.com/Maintainerr/Maintainerr/compare/v3.24.0...v3.25.0) (2026-08-25)
+
+
+## Highlights
+- Added anonymous weekly telemetry to help development track usage (#3582).
+- Added a per-collection option to keep collections local to Maintainerr without syncing to the media server (#3579).
+
+## Features
+- Added telemetry schedule visibility and support for the `TELEMETRY=off` environment variable (#3592).
+
+## Fixes
+- Improved modal and dialog layout, including consistent close controls and improved responsiveness (#3595, #3600).
+- Fixed telemetry consent prompt to only appear for existing installs (#3599).
+- Fixed Monaco editor loading by serving it locally and compressing assets (#3592).
+- Removed telemetry information from the About page (#3592).
+- Fixed collection teardown logic to prevent accidental deletion of shared collections when settings change (#3579, #3583).
+- Fixed *arr exclusion tag application when multiple instances are configured (#3578).
+
+## Database migrations
+- Added `keepInMaintainerrOnly` column to the collection table.
+- Added `telemetryEnabled` column to the settings table.
+
+## Internal
+- Updated CI to allow the release PR to carry Weblate translations.
+
+## Dependencies
+- Updated 8 dependencies including react-hook-form, vite, and vitest.
+
 # [3.24.0](https://github.com/Maintainerr/Maintainerr/compare/v3.23.0...v3.24.0) (2026-08-21)
 
 
