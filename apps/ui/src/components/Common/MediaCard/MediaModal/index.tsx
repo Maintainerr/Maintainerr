@@ -568,10 +568,7 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
       )
 
     return (
-      <div
-        className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-3"
-        onClick={onClose}
-      >
+      <div className="modal-backdrop px-3" onClick={onClose}>
         {/* A column, like the shared Modal: only the body scrolls, so the
             actions and the close stay on screen on a phone, where the sheet
             fills the height. */}
