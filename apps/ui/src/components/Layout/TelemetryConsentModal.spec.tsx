@@ -22,6 +22,7 @@ const CONFIGURED = {
   jellyfin_api_key: 'key',
 }
 let currentSettings: Record<string, unknown> | undefined
+let currentStatus: { forcedOff: boolean } | undefined
 
 // The prompt shows the weekly block, so the preview has to resolve.
 const preview: TelemetryPing = {
@@ -49,6 +50,7 @@ let isPending = false
 vi.mock('../../api/settings', () => ({
   useSettings: () => ({ data: currentSettings }),
   useTelemetryPreview: () => ({ data: preview }),
+  useTelemetryStatus: () => ({ data: currentStatus }),
   useUpdateTelemetrySetting: () => ({
     mutateAsync: updateTelemetrySetting,
     isPending,
@@ -60,6 +62,7 @@ describe('TelemetryConsentModal', () => {
     updateTelemetrySetting.mockReset()
     updateTelemetrySetting.mockResolvedValue({ code: 1 })
     currentSettings = { ...CONFIGURED, telemetryEnabled: null }
+    currentStatus = { forcedOff: false }
     isPending = false
   })
 
@@ -84,6 +87,20 @@ describe('TelemetryConsentModal', () => {
 
   it('stays hidden until media server setup is complete', () => {
     currentSettings = { telemetryEnabled: null }
+
+    renderModal()
+
+    expect(screen.queryByText('Help shape Maintainerr?')).toBeNull()
+  })
+
+  // TELEMETRY=off cannot be answered away: the server refuses the write, so
+  // asking would repeat forever (#3605). Unknown is the same case until it
+  // resolves, or the prompt flashes up and vanishes.
+  it.each([
+    { state: 'the environment turned it off', status: { forcedOff: true } },
+    { state: 'the status has not resolved', status: undefined },
+  ])('stays hidden when $state', ({ status }) => {
+    currentStatus = status
 
     renderModal()
 

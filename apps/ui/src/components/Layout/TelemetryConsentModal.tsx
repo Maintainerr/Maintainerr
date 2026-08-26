@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import {
   useSettings,
   useTelemetryPreview,
+  useTelemetryStatus,
   useUpdateTelemetrySetting,
 } from '../../api/settings'
 import { hasCompletedMediaServerSetup } from '../../hooks/useMediaServerType'
@@ -35,10 +36,14 @@ const TelemetryConsentModal = () => {
   // The modal lives in Layout, so without this it stays over the page it just
   // sent the user to, scroll locked and the toggle unreachable.
   const [dismissed, setDismissed] = useState(false)
-  const prompting =
-    !dismissed &&
+  const unanswered =
     settings?.telemetryEnabled === null &&
     hasCompletedMediaServerSetup(settings)
+  // TELEMETRY=off already decided it and the server refuses to store an answer
+  // while it is set, so asking could only ever repeat. Shut while unknown too.
+  // See issue #3605.
+  const { data: status } = useTelemetryStatus({ enabled: unanswered })
+  const prompting = !dismissed && unanswered && status?.forcedOff === false
   // Mounted on every page, so the payload is only fetched for the installs
   // that can still be asked.
   const { data: preview } = useTelemetryPreview({ enabled: prompting })
