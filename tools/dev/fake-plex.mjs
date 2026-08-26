@@ -197,7 +197,23 @@ const EPISODES = [
   }),
 ];
 
-const ALL_ITEMS = [...MOVIES, SHOW, ...SEASONS, ...EPISODES];
+// Sportarr fixtures, matching fake-sportarr's leagues. One carries the native guid
+// its agents stamp beside the tvdb alias, one only the older alias, so both
+// resolution paths are covered. SHOW carries neither, which the getter answers with
+// the transient signal at debug level - deliberately, so an ordinary show in a
+// sports library cannot match a NOT_EXISTS rule (#3406).
+const SPORTARR_SHOWS = [
+  baseItem('sp1', 'show', 'Mock League Alpha', {
+    addedAt: daysAgo(180),
+    Guid: [{ id: 'sportarr://lg-000001' }, { id: 'tvdb://900000001' }],
+  }),
+  baseItem('sp2', 'show', 'Mock League Bravo', {
+    addedAt: daysAgo(150),
+    Guid: [{ id: 'tvdb://900000042' }],
+  }),
+];
+
+const ALL_ITEMS = [...MOVIES, SHOW, ...SPORTARR_SHOWS, ...SEASONS, ...EPISODES];
 const ITEMS_BY_ID = new Map(ALL_ITEMS.map((m) => [m.ratingKey, m]));
 
 // --- Optional large library for Seerr whole-library scale tests (#3152) ------
@@ -357,7 +373,7 @@ const server = http.createServer((req, res) => {
           ? SEASONS
           : type === '4'
             ? EPISODES
-            : [SHOW, ...SCALE_SHOWS];
+            : [SHOW, ...SPORTARR_SHOWS, ...SCALE_SHOWS];
     }
     return sendPaged(res, req, items);
   }
