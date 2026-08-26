@@ -136,6 +136,8 @@ export class SettingsDataService implements SettingDto {
 
   telemetryEnabled: boolean | null;
 
+  sportarr_net_fallback = true;
+
   constructor(
     @InjectRepository(Settings)
     private readonly settingsRepo: Repository<Settings>,
@@ -210,6 +212,7 @@ export class SettingsDataService implements SettingDto {
       this.sonarr_untag_on_unexclude =
         settingsDb?.sonarr_untag_on_unexclude ?? false;
       this.telemetryEnabled = settingsDb?.telemetryEnabled ?? null;
+      this.sportarr_net_fallback = settingsDb?.sportarr_net_fallback ?? true;
 
       // Auto-detect media server type when not set but credentials exist.
       // This handles upgrades from pre-Jellyfin versions (Plex) and any future
@@ -264,8 +267,13 @@ export class SettingsDataService implements SettingDto {
       tmdb_api_key?: string | null;
       tvdb_api_key?: string | null;
       metadata_provider_preference?: MetadataProviderPreference;
+      sportarr_net_fallback?: boolean;
     };
   }) {
+    if ('sportarr_net_fallback' in payload.settings) {
+      this.sportarr_net_fallback =
+        payload.settings.sportarr_net_fallback ?? true;
+    }
     if ('tmdb_api_key' in payload.settings) {
       this.tmdb_api_key = payload.settings.tmdb_api_key ?? undefined;
     }

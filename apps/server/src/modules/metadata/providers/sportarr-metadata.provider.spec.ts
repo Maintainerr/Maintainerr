@@ -1,28 +1,25 @@
 import { Mocked, TestBed } from '@suites/unit';
-import { SportarrHubApiService } from '../../api/sportarr-hub-api/sportarr-hub.service';
+import { SportarrMetadataApiService } from '../../api/sportarr-metadata-api/sportarr-metadata.service';
 import { SportarrMetadataProvider } from './sportarr-metadata.provider';
 
 describe('SportarrMetadataProvider', () => {
   let provider: SportarrMetadataProvider;
-  let hub: Mocked<SportarrHubApiService>;
+  let api: Mocked<SportarrMetadataApiService>;
 
   beforeEach(async () => {
     const { unit, unitRef } = await TestBed.solitary(
       SportarrMetadataProvider,
     ).compile();
     provider = unit;
-    hub = unitRef.get(SportarrHubApiService);
+    api = unitRef.get(SportarrMetadataApiService);
   });
 
   const league = {
-    id: 'lg-000278',
     title: 'Sample League',
     summary: 'A league description.',
-    poster_url: 'https://hub/league/poster.jpg',
-    banner_url: 'https://hub/league/banner.jpg',
+    poster_url: 'https://metadata/league/poster.jpg',
+    banner_url: 'https://metadata/league/banner.jpg',
     fanart_url: null,
-    year: 1999,
-    sport: 'Sample Sport',
   };
 
   describe('ids', () => {
@@ -58,61 +55,35 @@ describe('SportarrMetadataProvider', () => {
       expect(provider.extractId({ tvdb: 342040 })).toBeUndefined();
       expect(provider.extractId({ tmdb: 5555 })).toBeUndefined();
     });
-
-    it('reverses a tvdb alias without a request when asked to bridge ids', async () => {
-      await expect(
-        provider.findByExternalId(900000278, 'tvdb'),
-      ).resolves.toEqual([{ tvShowId: 278 }]);
-      await expect(
-        provider.findByExternalId(342040, 'tvdb'),
-      ).resolves.toBeUndefined();
-      await expect(
-        provider.findByExternalId('tt0099785', 'imdb'),
-      ).resolves.toBeUndefined();
-      expect(hub.getLeague).not.toHaveBeenCalled();
-    });
   });
 
   describe('details', () => {
-    it('maps a league to show details keyed by the padded league id', async () => {
-      hub.getLeague.mockResolvedValue(league);
+    it('maps a league to show details keyed by the padded league id, with no year', async () => {
+      api.getLeague.mockResolvedValue(league);
 
       const details = await provider.getDetails(278, 'tv');
 
-      expect(hub.getLeague).toHaveBeenCalledWith('lg-000278');
-      expect(hub.getSeasons).not.toHaveBeenCalled();
+      expect(api.getLeague).toHaveBeenCalledWith('lg-000278');
+      expect(api.getSeasons).not.toHaveBeenCalled();
       expect(details).toEqual({
         id: 278,
         title: 'Sample League',
-        year: 1999,
         overview: 'A league description.',
-        posterUrl: 'https://hub/league/poster.jpg',
-        backdropUrl: 'https://hub/league/banner.jpg',
+        posterUrl: 'https://metadata/league/poster.jpg',
+        backdropUrl: 'https://metadata/league/banner.jpg',
         externalIds: { sportarr: 278, type: 'tv' },
         type: 'tv',
       });
     });
 
-    it('takes the first season as the year when the league has none', async () => {
-      hub.getLeague.mockResolvedValue({ ...league, year: null });
-      hub.getSeasons.mockResolvedValue([
-        { season_number: 2001, title: '2001', episode_count: 4 },
-        { season_number: 1998, title: '1998', episode_count: 2 },
-      ]);
-
-      const details = await provider.getDetails(278, 'tv');
-
-      expect(details?.year).toBe(1998);
-    });
-
     it('has no movie details and no person details', async () => {
       await expect(provider.getDetails(278, 'movie')).resolves.toBeUndefined();
       await expect(provider.getPersonDetails()).resolves.toBeUndefined();
-      expect(hub.getLeague).not.toHaveBeenCalled();
+      expect(api.getLeague).not.toHaveBeenCalled();
     });
 
-    it('returns nothing for a league the hub does not know', async () => {
-      hub.getLeague.mockResolvedValue(undefined);
+    it('returns nothing for a league the source does not know', async () => {
+      api.getLeague.mockResolvedValue(undefined);
 
       await expect(provider.getDetails(278, 'tv')).resolves.toBeUndefined();
     });
@@ -120,78 +91,55 @@ describe('SportarrMetadataProvider', () => {
 
   describe('artwork', () => {
     it('returns the league poster for the show', async () => {
-      hub.getLeague.mockResolvedValue(league);
+      api.getLeague.mockResolvedValue(league);
 
       await expect(provider.getPosterUrl(278, 'tv')).resolves.toBe(
-        'https://hub/league/poster.jpg',
+        'https://metadata/league/poster.jpg',
       );
     });
 
     it('returns the season poster for a season, falling back to the league poster', async () => {
-      hub.getLeague.mockResolvedValue(league);
-      hub.getSeasons.mockResolvedValue([
-        {
-          season_number: 2025,
-          title: '2025',
-          poster_url: 'https://hub/season/2025.jpg',
-          episode_count: 12,
-        },
-        {
-          season_number: 2026,
-          title: '2026',
-          poster_url: null,
-          episode_count: 3,
-        },
+      api.getLeague.mockResolvedValue(league);
+      api.getSeasons.mockResolvedValue([
+        { season_number: 2025, poster_url: 'https://metadata/season/2025.jpg' },
+        { season_number: 2026, poster_url: null },
       ]);
 
       await expect(
         provider.getPosterUrl(278, 'tv', { ref: { seasonNumber: 2025 } }),
-      ).resolves.toBe('https://hub/season/2025.jpg');
+      ).resolves.toBe('https://metadata/season/2025.jpg');
       await expect(
         provider.getPosterUrl(278, 'tv', { ref: { seasonNumber: 2026 } }),
-      ).resolves.toBe('https://hub/league/poster.jpg');
+      ).resolves.toBe('https://metadata/league/poster.jpg');
     });
 
     it('uses the banner as the backdrop when the league has no fanart', async () => {
-      hub.getLeague.mockResolvedValue(league);
+      api.getLeague.mockResolvedValue(league);
 
       await expect(provider.getBackdropUrl(278, 'tv')).resolves.toBe(
-        'https://hub/league/banner.jpg',
+        'https://metadata/league/banner.jpg',
       );
     });
 
-    it("uses the episode still as an episode's backdrop", async () => {
-      hub.getLeague.mockResolvedValue(league);
-      hub.getSeasonEpisodes.mockResolvedValue([
-        {
-          id: 'ev-000001',
-          season_number: 2026,
-          episode_number: 3,
-          title: 'Round 3',
-          summary: 'Round three.',
-          thumb_url: 'https://hub/event/3.jpg',
-        },
+    it("uses the event still as an episode's backdrop", async () => {
+      api.getLeague.mockResolvedValue(league);
+      api.getSeasonEpisodes.mockResolvedValue([
+        { episode_number: 3, thumb_url: 'https://metadata/event/3.jpg' },
       ]);
 
       await expect(
         provider.getBackdropUrl(278, 'tv', {
           ref: { seasonNumber: 2026, episodeNumber: 3 },
         }),
-      ).resolves.toBe('https://hub/event/3.jpg');
-      expect(hub.getSeasonEpisodes).toHaveBeenCalledWith('lg-000278', 2026);
+      ).resolves.toBe('https://metadata/event/3.jpg');
+      expect(api.getSeasonEpisodes).toHaveBeenCalledWith('lg-000278', 2026);
     });
   });
 
   describe('overview', () => {
-    it('reads an episode description from the season episodes', async () => {
-      hub.getSeasonEpisodes.mockResolvedValue([
-        {
-          id: 'ev-000001',
-          season_number: 2026,
-          episode_number: 3,
-          title: 'Round 3',
-          summary: 'Round three.',
-        },
+    it('reads an event description from the season events', async () => {
+      api.getSeasonEpisodes.mockResolvedValue([
+        { episode_number: 3, summary: 'Round three.' },
       ]);
 
       await expect(
@@ -202,10 +150,8 @@ describe('SportarrMetadataProvider', () => {
       ).resolves.toBe('Round three.');
     });
 
-    it('has no description for a season the hub leaves blank', async () => {
-      hub.getSeasons.mockResolvedValue([
-        { season_number: 2026, title: '2026', summary: '', episode_count: 3 },
-      ]);
+    it('has no description for a season the source leaves blank', async () => {
+      api.getSeasons.mockResolvedValue([{ season_number: 2026, summary: '' }]);
 
       await expect(
         provider.getHierarchyOverview(278, { seasonNumber: 2026 }),

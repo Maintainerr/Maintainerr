@@ -1,10 +1,15 @@
+import {
+  sportarrLeagueId,
+  sportarrLeagueNumber,
+  sportarrLeagueNumberFromTvdbAlias,
+} from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
 import {
-  sportarrLeagueExternalIdFromNumber,
-  sportarrLeagueNumberFromExternalId,
-  sportarrLeagueNumberFromTvdbAlias,
-} from '../../api/servarr-api/helpers/sportarr-external-id';
-import { SportarrHubApiService } from '../../api/sportarr-hub-api/sportarr-hub.service';
+  SportarrMetadataEpisode,
+  SportarrMetadataLeague,
+  SportarrMetadataSeason,
+} from '../../api/sportarr-metadata-api/interfaces/sportarr-metadata.interface';
+import { SportarrMetadataApiService } from '../../api/sportarr-metadata-api/sportarr-metadata.service';
 import { IMetadataProvider } from '../interfaces/metadata-provider.interface';
 import {
   ExternalIdSearchResult,
@@ -15,38 +20,33 @@ import {
   TvHierarchyRef,
 } from '../interfaces/metadata.types';
 
-// Artwork and descriptions for Sportarr leagues, read from sportarr.net by the
-// league id the Sportarr media server agents stamp on a show. The provider's
-// numeric id is the digits of that league id (lg-000278 -> 278), which is also
-// what the tvdb alias encodes (900000278), so a show that only carries the
-// alias resolves here too.
+// Artwork and descriptions for Sportarr leagues. The provider id is the number
+// inside the league id the Sportarr agents stamp (lg-000278 -> 278), which is
+// also what the tvdb alias encodes (900000278), so a show that only carries the
+// alias resolves here too. A league has no reliable release year, and the
+// year check accepts a provider without one, so none is reported.
 @Injectable()
 export class SportarrMetadataProvider implements IMetadataProvider {
   readonly name = 'Sportarr';
   readonly idKey = 'sportarr';
 
-  constructor(private readonly hub: SportarrHubApiService) {}
+  constructor(private readonly api: SportarrMetadataApiService) {}
 
   isAvailable(): boolean {
     return true;
   }
 
   parseId(value: string): number | undefined {
-    return sportarrLeagueNumberFromExternalId(value);
+    return sportarrLeagueNumber(value);
   }
 
   extractId(ids: ProviderIds): number | undefined {
     const own = ids[this.idKey];
-    if (typeof own === 'number' && Number.isInteger(own) && own > 0) {
-      return own;
+    if (typeof own === 'number') {
+      return Number.isInteger(own) && own > 0 ? own : undefined;
     }
-    if (typeof own === 'string') {
-      const parsed = this.parseId(own);
-      if (parsed !== undefined) {
-        return parsed;
-      }
-    }
-    return sportarrLeagueNumberFromTvdbAlias(Number(ids.tvdb));
+    const parsed = typeof own === 'string' ? this.parseId(own) : undefined;
+    return parsed ?? sportarrLeagueNumberFromTvdbAlias(Number(ids.tvdb));
   }
 
   assignId(ids: ProviderIds, id: number): void {
@@ -60,15 +60,13 @@ export class SportarrMetadataProvider implements IMetadataProvider {
     if (type !== 'tv') {
       return undefined;
     }
-    const leagueId = sportarrLeagueExternalIdFromNumber(id);
-    const league = await this.hub.getLeague(leagueId);
+    const league = await this.api.getLeague(sportarrLeagueId(id));
     if (!league) {
       return undefined;
     }
     return {
       id,
       title: league.title,
-      year: league.year ?? (await this.firstSeasonYear(leagueId)),
       overview: league.summary || undefined,
       posterUrl: league.poster_url ?? undefined,
       backdropUrl: this.leagueBackdrop(league),
@@ -85,14 +83,14 @@ export class SportarrMetadataProvider implements IMetadataProvider {
     if (type !== 'tv') {
       return undefined;
     }
-    const leagueId = sportarrLeagueExternalIdFromNumber(id);
+    const leagueId = sportarrLeagueId(id);
     if (options.ref) {
       const season = await this.findSeason(leagueId, options.ref);
       if (season?.poster_url) {
         return season.poster_url;
       }
     }
-    const league = await this.hub.getLeague(leagueId);
+    const league = await this.api.getLeague(leagueId);
     return league?.poster_url ?? undefined;
   }
 
@@ -104,14 +102,14 @@ export class SportarrMetadataProvider implements IMetadataProvider {
     if (type !== 'tv') {
       return undefined;
     }
-    const leagueId = sportarrLeagueExternalIdFromNumber(id);
+    const leagueId = sportarrLeagueId(id);
     if (options.ref?.episodeNumber !== undefined) {
       const episode = await this.findEpisode(leagueId, options.ref);
       if (episode?.thumb_url) {
         return episode.thumb_url;
       }
     }
-    const league = await this.hub.getLeague(leagueId);
+    const league = await this.api.getLeague(leagueId);
     return league ? this.leagueBackdrop(league) : undefined;
   }
 
@@ -119,7 +117,7 @@ export class SportarrMetadataProvider implements IMetadataProvider {
     id: number,
     ref: TvHierarchyRef,
   ): Promise<string | undefined> {
-    const leagueId = sportarrLeagueExternalIdFromNumber(id);
+    const leagueId = sportarrLeagueId(id);
     if (ref.episodeNumber !== undefined) {
       const episode = await this.findEpisode(leagueId, ref);
       return episode?.summary || undefined;
@@ -132,45 +130,30 @@ export class SportarrMetadataProvider implements IMetadataProvider {
     return undefined;
   }
 
-  // The tvdb alias is the only other id that names a league, and reversing
-  // it needs no request.
-  async findByExternalId(
-    externalId: string | number,
-    type: string,
-  ): Promise<ExternalIdSearchResult[] | undefined> {
-    if (type !== 'tvdb') {
-      return undefined;
-    }
-    const id = sportarrLeagueNumberFromTvdbAlias(Number(externalId));
-    return id === undefined ? undefined : [{ tvShowId: id }];
-  }
-
-  // Many leagues have no founding year on the hub. The first season stands
-  // in, so the year check upstream has something to compare instead of
-  // warning on every resolution.
-  private async firstSeasonYear(leagueId: string): Promise<number | undefined> {
-    const seasons = await this.hub.getSeasons(leagueId);
-    const years = seasons
-      .map((season) => season.season_number)
-      .filter((year) => Number.isInteger(year) && year > 0);
-    return years.length > 0 ? Math.min(...years) : undefined;
+  // Nothing bridges into this namespace: extractId already reads the tvdb
+  // alias, so the service never asks.
+  async findByExternalId(): Promise<ExternalIdSearchResult[] | undefined> {
+    return undefined;
   }
 
   // Leagues rarely have fanart; the banner is the next best landscape image.
-  private leagueBackdrop(league: {
-    fanart_url?: string | null;
-    banner_url?: string | null;
-  }): string | undefined {
+  private leagueBackdrop(league: SportarrMetadataLeague): string | undefined {
     return league.fanart_url ?? league.banner_url ?? undefined;
   }
 
-  private async findSeason(leagueId: string, ref: TvHierarchyRef) {
-    const seasons = await this.hub.getSeasons(leagueId);
+  private async findSeason(
+    leagueId: string,
+    ref: TvHierarchyRef,
+  ): Promise<SportarrMetadataSeason | undefined> {
+    const seasons = await this.api.getSeasons(leagueId);
     return seasons.find((season) => season.season_number === ref.seasonNumber);
   }
 
-  private async findEpisode(leagueId: string, ref: TvHierarchyRef) {
-    const episodes = await this.hub.getSeasonEpisodes(
+  private async findEpisode(
+    leagueId: string,
+    ref: TvHierarchyRef,
+  ): Promise<SportarrMetadataEpisode | undefined> {
+    const episodes = await this.api.getSeasonEpisodes(
       leagueId,
       ref.seasonNumber,
     );

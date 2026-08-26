@@ -1711,6 +1711,10 @@ msgstr ""
 msgid "Failed to refresh {providerTitle} metadata"
 msgstr ""
 
+#: src/components/Settings/Metadata/SportarrSection.tsx
+msgid "Failed to refresh Sportarr metadata"
+msgstr ""
+
 #: src/components/Settings/Servarr/ServarrSettingsModal.tsx
 msgid "Failed to remove {serviceName} settings."
 msgstr ""
@@ -2969,6 +2973,10 @@ msgstr ""
 msgid "Poster Templates"
 msgstr ""
 
+#: src/components/Settings/Metadata/SportarrSection.tsx
+msgid "Posters, backdrops and descriptions for Sportarr leagues. No key is needed. They are read from your Sportarr connections first."
+msgstr ""
+
 #: src/components/Collection/CollectionDetail/PostponeButton/index.tsx
 msgid "Postpone"
 msgstr ""
@@ -3084,6 +3092,10 @@ msgstr ""
 msgid "Rating Descending"
 msgstr ""
 
+#: src/components/Settings/Metadata/SportarrSection.tsx
+msgid "Read from <0>{sportarrDomain}</0> for a league your Sportarr connections do not track"
+msgstr ""
+
 #: src/components/Common/MediaLibrarySortControl.tsx
 msgid "Recently Added"
 msgstr ""
@@ -3103,10 +3115,12 @@ msgid "Rectangle"
 msgstr ""
 
 #: src/components/Settings/Metadata/index.tsx
+#: src/components/Settings/Metadata/SportarrSection.tsx
 msgid "Refresh metadata"
 msgstr ""
 
 #: src/components/Settings/Metadata/index.tsx
+#: src/components/Settings/Metadata/SportarrSection.tsx
 msgid "Refreshing..."
 msgstr ""
 
@@ -3680,6 +3694,10 @@ msgstr ""
 msgid "Sportarr configuration"
 msgstr ""
 
+#: src/components/Settings/Metadata/SportarrSection.tsx
+msgid "Sportarr metadata refresh started"
+msgstr ""
+
 #: src/components/Settings/Sportarr/index.tsx
 msgid "Sportarr server removed"
 msgstr ""
@@ -3690,6 +3708,14 @@ msgstr ""
 
 #: src/components/Settings/Sportarr/index.tsx
 msgid "Sportarr settings - Maintainerr"
+msgstr ""
+
+#: src/components/Settings/Metadata/SportarrSection.tsx
+msgid "Sportarr settings could not be updated"
+msgstr ""
+
+#: src/components/Settings/Metadata/SportarrSection.tsx
+msgid "Sportarr settings updated"
 msgstr ""
 
 #: src/utils/ApiError.ts

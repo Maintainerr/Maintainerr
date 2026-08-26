@@ -2,6 +2,9 @@ import {
   BasicResponseDto,
   MaintainerrEvent,
   MetadataProviderPreference,
+  SPORTARR_TVDB_ALIAS_LEAGUE_OFFSET,
+  SPORTARR_TVDB_ALIAS_RANGE,
+  SportarrMetadataSetting,
   TmdbSetting,
   TvdbSetting,
 } from '@maintainerr/contracts';
@@ -14,12 +17,20 @@ import { shouldRefreshMetadataItemId } from '../api/media-server/media-server-id
 import { MEDIA_SERVER_BATCH_SIZE } from '../api/media-server/media-server.constants';
 import { MediaServerFactory } from '../api/media-server/media-server.factory';
 import type { IMediaServerService } from '../api/media-server/media-server.interface';
+import { SportarrMetadataApiService } from '../api/sportarr-metadata-api/sportarr-metadata.service';
 import { TmdbApiService } from '../api/tmdb-api/tmdb.service';
 import { TvdbApiService } from '../api/tvdb-api/tvdb.service';
 import { CollectionMedia } from '../collections/entities/collection_media.entities';
 import { MaintainerrLogger } from '../logging/logs.service';
 import { Settings } from './entities/settings.entities';
 import { MetadataProvider } from './metadata-provider';
+
+// The cache each provider's Refresh button clears.
+const METADATA_CACHE_ID: Record<MetadataProvider, string> = {
+  tmdb: 'tmdb',
+  tvdb: 'tvdb',
+  sportarr: 'sportarrmetadata',
+};
 
 @Injectable()
 export class MetadataSettingsService {
@@ -35,6 +46,7 @@ export class MetadataSettingsService {
     private readonly eventEmitter: EventEmitter2,
     private readonly tmdbApi: TmdbApiService,
     private readonly tvdbApi: TvdbApiService,
+    private readonly sportarrMetadataApi: SportarrMetadataApiService,
     private readonly logger: MaintainerrLogger,
   ) {
     logger.setContext(MetadataSettingsService.name);
@@ -127,6 +139,21 @@ export class MetadataSettingsService {
     return this.tvdbApi.testConnection(setting?.api_key);
   }
 
+  public async updateSportarrMetadataSetting(
+    setting: SportarrMetadataSetting,
+  ): Promise<BasicResponseDto> {
+    try {
+      await this.saveSettings({
+        sportarr_net_fallback: setting.use_sportarr_net,
+      });
+      return { status: 'OK', code: 1, message: 'Success' };
+    } catch (error) {
+      this.logger.error('Error while updating the Sportarr metadata setting');
+      this.logger.debug(error);
+      return { status: 'NOK', code: 0, message: 'Failed' };
+    }
+  }
+
   public async updateMetadataProviderPreference(
     preference: MetadataProviderPreference,
   ): Promise<BasicResponseDto> {
@@ -155,10 +182,7 @@ export class MetadataSettingsService {
     this.activeMetadataRefreshProvider = provider;
 
     try {
-      const connection =
-        provider === 'tmdb'
-          ? await this.tmdbApi.testConnection()
-          : await this.tvdbApi.testConnection();
+      const connection = await this.testProviderConnection(provider);
 
       if (connection.code !== 1) {
         this.activeMetadataRefreshProvider = null;
@@ -166,7 +190,7 @@ export class MetadataSettingsService {
         return { status: 'NOK', code: 0, message: connection.message };
       }
 
-      cacheManager.getCache(provider)?.flush();
+      cacheManager.getCache(METADATA_CACHE_ID[provider])?.flush();
       this.logger.log(`${provider.toUpperCase()} metadata cache cleared`);
 
       void this.refreshMediaServerItems(provider, {
@@ -192,6 +216,27 @@ export class MetadataSettingsService {
     }
   }
 
+  // Sportarr has no key to test; it is reachable when it has a source to read.
+  private async testProviderConnection(
+    provider: MetadataProvider,
+  ): Promise<BasicResponseDto> {
+    switch (provider) {
+      case 'tmdb':
+        return this.tmdbApi.testConnection();
+      case 'tvdb':
+        return this.tvdbApi.testConnection();
+      case 'sportarr':
+        return (await this.sportarrMetadataApi.hasSource())
+          ? { status: 'OK', code: 1, message: 'Success' }
+          : {
+              status: 'NOK',
+              code: 0,
+              message:
+                'No Sportarr connection is configured and sportarr.net is turned off',
+            };
+    }
+  }
+
   private async refreshMediaServerItems(
     provider: MetadataProvider,
     {
@@ -205,18 +250,28 @@ export class MetadataSettingsService {
       if (!mediaServer?.isSetup()) return;
       const serverType = mediaServer.getServerType();
 
+      // Sportarr items are the tvdb rows inside the alias window: the alias is
+      // what the collection stores for them, native id or not.
       const providerColumn: Record<MetadataProvider, 'tmdbId' | 'tvdbId'> = {
         tmdb: 'tmdbId',
         tvdb: 'tvdbId',
+        sportarr: 'tvdbId',
       };
       const column = providerColumn[provider];
-      const rows = await this.collectionMediaRepo
+      const query = this.collectionMediaRepo
         .createQueryBuilder('cm')
         .select('DISTINCT cm.mediaServerId', 'mediaServerId')
         .where(`cm.${column} IS NOT NULL`)
         .andWhere(`cm.mediaServerId IS NOT NULL`)
-        .andWhere(`cm.mediaServerId != ''`)
-        .getRawMany<{ mediaServerId: string }>();
+        .andWhere(`cm.mediaServerId != ''`);
+      if (provider === 'sportarr') {
+        query.andWhere('cm.tvdbId >= :aliasStart AND cm.tvdbId < :aliasEnd', {
+          aliasStart: SPORTARR_TVDB_ALIAS_LEAGUE_OFFSET,
+          aliasEnd:
+            SPORTARR_TVDB_ALIAS_LEAGUE_OFFSET + SPORTARR_TVDB_ALIAS_RANGE,
+        });
+      }
+      const rows = await query.getRawMany<{ mediaServerId: string }>();
 
       if (rows.length === 0) return;
 

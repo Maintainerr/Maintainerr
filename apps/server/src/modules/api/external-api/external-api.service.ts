@@ -13,6 +13,9 @@ const DEFAULT_ROLLING_BUFFER = 10000;
 interface ExternalAPIOptions {
   nodeCache?: NodeCache;
   headers?: Record<string, unknown>;
+  // Overrides for the standard retry policy, for an upstream that says how
+  // long to wait in a 429 response.
+  retry?: Parameters<typeof applyHttpRetry>[1];
 }
 
 export class ExternalApiService {
@@ -36,7 +39,7 @@ export class ExternalApiService {
         ...options.headers,
       },
     });
-    applyHttpRetry(this.axios);
+    applyHttpRetry(this.axios, options.retry);
     this.baseUrl = baseUrl;
     this.cache = options.nodeCache;
   }

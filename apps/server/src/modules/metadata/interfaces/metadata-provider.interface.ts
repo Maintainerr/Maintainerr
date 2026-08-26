@@ -21,9 +21,9 @@ export interface IMetadataProvider {
 
   /**
    * The provider's numeric id from the string a media server carries for it.
-   * Providers whose ids are plain numbers leave this out.
+   * Undefined when the string is not one of this provider's ids.
    */
-  parseId?(value: string): number | undefined;
+  parseId(value: string): number | undefined;
 
   getDetails(
     id: number,

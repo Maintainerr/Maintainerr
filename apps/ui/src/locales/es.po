@@ -1711,6 +1711,10 @@ msgstr "No se pudieron procesar las superposiciones"
 msgid "Failed to refresh {providerTitle} metadata"
 msgstr "No se pudieron actualizar los metadatos {providerTitle}"
 
+#: src/components/Settings/Metadata/SportarrSection.tsx
+msgid "Failed to refresh Sportarr metadata"
+msgstr ""
+
 #: src/components/Settings/Servarr/ServarrSettingsModal.tsx
 msgid "Failed to remove {serviceName} settings."
 msgstr "No se pudo eliminar la configuración de {serviceName}."
@@ -2969,6 +2973,10 @@ msgstr "Póster guardado localmente. Maintainerr aún no pudo aplicarlo a {media
 msgid "Poster Templates"
 msgstr "Plantillas de carteles"
 
+#: src/components/Settings/Metadata/SportarrSection.tsx
+msgid "Posters, backdrops and descriptions for Sportarr leagues. No key is needed. They are read from your Sportarr connections first."
+msgstr ""
+
 #: src/components/Collection/CollectionDetail/PostponeButton/index.tsx
 msgid "Postpone"
 msgstr "Posponer"
@@ -3084,6 +3092,10 @@ msgstr "Calificación ascendente"
 msgid "Rating Descending"
 msgstr "Calificación descendente"
 
+#: src/components/Settings/Metadata/SportarrSection.tsx
+msgid "Read from <0>{sportarrDomain}</0> for a league your Sportarr connections do not track"
+msgstr ""
+
 #: src/components/Common/MediaLibrarySortControl.tsx
 msgid "Recently Added"
 msgstr "Agregado recientemente"
@@ -3103,10 +3115,12 @@ msgid "Rectangle"
 msgstr "Rectángulo"
 
 #: src/components/Settings/Metadata/index.tsx
+#: src/components/Settings/Metadata/SportarrSection.tsx
 msgid "Refresh metadata"
 msgstr "Actualizar metadatos"
 
 #: src/components/Settings/Metadata/index.tsx
+#: src/components/Settings/Metadata/SportarrSection.tsx
 msgid "Refreshing..."
 msgstr "Actualizando..."
 
@@ -3680,6 +3694,10 @@ msgstr "Especificar las reglas que este grupo debe hacer cumplir"
 msgid "Sportarr configuration"
 msgstr "Configuración de Sportarr"
 
+#: src/components/Settings/Metadata/SportarrSection.tsx
+msgid "Sportarr metadata refresh started"
+msgstr ""
+
 #: src/components/Settings/Sportarr/index.tsx
 msgid "Sportarr server removed"
 msgstr "Servidor Sportarr eliminado"
@@ -3691,6 +3709,14 @@ msgstr "Configuración de Sportarr"
 #: src/components/Settings/Sportarr/index.tsx
 msgid "Sportarr settings - Maintainerr"
 msgstr "Configuración de Sportarr - Maintainerr"
+
+#: src/components/Settings/Metadata/SportarrSection.tsx
+msgid "Sportarr settings could not be updated"
+msgstr ""
+
+#: src/components/Settings/Metadata/SportarrSection.tsx
+msgid "Sportarr settings updated"
+msgstr ""
 
 #: src/utils/ApiError.ts
 msgid "SSL/TLS handshake failed. Verify the URL protocol (http vs https) and SSL configuration."

@@ -337,6 +337,7 @@ The application integrates with several external services:
 - **Seerr**: Request management system
 - **Tautulli**: Plex analytics and statistics
 - **Streamystats**: Jellyfin item-level analytics surfaced on media details
+- **Sportarr**: Sports league management API, plus its metadata API for league artwork
 
 When working with these integrations:
 

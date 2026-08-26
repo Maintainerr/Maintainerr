@@ -8,6 +8,7 @@ import {
   MediaServerType,
   MetadataProviderPreference,
   MetadataProviderSetting,
+  SportarrMetadataSetting,
   SwitchMediaServerRequest,
   SwitchMediaServerResponse,
   TelemetryPing,
@@ -1033,4 +1034,42 @@ export const downloadDatabase = async (
   setTimeout(() => {
     URL.revokeObjectURL(fileUrl)
   }, 0)
+}
+
+type UseSportarrMetadataSettingQueryKey = ['settings', 'sportarr-metadata']
+
+export const useSportarrMetadataSetting = () => {
+  return useQuery<
+    SportarrMetadataSetting,
+    Error,
+    SportarrMetadataSetting,
+    UseSportarrMetadataSettingQueryKey
+  >({
+    queryKey: ['settings', 'sportarr-metadata'],
+    queryFn: async () => {
+      return await GetApiHandler<SportarrMetadataSetting>(
+        '/settings/sportarr-metadata',
+      )
+    },
+    staleTime: 0,
+  })
+}
+
+export const useUpdateSportarrMetadataSetting = () => {
+  const queryClient = useQueryClient()
+
+  return useMutation<BasicResponseDto, Error, SportarrMetadataSetting>({
+    mutationKey: ['settings', 'updateSportarrMetadataSetting'],
+    mutationFn: async (setting) => {
+      return await PostApiHandler<BasicResponseDto>(
+        '/settings/sportarr-metadata',
+        setting,
+      )
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ['settings', 'sportarr-metadata'],
+      })
+    },
+  })
 }

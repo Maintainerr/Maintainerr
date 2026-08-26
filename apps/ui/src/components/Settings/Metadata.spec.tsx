@@ -8,6 +8,7 @@ const getApiHandler = vi.fn()
 const deleteApiHandler = vi.fn()
 const postApiHandler = vi.fn()
 const mutateAsync = vi.fn()
+const sportarrMutateAsync = vi.fn()
 
 let currentPreference = MetadataProviderPreference.TMDB_PRIMARY
 let preferenceLoading = false
@@ -21,6 +22,15 @@ vi.mock('../../api/settings', () => ({
   useUpdateMetadataProviderPreference: () => ({
     mutateAsync,
     isPending: preferenceSaving,
+  }),
+  useSportarrMetadataSetting: () => ({
+    data: { use_sportarr_net: true },
+    isLoading: false,
+    isError: false,
+  }),
+  useUpdateSportarrMetadataSetting: () => ({
+    mutateAsync: sportarrMutateAsync,
+    isPending: false,
   }),
 }))
 
@@ -102,7 +112,7 @@ describe('MetadataSettings', () => {
     expect(tmdbSwitch).toBeTruthy()
     expect(tvdbSwitch).toBeTruthy()
     expect(screen.getAllByText('TVDB').length).toBeGreaterThan(0)
-    expect(screen.getAllByRole('listitem')).toHaveLength(2)
+    expect(screen.getAllByRole('listitem')).toHaveLength(3)
     expect(screen.queryByRole('status')).toBeNull()
 
     expect(tmdbSwitch.getAttribute('aria-disabled')).toBe('true')

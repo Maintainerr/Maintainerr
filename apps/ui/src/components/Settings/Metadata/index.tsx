@@ -27,6 +27,7 @@ import Button from '../../Common/Button'
 import SaveButton from '../../Common/SaveButton'
 import TestingButton from '../../Common/TestingButton'
 import { Input } from '../../Forms/Input'
+import SportarrSection from './SportarrSection'
 import {
   type SettingsFeedback,
   SettingsFeedbackAlert,
@@ -552,11 +553,18 @@ function ProviderSection({
 
 const MetadataSettings = () => {
   const { t } = useLingui()
-  const { feedback, clear, showUpdated, showUpdateError, showWarning } =
-    useSettingsFeedback({
-      updated: t`Metadata provider preference updated`,
-      updateError: t`Metadata provider preference could not be updated`,
-    })
+  const {
+    feedback,
+    clear,
+    showUpdated,
+    showUpdateError,
+    showWarning,
+    showSuccess,
+    showError,
+  } = useSettingsFeedback({
+    updated: t`Metadata provider preference updated`,
+    updateError: t`Metadata provider preference could not be updated`,
+  })
   const {
     data: preference = MetadataProviderPreference.TMDB_PRIMARY,
     isLoading: preferenceLoading,
@@ -704,6 +712,19 @@ const MetadataSettings = () => {
               </li>
             )
           })}
+          <li className="h-full">
+            <SportarrSection
+              onFeedback={(sectionFeedback) => {
+                clearAllFeedback()
+                if (!sectionFeedback) return
+                if (sectionFeedback.type === 'success') {
+                  showSuccess(sectionFeedback.title)
+                } else {
+                  showError(sectionFeedback.title)
+                }
+              }}
+            />
+          </li>
         </ul>
       </div>
     </>

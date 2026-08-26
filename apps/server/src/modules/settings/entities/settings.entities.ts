@@ -35,6 +35,12 @@ export class Settings implements SettingDto {
   @Column({ type: 'varchar', nullable: true, default: null })
   media_server_type?: MediaServerType | null;
 
+  // Artwork and descriptions for Sportarr leagues come from the first
+  // configured Sportarr connection. With none configured they come from
+  // sportarr.net while this is on; off means those shows carry no artwork.
+  @Column({ type: 'boolean', nullable: false, default: true })
+  sportarr_net_fallback: boolean;
+
   // Plex settings
   @Column({ nullable: true })
   plex_name: string;

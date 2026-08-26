@@ -102,6 +102,7 @@ integrations, and production static serving.
   constants, mappers, caching, and SDK/API calls.
 - Other `src/modules/api/` submodules wrap integration clients and helper
   APIs, including Plex legacy routes, Servarr, Seerr, Tautulli, Streamystats, TMDB, TVDB,
+  the Sportarr metadata API,
   GitHub, external API, internal API, and shared request/cache helpers.
 - `src/modules/rules/` evaluates rule groups against media-server and external
   service data.
@@ -160,7 +161,8 @@ Maintainerr integrates with:
 - Streamystats for Jellyfin item-level analytics surfaced on the media modal.
   Authentication reuses the configured Jellyfin API key. Emby is not supported
   upstream.
-- TMDB and TVDB for metadata resolution.
+- TMDB and TVDB for metadata resolution, and the Sportarr metadata API (the
+  configured Sportarr connection, or sportarr.net) for Sportarr leagues.
 - GitHub for release/version checks.
 - The Maintainerr telemetry collector for the anonymous weekly usage report,
   when it is enabled (see the Telemetry section of the README).

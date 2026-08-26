@@ -744,7 +744,7 @@ export const createMetadataProviderMock = ({
       .mockResolvedValue(backdropUrl ?? `https://${idKey}/backdrop.jpg`),
     getHierarchyOverview: jest.fn().mockResolvedValue(hierarchyOverview),
     getPersonDetails: jest.fn(),
-    ...(parseId ? { parseId: jest.fn(parseId) } : {}),
+    parseId: jest.fn(parseId ?? ((value: string) => Number(value))),
     findByExternalId: jest
       .fn()
       .mockImplementation(findByExternalId ?? (async () => undefined)),

@@ -1711,6 +1711,10 @@ msgstr "Failed to process overlays"
 msgid "Failed to refresh {providerTitle} metadata"
 msgstr "Failed to refresh {providerTitle} metadata"
 
+#: src/components/Settings/Metadata/SportarrSection.tsx
+msgid "Failed to refresh Sportarr metadata"
+msgstr "Failed to refresh Sportarr metadata"
+
 #: src/components/Settings/Servarr/ServarrSettingsModal.tsx
 msgid "Failed to remove {serviceName} settings."
 msgstr "Failed to remove {serviceName} settings."
@@ -2969,6 +2973,10 @@ msgstr "Poster saved locally. Maintainerr could not apply it to {mediaServerName
 msgid "Poster Templates"
 msgstr "Poster Templates"
 
+#: src/components/Settings/Metadata/SportarrSection.tsx
+msgid "Posters, backdrops and descriptions for Sportarr leagues. No key is needed. They are read from your Sportarr connections first."
+msgstr "Posters, backdrops and descriptions for Sportarr leagues. No key is needed. They are read from your Sportarr connections first."
+
 #: src/components/Collection/CollectionDetail/PostponeButton/index.tsx
 msgid "Postpone"
 msgstr "Postpone"
@@ -3084,6 +3092,10 @@ msgstr "Rating Ascending"
 msgid "Rating Descending"
 msgstr "Rating Descending"
 
+#: src/components/Settings/Metadata/SportarrSection.tsx
+msgid "Read from <0>{sportarrDomain}</0> for a league your Sportarr connections do not track"
+msgstr "Read from <0>{sportarrDomain}</0> for a league your Sportarr connections do not track"
+
 #: src/components/Common/MediaLibrarySortControl.tsx
 msgid "Recently Added"
 msgstr "Recently Added"
@@ -3103,10 +3115,12 @@ msgid "Rectangle"
 msgstr "Rectangle"
 
 #: src/components/Settings/Metadata/index.tsx
+#: src/components/Settings/Metadata/SportarrSection.tsx
 msgid "Refresh metadata"
 msgstr "Refresh metadata"
 
 #: src/components/Settings/Metadata/index.tsx
+#: src/components/Settings/Metadata/SportarrSection.tsx
 msgid "Refreshing..."
 msgstr "Refreshing..."
 
@@ -3680,6 +3694,10 @@ msgstr "Specify the rules this group needs to enforce"
 msgid "Sportarr configuration"
 msgstr "Sportarr configuration"
 
+#: src/components/Settings/Metadata/SportarrSection.tsx
+msgid "Sportarr metadata refresh started"
+msgstr "Sportarr metadata refresh started"
+
 #: src/components/Settings/Sportarr/index.tsx
 msgid "Sportarr server removed"
 msgstr "Sportarr server removed"
@@ -3691,6 +3709,14 @@ msgstr "Sportarr Settings"
 #: src/components/Settings/Sportarr/index.tsx
 msgid "Sportarr settings - Maintainerr"
 msgstr "Sportarr settings - Maintainerr"
+
+#: src/components/Settings/Metadata/SportarrSection.tsx
+msgid "Sportarr settings could not be updated"
+msgstr "Sportarr settings could not be updated"
+
+#: src/components/Settings/Metadata/SportarrSection.tsx
+msgid "Sportarr settings updated"
+msgstr "Sportarr settings updated"
 
 #: src/utils/ApiError.ts
 msgid "SSL/TLS handshake failed. Verify the URL protocol (http vs https) and SSL configuration."

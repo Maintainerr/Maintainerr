@@ -10,7 +10,7 @@ const LEAGUE_ID_PAD = 6;
 // The league number inside a Sportarr short id (lg-000278 -> 278). Event ids
 // (ev-...) live on episodes and never identify a league, so only the `lg-`
 // prefix parses.
-export function sportarrLeagueNumberFromExternalId(
+function leagueNumberFromExternalId(
   value: string | undefined | null,
 ): number | undefined {
   const id = value?.trim().toLowerCase();
@@ -35,7 +35,7 @@ export function sportarrLeagueNumberFromExternalId(
 
 // The league id for its number (278 -> lg-000278). Ids grow past the pad width
 // unpadded.
-export function sportarrLeagueExternalIdFromNumber(n: number): string {
+function leagueExternalIdFromNumber(n: number): string {
   return `${LEAGUE_ID_PREFIX}${String(n).padStart(LEAGUE_ID_PAD, '0')}`;
 }
 
@@ -46,30 +46,23 @@ export function sportarrLeagueExternalIdFromNumber(n: number): string {
 function leagueExternalIdFromNativeId(
   value: string | undefined | null,
 ): string | null {
-  const n = sportarrLeagueNumberFromExternalId(value);
-  return n === undefined ? null : sportarrLeagueExternalIdFromNumber(n);
+  const n = leagueNumberFromExternalId(value);
+  return n === undefined ? null : leagueExternalIdFromNumber(n);
 }
 
 // Before the agents stamped the native id they only carried a numeric alias in
 // the tvdb namespace (e.g. tvdb://900000278). Libraries that were never
 // refreshed since still resolve through it.
-export function sportarrLeagueNumberFromTvdbAlias(
+export function sportarrLeagueExternalIdFromTvdbAlias(
   tvdbAlias: number | undefined | null,
-): number | undefined {
+): string | null {
   if (!isSportarrTvdbAlias(tvdbAlias)) {
-    return undefined;
+    return null;
   }
 
   // The offset itself is the bottom of the window, not league 0.
   const n = tvdbAlias - SPORTARR_TVDB_ALIAS_LEAGUE_OFFSET;
-  return n > 0 ? n : undefined;
-}
-
-export function sportarrLeagueExternalIdFromTvdbAlias(
-  tvdbAlias: number | undefined | null,
-): string | null {
-  const n = sportarrLeagueNumberFromTvdbAlias(tvdbAlias);
-  return n === undefined ? null : sportarrLeagueExternalIdFromNumber(n);
+  return n > 0 ? leagueExternalIdFromNumber(n) : null;
 }
 
 // Resolve the league from everything a media-server item carries. The native

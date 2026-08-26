@@ -943,11 +943,11 @@ export class MetadataService {
         const provider = this.providers.find(
           (itemProvider) => itemProvider.idKey === key,
         );
-        const numericId = provider?.parseId
-          ? provider.parseId(values[0])
-          : Number(values[0]);
-        if (numericId !== undefined && Number.isFinite(numericId) && provider) {
-          provider.assignId(ids, numericId);
+        if (provider) {
+          const numericId = provider.parseId(values[0]);
+          if (numericId !== undefined && Number.isFinite(numericId)) {
+            provider.assignId(ids, numericId);
+          }
         }
         continue;
       }
