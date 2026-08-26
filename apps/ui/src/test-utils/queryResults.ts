@@ -5,7 +5,6 @@ import type {
   QueryObserverSuccessResult,
   UseQueryResult,
 } from '@tanstack/react-query'
-import { createDeferred } from './createDeferred'
 
 type QueryResultRefetch<TData, TError> = UseQueryResult<
   TData,
@@ -47,7 +46,6 @@ export const buildQuerySuccessResult = <TData, TError = Error>(
     refetch: createRefetch<TData, TError>(),
     status: 'success',
     fetchStatus: 'idle',
-    promise: Promise.resolve(data),
   } satisfies QueryObserverSuccessResult<TData, TError>
 
   return {
@@ -85,7 +83,6 @@ export const buildQueryLoadingResult = <TData, TError = Error>(
     refetch: createRefetch<TData, TError>(),
     status: 'pending',
     fetchStatus: 'fetching',
-    promise: createDeferred<TData>().promise,
   } satisfies QueryObserverLoadingResult<TData, TError>
 
   return {
@@ -124,7 +121,6 @@ export const buildQueryErrorResult = <TData, TError = Error>(
     refetch: createRefetch<TData, TError>(),
     status: 'error',
     fetchStatus: 'idle',
-    promise: createDeferred<TData>().promise,
   } satisfies QueryObserverLoadingErrorResult<TData, TError>
 
   return {
