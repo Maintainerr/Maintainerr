@@ -40,6 +40,7 @@ import { IMetadataProvider } from '../../src/modules/metadata/interfaces/metadat
 import {
   ExternalIdSearchResult,
   MetadataDetails,
+  ProviderIds,
   ResolvedMediaIds,
 } from '../../src/modules/metadata/interfaces/metadata.types';
 import { RuleDto } from '../../src/modules/rules/dtos/rule.dto';
@@ -674,6 +675,7 @@ export interface MetadataProviderMockConfig {
   backdropUrl?: string;
   hierarchyOverview?: string;
   parseId?: (value: string) => number | undefined;
+  isAuthorityFor?: (ids: ProviderIds) => boolean;
   findByExternalId?: (
     externalId: string | number,
     type: string,
@@ -716,6 +718,7 @@ export const createMetadataProviderMock = ({
   backdropUrl,
   hierarchyOverview,
   parseId,
+  isAuthorityFor,
   findByExternalId,
 }: MetadataProviderMockConfig): jest.Mocked<IMetadataProvider> => {
   const resolvedDetails = details
@@ -745,6 +748,7 @@ export const createMetadataProviderMock = ({
     getHierarchyOverview: jest.fn().mockResolvedValue(hierarchyOverview),
     getPersonDetails: jest.fn(),
     parseId: jest.fn(parseId ?? ((value: string) => Number(value))),
+    isAuthorityFor: jest.fn(isAuthorityFor ?? (() => false)),
     findByExternalId: jest
       .fn()
       .mockImplementation(findByExternalId ?? (async () => undefined)),

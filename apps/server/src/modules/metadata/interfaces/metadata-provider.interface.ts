@@ -25,6 +25,13 @@ export interface IMetadataProvider {
    */
   parseId(value: string): number | undefined;
 
+  /**
+   * True when this provider is the authority for an item that carries its id,
+   * so it answers ahead of the primary preference. A provider that serves only
+   * its own namespace claims the item; the general providers never do.
+   */
+  isAuthorityFor(ids: ProviderIds): boolean;
+
   getDetails(
     id: number,
     type: 'movie' | 'tv',

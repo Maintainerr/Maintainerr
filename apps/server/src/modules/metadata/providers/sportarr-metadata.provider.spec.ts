@@ -23,6 +23,12 @@ describe('SportarrMetadataProvider', () => {
   };
 
   describe('ids', () => {
+    it('is the authority for an item that carries a Sportarr id', () => {
+      expect(provider.isAuthorityFor({ sportarr: 'lg-000278' })).toBe(true);
+      expect(provider.isAuthorityFor({ tvdb: 900_000_278 })).toBe(true);
+      expect(provider.isAuthorityFor({ tmdb: 101, tvdb: 322_399 })).toBe(false);
+    });
+
     it('parses the league id its agents stamp into the provider id', () => {
       expect(provider.parseId('lg-000278')).toBe(278);
       expect(provider.parseId('LG-1234567')).toBe(1234567);

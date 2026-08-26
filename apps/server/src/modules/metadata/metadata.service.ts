@@ -70,17 +70,30 @@ export class MetadataService {
     [MetadataProviderPreference.TVDB_PRIMARY]: 'TVDB',
   };
 
-  private getOrderedProviders(): IMetadataProvider[] {
+  /**
+   * The primary preference first, then the rest. With `ids`, a provider that is
+   * the authority for the item (a Sportarr league) moves ahead of the primary
+   * one, so the general providers only answer for it when it has nothing.
+   */
+  private getOrderedProviders(ids?: ProviderIds): IMetadataProvider[] {
     const primaryName =
       MetadataService.preferenceToProviderName[this.preference];
     const preferred = this.providers.find(
       (provider) => provider.name === primaryName,
     );
 
-    return [
+    const ordered = [
       ...(preferred ? [preferred] : []),
       ...this.providers.filter((provider) => provider !== preferred),
     ].filter((provider) => provider.isAvailable());
+    if (!ids) {
+      return ordered;
+    }
+
+    return [
+      ...ordered.filter((provider) => provider.isAuthorityFor(ids)),
+      ...ordered.filter((provider) => !provider.isAuthorityFor(ids)),
+    ];
   }
 
   public getOrderedProviderKeys(): string[] {
@@ -279,7 +292,7 @@ export class MetadataService {
       id: number,
     ) => Promise<T | undefined>,
   ): Promise<{ result: T; provider: string; id: number } | undefined> {
-    for (const provider of this.getOrderedProviders()) {
+    for (const provider of this.getOrderedProviders(ids)) {
       const id = provider.extractId(ids);
       if (id === undefined) {
         continue;
@@ -574,7 +587,7 @@ export class MetadataService {
     let merged: MetadataDetails | undefined;
     let primaryProviderName: string | undefined;
 
-    for (const provider of this.getOrderedProviders()) {
+    for (const provider of this.getOrderedProviders(ids)) {
       const id = provider.extractId(ids);
       if (id === undefined) {
         continue;
@@ -1120,7 +1133,7 @@ export class MetadataService {
     };
 
     // First pass: consult every provider that already has an ID on the item.
-    for (const provider of this.getOrderedProviders()) {
+    for (const provider of this.getOrderedProviders(ids)) {
       const providerDetails = await evaluate(provider);
       if (providerDetails) return providerDetails;
     }
@@ -1130,7 +1143,7 @@ export class MetadataService {
     // provider that was not on the item can still vouch.
     if (disagreements.length > 0) {
       await this.bridgeMissingProviderIds(ids);
-      for (const provider of this.getOrderedProviders()) {
+      for (const provider of this.getOrderedProviders(ids)) {
         const providerDetails = await evaluate(provider);
         if (providerDetails) return providerDetails;
       }

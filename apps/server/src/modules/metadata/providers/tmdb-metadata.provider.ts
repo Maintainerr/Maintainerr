@@ -34,6 +34,10 @@ export class TmdbMetadataProvider implements IMetadataProvider {
     return Number.isFinite(id) ? id : undefined;
   }
 
+  isAuthorityFor(): boolean {
+    return false;
+  }
+
   extractId(ids: ProviderIds): number | undefined {
     const value = ids[this.idKey];
     return typeof value === 'number' ? value : undefined;

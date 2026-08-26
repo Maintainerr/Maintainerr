@@ -149,6 +149,55 @@ describe('MetadataService', () => {
     expect(tmdbProvider.getPosterUrl).not.toHaveBeenCalled();
   });
 
+  it('lets the provider that owns an item answer ahead of the primary one', async () => {
+    // A league carries a TMDB id from the media server's own match as well as
+    // its Sportarr id. The Sportarr provider is the authority for the league,
+    // so it answers first even with TMDB set as the primary provider, and TMDB
+    // only answers for it when Sportarr has nothing.
+    const { service, providerByKey } = createService({
+      preference: MetadataProviderPreference.TMDB_PRIMARY,
+      providerMocks: [
+        {
+          name: 'TMDB',
+          idKey: 'tmdb',
+          detailsId: 101,
+          posterUrl: 'https://tmdb/poster.jpg',
+        },
+        {
+          name: 'TVDB',
+          idKey: 'tvdb',
+          detailsId: 202,
+          posterUrl: 'https://tvdb/poster.jpg',
+        },
+        {
+          name: 'Sportarr',
+          idKey: 'sportarr',
+          detailsId: 278,
+          posterUrl: 'https://sportarr/poster.jpg',
+          isAuthorityFor: (ids) => ids.sportarr !== undefined,
+        },
+      ],
+    });
+
+    await expect(
+      service.getPosterUrl({ tmdb: 101, sportarr: 278 }, 'tv'),
+    ).resolves.toEqual({
+      url: 'https://sportarr/poster.jpg',
+      provider: 'Sportarr',
+      id: 278,
+    });
+    expect(providerByKey.tmdb.getPosterUrl).not.toHaveBeenCalled();
+
+    providerByKey.sportarr.getPosterUrl.mockResolvedValue(undefined);
+    await expect(
+      service.getPosterUrl({ tmdb: 101, sportarr: 278 }, 'tv'),
+    ).resolves.toMatchObject({ provider: 'TMDB' });
+
+    await expect(
+      service.getPosterUrl({ tmdb: 101 }, 'tv'),
+    ).resolves.toMatchObject({ provider: 'TMDB' });
+  });
+
   // Season 3 of a show, where the season carries provider IDs of its own that
   // must not be used for the lookup (#2649).
   const createSeasonMediaServerMock = () => {

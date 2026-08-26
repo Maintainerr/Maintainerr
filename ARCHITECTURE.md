@@ -162,7 +162,9 @@ Maintainerr integrates with:
   Authentication reuses the configured Jellyfin API key. Emby is not supported
   upstream.
 - TMDB and TVDB for metadata resolution, and the Sportarr metadata API (the
-  configured Sportarr connection, or sportarr.net) for Sportarr leagues.
+  configured Sportarr connections, then sportarr.net) for Sportarr leagues,
+  which answers ahead of the primary provider for a show that carries a
+  Sportarr id.
 - GitHub for release/version checks.
 - The Maintainerr telemetry collector for the anonymous weekly usage report,
   when it is enabled (see the Telemetry section of the README).

@@ -40,6 +40,12 @@ export class SportarrMetadataProvider implements IMetadataProvider {
     return sportarrLeagueNumber(value);
   }
 
+  // A league's artwork and description are Sportarr's own, so a show that
+  // carries a Sportarr id answers here before the primary provider.
+  isAuthorityFor(ids: ProviderIds): boolean {
+    return this.extractId(ids) !== undefined;
+  }
+
   extractId(ids: ProviderIds): number | undefined {
     const own = ids[this.idKey];
     if (typeof own === 'number') {
