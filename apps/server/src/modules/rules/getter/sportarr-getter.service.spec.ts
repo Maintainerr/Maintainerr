@@ -122,6 +122,23 @@ describe('SportarrGetterService', () => {
       added: '2025-12-04T02:29:15.000Z',
     });
 
+    // A show refreshed since the agents stamp their own namespace carries the
+    // native id; it wins over the alias.
+    const nativeResult = await service.get(
+      1,
+      showItem({
+        providerIds: { sportarr: [F1_EXTERNAL_ID], tvdb: ['900000999'] },
+      }),
+      'show',
+      ruleGroup(),
+    );
+
+    expect(nativeResult).toBe(true);
+    expect(mockClient.getLeagueByExternalId).toHaveBeenCalledWith(
+      F1_EXTERNAL_ID,
+      expect.any(Array),
+    );
+
     // An agent-matched item can carry a real TVDB id ahead of the alias.
     const result = await service.get(
       1,

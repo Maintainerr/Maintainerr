@@ -70,6 +70,13 @@ describe('JellyfinMapper', () => {
       expect(result.tvdb).toEqual(['67890']);
     });
 
+    it('should extract the Sportarr id its agent stamps', () => {
+      const result = JellyfinMapper.extractProviderIds({
+        Sportarr: 'lg-000278',
+      });
+      expect(result.sportarr).toEqual(['lg-000278']);
+    });
+
     it('should extract multiple provider ids', () => {
       const providerIds = {
         Imdb: 'tt1234567',
@@ -84,17 +91,17 @@ describe('JellyfinMapper', () => {
 
     it('should handle undefined provider ids', () => {
       const result = JellyfinMapper.extractProviderIds(undefined);
-      expect(result).toEqual({ imdb: [], tmdb: [], tvdb: [] });
+      expect(result).toEqual({ imdb: [], tmdb: [], tvdb: [], sportarr: [] });
     });
 
     it('should handle null provider ids', () => {
       const result = JellyfinMapper.extractProviderIds(null);
-      expect(result).toEqual({ imdb: [], tmdb: [], tvdb: [] });
+      expect(result).toEqual({ imdb: [], tmdb: [], tvdb: [], sportarr: [] });
     });
 
     it('should handle empty provider ids', () => {
       const result = JellyfinMapper.extractProviderIds({});
-      expect(result).toEqual({ imdb: [], tmdb: [], tvdb: [] });
+      expect(result).toEqual({ imdb: [], tmdb: [], tvdb: [], sportarr: [] });
     });
   });
 
@@ -364,7 +371,12 @@ describe('JellyfinMapper', () => {
         expect(result.id).toBe('minimal123');
         expect(result.title).toBe('Minimal Item');
         expect(result.parentId).toBeUndefined();
-        expect(result.providerIds).toEqual({ imdb: [], tmdb: [], tvdb: [] });
+        expect(result.providerIds).toEqual({
+          imdb: [],
+          tmdb: [],
+          tvdb: [],
+          sportarr: [],
+        });
         expect(result.mediaSources).toEqual([]);
         expect(result.genres).toEqual([]);
       });
