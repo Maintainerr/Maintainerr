@@ -4,7 +4,6 @@ import {
   MetadataProviderPreference,
   SPORTARR_TVDB_ALIAS_LEAGUE_OFFSET,
   SPORTARR_TVDB_ALIAS_RANGE,
-  SportarrMetadataSetting,
   TmdbSetting,
   TvdbSetting,
 } from '@maintainerr/contracts';
@@ -137,21 +136,6 @@ export class MetadataSettingsService {
 
   public async testTvdb(setting?: TvdbSetting): Promise<BasicResponseDto> {
     return this.tvdbApi.testConnection(setting?.api_key);
-  }
-
-  public async updateSportarrMetadataSetting(
-    setting: SportarrMetadataSetting,
-  ): Promise<BasicResponseDto> {
-    try {
-      await this.saveSettings({
-        sportarr_net_fallback: setting.use_sportarr_net,
-      });
-      return { status: 'OK', code: 1, message: 'Success' };
-    } catch (error) {
-      this.logger.error('Error while updating the Sportarr metadata setting');
-      this.logger.debug(error);
-      return { status: 'NOK', code: 0, message: 'Failed' };
-    }
   }
 
   public async updateMetadataProviderPreference(

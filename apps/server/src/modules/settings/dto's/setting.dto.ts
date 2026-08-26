@@ -94,6 +94,4 @@ export class SettingDto {
   sonarr_untag_on_unexclude: boolean;
 
   telemetryEnabled: boolean | null;
-
-  sportarr_net_fallback: boolean;
 }

@@ -223,7 +223,7 @@ describe('database migrations', () => {
       await ds.runMigrations();
       const has = async () =>
         (await columns(ds, 'settings')).some(
-          (c) => c.name === 'sportarr_net_fallback',
+          (c) => c.name === 'telemetryEnabled',
         );
       expect(await has()).toBe(true);
 

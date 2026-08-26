@@ -52,7 +52,6 @@ export const settingsUpdateSchema = z.object({
   tmdb_api_key: z.string().trim().optional(),
   tvdb_api_key: z.string().trim().optional(),
   metadata_provider_preference: z.enum(MetadataProviderPreference).optional(),
-  sportarr_net_fallback: z.boolean().optional(),
 
   tautulli_url: serviceUrlSchema.optional(),
   tautulli_api_key: z.string().trim().optional(),

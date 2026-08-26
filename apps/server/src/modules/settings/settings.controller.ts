@@ -25,8 +25,6 @@ import {
   settingsUpdateSchema,
   SonarrSetting,
   sonarrSettingSchema,
-  SportarrMetadataSetting,
-  sportarrMetadataSettingSchema,
   SportarrSetting,
   sportarrSettingSchema,
   StreamystatsSetting,
@@ -506,25 +504,6 @@ export class SettingsController {
     payload: TvdbSetting,
   ): Promise<BasicResponseDto> {
     return this.metadataSettingsService.testTvdb(payload);
-  }
-
-  @Get('/sportarr-metadata')
-  async getSportarrMetadataSetting(): Promise<
-    SportarrMetadataSetting | BasicResponseDto
-  > {
-    const settings = await this.settingsOperationsService.getSettings();
-    if (!(settings instanceof Settings)) {
-      return settings;
-    }
-    return { use_sportarr_net: settings.sportarr_net_fallback };
-  }
-
-  @Post('/sportarr-metadata')
-  async updateSportarrMetadataSetting(
-    @Body(new ZodValidationPipe(sportarrMetadataSettingSchema))
-    payload: SportarrMetadataSetting,
-  ): Promise<BasicResponseDto> {
-    return this.metadataSettingsService.updateSportarrMetadataSetting(payload);
   }
 
   @Get('/metadata-provider')

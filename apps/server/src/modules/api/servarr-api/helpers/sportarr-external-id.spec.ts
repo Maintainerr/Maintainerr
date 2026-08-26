@@ -1,4 +1,7 @@
-import { SPORTARR_TVDB_ALIAS_LEAGUE_OFFSET } from '@maintainerr/contracts';
+import {
+  isSportarrTvdbAlias,
+  SPORTARR_TVDB_ALIAS_LEAGUE_OFFSET,
+} from '@maintainerr/contracts';
 import {
   sportarrLeagueExternalIdFromProviderIds,
   sportarrLeagueExternalIdFromTvdbAlias,
@@ -17,6 +20,16 @@ describe('sportarrLeagueExternalIdFromTvdbAlias', () => {
   it('keeps ids that grow past six digits unpadded beyond the pad width', () => {
     expect(sportarrLeagueExternalIdFromTvdbAlias(901_234_567)).toBe(
       'lg-1234567',
+    );
+  });
+
+  it('rejects the offset itself, which the shared predicate excludes too', () => {
+    expect(isSportarrTvdbAlias(SPORTARR_TVDB_ALIAS_LEAGUE_OFFSET)).toBe(false);
+    expect(
+      sportarrLeagueExternalIdFromTvdbAlias(SPORTARR_TVDB_ALIAS_LEAGUE_OFFSET),
+    ).toBeNull();
+    expect(isSportarrTvdbAlias(SPORTARR_TVDB_ALIAS_LEAGUE_OFFSET + 1)).toBe(
+      true,
     );
   });
 

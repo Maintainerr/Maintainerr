@@ -1,24 +1,19 @@
 import { Trans, useLingui } from '@lingui/react/macro'
 import { BasicResponseDto } from '@maintainerr/contracts'
 import { useState } from 'react'
-import {
-  useSportarrMetadataSetting,
-  useUpdateSportarrMetadataSetting,
-} from '../../../api/settings'
 import { PostApiHandler } from '../../../utils/ApiHandler'
 import BrandLink from '../../Common/BrandLink'
 import Button from '../../Common/Button'
 import { type SettingsFeedback } from '../useSettingsFeedback'
 
-// The visible link text rides through the messages as a placeholder, so a
+// The visible link text rides through the message as a placeholder, so a
 // translation cannot show a different domain than the href opens.
 const sportarrDomain = 'sportarr.net'
 
 /**
  * Sportarr league artwork has no key to configure and cannot be the primary
- * provider (it answers only for its own ids), so this card carries just the
- * refresh action and the one choice a user has: whether sportarr.net may be
- * read for a league none of the Sportarr connections tracks.
+ * provider (it answers only for its own ids), so this card carries the
+ * refresh action and says where the artwork comes from.
  */
 function SportarrSection({
   onFeedback,
@@ -27,30 +22,6 @@ function SportarrSection({
 }) {
   const { t } = useLingui()
   const [refreshing, setRefreshing] = useState(false)
-  const { data: setting, isLoading, isError } = useSportarrMetadataSetting()
-  const { mutateAsync: saveSetting, isPending: saving } =
-    useUpdateSportarrMetadataSetting()
-  const useSportarrNet = setting?.use_sportarr_net ?? true
-
-  const toggleSportarrNet = async () => {
-    onFeedback(null)
-    try {
-      const response = await saveSetting({ use_sportarr_net: !useSportarrNet })
-      if (response.code === 1) {
-        onFeedback({ type: 'success', title: t`Sportarr settings updated` })
-      } else {
-        onFeedback({
-          type: 'error',
-          title: t`Sportarr settings could not be updated`,
-        })
-      }
-    } catch {
-      onFeedback({
-        type: 'error',
-        title: t`Sportarr settings could not be updated`,
-      })
-    }
-  }
 
   const performRefresh = async () => {
     if (refreshing) return
@@ -62,10 +33,10 @@ function SportarrSection({
     )
       .then((response) => {
         onFeedback({
-          type: response.code === 1 ? 'success' : 'error',
+          type: response?.code === 1 ? 'success' : 'error',
           title:
-            response.message ??
-            (response.code === 1
+            response?.message ??
+            (response?.code === 1
               ? t`Sportarr metadata refresh started`
               : t`Failed to refresh Sportarr metadata`),
         })
@@ -76,9 +47,7 @@ function SportarrSection({
           title: t`Failed to refresh Sportarr metadata`,
         })
       })
-      .finally(() => {
-        setRefreshing(false)
-      })
+      .finally(() => setRefreshing(false))
   }
 
   return (
@@ -93,7 +62,7 @@ function SportarrSection({
             buttonSize="sm"
             type="button"
             onClick={() => void performRefresh()}
-            disabled={refreshing || isLoading || isError}
+            disabled={refreshing}
           >
             <span className="font-semibold">
               {refreshing ? t`Refreshing...` : t`Refresh metadata`}
@@ -105,45 +74,13 @@ function SportarrSection({
         <div className="text-xs leading-5 text-zinc-400">
           <Trans>
             Posters, backdrops and descriptions for Sportarr leagues. No key is
-            needed. They are read from your Sportarr connections first.
+            needed. They are read from your Sportarr connections first, and from{' '}
+            <BrandLink external href="https://sportarr.net">
+              {sportarrDomain}
+            </BrandLink>{' '}
+            for a league none of them tracks. Set the SPORTARR_NET environment
+            variable to off to stop the {sportarrDomain} read.
           </Trans>
-        </div>
-        <div className="mt-4 flex items-center justify-between gap-4">
-          <label
-            htmlFor="sportarr-use-sportarr-net"
-            className="text-sm font-medium text-zinc-300"
-          >
-            <Trans>
-              Read from{' '}
-              <BrandLink external href="https://sportarr.net">
-                {sportarrDomain}
-              </BrandLink>{' '}
-              for a league your Sportarr connections do not track
-            </Trans>
-          </label>
-          <button
-            id="sportarr-use-sportarr-net"
-            type="button"
-            role="switch"
-            aria-checked={useSportarrNet}
-            aria-disabled={isLoading || isError || saving}
-            disabled={isLoading || isError || saving}
-            onClick={() => void toggleSportarrNet()}
-            className={[
-              'relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors duration-200',
-              useSportarrNet ? 'bg-maintainerr-600' : 'bg-zinc-600',
-              isLoading || isError || saving
-                ? 'cursor-not-allowed'
-                : 'cursor-pointer',
-            ].join(' ')}
-          >
-            <span
-              className={[
-                'inline-block h-4 w-4 transform rounded-full bg-white transition duration-200',
-                useSportarrNet ? 'translate-x-6' : 'translate-x-1',
-              ].join(' ')}
-            />
-          </button>
         </div>
       </div>
     </div>

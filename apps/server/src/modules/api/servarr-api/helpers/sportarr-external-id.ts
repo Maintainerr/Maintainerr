@@ -60,9 +60,9 @@ export function sportarrLeagueExternalIdFromTvdbAlias(
     return null;
   }
 
-  // The offset itself is the bottom of the window, not league 0.
-  const n = tvdbAlias - SPORTARR_TVDB_ALIAS_LEAGUE_OFFSET;
-  return n > 0 ? leagueExternalIdFromNumber(n) : null;
+  return leagueExternalIdFromNumber(
+    tvdbAlias - SPORTARR_TVDB_ALIAS_LEAGUE_OFFSET,
+  );
 }
 
 // Resolve the league from everything a media-server item carries. The native

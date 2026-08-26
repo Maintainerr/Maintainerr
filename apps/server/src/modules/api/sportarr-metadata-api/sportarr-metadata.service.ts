@@ -89,7 +89,7 @@ export class SportarrMetadataApiService extends ExternalApiService {
 
   /**
    * Where to look, in order: every configured Sportarr connection, then
-   * sportarr.net unless the user turned it off.
+   * sportarr.net unless SPORTARR_NET=off in the environment.
    */
   private async sources(): Promise<string[]> {
     const configured = await this.settings.getSportarrSettings();
@@ -101,7 +101,7 @@ export class SportarrMetadataApiService extends ExternalApiService {
           .map((url) => `${stripTrailingSlashes(url)}${METADATA_PATH}`)
       : [];
     const sources = new Set(connections);
-    if (this.settings.sportarr_net_fallback) {
+    if (process.env.SPORTARR_NET !== 'off') {
       sources.add(`${SPORTARR_NET_URL}${METADATA_PATH}`);
     }
     return [...sources];

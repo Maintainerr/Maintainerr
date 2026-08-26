@@ -16,6 +16,10 @@ describe('SportarrMetadataApiService', () => {
   const bodies = new Map<string, unknown>();
   const answer = (url: string, body: unknown) => bodies.set(url, body);
 
+  afterEach(() => {
+    delete process.env.SPORTARR_NET;
+  });
+
   beforeEach(async () => {
     // The service reads through the shared cache, so a league one test
     // fetched would answer the next test from memory.
@@ -27,7 +31,6 @@ describe('SportarrMetadataApiService', () => {
     ).compile();
     service = unit;
     settings = unitRef.get(SettingsDataService);
-    settings.sportarr_net_fallback = true;
     settings.getSportarrSettings.mockResolvedValue([]);
 
     get = jest.fn(async (url: string) => {
@@ -120,7 +123,7 @@ describe('SportarrMetadataApiService', () => {
 
   it('stops at the connection when sportarr.net is turned off', async () => {
     withConnections('http://sportarr.local:1867');
-    settings.sportarr_net_fallback = false;
+    process.env.SPORTARR_NET = 'off';
     answer(`${CONNECTION}/agents/series/lg-000278`, {
       error: 'Series not found',
     });
@@ -132,7 +135,7 @@ describe('SportarrMetadataApiService', () => {
   });
 
   it('makes no request with no connection and sportarr.net turned off', async () => {
-    settings.sportarr_net_fallback = false;
+    process.env.SPORTARR_NET = 'off';
 
     await expect(service.hasSource()).resolves.toBe(false);
     await expect(service.getLeague('lg-000278')).resolves.toBeUndefined();
@@ -141,7 +144,7 @@ describe('SportarrMetadataApiService', () => {
 
   it('has a source with a connection alone', async () => {
     withConnections('http://sportarr.local:1867');
-    settings.sportarr_net_fallback = false;
+    process.env.SPORTARR_NET = 'off';
 
     await expect(service.hasSource()).resolves.toBe(true);
   });

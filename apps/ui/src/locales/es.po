@@ -2974,7 +2974,7 @@ msgid "Poster Templates"
 msgstr "Plantillas de carteles"
 
 #: src/components/Settings/Metadata/SportarrSection.tsx
-msgid "Posters, backdrops and descriptions for Sportarr leagues. No key is needed. They are read from your Sportarr connections first."
+msgid "Posters, backdrops and descriptions for Sportarr leagues. No key is needed. They are read from your Sportarr connections first, and from <0>{sportarrDomain}</0> for a league none of them tracks. Set the SPORTARR_NET environment variable to off to stop the {sportarrDomain} read."
 msgstr ""
 
 #: src/components/Collection/CollectionDetail/PostponeButton/index.tsx
@@ -3091,10 +3091,6 @@ msgstr "Calificación ascendente"
 #: src/components/Common/MediaLibrarySortControl.tsx
 msgid "Rating Descending"
 msgstr "Calificación descendente"
-
-#: src/components/Settings/Metadata/SportarrSection.tsx
-msgid "Read from <0>{sportarrDomain}</0> for a league your Sportarr connections do not track"
-msgstr ""
 
 #: src/components/Common/MediaLibrarySortControl.tsx
 msgid "Recently Added"
@@ -3709,14 +3705,6 @@ msgstr "Configuración de Sportarr"
 #: src/components/Settings/Sportarr/index.tsx
 msgid "Sportarr settings - Maintainerr"
 msgstr "Configuración de Sportarr - Maintainerr"
-
-#: src/components/Settings/Metadata/SportarrSection.tsx
-msgid "Sportarr settings could not be updated"
-msgstr ""
-
-#: src/components/Settings/Metadata/SportarrSection.tsx
-msgid "Sportarr settings updated"
-msgstr ""
 
 #: src/utils/ApiError.ts
 msgid "SSL/TLS handshake failed. Verify the URL protocol (http vs https) and SSL configuration."

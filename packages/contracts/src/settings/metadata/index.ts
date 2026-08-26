@@ -1,5 +1,4 @@
 export * from './metadataProviderPreference'
 export * from './metadataProviderSetting'
-export * from './sportarrMetadataSetting'
 export * from './tmdbSetting'
 export * from './tvdbSetting'

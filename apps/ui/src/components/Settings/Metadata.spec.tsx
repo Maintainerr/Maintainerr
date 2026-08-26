@@ -8,7 +8,6 @@ const getApiHandler = vi.fn()
 const deleteApiHandler = vi.fn()
 const postApiHandler = vi.fn()
 const mutateAsync = vi.fn()
-const sportarrMutateAsync = vi.fn()
 
 let currentPreference = MetadataProviderPreference.TMDB_PRIMARY
 let preferenceLoading = false
@@ -22,15 +21,6 @@ vi.mock('../../api/settings', () => ({
   useUpdateMetadataProviderPreference: () => ({
     mutateAsync,
     isPending: preferenceSaving,
-  }),
-  useSportarrMetadataSetting: () => ({
-    data: { use_sportarr_net: true },
-    isLoading: false,
-    isError: false,
-  }),
-  useUpdateSportarrMetadataSetting: () => ({
-    mutateAsync: sportarrMutateAsync,
-    isPending: false,
   }),
 }))
 

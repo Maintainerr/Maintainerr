@@ -22,7 +22,7 @@ export function isSportarrTvdbAlias(
   return (
     tvdbId != null &&
     Number.isInteger(tvdbId) &&
-    tvdbId >= SPORTARR_TVDB_ALIAS_LEAGUE_OFFSET &&
+    tvdbId > SPORTARR_TVDB_ALIAS_LEAGUE_OFFSET &&
     tvdbId < SPORTARR_TVDB_ALIAS_LEAGUE_OFFSET + SPORTARR_TVDB_ALIAS_RANGE
   )
 }
@@ -73,7 +73,5 @@ export function sportarrLeagueNumberFromTvdbAlias(
   if (!isSportarrTvdbAlias(tvdbId)) {
     return undefined
   }
-  // The offset itself is the bottom of the window, not league 0.
-  const n = tvdbId - SPORTARR_TVDB_ALIAS_LEAGUE_OFFSET
-  return n > 0 ? n : undefined
+  return tvdbId - SPORTARR_TVDB_ALIAS_LEAGUE_OFFSET
 }
