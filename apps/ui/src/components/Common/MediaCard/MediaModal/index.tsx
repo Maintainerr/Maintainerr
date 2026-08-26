@@ -18,6 +18,7 @@ import { logClientError } from '../../../../utils/ClientLogger'
 import {
   buildMetadataPath,
   buildProviderUrl,
+  displayProviderId,
   mediaTypeLabel,
 } from '../../../../utils/mediaTypeUtils'
 import Button from '../../Button'
@@ -103,6 +104,8 @@ const metadataProviderLogos: Record<
     logo: string
     alt: string
     providerIdKey: keyof MediaProviderIds
+    // A square mark rather than a wordmark, so it keeps its own footprint.
+    square?: boolean
   }
 > = {
   TMDB: {
@@ -114,6 +117,12 @@ const metadataProviderLogos: Record<
     logo: `${basePath}/icons_logos/tvdb_logo.svg`,
     alt: 'TheTVDB Logo',
     providerIdKey: 'tvdb',
+  },
+  Sportarr: {
+    logo: `${basePath}/icons_logos/sportarr_logo.svg`,
+    alt: 'Sportarr Logo',
+    providerIdKey: 'sportarr',
+    square: true,
   },
 }
 
@@ -131,7 +140,7 @@ const ProviderIdBadge = ({
 }) => {
   const { t } = useLingui()
   const href = buildProviderUrl(provider, providerId, mediaType)
-  const label = `${provider}://${providerId}`
+  const label = `${provider}://${displayProviderId(provider, providerId)}`
 
   if (!href) {
     return <span className={providerBadgeClassName}>{label}</span>
@@ -561,11 +570,18 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
       isCurrentBackdrop && backdropResult.provider
         ? metadataProviderLogos[backdropResult.provider]?.providerIdKey
         : undefined
+    // The metadata layer answers with the league number where the media
+    // server carries the canonical id, so compare what they both read as.
     const showBackdropProviderBadge =
       !!backdropProviderKey &&
       backdropResult.providerId != null &&
-      !providerIds?.[backdropProviderKey]?.includes(
-        String(backdropResult.providerId),
+      !providerIds?.[backdropProviderKey]?.some(
+        (id) =>
+          displayProviderId(backdropProviderKey, id) ===
+          displayProviderId(
+            backdropProviderKey,
+            String(backdropResult.providerId),
+          ),
       )
     // The Sportarr alias in the tvdb namespace only exists for tools that
     // cannot read the sportarr id. A person gets the real one.
@@ -671,14 +687,16 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
                         href={providerLogo.href}
                         target="_blank"
                         rel="noreferrer"
-                        className="block h-full w-full"
+                        className="block h-full"
                       >
                         <img
                           src={providerLogo.logo}
                           alt={providerLogo.alt}
-                          width={128}
+                          width={providerLogo.square ? 32 : 128}
                           height={32}
-                          className="h-8 w-32 rounded-lg bg-black/70 p-2 shadow-lg"
+                          className={`h-8 rounded-lg bg-black/70 shadow-lg ${
+                            providerLogo.square ? 'w-8 p-1' : 'w-32 p-2'
+                          }`}
                         />
                       </a>
                     )}

@@ -198,6 +198,40 @@ describe('MetadataService', () => {
     ).resolves.toMatchObject({ provider: 'TMDB' });
   });
 
+  it('does not warn when a provider that dates nothing returns no year', async () => {
+    // Sportarr dates events rather than leagues, so a league accepted without
+    // a year check is how the provider works, not a gap worth a warning per
+    // league per resolution.
+    const libraryItem = createMediaItem({
+      id: 'league-1',
+      type: 'show',
+      year: 2019,
+      title: 'Sample League',
+      providerIds: { sportarr: ['278'] },
+    });
+    const { service, logger } = createService({
+      providerMocks: [
+        {
+          name: 'Sportarr',
+          idKey: 'sportarr',
+          hasReleaseYears: false,
+          detailsId: 278,
+          details: { title: 'Sample League', type: 'tv' },
+        },
+      ],
+    });
+
+    await expect(
+      service.resolveIdsFromMediaItem(libraryItem),
+    ).resolves.toMatchObject({ sportarr: 278 });
+    expect(logger.warn).not.toHaveBeenCalledWith(
+      expect.stringContaining('without a year check'),
+    );
+    expect(logger.debug).toHaveBeenCalledWith(
+      expect.stringContaining('without a year check'),
+    );
+  });
+
   // Season 3 of a show, where the season carries provider IDs of its own that
   // must not be used for the lookup (#2649).
   const createSeasonMediaServerMock = () => {

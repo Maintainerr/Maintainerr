@@ -13,6 +13,13 @@ export interface IMetadataProvider {
   readonly name: string;
   readonly idKey: string;
 
+  /**
+   * Whether this provider dates its entries. False says a missing year is how
+   * the provider works rather than a gap in its data, so a resolution that
+   * accepts an id without a year check is not worth a warning.
+   */
+  readonly hasReleaseYears: boolean;
+
   isAvailable(): boolean;
 
   extractId(ids: ProviderIds): number | undefined;

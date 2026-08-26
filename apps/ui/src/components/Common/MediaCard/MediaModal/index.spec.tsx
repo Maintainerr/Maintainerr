@@ -259,6 +259,56 @@ describe('MediaModal', () => {
     expect(screen.queryByText('tvdb://900000278')).toBeNull()
   })
 
+  it('names the league when the backdrop provider answers with its number', async () => {
+    // The metadata layer keys a league by its number alone, so the badge and
+    // the logo link both have to read it back as the canonical league id.
+    getApiHandlerMock.mockImplementation((path: string) => {
+      if (path === '/media-server' || path === '/settings') {
+        return Promise.resolve({})
+      }
+
+      if (path === '/media-server/meta/4') {
+        return Promise.resolve({
+          providerIds: { sportarr: ['lg-000278'] },
+        } as MediaItem)
+      }
+
+      if (path.startsWith('/metadata/backdrop/show?')) {
+        return Promise.resolve({
+          url: 'https://image.example/league.jpg',
+          provider: 'Sportarr',
+          id: 278,
+        })
+      }
+
+      if (path === '/streamystats/info') {
+        return Promise.reject(new Error('404 Streamystats not configured'))
+      }
+
+      throw new Error(`Unexpected request: ${path}`)
+    })
+
+    render(
+      <MediaModal
+        onClose={() => {}}
+        id={4}
+        mediaType="show"
+        title="League"
+        summary="League summary"
+        providerIds={{ sportarr: ['lg-000278'] }}
+      />,
+    )
+
+    const logo = await screen.findByRole('img', { name: 'Sportarr Logo' })
+    expect(logo.closest('a')?.getAttribute('href')).toBe(
+      'https://sportarr.net/browse/leagues/lg-000278',
+    )
+    // The league number is the same id the media server already carries, so it
+    // does not earn a badge of its own.
+    expect(screen.queryByText('sportarr://278')).toBeNull()
+    expect(screen.getAllByText('sportarr://lg-000278')).toHaveLength(1)
+  })
+
   it('shows maintainerr status for manually added items', async () => {
     getApiHandlerMock.mockImplementation((path: string) => {
       if (path === '/media-server') {

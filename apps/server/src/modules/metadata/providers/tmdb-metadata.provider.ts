@@ -22,6 +22,7 @@ const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p';
 export class TmdbMetadataProvider implements IMetadataProvider {
   readonly name = 'TMDB';
   readonly idKey = 'tmdb';
+  readonly hasReleaseYears = true;
 
   constructor(private readonly tmdbApi: TmdbApiService) {}
 

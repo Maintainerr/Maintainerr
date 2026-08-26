@@ -37,14 +37,14 @@ function SportarrSection({
           title:
             response?.message ??
             (response?.code === 1
-              ? t`Sportarr metadata refresh started`
-              : t`Failed to refresh Sportarr metadata`),
+              ? t`${{ providerTitle: 'Sportarr' }} metadata refresh started`
+              : t`Failed to refresh ${{ providerTitle: 'Sportarr' }} metadata`),
         })
       })
       .catch(() => {
         onFeedback({
           type: 'error',
-          title: t`Failed to refresh Sportarr metadata`,
+          title: t`Failed to refresh ${{ providerTitle: 'Sportarr' }} metadata`,
         })
       })
       .finally(() => setRefreshing(false))

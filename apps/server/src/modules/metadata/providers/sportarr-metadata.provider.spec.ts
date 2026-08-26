@@ -22,6 +22,14 @@ describe('SportarrMetadataProvider', () => {
     fanart_url: null,
   };
 
+  it('stands down when the api has nowhere left to read', () => {
+    api.hasReachableSource.mockReturnValue(false);
+    expect(provider.isAvailable()).toBe(false);
+
+    api.hasReachableSource.mockReturnValue(true);
+    expect(provider.isAvailable()).toBe(true);
+  });
+
   describe('ids', () => {
     it('is the authority for an item that carries a Sportarr id', () => {
       expect(provider.isAuthorityFor({ sportarr: 'lg-000278' })).toBe(true);

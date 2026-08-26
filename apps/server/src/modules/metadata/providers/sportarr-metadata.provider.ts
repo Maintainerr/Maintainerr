@@ -29,11 +29,16 @@ import {
 export class SportarrMetadataProvider implements IMetadataProvider {
   readonly name = 'Sportarr';
   readonly idKey = 'sportarr';
+  // A league runs every year, so Sportarr dates events rather than leagues.
+  readonly hasReleaseYears = false;
 
   constructor(private readonly api: SportarrMetadataApiService) {}
 
+  // Nothing to read from means the ids this provider claims, the alias
+  // included, cannot be answered, and a claim it cannot answer would fail the
+  // whole resolution rather than only its own part of it.
   isAvailable(): boolean {
-    return true;
+    return this.api.hasReachableSource();
   }
 
   parseId(value: string): number | undefined {

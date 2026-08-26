@@ -1,7 +1,10 @@
 import { Mocked, TestBed } from '@suites/unit';
 import { SettingsDataService } from '../../settings/settings-data.service';
 import cacheManager from '../lib/cache';
-import { SportarrMetadataApiService } from './sportarr-metadata.service';
+import {
+  sportarrMetadataRetryPolicy,
+  SportarrMetadataApiService,
+} from './sportarr-metadata.service';
 
 const SPORTARR_NET = 'https://sportarr.net/api/metadata';
 const CONNECTION = 'http://sportarr.local:1867/api/metadata';
@@ -142,10 +145,92 @@ describe('SportarrMetadataApiService', () => {
     expect(get).not.toHaveBeenCalled();
   });
 
+  it('stops asking a source that answered nothing at all', async () => {
+    // A source that is down answers every league the same way, so a page of
+    // cards would otherwise pay its connect timeout once per card.
+    withConnections('http://sportarr.local:1867');
+    answer(`${SPORTARR_NET}/agents/series/lg-000278`, {
+      title: 'Sample League',
+    });
+
+    await expect(service.getLeague('lg-000278')).resolves.toEqual({
+      title: 'Sample League',
+    });
+    await expect(service.getLeague('lg-000999')).resolves.toBeUndefined();
+
+    const asked = get.mock.calls
+      .map(([url]) => url)
+      .filter((url: string) => url.startsWith(CONNECTION));
+    expect(asked).toEqual([`${CONNECTION}/agents/series/lg-000278`]);
+  });
+
+  it('stands down once every source it knows is unreachable', async () => {
+    // The provider claims the tvdb alias too, so a claim it cannot answer
+    // would fail a resolution that TVDB could still have finished.
+    withConnections('http://sportarr.local:1867');
+    process.env.SPORTARR_NET = 'off';
+    answer(`${CONNECTION}/agents/series/lg-000278`, {
+      title: 'Sample League',
+    });
+
+    await expect(service.getLeague('lg-000278')).resolves.toEqual({
+      title: 'Sample League',
+    });
+    expect(service.hasReachableSource()).toBe(true);
+
+    await expect(service.getLeague('lg-000999')).resolves.toBeUndefined();
+    await expect(service.getLeague('lg-000777')).resolves.toBeUndefined();
+    expect(service.hasReachableSource()).toBe(false);
+    // Still configured, which is what the connection test asks about.
+    await expect(service.hasSource()).resolves.toBe(true);
+  });
+
   it('has a source with a connection alone', async () => {
     withConnections('http://sportarr.local:1867');
     process.env.SPORTARR_NET = 'off';
 
     await expect(service.hasSource()).resolves.toBe(true);
+  });
+});
+
+describe('sportarrMetadataRetryPolicy', () => {
+  const rateLimited = (retryAfter: string) =>
+    ({
+      config: { method: 'get' },
+      response: {
+        status: 429,
+        headers: { 'retry-after': retryAfter },
+        data: {},
+      },
+    }) as unknown as Parameters<
+      typeof sportarrMetadataRetryPolicy.retryCondition
+    >[0];
+
+  it('waits exactly as long as a 429 asks for', () => {
+    const error = rateLimited('5');
+
+    expect(sportarrMetadataRetryPolicy.retryCondition(error)).toBe(true);
+    expect(sportarrMetadataRetryPolicy.retryDelay(0, error)).toBe(5000);
+  });
+
+  it('gives up on a 429 that asks for longer than the cap allows', () => {
+    // Retrying would hold a poster request open for ten minutes.
+    expect(sportarrMetadataRetryPolicy.retryCondition(rateLimited('600'))).toBe(
+      false,
+    );
+  });
+
+  it('keeps the standard policy for everything else', () => {
+    const serverError = {
+      config: { method: 'get' },
+      response: { status: 503, headers: {}, data: {} },
+    } as unknown as Parameters<
+      typeof sportarrMetadataRetryPolicy.retryCondition
+    >[0];
+
+    expect(sportarrMetadataRetryPolicy.retryCondition(serverError)).toBe(true);
+    expect(
+      sportarrMetadataRetryPolicy.retryDelay(1, serverError),
+    ).toBeGreaterThan(0);
   });
 });

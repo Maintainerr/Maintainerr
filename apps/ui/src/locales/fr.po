@@ -236,6 +236,7 @@ msgid "{path} (saved selection)"
 msgstr ""
 
 #: src/components/Settings/Metadata/index.tsx
+#: src/components/Settings/Metadata/SportarrSection.tsx
 msgid "{providerTitle} metadata refresh started"
 msgstr ""
 
@@ -1708,11 +1709,8 @@ msgid "Failed to process overlays"
 msgstr ""
 
 #: src/components/Settings/Metadata/index.tsx
-msgid "Failed to refresh {providerTitle} metadata"
-msgstr ""
-
 #: src/components/Settings/Metadata/SportarrSection.tsx
-msgid "Failed to refresh Sportarr metadata"
+msgid "Failed to refresh {providerTitle} metadata"
 msgstr ""
 
 #: src/components/Settings/Servarr/ServarrSettingsModal.tsx
@@ -3688,10 +3686,6 @@ msgstr ""
 
 #: src/components/Settings/Sportarr/index.tsx
 msgid "Sportarr configuration"
-msgstr ""
-
-#: src/components/Settings/Metadata/SportarrSection.tsx
-msgid "Sportarr metadata refresh started"
 msgstr ""
 
 #: src/components/Settings/Sportarr/index.tsx

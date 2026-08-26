@@ -958,7 +958,7 @@ export class MetadataService {
         );
         if (provider) {
           const numericId = provider.parseId(values[0]);
-          if (numericId !== undefined && Number.isFinite(numericId)) {
+          if (Number.isFinite(numericId)) {
             provider.assignId(ids, numericId);
           }
         }
@@ -1086,14 +1086,18 @@ export class MetadataService {
       }
 
       // Missing year on either side: nothing to sanity-check against. We
-      // trust the ID, but log so ambiguous accepts stay visible. Provider
-      // missing year is the suspicious case (TMDB/TVDB almost always have
-      // one) so it's logged at warn; media server missing year is common
-      // in untagged libraries and stays at debug.
+      // trust the ID, but log so ambiguous accepts stay visible. A provider
+      // that dates its entries and still has no year is the suspicious case,
+      // so that one is logged at warn; a provider with no year concept at all
+      // and a media server item with no year are both common and stay at
+      // debug.
       if (providerDetails.year === undefined) {
-        this.logger.warn(
-          `Accepted direct provider IDs for "${item.title}" via ${provider.name} without a year check - ${provider.name} returned no release year for this entry.`,
-        );
+        const message = `Accepted direct provider IDs for "${item.title}" via ${provider.name} without a year check - ${provider.name} returned no release year for this entry.`;
+        if (provider.hasReleaseYears) {
+          this.logger.warn(message);
+        } else {
+          this.logger.debug(message);
+        }
         return providerDetails;
       }
       if (itemYear === undefined) {

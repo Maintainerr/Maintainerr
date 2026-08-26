@@ -236,6 +236,7 @@ msgid "{path} (saved selection)"
 msgstr "{path} (sparat val)"
 
 #: src/components/Settings/Metadata/index.tsx
+#: src/components/Settings/Metadata/SportarrSection.tsx
 msgid "{providerTitle} metadata refresh started"
 msgstr "Uppdatering av metadata från {providerTitle} startad"
 
@@ -1708,12 +1709,9 @@ msgid "Failed to process overlays"
 msgstr "Overlays kunde inte bearbetas"
 
 #: src/components/Settings/Metadata/index.tsx
+#: src/components/Settings/Metadata/SportarrSection.tsx
 msgid "Failed to refresh {providerTitle} metadata"
 msgstr "Metadata från {providerTitle} kunde inte uppdateras"
-
-#: src/components/Settings/Metadata/SportarrSection.tsx
-msgid "Failed to refresh Sportarr metadata"
-msgstr ""
 
 #: src/components/Settings/Servarr/ServarrSettingsModal.tsx
 msgid "Failed to remove {serviceName} settings."
@@ -3689,10 +3687,6 @@ msgstr "Ange reglerna som den här gruppen ska tillämpa"
 #: src/components/Settings/Sportarr/index.tsx
 msgid "Sportarr configuration"
 msgstr "Sportarr-konfiguration"
-
-#: src/components/Settings/Metadata/SportarrSection.tsx
-msgid "Sportarr metadata refresh started"
-msgstr ""
 
 #: src/components/Settings/Sportarr/index.tsx
 msgid "Sportarr server removed"

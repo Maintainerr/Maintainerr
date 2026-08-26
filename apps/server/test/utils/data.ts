@@ -669,6 +669,7 @@ export interface MetadataProviderMockConfig {
   name: string;
   idKey: string;
   isAvailable?: boolean;
+  hasReleaseYears?: boolean;
   details?: MetadataDetailsFixture;
   detailsId?: number;
   posterUrl?: string;
@@ -712,6 +713,7 @@ export const createMetadataProviderMock = ({
   name,
   idKey,
   isAvailable = true,
+  hasReleaseYears = true,
   details,
   detailsId,
   posterUrl,
@@ -731,6 +733,7 @@ export const createMetadataProviderMock = ({
   return {
     name,
     idKey,
+    hasReleaseYears,
     isAvailable: jest.fn(() => isAvailable),
     extractId: jest.fn((ids) =>
       typeof ids[idKey] === 'number' ? (ids[idKey] as number) : undefined,

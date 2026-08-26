@@ -1,5 +1,6 @@
 import { stripTrailingSlashes } from '@maintainerr/contracts';
-import { Injectable } from '@nestjs/common';
+import { Injectable, OnModuleInit } from '@nestjs/common';
+import type { AxiosError } from 'axios';
 import axiosRetry from 'axios-retry';
 import { MaintainerrLogger } from '../../logging/logs.service';
 import { SettingsDataService } from '../../settings/settings-data.service';
@@ -20,35 +21,64 @@ const METADATA_PATH = '/api/metadata';
 // caller omits one, which would override the cache's stdTtl.
 const CACHE_TTL_SECONDS = 21600;
 
+// One page of cards walks the sources many times over, and the connection
+// list lives in SQLite. Short, so a connection someone just added answers the
+// next card rather than the next page.
+const SOURCE_LIST_TTL_MS = 5000;
+
+// How long a source that answered nothing at all is left alone. Without it
+// every card pays the connect timeout again, so one unreachable source costs
+// seconds per league on every page load.
+const SOURCE_FAILURE_COOLDOWN_MS = 60000;
+
 type LeagueAnswer = SportarrMetadataLeague & { error?: string };
+
+// The standard policy, except for the 429 Sportarr's rate limiter declares:
+// wait exactly as long as it asks, and give up instead when it asks for
+// longer than isRetryableRateLimit allows. The standard condition retries
+// every 429 on a GET, so it can never apply that cap itself.
+export const sportarrMetadataRetryPolicy = {
+  retryCondition: (error: AxiosError): boolean =>
+    error.response?.status === 429
+      ? isRetryableRateLimit(error)
+      : axiosRetry.isNetworkOrIdempotentRequestError(error),
+  retryDelay: (retryCount: number, error: AxiosError): number =>
+    rateLimitWaitMs(error) || axiosRetry.exponentialDelay(retryCount, error),
+};
 
 // Sportarr's metadata agent API, keyed by the league id the Sportarr media
 // server agents stamp on a show. A Sportarr instance serves the same routes as
 // sportarr.net, but only for the leagues it tracks, so a league is read from
 // the first configured connection that knows it, and from sportarr.net
-// otherwise while the setting allows.
+// otherwise unless the environment turns that off.
 @Injectable()
-export class SportarrMetadataApiService extends ExternalApiService {
+export class SportarrMetadataApiService
+  extends ExternalApiService
+  implements OnModuleInit
+{
+  private configuredSources?: { sources: string[]; readAt: number };
+  private readonly unreachableUntil = new Map<string, number>();
+  private reachableSourceCount = 0;
+
   constructor(
     private readonly settings: SettingsDataService,
     protected readonly logger: MaintainerrLogger,
   ) {
     logger.setContext(SportarrMetadataApiService.name);
     // Every read passes an absolute URL, so each source caches under its own
-    // host and one never serves another's answer for the same path.
-    super('', {}, logger, {
+    // host and one never serves another's answer for the same path. The base
+    // only applies if a relative read is ever added.
+    super(`${SPORTARR_NET_URL}${METADATA_PATH}`, {}, logger, {
       nodeCache: cacheManager.getCache('sportarrmetadata').data,
-      // The standard transient policy, plus a wait for the 429 Sportarr's
-      // rate limiter declares.
-      retry: {
-        retryCondition: (error) =>
-          axiosRetry.isNetworkOrIdempotentRequestError(error) ||
-          isRetryableRateLimit(error),
-        retryDelay: (retryCount, error) =>
-          rateLimitWaitMs(error) ||
-          axiosRetry.exponentialDelay(retryCount, error),
-      },
+      retry: sportarrMetadataRetryPolicy,
     });
+  }
+
+  // The provider's isAvailable() is synchronous and the connections live in
+  // the database, so it reads an answer this keeps current. Seed it here, or
+  // the first lookup after a restart sees a provider with nowhere to read.
+  async onModuleInit(): Promise<void> {
+    await this.sources();
   }
 
   async getLeague(
@@ -82,16 +112,45 @@ export class SportarrMetadataApiService extends ExternalApiService {
     return response?.episodes ?? [];
   }
 
-  /** True when at least one place can be read: a connection, or sportarr.net while allowed. */
+  /**
+   * Whether anything is configured to read from, asked of the database rather
+   * than of what the last lookup saw.
+   */
   async hasSource(): Promise<boolean> {
-    return (await this.sources()).length > 0;
+    return (await this.readConfiguredSources()).length > 0;
   }
 
   /**
-   * Where to look, in order: every configured Sportarr connection, then
+   * Whether the last walk had anywhere left to read, for the provider's
+   * synchronous isAvailable(). A provider with nowhere to go has to stand
+   * down: it claims the alias ids too, and a claim it cannot answer fails the
+   * whole resolution, taking ids other providers could still resolve with it.
+   */
+  hasReachableSource(): boolean {
+    return this.reachableSourceCount > 0;
+  }
+
+  /** Every source worth asking right now, in order. */
+  private async sources(): Promise<string[]> {
+    const cached = this.configuredSources;
+    const configured =
+      cached && Date.now() - cached.readAt < SOURCE_LIST_TTL_MS
+        ? cached.sources
+        : await this.readConfiguredSources();
+
+    const now = Date.now();
+    const reachable = configured.filter(
+      (source) => (this.unreachableUntil.get(source) ?? 0) <= now,
+    );
+    this.reachableSourceCount = reachable.length;
+    return reachable;
+  }
+
+  /**
+   * The configured places, in order: every Sportarr connection, then
    * sportarr.net unless SPORTARR_NET=off in the environment.
    */
-  private async sources(): Promise<string[]> {
+  private async readConfiguredSources(): Promise<string[]> {
     const configured = await this.settings.getSportarrSettings();
     // A failed settings read answers a status object rather than throwing.
     const connections = Array.isArray(configured)
@@ -104,7 +163,9 @@ export class SportarrMetadataApiService extends ExternalApiService {
     if (process.env.SPORTARR_NET !== 'off') {
       sources.add(`${SPORTARR_NET_URL}${METADATA_PATH}`);
     }
-    return [...sources];
+
+    this.configuredSources = { sources: [...sources], readAt: Date.now() };
+    return this.configuredSources.sources;
   }
 
   /**
@@ -122,11 +183,23 @@ export class SportarrMetadataApiService extends ExternalApiService {
       const league = await this.read<LeagueAnswer>(
         this.seriesUrl(base, leagueId),
       );
-      // Both sources answer 200 with an error field for a league they lack.
-      if (league && !league.error) {
+
+      if (league === undefined) {
+        // Nothing came back at all, so the source is down rather than short of
+        // this one league.
+        this.unreachableUntil.set(
+          base,
+          Date.now() + SOURCE_FAILURE_COOLDOWN_MS,
+        );
+        continue;
+      }
+
+      // A source answers 200 with an error field for a league it lacks.
+      if (!league.error) {
         return { base, league };
       }
     }
+
     return undefined;
   }
 
