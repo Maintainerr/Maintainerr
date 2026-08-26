@@ -1,9 +1,9 @@
+import { isSportarrTvdbAlias } from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
 import {
   TvdbMovieBase,
   TvdbSeriesBase,
 } from '../../api/tvdb-api/interfaces/tvdb.interface';
-import { sportarrLeagueNumberFromTvdbAlias } from '../../api/servarr-api/helpers/sportarr-external-id';
 import { TvdbApiService } from '../../api/tvdb-api/tvdb.service';
 import { IMetadataProvider } from '../interfaces/metadata-provider.interface';
 import {
@@ -32,9 +32,7 @@ export class TvdbMetadataProvider implements IMetadataProvider {
     }
     // The Sportarr agents stamp a numeric alias in this namespace that TVDB
     // does not know. Its own provider answers for it.
-    return sportarrLeagueNumberFromTvdbAlias(value) === undefined
-      ? value
-      : undefined;
+    return isSportarrTvdbAlias(value) ? undefined : value;
   }
 
   assignId(ids: ProviderIds, id: number): void {
