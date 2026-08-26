@@ -82,15 +82,6 @@ describe('EmbyMapper', () => {
       });
     });
 
-    it('extracts the Sportarr id its agent stamps', () => {
-      expect(EmbyMapper.extractProviderIds({ Sportarr: 'lg-000278' })).toEqual({
-        imdb: [],
-        tmdb: [],
-        tvdb: [],
-        sportarr: ['lg-000278'],
-      });
-    });
-
     it('handles null', () => {
       expect(EmbyMapper.extractProviderIds(null)).toEqual({
         imdb: [],

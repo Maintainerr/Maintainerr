@@ -1,7 +1,6 @@
 import { t } from '@lingui/core/macro'
 import {
-  SPORTARR_TVDB_ALIAS_LEAGUE_OFFSET,
-  SPORTARR_TVDB_ALIAS_RANGE,
+  isSportarrTvdbAlias,
   type MediaItemType,
   type MediaProviderIds,
 } from '@maintainerr/contracts'
@@ -96,16 +95,6 @@ export function buildMetadataPath(
   return `/metadata/${kind}/${toImageEndpointType(mediaType)}?${params.toString()}`
 }
 
-// Sportarr stamps a numeric alias into the tvdb namespace so tools that only
-// read imdb/tmdb/tvdb can still resolve a league. It is not a TVDB id.
-export function isSportarrTvdbAlias(providerId: string): boolean {
-  const numericId = Number(providerId)
-  return (
-    numericId >= SPORTARR_TVDB_ALIAS_LEAGUE_OFFSET &&
-    numericId < SPORTARR_TVDB_ALIAS_LEAGUE_OFFSET + SPORTARR_TVDB_ALIAS_RANGE
-  )
-}
-
 /**
  * TMDB and TheTVDB split movies from series; TheTVDB goes through its
  * dereferrer, which resolves a numeric id to the right slug. Sportarr stamps
@@ -127,7 +116,7 @@ export function buildProviderUrl(
     case 'imdb':
       return `https://www.imdb.com/title/${id}/`
     case 'tvdb': {
-      if (isSportarrTvdbAlias(providerId)) {
+      if (isSportarrTvdbAlias(Number(providerId))) {
         return undefined
       }
       return `https://thetvdb.com/dereferrer/${isMovie ? 'movie' : 'series'}/${id}`

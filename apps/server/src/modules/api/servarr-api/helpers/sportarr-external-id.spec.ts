@@ -1,40 +1,8 @@
 import { SPORTARR_TVDB_ALIAS_LEAGUE_OFFSET } from '@maintainerr/contracts';
 import {
-  sportarrLeagueExternalIdFromNativeId,
-  sportarrLeagueExternalIdFromNumber,
   sportarrLeagueExternalIdFromProviderIds,
   sportarrLeagueExternalIdFromTvdbAlias,
-  sportarrLeagueNumberFromExternalId,
-  sportarrLeagueNumberFromTvdbAlias,
 } from './sportarr-external-id';
-
-describe('sportarrLeagueExternalIdFromNativeId', () => {
-  it('accepts the league id the Sportarr agents stamp', () => {
-    expect(sportarrLeagueExternalIdFromNativeId('lg-000278')).toBe('lg-000278');
-    expect(sportarrLeagueExternalIdFromNativeId('lg-1234567')).toBe(
-      'lg-1234567',
-    );
-  });
-
-  it('normalises case and surrounding whitespace', () => {
-    expect(sportarrLeagueExternalIdFromNativeId(' LG-000278 ')).toBe(
-      'lg-000278',
-    );
-  });
-
-  it.each([
-    undefined,
-    null,
-    '',
-    'ev-848683', // an event, stamped on episodes, never a league
-    '900000278', // the tvdb alias digits, not a native id
-    'lg-', // no digits
-    'lg-12ab',
-    'league-278',
-  ])('returns null for %s', (value) => {
-    expect(sportarrLeagueExternalIdFromNativeId(value)).toBeNull();
-  });
-});
 
 describe('sportarrLeagueExternalIdFromTvdbAlias', () => {
   it('reverses the frozen offset back to a zero-padded league id', () => {
@@ -92,16 +60,29 @@ describe('sportarrLeagueExternalIdFromProviderIds', () => {
     ).toBe('lg-000278');
   });
 
+  it('canonicalises the stamped id, which is matched against Sportarr by string', () => {
+    expect(
+      sportarrLeagueExternalIdFromProviderIds({ sportarr: [' LG-278 '] }),
+    ).toBe('lg-000278');
+  });
+
   it('falls back to the tvdb alias for a show refreshed before the native id existed', () => {
     expect(
       sportarrLeagueExternalIdFromProviderIds({ tvdb: ['900000278'] }),
     ).toBe('lg-000278');
   });
 
-  it('skips an event id in the sportarr namespace and still reads the alias', () => {
+  it.each([
+    'ev-848683', // an event, stamped on episodes, never a league
+    '900000278', // the tvdb alias digits, not a native id
+    'lg-', // no digits
+    'lg-000000', // league 0 does not exist
+    'lg-12ab',
+    'league-278',
+  ])('ignores %s in the sportarr namespace and reads the alias', (value) => {
     expect(
       sportarrLeagueExternalIdFromProviderIds({
-        sportarr: ['ev-848683'],
+        sportarr: [value],
         tvdb: ['900000278'],
       }),
     ).toBe('lg-000278');
@@ -119,30 +100,11 @@ describe('sportarrLeagueExternalIdFromProviderIds', () => {
   it('returns null when nothing identifies a league', () => {
     expect(
       sportarrLeagueExternalIdFromProviderIds({
+        sportarr: ['ev-848683'],
         tvdb: ['342040', 'not-a-number'],
       }),
     ).toBeNull();
     expect(sportarrLeagueExternalIdFromProviderIds({})).toBeNull();
     expect(sportarrLeagueExternalIdFromProviderIds(undefined)).toBeNull();
-  });
-});
-
-describe('league numbers', () => {
-  it('round-trips a league id and its number', () => {
-    expect(sportarrLeagueNumberFromExternalId('lg-000278')).toBe(278);
-    expect(sportarrLeagueExternalIdFromNumber(278)).toBe('lg-000278');
-    expect(sportarrLeagueExternalIdFromNumber(1234567)).toBe('lg-1234567');
-  });
-
-  it('rejects ids that are not a league', () => {
-    expect(sportarrLeagueNumberFromExternalId('ev-848683')).toBeUndefined();
-    expect(sportarrLeagueNumberFromExternalId('lg-000000')).toBeUndefined();
-    expect(sportarrLeagueNumberFromExternalId(undefined)).toBeUndefined();
-  });
-
-  it('reads the league number out of a tvdb alias', () => {
-    expect(sportarrLeagueNumberFromTvdbAlias(900000278)).toBe(278);
-    expect(sportarrLeagueNumberFromTvdbAlias(342040)).toBeUndefined();
-    expect(sportarrLeagueNumberFromTvdbAlias(1000000000)).toBeUndefined();
   });
 });

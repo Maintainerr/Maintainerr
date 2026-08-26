@@ -42,7 +42,7 @@ const USERS = [
 ];
 
 // --- Items -----------------------------------------------------------------------
-function show(id, name) {
+function show(id, name, providerIds = {}) {
   return {
     Id: id,
     Name: name,
@@ -50,10 +50,24 @@ function show(id, name) {
     ParentId: 'emby-shows',
     ProductionYear: 2020,
     DateCreated: ISO('2026-01-01'),
-    ProviderIds: {},
+    ProviderIds: providerIds,
   };
 }
-const SHOWS = [show('emby-show-1', 'Mock Show Alpha')];
+const SHOWS = [
+  show('emby-show-1', 'Mock Show Alpha'),
+  // Sportarr fixtures, matching fake-sportarr's leagues. One carries the native
+  // id its agents stamp, one only the older tvdb alias, so both resolution paths
+  // are covered. emby-show-1 carries neither, which the getter answers with the
+  // transient signal at debug level - deliberately, so an ordinary show in a
+  // sports library cannot match a NOT_EXISTS rule (#3406).
+  show('emby-show-sportarr-native', 'Mock League Alpha', {
+    Sportarr: 'lg-000001',
+    Tvdb: '900000001',
+  }),
+  show('emby-show-sportarr-alias', 'Mock League Bravo', {
+    Tvdb: '900000042',
+  }),
+];
 
 // The shared manual ("custom name") BoxSet. Server-global, but reported only under
 // libraries whose content it holds - and it holds movies only.
