@@ -18,7 +18,7 @@ import {
   useSwitchMediaServer,
 } from '../../../api/settings'
 import { logClientError } from '../../../utils/ClientLogger'
-import Button from '../../Common/Button'
+import PendingButton from '../../Common/PendingButton'
 import Modal from '../../Common/Modal'
 
 interface MediaServerSelectorProps {
@@ -280,24 +280,30 @@ const MediaServerSelector = ({
       {/* Confirmation Modal */}
       {showConfirmModal && (
         <Modal
-          onCancel={isSwitchComplete ? undefined : handleCancelSwitch}
-          cancelText={isSwitchComplete ? undefined : t`Cancel`}
-          loading={isSwitchPending}
+          // No close while the switch runs: the request cannot be cancelled,
+          // and closing here left the finish step, which reloads settings,
+          // unreachable.
+          onCancel={
+            isSwitchPending
+              ? undefined
+              : isSwitchComplete
+                ? handleFinish
+                : handleCancelSwitch
+          }
+          cancelText={isSwitchComplete ? t`Done` : t`Cancel`}
+          cancelButtonType={isSwitchComplete ? 'primary' : 'default'}
           footerActions={
-            <Button
-              buttonType={isSwitchComplete ? 'primary' : 'danger'}
-              className="ml-3"
-              onClick={() =>
-                void (isSwitchComplete ? handleFinish() : handleConfirmSwitch())
-              }
-              disabled={isSwitchPending && !isSwitchComplete}
-            >
-              {isSwitchComplete
-                ? t`Done`
-                : isSwitchPending
-                  ? t`Switching...`
-                  : t`Switch`}
-            </Button>
+            isSwitchComplete ? undefined : (
+              <PendingButton
+                buttonType="danger"
+                className="ml-3"
+                isPending={isSwitchPending}
+                idleLabel={t`Switch`}
+                pendingLabel={t`Switching...`}
+                disabled={isSwitchPending}
+                onClick={() => void handleConfirmSwitch()}
+              />
+            )
           }
         >
           <div className="text-zinc-100">

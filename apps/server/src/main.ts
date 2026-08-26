@@ -2,6 +2,7 @@ import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { setupGracefulShutdown } from '@tygra/nestjs-graceful-shutdown';
+import compression from 'compression';
 import * as fs from 'fs';
 import { cleanupOpenApiDoc } from 'nestjs-zod';
 import path from 'path';
@@ -24,6 +25,12 @@ async function bootstrap() {
   });
 
   setupGracefulShutdown({ app });
+
+  // The UI bundle is served by this process and monaco alone is several MB, so
+  // without this every asset goes out uncompressed. Registered before the
+  // modules initialise so it also wraps ServeStaticModule. The SSE endpoints
+  // are unaffected: they send Cache-Control: no-transform, which this skips.
+  app.use(compression());
 
   const basePathEnv = process.env.BASE_PATH?.trim();
   if (basePathEnv && basePathEnv !== '/') {

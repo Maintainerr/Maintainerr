@@ -54,11 +54,11 @@ export class SportarrActionHandler {
       mediaData = await mediaServer.getMetadata(media.mediaServerId);
     }
 
-    // Resolve the league from the tvdb alias Sportarr stamps on the Plex item's
-    // guid (present on season/episode members too, via the show). Prefer the id
-    // Maintainerr already stored on the collection member; fall back to the
-    // item's live metadata when it wasn't captured. No fuzzy matching - it is
-    // an exact id lookup.
+    // Resolve the league from the ids Sportarr stamps on the show (its own
+    // sportarr namespace, or the older tvdb alias). Prefer the alias Maintainerr
+    // already stored on the collection member; fall back to the item's live
+    // metadata when it wasn't captured. No fuzzy matching - it is an exact id
+    // lookup.
     let externalId = sportarrLeagueExternalIdFromTvdbAlias(media.tvdbId);
     if (!externalId) {
       // The alias lives on the show's guid, so follow a season/episode member
@@ -74,7 +74,7 @@ export class SportarrActionHandler {
         }
       }
       externalId = sportarrLeagueExternalIdFromProviderIds(
-        showItem?.providerIds?.tvdb,
+        showItem?.providerIds,
       );
     }
     if (!externalId) {

@@ -33,6 +33,11 @@ msgstr "\"{templateName}\" set as the default title card template"
 msgid "(manual)"
 msgstr "(manual)"
 
+#. placeholder {0}: formatWhen(nextAt, locale)
+#: src/components/Settings/Telemetry/index.tsx
+msgid "(Next: {0})"
+msgstr "(Next: {0})"
+
 #: src/components/OverlayEditor/OverlayCanvas.tsx
 msgid "[Image]"
 msgstr "[Image]"
@@ -745,7 +750,6 @@ msgstr "Clone rule - Maintainerr"
 #: src/components/Collection/CollectionDetail/TestMediaItem/index.tsx
 #: src/components/Common/CommunityRuleModal/index.tsx
 #: src/components/Common/MediaCard/MediaModal/index.tsx
-#: src/components/Common/Modal/index.tsx
 #: src/components/Login/Emby/EmbyLoginButton.tsx
 #: src/components/Rules/Rule/RuleCreator/CommunityRuleUpload/index.tsx
 #: src/components/Settings/About/Releases/index.tsx
@@ -803,6 +807,10 @@ msgstr "Collections"
 msgid "Collections - Maintainerr"
 msgstr "Collections - Maintainerr"
 
+#: src/components/Settings/Telemetry/index.tsx
+msgid "Collector source code"
+msgstr "Collector source code"
+
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "Color"
 msgstr "Color"
@@ -847,10 +855,6 @@ msgstr "Configure global settings"
 #: src/components/Settings/Metadata/index.tsx
 msgid "Configure metadata providers and set the primary source for posters, backdrops, and metadata enrichment. Adding a TVDB developer API key gives Maintainerr a fallback source for provider cross-references, which helps recover missing IDs when the primary provider cannot resolve a match and can provide a second opinion for some items through existing external ID cross-references."
 msgstr "Configure metadata providers and set the primary source for posters, backdrops, and metadata enrichment. Adding a TVDB developer API key gives Maintainerr a fallback source for provider cross-references, which helps recover missing IDs when the primary provider cannot resolve a match and can provide a second opinion for some items through existing external ID cross-references."
-
-#: src/components/Rules/RuleGroup/AddModal/index.tsx
-msgid "Configure Notifications"
-msgstr "Configure Notifications"
 
 #: src/components/Settings/Metadata/index.tsx
 msgid "Configure to refresh"
@@ -1190,6 +1194,10 @@ msgstr "Design overlay elements on the canvas. Enter a valid template name in th
 msgid "Disabled"
 msgstr "Disabled"
 
+#: src/components/Settings/Telemetry/index.tsx
+msgid "Disabled by {DISABLE_ENV} in the environment, which overrides this setting."
+msgstr "Disabled by {DISABLE_ENV} in the environment, which overrides this setting."
+
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Disabling this rule group"
 msgstr "Disabling this rule group"
@@ -1231,6 +1239,10 @@ msgstr "Documentation"
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "Does Not Exist"
 msgstr "Does Not Exist"
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Don't create this collection in {mediaServerName}. Rules, actions, overlays and tags keep working."
+msgstr "Don't create this collection in {mediaServerName}. Rules, actions, overlays and tags keep working."
 
 #: src/components/Settings/About/index.tsx
 msgid "Donations Welcome"
@@ -1463,6 +1475,10 @@ msgstr "Error: {reason}"
 msgid "Event"
 msgstr "Event"
 
+#: src/components/Settings/Telemetry/index.tsx
+msgid "Every ~{SAMPLE_MONTHS} months"
+msgstr "Every ~{SAMPLE_MONTHS} months"
+
 #: src/components/Rules/Rule/RuleCreator/CommunityRuleUpload/index.tsx
 msgid "Every attempt should be made to only upload working rules. Rules with less than -100 karma and uploads with no rules, are removed nightly."
 msgstr "Every attempt should be made to only upload working rules. Rules with less than -100 karma and uploads with no rules, are removed nightly."
@@ -1525,10 +1541,6 @@ msgstr "Exists"
 #: src/pages/OverlayTemplateListPage.tsx
 msgid "Export"
 msgstr "Export"
-
-#: src/components/Rules/RuleGroup/AddModal/index.tsx
-msgid "Export Rules YAML"
-msgstr "Export Rules YAML"
 
 #: src/components/Common/YamlImporterModal/index.tsx
 msgid "Export your rules to a YAML document"
@@ -1885,6 +1897,18 @@ msgstr "Handled media items"
 msgid "Help"
 msgstr "Help"
 
+#: src/components/Layout/TelemetryConsentModal.tsx
+msgid "Help shape Maintainerr?"
+msgstr "Help shape Maintainerr?"
+
+#: src/components/Settings/Telemetry/index.tsx
+msgid "Help us help you"
+msgstr "Help us help you"
+
+#: src/components/Settings/About/index.tsx
+msgid "Help us improve it"
+msgstr "Help us improve it"
+
 #: src/components/OverlayEditor/LayerPanel.tsx
 msgctxt "Toggle layer visibility"
 msgid "Hide"
@@ -1938,10 +1962,6 @@ msgstr "Import rules from a YAML document. This will override your current rules
 #: src/components/Common/CommunityRuleModal/index.tsx
 msgid "Import rules made by the community. This will override your current rules."
 msgstr "Import rules made by the community. This will override your current rules."
-
-#: src/components/Rules/RuleGroup/AddModal/index.tsx
-msgid "Import Rules YAML"
-msgstr "Import Rules YAML"
 
 #: src/components/Settings/MediaServerSelector/index.tsx
 msgid "Important:"
@@ -2060,6 +2080,18 @@ msgstr "Jobs"
 #: src/components/Common/CommunityRuleModal/index.tsx
 msgid "Karma"
 msgstr "Karma"
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Keep in Maintainerr only"
+msgstr "Keep in Maintainerr only"
+
+#: src/components/Layout/TelemetryConsentModal.tsx
+msgid "Keep it on"
+msgstr "Keep it on"
+
+#: src/components/Layout/TelemetryConsentModal.tsx
+msgid "Keep it on and we will not ask again. The settings page shows the same report, the occasional extra detail, and the off switch."
+msgstr "Keep it on and we will not ask again. The settings page shows the same report, the occasional extra detail, and the off switch."
 
 #: src/components/VersionStatus/index.tsx
 msgid "Keep it up! 👍"
@@ -2285,6 +2317,10 @@ msgstr "Maintainerr picks the Tracearr media server backend automatically: the o
 msgid "Maintainerr Pre-Release"
 msgstr "Maintainerr Pre-Release"
 
+#: src/components/Settings/Telemetry/index.tsx
+msgid "Maintainerr reports anonymous usage once a week. It is the only signal we have about which versions, media servers and features are actually in use, and it decides what gets built, fixed and kept."
+msgstr "Maintainerr reports anonymous usage once a week. It is the only signal we have about which versions, media servers and features are actually in use, and it decides what gets built, fixed and kept."
+
 #: src/components/StorageMetrics/index.tsx
 msgid "Maintainerr will iterate every movie and episode in your {typeLabel} libraries to estimate size on disk. This can take a while on large libraries."
 msgstr "Maintainerr will iterate every movie and episode in your {typeLabel} libraries to estimate size on disk. This can take a while on large libraries."
@@ -2508,6 +2544,10 @@ msgstr "New Template - Overlay Editor - Maintainerr"
 msgid "Next"
 msgstr "Next"
 
+#: src/components/Settings/Telemetry/index.tsx
+msgid "No account, no id, no hostname, no {TERM_URL}, no {TERM_API} key, and nothing from your library."
+msgstr "No account, no id, no hostname, no {TERM_URL}, no {TERM_API} key, and nothing from your library."
+
 #: src/pages/OverlayTemplateEditorPage.tsx
 msgid "No background"
 msgstr "No background"
@@ -2624,6 +2664,10 @@ msgstr "No watch history recorded yet."
 msgid "None"
 msgstr "None"
 
+#: src/components/Settings/Telemetry/index.tsx
+msgid "None of the data sent can be tied to your server."
+msgstr "None of the data sent can be tied to your server."
+
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "normal"
 msgstr "normal"
@@ -2663,6 +2707,10 @@ msgstr "Not manually added to any collection."
 #: src/components/Rules/RuleGroup/index.tsx
 msgid "Not set"
 msgstr "Not set"
+
+#: src/components/Settings/Telemetry/index.tsx
+msgid "Nothing extra is configured to send."
+msgstr "Nothing extra is configured to send."
 
 #: src/components/Settings/Notifications/index.tsx
 msgid "Notification Agent configuration"
@@ -2706,15 +2754,17 @@ msgid "Off by default so a manually-set tag is never stripped. When on, Maintain
 msgstr "Off by default so a manually-set tag is never stripped. When on, Maintainerr removes only this label when an item is un-excluded."
 
 #: src/components/Collection/CollectionDetail/RemoveFromCollectionButton/index.tsx
-#: src/components/Settings/Radarr/index.tsx
-#: src/components/Settings/Sonarr/index.tsx
-#: src/components/Settings/Sportarr/index.tsx
+#: src/components/Settings/Servarr/ServerInUseModal.tsx
 msgid "Ok"
 msgstr "Ok"
 
 #: src/components/Rules/RuleGroup/AddModal/ConfigureNotificationModal/index.tsx
 msgid "OK"
 msgstr "OK"
+
+#: src/components/Layout/TelemetryConsentModal.tsx
+msgid "Once a week we log which version and platform people actually run. The payload below is the whole of it. It carries no server identifier, no {TERM_IP}, no hostname, no {TERM_MAC} address and no account id: nothing that can be traced back to you, your network or your machine."
+msgstr "Once a week we log which version and platform people actually run. The payload below is the whole of it. It carries no server identifier, no {TERM_IP}, no hostname, no {TERM_MAC} address and no account id: nothing that can be traced back to you, your network or your machine."
 
 #: src/components/Common/YamlImporterModal/index.tsx
 msgid "Only {yamlExtension} or {ymlExtension} files are allowed."
@@ -3455,13 +3505,15 @@ msgstr "Selected Tab"
 msgid "Selected: {maskedUserId}"
 msgstr "Selected: {maskedUserId}"
 
+#: src/components/Settings/Telemetry/index.tsx
+msgid "Send anonymous usage data"
+msgstr "Send anonymous usage data"
+
 #: src/components/Settings/Plex/index.tsx
 msgid "Server"
 msgstr "Server"
 
-#: src/components/Settings/Radarr/index.tsx
-#: src/components/Settings/Sonarr/index.tsx
-#: src/components/Settings/Sportarr/index.tsx
+#: src/components/Settings/Servarr/ServerInUseModal.tsx
 msgid "Server in-use"
 msgstr "Server in-use"
 
@@ -3809,6 +3861,10 @@ msgid "Take action after days is required for this action"
 msgstr "Take action after days is required for this action"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Take action after days must be {max} or less"
+msgstr "Take action after days must be {max} or less"
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Take action after days must be 0 or greater"
 msgstr "Take action after days must be 0 or greater"
 
@@ -3851,6 +3907,23 @@ msgstr "Tautulli watched percent override"
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Tautulli watched percent override must be a whole number"
 msgstr "Tautulli watched percent override must be a whole number"
+
+#: src/components/Settings/About/index.tsx
+#: src/components/Settings/Telemetry/index.tsx
+msgid "Telemetry"
+msgstr "Telemetry"
+
+#: src/components/Settings/Telemetry/index.tsx
+msgid "Telemetry settings - Maintainerr"
+msgstr "Telemetry settings - Maintainerr"
+
+#: src/components/Settings/Telemetry/index.tsx
+msgid "Telemetry settings could not be updated"
+msgstr "Telemetry settings could not be updated"
+
+#: src/components/Settings/Telemetry/index.tsx
+msgid "Telemetry settings updated"
+msgstr "Telemetry settings updated"
 
 #: src/pages/OverlayTemplateListPage.tsx
 msgid "Template deleted"
@@ -3947,6 +4020,10 @@ msgstr "The Logs page stays available during setup if you need to troubleshoot y
 msgid "The media server has no user named ''{username}''"
 msgstr "The media server has no user named ''{username}''"
 
+#: src/components/Settings/Telemetry/index.tsx
+msgid "The preview could not be loaded."
+msgstr "The preview could not be loaded."
+
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "The rule group could not be saved"
 msgstr "The rule group could not be saved"
@@ -4011,13 +4088,15 @@ msgstr "There was an error updating Plex authentication."
 msgid "They are removed from every collection they are currently in as well."
 msgstr "They are removed from every collection they are currently in as well."
 
+#: src/components/Settings/Telemetry/index.tsx
+msgid "This is the exact report your server would send, stored only as anonymous counters."
+msgstr "This is the exact report your server would send, stored only as anonymous counters."
+
 #: src/components/Collection/CollectionDetail/RemoveFromCollectionButton/index.tsx
 msgid "This item is excluded <0>globally</0>. Removing this exclusion will apply the change to all collections"
 msgstr "This item is excluded <0>globally</0>. Removing this exclusion will apply the change to all collections"
 
-#: src/components/Settings/Radarr/index.tsx
-#: src/components/Settings/Sonarr/index.tsx
-#: src/components/Settings/Sportarr/index.tsx
+#: src/components/Settings/Servarr/ServerInUseModal.tsx
 msgid "This server is currently being used by the following rules:"
 msgstr "This server is currently being used by the following rules:"
 
@@ -4140,6 +4219,10 @@ msgstr "Triggering..."
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "True"
 msgstr "True"
+
+#: src/components/Layout/TelemetryConsentModal.tsx
+msgid "Turn it off in settings"
+msgstr "Turn it off in settings"
 
 #: src/components/Settings/Metadata/index.tsx
 msgid "TVDB must be configured before it can be primary"
@@ -4461,6 +4544,10 @@ msgstr "Warning"
 msgid "Watch time"
 msgstr "Watch time"
 
+#: src/components/Layout/TelemetryConsentModal.tsx
+msgid "We build Maintainerr in our spare time, and leaving this on is a free way to help shape what comes next."
+msgstr "We build Maintainerr in our spare time, and leaving this on is a free way to help shape what comes next."
+
 #: src/components/Settings/MediaServerSelector/index.tsx
 msgid "We will now switch from <0>{currentName}</0> to <1>{pendingName}</1>."
 msgstr "We will now switch from <0>{currentName}</0> to <1>{pendingName}</1>."
@@ -4469,6 +4556,10 @@ msgstr "We will now switch from <0>{currentName}</0> to <1>{pendingName}</1>."
 msgid "Week"
 msgstr "Week"
 
+#: src/components/Settings/Telemetry/index.tsx
+msgid "Weekly"
+msgstr "Weekly"
+
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "Weight"
 msgstr "Weight"
@@ -4476,6 +4567,10 @@ msgstr "Weight"
 #: src/components/Settings/index.tsx
 msgid "Welcome to Maintainerr!"
 msgstr "Welcome to Maintainerr!"
+
+#: src/components/Settings/Telemetry/index.tsx
+msgid "What we send"
+msgstr "What we send"
 
 #: src/components/Settings/DownloadClient/index.tsx
 msgid "When media is removed through Radarr, Sonarr or Sportarr, Maintainerr can remove the completed download (and optionally its data) from your download client. The download is matched via that service's download history, so media removed without one of them is left untouched. qBittorrent is currently the only supported client."
@@ -4517,9 +4612,7 @@ msgstr "You can try going back or reloading the page. If the problem persists, p
 msgid "You have already submitted karma for this rule."
 msgstr "You have already submitted karma for this rule."
 
-#: src/components/Settings/Radarr/index.tsx
-#: src/components/Settings/Sonarr/index.tsx
-#: src/components/Settings/Sportarr/index.tsx
+#: src/components/Settings/Servarr/ServerInUseModal.tsx
 msgid "You must re-assign these rules to a different server before deleting."
 msgstr "You must re-assign these rules to a different server before deleting."
 
@@ -4530,6 +4623,10 @@ msgstr "You need to set up the media server first."
 #: src/pages/OverlayTemplateEditorPage.tsx
 msgid "You’re editing a preset. Saving will create your own copy - the original preset is left unchanged."
 msgstr "You’re editing a preset. Saving will create your own copy - the original preset is left unchanged."
+
+#: src/components/Settings/Telemetry/index.tsx
+msgid "Your <0>{TERM_IP} address is never read or stored</0>, so one week's report cannot be tied to the next or to any other server."
+msgstr "Your <0>{TERM_IP} address is never read or stored</0>, so one week's report cannot be tied to the next or to any other server."
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "your media server"

@@ -159,7 +159,9 @@ export class SonarrApi extends ServarrApi<{
       }
 
       if (!response[0]) {
-        this.logger.warn(`Could not retrieve show by tvdb ID ${id}`);
+        // Not an error: #3125 made "not tracked" a normal outcome, and an
+        // exclusion tag fans out over every instance, so most answer this.
+        this.logger.debug(`Could not retrieve show by tvdb ID ${id}`);
         return null;
       }
 

@@ -60,7 +60,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v7
         with:
-          node-version: 24
+          node-version: 26
       - name: Activate corepack
         run: |
           corepack install
@@ -97,6 +97,9 @@ jobs:
       - name: Validate translation catalogs
         env:
           BASE_REF: ${{ github.event.pull_request.base.ref }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+          REPO: ${{ github.repository }}
           PR_LOGIN: ${{ github.event.pull_request.user.login }}
         run: |
           set -euo pipefail
@@ -114,7 +117,23 @@ jobs:
           # `hosted-weblate` itself is an unregistered user name today.
           from_weblate=false
           case "$PR_LOGIN" in 'hosted-weblate[bot]') from_weblate=true ;; esac
-          if [ "$from_weblate" = true ]; then
+          # The release pull request carries every translation Weblate landed
+          # on development since the last release. Each one already passed this
+          # check on its own sync, so comparing them against main reports the
+          # whole batch as hand-edited and blocks the release. It opts out for
+          # the same reason a Weblate sync does.
+          #
+          # Keyed on the branch triple the release flow itself uses, not on
+          # the author. Only this repository's own `development` matches, and
+          # everything on it already came through this gate; a fork's branch of
+          # the same name fails the repository check.
+          release_sync=false
+          if [ "$BASE_REF" = main ] &&
+            [ "$HEAD_REF" = development ] &&
+            [ "$HEAD_REPO" = "$REPO" ]; then
+            release_sync=true
+          fi
+          if [ "$from_weblate" = true ] || [ "$release_sync" = true ]; then
             node tools/i18n/validate-catalogs.mjs apps/ui/src/locales --no-base
           else
             node tools/i18n/validate-catalogs.mjs apps/ui/src/locales

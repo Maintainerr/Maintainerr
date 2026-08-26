@@ -661,6 +661,7 @@ const MediaServerSection: React.FC<MediaServerSectionProps> = ({
           footerActions={
             <Button
               buttonType="primary"
+              className="ml-3"
               onClick={() => {
                 void handleConfirm()
               }}

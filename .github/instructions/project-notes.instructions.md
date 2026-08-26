@@ -350,6 +350,36 @@ Quick checks (Jellyfin server configured):
   `jellyfin-adapter.service.spec.ts` fabricates SDK-shaped errors instead
   (`createSdkAxiosError`). Emby is unaffected - its axios instance comes from
   the server's own import.
+- **Jellyfin 12 reports `Version: 12.0.0`, and nothing may compare that
+  string.** Upstream dropped the leading `10.`, so `10.12` became `12.0`. The
+  adapter stores and logs the version as an opaque string
+  (`jellyfin-adapter.service.ts` L231 and L348) and no code path compares it,
+  which is the only reason 12 works unchanged. Keep it that way: a naive
+  comparison against `"10.11"` reads `12.0.0` as older. `getLibrariesStorage`
+  is the shape to copy - it decides on the response status of
+  `GET /System/Info/Storage`, not on a version number.
+- **Jellyfin 12 rejects `X-Emby-Token` and `?api_key=` with 401.** Only
+  `Authorization: MediaBrowser Token="<key>"` is accepted, while 10.11 still
+  honours all three, so a script that works against one server 401s against the
+  other. `@jellyfin/sdk` sends the header form and no Jellyfin call in this repo
+  builds its own URL (images go through `getImageApi`), so this reaches users'
+  own scripts rather than Maintainerr, and it is worth naming in a support
+  reply. Checked against 12.0-rc5 with 10.11.11 as a control: public system
+  info, users, media folders, item listings and `GET /System/Info/Storage` all
+  answer on both, on the pinned `@jellyfin/sdk` 0.13.0.
+- **Collection collapsing is where 12 does behave differently, and
+  `collapseBoxSetItems=false` is what makes that safe.**
+  `Folder.CollapseBoxSetItems` is identical on both branches and short-circuits
+  on an explicit parameter, so `false` beats the server's own grouping setting
+  everywhere - which is the only reason a grouped library does not feed
+  collections into rule matching. Without the parameter the two diverge: 10.11
+  collapses in memory and only when `EnableGroupingMoviesIntoCollections` is on,
+  while 12 collapses in the new database query path, where the empty
+  collapse-type list you get with grouping off reads as "collapse everything"
+  and only name filters are re-applied after the substitution, never the type
+  filter. So on 12 a Movie-typed listing can answer with BoxSet rows on a
+  default-configured server. Send the parameter on every library-scoped query;
+  never rely on the server's grouping setting being off (#3550).
 
 ---
 

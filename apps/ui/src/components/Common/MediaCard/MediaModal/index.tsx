@@ -1,4 +1,5 @@
 import {
+  isSportarrTvdbAlias,
   MediaItem,
   ServarrAction,
   type MaintainerrMediaStatusDetails,
@@ -6,10 +7,10 @@ import {
   type MediaItemType,
   type MediaProviderIds,
 } from '@maintainerr/contracts'
-import { XIcon } from '@heroicons/react/solid'
 import { Trans, useLingui } from '@lingui/react/macro'
 import React, { memo, useEffect, useMemo, useState } from 'react'
 import { useMetadataOverview } from '../../../../api/metadata'
+import useCloseOnEscape from '../../../../hooks/useCloseOnEscape'
 import { useLockBodyScroll } from '../../../../hooks/useLockBodyScroll'
 import { useMediaServerType } from '../../../../hooks/useMediaServerType'
 import GetApiHandler from '../../../../utils/ApiHandler'
@@ -19,7 +20,7 @@ import {
   buildProviderUrl,
   mediaTypeLabel,
 } from '../../../../utils/mediaTypeUtils'
-import { modalCloseButtonClassName } from '../../Modal'
+import Button from '../../Button'
 import LoadingSpinner from '../../LoadingSpinner'
 import StreamystatsStatsPanel from './StreamystatsStatsPanel'
 import {
@@ -194,6 +195,7 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
     const { t } = useLingui()
 
     useLockBodyScroll(true)
+    useCloseOnEscape(true, onClose)
 
     const { isPlex, isJellyfin, isEmby } = useMediaServerType()
     const [loading, setLoading] = useState<boolean>(true)
@@ -565,35 +567,34 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
       !providerIds?.[backdropProviderKey]?.includes(
         String(backdropResult.providerId),
       )
+    // The Sportarr alias in the tvdb namespace only exists for tools that
+    // cannot read the sportarr id. A person gets the real one.
+    const providerBadges = (
+      ['tmdb', 'imdb', 'tvdb', 'sportarr'] as const
+    ).flatMap((provider) =>
+      (providerIds?.[provider] ?? [])
+        .filter((id) => provider !== 'tvdb' || !isSportarrTvdbAlias(Number(id)))
+        .map((id) => ({ provider, id })),
+    )
 
     return (
-      <div
-        className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-3"
-        onClick={onClose}
-        // The close button is a phone affordance and a pointer closes this from
-        // the backdrop, so Escape is what a keyboard is left with - same handler
-        // the shared Modal carries.
-        onKeyDown={(event) => {
-          if (event.key === 'Escape') {
-            onClose()
-          }
-        }}
-      >
+      <div className="modal-backdrop px-3" onClick={onClose}>
+        {/* A column, like the shared Modal: only the body scrolls, so the
+            actions and the close stay on screen on a phone, where the sheet
+            fills the height. */}
         <div
-          className="relative max-h-[90vh] w-full max-w-4xl overflow-auto rounded-xl bg-zinc-800 shadow-lg"
+          className="relative flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-xl bg-zinc-800 shadow-lg"
           onClick={(event) => event.stopPropagation()}
+          role="dialog"
+          aria-modal="true"
+          aria-label={title}
         >
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label={t`Close`}
-            className={`${modalCloseButtonClassName} sm:hidden`}
-          >
-            <XIcon className="h-5 w-5" />
-          </button>
           {/* Short on a small phone: at h-72 the backdrop took two thirds of
               the sheet and pushed the title and summary below the fold. */}
-          <div className="relative h-40 w-full overflow-hidden p-2 sm:h-72 xl:h-96">
+          {/* Capped by height too: the sm height is keyed on width, so a phone
+              in landscape got the tablet backdrop and it pushed the footer
+              out of the sheet. */}
+          <div className="relative h-40 max-h-[50vh] w-full shrink-0 overflow-hidden p-2 sm:h-72 xl:h-96">
             <div
               className="h-full w-full rounded-xl bg-cover bg-center bg-no-repeat"
               style={{
@@ -662,11 +663,6 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
                   </div>
                 ) : undefined}
               </div>
-              {/* The close button only exists on a phone, and takes this
-                  corner: the first row keeps its height as a spacer so the
-                  logos below stay clear of it, and drops its own logo - that id
-                  is a link in the body. Padding the column instead left a blank
-                  channel beside every logo. */}
               <div className="flex flex-col items-end">
                 <div className="max-w-fit grow">
                   <div className="flex h-8 w-32 justify-end">
@@ -675,7 +671,7 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
                         href={providerLogo.href}
                         target="_blank"
                         rel="noreferrer"
-                        className="hidden h-full w-full sm:block"
+                        className="block h-full w-full"
                       >
                         <img
                           src={providerLogo.logo}
@@ -795,7 +791,7 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
               </div>
             </div>
           </div>
-          <div className="p-4">
+          <div className="flex-1 overflow-y-auto p-4">
             <div className="flex items-center justify-between border-b border-zinc-700 pb-4">
               <div>
                 <h2 className="text-xl font-semibold text-gray-100">
@@ -887,52 +883,49 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
                 ) : null}
               </div>
             ) : undefined}
-
-            {/* Wraps: side by side these actions are wider than a phone, and
-                the sheet scrolled sideways to reach the last one. */}
-            <div className="mt-6 mr-0.5 flex flex-row flex-wrap items-center justify-between gap-4">
-              {providerIds &&
-                ['movie', 'show'].includes(mediaType) &&
-                (providerIds.tmdb?.length ||
-                  providerIds.imdb?.length ||
-                  providerIds.tvdb?.length) && (
-                  <div className="flex flex-wrap items-center gap-1 text-xs text-zinc-400">
-                    {(['tmdb', 'imdb', 'tvdb'] as const).flatMap((provider) =>
-                      (providerIds[provider] ?? []).map((id) => (
-                        <ProviderIdBadge
-                          key={`${provider}-${id}`}
-                          provider={provider}
-                          providerId={id}
-                          mediaType={mediaType}
-                        />
-                      )),
-                    )}
-                    {showBackdropProviderBadge && backdropProviderKey && (
-                      <ProviderIdBadge
-                        key={`${backdropProviderKey}-${backdropResult.providerId}`}
-                        provider={backdropProviderKey}
-                        providerId={String(backdropResult.providerId)}
-                        mediaType={mediaType}
-                      />
-                    )}
-                  </div>
-                )}
-              <div className="ml-auto flex flex-wrap justify-end gap-3">
-                {canPostpone ? (
-                  <PostponeButton
-                    collection={collection}
-                    mediaServerId={id}
-                    onPostponed={onCollectionItemPostponed}
-                  />
-                ) : null}
-                {canTriggerRuleAction ? (
-                  <TriggerRuleButton
-                    collection={collection}
-                    mediaServerId={id}
-                    onHandled={onCollectionItemRemoved}
-                  />
-                ) : null}
-              </div>
+          </div>
+          {/* Wraps: side by side these actions are wider than a phone, and
+              the sheet scrolled sideways to reach the last one. */}
+          <div className="flex shrink-0 flex-row flex-wrap items-center justify-between gap-4 p-4">
+            {['movie', 'show'].includes(mediaType) &&
+              (providerBadges.length > 0 || showBackdropProviderBadge) && (
+                <div className="flex flex-wrap items-center gap-1 text-xs text-zinc-400">
+                  {providerBadges.map(({ provider, id }) => (
+                    <ProviderIdBadge
+                      key={`${provider}-${id}`}
+                      provider={provider}
+                      providerId={id}
+                      mediaType={mediaType}
+                    />
+                  ))}
+                  {showBackdropProviderBadge && backdropProviderKey && (
+                    <ProviderIdBadge
+                      key={`${backdropProviderKey}-${backdropResult.providerId}`}
+                      provider={backdropProviderKey}
+                      providerId={String(backdropResult.providerId)}
+                      mediaType={mediaType}
+                    />
+                  )}
+                </div>
+              )}
+            <div className="ml-auto flex flex-wrap justify-end gap-3">
+              {canPostpone ? (
+                <PostponeButton
+                  collection={collection}
+                  mediaServerId={id}
+                  onPostponed={onCollectionItemPostponed}
+                />
+              ) : null}
+              {canTriggerRuleAction ? (
+                <TriggerRuleButton
+                  collection={collection}
+                  mediaServerId={id}
+                  onHandled={onCollectionItemRemoved}
+                />
+              ) : null}
+              <Button buttonType="default" onClick={onClose} type="button">
+                <Trans>Close</Trans>
+              </Button>
             </div>
           </div>
         </div>

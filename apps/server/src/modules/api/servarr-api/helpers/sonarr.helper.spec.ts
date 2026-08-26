@@ -288,7 +288,7 @@ describe('SonarrApi', () => {
       jest.spyOn(sonarrApi as any, 'getWithoutCache').mockResolvedValue([]);
 
       await expect(sonarrApi.getSeriesByTvdbId(555)).resolves.toBeNull();
-      expect(logger.warn).toHaveBeenCalledWith(
+      expect(logger.debug).toHaveBeenCalledWith(
         'Could not retrieve show by tvdb ID 555',
       );
     });

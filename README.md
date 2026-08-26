@@ -79,6 +79,7 @@ services:
 #          - UI_HOSTNAME=:: # uncomment if you want to listen on IPv6 instead (default 0.0.0.0)
 #          - UI_PORT=6247 # uncomment to change the UI port (default 6246)
 #          - GITHUB_TOKEN=ghp_yourtoken # Optional: GitHub Personal Access Token for higher API rate limits (60/hr without, 5000/hr with token)
+#          - TELEMETRY=off # uncomment to switch off the anonymous weekly usage report
         ports:
           - 6246:6246
         restart: unless-stopped
@@ -178,6 +179,7 @@ spec:
 - Bring your own TVDB key for a second metadata source alongside the built-in TMDB - Maintainerr cross-checks IDs and years between providers and fills the gaps from whichever has the data.
 - Collect rule-matched media into a Maintainerr collection that is held for a configurable period before action - optionally pinned to the Plex home screen as a "Leaving soon" shelf.
 - Run automatic collections, or manual ones you manage; add or exclude individual items even when they match a rule.
+- Keep a collection inside Maintainerr, with no collection created on your media server - the rule, its actions, overlays and \*arr tags all still run. Per collection, off by default.
 - Delete items from your download client.
 - Manage collection membership from within your media server - Maintainerr syncs manual changes back.
 - On handling: delete files from disk, unmonitor or delete in Radarr/Sonarr/Sportarr, change quality profile, and clear requests in Seerr.
@@ -238,6 +240,23 @@ Maintainerr serves health probes under `/api/health` (prefixed with `BASE_PATH` 
 
 [See the documentation for response shapes and full details.](https://docs.maintainerr.info/)
 
+# Help us help you
+
+Maintainerr reports anonymous usage once a week. It is the only signal we have about which versions, media servers and features are actually in use, and it decides what gets built, fixed and kept.
+
+Nothing identifies your server: no account, no instance id, no hostname, no URL, no API key, no library or media name, and no IP address is read or stored. A report carries the version and platform every week, and one week in 32 a bucketed picture of which features and rule properties are in use.
+
+We checked, and reporting by default is normal for tools like ours. Where we differ is in what a report is allowed to contain.
+
+| How it works            | Common practice                 | Maintainerr              |
+| ----------------------- | ------------------------------- | ------------------------ |
+| Goes to a third party   | Yes, Google Analytics or Sentry | No, our own collector    |
+| Identifies your install | Yes, a permanent id per install | No, no id at all         |
+| Sees your IP address    | Yes, the receiving service does | No, never read or stored |
+| How often               | Every action                    | Once a week              |
+
+The exact shape of a report is one TypeScript interface, [`TelemetryPing`](packages/contracts/src/telemetry/telemetryEvent.ts). What happens to it after it arrives is documented in the [collector repository](https://github.com/Maintainerr/telemetry-collector), and the [dashboard](https://telemetry.maintainerr.info) shows what it adds up to.
+
 # Documentation
 
 Want the full picture? Every feature, setting, and gotcha, documented in detail:
@@ -262,6 +281,7 @@ Maintainerr is community-driven, and we're always looking for more hands. You do
 Start with [CONTRIBUTING.md](CONTRIBUTING.md), then dive into the [issues](https://github.com/Maintainerr/Maintainerr/issues) or our [Discord](https://discord.maintainerr.info). New contributors are genuinely welcome.
 
 ## Translations
+[![Translation status](https://hosted.weblate.org/widget/maintainerr/matrix-auto.svg)](https://hosted.weblate.org/engage/maintainerr/)
 
 Maintainerr uses [Weblate](https://hosted.weblate.org/engage/maintainerr/) for translations. Pick your language, edit in the browser, and your work reaches everyone in the next release - no git, no pull request, no build tooling.
 

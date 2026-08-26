@@ -11,7 +11,7 @@ export class Settings implements SettingDto {
   @PrimaryGeneratedColumn()
   id: number;
 
-  // clientId is set explicitly via randomUUID() in SettingsOperationsService.init()
+  // clientId is set explicitly via randomUUID() in SettingsDataService.init()
   @Column({ nullable: true })
   clientId: string;
 
@@ -167,4 +167,12 @@ export class Settings implements SettingDto {
 
   @Column({ type: 'boolean', nullable: false, default: false })
   sonarr_untag_on_unexclude: boolean;
+
+  // Anonymous weekly telemetry (https://telemetry.maintainerr.info). Null is an
+  // install that predates the setting: it reports, and is asked once in the web
+  // interface. New installs are created with true and are never asked. Only an
+  // explicit false stops it. TELEMETRY=off overrides without touching the
+  // database.
+  @Column({ type: 'boolean', nullable: true, default: null })
+  telemetryEnabled: boolean | null;
 }

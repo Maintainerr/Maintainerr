@@ -94,6 +94,11 @@
   --color-maintainerrdark-900: #78350f;
   --color-maintainerrdark-950: #451a03;
   --color-maintainerrdark: #78350f;
+
+  /* Monaco's vs-dark canvas. Named so a container can be painted the same
+     colour before the editor mounts, instead of flashing from a lighter panel
+     to this one. */
+  --color-editor: #1e1e1e;
 }
 
 /* v4 has no transition-property theme namespace; expose the two we rely on. */
@@ -636,6 +641,10 @@
 
   .button-sm svg {
     @apply mr-1.5 ml-1.5 h-4 w-4 first:ml-0 last:mr-0;
+  }
+
+  .modal-backdrop {
+    @apply fixed top-0 right-0 bottom-0 left-0 z-50 flex h-full w-full items-center justify-center bg-zinc-800/70;
   }
 
   .modal-icon {

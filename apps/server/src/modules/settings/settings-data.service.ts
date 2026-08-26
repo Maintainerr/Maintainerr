@@ -134,6 +134,8 @@ export class SettingsDataService implements SettingDto {
 
   sonarr_untag_on_unexclude: boolean;
 
+  telemetryEnabled: boolean | null;
+
   constructor(
     @InjectRepository(Settings)
     private readonly settingsRepo: Repository<Settings>,
@@ -207,6 +209,7 @@ export class SettingsDataService implements SettingDto {
       this.sonarr_exclusion_tag = settingsDb?.sonarr_exclusion_tag ?? 'dnd';
       this.sonarr_untag_on_unexclude =
         settingsDb?.sonarr_untag_on_unexclude ?? false;
+      this.telemetryEnabled = settingsDb?.telemetryEnabled ?? null;
 
       // Auto-detect media server type when not set but credentials exist.
       // This handles upgrades from pre-Jellyfin versions (Plex) and any future
@@ -246,6 +249,10 @@ export class SettingsDataService implements SettingDto {
       await this.settingsRepo.insert({
         apikey: this.generateApiKey(),
         clientId: randomUUID(),
+        // Seeded here rather than as a column default, which would rebuild
+        // the table on every existing install to hold a value only a new row
+        // can take. Null stays "predates the setting, still to be asked".
+        telemetryEnabled: true,
       });
       await this.init();
     }

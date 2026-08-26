@@ -103,7 +103,9 @@ export class RadarrApi extends ServarrApi<{ movieId: number }> {
       }
 
       if (!response[0]) {
-        this.logger.warn(`Could not find Movie with TMDb id ${id} in Radarr`);
+        // Not an error: #3125 made "not tracked" a normal outcome, and an
+        // exclusion tag fans out over every instance, so most answer this.
+        this.logger.debug(`Could not find Movie with TMDb id ${id} in Radarr`);
         return null;
       }
 

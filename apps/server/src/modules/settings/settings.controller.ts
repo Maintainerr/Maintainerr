@@ -39,6 +39,10 @@ import {
   switchMediaServerSchema,
   TautulliSetting,
   tautulliSettingSchema,
+  TelemetryPing,
+  TelemetrySetting,
+  telemetrySettingSchema,
+  TelemetryStatus,
   TmdbSetting,
   TmdbSettingForm,
   tmdbSettingSchema,
@@ -72,6 +76,7 @@ import { MediaServerSwitchService } from './media-server-switch.service';
 import { MetadataProvider } from './metadata-provider';
 import { MetadataSettingsService } from './metadata-settings.service';
 import { SettingsDataService } from './settings-data.service';
+import { TelemetryService } from '../telemetry/telemetry.service';
 import { SettingsOperationsService } from './settings-operations.service';
 
 @ApiTags('settings')
@@ -83,6 +88,7 @@ export class SettingsController {
     private readonly metadataSettingsService: MetadataSettingsService,
     private readonly mediaServerSwitchService: MediaServerSwitchService,
     private readonly databaseDownloadService: DatabaseDownloadService,
+    private readonly telemetryService: TelemetryService,
   ) {}
 
   @Get()
@@ -524,6 +530,43 @@ export class SettingsController {
   ): Promise<BasicResponseDto> {
     return this.metadataSettingsService.updateMetadataProviderPreference(
       payload.preference,
+    );
+  }
+
+  /**
+   * The full ping, sample block included, so the user reviews everything that
+   * could ever be sent rather than whatever this week happens to carry.
+   */
+  @Get('/telemetry/preview')
+  async previewTelemetry(): Promise<TelemetryPing> {
+    return this.telemetryService.buildPayload(true);
+  }
+
+  @Get('/telemetry/status')
+  telemetryStatus(): TelemetryStatus {
+    return this.telemetryService.status();
+  }
+
+  // There is deliberately no send-now endpoint: every real POST increments the
+  // exact census, so a test button would let an instance inflate the count.
+  // The preview above is the verification mechanism.
+  @Post('/telemetry')
+  async updateTelemetrySetting(
+    @Body(new ZodValidationPipe(telemetrySettingSchema))
+    payload: TelemetrySetting,
+  ): Promise<BasicResponseDto> {
+    // Refused rather than stored: TELEMETRY=off already decides the outcome, so
+    // accepting a value here would confirm a save that changes nothing.
+    if (this.telemetryService.forcedOff()) {
+      return {
+        status: 'NOK',
+        code: 0,
+        message: 'TELEMETRY=off is set in the environment',
+      };
+    }
+
+    return this.settingsOperationsService.updateTelemetrySetting(
+      payload.enabled,
     );
   }
 

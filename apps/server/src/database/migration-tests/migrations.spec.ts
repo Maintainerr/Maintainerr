@@ -149,6 +149,22 @@ describe('database migrations', () => {
       expect(settings.tracearr_url).toMatchObject(nullableVarchar);
       expect(settings.tracearr_api_key).toMatchObject(nullableVarchar);
       expect(settings.tracearr_server_id).toMatchObject(nullableVarchar);
+
+      // AddKeepCollectionInMaintainerrOnly: the per-collection opt-in, off by
+      // default so every existing collection keeps syncing.
+      expect(collection.keepInMaintainerrOnly).toMatchObject({
+        type: 'boolean',
+        notnull: 1,
+        dflt_value: '0',
+      });
+
+      // AddTelemetryEnabled: nullable with no default, so an existing install
+      // is grandfathered to "not asked yet" rather than opted in silently.
+      expect(settings.telemetryEnabled).toMatchObject({
+        type: 'boolean',
+        notnull: 0,
+        dflt_value: null,
+      });
     } finally {
       await ds.destroy();
     }
@@ -161,8 +177,40 @@ describe('database migrations', () => {
     // emits a full create-temporary-table / copy / drop / rename rebuild for the
     // changed tables. A hand-written ALTER shortcut lacks it - this is the
     // cheapest signal the migration was generated rather than authored. The
-    // newest migration adds settings columns, so it rebuilds that table.
+    // newest migration adds a settings column, so it rebuilds that table.
     expect(src).toContain('CREATE TABLE "temporary_settings"');
+  });
+
+  // The rebuild in (3) drops and recreates the table, so its INSERT...SELECT is
+  // the only thing carrying an existing install's settings across. Every other
+  // test here migrates an empty DB, where a rebuild that copies nothing looks
+  // identical to one that copies correctly.
+  it('carry an existing settings row through the newest rebuild', async () => {
+    const newest = all[all.length - 1];
+    const ds = await makeDS(all.slice(0, -1).map((m) => m.cls)).initialize();
+    try {
+      await ds.runMigrations();
+      await ds.query(
+        `INSERT INTO settings ("apikey", "media_server_type", "jellyfin_api_key") VALUES ('key', 'jellyfin', 'jf')`,
+      );
+
+      const runner = ds.createQueryRunner();
+      await new newest.cls().up(runner);
+      await runner.release();
+
+      const rows = await ds.query(`SELECT * FROM settings`);
+      expect(rows).toHaveLength(1);
+      expect(rows[0]).toMatchObject({
+        apikey: 'key',
+        media_server_type: 'jellyfin',
+        jellyfin_api_key: 'jf',
+        // Grandfathered: the carry-over leaves the new column unset, which is
+        // what the consent prompt keys on.
+        telemetryEnabled: null,
+      });
+    } finally {
+      await ds.destroy();
+    }
   });
 
   // We don't revert the whole chain: several pre-existing migrations have
@@ -175,7 +223,7 @@ describe('database migrations', () => {
       await ds.runMigrations();
       const has = async () =>
         (await columns(ds, 'settings')).some(
-          (c) => c.name === 'tracearr_server_id',
+          (c) => c.name === 'telemetryEnabled',
         );
       expect(await has()).toBe(true);
 

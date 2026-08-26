@@ -170,6 +170,7 @@ export class MediaServerController {
     }
 
     const allItems: MediaItem[] = [];
+    const seenIds = new Set<string>();
     let nextOffset = 0;
     let totalSize = 0;
 
@@ -191,10 +192,26 @@ export class MediaServerController {
       }
 
       if (!result.items.length) {
-        break;
+        // A grouped library can answer a whole window with rows of a kind the
+        // query did not ask for, which the adapter drops (#3550), so an empty
+        // page mid-library is not the end of it. Skip that window and keep
+        // walking; only a page at or past the end stops the loop.
+        if (nextOffset + maintainerrServerSortBatchSize >= totalSize) {
+          break;
+        }
+        nextOffset += maintainerrServerSortBatchSize;
+        continue;
       }
 
-      allItems.push(...result.items);
+      // Adapters drop rows of a kind the query did not ask for (#3550), so a
+      // page can come back short. Resuming where the rows ended never skips
+      // items; the overlap that costs is dropped here.
+      for (const item of result.items) {
+        if (!seenIds.has(item.id)) {
+          seenIds.add(item.id);
+          allItems.push(item);
+        }
+      }
       nextOffset += result.items.length;
 
       if (allItems.length >= maintainerrServerSortHardCap) {

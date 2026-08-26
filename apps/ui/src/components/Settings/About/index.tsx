@@ -4,6 +4,7 @@ import { type VersionResponse } from '@maintainerr/contracts'
 import { useEffect, useState } from 'react'
 import GetApiHandler from '../../../utils/ApiHandler'
 import { startsWithDigit } from '../../../utils/version'
+import BrandLink from '../../Common/BrandLink'
 import Releases from './Releases'
 
 const AboutSettings = () => {
@@ -198,14 +199,9 @@ const AboutSettings = () => {
             </label>
             <div className="form-input">
               <div className="form-input-field font-bold text-maintainerr-600 underline">
-                <a
-                  className="hover:text-maintainerrdark-800"
-                  href="https://docs.maintainerr.info"
-                  target="_blank"
-                  rel="noreferrer"
-                >
+                <BrandLink external href="https://docs.maintainerr.info">
                   https://docs.maintainerr.info
-                </a>
+                </BrandLink>
               </div>
             </div>
           </div>
@@ -216,14 +212,9 @@ const AboutSettings = () => {
             <label className="text-label"> Discord </label>
             <div className="form-input">
               <div className="form-input-field font-bold text-maintainerr-600 underline">
-                <a
-                  className="hover:text-maintainerrdark-800"
-                  href="https://discord.gg/WP4ZW2QYwk"
-                  target="_blank"
-                  rel="noreferrer"
-                >
+                <BrandLink external href="https://discord.gg/WP4ZW2QYwk">
                   https://discord.gg/WP4ZW2QYwk
-                </a>
+                </BrandLink>
               </div>
             </div>
           </div>
@@ -237,14 +228,9 @@ const AboutSettings = () => {
             </label>
             <div className="form-input">
               <div className="form-input-field font-bold text-maintainerr-600 underline">
-                <a
-                  className="hover:text-maintainerrdark-800"
-                  href="https://features.maintainerr.info"
-                  target="_blank"
-                  rel="noreferrer"
-                >
+                <BrandLink external href="https://features.maintainerr.info">
                   https://features.maintainerr.info
-                </a>
+                </BrandLink>
               </div>
             </div>
           </div>
@@ -258,14 +244,9 @@ const AboutSettings = () => {
             </label>
             <div className="form-input">
               <div className="form-input-field font-bold text-maintainerr-600 underline">
-                <a
-                  className="hover:text-maintainerrdark-800"
-                  href="https://status.maintainerr.info"
-                  target="_blank"
-                  rel="noreferrer"
-                >
+                <BrandLink external href="https://status.maintainerr.info">
                   https://status.maintainerr.info
-                </a>
+                </BrandLink>
               </div>
             </div>
           </div>
@@ -284,14 +265,27 @@ const AboutSettings = () => {
             </label>
             <div className="form-input">
               <div className="form-input-field font-bold text-maintainerr-600">
-                <a
-                  className="pr-2 underline hover:text-maintainerrdark-800"
+                <BrandLink
+                  external
                   href="https://opencollective.com/maintainerr"
-                  target="_blank"
-                  rel="noreferrer"
                 >
                   OpenCollective
-                </a>
+                </BrandLink>
+              </div>
+            </div>
+          </div>
+        </div>
+        <hr className="my-2 h-px border-0 bg-gray-200 dark:bg-gray-700"></hr>
+        <div className="section my-2">
+          <div className="form-row my-2">
+            <label className="text-label">
+              <Trans>Telemetry</Trans>
+            </label>
+            <div className="form-input">
+              <div className="form-input-field font-bold text-maintainerr-600">
+                <BrandLink to="/settings/telemetry">
+                  <Trans>Help us improve it</Trans>
+                </BrandLink>
               </div>
             </div>
           </div>

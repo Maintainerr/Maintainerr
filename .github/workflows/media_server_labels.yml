@@ -1,0 +1,99 @@
+name: Media server labels
+
+# Puts the `plex`, `jellyfin` and `emby` labels on issues and pull requests as
+# they arrive, so triage can filter by which media server a report concerns.
+#
+# pull_request_target is what lets a fork's pull request be labelled at all - the
+# `pull_request` token is read-only for forks. It runs this workflow and the
+# tools/ it executes from the BASE branch, and this job holds the AI key and a
+# write token, so the pull request's code is never checked out or run. The head
+# is read only as data, through the API, for its title, body and file names.
+#
+# The model's answer is filtered against the three managed labels before anything
+# is written, so a crafted pull request body can at worst earn a wrong media
+# server label. Labelling is additive: nothing this job does removes a label a
+# maintainer put on by hand.
+on:
+  issues:
+    types: [opened, edited]
+  pull_request_target:
+    types: [opened, edited]
+  workflow_dispatch:
+    inputs:
+      item_numbers:
+        description: "Issue/PR numbers to label, comma separated. Empty sweeps unlabelled open items."
+        type: string
+        required: false
+        default: ""
+      dry_run:
+        description: "Log decisions without writing labels"
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: media-server-labels-${{ github.event.issue.number || github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  guard_manual_run:
+    uses: ./.github/workflows/guard-manual.yml
+    permissions:
+      contents: read
+    with:
+      enabled: ${{ github.event_name == 'workflow_dispatch' }}
+      actor: ${{ github.actor }}
+      source: manual workflow run
+
+  label:
+    name: Classify and label
+    needs: guard_manual_run
+    # Dependabot and Weblate pull requests are dependency and translation churn
+    # whose diffs sweep every server's files without meaning anything. Skipping
+    # them here keeps a runner and a model call from being spent on each one.
+    if: >-
+      github.event_name != 'pull_request_target' ||
+      (github.event.pull_request.user.login != 'dependabot[bot]' &&
+       github.event.pull_request.user.login != 'hosted-weblate[bot]')
+    runs-on: ubuntu-latest
+    # Every write goes through the App token below, so this job's own
+    # GITHUB_TOKEN never needs more than reading the base branch to check out.
+    permissions:
+      contents: read
+    steps:
+      # Labels come from maintainerr-automation rather than github-actions,
+      # matching the rest of the repo's automation. The installation token is
+      # narrowed to the two permissions labelling actually needs, so this
+      # privileged pull_request_target job never holds the App's full rights.
+      - name: Create GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ secrets.MERGE_APP_ID }}
+          private-key: ${{ secrets.MERGE_APP_KEY }}
+          permission-issues: write
+          permission-pull-requests: write
+
+      # pull_request_target checks out the BASE by default, so tools/ and the
+      # workflow are trusted. No ref from the pull request is ever fetched.
+      - name: Check out the base branch
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26
+
+      - name: Apply media server labels
+        env:
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          AI_MODEL_API_KEY: ${{ secrets.AI_MODEL_API_KEY }}
+          AI_MODEL: ${{ vars.AI_MODEL }}
+          AI_MODEL_REASONING_EFFORT: ${{ vars.AI_MODEL_REASONING_EFFORT }}
+          ITEM_NUMBERS: ${{ github.event_name == 'workflow_dispatch' && inputs.item_numbers || '' }}
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || 'false' }}
+        run: node tools/media-server-labeler.mjs

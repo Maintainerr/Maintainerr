@@ -1,39 +1,34 @@
 import { type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
+import useCloseOnEscape from '../../hooks/useCloseOnEscape'
+import { useLockBodyScroll } from '../../hooks/useLockBodyScroll'
 import LazyBoundary from './LazyBoundary'
-import Modal from './Modal'
+import LoadingSpinner from './LoadingSpinner'
 
 interface LazyModalBoundaryProps {
   children: ReactNode
   onCancel?: () => void
-  title?: string
-  size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '4xl' | '5xl'
-  backgroundClickable?: boolean
 }
 
-const LazyModalBoundary = ({
-  children,
-  onCancel,
-  title,
-  size,
-  backgroundClickable,
-}: LazyModalBoundaryProps) => {
-  return (
-    <LazyBoundary
-      fallback={
-        <Modal
-          loading
-          title={title}
-          size={size}
-          onCancel={onCancel}
-          backgroundClickable={backgroundClickable}
-        >
-          <div />
-        </Modal>
-      }
-    >
-      {children}
-    </LazyBoundary>
+// The backdrop and the delayed spinner while the chunk loads. A Modal shell
+// has its own footer and height, so it would be swapped for the real dialog
+// rather than filled in.
+const Backdrop = ({ onCancel }: { onCancel?: () => void }) => {
+  useLockBodyScroll(true)
+  useCloseOnEscape(typeof onCancel === 'function', () => onCancel?.())
+
+  return createPortal(
+    <div className="modal-backdrop">
+      <LoadingSpinner />
+    </div>,
+    document.body,
   )
 }
+
+const LazyModalBoundary = ({ children, onCancel }: LazyModalBoundaryProps) => (
+  <LazyBoundary fallback={<Backdrop onCancel={onCancel} />}>
+    {children}
+  </LazyBoundary>
+)
 
 export default LazyModalBoundary

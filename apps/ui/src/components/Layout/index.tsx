@@ -17,6 +17,7 @@ import { INTERACTION_DEBOUNCE_MS } from '../../utils/uiBehavior'
 import { SmallLoadingSpinner } from '../Common/LoadingSpinner'
 import SearchBar from '../Common/SearchBar'
 import NavBar from './NavBar'
+import TelemetryConsentModal from './TelemetryConsentModal'
 
 type LayoutShellProps = {
   children: ReactNode
@@ -139,6 +140,7 @@ const Layout: React.FC = () => {
   return (
     <LayoutShell>
       <Outlet />
+      <TelemetryConsentModal />
     </LayoutShell>
   )
 }

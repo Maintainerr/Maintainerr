@@ -303,22 +303,41 @@ describe('OverlaysController', () => {
     );
   });
 
-  it('forwards global force-processing requests to the processor', async () => {
-    const result = { processed: 1, reverted: 0, skipped: 0, errors: 0 };
-    processorService.processAllCollections.mockResolvedValue(result);
+  it('answers a global force-processing request without waiting for the run', () => {
+    let finish: () => void = () => undefined;
+    processorService.processAllCollections.mockReturnValue(
+      new Promise<void>((resolve) => {
+        finish = resolve;
+      }),
+    );
 
-    await expect(controller.processAll({ force: true })).resolves.toBe(result);
+    // Answering before the run finishes is what keeps a response timeout from
+    // reading a still-running job as a failure (#3549).
+    expect(controller.processAll({ force: true })).toBeUndefined();
 
     expect(processorService.processAllCollections).toHaveBeenCalledWith(true);
+    finish();
   });
 
-  it('defaults global process requests to non-force mode', async () => {
-    const result = { processed: 0, reverted: 0, skipped: 1, errors: 0 };
-    processorService.processAllCollections.mockResolvedValue(result);
+  it('defaults global process requests to non-force mode', () => {
+    processorService.processAllCollections.mockResolvedValue(undefined);
 
-    await controller.processAll({});
+    controller.processAll({});
 
     expect(processorService.processAllCollections).toHaveBeenCalledWith(false);
+  });
+
+  it('rejects a global process request with 409 while a run is in progress', () => {
+    processorService.status = 'running';
+
+    expect(() => controller.processAll({})).toThrow(
+      expect.objectContaining({
+        status: 409,
+        response: 'An overlay run is already in progress',
+      }),
+    );
+
+    expect(processorService.processAllCollections).not.toHaveBeenCalled();
   });
 
   it('processes collection requests without force mode', async () => {
@@ -336,21 +355,23 @@ describe('OverlaysController', () => {
     expect(processorService.processCollection).toHaveBeenCalledWith(collection);
   });
 
-  it('allows reset while overlays are globally disabled', async () => {
+  it('allows reset while overlays are globally disabled', () => {
     processorService.resetAllOverlays.mockResolvedValue(undefined);
 
-    await expect(controller.resetAll()).resolves.toEqual({ success: true });
+    expect(controller.resetAll()).toBeUndefined();
 
     expect(processorService.resetAllOverlays).toHaveBeenCalled();
   });
 
-  it('rejects reset with 409 while a processor run is in progress', async () => {
+  it('rejects reset with 409 while a processor run is in progress', () => {
     processorService.status = 'running';
 
-    await expect(controller.resetAll()).rejects.toMatchObject({
-      status: 409,
-      response: 'Overlay processing is already running',
-    });
+    expect(() => controller.resetAll()).toThrow(
+      expect.objectContaining({
+        status: 409,
+        response: 'An overlay run is already in progress',
+      }),
+    );
 
     expect(processorService.resetAllOverlays).not.toHaveBeenCalled();
   });

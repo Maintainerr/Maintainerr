@@ -24,7 +24,7 @@ export default defineConfig(({ mode }) => {
     build: {
       outDir: 'dist',
       emptyOutDir: true,
-      sourcemap: true,
+      sourcemap: false,
       rolldownOptions: {
         output: {
           manualChunks: (id) => {

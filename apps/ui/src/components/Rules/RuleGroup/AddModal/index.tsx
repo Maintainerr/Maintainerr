@@ -13,6 +13,7 @@ import {
 import { zodResolver } from '@hookform/resolvers/zod'
 import {
   Application,
+  DELETE_AFTER_MAX_DAYS,
   isValidMediaItemType,
   leftoverCleanupScope,
   MediaItemType,
@@ -364,6 +365,10 @@ export const ruleGroupFormSchema = z
           .min(0, {
             error: () => globalT`Take action after days must be 0 or greater`,
           })
+          .max(DELETE_AFTER_MAX_DAYS, {
+            error: () =>
+              globalT`Take action after days must be ${{ max: DELETE_AFTER_MAX_DAYS }} or less`,
+          })
           .optional(),
       )
       .optional(),
@@ -412,6 +417,7 @@ export const ruleGroupFormSchema = z
     sonarrQualityProfileId: z.number().int().nullable().optional(),
     sportarrQualityProfileId: z.number().int().nullable().optional(),
     tagInArr: z.boolean().optional(),
+    keepInMaintainerrOnly: z.boolean().optional(),
     ruleHandlerCronSchedule: z.preprocess(
       (val) => (val === '' ? null : val),
       z
@@ -523,6 +529,7 @@ const buildFormDefaults = (editData?: IRuleGroup): RuleGroupFormValues => ({
     ? (editData.collection?.sportarrQualityProfileId ?? undefined)
     : undefined,
   tagInArr: editData?.collection?.tagInArr ?? false,
+  keepInMaintainerrOnly: editData?.collection?.keepInMaintainerrOnly ?? false,
   ruleHandlerCronSchedule: editData?.ruleHandlerCronSchedule ?? null,
 })
 
@@ -552,12 +559,14 @@ const notifySkippedRules = (skipped: number) => {
 const AddModal = (props: AddModal) => {
   const { t } = useLingui()
   const navigate = useNavigate()
-  const { isPlex, isJellyfin, mediaServerType } = useMediaServerType()
+  const { isPlex, isJellyfin, isEmby, mediaServerType } = useMediaServerType()
   const mediaServerName = isPlex
     ? 'Plex'
     : isJellyfin
       ? 'Jellyfin'
-      : t`your media server`
+      : isEmby
+        ? 'Emby'
+        : t`your media server`
   const supportsCollectionSort = supportsFeature(
     mediaServerType,
     MediaServerFeature.COLLECTION_SORT,
@@ -1054,6 +1063,9 @@ const AddModal = (props: AddModal) => {
       sonarrQualityProfileId: data.sonarrQualityProfileId ?? undefined,
       sportarrQualityProfileId: data.sportarrQualityProfileId ?? undefined,
       tagInArr: data.tagInArr ?? false,
+      keepInMaintainerrOnly: data.manualCollection
+        ? false
+        : (data.keepInMaintainerrOnly ?? false),
       collection: {
         visibleOnRecommended: data.showRecommended,
         visibleOnHome: data.showHome,
@@ -1485,6 +1497,8 @@ const AddModal = (props: AddModal) => {
                             <Input
                               type="number"
                               id="collection_deleteDays"
+                              min={0}
+                              max={DELETE_AFTER_MAX_DAYS}
                               {...register('deleteAfterDays')}
                             />
                           </div>
@@ -1840,6 +1854,33 @@ const AddModal = (props: AddModal) => {
                         </div>
                       </div>
                     </div>
+                    {!manualCollectionEnabled && (
+                      <div className="flex flex-row items-center justify-between py-4">
+                        <label
+                          htmlFor="keep_in_maintainerr_only"
+                          className="text-label"
+                        >
+                          <Trans>Keep in Maintainerr only</Trans>
+                          <p className="text-xs font-normal">
+                            <Trans>
+                              Don&apos;t create this collection in{' '}
+                              {mediaServerName}. Rules, actions, overlays and
+                              tags keep working.
+                            </Trans>
+                          </p>
+                        </label>
+                        <div className="form-input">
+                          <div className="form-input-field">
+                            <input
+                              type="checkbox"
+                              id="keep_in_maintainerr_only"
+                              className="checkbox"
+                              {...register('keepInMaintainerrOnly')}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )}
                     <div
                       className={`flex flex-col ${manualCollectionEnabled ? `` : `hidden`} `}
                     >
@@ -2149,11 +2190,9 @@ const AddModal = (props: AddModal) => {
                 )}
                 {yamlImporterModal && (
                   <LazyModalBoundary
-                    title={yaml ? t`Export Rules YAML` : t`Import Rules YAML`}
                     onCancel={() => {
                       setYamlImporterModal(false)
                     }}
-                    size="5xl"
                   >
                     <YamlImporterModal
                       yaml={yaml}
@@ -2170,7 +2209,6 @@ const AddModal = (props: AddModal) => {
 
                 {configureNotificationModal && (
                   <LazyModalBoundary
-                    title={t`Configure Notifications`}
                     onCancel={() => {
                       setConfigureNotificationModal(false)
                     }}

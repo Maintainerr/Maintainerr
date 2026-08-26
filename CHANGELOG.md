@@ -1,3 +1,64 @@
+# [3.25.0](https://github.com/Maintainerr/Maintainerr/compare/v3.24.0...v3.25.0) (2026-08-25)
+
+
+## Highlights
+- Added anonymous weekly telemetry to help development track usage (#3582).
+- Added a per-collection option to keep collections local to Maintainerr without syncing to the media server (#3579).
+
+## Features
+- Added telemetry schedule visibility and support for the `TELEMETRY=off` environment variable (#3592).
+
+## Fixes
+- Improved modal and dialog layout, including consistent close controls and improved responsiveness (#3595, #3600).
+- Fixed telemetry consent prompt to only appear for existing installs (#3599).
+- Fixed Monaco editor loading by serving it locally and compressing assets (#3592).
+- Removed telemetry information from the About page (#3592).
+- Fixed collection teardown logic to prevent accidental deletion of shared collections when settings change (#3579, #3583).
+- Fixed *arr exclusion tag application when multiple instances are configured (#3578).
+
+## Database migrations
+- Added `keepInMaintainerrOnly` column to the collection table.
+- Added `telemetryEnabled` column to the settings table.
+
+## Internal
+- Updated CI to allow the release PR to carry Weblate translations.
+
+## Dependencies
+- Updated 8 dependencies including react-hook-form, vite, and vitest.
+
+# [3.24.0](https://github.com/Maintainerr/Maintainerr/compare/v3.23.0...v3.24.0) (2026-08-21)
+
+
+## Highlights
+- Make the remaining UI strings translatable to support full localization (#3510).
+- Automatically label issues and pull requests by media server to improve triage (#3562).
+
+## Features
+- Report upstream API endpoint drift to detect breaking changes early (#3541).
+- Link untranslated text hints to the Weblate engagement page (#3560).
+
+## Fixes
+- Overlays: queue reverts behind runs, guard countdown math (#3558), and ensure reset removes all drawn elements (#3557).
+- Overlays: propagate episode countdowns to series when Plex hides seasons (#3534) and map templates to visible artwork regions (#3533).
+- Prevent collections from being incorrectly matched as movies (#3550).
+- CI: gate labels on precision checks (#3567), honour pinned servers on BoxSet reports, and drop unused AI_MODEL_ENDPOINT passthrough (#3566).
+- UI: fix layout viewport overflow, clipped panel labels, and sort order (#3560).
+- UI: remove BETA wording from the About page (#3553).
+- i18n: give layer-visibility toggle unique Show/Hide strings (#3554).
+- i18n: reject translations that change ICU argument structures (#3548) or fail to compile (#3546).
+- i18n: decode catalogs using pofile-ts to ensure validator matches runtime (#3510).
+- CI: fix review job crashes by installing pofile-ts dependencies (#3547).
+- UI: restore reachable loading states and fix event stream handling (#3510).
+
+## Internal
+- Document Jellyfin 12 changes and collection collapsing safety (#3572, #3573).
+- Add translation status badge to README (#3572).
+- Refactor i18n parsers, apply formatting, and harden review tooling (#3510).
+- Fix release sync issues and judge checks by newest runs (#3541).
+
+## Dependencies
+- Bump 10 dependencies including @nestjs/swagger, konva, and @swc/core.
+
 # [3.23.0](https://github.com/Maintainerr/Maintainerr/compare/v3.22.1...v3.23.0) (2026-08-17)
 
 

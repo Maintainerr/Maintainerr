@@ -805,9 +805,17 @@ export class RuleExecutorService {
     const linkedCollection =
       await this.collectionService.checkAutomaticMediaServerLink(collection);
 
+    // Kept in Maintainerr only still holds a link when the server refused the
+    // teardown above. The opt-in is what decides here, not the link: syncing
+    // would import remote members and push removals back to a collection the
+    // rule is no longer supposed to touch. The reconcile keeps retrying.
+    if (linkedCollection.keepInMaintainerrOnly) {
+      return {};
+    }
+
     if (!linkedCollection.mediaServerId) {
       this.logger.debug(
-        `Skipping media server sync for '${linkedCollection.title}' - no media server collection exists because no items currently match the rule.`,
+        `Skipping media server sync for '${linkedCollection.title}' - no media server collection exists.`,
       );
       return {};
     }
@@ -905,8 +913,10 @@ export class RuleExecutorService {
                 collection,
               );
           }
-          // if collection doesn't exist in media server but should.. resync current data
-          if (!collection.mediaServerId) {
+          // if collection doesn't exist in media server but should.. resync current data.
+          // Kept in Maintainerr only never should, and the resync is not free: it
+          // re-marks every member and writes an "Added" log record per item, per run.
+          if (!collection.mediaServerId && !collection.keepInMaintainerrOnly) {
             collection = await this.collectionService.addToCollection(
               collection.id,
               collMediaData.map((m) => ({
