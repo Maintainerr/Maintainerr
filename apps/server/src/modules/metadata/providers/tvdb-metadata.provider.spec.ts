@@ -112,4 +112,9 @@ describe('TvdbMetadataProvider', () => {
     expect(details?.firstAirDate).toBeUndefined();
     expect(details?.seasonCount).toBeUndefined();
   });
+
+  it('does not claim the Sportarr alias stamped in the tvdb namespace', () => {
+    expect(provider.extractId({ tvdb: 900000278 })).toBeUndefined();
+    expect(provider.extractId({ tvdb: 322399 })).toBe(322399);
+  });
 });

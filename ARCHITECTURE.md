@@ -52,7 +52,7 @@ flowchart LR
   API --> Seerr["Seerr"]
   API --> Tautulli["Tautulli"]
   API --> Streamystats["Streamystats"]
-  API --> Metadata["TMDB / TVDB"]
+  API --> Metadata["TMDB / TVDB / Sportarr"]
   API --> GitHub["GitHub releases"]
 ```
 

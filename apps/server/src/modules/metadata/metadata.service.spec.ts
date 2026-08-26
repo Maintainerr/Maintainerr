@@ -1406,4 +1406,47 @@ describe('MetadataService', () => {
       expect(service.hasExternalIds(item)).toBe(false);
     });
   });
+
+  it('reads a provider id the media server carries as a string through the provider that parses it', async () => {
+    // The Sportarr agents stamp lg-000278, not a number, so the provider that
+    // owns that namespace turns it into its id before the year check runs.
+    const libraryItem = createMediaItem({
+      id: 'show-1',
+      type: 'show',
+      title: 'Sample League',
+      providerIds: {
+        tmdb: [],
+        imdb: [],
+        tvdb: [],
+        sportarr: ['lg-000278'],
+      },
+    });
+    const { service, providerByKey } = createService({
+      providerMocks: [
+        {
+          name: 'TMDB',
+          idKey: 'tmdb',
+        },
+        {
+          name: 'Sportarr',
+          idKey: 'sportarr',
+          parseId: (value) => (value === 'lg-000278' ? 278 : undefined),
+          detailsId: 278,
+          details: {
+            title: 'Sample League',
+            type: 'tv',
+            externalIds: { type: 'tv' },
+          },
+        },
+      ],
+    });
+
+    const result = await service.resolveIdsFromMediaItem(libraryItem);
+
+    expect(providerByKey.sportarr.assignId).toHaveBeenCalledWith(
+      expect.anything(),
+      278,
+    );
+    expect(result).toMatchObject({ sportarr: 278, type: 'tv' });
+  });
 });

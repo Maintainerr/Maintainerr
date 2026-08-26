@@ -940,11 +940,13 @@ export class MetadataService {
       }
 
       if (providerKeys.has(key)) {
-        const numericId = Number(values[0]);
         const provider = this.providers.find(
           (itemProvider) => itemProvider.idKey === key,
         );
-        if (Number.isFinite(numericId) && provider) {
+        const numericId = provider?.parseId
+          ? provider.parseId(values[0])
+          : Number(values[0]);
+        if (numericId !== undefined && Number.isFinite(numericId) && provider) {
           provider.assignId(ids, numericId);
         }
         continue;

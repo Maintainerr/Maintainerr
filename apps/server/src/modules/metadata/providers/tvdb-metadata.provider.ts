@@ -3,6 +3,7 @@ import {
   TvdbMovieBase,
   TvdbSeriesBase,
 } from '../../api/tvdb-api/interfaces/tvdb.interface';
+import { sportarrLeagueNumberFromTvdbAlias } from '../../api/servarr-api/helpers/sportarr-external-id';
 import { TvdbApiService } from '../../api/tvdb-api/tvdb.service';
 import { IMetadataProvider } from '../interfaces/metadata-provider.interface';
 import {
@@ -26,7 +27,14 @@ export class TvdbMetadataProvider implements IMetadataProvider {
 
   extractId(ids: ProviderIds): number | undefined {
     const value = ids[this.idKey];
-    return typeof value === 'number' ? value : undefined;
+    if (typeof value !== 'number') {
+      return undefined;
+    }
+    // The Sportarr agents stamp a numeric alias in this namespace that TVDB
+    // does not know. Its own provider answers for it.
+    return sportarrLeagueNumberFromTvdbAlias(value) === undefined
+      ? value
+      : undefined;
   }
 
   assignId(ids: ProviderIds, id: number): void {

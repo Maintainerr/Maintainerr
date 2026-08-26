@@ -673,6 +673,7 @@ export interface MetadataProviderMockConfig {
   posterUrl?: string;
   backdropUrl?: string;
   hierarchyOverview?: string;
+  parseId?: (value: string) => number | undefined;
   findByExternalId?: (
     externalId: string | number,
     type: string,
@@ -714,6 +715,7 @@ export const createMetadataProviderMock = ({
   posterUrl,
   backdropUrl,
   hierarchyOverview,
+  parseId,
   findByExternalId,
 }: MetadataProviderMockConfig): jest.Mocked<IMetadataProvider> => {
   const resolvedDetails = details
@@ -742,6 +744,7 @@ export const createMetadataProviderMock = ({
       .mockResolvedValue(backdropUrl ?? `https://${idKey}/backdrop.jpg`),
     getHierarchyOverview: jest.fn().mockResolvedValue(hierarchyOverview),
     getPersonDetails: jest.fn(),
+    ...(parseId ? { parseId: jest.fn(parseId) } : {}),
     findByExternalId: jest
       .fn()
       .mockImplementation(findByExternalId ?? (async () => undefined)),

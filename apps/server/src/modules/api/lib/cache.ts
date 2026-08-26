@@ -15,7 +15,8 @@ type AvailableCacheIds =
   | 'github'
   | 'jellyfin'
   | 'jellyfinwatchhistory'
-  | 'emby';
+  | 'emby'
+  | 'sportarrhub';
 
 type CacheType = AvailableCacheIds | 'radarr' | 'sonarr' | 'sportarr';
 
@@ -217,6 +218,14 @@ class CacheManager {
       },
     ),
     emby: new Cache('emby', 'Emby API', 'emby'),
+    // Artwork and descriptions for Sportarr leagues, read from sportarr.net
+    // by the league id its agents stamp. Long-lived like the tmdb and tvdb
+    // caches: a league's poster changes rarely and every card asks for it.
+    sportarrhub: new Cache('sportarrhub', 'sportarr.net', 'sportarrhub', {
+      stdTtl: 21600, // 6 hours
+      checkPeriod: 60 * 30,
+      persistent: true,
+    }),
   };
 
   public createCache(

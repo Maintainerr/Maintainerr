@@ -19,6 +19,12 @@ export interface IMetadataProvider {
 
   assignId(ids: ProviderIds, id: number): void;
 
+  /**
+   * The provider's numeric id from the string a media server carries for it.
+   * Providers whose ids are plain numbers leave this out.
+   */
+  parseId?(value: string): number | undefined;
+
   getDetails(
     id: number,
     type: 'movie' | 'tv',
