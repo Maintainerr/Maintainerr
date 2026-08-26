@@ -15,10 +15,11 @@ import { RuleDto } from '../dtos/rule.dto';
 import { RuleGroupDto } from '../dtos/ruleGroup.dto';
 import { ArrLookupCache } from '../helpers/arr-lookup-cache';
 
-// Getter for the native Sportarr application. Resolution keys off the tvdb
-// alias Sportarr stamps on its Plex items (reversed back to a league external
-// id), then reads league/event fields from Sportarr's own /api/. Nothing here
-// is shared with the Sonarr/Radarr getters.
+// Getter for the native Sportarr application. Resolution keys off the league
+// id the Sportarr agents stamp on a show (its sportarr namespace, or the older
+// tvdb alias reversed back to a league external id), then reads league/event
+// fields from Sportarr's own /api/. Nothing here is shared with the
+// Sonarr/Radarr getters.
 @Injectable()
 export class SportarrGetterService {
   plexProperties: Property[];
@@ -81,7 +82,7 @@ export class SportarrGetterService {
       const client = await this.servarrService.getSportarrApiClient(settingsId);
 
       let externalId = sportarrLeagueExternalIdFromProviderIds(
-        showItem?.providerIds?.tvdb,
+        showItem?.providerIds,
       );
       let showMetadataRead = showItem !== undefined;
       if (!externalId) {
@@ -103,7 +104,7 @@ export class SportarrGetterService {
           : fetchShow());
         showMetadataRead = fullShow !== undefined;
         externalId = sportarrLeagueExternalIdFromProviderIds(
-          fullShow?.providerIds?.tvdb,
+          fullShow?.providerIds,
         );
       }
       if (!externalId) {

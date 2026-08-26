@@ -266,7 +266,9 @@ export class TmdbMetadataProvider implements IMetadataProvider {
     externalId: string | number,
     type: string,
   ): Promise<ExternalIdSearchResult[] | undefined> {
-    if (type === 'tmdb') {
+    // TMDB's find endpoint only knows imdb and tvdb. Any other namespace on
+    // the item (the Sportarr agents stamp their own) has no TMDB answer.
+    if (type !== 'imdb' && type !== 'tvdb') {
       return undefined;
     }
 

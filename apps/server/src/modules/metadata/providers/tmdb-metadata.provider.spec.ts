@@ -276,4 +276,11 @@ describe('TmdbMetadataProvider', () => {
     expect(details?.firstAirDate).toBeUndefined();
     expect(details?.seasonCount).toBeUndefined();
   });
+
+  it('does not ask TMDB about an external namespace its find endpoint cannot resolve', async () => {
+    const result = await provider.findByExternalId('lg-000278', 'sportarr');
+
+    expect(result).toBeUndefined();
+    expect(tmdbApi.getByExternalId).not.toHaveBeenCalled();
+  });
 });

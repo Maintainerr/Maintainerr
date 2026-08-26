@@ -43,7 +43,7 @@ const PLEX_AGENT_GUID_PREFIX = `plex${GUID_SCHEME_SEPARATOR}`;
  * - type → type (with enum mapping)
  * - addedAt (unix timestamp) → addedAt (Date)
  * - duration (ms) → durationMs
- * - Guid[] → providerIds { imdb, tmdb, tvdb }
+ * - Guid[] → providerIds { imdb, tmdb, tvdb, sportarr }
  * - Media[] → mediaSources
  */
 export class PlexMapper {
@@ -115,12 +115,13 @@ export class PlexMapper {
   }
 
   /**
-   * Extract provider IDs (IMDB, TMDB, TVDB) from Plex GUID format.
+   * Extract provider IDs (IMDB, TMDB, TVDB, Sportarr) from Plex GUID format.
    *
    * Plex GUIDs look like:
    * - "imdb://tt1234567"
    * - "tmdb://12345"
    * - "tvdb://12345"
+   * - "sportarr://lg-000278"
    * - "plex://movie/5d776830880197001ec7f3eb"
    * - "com.plexapp.agents.thetvdb://73141/1/1?lang=en" (legacy agent)
    *

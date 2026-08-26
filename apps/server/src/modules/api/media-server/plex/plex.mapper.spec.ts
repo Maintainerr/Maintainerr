@@ -148,12 +148,27 @@ describe('PlexMapper', () => {
       expect(result.imdb).toEqual(['tt1234567']);
     });
 
+    it('should extract the Sportarr id its metadata provider stamps beside the tvdb alias', () => {
+      const guids = [
+        { id: 'sportarr://lg-000278' },
+        { id: 'tvdb://900000278' },
+      ];
+      const result = PlexMapper.extractProviderIds(guids);
+      expect(result.sportarr).toEqual(['lg-000278']);
+      expect(result.tvdb).toEqual(['900000278']);
+    });
+
     it('should ignore a fallback guid the agent owns rather than a provider', () => {
       const result = PlexMapper.extractProviderIds(
         [{ id: 'tvdb://900000278' }],
         'tv.plex.agents.nfo.series://show/tvdb_900000278',
       );
-      expect(result).toEqual({ imdb: [], tmdb: [], tvdb: ['900000278'] });
+      expect(result).toEqual({
+        imdb: [],
+        tmdb: [],
+        tvdb: ['900000278'],
+        sportarr: [],
+      });
     });
 
     it('should ignore plex:// guids', () => {
@@ -166,18 +181,18 @@ describe('PlexMapper', () => {
 
     it('should handle undefined guids', () => {
       const result = PlexMapper.extractProviderIds(undefined);
-      expect(result).toEqual({ imdb: [], tmdb: [], tvdb: [] });
+      expect(result).toEqual({ imdb: [], tmdb: [], tvdb: [], sportarr: [] });
     });
 
     it('should handle empty array', () => {
       const result = PlexMapper.extractProviderIds([]);
-      expect(result).toEqual({ imdb: [], tmdb: [], tvdb: [] });
+      expect(result).toEqual({ imdb: [], tmdb: [], tvdb: [], sportarr: [] });
     });
 
     it('should handle malformed guids', () => {
       const guids = [{ id: 'malformed-id' }, { id: '' }];
       const result = PlexMapper.extractProviderIds(guids);
-      expect(result).toEqual({ imdb: [], tmdb: [], tvdb: [] });
+      expect(result).toEqual({ imdb: [], tmdb: [], tvdb: [], sportarr: [] });
     });
   });
 

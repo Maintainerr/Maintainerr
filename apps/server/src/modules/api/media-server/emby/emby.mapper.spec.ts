@@ -60,6 +60,7 @@ describe('EmbyMapper', () => {
         imdb: ['tt1234567'],
         tmdb: [],
         tvdb: [],
+        sportarr: [],
       });
     });
 
@@ -68,6 +69,7 @@ describe('EmbyMapper', () => {
         imdb: [],
         tmdb: ['12345'],
         tvdb: [],
+        sportarr: [],
       });
     });
 
@@ -76,6 +78,7 @@ describe('EmbyMapper', () => {
         imdb: [],
         tmdb: [],
         tvdb: ['67890'],
+        sportarr: [],
       });
     });
 
@@ -84,6 +87,7 @@ describe('EmbyMapper', () => {
         imdb: [],
         tmdb: [],
         tvdb: [],
+        sportarr: [],
       });
     });
 
@@ -92,6 +96,7 @@ describe('EmbyMapper', () => {
         imdb: [],
         tmdb: [],
         tvdb: [],
+        sportarr: [],
       });
     });
 
@@ -100,6 +105,7 @@ describe('EmbyMapper', () => {
         imdb: [],
         tmdb: [],
         tvdb: [],
+        sportarr: [],
       });
     });
   });
@@ -331,7 +337,12 @@ describe('EmbyMapper', () => {
       expect(result.id).toBe('minimal-1');
       expect(result.title).toBe('Minimal');
       expect(result.parentId).toBeUndefined();
-      expect(result.providerIds).toEqual({ imdb: [], tmdb: [], tvdb: [] });
+      expect(result.providerIds).toEqual({
+        imdb: [],
+        tmdb: [],
+        tvdb: [],
+        sportarr: [],
+      });
       expect(result.mediaSources).toEqual([]);
       expect(result.genres).toEqual([]);
       expect(result.actors).toEqual([]);

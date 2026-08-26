@@ -210,6 +210,55 @@ describe('MediaModal', () => {
     expect(await screen.findByText('tvdb://202')).toBeTruthy()
   })
 
+  it('links a sportarr id to its league on sportarr.net', async () => {
+    getApiHandlerMock.mockImplementation((path: string) => {
+      if (path === '/media-server') {
+        return Promise.resolve({})
+      }
+
+      if (path === '/settings') {
+        return Promise.resolve({})
+      }
+
+      if (path === '/media-server/meta/3') {
+        return Promise.resolve({
+          providerIds: {
+            sportarr: ['lg-000278'],
+            tvdb: ['900000278'],
+          },
+        } as MediaItem)
+      }
+
+      if (path.startsWith('/metadata/backdrop/show?')) {
+        return Promise.resolve(undefined)
+      }
+
+      if (path === '/streamystats/info') {
+        return Promise.reject(new Error('404 Streamystats not configured'))
+      }
+
+      throw new Error(`Unexpected request: ${path}`)
+    })
+
+    render(
+      <MediaModal
+        onClose={() => {}}
+        id={3}
+        mediaType="show"
+        title="Show"
+        summary="Show summary"
+        providerIds={{ sportarr: ['lg-000278'] }}
+      />,
+    )
+
+    const badge = await screen.findByText('sportarr://lg-000278')
+
+    expect(badge.closest('a')?.getAttribute('href')).toBe(
+      'https://sportarr.net/browse/leagues/lg-000278',
+    )
+    expect(screen.queryByText('tvdb://900000278')).toBeNull()
+  })
+
   it('shows maintainerr status for manually added items', async () => {
     getApiHandlerMock.mockImplementation((path: string) => {
       if (path === '/media-server') {

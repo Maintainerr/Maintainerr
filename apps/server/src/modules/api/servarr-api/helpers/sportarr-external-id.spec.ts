@@ -51,18 +51,60 @@ describe('sportarrLeagueExternalIdFromTvdbAlias', () => {
 });
 
 describe('sportarrLeagueExternalIdFromProviderIds', () => {
-  it('scans past non-alias entries to find the alias', () => {
-    // An agent-matched item can carry a real TVDB guid ahead of the alias.
+  it('prefers the native sportarr id over the tvdb alias', () => {
     expect(
-      sportarrLeagueExternalIdFromProviderIds(['342040', '900000278']),
+      sportarrLeagueExternalIdFromProviderIds({
+        sportarr: ['lg-000278'],
+        tvdb: ['900000999'],
+      }),
     ).toBe('lg-000278');
   });
 
-  it('returns null when no entry is inside the alias range', () => {
+  it('canonicalises the stamped id, which is matched against Sportarr by string', () => {
     expect(
-      sportarrLeagueExternalIdFromProviderIds(['342040', 'not-a-number']),
+      sportarrLeagueExternalIdFromProviderIds({ sportarr: [' LG-278 '] }),
+    ).toBe('lg-000278');
+  });
+
+  it('falls back to the tvdb alias for a show refreshed before the native id existed', () => {
+    expect(
+      sportarrLeagueExternalIdFromProviderIds({ tvdb: ['900000278'] }),
+    ).toBe('lg-000278');
+  });
+
+  it.each([
+    'ev-848683', // an event, stamped on episodes, never a league
+    '900000278', // the tvdb alias digits, not a native id
+    'lg-', // no digits
+    'lg-000000', // league 0 does not exist
+    'lg-12ab',
+    'league-278',
+  ])('ignores %s in the sportarr namespace and reads the alias', (value) => {
+    expect(
+      sportarrLeagueExternalIdFromProviderIds({
+        sportarr: [value],
+        tvdb: ['900000278'],
+      }),
+    ).toBe('lg-000278');
+  });
+
+  it('scans past non-alias tvdb entries to find the alias', () => {
+    // An agent-matched item can carry a real TVDB guid ahead of the alias.
+    expect(
+      sportarrLeagueExternalIdFromProviderIds({
+        tvdb: ['342040', '900000278'],
+      }),
+    ).toBe('lg-000278');
+  });
+
+  it('returns null when nothing identifies a league', () => {
+    expect(
+      sportarrLeagueExternalIdFromProviderIds({
+        sportarr: ['ev-848683'],
+        tvdb: ['342040', 'not-a-number'],
+      }),
     ).toBeNull();
-    expect(sportarrLeagueExternalIdFromProviderIds([])).toBeNull();
+    expect(sportarrLeagueExternalIdFromProviderIds({})).toBeNull();
     expect(sportarrLeagueExternalIdFromProviderIds(undefined)).toBeNull();
   });
 });

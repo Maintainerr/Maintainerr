@@ -2,12 +2,14 @@ import { MediaItemType } from './enums'
 import { MediaLibrarySortField, MediaSortOrder } from './sorting'
 
 /**
- * Provider IDs for external databases (IMDB, TMDB, TVDB)
+ * Provider IDs for external databases (IMDB, TMDB, TVDB) and for Sportarr,
+ * whose media server agents stamp their own `sportarr` namespace (lg-000278).
  */
 export interface MediaProviderIds {
   imdb?: string[]
   tmdb?: string[]
   tvdb?: string[]
+  sportarr?: string[]
 }
 
 /**
