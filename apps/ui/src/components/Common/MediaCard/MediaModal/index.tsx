@@ -1,4 +1,5 @@
 import {
+  isSportarrTvdbAlias,
   MediaItem,
   ServarrAction,
   type MaintainerrMediaStatusDetails,
@@ -17,7 +18,6 @@ import { logClientError } from '../../../../utils/ClientLogger'
 import {
   buildMetadataPath,
   buildProviderUrl,
-  isSportarrTvdbAlias,
   mediaTypeLabel,
 } from '../../../../utils/mediaTypeUtils'
 import Button from '../../Button'
@@ -573,7 +573,7 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
       ['tmdb', 'imdb', 'tvdb', 'sportarr'] as const
     ).flatMap((provider) =>
       (providerIds?.[provider] ?? [])
-        .filter((id) => provider !== 'tvdb' || !isSportarrTvdbAlias(id))
+        .filter((id) => provider !== 'tvdb' || !isSportarrTvdbAlias(Number(id)))
         .map((id) => ({ provider, id })),
     )
 
@@ -888,7 +888,7 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
               the sheet scrolled sideways to reach the last one. */}
           <div className="flex shrink-0 flex-row flex-wrap items-center justify-between gap-4 p-4">
             {['movie', 'show'].includes(mediaType) &&
-              providerBadges.length > 0 && (
+              (providerBadges.length > 0 || showBackdropProviderBadge) && (
                 <div className="flex flex-wrap items-center gap-1 text-xs text-zinc-400">
                   {providerBadges.map(({ provider, id }) => (
                     <ProviderIdBadge

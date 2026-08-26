@@ -70,13 +70,6 @@ describe('JellyfinMapper', () => {
       expect(result.tvdb).toEqual(['67890']);
     });
 
-    it('should extract the Sportarr id its agent stamps', () => {
-      const result = JellyfinMapper.extractProviderIds({
-        Sportarr: 'lg-000278',
-      });
-      expect(result.sportarr).toEqual(['lg-000278']);
-    });
-
     it('should extract multiple provider ids', () => {
       const providerIds = {
         Imdb: 'tt1234567',

@@ -18,8 +18,8 @@ import { ArrLookupCache } from '../helpers/arr-lookup-cache';
 // Getter for the native Sportarr application. Resolution keys off the league
 // id the Sportarr agents stamp on a show (its sportarr namespace, or the older
 // tvdb alias reversed back to a league external id), then reads league/event
-// fields from Sportarr's own /api/. Nothing here
-// is shared with the Sonarr/Radarr getters.
+// fields from Sportarr's own /api/. Nothing here is shared with the
+// Sonarr/Radarr getters.
 @Injectable()
 export class SportarrGetterService {
   plexProperties: Property[];

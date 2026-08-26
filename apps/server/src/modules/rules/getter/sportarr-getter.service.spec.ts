@@ -113,7 +113,19 @@ describe('SportarrGetterService', () => {
     expect(mockClient.getLeagueByExternalId).not.toHaveBeenCalled();
   });
 
-  it('finds the alias when it is not the first tvdb provider id', async () => {
+  it.each([
+    // A show refreshed since the agents stamp their own namespace carries the
+    // native id, and it wins over a conflicting alias.
+    {
+      name: 'the native sportarr id',
+      providerIds: { sportarr: [F1_EXTERNAL_ID], tvdb: ['900000999'] },
+    },
+    // An agent-matched item can carry a real TVDB id ahead of the alias.
+    {
+      name: 'the alias behind a real tvdb id',
+      providerIds: { tvdb: ['342040', F1_ALIAS] },
+    },
+  ])('resolves the league from $name', async ({ providerIds }) => {
     mockClient.getLeagueByExternalId.mockResolvedValue({
       id: 3,
       externalId: F1_EXTERNAL_ID,
@@ -122,36 +134,18 @@ describe('SportarrGetterService', () => {
       added: '2025-12-04T02:29:15.000Z',
     });
 
-    // A show refreshed since the agents stamp their own namespace carries the
-    // native id; it wins over the alias.
-    const nativeResult = await service.get(
-      1,
-      showItem({
-        providerIds: { sportarr: [F1_EXTERNAL_ID], tvdb: ['900000999'] },
-      }),
-      'show',
-      ruleGroup(),
-    );
-
-    expect(nativeResult).toBe(true);
-    expect(mockClient.getLeagueByExternalId).toHaveBeenCalledWith(
-      F1_EXTERNAL_ID,
-      expect.any(Array),
-    );
-
-    // An agent-matched item can carry a real TVDB id ahead of the alias.
     const result = await service.get(
       1,
-      showItem({ providerIds: { tvdb: ['342040', F1_ALIAS] } }),
+      showItem({ providerIds }),
       'show',
       ruleGroup(),
     );
 
+    expect(result).toBe(true);
     expect(mockClient.getLeagueByExternalId).toHaveBeenCalledWith(
       F1_EXTERNAL_ID,
       expect.any(Array),
     );
-    expect(result).toBe(true);
   });
 
   it('resolves the league by the reversed alias and returns addDate', async () => {
