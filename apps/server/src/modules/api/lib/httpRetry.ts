@@ -2,8 +2,10 @@ import axios, { type AxiosError, type AxiosInstance } from 'axios';
 import axiosRetry, { type IAxiosRetryConfig } from 'axios-retry';
 
 // Past this the request would be held open too long, and on Discord count
-// against its invalid-request ban threshold, so give up instead. This bounds
-// every outbound client, not just the notification agents.
+// against its invalid-request ban threshold, so give up instead. It bounds one
+// wait, not the request: axios-retry charges the delay against `timeout`, so a
+// client that sets one drops the retry outright when the declared wait will not
+// fit in what is left. Only the timeout-less clients below reach this cap.
 const MAX_RATE_LIMIT_WAIT_MS = 60000;
 const RETRY_PADDING_MS = 250;
 
@@ -111,11 +113,16 @@ applyHttpRetry(retryingHttp);
  * The client every notification agent posts through. A rule run can produce a
  * burst of sends, and a rate-limited one is otherwise logged and lost - so
  * retry 429 here, once, rather than per agent.
+ *
+ * One attempt, like the shared policy. This sets no timeout, so nothing else
+ * bounds it: three attempts against a limiter asking for the full 60s measured
+ * at 181s of a held-open send, and the test endpoint answers synchronously.
  */
 export const rateLimitAwareHttp = axios.create();
 
 applyHttpRetry(rateLimitAwareHttp, {
-  retryCondition: isRetryableRateLimit,
+  retryCondition: (error) =>
+    isRetryableRateLimit(error) && retryCountOf(error) === 0,
   retryDelay: (retryCount, error) =>
     (error ? rateLimitWaitMs(error) : 0) + RETRY_PADDING_MS * retryCount,
 });
