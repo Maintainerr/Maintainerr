@@ -1,8 +1,9 @@
 import axios, { type AxiosError, type AxiosInstance } from 'axios';
 import axiosRetry, { type IAxiosRetryConfig } from 'axios-retry';
 
-// Past this the send would be held open too long, and on Discord count against
-// its invalid-request ban threshold, so give up instead.
+// Past this the request would be held open too long, and on Discord count
+// against its invalid-request ban threshold, so give up instead. This bounds
+// every outbound client, not just the notification agents.
 const MAX_RATE_LIMIT_WAIT_MS = 60000;
 const RETRY_PADDING_MS = 250;
 
