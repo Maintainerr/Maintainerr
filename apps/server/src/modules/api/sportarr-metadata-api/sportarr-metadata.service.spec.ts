@@ -1,10 +1,7 @@
 import { Mocked, TestBed } from '@suites/unit';
 import { SettingsDataService } from '../../settings/settings-data.service';
 import cacheManager from '../lib/cache';
-import {
-  sportarrMetadataRetryPolicy,
-  SportarrMetadataApiService,
-} from './sportarr-metadata.service';
+import { SportarrMetadataApiService } from './sportarr-metadata.service';
 
 const SPORTARR_NET = 'https://sportarr.net/api/metadata';
 const CONNECTION = 'http://sportarr.local:1867/api/metadata';
@@ -253,47 +250,5 @@ describe('SportarrMetadataApiService', () => {
     delete process.env.SPORTARR_NET;
 
     await expect(service.hasSource()).resolves.toBe(true);
-  });
-});
-
-describe('sportarrMetadataRetryPolicy', () => {
-  const rateLimited = (retryAfter: string) =>
-    ({
-      config: { method: 'get' },
-      response: {
-        status: 429,
-        headers: { 'retry-after': retryAfter },
-        data: {},
-      },
-    }) as unknown as Parameters<
-      typeof sportarrMetadataRetryPolicy.retryCondition
-    >[0];
-
-  it('waits exactly as long as a 429 asks for', () => {
-    const error = rateLimited('5');
-
-    expect(sportarrMetadataRetryPolicy.retryCondition(error)).toBe(true);
-    expect(sportarrMetadataRetryPolicy.retryDelay(0, error)).toBe(5000);
-  });
-
-  it('gives up on a 429 that asks for longer than the cap allows', () => {
-    // Retrying would hold a poster request open for ten minutes.
-    expect(sportarrMetadataRetryPolicy.retryCondition(rateLimited('600'))).toBe(
-      false,
-    );
-  });
-
-  it('keeps the standard policy for everything else', () => {
-    const serverError = {
-      config: { method: 'get' },
-      response: { status: 503, headers: {}, data: {} },
-    } as unknown as Parameters<
-      typeof sportarrMetadataRetryPolicy.retryCondition
-    >[0];
-
-    expect(sportarrMetadataRetryPolicy.retryCondition(serverError)).toBe(true);
-    expect(
-      sportarrMetadataRetryPolicy.retryDelay(1, serverError),
-    ).toBeGreaterThan(0);
   });
 });

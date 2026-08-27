@@ -1,12 +1,9 @@
 import { stripTrailingSlashes } from '@maintainerr/contracts';
 import { Injectable, OnModuleInit } from '@nestjs/common';
-import type { AxiosError } from 'axios';
-import axiosRetry from 'axios-retry';
 import { MaintainerrLogger } from '../../logging/logs.service';
 import { SettingsDataService } from '../../settings/settings-data.service';
 import { ExternalApiService } from '../external-api/external-api.service';
 import cacheManager from '../lib/cache';
-import { isRetryableRateLimit, rateLimitWaitMs } from '../lib/httpRetry';
 import {
   SportarrMetadataEpisode,
   SportarrMetadataLeague,
@@ -33,29 +30,6 @@ const SOURCE_FAILURE_COOLDOWN_MS = 60000;
 
 type LeagueAnswer = SportarrMetadataLeague & { error?: string };
 
-/** How many times this request has already been retried. */
-const retryCountOf = (error: AxiosError): number =>
-  (error.config as { 'axios-retry'?: { retryCount?: number } } | undefined)?.[
-    'axios-retry'
-  ]?.retryCount ?? 0;
-
-// The standard policy, except for the 429 Sportarr's rate limiter declares:
-// wait exactly as long as it asks, and give up instead when it asks for
-// longer than isRetryableRateLimit allows. The standard condition retries
-// every 429 on a GET, so it can never apply that cap itself.
-//
-// One retry for a 429, because the cap bounds a single wait and the standard
-// three attempts would let a rate limiter hold a poster request open for
-// three times as long.
-export const sportarrMetadataRetryPolicy = {
-  retryCondition: (error: AxiosError): boolean =>
-    error.response?.status === 429
-      ? isRetryableRateLimit(error) && retryCountOf(error) === 0
-      : axiosRetry.isNetworkOrIdempotentRequestError(error),
-  retryDelay: (retryCount: number, error: AxiosError): number =>
-    rateLimitWaitMs(error) || axiosRetry.exponentialDelay(retryCount, error),
-};
-
 // Sportarr's metadata agent API, keyed by the league id the Sportarr media
 // server agents stamp on a show. A Sportarr instance serves the same routes as
 // sportarr.net, but only for the leagues it tracks, so a league is read from
@@ -80,7 +54,6 @@ export class SportarrMetadataApiService
     // only applies if a relative read is ever added.
     super(`${SPORTARR_NET_URL}${METADATA_PATH}`, {}, logger, {
       nodeCache: cacheManager.getCache('sportarrmetadata').data,
-      retry: sportarrMetadataRetryPolicy,
     });
   }
 
