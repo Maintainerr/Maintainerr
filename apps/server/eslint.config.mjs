@@ -50,6 +50,25 @@ export default [
           caughtErrors: 'none',
         },
       ],
+      // The bare global axios carries no retry policy, so a call on it is the
+      // one outbound request in the app that never retries anything. Go through
+      // ExternalApiService, or retryingHttp / rateLimitAwareHttp from
+      // modules/api/lib/httpRetry. Opt out inline, with the reason, where
+      // failing fast is the point.
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector:
+            "CallExpression[callee.object.name='axios'][callee.property.name=/^(request|get|post|put|patch|delete|head|options)$/]",
+          message:
+            'Use ExternalApiService, retryingHttp or rateLimitAwareHttp - the global axios has no retry policy.',
+        },
+        {
+          selector: "CallExpression[callee.name='axios']",
+          message:
+            'Use ExternalApiService, retryingHttp or rateLimitAwareHttp - the global axios has no retry policy.',
+        },
+      ],
     },
   },
   {
@@ -66,6 +85,7 @@ export default [
       'jest/valid-expect': 'error',
       '@typescript-eslint/unbound-method': 'off',
       'jest/unbound-method': 'error',
+      'no-restricted-syntax': 'off',
     },
   },
 

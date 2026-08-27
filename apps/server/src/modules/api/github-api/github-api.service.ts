@@ -46,6 +46,10 @@ export class GitHubApiService {
               `Request quota exhausted for ${options.method} ${options.url}`,
             );
 
+            // Deliberately tighter than MAX_RATE_LIMIT_WAIT_MS: getReleases is
+            // served synchronously from app.controller, and unauthenticated
+            // GitHub allows only 60 requests an hour, so the wait it names is
+            // routinely minutes rather than seconds.
             if (retryAfter && retryAfter > 10) {
               logger.error(
                 `Aborting retry for ${options.method} ${options.url} due to long wait time of ${retryAfter} seconds`,
