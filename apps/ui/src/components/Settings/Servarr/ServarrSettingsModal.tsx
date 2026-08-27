@@ -1,9 +1,6 @@
 import { RefreshIcon } from '@heroicons/react/solid'
 import { Trans, useLingui } from '@lingui/react/macro'
-import {
-  BasicResponseDto,
-  stripTrailingSlashes,
-} from '@maintainerr/contracts'
+import { BasicResponseDto, stripTrailingSlashes } from '@maintainerr/contracts'
 import { useMemo, useState } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
 import {
@@ -264,8 +261,10 @@ const ServarrSettingsModal = <TSetting extends ServarrSettingShape>({
     setRefreshing(true)
 
     try {
-      const response =
-        await PostApiHandler<BasicResponseDto>(metadataRefreshPath, {})
+      const response = await PostApiHandler<BasicResponseDto>(
+        metadataRefreshPath,
+        {},
+      )
 
       setRefreshMessage({
         status: response?.code === 1,
@@ -407,6 +406,18 @@ const ServarrSettingsModal = <TSetting extends ServarrSettingShape>({
             isPending={testing}
             feedbackStatus={testFeedbackStatus}
           />
+          {metadataRefreshPath ? (
+            <Button
+              buttonType="default"
+              className="ml-3"
+              type="button"
+              onClick={() => void refreshMetadata()}
+              disabled={refreshing}
+            >
+              <RefreshIcon />
+              <Trans>Refresh Metadata</Trans>
+            </Button>
+          ) : null}
         </>
       }
     >
@@ -522,19 +533,6 @@ const ServarrSettingsModal = <TSetting extends ServarrSettingShape>({
           <span className="m-auto rounded-md shadow-xs sm:mr-auto sm:ml-3">
             <DocsButton page={docsPage} />
           </span>
-          {metadataRefreshPath ? (
-            <span className="m-auto rounded-md shadow-xs sm:ml-3">
-              <Button
-                buttonType="default"
-                type="button"
-                onClick={() => void refreshMetadata()}
-                disabled={refreshing}
-              >
-                <RefreshIcon />
-                <Trans>Refresh Metadata</Trans>
-              </Button>
-            </span>
-          ) : null}
         </div>
       </div>
     </Modal>

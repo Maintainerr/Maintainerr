@@ -67,6 +67,7 @@ export class SportarrMetadataApiService
   implements OnModuleInit
 {
   private configuredSources?: { sources: string[]; readAt: number };
+  private sourceRead?: Promise<string[]>;
   private readonly unreachableUntil = new Map<string, number>();
 
   constructor(
@@ -141,9 +142,32 @@ export class SportarrMetadataApiService
    */
   hasReachableSource(): boolean {
     const now = Date.now();
-    return (this.configuredSources?.sources ?? []).some(
+    const cached = this.configuredSources;
+
+    // Standing down stops the walks, and the walks are what refresh this
+    // list, so an install that boots with nothing configured would stay shut
+    // until a restart. Read again, out of band, whenever what we hold is
+    // empty or old. The answer below is still the one we hold; the next call
+    // sees the new list.
+    if (
+      !cached ||
+      cached.sources.length === 0 ||
+      now - cached.readAt >= SOURCE_LIST_TTL_MS
+    ) {
+      void this.refreshConfiguredSources();
+    }
+
+    return (cached?.sources ?? []).some(
       (source) => (this.unreachableUntil.get(source) ?? 0) <= now,
     );
+  }
+
+  /** One read at a time, however many callers ask while it is in flight. */
+  private refreshConfiguredSources(): Promise<string[]> {
+    this.sourceRead ??= this.readConfiguredSources().finally(() => {
+      this.sourceRead = undefined;
+    });
+    return this.sourceRead;
   }
 
   /** Every source worth asking right now, in order. */
@@ -152,7 +176,7 @@ export class SportarrMetadataApiService
     const configured =
       cached && Date.now() - cached.readAt < SOURCE_LIST_TTL_MS
         ? cached.sources
-        : await this.readConfiguredSources();
+        : await this.refreshConfiguredSources();
 
     const now = Date.now();
     return configured.filter(

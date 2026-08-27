@@ -187,6 +187,32 @@ describe('SportarrMetadataApiService', () => {
     await expect(service.hasSource()).resolves.toBe(true);
   });
 
+  it('opens again when the first connection is added after an empty boot', async () => {
+    // The gate is what stops the walks, and the walks are what refresh the
+    // source list, so a first run with nothing configured could otherwise
+    // stay shut until a restart.
+    delete process.env.SPORTARR_NET;
+    withConnections();
+    await service.onModuleInit();
+    expect(service.hasReachableSource()).toBe(false);
+    await new Promise((resolve) => setImmediate(resolve));
+
+    // The user adds their first connection.
+    withConnections('http://sportarr.local:1867');
+    answer(`${CONNECTION}/agents/series/lg-000278`, {
+      title: 'Sample League',
+    });
+
+    // The stand-down answer, and the read it kicks off behind it.
+    expect(service.hasReachableSource()).toBe(false);
+    await new Promise((resolve) => setImmediate(resolve));
+
+    expect(service.hasReachableSource()).toBe(true);
+    await expect(service.getLeague('lg-000278')).resolves.toEqual({
+      title: 'Sample League',
+    });
+  });
+
   it('never touches sportarr.net unless the environment asks for it', async () => {
     // An install that has never heard of Sportarr must not make an outbound
     // request for a carried id it happens to hold.

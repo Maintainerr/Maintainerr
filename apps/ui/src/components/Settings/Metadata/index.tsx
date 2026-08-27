@@ -552,16 +552,11 @@ function ProviderSection({
 
 const MetadataSettings = () => {
   const { t } = useLingui()
-  const {
-    feedback,
-    clear,
-    showUpdated,
-    showUpdateError,
-    showWarning,
-  } = useSettingsFeedback({
-    updated: t`Metadata provider preference updated`,
-    updateError: t`Metadata provider preference could not be updated`,
-  })
+  const { feedback, clear, showUpdated, showUpdateError, showWarning } =
+    useSettingsFeedback({
+      updated: t`Metadata provider preference updated`,
+      updateError: t`Metadata provider preference could not be updated`,
+    })
   const {
     data: preference = MetadataProviderPreference.TMDB_PRIMARY,
     isLoading: preferenceLoading,

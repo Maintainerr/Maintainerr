@@ -290,9 +290,7 @@ describe('ServarrSettingsModal', () => {
     })
 
     await waitFor(() => {
-      expect(
-        screen.getByText('Sportarr metadata refresh started'),
-      ).toBeTruthy()
+      expect(screen.getByText('Sportarr metadata refresh started')).toBeTruthy()
     })
   })
 })

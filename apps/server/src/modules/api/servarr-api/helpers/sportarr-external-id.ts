@@ -1,5 +1,4 @@
 import {
-  isSportarrTvdbAlias,
   MediaProviderIds,
   sportarrLeagueId,
   sportarrLeagueNumber,
@@ -23,10 +22,6 @@ function leagueExternalIdFromNativeId(
 export function sportarrLeagueExternalIdFromTvdbAlias(
   tvdbAlias: number | undefined | null,
 ): string | undefined {
-  if (!isSportarrTvdbAlias(tvdbAlias)) {
-    return undefined;
-  }
-
   const n = sportarrLeagueNumberFromTvdbAlias(tvdbAlias);
   return n === undefined ? undefined : sportarrLeagueId(n);
 }
