@@ -27,7 +27,6 @@ import Button from '../../Common/Button'
 import SaveButton from '../../Common/SaveButton'
 import TestingButton from '../../Common/TestingButton'
 import { Input } from '../../Forms/Input'
-import SportarrSection from './SportarrSection'
 import {
   type SettingsFeedback,
   SettingsFeedbackAlert,
@@ -559,8 +558,6 @@ const MetadataSettings = () => {
     showUpdated,
     showUpdateError,
     showWarning,
-    showSuccess,
-    showError,
   } = useSettingsFeedback({
     updated: t`Metadata provider preference updated`,
     updateError: t`Metadata provider preference could not be updated`,
@@ -712,19 +709,6 @@ const MetadataSettings = () => {
               </li>
             )
           })}
-          <li className="h-full">
-            <SportarrSection
-              onFeedback={(sectionFeedback) => {
-                clearAllFeedback()
-                if (!sectionFeedback) return
-                if (sectionFeedback.type === 'success') {
-                  showSuccess(sectionFeedback.title)
-                } else {
-                  showError(sectionFeedback.title)
-                }
-              }}
-            />
-          </li>
         </ul>
       </div>
     </>

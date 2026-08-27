@@ -1,5 +1,9 @@
+import { RefreshIcon } from '@heroicons/react/solid'
 import { Trans, useLingui } from '@lingui/react/macro'
-import { stripTrailingSlashes } from '@maintainerr/contracts'
+import {
+  BasicResponseDto,
+  stripTrailingSlashes,
+} from '@maintainerr/contracts'
 import { useMemo, useState } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
 import {
@@ -14,6 +18,7 @@ import {
   getPortFromUrl,
 } from '../../../utils/SettingsUtils'
 import Alert from '../../Common/Alert'
+import Button from '../../Common/Button'
 import DocsButton from '../../Common/DocsButton'
 import Modal from '../../Common/Modal'
 import SaveButton from '../../Common/SaveButton'
@@ -75,6 +80,9 @@ interface ServarrSettingsModalProps<TSetting extends ServarrSettingShape> {
   settingsPath: string
   testPath: string
   serviceName: string
+  // Set by a service whose metadata Maintainerr caches, so the cache can be
+  // dropped from the same place the connection is configured.
+  metadataRefreshPath?: string
   settings?: TSetting
   onUpdate: (setting: TSetting) => void
   onDelete: (id: number) => Promise<boolean>
@@ -166,6 +174,7 @@ const ServarrSettingsModal = <TSetting extends ServarrSettingShape>({
   settingsPath,
   testPath,
   serviceName,
+  metadataRefreshPath,
   settings,
   onUpdate,
   onDelete,
@@ -186,6 +195,11 @@ const ServarrSettingsModal = <TSetting extends ServarrSettingShape>({
   const [testedConnectionStateKey, setTestedConnectionStateKey] =
     useState<string>()
   const [saving, setSaving] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
+  const [refreshMessage, setRefreshMessage] = useState<{
+    status: boolean
+    message: string
+  }>()
   const [testing, setTesting] = useState(false)
   const [testResult, setTestResult] = useState<TestStatus>()
 
@@ -240,6 +254,35 @@ const ServarrSettingsModal = <TSetting extends ServarrSettingShape>({
   const clearFeedback = () => {
     setErrorMessage(undefined)
     setTestResult(undefined)
+    setRefreshMessage(undefined)
+  }
+
+  const refreshMetadata = async () => {
+    if (!metadataRefreshPath || refreshing) return
+
+    clearFeedback()
+    setRefreshing(true)
+
+    try {
+      const response =
+        await PostApiHandler<BasicResponseDto>(metadataRefreshPath, {})
+
+      setRefreshMessage({
+        status: response?.code === 1,
+        message:
+          response?.message ??
+          (response?.code === 1
+            ? t`${{ serviceName }} metadata refresh started`
+            : t`Failed to refresh ${{ serviceName }} metadata`),
+      })
+    } catch {
+      setRefreshMessage({
+        status: false,
+        message: t`Failed to refresh ${{ serviceName }} metadata`,
+      })
+    } finally {
+      setRefreshing(false)
+    }
   }
 
   const saveSettings = async (values: ServarrFormState) => {
@@ -368,10 +411,16 @@ const ServarrSettingsModal = <TSetting extends ServarrSettingShape>({
       }
     >
       <SettingsAlertSlot>
-        {errorMessage || testResult ? (
+        {errorMessage || testResult || refreshMessage ? (
           <div className="space-y-4">
             {errorMessage ? (
               <Alert type="warning" title={errorMessage} />
+            ) : null}
+            {refreshMessage ? (
+              <Alert
+                type={refreshMessage.status ? 'success' : 'error'}
+                title={refreshMessage.message}
+              />
             ) : null}
             {testResult ? (
               <Alert
@@ -473,6 +522,19 @@ const ServarrSettingsModal = <TSetting extends ServarrSettingShape>({
           <span className="m-auto rounded-md shadow-xs sm:mr-auto sm:ml-3">
             <DocsButton page={docsPage} />
           </span>
+          {metadataRefreshPath ? (
+            <span className="m-auto rounded-md shadow-xs sm:ml-3">
+              <Button
+                buttonType="default"
+                type="button"
+                onClick={() => void refreshMetadata()}
+                disabled={refreshing}
+              >
+                <RefreshIcon />
+                <Trans>Refresh Metadata</Trans>
+              </Button>
+            </span>
+          ) : null}
         </div>
       </div>
     </Modal>

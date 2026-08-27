@@ -231,4 +231,68 @@ describe('ServarrSettingsModal', () => {
       ).disabled,
     ).toBe(false)
   })
+  it('offers a metadata refresh only when a refresh path is given, and posts to it', async () => {
+    postApiHandler.mockResolvedValue({
+      code: 1,
+      message: 'Sportarr metadata refresh started',
+    })
+
+    const { rerender } = render(
+      <ServarrSettingsModal
+        title="Sportarr Settings"
+        docsPage="Configuration/#sportarr"
+        settingsPath="/settings/sportarr"
+        testPath="/settings/test/sportarr"
+        serviceName="Sportarr"
+        settings={{
+          id: 7,
+          serverName: 'Sportarr',
+          url: 'http://sportarr.local:1867/api',
+          apiKey: 'secret',
+        }}
+        onUpdate={vi.fn()}
+        onDelete={vi.fn()}
+        onCancel={() => undefined}
+      />,
+    )
+
+    expect(
+      screen.queryByRole('button', { name: /Refresh Metadata/i }),
+    ).toBeNull()
+
+    rerender(
+      <ServarrSettingsModal
+        title="Sportarr Settings"
+        docsPage="Configuration/#sportarr"
+        settingsPath="/settings/sportarr"
+        testPath="/settings/test/sportarr"
+        serviceName="Sportarr"
+        metadataRefreshPath="/settings/metadata/refresh/sportarr"
+        settings={{
+          id: 7,
+          serverName: 'Sportarr',
+          url: 'http://sportarr.local:1867/api',
+          apiKey: 'secret',
+        }}
+        onUpdate={vi.fn()}
+        onDelete={vi.fn()}
+        onCancel={() => undefined}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: /Refresh Metadata/i }))
+
+    await waitFor(() => {
+      expect(postApiHandler).toHaveBeenCalledWith(
+        '/settings/metadata/refresh/sportarr',
+        {},
+      )
+    })
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('Sportarr metadata refresh started'),
+      ).toBeTruthy()
+    })
+  })
 })

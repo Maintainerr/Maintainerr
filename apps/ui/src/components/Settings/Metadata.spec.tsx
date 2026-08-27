@@ -22,9 +22,6 @@ vi.mock('../../api/settings', () => ({
     mutateAsync,
     isPending: preferenceSaving,
   }),
-  useSportarrMetadataStatus: () => ({
-    data: { sportarrNetEnabled: false },
-  }),
 }))
 
 vi.mock('../../utils/ApiHandler', () => ({
@@ -105,7 +102,7 @@ describe('MetadataSettings', () => {
     expect(tmdbSwitch).toBeTruthy()
     expect(tvdbSwitch).toBeTruthy()
     expect(screen.getAllByText('TVDB').length).toBeGreaterThan(0)
-    expect(screen.getAllByRole('listitem')).toHaveLength(3)
+    expect(screen.getAllByRole('listitem')).toHaveLength(2)
     expect(screen.queryByRole('status')).toBeNull()
 
     expect(tmdbSwitch.getAttribute('aria-disabled')).toBe('true')
