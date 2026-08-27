@@ -104,8 +104,6 @@ const metadataProviderLogos: Record<
     logo: string
     alt: string
     providerIdKey: keyof MediaProviderIds
-    // A square mark rather than a wordmark, so it keeps its own footprint.
-    square?: boolean
   }
 > = {
   TMDB: {
@@ -122,7 +120,6 @@ const metadataProviderLogos: Record<
     logo: `${basePath}/icons_logos/sportarr_logo.svg`,
     alt: 'Sportarr Logo',
     providerIdKey: 'sportarr',
-    square: true,
   },
 }
 
@@ -687,16 +684,14 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
                         href={providerLogo.href}
                         target="_blank"
                         rel="noreferrer"
-                        className="block h-full"
+                        className="block h-full w-full"
                       >
                         <img
                           src={providerLogo.logo}
                           alt={providerLogo.alt}
-                          width={providerLogo.square ? 32 : 128}
+                          width={128}
                           height={32}
-                          className={`h-8 rounded-lg bg-black/70 shadow-lg ${
-                            providerLogo.square ? 'w-8 p-1' : 'w-32 p-2'
-                          }`}
+                          className="h-8 w-32 rounded-lg bg-black/70 p-2 shadow-lg"
                         />
                       </a>
                     )}

@@ -542,6 +542,14 @@ export class SettingsController {
     return this.telemetryService.buildPayload(true);
   }
 
+  // Whether the environment lets Sportarr artwork fall back to sportarr.net.
+  // The card reads this rather than telling every install to set a variable
+  // it may already have set.
+  @Get('/sportarr-metadata/status')
+  sportarrMetadataStatus(): { sportarrNetEnabled: boolean } {
+    return { sportarrNetEnabled: process.env.SPORTARR_NET === 'on' };
+  }
+
   @Get('/telemetry/status')
   telemetryStatus(): TelemetryStatus {
     return this.telemetryService.status();

@@ -249,7 +249,7 @@ export class MetadataSettingsService {
         .andWhere(`cm.mediaServerId IS NOT NULL`)
         .andWhere(`cm.mediaServerId != ''`);
       if (provider === 'sportarr') {
-        query.andWhere('cm.tvdbId >= :aliasStart AND cm.tvdbId < :aliasEnd', {
+        query.andWhere('cm.tvdbId > :aliasStart AND cm.tvdbId < :aliasEnd', {
           aliasStart: SPORTARR_TVDB_ALIAS_LEAGUE_OFFSET,
           aliasEnd:
             SPORTARR_TVDB_ALIAS_LEAGUE_OFFSET + SPORTARR_TVDB_ALIAS_RANGE,

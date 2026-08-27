@@ -336,6 +336,14 @@ msgstr "+{hiddenCount} till..."
 msgid "1 day text"
 msgstr "Text för 1 dag"
 
+#: src/components/Settings/Metadata/SportarrSection.tsx
+msgid "A league none of them tracks has no artwork. Set SPORTARR_NET=on in the environment to read those from <0>{sportarrDomain}</0>."
+msgstr ""
+
+#: src/components/Settings/Metadata/SportarrSection.tsx
+msgid "A league none of them tracks is read from <0>{sportarrDomain}</0>, which SPORTARR_NET=on in the environment asks for. Artwork files come from there either way, because that is where Sportarr hosts them."
+msgstr ""
+
 #: src/components/Settings/Servarr/ExclusionTagSettings.tsx
 msgid "A tag label is required when exclusion tagging is enabled. Lowercase letters, numbers and hyphens only ({chars})."
 msgstr "En taggtext krävs när exkluderingstaggning är aktiverad. Endast små bokstäver, siffror och bindestreck ({chars})."
@@ -2972,7 +2980,7 @@ msgid "Poster Templates"
 msgstr "Affischmallar"
 
 #: src/components/Settings/Metadata/SportarrSection.tsx
-msgid "Posters, backdrops and descriptions for Sportarr leagues. No key is needed. They are read from your Sportarr connections first, and from <0>{sportarrDomain}</0> for a league none of them tracks. Set the SPORTARR_NET environment variable to off to stop the {sportarrDomain} read."
+msgid "Posters, backdrops and descriptions for Sportarr leagues, read from your Sportarr connections. No key is needed."
 msgstr ""
 
 #: src/components/Collection/CollectionDetail/PostponeButton/index.tsx

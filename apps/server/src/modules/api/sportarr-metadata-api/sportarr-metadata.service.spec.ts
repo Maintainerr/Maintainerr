@@ -35,6 +35,8 @@ describe('SportarrMetadataApiService', () => {
     service = unit;
     settings = unitRef.get(SettingsDataService);
     settings.getSportarrSettings.mockResolvedValue([]);
+    // Reading sportarr.net is opt-in, so most of these ask for it.
+    process.env.SPORTARR_NET = 'on';
 
     get = jest.fn(async (url: string) => {
       if (!bodies.has(url)) {
@@ -124,9 +126,9 @@ describe('SportarrMetadataApiService', () => {
     );
   });
 
-  it('stops at the connection when sportarr.net is turned off', async () => {
+  it('stops at the connection unless sportarr.net is asked for', async () => {
     withConnections('http://sportarr.local:1867');
-    process.env.SPORTARR_NET = 'off';
+    delete process.env.SPORTARR_NET;
     answer(`${CONNECTION}/agents/series/lg-000278`, {
       error: 'Series not found',
     });
@@ -137,8 +139,8 @@ describe('SportarrMetadataApiService', () => {
     ]);
   });
 
-  it('makes no request with no connection and sportarr.net turned off', async () => {
-    process.env.SPORTARR_NET = 'off';
+  it('makes no request with no connection and sportarr.net not asked for', async () => {
+    delete process.env.SPORTARR_NET;
 
     await expect(service.hasSource()).resolves.toBe(false);
     await expect(service.getLeague('lg-000278')).resolves.toBeUndefined();
@@ -168,7 +170,7 @@ describe('SportarrMetadataApiService', () => {
     // The provider claims the tvdb alias too, so a claim it cannot answer
     // would fail a resolution that TVDB could still have finished.
     withConnections('http://sportarr.local:1867');
-    process.env.SPORTARR_NET = 'off';
+    delete process.env.SPORTARR_NET;
     answer(`${CONNECTION}/agents/series/lg-000278`, {
       title: 'Sample League',
     });
@@ -185,9 +187,44 @@ describe('SportarrMetadataApiService', () => {
     await expect(service.hasSource()).resolves.toBe(true);
   });
 
+  it('never touches sportarr.net unless the environment asks for it', async () => {
+    // An install that has never heard of Sportarr must not make an outbound
+    // request for a carried id it happens to hold.
+    delete process.env.SPORTARR_NET;
+
+    await expect(service.hasSource()).resolves.toBe(false);
+    await expect(service.getLeague('lg-000278')).resolves.toBeUndefined();
+    expect(get).not.toHaveBeenCalled();
+  });
+
+  it('asks an unreachable source again once its rest is over', async () => {
+    // Standing down stops the walks, so an answer remembered from the last
+    // walk would have no way back and one blip would last the whole process.
+    jest.useFakeTimers({ doNotFake: ['nextTick'] });
+    try {
+      withConnections('http://sportarr.local:1867');
+      delete process.env.SPORTARR_NET;
+
+      await expect(service.getLeague('lg-000278')).resolves.toBeUndefined();
+      expect(service.hasReachableSource()).toBe(false);
+
+      jest.advanceTimersByTime(61_000);
+      expect(service.hasReachableSource()).toBe(true);
+
+      answer(`${CONNECTION}/agents/series/lg-000278`, {
+        title: 'Sample League',
+      });
+      await expect(service.getLeague('lg-000278')).resolves.toEqual({
+        title: 'Sample League',
+      });
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
   it('has a source with a connection alone', async () => {
     withConnections('http://sportarr.local:1867');
-    process.env.SPORTARR_NET = 'off';
+    delete process.env.SPORTARR_NET;
 
     await expect(service.hasSource()).resolves.toBe(true);
   });

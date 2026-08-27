@@ -22,6 +22,9 @@ vi.mock('../../api/settings', () => ({
     mutateAsync,
     isPending: preferenceSaving,
   }),
+  useSportarrMetadataStatus: () => ({
+    data: { sportarrNetEnabled: false },
+  }),
 }))
 
 vi.mock('../../utils/ApiHandler', () => ({

@@ -33,14 +33,24 @@ const SOURCE_FAILURE_COOLDOWN_MS = 60000;
 
 type LeagueAnswer = SportarrMetadataLeague & { error?: string };
 
+/** How many times this request has already been retried. */
+const retryCountOf = (error: AxiosError): number =>
+  (error.config as { 'axios-retry'?: { retryCount?: number } } | undefined)?.[
+    'axios-retry'
+  ]?.retryCount ?? 0;
+
 // The standard policy, except for the 429 Sportarr's rate limiter declares:
 // wait exactly as long as it asks, and give up instead when it asks for
 // longer than isRetryableRateLimit allows. The standard condition retries
 // every 429 on a GET, so it can never apply that cap itself.
+//
+// One retry for a 429, because the cap bounds a single wait and the standard
+// three attempts would let a rate limiter hold a poster request open for
+// three times as long.
 export const sportarrMetadataRetryPolicy = {
   retryCondition: (error: AxiosError): boolean =>
     error.response?.status === 429
-      ? isRetryableRateLimit(error)
+      ? isRetryableRateLimit(error) && retryCountOf(error) === 0
       : axiosRetry.isNetworkOrIdempotentRequestError(error),
   retryDelay: (retryCount: number, error: AxiosError): number =>
     rateLimitWaitMs(error) || axiosRetry.exponentialDelay(retryCount, error),
@@ -49,8 +59,8 @@ export const sportarrMetadataRetryPolicy = {
 // Sportarr's metadata agent API, keyed by the league id the Sportarr media
 // server agents stamp on a show. A Sportarr instance serves the same routes as
 // sportarr.net, but only for the leagues it tracks, so a league is read from
-// the first configured connection that knows it, and from sportarr.net
-// otherwise unless the environment turns that off.
+// the first configured connection that knows it, and from sportarr.net for
+// one none of them tracks when the environment asks for that.
 @Injectable()
 export class SportarrMetadataApiService
   extends ExternalApiService
@@ -58,7 +68,6 @@ export class SportarrMetadataApiService
 {
   private configuredSources?: { sources: string[]; readAt: number };
   private readonly unreachableUntil = new Map<string, number>();
-  private reachableSourceCount = 0;
 
   constructor(
     private readonly settings: SettingsDataService,
@@ -121,13 +130,20 @@ export class SportarrMetadataApiService
   }
 
   /**
-   * Whether the last walk had anywhere left to read, for the provider's
+   * Whether anything is worth asking right now, for the provider's
    * synchronous isAvailable(). A provider with nowhere to go has to stand
    * down: it claims the alias ids too, and a claim it cannot answer fails the
    * whole resolution, taking ids other providers could still resolve with it.
+   *
+   * Worked out from what the class already holds rather than remembered from
+   * the last walk. Standing down stops the walks, so a remembered answer
+   * would have no way back once every source had been slow once.
    */
   hasReachableSource(): boolean {
-    return this.reachableSourceCount > 0;
+    const now = Date.now();
+    return (this.configuredSources?.sources ?? []).some(
+      (source) => (this.unreachableUntil.get(source) ?? 0) <= now,
+    );
   }
 
   /** Every source worth asking right now, in order. */
@@ -139,16 +155,15 @@ export class SportarrMetadataApiService
         : await this.readConfiguredSources();
 
     const now = Date.now();
-    const reachable = configured.filter(
+    return configured.filter(
       (source) => (this.unreachableUntil.get(source) ?? 0) <= now,
     );
-    this.reachableSourceCount = reachable.length;
-    return reachable;
   }
 
   /**
    * The configured places, in order: every Sportarr connection, then
-   * sportarr.net unless SPORTARR_NET=off in the environment.
+   * sportarr.net only when SPORTARR_NET=on says so. Off by default, so an
+   * install that has never heard of Sportarr never calls it.
    */
   private async readConfiguredSources(): Promise<string[]> {
     const configured = await this.settings.getSportarrSettings();
@@ -160,7 +175,7 @@ export class SportarrMetadataApiService
           .map((url) => `${stripTrailingSlashes(url)}${METADATA_PATH}`)
       : [];
     const sources = new Set(connections);
-    if (process.env.SPORTARR_NET !== 'off') {
+    if (process.env.SPORTARR_NET === 'on') {
       sources.add(`${SPORTARR_NET_URL}${METADATA_PATH}`);
     }
 

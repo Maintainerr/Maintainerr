@@ -954,6 +954,17 @@ export const useTelemetryPreview = (options?: UseTelemetryPreviewOptions) => {
   })
 }
 
+export const useSportarrMetadataStatus = () => {
+  return useQuery({
+    queryKey: ['settings', 'sportarr-metadata', 'status'],
+    queryFn: async () => {
+      return await GetApiHandler<{ sportarrNetEnabled: boolean }>(
+        '/settings/sportarr-metadata/status',
+      )
+    },
+  })
+}
+
 export const useTelemetryStatus = (options?: { enabled?: boolean }) => {
   return useQuery<TelemetryStatus, Error, TelemetryStatus, string[]>({
     queryKey: ['settings', 'telemetry', 'status'],

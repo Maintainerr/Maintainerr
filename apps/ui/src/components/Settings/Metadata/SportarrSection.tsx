@@ -1,6 +1,7 @@
 import { Trans, useLingui } from '@lingui/react/macro'
 import { BasicResponseDto } from '@maintainerr/contracts'
 import { useState } from 'react'
+import { useSportarrMetadataStatus } from '../../../api/settings'
 import { PostApiHandler } from '../../../utils/ApiHandler'
 import BrandLink from '../../Common/BrandLink'
 import Button from '../../Common/Button'
@@ -22,6 +23,8 @@ function SportarrSection({
 }) {
   const { t } = useLingui()
   const [refreshing, setRefreshing] = useState(false)
+  const { data: status } = useSportarrMetadataStatus()
+  const sportarrNetEnabled = status?.sportarrNetEnabled ?? false
 
   const performRefresh = async () => {
     if (refreshing) return
@@ -73,14 +76,29 @@ function SportarrSection({
       <div className="flex flex-1 flex-col">
         <div className="text-xs leading-5 text-zinc-400">
           <Trans>
-            Posters, backdrops and descriptions for Sportarr leagues. No key is
-            needed. They are read from your Sportarr connections first, and from{' '}
-            <BrandLink external href="https://sportarr.net">
-              {sportarrDomain}
-            </BrandLink>{' '}
-            for a league none of them tracks. Set the SPORTARR_NET environment
-            variable to off to stop the {sportarrDomain} read.
-          </Trans>
+            Posters, backdrops and descriptions for Sportarr leagues, read from
+            your Sportarr connections. No key is needed.
+          </Trans>{' '}
+          {sportarrNetEnabled ? (
+            <Trans>
+              A league none of them tracks is read from{' '}
+              <BrandLink external href="https://sportarr.net">
+                {sportarrDomain}
+              </BrandLink>
+              , which SPORTARR_NET=on in the environment asks for. Artwork files
+              come from there either way, because that is where Sportarr hosts
+              them.
+            </Trans>
+          ) : (
+            <Trans>
+              A league none of them tracks has no artwork. Set SPORTARR_NET=on
+              in the environment to read those from{' '}
+              <BrandLink external href="https://sportarr.net">
+                {sportarrDomain}
+              </BrandLink>
+              .
+            </Trans>
+          )}
         </div>
       </div>
     </div>
