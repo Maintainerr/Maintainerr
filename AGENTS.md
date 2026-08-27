@@ -340,9 +340,10 @@ The application integrates with several external services:
 
 When working with these integrations:
 
-- Use proper error handling and retry logic (axios-retry)
+- Retry through `applyHttpRetry` (`modules/api/lib/httpRetry.ts`), never a
+  per-client axios-retry config: it already answers a 429 with the wait the
+  server declared, capped, so hand-rolled rate-limit handling only drifts
 - Implement caching where appropriate (node-cache)
-- Follow rate limiting best practices
 - Use TypeScript interfaces for external API responses
 
 ## External API Documentation

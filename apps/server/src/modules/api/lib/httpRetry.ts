@@ -54,11 +54,35 @@ export const isRetryableRateLimit = (error: AxiosError): boolean =>
   error.response?.status === 429 &&
   rateLimitWaitMs(error) <= MAX_RATE_LIMIT_WAIT_MS;
 
+const retryCountOf = (error: AxiosError): number =>
+  (error.config as { 'axios-retry'?: { retryCount?: number } } | undefined)?.[
+    'axios-retry'
+  ]?.retryCount ?? 0;
+
 /**
- * Apply Maintainerr's standard transient-failure retry policy - 3 attempts
- * with exponential backoff - to an Axios instance. One home for the policy so
- * every outbound HTTP client (Plex, Emby, the Jellyfin SDK, external-api)
- * retries identically.
+ * A 429 is the server naming a wait, not a blip to back off from. axios-retry's
+ * own default treats it as one: three attempts on the backoff curve, stretched
+ * to whatever a raw Retry-After says with nothing capping it. Take it on its own
+ * terms instead - wait what the limiter actually declared, once - and give up
+ * rather than hold a request open past the cap.
+ */
+const transientOrRateLimited = (error: AxiosError): boolean =>
+  error.response?.status === 429
+    ? isRetryableRateLimit(error) && retryCountOf(error) === 0
+    : axiosRetry.isNetworkOrIdempotentRequestError(error);
+
+// exponentialDelay is deliberately called without the error: it quietly takes
+// Math.max with a raw Retry-After, so a 5xx carrying one would hold the request
+// open for however long that header says, with nothing to cap it.
+const declaredWaitOrBackoff = (retryCount: number, error: AxiosError): number =>
+  (error.response?.status === 429 ? rateLimitWaitMs(error) : 0) ||
+  axiosRetry.exponentialDelay(retryCount);
+
+/**
+ * Apply Maintainerr's standard transient-failure retry policy - 3 attempts with
+ * exponential backoff, or a single wait of the length a rate limiter asked for -
+ * to an Axios instance. One home for the policy so every outbound HTTP client
+ * (Plex, Emby, the Jellyfin SDK, external-api) retries identically.
  */
 export function applyHttpRetry(
   instance: AxiosInstance,
@@ -66,7 +90,8 @@ export function applyHttpRetry(
 ): void {
   axiosRetry(instance, {
     retries: 3,
-    retryDelay: axiosRetry.exponentialDelay,
+    retryCondition: transientOrRateLimited,
+    retryDelay: declaredWaitOrBackoff,
     ...overrides,
   });
 }
