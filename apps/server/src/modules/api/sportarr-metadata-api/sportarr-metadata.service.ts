@@ -119,15 +119,14 @@ export class SportarrMetadataApiService
 
     // Standing down stops the walks, and the walks are what refresh this
     // list, so an install that boots with nothing configured would stay shut
-    // until a restart. Read again, out of band, whenever what we hold is
-    // empty or old. The answer below is still the one we hold; the next call
-    // sees the new list.
-    if (
-      !cached ||
-      cached.sources.length === 0 ||
-      now - cached.readAt >= SOURCE_LIST_TTL_MS
-    ) {
-      void this.refreshConfiguredSources();
+    // until a restart. Read again, out of band, once what we hold is older
+    // than its TTL. The answer below is still the one we hold; the next call
+    // sees the new list. An empty list read a moment ago is an answer rather
+    // than a gap, so it waits for the TTL like any other.
+    if (!cached || now - cached.readAt >= SOURCE_LIST_TTL_MS) {
+      void this.refreshConfiguredSources().catch(() => {
+        // Logged where the read happens. A gate check must not raise.
+      });
     }
 
     return (cached?.sources ?? []).some(
@@ -163,8 +162,17 @@ export class SportarrMetadataApiService
    * install that has never heard of Sportarr never calls it.
    */
   private async readConfiguredSources(): Promise<string[]> {
-    const configured = await this.settings.getSportarrSettings();
-    // A failed settings read answers a status object rather than throwing.
+    // A failed settings read answers a status object, except a locked
+    // database, which rejects. Either way the answer is no sources rather
+    // than an error escaping into a caller that cannot do anything with it.
+    const configured = await this.settings
+      .getSportarrSettings()
+      .catch((error: unknown) => {
+        this.logger.debug(
+          `Could not read the Sportarr connections: ${String(error)}`,
+        );
+        return [];
+      });
     const connections = Array.isArray(configured)
       ? configured
           .map((setting) => setting.url)

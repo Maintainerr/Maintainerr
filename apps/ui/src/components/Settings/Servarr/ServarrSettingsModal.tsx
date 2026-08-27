@@ -248,6 +248,9 @@ const ServarrSettingsModal = <TSetting extends ServarrSettingShape>({
     ? testResult?.status
     : undefined
 
+  // Nothing to refresh until the server it belongs to exists.
+  const canRefresh = Boolean(metadataRefreshPath) && settings?.id != null
+
   const clearFeedback = () => {
     setErrorMessage(undefined)
     setTestResult(undefined)
@@ -255,7 +258,7 @@ const ServarrSettingsModal = <TSetting extends ServarrSettingShape>({
   }
 
   const refreshMetadata = async () => {
-    if (!metadataRefreshPath || refreshing) return
+    if (!metadataRefreshPath || !canRefresh || refreshing) return
 
     clearFeedback()
     setRefreshing(true)
@@ -266,13 +269,17 @@ const ServarrSettingsModal = <TSetting extends ServarrSettingShape>({
         {},
       )
 
+      const started = response?.code === 1
+
+      // The server answers with the provider name upper-cased, which suits
+      // TMDB and TVDB and shouts for a product name, so the known outcome
+      // reads from the catalogue and anything else keeps its own reason.
       setRefreshMessage({
-        status: response?.code === 1,
-        message:
-          response?.message ??
-          (response?.code === 1
-            ? t`${{ serviceName }} metadata refresh started`
-            : t`Failed to refresh ${{ serviceName }} metadata`),
+        status: started,
+        message: started
+          ? t`${{ serviceName }} metadata refresh started`
+          : (response?.message ??
+            t`Failed to refresh ${{ serviceName }} metadata`),
       })
     } catch {
       setRefreshMessage({
@@ -412,10 +419,10 @@ const ServarrSettingsModal = <TSetting extends ServarrSettingShape>({
               className="ml-3"
               type="button"
               onClick={() => void refreshMetadata()}
-              disabled={refreshing}
+              disabled={!canRefresh || refreshing}
             >
               <RefreshIcon />
-              <Trans>Refresh Metadata</Trans>
+              <Trans>Refresh metadata</Trans>
             </Button>
           ) : null}
         </>

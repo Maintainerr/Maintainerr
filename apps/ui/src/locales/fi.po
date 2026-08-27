@@ -3111,11 +3111,8 @@ msgid "Rectangle"
 msgstr ""
 
 #: src/components/Settings/Metadata/index.tsx
-msgid "Refresh metadata"
-msgstr ""
-
 #: src/components/Settings/Servarr/ServarrSettingsModal.tsx
-msgid "Refresh Metadata"
+msgid "Refresh metadata"
 msgstr ""
 
 #: src/components/Settings/Metadata/index.tsx

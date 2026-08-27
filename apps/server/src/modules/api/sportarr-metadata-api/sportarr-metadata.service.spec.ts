@@ -200,14 +200,40 @@ describe('SportarrMetadataApiService', () => {
       title: 'Sample League',
     });
 
-    // The stand-down answer, and the read it kicks off behind it.
-    expect(service.hasReachableSource()).toBe(false);
-    await new Promise((resolve) => setImmediate(resolve));
+    // An empty list that was just read is an answer, so the gate waits for
+    // its TTL rather than reading the database on every call.
+    jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate'] });
+    try {
+      jest.advanceTimersByTime(6000);
 
-    expect(service.hasReachableSource()).toBe(true);
+      // The stand-down answer, and the read it kicks off behind it.
+      expect(service.hasReachableSource()).toBe(false);
+      await new Promise((resolve) => setImmediate(resolve));
+
+      expect(service.hasReachableSource()).toBe(true);
+    } finally {
+      jest.useRealTimers();
+    }
     await expect(service.getLeague('lg-000278')).resolves.toEqual({
       title: 'Sample League',
     });
+  });
+
+  it('does not read the settings on every gate check when nothing is configured', async () => {
+    // isAvailable() runs inside per-item loops, so an install without
+    // Sportarr must not pay a settings read for each one. An empty list that
+    // was just read is an answer, and the TTL decides when to look again.
+    delete process.env.SPORTARR_NET;
+    withConnections();
+    await service.onModuleInit();
+    settings.getSportarrSettings.mockClear();
+
+    for (let i = 0; i < 25; i += 1) {
+      expect(service.hasReachableSource()).toBe(false);
+    }
+    await new Promise((resolve) => setImmediate(resolve));
+
+    expect(settings.getSportarrSettings).not.toHaveBeenCalled();
   });
 
   it('never touches sportarr.net unless the environment asks for it', async () => {
