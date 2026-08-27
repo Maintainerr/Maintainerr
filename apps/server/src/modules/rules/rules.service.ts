@@ -21,6 +21,7 @@ import {
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 import axios from 'axios';
+import { retryingHttp } from '../api/lib/httpRetry';
 import { chunk, cloneDeep } from 'lodash';
 import { DataSource, In, IsNull, Not, Repository } from 'typeorm';
 import { ArrTagItem, ServarrTagService } from '../actions/servarr-tag.service';
@@ -2184,7 +2185,7 @@ export class RulesService {
   }
 
   async getCommunityRules(): Promise<CommunityRule[] | ReturnStatus> {
-    return await axios
+    return await retryingHttp
       .get<{ rules: CommunityRule[] }>(this.communityUrl)
       .then((response) => {
         return response.data.rules as CommunityRule[];
@@ -2240,6 +2241,9 @@ export class RulesService {
     }
     const hasRules = Array.isArray(rule.JsonRules) && rule.JsonRules.length > 0;
 
+    // Deliberately not retryingHttp: this appends to the list, so a retried
+    // network error would publish the same community rule twice.
+    // eslint-disable-next-line no-restricted-syntax
     return axios
       .patch(this.communityUrl, [
         {
@@ -2309,7 +2313,7 @@ export class RulesService {
     }
 
     // Update the rule's karma
-    return axios
+    return retryingHttp
       .patch(this.communityUrl, [
         {
           op: 'replace',

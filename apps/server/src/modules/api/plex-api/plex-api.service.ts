@@ -8,6 +8,7 @@ import {
 } from '../../../utils/connection-error';
 import { createPrefetchProgressReporter } from '../../../utils/prefetch-progress';
 import cacheManager from '../../api/lib/cache';
+import { retryingHttp } from '../../api/lib/httpRetry';
 import PlexCommunityApi, {
   PlexCommunityErrorResponse,
   PlexCommunityWatchList,
@@ -1964,7 +1965,7 @@ export class PlexApiService {
       ? thumbPath
       : `${baseUrl}${thumbPath}`;
 
-    const { data } = await axios.get<ArrayBuffer>(url, {
+    const { data } = await retryingHttp.get<ArrayBuffer>(url, {
       responseType: 'arraybuffer',
       headers: {
         'X-Plex-Token': settings.auth_token,
@@ -2018,6 +2019,9 @@ export class PlexApiService {
       ':' +
       settings.port;
 
+    // Deliberately not retryingHttp: a retried network error on a 120s binary
+    // upload can leave Plex holding two copies of the same poster.
+    // eslint-disable-next-line no-restricted-syntax
     await axios.post(`${baseUrl}/library/metadata/${plexId}/posters`, buffer, {
       headers: {
         'X-Plex-Token': settings.auth_token,
@@ -2044,11 +2048,15 @@ export class PlexApiService {
         ':' +
         settings.port;
 
-      await axios.put(`${baseUrl}/library/metadata/${plexId}/poster`, null, {
-        params: { url: `upload://posters/${uploadId}` },
-        headers: { 'X-Plex-Token': settings.auth_token },
-        timeout: 30000,
-      });
+      await retryingHttp.put(
+        `${baseUrl}/library/metadata/${plexId}/poster`,
+        null,
+        {
+          params: { url: `upload://posters/${uploadId}` },
+          headers: { 'X-Plex-Token': settings.auth_token },
+          timeout: 30000,
+        },
+      );
       return true;
     } catch (error) {
       this.logger.warn(`Failed to select poster ${uploadId} for ${plexId}`);
@@ -2276,7 +2284,7 @@ export class PlexApiService {
         settings.port;
 
       // type=4 fetches episodes directly
-      const { data } = await axios.get(
+      const { data } = await retryingHttp.get(
         `${baseUrl}/library/sections/${section.key}/all`,
         {
           params: {

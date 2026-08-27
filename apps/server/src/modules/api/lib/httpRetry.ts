@@ -98,6 +98,16 @@ export function applyHttpRetry(
 }
 
 /**
+ * For the calls that cannot go through ExternalApiService - an auth bootstrap
+ * that has no token yet, a binary download, a one-off write. They were reaching
+ * for the bare global axios, which carries no retry policy at all, so they were
+ * the only outbound requests in the app that never retried anything.
+ */
+export const retryingHttp = axios.create();
+
+applyHttpRetry(retryingHttp);
+
+/**
  * The client every notification agent posts through. A rule run can produce a
  * burst of sends, and a rate-limited one is otherwise logged and lost - so
  * retry 429 here, once, rather than per agent.
