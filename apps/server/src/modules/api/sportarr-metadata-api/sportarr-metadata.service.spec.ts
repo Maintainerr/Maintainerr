@@ -139,7 +139,7 @@ describe('SportarrMetadataApiService', () => {
   it('makes no request with no connection and sportarr.net not asked for', async () => {
     delete process.env.SPORTARR_NET;
 
-    await expect(service.hasSource()).resolves.toBe(false);
+    await expect(service.hasConfiguredSource()).resolves.toBe(false);
     await expect(service.getLeague('lg-000278')).resolves.toBeUndefined();
     expect(get).not.toHaveBeenCalled();
   });
@@ -181,7 +181,7 @@ describe('SportarrMetadataApiService', () => {
     await expect(service.getLeague('lg-000777')).resolves.toBeUndefined();
     expect(service.hasReachableSource()).toBe(false);
     // Still configured, which is what the connection test asks about.
-    await expect(service.hasSource()).resolves.toBe(true);
+    await expect(service.hasConfiguredSource()).resolves.toBe(true);
   });
 
   it('opens again when the first connection is added after an empty boot', async () => {
@@ -241,7 +241,7 @@ describe('SportarrMetadataApiService', () => {
     // request for a carried id it happens to hold.
     delete process.env.SPORTARR_NET;
 
-    await expect(service.hasSource()).resolves.toBe(false);
+    await expect(service.hasConfiguredSource()).resolves.toBe(false);
     await expect(service.getLeague('lg-000278')).resolves.toBeUndefined();
     expect(get).not.toHaveBeenCalled();
   });
@@ -275,6 +275,6 @@ describe('SportarrMetadataApiService', () => {
     withConnections('http://sportarr.local:1867');
     delete process.env.SPORTARR_NET;
 
-    await expect(service.hasSource()).resolves.toBe(true);
+    await expect(service.hasConfiguredSource()).resolves.toBe(true);
   });
 });

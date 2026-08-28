@@ -99,7 +99,7 @@ export class SportarrMetadataApiService
    * Whether anything is configured to read from, asked of the database rather
    * than of what the last lookup saw.
    */
-  async hasSource(): Promise<boolean> {
+  async hasConfiguredSource(): Promise<boolean> {
     return (await this.readConfiguredSources()).length > 0;
   }
 
@@ -162,9 +162,9 @@ export class SportarrMetadataApiService
    * install that has never heard of Sportarr never calls it.
    */
   private async readConfiguredSources(): Promise<string[]> {
-    // A failed settings read answers a status object, except a locked
-    // database, which rejects. Either way the answer is no sources rather
-    // than an error escaping into a caller that cannot do anything with it.
+    // A failed settings read answers a status object rather than rejecting
+    // (#3614). The catch is the floor under that, because the gate calls this
+    // without awaiting and an error there has no caller to land in.
     const configured = await this.settings
       .getSportarrSettings()
       .catch((error: unknown) => {

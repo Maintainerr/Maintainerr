@@ -210,7 +210,7 @@ export class MetadataSettingsService {
       case 'tvdb':
         return this.tvdbApi.testConnection();
       case 'sportarr':
-        return (await this.sportarrMetadataApi.hasSource())
+        return (await this.sportarrMetadataApi.hasConfiguredSource())
           ? { status: 'OK', code: 1, message: 'Success' }
           : {
               status: 'NOK',

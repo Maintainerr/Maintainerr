@@ -258,7 +258,9 @@ const ServarrSettingsModal = <TSetting extends ServarrSettingShape>({
   }
 
   const refreshMetadata = async () => {
-    if (!canRefresh || refreshing) return
+    // metadataRefreshPath is tested again rather than left to canRefresh: it
+    // is what narrows the path for the post below.
+    if (!metadataRefreshPath || !canRefresh || refreshing) return
 
     clearFeedback()
     setRefreshing(true)
