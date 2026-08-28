@@ -70,17 +70,30 @@ export class MetadataService {
     [MetadataProviderPreference.TVDB_PRIMARY]: 'TVDB',
   };
 
-  private getOrderedProviders(): IMetadataProvider[] {
+  /**
+   * The primary preference first, then the rest. With `ids`, a provider that is
+   * the authority for the item (a Sportarr league) moves ahead of the primary
+   * one, so the general providers only answer for it when it has nothing.
+   */
+  private getOrderedProviders(ids?: ProviderIds): IMetadataProvider[] {
     const primaryName =
       MetadataService.preferenceToProviderName[this.preference];
     const preferred = this.providers.find(
       (provider) => provider.name === primaryName,
     );
 
-    return [
+    const ordered = [
       ...(preferred ? [preferred] : []),
       ...this.providers.filter((provider) => provider !== preferred),
     ].filter((provider) => provider.isAvailable());
+    if (!ids) {
+      return ordered;
+    }
+
+    return [
+      ...ordered.filter((provider) => provider.isAuthorityFor(ids)),
+      ...ordered.filter((provider) => !provider.isAuthorityFor(ids)),
+    ];
   }
 
   public getOrderedProviderKeys(): string[] {
@@ -279,7 +292,7 @@ export class MetadataService {
       id: number,
     ) => Promise<T | undefined>,
   ): Promise<{ result: T; provider: string; id: number } | undefined> {
-    for (const provider of this.getOrderedProviders()) {
+    for (const provider of this.getOrderedProviders(ids)) {
       const id = provider.extractId(ids);
       if (id === undefined) {
         continue;
@@ -574,7 +587,7 @@ export class MetadataService {
     let merged: MetadataDetails | undefined;
     let primaryProviderName: string | undefined;
 
-    for (const provider of this.getOrderedProviders()) {
+    for (const provider of this.getOrderedProviders(ids)) {
       const id = provider.extractId(ids);
       if (id === undefined) {
         continue;
@@ -940,18 +953,26 @@ export class MetadataService {
       }
 
       if (providerKeys.has(key)) {
-        const numericId = Number(values[0]);
         const provider = this.providers.find(
           (itemProvider) => itemProvider.idKey === key,
         );
-        if (Number.isFinite(numericId) && provider) {
-          provider.assignId(ids, numericId);
+        if (provider) {
+          // A namespace can hold more than one id: Plex files a legacy agent
+          // guid beside a modern one and both land under tvdb. Take the first
+          // that reads as an id rather than only the first present.
+          const numericId = values
+            .map((value) => provider.parseId(value))
+            .find((candidate) => Number.isFinite(candidate));
+          if (numericId !== undefined) {
+            provider.assignId(ids, numericId);
+          }
         }
         continue;
       }
 
-      if (values[0]) {
-        ids[key] = values[0];
+      const value = values.find(Boolean);
+      if (value) {
+        ids[key] = value;
       }
     }
 
@@ -1071,14 +1092,18 @@ export class MetadataService {
       }
 
       // Missing year on either side: nothing to sanity-check against. We
-      // trust the ID, but log so ambiguous accepts stay visible. Provider
-      // missing year is the suspicious case (TMDB/TVDB almost always have
-      // one) so it's logged at warn; media server missing year is common
-      // in untagged libraries and stays at debug.
+      // trust the ID, but log so ambiguous accepts stay visible. A provider
+      // that dates its entries and still has no year is the suspicious case,
+      // so that one is logged at warn; a provider with no year concept at all
+      // and a media server item with no year are both common and stay at
+      // debug.
       if (providerDetails.year === undefined) {
-        this.logger.warn(
-          `Accepted direct provider IDs for "${item.title}" via ${provider.name} without a year check - ${provider.name} returned no release year for this entry.`,
-        );
+        const message = `Accepted direct provider IDs for "${item.title}" via ${provider.name} without a year check - ${provider.name} returned no release year for this entry.`;
+        if (provider.hasReleaseYears) {
+          this.logger.warn(message);
+        } else {
+          this.logger.debug(message);
+        }
         return providerDetails;
       }
       if (itemYear === undefined) {
@@ -1118,7 +1143,7 @@ export class MetadataService {
     };
 
     // First pass: consult every provider that already has an ID on the item.
-    for (const provider of this.getOrderedProviders()) {
+    for (const provider of this.getOrderedProviders(ids)) {
       const providerDetails = await evaluate(provider);
       if (providerDetails) return providerDetails;
     }
@@ -1128,7 +1153,7 @@ export class MetadataService {
     // provider that was not on the item can still vouch.
     if (disagreements.length > 0) {
       await this.bridgeMissingProviderIds(ids);
-      for (const provider of this.getOrderedProviders()) {
+      for (const provider of this.getOrderedProviders(ids)) {
         const providerDetails = await evaluate(provider);
         if (providerDetails) return providerDetails;
       }

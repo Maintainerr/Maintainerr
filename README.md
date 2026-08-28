@@ -80,6 +80,7 @@ services:
 #          - UI_PORT=6247 # uncomment to change the UI port (default 6246)
 #          - GITHUB_TOKEN=ghp_yourtoken # Optional: GitHub Personal Access Token for higher API rate limits (60/hr without, 5000/hr with token)
 #          - TELEMETRY=off # uncomment to switch off the anonymous weekly usage report
+#          - SPORTARR_NET=on # uncomment to read Sportarr league artwork from sportarr.net
         ports:
           - 6246:6246
         restart: unless-stopped

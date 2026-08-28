@@ -191,6 +191,7 @@ const SportarrSettings = () => {
           settingsPath="/settings/sportarr"
           testPath="/settings/test/sportarr"
           serviceName="Sportarr"
+          metadataRefreshPath="/settings/metadata/refresh/sportarr"
           settings={
             typeof settingsModalActive === 'boolean'
               ? undefined
