@@ -258,7 +258,7 @@ const ServarrSettingsModal = <TSetting extends ServarrSettingShape>({
   }
 
   const refreshMetadata = async () => {
-    if (!metadataRefreshPath || !canRefresh || refreshing) return
+    if (!canRefresh || refreshing) return
 
     clearFeedback()
     setRefreshing(true)

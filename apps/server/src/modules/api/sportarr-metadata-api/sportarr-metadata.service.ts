@@ -124,7 +124,7 @@ export class SportarrMetadataApiService
     // sees the new list. An empty list read a moment ago is an answer rather
     // than a gap, so it waits for the TTL like any other.
     if (!cached || now - cached.readAt >= SOURCE_LIST_TTL_MS) {
-      void this.refreshConfiguredSources().catch(() => {
+      this.refreshConfiguredSources().catch(() => {
         // Logged where the read happens. A gate check must not raise.
       });
     }
