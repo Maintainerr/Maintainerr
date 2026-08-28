@@ -670,6 +670,30 @@ describe('MetadataService', () => {
     expect(logger.warn).not.toHaveBeenCalled();
   });
 
+  // Plex files a legacy agent guid beside a modern one and both land under
+  // tvdb, so a namespace can hold more than one id.
+  it('reads past a first provider id that is not a number', async () => {
+    const libraryItem = createMediaItem({
+      id: 'show-1',
+      type: 'show',
+      year: 2014,
+      title: 'Fixture Chronicle',
+      providerIds: { tvdb: ['not-an-id', '202'] },
+    });
+    const { service } = createService({
+      tvdbDetails: {
+        title: 'Fixture Chronicle',
+        year: 2014,
+        type: 'tv',
+        externalIds: { tvdb: 202, type: 'tv' },
+      },
+    });
+
+    const result = await service.resolveIdsFromMediaItem(libraryItem);
+
+    expect(result).toMatchObject({ tvdb: 202, type: 'tv' });
+  });
+
   it('rejects direct provider ids when no configured provider confirms the release year', async () => {
     const libraryItem = createMediaItem({
       id: 'show-1',
