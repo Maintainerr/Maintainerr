@@ -127,6 +127,45 @@ const SHOWS = [
   }),
 ];
 
+const SEASONS = [0, 1, 2, 3].map((index) => ({
+  Id: `mock-show-1-season-${index}`,
+  Name: index === 0 ? 'Specials' : `Season ${index}`,
+  Type: 'Season',
+  ServerId: 'mockserver',
+  ParentId: 'jellyfin-shows',
+  SeriesId: 'mock-show-1',
+  IndexNumber: index,
+  DateCreated: ISO('2026-01-01'),
+  PremiereDate: ISO(`202${index}-01-01`),
+  ProviderIds: {},
+  UserData: { PlayCount: 0, Played: false, PlayedPercentage: 0 },
+}));
+const EPISODES = [
+  ['0', '2026-06-01'],
+  ['1', '2026-04-20'],
+  ['2', '2026-03-01'],
+  ['3', '2026-07-01'],
+].map(([season, lastPlayedDate]) => ({
+  Id: `mock-show-1-season-${season}-episode-1`,
+  Name: 'Episode 1',
+  Type: 'Episode',
+  ServerId: 'mockserver',
+  ParentId: `mock-show-1-season-${season}`,
+  SeasonId: `mock-show-1-season-${season}`,
+  SeriesId: 'mock-show-1',
+  ParentIndexNumber: Number(season),
+  IndexNumber: 1,
+  DateCreated: ISO('2026-01-01'),
+  PremiereDate: ISO(`202${season}-01-07`),
+  ProviderIds: {},
+  UserData: {
+    PlayCount: 1,
+    Played: true,
+    PlayedPercentage: 100,
+    LastPlayedDate: ISO(lastPlayedDate),
+  },
+}));
+
 // A manual ("custom name") collection the user created in Jellyfin/Emby. BoxSets
 // are server-global, but the server only reports one under libraries whose content
 // it currently holds. This one holds movies only, so it is visible under the movie
@@ -186,9 +225,15 @@ const SCALE_MOVIES = SCALE.movies.map(scaleMovie);
 const SCALE_SHOWS = SCALE.shows.map(scaleSeries);
 
 const ITEMS_BY_ID = new Map(
-  [...MOVIES, ...SHOWS, SHARED_BOXSET, ...SCALE_MOVIES, ...SCALE_SHOWS].map(
-    (item) => [item.Id, item],
-  ),
+  [
+    ...MOVIES,
+    ...SHOWS,
+    ...SEASONS,
+    ...EPISODES,
+    SHARED_BOXSET,
+    ...SCALE_MOVIES,
+    ...SCALE_SHOWS,
+  ].map((item) => [item.Id, item]),
 );
 
 // --- HTTP helpers ----------------------------------------------------------------
@@ -266,6 +311,16 @@ const server = http.createServer((req, res) => {
   if (path === '/UserViews' || /^\/Users\/[^/]+\/Views$/.test(path)) {
     return send(res, 200, itemsResponse(LIBRARIES));
   }
+  const seasonsMatch = path.match(/^\/Shows\/([^/]+)\/Seasons$/);
+  if (req.method === 'GET' && seasonsMatch) {
+    return send(
+      res,
+      200,
+      itemsResponse(
+        SEASONS.filter((season) => season.SeriesId === seasonsMatch[1]),
+      ),
+    );
+  }
   // Single item by id: /Items/{id}  or  /Users/{userId}/Items/{id}
   const itemMatch =
     path.match(/^\/Items\/([^/]+)$/) ||
@@ -300,22 +355,59 @@ const server = http.createServer((req, res) => {
       );
     }
     const parentId = u.searchParams.get('parentId');
-    const itemTypes = u.searchParams.get('includeItemTypes');
+    const itemTypes = new Set(
+      u.searchParams
+        .getAll('includeItemTypes')
+        .flatMap((value) => value.split(','))
+        .filter(Boolean),
+    );
+    if (
+      parentId === 'mock-show-1' &&
+      u.searchParams.get('recursive') === 'true' &&
+      itemTypes.has('Episode')
+    ) {
+      return send(res, 200, pagedItems(EPISODES, u));
+    }
+    if (
+      SEASONS.some((season) => season.Id === parentId) &&
+      itemTypes.has('Episode')
+    ) {
+      return send(
+        res,
+        200,
+        pagedItems(EPISODES.filter((episode) => episode.SeasonId === parentId), u),
+      );
+    }
     // BoxSet (collection) listing. A BoxSet is server-global but the server only
     // reports it under libraries whose content it currently holds. Our shared
     // boxset holds movies only -> surfaced under the movie library, absent under
     // the show library. This is the #3026 condition. (Checked before the generic
     // parentId branches, which would otherwise return the library's media.)
-    if (itemTypes && itemTypes.includes('BoxSet')) {
+    if (itemTypes.has('BoxSet')) {
       if (parentId === 'jellyfin-movies') {
         return send(res, 200, itemsResponse([SHARED_BOXSET]));
       }
       return send(res, 200, itemsResponse([]));
     }
-    if (parentId === 'jellyfin-movies' || itemTypes === 'Movie') {
+    if (parentId === 'jellyfin-shows' && u.searchParams.get('recursive') === 'true') {
+      return send(
+        res,
+        200,
+        pagedItems(
+          [...SHOWS, ...SEASONS, ...EPISODES, ...SCALE_SHOWS].filter(
+            (item) => itemTypes.size === 0 || itemTypes.has(item.Type),
+          ),
+          u,
+        ),
+      );
+    }
+    if (parentId === 'jellyfin-shows') {
+      return send(res, 200, pagedItems([...SHOWS, ...SCALE_SHOWS], u));
+    }
+    if (parentId === 'jellyfin-movies' || itemTypes.has('Movie')) {
       return send(res, 200, pagedItems([...MOVIES, ...SCALE_MOVIES], u));
     }
-    if (parentId === 'jellyfin-shows' || itemTypes === 'Series') {
+    if (itemTypes.has('Series')) {
       return send(res, 200, pagedItems([...SHOWS, ...SCALE_SHOWS], u));
     }
     // Episodes, etc. -> empty for now

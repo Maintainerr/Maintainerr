@@ -1741,6 +1741,14 @@ export class RuleConstants {
           mediaType: MediaType.BOTH,
           type: RuleType.DATE,
         },
+        {
+          id: 48,
+          name: 'sw_lastViewedAtThroughSeason',
+          humanName: 'Newest episode view date in this or an earlier season',
+          mediaType: MediaType.SHOW,
+          showType: ['season'],
+          type: RuleType.DATE,
+        },
       ],
     },
     {

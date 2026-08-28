@@ -282,6 +282,83 @@ export class JellyfinGetterService {
           );
         }
 
+        case 'sw_lastViewedAtThroughSeason': {
+          if (metadata.type !== 'season') {
+            return null;
+          }
+
+          const targetSeason = metadata.index;
+          const showId = metadata.parentId;
+          if (
+            !Number.isSafeInteger(targetSeason) ||
+            targetSeason! < 0 ||
+            typeof showId !== 'string' ||
+            showId !== showId.trim() ||
+            !showId
+          ) {
+            throw new Error(
+              'Jellyfin season metadata is missing its valid scope',
+            );
+          }
+
+          const watchHistory = await this.descendantWatchHistory(
+            showId,
+            'show',
+            libraryId,
+          );
+          for (const records of Object.values(watchHistory)) {
+            for (const record of records) {
+              if (
+                record.watchedAt !== undefined &&
+                !Number.isFinite(record.watchedAt.getTime())
+              ) {
+                throw new Error('Jellyfin returned an invalid watch date');
+              }
+            }
+          }
+
+          const seasons = await this.jellyfinAdapter.getChildrenMetadata(
+            showId,
+            'season',
+            true,
+          );
+          let latestWatchedAtMs: number | undefined;
+
+          for (const season of seasons) {
+            if (!Number.isSafeInteger(season.index) || season.index! < 0) {
+              throw new Error('Jellyfin returned an invalid season index');
+            }
+
+            const qualifies =
+              targetSeason === 0
+                ? season.index === 0
+                : season.index! > 0 && season.index! <= targetSeason!;
+            if (!qualifies) continue;
+
+            const episodes = await this.jellyfinAdapter.getChildrenMetadata(
+              season.id,
+              'episode',
+              true,
+            );
+            for (const episode of episodes) {
+              for (const record of watchHistory[episode.id] ?? []) {
+                if (record.watchedAt === undefined) continue;
+                const watchedAtMs = record.watchedAt.getTime();
+                if (
+                  latestWatchedAtMs === undefined ||
+                  watchedAtMs > latestWatchedAtMs
+                ) {
+                  latestWatchedAtMs = watchedAtMs;
+                }
+              }
+            }
+          }
+
+          return latestWatchedAtMs === undefined
+            ? null
+            : new Date(latestWatchedAtMs);
+        }
+
         case 'sw_episodes': {
           return await this.getEpisodeCount(metadata.id, metadata.type);
         }

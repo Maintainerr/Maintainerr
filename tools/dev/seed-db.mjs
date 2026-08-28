@@ -88,7 +88,7 @@ const LIB =
 const N = 0, D = 1, T = 2, B = 3, L = 4;
 const TYPES = {
   plex: { 0:D,1:L,2:D,3:N,4:L,5:N,6:N,7:D,8:T,9:N,10:T,11:L,12:L,13:D,14:N,15:N,16:D,17:N,18:L,19:L,20:N,21:L,22:N,23:N,24:L,25:N,26:L,27:D,29:D,31:N,32:N,33:N,34:N,35:N,36:N,37:N,38:N,39:N,40:N,41:L,42:L,43:B,44:D,45:N,46:L,47:D,48:D },
-  jellyfin: { 0:D,1:L,2:D,3:N,4:L,5:N,6:N,7:D,8:T,9:N,10:T,11:L,12:L,13:D,14:N,15:N,16:D,17:N,18:L,19:L,20:N,21:L,22:N,23:N,24:L,25:N,26:L,27:D,29:D,30:N,31:N,32:N,33:N,34:N,35:N,36:N,37:N,38:N,39:L,40:L,41:L,42:B,44:N,45:D,46:L,47:D },
+  jellyfin: { 0:D,1:L,2:D,3:N,4:L,5:N,6:N,7:D,8:T,9:N,10:T,11:L,12:L,13:D,14:N,15:N,16:D,17:N,18:L,19:L,20:N,21:L,22:N,23:N,24:L,25:N,26:L,27:D,29:D,30:N,31:N,32:N,33:N,34:N,35:N,36:N,37:N,38:N,39:L,40:L,41:L,42:B,44:N,45:D,46:L,47:D,48:D },
 };
 // Rule-property ids covered per group type (movie vs show/episode).
 const COVERAGE = {
@@ -401,13 +401,11 @@ const run = db.transaction(() => {
     }),
   ];
 
-  // 4b) #3153 repro (Plex only): a season-scoped group sweeping every season that
-  //     is NOT part of the latest aired season. Pairs tools/dev/fake-plex.mjs's
-  //     four-season show with tools/dev/fake-sonarr.mjs. The latest aired season
-  //     (S2) must be excluded; the rest swept. A full run evaluates the seasons
-  //     together (shared memoized series) where Test Media evaluates one - the
-  //     two must now agree.
-  if (TARGET === "plex") {
+  // 4b) #3153 repro: a season-scoped group sweeping every season that is NOT
+  //     part of the latest aired season. The matching fake provider has one
+  //     show with four seasons; a full run evaluates them together where Test
+  //     Media evaluates one - the two must agree.
+  {
     const seasonColId = insCollection.run({
       libraryId: LIB.show,
       title: "Latest Season Sweep",
@@ -433,9 +431,8 @@ const run = db.transaction(() => {
       seasonColId,
       "season",
     ).lastInsertRowid;
-    // Plex (Application.PLEX=0) newest view through this season (prop 48, DATE)
-    // EXISTS. Placing it first exercises the season-only property for every
-    // season before Sonarr narrows the sweep.
+    // Placing prop 48 first exercises the selected provider's season-only
+    // property before Sonarr narrows the sweep.
     insRule.run(seasonGroupId, ruleJson(48, 0));
     // Sonarr (Application.SONARR=2) part_of_latest_season (prop 13, BOOL) EQUALS
     // False. ruleTypeId BOOL=3, RulePossibility.EQUALS=2; BOOL false encodes as

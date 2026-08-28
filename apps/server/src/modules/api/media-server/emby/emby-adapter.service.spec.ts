@@ -415,6 +415,57 @@ describe('EmbyAdapterService', () => {
       ).resolves.toEqual([]);
       expect(embyCacheMocks.data.set).not.toHaveBeenCalled();
     });
+
+    it('throws and does not cache a malformed successful child read in strict mode', async () => {
+      http.get.mockResolvedValue({ data: {} });
+
+      await expect(
+        service.getChildrenMetadata('season-1', 'episode', true),
+      ).rejects.toThrow('Could not read the children of Emby item season-1');
+      expect(embyCacheMocks.data.set).not.toHaveBeenCalled();
+    });
+
+    it('throws and does not cache an incomplete child page in strict mode', async () => {
+      http.get.mockResolvedValue({
+        data: { Items: [], TotalRecordCount: 1 },
+      });
+
+      await expect(
+        service.getChildrenMetadata('season-1', 'episode', true),
+      ).rejects.toThrow('Could not read the children of Emby item season-1');
+      expect(embyCacheMocks.data.set).not.toHaveBeenCalled();
+    });
+
+    it('does not let an incomplete non-strict read poison a later strict read', async () => {
+      let cached: unknown;
+      embyCacheMocks.data.get
+        .mockReturnValueOnce(undefined)
+        .mockImplementationOnce(() => cached);
+      embyCacheMocks.data.set.mockImplementationOnce((_, value) => {
+        cached = value;
+      });
+      http.get
+        .mockResolvedValueOnce({
+          data: { Items: [], TotalRecordCount: 1 },
+        })
+        .mockResolvedValueOnce({
+          data: { Items: [{ Id: 'ep-1', Type: 'Episode' }] },
+        });
+
+      const first = await service.getChildrenMetadata('season-1', 'episode');
+      const second = await service.getChildrenMetadata(
+        'season-1',
+        'episode',
+        true,
+      );
+      const requestCount = http.get.mock.calls.length;
+      embyCacheMocks.data.get.mockReset();
+      embyCacheMocks.data.set.mockReset();
+
+      expect(first).toEqual([]);
+      expect(second).toEqual([expect.objectContaining({ id: 'ep-1' })]);
+      expect(requestCount).toBe(2);
+    });
   });
 
   describe('getMetadata in-flight dedupe (#3356)', () => {
@@ -1345,7 +1396,7 @@ describe('EmbyAdapterService', () => {
           };
         }
         if (path === '/Users/user-1/Items/item-1') {
-          throw new Error('forbidden');
+          throw createResponseError(403);
         }
         if (path === '/Users/user-2/Items/item-1') {
           return {
@@ -1364,6 +1415,73 @@ describe('EmbyAdapterService', () => {
       await expect(service.getWatchHistory('item-1')).resolves.toEqual([
         expect.objectContaining({ userId: 'user-2', itemId: 'item-1' }),
       ]);
+    });
+
+    it('rejects an empty user list instead of confirming empty history', async () => {
+      http.get.mockResolvedValue({ data: [] });
+
+      await expect(service.getWatchHistory('item-1')).rejects.toThrow(
+        'Emby returned no users for watch history',
+      );
+    });
+
+    it('rejects when every user-scoped item read is a visibility miss', async () => {
+      http.get.mockImplementation(async (path: string) => {
+        if (path === '/Users/Query') {
+          return {
+            data: [
+              { Id: 'user-1', Name: 'Alice' },
+              { Id: 'user-2', Name: 'Bob' },
+            ],
+          };
+        }
+        throw createResponseError(404);
+      });
+
+      await expect(service.getWatchHistory('item-1')).rejects.toThrow(
+        'Emby could not read item item-1 for any user',
+      );
+    });
+
+    it.each([{ Id: 'item-1' }, { Id: 'other', UserData: { Played: false } }])(
+      'rejects malformed successful user-scoped item data %#',
+      async (itemData) => {
+        http.get.mockImplementation(async (path: string) => {
+          if (path === '/Users/Query') {
+            return { data: [{ Id: 'user-1', Name: 'Alice' }] };
+          }
+          return { data: itemData };
+        });
+
+        await expect(service.getWatchHistory('item-1')).rejects.toThrow(
+          'Emby returned incomplete user item item-1',
+        );
+      },
+    );
+
+    it('confirms empty history from a valid unwatched user item', async () => {
+      http.get.mockImplementation(async (path: string) => {
+        if (path === '/Users/Query') {
+          return { data: [{ Id: 'user-1', Name: 'Alice' }] };
+        }
+        return {
+          data: { Id: 'item-1', UserData: { Played: false } },
+        };
+      });
+
+      await expect(service.getWatchHistory('item-1')).resolves.toEqual([]);
+    });
+
+    it('rethrows individual user item failures that are not visibility misses', async () => {
+      const error = createResponseError(502);
+      http.get.mockImplementation(async (path: string) => {
+        if (path === '/Users/Query') {
+          return { data: [{ Id: 'user-1', Name: 'Alice' }] };
+        }
+        throw error;
+      });
+
+      await expect(service.getWatchHistory('item-1')).rejects.toBe(error);
     });
 
     it('rethrows top-level user lookup failures instead of treating them as empty history', async () => {

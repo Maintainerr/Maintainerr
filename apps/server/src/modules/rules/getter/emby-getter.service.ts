@@ -40,6 +40,10 @@ import { MetadataRuleValueService } from './metadata-rule-value.service';
 export class EmbyGetterService {
   embyProperties: Property[];
   private readonly cache: Cache;
+  private readonly completedSeasonFrontierBuilds = new Map<
+    string,
+    Promise<Array<{ seasonIndex: number; watchedAtMs?: number }>>
+  >();
 
   constructor(
     private readonly embyAdapter: EmbyAdapterService,
@@ -256,6 +260,46 @@ export class EmbyGetterService {
             metadata.id,
             metadata.type,
           );
+        }
+
+        case 'sw_lastViewedAtThroughSeason': {
+          if (metadata.type !== 'season') {
+            return null;
+          }
+
+          const targetSeason = metadata.index;
+          const showId = metadata.parentId;
+          if (
+            targetSeason === undefined ||
+            !Number.isSafeInteger(targetSeason) ||
+            targetSeason < 0 ||
+            typeof showId !== 'string' ||
+            showId !== showId.trim() ||
+            !showId
+          ) {
+            throw new Error('Emby season metadata is missing its valid scope');
+          }
+
+          const frontier = await this.getCompletedSeasonFrontier(showId);
+          let latestWatchedAtMs: number | undefined;
+          for (const { seasonIndex, watchedAtMs } of frontier) {
+            const qualifies =
+              targetSeason === 0
+                ? seasonIndex === 0
+                : seasonIndex > 0 && seasonIndex <= targetSeason;
+            if (
+              qualifies &&
+              watchedAtMs !== undefined &&
+              (latestWatchedAtMs === undefined ||
+                watchedAtMs > latestWatchedAtMs)
+            ) {
+              latestWatchedAtMs = watchedAtMs;
+            }
+          }
+
+          return latestWatchedAtMs === undefined
+            ? null
+            : new Date(latestWatchedAtMs);
         }
 
         case 'sw_episodes': {
@@ -513,6 +557,68 @@ export class EmbyGetterService {
     return dates.length > 0
       ? new Date(Math.max(...dates.map((d) => d.getTime())))
       : null;
+  }
+
+  private async getCompletedSeasonFrontier(
+    showId: string,
+  ): Promise<Array<{ seasonIndex: number; watchedAtMs?: number }>> {
+    const cacheKey = `emby:show:completed-frontier:${showId}`;
+    const cached =
+      this.cache.data.get<Array<{ seasonIndex: number; watchedAtMs?: number }>>(
+        cacheKey,
+      );
+    if (cached !== undefined) return cached;
+
+    const existing = this.completedSeasonFrontierBuilds.get(showId);
+    if (existing !== undefined) return existing;
+
+    const pending = (async () => {
+      const seasons = await this.embyAdapter.getChildrenMetadata(
+        showId,
+        'season',
+        true,
+      );
+      const frontier: Array<{ seasonIndex: number; watchedAtMs?: number }> = [];
+
+      for (const season of seasons) {
+        const seasonIndex = season.index;
+        if (
+          seasonIndex === undefined ||
+          !Number.isSafeInteger(seasonIndex) ||
+          seasonIndex < 0
+        ) {
+          throw new Error('Emby returned an invalid season index');
+        }
+
+        let watchedAtMs: number | undefined;
+        const episodes = await this.embyAdapter.getChildrenMetadata(
+          season.id,
+          'episode',
+          true,
+        );
+        for (const episode of episodes) {
+          const history = await this.embyAdapter.getWatchHistory(episode.id);
+          for (const record of history) {
+            if (record.watchedAt === undefined) continue;
+            const candidate = record.watchedAt.getTime();
+            if (!Number.isFinite(candidate)) {
+              throw new Error('Emby returned an invalid watch date');
+            }
+            if (watchedAtMs === undefined || candidate > watchedAtMs) {
+              watchedAtMs = candidate;
+            }
+          }
+        }
+        frontier.push({ seasonIndex, watchedAtMs });
+      }
+
+      this.cache.data.set(cacheKey, frontier);
+      return frontier;
+    })().finally(() => {
+      this.completedSeasonFrontierBuilds.delete(showId);
+    });
+    this.completedSeasonFrontierBuilds.set(showId, pending);
+    return pending;
   }
 
   private async getLastPlayedAt(

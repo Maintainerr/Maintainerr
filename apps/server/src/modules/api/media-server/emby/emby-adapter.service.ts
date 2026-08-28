@@ -585,9 +585,18 @@ export class EmbyAdapterService implements IMediaServerService {
             },
           },
         );
+        if (!Array.isArray(data.Items)) {
+          throw new Error('Emby returned no child item list');
+        }
+        if (
+          typeof data.TotalRecordCount === 'number' &&
+          data.Items.length !== data.TotalRecordCount
+        ) {
+          throw new Error('Emby returned an incomplete child item list');
+        }
         return this.cacheChildren(
           cacheKey,
-          (data.Items ?? []).map(EmbyMapper.toMediaItem),
+          data.Items.map(EmbyMapper.toMediaItem),
         );
       }
 
@@ -604,9 +613,18 @@ export class EmbyAdapterService implements IMediaServerService {
           Limit: EMBY_BATCH_SIZE.MAX_PAGE_SIZE,
         },
       });
+      if (!Array.isArray(data.Items)) {
+        throw new Error('Emby returned no child item list');
+      }
+      if (
+        typeof data.TotalRecordCount === 'number' &&
+        data.Items.length !== data.TotalRecordCount
+      ) {
+        throw new Error('Emby returned an incomplete child item list');
+      }
       return this.cacheChildren(
         cacheKey,
-        (data.Items ?? []).map(EmbyMapper.toMediaItem),
+        data.Items.map(EmbyMapper.toMediaItem),
       );
     } catch (error) {
       if (throwOnError) {
@@ -919,13 +937,21 @@ export class EmbyAdapterService implements IMediaServerService {
       );
       throw error;
     }
+    if (!users.length) {
+      throw new Error('Emby returned no users for watch history');
+    }
 
     const records: WatchRecord[] = [];
+    let successfulReads = 0;
     for (const user of users) {
       try {
         const { data } = await this.http.get<EmbyBaseItemDto>(
           `/Users/${user.Id}/Items/${itemId}`,
         );
+        if (data.Id !== itemId || data.UserData == null) {
+          throw new Error(`Emby returned incomplete user item ${itemId}`);
+        }
+        successfulReads++;
         if (data.UserData?.Played) {
           records.push(
             EmbyMapper.toWatchRecord(
@@ -937,9 +963,20 @@ export class EmbyAdapterService implements IMediaServerService {
             ),
           );
         }
-      } catch {
-        // Some users may not have access to this item - skip silently.
+      } catch (error) {
+        // A hidden or unavailable item is a per-user visibility miss. Other
+        // failures make the aggregate incomplete and must reach the caller.
+        if (
+          isAxiosError(error) &&
+          (error.response?.status === 403 || error.response?.status === 404)
+        ) {
+          continue;
+        }
+        throw error;
       }
+    }
+    if (!successfulReads) {
+      throw new Error(`Emby could not read item ${itemId} for any user`);
     }
 
     return records;
