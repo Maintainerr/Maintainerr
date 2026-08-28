@@ -1,3 +1,4 @@
+import { isSportarrTvdbAlias } from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
 import {
   TvdbMovieBase,
@@ -17,11 +18,21 @@ import {
 export class TvdbMetadataProvider implements IMetadataProvider {
   readonly name = 'TVDB';
   readonly idKey = 'tvdb';
+  readonly hasReleaseYears = true;
 
   constructor(private readonly tvdbApi: TvdbApiService) {}
 
   isAvailable(): boolean {
     return this.tvdbApi.isAvailable();
+  }
+
+  parseId(value: string): number | undefined {
+    const id = Number(value);
+    return Number.isFinite(id) ? id : undefined;
+  }
+
+  isAuthorityFor(): boolean {
+    return false;
   }
 
   extractId(ids: ProviderIds): number | undefined {
@@ -33,7 +44,13 @@ export class TvdbMetadataProvider implements IMetadataProvider {
     ids[this.idKey] = id;
   }
 
-  private getRecord(tvdbId: number, type: 'movie' | 'tv') {
+  // A Sportarr league alias is a real tvdb-namespace number that TheTVDB has
+  // no record of, so asking would 404 and warn once per league. extractId
+  // still reads it: it is the id a Sonarr connection looks a league up by.
+  private async getRecord(tvdbId: number, type: 'movie' | 'tv') {
+    if (isSportarrTvdbAlias(tvdbId)) {
+      return undefined;
+    }
     return type === 'movie'
       ? this.tvdbApi.getMovie(tvdbId)
       : this.tvdbApi.getSeries(tvdbId);

@@ -1,5 +1,6 @@
+import { RefreshIcon } from '@heroicons/react/solid'
 import { Trans, useLingui } from '@lingui/react/macro'
-import { stripTrailingSlashes } from '@maintainerr/contracts'
+import { BasicResponseDto, stripTrailingSlashes } from '@maintainerr/contracts'
 import { useMemo, useState } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
 import {
@@ -14,6 +15,7 @@ import {
   getPortFromUrl,
 } from '../../../utils/SettingsUtils'
 import Alert from '../../Common/Alert'
+import Button from '../../Common/Button'
 import DocsButton from '../../Common/DocsButton'
 import Modal from '../../Common/Modal'
 import SaveButton from '../../Common/SaveButton'
@@ -75,6 +77,9 @@ interface ServarrSettingsModalProps<TSetting extends ServarrSettingShape> {
   settingsPath: string
   testPath: string
   serviceName: string
+  // Set by a service whose metadata Maintainerr caches, so the cache can be
+  // dropped from the same place the connection is configured.
+  metadataRefreshPath?: string
   settings?: TSetting
   onUpdate: (setting: TSetting) => void
   onDelete: (id: number) => Promise<boolean>
@@ -166,6 +171,7 @@ const ServarrSettingsModal = <TSetting extends ServarrSettingShape>({
   settingsPath,
   testPath,
   serviceName,
+  metadataRefreshPath,
   settings,
   onUpdate,
   onDelete,
@@ -186,6 +192,11 @@ const ServarrSettingsModal = <TSetting extends ServarrSettingShape>({
   const [testedConnectionStateKey, setTestedConnectionStateKey] =
     useState<string>()
   const [saving, setSaving] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
+  const [refreshMessage, setRefreshMessage] = useState<{
+    status: boolean
+    message: string
+  }>()
   const [testing, setTesting] = useState(false)
   const [testResult, setTestResult] = useState<TestStatus>()
 
@@ -237,9 +248,49 @@ const ServarrSettingsModal = <TSetting extends ServarrSettingShape>({
     ? testResult?.status
     : undefined
 
+  // Nothing to refresh until the server it belongs to exists.
+  const canRefresh = Boolean(metadataRefreshPath) && settings?.id != null
+
   const clearFeedback = () => {
     setErrorMessage(undefined)
     setTestResult(undefined)
+    setRefreshMessage(undefined)
+  }
+
+  const refreshMetadata = async () => {
+    // metadataRefreshPath is tested again rather than left to canRefresh: it
+    // is what narrows the path for the post below.
+    if (!metadataRefreshPath || !canRefresh || refreshing) return
+
+    clearFeedback()
+    setRefreshing(true)
+
+    try {
+      const response = await PostApiHandler<BasicResponseDto>(
+        metadataRefreshPath,
+        {},
+      )
+
+      const started = response?.code === 1
+
+      // The server answers with the provider name upper-cased, which suits
+      // TMDB and TVDB and shouts for a product name, so the known outcome
+      // reads from the catalogue and anything else keeps its own reason.
+      setRefreshMessage({
+        status: started,
+        message: started
+          ? t`${{ serviceName }} metadata refresh started`
+          : (response?.message ??
+            t`Failed to refresh ${{ serviceName }} metadata`),
+      })
+    } catch {
+      setRefreshMessage({
+        status: false,
+        message: t`Failed to refresh ${{ serviceName }} metadata`,
+      })
+    } finally {
+      setRefreshing(false)
+    }
   }
 
   const saveSettings = async (values: ServarrFormState) => {
@@ -364,14 +415,32 @@ const ServarrSettingsModal = <TSetting extends ServarrSettingShape>({
             isPending={testing}
             feedbackStatus={testFeedbackStatus}
           />
+          {metadataRefreshPath ? (
+            <Button
+              buttonType="default"
+              className="ml-3"
+              type="button"
+              onClick={() => void refreshMetadata()}
+              disabled={!canRefresh || refreshing}
+            >
+              <RefreshIcon />
+              <Trans>Refresh metadata</Trans>
+            </Button>
+          ) : null}
         </>
       }
     >
       <SettingsAlertSlot>
-        {errorMessage || testResult ? (
+        {errorMessage || testResult || refreshMessage ? (
           <div className="space-y-4">
             {errorMessage ? (
               <Alert type="warning" title={errorMessage} />
+            ) : null}
+            {refreshMessage ? (
+              <Alert
+                type={refreshMessage.status ? 'success' : 'error'}
+                title={refreshMessage.message}
+              />
             ) : null}
             {testResult ? (
               <Alert

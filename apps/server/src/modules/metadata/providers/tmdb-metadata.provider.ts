@@ -22,11 +22,21 @@ const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p';
 export class TmdbMetadataProvider implements IMetadataProvider {
   readonly name = 'TMDB';
   readonly idKey = 'tmdb';
+  readonly hasReleaseYears = true;
 
   constructor(private readonly tmdbApi: TmdbApiService) {}
 
   isAvailable(): boolean {
     return true;
+  }
+
+  parseId(value: string): number | undefined {
+    const id = Number(value);
+    return Number.isFinite(id) ? id : undefined;
+  }
+
+  isAuthorityFor(): boolean {
+    return false;
   }
 
   extractId(ids: ProviderIds): number | undefined {

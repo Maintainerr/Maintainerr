@@ -1,4 +1,7 @@
-import { SPORTARR_TVDB_ALIAS_LEAGUE_OFFSET } from '@maintainerr/contracts';
+import {
+  isSportarrTvdbAlias,
+  SPORTARR_TVDB_ALIAS_LEAGUE_OFFSET,
+} from '@maintainerr/contracts';
 import {
   sportarrLeagueExternalIdFromProviderIds,
   sportarrLeagueExternalIdFromTvdbAlias,
@@ -17,6 +20,16 @@ describe('sportarrLeagueExternalIdFromTvdbAlias', () => {
   it('keeps ids that grow past six digits unpadded beyond the pad width', () => {
     expect(sportarrLeagueExternalIdFromTvdbAlias(901_234_567)).toBe(
       'lg-1234567',
+    );
+  });
+
+  it('rejects the offset itself, which the shared predicate excludes too', () => {
+    expect(isSportarrTvdbAlias(SPORTARR_TVDB_ALIAS_LEAGUE_OFFSET)).toBe(false);
+    expect(
+      sportarrLeagueExternalIdFromTvdbAlias(SPORTARR_TVDB_ALIAS_LEAGUE_OFFSET),
+    ).toBeUndefined();
+    expect(isSportarrTvdbAlias(SPORTARR_TVDB_ALIAS_LEAGUE_OFFSET + 1)).toBe(
+      true,
     );
   });
 
@@ -45,8 +58,10 @@ describe('sportarrLeagueExternalIdFromTvdbAlias', () => {
     1_000_000_000, // the event alias range, not a league
     342_040, // a genuine TVDB series id
     900_000_278.5, // aliases are integers; a fraction is not a league id
-  ])('returns null for out-of-range value %s', (value) => {
-    expect(sportarrLeagueExternalIdFromTvdbAlias(value as number)).toBeNull();
+  ])('answers with nothing for out-of-range value %s', (value) => {
+    expect(
+      sportarrLeagueExternalIdFromTvdbAlias(value as number),
+    ).toBeUndefined();
   });
 });
 
@@ -103,8 +118,8 @@ describe('sportarrLeagueExternalIdFromProviderIds', () => {
         sportarr: ['ev-848683'],
         tvdb: ['342040', 'not-a-number'],
       }),
-    ).toBeNull();
-    expect(sportarrLeagueExternalIdFromProviderIds({})).toBeNull();
-    expect(sportarrLeagueExternalIdFromProviderIds(undefined)).toBeNull();
+    ).toBeUndefined();
+    expect(sportarrLeagueExternalIdFromProviderIds({})).toBeUndefined();
+    expect(sportarrLeagueExternalIdFromProviderIds(undefined)).toBeUndefined();
   });
 });

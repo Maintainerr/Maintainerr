@@ -255,6 +255,10 @@ msgstr "Inställningarna för {providerTitle} uppdaterade"
 msgid "{secondsAgo, plural, one {# second ago} other {# seconds ago}}"
 msgstr "{secondsAgo, plural, one {för # sekund sedan} other {för # sekunder sedan}}"
 
+#: src/components/Settings/Servarr/ServarrSettingsModal.tsx
+msgid "{serviceName} metadata refresh started"
+msgstr ""
+
 #: src/components/Rules/RuleGroup/AddModal/QualityProfileSelector.tsx
 msgid "{serviceName} quality profile *"
 msgstr "Kvalitetsprofil för {serviceName} *"
@@ -1712,6 +1716,10 @@ msgid "Failed to refresh {providerTitle} metadata"
 msgstr "Metadata från {providerTitle} kunde inte uppdateras"
 
 #: src/components/Settings/Servarr/ServarrSettingsModal.tsx
+msgid "Failed to refresh {serviceName} metadata"
+msgstr ""
+
+#: src/components/Settings/Servarr/ServarrSettingsModal.tsx
 msgid "Failed to remove {serviceName} settings."
 msgstr "Inställningarna för {serviceName} kunde inte tas bort."
 
@@ -3103,6 +3111,7 @@ msgid "Rectangle"
 msgstr "Rektangel"
 
 #: src/components/Settings/Metadata/index.tsx
+#: src/components/Settings/Servarr/ServarrSettingsModal.tsx
 msgid "Refresh metadata"
 msgstr "Uppdatera metadata"
 
