@@ -1,5 +1,9 @@
-import { AxiosError } from 'axios';
-import { isRetryableRateLimit, rateLimitWaitMs } from './httpRetry';
+import axios, { AxiosError, type AxiosResponse } from 'axios';
+import {
+  applyHttpRetry,
+  isRetryableRateLimit,
+  rateLimitWaitMs,
+} from './httpRetry';
 
 const failedWith = (
   status: number,
@@ -29,5 +33,59 @@ describe('rate-limit retry policy', () => {
       isRetryableRateLimit(failedWith(429, {}, { retry_after: 900 })),
     ).toBe(false);
     expect(isRetryableRateLimit(failedWith(400))).toBe(false);
+  });
+});
+
+describe('applyHttpRetry', () => {
+  // Through a real instance rather than the predicate alone, so the attempt
+  // count axios-retry keeps is the one the policy reads.
+  const failEveryAttempt = async (
+    status: number,
+    headers: Record<string, string> = {},
+  ) => {
+    const instance = axios.create();
+    let attempts = 0;
+    instance.defaults.adapter = (config) => {
+      attempts += 1;
+      return Promise.reject(
+        new AxiosError('failed', 'ERR_BAD_RESPONSE', config, undefined, {
+          status,
+          headers,
+          data: {},
+          statusText: '',
+          config,
+        } as AxiosResponse),
+      );
+    };
+    applyHttpRetry(instance);
+
+    const startedAt = Date.now();
+    await expect(instance.get('/anything')).rejects.toThrow();
+    return { attempts, elapsedMs: Date.now() - startedAt };
+  };
+
+  it('answers a 429 with one wait of the length it asked for', async () => {
+    const { attempts, elapsedMs } = await failEveryAttempt(429, {
+      'retry-after': '0.2',
+    });
+
+    expect(attempts).toBe(2);
+    expect(elapsedMs).toBeGreaterThanOrEqual(150);
+  });
+
+  it('gives up on a 429 that will not release inside the cap', async () => {
+    expect(
+      (await failEveryAttempt(429, { 'retry-after': '900' })).attempts,
+    ).toBe(1);
+  });
+
+  it('keeps the backoff curve for a 5xx that carries Retry-After', async () => {
+    // Left to itself axios-retry would wait out the 15 minutes this names.
+    const { attempts, elapsedMs } = await failEveryAttempt(503, {
+      'retry-after': '900',
+    });
+
+    expect(attempts).toBe(4);
+    expect(elapsedMs).toBeLessThan(3000);
   });
 });

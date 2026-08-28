@@ -10,6 +10,7 @@ import {
 } from '../../../utils/connection-error';
 import { ExternalApiService } from '../external-api/external-api.service';
 import cacheManager from '../lib/cache';
+import { retryingHttp } from '../lib/httpRetry';
 import {
   TvdbApiResponse,
   TvdbArtwork,
@@ -74,7 +75,7 @@ export class TvdbApiService extends ExternalApiService {
 
   private async requestToken(apiKey: string): Promise<string | undefined> {
     try {
-      const response = await axios.post<{
+      const response = await retryingHttp.post<{
         status: string;
         data: { token: string };
       }>(`${TVDB_BASE_URL}/login`, { apikey: apiKey });
@@ -181,6 +182,9 @@ export class TvdbApiService extends ExternalApiService {
     }
 
     try {
+      // Deliberately not retryingHttp: a connection test must answer fast and
+      // honestly, not sit on a rate limiter's wait behind the user's spinner.
+      // eslint-disable-next-line no-restricted-syntax
       const response = await axios.post<{
         status: string;
         data: { token: string };

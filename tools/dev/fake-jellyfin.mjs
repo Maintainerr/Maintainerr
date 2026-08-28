@@ -117,13 +117,27 @@ function series(id, name, addDate, providerIds = {}) {
 }
 
 const SHOWS = [
+  // Synthetic ids, deliberately below 900,000,000: that window is reserved by
+  // Sportarr for its league aliases, so ids inside it resolve as leagues.
   series('mock-show-1', 'Mock Show Alpha', '2026-01-01', {
-    Tvdb: '900000001',
-    Tmdb: '900000001',
+    Tvdb: '800000001',
+    Tmdb: '800000001',
   }),
   series('mock-show-2', 'Mock Show Bravo', '2026-02-01', {
-    Tvdb: '900000002',
-    Tmdb: '900000002',
+    Tvdb: '800000002',
+    Tmdb: '800000002',
+  }),
+  // Sportarr fixtures, matching fake-sportarr's leagues. One carries the native
+  // id its agents stamp, one only the older tvdb alias, so both resolution paths
+  // are covered. mock-show-1/2 carry neither, which the getter answers with the
+  // transient signal at debug level - deliberately, so an ordinary show in a
+  // sports library cannot match a NOT_EXISTS rule (#3406).
+  series('mock-show-sportarr-native', 'Mock League Alpha', '2026-01-05', {
+    Sportarr: 'lg-000001',
+    Tvdb: '900000001',
+  }),
+  series('mock-show-sportarr-alias', 'Mock League Bravo', '2026-01-06', {
+    Tvdb: '900000042',
   }),
 ];
 

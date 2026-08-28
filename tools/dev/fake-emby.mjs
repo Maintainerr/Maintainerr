@@ -54,9 +54,23 @@ function show(id, name, providerIds = {}) {
   };
 }
 const SHOWS = [
+  // Synthetic ids, deliberately below 900,000,000: that window is reserved by
+  // Sportarr for its league aliases, so ids inside it resolve as leagues.
   show('emby-show-1', 'Mock Show Alpha', {
+    Tvdb: '800000001',
+    Tmdb: '800000001',
+  }),
+  // Sportarr fixtures, matching fake-sportarr's leagues. One carries the native
+  // id its agents stamp, one only the older tvdb alias, so both resolution paths
+  // are covered. emby-show-1 carries neither, which the getter answers with the
+  // transient signal at debug level - deliberately, so an ordinary show in a
+  // sports library cannot match a NOT_EXISTS rule (#3406).
+  show('emby-show-sportarr-native', 'Mock League Alpha', {
+    Sportarr: 'lg-000001',
     Tvdb: '900000001',
-    Tmdb: '900000001',
+  }),
+  show('emby-show-sportarr-alias', 'Mock League Bravo', {
+    Tvdb: '900000042',
   }),
 ];
 const SEASONS = [0, 1, 2, 3].map((index) => ({
