@@ -8,8 +8,8 @@ msgstr ""
 "Language: fr\n"
 "Project-Id-Version: \n"
 "Report-Msgid-Bugs-To: \n"
-"PO-Revision-Date: 2026-08-28 20:25+0000\n"
-"Last-Translator: simonmb13 <simonmb@live.fr>\n"
+"PO-Revision-Date: 2026-08-28 20:40+0000\n"
+"Last-Translator: Maintainerr <get@maintainerr.info>\n"
 "Language-Team: French <https://hosted.weblate.org/projects/maintainerr/app/fr/>\n"
 "Plural-Forms: nplurals=2; plural=n > 1;\n"
 
@@ -257,7 +257,7 @@ msgstr "{secondsAgo, plural, one {Il y a # seconde} other {Il y a # secondes}}"
 
 #: src/components/Settings/Servarr/ServarrSettingsModal.tsx
 msgid "{serviceName} metadata refresh started"
-msgstr "{serviceName} le rafraîchissement des métadonnées a commencé"
+msgstr "Actualisation des métadonnées {serviceName} démarrée"
 
 #: src/components/Rules/RuleGroup/AddModal/QualityProfileSelector.tsx
 msgid "{serviceName} quality profile *"
@@ -458,7 +458,7 @@ msgstr "Agréger (tous les chemins)"
 
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "Align"
-msgstr "Aligner"
+msgstr "Alignement"
 
 #: src/components/Common/LibrarySwitcher/index.tsx
 msgid "All"
@@ -988,7 +988,7 @@ msgstr "Impossible de charger les saisons"
 
 #: src/components/Rules/RuleGroup/AddModal/CollectionPosterPicker.tsx
 msgid "Could not upload poster - check that the file is a valid image"
-msgstr "Impossible de charger l'affiche - vérifiez que le fichier est une image valide"
+msgstr "Impossible de téléverser l'affiche - vérifiez que le fichier est une image valide"
 
 #: src/components/Settings/Plex/index.tsx
 msgid "Couldn't reach {plexTv} to verify your credentials - retrying. Your saved token is still in use."
@@ -1000,11 +1000,11 @@ msgstr "Nombre (numérique)"
 
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "Count Does Not Equal"
-msgstr "Le nombre n'est pas égal"
+msgstr "Le nombre n'est pas égal à"
 
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "Count Equals"
-msgstr "Le nombre est égal"
+msgstr "Le nombre est égal à"
 
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "Count Is Bigger Than"
@@ -1073,7 +1073,7 @@ msgstr "Configuration date / jours"
 
 #: src/components/Collection/CollectionDetail/CollectionInfo/index.tsx
 msgid "Date Added"
-msgstr "Date ajoutée"
+msgstr "Date d'ajout"
 
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "Date Format"
@@ -1258,7 +1258,7 @@ msgstr "Terminé"
 
 #: src/components/Common/MediaSelectionActions.tsx
 msgid "Done <0>selecting</0>"
-msgstr "Terminé <0>la sélection</0>"
+msgstr "Terminer <0>la sélection</0>"
 
 #: src/components/Common/YamlImporterModal/index.tsx
 msgid "Download"
@@ -1270,7 +1270,7 @@ msgstr "Client de téléchargement"
 
 #: src/components/Settings/DownloadClient/index.tsx
 msgid "Download Client"
-msgstr "Client de Téléchargement"
+msgstr "Client de téléchargement"
 
 #: src/components/Settings/DownloadClient/index.tsx
 msgid "Download client settings - Maintainerr"
@@ -1485,7 +1485,7 @@ msgstr "Tous les ~{SAMPLE_MONTHS} mois"
 
 #: src/components/Rules/Rule/RuleCreator/CommunityRuleUpload/index.tsx
 msgid "Every attempt should be made to only upload working rules. Rules with less than -100 karma and uploads with no rules, are removed nightly."
-msgstr "Tout doit être mis en œuvre pour ne télécharger que des règles fonctionnelles. Les règles avec moins de -100 de karma et les envois sans règles sont supprimés chaque nuit."
+msgstr "Tout doit être mis en œuvre pour ne téléverser que des règles fonctionnelles. Les règles avec moins de -100 de karma et les téléversements sans règles sont supprimés chaque nuit."
 
 #: src/components/Settings/Seerr/index.tsx
 #: src/components/Settings/Streamystats/index.tsx
@@ -1673,7 +1673,7 @@ msgstr "Échec du démarrage de la gestion des collections."
 
 #: src/pages/RulesListPage.tsx
 msgid "Failed to initiate rule execution."
-msgstr "Échec de l’initialisation de l’exécution de la règle."
+msgstr "Échec de l'initialisation de l'exécution de la règle."
 
 #: src/components/Settings/Metadata/index.tsx
 msgid "Failed to load {providerTitle} settings"
@@ -1717,7 +1717,7 @@ msgstr "Échec de l'actualisation des métadonnées {providerTitle}"
 
 #: src/components/Settings/Servarr/ServarrSettingsModal.tsx
 msgid "Failed to refresh {serviceName} metadata"
-msgstr "Échec du rafraîchissement des métadonnées de {serviceName}"
+msgstr "Échec de l'actualisation des métadonnées {serviceName}"
 
 #: src/components/Settings/Servarr/ServarrSettingsModal.tsx
 msgid "Failed to remove {serviceName} settings."
@@ -1753,7 +1753,7 @@ msgstr "Échec de la définition du serveur multimédia. Consultez les journaux 
 
 #: src/components/Rules/RuleGroup/index.tsx
 msgid "Failed to start rule execution."
-msgstr "Échec du lancement de l’exécution de la règle."
+msgstr "Échec du lancement de l'exécution de la règle."
 
 #: src/components/Settings/MediaServerSelector/index.tsx
 msgid "Failed to switch media server"
@@ -1777,11 +1777,11 @@ msgstr "Échec de la mise à jour du groupe de règles"
 
 #: src/pages/OverlayTemplateEditorPage.tsx
 msgid "Failed to upload font"
-msgstr "Échec du téléchargement de la police"
+msgstr "Échec du téléversement de la police"
 
 #: src/pages/OverlayTemplateEditorPage.tsx
 msgid "Failed to upload image"
-msgstr "Échec du téléchargement de l'image"
+msgstr "Échec du téléversement de l'image"
 
 #: src/components/Settings/DownloadClient/index.tsx
 msgid "Fallback seeding ratio"
@@ -2005,7 +2005,7 @@ msgstr "Inactif"
 #: src/components/Settings/Logs/index.tsx
 #: src/pages/CollectionDetailPage.tsx
 msgid "Info"
-msgstr "Infos"
+msgstr "Info"
 
 #: src/pages/CollectionsListPage.tsx
 msgid "Initiated collection handling in the background."
@@ -2686,7 +2686,7 @@ msgstr "Certains champs ne sont pas remplis"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Not all required (*) fields contain values and at least 1 valid rule is required"
-msgstr "Tous les champs requis (*) ne contiennent pas de valeurs et au moins 1 règle valide est requise"
+msgstr "Certains champs requis (*) ne sont pas remplis et au moins 1 règle valide est requise"
 
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "Not Contains (All items)"
@@ -2702,7 +2702,7 @@ msgstr "Ne contient pas (correspondance partielle de liste)"
 
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "Not Equals"
-msgstr "N'est pas égal"
+msgstr "N'est pas égal à"
 
 #: src/components/Common/MediaCard/MediaModal/index.tsx
 msgid "Not excluded from any collection."
@@ -3312,7 +3312,7 @@ msgstr "Enregistrer une copie"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Save first to enable poster upload."
-msgstr "Enregistrez d'abord pour activer le téléchargement d'affiche."
+msgstr "Enregistrez d'abord pour activer le téléversement d'affiche."
 
 #: src/pages/OverlayTemplateEditorPage.tsx
 msgid "Save preset as a copy"
@@ -3570,7 +3570,7 @@ msgstr "Série"
 #: src/components/OverlayEditor/LayerPanel.tsx
 msgctxt "Toggle layer visibility"
 msgid "Show"
-msgstr "Montrer"
+msgstr "Afficher"
 
 #: src/components/Settings/MediaServerSelector/index.tsx
 msgid "Show incompatible rules ({skippedRules})"
@@ -4416,51 +4416,51 @@ msgstr "Téléverser"
 
 #: src/components/Rules/RuleGroup/AddModal/CollectionPosterPicker.tsx
 msgid "Upload a JPEG, PNG, or WebP up to {maxPosterSize}. The image is re-encoded to JPEG and stored locally; Maintainerr pushes it to {mediaServerName} as a one-shot write. Other tools that manage {lowerMediaServerName} collection artwork (e.g. Kometa, Posterizarr) may overwrite it."
-msgstr "Téléchargez un JPEG, PNG ou WebP jusqu'à {maxPosterSize}. L'image est réencodée en JPEG et stockée localement ; Maintainerr l'envoie à {mediaServerName} en une seule écriture. D'autres outils qui gèrent le visuel de collection {lowerMediaServerName} (par exemple Kometa, Posterizarr) peuvent l'écraser."
+msgstr "Téléversez un JPEG, PNG ou WebP jusqu'à {maxPosterSize}. L'image est réencodée en JPEG et stockée localement ; Maintainerr l'envoie à {mediaServerName} en une seule écriture. D'autres outils qui gèrent le visuel de collection {lowerMediaServerName} (par exemple Kometa, Posterizarr) peuvent l'écraser."
 
 #: src/components/Rules/Rule/RuleCreator/CommunityRuleUpload/index.tsx
 msgid "Upload Community Rule"
-msgstr "Télécharger une règle communautaire"
+msgstr "Téléverser une règle communautaire"
 
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "Upload font ({fontExtensions})"
-msgstr "Télécharger une police ({fontExtensions})"
+msgstr "Téléverser une police ({fontExtensions})"
 
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "Upload image ({formatList} - up to {maxSize})"
-msgstr "Télécharger une image ({formatList} - jusqu'à {maxSize})"
+msgstr "Téléverser une image ({formatList} - jusqu'à {maxSize})"
 
 #: src/components/Common/CommunityRuleModal/index.tsx
 msgid "Upload my rules"
-msgstr "Télécharger mes règles"
+msgstr "Téléverser mes règles"
 
 #: src/components/Rules/RuleGroup/AddModal/CollectionPosterPicker.tsx
 msgid "Upload poster"
-msgstr "Télécharger l'affiche"
+msgstr "Téléverser l'affiche"
 
 #: src/components/Rules/Rule/RuleCreator/CommunityRuleUpload/index.tsx
 msgid "Upload Successful"
-msgstr "Téléchargement réussi"
+msgstr "Téléversement réussi"
 
 #: src/components/Common/YamlImporterModal/index.tsx
 msgid "Upload YAML"
-msgstr "Télécharger le YAML"
+msgstr "Téléverser le YAML"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Upload your own cover art for the collection on {mediaServerName}"
-msgstr "Téléchargez votre propre visuel de couverture pour la collection sur {mediaServerName}"
+msgstr "Téléversez votre propre visuel de couverture pour la collection sur {mediaServerName}"
 
 #: src/components/Common/CommunityRuleModal/index.tsx
 msgid "Uploaded By"
-msgstr "Téléchargé par"
+msgstr "Téléversé par"
 
 #: src/components/Rules/Rule/RuleCreator/CommunityRuleUpload/index.tsx
 msgid "Uploaded by (optional)"
-msgstr "Téléchargé par (optionnel)"
+msgstr "Téléversé par (optionnel)"
 
 #: src/components/Common/YamlImporterModal/index.tsx
 msgid "Uploaded YAML file is empty."
-msgstr "Le fichier YAML téléchargé est vide."
+msgstr "Le fichier YAML téléversé est vide."
 
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "Uppercase"
@@ -4543,7 +4543,7 @@ msgstr "Attendez que l'authentification Plex se termine avant de tester."
 
 #: src/components/Settings/Logs/index.tsx
 msgid "Warn"
-msgstr "Avertir"
+msgstr "Avertissement"
 
 #: src/components/Collection/CollectionDetail/RemoveFromCollectionButton/index.tsx
 msgid "Warning"
