@@ -8,7 +8,7 @@ msgstr ""
 "Language: fr\n"
 "Project-Id-Version: \n"
 "Report-Msgid-Bugs-To: \n"
-"PO-Revision-Date: 2026-08-28 16:54+0000\n"
+"PO-Revision-Date: 2026-08-28 20:25+0000\n"
 "Last-Translator: simonmb13 <simonmb@live.fr>\n"
 "Language-Team: French <https://hosted.weblate.org/projects/maintainerr/app/fr/>\n"
 "Plural-Forms: nplurals=2; plural=n > 1;\n"
@@ -257,7 +257,7 @@ msgstr "{secondsAgo, plural, one {Il y a # seconde} other {Il y a # secondes}}"
 
 #: src/components/Settings/Servarr/ServarrSettingsModal.tsx
 msgid "{serviceName} metadata refresh started"
-msgstr ""
+msgstr "{serviceName} le rafraîchissement des métadonnées a commencé"
 
 #: src/components/Rules/RuleGroup/AddModal/QualityProfileSelector.tsx
 msgid "{serviceName} quality profile *"
@@ -691,7 +691,7 @@ msgstr "Changer la qualité"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Change quality profile"
-msgstr "Changer la qualité du profil"
+msgstr "Changer le profil de qualité"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Change quality profile and search"
@@ -878,7 +878,7 @@ msgstr "Confirmer l'exclusion globale"
 
 #: src/components/Common/MediaActionModal.tsx
 msgid "Confirm Removal From Every Collection"
-msgstr "Confirmer la suppression de chaque collection"
+msgstr "Confirmer le retrait de toutes les collections"
 
 #: src/components/Common/MediaActionModal.tsx
 msgid "Confirm Removing Every Exclusion"
@@ -1717,7 +1717,7 @@ msgstr "Échec de l'actualisation des métadonnées {providerTitle}"
 
 #: src/components/Settings/Servarr/ServarrSettingsModal.tsx
 msgid "Failed to refresh {serviceName} metadata"
-msgstr ""
+msgstr "Échec du rafraîchissement des métadonnées de {serviceName}"
 
 #: src/components/Settings/Servarr/ServarrSettingsModal.tsx
 msgid "Failed to remove {serviceName} settings."
@@ -2030,7 +2030,7 @@ msgstr "Valeur invalide"
 #: src/components/Collection/CollectionItem/index.tsx
 #: src/components/StorageMetrics/index.tsx
 msgid "Items"
-msgstr "Médias"
+msgstr "Éléments"
 
 #: src/components/StorageMetrics/index.tsx
 msgid "Items handled"
@@ -2682,7 +2682,7 @@ msgstr "normal"
 
 #: src/components/Settings/Notifications/CreateNotificationModal/index.tsx
 msgid "Not all fields contain values"
-msgstr "Tous les champs ne contiennent pas de valeurs"
+msgstr "Certains champs ne sont pas remplis"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Not all required (*) fields contain values and at least 1 valid rule is required"
@@ -2702,7 +2702,7 @@ msgstr "Ne contient pas (correspondance partielle de liste)"
 
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "Not Equals"
-msgstr "Non égal"
+msgstr "N'est pas égal"
 
 #: src/components/Common/MediaCard/MediaModal/index.tsx
 msgid "Not excluded from any collection."
@@ -3570,7 +3570,7 @@ msgstr "Série"
 #: src/components/OverlayEditor/LayerPanel.tsx
 msgctxt "Toggle layer visibility"
 msgid "Show"
-msgstr "Série"
+msgstr "Montrer"
 
 #: src/components/Settings/MediaServerSelector/index.tsx
 msgid "Show incompatible rules ({skippedRules})"
@@ -3851,7 +3851,7 @@ msgstr "Étiqueter le contenu exclu"
 
 #: src/components/Settings/Servarr/ExclusionTagSettings.tsx
 msgid "Tag label"
-msgstr "Étiquette de l'étiquette"
+msgstr "Libellé de l'étiquette"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Tag matching movies in {tagArrName} with a tag based on this rule group's name while they're in the collection, removed when they leave"
@@ -3887,7 +3887,7 @@ msgstr "Délai d'action en jours*"
 
 #: src/components/Rules/RuleGroup/AddModal/QualityProfileSelector.tsx
 msgid "Target quality profile to change to"
-msgstr "Profil de qualité cible à changer"
+msgstr "Profil de qualité cible vers lequel basculer"
 
 #: src/components/Settings/Tautulli/index.tsx
 msgid "Tautulli configuration"
@@ -4599,7 +4599,7 @@ msgstr "Cette règle sera-t-elle incluse dans les exécutions de règles"
 
 #: src/components/Common/YamlImporterModal/index.tsx
 msgid "Yaml Rule Editor"
-msgstr "Éditeur de règles yaml"
+msgstr "Éditeur de règles YAML"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "You are cloning the rule group ''{clonedRuleGroupName}''."
