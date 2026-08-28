@@ -957,16 +957,22 @@ export class MetadataService {
           (itemProvider) => itemProvider.idKey === key,
         );
         if (provider) {
-          const numericId = provider.parseId(values[0]);
-          if (Number.isFinite(numericId)) {
+          // A namespace can hold more than one id: Plex files a legacy agent
+          // guid beside a modern one and both land under tvdb. Take the first
+          // that reads as an id rather than only the first present.
+          const numericId = values
+            .map((value) => provider.parseId(value))
+            .find((candidate) => Number.isFinite(candidate));
+          if (numericId !== undefined) {
             provider.assignId(ids, numericId);
           }
         }
         continue;
       }
 
-      if (values[0]) {
-        ids[key] = values[0];
+      const value = values.find(Boolean);
+      if (value) {
+        ids[key] = value;
       }
     }
 
