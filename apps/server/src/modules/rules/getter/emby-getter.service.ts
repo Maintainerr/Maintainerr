@@ -260,7 +260,7 @@ export class EmbyGetterService {
 
         case 'sw_lastViewedAtThroughSeason': {
           if (metadata.type !== 'season') {
-            return null;
+            throw new Error('Emby view-date prefix requires season metadata');
           }
 
           const targetSeason = metadata.index;
@@ -275,11 +275,12 @@ export class EmbyGetterService {
             throw new Error('Emby season metadata is missing its valid scope');
           }
 
-          const seasons = await this.embyAdapter.getChildrenMetadata(
-            showId,
-            'season',
-            true,
-          );
+          const readSeasons = () =>
+            this.embyAdapter.getChildrenMetadata(showId, 'season', true);
+          const seasons = await (arrLookupCache?.memoize(
+            `emby:show-seasons:${showId}`,
+            readSeasons,
+          ) ?? readSeasons());
           let latestWatchedAt: Date | null = null;
 
           for (const season of seasons) {
@@ -294,12 +295,16 @@ export class EmbyGetterService {
                 ? seasonIndex === 0
                 : seasonIndex > 0 && seasonIndex <= targetSeason;
             if (!qualifies) continue;
+            if (!season.id) {
+              throw new Error('Emby returned a season without an id');
+            }
 
-            const watchedAt = await this.getLastWatchedShowDate(
-              season.id,
-              'season',
-              true,
-            );
+            const readWatchedAt = () =>
+              this.getLastWatchedShowDate(season.id, 'season', true);
+            const watchedAt = await (arrLookupCache?.memoize(
+              `emby:season-view-date:${season.id}`,
+              readWatchedAt,
+            ) ?? readWatchedAt());
             if (
               watchedAt &&
               (!latestWatchedAt || watchedAt > latestWatchedAt)
@@ -727,6 +732,9 @@ export class EmbyGetterService {
         throwOnError,
       );
       for (const episode of episodes) {
+        if (throwOnError && !episode.id) {
+          throw new Error('Emby returned an episode without an id');
+        }
         const lastViewed = await this.getLastViewedAt(episode.id);
         if (
           throwOnError &&
@@ -744,13 +752,11 @@ export class EmbyGetterService {
       const seasons = await this.embyAdapter.getChildrenMetadata(
         itemId,
         'season',
-        throwOnError,
       );
       for (const season of seasons) {
         const episodes = await this.embyAdapter.getChildrenMetadata(
           season.id,
           'episode',
-          throwOnError,
         );
         for (const episode of episodes) {
           const lastViewed = await this.getLastViewedAt(episode.id);

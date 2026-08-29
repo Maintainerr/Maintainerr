@@ -1713,6 +1713,20 @@ describe('PlexGetterService', () => {
       );
     };
 
+    it('returns undefined when applied to a non-season item', async () => {
+      const show = makeMetadata({ ratingKey: 'show-1', type: 'show' });
+      plexApi.getMetadata.mockResolvedValue(show);
+
+      await expect(
+        service.get(
+          48,
+          createMediaItem({ id: 'show-1', type: 'show' }),
+          'show',
+          ruleGroup,
+        ),
+      ).resolves.toBeUndefined();
+    });
+
     it('returns the latest chronological view from the current or an earlier regular season', async () => {
       plexApi.getWatchHistory.mockResolvedValue([
         makeEpisodeWatchEntry({ parentIndex: 0, viewedAt: 1_750_000_000 }),
@@ -1771,5 +1785,18 @@ describe('PlexGetterService', () => {
 
       expect(result).toBeUndefined();
     });
+
+    it.each([-1, 8_640_000_000_001])(
+      'returns undefined for invalid qualifying view date %s',
+      async (viewedAt) => {
+        plexApi.getWatchHistory.mockResolvedValue([
+          makeEpisodeWatchEntry({ parentIndex: 2, viewedAt }),
+        ]);
+
+        const result = await getSeasonViewDate(2);
+
+        expect(result).toBeUndefined();
+      },
+    );
   });
 });

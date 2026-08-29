@@ -422,7 +422,10 @@ describe('EmbyGetterService', () => {
   });
 
   describe('sw_lastViewedAtThroughSeason (id 48)', () => {
-    const getSeasonViewDate = (seasonIndex: number | undefined) => {
+    const getSeasonViewDate = (
+      seasonIndex: number | undefined,
+      arrLookupCache?: ArrLookupCache,
+    ) => {
       const season = createMediaItem({
         id: `season-${seasonIndex}`,
         type: 'season',
@@ -431,8 +434,23 @@ describe('EmbyGetterService', () => {
       });
       embyAdapter.getMetadata.mockResolvedValue(season);
 
-      return embyGetterService.get(48, season, 'season');
+      return embyGetterService.get(
+        48,
+        season,
+        'season',
+        undefined,
+        arrLookupCache,
+      );
     };
+
+    it('returns undefined when applied to a non-season item', async () => {
+      const show = createMediaItem({ id: 'show-1', type: 'show' });
+      embyAdapter.getMetadata.mockResolvedValue(show);
+
+      await expect(
+        embyGetterService.get(48, show, 'show'),
+      ).resolves.toBeUndefined();
+    });
 
     const mockShow = (
       seasons: MediaItem[],
@@ -507,6 +525,33 @@ describe('EmbyGetterService', () => {
       }
     });
 
+    it.each(['season', 'episode'] as const)(
+      'returns undefined for a qualifying %s with no id',
+      async (missingIdOn) => {
+        const seasonId = missingIdOn === 'season' ? '' : 'season-1';
+        const episodeId = missingIdOn === 'episode' ? '' : 'episode-1';
+        embyAdapter.getChildrenMetadata.mockImplementation(
+          async (parentId: string, childType?: MediaItemType) =>
+            parentId === 'show-1' && childType === 'season'
+              ? [createMediaItem({ id: seasonId, type: 'season', index: 1 })]
+              : [createMediaItem({ id: episodeId, type: 'episode' })],
+        );
+        embyAdapter.getWatchHistory.mockImplementation(
+          async (itemId: string) =>
+            itemId === episodeId
+              ? [
+                  createWatchRecord({
+                    itemId,
+                    watchedAt: new Date('2026-04-20'),
+                  }),
+                ]
+              : [],
+        );
+
+        await expect(getSeasonViewDate(1)).resolves.toBeUndefined();
+      },
+    );
+
     it('uses only specials for Season 0', async () => {
       mockShow(
         [
@@ -531,6 +576,39 @@ describe('EmbyGetterService', () => {
         'episode',
         true,
       );
+    });
+
+    it('reuses show and prior season walks across concurrent targets', async () => {
+      const cache = new ArrLookupCache();
+      mockShow(
+        [
+          createMediaItem({ id: 'season-1', type: 'season', index: 1 }),
+          createMediaItem({ id: 'season-2', type: 'season', index: 2 }),
+        ],
+        {
+          'season-1-episode': [],
+          'season-2-episode': [],
+        },
+      );
+
+      await Promise.all([
+        getSeasonViewDate(1, cache),
+        getSeasonViewDate(2, cache),
+      ]);
+
+      expect(
+        embyAdapter.getChildrenMetadata.mock.calls.filter(
+          ([itemId, childType]) =>
+            itemId === 'show-1' && childType === 'season',
+        ),
+      ).toHaveLength(1);
+      expect(
+        embyAdapter.getChildrenMetadata.mock.calls.filter(
+          ([itemId, childType]) =>
+            itemId === 'season-1' && childType === 'episode',
+        ),
+      ).toHaveLength(1);
+      expect(embyAdapter.getWatchHistory).toHaveBeenCalledTimes(2);
     });
 
     it('returns null when completed views have no dates', async () => {

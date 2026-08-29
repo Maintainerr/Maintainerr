@@ -284,7 +284,9 @@ export class JellyfinGetterService {
 
         case 'sw_lastViewedAtThroughSeason': {
           if (metadata.type !== 'season') {
-            return null;
+            throw new Error(
+              'Jellyfin view-date prefix requires season metadata',
+            );
           }
 
           const targetSeason = metadata.index;
@@ -324,6 +326,9 @@ export class JellyfinGetterService {
                 ? season.index === 0
                 : season.index > 0 && season.index <= targetSeason;
             if (!qualifies) continue;
+            if (!season.id) {
+              throw new Error('Jellyfin returned a season without an id');
+            }
 
             const episodes = await this.jellyfinAdapter.getChildrenMetadata(
               season.id,
@@ -331,6 +336,9 @@ export class JellyfinGetterService {
               true,
             );
             for (const episode of episodes) {
+              if (!episode.id) {
+                throw new Error('Jellyfin returned an episode without an id');
+              }
               const watchedAt = this.newestWatchedAt(
                 watchHistory[episode.id] ?? [],
               );

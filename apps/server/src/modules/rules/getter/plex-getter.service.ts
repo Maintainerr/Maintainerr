@@ -426,7 +426,7 @@ export class PlexGetterService {
         }
         case 'sw_lastViewedAtThroughSeason': {
           if (metadata.type !== 'season') {
-            return null;
+            throw new Error('Plex view-date prefix requires season metadata');
           }
 
           const currentSeason = metadata.index;
@@ -467,11 +467,14 @@ export class PlexGetterService {
                 ? viewedSeason === 0
                 : viewedSeason > 0 && viewedSeason <= currentSeason;
             if (!qualifies) continue;
-            if (!Number.isFinite(view.viewedAt)) {
+            if (!Number.isFinite(view.viewedAt) || view.viewedAt < 0) {
               throw new Error('Plex history row has invalid view date');
             }
 
             const viewedAtMs = view.viewedAt * 1000;
+            if (!Number.isFinite(new Date(viewedAtMs).getTime())) {
+              throw new Error('Plex history row has invalid view date');
+            }
             if (
               latestViewedAtMs === undefined ||
               viewedAtMs > latestViewedAtMs
