@@ -79,8 +79,10 @@ This is a **TypeScript monorepo** managed with **Turborepo** and **Yarn workspac
 
 ## Development Environment
 
-The development environment runs inside **`devbox`** - a rootless Docker container
-managed by `~/infra/compose.yml` on the host. This IS the devcontainer for this project.
+The development environment runs inside **`devbox`** - a rootless **podman** container
+managed by systemd quadlets in `~/infra/podman/quadlet/` on the host. This IS the
+devcontainer for this project. There is no docker on the host: no binary, no daemon, no
+socket.
 
 - `devbox` mounts the repo at `/workspace` and has Node 26 + Yarn 4.11 pre-installed.
   Work directly inside the container at `/workspace` - open your editor/agent here,
@@ -91,12 +93,17 @@ managed by `~/infra/compose.yml` on the host. This IS the devcontainer for this 
 - Agent state (Claude, Copilot, VS Code server/extensions, SSH, Git config) is mounted
   into `/root` from the host, so it persists across container restarts and recreates.
   Leave those mounts as configured.
-- `~/infra/compose.yml` (which defines `devbox`) is live server config on the host,
-  outside this git repo. Treat it as operational state, not project code.
+- `~/infra/podman/quadlet/devbox-app.container` (which defines `devbox`) is live server
+  config on the host, outside this git repo. Treat it as operational state, not project
+  code.
+- **`/tmp` inside the box does not survive.** The quadlet runs `podman run --rm --replace`,
+  so every restart recreates the container and wipes its writable layer. Anything you want
+  to keep goes under `/workspace` (a bind mount) - never `/tmp`.
 - `yarn dev` serves UI on port 3000 and API on port 6246. Logs at `/tmp/yarn-dev.log`.
 
-**Dev media servers** (Plex, Jellyfin, Emby) run as separate rootless Docker containers
-in `~/dev-media.compose.yml`, reachable from inside `devbox` by hostname:
+**Dev media servers** (Plex, Jellyfin, Emby) run as separate rootless podman containers,
+each its own quadlet in `~/infra/podman/quadlet/`, reachable from inside `devbox` by
+hostname:
 - Plex → `http://dev-plex:32400`
 - Jellyfin → `http://dev-jellyfin:8096`
 - Emby → `http://dev-emby:8096`
@@ -111,11 +118,16 @@ Three trust levels, privilege descending: **`root`@host** (everything) › **`ma
 (`dev-plex`, `dev-radarr`, …) to test and seed against it, but you **cannot break out** to
 the host - and that boundary is enforced from above you, so you can't disable it:
 
-- **Read-only Docker** - the socket-proxy allows `ps`/`logs`, never `start`/`stop`/`exec`/`create`.
+- **No container engine at all** - there is no docker/podman client, no socket and no
+  `DOCKER_*` variable in here. Read-only container status comes from a text snapshot the
+  host refreshes at `/host/containers`; it is data, never an API handle.
 - **Host egress firewall** - outbound is default-deny to an allowlist (GitHub, npm, Anthropic,
-  Plex/TMDB) plus the internal docker network; `NET_ADMIN` is stripped from the container.
-- **Rootless + `cap_drop: ALL` + `no-new-privileges`** - even container-root is an unprivileged
-  subuid, never the host user.
+  Plex/TMDB) plus the local podman networks. The rules live in a separate netns holder that
+  installs them before this container starts, so they cannot be altered from in here.
+  DNS is equally confined: the only resolver you can reach is the allowlisting one.
+- **`DropCapability=ALL` + `NoNewPrivileges` + rootless** - this container holds *zero*
+  capabilities, bounding set included, so they cannot be regained. Even container-root is
+  an unprivileged subuid, never the host user.
 
 Don't fight these (e.g. trying to `exec` into another container, or reaching a non-allowlisted
 host) - they're intentional, not bugs. Operator-side detail lives in `~/infra/README.md`.
