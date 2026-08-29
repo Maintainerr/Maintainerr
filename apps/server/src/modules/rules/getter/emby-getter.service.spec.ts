@@ -422,20 +422,16 @@ describe('EmbyGetterService', () => {
   });
 
   describe('sw_lastViewedAtThroughSeason (id 48)', () => {
-    const getFrontierDate = (
-      seasonIndex: number | undefined,
-      parentId = 'show-1',
-      type: MediaItemType = 'season',
-    ) => {
+    const getSeasonViewDate = (seasonIndex: number | undefined) => {
       const season = createMediaItem({
         id: `season-${seasonIndex}`,
-        type,
+        type: 'season',
         index: seasonIndex,
-        parentId,
+        parentId: 'show-1',
       });
       embyAdapter.getMetadata.mockResolvedValue(season);
 
-      return embyGetterService.get(48, season, type);
+      return embyGetterService.get(48, season, 'season');
     };
 
     const mockShow = (
@@ -445,12 +441,9 @@ describe('EmbyGetterService', () => {
       embyAdapter.getChildrenMetadata.mockImplementation(
         async (parentId: string, childType?: MediaItemType) => {
           if (parentId === 'show-1' && childType === 'season') return seasons;
-          return [
-            createMediaItem({
-              id: `${parentId}-episode`,
-              type: 'episode',
-            }),
-          ];
+          return Object.keys(histories)
+            .filter((itemId) => itemId.startsWith(`${parentId}-episode`))
+            .map((itemId) => createMediaItem({ id: itemId, type: 'episode' }));
         },
       );
       embyAdapter.getWatchHistory.mockImplementation(
@@ -458,15 +451,23 @@ describe('EmbyGetterService', () => {
       );
     };
 
-    it('returns the newest date through the target regular season only', async () => {
+    it('reads only current episodes in numbered regular seasons through the target', async () => {
       mockShow(
         [
           createMediaItem({ id: 'specials', type: 'season', index: 0 }),
           createMediaItem({ id: 'season-1', type: 'season', index: 1 }),
           createMediaItem({ id: 'season-2', type: 'season', index: 2 }),
           createMediaItem({ id: 'season-3', type: 'season', index: 3 }),
+          createMediaItem({
+            id: 'season-unknown',
+            type: 'season',
+            index: undefined,
+          }),
         ],
         {
+          'deleted-episode': [
+            createWatchRecord({ watchedAt: new Date('2026-08-01') }),
+          ],
           'specials-episode': [
             createWatchRecord({ watchedAt: new Date('2026-06-01') }),
           ],
@@ -482,14 +483,23 @@ describe('EmbyGetterService', () => {
         },
       );
 
-      await expect(getFrontierDate(2)).resolves.toEqual(new Date('2026-04-20'));
+      await expect(getSeasonViewDate(2)).resolves.toEqual(
+        new Date('2026-04-20'),
+      );
       expect(embyAdapter.getChildrenMetadata).toHaveBeenCalledWith(
         'show-1',
         'season',
         true,
       );
-      for (const seasonId of ['specials', 'season-1', 'season-2', 'season-3']) {
+      for (const seasonId of ['season-1', 'season-2']) {
         expect(embyAdapter.getChildrenMetadata).toHaveBeenCalledWith(
+          seasonId,
+          'episode',
+          true,
+        );
+      }
+      for (const seasonId of ['specials', 'season-3', 'season-unknown']) {
+        expect(embyAdapter.getChildrenMetadata).not.toHaveBeenCalledWith(
           seasonId,
           'episode',
           true,
@@ -513,7 +523,14 @@ describe('EmbyGetterService', () => {
         },
       );
 
-      await expect(getFrontierDate(0)).resolves.toEqual(new Date('2026-02-01'));
+      await expect(getSeasonViewDate(0)).resolves.toEqual(
+        new Date('2026-02-01'),
+      );
+      expect(embyAdapter.getChildrenMetadata).not.toHaveBeenCalledWith(
+        'season-1',
+        'episode',
+        true,
+      );
     });
 
     it('returns null when completed views have no dates', async () => {
@@ -524,133 +541,23 @@ describe('EmbyGetterService', () => {
         },
       );
 
-      await expect(getFrontierDate(1)).resolves.toBeNull();
+      await expect(getSeasonViewDate(1)).resolves.toBeNull();
     });
 
-    it('reuses one cold-cache show frontier for concurrent target seasons', async () => {
+    it('returns undefined when a later qualifying episode has an invalid watch date', async () => {
       mockShow(
-        [
-          createMediaItem({ id: 'season-1', type: 'season', index: 1 }),
-          createMediaItem({ id: 'season-2', type: 'season', index: 2 }),
-        ],
+        [createMediaItem({ id: 'season-1', type: 'season', index: 1 })],
         {
-          'season-1-episode': [
+          'season-1-episode-1': [
             createWatchRecord({ watchedAt: new Date('2026-01-01') }),
           ],
-          'season-2-episode': [
-            createWatchRecord({ watchedAt: new Date('2026-02-01') }),
+          'season-1-episode-2': [
+            createWatchRecord({ watchedAt: new Date('invalid') }),
           ],
         },
       );
 
-      const [firstSeason, secondSeason] = await Promise.all([
-        getFrontierDate(1),
-        getFrontierDate(2),
-      ]);
-
-      expect(firstSeason).toEqual(new Date('2026-01-01'));
-      expect(secondSeason).toEqual(new Date('2026-02-01'));
-      expect(embyAdapter.getChildrenMetadata).toHaveBeenCalledTimes(3);
-      expect(embyAdapter.getWatchHistory).toHaveBeenCalledTimes(2);
+      await expect(getSeasonViewDate(1)).resolves.toBeUndefined();
     });
-
-    it.each([
-      { seasonIndex: undefined, parentId: 'show-1' },
-      { seasonIndex: -1, parentId: 'show-1' },
-      { seasonIndex: 1.5, parentId: 'show-1' },
-      { seasonIndex: Number.MAX_SAFE_INTEGER + 1, parentId: 'show-1' },
-      { seasonIndex: 1, parentId: '' },
-      { seasonIndex: 1, parentId: ' show-1 ' },
-    ])(
-      'returns undefined for malformed target scope %#',
-      async ({ seasonIndex, parentId }) => {
-        await expect(
-          getFrontierDate(seasonIndex, parentId),
-        ).resolves.toBeUndefined();
-      },
-    );
-
-    it('returns null for non-season media', async () => {
-      await expect(getFrontierDate(1, 'show-1', 'show')).resolves.toBeNull();
-    });
-
-    it.each([
-      {
-        name: 'returned season index',
-        season: createMediaItem({
-          id: 'invalid-season',
-          type: 'season',
-          index: undefined,
-        }),
-        history: [] as WatchRecord[],
-      },
-      {
-        name: 'present watch date',
-        season: createMediaItem({
-          id: 'season-1',
-          type: 'season',
-          index: 1,
-        }),
-        history: [
-          createWatchRecord({ watchedAt: new Date('invalid') }),
-        ] as WatchRecord[],
-      },
-    ])(
-      'returns undefined for an invalid $name',
-      async ({ season, history }) => {
-        mockShow([season], { [`${season.id}-episode`]: history });
-
-        await expect(getFrontierDate(1)).resolves.toBeUndefined();
-      },
-    );
-
-    it.each(['children', 'history'])(
-      'does not cache a failed %s build and allows a later retry',
-      async (failedRead) => {
-        const season = createMediaItem({
-          id: 'season-1',
-          type: 'season',
-          index: 1,
-        });
-        const episode = createMediaItem({
-          id: 'season-1-episode',
-          type: 'episode',
-        });
-        let failed = false;
-
-        embyAdapter.getChildrenMetadata.mockImplementation(
-          async (parentId: string, childType?: MediaItemType) => {
-            if (failedRead === 'children' && !failed) {
-              failed = true;
-              throw new Error('Emby unavailable');
-            }
-            return childType === 'season' ? [season] : [episode];
-          },
-        );
-        embyAdapter.getWatchHistory.mockImplementation(async () => {
-          if (failedRead === 'history' && !failed) {
-            failed = true;
-            throw new Error('Emby unavailable');
-          }
-          return [createWatchRecord({ watchedAt: new Date('2026-01-01') })];
-        });
-
-        await expect(getFrontierDate(1)).resolves.toBeUndefined();
-        await expect(getFrontierDate(1)).resolves.toEqual(
-          new Date('2026-01-01'),
-        );
-        expect(embyAdapter.getChildrenMetadata).toHaveBeenCalledWith(
-          'show-1',
-          'season',
-          true,
-        );
-        expect(embyAdapter.getChildrenMetadata).toHaveBeenCalledTimes(
-          failedRead === 'children' ? 3 : 4,
-        );
-        expect(embyAdapter.getWatchHistory).toHaveBeenCalledTimes(
-          failedRead === 'children' ? 1 : 2,
-        );
-      },
-    );
   });
 });

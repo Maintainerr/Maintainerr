@@ -414,11 +414,13 @@ const run = db.transaction(() => {
     }),
   ];
 
-  // 4b) #3153 repro: a season-scoped group sweeping every season that is NOT
-  //     part of the latest aired season. The matching fake provider has one
-  //     show with four seasons; a full run evaluates them together where Test
-  //     Media evaluates one - the two must agree.
-  {
+  // 4b) #3153 repro (Plex only): a season-scoped group sweeping every season that
+  //     is NOT part of the latest aired season. Pairs tools/dev/fake-plex.mjs's
+  //     four-season show with tools/dev/fake-sonarr.mjs. The latest aired season
+  //     (S2) must be excluded; the rest swept. A full run evaluates the seasons
+  //     together (shared memoized series) where Test Media evaluates one - the
+  //     two must now agree.
+  if (TARGET === "plex") {
     const seasonColId = insCollection.run({
       libraryId: LIB.show,
       title: "Latest Season Sweep",
@@ -439,14 +441,11 @@ const run = db.transaction(() => {
     }).lastInsertRowid;
     const seasonGroupId = insRuleGroup.run(
       "Latest Season Sweep",
-      "view history exists AND part_of_latest_season == False",
+      "part_of_latest_season == False",
       LIB.show,
       seasonColId,
       "season",
     ).lastInsertRowid;
-    // Placing prop 48 first exercises the selected provider's season-only
-    // property before Sonarr narrows the sweep.
-    insRule.run(seasonGroupId, ruleJson(48, 0));
     // Sonarr (Application.SONARR=2) part_of_latest_season (prop 13, BOOL) EQUALS
     // False. ruleTypeId BOOL=3, RulePossibility.EQUALS=2; BOOL false encodes as
     // "0" (the comparator coerces +customVal.value).
@@ -454,12 +453,43 @@ const run = db.transaction(() => {
       seasonGroupId,
       JSON.stringify({
         customVal: { ruleTypeId: 3, value: "0" },
-        operator: 0,
+        operator: null,
         firstVal: [2, 13],
         action: 2,
         section: 0,
       }),
     );
+  }
+
+  // 4b1) Season-prefix view history for the selected media server. Kept
+  //      separate from #3153 so each fixture exercises one regression.
+  {
+    const seasonViewColId = insCollection.run({
+      libraryId: LIB.show,
+      title: "Season-prefix View History",
+      description: "Seasons with a view in this or an earlier season.",
+      type: "season",
+      mediaServerType: TARGET,
+      deleteAfterDays: 30,
+      visibleOnHome: 0,
+      arrAction: 4, // DO_NOTHING
+      listExclusions: 0,
+      radarrSettingsId: null,
+      sonarrSettingsId: null,
+      handledMediaAmount: 0,
+      handledMediaSizeBytes: 0,
+      totalSizeBytes: 0,
+      lastDuration: 0,
+      addDate: daysAgo(30),
+    }).lastInsertRowid;
+    const seasonViewGroupId = insRuleGroup.run(
+      "Season-prefix View History",
+      "Newest episode view date exists through the target season.",
+      LIB.show,
+      seasonViewColId,
+      "season",
+    ).lastInsertRowid;
+    insRule.run(seasonViewGroupId, ruleJson(48, 0));
   }
 
   // 4b2) Sportarr rule group. Sportarr is its own application (id 5), so none of

@@ -305,6 +305,7 @@ const HISTORY = {
       index: 1,
     },
     {
+      // Retained history for an episode no longer present in current children.
       ratingKey: 'season-3-episode-1',
       type: 'episode',
       accountID: 1,

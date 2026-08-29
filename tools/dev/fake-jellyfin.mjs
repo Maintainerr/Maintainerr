@@ -141,19 +141,33 @@ const SHOWS = [
   }),
 ];
 
-const SEASONS = [0, 1, 2, 3].map((index) => ({
-  Id: `mock-show-1-season-${index}`,
-  Name: index === 0 ? 'Specials' : `Season ${index}`,
-  Type: 'Season',
-  ServerId: 'mockserver',
-  ParentId: 'jellyfin-shows',
-  SeriesId: 'mock-show-1',
-  IndexNumber: index,
-  DateCreated: ISO('2026-01-01'),
-  PremiereDate: ISO(`202${index}-01-01`),
-  ProviderIds: {},
-  UserData: { PlayCount: 0, Played: false, PlayedPercentage: 0 },
-}));
+const SEASONS = [
+  ...[0, 1, 2, 3].map((index) => ({
+    Id: `mock-show-1-season-${index}`,
+    Name: index === 0 ? 'Specials' : `Season ${index}`,
+    Type: 'Season',
+    ServerId: 'mockserver',
+    ParentId: 'jellyfin-shows',
+    SeriesId: 'mock-show-1',
+    IndexNumber: index,
+    DateCreated: ISO('2026-01-01'),
+    PremiereDate: ISO(`202${index}-01-01`),
+    ProviderIds: {},
+    UserData: { PlayCount: 0, Played: false, PlayedPercentage: 0 },
+  })),
+  {
+    Id: 'mock-show-1-season-unknown',
+    Name: 'Season Unknown',
+    Type: 'Season',
+    ServerId: 'mockserver',
+    ParentId: 'jellyfin-shows',
+    SeriesId: 'mock-show-1',
+    IndexNumber: null,
+    DateCreated: ISO('2026-01-01'),
+    ProviderIds: {},
+    UserData: { PlayCount: 0, Played: false, PlayedPercentage: 0 },
+  },
+];
 const EPISODES = [
   ['0', '2026-06-01'],
   ['1', '2026-04-20'],
@@ -369,7 +383,8 @@ const server = http.createServer((req, res) => {
       );
     }
     const parentId = u.searchParams.get('parentId');
-    const itemTypes = new Set(
+    const itemTypes = u.searchParams.get('includeItemTypes');
+    const requestedItemTypes = new Set(
       u.searchParams
         .getAll('includeItemTypes')
         .flatMap((value) => value.split(','))
@@ -378,13 +393,13 @@ const server = http.createServer((req, res) => {
     if (
       parentId === 'mock-show-1' &&
       u.searchParams.get('recursive') === 'true' &&
-      itemTypes.has('Episode')
+      requestedItemTypes.has('Episode')
     ) {
       return send(res, 200, pagedItems(EPISODES, u));
     }
     if (
       SEASONS.some((season) => season.Id === parentId) &&
-      itemTypes.has('Episode')
+      requestedItemTypes.has('Episode')
     ) {
       return send(
         res,
@@ -397,7 +412,7 @@ const server = http.createServer((req, res) => {
     // boxset holds movies only -> surfaced under the movie library, absent under
     // the show library. This is the #3026 condition. (Checked before the generic
     // parentId branches, which would otherwise return the library's media.)
-    if (itemTypes.has('BoxSet')) {
+    if (itemTypes && itemTypes.includes('BoxSet')) {
       if (parentId === 'jellyfin-movies') {
         return send(res, 200, itemsResponse([SHARED_BOXSET]));
       }
@@ -409,19 +424,18 @@ const server = http.createServer((req, res) => {
         200,
         pagedItems(
           [...SHOWS, ...SEASONS, ...EPISODES, ...SCALE_SHOWS].filter(
-            (item) => itemTypes.size === 0 || itemTypes.has(item.Type),
+            (item) =>
+              requestedItemTypes.size === 0 ||
+              requestedItemTypes.has(item.Type),
           ),
           u,
         ),
       );
     }
-    if (parentId === 'jellyfin-shows') {
-      return send(res, 200, pagedItems([...SHOWS, ...SCALE_SHOWS], u));
-    }
-    if (parentId === 'jellyfin-movies' || itemTypes.has('Movie')) {
+    if (parentId === 'jellyfin-movies' || itemTypes === 'Movie') {
       return send(res, 200, pagedItems([...MOVIES, ...SCALE_MOVIES], u));
     }
-    if (itemTypes.has('Series')) {
+    if (parentId === 'jellyfin-shows' || itemTypes === 'Series') {
       return send(res, 200, pagedItems([...SHOWS, ...SCALE_SHOWS], u));
     }
     // Episodes, etc. -> empty for now

@@ -54,12 +54,7 @@ function show(id, name, providerIds = {}) {
   };
 }
 const SHOWS = [
-  // Synthetic ids, deliberately below 900,000,000: that window is reserved by
-  // Sportarr for its league aliases, so ids inside it resolve as leagues.
-  show('emby-show-1', 'Mock Show Alpha', {
-    Tvdb: '800000001',
-    Tmdb: '800000001',
-  }),
+  show('emby-show-1', 'Mock Show Alpha'),
   // Sportarr fixtures, matching fake-sportarr's leagues. One carries the native
   // id its agents stamp, one only the older tvdb alias, so both resolution paths
   // are covered. emby-show-1 carries neither, which the getter answers with the
@@ -73,18 +68,31 @@ const SHOWS = [
     Tvdb: '900000042',
   }),
 ];
-const SEASONS = [0, 1, 2, 3].map((index) => ({
-  Id: `emby-show-1-season-${index}`,
-  Name: index === 0 ? 'Specials' : `Season ${index}`,
-  Type: 'Season',
-  ParentId: 'emby-shows',
-  SeriesId: 'emby-show-1',
-  IndexNumber: index,
-  DateCreated: ISO('2026-01-01'),
-  PremiereDate: ISO(`202${index}-01-01`),
-  ProviderIds: {},
-  UserData: { PlayCount: 0, Played: false, PlayedPercentage: 0 },
-}));
+const SEASONS = [
+  ...[0, 1, 2, 3].map((index) => ({
+    Id: `emby-show-1-season-${index}`,
+    Name: index === 0 ? 'Specials' : `Season ${index}`,
+    Type: 'Season',
+    ParentId: 'emby-shows',
+    SeriesId: 'emby-show-1',
+    IndexNumber: index,
+    DateCreated: ISO('2026-01-01'),
+    PremiereDate: ISO(`202${index}-01-01`),
+    ProviderIds: {},
+    UserData: { PlayCount: 0, Played: false, PlayedPercentage: 0 },
+  })),
+  {
+    Id: 'emby-show-1-season-unknown',
+    Name: 'Season Unknown',
+    Type: 'Season',
+    ParentId: 'emby-shows',
+    SeriesId: 'emby-show-1',
+    IndexNumber: null,
+    DateCreated: ISO('2026-01-01'),
+    ProviderIds: {},
+    UserData: { PlayCount: 0, Played: false, PlayedPercentage: 0 },
+  },
+];
 const EPISODES = [
   ['0', '2026-06-01'],
   ['1', '2026-04-20'],

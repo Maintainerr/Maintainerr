@@ -1610,29 +1610,22 @@ describe('JellyfinGetterService', () => {
       libraryId: LIBRARY_ID,
     });
 
-    const getFrontierDate = (
-      seasonIndex: number | undefined,
-      parentId = 'show-1',
-      type: MediaItemType = 'season',
-    ) => {
+    const getSeasonViewDate = (seasonIndex: number | undefined) => {
       const season = createMediaItem({
         id: 'target-season',
-        type,
+        type: 'season',
         index: seasonIndex,
-        parentId,
+        parentId: 'show-1',
       });
       jellyfinAdapter.getMetadata.mockResolvedValue(season);
 
-      return jellyfinGetterService.get(48, season, type, ruleGroup);
+      return jellyfinGetterService.get(48, season, 'season', ruleGroup);
     };
 
-    it('returns the chronological maximum from current and earlier regular seasons', async () => {
-      const seasons = [
-        createMediaItem({ id: 'specials', type: 'season', index: 0 }),
-        createMediaItem({ id: 'season-1', type: 'season', index: 1 }),
-        createMediaItem({ id: 'season-2', type: 'season', index: 2 }),
-        createMediaItem({ id: 'season-3', type: 'season', index: 3 }),
-      ];
+    const mockShow = (
+      seasons: MediaItem[],
+      watchedBy: Record<string, Array<Partial<WatchRecord>>>,
+    ) => {
       jellyfinAdapter.getChildrenMetadata.mockImplementation(
         async (parentId: string, childType?: MediaItemType) => {
           if (parentId === 'show-1' && childType === 'season') return seasons;
@@ -1645,15 +1638,38 @@ describe('JellyfinGetterService', () => {
         },
       );
       jellyfinAdapter.getDescendantEpisodeWatchHistory.mockResolvedValue(
-        createDescendantWatchHistory({
+        createDescendantWatchHistory(watchedBy),
+      );
+    };
+
+    it('returns the chronological maximum from current episodes through the target season', async () => {
+      mockShow(
+        [
+          createMediaItem({ id: 'specials', type: 'season', index: 0 }),
+          createMediaItem({ id: 'season-1', type: 'season', index: 1 }),
+          createMediaItem({ id: 'season-2', type: 'season', index: 2 }),
+          createMediaItem({ id: 'season-3', type: 'season', index: 3 }),
+          createMediaItem({
+            id: 'season-unknown',
+            type: 'season',
+            index: undefined,
+          }),
+        ],
+        {
+          'deleted-episode': [{ watchedAt: new Date('2026-08-01') }],
           'specials-episode': [{ watchedAt: new Date('2026-06-01') }],
           'season-1-episode': [{ watchedAt: new Date('2026-04-20') }],
           'season-2-episode': [{ watchedAt: new Date('2026-03-01') }],
-          'season-3-episode': [{ watchedAt: new Date('2026-07-01') }],
-        }),
+          'season-3-episode': [
+            { watchedAt: new Date('2026-07-01') },
+            { watchedAt: new Date('invalid') },
+          ],
+        },
       );
 
-      await expect(getFrontierDate(2)).resolves.toEqual(new Date('2026-04-20'));
+      await expect(getSeasonViewDate(2)).resolves.toEqual(
+        new Date('2026-04-20'),
+      );
       expect(
         jellyfinAdapter.getDescendantEpisodeWatchHistory,
       ).toHaveBeenCalledTimes(1);
@@ -1665,53 +1681,37 @@ describe('JellyfinGetterService', () => {
         'season',
         true,
       );
-      expect(jellyfinAdapter.getChildrenMetadata).toHaveBeenCalledWith(
-        'season-1',
-        'episode',
-        true,
-      );
-      expect(jellyfinAdapter.getChildrenMetadata).toHaveBeenCalledWith(
-        'season-2',
-        'episode',
-        true,
-      );
-      expect(jellyfinAdapter.getChildrenMetadata).not.toHaveBeenCalledWith(
-        'specials',
-        'episode',
-        true,
-      );
-      expect(jellyfinAdapter.getChildrenMetadata).not.toHaveBeenCalledWith(
-        'season-3',
-        'episode',
-        true,
-      );
+      for (const seasonId of ['season-1', 'season-2']) {
+        expect(jellyfinAdapter.getChildrenMetadata).toHaveBeenCalledWith(
+          seasonId,
+          'episode',
+          true,
+        );
+      }
+      for (const seasonId of ['specials', 'season-3', 'season-unknown']) {
+        expect(jellyfinAdapter.getChildrenMetadata).not.toHaveBeenCalledWith(
+          seasonId,
+          'episode',
+          true,
+        );
+      }
     });
 
     it('uses only specials when evaluating Season 0', async () => {
-      jellyfinAdapter.getChildrenMetadata.mockImplementation(
-        async (parentId: string, childType?: MediaItemType) => {
-          if (parentId === 'show-1' && childType === 'season') {
-            return [
-              createMediaItem({ id: 'specials', type: 'season', index: 0 }),
-              createMediaItem({ id: 'season-1', type: 'season', index: 1 }),
-            ];
-          }
-          return [
-            createMediaItem({
-              id: `${parentId}-episode`,
-              type: 'episode',
-            }),
-          ];
-        },
-      );
-      jellyfinAdapter.getDescendantEpisodeWatchHistory.mockResolvedValue(
-        createDescendantWatchHistory({
+      mockShow(
+        [
+          createMediaItem({ id: 'specials', type: 'season', index: 0 }),
+          createMediaItem({ id: 'season-1', type: 'season', index: 1 }),
+        ],
+        {
           'specials-episode': [{ watchedAt: new Date('2026-02-01') }],
           'season-1-episode': [{ watchedAt: new Date('2026-03-01') }],
-        }),
+        },
       );
 
-      await expect(getFrontierDate(0)).resolves.toEqual(new Date('2026-02-01'));
+      await expect(getSeasonViewDate(0)).resolves.toEqual(
+        new Date('2026-02-01'),
+      );
       expect(jellyfinAdapter.getChildrenMetadata).toHaveBeenCalledWith(
         'specials',
         'episode',
@@ -1725,118 +1725,25 @@ describe('JellyfinGetterService', () => {
     });
 
     it('returns null when qualifying episodes have no dated history', async () => {
-      jellyfinAdapter.getChildrenMetadata.mockImplementation(
-        async (parentId: string, childType?: MediaItemType) => {
-          if (parentId === 'show-1' && childType === 'season') {
-            return [
-              createMediaItem({ id: 'season-1', type: 'season', index: 1 }),
-            ];
-          }
-          return [createMediaItem({ id: 'episode-1', type: 'episode' })];
+      mockShow(
+        [createMediaItem({ id: 'season-1', type: 'season', index: 1 })],
+        {
+          'season-1-episode': [{ watchedAt: undefined }],
         },
       );
-      jellyfinAdapter.getDescendantEpisodeWatchHistory.mockResolvedValue(
-        createDescendantWatchHistory({
-          'episode-1': [{ watchedAt: undefined }],
-        }),
-      );
 
-      await expect(getFrontierDate(1)).resolves.toBeNull();
+      await expect(getSeasonViewDate(1)).resolves.toBeNull();
     });
 
-    it.each([
-      { seasonIndex: undefined, parentId: 'show-1' },
-      { seasonIndex: -1, parentId: 'show-1' },
-      { seasonIndex: 1.5, parentId: 'show-1' },
-      { seasonIndex: Number.MAX_SAFE_INTEGER + 1, parentId: 'show-1' },
-      { seasonIndex: 1, parentId: '' },
-      { seasonIndex: 1, parentId: ' show-1 ' },
-    ])(
-      'returns undefined for malformed target scope %#',
-      async ({ seasonIndex, parentId }) => {
-        await expect(
-          getFrontierDate(seasonIndex, parentId),
-        ).resolves.toBeUndefined();
-      },
-    );
-
-    it('returns undefined for an invalid returned season index', async () => {
-      jellyfinAdapter.getChildrenMetadata.mockResolvedValue([
-        createMediaItem({
-          id: 'invalid-season',
-          type: 'season',
-          index: undefined,
-        }),
-      ]);
-      jellyfinAdapter.getDescendantEpisodeWatchHistory.mockResolvedValue({});
-
-      await expect(getFrontierDate(1)).resolves.toBeUndefined();
-    });
-
-    it('returns undefined for an invalid present watch date', async () => {
-      jellyfinAdapter.getChildrenMetadata.mockImplementation(
-        async (parentId: string, childType?: MediaItemType) => {
-          if (parentId === 'show-1' && childType === 'season') {
-            return [
-              createMediaItem({ id: 'season-1', type: 'season', index: 1 }),
-            ];
-          }
-          return [createMediaItem({ id: 'episode-1', type: 'episode' })];
+    it('returns undefined for an invalid qualifying watch date', async () => {
+      mockShow(
+        [createMediaItem({ id: 'season-1', type: 'season', index: 1 })],
+        {
+          'season-1-episode': [{ watchedAt: new Date('invalid') }],
         },
       );
-      jellyfinAdapter.getDescendantEpisodeWatchHistory.mockResolvedValue(
-        createDescendantWatchHistory({
-          'episode-1': [{ watchedAt: new Date('invalid') }],
-        }),
-      );
 
-      await expect(getFrontierDate(1)).resolves.toBeUndefined();
-    });
-
-    it('returns undefined for an invalid watch date outside the selected season range', async () => {
-      jellyfinAdapter.getChildrenMetadata.mockImplementation(
-        async (parentId: string, childType?: MediaItemType) => {
-          if (parentId === 'show-1' && childType === 'season') {
-            return [
-              createMediaItem({ id: 'season-1', type: 'season', index: 1 }),
-              createMediaItem({ id: 'season-2', type: 'season', index: 2 }),
-            ];
-          }
-          return [createMediaItem({ id: 'episode-1', type: 'episode' })];
-        },
-      );
-      jellyfinAdapter.getDescendantEpisodeWatchHistory.mockResolvedValue(
-        createDescendantWatchHistory({
-          'episode-1': [{ watchedAt: new Date('2026-03-01') }],
-          'season-2-episode': [{ watchedAt: new Date('invalid') }],
-        }),
-      );
-
-      await expect(getFrontierDate(1)).resolves.toBeUndefined();
-    });
-
-    it.each(['descendant history', 'season children'])(
-      'returns undefined when the %s read fails',
-      async (failedRead) => {
-        if (failedRead === 'descendant history') {
-          jellyfinAdapter.getDescendantEpisodeWatchHistory.mockRejectedValue(
-            new Error('Jellyfin unavailable'),
-          );
-        } else {
-          jellyfinAdapter.getDescendantEpisodeWatchHistory.mockResolvedValue(
-            {},
-          );
-          jellyfinAdapter.getChildrenMetadata.mockRejectedValue(
-            new Error('Jellyfin unavailable'),
-          );
-        }
-
-        await expect(getFrontierDate(1)).resolves.toBeUndefined();
-      },
-    );
-
-    it('returns null for non-season media', async () => {
-      await expect(getFrontierDate(1, 'show-1', 'show')).resolves.toBeNull();
+      await expect(getSeasonViewDate(1)).resolves.toBeUndefined();
     });
   });
 

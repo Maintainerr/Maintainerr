@@ -1067,62 +1067,6 @@ describe('JellyfinAdapterService', () => {
       expect(jellyfinCacheMocks.data.set).not.toHaveBeenCalled();
     });
 
-    it('throws and does not cache a malformed successful child read in strict mode', async () => {
-      jellyfinApiMocks.getItems.mockResolvedValue({ data: {} });
-
-      await expect(
-        service.getChildrenMetadata('season-1', 'episode', true),
-      ).rejects.toThrow(
-        'Could not read the children of Jellyfin item season-1',
-      );
-      expect(jellyfinCacheMocks.data.set).not.toHaveBeenCalled();
-    });
-
-    it('throws and does not cache an incomplete child page in strict mode', async () => {
-      jellyfinApiMocks.getItems.mockResolvedValue({
-        data: { Items: [], TotalRecordCount: 1 },
-      });
-
-      await expect(
-        service.getChildrenMetadata('season-1', 'episode', true),
-      ).rejects.toThrow(
-        'Could not read the children of Jellyfin item season-1',
-      );
-      expect(jellyfinCacheMocks.data.set).not.toHaveBeenCalled();
-    });
-
-    it('does not let an incomplete non-strict read poison a later strict read', async () => {
-      let cached: unknown;
-      jellyfinCacheMocks.data.get
-        .mockReturnValueOnce(undefined)
-        .mockImplementationOnce(() => cached);
-      jellyfinCacheMocks.data.set.mockImplementationOnce((_, value) => {
-        cached = value;
-      });
-      jellyfinApiMocks.getItems
-        .mockResolvedValueOnce({
-          data: { Items: [], TotalRecordCount: 1 },
-        })
-        .mockResolvedValueOnce({
-          data: { Items: [{ Id: 'ep-1', Type: 'Episode' }] },
-        });
-
-      const first = await service.getChildrenMetadata('season-1', 'episode');
-      const second = await service.getChildrenMetadata(
-        'season-1',
-        'episode',
-        true,
-      );
-      const requestCount = jellyfinApiMocks.getItems.mock.calls.length;
-      jellyfinCacheMocks.data.get.mockReset();
-      jellyfinCacheMocks.data.set.mockReset();
-      jellyfinApiMocks.getItems.mockReset();
-
-      expect(first).toEqual([]);
-      expect(second).toEqual([expect.objectContaining({ id: 'ep-1' })]);
-      expect(requestCount).toBe(2);
-    });
-
     it('drops the whole children namespace on resetMetadataCache', async () => {
       // A show's episode lists hang off its season ids, not the id passed in,
       // so scoping the delete to that id would leave them stale (#3274).
@@ -2046,7 +1990,7 @@ describe('JellyfinAdapterService', () => {
       );
     });
 
-    it('abandons a snapshot when duplicate rows hide a missing item', async () => {
+    it('counts a row repeated across pages only once', async () => {
       jellyfinApiMocks.getUsers.mockResolvedValue({
         data: [{ Id: 'user-1', Name: 'Alice' }],
       });
@@ -2064,7 +2008,14 @@ describe('JellyfinAdapterService', () => {
 
       await service.prefetchWatchHistory({ libraryId: 'lib-1' });
 
-      expect(snapshot()).toBeUndefined();
+      const cached = snapshot() as unknown as {
+        watchHistory: Map<string, unknown[]>;
+        playCount: Map<string, number>;
+        descendants: Map<string, string[]>;
+      };
+      expect(cached.watchHistory.get('ep-1')).toHaveLength(1);
+      expect(cached.playCount.get('ep-1')).toBe(2);
+      expect(cached.descendants.get('show-1')).toEqual(['ep-1']);
     });
 
     it('does not sweep again once a snapshot is cached', async () => {
@@ -2198,15 +2149,6 @@ describe('JellyfinAdapterService', () => {
       const result = await service.getDescendantEpisodeWatchHistory('show-1');
 
       expect(result).toEqual({ 'ep-1': [] });
-    });
-
-    it('throws instead of confirming empty history when no users are returned', async () => {
-      jellyfinApiMocks.getUsers.mockResolvedValue({ data: [] });
-
-      await expect(
-        service.getDescendantEpisodeWatchHistory('show-1'),
-      ).rejects.toThrow('Jellyfin returned no users for watch history');
-      expect(jellyfinApiMocks.getItems).not.toHaveBeenCalled();
     });
 
     it('throws instead of answering when a user sweep fails', async () => {

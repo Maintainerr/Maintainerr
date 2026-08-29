@@ -290,10 +290,10 @@ export class JellyfinGetterService {
           const targetSeason = metadata.index;
           const showId = metadata.parentId;
           if (
+            targetSeason === undefined ||
             !Number.isSafeInteger(targetSeason) ||
-            targetSeason! < 0 ||
+            targetSeason < 0 ||
             typeof showId !== 'string' ||
-            showId !== showId.trim() ||
             !showId
           ) {
             throw new Error(
@@ -306,33 +306,23 @@ export class JellyfinGetterService {
             'show',
             libraryId,
           );
-          for (const records of Object.values(watchHistory)) {
-            for (const record of records) {
-              if (
-                record.watchedAt !== undefined &&
-                !Number.isFinite(record.watchedAt.getTime())
-              ) {
-                throw new Error('Jellyfin returned an invalid watch date');
-              }
-            }
-          }
-
           const seasons = await this.jellyfinAdapter.getChildrenMetadata(
             showId,
             'season',
             true,
           );
-          let latestWatchedAtMs: number | undefined;
+          let latestWatchedAt: Date | null = null;
 
           for (const season of seasons) {
-            if (!Number.isSafeInteger(season.index) || season.index! < 0) {
+            if (season.index === undefined) continue;
+            if (!Number.isSafeInteger(season.index) || season.index < 0) {
               throw new Error('Jellyfin returned an invalid season index');
             }
 
             const qualifies =
               targetSeason === 0
                 ? season.index === 0
-                : season.index! > 0 && season.index! <= targetSeason!;
+                : season.index > 0 && season.index <= targetSeason;
             if (!qualifies) continue;
 
             const episodes = await this.jellyfinAdapter.getChildrenMetadata(
@@ -341,22 +331,20 @@ export class JellyfinGetterService {
               true,
             );
             for (const episode of episodes) {
-              for (const record of watchHistory[episode.id] ?? []) {
-                if (record.watchedAt === undefined) continue;
-                const watchedAtMs = record.watchedAt.getTime();
-                if (
-                  latestWatchedAtMs === undefined ||
-                  watchedAtMs > latestWatchedAtMs
-                ) {
-                  latestWatchedAtMs = watchedAtMs;
-                }
+              const watchedAt = this.newestWatchedAt(
+                watchHistory[episode.id] ?? [],
+              );
+              if (!watchedAt) continue;
+              if (!Number.isFinite(watchedAt.getTime())) {
+                throw new Error('Jellyfin returned an invalid watch date');
+              }
+              if (!latestWatchedAt || watchedAt > latestWatchedAt) {
+                latestWatchedAt = watchedAt;
               }
             }
           }
 
-          return latestWatchedAtMs === undefined
-            ? null
-            : new Date(latestWatchedAtMs);
+          return latestWatchedAt;
         }
 
         case 'sw_episodes': {

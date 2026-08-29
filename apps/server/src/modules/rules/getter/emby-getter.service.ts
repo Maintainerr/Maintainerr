@@ -40,10 +40,6 @@ import { MetadataRuleValueService } from './metadata-rule-value.service';
 export class EmbyGetterService {
   embyProperties: Property[];
   private readonly cache: Cache;
-  private readonly completedSeasonFrontierBuilds = new Map<
-    string,
-    Promise<Array<{ seasonIndex: number; watchedAtMs?: number }>>
-  >();
 
   constructor(
     private readonly embyAdapter: EmbyAdapterService,
@@ -274,32 +270,45 @@ export class EmbyGetterService {
             !Number.isSafeInteger(targetSeason) ||
             targetSeason < 0 ||
             typeof showId !== 'string' ||
-            showId !== showId.trim() ||
             !showId
           ) {
             throw new Error('Emby season metadata is missing its valid scope');
           }
 
-          const frontier = await this.getCompletedSeasonFrontier(showId);
-          let latestWatchedAtMs: number | undefined;
-          for (const { seasonIndex, watchedAtMs } of frontier) {
+          const seasons = await this.embyAdapter.getChildrenMetadata(
+            showId,
+            'season',
+            true,
+          );
+          let latestWatchedAt: Date | null = null;
+
+          for (const season of seasons) {
+            const seasonIndex = season.index;
+            if (seasonIndex === undefined) continue;
+            if (!Number.isSafeInteger(seasonIndex) || seasonIndex < 0) {
+              throw new Error('Emby returned an invalid season index');
+            }
+
             const qualifies =
               targetSeason === 0
                 ? seasonIndex === 0
                 : seasonIndex > 0 && seasonIndex <= targetSeason;
+            if (!qualifies) continue;
+
+            const watchedAt = await this.getLastWatchedShowDate(
+              season.id,
+              'season',
+              true,
+            );
             if (
-              qualifies &&
-              watchedAtMs !== undefined &&
-              (latestWatchedAtMs === undefined ||
-                watchedAtMs > latestWatchedAtMs)
+              watchedAt &&
+              (!latestWatchedAt || watchedAt > latestWatchedAt)
             ) {
-              latestWatchedAtMs = watchedAtMs;
+              latestWatchedAt = watchedAt;
             }
           }
 
-          return latestWatchedAtMs === undefined
-            ? null
-            : new Date(latestWatchedAtMs);
+          return latestWatchedAt;
         }
 
         case 'sw_episodes': {
@@ -559,68 +568,6 @@ export class EmbyGetterService {
       : null;
   }
 
-  private async getCompletedSeasonFrontier(
-    showId: string,
-  ): Promise<Array<{ seasonIndex: number; watchedAtMs?: number }>> {
-    const cacheKey = `emby:show:completed-frontier:${showId}`;
-    const cached =
-      this.cache.data.get<Array<{ seasonIndex: number; watchedAtMs?: number }>>(
-        cacheKey,
-      );
-    if (cached !== undefined) return cached;
-
-    const existing = this.completedSeasonFrontierBuilds.get(showId);
-    if (existing !== undefined) return existing;
-
-    const pending = (async () => {
-      const seasons = await this.embyAdapter.getChildrenMetadata(
-        showId,
-        'season',
-        true,
-      );
-      const frontier: Array<{ seasonIndex: number; watchedAtMs?: number }> = [];
-
-      for (const season of seasons) {
-        const seasonIndex = season.index;
-        if (
-          seasonIndex === undefined ||
-          !Number.isSafeInteger(seasonIndex) ||
-          seasonIndex < 0
-        ) {
-          throw new Error('Emby returned an invalid season index');
-        }
-
-        let watchedAtMs: number | undefined;
-        const episodes = await this.embyAdapter.getChildrenMetadata(
-          season.id,
-          'episode',
-          true,
-        );
-        for (const episode of episodes) {
-          const history = await this.embyAdapter.getWatchHistory(episode.id);
-          for (const record of history) {
-            if (record.watchedAt === undefined) continue;
-            const candidate = record.watchedAt.getTime();
-            if (!Number.isFinite(candidate)) {
-              throw new Error('Emby returned an invalid watch date');
-            }
-            if (watchedAtMs === undefined || candidate > watchedAtMs) {
-              watchedAtMs = candidate;
-            }
-          }
-        }
-        frontier.push({ seasonIndex, watchedAtMs });
-      }
-
-      this.cache.data.set(cacheKey, frontier);
-      return frontier;
-    })().finally(() => {
-      this.completedSeasonFrontierBuilds.delete(showId);
-    });
-    this.completedSeasonFrontierBuilds.set(showId, pending);
-    return pending;
-  }
-
   private async getLastPlayedAt(
     itemId: string,
     type: MediaItemType,
@@ -763,11 +710,12 @@ export class EmbyGetterService {
    * a "last watched" signal for shows/seasons is to walk the children and
    * take the max. This is an aggregate - it is not the view date of the
    * highest-numbered episode, the way the Plex/Tautulli `sw_lastWatched`
-   * getters compute it. Used by the `lastViewedAt` rule only.
+   * getters compute it. Used by `lastViewedAt` and the season-prefix rule.
    */
   private async getLastWatchedShowDate(
     itemId: string,
     type: MediaItemType,
+    throwOnError = false,
   ): Promise<Date | null> {
     let latestDate: Date | null = null;
 
@@ -776,9 +724,17 @@ export class EmbyGetterService {
       const episodes = await this.embyAdapter.getChildrenMetadata(
         itemId,
         'episode',
+        throwOnError,
       );
       for (const episode of episodes) {
         const lastViewed = await this.getLastViewedAt(episode.id);
+        if (
+          throwOnError &&
+          lastViewed &&
+          !Number.isFinite(lastViewed.getTime())
+        ) {
+          throw new Error('Emby returned an invalid watch date');
+        }
         if (lastViewed && (!latestDate || lastViewed > latestDate)) {
           latestDate = lastViewed;
         }
@@ -788,11 +744,13 @@ export class EmbyGetterService {
       const seasons = await this.embyAdapter.getChildrenMetadata(
         itemId,
         'season',
+        throwOnError,
       );
       for (const season of seasons) {
         const episodes = await this.embyAdapter.getChildrenMetadata(
           season.id,
           'episode',
+          throwOnError,
         );
         for (const episode of episodes) {
           const lastViewed = await this.getLastViewedAt(episode.id);

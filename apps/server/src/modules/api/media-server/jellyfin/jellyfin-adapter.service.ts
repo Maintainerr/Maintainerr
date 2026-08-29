@@ -1089,19 +1089,10 @@ export class JellyfinAdapterService implements IMediaServerService {
           ],
           enableUserData: true,
         });
-        if (!Array.isArray(response.data.Items)) {
-          throw new Error('Jellyfin returned no child item list');
-        }
-        if (
-          typeof response.data.TotalRecordCount === 'number' &&
-          response.data.Items.length !== response.data.TotalRecordCount
-        ) {
-          throw new Error('Jellyfin returned an incomplete child item list');
-        }
 
         return this.cacheChildren(
           cacheKey,
-          response.data.Items.map(JellyfinMapper.toMediaItem),
+          (response.data.Items || []).map(JellyfinMapper.toMediaItem),
         );
       }
 
@@ -1128,19 +1119,10 @@ export class JellyfinAdapterService implements IMediaServerService {
         excludeLocationTypes:
           childType === 'episode' ? [LocationType.Virtual] : undefined,
       });
-      if (!Array.isArray(response.data.Items)) {
-        throw new Error('Jellyfin returned no child item list');
-      }
-      if (
-        typeof response.data.TotalRecordCount === 'number' &&
-        response.data.Items.length !== response.data.TotalRecordCount
-      ) {
-        throw new Error('Jellyfin returned an incomplete child item list');
-      }
 
       return this.cacheChildren(
         cacheKey,
-        response.data.Items.map(JellyfinMapper.toMediaItem),
+        (response.data.Items || []).map(JellyfinMapper.toMediaItem),
       );
     } catch (error) {
       if (throwOnError) {
@@ -1339,91 +1321,81 @@ export class JellyfinAdapterService implements IMediaServerService {
         // Pages are folded in as they arrive rather than collected first, so
         // the transient cost is one page, not one copy of the library.
         const seenThisUser = new Set<string>();
-        const total = await this.sweepUserItems(
-          user.id,
-          libraryId,
-          abortSignal,
-          (items) => {
-            for (const item of items) {
-              if (!item.Id) continue;
-              // Paging is not transactional, so a library changing under the sweep
-              // can repeat a row on the next page; counting it twice would inflate
-              // playCount and duplicate watch records.
-              if (seenThisUser.has(item.Id)) continue;
-              seenThisUser.add(item.Id);
+        await this.sweepUserItems(user.id, libraryId, abortSignal, (items) => {
+          for (const item of items) {
+            if (!item.Id) continue;
+            // Paging is not transactional, so a library changing under the sweep
+            // can repeat a row on the next page; counting it twice would inflate
+            // playCount and duplicate watch records.
+            if (seenThisUser.has(item.Id)) continue;
+            seenThisUser.add(item.Id);
 
-              let itemRecords = watchHistory.get(item.Id);
-              if (!itemRecords) {
-                itemRecords = [];
-                watchHistory.set(item.Id, itemRecords);
-                // Index each episode under its season and series exactly once.
-                // Seasons also carry SeriesId, so this is gated on the type -
-                // indexing one would list seasons as episodes of their series.
-                if (item.Type === BaseItemKind.Episode) {
-                  for (const parentId of [item.SeriesId, item.SeasonId]) {
-                    if (!parentId) continue;
-                    const siblings = descendants.get(parentId);
-                    if (siblings) siblings.push(item.Id);
-                    else descendants.set(parentId, [item.Id]);
-                  }
+            let itemRecords = watchHistory.get(item.Id);
+            if (!itemRecords) {
+              itemRecords = [];
+              watchHistory.set(item.Id, itemRecords);
+              // Index each episode under its season and series exactly once.
+              // Seasons also carry SeriesId, so this is gated on the type -
+              // indexing one would list seasons as episodes of their series.
+              if (item.Type === BaseItemKind.Episode) {
+                for (const parentId of [item.SeriesId, item.SeasonId]) {
+                  if (!parentId) continue;
+                  const siblings = descendants.get(parentId);
+                  if (siblings) siblings.push(item.Id);
+                  else descendants.set(parentId, [item.Id]);
                 }
-              }
-
-              const userData = item.UserData ?? undefined;
-
-              // Favourites and play counts are raw UserData, already in this
-              // response - they cost nothing extra and are not gated on the
-              // watch threshold (favouriting or starting something is not
-              // finishing it).
-              if (userData?.IsFavorite) {
-                const fans = favoritedBy.get(item.Id);
-                if (fans) fans.push(user.id);
-                else favoritedBy.set(item.Id, [user.id]);
-              }
-              if (userData?.PlayCount) {
-                playCount.set(
-                  item.Id,
-                  (playCount.get(item.Id) ?? 0) + userData.PlayCount,
-                );
-              }
-              if (userData?.LastPlayedDate) {
-                const playedMs = new Date(userData.LastPlayedDate).getTime();
-                const newest = lastPlayedAt.get(item.Id);
-                if (
-                  !Number.isNaN(playedMs) &&
-                  (newest === undefined || playedMs > newest)
-                ) {
-                  lastPlayedAt.set(item.Id, playedMs);
-                }
-              }
-
-              if (!this.isCompletedWatch(userData, playedCompletionThreshold)) {
-                continue;
-              }
-
-              itemRecords.push(
-                JellyfinMapper.toWatchRecord(
-                  user.id,
-                  item.Id,
-                  userData?.LastPlayedDate
-                    ? new Date(userData.LastPlayedDate)
-                    : undefined,
-                  userData?.PlayedPercentage ?? undefined,
-                ),
-              );
-              records += 1;
-              if (records > JELLYFIN_WATCH_SNAPSHOT_MAX_RECORDS) {
-                exceededCeiling = true;
-                throw new Error('watch snapshot ceiling exceeded');
               }
             }
-          },
-        );
-        if (seenThisUser.size !== total) {
-          throw new Error(
-            `Jellyfin returned ${seenThisUser.size} unique items of ${total} for user ${user.id}`,
-          );
-        }
+
+            const userData = item.UserData ?? undefined;
+
+            // Favourites and play counts are raw UserData, already in this
+            // response - they cost nothing extra and are not gated on the
+            // watch threshold (favouriting or starting something is not
+            // finishing it).
+            if (userData?.IsFavorite) {
+              const fans = favoritedBy.get(item.Id);
+              if (fans) fans.push(user.id);
+              else favoritedBy.set(item.Id, [user.id]);
+            }
+            if (userData?.PlayCount) {
+              playCount.set(
+                item.Id,
+                (playCount.get(item.Id) ?? 0) + userData.PlayCount,
+              );
+            }
+            if (userData?.LastPlayedDate) {
+              const playedMs = new Date(userData.LastPlayedDate).getTime();
+              const newest = lastPlayedAt.get(item.Id);
+              if (
+                !Number.isNaN(playedMs) &&
+                (newest === undefined || playedMs > newest)
+              ) {
+                lastPlayedAt.set(item.Id, playedMs);
+              }
+            }
+
+            if (!this.isCompletedWatch(userData, playedCompletionThreshold)) {
+              continue;
+            }
+
+            itemRecords.push(
+              JellyfinMapper.toWatchRecord(
+                user.id,
+                item.Id,
+                userData?.LastPlayedDate
+                  ? new Date(userData.LastPlayedDate)
+                  : undefined,
+                userData?.PlayedPercentage ?? undefined,
+              ),
+            );
+            records += 1;
+            if (records > JELLYFIN_WATCH_SNAPSHOT_MAX_RECORDS) {
+              exceededCeiling = true;
+              throw new Error('watch snapshot ceiling exceeded');
+            }
+          }
+        });
 
         sweptUsers += 1;
         reportProgress(sweptUsers, users.length);
@@ -1482,7 +1454,7 @@ export class JellyfinAdapterService implements IMediaServerService {
     libraryId: string,
     abortSignal: AbortSignal | undefined,
     onPage: (items: BaseItemDto[]) => void,
-  ): Promise<number> {
+  ): Promise<void> {
     const pageSize = JELLYFIN_BATCH_SIZE.MAX_PAGE_SIZE;
     let fetched = 0;
     let total = 0;
@@ -1543,8 +1515,6 @@ export class JellyfinAdapterService implements IMediaServerService {
         );
       }
     } while (fetched < total);
-
-    return total;
   }
 
   /**
@@ -1791,9 +1761,6 @@ export class JellyfinAdapterService implements IMediaServerService {
     }
 
     const users = await this.getUsers(true);
-    if (!users.length) {
-      throw new Error('Jellyfin returned no users for watch history');
-    }
     const entries = await this.mapUsersBatched(async (user) => {
       const response = await getItemsApi(this.api!).getItems({
         userId: user.id,

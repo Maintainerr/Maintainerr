@@ -432,15 +432,18 @@ export class PlexGetterService {
           const currentSeason = metadata.index;
           const showRatingKey = metadata.parentRatingKey;
           if (
+            currentSeason === undefined ||
             !Number.isSafeInteger(currentSeason) ||
-            currentSeason! < 0 ||
+            currentSeason < 0 ||
             typeof showRatingKey !== 'string' ||
-            showRatingKey !== showRatingKey.trim() ||
             !showRatingKey
           ) {
             throw new Error('Plex season metadata is missing its valid scope');
           }
 
+          // Plex show history retains rows for episodes no longer in the
+          // library, so those views count. Jellyfin and Emby instead inspect
+          // the show's current episode children.
           const watchHistory = await this.plexApi.getWatchHistory(
             showRatingKey,
             true,
@@ -451,36 +454,35 @@ export class PlexGetterService {
 
           for (const view of watchHistory) {
             const viewedSeason = view.parentIndex;
-            const viewedAtMs = view.viewedAt * 1000;
             if (
-              view.type !== 'episode' ||
+              viewedSeason === undefined ||
               !Number.isSafeInteger(viewedSeason) ||
-              viewedSeason! < 0 ||
-              !Number.isFinite(view.viewedAt) ||
-              Math.abs(viewedAtMs) > 8.64e15
+              viewedSeason < 0
             ) {
-              throw new Error(
-                'Plex history row has invalid season or view date',
-              );
+              throw new Error('Plex history row has invalid season');
             }
 
             const qualifies =
               currentSeason === 0
                 ? viewedSeason === 0
                 : viewedSeason > 0 && viewedSeason <= currentSeason;
+            if (!qualifies) continue;
+            if (!Number.isFinite(view.viewedAt)) {
+              throw new Error('Plex history row has invalid view date');
+            }
+
+            const viewedAtMs = view.viewedAt * 1000;
             if (
-              qualifies &&
-              (latestViewedAtMs === undefined || viewedAtMs > latestViewedAtMs)
+              latestViewedAtMs === undefined ||
+              viewedAtMs > latestViewedAtMs
             ) {
               latestViewedAtMs = viewedAtMs;
             }
           }
 
-          if (latestViewedAtMs === undefined) {
-            return null;
-          }
-
-          return new Date(latestViewedAtMs);
+          return latestViewedAtMs === undefined
+            ? null
+            : new Date(latestViewedAtMs);
         }
         case 'sw_episodes': {
           if (metadata.type === 'season') {
