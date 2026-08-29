@@ -88,8 +88,8 @@ const LIB =
 // differ per server, so keep one map each (mirrors RuleConstants).
 const N = 0, D = 1, T = 2, B = 3, L = 4;
 const TYPES = {
-  plex: { 0:D,1:L,2:D,3:N,4:L,5:N,6:N,7:D,8:T,9:N,10:T,11:L,12:L,13:D,14:N,15:N,16:D,17:N,18:L,19:L,20:N,21:L,22:N,23:N,24:L,25:N,26:L,27:D,29:D,31:N,32:N,33:N,34:N,35:N,36:N,37:N,38:N,39:N,40:N,41:L,42:L,43:B,44:D,45:N,46:L,47:D },
-  jellyfin: { 0:D,1:L,2:D,3:N,4:L,5:N,6:N,7:D,8:T,9:N,10:T,11:L,12:L,13:D,14:N,15:N,16:D,17:N,18:L,19:L,20:N,21:L,22:N,23:N,24:L,25:N,26:L,27:D,29:D,30:N,31:N,32:N,33:N,34:N,35:N,36:N,37:N,38:N,39:L,40:L,41:L,42:B,44:N,45:D,46:L,47:D },
+  plex: { 0:D,1:L,2:D,3:N,4:L,5:N,6:N,7:D,8:T,9:N,10:T,11:L,12:L,13:D,14:N,15:N,16:D,17:N,18:L,19:L,20:N,21:L,22:N,23:N,24:L,25:N,26:L,27:D,29:D,31:N,32:N,33:N,34:N,35:N,36:N,37:N,38:N,39:N,40:N,41:L,42:L,43:B,44:D,45:N,46:L,47:D,48:D },
+  jellyfin: { 0:D,1:L,2:D,3:N,4:L,5:N,6:N,7:D,8:T,9:N,10:T,11:L,12:L,13:D,14:N,15:N,16:D,17:N,18:L,19:L,20:N,21:L,22:N,23:N,24:L,25:N,26:L,27:D,29:D,30:N,31:N,32:N,33:N,34:N,35:N,36:N,37:N,38:N,39:L,40:L,41:L,42:B,44:N,45:D,46:L,47:D,48:D },
 };
 // Rule-property ids covered per group type (movie vs show/episode).
 const COVERAGE = {
@@ -459,6 +459,37 @@ const run = db.transaction(() => {
         section: 0,
       }),
     );
+  }
+
+  // 4b1) Season-prefix view history for the selected media server. Kept
+  //      separate from #3153 so each fixture exercises one regression.
+  {
+    const seasonViewColId = insCollection.run({
+      libraryId: LIB.show,
+      title: "Season-prefix View History",
+      description: "Seasons with a view in this or an earlier season.",
+      type: "season",
+      mediaServerType: TARGET,
+      deleteAfterDays: 30,
+      visibleOnHome: 0,
+      arrAction: 4, // DO_NOTHING
+      listExclusions: 0,
+      radarrSettingsId: null,
+      sonarrSettingsId: null,
+      handledMediaAmount: 0,
+      handledMediaSizeBytes: 0,
+      totalSizeBytes: 0,
+      lastDuration: 0,
+      addDate: daysAgo(30),
+    }).lastInsertRowid;
+    const seasonViewGroupId = insRuleGroup.run(
+      "Season-prefix View History",
+      "Newest episode view date exists through the target season.",
+      LIB.show,
+      seasonViewColId,
+      "season",
+    ).lastInsertRowid;
+    insRule.run(seasonViewGroupId, ruleJson(48, 0));
   }
 
   // 4b2) Sportarr rule group. Sportarr is its own application (id 5), so none of

@@ -68,6 +68,55 @@ const SHOWS = [
     Tvdb: '900000042',
   }),
 ];
+const SEASONS = [
+  ...[0, 1, 2, 3].map((index) => ({
+    Id: `emby-show-1-season-${index}`,
+    Name: index === 0 ? 'Specials' : `Season ${index}`,
+    Type: 'Season',
+    ParentId: 'emby-shows',
+    SeriesId: 'emby-show-1',
+    IndexNumber: index,
+    DateCreated: ISO('2026-01-01'),
+    PremiereDate: ISO(`202${index}-01-01`),
+    ProviderIds: {},
+    UserData: { PlayCount: 0, Played: false, PlayedPercentage: 0 },
+  })),
+  {
+    Id: 'emby-show-1-season-unknown',
+    Name: 'Season Unknown',
+    Type: 'Season',
+    ParentId: 'emby-shows',
+    SeriesId: 'emby-show-1',
+    IndexNumber: null,
+    DateCreated: ISO('2026-01-01'),
+    ProviderIds: {},
+    UserData: { PlayCount: 0, Played: false, PlayedPercentage: 0 },
+  },
+];
+const EPISODES = [
+  ['0', '2026-06-01'],
+  ['1', '2026-04-20'],
+  ['2', '2026-03-01'],
+  ['3', '2026-07-01'],
+].map(([season, lastPlayedDate]) => ({
+  Id: `emby-show-1-season-${season}-episode-1`,
+  Name: 'Episode 1',
+  Type: 'Episode',
+  ParentId: `emby-show-1-season-${season}`,
+  SeasonId: `emby-show-1-season-${season}`,
+  SeriesId: 'emby-show-1',
+  ParentIndexNumber: Number(season),
+  IndexNumber: 1,
+  DateCreated: ISO('2026-01-01'),
+  PremiereDate: ISO(`202${season}-01-07`),
+  ProviderIds: {},
+  UserData: {
+    PlayCount: 1,
+    Played: true,
+    PlayedPercentage: 100,
+    LastPlayedDate: ISO(lastPlayedDate),
+  },
+}));
 
 // The shared manual ("custom name") BoxSet. Server-global, but reported only under
 // libraries whose content it holds - and it holds movies only.
@@ -108,10 +157,14 @@ const SCALE_MOVIES = SCALE.movies.map(scaleMovie);
 const SCALE_SHOWS = SCALE.shows.map(scaleSeries);
 
 const ITEMS_BY_ID = new Map(
-  [...SHOWS, SHARED_BOXSET, ...SCALE_MOVIES, ...SCALE_SHOWS].map((item) => [
-    item.Id,
-    item,
-  ]),
+  [
+    ...SHOWS,
+    ...SEASONS,
+    ...EPISODES,
+    SHARED_BOXSET,
+    ...SCALE_MOVIES,
+    ...SCALE_SHOWS,
+  ].map((item) => [item.Id, item]),
 );
 
 // --- HTTP helpers ----------------------------------------------------------------
@@ -173,6 +226,17 @@ const server = http.createServer((req, res) => {
   // Sessions (active-playback check)
   if (path === '/Sessions') return send(res, 200, []);
 
+  const seasonsMatch = path.match(/^\/Shows\/([^/]+)\/Seasons$/);
+  if (req.method === 'GET' && seasonsMatch) {
+    return send(
+      res,
+      200,
+      itemsResponse(
+        SEASONS.filter((season) => season.SeriesId === seasonsMatch[1]),
+      ),
+    );
+  }
+
   // Single item by id: /Items/{id} or /Users/{userId}/Items/{id}
   const itemMatch =
     path.match(/^\/Items\/([^/]+)$/) ||
@@ -199,6 +263,16 @@ const server = http.createServer((req, res) => {
     }
     const parentId = u.searchParams.get('ParentId');
     const itemTypes = u.searchParams.get('IncludeItemTypes');
+    if (
+      SEASONS.some((season) => season.Id === parentId) &&
+      itemTypes?.includes('Episode')
+    ) {
+      return send(
+        res,
+        200,
+        pagedItems(EPISODES.filter((episode) => episode.SeasonId === parentId), u),
+      );
+    }
     // BoxSet listing: server-global but surfaced only under libraries whose
     // content the boxset holds. This one holds movies only - the #3026 condition.
     if (itemTypes && itemTypes.includes('BoxSet')) {
@@ -209,6 +283,13 @@ const server = http.createServer((req, res) => {
     }
     if (parentId === 'emby-movies' || itemTypes === 'Movie') {
       return send(res, 200, pagedItems(SCALE_MOVIES, u));
+    }
+    if (
+      parentId === 'emby-shows' &&
+      u.searchParams.get('Recursive') === 'true' &&
+      itemTypes?.split(',').includes('Season')
+    ) {
+      return send(res, 200, pagedItems(SEASONS, u));
     }
     if (parentId === 'emby-shows' || itemTypes === 'Series') {
       return send(res, 200, pagedItems([...SHOWS, ...SCALE_SHOWS], u));

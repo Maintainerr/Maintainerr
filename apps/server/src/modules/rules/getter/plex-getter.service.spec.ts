@@ -1683,4 +1683,120 @@ describe('PlexGetterService', () => {
       await expect(getLastWatched()).resolves.toBeUndefined();
     });
   });
+
+  describe('sw_lastViewedAtThroughSeason (id 48)', () => {
+    const ruleGroup = createRuleGroupDto({ dataType: 'show' });
+    const makeEpisodeWatchEntry = (
+      overrides: Partial<PlexSeenBy> = {},
+    ): PlexSeenBy => makeWatchEntry({ type: 'episode', ...overrides });
+
+    const getSeasonViewDate = (
+      seasonIndex: number | undefined,
+      parentRatingKey = 'show-1',
+    ) => {
+      const ratingKey = `season-${seasonIndex}`;
+      const season = makeMetadata({
+        ratingKey,
+        parentRatingKey,
+        type: 'season',
+        index: seasonIndex,
+      });
+      plexApi.getMetadata.mockImplementation(async (requestedRatingKey) =>
+        requestedRatingKey === ratingKey ? season : undefined,
+      );
+
+      return service.get(
+        48,
+        createMediaItem({ id: ratingKey, type: 'season' }),
+        'season',
+        ruleGroup,
+      );
+    };
+
+    it('returns null when applied to a non-season item', async () => {
+      const show = makeMetadata({ ratingKey: 'show-1', type: 'show' });
+      plexApi.getMetadata.mockResolvedValue(show);
+
+      await expect(
+        service.get(
+          48,
+          createMediaItem({ id: 'show-1', type: 'show' }),
+          'show',
+          ruleGroup,
+        ),
+      ).resolves.toBeNull();
+    });
+
+    it('returns the latest chronological view from the current or an earlier regular season', async () => {
+      plexApi.getWatchHistory.mockResolvedValue([
+        makeEpisodeWatchEntry({ parentIndex: 0, viewedAt: 1_750_000_000 }),
+        makeEpisodeWatchEntry({
+          ratingKey: 'deleted-episode',
+          parentIndex: 1,
+          viewedAt: 1_730_000_000,
+        }),
+        makeEpisodeWatchEntry({ parentIndex: 3, viewedAt: 1_720_000_000 }),
+        makeEpisodeWatchEntry({ parentIndex: 4, viewedAt: Number.NaN }),
+      ]);
+
+      const result = await getSeasonViewDate(3);
+
+      expect(result).toEqual(new Date(1_730_000_000 * 1000));
+      expect(plexApi.getWatchHistory).toHaveBeenCalledWith(
+        'show-1',
+        true,
+        'show',
+        ruleGroup.libraryId,
+      );
+      expect(plexApi.getChildrenMetadata).not.toHaveBeenCalled();
+    });
+
+    it('uses only specials when evaluating Season 0', async () => {
+      plexApi.getWatchHistory.mockResolvedValue([
+        makeEpisodeWatchEntry({ parentIndex: 0, viewedAt: 1_730_000_000 }),
+        makeEpisodeWatchEntry({ parentIndex: 1, viewedAt: 1_740_000_000 }),
+      ]);
+
+      const result = await getSeasonViewDate(0);
+
+      expect(result).toEqual(new Date(1_730_000_000 * 1000));
+    });
+
+    it('returns null when there are no qualifying views', async () => {
+      plexApi.getWatchHistory.mockResolvedValue([
+        makeEpisodeWatchEntry({ parentIndex: 0, viewedAt: 1_730_000_000 }),
+        makeEpisodeWatchEntry({ parentIndex: 3, viewedAt: 1_740_000_000 }),
+      ]);
+
+      const result = await getSeasonViewDate(2);
+
+      expect(result).toBeNull();
+    });
+
+    it('returns undefined when Plex history cannot identify the viewed season', async () => {
+      plexApi.getWatchHistory.mockResolvedValue([
+        makeEpisodeWatchEntry({
+          parentIndex: undefined,
+          viewedAt: 1_730_000_000,
+        }),
+      ]);
+
+      const result = await getSeasonViewDate(2);
+
+      expect(result).toBeUndefined();
+    });
+
+    it.each([-1, 8_640_000_000_001])(
+      'returns undefined for invalid qualifying view date %s',
+      async (viewedAt) => {
+        plexApi.getWatchHistory.mockResolvedValue([
+          makeEpisodeWatchEntry({ parentIndex: 2, viewedAt }),
+        ]);
+
+        const result = await getSeasonViewDate(2);
+
+        expect(result).toBeUndefined();
+      },
+    );
+  });
 });

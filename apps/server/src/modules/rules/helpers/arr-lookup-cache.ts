@@ -20,10 +20,10 @@
  * time - redundant CPU, response cloning and duplicate logs (#3285). The Radarr,
  * Sonarr and Seerr getters route their resolution through here.
  *
- * The Plex / Jellyfin / Emby getters use it only for the metadata-backed
- * studios property (via MetadataRuleValueService); their other per-item reads
- * are served from their own API-layer caches, and the Tautulli getter does not
- * use it at all. (Seerr's own request lookups are API-cached too - only the
+ * The Plex / Jellyfin / Emby getters use it for the metadata-backed studios
+ * property (via MetadataRuleValueService). Emby also memoizes the season walks
+ * used by its season-prefix view-date rule. The Tautulli getter does not use it
+ * at all. (Seerr's own request lookups are API-cached too - only the
  * id-resolution that feeds them is deduped here.)
  */
 export class ArrLookupCache {
