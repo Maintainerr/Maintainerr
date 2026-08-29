@@ -1713,7 +1713,7 @@ describe('PlexGetterService', () => {
       );
     };
 
-    it('returns undefined when applied to a non-season item', async () => {
+    it('returns null when applied to a non-season item', async () => {
       const show = makeMetadata({ ratingKey: 'show-1', type: 'show' });
       plexApi.getMetadata.mockResolvedValue(show);
 
@@ -1724,7 +1724,7 @@ describe('PlexGetterService', () => {
           'show',
           ruleGroup,
         ),
-      ).resolves.toBeUndefined();
+      ).resolves.toBeNull();
     });
 
     it('returns the latest chronological view from the current or an earlier regular season', async () => {

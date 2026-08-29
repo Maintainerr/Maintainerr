@@ -937,8 +937,18 @@ export class EmbyAdapterService implements IMediaServerService {
             ),
           );
         }
-      } catch {
-        // Some users may not have access to this item - skip silently.
+      } catch (error) {
+        // A hidden or unavailable item is a per-user visibility miss, so skip
+        // that user. Anything else leaves the aggregate short of a user who may
+        // have watched it, and callers read the result as a confirmed date -
+        // it has to reach them instead (#3531).
+        if (
+          isAxiosError(error) &&
+          (error.response?.status === 403 || error.response?.status === 404)
+        ) {
+          continue;
+        }
+        throw error;
       }
     }
 

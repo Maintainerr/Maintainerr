@@ -259,14 +259,25 @@ export class EmbyGetterService {
         }
 
         case 'sw_lastViewedAtThroughSeason': {
+          // Does not apply is an answer, not a failed read (#3402) - see the
+          // Plex getter.
           if (metadata.type !== 'season') {
-            throw new Error('Emby view-date prefix requires season metadata');
+            return null;
           }
 
           const targetSeason = metadata.index;
           const showId = metadata.parentId;
+          // Emby files episodes it cannot place under a "Season Unknown" with
+          // no IndexNumber. Such a season has no position in the run of
+          // seasons, so the value cannot be computed - hold the item, but that
+          // is normal library shape and must not read as a failed lookup.
+          if (targetSeason === undefined) {
+            this.logger.debug(
+              `'${libItem.title}' has no season number, so a view date through it cannot be computed`,
+            );
+            return undefined;
+          }
           if (
-            targetSeason === undefined ||
             !Number.isSafeInteger(targetSeason) ||
             targetSeason < 0 ||
             typeof showId !== 'string' ||

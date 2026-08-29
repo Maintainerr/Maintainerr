@@ -425,8 +425,11 @@ export class PlexGetterService {
           return new Date(+newestSeason[0].viewedAt * 1000);
         }
         case 'sw_lastViewedAtThroughSeason': {
+          // Does not apply is an answer, not a failed read. The executor sweeps
+          // a whole library at one dataType, so the transient signal would
+          // freeze every item in a wrongly-typed group (#3402).
           if (metadata.type !== 'season') {
-            throw new Error('Plex view-date prefix requires season metadata');
+            return null;
           }
 
           const currentSeason = metadata.index;
@@ -459,7 +462,12 @@ export class PlexGetterService {
               !Number.isSafeInteger(viewedSeason) ||
               viewedSeason < 0
             ) {
-              throw new Error('Plex history row has invalid season');
+              // Stop rather than skip the row: dropping it under-reports views
+              // and would let NOT_EXISTS delete watched media. Name the cause -
+              // some connections omit the parent fields on history rows (#3082).
+              throw new Error(
+                `Plex history row for show ${showRatingKey} has no usable season (parentIndex ${viewedSeason}); some connections omit the parent fields on history rows (#3082)`,
+              );
             }
 
             const qualifies =

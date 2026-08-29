@@ -11,6 +11,7 @@ import { createRuleGroupDto } from '../../../../test/utils/data';
 
 import cacheManager from '../../api/lib/cache';
 import { EmbyAdapterService } from '../../api/media-server/emby/emby-adapter.service';
+import { MaintainerrLogger } from '../../logging/logs.service';
 import { ArrLookupCache } from '../helpers/arr-lookup-cache';
 import { EmbyGetterService } from './emby-getter.service';
 import { MetadataRuleValueService } from './metadata-rule-value.service';
@@ -55,6 +56,7 @@ describe('EmbyGetterService', () => {
   let embyGetterService: EmbyGetterService;
   let embyAdapter: Mocked<EmbyAdapterService>;
   let metadataRuleValueService: Mocked<MetadataRuleValueService>;
+  let logger: Mocked<MaintainerrLogger>;
 
   beforeEach(async () => {
     const { unit, unitRef } =
@@ -63,6 +65,7 @@ describe('EmbyGetterService', () => {
     embyGetterService = unit;
     embyAdapter = unitRef.get(EmbyAdapterService);
     metadataRuleValueService = unitRef.get(MetadataRuleValueService);
+    logger = unitRef.get(MaintainerrLogger);
     embyAdapter.isSetup.mockReturnValue(true);
   });
 
@@ -443,13 +446,27 @@ describe('EmbyGetterService', () => {
       );
     };
 
-    it('returns undefined when applied to a non-season item', async () => {
+    it('holds an unnumbered season without reporting a read failure', async () => {
+      const season = createMediaItem({
+        id: 'season-unknown',
+        type: 'season',
+        index: undefined,
+        parentId: 'show-1',
+      });
+      embyAdapter.getMetadata.mockResolvedValue(season);
+
+      await expect(
+        embyGetterService.get(48, season, 'season'),
+      ).resolves.toBeUndefined();
+      expect(logger.warn).not.toHaveBeenCalled();
+      expect(embyAdapter.getChildrenMetadata).not.toHaveBeenCalled();
+    });
+
+    it('returns null when applied to a non-season item', async () => {
       const show = createMediaItem({ id: 'show-1', type: 'show' });
       embyAdapter.getMetadata.mockResolvedValue(show);
 
-      await expect(
-        embyGetterService.get(48, show, 'show'),
-      ).resolves.toBeUndefined();
+      await expect(embyGetterService.get(48, show, 'show')).resolves.toBeNull();
     });
 
     const mockShow = (

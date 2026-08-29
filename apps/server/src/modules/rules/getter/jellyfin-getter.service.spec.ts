@@ -14,6 +14,7 @@ const LIBRARY_ID = 'lib-1';
 
 import cacheManager from '../../api/lib/cache';
 import { JellyfinAdapterService } from '../../api/media-server/jellyfin/jellyfin-adapter.service';
+import { MaintainerrLogger } from '../../logging/logs.service';
 import { ArrLookupCache } from '../helpers/arr-lookup-cache';
 import { JellyfinGetterService } from './jellyfin-getter.service';
 import { MetadataRuleValueService } from './metadata-rule-value.service';
@@ -101,6 +102,7 @@ describe('JellyfinGetterService', () => {
   let jellyfinGetterService: JellyfinGetterService;
   let jellyfinAdapter: Mocked<JellyfinAdapterService>;
   let metadataRuleValueService: Mocked<MetadataRuleValueService>;
+  let logger: Mocked<MaintainerrLogger>;
 
   const JELLYFIN_IS_WATCHED_PROP_ID = 42;
 
@@ -112,6 +114,7 @@ describe('JellyfinGetterService', () => {
     jellyfinGetterService = unit;
     jellyfinAdapter = unitRef.get(JellyfinAdapterService);
     metadataRuleValueService = unitRef.get(MetadataRuleValueService);
+    logger = unitRef.get(MaintainerrLogger);
 
     // Default: Jellyfin is set up
     jellyfinAdapter.isSetup.mockReturnValue(true);
@@ -1622,13 +1625,29 @@ describe('JellyfinGetterService', () => {
       return jellyfinGetterService.get(48, season, 'season', ruleGroup);
     };
 
-    it('returns undefined when applied to a non-season item', async () => {
+    it('holds an unnumbered season without reporting a read failure', async () => {
+      const season = createMediaItem({
+        id: 'season-unknown',
+        type: 'season',
+        index: undefined,
+        parentId: 'show-1',
+      });
+      jellyfinAdapter.getMetadata.mockResolvedValue(season);
+
+      await expect(
+        jellyfinGetterService.get(48, season, 'season', ruleGroup),
+      ).resolves.toBeUndefined();
+      expect(logger.warn).not.toHaveBeenCalled();
+      expect(jellyfinAdapter.getChildrenMetadata).not.toHaveBeenCalled();
+    });
+
+    it('returns null when applied to a non-season item', async () => {
       const show = createMediaItem({ id: 'show-1', type: 'show' });
       jellyfinAdapter.getMetadata.mockResolvedValue(show);
 
       await expect(
         jellyfinGetterService.get(48, show, 'show', ruleGroup),
-      ).resolves.toBeUndefined();
+      ).resolves.toBeNull();
     });
 
     const mockShow = (
