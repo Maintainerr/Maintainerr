@@ -518,9 +518,8 @@ export class RuleConstants {
           type: RuleType.DATE,
         },
         {
-          // Only seasons the show still has count: Plex keeps history rows
-          // for deleted media, and a deleted season must stop protecting the
-          // ones after it (#751).
+          // Plex retained history includes views of episodes since removed
+          // from the library.
           id: 48,
           name: 'sw_lastViewedAtThroughSeason',
           humanName: 'Newest episode view date in this or an earlier season',
@@ -1745,8 +1744,8 @@ export class RuleConstants {
           type: RuleType.DATE,
         },
         {
-          // Derived from the show's current episode children, so views of
-          // episodes since removed from the library do not count (#751).
+          // Jellyfin and Emby derive this from current episode children, so
+          // views of episodes since removed from the library do not count.
           id: 48,
           name: 'sw_lastViewedAtThroughSeason',
           humanName: 'Newest episode view date in this or an earlier season',

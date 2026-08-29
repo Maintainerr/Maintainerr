@@ -444,28 +444,14 @@ export class PlexGetterService {
             throw new Error('Plex season metadata is missing its valid scope');
           }
 
+          // Plex show history retains rows for episodes no longer in the
+          // library, so those views count. Jellyfin and Emby instead inspect
+          // the show's current episode children.
           const watchHistory = await this.plexApi.getWatchHistory(
             showRatingKey,
             true,
             'show',
             libraryId,
-          );
-
-          // Plex keeps history rows after the media is gone, so a watched
-          // season that has since been deleted would go on protecting the
-          // seasons after it. #751 asks for the opposite: once the earlier
-          // season is deleted the next one becomes eligible unless it has been
-          // watched itself. Seasons are the granularity a season rule deletes
-          // at, and this is what Jellyfin and Emby get for free by walking
-          // current children.
-          const seasons = await this.plexApi.getChildrenMetadata(showRatingKey);
-          if (!seasons) {
-            throw new Error(
-              `Could not read the seasons of Plex show ${showRatingKey}`,
-            );
-          }
-          const availableSeasons = new Set(
-            seasons.map((season) => season.index),
           );
           let latestViewedAtMs: number | undefined;
 
@@ -488,7 +474,7 @@ export class PlexGetterService {
               currentSeason === 0
                 ? viewedSeason === 0
                 : viewedSeason > 0 && viewedSeason <= currentSeason;
-            if (!qualifies || !availableSeasons.has(viewedSeason)) continue;
+            if (!qualifies) continue;
             if (!Number.isFinite(view.viewedAt) || view.viewedAt < 0) {
               throw new Error('Plex history row has invalid view date');
             }

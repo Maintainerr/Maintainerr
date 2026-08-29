@@ -1690,19 +1690,6 @@ describe('PlexGetterService', () => {
       overrides: Partial<PlexSeenBy> = {},
     ): PlexSeenBy => makeWatchEntry({ type: 'episode', ...overrides });
 
-    // Which seasons the show still has. Plex keeps history rows for deleted
-    // media, so the getter intersects the two.
-    const havingSeasons = (...indexes: number[]) =>
-      plexApi.getChildrenMetadata.mockResolvedValue(
-        indexes.map((index) =>
-          makeMetadata({
-            ratingKey: `season-${index}`,
-            type: 'season',
-            index,
-          }),
-        ),
-      );
-
     const getSeasonViewDate = (
       seasonIndex: number | undefined,
       parentRatingKey = 'show-1',
@@ -1725,9 +1712,6 @@ describe('PlexGetterService', () => {
         ruleGroup,
       );
     };
-
-    // Unless a test says otherwise, the show still has every season it ever had.
-    beforeEach(() => havingSeasons(0, 1, 2, 3, 4, 5));
 
     it('returns null when applied to a non-season item', async () => {
       const show = makeMetadata({ ratingKey: 'show-1', type: 'show' });
@@ -1755,8 +1739,6 @@ describe('PlexGetterService', () => {
         makeEpisodeWatchEntry({ parentIndex: 4, viewedAt: Number.NaN }),
       ]);
 
-      havingSeasons(0, 1, 3, 4);
-
       const result = await getSeasonViewDate(3);
 
       expect(result).toEqual(new Date(1_730_000_000 * 1000));
@@ -1766,17 +1748,7 @@ describe('PlexGetterService', () => {
         'show',
         ruleGroup.libraryId,
       );
-    });
-
-    it('ignores history from a season the library no longer has (#751)', async () => {
-      // Season 3 was watched and has since been deleted; Plex keeps the row.
-      // Season 4 was never watched, so it must become eligible again.
-      plexApi.getWatchHistory.mockResolvedValue([
-        makeEpisodeWatchEntry({ parentIndex: 3, viewedAt: 1_730_000_000 }),
-      ]);
-      havingSeasons(4, 5);
-
-      await expect(getSeasonViewDate(4)).resolves.toBeNull();
+      expect(plexApi.getChildrenMetadata).not.toHaveBeenCalled();
     });
 
     it('uses only specials when evaluating Season 0', async () => {
