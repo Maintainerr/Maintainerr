@@ -424,6 +424,77 @@ export class PlexGetterService {
           newestSeason.sort((a, b) => b.index - a.index);
           return new Date(+newestSeason[0].viewedAt * 1000);
         }
+        case 'sw_lastViewedAtThroughSeason': {
+          // Does not apply is an answer, not a failed read. The executor sweeps
+          // a whole library at one dataType, so the transient signal would
+          // freeze every item in a wrongly-typed group (#3402).
+          if (metadata.type !== 'season') {
+            return null;
+          }
+
+          const currentSeason = metadata.index;
+          const showRatingKey = metadata.parentRatingKey;
+          if (
+            currentSeason === undefined ||
+            !Number.isSafeInteger(currentSeason) ||
+            currentSeason < 0 ||
+            typeof showRatingKey !== 'string' ||
+            !showRatingKey
+          ) {
+            throw new Error('Plex season metadata is missing its valid scope');
+          }
+
+          // Plex show history retains rows for episodes no longer in the
+          // library, so those views count. Jellyfin and Emby instead inspect
+          // the show's current episode children.
+          const watchHistory = await this.plexApi.getWatchHistory(
+            showRatingKey,
+            true,
+            'show',
+            libraryId,
+          );
+          let latestViewedAtMs: number | undefined;
+
+          for (const view of watchHistory) {
+            const viewedSeason = view.parentIndex;
+            if (
+              viewedSeason === undefined ||
+              !Number.isSafeInteger(viewedSeason) ||
+              viewedSeason < 0
+            ) {
+              // Stop rather than skip the row: dropping it under-reports views
+              // and would let NOT_EXISTS delete watched media. Name the cause -
+              // some connections omit the parent fields on history rows (#3082).
+              throw new Error(
+                `Plex history row for show ${showRatingKey} has no usable season (parentIndex ${viewedSeason}); some connections omit the parent fields on history rows (#3082)`,
+              );
+            }
+
+            const qualifies =
+              currentSeason === 0
+                ? viewedSeason === 0
+                : viewedSeason > 0 && viewedSeason <= currentSeason;
+            if (!qualifies) continue;
+            if (!Number.isFinite(view.viewedAt) || view.viewedAt < 0) {
+              throw new Error('Plex history row has invalid view date');
+            }
+
+            const viewedAtMs = view.viewedAt * 1000;
+            if (!Number.isFinite(new Date(viewedAtMs).getTime())) {
+              throw new Error('Plex history row has invalid view date');
+            }
+            if (
+              latestViewedAtMs === undefined ||
+              viewedAtMs > latestViewedAtMs
+            ) {
+              latestViewedAtMs = viewedAtMs;
+            }
+          }
+
+          return latestViewedAtMs === undefined
+            ? null
+            : new Date(latestViewedAtMs);
+        }
         case 'sw_episodes': {
           if (metadata.type === 'season') {
             const eps = await this.plexApi.getChildrenMetadata(

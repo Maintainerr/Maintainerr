@@ -1,4 +1,5 @@
 import {
+  isSportarrTvdbAlias,
   MediaItem,
   ServarrAction,
   type MaintainerrMediaStatusDetails,
@@ -17,6 +18,7 @@ import { logClientError } from '../../../../utils/ClientLogger'
 import {
   buildMetadataPath,
   buildProviderUrl,
+  displayProviderId,
   mediaTypeLabel,
 } from '../../../../utils/mediaTypeUtils'
 import Button from '../../Button'
@@ -114,6 +116,11 @@ const metadataProviderLogos: Record<
     alt: 'TheTVDB Logo',
     providerIdKey: 'tvdb',
   },
+  Sportarr: {
+    logo: `${basePath}/icons_logos/sportarr_logo.svg`,
+    alt: 'Sportarr Logo',
+    providerIdKey: 'sportarr',
+  },
 }
 
 const providerBadgeClassName =
@@ -130,7 +137,7 @@ const ProviderIdBadge = ({
 }) => {
   const { t } = useLingui()
   const href = buildProviderUrl(provider, providerId, mediaType)
-  const label = `${provider}://${providerId}`
+  const label = `${provider}://${displayProviderId(provider, providerId)}`
 
   if (!href) {
     return <span className={providerBadgeClassName}>{label}</span>
@@ -560,12 +567,28 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
       isCurrentBackdrop && backdropResult.provider
         ? metadataProviderLogos[backdropResult.provider]?.providerIdKey
         : undefined
+    // The metadata layer answers with the league number where the media
+    // server carries the canonical id, so compare what they both read as.
     const showBackdropProviderBadge =
       !!backdropProviderKey &&
       backdropResult.providerId != null &&
-      !providerIds?.[backdropProviderKey]?.includes(
-        String(backdropResult.providerId),
+      !providerIds?.[backdropProviderKey]?.some(
+        (id) =>
+          displayProviderId(backdropProviderKey, id) ===
+          displayProviderId(
+            backdropProviderKey,
+            String(backdropResult.providerId),
+          ),
       )
+    // The Sportarr alias in the tvdb namespace only exists for tools that
+    // cannot read the sportarr id. A person gets the real one.
+    const providerBadges = (
+      ['tmdb', 'imdb', 'tvdb', 'sportarr'] as const
+    ).flatMap((provider) =>
+      (providerIds?.[provider] ?? [])
+        .filter((id) => provider !== 'tvdb' || !isSportarrTvdbAlias(Number(id)))
+        .map((id) => ({ provider, id })),
+    )
 
     return (
       <div className="modal-backdrop px-3" onClick={onClose}>
@@ -877,22 +900,17 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
           {/* Wraps: side by side these actions are wider than a phone, and
               the sheet scrolled sideways to reach the last one. */}
           <div className="flex shrink-0 flex-row flex-wrap items-center justify-between gap-4 p-4">
-            {providerIds &&
-              ['movie', 'show'].includes(mediaType) &&
-              (providerIds.tmdb?.length ||
-                providerIds.imdb?.length ||
-                providerIds.tvdb?.length) && (
+            {['movie', 'show'].includes(mediaType) &&
+              (providerBadges.length > 0 || showBackdropProviderBadge) && (
                 <div className="flex flex-wrap items-center gap-1 text-xs text-zinc-400">
-                  {(['tmdb', 'imdb', 'tvdb'] as const).flatMap((provider) =>
-                    (providerIds[provider] ?? []).map((id) => (
-                      <ProviderIdBadge
-                        key={`${provider}-${id}`}
-                        provider={provider}
-                        providerId={id}
-                        mediaType={mediaType}
-                      />
-                    )),
-                  )}
+                  {providerBadges.map(({ provider, id }) => (
+                    <ProviderIdBadge
+                      key={`${provider}-${id}`}
+                      provider={provider}
+                      providerId={id}
+                      mediaType={mediaType}
+                    />
+                  ))}
                   {showBackdropProviderBadge && backdropProviderKey && (
                     <ProviderIdBadge
                       key={`${backdropProviderKey}-${backdropResult.providerId}`}

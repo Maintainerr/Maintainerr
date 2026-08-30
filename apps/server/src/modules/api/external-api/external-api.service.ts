@@ -204,15 +204,7 @@ export class ExternalApiService {
               }
             })
             .catch((error: AxiosError) => {
-              if (error.response?.status === 429) {
-                const retryAfter =
-                  error.response.headers['retry-after'] || 'unknown';
-                this.logger.warn(
-                  `${url} Rate limit hit. Retry after: ${retryAfter} seconds.`,
-                );
-              } else {
-                this.logger.warn(this.formatRequestFailure('POST', url, error));
-              }
+              this.logger.warn(this.formatRequestFailure('POST', url, error));
             });
         }
         return cachedItem;
@@ -221,15 +213,7 @@ export class ExternalApiService {
       const response = await this.axios
         .post<T>(endpoint, data, config)
         .catch((error: AxiosError) => {
-          if (error.response?.status === 429) {
-            const retryAfter =
-              error.response.headers['retry-after'] || 'unknown';
-            this.logger.warn(
-              `${url} Rate limit hit. Retry after: ${retryAfter} seconds.`,
-            );
-          } else {
-            this.logger.warn(this.formatRequestFailure('POST', url, error));
-          }
+          this.logger.warn(this.formatRequestFailure('POST', url, error));
           return undefined;
         });
 

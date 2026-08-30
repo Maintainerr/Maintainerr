@@ -1,7 +1,7 @@
 import { t } from '@lingui/core/macro'
 import {
-  SPORTARR_TVDB_ALIAS_LEAGUE_OFFSET,
-  SPORTARR_TVDB_ALIAS_RANGE,
+  isSportarrTvdbAlias,
+  sportarrLeagueId,
   type MediaItemType,
   type MediaProviderIds,
 } from '@maintainerr/contracts'
@@ -97,10 +97,30 @@ export function buildMetadataPath(
 }
 
 /**
+ * What a provider id reads as. A media server stamps a Sportarr league as
+ * `lg-000278`, while the metadata layer keys the same league by its number
+ * alone, and both reach the media modal. The canonical id is the one that
+ * names the league and the one its page answers to.
+ */
+export function displayProviderId(
+  provider: keyof MediaProviderIds,
+  providerId: string,
+): string {
+  if (provider !== 'sportarr') {
+    return providerId
+  }
+  const leagueNumber = Number(providerId)
+  return Number.isInteger(leagueNumber) && leagueNumber > 0
+    ? sportarrLeagueId(leagueNumber)
+    : providerId
+}
+
+/**
  * TMDB and TheTVDB split movies from series; TheTVDB goes through its
  * dereferrer, which resolves a numeric id to the right slug. Sportarr stamps
  * numeric aliases into the tvdb namespace that have no page at all, so those
- * resolve to nothing rather than a dead link.
+ * resolve to nothing rather than a dead link; its own sportarr namespace
+ * links to the league on sportarr.net.
  */
 export function buildProviderUrl(
   provider: keyof MediaProviderIds,
@@ -116,16 +136,15 @@ export function buildProviderUrl(
     case 'imdb':
       return `https://www.imdb.com/title/${id}/`
     case 'tvdb': {
-      const numericId = Number(providerId)
-      if (
-        numericId >= SPORTARR_TVDB_ALIAS_LEAGUE_OFFSET &&
-        numericId <
-          SPORTARR_TVDB_ALIAS_LEAGUE_OFFSET + SPORTARR_TVDB_ALIAS_RANGE
-      ) {
+      if (isSportarrTvdbAlias(Number(providerId))) {
         return undefined
       }
       return `https://thetvdb.com/dereferrer/${isMovie ? 'movie' : 'series'}/${id}`
     }
+    case 'sportarr':
+      return `https://sportarr.net/browse/leagues/${encodeURIComponent(
+        displayProviderId(provider, providerId),
+      )}`
     default:
       return undefined
   }

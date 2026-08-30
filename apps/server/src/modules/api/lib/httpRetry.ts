@@ -1,8 +1,11 @@
 import axios, { type AxiosError, type AxiosInstance } from 'axios';
 import axiosRetry, { type IAxiosRetryConfig } from 'axios-retry';
 
-// Past this the send would be held open too long, and on Discord count against
-// its invalid-request ban threshold, so give up instead.
+// Past this the request would be held open too long, and on Discord count
+// against its invalid-request ban threshold, so give up instead. It bounds one
+// wait, not the request: axios-retry charges the delay against `timeout`, so a
+// client that sets one drops the retry outright when the declared wait will not
+// fit in what is left. Only the timeout-less clients below reach this cap.
 const MAX_RATE_LIMIT_WAIT_MS = 60000;
 const RETRY_PADDING_MS = 250;
 
@@ -54,11 +57,35 @@ export const isRetryableRateLimit = (error: AxiosError): boolean =>
   error.response?.status === 429 &&
   rateLimitWaitMs(error) <= MAX_RATE_LIMIT_WAIT_MS;
 
+const retryCountOf = (error: AxiosError): number =>
+  (error.config as { 'axios-retry'?: { retryCount?: number } } | undefined)?.[
+    'axios-retry'
+  ]?.retryCount ?? 0;
+
 /**
- * Apply Maintainerr's standard transient-failure retry policy - 3 attempts
- * with exponential backoff - to an Axios instance. One home for the policy so
- * every outbound HTTP client (Plex, Emby, the Jellyfin SDK, external-api)
- * retries identically.
+ * A 429 is the server naming a wait, not a blip to back off from. axios-retry's
+ * own default treats it as one: three attempts on the backoff curve, stretched
+ * to whatever a raw Retry-After says with nothing capping it. Take it on its own
+ * terms instead - wait what the limiter actually declared, once - and give up
+ * rather than hold a request open past the cap.
+ */
+const transientOrRateLimited = (error: AxiosError): boolean =>
+  error.response?.status === 429
+    ? isRetryableRateLimit(error) && retryCountOf(error) === 0
+    : axiosRetry.isNetworkOrIdempotentRequestError(error);
+
+// exponentialDelay is deliberately called without the error: it quietly takes
+// Math.max with a raw Retry-After, so a 5xx carrying one would hold the request
+// open for however long that header says, with nothing to cap it.
+const declaredWaitOrBackoff = (retryCount: number, error: AxiosError): number =>
+  (error.response?.status === 429 ? rateLimitWaitMs(error) : 0) ||
+  axiosRetry.exponentialDelay(retryCount);
+
+/**
+ * Apply Maintainerr's standard transient-failure retry policy - 3 attempts with
+ * exponential backoff, or a single wait of the length a rate limiter asked for -
+ * to an Axios instance. One home for the policy so every outbound HTTP client
+ * (Plex, Emby, the Jellyfin SDK, external-api) retries identically.
  */
 export function applyHttpRetry(
   instance: AxiosInstance,
@@ -66,20 +93,36 @@ export function applyHttpRetry(
 ): void {
   axiosRetry(instance, {
     retries: 3,
-    retryDelay: axiosRetry.exponentialDelay,
+    retryCondition: transientOrRateLimited,
+    retryDelay: declaredWaitOrBackoff,
     ...overrides,
   });
 }
 
 /**
+ * For the calls that cannot go through ExternalApiService - an auth bootstrap
+ * that has no token yet, a binary download, a one-off write. They were reaching
+ * for the bare global axios, which carries no retry policy at all, so they were
+ * the only outbound requests in the app that never retried anything.
+ */
+export const retryingHttp = axios.create();
+
+applyHttpRetry(retryingHttp);
+
+/**
  * The client every notification agent posts through. A rule run can produce a
  * burst of sends, and a rate-limited one is otherwise logged and lost - so
  * retry 429 here, once, rather than per agent.
+ *
+ * One attempt, like the shared policy. This sets no timeout, so nothing else
+ * bounds it: three attempts against a limiter asking for the full 60s measured
+ * at 181s of a held-open send, and the test endpoint answers synchronously.
  */
 export const rateLimitAwareHttp = axios.create();
 
 applyHttpRetry(rateLimitAwareHttp, {
-  retryCondition: isRetryableRateLimit,
+  retryCondition: (error) =>
+    isRetryableRateLimit(error) && retryCountOf(error) === 0,
   retryDelay: (retryCount, error) =>
     (error ? rateLimitWaitMs(error) : 0) + RETRY_PADDING_MS * retryCount,
 });

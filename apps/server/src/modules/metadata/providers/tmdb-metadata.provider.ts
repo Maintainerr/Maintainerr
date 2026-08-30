@@ -22,11 +22,21 @@ const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p';
 export class TmdbMetadataProvider implements IMetadataProvider {
   readonly name = 'TMDB';
   readonly idKey = 'tmdb';
+  readonly hasReleaseYears = true;
 
   constructor(private readonly tmdbApi: TmdbApiService) {}
 
   isAvailable(): boolean {
     return true;
+  }
+
+  parseId(value: string): number | undefined {
+    const id = Number(value);
+    return Number.isFinite(id) ? id : undefined;
+  }
+
+  isAuthorityFor(): boolean {
+    return false;
   }
 
   extractId(ids: ProviderIds): number | undefined {
@@ -266,7 +276,9 @@ export class TmdbMetadataProvider implements IMetadataProvider {
     externalId: string | number,
     type: string,
   ): Promise<ExternalIdSearchResult[] | undefined> {
-    if (type === 'tmdb') {
+    // TMDB's find endpoint only knows imdb and tvdb. Any other namespace on
+    // the item (the Sportarr agents stamp their own) has no TMDB answer.
+    if (type !== 'imdb' && type !== 'tvdb') {
       return undefined;
     }
 

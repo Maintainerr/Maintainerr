@@ -1345,7 +1345,7 @@ describe('EmbyAdapterService', () => {
           };
         }
         if (path === '/Users/user-1/Items/item-1') {
-          throw new Error('forbidden');
+          throw createResponseError(403);
         }
         if (path === '/Users/user-2/Items/item-1') {
           return {
@@ -1364,6 +1364,20 @@ describe('EmbyAdapterService', () => {
       await expect(service.getWatchHistory('item-1')).resolves.toEqual([
         expect.objectContaining({ userId: 'user-2', itemId: 'item-1' }),
       ]);
+    });
+
+    it('rethrows a per-user transport failure rather than understating the history', async () => {
+      // Swallowing it drops a user who may have watched the item, and callers
+      // read the shortened result as a confirmed date (#3531).
+      const error = createResponseError(502);
+      http.get.mockImplementation(async (path: string) => {
+        if (path === '/Users/Query') {
+          return { data: [{ Id: 'user-1', Name: 'Alice' }] };
+        }
+        throw error;
+      });
+
+      await expect(service.getWatchHistory('item-1')).rejects.toBe(error);
     });
 
     it('rethrows top-level user lookup failures instead of treating them as empty history', async () => {

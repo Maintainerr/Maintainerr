@@ -14,6 +14,7 @@
  *   - tools/dev/fake-emby.mjs      (mock Emby, :8097)     - pairs with MEDIA_SERVER=emby
  *   - tools/dev/fake-plex.mjs      (mock Plex, :32400)    - pairs with MEDIA_SERVER=plex
  *   - tools/dev/fake-seerr.mjs     (mock Seerr, :5055)    - evaluates the Seerr rule groups
+ *   - tools/dev/fake-sportarr.mjs  (mock Sportarr, :1867) - evaluates the Sportarr rule group
  *
  * Notes
  * -----
@@ -87,8 +88,8 @@ const LIB =
 // differ per server, so keep one map each (mirrors RuleConstants).
 const N = 0, D = 1, T = 2, B = 3, L = 4;
 const TYPES = {
-  plex: { 0:D,1:L,2:D,3:N,4:L,5:N,6:N,7:D,8:T,9:N,10:T,11:L,12:L,13:D,14:N,15:N,16:D,17:N,18:L,19:L,20:N,21:L,22:N,23:N,24:L,25:N,26:L,27:D,29:D,31:N,32:N,33:N,34:N,35:N,36:N,37:N,38:N,39:N,40:N,41:L,42:L,43:B,44:D,45:N,46:L,47:D },
-  jellyfin: { 0:D,1:L,2:D,3:N,4:L,5:N,6:N,7:D,8:T,9:N,10:T,11:L,12:L,13:D,14:N,15:N,16:D,17:N,18:L,19:L,20:N,21:L,22:N,23:N,24:L,25:N,26:L,27:D,29:D,30:N,31:N,32:N,33:N,34:N,35:N,36:N,37:N,38:N,39:L,40:L,41:L,42:B,44:N,45:D,46:L,47:D },
+  plex: { 0:D,1:L,2:D,3:N,4:L,5:N,6:N,7:D,8:T,9:N,10:T,11:L,12:L,13:D,14:N,15:N,16:D,17:N,18:L,19:L,20:N,21:L,22:N,23:N,24:L,25:N,26:L,27:D,29:D,31:N,32:N,33:N,34:N,35:N,36:N,37:N,38:N,39:N,40:N,41:L,42:L,43:B,44:D,45:N,46:L,47:D,48:D },
+  jellyfin: { 0:D,1:L,2:D,3:N,4:L,5:N,6:N,7:D,8:T,9:N,10:T,11:L,12:L,13:D,14:N,15:N,16:D,17:N,18:L,19:L,20:N,21:L,22:N,23:N,24:L,25:N,26:L,27:D,29:D,30:N,31:N,32:N,33:N,34:N,35:N,36:N,37:N,38:N,39:L,40:L,41:L,42:B,44:N,45:D,46:L,47:D,48:D },
 };
 // Rule-property ids covered per group type (movie vs show/episode).
 const COVERAGE = {
@@ -171,6 +172,7 @@ const run = db.transaction(() => {
     "collection",
     "radarr_settings",
     "sonarr_settings",
+    "sportarr_settings",
   ]) {
     db.prepare(`DELETE FROM ${t}`).run();
   }
@@ -272,6 +274,17 @@ const run = db.transaction(() => {
       "Sonarr (dev seed)",
       "http://localhost:8989",
       "devseed00sonarr00000000000000000000",
+    ).lastInsertRowid;
+  // Sportarr is its own native connection, not the Sonarr-v3 shim, so it needs
+  // its own mock (tools/dev/fake-sportarr.mjs) to answer anything.
+  const sportarrId = db
+    .prepare(
+      `INSERT INTO sportarr_settings (serverName, url, apiKey) VALUES (?, ?, ?)`,
+    )
+    .run(
+      "Sportarr (dev seed)",
+      "http://localhost:1867",
+      "devseed0sportarr0000000000000000000",
     ).lastInsertRowid;
 
   // 4) Collections + media + linked rule groups.
@@ -447,6 +460,95 @@ const run = db.transaction(() => {
       }),
     );
   }
+
+  // 4b1) Season-prefix view history for the selected media server. Kept
+  //      separate from #3153 so each fixture exercises one regression.
+  {
+    const seasonViewColId = insCollection.run({
+      libraryId: LIB.show,
+      title: "Season-prefix View History",
+      description: "Seasons with a view in this or an earlier season.",
+      type: "season",
+      mediaServerType: TARGET,
+      deleteAfterDays: 30,
+      visibleOnHome: 0,
+      arrAction: 4, // DO_NOTHING
+      listExclusions: 0,
+      radarrSettingsId: null,
+      sonarrSettingsId: null,
+      handledMediaAmount: 0,
+      handledMediaSizeBytes: 0,
+      totalSizeBytes: 0,
+      lastDuration: 0,
+      addDate: daysAgo(30),
+    }).lastInsertRowid;
+    const seasonViewGroupId = insRuleGroup.run(
+      "Season-prefix View History",
+      "Newest episode view date exists through the target season.",
+      LIB.show,
+      seasonViewColId,
+      "season",
+    ).lastInsertRowid;
+    insRule.run(seasonViewGroupId, ruleJson(48, 0));
+  }
+
+  // 4b2) Sportarr rule group. Sportarr is its own application (id 5), so none of
+  //      the media-server or Sonarr coverage above touches its getter. Every
+  //      show-scope property, each rule EXISTS so it resolves without a
+  //      comparison operand - the same shape the Seerr groups below use.
+  //      Resolution needs the mock's leagues (tools/dev/fake-sportarr.mjs) plus a
+  //      show carrying either the native `sportarr` id or the tvdb alias, both of
+  //      which the media-server mocks now stamp. The plain mock shows carry
+  //      neither, and answer the transient signal ("could not be read") rather
+  //      than an empty value, so they cannot match NOT_EXISTS (#3406) - worth
+  //      checking in the same run.
+  //      Season and episode scope are left out: no media-server mock serves
+  //      seasons or episodes for these shows, so those groups could only ever
+  //      resolve nothing.
+  const SPORTARR = 5; // Application.SPORTARR
+  const SPORTARR_SHOW_PROPS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 14];
+  const sportarrColId = insCollection.run({
+    libraryId: LIB.show,
+    title: "Sportarr Leagues",
+    description: "Every Sportarr show-scope property, EXISTS.",
+    type: "show",
+    mediaServerType: TARGET,
+    deleteAfterDays: 30,
+    visibleOnHome: 0,
+    arrAction: 4, // DO_NOTHING
+    listExclusions: 0,
+    radarrSettingsId: null,
+    sonarrSettingsId: null,
+    handledMediaAmount: 0,
+    handledMediaSizeBytes: 0,
+    totalSizeBytes: 0,
+    lastDuration: 0,
+    addDate: daysAgo(30),
+  }).lastInsertRowid;
+  db.prepare(`UPDATE collection SET sportarrSettingsId = ? WHERE id = ?`).run(
+    sportarrId,
+    sportarrColId,
+  );
+  const sportarrGroupId = insRuleGroup.run(
+    "Sportarr Leagues",
+    "Every Sportarr show-scope property, EXISTS.",
+    LIB.show,
+    sportarrColId,
+    "show",
+  ).lastInsertRowid;
+  SPORTARR_SHOW_PROPS.forEach((propId, i) =>
+    insRule.run(
+      sportarrGroupId,
+      JSON.stringify({
+        // EXISTS ignores the operand, so ruleTypeId is irrelevant here.
+        customVal: { ruleTypeId: 0, value: "" },
+        operator: i === 0 ? null : 0, // 0 = AND
+        firstVal: [SPORTARR, propId],
+        action: 18, // EXISTS
+        section: 0,
+      }),
+    ),
+  );
 
   // 4c) #3152 repro: Seerr-seeded rule groups. The Seerr getter now reads ONE
   //     bulk /request sweep per run (tools/dev/fake-seerr.mjs) instead of a
@@ -663,13 +765,16 @@ console.log(
   `Seeded ${results.length} collections, ${totalItems} media items, ${totalRules} rules into ${dbPath}`,
 );
 console.log(
-  `Media server set to ${TARGET === "plex" ? "Plex" : TARGET === "emby" ? "Emby" : "Jellyfin"} (dev seed); Radarr + Sonarr configured.`,
+  `Media server set to ${TARGET === "plex" ? "Plex" : TARGET === "emby" ? "Emby" : "Jellyfin"} (dev seed); Radarr + Sonarr + Sportarr configured.`,
 );
 console.log(
-  "Also seeded: Seerr rule groups (#3152), notifications, cron schedules, collection logs, exclusions, overlays.",
+  "Also seeded: Seerr rule groups (#3152), a Sportarr rule group, notifications, cron schedules, collection logs, exclusions, overlays.",
 );
 console.log(
   "Seerr points at tools/dev/fake-seerr.mjs (http://localhost:5055) - start it to evaluate the Seerr rule groups.",
+);
+console.log(
+  "Sportarr points at tools/dev/fake-sportarr.mjs (http://localhost:1867) - start it to evaluate the Sportarr rule group.",
 );
 console.log("Restart `yarn dev` and open http://localhost:3000/collections");
 db.close();

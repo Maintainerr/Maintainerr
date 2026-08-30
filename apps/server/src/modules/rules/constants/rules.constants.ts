@@ -517,6 +517,16 @@ export class RuleConstants {
           mediaType: MediaType.BOTH,
           type: RuleType.DATE,
         },
+        {
+          // Plex retained history includes views of episodes since removed
+          // from the library.
+          id: 48,
+          name: 'sw_lastViewedAtThroughSeason',
+          humanName: 'Newest episode view date in this or an earlier season',
+          mediaType: MediaType.SHOW,
+          showType: ['season'],
+          type: RuleType.DATE,
+        },
       ],
     },
     {
@@ -1731,6 +1741,16 @@ export class RuleConstants {
           name: 'lastPlayedAt',
           humanName: 'Last play date (including unfinished)',
           mediaType: MediaType.BOTH,
+          type: RuleType.DATE,
+        },
+        {
+          // Jellyfin and Emby derive this from current episode children, so
+          // views of episodes since removed from the library do not count.
+          id: 48,
+          name: 'sw_lastViewedAtThroughSeason',
+          humanName: 'Newest episode view date in this or an earlier season',
+          mediaType: MediaType.SHOW,
+          showType: ['season'],
           type: RuleType.DATE,
         },
       ],

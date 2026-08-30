@@ -13,11 +13,31 @@ export interface IMetadataProvider {
   readonly name: string;
   readonly idKey: string;
 
+  /**
+   * Whether this provider dates its entries. False says a missing year is how
+   * the provider works rather than a gap in its data, so a resolution that
+   * accepts an id without a year check is not worth a warning.
+   */
+  readonly hasReleaseYears: boolean;
+
   isAvailable(): boolean;
 
   extractId(ids: ProviderIds): number | undefined;
 
   assignId(ids: ProviderIds, id: number): void;
+
+  /**
+   * The provider's numeric id from the string a media server carries for it.
+   * Undefined when the string is not one of this provider's ids.
+   */
+  parseId(value: string): number | undefined;
+
+  /**
+   * True when this provider is the authority for an item that carries its id,
+   * so it answers ahead of the primary preference. A provider that serves only
+   * its own namespace claims the item; the general providers never do.
+   */
+  isAuthorityFor(ids: ProviderIds): boolean;
 
   getDetails(
     id: number,

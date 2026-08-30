@@ -104,6 +104,29 @@ describe('SportarrActionHandler', () => {
     expect(mockClient.deleteLeague).not.toHaveBeenCalled();
   });
 
+  it('resolves a show from the native sportarr id its agent stamps', async () => {
+    const collection = createCollection({
+      arrAction: ServarrAction.DELETE,
+      type: 'show' as MediaItemType,
+      sportarrSettingsId: 1,
+    });
+    const media = createCollectionMediaWithMetadata(collection, {
+      tvdbId: undefined,
+    });
+    mockMediaServer.getMetadata.mockResolvedValue(
+      createMediaItem({
+        type: 'show',
+        providerIds: { sportarr: [F1_EXTERNAL_ID] },
+      }),
+    );
+
+    await expect(handler.handleAction(collection, media)).resolves.toBe(true);
+    expect(mockClient.getLeagueByExternalId).toHaveBeenCalledWith(
+      F1_EXTERNAL_ID,
+    );
+    expect(mockClient.deleteLeague).toHaveBeenCalledWith(3, true);
+  });
+
   it('resolves a show from its own provider ids without walking to its parent', async () => {
     // On Jellyfin/Emby a show's parentId is the id-less library folder, so
     // walking up from a show resolves nothing (the #3065 trap). A show must

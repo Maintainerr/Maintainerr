@@ -52,7 +52,7 @@ flowchart LR
   API --> Seerr["Seerr"]
   API --> Tautulli["Tautulli"]
   API --> Streamystats["Streamystats"]
-  API --> Metadata["TMDB / TVDB"]
+  API --> Metadata["TMDB / TVDB / Sportarr"]
   API --> GitHub["GitHub releases"]
 ```
 
@@ -102,6 +102,7 @@ integrations, and production static serving.
   constants, mappers, caching, and SDK/API calls.
 - Other `src/modules/api/` submodules wrap integration clients and helper
   APIs, including Plex legacy routes, Servarr, Seerr, Tautulli, Streamystats, TMDB, TVDB,
+  the Sportarr metadata API,
   GitHub, external API, internal API, and shared request/cache helpers.
 - `src/modules/rules/` evaluates rule groups against media-server and external
   service data.
@@ -160,7 +161,10 @@ Maintainerr integrates with:
 - Streamystats for Jellyfin item-level analytics surfaced on the media modal.
   Authentication reuses the configured Jellyfin API key. Emby is not supported
   upstream.
-- TMDB and TVDB for metadata resolution.
+- TMDB and TVDB for metadata resolution, and the Sportarr metadata API for
+  Sportarr leagues, which answers ahead of the primary provider for a show
+  that carries a Sportarr id. It reads the configured Sportarr connections,
+  and sportarr.net only when `SPORTARR_NET=on` asks for it.
 - GitHub for release/version checks.
 - The Maintainerr telemetry collector for the anonymous weekly usage report,
   when it is enabled (see the Telemetry section of the README).
@@ -186,6 +190,10 @@ Important runtime environment variables include:
 - `GITHUB_TOKEN`: optional token for higher GitHub API rate limits.
 - `TELEMETRY`: set to `off` to disable the anonymous weekly usage report,
   whatever the stored setting says.
+- `SPORTARR_NET`: set to `on` to read Sportarr league artwork and
+  descriptions from sportarr.net for a league none of the configured Sportarr
+  connections tracks. Off by default, so an install without Sportarr never
+  calls it.
 - `VERSION_TAG` and `GIT_SHA`: release metadata surfaced by the app.
 - `LOG_LEVEL`: optional process-local log level override; recognised values
   take precedence over the saved setting without writing the database.

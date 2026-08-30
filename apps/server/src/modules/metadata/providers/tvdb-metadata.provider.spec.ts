@@ -112,4 +112,20 @@ describe('TvdbMetadataProvider', () => {
     expect(details?.firstAirDate).toBeUndefined();
     expect(details?.seasonCount).toBeUndefined();
   });
+  it('asks TheTVDB for nothing when the id is a Sportarr league alias', async () => {
+    // TheTVDB has no record of an alias, so the request would only 404 and
+    // warn once per league. extractId still reads it for the Sonarr lookup.
+    await expect(
+      provider.getDetails(900_000_278, 'tv'),
+    ).resolves.toBeUndefined();
+    await expect(
+      provider.getPosterUrl(900_000_278, 'tv'),
+    ).resolves.toBeUndefined();
+    await expect(
+      provider.getBackdropUrl(900_000_278, 'tv'),
+    ).resolves.toBeUndefined();
+
+    expect(tvdbApi.getSeries).not.toHaveBeenCalled();
+    expect(provider.extractId({ tvdb: 900_000_278 })).toBe(900_000_278);
+  });
 });

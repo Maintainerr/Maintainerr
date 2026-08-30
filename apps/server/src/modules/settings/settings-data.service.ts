@@ -283,7 +283,7 @@ export class SettingsDataService implements SettingDto {
 
   public async getSettings() {
     try {
-      return this.settingsRepo.findOne({ where: {} });
+      return await this.settingsRepo.findOne({ where: {} });
     } catch (error) {
       this.logger.error(
         'Something went wrong while getting settings. Is the database file locked?',
@@ -324,7 +324,7 @@ export class SettingsDataService implements SettingDto {
 
   public async getRadarrSettings() {
     try {
-      return this.radarrSettingsRepo.find();
+      return await this.radarrSettingsRepo.find();
     } catch (error) {
       this.logger.error(
         'Something went wrong while getting radarr settings. Is the database file locked?',
@@ -340,7 +340,7 @@ export class SettingsDataService implements SettingDto {
 
   public async getRadarrSetting(id: number) {
     try {
-      return this.radarrSettingsRepo.findOne({ where: { id: id } });
+      return await this.radarrSettingsRepo.findOne({ where: { id: id } });
     } catch (error) {
       this.logger.error(
         `Something went wrong while getting radarr setting ${id}. Is the database file locked?`,
@@ -356,7 +356,7 @@ export class SettingsDataService implements SettingDto {
 
   public async getSonarrSettings() {
     try {
-      return this.sonarrSettingsRepo.find();
+      return await this.sonarrSettingsRepo.find();
     } catch (error) {
       this.logger.error(
         'Something went wrong while getting sonarr settings. Is the database file locked?',
@@ -372,7 +372,7 @@ export class SettingsDataService implements SettingDto {
 
   public async getSonarrSetting(id: number) {
     try {
-      return this.sonarrSettingsRepo.findOne({ where: { id: id } });
+      return await this.sonarrSettingsRepo.findOne({ where: { id: id } });
     } catch (error) {
       this.logger.error(
         `Something went wrong while getting sonarr setting ${id}. Is the database file locked?`,
@@ -461,7 +461,7 @@ export class SettingsDataService implements SettingDto {
 
   public async getSportarrSettings() {
     try {
-      return this.sportarrSettingsRepo.find();
+      return await this.sportarrSettingsRepo.find();
     } catch (error) {
       this.logger.error(
         'Something went wrong while getting sportarr settings. Is the database file locked?',
@@ -477,7 +477,7 @@ export class SettingsDataService implements SettingDto {
 
   public async getSportarrSetting(id: number) {
     try {
-      return this.sportarrSettingsRepo.findOne({ where: { id: id } });
+      return await this.sportarrSettingsRepo.findOne({ where: { id: id } });
     } catch (error) {
       this.logger.error(
         `Something went wrong while getting sportarr setting ${id}. Is the database file locked?`,

@@ -258,6 +258,75 @@ export class EmbyGetterService {
           );
         }
 
+        case 'sw_lastViewedAtThroughSeason': {
+          // Does not apply is an answer, not a failed read (#3402) - see the
+          // Plex getter.
+          if (metadata.type !== 'season') {
+            return null;
+          }
+
+          const targetSeason = metadata.index;
+          const showId = metadata.parentId;
+          // Emby files episodes it cannot place under a "Season Unknown" with
+          // no IndexNumber. Such a season has no position in the run of
+          // seasons, so the value cannot be computed - hold the item, but that
+          // is normal library shape and must not read as a failed lookup.
+          if (targetSeason === undefined) {
+            this.logger.debug(
+              `'${libItem.title}' has no season number, so a view date through it cannot be computed`,
+            );
+            return undefined;
+          }
+          if (
+            !Number.isSafeInteger(targetSeason) ||
+            targetSeason < 0 ||
+            typeof showId !== 'string' ||
+            !showId
+          ) {
+            throw new Error('Emby season metadata is missing its valid scope');
+          }
+
+          const readSeasons = () =>
+            this.embyAdapter.getChildrenMetadata(showId, 'season', true);
+          const seasons = await (arrLookupCache?.memoize(
+            `emby:show-seasons:${showId}`,
+            readSeasons,
+          ) ?? readSeasons());
+          let latestWatchedAt: Date | null = null;
+
+          for (const season of seasons) {
+            const seasonIndex = season.index;
+            if (seasonIndex === undefined) continue;
+            if (!Number.isSafeInteger(seasonIndex) || seasonIndex < 0) {
+              throw new Error('Emby returned an invalid season index');
+            }
+
+            const qualifies =
+              targetSeason === 0
+                ? seasonIndex === 0
+                : seasonIndex > 0 && seasonIndex <= targetSeason;
+            if (!qualifies) continue;
+            if (!season.id) {
+              throw new Error('Emby returned a season without an id');
+            }
+
+            const readWatchedAt = () =>
+              this.getLastWatchedShowDate(season.id, 'season', true);
+            const watchedAt = await (arrLookupCache?.memoize(
+              `emby:season-view-date:${season.id}`,
+              readWatchedAt,
+            ) ?? readWatchedAt());
+            if (
+              watchedAt &&
+              (!latestWatchedAt || watchedAt > latestWatchedAt)
+            ) {
+              latestWatchedAt = watchedAt;
+            }
+          }
+
+          return latestWatchedAt;
+        }
+
         case 'sw_episodes': {
           return await this.getEpisodeCount(metadata.id, metadata.type);
         }
@@ -657,11 +726,12 @@ export class EmbyGetterService {
    * a "last watched" signal for shows/seasons is to walk the children and
    * take the max. This is an aggregate - it is not the view date of the
    * highest-numbered episode, the way the Plex/Tautulli `sw_lastWatched`
-   * getters compute it. Used by the `lastViewedAt` rule only.
+   * getters compute it. Used by `lastViewedAt` and the season-prefix rule.
    */
   private async getLastWatchedShowDate(
     itemId: string,
     type: MediaItemType,
+    throwOnError = false,
   ): Promise<Date | null> {
     let latestDate: Date | null = null;
 
@@ -670,9 +740,20 @@ export class EmbyGetterService {
       const episodes = await this.embyAdapter.getChildrenMetadata(
         itemId,
         'episode',
+        throwOnError,
       );
       for (const episode of episodes) {
+        if (throwOnError && !episode.id) {
+          throw new Error('Emby returned an episode without an id');
+        }
         const lastViewed = await this.getLastViewedAt(episode.id);
+        if (
+          throwOnError &&
+          lastViewed &&
+          !Number.isFinite(lastViewed.getTime())
+        ) {
+          throw new Error('Emby returned an invalid watch date');
+        }
         if (lastViewed && (!latestDate || lastViewed > latestDate)) {
           latestDate = lastViewed;
         }

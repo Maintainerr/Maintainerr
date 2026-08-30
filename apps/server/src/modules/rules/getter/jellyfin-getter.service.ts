@@ -282,6 +282,88 @@ export class JellyfinGetterService {
           );
         }
 
+        case 'sw_lastViewedAtThroughSeason': {
+          // Does not apply is an answer, not a failed read (#3402) - see the
+          // Plex getter.
+          if (metadata.type !== 'season') {
+            return null;
+          }
+
+          const targetSeason = metadata.index;
+          const showId = metadata.parentId;
+          // Jellyfin files episodes it cannot place under a "Season Unknown" with
+          // no IndexNumber. Such a season has no position in the run of
+          // seasons, so the value cannot be computed - hold the item, but that
+          // is normal library shape and must not read as a failed lookup.
+          if (targetSeason === undefined) {
+            this.logger.debug(
+              `'${libItem.title}' has no season number, so a view date through it cannot be computed`,
+            );
+            return undefined;
+          }
+          if (
+            !Number.isSafeInteger(targetSeason) ||
+            targetSeason < 0 ||
+            typeof showId !== 'string' ||
+            !showId
+          ) {
+            throw new Error(
+              'Jellyfin season metadata is missing its valid scope',
+            );
+          }
+
+          const watchHistory = await this.descendantWatchHistory(
+            showId,
+            'show',
+            libraryId,
+          );
+          const seasons = await this.jellyfinAdapter.getChildrenMetadata(
+            showId,
+            'season',
+            true,
+          );
+          let latestWatchedAt: Date | null = null;
+
+          for (const season of seasons) {
+            if (season.index === undefined) continue;
+            if (!Number.isSafeInteger(season.index) || season.index < 0) {
+              throw new Error('Jellyfin returned an invalid season index');
+            }
+
+            const qualifies =
+              targetSeason === 0
+                ? season.index === 0
+                : season.index > 0 && season.index <= targetSeason;
+            if (!qualifies) continue;
+            if (!season.id) {
+              throw new Error('Jellyfin returned a season without an id');
+            }
+
+            const episodes = await this.jellyfinAdapter.getChildrenMetadata(
+              season.id,
+              'episode',
+              true,
+            );
+            for (const episode of episodes) {
+              if (!episode.id) {
+                throw new Error('Jellyfin returned an episode without an id');
+              }
+              const watchedAt = this.newestWatchedAt(
+                watchHistory[episode.id] ?? [],
+              );
+              if (!watchedAt) continue;
+              if (!Number.isFinite(watchedAt.getTime())) {
+                throw new Error('Jellyfin returned an invalid watch date');
+              }
+              if (!latestWatchedAt || watchedAt > latestWatchedAt) {
+                latestWatchedAt = watchedAt;
+              }
+            }
+          }
+
+          return latestWatchedAt;
+        }
+
         case 'sw_episodes': {
           return await this.getEpisodeCount(metadata.id, metadata.type);
         }

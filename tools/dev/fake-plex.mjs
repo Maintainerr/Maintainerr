@@ -197,7 +197,23 @@ const EPISODES = [
   }),
 ];
 
-const ALL_ITEMS = [...MOVIES, SHOW, ...SEASONS, ...EPISODES];
+// Sportarr fixtures, matching fake-sportarr's leagues. One carries the native guid
+// its agents stamp beside the tvdb alias, one only the older alias, so both
+// resolution paths are covered. SHOW carries neither, which the getter answers with
+// the transient signal at debug level - deliberately, so an ordinary show in a
+// sports library cannot match a NOT_EXISTS rule (#3406).
+const SPORTARR_SHOWS = [
+  baseItem('sp1', 'show', 'Mock League Alpha', {
+    addedAt: daysAgo(180),
+    Guid: [{ id: 'sportarr://lg-000001' }, { id: 'tvdb://900000001' }],
+  }),
+  baseItem('sp2', 'show', 'Mock League Bravo', {
+    addedAt: daysAgo(150),
+    Guid: [{ id: 'tvdb://900000042' }],
+  }),
+];
+
+const ALL_ITEMS = [...MOVIES, SHOW, ...SPORTARR_SHOWS, ...SEASONS, ...EPISODES];
 const ITEMS_BY_ID = new Map(ALL_ITEMS.map((m) => [m.ratingKey, m]));
 
 // --- Optional large library for Seerr whole-library scale tests (#3152) ------
@@ -269,6 +285,36 @@ const HISTORY = {
   ],
   p2: [{ ratingKey: 'p2', accountID: 1, viewedAt: daysAgo(10), deviceID: 1 }],
   ep1: [{ ratingKey: 'ep1', accountID: 1, viewedAt: daysAgo(5), deviceID: 1 }],
+  sh1: [
+    {
+      ratingKey: 'special-1',
+      type: 'episode',
+      accountID: 1,
+      viewedAt: daysAgo(7),
+      deviceID: 1,
+      parentIndex: 0,
+      index: 1,
+    },
+    {
+      ratingKey: 'ep1',
+      type: 'episode',
+      accountID: 1,
+      viewedAt: daysAgo(5),
+      deviceID: 1,
+      parentIndex: 1,
+      index: 1,
+    },
+    {
+      // Retained history for an episode no longer present in current children.
+      ratingKey: 'season-3-episode-1',
+      type: 'episode',
+      accountID: 1,
+      viewedAt: daysAgo(1),
+      deviceID: 1,
+      parentIndex: 3,
+      index: 1,
+    },
+  ],
 };
 
 // --- HTTP helpers ------------------------------------------------------------
@@ -357,7 +403,7 @@ const server = http.createServer((req, res) => {
           ? SEASONS
           : type === '4'
             ? EPISODES
-            : [SHOW, ...SCALE_SHOWS];
+            : [SHOW, ...SPORTARR_SHOWS, ...SCALE_SHOWS];
     }
     return sendPaged(res, req, items);
   }

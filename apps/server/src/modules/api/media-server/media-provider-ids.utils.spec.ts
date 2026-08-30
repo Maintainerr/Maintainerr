@@ -2,7 +2,12 @@ import { addProviderId, emptyProviderIds } from './media-provider-ids.utils';
 
 describe('media provider ids', () => {
   it('starts every provider off with an empty list', () => {
-    expect(emptyProviderIds()).toEqual({ imdb: [], tmdb: [], tvdb: [] });
+    expect(emptyProviderIds()).toEqual({
+      imdb: [],
+      tmdb: [],
+      tvdb: [],
+      sportarr: [],
+    });
   });
 
   it.each([
@@ -14,6 +19,8 @@ describe('media provider ids', () => {
     ['tvdb', 'tvdb'],
     ['Tvdb', 'tvdb'],
     ['thetvdb', 'tvdb'],
+    ['sportarr', 'sportarr'],
+    ['Sportarr', 'sportarr'],
   ])('files %s under %s', (name, provider) => {
     const providerIds = emptyProviderIds();
     addProviderId(providerIds, name, 'id-1');
@@ -39,6 +46,6 @@ describe('media provider ids', () => {
   ])('ignores %s', (scenario, name, id) => {
     const providerIds = emptyProviderIds();
     addProviderId(providerIds, name, id);
-    expect(providerIds).toEqual({ imdb: [], tmdb: [], tvdb: [] });
+    expect(providerIds).toEqual({ imdb: [], tmdb: [], tvdb: [], sportarr: [] });
   });
 });

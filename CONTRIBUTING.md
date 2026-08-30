@@ -149,6 +149,56 @@ By submitting a pull request, you confirm that:
 
 Pull requests that appear to be largely unreviewed, low-effort, or misaligned with Maintainerr’s design and coding standards may be closed without detailed feedback.
 
+### Browser Testing with Playwright
+
+Playwright is not a repo dependency and there is no browser test suite. UI
+verification runs through the `playwright` MCP server, wired up per client in
+[.mcp.json](.mcp.json) (Claude Code), [.vscode/mcp.json](.vscode/mcp.json)
+(VS Code), and [.codex/config.toml](.codex/config.toml) (Codex). Keep the three
+in sync.
+
+```json
+{
+  "mcpServers": {
+    "playwright": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "@playwright/mcp@latest",
+        "--headless",
+        "--isolated",
+        "--no-sandbox",
+        "--executable-path",
+        "/usr/bin/chromium",
+        "--output-dir",
+        ".playwright-mcp"
+      ]
+    }
+  }
+}
+```
+
+`--executable-path` assumes a system Chromium; drop it and `--no-sandbox` if you
+do not have one. Start your editor from the repo root, or the project config
+never loads. For flows that need Plex, Jellyfin, or Radarr data, run the mocks
+and seed in [tools/dev/](tools/dev/) first, as described in
+[AGENTS.md](AGENTS.md).
+
+#### What to Attach to a Pull Request
+
+`.playwright-mcp/` is gitignored deliberately. Screenshots are evidence for
+reviewers, not repo content, so attach them to the pull request and do not
+commit them.
+
+Match the evidence to the change. One screenshot per flow you touched is plenty;
+a wall of them buries the review. When the visible change is small, for example
+a new dropdown entry, tests and captured logs or API responses are the real
+evidence and a single screenshot is a formality. The screenshot-every-flow rule
+in
+[release-review.instructions.md](.github/instructions/release-review.instructions.md)
+applies to maintainers auditing a release candidate, not to contributor pull
+requests.
+
 ### UI Text Style
 
 When adding new UI text, please try to adhere to the following guidelines:

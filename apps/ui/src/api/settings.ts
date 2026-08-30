@@ -954,13 +954,14 @@ export const useTelemetryPreview = (options?: UseTelemetryPreviewOptions) => {
   })
 }
 
-export const useTelemetryStatus = () => {
+export const useTelemetryStatus = (options?: { enabled?: boolean }) => {
   return useQuery<TelemetryStatus, Error, TelemetryStatus, string[]>({
     queryKey: ['settings', 'telemetry', 'status'],
     queryFn: async () => {
       return await GetApiHandler<TelemetryStatus>('/settings/telemetry/status')
     },
     staleTime: 0,
+    ...options,
   })
 }
 

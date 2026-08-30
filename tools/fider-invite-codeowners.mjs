@@ -32,6 +32,31 @@ const requireEnv = () => {
 
 const fider = createFider({ host: FIDER_HOST, apiKey: FIDER_API_KEY });
 
+// Fider's /api/v1/users response shape depends on the server version. Until
+// getfider/fider 28e73610 (2025-09-22) it returned a bare array of every user;
+// since then it returns a paginated object ({ users, totalCount, ... }) whose
+// page size defaults to 10. The published docs at docs.fider.io/api/users
+// still describe the old array shape, so neither can be assumed: an array is
+// the complete list, an object gets paged through to the end.
+const USERS_PAGE_SIZE = 500;
+// Sanity ceiling so a server that never advances the page can't loop forever.
+const MAX_USER_PAGES = 50;
+
+const fetchAllUsers = async () => {
+  const all = [];
+  for (let page = 1; page <= MAX_USER_PAGES; page += 1) {
+    const body = await fider(`/api/v1/users?page=${page}&limit=${USERS_PAGE_SIZE}`);
+    // Pre-pagination Fider ignores both params and returns everyone at once.
+    if (Array.isArray(body)) return body;
+    const users = Array.isArray(body?.users) ? body.users : [];
+    if (users.length === 0) break;
+    all.push(...users);
+    const totalCount = Number(body?.totalCount);
+    if (Number.isFinite(totalCount) && all.length >= totalCount) break;
+  }
+  return all;
+};
+
 const ghApi = async (path) => {
   const res = await fetch(`https://api.github.com${path}`, {
     headers: {
@@ -104,16 +129,14 @@ const main = async () => {
   // (case-insensitive); a false negative is just a re-sent invite.
   let onboardedNames = new Set();
   try {
-    const users = await fider('/api/v1/users');
-    if (Array.isArray(users)) {
-      onboardedNames = new Set(
-        users
-          .filter((u) => u && (u.role === 1 || u.role === 2 || u.role === 'administrator' || u.role === 'collaborator'))
-          .map((u) => (u.name || '').toLowerCase())
-          .filter(Boolean),
-      );
-    }
-    log(`Fider has ${onboardedNames.size} Collaborator/Administrator(s)`);
+    const users = await fetchAllUsers();
+    onboardedNames = new Set(
+      users
+        .filter((u) => u && (u.role === 1 || u.role === 2 || u.role === 'administrator' || u.role === 'collaborator'))
+        .map((u) => (u.name || '').toLowerCase())
+        .filter(Boolean),
+    );
+    log(`Fider has ${onboardedNames.size} Collaborator/Administrator(s) among ${users.length} user(s)`);
   } catch (err) {
     log(`could not fetch Fider users (${err.message}); will invite without de-dupe`);
   }

@@ -1,8 +1,9 @@
 import { MediaProviderIds } from '@maintainerr/contracts';
 
 // Every name a media server may use for the providers Maintainerr tracks:
-// the bare ones, the capitalised keys Jellyfin and Emby send, and the
-// spelled-out ones a legacy Plex agent carries. Matched lowercased.
+// the bare ones, the capitalised keys Jellyfin and Emby send, the
+// spelled-out ones a legacy Plex agent carries, and the Sportarr namespace
+// its own agents stamp. Matched lowercased.
 //
 // A Map, not an object literal: the name comes from the server's own metadata,
 // and `constructor` / `__proto__` resolve on an object literal's prototype
@@ -13,12 +14,14 @@ const PROVIDER_BY_NAME = new Map<string, keyof MediaProviderIds>([
   ['themoviedb', 'tmdb'],
   ['tvdb', 'tvdb'],
   ['thetvdb', 'tvdb'],
+  ['sportarr', 'sportarr'],
 ]);
 
 export const emptyProviderIds = (): MediaProviderIds => ({
   imdb: [],
   tmdb: [],
   tvdb: [],
+  sportarr: [],
 });
 
 /**
