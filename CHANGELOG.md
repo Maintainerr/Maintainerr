@@ -1,3 +1,34 @@
+# [3.26.0](https://github.com/Maintainerr/Maintainerr/compare/v3.25.0...v3.26.0) (2026-08-30)
+
+
+## Highlights
+- Add Sportarr metadata provider for league artwork and descriptions (#3606).
+- Add season view date rules for Plex, Jellyfin, and Emby (#3531).
+
+## Features
+- Read native Sportarr IDs stamped by media server agents (#3604).
+
+## Fixes
+- Fix Fider users endpoint pagination (#3623).
+- Fix metadata provider ID parsing for non-numeric values (#3620).
+- Fix settings repository reads to properly await database operations (#3614).
+- Fix HTTP rate limiting and retry policy to respect declared wait times (#3613).
+- Fix season view date rule logic to prevent incorrect protection of subsequent seasons (#3531).
+- Fix Sportarr metadata availability, refresh behavior, and UI display (#3606).
+- Fix telemetry prompt to respect existing environment configuration (#3608).
+
+## Internal
+- Document Playwright evidence expectations and outbound HTTP rules (#3612, #3613).
+- Document Podman devbox confinement (#3531).
+- Update Sportarr ID helpers and metadata hub specifications (#3604, #3606).
+- Refactor UI refresh logic (#3606).
+
+## Dependencies
+- 9 dependency bumps including nestjs, typescript-eslint, eslint, and @tanstack/react-query.
+
+## New Contributors
+* @whitestrake made their first contribution in https://github.com/Maintainerr/Maintainerr/pull/3531
+
 # [3.25.0](https://github.com/Maintainerr/Maintainerr/compare/v3.24.0...v3.25.0) (2026-08-25)
 
 
