@@ -8,8 +8,8 @@ msgstr ""
 "Language: sv\n"
 "Project-Id-Version: \n"
 "Report-Msgid-Bugs-To: \n"
-"PO-Revision-Date: 2026-08-25 19:14+0000\n"
-"Last-Translator: Maintainerr <get@maintainerr.info>\n"
+"PO-Revision-Date: 2026-08-31 14:51+0000\n"
+"Last-Translator: bittin1ddc447d824349b2 <bittin@reimu.nl>\n"
 "Language-Team: Swedish <https://hosted.weblate.org/projects/maintainerr/app/sv/>\n"
 "Plural-Forms: nplurals=2; plural=n != 1;\n"
 
@@ -257,7 +257,7 @@ msgstr "{secondsAgo, plural, one {för # sekund sedan} other {för # sekunder se
 
 #: src/components/Settings/Servarr/ServarrSettingsModal.tsx
 msgid "{serviceName} metadata refresh started"
-msgstr ""
+msgstr "{serviceName} uppdatering av metadata har startat"
 
 #: src/components/Rules/RuleGroup/AddModal/QualityProfileSelector.tsx
 msgid "{serviceName} quality profile *"
@@ -1717,7 +1717,7 @@ msgstr "Metadata från {providerTitle} kunde inte uppdateras"
 
 #: src/components/Settings/Servarr/ServarrSettingsModal.tsx
 msgid "Failed to refresh {serviceName} metadata"
-msgstr ""
+msgstr "Misslyckades att uppdatera {serviceName} metadata"
 
 #: src/components/Settings/Servarr/ServarrSettingsModal.tsx
 msgid "Failed to remove {serviceName} settings."
