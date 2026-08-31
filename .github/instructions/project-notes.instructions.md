@@ -422,6 +422,15 @@ closes a cycle, follow that pattern**, or SWC's strict CommonJS live bindings
 will turn it into a runtime TDZ `ReferenceError: Cannot access 'X' before
 initialization`.
 
+**Every `@nestjs/*` package is pure ESM from v12 on** (`"type": "module"`, no
+CJS entry). Node 26 loads them from the CommonJS build through `require(esm)`,
+so the app, `nest build` and the e2e harness are unaffected - but Jest's own
+CommonJS runtime cannot, and skipping the transform gives
+`SyntaxError: Cannot use import statement outside a module` on the first
+`@nestjs/common` import. That is why `@nestjs` is listed in the server's
+`transformIgnorePatterns` negative lookahead: it has to be transpiled, not
+ignored. Any future Nest package added there needs the same treatment.
+
 Yarn uses the **node-modules linker** (`.yarnrc.yml` → `nodeLinker: node-modules`,
 not PnP), so `node_modules/.bin/jest` and `node_modules/jest/bin/jest.js` exist and
 standard Jest-under-Node entrypoints work without a PnP shim.
