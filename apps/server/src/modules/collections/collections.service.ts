@@ -385,6 +385,48 @@ export class CollectionsService {
     });
   }
 
+  /**
+   * Whether any OTHER Maintainerr collection points at the same media server
+   * collection, of either kind.
+   *
+   * Distinct from isMediaServerCollectionShared, which compares kinds on
+   * purpose for the contamination guards. Destroying a media server collection
+   * is not a same-kind question: a custom collection's rule group is pointing at
+   * one the user made, and deleting it because an automatic collection happened
+   * to empty first destroys the user's own collection.
+   *
+   * `undefined` means the lookup itself failed, which is not an answer either
+   * way - see the catch below.
+   */
+  public async isMediaServerCollectionLinkedElsewhere(
+    collection: Pick<Collection, 'id' | 'mediaServerId'>,
+  ): Promise<boolean | undefined> {
+    if (!collection.mediaServerId) {
+      return false;
+    }
+
+    try {
+      return (
+        (await this.collectionRepo.count({
+          where: {
+            mediaServerId: collection.mediaServerId,
+            ...(collection.id !== undefined ? { id: Not(collection.id) } : {}),
+          },
+        })) > 0
+      );
+    } catch (error) {
+      // Neither answer is safe to assume. "Linked" avoids the delete but still
+      // unlinks, orphaning the server collection and revoking this very guard;
+      // "not linked" authorises destroying one the user may own. Report the
+      // uncertainty and let the caller leave the collection alone.
+      this.logger.warn(
+        'Failed to determine whether a media server collection is linked elsewhere',
+      );
+      this.logger.debug(error);
+      return undefined;
+    }
+  }
+
   public async isMediaServerCollectionShared(
     collection: Pick<Collection, 'id' | 'mediaServerId' | 'manualCollection'>,
   ): Promise<boolean> {
@@ -417,7 +459,7 @@ export class CollectionsService {
 
   /**
    * Returns the set of media server IDs that are rule-owned by another
-   * automatic collection sharing this collection's media server collection.
+   * collection sharing this collection's media server collection.
    *
    * Throws on repository failure. Callers must treat a thrown error as
    * "ownership unknown" - silently defaulting to an empty set would
@@ -461,10 +503,16 @@ export class CollectionsService {
       return [];
     }
 
+    // Kind is irrelevant: a custom collection's member is as foreign to this
+    // rule as an automatic sibling's, and adopting it subjects it to this
+    // rule's deleteAfterDays and action. #2766 scoped this to automatic
+    // siblings because that was the report it fixed, which left an automatic
+    // collection that title-links onto a user's custom collection unguarded.
+    // Not the same question as isMediaServerCollectionShared, which compares
+    // kinds on purpose to decide delete-versus-leave on teardown.
     const siblings = await this.collectionRepo.find({
       where: {
         mediaServerId: collection.mediaServerId,
-        manualCollection: false,
         ...(collection.id !== undefined ? { id: Not(collection.id) } : {}),
       },
     });
@@ -3686,17 +3734,25 @@ export class CollectionsService {
           // runs later in the same rule execution.
           !collection.keepInMaintainerrOnly
         ) {
-          // Another rule group with the same title may share this media
-          // server collection. Deleting it would also wipe the sibling rule's
-          // items, so just unlink locally and let the sibling keep ownership.
-          const isShared = await this.isMediaServerCollectionShared(collection);
+          // Another Maintainerr collection may point at this media server
+          // collection. Deleting it would also wipe that one's items, so just
+          // unlink locally and let it keep ownership. Asked of either kind:
+          // now that a custom collection's members are no longer adopted here,
+          // an automatic collection can genuinely reach zero members while a
+          // custom one still points at the same collection - and that one is
+          // the user's own.
+          const linkedElsewhere =
+            await this.isMediaServerCollectionLinkedElsewhere(collection);
 
-          if (isShared) {
+          // A failed lookup answers neither branch: unlinking on a guess
+          // strands the server collection, deleting on a guess can destroy one
+          // the user owns. Leave it linked and let the next run decide.
+          if (linkedElsewhere === true) {
             collection = await this.collectionRepo.save({
               ...collection,
               mediaServerId: null,
             });
-          } else {
+          } else if (linkedElsewhere === false) {
             try {
               await mediaServer.deleteCollection(collection.mediaServerId);
               collection = await this.collectionRepo.save({
