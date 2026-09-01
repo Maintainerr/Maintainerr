@@ -615,6 +615,84 @@ describe('CollectionsService', () => {
     expect(Array.from(result)).toEqual(['rule-owned']);
   });
 
+  // Now that a custom collection's members are no longer adopted, an automatic
+  // collection can genuinely drain to zero while a custom one still points at
+  // the same media server collection - and that one is the user's own.
+  it('does not delete a media server collection a custom collection still points at', async () => {
+    const collection = createCollection({
+      id: 12,
+      mediaServerId: 'remote-collection',
+      manualCollection: false,
+    });
+
+    collectionRepo.findOne.mockResolvedValue(collection);
+    collectionMediaRepo.find
+      .mockResolvedValueOnce([
+        createCollectionMedia(collection, { mediaServerId: 'item-1' }),
+      ])
+      .mockResolvedValue([]);
+    collectionRepo.save.mockImplementation(
+      async (value) => value as Collection,
+    );
+    // The only other collection on this media server collection is a custom
+    // one, so the same-kind question answers "not shared".
+    collectionRepo.count.mockResolvedValue(1);
+    jest
+      .spyOn(service, 'isMediaServerCollectionShared')
+      .mockResolvedValue(false);
+    jest
+      .spyOn(service as any, 'checkAutomaticMediaServerLink')
+      .mockResolvedValue(collection);
+    jest
+      .spyOn(service as any, 'removeChildrenFromCollection')
+      .mockResolvedValue(['item-1']);
+
+    await service.removeFromCollection(collection.id, [
+      { mediaServerId: 'item-1' },
+    ]);
+
+    expect(mediaServer.deleteCollection).not.toHaveBeenCalled();
+  });
+
+  it('keeps the link when the sibling lookup fails', async () => {
+    const collection = createCollection({
+      id: 13,
+      mediaServerId: 'remote-collection',
+      manualCollection: false,
+    });
+
+    collectionRepo.findOne.mockResolvedValue(collection);
+    collectionMediaRepo.find
+      .mockResolvedValueOnce([
+        createCollectionMedia(collection, { mediaServerId: 'item-1' }),
+      ])
+      .mockResolvedValue([]);
+    collectionRepo.save.mockImplementation(
+      async (value) => value as Collection,
+    );
+    collectionRepo.count.mockRejectedValue(new Error('database is locked'));
+    jest
+      .spyOn(service, 'isMediaServerCollectionShared')
+      .mockResolvedValue(false);
+    jest
+      .spyOn(service as any, 'checkAutomaticMediaServerLink')
+      .mockResolvedValue(collection);
+    jest
+      .spyOn(service as any, 'removeChildrenFromCollection')
+      .mockResolvedValue(['item-1']);
+
+    await service.removeFromCollection(collection.id, [
+      { mediaServerId: 'item-1' },
+    ]);
+
+    // Unlinking on a failed lookup orphans the server collection and revokes
+    // the guard for every later run.
+    expect(mediaServer.deleteCollection).not.toHaveBeenCalled();
+    expect(collectionRepo.save).not.toHaveBeenCalledWith(
+      expect.objectContaining({ mediaServerId: null }),
+    );
+  });
+
   it('does not delete a shared media server collection when one rule empties locally', async () => {
     const collection = createCollection({
       id: 11,
@@ -639,7 +717,7 @@ describe('CollectionsService', () => {
       .spyOn(service as any, 'removeChildrenFromCollection')
       .mockResolvedValue(['item-1']);
     jest
-      .spyOn(service, 'isMediaServerCollectionShared')
+      .spyOn(service, 'isMediaServerCollectionLinkedElsewhere')
       .mockResolvedValue(true);
 
     await service.removeFromCollection(collection.id, [
@@ -1147,21 +1225,38 @@ describe('CollectionsService', () => {
     expect(result.mediaServerId).toBe('remote-collection');
   });
 
-  it('getSiblingRuleOwnedMediaServerIds excludes manual sibling collections', async () => {
+  // #2766 scoped the sibling lookup to automatic collections because that was
+  // the report it fixed (two same-titled rule groups). A custom collection
+  // sharing the same media server collection is just as foreign to this rule,
+  // and adopting its members subjects them to this rule's deleteAfterDays.
+  it('getSiblingRuleOwnedMediaServerIds counts a manual sibling collection too', async () => {
     const collection = createCollection({
       id: 20,
       mediaServerId: 'remote-collection',
       manualCollection: false,
     });
-    collectionRepo.find.mockResolvedValue([]);
+    const manualSibling = createCollection({
+      id: 21,
+      mediaServerId: 'remote-collection',
+      manualCollection: true,
+    });
+    collectionRepo.find.mockResolvedValue([manualSibling]);
+    collectionMediaRepo.find.mockResolvedValue([
+      createCollectionMedia(manualSibling, {
+        mediaServerId: 'owned-by-the-custom-collection',
+        includedByRule: true,
+        manualMembershipSource: null,
+      }),
+    ]);
 
     const result = await service.getSiblingRuleOwnedMediaServerIds(collection);
 
-    expect(Array.from(result)).toEqual([]);
+    expect(Array.from(result)).toEqual(['owned-by-the-custom-collection']);
+    // The query must no longer filter siblings by kind.
     expect(collectionRepo.find).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: expect.objectContaining({
-          manualCollection: false,
+        where: expect.not.objectContaining({
+          manualCollection: expect.anything(),
         }),
       }),
     );
