@@ -142,6 +142,63 @@ describe('PlexApiService.getMetadata', () => {
     );
   });
 
+  // A membership decision made from a stale child list has already produced
+  // phantom manual members once (#1446), and nothing invalidated this cache.
+  it('drops the cached child pages after a collection add, and after one that failed', async () => {
+    const invalidateCachedUri = jest.fn();
+    (service as any).plexClient = {
+      putQuery: jest
+        .fn()
+        .mockResolvedValue({ MediaContainer: { Metadata: [{}] } }),
+      invalidateCachedUri,
+    };
+    (service as any).machineId = 'machine-1';
+
+    await service.addChildrenToCollection('col-1', ['item-1']);
+
+    expect(invalidateCachedUri).toHaveBeenCalledWith(
+      '/library/collections/col-1/children',
+    );
+
+    // The batch path is the one collection sync uses: Plex commits a write it
+    // has begun and can answer past the client timeout, so the cached list is
+    // no more trustworthy than on the success path.
+    invalidateCachedUri.mockClear();
+    (service as any).plexClient.putQuery = jest
+      .fn()
+      .mockRejectedValue(new Error('timeout of 30000ms exceeded'));
+
+    await service.addChildrenToCollection('col-1', ['item-1']);
+    expect(invalidateCachedUri).toHaveBeenCalledWith(
+      '/library/collections/col-1/children',
+    );
+  });
+
+  it('drops the cached child pages after a removal, and after one that failed', async () => {
+    const invalidateCachedUri = jest.fn();
+    (service as any).plexClient = {
+      deleteQuery: jest.fn().mockResolvedValue({}),
+      invalidateCachedUri,
+    };
+
+    await service.deleteChildFromCollection('col-1', 'item-1');
+    expect(invalidateCachedUri).toHaveBeenCalledWith(
+      '/library/collections/col-1/children',
+    );
+
+    // A write that failed may still have been applied, so the cached list is no
+    // more trustworthy than on the success path.
+    invalidateCachedUri.mockClear();
+    (service as any).plexClient.deleteQuery = jest
+      .fn()
+      .mockRejectedValue(new Error('timeout of 30000ms exceeded'));
+
+    await service.deleteChildFromCollection('col-1', 'item-1');
+    expect(invalidateCachedUri).toHaveBeenCalledWith(
+      '/library/collections/col-1/children',
+    );
+  });
+
   // #3449: a collection still listing deleted media logged one
   // "is the application running?" ERROR per item against a healthy Plex.
   it('reports a 404 as a missing item, not as a communication failure', async () => {
@@ -331,7 +388,7 @@ describe('PlexApiService.getMetadata', () => {
     });
 
     (service as any).machineId = 'machine123';
-    (service as any).plexClient = { putQuery };
+    (service as any).plexClient = { putQuery, invalidateCachedUri: jest.fn() };
 
     await service.addChildrenToCollection('55', ['1', '2']);
 
@@ -351,7 +408,7 @@ describe('PlexApiService.getMetadata', () => {
     });
 
     (service as any).machineId = 'machine123';
-    (service as any).plexClient = { putQuery };
+    (service as any).plexClient = { putQuery, invalidateCachedUri: jest.fn() };
 
     const result = await service.addChildrenToCollection('55', ['1', '2']);
 
@@ -387,7 +444,7 @@ describe('PlexApiService.getMetadata', () => {
     );
 
     (service as any).machineId = 'machine123';
-    (service as any).plexClient = { putQuery };
+    (service as any).plexClient = { putQuery, invalidateCachedUri: jest.fn() };
 
     const result = await service.addChildrenToCollection('55', ['1', '2']);
 
@@ -403,7 +460,7 @@ describe('PlexApiService.getMetadata', () => {
 
   it('switches a collection into custom sort mode via prefs', async () => {
     const putQuery = jest.fn().mockResolvedValue(undefined);
-    (service as any).plexClient = { putQuery };
+    (service as any).plexClient = { putQuery, invalidateCachedUri: jest.fn() };
 
     await service.setCollectionCustomSort('55');
 
@@ -414,7 +471,7 @@ describe('PlexApiService.getMetadata', () => {
 
   it('omits the after parameter when moving an item to the front', async () => {
     const putQuery = jest.fn().mockResolvedValue(undefined);
-    (service as any).plexClient = { putQuery };
+    (service as any).plexClient = { putQuery, invalidateCachedUri: jest.fn() };
 
     await service.moveCollectionItem('55', '99');
 
@@ -425,7 +482,7 @@ describe('PlexApiService.getMetadata', () => {
 
   it('places an item after the given sibling when moving', async () => {
     const putQuery = jest.fn().mockResolvedValue(undefined);
-    (service as any).plexClient = { putQuery };
+    (service as any).plexClient = { putQuery, invalidateCachedUri: jest.fn() };
 
     await service.moveCollectionItem('55', '99', '42');
 
@@ -437,7 +494,10 @@ describe('PlexApiService.getMetadata', () => {
   it('uses the canonical Plex items path when deleting a collection child', async () => {
     const deleteQuery = jest.fn().mockResolvedValue(undefined);
 
-    (service as any).plexClient = { deleteQuery };
+    (service as any).plexClient = {
+      deleteQuery,
+      invalidateCachedUri: jest.fn(),
+    };
 
     await expect(
       service.deleteChildFromCollection('55', '99'),
@@ -459,7 +519,7 @@ describe('PlexApiService.getMetadata', () => {
       .mockRejectedValue(new Error('connect ECONNREFUSED 127.0.0.1:32400'));
 
     (service as any).machineId = 'machine123';
-    (service as any).plexClient = { putQuery };
+    (service as any).plexClient = { putQuery, invalidateCachedUri: jest.fn() };
 
     const result = await service.addChildrenToCollection('55', ['1']);
 
