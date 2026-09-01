@@ -2840,7 +2840,7 @@ __metadata:
     "@tailwindcss/typography": "npm:^0.5.20"
     "@tailwindcss/vite": "npm:^4.3.3"
     "@tanstack/eslint-plugin-query": "npm:^5.102.8"
-    "@tanstack/react-query": "npm:^5.102.3"
+    "@tanstack/react-query": "npm:^5.102.8"
     "@testing-library/dom": "npm:^10.4.1"
     "@testing-library/react": "npm:^16.3.3"
     "@types/lodash-es": "npm:^4.17.12"
@@ -5453,21 +5453,21 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@tanstack/query-core@npm:5.102.3":
-  version: 5.102.3
-  resolution: "@tanstack/query-core@npm:5.102.3"
-  checksum: 10c0/9d61088808decfc62f1aaacfa4fd29889d8a70bcfda7061790f0fd263388f65d85b1df80d3656ee5f8cd1339432034cd8a488d1efa995a2bfffa07acbce4d508
+"@tanstack/query-core@npm:5.102.8":
+  version: 5.102.8
+  resolution: "@tanstack/query-core@npm:5.102.8"
+  checksum: 10c0/b8b8413c2372ff26605f63283f2bfe0edc17be1daad858a437d154ca38b30e8b6e47a5b8a0eb5c40b93fd66b8461f1cf2ac6cf5e1c9a03919d0079a0b4ae8bfa
   languageName: node
   linkType: hard
 
-"@tanstack/react-query@npm:^5.102.3":
-  version: 5.102.3
-  resolution: "@tanstack/react-query@npm:5.102.3"
+"@tanstack/react-query@npm:^5.102.8":
+  version: 5.102.8
+  resolution: "@tanstack/react-query@npm:5.102.8"
   dependencies:
-    "@tanstack/query-core": "npm:5.102.3"
+    "@tanstack/query-core": "npm:5.102.8"
   peerDependencies:
     react: ^18 || ^19
-  checksum: 10c0/d5f3b1572085a76955044435a0d7733a66c1a1a5363a8dbe4a14a1ccb42d29a679cc60cda35a603fe6464c981f44bc48c26a47891b9557ea3ca13b801cba1f66
+  checksum: 10c0/cae0b1c9eb4b6cce8679ebe58d0391cd247bc26c39105aaa4d2c624db14deb8c051f747f714aaa0dbe6bb3ac94c70e30af6423090e9014aa5c7c6ef6cf5b4af4
   languageName: node
   linkType: hard
 
