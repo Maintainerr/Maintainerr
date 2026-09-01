@@ -31,7 +31,10 @@ import type {
   MediaWatchState,
   CollectionMutationOutcome,
 } from '../media-server.interface';
-import { MutationOutcomeBuilder } from '../mutation-outcome.util';
+import {
+  classifyMutationError,
+  recordMutationFailure,
+} from '../mutation-outcome.util';
 import {
   EMBY_BATCH_SIZE,
   EMBY_CACHE_KEYS,
@@ -1395,7 +1398,7 @@ export class EmbyAdapterService implements IMediaServerService {
     if (itemIds.length === 0) return { refused: [], unknown: [] };
     if (!this.http) return { refused: [], unknown: [...itemIds] };
 
-    const outcome = new MutationOutcomeBuilder();
+    const outcome: CollectionMutationOutcome = { refused: [], unknown: [] };
     for (const chunk of this.chunked(
       itemIds,
       EMBY_BATCH_SIZE.COLLECTION_MUTATION,
@@ -1408,10 +1411,10 @@ export class EmbyAdapterService implements IMediaServerService {
         this.logger.warn(
           `Emby addBatchToCollection chunk failed: ${formatConnectionFailureMessage(error, 'Connection failed')}`,
         );
-        outcome.addError(chunk, error);
+        recordMutationFailure(outcome, chunk, classifyMutationError(error));
       }
     }
-    return outcome.outcome;
+    return outcome;
   }
 
   async removeFromCollection(
@@ -1437,7 +1440,7 @@ export class EmbyAdapterService implements IMediaServerService {
     if (itemIds.length === 0) return { refused: [], unknown: [] };
     if (!this.http) return { refused: [], unknown: [...itemIds] };
 
-    const outcome = new MutationOutcomeBuilder();
+    const outcome: CollectionMutationOutcome = { refused: [], unknown: [] };
     for (const chunk of this.chunked(
       itemIds,
       EMBY_BATCH_SIZE.COLLECTION_MUTATION,
@@ -1450,10 +1453,10 @@ export class EmbyAdapterService implements IMediaServerService {
         this.logger.warn(
           `Emby removeBatchFromCollection chunk failed: ${formatConnectionFailureMessage(error, 'Connection failed')}`,
         );
-        outcome.addError(chunk, error);
+        recordMutationFailure(outcome, chunk, classifyMutationError(error));
       }
     }
-    return outcome.outcome;
+    return outcome;
   }
 
   async updateCollection(

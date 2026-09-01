@@ -73,7 +73,7 @@ import type {
 } from '../media-server.interface';
 import {
   classifyMutationError,
-  MutationOutcomeBuilder,
+  recordMutationFailure,
 } from '../mutation-outcome.util';
 import {
   JELLYFIN_BATCH_SIZE,
@@ -2356,7 +2356,7 @@ export class JellyfinAdapterService implements IMediaServerService {
     if (!this.api) return { refused: [], unknown: [...itemIds] };
 
     const chunkSize = JELLYFIN_BATCH_SIZE.COLLECTION_MUTATION;
-    const outcome = new MutationOutcomeBuilder();
+    const outcome: CollectionMutationOutcome = { refused: [], unknown: [] };
 
     for (let i = 0; i < itemIds.length; i += chunkSize) {
       const chunk = itemIds.slice(i, i + chunkSize);
@@ -2369,7 +2369,7 @@ export class JellyfinAdapterService implements IMediaServerService {
         // Nothing answered for the batch, so nothing will answer per item
         // either - retrying them one at a time only spends another timeout each.
         if (classifyMutationError(error) === 'unknown') {
-          outcome.add(chunk, 'unknown');
+          recordMutationFailure(outcome, chunk, 'unknown');
           continue;
         }
 
@@ -2377,21 +2377,25 @@ export class JellyfinAdapterService implements IMediaServerService {
           try {
             await this.addToCollectionInternal(collectionId, itemId, false);
           } catch (itemError) {
-            outcome.addError([itemId], itemError);
+            recordMutationFailure(
+              outcome,
+              [itemId],
+              classifyMutationError(itemError),
+            );
           }
         }
       }
     }
 
-    if (outcome.failedCount > 0) {
+    if (outcome.refused.length > 0 || outcome.unknown.length > 0) {
       this.logger.warn(
-        `Jellyfin add to collection ${collectionId}: ${outcome.outcome.refused.length} refused, ${outcome.outcome.unknown.length} unconfirmed`,
+        `Jellyfin add to collection ${collectionId}: ${outcome.refused.length} refused, ${outcome.unknown.length} unconfirmed`,
       );
     }
 
     this.invalidateCollectionChildrenCache(collectionId);
 
-    return outcome.outcome;
+    return outcome;
   }
 
   async cleanupCollectionForLibrary(
@@ -2472,7 +2476,7 @@ export class JellyfinAdapterService implements IMediaServerService {
     if (!this.api) return { refused: [], unknown: [...itemIds] };
 
     const chunkSize = JELLYFIN_BATCH_SIZE.COLLECTION_MUTATION;
-    const outcome = new MutationOutcomeBuilder();
+    const outcome: CollectionMutationOutcome = { refused: [], unknown: [] };
 
     for (let i = 0; i < itemIds.length; i += chunkSize) {
       const chunk = itemIds.slice(i, i + chunkSize);
@@ -2486,13 +2490,13 @@ export class JellyfinAdapterService implements IMediaServerService {
           `Failed to remove ${chunk.length} items from collection ${collectionId}`,
         );
         this.logger.debug(error);
-        outcome.addError(chunk, error);
+        recordMutationFailure(outcome, chunk, classifyMutationError(error));
       }
     }
 
     this.invalidateCollectionChildrenCache(collectionId);
 
-    return outcome.outcome;
+    return outcome;
   }
 
   // COLLECTION METADATA UPDATE

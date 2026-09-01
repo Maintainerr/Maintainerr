@@ -32,9 +32,13 @@ import { supportsFeature } from '../media-server.constants';
 import { readMetadataInBatches } from '../metadata-batch.util';
 import {
   IMediaServerService,
-  type MediaWatchState,
   type CollectionMutationOutcome,
+  type MediaWatchState,
 } from '../media-server.interface';
+import {
+  recordMutationFailure,
+  type MutationFailure,
+} from '../mutation-outcome.util';
 import { PLEX_BATCH_SIZE, toPlexSort } from './plex.constants';
 import { PlexMapper } from './plex.mapper';
 
@@ -585,7 +589,7 @@ export class PlexAdapterService implements IMediaServerService {
    */
   private classifyMutationFailure(
     result: { status?: string; code?: number } | undefined,
-  ): 'refused' | 'unknown' | undefined {
+  ): MutationFailure | undefined {
     if (!result) {
       return 'unknown';
     }
@@ -656,8 +660,7 @@ export class PlexAdapterService implements IMediaServerService {
     collectionId: string,
     itemIds: string[],
   ): Promise<CollectionMutationOutcome> {
-    const refused: string[] = [];
-    const unknown: string[] = [];
+    const outcome: CollectionMutationOutcome = { refused: [], unknown: [] };
 
     for (
       let index = 0;
@@ -684,7 +687,7 @@ export class PlexAdapterService implements IMediaServerService {
       // either: retrying them one at a time only spends another timeout each
       // and still cannot say what happened. Report the chunk as unknown.
       if (failure === 'unknown') {
-        unknown.push(...chunk);
+        recordMutationFailure(outcome, chunk, 'unknown');
         continue;
       }
 
@@ -695,7 +698,7 @@ export class PlexAdapterService implements IMediaServerService {
         // plexApi reports failures by return value, but a throw is still
         // possible (the machine-id lookup it does first), and it says nothing
         // about whether the write landed.
-        let itemFailure: 'refused' | 'unknown' | undefined;
+        let itemFailure: MutationFailure | undefined;
         try {
           itemFailure = this.classifyMutationFailure(
             (await this.plexApi.addChildToCollection(collectionId, itemId)) as {
@@ -707,21 +710,19 @@ export class PlexAdapterService implements IMediaServerService {
           itemFailure = 'unknown';
         }
 
-        if (itemFailure === 'refused') {
-          refused.push(itemId);
-        } else if (itemFailure === 'unknown') {
-          unknown.push(itemId);
+        if (itemFailure) {
+          recordMutationFailure(outcome, [itemId], itemFailure);
         }
       }
     }
 
-    if (refused.length > 0 || unknown.length > 0) {
+    if (outcome.refused.length > 0 || outcome.unknown.length > 0) {
       this.logger.warn(
-        `Plex add to collection ${collectionId}: ${refused.length} refused, ${unknown.length} unconfirmed`,
+        `Plex add to collection ${collectionId}: ${outcome.refused.length} refused, ${outcome.unknown.length} unconfirmed`,
       );
     }
 
-    return { refused, unknown };
+    return outcome;
   }
 
   async cleanupCollectionForLibrary(
@@ -768,8 +769,7 @@ export class PlexAdapterService implements IMediaServerService {
     collectionId: string,
     itemIds: string[],
   ): Promise<CollectionMutationOutcome> {
-    const refused: string[] = [];
-    const unknown: string[] = [];
+    const outcome: CollectionMutationOutcome = { refused: [], unknown: [] };
 
     // Plex has no batch remove; this is one request per item by necessity.
     for (const itemId of itemIds) {
@@ -782,35 +782,27 @@ export class PlexAdapterService implements IMediaServerService {
           itemId,
         )) as { status?: string; code?: number };
       } catch {
-        unknown.push(itemId);
+        recordMutationFailure(outcome, [itemId], 'unknown');
         continue;
       }
 
       const failure = this.classifyMutationFailure(result);
 
-      if (!failure) {
-        continue;
-      }
-
       // An item Plex no longer holds is the outcome the caller wanted.
-      if (result?.code === 404) {
+      if (!failure || result?.code === 404) {
         continue;
       }
 
-      if (failure === 'refused') {
-        refused.push(itemId);
-      } else {
-        unknown.push(itemId);
-      }
+      recordMutationFailure(outcome, [itemId], failure);
     }
 
-    if (refused.length > 0 || unknown.length > 0) {
+    if (outcome.refused.length > 0 || outcome.unknown.length > 0) {
       this.logger.warn(
-        `Plex remove from collection ${collectionId}: ${refused.length} refused, ${unknown.length} unconfirmed`,
+        `Plex remove from collection ${collectionId}: ${outcome.refused.length} refused, ${outcome.unknown.length} unconfirmed`,
       );
     }
 
-    return { refused, unknown };
+    return outcome;
   }
 
   // PLEX-SPECIFIC: COLLECTION UPDATE & VISIBILITY

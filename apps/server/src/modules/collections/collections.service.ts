@@ -667,10 +667,8 @@ export class CollectionsService {
     }
 
     if (heldUnconfirmedAdds.length > 0) {
-      // Deliberately left in place rather than removed: the item is on the
-      // server because a rule asked for it, and taking it back out would fight
-      // a rule that still wants it. It is held out of adoption until a rule
-      // re-adds it (which clears the marker) or it is removed by hand.
+      // Otherwise undiagnosable: the item sits in the server collection while
+      // Maintainerr ignores it.
       this.logger.log(
         `Holding ${heldUnconfirmedAdds.length} item(s) in the media server collection for '${collection.title}' that a rule added but the server never confirmed: ${heldUnconfirmedAdds.join(', ')}. They are not manual additions and will not be handled.`,
       );
@@ -4315,19 +4313,15 @@ export class CollectionsService {
       unconfirmedAddIds = outcome.unknown;
     }
 
-    // An add nothing answered may well have been applied, leaving a server child
-    // no collection_media row accounts for - which the manual child import would
-    // then adopt as a hand-added member, force-kept and aged into
-    // deleteAfterDays. Record it so the next run reconciles the child instead of
-    // adopting it. Manual collections never reconcile markers, and with no link
-    // there is nothing to reconcile against, so both are skipped as on the
-    // removal side. Best-effort: this must not fail the add.
+    // An unanswered add may still have been applied, leaving a server child no
+    // row accounts for. The marker makes the next run reconcile that child
+    // rather than adopt it as a hand-added member.
     //
-    // Never for a MANUAL add: adoption is exactly what fulfils that request, so
-    // suppressing it would leave the item on the server with no membership and
-    // no rule to re-add it - the user's add silently doing nothing, forever.
-    // `manual` is the membership argument; collectionIds.manualCollection is the
-    // collection's kind, and the two are independent.
+    // Not for a manual add (`manual` is the membership, not the collection's
+    // kind): adoption is what fulfils that request, and no rule would re-add it,
+    // so a marker would strand the item on the server forever. Not for a manual
+    // or unlinked collection either - neither reconciles markers, as on the
+    // removal side. Best-effort: never fail the add.
     if (
       unconfirmedAddIds.length > 0 &&
       !manual &&
