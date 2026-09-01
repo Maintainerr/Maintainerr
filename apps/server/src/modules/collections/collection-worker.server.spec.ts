@@ -122,6 +122,66 @@ describe('CollectionWorkerService', () => {
     expect(collectionHandler.handleMedia).not.toHaveBeenCalled();
   });
 
+  it('should not handle media for a collection with no deletion window set', async () => {
+    // A null window is "never" to the contracts helper, the collection card and
+    // the overlay processor. The due query read it as 0, which made every member
+    // due at once and handed the whole collection to a DELETE action.
+    const collection = createCollection({
+      arrAction: ServarrAction.DELETE,
+      deleteAfterDays: null,
+    });
+    const collectionMedia = createCollectionMedia(collection);
+
+    collectionRepository.find.mockResolvedValue([collection]);
+    collectionMediaRepository.find.mockResolvedValue([collectionMedia]);
+
+    await collectionWorkerService.execute();
+
+    expect(collectionHandler.handleMedia).not.toHaveBeenCalled();
+  });
+
+  it('should still handle a quality profile collection that has no window', async () => {
+    // The rule form hides the timer for CHANGE_QUALITY_PROFILE and saves no
+    // window, so skipping every null-window collection would strand every such
+    // rule forever and no profile change would ever reach the *arr.
+    const collection = createCollection({
+      arrAction: ServarrAction.CHANGE_QUALITY_PROFILE,
+      deleteAfterDays: null,
+    });
+    const collectionMedia = createCollectionMedia(collection);
+
+    collectionRepository.find.mockResolvedValue([collection]);
+    collectionMediaRepository.find.mockResolvedValue([collectionMedia]);
+    collectionHandler.handleMedia.mockResolvedValue('handled');
+
+    await collectionWorkerService.execute();
+
+    expect(collectionHandler.handleMedia).toHaveBeenCalled();
+  });
+
+  it("should not let a converted rule's leftover window delay a profile change", async () => {
+    // Converting a rule keeps the previous action's window, and the form shows
+    // no timer for CHANGE_QUALITY_PROFILE, so honouring it would silently hold
+    // the profile change back for that many days.
+    const collection = createCollection({
+      arrAction: ServarrAction.CHANGE_QUALITY_PROFILE,
+      deleteAfterDays: 30,
+    });
+    const collectionMedia = createCollectionMedia(collection);
+
+    collectionRepository.find.mockResolvedValue([collection]);
+    collectionMediaRepository.find.mockResolvedValue([collectionMedia]);
+    collectionHandler.handleMedia.mockResolvedValue('handled');
+
+    await collectionWorkerService.execute();
+
+    // A 30-day window would put the cutoff 30 days back; due-now is today.
+    const [{ where }] = collectionMediaRepository.find.mock.calls.at(-1)!;
+    const cutoff = (where as { addDate: { value: Date } }).addDate.value;
+    expect(Date.now() - cutoff.getTime()).toBeLessThan(60_000);
+    expect(collectionHandler.handleMedia).toHaveBeenCalled();
+  });
+
   it('should handle media for collection and trigger availability syncs', async () => {
     settings.seerrConfigured.mockReturnValue(true);
 
@@ -512,7 +572,7 @@ describe('CollectionWorkerService', () => {
       "Skipping collection 'Radarr + Seerr' because no media is due for handling",
     );
     expect(logger.log).toHaveBeenCalledWith(
-      'Collection handler summary: 2 total (isActive), 0 skipped (Do Nothing), 2 skipped (no due media), 0 queued for handling',
+      'Collection handler summary: 2 total (isActive), 0 skipped (Do Nothing), 0 skipped (no window set), 2 skipped (no due media), 0 queued for handling',
     );
   });
 });

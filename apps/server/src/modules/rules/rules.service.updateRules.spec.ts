@@ -427,6 +427,7 @@ describe('RulesService.updateRules', () => {
       manualCollectionName: 'Shared Collection',
       visibleOnHome: true,
       visibleOnRecommended: true,
+      deleteAfterDays: 30,
     };
 
     const collectionMediaRepository = { delete: jest.fn() };
@@ -482,6 +483,9 @@ describe('RulesService.updateRules', () => {
         manualCollectionName: 'Shared Collection',
         visibleOnHome: true,
         visibleOnRecommended: true,
+        // The field that decides whether files get deleted: clearing it made
+        // the whole collection due at once.
+        deleteAfterDays: 30,
       }),
     );
     expect(result).toEqual({
