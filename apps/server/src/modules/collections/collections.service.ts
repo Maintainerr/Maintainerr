@@ -4231,7 +4231,42 @@ export class CollectionsService {
       this.logger.log(
         `Removed the media server collection for '${collection.title}' - it is now kept in Maintainerr only`,
       );
-      return await this.saveCollection({ ...collection, mediaServerId: null });
+
+      // A rule-removal marker only means "the media server may still be holding
+      // this". The teardown just established that it is not, and once the link
+      // is gone reconcileRuleRemovedOrphans returns early, so nothing would ever
+      // clear them. Left behind they are applied to whatever collection a later
+      // re-link creates, where an item present but not a member - one the user
+      // added by hand - is read as a lingering orphan and taken back out. Same
+      // wipe deactivateCollection does, for the same reason: the FK cascade
+      // cannot fire while the collection row survives.
+      //
+      // One transaction because either half alone is a defect: markers without
+      // the unlink leave a still-linked collection with no record of what a rule
+      // removed, and the next run adopts exactly those items as manual members;
+      // the unlink without the delete strands the markers for good, since every
+      // later call returns early once mediaServerId is gone.
+      const unlinked = await this.connection.transaction(async (manager) => {
+        const saved = await manager.withRepository(this.collectionRepo).save({
+          ...collection,
+          mediaServerId: null,
+        });
+
+        await manager
+          .withRepository(this.CollectionMediaRuleRemovalRepo)
+          .delete({ collectionId: collection.id });
+
+        return saved;
+      });
+
+      // saveCollection would have emitted this; after the commit, so a listener
+      // never reads a state that may still roll back.
+      this.eventEmitter.emit(MaintainerrEvent.Collection_Updated, {
+        collection: unlinked,
+        oldCollection: collection,
+      });
+
+      return unlinked;
     }
 
     return collection;

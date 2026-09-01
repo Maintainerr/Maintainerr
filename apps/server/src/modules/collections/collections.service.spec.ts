@@ -71,6 +71,13 @@ describe('CollectionsService', () => {
     ruleRemovalRepo = unitRef.get(
       getRepositoryToken(CollectionMediaRuleRemoval) as string,
     );
+    // stopMediaServerSync unlinks inside a transaction. Run the callback and
+    // hand back the same repository mocks, so these cases still assert on the
+    // writes; the rollback itself needs a real database and is covered in
+    // stop-media-server-sync.integration.spec.ts.
+    dataSource.transaction.mockImplementation((runInTransaction: any) =>
+      runInTransaction({ withRepository: (repo: unknown) => repo }),
+    );
     metadataService = unitRef.get(MetadataService);
     mediaItemEnrichmentService = unitRef.get(MediaItemEnrichmentService);
     mediaItemEnrichmentService.enrichItems.mockImplementation(
@@ -4847,6 +4854,41 @@ describe('CollectionsService', () => {
       expect(collectionRepo.save).toHaveBeenCalledWith(
         expect.objectContaining({ id: 32, mediaServerId: null }),
       );
+      // The teardown established the server is not holding anything, and the
+      // reconciler returns early once the link is gone, so a marker left here
+      // could only ever be applied to a collection a later re-link creates.
+      expect(ruleRemovalRepo.delete).toHaveBeenCalledWith({
+        collectionId: 32,
+      });
+    });
+
+    it('stopMediaServerSync keeps the markers when the unlink itself fails', async () => {
+      const collection = createCollection({
+        id: 35,
+        mediaServerId: 'remote-collection',
+      });
+      collectionRepo.save.mockRejectedValue(new Error('db down'));
+
+      await expect(service.stopMediaServerSync(collection)).rejects.toThrow();
+
+      // Dropping them first and then failing to unlink would leave a still
+      // linked collection with no record of what a rule removed, and the next
+      // run adopts exactly those items as manual members.
+      expect(ruleRemovalRepo.delete).not.toHaveBeenCalled();
+    });
+
+    it('stopMediaServerSync keeps the markers when the teardown fails', async () => {
+      const collection = createCollection({
+        id: 34,
+        mediaServerId: 'remote-collection',
+      });
+      mediaServer.deleteCollection.mockRejectedValue(new Error('unreachable'));
+
+      await service.stopMediaServerSync(collection);
+
+      // The link is kept so the teardown retries; the markers are the record of
+      // what still has to come out of that collection.
+      expect(ruleRemovalRepo.delete).not.toHaveBeenCalled();
     });
 
     it('stopMediaServerSync keeps the link when the delete fails, so it is not orphaned', async () => {
