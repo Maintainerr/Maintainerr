@@ -494,9 +494,10 @@ export class CollectionsService {
     // a rule removed and later matched again would keep direction 'remove', so
     // an add that timed out would be reconciled as a lingering orphan and taken
     // back off the server - undoing a write that had in fact committed.
+    // No .into(): the builder comes from the marker repository, so it already
+    // targets that table.
     await this.CollectionMediaRuleRemovalRepo.createQueryBuilder()
       .insert()
-      .into(CollectionMediaRuleRemoval)
       .values(
         mediaServerIds.map((mediaServerId) => ({
           collectionId,
