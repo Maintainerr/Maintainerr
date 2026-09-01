@@ -745,7 +745,14 @@ export class RulesService {
             dbCollection?.visibleOnRecommended,
           visibleOnHome:
             params.collection?.visibleOnHome ?? dbCollection?.visibleOnHome,
-          deleteAfterDays: params.collection?.deleteAfterDays ?? null,
+          // Same rule as the two fields above: an update that omits the
+          // collection block keeps the saved value. This is the field that
+          // decides whether files are deleted, so silently clearing it is the
+          // worst one of the three to get wrong.
+          deleteAfterDays:
+            params.collection?.deleteAfterDays ??
+            dbCollection?.deleteAfterDays ??
+            null,
           manualCollection:
             params.collection?.manualCollection ??
             dbCollection?.manualCollection,
