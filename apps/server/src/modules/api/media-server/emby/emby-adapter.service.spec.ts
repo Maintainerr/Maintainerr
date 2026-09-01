@@ -1306,7 +1306,7 @@ describe('EmbyAdapterService', () => {
         .mockResolvedValueOnce([{ id: 'item-2' } as any]);
       const removeBatchFromCollection = jest
         .spyOn(service, 'removeBatchFromCollection')
-        .mockResolvedValue([]);
+        .mockResolvedValue({ refused: [], unknown: [] });
       const deleteCollection = jest
         .spyOn(service, 'deleteCollection')
         .mockResolvedValue(undefined);

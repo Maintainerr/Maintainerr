@@ -2658,7 +2658,7 @@ describe('JellyfinAdapterService', () => {
     it('should add a batch of items in one Jellyfin request', async () => {
       await expect(
         service.addBatchToCollection('collection-1', ['item-1', 'item-2']),
-      ).resolves.toEqual([]);
+      ).resolves.toEqual({ refused: [], unknown: [] });
 
       expect(collectionApiMocks.addToCollection).toHaveBeenCalledWith({
         collectionId: 'collection-1',
@@ -2674,7 +2674,7 @@ describe('JellyfinAdapterService', () => {
 
       await expect(
         service.addBatchToCollection('collection-1', items),
-      ).resolves.toEqual([]);
+      ).resolves.toEqual({ refused: [], unknown: [] });
 
       expect(collectionApiMocks.addToCollection).toHaveBeenCalledTimes(3);
       expect(collectionApiMocks.addToCollection).toHaveBeenNthCalledWith(1, {
@@ -2706,14 +2706,14 @@ describe('JellyfinAdapterService', () => {
             ids.length === JELLYFIN_BATCH_SIZE.COLLECTION_MUTATION &&
             ids[0] === `item-${JELLYFIN_BATCH_SIZE.COLLECTION_MUTATION + 1}`
           ) {
-            throw new Error('Request line too long');
+            throw createResponseError(400);
           }
 
           if (
             ids.length === 1 &&
             ids[0] === `item-${JELLYFIN_BATCH_SIZE.COLLECTION_MUTATION + 1}`
           ) {
-            throw new Error('still bad');
+            throw createResponseError(400);
           }
 
           return undefined;
@@ -2722,15 +2722,16 @@ describe('JellyfinAdapterService', () => {
 
       await expect(
         service.addBatchToCollection('collection-1', items),
-      ).resolves.toEqual([
-        `item-${JELLYFIN_BATCH_SIZE.COLLECTION_MUTATION + 1}`,
-      ]);
+      ).resolves.toEqual({
+        refused: [`item-${JELLYFIN_BATCH_SIZE.COLLECTION_MUTATION + 1}`],
+        unknown: [],
+      });
 
       expect(collectionApiMocks.addToCollection).toHaveBeenCalledTimes(
         JELLYFIN_BATCH_SIZE.COLLECTION_MUTATION + 2,
       );
       expect(logger.warn).toHaveBeenCalledWith(
-        'Jellyfin batch add fallback left 1 failed item(s) for collection collection-1',
+        'Jellyfin add to collection collection-1: 1 refused, 0 unconfirmed',
       );
       expect(logger.error).not.toHaveBeenCalled();
       expect(logger.debug).not.toHaveBeenCalled();
@@ -2740,7 +2741,9 @@ describe('JellyfinAdapterService', () => {
       collectionApiMocks.addToCollection.mockImplementation(
         async ({ ids }: { ids: string[] }) => {
           if (ids.length > 1) {
-            throw new Error('Request line too long');
+            // Answered failure: a per-item retry is only worth spending when
+            // the server actually replied.
+            throw createResponseError(400);
           }
 
           return undefined;
@@ -2749,7 +2752,7 @@ describe('JellyfinAdapterService', () => {
 
       await expect(
         service.addBatchToCollection('collection-1', ['item-1', 'item-2']),
-      ).resolves.toEqual([]);
+      ).resolves.toEqual({ refused: [], unknown: [] });
 
       expect(logger.warn).not.toHaveBeenCalled();
       expect(logger.error).not.toHaveBeenCalled();
@@ -2759,7 +2762,7 @@ describe('JellyfinAdapterService', () => {
     it('should remove a batch of items in one Jellyfin request', async () => {
       await expect(
         service.removeBatchFromCollection('collection-1', ['item-1', 'item-2']),
-      ).resolves.toEqual([]);
+      ).resolves.toEqual({ refused: [], unknown: [] });
 
       expect(collectionApiMocks.removeFromCollection).toHaveBeenCalledWith({
         collectionId: 'collection-1',
@@ -2775,7 +2778,7 @@ describe('JellyfinAdapterService', () => {
 
       await expect(
         service.removeBatchFromCollection('collection-1', items),
-      ).resolves.toEqual([]);
+      ).resolves.toEqual({ refused: [], unknown: [] });
 
       expect(collectionApiMocks.removeFromCollection).toHaveBeenCalledTimes(3);
     });

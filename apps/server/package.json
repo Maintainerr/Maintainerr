@@ -59,13 +59,13 @@
     "read-last-lines": "^1.10.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",
-    "sharp": "^0.35.3",
+    "sharp": "^0.35.4",
     "typeorm": "^1.1.0",
     "winston": "^3.19.0",
     "winston-daily-rotate-file": "^5.0.0",
     "xml2js": "^0.6.2",
     "yaml": "^2.9.0",
-    "zod": "^4.4.3"
+    "zod": "^4.5.2"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.6",
@@ -90,7 +90,7 @@
     "eslint": "^10.9.1",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-jest": "^29.16.1",
-    "jest": "^30.4.2",
+    "jest": "^30.5.0",
     "prettier": "^3.9.6",
     "ts-node": "^10.9.2",
     "typescript": "^6.0.3"
