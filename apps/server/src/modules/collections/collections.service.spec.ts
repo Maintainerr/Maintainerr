@@ -1867,6 +1867,37 @@ describe('CollectionsService', () => {
     expect(mediaServer.deleteCollection).not.toHaveBeenCalled();
   });
 
+  it('reports ids it could not add because the collection has no media server link', async () => {
+    // The find-or-create above could not produce a link (an unresolvable manual
+    // collection name, or a library search that threw). Nothing is written
+    // locally or remotely, so an empty rejection list would report a no-op as a
+    // success and close the modal on nothing.
+    const collection = createCollection({
+      id: 30,
+      mediaServerId: null,
+      manualCollection: true,
+      manualCollectionName: 'Gone From The Server',
+      title: 'Unlinked Collection',
+    });
+
+    collectionRepo.findOne.mockResolvedValue(collection);
+    collectionMediaRepo.find.mockResolvedValue([]);
+    collectionRepo.save.mockImplementation(async (c) => c as Collection);
+    mediaServer.getCollections.mockResolvedValue([]);
+    jest
+      .spyOn(service as any, 'checkAutomaticMediaServerLink')
+      .mockResolvedValue(collection);
+
+    const result = await (service as any).addToCollectionInternal(
+      collection.id,
+      [{ mediaServerId: 'item-1' }],
+    );
+
+    expect(result.unlinkedIds).toEqual(['item-1']);
+    expect(collectionMediaRepo.save).not.toHaveBeenCalled();
+    expect(mediaServer.addBatchToCollection).not.toHaveBeenCalled();
+  });
+
   it('heals an empty automatic collection when the media server rejects every add', async () => {
     const collection = createCollection({
       id: 21,

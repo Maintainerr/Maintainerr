@@ -147,6 +147,10 @@ export interface CollectionAddResult {
   /** Ids the server accepted but whose membership row failed to persist; the
    * server add was rolled back, so nothing of the add survived. */
   unpersistedIds?: string[];
+  /** Ids that had no media server collection to be added to. The server was
+   * never asked and no membership row was written, so this is neither a refusal
+   * nor a persistence failure - but it is not a success either. */
+  unlinkedIds?: string[];
 }
 
 export interface ContextActionResult extends CollectionAddResult {
@@ -2852,9 +2856,15 @@ export class CollectionsService {
             const rejected = new Set(result.serverRejectedIds);
             const unconfirmed = new Set(result.serverUnconfirmedIds ?? []);
             const unpersisted = new Set(result.unpersistedIds ?? []);
+            const unlinked = new Set(result.unlinkedIds ?? []);
             for (const [mediaId, ids] of resolvedByMediaId) {
               if (ids.some((id) => rejected.has(id))) {
                 fail(mediaId, 'Failed - refused by the media server');
+              } else if (ids.some((id) => unlinked.has(id))) {
+                fail(
+                  mediaId,
+                  'Failed - this collection has no media server collection to add to',
+                );
               } else if (ids.some((id) => unconfirmed.has(id))) {
                 fail(
                   mediaId,
@@ -2995,9 +3005,11 @@ export class CollectionsService {
           ...result.serverRejectedIds,
           ...(result.unpersistedIds ?? []),
         ],
-        // Kept apart: the server never answered, so this is not a refusal, and
-        // reporting it as success is the false-success #3383 removed.
+        // Both kept apart from the refusals: the server never answered for one
+        // and was never asked for the other, so neither is a refusal, and
+        // reporting either as success is the false-success #3383 removed.
         serverUnconfirmedIds: result.serverUnconfirmedIds,
+        unlinkedIds: result.unlinkedIds,
         resolvedCount: handleMedia.length,
       };
     }
@@ -3119,6 +3131,7 @@ export class CollectionsService {
       let rejectedByServer: string[] = [];
       let unconfirmedByServer: string[] = [];
       let unpersistedIds: string[] = [];
+      let unlinkedIds: string[] = [];
 
       if (collection) {
         if (!skipAutomaticLinkCheck) {
@@ -3377,6 +3390,18 @@ export class CollectionsService {
               collection = await this.saveCollection(collection);
             }
           }
+        } else if (newMedia.length > 0) {
+          // No media server collection to add to, and not a collection kept in
+          // Maintainerr only. Nothing was written locally or remotely, so
+          // answering with an empty rejection list would report a silent no-op
+          // as a success. A failed find-or-create above (an unresolvable manual
+          // collection name, or a library search that threw) lands here.
+          unlinkedIds = newMedia.map(
+            (collectionMediaItem) => collectionMediaItem.mediaServerId,
+          );
+          this.logger.warn(
+            `Could not add ${unlinkedIds.length} item(s) to '${collection.title}': it has no media server collection to add them to.`,
+          );
         }
 
         // Push collection sort to the media server when membership changed
@@ -3404,6 +3429,7 @@ export class CollectionsService {
           serverRejectedIds: rejectedByServer,
           serverUnconfirmedIds: unconfirmedByServer,
           unpersistedIds,
+          unlinkedIds,
         };
       } else {
         this.logger.warn("Collection doesn't exist.");

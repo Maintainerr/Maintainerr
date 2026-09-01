@@ -436,6 +436,14 @@ export class CollectionsController {
       );
     }
 
+    // Nothing was written locally or remotely, so answering 201 would close the
+    // modal on a no-op. Not a media server refusal: it was never asked.
+    if (result.unlinkedIds?.length) {
+      throw new BadRequestException(
+        'This collection has no media server collection to add to. Check that its collection still exists on the media server.',
+      );
+    }
+
     if (result.serverRejectedIds.length > 0) {
       throw new BadGatewayException(
         `The media server refused ${result.serverRejectedIds.length} of ${result.resolvedCount} item(s)`,
