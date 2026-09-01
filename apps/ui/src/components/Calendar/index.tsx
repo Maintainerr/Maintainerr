@@ -57,9 +57,7 @@ const addDays = (d: Date, days: number) => {
 }
 
 const addMonths = (d: Date, months: number) => {
-  const x = new Date(d)
-  x.setMonth(x.getMonth() + months)
-  return x
+  return new Date(d.getFullYear(), d.getMonth() + months, 1)
 }
 
 const getDayKey = (d: Date) =>
