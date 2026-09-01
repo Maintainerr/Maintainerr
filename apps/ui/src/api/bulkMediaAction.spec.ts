@@ -59,11 +59,61 @@ describe('postBulkExclusions', () => {
     ).toBe(true)
     expect(
       response.results
-        .slice(25)
+        .slice(25, 50)
         .every(
           (result) => result.code === 0 && result.message === 'request error',
         ),
     ).toBe(true)
+    // The last chunk was never sent, so it did not fail for that reason.
+    expect(
+      response.results
+        .slice(50)
+        .every(
+          (result) => result.code === 0 && result.message === 'not attempted',
+        ),
+    ).toBe(true)
+  })
+
+  it('reports the reason the server gave instead of a single catch-all', async () => {
+    // A lock conflict and a dropped connection both used to read "request
+    // error". The server's own message is the honest answer for the one that
+    // has it.
+    postMock.mockRejectedValueOnce(
+      Object.assign(new Error('Request failed with status code 409'), {
+        isAxiosError: true,
+        toJSON: () => ({}),
+        response: {
+          status: 409,
+          data: {
+            message:
+              'A collection or rule run held the execution lock too long',
+          },
+        },
+      }),
+    )
+
+    const response = await postBulkExclusions({ mediaIds: ids(25), action: 0 })
+
+    expect(response.results).toHaveLength(25)
+    expect(response.results[0].code).toBe(0)
+    expect(response.results[0].message).toBe(
+      'A collection or rule run held the execution lock too long',
+    )
+  })
+
+  it('does not invent a timeout budget the request never had', async () => {
+    // The connection-test vocabulary says "timed out after 5 seconds"; this
+    // path sets no axios timeout, so that number would be untrue.
+    postMock.mockRejectedValueOnce(
+      Object.assign(new Error('timeout of 30000ms exceeded'), {
+        isAxiosError: true,
+        toJSON: () => ({}),
+      }),
+    )
+
+    const response = await postBulkExclusions({ mediaIds: ids(25), action: 0 })
+
+    expect(response.results[0].message).not.toContain('5 seconds')
   })
 
   it('carries the collection through every chunk so the scope never changes mid-run', async () => {
