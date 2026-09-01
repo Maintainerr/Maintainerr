@@ -914,15 +914,21 @@ export class RuleExecutorService {
               );
           }
           // if collection doesn't exist in media server but should.. resync current data.
-          // Kept in Maintainerr only never should, and the resync is not free: it
-          // re-marks every member and writes an "Added" log record per item, per run.
+          // Kept in Maintainerr only never should.
+          //
+          // The member list is deliberately empty: addToCollection reads the
+          // collection's current members from the database and syncs those to the
+          // freshly created server collection itself. Passing them in only ran every
+          // existing row back through the membership update, re-marking each one and
+          // writing an "Added" log record per item per run - and it passed
+          // `collection.manualCollection`, a property of the COLLECTION, as the
+          // per-MEMBERSHIP "added by hand" flag. On a manual collection that stamped
+          // every rule-owned row as a manual member, which no rule can then remove
+          // while it still ages into deleteAfterDays.
           if (!collection.mediaServerId && !collection.keepInMaintainerrOnly) {
             collection = await this.collectionService.addToCollection(
               collection.id,
-              collMediaData.map((m) => ({
-                mediaServerId: m.mediaServerId,
-              })),
-              collection.manualCollection,
+              [],
             );
             if (collection) {
               collection =

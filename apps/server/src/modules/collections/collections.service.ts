@@ -3019,6 +3019,17 @@ export class CollectionsService {
     };
   }
 
+  /**
+   * Add media to a collection, creating or relinking its media server
+   * collection first if that is missing.
+   *
+   * An EMPTY `media` list is meaningful and load-bearing, not a no-op: the
+   * find-or-create still runs, and the existing members are read from the
+   * database and pushed to the collection it creates. That is how the rule
+   * executor rebuilds a link that went missing, without running every current
+   * member back through the membership update - which would re-mark provenance
+   * and write an "Added" log record per item, per run.
+   */
   async addToCollection(
     collectionDbId: number,
     media: CollectionMediaChange[],
