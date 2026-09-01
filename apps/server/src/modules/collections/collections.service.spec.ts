@@ -1936,6 +1936,38 @@ describe('CollectionsService', () => {
     expect(markRuleRemoved).toHaveBeenCalledWith(24, ['item-1'], 'add');
   });
 
+  it('does not suppress adoption for a manual add the server never confirmed', async () => {
+    // Adoption is what fulfils a manual add. A marker would tell the next run to
+    // hold the child out of it, leaving the item on the server with no membership
+    // and no rule to re-add it - the user's add silently doing nothing forever.
+    const collection = createCollection({
+      id: 26,
+      mediaServerId: 'remote-collection',
+      manualCollection: false,
+      title: 'Automatic Collection',
+    });
+
+    collectionRepo.findOne.mockResolvedValue(collection);
+    collectionMediaRepo.find.mockResolvedValue([]);
+    collectionRepo.save.mockImplementation(async (c) => c as Collection);
+    mediaServer.addBatchToCollection.mockResolvedValue({
+      refused: [],
+      unknown: ['item-1'],
+    });
+    jest
+      .spyOn(service as any, 'checkAutomaticMediaServerLink')
+      .mockResolvedValue(collection);
+    const markRuleRemoved = jest.spyOn(service, 'markRuleRemoved');
+
+    await service.addToCollection(
+      collection.id,
+      [{ mediaServerId: 'item-1' }],
+      true,
+    );
+
+    expect(markRuleRemoved).not.toHaveBeenCalled();
+  });
+
   it('does not heal an empty collection whose adds were merely unanswered', async () => {
     // An unanswered write says nothing about whether the collection can hold the
     // items, so it must not arm the delete-and-recreate heal.

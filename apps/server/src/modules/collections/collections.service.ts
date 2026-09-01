@@ -489,9 +489,13 @@ export class CollectionsService {
       return;
     }
 
+    // Upsert, not orIgnore: the row is unique on (collectionId, mediaServerId),
+    // and orIgnore leaves a conflicting row's direction untouched. An item that
+    // a rule removed and later matched again would keep direction 'remove', so
+    // an add that timed out would be reconciled as a lingering orphan and taken
+    // back off the server - undoing a write that had in fact committed.
     await this.CollectionMediaRuleRemovalRepo.createQueryBuilder()
       .insert()
-      .orIgnore()
       .into(CollectionMediaRuleRemoval)
       .values(
         mediaServerIds.map((mediaServerId) => ({
@@ -500,6 +504,7 @@ export class CollectionsService {
           direction,
         })),
       )
+      .orUpdate(['direction'], ['collectionId', 'mediaServerId'])
       .execute();
   }
 
@@ -2991,6 +2996,9 @@ export class CollectionsService {
           ...result.serverRejectedIds,
           ...(result.unpersistedIds ?? []),
         ],
+        // Kept apart: the server never answered, so this is not a refusal, and
+        // reporting it as success is the false-success #3383 removed.
+        serverUnconfirmedIds: result.serverUnconfirmedIds,
         resolvedCount: handleMedia.length,
       };
     }
@@ -4313,8 +4321,15 @@ export class CollectionsService {
     // adopting it. Manual collections never reconcile markers, and with no link
     // there is nothing to reconcile against, so both are skipped as on the
     // removal side. Best-effort: this must not fail the add.
+    //
+    // Never for a MANUAL add: adoption is exactly what fulfils that request, so
+    // suppressing it would leave the item on the server with no membership and
+    // no rule to re-add it - the user's add silently doing nothing, forever.
+    // `manual` is the membership argument; collectionIds.manualCollection is the
+    // collection's kind, and the two are independent.
     if (
       unconfirmedAddIds.length > 0 &&
+      !manual &&
       !collectionIds.manualCollection &&
       collectionIds.mediaServerId
     ) {
