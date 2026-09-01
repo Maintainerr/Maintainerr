@@ -33,6 +33,7 @@ import { readMetadataInBatches } from '../metadata-batch.util';
 import {
   IMediaServerService,
   type MediaWatchState,
+  type CollectionMutationOutcome,
 } from '../media-server.interface';
 import { PLEX_BATCH_SIZE, toPlexSort } from './plex.constants';
 import { PlexMapper } from './plex.mapper';
@@ -572,6 +573,35 @@ export class PlexAdapterService implements IMediaServerService {
     });
   }
 
+  /**
+   * Why a mutation did not succeed, or undefined when it did.
+   *
+   * plexApi reports a failure as `{status:'NOK', code}` rather than throwing,
+   * where `code` is the HTTP status Plex answered with and 0 when no response
+   * arrived at all (timeout, dropped connection, DNS). Only the latter is
+   * genuinely unknown: Plex commits a collection write it has begun processing
+   * and may simply answer too late, so treating it as a refusal is what strands
+   * a server child with no local row.
+   */
+  private classifyMutationFailure(
+    result: { status?: string; code?: number } | undefined,
+  ): 'refused' | 'unknown' | undefined {
+    if (!result) {
+      return 'unknown';
+    }
+
+    if (result.status === 'OK' || result.status === undefined) {
+      return undefined;
+    }
+
+    // A 4xx is Plex declining the change. A 5xx means it broke while handling
+    // the request, which says no more about whether the change was applied than
+    // no answer at all (code 0) does.
+    return result.code && result.code >= 400 && result.code < 500
+      ? 'refused'
+      : 'unknown';
+  }
+
   private ensureMutationSucceeded(
     result: { status?: string; code?: number; message?: string } | undefined,
     fallbackMessage: string,
@@ -625,9 +655,9 @@ export class PlexAdapterService implements IMediaServerService {
   async addBatchToCollection(
     collectionId: string,
     itemIds: string[],
-  ): Promise<string[]> {
-    const failedItemIds: string[] = [];
-    let usedFallback = false;
+  ): Promise<CollectionMutationOutcome> {
+    const refused: string[] = [];
+    const unknown: string[] = [];
 
     for (
       let index = 0;
@@ -639,38 +669,59 @@ export class PlexAdapterService implements IMediaServerService {
         index + PLEX_BATCH_SIZE.COLLECTION_MUTATION,
       );
 
-      try {
-        const result = await this.plexApi.addChildrenToCollection(
-          collectionId,
-          chunk,
-        );
-        this.ensureMutationSucceeded(
-          result as { status?: string; code?: number; message?: string },
-          `Failed to add ${chunk.length} items to collection ${collectionId}`,
-        );
-        continue;
-      } catch (error) {
-        usedFallback = true;
+      const failure = this.classifyMutationFailure(
+        (await this.plexApi.addChildrenToCollection(collectionId, chunk)) as {
+          status?: string;
+          code?: number;
+        },
+      );
 
-        // Fall back to per-item mutations to preserve precise failed item reporting.
+      if (!failure) {
+        continue;
       }
 
+      // Nothing answered for the batch, so nothing will answer for its items
+      // either: retrying them one at a time only spends another timeout each
+      // and still cannot say what happened. Report the chunk as unknown.
+      if (failure === 'unknown') {
+        unknown.push(...chunk);
+        continue;
+      }
+
+      // Plex answered, so a per-item pass is cheap and attributes the refusal
+      // to the ids it actually applies to - a batch add 400s only when *every*
+      // id in it is unresolvable.
       for (const itemId of chunk) {
+        // plexApi reports failures by return value, but a throw is still
+        // possible (the machine-id lookup it does first), and it says nothing
+        // about whether the write landed.
+        let itemFailure: 'refused' | 'unknown' | undefined;
         try {
-          await this.addToCollectionInternal(collectionId, itemId, false);
+          itemFailure = this.classifyMutationFailure(
+            (await this.plexApi.addChildToCollection(collectionId, itemId)) as {
+              status?: string;
+              code?: number;
+            },
+          );
         } catch {
-          failedItemIds.push(itemId);
+          itemFailure = 'unknown';
+        }
+
+        if (itemFailure === 'refused') {
+          refused.push(itemId);
+        } else if (itemFailure === 'unknown') {
+          unknown.push(itemId);
         }
       }
     }
 
-    if (usedFallback && failedItemIds.length > 0) {
+    if (refused.length > 0 || unknown.length > 0) {
       this.logger.warn(
-        `Plex batch add fallback left ${failedItemIds.length} failed item(s) for collection ${collectionId}`,
+        `Plex add to collection ${collectionId}: ${refused.length} refused, ${unknown.length} unconfirmed`,
       );
     }
 
-    return failedItemIds;
+    return { refused, unknown };
   }
 
   async cleanupCollectionForLibrary(
@@ -716,28 +767,50 @@ export class PlexAdapterService implements IMediaServerService {
   async removeBatchFromCollection(
     collectionId: string,
     itemIds: string[],
-  ): Promise<string[]> {
-    const failedItemIds: string[] = [];
+  ): Promise<CollectionMutationOutcome> {
+    const refused: string[] = [];
+    const unknown: string[] = [];
 
+    // Plex has no batch remove; this is one request per item by necessity.
     for (const itemId of itemIds) {
+      let result: { status?: string; code?: number } | undefined;
       try {
-        await this.removeFromCollection(collectionId, itemId);
-      } catch (error) {
-        // An item Plex no longer holds is the outcome the caller wanted. Match
-        // the status the message ends with, not "404" anywhere in it - the
-        // message carries the request URL, so a ratingKey like 1404 matched.
-        if (
-          error instanceof Error &&
-          error.message.endsWith('response code: 404')
-        ) {
-          continue;
-        }
+        // BasicResponseDto types `code` as 1 | 0, but the collection-mutation
+        // paths put the HTTP status there (as the add path already does).
+        result = (await this.plexApi.deleteChildFromCollection(
+          collectionId,
+          itemId,
+        )) as { status?: string; code?: number };
+      } catch {
+        unknown.push(itemId);
+        continue;
+      }
 
-        failedItemIds.push(itemId);
+      const failure = this.classifyMutationFailure(result);
+
+      if (!failure) {
+        continue;
+      }
+
+      // An item Plex no longer holds is the outcome the caller wanted.
+      if (result?.code === 404) {
+        continue;
+      }
+
+      if (failure === 'refused') {
+        refused.push(itemId);
+      } else {
+        unknown.push(itemId);
       }
     }
 
-    return failedItemIds;
+    if (refused.length > 0 || unknown.length > 0) {
+      this.logger.warn(
+        `Plex remove from collection ${collectionId}: ${refused.length} refused, ${unknown.length} unconfirmed`,
+      );
+    }
+
+    return { refused, unknown };
   }
 
   // PLEX-SPECIFIC: COLLECTION UPDATE & VISIBILITY

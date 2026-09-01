@@ -69,7 +69,12 @@ import { supportsFeature } from '../media-server.constants';
 import type {
   IMediaServerService,
   MediaWatchState,
+  CollectionMutationOutcome,
 } from '../media-server.interface';
+import {
+  classifyMutationError,
+  MutationOutcomeBuilder,
+} from '../mutation-outcome.util';
 import {
   JELLYFIN_BATCH_SIZE,
   JELLYFIN_CACHE_KEYS,
@@ -2344,12 +2349,14 @@ export class JellyfinAdapterService implements IMediaServerService {
   async addBatchToCollection(
     collectionId: string,
     itemIds: string[],
-  ): Promise<string[]> {
-    if (!this.api || itemIds.length === 0) return [];
+  ): Promise<CollectionMutationOutcome> {
+    if (itemIds.length === 0) return { refused: [], unknown: [] };
+    // No client means the write was never attempted and the server's state is
+    // unknown to us; reporting success would strand every id.
+    if (!this.api) return { refused: [], unknown: [...itemIds] };
 
     const chunkSize = JELLYFIN_BATCH_SIZE.COLLECTION_MUTATION;
-    const failedIds: string[] = [];
-    let usedFallback = false;
+    const outcome = new MutationOutcomeBuilder();
 
     for (let i = 0; i < itemIds.length; i += chunkSize) {
       const chunk = itemIds.slice(i, i + chunkSize);
@@ -2359,27 +2366,32 @@ export class JellyfinAdapterService implements IMediaServerService {
           ids: chunk,
         });
       } catch (error) {
-        usedFallback = true;
+        // Nothing answered for the batch, so nothing will answer per item
+        // either - retrying them one at a time only spends another timeout each.
+        if (classifyMutationError(error) === 'unknown') {
+          outcome.add(chunk, 'unknown');
+          continue;
+        }
 
         for (const itemId of chunk) {
           try {
             await this.addToCollectionInternal(collectionId, itemId, false);
-          } catch {
-            failedIds.push(itemId);
+          } catch (itemError) {
+            outcome.addError([itemId], itemError);
           }
         }
       }
     }
 
-    if (usedFallback && failedIds.length > 0) {
+    if (outcome.failedCount > 0) {
       this.logger.warn(
-        `Jellyfin batch add fallback left ${failedIds.length} failed item(s) for collection ${collectionId}`,
+        `Jellyfin add to collection ${collectionId}: ${outcome.outcome.refused.length} refused, ${outcome.outcome.unknown.length} unconfirmed`,
       );
     }
 
     this.invalidateCollectionChildrenCache(collectionId);
 
-    return failedIds;
+    return outcome.outcome;
   }
 
   async cleanupCollectionForLibrary(
@@ -2402,14 +2414,15 @@ export class JellyfinAdapterService implements IMediaServerService {
     }
 
     // Remove items belonging to the specified library
-    const failedIds = await this.removeBatchFromCollection(
+    const { refused, unknown } = await this.removeBatchFromCollection(
       collectionId,
       itemsToRemove,
     );
+    const failedCount = refused.length + unknown.length;
 
-    if (failedIds.length > 0) {
+    if (failedCount > 0) {
       this.logger.warn(
-        `Failed to remove ${failedIds.length} items from collection ${collectionId}`,
+        `Failed to remove ${failedCount} items from collection ${collectionId}`,
       );
     }
 
@@ -2454,11 +2467,12 @@ export class JellyfinAdapterService implements IMediaServerService {
   async removeBatchFromCollection(
     collectionId: string,
     itemIds: string[],
-  ): Promise<string[]> {
-    if (!this.api || itemIds.length === 0) return [];
+  ): Promise<CollectionMutationOutcome> {
+    if (itemIds.length === 0) return { refused: [], unknown: [] };
+    if (!this.api) return { refused: [], unknown: [...itemIds] };
 
     const chunkSize = JELLYFIN_BATCH_SIZE.COLLECTION_MUTATION;
-    const failedIds: string[] = [];
+    const outcome = new MutationOutcomeBuilder();
 
     for (let i = 0; i < itemIds.length; i += chunkSize) {
       const chunk = itemIds.slice(i, i + chunkSize);
@@ -2470,15 +2484,15 @@ export class JellyfinAdapterService implements IMediaServerService {
       } catch (error) {
         this.logger.error(
           `Failed to remove ${chunk.length} items from collection ${collectionId}`,
-          error,
         );
-        failedIds.push(...chunk);
+        this.logger.debug(error);
+        outcome.addError(chunk, error);
       }
     }
 
     this.invalidateCollectionChildrenCache(collectionId);
 
-    return failedIds;
+    return outcome.outcome;
   }
 
   // COLLECTION METADATA UPDATE

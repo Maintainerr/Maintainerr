@@ -95,8 +95,12 @@ describe('CollectionsService', () => {
       createCollection: jest
         .fn()
         .mockResolvedValue({ id: 'remote-collection' }),
-      addBatchToCollection: jest.fn().mockResolvedValue([]),
-      removeBatchFromCollection: jest.fn().mockResolvedValue([]),
+      addBatchToCollection: jest
+        .fn()
+        .mockResolvedValue({ refused: [], unknown: [] }),
+      removeBatchFromCollection: jest
+        .fn()
+        .mockResolvedValue({ refused: [], unknown: [] }),
       getCollection: jest.fn().mockResolvedValue(undefined),
       getCollections: jest.fn().mockResolvedValue([]),
       getCollectionChildren: jest.fn().mockResolvedValue([]),
@@ -391,7 +395,10 @@ describe('CollectionsService', () => {
         createCollection({ id: 2, mediaServerId: 'shared-remote-collection' }),
         createCollection({ id: 3, mediaServerId: 'shared-remote-collection' }),
       ] as Collection[]);
-      mediaServer.removeBatchFromCollection.mockResolvedValue(['item-1']);
+      mediaServer.removeBatchFromCollection.mockResolvedValue({
+        refused: ['item-1'],
+        unknown: [],
+      });
 
       const removeSpy = jest
         .spyOn(service as never, 'removeFromCollectionInternal')
@@ -1030,10 +1037,10 @@ describe('CollectionsService', () => {
       childCount: 0,
     } as any);
     mediaServer.getCollectionChildren.mockResolvedValue([]);
-    mediaServer.addBatchToCollection.mockResolvedValue([
-      'rule-owned-1',
-      'rule-owned-2',
-    ]);
+    mediaServer.addBatchToCollection.mockResolvedValue({
+      refused: ['rule-owned-1', 'rule-owned-2'],
+      unknown: [],
+    });
     collectionMediaRepo.find.mockResolvedValue([
       createCollectionMedia(collection, {
         mediaServerId: 'rule-owned-1',
@@ -1074,7 +1081,10 @@ describe('CollectionsService', () => {
       childCount: 0,
     } as any);
     mediaServer.getCollectionChildren.mockResolvedValue([]);
-    mediaServer.addBatchToCollection.mockResolvedValue(['rule-owned-2']);
+    mediaServer.addBatchToCollection.mockResolvedValue({
+      refused: ['rule-owned-2'],
+      unknown: [],
+    });
     collectionMediaRepo.find.mockResolvedValue([
       createCollectionMedia(collection, {
         mediaServerId: 'rule-owned-1',
@@ -1116,7 +1126,10 @@ describe('CollectionsService', () => {
       } as any)
       .mockResolvedValue(undefined);
     mediaServer.getCollectionChildren.mockResolvedValue([]);
-    mediaServer.addBatchToCollection.mockResolvedValue(['rule-owned-1']);
+    mediaServer.addBatchToCollection.mockResolvedValue({
+      refused: ['rule-owned-1'],
+      unknown: [],
+    });
     collectionMediaRepo.find.mockResolvedValue([
       createCollectionMedia(collection, {
         mediaServerId: 'rule-owned-1',
@@ -1167,8 +1180,11 @@ describe('CollectionsService', () => {
     ).rejects.toThrow('db down');
   });
 
-  const makeRuleRemovalQb = (markers: { mediaServerId: string }[]) => ({
+  const makeRuleRemovalQb = (
+    markers: { mediaServerId: string; direction?: string }[],
+  ) => ({
     select: jest.fn().mockReturnThis(),
+    addSelect: jest.fn().mockReturnThis(),
     where: jest.fn().mockReturnThis(),
     andWhere: jest.fn().mockReturnThis(),
     getRawMany: jest.fn().mockResolvedValue(markers),
@@ -1196,7 +1212,10 @@ describe('CollectionsService', () => {
     const qb = makeRuleRemovalQb([{ mediaServerId: 'orphan' }]);
     ruleRemovalRepo.createQueryBuilder.mockReturnValue(qb as any);
     collectionMediaRepo.find.mockResolvedValue([]); // no current members
-    mediaServer.removeBatchFromCollection.mockResolvedValue([]); // removed ok
+    mediaServer.removeBatchFromCollection.mockResolvedValue({
+      refused: [],
+      unknown: [],
+    }); // removed ok
 
     const result = await service.reconcileRuleRemovedOrphans(
       createCollection({
@@ -1303,6 +1322,58 @@ describe('CollectionsService', () => {
     expect(result).toEqual(new Set());
     expect(mediaServer.removeBatchFromCollection).not.toHaveBeenCalled();
     expect(qb.delete).toHaveBeenCalled(); // stale marker cleared
+  });
+
+  it('reconcileRuleRemovedOrphans holds an unconfirmed add on the server instead of removing it', async () => {
+    // A rule asked for this item and the write was never answered. Plex commits
+    // a write it has begun processing, so the child being present means the add
+    // landed: it is ours, must not be adopted as a hand-added member, and must
+    // not be taken back out from under a rule that still wants it.
+    const qb = makeRuleRemovalQb([
+      { mediaServerId: 'added-unconfirmed', direction: 'add' },
+    ]);
+    ruleRemovalRepo.createQueryBuilder.mockReturnValue(qb as any);
+    collectionMediaRepo.find.mockResolvedValue([]); // no membership row yet
+
+    const result = await service.reconcileRuleRemovedOrphans(
+      createCollection({
+        id: 5,
+        mediaServerId: 'coll',
+        manualCollection: false,
+      }),
+      [{ id: 'added-unconfirmed' }] as any,
+      new Set(),
+      true,
+    );
+
+    // Returned as an orphan purely to suppress adoption; never removed, and the
+    // marker is kept until a membership row is written or the child is gone.
+    expect(result).toEqual(new Set(['added-unconfirmed']));
+    expect(mediaServer.removeBatchFromCollection).not.toHaveBeenCalled();
+    expect(qb.delete).not.toHaveBeenCalled();
+  });
+
+  it('reconcileRuleRemovedOrphans clears an unconfirmed add whose item never arrived', async () => {
+    const qb = makeRuleRemovalQb([
+      { mediaServerId: 'never-landed', direction: 'add' },
+    ]);
+    ruleRemovalRepo.createQueryBuilder.mockReturnValue(qb as any);
+    collectionMediaRepo.find.mockResolvedValue([]);
+
+    const result = await service.reconcileRuleRemovedOrphans(
+      createCollection({
+        id: 5,
+        mediaServerId: 'coll',
+        manualCollection: false,
+      }),
+      [{ id: 'something-else' }] as any,
+      new Set(),
+      true,
+    );
+
+    expect(result).toEqual(new Set());
+    expect(mediaServer.removeBatchFromCollection).not.toHaveBeenCalled();
+    expect(qb.delete).toHaveBeenCalled();
   });
 
   it('reconcileRuleRemovedOrphans leaves a sibling-owned item in place and clears its marker', async () => {
@@ -1771,7 +1842,10 @@ describe('CollectionsService', () => {
 
     collectionRepo.findOne.mockResolvedValue(collection);
     collectionMediaRepo.find.mockResolvedValue([]);
-    mediaServer.addBatchToCollection.mockResolvedValue(['item-2']);
+    mediaServer.addBatchToCollection.mockResolvedValue({
+      refused: ['item-2'],
+      unknown: [],
+    });
     jest
       .spyOn(service as any, 'checkAutomaticMediaServerLink')
       .mockResolvedValue(collection);
@@ -1804,7 +1878,10 @@ describe('CollectionsService', () => {
     collectionRepo.findOne.mockResolvedValue(collection);
     collectionMediaRepo.find.mockResolvedValue([]);
     collectionRepo.save.mockImplementation(async (c) => c as Collection);
-    mediaServer.addBatchToCollection.mockResolvedValue(['item-1', 'item-2']);
+    mediaServer.addBatchToCollection.mockResolvedValue({
+      refused: ['item-1', 'item-2'],
+      unknown: [],
+    });
     mediaServer.getCollection.mockResolvedValue({
       id: 'remote-collection',
       title: 'Rejecting Collection',
@@ -1831,6 +1908,65 @@ describe('CollectionsService', () => {
     );
   });
 
+  it('records an unconfirmed add as a marker and writes no membership row', async () => {
+    const collection = createCollection({
+      id: 24,
+      mediaServerId: 'remote-collection',
+      manualCollection: false,
+      title: 'Slow Collection',
+    });
+
+    collectionRepo.findOne.mockResolvedValue(collection);
+    collectionMediaRepo.find.mockResolvedValue([]);
+    collectionRepo.save.mockImplementation(async (c) => c as Collection);
+    mediaServer.addBatchToCollection.mockResolvedValue({
+      refused: [],
+      unknown: ['item-1'],
+    });
+    jest
+      .spyOn(service as any, 'checkAutomaticMediaServerLink')
+      .mockResolvedValue(collection);
+    const markRuleRemoved = jest.spyOn(service, 'markRuleRemoved');
+
+    await service.addToCollection(collection.id, [{ mediaServerId: 'item-1' }]);
+
+    // No row: the server never confirmed it. But the attempt is recorded, so the
+    // manual child import cannot read the resulting server child as a hand-add.
+    expect(collectionMediaRepo.save).not.toHaveBeenCalled();
+    expect(markRuleRemoved).toHaveBeenCalledWith(24, ['item-1'], 'add');
+  });
+
+  it('does not heal an empty collection whose adds were merely unanswered', async () => {
+    // An unanswered write says nothing about whether the collection can hold the
+    // items, so it must not arm the delete-and-recreate heal.
+    const collection = createCollection({
+      id: 25,
+      mediaServerId: 'remote-collection',
+      manualCollection: false,
+      title: 'Unanswered Collection',
+    });
+
+    collectionRepo.findOne.mockResolvedValue(collection);
+    collectionMediaRepo.find.mockResolvedValue([]);
+    collectionRepo.save.mockImplementation(async (c) => c as Collection);
+    mediaServer.addBatchToCollection.mockResolvedValue({
+      refused: [],
+      unknown: ['item-1'],
+    });
+    mediaServer.getCollection.mockResolvedValue({
+      id: 'remote-collection',
+      title: 'Unanswered Collection',
+      childCount: 0,
+    } as any);
+    jest
+      .spyOn(service as any, 'checkAutomaticMediaServerLink')
+      .mockResolvedValue(collection);
+
+    await service.addToCollection(collection.id, [{ mediaServerId: 'item-1' }]);
+
+    expect(mediaServer.deleteCollection).not.toHaveBeenCalled();
+  });
+
   it('does not heal when the rejecting collection still has children', async () => {
     const collection = createCollection({
       id: 22,
@@ -1841,7 +1977,10 @@ describe('CollectionsService', () => {
 
     collectionRepo.findOne.mockResolvedValue(collection);
     collectionMediaRepo.find.mockResolvedValue([]);
-    mediaServer.addBatchToCollection.mockResolvedValue(['item-1']);
+    mediaServer.addBatchToCollection.mockResolvedValue({
+      refused: ['item-1'],
+      unknown: [],
+    });
     mediaServer.getCollection.mockResolvedValue({
       id: 'remote-collection',
       title: 'Rejecting Populated Collection',
@@ -1870,7 +2009,10 @@ describe('CollectionsService', () => {
     settingsDataService.media_server_type = MediaServerType.JELLYFIN;
     collectionRepo.findOne.mockResolvedValue(collection);
     collectionMediaRepo.find.mockResolvedValue([]);
-    mediaServer.addBatchToCollection.mockResolvedValue(['item-1']);
+    mediaServer.addBatchToCollection.mockResolvedValue({
+      refused: ['item-1'],
+      unknown: [],
+    });
     mediaServer.getCollection.mockResolvedValue({
       id: 'remote-collection',
       title: 'Rejecting Jellyfin Collection',
@@ -1895,7 +2037,10 @@ describe('CollectionsService', () => {
 
     collectionRepo.findOne.mockResolvedValue(collection);
     collectionMediaRepo.find.mockResolvedValue([]);
-    mediaServer.addBatchToCollection.mockResolvedValue(['item-1']);
+    mediaServer.addBatchToCollection.mockResolvedValue({
+      refused: ['item-1'],
+      unknown: [],
+    });
     mediaServer.getCollection.mockResolvedValue({
       id: 'remote-collection',
       title: 'Rejecting Manual Collection',
@@ -1925,7 +2070,10 @@ describe('CollectionsService', () => {
     collectionRepo.findOne.mockResolvedValue(collection);
     collectionMediaRepo.find.mockResolvedValue([]);
     collectionRepo.save.mockImplementation(async (c) => c as Collection);
-    mediaServer.addBatchToCollection.mockResolvedValue(['item-1']);
+    mediaServer.addBatchToCollection.mockResolvedValue({
+      refused: ['item-1'],
+      unknown: [],
+    });
     mediaServer.getCollection.mockResolvedValue({
       id: 'remote-collection',
       title: 'Repeat Rejecting Collection',
@@ -1969,18 +2117,27 @@ describe('CollectionsService', () => {
       .mockResolvedValue(undefined);
 
     // First pass: everything rejected → heal.
-    mediaServer.addBatchToCollection.mockResolvedValueOnce(['item-1']);
+    mediaServer.addBatchToCollection.mockResolvedValueOnce({
+      refused: ['item-1'],
+      unknown: [],
+    });
     await service.addToCollection(collection.id, [{ mediaServerId: 'item-1' }]);
     expect(mediaServer.deleteCollection).toHaveBeenCalledTimes(1);
 
     // Recreated collection accepts the add → guard resets.
     collection.mediaServerId = 'remote-collection-2';
-    mediaServer.addBatchToCollection.mockResolvedValueOnce([]);
+    mediaServer.addBatchToCollection.mockResolvedValueOnce({
+      refused: [],
+      unknown: [],
+    });
     await service.addToCollection(collection.id, [{ mediaServerId: 'item-1' }]);
     expect(mediaServer.deleteCollection).toHaveBeenCalledTimes(1);
 
     // A later total rejection may heal again.
-    mediaServer.addBatchToCollection.mockResolvedValueOnce(['item-2']);
+    mediaServer.addBatchToCollection.mockResolvedValueOnce({
+      refused: ['item-2'],
+      unknown: [],
+    });
     await service.addToCollection(collection.id, [{ mediaServerId: 'item-2' }]);
     expect(mediaServer.deleteCollection).toHaveBeenCalledTimes(2);
   });
@@ -2511,6 +2668,7 @@ describe('CollectionsService', () => {
       {
         mediaServerId: 'remote-collection',
         dbId: collection.id,
+        manualCollection: false,
       },
       media,
       false,
@@ -3097,6 +3255,7 @@ describe('CollectionsService', () => {
   it('limits collection previews to two rows per collection for the list payload', async () => {
     const previewQueryBuilder = {
       select: jest.fn().mockReturnThis(),
+      addSelect: jest.fn().mockReturnThis(),
       from: jest.fn().mockReturnThis(),
       where: jest.fn().mockReturnThis(),
       orderBy: jest.fn().mockReturnThis(),
@@ -3165,6 +3324,7 @@ describe('CollectionsService', () => {
   it('enriches collection previews with fallback artwork when stored poster data is missing', async () => {
     const previewQueryBuilder = {
       select: jest.fn().mockReturnThis(),
+      addSelect: jest.fn().mockReturnThis(),
       from: jest.fn().mockReturnThis(),
       where: jest.fn().mockReturnThis(),
       orderBy: jest.fn().mockReturnThis(),
@@ -3224,6 +3384,7 @@ describe('CollectionsService', () => {
   it('resolves fallback artwork from hierarchy metadata for child media items', async () => {
     const previewQueryBuilder = {
       select: jest.fn().mockReturnThis(),
+      addSelect: jest.fn().mockReturnThis(),
       from: jest.fn().mockReturnThis(),
       where: jest.fn().mockReturnThis(),
       orderBy: jest.fn().mockReturnThis(),
@@ -3445,7 +3606,11 @@ describe('CollectionsService', () => {
     // The full set is still added via the batched path (skipMediaServerAdd=false);
     // re-adding the seeded item there is an idempotent no-op.
     expect(addChildrenToCollection).toHaveBeenCalledWith(
-      { mediaServerId: 'remote-collection', dbId: collection.id },
+      {
+        mediaServerId: 'remote-collection',
+        dbId: collection.id,
+        manualCollection: false,
+      },
       [{ mediaServerId: 'episode-1' }, { mediaServerId: 'episode-2' }],
       false,
       false,
@@ -4354,7 +4519,10 @@ describe('CollectionsService', () => {
       jest
         .spyOn(service, 'checkAutomaticMediaServerLink')
         .mockImplementation(async (c) => c);
-      mediaServer.removeBatchFromCollection.mockResolvedValue([]);
+      mediaServer.removeBatchFromCollection.mockResolvedValue({
+        refused: [],
+        unknown: [],
+      });
 
       await service.removeFromCollection(collection.id, [
         { mediaServerId: 'item-1' },
@@ -4491,7 +4659,10 @@ describe('CollectionsService', () => {
           ? [createCollectionMedia(collection, { mediaServerId: 'item-1' })]
           : [],
       );
-      mediaServer.removeBatchFromCollection.mockResolvedValue([]);
+      mediaServer.removeBatchFromCollection.mockResolvedValue({
+        refused: [],
+        unknown: [],
+      });
 
       const released =
         await service.releaseMediaServerCollectionForReset(collection);
@@ -4602,7 +4773,10 @@ describe('CollectionsService', () => {
       ruleRemovalRepo.createQueryBuilder.mockReturnValue(
         makeRuleRemovalQb([]) as any,
       );
-      mediaServer.removeBatchFromCollection.mockResolvedValue(['item-1']);
+      mediaServer.removeBatchFromCollection.mockResolvedValue({
+        refused: ['item-1'],
+        unknown: [],
+      });
       collectionMediaRepo.delete.mockClear();
       ruleRemovalRepo.delete.mockClear();
       collectionRepo.save.mockClear();
@@ -4704,7 +4878,10 @@ describe('CollectionsService', () => {
           ? [createCollectionMedia(collection, { mediaServerId: 'item-1' })]
           : [],
       );
-      mediaServer.removeBatchFromCollection.mockResolvedValue([]);
+      mediaServer.removeBatchFromCollection.mockResolvedValue({
+        refused: [],
+        unknown: [],
+      });
 
       const result = await service.stopMediaServerSync(collection);
 
@@ -4733,7 +4910,10 @@ describe('CollectionsService', () => {
         createCollection({ id: 93, mediaServerId: 'shared-collection' }),
       ]);
       collectionMediaRepo.find.mockResolvedValue([]);
-      mediaServer.removeBatchFromCollection.mockResolvedValue(['ghost-kept']);
+      mediaServer.removeBatchFromCollection.mockResolvedValue({
+        refused: ['ghost-kept'],
+        unknown: [],
+      });
 
       const result = await service.stopMediaServerSync(collection);
 
@@ -4762,10 +4942,10 @@ describe('CollectionsService', () => {
           ? [createCollectionMedia(collection, { mediaServerId: 'item-1' })]
           : [],
       );
-      mediaServer.removeBatchFromCollection.mockResolvedValue([
-        'item-1',
-        'item-ghost',
-      ]);
+      mediaServer.removeBatchFromCollection.mockResolvedValue({
+        refused: ['item-1', 'item-ghost'],
+        unknown: [],
+      });
 
       const result = await service.stopMediaServerSync(collection);
 
