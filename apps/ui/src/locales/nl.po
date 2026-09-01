@@ -8,7 +8,7 @@ msgstr ""
 "Language: nl\n"
 "Project-Id-Version: \n"
 "Report-Msgid-Bugs-To: \n"
-"PO-Revision-Date: 2026-09-01 18:18+0000\n"
+"PO-Revision-Date: 2026-09-01 20:12+0000\n"
 "Last-Translator: COTMO <moermantom1@gmail.com>\n"
 "Language-Team: Dutch <https://hosted.weblate.org/projects/maintainerr/app/nl/>\n"
 "Plural-Forms: nplurals=2; plural=n != 1;\n"
@@ -23,7 +23,7 @@ msgstr "\"{label}\" is geen geldige {name}-tag. Alleen kleine letters, cijfers e
 
 #: src/pages/OverlayTemplateListPage.tsx
 msgid "\"{templateName}\" set as the default poster template"
-msgstr "`\"{templateName}\" ingesteld als de standaardpostersjabloon."
+msgstr "`\"{templateName}\" ingesteld als de standaardpostersjabloon"
 
 #: src/pages/OverlayTemplateListPage.tsx
 msgid "\"{templateName}\" set as the default title card template"
