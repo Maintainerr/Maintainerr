@@ -8,7 +8,7 @@ msgstr ""
 "Language: nl\n"
 "Project-Id-Version: \n"
 "Report-Msgid-Bugs-To: \n"
-"PO-Revision-Date: 2026-09-01 20:12+0000\n"
+"PO-Revision-Date: 2026-09-01 20:24+0000\n"
 "Last-Translator: COTMO <moermantom1@gmail.com>\n"
 "Language-Team: Dutch <https://hosted.weblate.org/projects/maintainerr/app/nl/>\n"
 "Plural-Forms: nplurals=2; plural=n != 1;\n"
@@ -19,11 +19,11 @@ msgstr "- gebruikt {propertyName}"
 
 #: src/components/Settings/Servarr/ExclusionTagSettings.tsx
 msgid "\"{label}\" is not a valid {name} tag. Lowercase letters, numbers and hyphens only ({chars}), with no leading, trailing, or repeated hyphens."
-msgstr "\"{label}\" is geen geldige {name}-tag. Alleen kleine letters, cijfers en koppeltekens zijn toegestaan ({chars}), zonder een koppelstreepje aan het begin, einde of meerdere koppeltekens achter elkaar."
+msgstr "\"{label}\" is geen geaccepteerde {name} tag. Alleen kleine letters, cijfers en middenstreepjes (-) ({chars}). Mag niet -beginnen of eindigen- met een middenstreepje. Mag niet meerder middenstreepjes op een rij bevatten."
 
 #: src/pages/OverlayTemplateListPage.tsx
 msgid "\"{templateName}\" set as the default poster template"
-msgstr "`\"{templateName}\" ingesteld als de standaardpostersjabloon"
+msgstr "\"{templateName}\" ingesteld als standaard postersjabloon"
 
 #: src/pages/OverlayTemplateListPage.tsx
 msgid "\"{templateName}\" set as the default title card template"
