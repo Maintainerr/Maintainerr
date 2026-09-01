@@ -5,7 +5,6 @@ import {
   MediaItem,
   MediaItemType,
   MediaServerFeature,
-  MediaServerType,
   RuleHandlerFinishedEventDto,
   RuleHandlerStartedEventDto,
 } from '@maintainerr/contracts';
@@ -487,12 +486,14 @@ export class RuleExecutorService {
           return;
         }
 
-        // An empty child list is a trustworthy "empty" snapshot for Plex, but
-        // Jellyfin/Emby can transiently return [] during sync delays, so their
-        // empty result is treated as ambiguous (see the removal sweep below).
-        const isJellyfin =
-          this.settings.media_server_type === MediaServerType.JELLYFIN;
-        const isEmby = this.settings.media_server_type === MediaServerType.EMBY;
+        // Whether an empty child list means "this collection is empty" or only
+        // "the server answered with nothing this time". Asked as a capability
+        // rather than by server type: the shared layer must not branch on which
+        // server is configured, and a fourth one would otherwise silently
+        // inherit Plex's answer.
+        const emptyChildListIsTrustworthy = (
+          await this.getMediaServer()
+        ).supportsFeature(MediaServerFeature.TRUSTWORTHY_EMPTY_COLLECTION);
 
         // Handle manually added
         if (syncContext.skipManualChildImport) {
@@ -681,7 +682,7 @@ export class RuleExecutorService {
               collection,
               children ?? [],
               new Set(),
-              !(isJellyfin || isEmby),
+              emptyChildListIsTrustworthy,
             );
           } catch (error) {
             this.logger.warn(
@@ -691,15 +692,13 @@ export class RuleExecutorService {
           }
         }
 
-        // Handle manually removed items from collections
-        // Jellyfin/Emby workaround: Skip removal check when children array is empty.
-        // Unlike Plex, the .NET BoxSet collection API can return empty children
-        // during brief sync delays after collection modifications, causing false
-        // positives where valid items would be incorrectly flagged as "manually
-        // removed". This workaround can be removed if the upstream improves
-        // collection sync consistency.
+        // Handle manually removed items from collections.
+        // An empty child list only means "no members left" on a server whose
+        // empty answer is trustworthy. Where it is not, acting on it would flag
+        // every member as removed by hand during a brief post-modification sync
+        // delay, so the sweep waits for a non-empty read.
         const shouldCheckRemovals =
-          isJellyfin || isEmby ? children && children.length > 0 : true;
+          emptyChildListIsTrustworthy || (children && children.length > 0);
 
         if (
           collectionMedia &&

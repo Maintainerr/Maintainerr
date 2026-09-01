@@ -66,4 +66,13 @@ export enum MediaServerFeature {
    * bound to one library. Gates the cross-library lookup for manual collections.
    */
   CROSS_LIBRARY_COLLECTIONS = 'cross_library_collections',
+  /**
+   * An empty collection-children read is a trustworthy "this collection is
+   * empty" answer rather than a possible sync-delay artefact. Plex answers
+   * definitively; the .NET BoxSet API can return no children for a brief window
+   * after a collection is modified, so treating that as empty would flag every
+   * member as removed by hand. Gates the membership reconciliation that runs
+   * off an empty child list.
+   */
+  TRUSTWORTHY_EMPTY_COLLECTION = 'trustworthy_empty_collection',
 }
