@@ -105,30 +105,24 @@ const failureMessage = (
   }
 }
 
+/** Takes the modal's outcome as-is, so no caller restates its counts. */
 export const reportBulkOutcome = ({
   action,
   collectionId,
-  succeeded,
-  failed,
+  succeededIds,
+  failedIds,
   failureReasons = [],
-}: {
-  action: BulkAction
-  /** undefined means every collection. */
-  collectionId?: number
-  succeeded: number
-  failed: number
-  failureReasons?: string[]
-}): void => {
+}: MediaActionOutcome): void => {
   const everyCollection = collectionId === undefined
-  const success = successMessage(action, everyCollection, succeeded)
+  const success = successMessage(action, everyCollection, succeededIds.length)
 
-  if (failed > 0) {
+  if (failedIds.length > 0) {
     const why = failureReasons.length
       ? ` (${failureReasons.map(withoutFailedPrefix).join('; ')})`
       : ''
 
     toast.error(
-      `${success} ${failureMessage(action, everyCollection, failed, why)}`,
+      `${success} ${failureMessage(action, everyCollection, failedIds.length, why)}`,
     )
     return
   }
