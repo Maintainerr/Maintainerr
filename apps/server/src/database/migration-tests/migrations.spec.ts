@@ -124,6 +124,14 @@ describe('database migrations', () => {
         notnull: 1,
       });
 
+      // AddCollectionMediaPendingDirection: defaults to 'remove' so every marker
+      // written before the add direction existed keeps its original meaning.
+      expect(ruleRemoval.direction).toMatchObject({
+        type: 'varchar',
+        notnull: 1,
+        dflt_value: "'remove'",
+      });
+
       // AddSportarrSettings: the Sportarr connection columns.
       expect(collection.sportarrSettingsId).toMatchObject(intNullable);
       expect(collection.sportarrQualityProfileId).toMatchObject(intNullable);
@@ -177,36 +185,44 @@ describe('database migrations', () => {
     // emits a full create-temporary-table / copy / drop / rename rebuild for the
     // changed tables. A hand-written ALTER shortcut lacks it - this is the
     // cheapest signal the migration was generated rather than authored. The
-    // newest migration adds a settings column, so it rebuilds that table.
-    expect(src).toContain('CREATE TABLE "temporary_settings"');
+    // newest migration adds a rule-removal marker column, so it rebuilds that
+    // table.
+    expect(src).toContain(
+      'CREATE TABLE "temporary_collection_media_rule_removal"',
+    );
   });
 
   // The rebuild in (3) drops and recreates the table, so its INSERT...SELECT is
   // the only thing carrying an existing install's settings across. Every other
   // test here migrates an empty DB, where a rebuild that copies nothing looks
   // identical to one that copies correctly.
-  it('carry an existing settings row through the newest rebuild', async () => {
+  it('carry existing rule-removal markers through the newest rebuild', async () => {
     const newest = all[all.length - 1];
     const ds = await makeDS(all.slice(0, -1).map((m) => m.cls)).initialize();
     try {
       await ds.runMigrations();
+      // The marker's collection FK is enforced, so the parent has to exist.
       await ds.query(
-        `INSERT INTO settings ("apikey", "media_server_type", "jellyfin_api_key") VALUES ('key', 'jellyfin', 'jf')`,
+        `INSERT INTO collection ("id", "libraryId", "title") VALUES (1, '1', 'Sample Collection')`,
+      );
+      await ds.query(
+        `INSERT INTO collection_media_rule_removal ("collectionId", "mediaServerId") VALUES (1, 'abc')`,
       );
 
       const runner = ds.createQueryRunner();
       await new newest.cls().up(runner);
       await runner.release();
 
-      const rows = await ds.query(`SELECT * FROM settings`);
+      const rows = await ds.query(
+        `SELECT * FROM collection_media_rule_removal`,
+      );
       expect(rows).toHaveLength(1);
       expect(rows[0]).toMatchObject({
-        apikey: 'key',
-        media_server_type: 'jellyfin',
-        jellyfin_api_key: 'jf',
-        // Grandfathered: the carry-over leaves the new column unset, which is
-        // what the consent prompt keys on.
-        telemetryEnabled: null,
+        collectionId: 1,
+        mediaServerId: 'abc',
+        // Grandfathered: a marker written before the add direction existed is a
+        // rule removal, and must keep meaning that.
+        direction: 'remove',
       });
     } finally {
       await ds.destroy();
@@ -222,8 +238,8 @@ describe('database migrations', () => {
     try {
       await ds.runMigrations();
       const has = async () =>
-        (await columns(ds, 'settings')).some(
-          (c) => c.name === 'telemetryEnabled',
+        (await columns(ds, 'collection_media_rule_removal')).some(
+          (c) => c.name === 'direction',
         );
       expect(await has()).toBe(true);
 

@@ -267,6 +267,21 @@ describe('CollectionsController', () => {
       ).rejects.toThrow('refused 1 of 1');
     });
 
+    it('reports an add the media server never answered for', async () => {
+      // Not a refusal: the write may or may not have landed. Answering 201 is
+      // the false success #3383 removed.
+      collectionsService.MediaCollectionActionWithContext.mockResolvedValue({
+        collection: createCollection(),
+        serverRejectedIds: [],
+        serverUnconfirmedIds: ['10'],
+        resolvedCount: 1,
+      });
+
+      await expect(
+        controller.ManualActionOnCollection(addRequest),
+      ).rejects.toThrow('did not answer for 1 of 1');
+    });
+
     it('reports a context that resolves to nothing', async () => {
       collectionsService.MediaCollectionActionWithContext.mockResolvedValue({
         collection: createCollection(),

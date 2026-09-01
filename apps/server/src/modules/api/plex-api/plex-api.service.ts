@@ -1652,17 +1652,22 @@ export class PlexApiService {
         message: `successfully deleted child with id ${childId}`,
       } as BasicResponseDto;
     } catch (error) {
-      this.logger.error(
-        'Plex api communication failure.. Is the application running?',
-      );
+      // Same classification the add path uses: `code` carries the status Plex
+      // answered with, or 0 when nothing answered. Callers need that difference
+      // to tell a refusal from a write that may well have applied.
+      const failure = this.buildCollectionMutationFailure(error);
+
+      if (failure.logLevel === 'warn') {
+        this.logger.warn(failure.message);
+      } else {
+        this.logger.error(failure.message);
+      }
       this.logger.debug(error);
+
       return {
         status: 'NOK',
-        code: 0,
-        message: getErrorMessage(
-          error,
-          'Plex api communication failure.. Is the application running?',
-        ),
+        code: failure.code,
+        message: failure.message,
       } as BasicResponseDto;
     }
   }

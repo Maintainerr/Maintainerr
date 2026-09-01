@@ -23,6 +23,24 @@ export interface MediaWatchState {
 }
 
 /**
+ * Per-item result of a batched collection mutation.
+ *
+ * `refused` and `unknown` are not interchangeable. The server answered for a
+ * refused id, so its state is established: the mutation did not happen. Nothing
+ * answered for an unknown id - a timeout, a dropped connection, a DNS failure -
+ * so the mutation may well have been applied. Plex commits a collection write it
+ * has begun processing and then answers late; recording that as "refused" is
+ * what leaves a server child no local row accounts for, which the manual-child
+ * import then adopts as a hand-added member.
+ *
+ * Ids absent from both lists succeeded.
+ */
+export interface CollectionMutationOutcome {
+  refused: string[];
+  unknown: string[];
+}
+
+/**
  * Core interface for media server implementations.
  * Both Plex and Jellyfin adapters must implement this interface.
  *
@@ -343,12 +361,12 @@ export interface IMediaServerService {
 
   /**
    * Add multiple items to a collection in a single operation.
-   * Returns the itemIds that failed to be added.
+   * Reports refused and unknown ids separately; see CollectionMutationOutcome.
    */
   addBatchToCollection(
     collectionId: string,
     itemIds: string[],
-  ): Promise<string[]>;
+  ): Promise<CollectionMutationOutcome>;
 
   /**
    * Remove an item from a collection.
@@ -358,12 +376,12 @@ export interface IMediaServerService {
 
   /**
    * Remove multiple items from a collection in a single operation.
-   * Returns the itemIds that failed to be removed.
+   * Reports refused and unknown ids separately; see CollectionMutationOutcome.
    */
   removeBatchFromCollection(
     collectionId: string,
     itemIds: string[],
-  ): Promise<string[]>;
+  ): Promise<CollectionMutationOutcome>;
 
   /**
    * Update a collection's metadata (title, summary, etc.)

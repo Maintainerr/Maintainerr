@@ -442,6 +442,14 @@ export class CollectionsController {
       );
     }
 
+    // Not a refusal: the media server never answered, so it may or may not have
+    // applied the change. Answering 201 here is the false success #3383 removed.
+    if (result.serverUnconfirmedIds?.length) {
+      throw new BadGatewayException(
+        `The media server did not answer for ${result.serverUnconfirmedIds.length} of ${result.resolvedCount} item(s), so it is unclear whether they were added`,
+      );
+    }
+
     return result.collection;
   }
 
