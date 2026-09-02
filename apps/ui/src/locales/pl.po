@@ -2688,6 +2688,10 @@ msgstr ""
 msgid "Not all required (*) fields contain values and at least 1 valid rule is required"
 msgstr ""
 
+#: src/api/bulkMediaAction.ts
+msgid "not attempted"
+msgstr ""
+
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "Not Contains (All items)"
 msgstr ""
@@ -3528,6 +3532,10 @@ msgstr ""
 
 #: src/components/Settings/Servarr/ServarrSettingsModal.tsx
 msgid "Server Name"
+msgstr ""
+
+#: src/api/bulkMediaAction.ts
+msgid "server responded {status}"
 msgstr ""
 
 #: src/components/Settings/About/index.tsx
