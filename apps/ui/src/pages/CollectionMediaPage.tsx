@@ -151,13 +151,8 @@ const CollectionMediaPage = () => {
     )
   }
 
-  const handleBulkOutcome = ({
-    action,
-    collectionId,
-    succeededIds,
-    failedIds,
-    failureReasons,
-  }: MediaActionOutcome) => {
+  const handleBulkOutcome = (outcome: MediaActionOutcome) => {
+    const { action, collectionId, succeededIds, failedIds } = outcome
     applyBulkOutcome(new Set(failedIds))
 
     for (const mediaServerId of succeededIds) {
@@ -177,13 +172,7 @@ const CollectionMediaPage = () => {
       }
     }
 
-    reportBulkOutcome({
-      action,
-      collectionId,
-      succeeded: succeededIds.length,
-      failed: failedIds.length,
-      failureReasons,
-    })
+    reportBulkOutcome(outcome)
   }
 
   const showRefreshing = isLoading && data.length > 0
