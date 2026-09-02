@@ -29,7 +29,12 @@ import { supportsFeature } from '../media-server.constants';
 import type {
   IMediaServerService,
   MediaWatchState,
+  CollectionMutationOutcome,
 } from '../media-server.interface';
+import {
+  classifyMutationError,
+  recordMutationFailure,
+} from '../mutation-outcome.util';
 import {
   EMBY_BATCH_SIZE,
   EMBY_CACHE_KEYS,
@@ -1371,15 +1376,29 @@ export class EmbyAdapterService implements IMediaServerService {
   }
 
   async addToCollection(collectionId: string, itemId: string): Promise<void> {
-    await this.addBatchToCollection(collectionId, [itemId]);
+    // The batch call reports failure by return value; the interface contract for
+    // the singular form is to throw, and callers rely on that (Plex and Jellyfin
+    // both throw here). Dropping the result reported every failed add as a
+    // success.
+    const { refused, unknown } = await this.addBatchToCollection(collectionId, [
+      itemId,
+    ]);
+
+    if (refused.length > 0 || unknown.length > 0) {
+      throw new Error(
+        `Failed to add item ${itemId} to collection ${collectionId}`,
+      );
+    }
   }
 
   async addBatchToCollection(
     collectionId: string,
     itemIds: string[],
-  ): Promise<string[]> {
-    if (!this.http || itemIds.length === 0) return itemIds;
-    const failed: string[] = [];
+  ): Promise<CollectionMutationOutcome> {
+    if (itemIds.length === 0) return { refused: [], unknown: [] };
+    if (!this.http) return { refused: [], unknown: [...itemIds] };
+
+    const outcome: CollectionMutationOutcome = { refused: [], unknown: [] };
     for (const chunk of this.chunked(
       itemIds,
       EMBY_BATCH_SIZE.COLLECTION_MUTATION,
@@ -1392,25 +1411,36 @@ export class EmbyAdapterService implements IMediaServerService {
         this.logger.warn(
           `Emby addBatchToCollection chunk failed: ${formatConnectionFailureMessage(error, 'Connection failed')}`,
         );
-        failed.push(...chunk);
+        recordMutationFailure(outcome, chunk, classifyMutationError(error));
       }
     }
-    return failed;
+    return outcome;
   }
 
   async removeFromCollection(
     collectionId: string,
     itemId: string,
   ): Promise<void> {
-    await this.removeBatchFromCollection(collectionId, [itemId]);
+    const { refused, unknown } = await this.removeBatchFromCollection(
+      collectionId,
+      [itemId],
+    );
+
+    if (refused.length > 0 || unknown.length > 0) {
+      throw new Error(
+        `Failed to remove item ${itemId} from collection ${collectionId}`,
+      );
+    }
   }
 
   async removeBatchFromCollection(
     collectionId: string,
     itemIds: string[],
-  ): Promise<string[]> {
-    if (!this.http || itemIds.length === 0) return itemIds;
-    const failed: string[] = [];
+  ): Promise<CollectionMutationOutcome> {
+    if (itemIds.length === 0) return { refused: [], unknown: [] };
+    if (!this.http) return { refused: [], unknown: [...itemIds] };
+
+    const outcome: CollectionMutationOutcome = { refused: [], unknown: [] };
     for (const chunk of this.chunked(
       itemIds,
       EMBY_BATCH_SIZE.COLLECTION_MUTATION,
@@ -1423,10 +1453,10 @@ export class EmbyAdapterService implements IMediaServerService {
         this.logger.warn(
           `Emby removeBatchFromCollection chunk failed: ${formatConnectionFailureMessage(error, 'Connection failed')}`,
         );
-        failed.push(...chunk);
+        recordMutationFailure(outcome, chunk, classifyMutationError(error));
       }
     }
-    return failed;
+    return outcome;
   }
 
   async updateCollection(

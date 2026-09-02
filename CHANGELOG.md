@@ -13,7 +13,6 @@
 - Fix metadata provider ID parsing for non-numeric values (#3620).
 - Fix settings repository reads to properly await database operations (#3614).
 - Fix HTTP rate limiting and retry policy to respect declared wait times (#3613).
-- Fix season view date rule logic to prevent incorrect protection of subsequent seasons (#3531).
 - Fix Sportarr metadata availability, refresh behavior, and UI display (#3606).
 - Fix telemetry prompt to respect existing environment configuration (#3608).
 

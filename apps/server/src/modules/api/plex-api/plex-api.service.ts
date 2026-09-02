@@ -1478,6 +1478,21 @@ export class PlexApiService {
     }
   }
 
+  /**
+   * Drop the cached child pages for one collection.
+   *
+   * getCollectionChildren reads through the 5-minute `plexguid` cache, so
+   * without this a mutation is followed by a stale child list - and a membership
+   * decision made from one has already produced phantom manual members once
+   * (#1446). Jellyfin invalidates the same way after every collection mutation;
+   * Emby does not cache the read at all.
+   */
+  private invalidateCollectionChildrenCache(collectionId: string): void {
+    this.plexClient?.invalidateCachedUri(
+      `/library/collections/${collectionId}/children`,
+    );
+  }
+
   public async addChildToCollection(
     collectionId: string,
     childId: string,
@@ -1487,8 +1502,12 @@ export class PlexApiService {
       const response: PlexLibraryResponse = await this.plexClient.putQuery({
         uri: `/library/collections/${collectionId}/items?uri=${this.buildCollectionItemsUri([childId])}`,
       });
+      this.invalidateCollectionChildrenCache(collectionId);
       return response.MediaContainer.Metadata[0] as PlexCollection;
     } catch (error) {
+      // A write that failed may still have been applied, so the cached child
+      // list is no more trustworthy here than on the success path.
+      this.invalidateCollectionChildrenCache(collectionId);
       const failure = this.buildCollectionMutationFailure(error);
 
       if (failure.logLevel === 'warn') {
@@ -1522,6 +1541,7 @@ export class PlexApiService {
       const response: PlexLibraryResponse = await this.plexClient.putQuery({
         uri: `/library/collections/${collectionId}/items?uri=${this.buildCollectionItemsUri(childIds)}`,
       });
+      this.invalidateCollectionChildrenCache(collectionId);
 
       return (
         (response.MediaContainer.Metadata?.[0] as PlexCollection | undefined) ??
@@ -1532,6 +1552,9 @@ export class PlexApiService {
         } as BasicResponseDto)
       );
     } catch (error) {
+      // A write that failed may still have been applied, so the cached child
+      // list is no more trustworthy here than on the success path.
+      this.invalidateCollectionChildrenCache(collectionId);
       const failure = this.buildCollectionMutationFailure(error);
 
       if (failure.logLevel === 'error') {
@@ -1646,23 +1669,33 @@ export class PlexApiService {
       await this.plexClient.deleteQuery({
         uri: `/library/collections/${collectionId}/items/${childId}`,
       });
+      this.invalidateCollectionChildrenCache(collectionId);
       return {
         status: 'OK',
         code: 1,
         message: `successfully deleted child with id ${childId}`,
       } as BasicResponseDto;
     } catch (error) {
-      this.logger.error(
-        'Plex api communication failure.. Is the application running?',
-      );
+      // A write that failed may still have been applied, so the cached child
+      // list is no more trustworthy here than on the success path.
+      this.invalidateCollectionChildrenCache(collectionId);
+
+      // Same classification the add path uses: `code` carries the status Plex
+      // answered with, or 0 when nothing answered. Callers need that difference
+      // to tell a refusal from a write that may well have applied.
+      const failure = this.buildCollectionMutationFailure(error);
+
+      if (failure.logLevel === 'warn') {
+        this.logger.warn(failure.message);
+      } else {
+        this.logger.error(failure.message);
+      }
       this.logger.debug(error);
+
       return {
         status: 'NOK',
-        code: 0,
-        message: getErrorMessage(
-          error,
-          'Plex api communication failure.. Is the application running?',
-        ),
+        code: failure.code,
+        message: failure.message,
       } as BasicResponseDto;
     }
   }

@@ -44,6 +44,20 @@ import {
 } from './entities/collection_media.entities';
 import { ServarrAction } from './interfaces/collection.interface';
 
+/**
+ * The window the worker should act on, in days: `null` for "never", 0 for
+ * "now".
+ *
+ * The rule form hides the timer for CHANGE_QUALITY_PROFILE and saves no window,
+ * so a profile change is always due now. Any window still stored on such a
+ * collection is vestigial - left behind by the action it was converted from -
+ * and must neither strand the collection nor delay it.
+ */
+const effectiveDeletionWindow = (collection: Collection): number | null =>
+  collection.arrAction === ServarrAction.CHANGE_QUALITY_PROFILE
+    ? 0
+    : (collection.deleteAfterDays ?? null);
+
 @Injectable()
 export class CollectionWorkerService extends TaskBase {
   protected name = 'Collection Handler';
@@ -190,6 +204,7 @@ export class CollectionWorkerService extends TaskBase {
       let removedMissingMedia = 0;
       let collectionHandlingFailed = false;
       let doNothingCollectionCount = 0;
+      let noWindowCollectionCount = 0;
       let noDueMediaCollectionCount = 0;
 
       // loop over all active collections
@@ -202,6 +217,19 @@ export class CollectionWorkerService extends TaskBase {
           doNothingCollectionCount++;
           this.logger.log(
             `Skipping collection '${collection.title}' as its action is 'Do Nothing'`,
+          );
+          return false;
+        }
+
+        // No window means no deadline, which is what every other consumer of
+        // deleteAfterDays already reads it as: the contracts helper answers no
+        // delete date, the collection card shows "Never", and the overlay
+        // processor draws no countdown. Only the due query read it as 0, which
+        // made the danger date now and every member due at once.
+        if (effectiveDeletionWindow(collection) == null) {
+          noWindowCollectionCount++;
+          this.logger.log(
+            `Skipping collection '${collection.title}' as it has no 'take action after days' set`,
           );
           return false;
         }
@@ -219,7 +247,9 @@ export class CollectionWorkerService extends TaskBase {
       const exclusionsFor = await this.readExclusionsPerCollection();
 
       for (const collection of collectionsToHandle) {
-        const dangerDate = getCollectionDangerDate(collection.deleteAfterDays);
+        const dangerDate = getCollectionDangerDate(
+          effectiveDeletionWindow(collection),
+        );
 
         const dueMedia = (
           await this.collectionMediaRepo.find({
@@ -271,7 +301,7 @@ export class CollectionWorkerService extends TaskBase {
       }
 
       this.logger.log(
-        `Collection handler summary: ${collections.length} total (isActive), ${doNothingCollectionCount} skipped (Do Nothing), ${noDueMediaCollectionCount} skipped (no due media), ${collectionHandleMediaGroup.length} queued for handling`,
+        `Collection handler summary: ${collections.length} total (isActive), ${doNothingCollectionCount} skipped (Do Nothing), ${noWindowCollectionCount} skipped (no window set), ${noDueMediaCollectionCount} skipped (no due media), ${collectionHandleMediaGroup.length} queued for handling`,
       );
 
       const totalMediaToHandle = collectionHandleMediaGroup.reduce(

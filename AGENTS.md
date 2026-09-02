@@ -250,14 +250,21 @@ yarn workspace @maintainerr/contracts build
 
 #### Collection links and manual membership
 
-The same bug has been fixed six times (#2440, #2663, #2766, #3298, #3327, #3344):
-an item is wrongly set as **manual**. A manual member of an automatic collection
-is force-kept, so the rule can never remove it, yet it still ages into that
-collection's `deleteAfterDays` and is deleted from disk. Treat it as one bug
-class, not six incidents.
+The same bug has been fixed **a dozen times** (e23361e1, #2440, #2663, #2766,
+#3129, #3248, #3298, #3327, #3344, #3383, #3583, b5e4206a): an item is wrongly
+set as **manual**. A manual member of an automatic collection is force-kept, so
+the rule can never remove it, yet it still ages into that collection's
+`deleteAfterDays` and is deleted from disk. Treat it as one bug class, not a
+dozen incidents.
+
+The class regenerates because the adoption decision *defaults to adopting* and
+subtracts known-innocent cases, and every subtraction is computed from
+`collection_media` rows. Any bug whose symptom is a **missing** row is therefore
+invisible to guards of that shape. Adding a sixth guard of the same kind is not a
+fix.
 
 Anything that clears, reassigns or skips `collection.mediaServerId` has to leave
-all four guards standing:
+all five guards standing:
 
 1. Rule-removed stays removed (`collection_media_rule_removal` markers).
 2. Items a sibling rule group holds are never adopted. Siblings are matched on
@@ -266,9 +273,17 @@ all four guards standing:
    group still pointing at it.
 3. The run that first links a collection must not import its existing children.
 4. An unreadable child list is never read as "empty".
+5. A mutation whose outcome is unknown is never recorded as refused. A media
+   server that never answered may still have applied the write, so an add that
+   went unanswered records a `direction: 'add'` marker instead of nothing. The
+   read side has been hardened against this four times (#3211, #3248, #3344,
+   #3413); the write side only once.
 
 Reproduce with two same-titled rule groups matching DIFFERENT items. Identical
 rules hide the bug, because both groups own everything and nothing looks foreign.
+For the unanswered-write half, put a proxy in front of the media server that
+forwards the mutation and then holds the response past the client timeout: the
+server commits, the client gives up, and the two disagree.
 
 #### Frontend Patterns
 

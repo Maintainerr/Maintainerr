@@ -279,6 +279,40 @@ describe('RuleExecutorService', () => {
     );
   });
 
+  // The decision follows the capability, not the configured server. Branching on
+  // the type in the shared layer is what the architecture guardrails forbid, and
+  // it would silently hand a fourth media server Plex's answer.
+  it('trusts an empty child list only when the server declares the capability', async () => {
+    const { service, mediaServer, collectionService } = createService(
+      MediaServerType.PLEX,
+    );
+    mediaServer.getCollectionChildren.mockResolvedValue([]);
+    collectionService.getCollectionMedia.mockResolvedValue([]);
+    mediaServer.supportsFeature.mockImplementation(
+      (feature: MediaServerFeature) =>
+        feature !== MediaServerFeature.TRUSTWORTHY_EMPTY_COLLECTION,
+    );
+
+    await (
+      service as unknown as {
+        syncManualMediaServerToCollectionDB: (
+          ruleGroup: { id: number; collectionId: number },
+          collectionSyncChanges: {
+            addedMediaServerIds: Set<string>;
+            removedMediaServerIds: Set<string>;
+          },
+        ) => Promise<void>;
+      }
+    ).syncManualMediaServerToCollectionDB(
+      { id: 10, collectionId: 1 },
+      { addedMediaServerIds: new Set(), removedMediaServerIds: new Set() },
+    );
+
+    expect(collectionService.reconcileRuleRemovedOrphans.mock.calls[0][3]).toBe(
+      false,
+    );
+  });
+
   it('does not emit a failed rule notification when a rule group finishes successfully', async () => {
     const { service, rulesService, eventEmitter } = createService(
       MediaServerType.JELLYFIN,
@@ -1294,11 +1328,9 @@ describe('RuleExecutorService', () => {
     expect(
       collectionService.addToCollectionWithResolvedLink,
     ).not.toHaveBeenCalled();
-    expect(collectionService.addToCollection).toHaveBeenCalledWith(
-      1,
-      [{ mediaServerId: 'm1' }],
-      false,
-    );
+    // No member list and no membership flag: addToCollection re-reads the
+    // collection's members itself, and the resync must not re-mark them.
+    expect(collectionService.addToCollection).toHaveBeenCalledWith(1, []);
     expect(
       collectionService.removeFromCollectionWithResolvedLink,
     ).toHaveBeenCalledWith(
@@ -1316,6 +1348,54 @@ describe('RuleExecutorService', () => {
         },
       ],
       'rule',
+    );
+  });
+
+  // `manualCollection` says the rule group points at a collection the user made,
+  // not that any one membership was added by hand. Passing it as the membership
+  // flag stamped every rule-owned row as manual, which rules can never remove
+  // while the worker still ages it into deleteAfterDays.
+  it("does not mark a manual collection's members as manual when resyncing a stale link", async () => {
+    const { service, collectionService } = createService(
+      MediaServerType.JELLYFIN,
+    );
+
+    const staleCollection = {
+      id: 1,
+      title: 'Test Collection',
+      mediaServerId: 'stale-coll',
+      manualCollection: true,
+      manualCollectionName: 'User Made Collection',
+      deleteAfterDays: 0,
+    };
+
+    collectionService.getCollection.mockResolvedValue(staleCollection as any);
+    collectionService.getCollectionMedia.mockResolvedValue([
+      { mediaServerId: 'm1', includedByRule: true },
+    ] as any);
+    collectionService.checkAutomaticMediaServerLink.mockResolvedValueOnce({
+      ...staleCollection,
+      mediaServerId: null,
+    } as any);
+    collectionService.addToCollection.mockResolvedValueOnce({
+      ...staleCollection,
+      mediaServerId: 'new-coll',
+    } as any);
+    collectionService.saveCollection.mockImplementation(
+      async (collection) => collection as any,
+    );
+
+    (service as any).startTime = new Date();
+    (service as any).resultData = [];
+    (service as any).statisticsData = [];
+
+    await (service as any).handleCollection({ id: 10, collectionId: 1 });
+
+    expect(collectionService.addToCollection).toHaveBeenCalledWith(1, []);
+    expect(collectionService.addToCollection).not.toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      true,
     );
   });
 

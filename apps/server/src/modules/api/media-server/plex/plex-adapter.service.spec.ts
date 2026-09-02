@@ -1097,7 +1097,7 @@ describe('PlexAdapterService', () => {
 
       await expect(
         service.addBatchToCollection('col123', ['good', 'good-2']),
-      ).resolves.toEqual([]);
+      ).resolves.toEqual({ refused: [], unknown: [] });
 
       expect(plexApi.addChildrenToCollection).toHaveBeenCalledWith('col123', [
         'good',
@@ -1109,13 +1109,13 @@ describe('PlexAdapterService', () => {
     it('should fall back to per-item adds when a Plex batch add fails', async () => {
       plexApi.addChildrenToCollection.mockResolvedValue({
         status: 'NOK',
-        code: 0,
+        code: 400,
         message: 'batch failed',
       } as any);
       plexApi.addChildToCollection.mockImplementation(
         async (collectionId, itemId) => {
           if (itemId === 'bad') {
-            throw new Error('boom');
+            return { status: 'NOK', code: 400, message: 'nope' } as any;
           }
 
           return { status: 'OK' } as any;
@@ -1124,7 +1124,7 @@ describe('PlexAdapterService', () => {
 
       await expect(
         service.addBatchToCollection('col123', ['good', 'bad', 'good-2']),
-      ).resolves.toEqual(['bad']);
+      ).resolves.toEqual({ refused: ['bad'], unknown: [] });
 
       expect(plexApi.addChildrenToCollection).toHaveBeenCalledWith('col123', [
         'good',
@@ -1133,7 +1133,7 @@ describe('PlexAdapterService', () => {
       ]);
       expect(plexApi.addChildToCollection).toHaveBeenCalledTimes(3);
       expect(logger.warn).toHaveBeenCalledWith(
-        'Plex batch add fallback left 1 failed item(s) for collection col123',
+        'Plex add to collection col123: 1 refused, 0 unconfirmed',
       );
       expect(logger.error).not.toHaveBeenCalled();
       expect(logger.debug).not.toHaveBeenCalled();
@@ -1149,32 +1149,73 @@ describe('PlexAdapterService', () => {
 
       await expect(
         service.addBatchToCollection('col123', ['good', 'good-2']),
-      ).resolves.toEqual([]);
+      ).resolves.toEqual({ refused: [], unknown: [] });
 
       expect(logger.warn).not.toHaveBeenCalled();
       expect(logger.error).not.toHaveBeenCalled();
       expect(logger.debug).not.toHaveBeenCalled();
     });
 
+    it('reports an unanswered batch add as unconfirmed, without retrying per item', async () => {
+      // code 0 is plexApi's "nothing came back". Plex commits a collection write
+      // it has begun processing and can answer late, so this is not a refusal -
+      // and re-issuing the ids one at a time only spends another timeout each.
+      plexApi.addChildrenToCollection.mockResolvedValue({
+        status: 'NOK',
+        code: 0,
+        message: 'timeout of 30000ms exceeded',
+      } as any);
+
+      await expect(
+        service.addBatchToCollection('col123', ['good', 'good-2']),
+      ).resolves.toEqual({ refused: [], unknown: ['good', 'good-2'] });
+
+      expect(plexApi.addChildToCollection).not.toHaveBeenCalled();
+    });
+
+    it('treats a 5xx batch add as unconfirmed rather than refused', async () => {
+      // The server broke while handling the write, which says nothing about
+      // whether it applied.
+      plexApi.addChildrenToCollection.mockResolvedValue({
+        status: 'NOK',
+        code: 500,
+        message: 'server error',
+      } as any);
+
+      await expect(
+        service.addBatchToCollection('col123', ['good']),
+      ).resolves.toEqual({ refused: [], unknown: ['good'] });
+
+      expect(plexApi.addChildToCollection).not.toHaveBeenCalled();
+    });
+
+    it('reports an unanswered removal as unconfirmed', async () => {
+      plexApi.deleteChildFromCollection.mockResolvedValue({
+        status: 'NOK',
+        code: 0,
+        message: 'timeout of 30000ms exceeded',
+      } as any);
+
+      await expect(
+        service.removeBatchFromCollection('col123', ['good']),
+      ).resolves.toEqual({ refused: [], unknown: ['good'] });
+    });
+
     it('should treat 404 removes as successful in batch remove', async () => {
       plexApi.deleteChildFromCollection.mockImplementation(
         async (collectionId, itemId) => {
           if (itemId === 'missing') {
-            throw new Error(
-              'DELETE /library/collections/col123/items/missing failed with exception: response code: 404',
-            );
+            return { status: 'NOK', code: 404, message: 'not found' } as any;
           }
 
           if (itemId === 'bad') {
-            throw new Error('boom');
+            return { status: 'NOK', code: 0, message: 'no answer' } as any;
           }
 
-          // A ratingKey can contain 404 without the request having 404'd, and
-          // the failure message carries the request URL.
+          // Read from the status Plex answered with, so a ratingKey that merely
+          // contains 404 can never be mistaken for a 404 response.
           if (itemId === '1404') {
-            throw new Error(
-              'DELETE /library/collections/col123/items/1404 failed with exception: response code: 500',
-            );
+            return { status: 'NOK', code: 500, message: 'server error' } as any;
           }
 
           return { status: 'OK' } as any;
@@ -1188,7 +1229,7 @@ describe('PlexAdapterService', () => {
           'bad',
           '1404',
         ]),
-      ).resolves.toEqual(['bad', '1404']);
+      ).resolves.toEqual({ refused: [], unknown: ['bad', '1404'] });
     });
 
     it('should default optional visibility flags to false', async () => {
