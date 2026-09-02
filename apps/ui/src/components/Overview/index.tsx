@@ -409,16 +409,10 @@ const Overview = () => {
     )
   }
 
-  const handleBulkOutcome = ({
-    action,
-    collectionId,
-    collectionTitle,
-    succeededIds: succeeded,
-    failedIds: failed,
-    failureReasons,
-  }: MediaActionOutcome) => {
-    const succeededIds = new Set(succeeded)
-    applyBulkOutcome(new Set(failed))
+  const handleBulkOutcome = (outcome: MediaActionOutcome) => {
+    const { action, collectionId, collectionTitle } = outcome
+    const succeededIds = new Set(outcome.succeededIds)
+    applyBulkOutcome(new Set(outcome.failedIds))
 
     if (succeededIds.size > 0) {
       // The server cascades an excluded show to its seasons and episodes, so
@@ -493,13 +487,7 @@ const Overview = () => {
       setStatusChangedIds((current) => new Set([...current, ...invalidated]))
     }
 
-    reportBulkOutcome({
-      action,
-      collectionId,
-      succeeded: succeededIds.size,
-      failed: failed.length,
-      failureReasons,
-    })
+    reportBulkOutcome(outcome)
   }
 
   useEffect(() => {
