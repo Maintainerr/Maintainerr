@@ -2817,7 +2817,7 @@ __metadata:
     mime-types: "npm:^3.0.2"
     nestjs-zod: "npm:^5.5.0"
     node-cache: "npm:^5.1.2"
-    nodemailer: "npm:9.0.6"
+    nodemailer: "npm:9.1.0"
     octokit: "npm:^3.2.2"
     openpgp: "npm:^6.3.1"
     prettier: "npm:^3.9.6"
@@ -13736,14 +13736,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"nodemailer@npm:9.0.6":
-  version: 9.0.6
-  resolution: "nodemailer@npm:9.0.6"
-  checksum: 10c0/f26371b863b8125aeb2d94ac4f8c65c19add44188fd877d82f37e625c50bb4453b4fdb5e0211fe707a4bf1986441c9870bb64a55f1ae6f58e56e0a0cd2361b29
-  languageName: node
-  linkType: hard
-
-"nodemailer@npm:^9, nodemailer@npm:^9.0.1":
+"nodemailer@npm:9.1.0, nodemailer@npm:^9, nodemailer@npm:^9.0.1":
   version: 9.1.0
   resolution: "nodemailer@npm:9.1.0"
   checksum: 10c0/4e5e84e7477fdca96c0f618c4647307c6fa382b31b3cd430a61eb4d62b792ec2f5461f62c53b0ebb5ae34393074f4d1a8d8fd0a95389f18e209a9dd12980d312
