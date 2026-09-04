@@ -937,7 +937,7 @@ export class PlexGetterService {
       }
     }
 
-    if (!hasEpisodes && watchedAfter !== undefined) {
+    if (!hasEpisodes) {
       return [];
     }
 

@@ -484,6 +484,8 @@ describe('PlexGetterService', () => {
     });
 
     it.each([
+      { propertyId: 12, targetType: 'show' },
+      { propertyId: 12, targetType: 'season' },
       {
         propertyId: ALL_EPISODES_SEEN_SINCE_ADDED_PROP_ID,
         targetType: 'show',
