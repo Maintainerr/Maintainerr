@@ -74,7 +74,7 @@
     "@testing-library/react": "^16.3.3",
     "@types/lodash-es": "^4.17.12",
     "@types/node": "^26",
-    "@typescript-eslint/eslint-plugin": "^8.68.0",
+    "@typescript-eslint/eslint-plugin": "^8.69.0",
     "@typescript-eslint/parser": "^8.68.0",
     "@vitejs/plugin-react": "^6.1.1",
     "eslint": "^10.9.1",
