@@ -68,7 +68,7 @@
     "zod": "^4.5.4"
   },
   "devDependencies": {
-    "@eslint/eslintrc": "^3.3.6",
+    "@eslint/eslintrc": "^3.3.7",
     "@eslint/js": "^10.0.1",
     "@faker-js/faker": "^10.6.0",
     "@nestjs/cli": "^12.0.0",
