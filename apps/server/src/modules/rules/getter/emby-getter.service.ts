@@ -17,6 +17,7 @@ import { RuleGroupDto } from '../dtos/ruleGroup.dto';
 import { ArrLookupCache } from '../helpers/arr-lookup-cache';
 import {
   filterRuleCollectionNames,
+  mapMatchingRuleUsersToNames,
   mapRuleUserIdsToNames,
 } from '../helpers/rule-property.helper';
 import { MetadataRuleValueService } from './metadata-rule-value.service';
@@ -251,6 +252,14 @@ export class EmbyGetterService {
           return await this.getAllEpisodesSeenBy(metadata.id, metadata.type);
         }
 
+        case 'sw_allEpisodesSeenBySinceAdded': {
+          return await this.getAllEpisodesSeenBySinceAdded(
+            metadata.id,
+            metadata.type,
+            this.getAddedAtCutoff(metadata.addedAt),
+          );
+        }
+
         case 'sw_lastWatched': {
           return await this.getNewestWatchedEpisodeDate(
             metadata.id,
@@ -386,6 +395,14 @@ export class EmbyGetterService {
         // you need "watched every episode" semantics instead.
         case 'sw_watchers': {
           return await this.getSwWatchers(metadata.id, metadata.type);
+        }
+
+        case 'sw_watchersSinceAdded': {
+          return await this.getSwWatchersSinceAdded(
+            metadata.id,
+            metadata.type,
+            this.getAddedAtCutoff(metadata.addedAt),
+          );
         }
 
         case 'collection_names': {
@@ -663,6 +680,124 @@ export class EmbyGetterService {
       users,
       (user) => user.id,
       (user) => user.name,
+    );
+  }
+
+  private getAddedAtCutoff(addedAt: Date): Date {
+    if (!Number.isFinite(addedAt?.getTime())) {
+      throw new Error('Emby metadata has an invalid addedAt timestamp');
+    }
+    return addedAt;
+  }
+
+  private async getEpisodeWatchersSinceAdded(
+    itemId: string,
+    type: MediaItemType,
+    watchedAfter: Date,
+  ): Promise<Set<string>[]> {
+    if (!isMediaType(type, 'show') && !isMediaType(type, 'season')) {
+      return [];
+    }
+
+    const episodeIds: string[] = [];
+    if (type === 'season') {
+      const episodes = await this.embyAdapter.getChildrenMetadata(
+        itemId,
+        'episode',
+        true,
+      );
+      episodeIds.push(...episodes.map((episode) => episode.id));
+    } else {
+      const seasons = await this.embyAdapter.getChildrenMetadata(
+        itemId,
+        'season',
+        true,
+      );
+      for (const season of seasons) {
+        const episodes = await this.embyAdapter.getChildrenMetadata(
+          season.id,
+          'episode',
+          true,
+        );
+        episodeIds.push(...episodes.map((episode) => episode.id));
+      }
+    }
+
+    const episodeWatchers: Set<string>[] = [];
+    // Emby has no central history endpoint, so each episode read fans out
+    // across every user. Keep these reads serial to avoid nested request bursts.
+    for (const episodeId of episodeIds) {
+      const history = await this.embyAdapter.getWatchHistory(episodeId);
+      episodeWatchers.push(
+        new Set(
+          history
+            .filter((record) => {
+              if (
+                !record.watchedAt ||
+                !Number.isFinite(record.watchedAt.getTime())
+              ) {
+                throw new Error(
+                  'Emby watch history has an invalid watchedAt timestamp',
+                );
+              }
+              return record.watchedAt > watchedAfter;
+            })
+            .map((record) => record.userId),
+        ),
+      );
+    }
+    return episodeWatchers;
+  }
+
+  private async mapKnownRuleUserIds(
+    userIds: Iterable<string>,
+  ): Promise<string[]> {
+    const ruleUserIds = [...userIds];
+    if (ruleUserIds.length === 0) return [];
+
+    const users = await this.embyAdapter.getUsers(true);
+    return mapMatchingRuleUsersToNames(
+      ruleUserIds,
+      users,
+      (user) => user.id,
+      (user) => user.name,
+    );
+  }
+
+  private async getAllEpisodesSeenBySinceAdded(
+    itemId: string,
+    type: MediaItemType,
+    watchedAfter: Date,
+  ): Promise<string[]> {
+    const episodeWatchers = await this.getEpisodeWatchersSinceAdded(
+      itemId,
+      type,
+      watchedAfter,
+    );
+    if (episodeWatchers.length === 0) return [];
+
+    const viewers = new Set(episodeWatchers[0]);
+    for (const episodeViewers of episodeWatchers.slice(1)) {
+      for (const userId of viewers) {
+        if (!episodeViewers.has(userId)) viewers.delete(userId);
+      }
+    }
+
+    return this.mapKnownRuleUserIds(viewers);
+  }
+
+  private async getSwWatchersSinceAdded(
+    itemId: string,
+    type: MediaItemType,
+    watchedAfter: Date,
+  ): Promise<string[]> {
+    const episodeWatchers = await this.getEpisodeWatchersSinceAdded(
+      itemId,
+      type,
+      watchedAfter,
+    );
+    return this.mapKnownRuleUserIds(
+      episodeWatchers.flatMap((viewers) => [...viewers]),
     );
   }
 

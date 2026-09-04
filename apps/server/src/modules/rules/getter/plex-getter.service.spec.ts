@@ -24,6 +24,8 @@ import { PlexGetterService } from './plex-getter.service';
 const SEEN_BY_PROP_ID = 1;
 const VIEWCOUNT_PROP_ID = 5;
 const ISWATCHED_PROP_ID = 43;
+const ALL_EPISODES_SEEN_SINCE_ADDED_PROP_ID = 49;
+const WATCHERS_SINCE_ADDED_PROP_ID = 50;
 const PLEX_ITEM_ID = 'plex-item-123';
 
 const makeMedia = (overrides: Partial<Media> = {}): Media => ({
@@ -481,6 +483,156 @@ describe('PlexGetterService', () => {
       expect(result).toEqual(['bob', 'alice']);
     });
 
+    it.each([
+      {
+        propertyId: ALL_EPISODES_SEEN_SINCE_ADDED_PROP_ID,
+        targetType: 'show',
+      },
+      {
+        propertyId: ALL_EPISODES_SEEN_SINCE_ADDED_PROP_ID,
+        targetType: 'season',
+      },
+    ] as const)(
+      'returns no users for property $propertyId when an empty $targetType has no current episodes',
+      async ({ propertyId, targetType }) => {
+        plexApi.getMetadata.mockResolvedValue(
+          makeMetadata({ ratingKey: `${targetType}-1`, type: targetType }),
+        );
+        plexApi.getCorrectedUsers.mockResolvedValue([
+          makePlexUser({ plexId: 1, username: 'alice' }),
+          makePlexUser({ plexId: 2, username: 'bob' }),
+        ]);
+        plexApi.getChildrenMetadata.mockResolvedValue([]);
+
+        const result = await service.get(
+          propertyId,
+          createMediaItem({ type: targetType }),
+          targetType,
+          createRuleGroupDto({ dataType: 'show' }),
+        );
+
+        expect(result).toEqual([]);
+      },
+    );
+
+    it('requires a post-add view of every available episode, including specials (id 49)', async () => {
+      plexApi.getMetadata.mockResolvedValue(
+        makeMetadata({
+          ratingKey: 'show-1',
+          type: 'show',
+          addedAt: 1_700_000_000,
+        }),
+      );
+      plexApi.getCorrectedUsers.mockResolvedValue([
+        makePlexUser({ plexId: 2, username: 'bob' }),
+        makePlexUser({ plexId: 1, username: 'alice' }),
+        makePlexUser({ plexId: 3, username: 'charlie' }),
+      ]);
+      plexApi.getChildrenMetadata.mockImplementation(async (ratingKey) => {
+        if (ratingKey === 'show-1') {
+          return [
+            makeMetadata({
+              ratingKey: 'season-0',
+              type: 'season',
+              index: 0,
+            }),
+            makeMetadata({
+              ratingKey: 'season-1',
+              type: 'season',
+              index: 1,
+            }),
+          ];
+        }
+        if (ratingKey === 'season-0') {
+          return [
+            makeMetadata({
+              ratingKey: 'special-1',
+              type: 'episode',
+              index: 1,
+            }),
+          ];
+        }
+        return [
+          makeMetadata({
+            ratingKey: 'episode-1',
+            type: 'episode',
+            index: 1,
+          }),
+          makeMetadata({
+            ratingKey: 'episode-2',
+            type: 'episode',
+            index: 2,
+          }),
+        ];
+      });
+      plexApi.getWatchHistory.mockImplementation(async (ratingKey) => {
+        if (ratingKey === 'special-1') {
+          return [
+            makeWatchEntry({ accountID: 1, viewedAt: 1_700_000_001 }),
+            makeWatchEntry({ accountID: 2, viewedAt: 1_700_000_000 }),
+          ];
+        }
+        return [
+          makeWatchEntry({ accountID: 1, viewedAt: 1_700_000_001 }),
+          makeWatchEntry({ accountID: 2, viewedAt: 1_700_000_001 }),
+        ];
+      });
+
+      const result = await service.get(
+        ALL_EPISODES_SEEN_SINCE_ADDED_PROP_ID,
+        createMediaItem({ type: 'show' }),
+        'show',
+        createRuleGroupDto({ dataType: 'show' }),
+      );
+
+      expect(result).toEqual(['alice']);
+      expect(plexApi.getChildrenMetadata).toHaveBeenCalledWith('season-0');
+    });
+
+    it('uses the target season addedAt for every-episode qualification (id 49)', async () => {
+      plexApi.getMetadata.mockResolvedValue(
+        makeMetadata({
+          ratingKey: 'season-1',
+          type: 'season',
+          addedAt: 1_700_000_000,
+        }),
+      );
+      plexApi.getCorrectedUsers.mockResolvedValue([
+        makePlexUser({ plexId: 2, username: 'bob' }),
+        makePlexUser({ plexId: 1, username: 'alice' }),
+      ]);
+      plexApi.getChildrenMetadata.mockResolvedValue([
+        makeMetadata({
+          ratingKey: 'episode-1',
+          type: 'episode',
+          index: 1,
+        }),
+        makeMetadata({
+          ratingKey: 'episode-2',
+          type: 'episode',
+          index: 2,
+        }),
+      ]);
+      plexApi.getWatchHistory.mockImplementation(async (ratingKey) => [
+        makeWatchEntry({ accountID: 2, viewedAt: 1_700_000_001 }),
+        makeWatchEntry({
+          accountID: 1,
+          viewedAt: ratingKey === 'episode-1' ? 1_699_999_999 : 1_700_000_001,
+        }),
+      ]);
+
+      const result = await service.get(
+        ALL_EPISODES_SEEN_SINCE_ADDED_PROP_ID,
+        createMediaItem({ type: 'season' }),
+        'season',
+        createRuleGroupDto({ dataType: 'show' }),
+      );
+
+      expect(result).toEqual(['bob']);
+      expect(plexApi.getChildrenMetadata).toHaveBeenCalledTimes(1);
+      expect(plexApi.getChildrenMetadata).toHaveBeenCalledWith('season-1');
+    });
+
     it('returns newest show watch date according to the latest season and episode indexes (id 13)', async () => {
       plexApi.getMetadata.mockResolvedValue(
         makeMetadata({ ratingKey: 'show-1', type: 'show' }),
@@ -666,6 +818,114 @@ describe('PlexGetterService', () => {
         ruleGroup.libraryId,
       );
     });
+
+    it.each(['show', 'season'] as const)(
+      'returns only users with an episode view after the %s was added (id 50)',
+      async (type) => {
+        plexApi.getMetadata.mockResolvedValue(
+          makeMetadata({
+            ratingKey: `${type}-1`,
+            type,
+            addedAt: 1_700_000_000,
+          }),
+        );
+        plexApi.getCorrectedUsers.mockResolvedValue([
+          makePlexUser({ plexId: 2, username: 'bob' }),
+          makePlexUser({ plexId: 1, username: 'alice' }),
+          makePlexUser({ plexId: 3, username: 'charlie' }),
+        ]);
+        plexApi.getWatchHistory.mockResolvedValue([
+          makeWatchEntry({ accountID: 1, viewedAt: 1_700_000_001 }),
+          makeWatchEntry({ accountID: 2, viewedAt: 1_700_000_000 }),
+          makeWatchEntry({ accountID: 3, viewedAt: 1_699_999_999 }),
+          makeWatchEntry({ accountID: 999, viewedAt: 1_700_000_002 }),
+        ]);
+
+        const ruleGroup = createRuleGroupDto({ dataType: 'show' });
+        const result = await service.get(
+          WATCHERS_SINCE_ADDED_PROP_ID,
+          createMediaItem({ type }),
+          type,
+          ruleGroup,
+        );
+
+        expect(result).toEqual(['alice']);
+        expect(plexApi.getWatchHistory).toHaveBeenCalledWith(
+          `${type}-1`,
+          true,
+          type,
+          ruleGroup.libraryId,
+        );
+      },
+    );
+
+    it.each([
+      ALL_EPISODES_SEEN_SINCE_ADDED_PROP_ID,
+      WATCHERS_SINCE_ADDED_PROP_ID,
+    ])(
+      'returns undefined for post-add watcher property %i when addedAt is absent',
+      async (propertyId) => {
+        plexApi.getMetadata.mockResolvedValue(
+          makeMetadata({
+            ratingKey: 'season-1',
+            type: 'season',
+            addedAt: undefined as unknown as number,
+          }),
+        );
+        plexApi.getCorrectedUsers.mockResolvedValue([
+          makePlexUser({ plexId: 1, username: 'alice' }),
+        ]);
+        plexApi.getChildrenMetadata.mockResolvedValue([
+          makeMetadata({ ratingKey: 'episode-1', type: 'episode' }),
+        ]);
+        plexApi.getWatchHistory.mockResolvedValue([
+          makeWatchEntry({ accountID: 1, viewedAt: 1_700_000_001 }),
+        ]);
+
+        const result = await service.get(
+          propertyId,
+          createMediaItem({ type: 'season' }),
+          'season',
+          createRuleGroupDto({ dataType: 'show' }),
+        );
+
+        expect(result).toBeUndefined();
+      },
+    );
+
+    it.each([
+      ALL_EPISODES_SEEN_SINCE_ADDED_PROP_ID,
+      WATCHERS_SINCE_ADDED_PROP_ID,
+    ])(
+      'returns undefined for post-add watcher property %i when viewedAt is invalid',
+      async (propertyId) => {
+        plexApi.getMetadata.mockResolvedValue(
+          makeMetadata({
+            ratingKey: 'season-1',
+            type: 'season',
+            addedAt: 1_700_000_000,
+          }),
+        );
+        plexApi.getCorrectedUsers.mockResolvedValue([
+          makePlexUser({ plexId: 1, username: 'alice' }),
+        ]);
+        plexApi.getChildrenMetadata.mockResolvedValue([
+          makeMetadata({ ratingKey: 'episode-1', type: 'episode' }),
+        ]);
+        plexApi.getWatchHistory.mockResolvedValue([
+          makeWatchEntry({ accountID: 1, viewedAt: Number.NaN }),
+        ]);
+
+        const result = await service.get(
+          propertyId,
+          createMediaItem({ type: 'season' }),
+          'season',
+          createRuleGroupDto({ dataType: 'show' }),
+        );
+
+        expect(result).toBeUndefined();
+      },
+    );
 
     it('dedupes playlists by ratingKey for show-level count and names, then trims names (ids 20 and 21)', async () => {
       plexApi.getMetadata.mockResolvedValue(

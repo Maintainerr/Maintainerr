@@ -96,6 +96,38 @@ describe('EmbyAdapterService', () => {
     setHttp();
   });
 
+  describe('getUsers', () => {
+    it('rethrows a failed lookup only when requested', async () => {
+      const error = new Error('boom');
+      http.get.mockRejectedValue(error);
+
+      await expect(service.getUsers()).resolves.toEqual([]);
+      await expect(service.getUsers(true)).rejects.toBe(error);
+    });
+
+    it('rejects a strict lookup when the API is not initialized', async () => {
+      (service as unknown as { http?: typeof http }).http = undefined;
+
+      await expect(service.getUsers(true)).rejects.toThrow(
+        'Emby API not initialized',
+      );
+    });
+
+    it.each([
+      ['missing Items', {}],
+      ['non-array Items', { Items: {} }],
+    ])(
+      'rejects malformed successful user responses with %s',
+      async (_description, data) => {
+        http.get.mockResolvedValue({ data });
+
+        await expect(service.getUsers(true)).rejects.toThrow();
+        await expect(service.getWatchHistory('item-1')).rejects.toThrow();
+        expect(embyCacheMocks.data.set).not.toHaveBeenCalled();
+      },
+    );
+  });
+
   describe('deleteFromDisk', () => {
     it.each(['', '   '])(
       'refuses a blank item id (%j) rather than calling /Items/',
@@ -381,7 +413,9 @@ describe('EmbyAdapterService', () => {
 
   describe('getChildrenMetadata caching (#3355)', () => {
     it('keys seasons and episodes of one parent separately', async () => {
-      http.get.mockResolvedValue({ data: { Items: [{ Id: 'child-1' }] } });
+      http.get.mockResolvedValue({
+        data: { Items: [{ Id: 'child-1' }], TotalRecordCount: 1 },
+      });
 
       await service.getChildrenMetadata('show-1', 'season');
       await service.getChildrenMetadata('show-1', 'episode');
@@ -413,6 +447,80 @@ describe('EmbyAdapterService', () => {
       await expect(
         service.getChildrenMetadata('season-1', 'episode'),
       ).resolves.toEqual([]);
+      expect(embyCacheMocks.data.set).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      ['missing Items', {}],
+      ['a season without an id', { Items: [{ Type: 'Season' }] }],
+    ])(
+      'rejects strict season enumeration with %s',
+      async (_description, data) => {
+        http.get.mockResolvedValue({ data });
+
+        await expect(
+          service.getChildrenMetadata('show-1', 'season', true),
+        ).rejects.toThrow('Could not read the children of Emby item show-1');
+        expect(embyCacheMocks.data.set).not.toHaveBeenCalled();
+      },
+    );
+
+    it('pages past the batch limit instead of truncating children', async () => {
+      const page = (start: number, count: number) => ({
+        data: {
+          Items: Array.from({ length: count }, (_, index) => ({
+            Id: `episode-${start + index}`,
+            Type: 'Episode',
+          })),
+          TotalRecordCount: 501,
+        },
+      });
+      http.get
+        .mockResolvedValueOnce(page(0, 500))
+        .mockResolvedValueOnce(page(500, 1));
+
+      const children = await service.getChildrenMetadata('season-1', 'episode');
+
+      expect(children).toHaveLength(501);
+      expect(children[500].id).toBe('episode-500');
+      expect(http.get).toHaveBeenNthCalledWith(
+        2,
+        '/Items',
+        expect.objectContaining({
+          params: expect.objectContaining({ StartIndex: 500 }),
+        }),
+      );
+    });
+
+    it.each([
+      {
+        reason: 'the next page is empty',
+        secondPage: { Items: [], TotalRecordCount: 2 },
+      },
+      {
+        reason: 'the next page omits Items',
+        secondPage: { TotalRecordCount: 2 },
+      },
+      {
+        reason: 'the next page repeats an earlier item',
+        secondPage: {
+          Items: [{ Id: 'episode-1', Type: 'Episode' }],
+          TotalRecordCount: 2,
+        },
+      },
+    ])('rejects strict pagination when $reason', async ({ secondPage }) => {
+      http.get
+        .mockResolvedValueOnce({
+          data: {
+            Items: [{ Id: 'episode-1', Type: 'Episode' }],
+            TotalRecordCount: 2,
+          },
+        })
+        .mockResolvedValueOnce({ data: secondPage });
+
+      await expect(
+        service.getChildrenMetadata('season-1', 'episode', true),
+      ).rejects.toThrow('Could not read the children of Emby item season-1');
       expect(embyCacheMocks.data.set).not.toHaveBeenCalled();
     });
   });

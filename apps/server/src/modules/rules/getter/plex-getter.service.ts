@@ -4,7 +4,10 @@ import {
   RuleValueType,
 } from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
-import { SimplePlexUser } from '../../..//modules/api/plex-api/interfaces/library.interfaces';
+import {
+  PlexSeenBy,
+  SimplePlexUser,
+} from '../../..//modules/api/plex-api/interfaces/library.interfaces';
 import { PlexApiService } from '../../../modules/api/plex-api/plex-api.service';
 import { PlexAdapterService } from '../../api/media-server/plex/plex-adapter.service';
 import { PlexMapper } from '../../api/media-server/plex/plex.mapper';
@@ -324,61 +327,22 @@ export class PlexGetterService {
           );
           return item.Genre ? item.Genre.map((el) => el.tag) : null;
         }
-        case 'sw_allEpisodesSeenBy': {
-          const plexUsers = await this.plexApi.getCorrectedUsers(false);
-
-          const seasons =
-            metadata.type !== 'season'
-              ? await this.plexApi.getChildrenMetadata(metadata.ratingKey)
-              : [metadata];
-          const allViewers = plexUsers.slice();
-          for (const season of seasons) {
-            const episodes = await this.plexApi.getChildrenMetadata(
-              season.ratingKey,
-            );
-            for (const episode of episodes) {
-              // Errors propagate to the outer catch - silently treating a
-              // failed lookup as "no viewers" would drop genuine viewers from
-              // `allViewers` and mark the show as unwatched-by-everyone.
-              const viewers = await this.plexApi.getWatchHistory(
-                episode.ratingKey,
-                true,
-                'episode',
-                libraryId,
-              );
-
-              const arrLength = allViewers.length - 1;
-              allViewers
-                .slice()
-                .reverse()
-                .forEach((el, idx) => {
-                  if (
-                    !viewers.find((viewEl) => el.plexId === viewEl.accountID)
-                  ) {
-                    allViewers.splice(arrLength - idx, 1);
-                  }
-                });
-            }
-          }
-
-          if (allViewers && allViewers.length > 0) {
-            const viewerIds = allViewers.map((el) => +el.plexId);
-            return mapMatchingRuleUsersToNames(
-              viewerIds,
-              plexUsers,
-              (user) => user.plexId,
-              (user) => user.username,
-            );
-          }
-
-          return [];
-        }
+        case 'sw_allEpisodesSeenBy':
+        case 'sw_allEpisodesSeenBySinceAdded':
+          return await this.getUsersWhoWatchedEveryEpisode(
+            metadata,
+            libraryId,
+            prop.name === 'sw_allEpisodesSeenBySinceAdded'
+              ? this.getAddedAtCutoff(metadata)
+              : undefined,
+          );
         // At season/show level this returns the UNION of users that watched
         // any descendant episode - not the intersection. Plex's per-show
         // watch history aggregates child views, so any account that watched
         // at least one episode appears here. Use `sw_allEpisodesSeenBy` when
         // you need "watched every episode" semantics instead.
-        case 'sw_watchers': {
+        case 'sw_watchers':
+        case 'sw_watchersSinceAdded': {
           const plexUsers = await this.plexApi.getCorrectedUsers(false);
 
           const watchHistory = await this.plexApi.getWatchHistory(
@@ -388,9 +352,15 @@ export class PlexGetterService {
             libraryId,
           );
 
-          const viewers = watchHistory
-            ? watchHistory.map((el) => +el.accountID)
-            : [];
+          const watchedAfter =
+            prop.name === 'sw_watchersSinceAdded'
+              ? this.getAddedAtCutoff(metadata)
+              : undefined;
+          const viewers = (
+            watchedAfter === undefined
+              ? watchHistory
+              : this.filterWatchHistoryAfter(watchHistory, watchedAfter)
+          ).map((entry) => +entry.accountID);
           const uniqueViewers = [...new Set(viewers)];
 
           if (uniqueViewers && uniqueViewers.length > 0) {
@@ -926,6 +896,76 @@ export class PlexGetterService {
       );
       return undefined;
     }
+  }
+
+  private async getUsersWhoWatchedEveryEpisode(
+    metadata: PlexMetadata,
+    libraryId: string | undefined,
+    watchedAfter?: number,
+  ): Promise<string[]> {
+    const plexUsers = await this.plexApi.getCorrectedUsers(false);
+    const seasons =
+      metadata.type === 'season'
+        ? [metadata]
+        : await this.plexApi.getChildrenMetadata(metadata.ratingKey);
+    const allViewerIds = new Set(plexUsers.map((user) => user.plexId));
+    let hasEpisodes = false;
+
+    for (const season of seasons) {
+      const episodes = await this.plexApi.getChildrenMetadata(season.ratingKey);
+      for (const episode of episodes) {
+        hasEpisodes = true;
+        // Errors propagate to the outer catch - silently treating a failed
+        // lookup as "no viewers" would drop genuine viewers from `allViewerIds`
+        // and mark the show as unwatched-by-everyone.
+        const watchHistory = await this.plexApi.getWatchHistory(
+          episode.ratingKey,
+          true,
+          'episode',
+          libraryId,
+        );
+        const viewers =
+          watchedAfter === undefined
+            ? watchHistory
+            : this.filterWatchHistoryAfter(watchHistory, watchedAfter);
+        const episodeViewerIds = new Set(viewers.map((view) => view.accountID));
+        for (const viewerId of allViewerIds) {
+          if (!episodeViewerIds.has(viewerId)) {
+            allViewerIds.delete(viewerId);
+          }
+        }
+      }
+    }
+
+    if (!hasEpisodes && watchedAfter !== undefined) {
+      return [];
+    }
+
+    return mapMatchingRuleUsersToNames(
+      [...allViewerIds],
+      plexUsers,
+      (user) => user.plexId,
+      (user) => user.username,
+    );
+  }
+
+  private filterWatchHistoryAfter(
+    watchHistory: PlexSeenBy[],
+    watchedAfter: number,
+  ): PlexSeenBy[] {
+    return watchHistory.filter((entry) => {
+      if (!Number.isSafeInteger(entry.viewedAt) || entry.viewedAt < 0) {
+        throw new Error('Plex watch history has an invalid viewedAt timestamp');
+      }
+      return entry.viewedAt > watchedAfter;
+    });
+  }
+
+  private getAddedAtCutoff(metadata: PlexMetadata): number {
+    if (!Number.isSafeInteger(metadata.addedAt) || metadata.addedAt < 0) {
+      throw new Error('Plex metadata has an invalid addedAt timestamp');
+    }
+    return metadata.addedAt;
   }
 
   /**

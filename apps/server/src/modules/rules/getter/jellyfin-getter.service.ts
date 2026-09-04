@@ -18,6 +18,7 @@ import { RuleGroupDto } from '../dtos/ruleGroup.dto';
 import { ArrLookupCache } from '../helpers/arr-lookup-cache';
 import {
   filterRuleCollectionNames,
+  mapMatchingRuleUsersToNames,
   mapRuleUserIdsToNames,
 } from '../helpers/rule-property.helper';
 import { MetadataRuleValueService } from './metadata-rule-value.service';
@@ -266,11 +267,15 @@ export class JellyfinGetterService {
           return metadata.genres?.map((genre) => genre.name) ?? [];
         }
 
-        case 'sw_allEpisodesSeenBy': {
+        case 'sw_allEpisodesSeenBy':
+        case 'sw_allEpisodesSeenBySinceAdded': {
           return await this.getAllEpisodesSeenBy(
             metadata.id,
             metadata.type,
             libraryId,
+            prop.name === 'sw_allEpisodesSeenBySinceAdded'
+              ? this.getAddedAtCutoff(metadata.addedAt)
+              : undefined,
           );
         }
 
@@ -435,11 +440,15 @@ export class JellyfinGetterService {
         // covered by the #2559 regression test in
         // jellyfin-getter.service.spec.ts. Use `sw_allEpisodesSeenBy` when
         // you need "watched every episode" semantics instead.
-        case 'sw_watchers': {
+        case 'sw_watchers':
+        case 'sw_watchersSinceAdded': {
           return await this.getSwWatchers(
             metadata.id,
             metadata.type,
             libraryId,
+            prop.name === 'sw_watchersSinceAdded'
+              ? this.getAddedAtCutoff(metadata.addedAt)
+              : undefined,
           );
         }
 
@@ -632,15 +641,43 @@ export class JellyfinGetterService {
     itemId: string,
     type: MediaItemType,
     libraryId: string | undefined,
+    watchedAfter?: Date,
   ): Promise<Record<string, WatchRecord[]>> {
     if (!isMediaType(type, 'show') && !isMediaType(type, 'season')) {
       return {};
     }
 
-    return this.jellyfinAdapter.getDescendantEpisodeWatchHistory(
-      itemId,
-      libraryId,
+    const watchHistory =
+      await this.jellyfinAdapter.getDescendantEpisodeWatchHistory(
+        itemId,
+        libraryId,
+      );
+
+    if (watchedAfter === undefined) return watchHistory;
+
+    return Object.fromEntries(
+      Object.entries(watchHistory).map(([episodeId, records]) => [
+        episodeId,
+        records.filter((record) => {
+          if (
+            !record.watchedAt ||
+            !Number.isFinite(record.watchedAt.getTime())
+          ) {
+            throw new Error(
+              'Jellyfin watch history has an invalid watchedAt timestamp',
+            );
+          }
+          return record.watchedAt > watchedAfter;
+        }),
+      ]),
     );
+  }
+
+  private getAddedAtCutoff(addedAt: Date): Date {
+    if (!Number.isFinite(addedAt?.getTime())) {
+      throw new Error('Jellyfin metadata has an invalid addedAt timestamp');
+    }
+    return addedAt;
   }
 
   private newestWatchedAt(records: WatchRecord[]): Date | null {
@@ -711,10 +748,13 @@ export class JellyfinGetterService {
     itemId: string,
     type: MediaItemType,
     libraryId: string | undefined,
+    watchedAfter?: Date,
   ): Promise<string[]> {
-    const users = await this.jellyfinAdapter.getUsers();
+    const users = await this.jellyfinAdapter.getUsers(
+      watchedAfter !== undefined,
+    );
     const episodeWatchers = Object.values(
-      await this.descendantWatchHistory(itemId, type, libraryId),
+      await this.descendantWatchHistory(itemId, type, libraryId, watchedAfter),
     );
 
     if (episodeWatchers.length === 0) return [];
@@ -921,8 +961,11 @@ export class JellyfinGetterService {
     itemId: string,
     type: MediaItemType,
     libraryId: string | undefined,
+    watchedAfter?: Date,
   ): Promise<string[]> {
-    const users = await this.jellyfinAdapter.getUsers();
+    const users = await this.jellyfinAdapter.getUsers(
+      watchedAfter !== undefined,
+    );
     let watcherIds: string[];
 
     switch (type) {
@@ -942,6 +985,7 @@ export class JellyfinGetterService {
           itemId,
           type,
           libraryId,
+          watchedAfter,
         );
         const watched = new Set(
           Object.values(watchHistory).flatMap((records) =>
@@ -962,6 +1006,15 @@ export class JellyfinGetterService {
       default: {
         return [];
       }
+    }
+
+    if (watchedAfter !== undefined) {
+      return mapMatchingRuleUsersToNames(
+        watcherIds,
+        users,
+        (user) => user.id,
+        (user) => user.name,
+      );
     }
 
     return mapRuleUserIdsToNames(

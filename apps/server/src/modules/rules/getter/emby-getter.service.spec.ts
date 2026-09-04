@@ -52,6 +52,9 @@ const createWatchRecord = (
   ...overrides,
 });
 
+const ALL_EPISODES_SEEN_SINCE_ADDED_PROP_ID = 49;
+const WATCHERS_SINCE_ADDED_PROP_ID = 50;
+
 describe('EmbyGetterService', () => {
   let embyGetterService: EmbyGetterService;
   let embyAdapter: Mocked<EmbyAdapterService>;
@@ -148,6 +151,412 @@ describe('EmbyGetterService', () => {
       );
 
       expect(response).toBeUndefined();
+    });
+  });
+
+  describe('post-add show watcher rules', () => {
+    const cutoff = new Date('2024-06-01T00:00:00.000Z');
+
+    const setTarget = (type: 'show' | 'season') => {
+      const target = createMediaItem({
+        id: `${type}-post-add`,
+        type,
+        addedAt: cutoff,
+      });
+      embyAdapter.getMetadata.mockResolvedValue(target);
+      embyAdapter.getUsers.mockResolvedValue([
+        createMediaUser({ id: 'alice', name: 'Alice' }),
+        createMediaUser({ id: 'bob', name: 'Bob' }),
+      ]);
+      return target;
+    };
+
+    const setEpisodes = (
+      type: 'show' | 'season',
+      episodes: MediaItem[],
+      specials: MediaItem[] = [],
+    ) => {
+      embyAdapter.getChildrenMetadata.mockImplementation(
+        async (parentId: string, childType?: MediaItemType) => {
+          if (type === 'show' && parentId === 'show-post-add') {
+            return childType === 'season'
+              ? [
+                  createMediaItem({ id: 'season-0', type: 'season', index: 0 }),
+                  createMediaItem({ id: 'season-1', type: 'season', index: 1 }),
+                ]
+              : [];
+          }
+          if (parentId === 'season-0' && childType === 'episode') {
+            return specials;
+          }
+          if (
+            (parentId === 'season-1' || parentId === 'season-post-add') &&
+            childType === 'episode'
+          ) {
+            return episodes;
+          }
+          return [];
+        },
+      );
+    };
+
+    it('waits for one episode history before starting the next', async () => {
+      const target = setTarget('season');
+      setEpisodes('season', [
+        createMediaItem({ id: 'episode-1', type: 'episode' }),
+        createMediaItem({ id: 'episode-2', type: 'episode' }),
+      ]);
+      let releaseFirstHistory: (history: WatchRecord[]) => void;
+      const firstHistoryStarted = new Promise<void>((resolve) => {
+        embyAdapter.getWatchHistory.mockImplementation(
+          async (itemId: string) => {
+            if (itemId === 'episode-2') return [];
+            resolve();
+            return new Promise<WatchRecord[]>((release) => {
+              releaseFirstHistory = release;
+            });
+          },
+        );
+      });
+
+      const result = embyGetterService.get(
+        WATCHERS_SINCE_ADDED_PROP_ID,
+        target,
+        'season',
+        createRuleGroupDto({ dataType: 'show' }),
+      );
+
+      await firstHistoryStarted;
+      expect(embyAdapter.getWatchHistory).toHaveBeenCalledTimes(1);
+      releaseFirstHistory!([
+        createWatchRecord({
+          userId: 'alice',
+          itemId: 'episode-1',
+          watchedAt: new Date('2024-06-01T00:00:01.000Z'),
+        }),
+      ]);
+
+      await expect(result).resolves.toEqual(['Alice']);
+      expect(embyAdapter.getWatchHistory).toHaveBeenCalledWith('episode-2');
+    });
+
+    it.each(['show', 'season'] as const)(
+      'returns the post-add union for a %s and excludes equal and unknown views',
+      async (type) => {
+        const target = setTarget(type);
+        const episodeOne = createMediaItem({
+          id: 'episode-1',
+          type: 'episode',
+        });
+        const episodeTwo = createMediaItem({
+          id: 'episode-2',
+          type: 'episode',
+        });
+        setEpisodes(type, [episodeOne, episodeTwo]);
+        embyAdapter.getWatchHistory.mockImplementation(
+          async (itemId: string) =>
+            itemId === 'episode-1'
+              ? [
+                  createWatchRecord({
+                    userId: 'alice',
+                    itemId,
+                    watchedAt: new Date('2024-06-01T00:00:01.000Z'),
+                  }),
+                  createWatchRecord({
+                    userId: 'bob',
+                    itemId,
+                    watchedAt: cutoff,
+                  }),
+                  createWatchRecord({
+                    userId: 'unknown',
+                    itemId,
+                    watchedAt: new Date('2024-06-01T00:00:02.000Z'),
+                  }),
+                ]
+              : [
+                  createWatchRecord({
+                    userId: 'alice',
+                    itemId,
+                    watchedAt: new Date('2024-06-02T00:00:00.000Z'),
+                  }),
+                  createWatchRecord({
+                    userId: 'bob',
+                    itemId,
+                    watchedAt: new Date('2024-06-02T00:00:01.000Z'),
+                  }),
+                ],
+        );
+
+        await expect(
+          embyGetterService.get(
+            WATCHERS_SINCE_ADDED_PROP_ID,
+            target,
+            type,
+            createRuleGroupDto({ dataType: 'show' }),
+          ),
+        ).resolves.toEqual(['Alice', 'Bob']);
+        expect(embyAdapter.getWatchHistory).toHaveBeenCalledWith('episode-1');
+        expect(embyAdapter.getWatchHistory).toHaveBeenCalledWith('episode-2');
+        expect(embyAdapter.getDescendantEpisodeWatchers).not.toHaveBeenCalled();
+      },
+    );
+
+    it.each(['show', 'season'] as const)(
+      'intersects every current %s episode, including show specials',
+      async (type) => {
+        const target = setTarget(type);
+        const episodeOne = createMediaItem({
+          id: 'episode-1',
+          type: 'episode',
+        });
+        const episodeTwo = createMediaItem({
+          id: 'episode-2',
+          type: 'episode',
+        });
+        const special = createMediaItem({ id: 'special-1', type: 'episode' });
+        setEpisodes(
+          type,
+          [episodeOne, episodeTwo],
+          type === 'show' ? [special] : [],
+        );
+        embyAdapter.getWatchHistory.mockImplementation(
+          async (itemId: string) => {
+            const viewers =
+              itemId === 'episode-1'
+                ? ['alice', 'bob', 'unknown']
+                : itemId === 'episode-2'
+                  ? ['alice', 'unknown']
+                  : ['alice', 'unknown'];
+            return viewers.map((userId) =>
+              createWatchRecord({
+                userId,
+                itemId,
+                watchedAt: new Date('2024-06-01T00:00:01.000Z'),
+              }),
+            );
+          },
+        );
+
+        await expect(
+          embyGetterService.get(
+            ALL_EPISODES_SEEN_SINCE_ADDED_PROP_ID,
+            target,
+            type,
+            createRuleGroupDto({ dataType: 'show' }),
+          ),
+        ).resolves.toEqual(['Alice']);
+        if (type === 'show') {
+          expect(embyAdapter.getWatchHistory).toHaveBeenCalledWith('special-1');
+        }
+      },
+    );
+
+    it('uses the selected target cutoff rather than episode addedAt values', async () => {
+      const target = setTarget('season');
+      const episode = createMediaItem({
+        id: 'episode-1',
+        type: 'episode',
+        addedAt: new Date('2024-07-01T00:00:00.000Z'),
+      });
+      setEpisodes('season', [episode]);
+      embyAdapter.getWatchHistory.mockResolvedValue([
+        createWatchRecord({
+          userId: 'alice',
+          itemId: episode.id,
+          watchedAt: new Date('2024-06-02T00:00:00.000Z'),
+        }),
+      ]);
+
+      await expect(
+        embyGetterService.get(
+          ALL_EPISODES_SEEN_SINCE_ADDED_PROP_ID,
+          target,
+          'season',
+          createRuleGroupDto({ dataType: 'show' }),
+        ),
+      ).resolves.toEqual(['Alice']);
+    });
+
+    it.each([
+      ['missing', undefined as unknown as Date],
+      ['invalid', new Date('invalid')],
+    ])(
+      'returns undefined for both rules when the target cutoff is %s',
+      async (_description, addedAt) => {
+        const target = setTarget('season');
+        embyAdapter.getMetadata.mockResolvedValue({ ...target, addedAt });
+
+        for (const propertyId of [
+          ALL_EPISODES_SEEN_SINCE_ADDED_PROP_ID,
+          WATCHERS_SINCE_ADDED_PROP_ID,
+        ]) {
+          await expect(
+            embyGetterService.get(
+              propertyId,
+              target,
+              'season',
+              createRuleGroupDto({ dataType: 'show' }),
+            ),
+          ).resolves.toBeUndefined();
+        }
+      },
+    );
+
+    it.each([
+      ['missing', undefined],
+      ['invalid', new Date('invalid')],
+    ])(
+      'returns undefined for both rules when a relevant history date is %s',
+      async (_description, watchedAt) => {
+        const target = setTarget('season');
+        const episode = createMediaItem({ id: 'episode-1', type: 'episode' });
+        setEpisodes('season', [episode]);
+        embyAdapter.getWatchHistory.mockResolvedValue([
+          createWatchRecord({ userId: 'alice', itemId: episode.id, watchedAt }),
+        ]);
+
+        for (const propertyId of [
+          ALL_EPISODES_SEEN_SINCE_ADDED_PROP_ID,
+          WATCHERS_SINCE_ADDED_PROP_ID,
+        ]) {
+          await expect(
+            embyGetterService.get(
+              propertyId,
+              target,
+              'season',
+              createRuleGroupDto({ dataType: 'show' }),
+            ),
+          ).resolves.toBeUndefined();
+        }
+      },
+    );
+
+    it.each([
+      ['no current episodes', [], []],
+      [
+        'empty histories',
+        [createMediaItem({ id: 'episode-1', type: 'episode' })],
+        [],
+      ],
+      [
+        'only pre-cutoff views',
+        [createMediaItem({ id: 'episode-1', type: 'episode' })],
+        [
+          createWatchRecord({
+            watchedAt: new Date('2024-05-31T23:59:59.000Z'),
+          }),
+        ],
+      ],
+    ])(
+      'returns [] for confirmed %s',
+      async (_description, episodes, history) => {
+        const target = setTarget('season');
+        setEpisodes('season', episodes);
+        embyAdapter.getWatchHistory.mockResolvedValue(history);
+
+        for (const propertyId of [
+          ALL_EPISODES_SEEN_SINCE_ADDED_PROP_ID,
+          WATCHERS_SINCE_ADDED_PROP_ID,
+        ]) {
+          await expect(
+            embyGetterService.get(
+              propertyId,
+              target,
+              'season',
+              createRuleGroupDto({ dataType: 'show' }),
+            ),
+          ).resolves.toEqual([]);
+        }
+      },
+    );
+
+    it.each([
+      ALL_EPISODES_SEEN_SINCE_ADDED_PROP_ID,
+      WATCHERS_SINCE_ADDED_PROP_ID,
+    ])(
+      'returns undefined when dated history rejects (id %i)',
+      async (propertyId) => {
+        const target = setTarget('season');
+        setEpisodes('season', [
+          createMediaItem({ id: 'episode-1', type: 'episode' }),
+        ]);
+        embyAdapter.getWatchHistory.mockRejectedValue(
+          new Error('history failed'),
+        );
+
+        await expect(
+          embyGetterService.get(
+            propertyId,
+            target,
+            'season',
+            createRuleGroupDto({ dataType: 'show' }),
+          ),
+        ).resolves.toBeUndefined();
+      },
+    );
+
+    it.each([
+      ['season', 'show-post-add', 'season'],
+      ['nested episode', 'season-1', 'episode'],
+    ] as const)(
+      'returns undefined when %s enumeration fails',
+      async (_description, failingParentId, failingChildType) => {
+        const target = setTarget('show');
+        embyAdapter.getChildrenMetadata.mockImplementation(
+          async (
+            parentId: string,
+            childType?: MediaItemType,
+            throwOnError = false,
+          ) => {
+            if (
+              parentId === failingParentId &&
+              childType === failingChildType
+            ) {
+              if (throwOnError) throw new Error('enumeration failed');
+              return [];
+            }
+            return parentId === 'show-post-add' && childType === 'season'
+              ? [createMediaItem({ id: 'season-1', type: 'season' })]
+              : [];
+          },
+        );
+
+        await expect(
+          embyGetterService.get(
+            WATCHERS_SINCE_ADDED_PROP_ID,
+            target,
+            'show',
+            createRuleGroupDto({ dataType: 'show' }),
+          ),
+        ).resolves.toBeUndefined();
+      },
+    );
+
+    it('returns undefined when the rule-user directory cannot be read', async () => {
+      const target = setTarget('season');
+      setEpisodes('season', [
+        createMediaItem({ id: 'episode-1', type: 'episode' }),
+      ]);
+      embyAdapter.getWatchHistory.mockResolvedValue([
+        createWatchRecord({
+          userId: 'alice',
+          itemId: 'episode-1',
+          watchedAt: new Date('2024-06-02T00:00:00.000Z'),
+        }),
+      ]);
+      embyAdapter.getUsers.mockImplementation(async (throwOnError = false) => {
+        if (throwOnError) throw new Error('user lookup failed');
+        return [];
+      });
+
+      await expect(
+        embyGetterService.get(
+          WATCHERS_SINCE_ADDED_PROP_ID,
+          target,
+          'season',
+          createRuleGroupDto({ dataType: 'show' }),
+        ),
+      ).resolves.toBeUndefined();
     });
   });
 
