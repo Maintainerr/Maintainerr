@@ -1502,6 +1502,61 @@ describe('EmbyAdapterService', () => {
     });
   });
 
+  describe('getDescendantEpisodeWatchHistory', () => {
+    const children = (parentId: string, ids: string[]) => ({
+      data: {
+        Items: ids.map((Id) => ({ Id, Type: 'Episode' })),
+        TotalRecordCount: ids.length,
+      },
+    });
+
+    it('keys every episode of a show by id with its per-user records', async () => {
+      http.get.mockImplementation(async (path: string, config?: any) => {
+        if (path === '/Shows/show-1/Seasons') {
+          return { data: { Items: [{ Id: 'season-1' }, { Id: 'season-2' }] } };
+        }
+        if (path === '/Items') {
+          return children(config.params.ParentId, [
+            `${config.params.ParentId}-ep`,
+          ]);
+        }
+        if (path === '/Users/Query') return { data: [{ Id: 'user-1' }] };
+        return {
+          data: {
+            UserData: {
+              Played: path.endsWith('season-1-ep'),
+              LastPlayedDate: '2024-06-02T00:00:00.000Z',
+            },
+          },
+        };
+      });
+
+      await expect(
+        service.getDescendantEpisodeWatchHistory('show-1', 'show'),
+      ).resolves.toEqual({
+        'season-1-ep': [
+          expect.objectContaining({
+            userId: 'user-1',
+            watchedAt: new Date('2024-06-02T00:00:00.000Z'),
+          }),
+        ],
+        'season-2-ep': [],
+      });
+    });
+
+    it('propagates a failed episode read instead of dropping the episode', async () => {
+      http.get.mockImplementation(async (path: string) => {
+        if (path === '/Items') return children('season-1', ['ep-1']);
+        if (path === '/Users/Query') return { data: [{ Id: 'user-1' }] };
+        throw createResponseError(502);
+      });
+
+      await expect(
+        service.getDescendantEpisodeWatchHistory('season-1', 'season'),
+      ).rejects.toThrow();
+    });
+  });
+
   describe('getLastPlayedAt', () => {
     const users = [
       { Id: 'user-1', Name: 'Alice' },

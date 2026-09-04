@@ -3,6 +3,7 @@ import {
   MediaItem,
   MediaItemType,
   RuleValueType,
+  WatchRecord,
 } from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
 import cacheManager, { Cache } from '../../api/lib/cache';
@@ -639,18 +640,19 @@ export class EmbyGetterService {
     watchedAfter?: Date,
   ): Promise<string[]> {
     const users = await this.embyAdapter.getUsers(watchedAfter !== undefined);
-    const episodeIds = await this.getEpisodeIds(itemId, type);
-    if (episodeIds.length === 0) return [];
-
-    const episodeWatchers = await Promise.all(
-      episodeIds.map((episodeId) =>
-        this.getEpisodeWatchers(episodeId, watchedAfter),
-      ),
+    const episodeWatchers = Object.values(
+      await this.descendantWatchHistory(itemId, type, watchedAfter),
     );
+
+    if (episodeWatchers.length === 0) return [];
+
+    // Users who appear in EVERY episode's watch list
     const usersWhoWatchedAll = users
       .map((user) => user.id)
       .filter((userId) =>
-        episodeWatchers.every((watchers) => watchers.has(userId)),
+        episodeWatchers.every((records) =>
+          records.some((record) => record.userId === userId),
+        ),
       );
 
     return mapRuleUserIdsToNames(
@@ -668,40 +670,28 @@ export class EmbyGetterService {
     return addedAt;
   }
 
-  private async getEpisodeIds(
+  private async descendantWatchHistory(
     itemId: string,
     type: MediaItemType,
-  ): Promise<string[]> {
-    const seasons =
-      type === 'season'
-        ? [{ id: itemId }]
-        : await this.embyAdapter.getChildrenMetadata(itemId, 'season', true);
-    const episodeIds: string[] = [];
-    for (const season of seasons) {
-      const episodes = await this.embyAdapter.getChildrenMetadata(
-        season.id,
-        'episode',
-        true,
-      );
-      episodeIds.push(...episodes.map((episode) => episode.id));
-    }
-    return episodeIds;
-  }
-
-  // Emby has no central history endpoint, so this costs one
-  // /Users/{userId}/Items/{itemId} read per user for every episode.
-  private async getEpisodeWatchers(
-    episodeId: string,
     watchedAfter?: Date,
-  ): Promise<Set<string>> {
-    const history = await this.embyAdapter.getWatchHistory(episodeId);
-    return new Set(
-      history
-        .filter(
-          (record) =>
-            watchedAfter === undefined || isWatchedAfter(record, watchedAfter),
-        )
-        .map((record) => record.userId),
+  ): Promise<Record<string, WatchRecord[]>> {
+    if (!isMediaType(type, 'show') && !isMediaType(type, 'season')) {
+      return {};
+    }
+
+    const watchHistory =
+      await this.embyAdapter.getDescendantEpisodeWatchHistory(
+        itemId,
+        isMediaType(type, 'season') ? 'season' : 'show',
+      );
+
+    if (watchedAfter === undefined) return watchHistory;
+
+    return Object.fromEntries(
+      Object.entries(watchHistory).map(([episodeId, records]) => [
+        episodeId,
+        records.filter((record) => isWatchedAfter(record, watchedAfter)),
+      ]),
     );
   }
 
@@ -950,16 +940,11 @@ export class EmbyGetterService {
           break;
         }
         // The bulk IsPlayed listing carries no dates, so a dated union reads
-        // every episode like sw_allEpisodesSeenBy does.
-        const episodeIds = await this.getEpisodeIds(itemId, type);
+        // the per-episode records like sw_allEpisodesSeenBy does.
         const watched = new Set(
-          (
-            await Promise.all(
-              episodeIds.map((episodeId) =>
-                this.getEpisodeWatchers(episodeId, watchedAfter),
-              ),
-            )
-          ).flatMap((watchers) => [...watchers]),
+          Object.values(
+            await this.descendantWatchHistory(itemId, type, watchedAfter),
+          ).flatMap((records) => records.map((record) => record.userId)),
         );
         watcherIds = users
           .map((user) => user.id)

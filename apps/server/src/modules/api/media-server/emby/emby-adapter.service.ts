@@ -753,6 +753,52 @@ export class EmbyAdapterService implements IMediaServerService {
    * same question from its prefetched snapshot instead, because Emby omits the
    * watch dates a bulk sweep would need (see getWatchHistory).
    */
+  /**
+   * Watch records for every episode under `parentId`, keyed by episode id, the
+   * shape the Jellyfin adapter answers from its sweep. Emby has no dated bulk
+   * listing, so every episode costs one /Users/Query plus one
+   * /Users/{userId}/Items/{itemId} read per user, walked in batches.
+   * All-or-nothing: a failed read throws rather than answering with an
+   * episode missing from the map.
+   */
+  async getDescendantEpisodeWatchHistory(
+    parentId: string,
+    parentType: 'show' | 'season',
+  ): Promise<Record<string, WatchRecord[]>> {
+    const seasons =
+      parentType === 'season'
+        ? [{ id: parentId }]
+        : await this.getChildrenMetadata(parentId, 'season', true);
+    const episodeIds: string[] = [];
+    for (const season of seasons) {
+      const episodes = await this.getChildrenMetadata(
+        season.id,
+        'episode',
+        true,
+      );
+      episodeIds.push(...episodes.map((episode) => episode.id));
+    }
+
+    const watchHistory: Record<string, WatchRecord[]> = {};
+    for (
+      let i = 0;
+      i < episodeIds.length;
+      i += EMBY_BATCH_SIZE.EPISODE_WATCH_HISTORY
+    ) {
+      const batch = episodeIds.slice(
+        i,
+        i + EMBY_BATCH_SIZE.EPISODE_WATCH_HISTORY,
+      );
+      const records = await Promise.all(
+        batch.map((episodeId) => this.getWatchHistory(episodeId)),
+      );
+      batch.forEach((episodeId, index) => {
+        watchHistory[episodeId] = records[index];
+      });
+    }
+    return watchHistory;
+  }
+
   async getDescendantEpisodeWatchers(parentId: string): Promise<string[]> {
     if (!this.http) return [];
 

@@ -591,6 +591,45 @@ describe('PlexGetterService', () => {
       expect(plexApi.getChildrenMetadata).toHaveBeenCalledWith('season-0');
     });
 
+    it.each([
+      ALL_EPISODES_SEEN_SINCE_ADDED_PROP_ID,
+      WATCHERS_SINCE_ADDED_PROP_ID,
+    ])(
+      'bounds property %i by the target addedAt, not the episode addedAt',
+      async (propertyId) => {
+        plexApi.getMetadata.mockResolvedValue(
+          makeMetadata({
+            ratingKey: 'season-1',
+            type: 'season',
+            addedAt: 1_700_000_000,
+          }),
+        );
+        plexApi.getCorrectedUsers.mockResolvedValue([
+          makePlexUser({ plexId: 1, username: 'alice' }),
+        ]);
+        // Re-imported episode: newer than the view it retained.
+        plexApi.getChildrenMetadata.mockResolvedValue([
+          makeMetadata({
+            ratingKey: 'episode-1',
+            type: 'episode',
+            addedAt: 1_800_000_000,
+          }),
+        ]);
+        plexApi.getWatchHistory.mockResolvedValue([
+          makeWatchEntry({ accountID: 1, viewedAt: 1_700_000_001 }),
+        ]);
+
+        const result = await service.get(
+          propertyId,
+          createMediaItem({ type: 'season' }),
+          'season',
+          createRuleGroupDto({ dataType: 'show' }),
+        );
+
+        expect(result).toEqual(['alice']);
+      },
+    );
+
     it('returns newest show watch date according to the latest season and episode indexes (id 13)', async () => {
       plexApi.getMetadata.mockResolvedValue(
         makeMetadata({ ratingKey: 'show-1', type: 'show' }),

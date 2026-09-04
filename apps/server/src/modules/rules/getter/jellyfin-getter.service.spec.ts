@@ -2459,6 +2459,33 @@ describe('JellyfinGetterService', () => {
       },
     );
 
+    it.each([49, 50])(
+      'bounds property %i by the target addedAt, not the episode addedAt',
+      async (propertyId) => {
+        const target = setTarget('season');
+        // Upgraded episode: Jellyfin recreated it after the retained watch.
+        jellyfinAdapter.getChildrenMetadata.mockResolvedValue([
+          createMediaItem({
+            id: 'episode-1',
+            type: 'episode',
+            addedAt: new Date('2024-07-01T00:00:00.000Z'),
+          }),
+        ]);
+        jellyfinAdapter.getDescendantEpisodeWatchHistory.mockResolvedValue(
+          createDescendantWatchHistory({
+            'episode-1': [
+              {
+                userId: 'user-1',
+                watchedAt: new Date('2024-06-02T00:00:00.000Z'),
+              },
+            ],
+          }),
+        );
+
+        await expect(get(propertyId, target)).resolves.toEqual(['Alice']);
+      },
+    );
+
     it.each([
       ['missing', undefined as unknown as Date],
       ['malformed', new Date('invalid')],
