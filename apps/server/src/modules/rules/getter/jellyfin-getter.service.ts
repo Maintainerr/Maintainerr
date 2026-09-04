@@ -18,7 +18,8 @@ import { RuleGroupDto } from '../dtos/ruleGroup.dto';
 import { ArrLookupCache } from '../helpers/arr-lookup-cache';
 import {
   filterRuleCollectionNames,
-  mapMatchingRuleUsersToNames,
+  isValidDate,
+  isWatchedAfter,
   mapRuleUserIdsToNames,
 } from '../helpers/rule-property.helper';
 import { MetadataRuleValueService } from './metadata-rule-value.service';
@@ -118,7 +119,9 @@ export class JellyfinGetterService {
 
       switch (prop.name) {
         case 'addDate': {
-          return metadata.addedAt ? new Date(metadata.addedAt) : null;
+          return isValidDate(metadata.addedAt)
+            ? new Date(metadata.addedAt)
+            : null;
         }
 
         case 'seenBy': {
@@ -658,23 +661,13 @@ export class JellyfinGetterService {
     return Object.fromEntries(
       Object.entries(watchHistory).map(([episodeId, records]) => [
         episodeId,
-        records.filter((record) => {
-          if (
-            !record.watchedAt ||
-            !Number.isFinite(record.watchedAt.getTime())
-          ) {
-            throw new Error(
-              'Jellyfin watch history has an invalid watchedAt timestamp',
-            );
-          }
-          return record.watchedAt > watchedAfter;
-        }),
+        records.filter((record) => isWatchedAfter(record, watchedAfter)),
       ]),
     );
   }
 
   private getAddedAtCutoff(addedAt: Date): Date {
-    if (!Number.isFinite(addedAt?.getTime())) {
+    if (!isValidDate(addedAt)) {
       throw new Error('Jellyfin metadata has an invalid addedAt timestamp');
     }
     return addedAt;
@@ -920,7 +913,7 @@ export class JellyfinGetterService {
       );
       for (const episode of episodes) {
         if (
-          episode.addedAt &&
+          isValidDate(episode.addedAt) &&
           (!latestAddedAt || episode.addedAt > latestAddedAt)
         ) {
           latestAddedAt = episode.addedAt;
@@ -1006,15 +999,6 @@ export class JellyfinGetterService {
       default: {
         return [];
       }
-    }
-
-    if (watchedAfter !== undefined) {
-      return mapMatchingRuleUsersToNames(
-        watcherIds,
-        users,
-        (user) => user.id,
-        (user) => user.name,
-      );
     }
 
     return mapRuleUserIdsToNames(

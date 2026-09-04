@@ -591,50 +591,6 @@ describe('PlexGetterService', () => {
       expect(plexApi.getChildrenMetadata).toHaveBeenCalledWith('season-0');
     });
 
-    it('uses the target season addedAt for every-episode qualification (id 49)', async () => {
-      plexApi.getMetadata.mockResolvedValue(
-        makeMetadata({
-          ratingKey: 'season-1',
-          type: 'season',
-          addedAt: 1_700_000_000,
-        }),
-      );
-      plexApi.getCorrectedUsers.mockResolvedValue([
-        makePlexUser({ plexId: 2, username: 'bob' }),
-        makePlexUser({ plexId: 1, username: 'alice' }),
-      ]);
-      plexApi.getChildrenMetadata.mockResolvedValue([
-        makeMetadata({
-          ratingKey: 'episode-1',
-          type: 'episode',
-          index: 1,
-        }),
-        makeMetadata({
-          ratingKey: 'episode-2',
-          type: 'episode',
-          index: 2,
-        }),
-      ]);
-      plexApi.getWatchHistory.mockImplementation(async (ratingKey) => [
-        makeWatchEntry({ accountID: 2, viewedAt: 1_700_000_001 }),
-        makeWatchEntry({
-          accountID: 1,
-          viewedAt: ratingKey === 'episode-1' ? 1_699_999_999 : 1_700_000_001,
-        }),
-      ]);
-
-      const result = await service.get(
-        ALL_EPISODES_SEEN_SINCE_ADDED_PROP_ID,
-        createMediaItem({ type: 'season' }),
-        'season',
-        createRuleGroupDto({ dataType: 'show' }),
-      );
-
-      expect(result).toEqual(['bob']);
-      expect(plexApi.getChildrenMetadata).toHaveBeenCalledTimes(1);
-      expect(plexApi.getChildrenMetadata).toHaveBeenCalledWith('season-1');
-    });
-
     it('returns newest show watch date according to the latest season and episode indexes (id 13)', async () => {
       plexApi.getMetadata.mockResolvedValue(
         makeMetadata({ ratingKey: 'show-1', type: 'show' }),

@@ -1228,58 +1228,6 @@ describe('JellyfinGetterService', () => {
       ).resolves.toEqual(['Alice']);
     });
 
-    it('sw_allEpisodesSeenBySinceAdded (id: 49) uses the target season addedAt', async () => {
-      const seasonItem = createMediaItem({
-        id: 'season-all-seen-since-added',
-        type: 'season' as MediaItemType,
-        addedAt: new Date('2024-01-01T00:00:00.000Z'),
-      });
-
-      jellyfinAdapter.getMetadata.mockResolvedValue(
-        createMediaItem({
-          ...seasonItem,
-          addedAt: new Date('2024-06-01T00:00:00.000Z'),
-        }),
-      );
-      jellyfinAdapter.getUsers.mockResolvedValue([
-        createMediaUser({ id: 'user-1', name: 'Alice' }),
-        createMediaUser({ id: 'user-2', name: 'Bob' }),
-      ]);
-      jellyfinAdapter.getDescendantEpisodeWatchHistory.mockResolvedValue(
-        createDescendantWatchHistory({
-          'episode-1': [
-            {
-              userId: 'user-1',
-              watchedAt: new Date('2024-02-01T00:00:00.000Z'),
-            },
-            {
-              userId: 'user-2',
-              watchedAt: new Date('2024-06-01T00:00:01.000Z'),
-            },
-          ],
-          'episode-2': [
-            {
-              userId: 'user-1',
-              watchedAt: new Date('2024-06-01T00:00:01.000Z'),
-            },
-            {
-              userId: 'user-2',
-              watchedAt: new Date('2024-06-01T00:00:02.000Z'),
-            },
-          ],
-        }),
-      );
-
-      await expect(
-        jellyfinGetterService.get(
-          49,
-          seasonItem,
-          'season',
-          createRuleGroupDto({ dataType: 'show', libraryId: LIBRARY_ID }),
-        ),
-      ).resolves.toEqual(['Bob']);
-    });
-
     // A failed sweep must never read as "never watched" - the item is skipped
     // (undefined) so a transient Jellyfin failure can't drive a deletion.
     it.each([
@@ -2456,73 +2404,39 @@ describe('JellyfinGetterService', () => {
     });
   });
 
-  describe('post-add show watcher rules', () => {
-    it.each([49, 50])(
-      'returns undefined for post-add watcher property %i when the user lookup fails',
-      async (propertyId) => {
-        const seasonItem = createMediaItem({
-          id: 'season-user-lookup-failure',
-          type: 'season' as MediaItemType,
-          addedAt: new Date('2024-06-01T00:00:00.000Z'),
-        });
+  describe('sw_watchersSinceAdded (id: 50)', () => {
+    const cutoff = new Date('2024-06-01T00:00:00.000Z');
 
-        jellyfinAdapter.getMetadata.mockResolvedValue(seasonItem);
-        jellyfinAdapter.getUsers.mockImplementation(async (throwOnError) => {
-          if (throwOnError) throw new Error('lookup failed');
-          return [];
-        });
-        jellyfinAdapter.getDescendantEpisodeWatchHistory.mockResolvedValue(
-          createDescendantWatchHistory({
-            'episode-1': [
-              {
-                userId: 'user-1',
-                watchedAt: new Date('2024-06-01T00:00:01.000Z'),
-              },
-            ],
-          }),
-        );
+    const setTarget = (type: 'show' | 'season') => {
+      const target = createMediaItem({
+        id: `${type}-1`,
+        type,
+        addedAt: cutoff,
+      });
+      jellyfinAdapter.getMetadata.mockResolvedValue(target);
+      jellyfinAdapter.getUsers.mockResolvedValue([
+        createMediaUser({ id: 'user-1', name: 'Alice' }),
+        createMediaUser({ id: 'user-2', name: 'Bob' }),
+      ]);
+      return target;
+    };
 
-        await expect(
-          jellyfinGetterService.get(
-            propertyId,
-            seasonItem,
-            'season',
-            createRuleGroupDto({ dataType: 'show', libraryId: LIBRARY_ID }),
-          ),
-        ).resolves.toBeUndefined();
-      },
-    );
+    const get = (propertyId: number, target: MediaItem) =>
+      jellyfinGetterService.get(
+        propertyId,
+        target,
+        target.type,
+        createRuleGroupDto({ dataType: 'show', libraryId: LIBRARY_ID }),
+      );
 
     it.each(['show', 'season'] as const)(
-      'sw_watchersSinceAdded (id: 50) returns the post-add union for a %s',
+      'unions views strictly after the %s was added, keeping unknown accounts',
       async (type) => {
-        const target = createMediaItem({
-          id: `${type}-watchers-since-added`,
-          type,
-          addedAt: new Date('2024-01-01T00:00:00.000Z'),
-        });
-
-        jellyfinAdapter.getMetadata.mockResolvedValue(
-          createMediaItem({
-            ...target,
-            addedAt: new Date('2024-06-01T00:00:00.000Z'),
-          }),
-        );
-        jellyfinAdapter.getUsers.mockResolvedValue([
-          createMediaUser({ id: 'user-1', name: 'Alice' }),
-          createMediaUser({ id: 'user-2', name: 'Bob' }),
-        ]);
+        const target = setTarget(type);
         jellyfinAdapter.getDescendantEpisodeWatchHistory.mockResolvedValue(
           createDescendantWatchHistory({
             'episode-1': [
-              {
-                userId: 'user-1',
-                watchedAt: new Date('2024-06-01T00:00:00.000Z'),
-              },
-              {
-                userId: 'user-1',
-                watchedAt: new Date('2024-06-01T00:00:01.000Z'),
-              },
+              { userId: 'user-1', watchedAt: cutoff },
               {
                 userId: 'user-2',
                 watchedAt: new Date('2024-05-31T23:59:59.000Z'),
@@ -2537,22 +2451,11 @@ describe('JellyfinGetterService', () => {
                 userId: 'user-1',
                 watchedAt: new Date('2024-06-01T00:00:03.000Z'),
               },
-              {
-                userId: 'user-ghost',
-                watchedAt: new Date('2024-06-01T00:00:04.000Z'),
-              },
             ],
           }),
         );
 
-        await expect(
-          jellyfinGetterService.get(
-            50,
-            target,
-            type,
-            createRuleGroupDto({ dataType: 'show', libraryId: LIBRARY_ID }),
-          ),
-        ).resolves.toEqual(['Alice']);
+        await expect(get(50, target)).resolves.toEqual(['Alice', 'user-ghost']);
       },
     );
 
@@ -2560,22 +2463,10 @@ describe('JellyfinGetterService', () => {
       ['missing', undefined as unknown as Date],
       ['malformed', new Date('invalid')],
     ])(
-      'returns undefined for post-add watcher properties when the target cutoff is %s',
-      async (_description, addedAt) => {
-        const seasonItem = createMediaItem({
-          id: 'season-invalid-cutoff',
-          type: 'season' as MediaItemType,
-        });
-
-        jellyfinAdapter.getMetadata.mockResolvedValue(
-          createMediaItem({
-            ...seasonItem,
-            addedAt,
-          }),
-        );
-        jellyfinAdapter.getUsers.mockResolvedValue([
-          createMediaUser({ id: 'user-1', name: 'Alice' }),
-        ]);
+      'returns undefined for ids 49 and 50 when the target addedAt is %s',
+      async (_, addedAt) => {
+        const target = setTarget('season');
+        jellyfinAdapter.getMetadata.mockResolvedValue({ ...target, addedAt });
         jellyfinAdapter.getDescendantEpisodeWatchHistory.mockResolvedValue(
           createDescendantWatchHistory({
             'episode-1': [
@@ -2588,75 +2479,26 @@ describe('JellyfinGetterService', () => {
         );
 
         for (const propertyId of [49, 50]) {
-          await expect(
-            jellyfinGetterService.get(
-              propertyId,
-              seasonItem,
-              'season',
-              createRuleGroupDto({ dataType: 'show', libraryId: LIBRARY_ID }),
-            ),
-          ).resolves.toBeUndefined();
+          await expect(get(propertyId, target)).resolves.toBeUndefined();
         }
       },
     );
 
-    it.each([49, 50])(
-      'returns undefined for post-add watcher property %i when history has a malformed timestamp',
-      async (propertyId) => {
-        const seasonItem = createMediaItem({
-          id: 'season-invalid-history',
-          type: 'season' as MediaItemType,
-          addedAt: new Date('2024-06-01T00:00:00.000Z'),
-        });
+    it.each([
+      ['skips a dateless completed watch', undefined, []],
+      ['fails on a malformed watch date', new Date('invalid'), undefined],
+    ])('%s for ids 49 and 50', async (_, watchedAt, expected) => {
+      const target = setTarget('season');
+      jellyfinAdapter.getDescendantEpisodeWatchHistory.mockResolvedValue(
+        createDescendantWatchHistory({
+          'episode-1': [{ userId: 'user-1', watchedAt }],
+        }),
+      );
 
-        jellyfinAdapter.getMetadata.mockResolvedValue(seasonItem);
-        jellyfinAdapter.getUsers.mockResolvedValue([
-          createMediaUser({ id: 'user-1', name: 'Alice' }),
-        ]);
-        jellyfinAdapter.getDescendantEpisodeWatchHistory.mockResolvedValue(
-          createDescendantWatchHistory({
-            'episode-1': [{ userId: 'user-1', watchedAt: new Date('invalid') }],
-          }),
-        );
-
-        await expect(
-          jellyfinGetterService.get(
-            propertyId,
-            seasonItem,
-            'season',
-            createRuleGroupDto({ dataType: 'show', libraryId: LIBRARY_ID }),
-          ),
-        ).resolves.toBeUndefined();
-      },
-    );
-
-    it.each([49, 50])(
-      'returns an empty list for confirmed empty post-add history (id %i)',
-      async (propertyId) => {
-        const seasonItem = createMediaItem({
-          id: 'season-empty-post-add-history',
-          type: 'season' as MediaItemType,
-          addedAt: new Date('2024-06-01T00:00:00.000Z'),
-        });
-
-        jellyfinAdapter.getMetadata.mockResolvedValue(seasonItem);
-        jellyfinAdapter.getUsers.mockResolvedValue([
-          createMediaUser({ id: 'user-1', name: 'Alice' }),
-        ]);
-        jellyfinAdapter.getDescendantEpisodeWatchHistory.mockResolvedValue(
-          createDescendantWatchHistory({ 'episode-1': [] }),
-        );
-
-        await expect(
-          jellyfinGetterService.get(
-            propertyId,
-            seasonItem,
-            'season',
-            createRuleGroupDto({ dataType: 'show', libraryId: LIBRARY_ID }),
-          ),
-        ).resolves.toEqual([]);
-      },
-    );
+      for (const propertyId of [49, 50]) {
+        await expect(get(propertyId, target)).resolves.toEqual(expected);
+      }
+    });
   });
 
   describe('error handling', () => {

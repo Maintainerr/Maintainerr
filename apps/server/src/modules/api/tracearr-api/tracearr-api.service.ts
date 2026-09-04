@@ -247,10 +247,9 @@ export class TracearrApiService {
         if (metadata.title !== item.title) {
           contradictions += 1;
         } else if (!datesComparable) {
-          // Only Plex reaches this: the Jellyfin and Emby mappers substitute
-          // the current time for a missing DateCreated, so an item without one
-          // reads as a mismatched date there rather than as no date at all.
-          // Both request the field, so that needs the server to omit it.
+          // Every mapper leaves a missing added date as an invalid Date, so
+          // it proves nothing either way. All three request the field, so
+          // reaching this needs the server to omit it.
           continue;
         } else if (sameSecond(metadata.addedAt, remoteAddedAt)) {
           matches += 1;
