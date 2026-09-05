@@ -1,5 +1,6 @@
 import axios from 'axios';
 import axiosRetry from 'axios-retry';
+import { NO_TIMEOUT } from './httpTimeouts';
 import PlexApi from './plexApi';
 
 jest.mock('axios', () => ({
@@ -57,6 +58,22 @@ describe('PlexApi', () => {
 
     expect(axios.create).toHaveBeenCalledWith(
       expect.objectContaining({ timeout: 30000 }),
+    );
+  });
+
+  it('lets one request wait past the instance timeout', async () => {
+    const request = jest.fn().mockResolvedValue({ data: {} });
+    (axios.create as jest.Mock).mockReturnValue({ request });
+
+    await new PlexApi({
+      hostname: 'plex.local',
+      port: 32400,
+      token: 'token',
+      timeout: 30000,
+    }).deleteQuery({ uri: '/library/metadata/4', timeout: NO_TIMEOUT });
+
+    expect(request).toHaveBeenCalledWith(
+      expect.objectContaining({ method: 'DELETE', timeout: NO_TIMEOUT }),
     );
   });
 

@@ -3,6 +3,7 @@ import { ExternalApiService } from '../../../../modules/api/external-api/externa
 import { DVRSettings } from '../../../../modules/settings/interfaces/dvr-settings.interface';
 import { MaintainerrLogger } from '../../../logging/logs.service';
 import cacheManager from '../../lib/cache';
+import { NO_TIMEOUT } from '../../lib/httpTimeouts';
 import {
   DiskSpaceResource,
   HistoryRecord,
@@ -331,7 +332,9 @@ export abstract class ServarrApi<QueueItemAppendT> extends ExternalApiService {
 
   protected async runDelete(command: string): Promise<boolean> {
     try {
-      const result = await this.delete(`/${command}`);
+      const result = await this.delete(`/${command}`, {
+        timeout: NO_TIMEOUT,
+      });
 
       if (result === undefined) {
         this.logger.warn(`Failed to run DELETE: /${command}`);

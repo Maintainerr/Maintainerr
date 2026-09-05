@@ -1,5 +1,6 @@
 import type { ArrDiskspaceResource } from '@maintainerr/contracts';
 import type { MaintainerrLogger } from '../../../logging/logs.service';
+import { NO_TIMEOUT } from '../../lib/httpTimeouts';
 import { ServarrApi } from './servarr-api.service';
 
 class TestServarrApi extends ServarrApi<Record<string, never>> {}
@@ -123,6 +124,15 @@ describe('ServarrApi', () => {
 
       await expect(api.ensureTag('dnd')).resolves.toBeUndefined();
     });
+  });
+
+  // The arr answers a file delete after the disk is done with it. Applying the
+  // read timeout recorded as failed a delete the arr then finished (#3673).
+  it('waits for a delete to be answered instead of applying the read timeout', async () => {
+    const del = jest.spyOn(api, 'delete').mockResolvedValue({});
+
+    await expect((api as any).runDelete('moviefile/1')).resolves.toBe(true);
+    expect(del).toHaveBeenCalledWith('/moviefile/1', { timeout: NO_TIMEOUT });
   });
 
   describe('getRootFolders caching', () => {

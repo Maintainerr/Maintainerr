@@ -1,5 +1,6 @@
 import { CONNECTION_TEST_TIMEOUT_MS } from '../../../../utils/connection-error';
 import { MaintainerrLogger } from '../../../logging/logs.service';
+import { NO_TIMEOUT } from '../../lib/httpTimeouts';
 import {
   ServarrApi,
   SLOW_INSTANCE_TIMEOUT_MS,
@@ -170,7 +171,7 @@ export class SportarrApi extends ServarrApi<{
     try {
       await this.axios.delete(`/leagues/${leagueId}`, {
         params: { deleteFiles },
-        timeout: SLOW_INSTANCE_TIMEOUT_MS,
+        timeout: NO_TIMEOUT,
       });
       return true;
     } catch (error) {
@@ -185,7 +186,7 @@ export class SportarrApi extends ServarrApi<{
   public async deleteEventFiles(eventId: number): Promise<boolean> {
     try {
       await this.axios.delete(`/events/${eventId}/files`, {
-        timeout: SLOW_INSTANCE_TIMEOUT_MS,
+        timeout: NO_TIMEOUT,
       });
       return true;
     } catch (error) {

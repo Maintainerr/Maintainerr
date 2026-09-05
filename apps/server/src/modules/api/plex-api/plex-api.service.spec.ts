@@ -12,6 +12,7 @@ import {
   watchHistoryCacheKey,
 } from './plex-api.constants';
 import { PlexConnection } from './interfaces/server.interface';
+import { NO_TIMEOUT } from '../lib/httpTimeouts';
 import { PlexApiService } from './plex-api.service';
 
 const createDeferred = () => {
@@ -716,6 +717,29 @@ describe('PlexApiService.getMetadata', () => {
 // The diagnostic still distinguishes a missing section from an auth failure;
 // #3344 only changed the outcome - every failure now propagates instead of
 // reading downstream as "this library has no collections".
+describe('PlexApiService.deleteMediaFromDisk', () => {
+  let service: PlexApiService;
+
+  beforeEach(async () => {
+    const { unit } = await TestBed.solitary(PlexApiService).compile();
+    service = unit;
+  });
+
+  // Plex removes the file before it answers, so the request waits for it. The
+  // failure has to reach the caller: swallowed here, the adapter logged a
+  // success and the handler retired an item whose file was still on disk.
+  it('waits for the answer and surfaces a refused delete', async () => {
+    const deleteQuery = jest.fn().mockRejectedValue(new Error('denied'));
+    (service as any).plexClient = { deleteQuery };
+
+    await expect(service.deleteMediaFromDisk('4')).rejects.toThrow('denied');
+    expect(deleteQuery).toHaveBeenCalledWith({
+      uri: '/library/metadata/4',
+      timeout: NO_TIMEOUT,
+    });
+  });
+});
+
 describe('PlexApiService.getCollections (invalid section vs auth)', () => {
   let service: PlexApiService;
   let settingsDataService: PlexApiSettingsStub;

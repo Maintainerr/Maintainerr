@@ -17,6 +17,7 @@ type RequestOptions = {
   uri: string;
   extraHeaders?: Record<string, string>;
   signal?: AbortSignal;
+  timeout?: number;
 };
 
 class PlexApi {
@@ -172,6 +173,7 @@ class PlexApi {
       method,
       headers: options.extraHeaders,
       signal: options.signal,
+      timeout: options.timeout,
     };
 
     try {

@@ -9,6 +9,7 @@ import {
 import { createPrefetchProgressReporter } from '../../../utils/prefetch-progress';
 import cacheManager from '../../api/lib/cache';
 import { retryingHttp } from '../../api/lib/httpRetry';
+import { NO_TIMEOUT } from '../../api/lib/httpTimeouts';
 import PlexCommunityApi, {
   PlexCommunityErrorResponse,
   PlexCommunityWatchList,
@@ -1270,19 +1271,13 @@ export class PlexApiService {
   }
 
   public async deleteMediaFromDisk(plexId: number | string): Promise<void> {
-    try {
-      await this.plexClient.deleteQuery({
-        uri: `/library/metadata/${plexId}`,
-      });
-      this.logger.log(
-        `[Plex] Removed media with ID ${plexId} from Plex library.`,
-      );
-    } catch (error) {
-      this.logger.error(
-        `Something went wrong while removing media ${plexId} from Plex.`,
-      );
-      this.logger.debug(error);
-    }
+    await this.plexClient.deleteQuery({
+      uri: `/library/metadata/${plexId}`,
+      timeout: NO_TIMEOUT,
+    });
+    this.logger.log(
+      `[Plex] Removed media with ID ${plexId} from Plex library.`,
+    );
   }
 
   public async refreshMediaMetadata(ratingKey: string): Promise<void> {
