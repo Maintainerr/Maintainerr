@@ -59,6 +59,7 @@ import { SettingsDataService } from '../../../settings/settings-data.service';
 import { createPrefetchProgressReporter } from '../../../../utils/prefetch-progress';
 import cacheManager, { type Cache } from '../../lib/cache';
 import { applyHttpRetry } from '../../lib/httpRetry';
+import { NO_TIMEOUT } from '../../lib/httpTimeouts';
 import {
   isBlankMediaServerId,
   isForeignServerId,
@@ -2687,7 +2688,10 @@ export class JellyfinAdapterService implements IMediaServerService {
     }
 
     try {
-      await getLibraryApi(this.api).deleteItem({ itemId });
+      await getLibraryApi(this.api).deleteItem(
+        { itemId },
+        { timeout: NO_TIMEOUT },
+      );
       this.logger.log(`Successfully deleted Jellyfin item ${itemId} from disk`);
     } catch (error) {
       this.logger.error(`Failed to delete item ${itemId} from disk`);

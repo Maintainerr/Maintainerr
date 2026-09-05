@@ -1,9 +1,9 @@
-import { CONNECTION_TEST_TIMEOUT_MS } from '../../../../utils/connection-error';
 import { MaintainerrLogger } from '../../../logging/logs.service';
 import {
-  ServarrApi,
+  CONNECTION_TEST_TIMEOUT_MS,
   SLOW_INSTANCE_TIMEOUT_MS,
-} from '../common/servarr-api.service';
+} from '../../lib/httpTimeouts';
+import { ServarrApi } from '../common/servarr-api.service';
 import {
   DownloadHistoryItem,
   SonarrEpisode,

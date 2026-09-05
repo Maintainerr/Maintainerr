@@ -2,9 +2,8 @@
 // SDKs (e.g. @jellyfin/sdk) come from a second axios module instance, so an
 // instanceof check against this CommonJS build never matches them.
 import { isAxiosError } from 'axios';
+import { CONNECTION_TEST_TIMEOUT_MS } from '../modules/api/lib/httpTimeouts';
 import type { MaintainerrLogger } from '../modules/logging/logs.service';
-
-export const CONNECTION_TEST_TIMEOUT_MS = 5000;
 
 const normalizeMessageText = (message?: string): string | undefined => {
   if (!message) {

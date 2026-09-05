@@ -23,6 +23,7 @@ import { MaintainerrLogger } from '../../../logging/logs.service';
 import { SettingsDataService } from '../../../settings/settings-data.service';
 import { EmbyApi } from '../../emby-api/emby-api.helper';
 import cacheManager, { type Cache } from '../../lib/cache';
+import { NO_TIMEOUT } from '../../lib/httpTimeouts';
 import { resolveContextActionIds } from '../context-action.util';
 import { onlyRequestedItemKinds } from '../item-kinds.util';
 import { supportsFeature } from '../media-server.constants';
@@ -1727,7 +1728,7 @@ export class EmbyAdapterService implements IMediaServerService {
     }
 
     try {
-      await this.http.delete(`/Items/${itemId}`);
+      await this.http.delete(`/Items/${itemId}`, { timeout: NO_TIMEOUT });
     } catch (error) {
       const message = formatConnectionFailureMessage(
         error,

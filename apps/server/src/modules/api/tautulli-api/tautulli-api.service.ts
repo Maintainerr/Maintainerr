@@ -4,10 +4,10 @@ import { AxiosError } from 'axios';
 import { unionBy } from 'lodash';
 import { SettingsDataService } from '../../..//modules/settings/settings-data.service';
 import {
-  CONNECTION_TEST_TIMEOUT_MS,
   formatConnectionFailureMessage,
   logConnectionTestError,
 } from '../../../utils/connection-error';
+import { CONNECTION_TEST_TIMEOUT_MS } from '../lib/httpTimeouts';
 import {
   MaintainerrLogger,
   MaintainerrLoggerFactory,

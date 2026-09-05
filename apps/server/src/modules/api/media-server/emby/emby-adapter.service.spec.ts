@@ -1,4 +1,5 @@
 import { AxiosError } from 'axios';
+import { NO_TIMEOUT } from '../../lib/httpTimeouts';
 import { batchIdsByRequestCost } from '../metadata-batch.util';
 import { EMBY_METADATA_FIELDS } from './emby-adapter.service';
 import { EMBY_CACHE_TTL } from './emby.constants';
@@ -147,7 +148,9 @@ describe('EmbyAdapterService', () => {
 
       await service.deleteFromDisk('42');
 
-      expect(http.delete).toHaveBeenCalledWith('/Items/42');
+      expect(http.delete).toHaveBeenCalledWith('/Items/42', {
+        timeout: NO_TIMEOUT,
+      });
     });
   });
 
