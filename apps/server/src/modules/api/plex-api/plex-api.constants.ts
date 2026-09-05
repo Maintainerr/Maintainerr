@@ -12,11 +12,6 @@ export const PLEX_PAGE_SIZE = {
   MAX_PAGE_SIZE: 500,
 } as const;
 
-// Bounds runtime Plex socket reads so a wedged request can't stall the rule
-// executor indefinitely. Connection probes use the shorter
-// CONNECTION_TEST_TIMEOUT_MS; this applies to the long-lived runtime client.
-export const PLEX_REQUEST_TIMEOUT_MS = 30_000;
-
 // plex.tv answers with HTTP 200 and a `User not found:` GraphQL error when it
 // refuses to resolve the requested user at all: the account keeps its watchlist
 // private ("User privacy prevents viewing"), or the uuid is unknown to plex.tv.

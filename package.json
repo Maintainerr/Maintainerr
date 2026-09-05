@@ -39,7 +39,7 @@
     "@semantic-release/exec": "^7.1.0",
     "@semantic-release/git": "^11.0.1",
     "@types/node": "^26.4.0",
-    "knip": "^6.32.2",
+    "knip": "^6.34.0",
     "pofile-ts": "^4.0.3",
     "semantic-release": "^25.0.9",
     "turbo": "^2.10.12",
@@ -106,6 +106,7 @@
     "multer": "2.2.0",
     "linkify-it": "5.0.2",
     "js-yaml@5.2.1": "5.2.3",
-    "nodemailer": ">=9.0.6 <10"
+    "nodemailer@npm:^7.0.12": "^9",
+    "nodemailer@npm:8.0.5": "^9"
   }
 }

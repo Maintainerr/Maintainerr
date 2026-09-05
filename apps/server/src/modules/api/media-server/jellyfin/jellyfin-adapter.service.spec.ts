@@ -14,6 +14,7 @@ import {
   jellyfinWatchSnapshotCacheKey,
 } from './jellyfin.constants';
 import { batchIdsByRequestCost } from '../metadata-batch.util';
+import { NO_TIMEOUT } from '../../lib/httpTimeouts';
 import { JellyfinAdapterService } from './jellyfin-adapter.service';
 import { JELLYFIN_BATCH_SIZE, JELLYFIN_CACHE_TTL } from './jellyfin.constants';
 
@@ -2426,6 +2427,27 @@ describe('JellyfinAdapterService', () => {
       service.resetMetadataCache();
 
       expect(jellyfinCacheMocks.data.flushAll).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('deleteFromDisk', () => {
+    beforeEach(async () => {
+      settingsDataService.getSettings.mockResolvedValue(
+        mockSettings as unknown as Awaited<
+          ReturnType<SettingsDataService['getSettings']>
+        >,
+      );
+      await service.initialize();
+    });
+
+    // Jellyfin removes the file before it answers, so the request waits for it.
+    it('waits for the answer instead of applying a request timeout', async () => {
+      await service.deleteFromDisk('item-1');
+
+      expect(jellyfinApiMocks.deleteItem).toHaveBeenCalledWith(
+        { itemId: 'item-1' },
+        { timeout: NO_TIMEOUT },
+      );
     });
   });
 

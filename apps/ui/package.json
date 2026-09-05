@@ -39,7 +39,7 @@
     "monaco-editor": "0.56.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
-    "react-hook-form": "^7.86.0",
+    "react-hook-form": "^7.87.0",
     "react-konva": "^19.2.5",
     "react-markdown": "10.1.0",
     "react-movable": "^3.4.1",
@@ -48,7 +48,7 @@
     "react-toastify": "^11.1.0",
     "reconnecting-eventsource": "^1.6.5",
     "yaml": "^2.9.0",
-    "zod": "^4.5.2"
+    "zod": "^4.5.4"
   },
   "browserslist": [
     "> 0.5%",
@@ -74,8 +74,8 @@
     "@testing-library/react": "^16.3.3",
     "@types/lodash-es": "^4.17.12",
     "@types/node": "^26",
-    "@typescript-eslint/eslint-plugin": "^8.68.0",
-    "@typescript-eslint/parser": "^8.67.0",
+    "@typescript-eslint/eslint-plugin": "^8.69.0",
+    "@typescript-eslint/parser": "^8.68.0",
     "@vitejs/plugin-react": "^6.1.1",
     "eslint": "^10.9.1",
     "eslint-config-prettier": "^10.1.8",

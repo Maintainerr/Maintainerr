@@ -248,6 +248,15 @@ describe('EmbyMapper', () => {
       expect(result.lastViewedAt).toEqual(new Date('2021-01-03T00:00:00.000Z'));
     });
 
+    it.each([undefined, 'not-a-date'])(
+      'keeps a missing or malformed DateCreated invalid',
+      (DateCreated) => {
+        const result = EmbyMapper.toMediaItem({ ...baseItem, DateCreated });
+
+        expect(Number.isNaN(result.addedAt.getTime())).toBe(true);
+      },
+    );
+
     it('converts RunTimeTicks (100-ns) to milliseconds', () => {
       const result = EmbyMapper.toMediaItem(baseItem);
 

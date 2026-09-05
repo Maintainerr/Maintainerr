@@ -1,8 +1,22 @@
-import { type MediaItemType } from '@maintainerr/contracts';
+import { type MediaItemType, type WatchRecord } from '@maintainerr/contracts';
 import { type RuleGroupDto } from '../dtos/ruleGroup.dto';
 import { buildCollectionExcludeNames } from './collection-exclude.helper';
 
 type RuleUserId = string | number;
+
+export function isValidDate(date?: Date): boolean {
+  return Number.isFinite(date?.getTime());
+}
+
+// A completed watch without a date cannot be placed against the cutoff, so it
+// does not count; a malformed date is a read failure and propagates.
+export function isWatchedAfter(record: WatchRecord, cutoff: Date): boolean {
+  if (record.watchedAt === undefined) return false;
+  if (!isValidDate(record.watchedAt)) {
+    throw new Error('Watch history has an invalid watchedAt timestamp');
+  }
+  return record.watchedAt > cutoff;
+}
 
 export function normalizeRulePropertyName(name: string): string {
   return name.toLowerCase().trim();

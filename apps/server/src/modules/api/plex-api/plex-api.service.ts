@@ -2,13 +2,15 @@ import { BasicResponseDto, PlexSetting } from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
 import axios from 'axios';
 import { isIP } from 'net';
-import {
-  CONNECTION_TEST_TIMEOUT_MS,
-  getErrorMessage,
-} from '../../../utils/connection-error';
+import { getErrorMessage } from '../../../utils/connection-error';
 import { createPrefetchProgressReporter } from '../../../utils/prefetch-progress';
 import cacheManager from '../../api/lib/cache';
 import { retryingHttp } from '../../api/lib/httpRetry';
+import {
+  CONNECTION_TEST_TIMEOUT_MS,
+  MEDIA_SERVER_REQUEST_TIMEOUT_MS,
+  NO_TIMEOUT,
+} from '../../api/lib/httpTimeouts';
 import PlexCommunityApi, {
   PlexCommunityErrorResponse,
   PlexCommunityWatchList,
@@ -54,7 +56,6 @@ import {
 import {
   PLEX_COMMUNITY_UNRESOLVED_USER_ERROR,
   PLEX_PAGE_SIZE,
-  PLEX_REQUEST_TIMEOUT_MS,
   WATCH_HISTORY_EXCLUDE_FIELDS,
   WATCH_HISTORY_MAX_ENTRIES,
   watchHistoryCacheKey,
@@ -264,7 +265,7 @@ export class PlexApiService {
         port: settingsPlex.port,
         https: settingsPlex.useSsl,
         token: plexToken,
-        timeout: PLEX_REQUEST_TIMEOUT_MS,
+        timeout: MEDIA_SERVER_REQUEST_TIMEOUT_MS,
       });
 
       const machineId = await this.setMachineId();
@@ -352,7 +353,7 @@ export class PlexApiService {
           port: conn.port,
           https: conn.protocol === 'https',
           token: plexToken,
-          timeout: PLEX_REQUEST_TIMEOUT_MS,
+          timeout: MEDIA_SERVER_REQUEST_TIMEOUT_MS,
         });
 
         await this.settings.updatePlexConnectionDetails({
@@ -1270,19 +1271,13 @@ export class PlexApiService {
   }
 
   public async deleteMediaFromDisk(plexId: number | string): Promise<void> {
-    try {
-      await this.plexClient.deleteQuery({
-        uri: `/library/metadata/${plexId}`,
-      });
-      this.logger.log(
-        `[Plex] Removed media with ID ${plexId} from Plex library.`,
-      );
-    } catch (error) {
-      this.logger.error(
-        `Something went wrong while removing media ${plexId} from Plex.`,
-      );
-      this.logger.debug(error);
-    }
+    await this.plexClient.deleteQuery({
+      uri: `/library/metadata/${plexId}`,
+      timeout: NO_TIMEOUT,
+    });
+    this.logger.log(
+      `[Plex] Removed media with ID ${plexId} from Plex library.`,
+    );
   }
 
   public async refreshMediaMetadata(ratingKey: string): Promise<void> {

@@ -127,7 +127,7 @@ export class EmbyMapper {
       parentGuid: parentId,
       grandparentGuid: grandparentId,
       type: EmbyMapper.toMediaItemType(item.Type),
-      addedAt: item.DateCreated ? new Date(item.DateCreated) : new Date(),
+      addedAt: new Date(item.DateCreated ?? ''),
       updatedAt: extras.DateLastSaved
         ? new Date(extras.DateLastSaved)
         : undefined,

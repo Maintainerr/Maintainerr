@@ -2,6 +2,7 @@ import axios, { AxiosError, AxiosInstance, RawAxiosRequestConfig } from 'axios';
 import NodeCache from 'node-cache';
 import { MaintainerrLogger } from '../../logging/logs.service';
 import { applyHttpRetry } from '../lib/httpRetry';
+import { DEFAULT_REQUEST_TIMEOUT_MS } from '../lib/httpTimeouts';
 import { describeRequestTarget } from '../lib/requestLogging';
 
 // 20 minute default TTL (in seconds)
@@ -29,7 +30,7 @@ export class ExternalApiService {
     this.axios = axios.create({
       baseURL: baseUrl,
       params,
-      timeout: 10000, // timeout after 10s
+      timeout: DEFAULT_REQUEST_TIMEOUT_MS,
       headers: {
         'Content-Type': 'application/json',
         Accept: 'application/json',

@@ -235,6 +235,14 @@ export class RuleConstants {
           showType: ['show', 'season'],
         },
         {
+          id: 49,
+          name: 'sw_allEpisodesSeenBySinceAdded',
+          humanName: '[list] Users that watched every episode since added',
+          mediaType: MediaType.SHOW,
+          type: RuleType.TEXT_LIST,
+          showType: ['show', 'season'],
+        },
+        {
           id: 13,
           name: 'sw_lastWatched',
           humanName: 'Newest episode view date',
@@ -288,6 +296,15 @@ export class RuleConstants {
           mediaType: MediaType.SHOW,
           type: RuleType.TEXT_LIST, // return usernames []
           showType: ['show', 'season', 'episode'],
+        },
+        {
+          id: 50,
+          name: 'sw_watchersSinceAdded',
+          humanName:
+            '[list] Users that watched at least one episode since added',
+          mediaType: MediaType.SHOW,
+          type: RuleType.TEXT_LIST,
+          showType: ['show', 'season'],
         },
         {
           id: 19,
@@ -1752,6 +1769,23 @@ export class RuleConstants {
           mediaType: MediaType.SHOW,
           showType: ['season'],
           type: RuleType.DATE,
+        },
+        {
+          id: 49,
+          name: 'sw_allEpisodesSeenBySinceAdded',
+          humanName: '[list] Users that watched every episode since added',
+          mediaType: MediaType.SHOW,
+          type: RuleType.TEXT_LIST,
+          showType: ['show', 'season'],
+        },
+        {
+          id: 50,
+          name: 'sw_watchersSinceAdded',
+          humanName:
+            '[list] Users that watched at least one episode since added',
+          mediaType: MediaType.SHOW,
+          type: RuleType.TEXT_LIST,
+          showType: ['show', 'season'],
         },
       ],
     },

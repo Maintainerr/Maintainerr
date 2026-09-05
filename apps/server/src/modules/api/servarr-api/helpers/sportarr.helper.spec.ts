@@ -1,4 +1,5 @@
 import { MaintainerrLogger } from '../../../logging/logs.service';
+import { NO_TIMEOUT } from '../../lib/httpTimeouts';
 import { SportarrApi } from './sportarr.helper';
 
 describe('SportarrApi', () => {
@@ -109,10 +110,10 @@ describe('SportarrApi', () => {
         .mockResolvedValue({ data: {} });
 
       await expect(sportarrApi.deleteLeague(3, true)).resolves.toBe(true);
-      expect(del).toHaveBeenCalledWith(
-        '/leagues/3',
-        expect.objectContaining({ params: { deleteFiles: true } }),
-      );
+      expect(del).toHaveBeenCalledWith('/leagues/3', {
+        params: { deleteFiles: true },
+        timeout: NO_TIMEOUT,
+      });
     });
 
     it('deleteLeague returns false when the request throws', async () => {
@@ -159,7 +160,9 @@ describe('SportarrApi', () => {
         .mockResolvedValue({ data: {} });
 
       await expect(sportarrApi.deleteEventFiles(999)).resolves.toBe(true);
-      expect(del).toHaveBeenCalledWith('/events/999/files', expect.anything());
+      expect(del).toHaveBeenCalledWith('/events/999/files', {
+        timeout: NO_TIMEOUT,
+      });
     });
   });
 

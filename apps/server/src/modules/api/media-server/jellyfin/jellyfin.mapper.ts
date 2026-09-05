@@ -168,7 +168,7 @@ export class JellyfinMapper {
       parentGuid: parentId,
       grandparentGuid: grandparentId,
       type: JellyfinMapper.toMediaItemType(item.Type),
-      addedAt: item.DateCreated ? new Date(item.DateCreated) : new Date(),
+      addedAt: new Date(item.DateCreated ?? ''),
       updatedAt: (item as JellyfinItemDto).DateLastSaved
         ? new Date((item as JellyfinItemDto).DateLastSaved!)
         : undefined,

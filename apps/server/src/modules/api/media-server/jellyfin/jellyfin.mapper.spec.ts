@@ -189,6 +189,15 @@ describe('JellyfinMapper', () => {
         );
       });
 
+      it('keeps a missing DateCreated invalid instead of using the current time', () => {
+        const result = JellyfinMapper.toMediaItem({
+          ...episodeItem,
+          DateCreated: undefined,
+        });
+
+        expect(Number.isNaN(result.addedAt.getTime())).toBe(true);
+      });
+
       it('should extract provider IDs correctly', () => {
         const result = JellyfinMapper.toMediaItem(episodeItem);
 

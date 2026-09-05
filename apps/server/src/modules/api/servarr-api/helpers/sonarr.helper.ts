@@ -1,9 +1,9 @@
-import { CONNECTION_TEST_TIMEOUT_MS } from '../../../../utils/connection-error';
 import { MaintainerrLogger } from '../../../logging/logs.service';
 import {
-  ServarrApi,
+  CONNECTION_TEST_TIMEOUT_MS,
   SLOW_INSTANCE_TIMEOUT_MS,
-} from '../common/servarr-api.service';
+} from '../../lib/httpTimeouts';
+import { ServarrApi } from '../common/servarr-api.service';
 import {
   DownloadHistoryItem,
   SonarrEpisode,
@@ -50,13 +50,22 @@ export class SonarrApi extends ServarrApi<{
     }
   }
 
+  /**
+   * Use fresh reads for actions so file ids cannot come from rule evaluation's
+   * cached episode list.
+   */
   public async getEpisodes(
     seriesID: number,
     seasonNumber?: number,
     episodeNumbers?: number[],
+    options?: { fresh?: boolean },
   ): Promise<SonarrEpisode[]> {
     try {
-      const response = await this.fetchEpisodes(seriesID, seasonNumber);
+      const response = await this.fetchEpisodes(
+        seriesID,
+        seasonNumber,
+        options?.fresh,
+      );
 
       if (episodeNumbers !== undefined) {
         const validEpisodeNumbers =
@@ -295,7 +304,14 @@ export class SonarrApi extends ServarrApi<{
     }
 
     try {
-      const episodes = await this.getEpisodes(seriesId, seasonNumber);
+      const episodes = await this.getEpisodes(
+        seriesId,
+        seasonNumber,
+        undefined,
+        {
+          fresh: true,
+        },
+      );
 
       const matchedEpisodes = this.findEpisodesForAction(
         episodes,
@@ -356,7 +372,15 @@ export class SonarrApi extends ServarrApi<{
       const data: SonarrSeries = (await this.axios.get(`series/${seriesId}`))
         .data;
 
-      const episodes = await this.getEpisodes(+seriesId);
+      const episodes = await this.getEpisodes(+seriesId, undefined, undefined, {
+        fresh: true,
+      });
+      if (!Array.isArray(episodes)) {
+        this.logger.warn(
+          `Could not list series ${seriesId}'s episodes; no action was taken.`,
+        );
+        return undefined;
+      }
       let success = true;
 
       data.seasons = await Promise.all(
@@ -370,12 +394,7 @@ export class SonarrApi extends ServarrApi<{
             for (const e of episodes) {
               if (e.seasonNumber === s.seasonNumber && e.episodeFileId) {
                 success =
-                  (await this.UnmonitorDeleteEpisodes(
-                    +seriesId,
-                    e.seasonNumber,
-                    [e.episodeNumber],
-                    false,
-                  )) && success;
+                  (await this.unmonitorAndDeleteEpisode(e, false)) && success;
               }
             }
           } else if (typeof type === 'number') {
@@ -391,18 +410,19 @@ export class SonarrApi extends ServarrApi<{
       // Skip the file deletes when an unmonitor failed: the content may still
       // be monitored and Sonarr would re-download it (#3228). The action
       // reports failure and is retried next run.
+      let deletedFileCount = 0;
       if (deleteFiles && success) {
         for (const e of episodes) {
-          if (typeof type === 'number') {
-            if (e.seasonNumber === type && e.episodeFileId) {
-              success =
-                (await this.runDelete(`episodefile/${e.episodeFileId}`)) &&
-                success;
-            }
-          } else if (e.episodeFileId) {
-            success =
-              (await this.runDelete(`episodefile/${e.episodeFileId}`)) &&
-              success;
+          if (!e.episodeFileId) {
+            continue;
+          }
+          if (typeof type === 'number' && e.seasonNumber !== type) {
+            continue;
+          }
+          if (await this.runDelete(`episodefile/${e.episodeFileId}`)) {
+            deletedFileCount++;
+          } else {
+            success = false;
           }
         }
       }
@@ -414,7 +434,13 @@ export class SonarrApi extends ServarrApi<{
       this.logger.log(
         `Unmonitored ${
           typeof type === 'number' ? `season ${type}` : 'seasons'
-        } from Sonarr show with ID ${seriesId}`,
+        } from Sonarr show with ID ${seriesId}${
+          !deleteFiles
+            ? ''
+            : deletedFileCount > 0
+              ? ` and removed ${deletedFileCount} episode file(s)`
+              : '; it had no episode files to remove'
+        }`,
       );
 
       return data;
@@ -513,12 +539,17 @@ export class SonarrApi extends ServarrApi<{
   private async fetchEpisodes(
     seriesID: number,
     seasonNumber?: number,
+    fresh = false,
   ): Promise<SonarrEpisode[]> {
-    return this.get<SonarrEpisode[]>(
-      `/episode?seriesId=${seriesID}${
-        seasonNumber !== undefined ? `&seasonNumber=${seasonNumber}` : ''
-      }`,
-    );
+    const path = `/episode?seriesId=${seriesID}${
+      seasonNumber !== undefined ? `&seasonNumber=${seasonNumber}` : ''
+    }`;
+
+    return fresh
+      ? this.getWithoutCache<SonarrEpisode[]>(path, {
+          timeout: SLOW_INSTANCE_TIMEOUT_MS,
+        })
+      : this.get<SonarrEpisode[]>(path);
   }
 
   private findEpisodesForAction(
