@@ -3,7 +3,7 @@ import { ExternalApiService } from '../../../../modules/api/external-api/externa
 import { DVRSettings } from '../../../../modules/settings/interfaces/dvr-settings.interface';
 import { MaintainerrLogger } from '../../../logging/logs.service';
 import cacheManager from '../../lib/cache';
-import { NO_TIMEOUT } from '../../lib/httpTimeouts';
+import { NO_TIMEOUT, SLOW_INSTANCE_TIMEOUT_MS } from '../../lib/httpTimeouts';
 import {
   DiskSpaceResource,
   HistoryRecord,
@@ -13,12 +13,6 @@ import {
   SystemStatus,
   Tag,
 } from '../interfaces/servarr.interface';
-
-// Slow/underpowered *arr instances can take >10s to answer even simple reads;
-// allow more headroom than the shared 10s axios default before aborting
-// (#3181). Used for uncached reads whose failure would change action or rule
-// behavior.
-export const SLOW_INSTANCE_TIMEOUT_MS = 20000;
 
 export abstract class ServarrApi<QueueItemAppendT> extends ExternalApiService {
   static buildUrl(settings: DVRSettings, path?: string): string {

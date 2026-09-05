@@ -1,6 +1,7 @@
 import { stripTrailingSlashes } from '@maintainerr/contracts';
 import axios, { type AxiosInstance } from 'axios';
 import { applyHttpRetry } from '../lib/httpRetry';
+import { MEDIA_SERVER_REQUEST_TIMEOUT_MS } from '../lib/httpTimeouts';
 
 interface EmbyApiOptions {
   url: string;
@@ -43,7 +44,7 @@ export class EmbyApi {
 
     this.axios = axios.create({
       baseURL,
-      timeout: options.timeout ?? 30000,
+      timeout: options.timeout ?? MEDIA_SERVER_REQUEST_TIMEOUT_MS,
       headers,
     });
 

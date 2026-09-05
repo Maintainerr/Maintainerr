@@ -15,10 +15,10 @@ import { SettingsDataService } from '../../settings/settings-data.service';
 import { resolveDescendants } from '../media-server/context-action.util';
 import { MediaServerFactory } from '../media-server/media-server.factory';
 import {
-  CONNECTION_TEST_TIMEOUT_MS,
   formatConnectionFailureMessage,
   logConnectionTestError,
 } from '../../../utils/connection-error';
+import { CONNECTION_TEST_TIMEOUT_MS } from '../lib/httpTimeouts';
 import {
   MaintainerrLogger,
   MaintainerrLoggerFactory,

@@ -3,10 +3,10 @@ import { Injectable } from '@nestjs/common';
 import { AxiosError } from 'axios';
 import { SettingsDataService } from '../../../modules/settings/settings-data.service';
 import {
-  CONNECTION_TEST_TIMEOUT_MS,
   formatConnectionFailureMessage,
   logConnectionTestError,
 } from '../../../utils/connection-error';
+import { CONNECTION_TEST_TIMEOUT_MS } from '../lib/httpTimeouts';
 
 // qBittorrent rejects an authenticated request with 403 when its Web UI security
 // blocks the caller. Bad credentials are NOT this case (they are rejected at

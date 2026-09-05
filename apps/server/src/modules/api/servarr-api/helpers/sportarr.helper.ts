@@ -1,10 +1,10 @@
-import { CONNECTION_TEST_TIMEOUT_MS } from '../../../../utils/connection-error';
 import { MaintainerrLogger } from '../../../logging/logs.service';
-import { NO_TIMEOUT } from '../../lib/httpTimeouts';
 import {
-  ServarrApi,
+  CONNECTION_TEST_TIMEOUT_MS,
+  NO_TIMEOUT,
   SLOW_INSTANCE_TIMEOUT_MS,
-} from '../common/servarr-api.service';
+} from '../../lib/httpTimeouts';
+import { ServarrApi } from '../common/servarr-api.service';
 import {
   SportarrDownloadHistoryItem,
   SportarrEvent,
