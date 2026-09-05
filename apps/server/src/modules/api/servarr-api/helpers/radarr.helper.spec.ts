@@ -266,6 +266,31 @@ describe('RadarrApi', () => {
       expect(getWithoutCacheSpy).toHaveBeenCalledTimes(1);
     });
 
+    it('deletes current file ids without using the rule evaluation cache', async () => {
+      const cached = jest
+        .spyOn(api, 'get')
+        .mockResolvedValue([createRadarrMovieFile({ id: 800 })]);
+      const fresh = jest
+        .spyOn(api, 'getWithoutCache')
+        .mockResolvedValueOnce(movie)
+        .mockResolvedValueOnce([createRadarrMovieFile({ id: 900 })]);
+      jest.spyOn(api as any, 'runPut').mockResolvedValue(true);
+      const runDeleteSpy = jest
+        .spyOn(api as any, 'runDelete')
+        .mockResolvedValue(true);
+
+      await expect(
+        api.updateMovie(5, { monitored: false, deleteFiles: true }),
+      ).resolves.toEqual({ ok: true, deletedFileCount: 1 });
+
+      expect(cached).not.toHaveBeenCalled();
+      expect(fresh).toHaveBeenCalledWith('moviefile?movieId=5', {
+        timeout: 20000,
+      });
+      expect(runDeleteSpy).toHaveBeenCalledTimes(1);
+      expect(runDeleteSpy).toHaveBeenCalledWith('moviefile/900');
+    });
+
     it('fails closed when the movie file listing fails instead of reporting success', async () => {
       jest
         .spyOn(api, 'getWithoutCache')
