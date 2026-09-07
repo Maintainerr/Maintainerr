@@ -8,8 +8,8 @@ msgstr ""
 "Language: fr\n"
 "Project-Id-Version: \n"
 "Report-Msgid-Bugs-To: \n"
-"PO-Revision-Date: 2026-08-28 20:40+0000\n"
-"Last-Translator: Maintainerr <get@maintainerr.info>\n"
+"PO-Revision-Date: 2026-09-08 14:57+0000\n"
+"Last-Translator: COTMO <moermantom1@gmail.com>\n"
 "Language-Team: French <https://hosted.weblate.org/projects/maintainerr/app/fr/>\n"
 "Plural-Forms: nplurals=2; plural=n > 1;\n"
 
@@ -2690,7 +2690,7 @@ msgstr "Certains champs requis (*) ne sont pas remplis et au moins 1 règle vali
 
 #: src/api/bulkMediaAction.ts
 msgid "not attempted"
-msgstr ""
+msgstr "non tenté"
 
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "Not Contains (All items)"
@@ -3536,7 +3536,7 @@ msgstr "Nom du serveur"
 
 #: src/api/bulkMediaAction.ts
 msgid "server responded {status}"
-msgstr ""
+msgstr "Le serveur a répondu {status}"
 
 #: src/components/Settings/About/index.tsx
 msgid "Services Status"
