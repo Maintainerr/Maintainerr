@@ -165,16 +165,21 @@ describe('QbittorrentApi auth', () => {
     ).toBe(false);
   });
 
-  it('treats the seed-time limit as met independently of ratio', async () => {
-    const t = await getMappedTorrent(
+  it('compares seeding_time (seconds) against max_seeding_time (minutes)', async () => {
+    const seededFor = (seeding_time: number) =>
       rawTorrent({
         max_ratio: -1,
         ratio: 0.1,
-        max_seeding_time: 3600,
-        seeding_time: 7200,
-      }),
+        max_seeding_time: 60,
+        seeding_time,
+      });
+
+    expect((await getMappedTorrent(seededFor(3600)))?.reachedSeedingGoal).toBe(
+      true,
     );
-    expect(t?.reachedSeedingGoal).toBe(true);
+    expect((await getMappedTorrent(seededFor(3599)))?.reachedSeedingGoal).toBe(
+      false,
+    );
   });
 });
 

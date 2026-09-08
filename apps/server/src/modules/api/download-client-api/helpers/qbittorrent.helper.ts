@@ -10,7 +10,9 @@ import {
  * The qBittorrent `torrents/info` fields we read. `max_ratio` /
  * `max_seeding_time` are the EFFECTIVE limits qBittorrent enforces ("…until
  * torrent is stopped from seeding"), already resolving any global default; `-1`
- * means "no limit". `seeding_time` and `max_seeding_time` are in seconds.
+ * means "no limit". `seeding_time` is in seconds; `max_seeding_time` is in
+ * MINUTES, like the preference it mirrors (qBittorrent itself compares
+ * `finishedTime() / 60` against it).
  */
 interface RawQbittorrentTorrent {
   hash: string;
@@ -44,7 +46,7 @@ const toDownloadClientTorrent = (
   } else {
     reachedSeedingGoal =
       (hasRatioLimit && ratio >= raw.max_ratio) ||
-      (hasTimeLimit && raw.seeding_time >= raw.max_seeding_time);
+      (hasTimeLimit && raw.seeding_time >= raw.max_seeding_time * 60);
   }
 
   return {
