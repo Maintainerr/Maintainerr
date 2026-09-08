@@ -2867,7 +2867,7 @@ __metadata:
     rxjs: "npm:^7.8.2"
     sharp: "npm:^0.35.4"
     ts-node: "npm:^10.9.2"
-    typeorm: "npm:^1.1.0"
+    typeorm: "npm:^1.1.1"
     typescript: "npm:^6.0.3"
     winston: "npm:^3.19.0"
     winston-daily-rotate-file: "npm:^5.0.0"
@@ -17588,9 +17588,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"typeorm@npm:^1.1.0":
-  version: 1.1.0
-  resolution: "typeorm@npm:1.1.0"
+"typeorm@npm:^1.1.1":
+  version: 1.1.1
+  resolution: "typeorm@npm:1.1.1"
   dependencies:
     "@sqltools/formatter": "npm:^1.2.5"
     ansis: "npm:^4.3.1"
@@ -17653,7 +17653,7 @@ __metadata:
     typeorm: cli.js
     typeorm-ts-node-commonjs: cli-ts-node-commonjs.js
     typeorm-ts-node-esm: cli-ts-node-esm.js
-  checksum: 10c0/1457b3420d254aaef0dc037b43d0bf121061ad57501e48f40dd831fec885259ea041a1a0c5a594b305b79233c50953eca9f3fb4b576a1eaea50c1722e27f68e3
+  checksum: 10c0/4b256489504ffd61aff28f11ce8dd6798672e26ea08d58b20a543a45cd8fb5b61e1be8a97f22476cc988387cc2ec5af862ba427822423df8c38bf7089dc471fb
   languageName: node
   linkType: hard
 
