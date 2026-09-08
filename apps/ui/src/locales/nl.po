@@ -8,7 +8,7 @@ msgstr ""
 "Language: nl\n"
 "Project-Id-Version: \n"
 "Report-Msgid-Bugs-To: \n"
-"PO-Revision-Date: 2026-09-08 17:57+0000\n"
+"PO-Revision-Date: 2026-09-08 18:03+0000\n"
 "Last-Translator: COTMO <moermantom1@gmail.com>\n"
 "Language-Team: Dutch <https://hosted.weblate.org/projects/maintainerr/app/nl/>\n"
 "Plural-Forms: nplurals=2; plural=n != 1;\n"
@@ -3895,7 +3895,7 @@ msgstr "Actie ondernemen na dagen*"
 
 #: src/components/Rules/RuleGroup/AddModal/QualityProfileSelector.tsx
 msgid "Target quality profile to change to"
-msgstr ""
+msgstr "Doelkwaliteitsprofiel om naar te veranderen"
 
 #: src/components/Settings/Tautulli/index.tsx
 msgid "Tautulli configuration"
@@ -3948,27 +3948,27 @@ msgstr "Sjabloon gewist"
 
 #: src/pages/OverlayTemplateListPage.tsx
 msgid "Template duplicated"
-msgstr ""
+msgstr "Sjabloon gedupliceerd"
 
 #: src/pages/OverlayTemplateEditorPage.tsx
 msgid "Template Name"
-msgstr ""
+msgstr "Sjabloonnaam"
 
 #: src/pages/OverlayTemplateEditorPage.tsx
 msgid "Template name is required"
-msgstr ""
+msgstr "Sjabloonnaam is verplicht"
 
 #: src/pages/OverlayTemplateEditorPage.tsx
 msgid "Template not found"
-msgstr ""
+msgstr "Sjabloon niet gevonden"
 
 #: src/pages/OverlayTemplateEditorPage.tsx
 msgid "Template saved"
-msgstr ""
+msgstr "Sjabloon opgeslagen"
 
 #: src/components/Collection/CollectionDetail/TestMediaItem/index.tsx
 msgid "Test"
-msgstr ""
+msgstr "Test"
 
 #: src/components/Common/TestingButton.tsx
 #: src/components/Settings/Metadata/index.tsx
@@ -3992,30 +3992,30 @@ msgstr "Test de verbinding om Jellyfin-beheerdersaccounts te laden"
 #: src/components/Collection/CollectionDetail/TestMediaItem/index.tsx
 #: src/pages/CollectionDetailPage.tsx
 msgid "Test Media"
-msgstr ""
+msgstr "Test media"
 
 #: src/components/Collection/CollectionDetail/TestMediaItem/index.tsx
 msgid "Testing..."
-msgstr ""
+msgstr "Testen..."
 
 #: src/components/OverlayEditor/ElementToolbox.tsx
 #: src/components/OverlayEditor/LayerPanel.tsx
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "Text"
-msgstr ""
+msgstr "Tekst"
 
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "Text (legacy list option)"
-msgstr ""
+msgstr "Tekst (verouderde lijstoptie)"
 
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "Text..."
-msgstr ""
+msgstr "Tekst..."
 
 #: src/components/Rules/Rule/RuleCreator/CommunityRuleUpload/index.tsx
 msgid "Thank you for contributing."
-msgstr ""
+msgstr "Bedankt voor je bijdrage."
 
 #: src/components/Settings/Servarr/ExclusionTagSettings.tsx
 msgid "The {name} tag to apply, created if missing."
@@ -4043,11 +4043,11 @@ msgstr "De voorvertoning kon niet worden geladen."
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "The rule group could not be saved"
-msgstr ""
+msgstr "De regelgroep kon niet worden opgeslagen"
 
 #: src/components/Collection/CollectionDetail/TestMediaItem/index.tsx
 msgid "The rule group is of type episodes, as a result only media of type series will be displayed in the search bar."
-msgstr ""
+msgstr "De regelgroep is van het type afleveringen, waardoor alleen media van het type series worden weergegeven in de zoekbalk."
 
 #: src/components/Collection/CollectionDetail/TestMediaItem/index.tsx
 msgid "The rule group is of type movies, as a result only media of type movies will be displayed in the search bar."
@@ -4055,11 +4055,11 @@ msgstr "De regelgroep is van het type films, waardoor alleen media van het type 
 
 #: src/components/Collection/CollectionDetail/TestMediaItem/index.tsx
 msgid "The rule group is of type seasons, as a result only media of type series will be displayed in the search bar."
-msgstr ""
+msgstr "De regelgroep is van het type seizoenen, waardoor alleen media van het type series worden weergegeven in de zoekbalk."
 
 #: src/components/Collection/CollectionDetail/TestMediaItem/index.tsx
 msgid "The rule group is of type series, as a result only media of type series will be displayed in the search bar."
-msgstr ""
+msgstr "De regelgroep is van het type series, waardoor alleen media van het type series worden weergegeven in de zoekbalk."
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "The saved library could not be found in the current library list. Re-select it once your media server is reachable."
