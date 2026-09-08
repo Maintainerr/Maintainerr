@@ -54,6 +54,7 @@ const toDownloadClientTorrent = (
     name: raw.name,
     content_path: raw.content_path,
     ratio,
+    seedingTime: raw.seeding_time,
     reachedSeedingGoal,
   };
 };

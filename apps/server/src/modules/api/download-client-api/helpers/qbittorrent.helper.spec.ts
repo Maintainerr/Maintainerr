@@ -134,12 +134,15 @@ describe('QbittorrentApi auth', () => {
   it('normalizes qBittorrent\'s -1 "unbounded" ratio to Infinity and lowercases the hash lookup', async () => {
     const { api, axiosMock } = buildApi();
     axiosMock.post.mockResolvedValue({ data: 'Ok.', headers: {} });
-    axiosMock.get.mockResolvedValue({ data: [rawTorrent({ ratio: -1 })] });
+    axiosMock.get.mockResolvedValue({
+      data: [rawTorrent({ ratio: -1, seeding_time: 7200 })],
+    });
 
     const single = await api.getTorrentByHash('ABC');
     const [fromList] = await api.getTorrents();
 
     expect(single?.ratio).toBe(Infinity);
+    expect(single?.seedingTime).toBe(7200);
     expect(fromList?.ratio).toBe(Infinity);
     expect(axiosMock.get).toHaveBeenCalledWith(
       '/torrents/info',
