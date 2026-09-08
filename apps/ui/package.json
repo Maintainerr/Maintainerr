@@ -40,7 +40,7 @@
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-hook-form": "^7.87.0",
-    "react-konva": "^19.2.5",
+    "react-konva": "^19.2.6",
     "react-markdown": "10.1.0",
     "react-movable": "^3.4.1",
     "react-router-dom": "^7.18.3",
@@ -89,6 +89,6 @@
     "vitest": "^4.1.11"
   },
   "optionalDependencies": {
-    "rolldown": "^1.2.6"
+    "rolldown": "^1.2.7"
   }
 }
