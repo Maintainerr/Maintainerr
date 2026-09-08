@@ -8,7 +8,7 @@ msgstr ""
 "Language: nl\n"
 "Project-Id-Version: \n"
 "Report-Msgid-Bugs-To: \n"
-"PO-Revision-Date: 2026-09-08 17:50+0000\n"
+"PO-Revision-Date: 2026-09-08 17:57+0000\n"
 "Last-Translator: COTMO <moermantom1@gmail.com>\n"
 "Language-Team: Dutch <https://hosted.weblate.org/projects/maintainerr/app/nl/>\n"
 "Plural-Forms: nplurals=2; plural=n != 1;\n"
@@ -3778,11 +3778,11 @@ msgstr "Streamystats instellingen bijgewerkt"
 
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "Stroke"
-msgstr ""
+msgstr "Contour"
 
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "Stroke Width"
-msgstr ""
+msgstr "Contourdikte"
 
 #: src/components/Common/MediaLibrarySortControl.tsx
 msgid "Studio (A-Z) Ascending"
@@ -3794,19 +3794,19 @@ msgstr "Studio (Z-A) aflopend"
 
 #: src/components/Common/MediaActionModal.tsx
 msgid "Submit"
-msgstr ""
+msgstr "Indienen"
 
 #: src/components/Common/MediaActionModal.tsx
 msgid "Submitting..."
-msgstr ""
+msgstr "Indienen..."
 
 #: src/components/Settings/MediaServerSelector/index.tsx
 msgid "Success"
-msgstr ""
+msgstr "Gelukt"
 
 #: src/components/Settings/Metadata/index.tsx
 msgid "Successfully connected to {providerTitle}"
-msgstr ""
+msgstr "Succesvol verbonden met {providerTitle}"
 
 #: src/components/Settings/ExternalServiceSettingsPage.tsx
 #: src/components/Settings/Servarr/ServarrSettingsModal.tsx
@@ -3835,23 +3835,23 @@ msgstr "Regels succesvol geïmporteerd uit YAML."
 
 #: src/components/Settings/MediaServerSelector/index.tsx
 msgid "Successfully switched to <0>{pendingName}</0>!"
-msgstr ""
+msgstr "Succesvol overgeschakeld naar <0>{pendingName}</0>!"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Supports all standard <0>cron</0> patterns"
-msgstr ""
+msgstr "Ondersteunt alle standaard <0>cron</0>-patronen"
 
 #: src/components/Settings/MediaServerSelector/index.tsx
 msgid "Switch"
-msgstr ""
+msgstr "Wisselen"
 
 #: src/components/Settings/MediaServerSelector/index.tsx
 msgid "Switching..."
-msgstr ""
+msgstr "Wisselen..."
 
 #: src/components/Settings/Tabs/index.tsx
 msgid "Tabs"
-msgstr ""
+msgstr "Tabbladen"
 
 #: src/components/Settings/Servarr/ExclusionTagSettings.tsx
 msgid "Tag excluded content"
