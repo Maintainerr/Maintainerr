@@ -35,6 +35,13 @@ import {
 } from './download-client.interface';
 
 /**
+ * Seed-time floor for a download the client does not limit. The fallback ratio
+ * alone lets a tracker's seed-time rule be broken the moment the ratio is met,
+ * so both must hold before such a download is removed.
+ */
+const FALLBACK_SEEDING_HOURS = 23;
+
+/**
  * Talks to the configured download client to clean up completed downloads for
  * media Radarr/Sonarr removes. qBittorrent is currently the only supported
  * backend; the qBittorrent specifics live in the helper so additional backends
@@ -127,8 +134,8 @@ export class DownloadClientApiService {
    * is a side effect.
    *
    * Whether a download has finished seeding is decided by the download client's
-   * own ratio / seed-time limits. Only when the client enforces no limit does
-   * Maintainerr's fallback ratio apply.
+   * own ratio / seed-time limits. Only when the client enforces no limit do
+   * Maintainerr's fallbacks apply, and then both must be met.
    *
    * Cross-seed protection (inspired by qbit_manage): when deleting data, a
    * download whose content path is shared by another download is removed
@@ -167,7 +174,7 @@ export class DownloadClientApiService {
           this.logger.log(
             torrent.reachedSeedingGoal === false
               ? `Keeping download '${torrent.name}' seeding: its download-client seeding goal isn't met yet`
-              : `Keeping download '${torrent.name}' seeding: the download client enforces no limit and ratio ${torrent.ratio} is below the fallback minimum of ${fallbackRatio}`,
+              : `Keeping download '${torrent.name}' seeding: the download client enforces no limit and it is at ratio ${torrent.ratio} after ${(torrent.seedingTime / 3600).toFixed(1)}h against fallback minimums of ${fallbackRatio} and ${FALLBACK_SEEDING_HOURS}h`,
           );
           continue;
         }
@@ -227,9 +234,9 @@ export class DownloadClientApiService {
 
   /**
    * Defer to the download client's own seeding goal; only when it enforces no
-   * limit (`reachedSeedingGoal === null`) apply Maintainerr's fallback ratio.
-   * The client normalizes an unbounded ratio to Infinity, so a plain `>=`
-   * covers that case too.
+   * limit (`reachedSeedingGoal === null`) apply Maintainerr's fallbacks, both
+   * of which must be met. The client normalizes an unbounded ratio to
+   * Infinity, so a plain `>=` covers that case too.
    */
   private shouldRemove(
     torrent: DownloadClientTorrent,
@@ -238,6 +245,9 @@ export class DownloadClientApiService {
     if (torrent.reachedSeedingGoal !== null) {
       return torrent.reachedSeedingGoal;
     }
-    return torrent.ratio >= fallbackRatio;
+    return (
+      torrent.ratio >= fallbackRatio &&
+      torrent.seedingTime >= FALLBACK_SEEDING_HOURS * 3600
+    );
   }
 }

@@ -24,7 +24,8 @@ const torrent = (
   name: 'Sample Download',
   content_path: '/downloads/sample',
   ratio: 1,
-  // null = the client enforces no limit, so the fallback ratio applies.
+  seedingTime: 48 * 3600,
+  // null = the client enforces no limit, so the fallbacks apply.
   reachedSeedingGoal: null,
   ...overrides,
 });
@@ -182,7 +183,7 @@ describe('DownloadClientApiService', () => {
       expect(apiMock.deleteTorrents).not.toHaveBeenCalled();
     });
 
-    it('applies the fallback ratio only when the client enforces no limit', async () => {
+    it('applies the fallback ratio and hours only when the client enforces no limit', async () => {
       apiMock.getTorrentByHash.mockResolvedValue(
         torrent({ reachedSeedingGoal: null, ratio: 0.7 }),
       );
@@ -190,6 +191,16 @@ describe('DownloadClientApiService', () => {
       await service.removeDownloads(['abc']);
 
       expect(apiMock.deleteTorrents).toHaveBeenCalledWith(['abc'], true);
+    });
+
+    it('keeps seeding when there is no client limit and the fallback hours are not seeded yet', async () => {
+      apiMock.getTorrentByHash.mockResolvedValue(
+        torrent({ reachedSeedingGoal: null, ratio: 9, seedingTime: 22 * 3600 }),
+      );
+
+      await service.removeDownloads(['abc']);
+
+      expect(apiMock.deleteTorrents).not.toHaveBeenCalled();
     });
 
     it('keeps seeding when there is no client limit and ratio is below the fallback', async () => {

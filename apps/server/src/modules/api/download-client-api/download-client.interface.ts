@@ -18,6 +18,8 @@ export interface DownloadClientTorrent {
    * fallback when the client enforces no seeding goal of its own.
    */
   ratio: number;
+  /** Seconds spent seeding since the download completed. Same use as `ratio`. */
+  seedingTime: number;
   /**
    * Whether the client's OWN seeding goal (its ratio / seed-time limit) is met,
    * decided entirely by the client:

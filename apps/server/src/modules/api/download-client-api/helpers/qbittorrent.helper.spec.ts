@@ -134,12 +134,15 @@ describe('QbittorrentApi auth', () => {
   it('normalizes qBittorrent\'s -1 "unbounded" ratio to Infinity and lowercases the hash lookup', async () => {
     const { api, axiosMock } = buildApi();
     axiosMock.post.mockResolvedValue({ data: 'Ok.', headers: {} });
-    axiosMock.get.mockResolvedValue({ data: [rawTorrent({ ratio: -1 })] });
+    axiosMock.get.mockResolvedValue({
+      data: [rawTorrent({ ratio: -1, seeding_time: 7200 })],
+    });
 
     const single = await api.getTorrentByHash('ABC');
     const [fromList] = await api.getTorrents();
 
     expect(single?.ratio).toBe(Infinity);
+    expect(single?.seedingTime).toBe(7200);
     expect(fromList?.ratio).toBe(Infinity);
     expect(axiosMock.get).toHaveBeenCalledWith(
       '/torrents/info',
@@ -165,16 +168,21 @@ describe('QbittorrentApi auth', () => {
     ).toBe(false);
   });
 
-  it('treats the seed-time limit as met independently of ratio', async () => {
-    const t = await getMappedTorrent(
+  it('compares seeding_time (seconds) against max_seeding_time (minutes)', async () => {
+    const seededFor = (seeding_time: number) =>
       rawTorrent({
         max_ratio: -1,
         ratio: 0.1,
-        max_seeding_time: 3600,
-        seeding_time: 7200,
-      }),
+        max_seeding_time: 60,
+        seeding_time,
+      });
+
+    expect((await getMappedTorrent(seededFor(3600)))?.reachedSeedingGoal).toBe(
+      true,
     );
-    expect(t?.reachedSeedingGoal).toBe(true);
+    expect((await getMappedTorrent(seededFor(3599)))?.reachedSeedingGoal).toBe(
+      false,
+    );
   });
 });
 
