@@ -241,9 +241,18 @@ export class SeerrApiService {
     return this.settings.seerrConfigured();
   }
 
-  public async getMovie(id: string | number): Promise<SeerrMovieResponse> {
+  /**
+   * `fresh` bypasses the read cache. The delete paths never invalidate it, so
+   * a read that precedes a write or a decision must not come from it.
+   */
+  public async getMovie(
+    id: string | number,
+    options?: { fresh?: boolean },
+  ): Promise<SeerrMovieResponse> {
     try {
-      const response: SeerrMovieResponse = await this.api.get(`/movie/${id}`);
+      const response: SeerrMovieResponse = options?.fresh
+        ? await this.api.getWithoutCache(`/movie/${id}`)
+        : await this.api.get(`/movie/${id}`);
       return response;
     } catch (error) {
       this.logger.warn(
@@ -257,10 +266,15 @@ export class SeerrApiService {
     }
   }
 
-  public async getShow(showId: string | number): Promise<SeerrTVResponse> {
+  public async getShow(
+    showId: string | number,
+    options?: { fresh?: boolean },
+  ): Promise<SeerrTVResponse> {
     try {
       if (showId) {
-        const response: SeerrTVResponse = await this.api.get(`/tv/${showId}`);
+        const response: SeerrTVResponse = options?.fresh
+          ? await this.api.getWithoutCache(`/tv/${showId}`)
+          : await this.api.get(`/tv/${showId}`);
         return response;
       }
       return undefined;
@@ -558,7 +572,7 @@ export class SeerrApiService {
     season: number,
   ): Promise<boolean | undefined> {
     try {
-      const media = await this.getShow(tmdbid);
+      const media = await this.getShow(tmdbid, { fresh: true });
 
       // getShow returns undefined only on communication failure or falsy id;
       // the show being untracked still yields a response with mediaInfo == null.
@@ -616,7 +630,7 @@ export class SeerrApiService {
     }
 
     try {
-      const media = await this.getShow(tmdbid);
+      const media = await this.getShow(tmdbid, { fresh: true });
 
       // getShow returns undefined only on communication failure or falsy id;
       // the show being untracked still yields a response with mediaInfo == null.
@@ -678,7 +692,9 @@ export class SeerrApiService {
   ): Promise<boolean | undefined> {
     try {
       const media: SeerrMovieResponse | SeerrTVResponse =
-        type === 'movie' ? await this.getMovie(id) : await this.getShow(id);
+        type === 'movie'
+          ? await this.getMovie(id, { fresh: true })
+          : await this.getShow(id, { fresh: true });
 
       // Reading through an undefined media used to throw, which the catch
       // below then reported as a communication failure. Answer it directly.
