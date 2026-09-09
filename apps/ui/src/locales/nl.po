@@ -8,8 +8,8 @@ msgstr ""
 "Language: nl\n"
 "Project-Id-Version: \n"
 "Report-Msgid-Bugs-To: \n"
-"PO-Revision-Date: 2026-09-09 14:58+0000\n"
-"Last-Translator: COTMO <moermantom1@gmail.com>\n"
+"PO-Revision-Date: 2026-09-09 15:48+0000\n"
+"Last-Translator: Maintainerr <get@maintainerr.info>\n"
 "Language-Team: Dutch <https://hosted.weblate.org/projects/maintainerr/app/nl/>\n"
 "Plural-Forms: nplurals=2; plural=n != 1;\n"
 
@@ -569,7 +569,7 @@ msgstr "Geverifieerd bij {serverName}"
 
 #: src/components/Login/Emby/EmbyLoginButton.tsx
 msgid "Authenticates against <0>{embyUrl}</0> with an admin username and password. The resulting access token is stored as the API key."
-msgstr "Athenticeert bij <0>{embyUrl}</0> met een admin-gebruikersnaam en -wachtwoord. Het verkregen toegangstoken wordt opgeslagen als de API-sleutel."
+msgstr "Authenticeert bij <0>{embyUrl}</0> met een admin-gebruikersnaam en -wachtwoord. Het verkregen toegangstoken wordt opgeslagen als de API-sleutel."
 
 #: src/components/Login/Plex/index.tsx
 msgid "Authenticating…"
@@ -948,7 +948,7 @@ msgstr "Hoekstraal"
 
 #: src/components/Settings/Main/DatabaseBackupModal.tsx
 msgid "Could not backup the database"
-msgstr "Kan er geen back-up van de database worden gemaakt"
+msgstr "Kon geen back-up van de database maken"
 
 #: src/components/Rules/RuleGroup/AddModal/CollectionPosterPicker.tsx
 msgid "Could not clear the stored poster"
@@ -1519,7 +1519,7 @@ msgstr "Uitgesloten van"
 
 #: src/components/Collection/CollectionDetail/RemoveFromCollectionButton/index.tsx
 msgid "Excluding..."
-msgstr "Uitsluiting..."
+msgstr "Uitsluiten..."
 
 #: src/components/Settings/Servarr/ExclusionTagSettings.tsx
 msgid "Exclusion tag"
@@ -1657,7 +1657,7 @@ msgstr "Dupliceren van sjabloon mislukt"
 
 #: src/components/Settings/About/Releases/index.tsx
 msgid "Failed to fetch releases"
-msgstr "Ophalen van uitgaven mislukt"
+msgstr "Ophalen van releases mislukt"
 
 #: src/components/Settings/Notifications/CreateNotificationModal/index.tsx
 msgid "Failed to fire the notification."
@@ -1813,7 +1813,7 @@ msgstr "Vulling"
 
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "Fill & Stroke"
-msgstr "Vulling & rand"
+msgstr "Vulling & contour"
 
 #: src/components/Settings/Tracearr/index.tsx
 msgid "Find it in Tracearr under Settings, General, API Key."
@@ -2139,7 +2139,7 @@ msgstr "Laatst bekeken"
 
 #: src/components/Settings/About/Releases/index.tsx
 msgid "Latest"
-msgstr "Laatste"
+msgstr "Nieuwste"
 
 #: src/components/OverlayEditor/LayerPanel.tsx
 #: src/pages/OverlayTemplateEditorPage.tsx
@@ -3141,7 +3141,7 @@ msgstr "Releasedatum aflopend"
 
 #: src/components/Settings/About/Releases/index.tsx
 msgid "Releases"
-msgstr "Uitgaven"
+msgstr "Releases"
 
 #: src/components/Settings/Plex/index.tsx
 msgid "remote"
@@ -3578,7 +3578,7 @@ msgstr "Serie"
 #: src/components/OverlayEditor/LayerPanel.tsx
 msgctxt "Toggle layer visibility"
 msgid "Show"
-msgstr "Toon"
+msgstr "Tonen"
 
 #: src/components/Settings/MediaServerSelector/index.tsx
 msgid "Show incompatible rules ({skippedRules})"
