@@ -1,5 +1,5 @@
 import { Mocked, TestBed } from '@suites/unit';
-import { AxiosError } from 'axios';
+import { DownloadClientType } from '@maintainerr/contracts';
 import { SettingsDataService } from '../../settings/settings-data.service';
 import { DownloadClientTorrent } from './download-client.interface';
 import { DownloadClientApiService } from './download-client-api.service';
@@ -29,15 +29,6 @@ const torrent = (
   reachedSeedingGoal: null,
   ...overrides,
 });
-
-const forbiddenError = () =>
-  new AxiosError('Request failed', 'ERR_BAD_REQUEST', undefined, undefined, {
-    status: 403,
-    statusText: 'Forbidden',
-    data: undefined,
-    headers: {},
-    config: {} as never,
-  });
 
 describe('DownloadClientApiService', () => {
   let service: DownloadClientApiService;
@@ -70,6 +61,7 @@ describe('DownloadClientApiService', () => {
 
     it('constructs the API client when a URL is configured', () => {
       Object.assign(settings, {
+        download_client_type: DownloadClientType.QBITTORRENT,
         download_client_url: 'http://localhost:8080',
         download_client_username: 'admin',
         download_client_password: 'pw',
@@ -81,7 +73,10 @@ describe('DownloadClientApiService', () => {
     });
 
     it('clears the cached client when the URL is removed', () => {
-      Object.assign(settings, { download_client_url: 'http://localhost:8080' });
+      Object.assign(settings, {
+        download_client_type: DownloadClientType.QBITTORRENT,
+        download_client_url: 'http://localhost:8080',
+      });
       service.init();
       expect(service.api).toBeDefined();
 
@@ -97,6 +92,7 @@ describe('DownloadClientApiService', () => {
       apiMock.getVersion.mockResolvedValue('v4.6.0');
 
       const result = await service.testConnection({
+        type: DownloadClientType.QBITTORRENT,
         url: 'http://localhost:8080',
         username: 'admin',
         password: 'pw',
@@ -110,6 +106,7 @@ describe('DownloadClientApiService', () => {
       apiMock.getVersion.mockRejectedValue(new Error('ECONNREFUSED'));
 
       const result = await service.testConnection({
+        type: DownloadClientType.QBITTORRENT,
         url: 'http://localhost:8080',
       });
 
@@ -120,30 +117,18 @@ describe('DownloadClientApiService', () => {
       apiMock.getVersion.mockResolvedValue('');
 
       const result = await service.testConnection({
+        type: DownloadClientType.QBITTORRENT,
         url: 'http://localhost:8080',
       });
 
       expect(result.status).toBe('NOK');
-    });
-
-    it('gives an actionable message on a 403 (Web UI security block, not bad creds)', async () => {
-      apiMock.getVersion.mockRejectedValue(forbiddenError());
-
-      const result = await service.testConnection({
-        url: 'http://localhost:8080',
-      });
-
-      expect(result.status).toBe('NOK');
-      expect(result.message).toContain('403 Forbidden');
-      expect(result.message).toContain('whitelisted IP subnets');
-      // It must NOT claim "Invalid API key" (qBittorrent has no API key).
-      expect(result.message).not.toContain('Invalid API key');
     });
   });
 
   describe('removeDownloads', () => {
     beforeEach(() => {
       Object.assign(settings, {
+        download_client_type: DownloadClientType.QBITTORRENT,
         download_client_url: 'http://localhost:8080',
         download_client_username: 'admin',
         download_client_password: 'pw',

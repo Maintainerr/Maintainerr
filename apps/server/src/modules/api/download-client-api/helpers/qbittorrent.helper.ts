@@ -6,6 +6,16 @@ import {
   DownloadClientTorrent,
 } from '../download-client.interface';
 
+// A 403 after a successful login is qBittorrent's Web UI security blocking the
+// caller, so the shared 401/403 text ("Invalid API key") would mislead.
+const FORBIDDEN_MESSAGE =
+  'The download client accepted the login but returned 403 Forbidden - a ' +
+  'qBittorrent Web UI security restriction, not a wrong username or password. ' +
+  'In qBittorrent → Options → Web UI → Security, add Maintainerr’s IP or ' +
+  'subnet to “Bypass authentication for clients in whitelisted IP subnets” ' +
+  '(Maintainerr and qBittorrent often run on different Docker IPs). A reverse ' +
+  'proxy or host-header validation can also cause this.';
+
 /**
  * The qBittorrent `torrents/info` fields we read. `max_ratio` /
  * `max_seeding_time` are the EFFECTIVE limits qBittorrent enforces ("…until
@@ -223,7 +233,14 @@ export class QbittorrentApi
         this.authenticated = false;
         delete this.axios.defaults.headers.common['Cookie'];
         await this.login();
-        return await fn();
+        try {
+          return await fn();
+        } catch (retryError) {
+          throw retryError instanceof AxiosError &&
+            retryError.response?.status === 403
+            ? new Error(FORBIDDEN_MESSAGE)
+            : retryError;
+        }
       }
       throw error;
     }

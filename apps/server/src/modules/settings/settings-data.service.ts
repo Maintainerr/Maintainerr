@@ -1,4 +1,5 @@
 import {
+  DownloadClientType,
   BasicResponseDto,
   MaintainerrEvent,
   MediaServerType,
@@ -108,6 +109,8 @@ export class SettingsDataService implements SettingDto {
 
   tracearr_server_id: string;
 
+  download_client_type: DownloadClientType;
+
   download_client_url: string;
 
   download_client_username: string;
@@ -191,6 +194,7 @@ export class SettingsDataService implements SettingDto {
       this.tracearr_url = settingsDb?.tracearr_url;
       this.tracearr_api_key = settingsDb?.tracearr_api_key;
       this.tracearr_server_id = settingsDb?.tracearr_server_id;
+      this.download_client_type = settingsDb?.download_client_type;
       this.download_client_url = settingsDb?.download_client_url;
       this.download_client_username = settingsDb?.download_client_username;
       this.download_client_password = settingsDb?.download_client_password;

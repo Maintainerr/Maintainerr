@@ -1,4 +1,5 @@
 import {
+  DownloadClientType,
   MediaServerType,
   MetadataProviderPreference,
 } from '@maintainerr/contracts';
@@ -118,7 +119,10 @@ export class Settings implements SettingDto {
   @Column({ nullable: true })
   tracearr_server_id: string;
 
-  // Download client integration (currently qBittorrent)
+  // Download client integration
+  @Column({ nullable: false, default: DownloadClientType.QBITTORRENT })
+  download_client_type: DownloadClientType;
+
   @Column({ nullable: true })
   download_client_url: string;
 

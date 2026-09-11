@@ -2,6 +2,9 @@ import {
   BasicResponseDto,
   CronSchedule,
   cronScheduleSchema,
+  DownloadClientSetting,
+  downloadClientSettingSchema,
+  DownloadClientType,
   EmbyLoginRequest,
   embyLoginRequestSchema,
   EmbySetting,
@@ -11,8 +14,6 @@ import {
   MediaServerSwitchPreview,
   MediaServerType,
   MetadataProviderPreference,
-  DownloadClientSetting,
-  downloadClientSettingSchema,
   MetadataProviderSetting,
   metadataProviderSettingSchema,
   PlexAuthToken,
@@ -396,6 +397,8 @@ export class SettingsController {
     }
 
     return {
+      download_client_type:
+        settings.download_client_type ?? DownloadClientType.QBITTORRENT,
       download_client_url: settings.download_client_url ?? '',
       download_client_username: settings.download_client_username ?? '',
       download_client_password: settings.download_client_password ?? '',
