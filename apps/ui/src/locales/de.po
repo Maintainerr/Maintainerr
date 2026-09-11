@@ -8,8 +8,8 @@ msgstr ""
 "Language: de\n"
 "Project-Id-Version: \n"
 "Report-Msgid-Bugs-To: \n"
-"PO-Revision-Date: 2026-09-11 18:17+0000\n"
-"Last-Translator: Elster <admin@myclnet.de>\n"
+"PO-Revision-Date: 2026-09-11 19:25+0000\n"
+"Last-Translator: Maintainerr <get@maintainerr.info>\n"
 "Language-Team: German <https://hosted.weblate.org/projects/maintainerr/app/de/>\n"
 "Plural-Forms: nplurals=2; plural=n != 1;\n"
 
@@ -36,12 +36,11 @@ msgstr "(manual)"
 #. placeholder {0}: formatWhen(nextAt, locale)
 #: src/components/Settings/Telemetry/index.tsx
 msgid "(Next: {0})"
-msgstr "(Nächste: {0})"
+msgstr "(Als Nächstes: {0})"
 
 #: src/components/OverlayEditor/OverlayCanvas.tsx
-#, fuzzy
 msgid "[Image]"
-msgstr "[Image]"
+msgstr "[Bild]"
 
 #: src/components/StorageMetrics/index.tsx
 msgid "{accurateMountCount} of {mountCount} mounts report total capacity"
@@ -80,9 +79,8 @@ msgid "{collectionCount, plural, one {# collection} other {# collections}}"
 msgstr "{collectionCount, plural, one {# Sammlung} other {# Sammlungen}}"
 
 #: src/components/Collection/CollectionItem/index.tsx
-#, fuzzy
 msgid "{collectionName} (custom)"
-msgstr "{collectionName} (custom)"
+msgstr "{collectionName} (benutzerdefiniert)"
 
 #: src/pages/CollectionDetailPage.tsx
 msgid "{collectionTitle} - Maintainerr"
@@ -452,7 +450,7 @@ msgstr "Agent *"
 
 #: src/components/Rules/RuleGroup/AddModal/ConfigureNotificationModal/index.tsx
 msgid "Agents"
-msgstr "Agents"
+msgstr "Agenten"
 
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "Aggregate (all paths)"
@@ -737,7 +735,7 @@ msgstr "Bereinigungssummen"
 
 #: src/components/Rules/RuleGroup/AddModal/CollectionPosterPicker.tsx
 msgid "Clear"
-msgstr "Leeren"
+msgstr "Entfernen"
 
 #: src/components/Settings/Plex/index.tsx
 msgid "Clear credentials?"
@@ -844,7 +842,7 @@ msgstr "Kurzer Community-Name *"
 
 #: src/components/Common/MediaCard/MediaModal/StreamystatsStatsPanel/index.tsx
 msgid "Completion"
-msgstr "Abschluss"
+msgstr "Fortschritt"
 
 #: src/components/StorageMetrics/index.tsx
 msgid "Compute library sizes"
@@ -1091,7 +1089,7 @@ msgstr "Tages-Suffix"
 
 #: src/components/Collection/CollectionDetail/PostponeButton/index.tsx
 msgid "Days to postpone"
-msgstr "Tage zum Aufschieben"
+msgstr "Tage zum Zurückstellen"
 
 #: src/components/Settings/Logs/index.tsx
 msgid "Debug"
@@ -1150,11 +1148,11 @@ msgstr "Ereignisdatei löschen"
 
 #: src/components/Common/MediaLibrarySortControl.tsx
 msgid "Delete Latest"
-msgstr "Neueste löschen"
+msgstr "Späteste Löschung zuerst"
 
 #: src/components/Common/MediaLibrarySortControl.tsx
 msgid "Delete Soonest"
-msgstr "Als Nächstes löschen"
+msgstr "Früheste Löschung zuerst"
 
 #: src/pages/OverlayTemplateListPage.tsx
 msgid "Delete template <0>“{templateName}”</0>? This action cannot be undone."
@@ -1198,7 +1196,7 @@ msgstr "Beschreibung"
 
 #: src/pages/OverlayTemplateEditorPage.tsx
 msgid "Design overlay elements on the canvas. Enter a valid template name in the Template Name field before saving your changes."
-msgstr "Gestalte Overlay-Elemente auf der Arbeitsfläche. Gib im Feld „Template Name“ einen gültigen Vorlagennamen ein, bevor du deine Änderungen speicherst."
+msgstr "Gestalte Overlay-Elemente auf der Arbeitsfläche. Gib im Feld „Vorlagenname“ einen gültigen Vorlagennamen ein, bevor du deine Änderungen speicherst."
 
 #: src/components/Settings/Notifications/index.tsx
 msgid "Disabled"
@@ -1463,7 +1461,7 @@ msgstr "Episoden"
 
 #: src/components/StorageMetrics/index.tsx
 msgid "Episodes handled"
-msgstr "Bearbeitete Episoden"
+msgstr "Verarbeitete Episoden"
 
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "Equals"
@@ -1707,7 +1705,7 @@ msgstr "Streamystats-Daten konnten nicht geladen werden"
 
 #: src/components/Collection/CollectionDetail/PostponeButton/index.tsx
 msgid "Failed to postpone the deletion for this item."
-msgstr "Löschen dieses Elements konnte nicht verschoben werden."
+msgstr "Die Löschung dieses Elements konnte nicht zurückgestellt werden."
 
 #: src/components/Settings/MediaServerSelector/index.tsx
 msgid "Failed to preview switch"
@@ -1755,7 +1753,7 @@ msgstr "Standardvorlage konnte nicht festgelegt werden"
 
 #: src/components/Settings/MediaServerSelector/index.tsx
 msgid "Failed to set media server. Check logs for details."
-msgstr "Mediensserver konnte nicht festgelegt werden. Weitere Informationen findest du in den Protokollen."
+msgstr "Medienserver konnte nicht festgelegt werden. Weitere Informationen findest du in den Protokollen."
 
 #: src/components/Rules/RuleGroup/index.tsx
 msgid "Failed to start rule execution."
@@ -1763,7 +1761,7 @@ msgstr "Regelausführung konnte nicht gestartet werden."
 
 #: src/components/Settings/MediaServerSelector/index.tsx
 msgid "Failed to switch media server"
-msgstr "Mediensserver konnte nicht gewechselt werden"
+msgstr "Medienserver konnte nicht gewechselt werden"
 
 #: src/components/Collection/CollectionDetail/TestMediaItem/index.tsx
 msgid "Failed to test media"
@@ -1847,7 +1845,7 @@ msgstr "Schriftart \"{fontName}\" hochgeladen"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Force delete Seerr request"
-msgstr "Seerr-Anfrage endgültig löschen"
+msgstr "Seerr-Anfrage sofort löschen"
 
 #: src/components/StorageMetrics/index.tsx
 msgid "Free"
@@ -1855,7 +1853,7 @@ msgstr "Frei"
 
 #: src/components/StorageMetrics/index.tsx
 msgid "Free space only - Sonarr/Radarr do not report total size for NFS/CIFS mounts"
-msgstr "Nur freien Speicherplatz verwenden – Sonarr/Radarr melden für NFS-/CIFS-Einhängepunkte keine Gesamtgröße"
+msgstr "Nur freier Speicherplatz - Sonarr/Radarr melden für NFS-/CIFS-Einhängepunkte keine Gesamtgröße"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 #: src/components/Settings/index.tsx
@@ -1897,11 +1895,11 @@ msgstr "Verstanden"
 
 #: src/components/Collection/CollectionOverview/index.tsx
 msgid "Handle Collections"
-msgstr "Sammlungen verwalten"
+msgstr "Sammlungen verarbeiten"
 
 #: src/components/Collection/CollectionItem/index.tsx
 msgid "Handled by rule: ''{ruleName}''"
-msgstr "Von Regel „''{ruleName}''“ verarbeitet"
+msgstr "Von Regel „{ruleName}“ verarbeitet"
 
 #: src/components/Collection/CollectionDetail/CollectionInfo/index.tsx
 msgid "Handled media items"
@@ -1995,11 +1993,11 @@ msgstr "Gehe in Jellyfin zu <0>Dashboard → API-Schlüssel</0> und erstelle ein
 
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "In Last"
-msgstr "Zuletzt"
+msgstr "In den letzten"
 
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "In Next"
-msgstr "Als Nächstes"
+msgstr "In den nächsten"
 
 #: src/components/Collection/CollectionItem/index.tsx
 #: src/components/Rules/RuleGroup/index.tsx
@@ -2186,7 +2184,7 @@ msgstr "Los geht's"
 
 #: src/components/Settings/Logs/index.tsx
 msgid "Level"
-msgstr "Ebene"
+msgstr "Log-Level"
 
 #: src/components/StorageMetrics/index.tsx
 msgid "Libraries reported by {typeLabel}. Counts reflect what Maintainerr sees through the server API."
@@ -2211,7 +2209,7 @@ msgstr "Anderes Poster laden"
 
 #: src/components/Settings/Jobs/index.tsx
 msgid "Loading current overlay schedule..."
-msgstr "Aktuellen Overlay-Zeitplan wird geladen ..."
+msgstr "Aktueller Overlay-Zeitplan wird geladen ..."
 
 #: src/components/Common/MediaCard/MediaModal/index.tsx
 msgid "Loading exclusion details..."
@@ -2357,7 +2355,7 @@ msgstr "Manuell"
 
 #: src/components/Common/MediaLibrarySortControl.tsx
 msgid "Manual Added First"
-msgstr "Manuell, zuerst hinzugefügt"
+msgstr "Manuell hinzugefügte zuerst"
 
 #: src/components/Settings/Plex/index.tsx
 msgid "Manual connection override"
@@ -2450,7 +2448,7 @@ msgstr "Metadateneinstellungen – Maintainerr"
 
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "middle"
-msgstr "Mitte"
+msgstr "mittig"
 
 #: src/components/Settings/MediaServerSelector/index.tsx
 msgid "Migrate rules to {pendingName}"
@@ -2761,7 +2759,7 @@ msgstr "x Tage vor der Entfernung benachrichtigen"
 
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "Number"
-msgstr "Nummer"
+msgstr "Zahl"
 
 #: src/components/Settings/About/index.tsx
 msgid "Number Of Rules"
@@ -2794,7 +2792,7 @@ msgstr "Deckkraft"
 
 #: src/components/Settings/Overlays/index.tsx
 msgid "Open Job Settings"
-msgstr "Aufgabeneinstellungen öffnen"
+msgstr "Auftragseinstellungen öffnen"
 
 #: src/components/Common/MediaCard/MediaModal/index.tsx
 msgid "Open on {provider}"
@@ -3035,7 +3033,7 @@ msgstr "Verhindert, dass {listExclusionArrName}-Importlisten die entfernte Serie
 
 #: src/components/Settings/Logs/index.tsx
 msgid "Previous"
-msgstr "Vorherige"
+msgstr "Zurück"
 
 #: src/components/Settings/Metadata/index.tsx
 msgid "Primary"
@@ -3092,7 +3090,7 @@ msgstr "Radius"
 
 #: src/components/Common/MediaCard/MediaModal/index.tsx
 msgid "Rated: {contentRating}"
-msgstr "Bewertung: {contentRating}"
+msgstr "Altersfreigabe: {contentRating}"
 
 #: src/components/Common/MediaLibrarySortControl.tsx
 msgid "Rating Ascending"
@@ -3201,7 +3199,7 @@ msgstr "Anfragefehler"
 
 #: src/components/Rules/RuleGroup/index.tsx
 msgid "Request stop execution"
-msgstr "Anforderung zum Stoppen der Ausführung"
+msgstr "Stopp der Ausführung anfordern"
 
 #: src/components/Common/MediaCard/MediaModal/index.tsx
 msgid "Requested by <0>{requesters}</0>"
@@ -3343,7 +3341,7 @@ msgstr "Admin-Benutzer gespeichert. Teste die Verbindung, um ihn zu ändern."
 
 #: src/components/Settings/Main/LanguageSelector.tsx
 msgid "Saved in this browser. <0>Untranslated text</0> falls back to English."
-msgstr "In diesem Browser gespeichert. <0>Unübersetzter Text</0> wird auf Englisch zurückgesetzt."
+msgstr "In diesem Browser gespeichert. <0>Unübersetzter Text</0> wird auf Englisch angezeigt."
 
 #: src/components/Rules/RuleGroup/AddModal/CollectionPosterPicker.tsx
 msgid "Saved locally. Maintainerr couldn't push to {mediaServerName} right now; it'll re-apply automatically next time the collection is recreated there."
@@ -3392,7 +3390,7 @@ msgstr "Staffeln"
 
 #: src/components/StorageMetrics/index.tsx
 msgid "Seasons handled"
-msgstr "Bearbeitete Staffeln"
+msgstr "Verarbeitete Staffeln"
 
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "Second Value"
@@ -3575,11 +3573,11 @@ msgstr "Form"
 
 #: src/utils/mediaTypeUtils.ts
 msgid "show"
-msgstr "anzeigen"
+msgstr "Serie"
 
 #: src/components/Calendar/index.tsx
 msgid "Show"
-msgstr "Anzeigen"
+msgstr "Serie"
 
 #: src/components/OverlayEditor/LayerPanel.tsx
 msgctxt "Toggle layer visibility"
@@ -3689,7 +3687,7 @@ msgstr "Übersichtselemente sortieren"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Sort title"
-msgstr "Titel sortieren"
+msgstr "Sortiertitel"
 
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "Specific date"
@@ -4165,7 +4163,7 @@ msgstr "Um sie zuerst zu entfernen, bearbeite die Kriterien der Regel so, dass s
 
 #: src/components/Settings/Overlays/index.tsx
 msgid "To run them automatically, set a schedule in Job Settings."
-msgstr "Um sie automatisch auszuführen, lege einen Zeitplan in den Aufgabeneinstellungen fest."
+msgstr "Um sie automatisch auszuführen, lege einen Zeitplan in den Auftragseinstellungen fest."
 
 #: src/components/Calendar/index.tsx
 msgid "Today"
@@ -4233,7 +4231,7 @@ msgstr "Tracearr-Einstellungen aktualisiert"
 
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "Transform"
-msgstr "Transformieren"
+msgstr "Transformation"
 
 #: src/components/Collection/CollectionDetail/TriggerRuleActionButton/index.tsx
 msgid "Trigger now"
@@ -4565,7 +4563,7 @@ msgstr "Warte, bis die Plex-Authentifizierung abgeschlossen ist, bevor du testes
 
 #: src/components/Settings/Logs/index.tsx
 msgid "Warn"
-msgstr "Warnen"
+msgstr "Warnung"
 
 #: src/components/Collection/CollectionDetail/RemoveFromCollectionButton/index.tsx
 msgid "Warning"
@@ -4593,7 +4591,7 @@ msgstr "Wöchentlich"
 
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "Weight"
-msgstr "Gewichtung"
+msgstr "Schriftstärke"
 
 #: src/components/Settings/index.tsx
 msgid "Welcome to Maintainerr!"
