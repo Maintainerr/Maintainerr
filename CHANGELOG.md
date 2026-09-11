@@ -1,3 +1,28 @@
+# [3.28.0](https://github.com/Maintainerr/Maintainerr/compare/v3.27.0...v3.28.0) (2026-09-11)
+
+
+## Highlights
+- Add support for Transmission as a download client for job cleanup (#3693).
+- Correct the seeding time unit comparison for qBittorrent and ensure unlimited downloads seed for at least 23 hours (#3692).
+
+## Features
+- Add Podman Quadlet example to the README (#3694).
+
+## Fixes
+- Read no download client as null instead of defaulting to qBittorrent (#3714).
+- Clear the download client URL when the client type changes.
+- Honour forced request removal for delete-show-if-empty actions (#3691).
+
+## Database migrations
+- Added `download_client_type` column to the settings table.
+- Updated the `download_client_type` column to allow null values.
+
+## Dependencies
+- Bumped 25 dependencies including typescript-eslint, typeorm, and vitest.
+
+## New Contributors
+* @MartyPortatoes made their first contribution in https://github.com/Maintainerr/Maintainerr/pull/3693
+
 # [3.27.0](https://github.com/Maintainerr/Maintainerr/compare/v3.26.0...v3.27.0) (2026-09-05)
 
 
