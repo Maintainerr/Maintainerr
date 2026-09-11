@@ -67,7 +67,7 @@ export class SettingDto {
 
   tracearr_server_id: string;
 
-  download_client_type: DownloadClientType;
+  download_client_type: DownloadClientType | null;
 
   download_client_url: string;
 

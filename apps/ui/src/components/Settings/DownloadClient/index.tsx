@@ -25,7 +25,7 @@ import SettingsAlertSlot from '../SettingsAlertSlot'
 import { useSettingsFeedback } from '../useSettingsFeedback'
 
 interface DownloadClientFormValues {
-  download_client_type: DownloadClientType
+  download_client_type: DownloadClientType | ''
   download_client_url: string
   download_client_username: string
   download_client_password: string
@@ -37,7 +37,7 @@ interface DownloadClientFormValues {
 const FALLBACK_RATIO_DEFAULT = '0.5'
 
 const emptyValues: DownloadClientFormValues = {
-  download_client_type: DownloadClientType.QBITTORRENT,
+  download_client_type: '',
   download_client_url: '',
   download_client_username: '',
   download_client_password: '',
@@ -68,7 +68,7 @@ const DownloadClientSettings = () => {
   // (deep-compared, so no effect / render loop).
   const formValues: DownloadClientFormValues | undefined = downloadClientData
     ? {
-        download_client_type: downloadClientData.download_client_type,
+        download_client_type: downloadClientData.download_client_type ?? '',
         download_client_url: downloadClientData.download_client_url ?? '',
         download_client_username:
           downloadClientData.download_client_username ?? '',
@@ -96,6 +96,7 @@ const DownloadClientSettings = () => {
     getValues,
     reset,
     setError,
+    setValue,
     clearErrors,
     formState: { errors },
   } = useForm<DownloadClientFormValues>({
@@ -112,11 +113,15 @@ const DownloadClientSettings = () => {
   const urlExample =
     clientType === DownloadClientType.TRANSMISSION
       ? 'http://localhost:9091/transmission/rpc'
-      : 'http://localhost:8080'
+      : clientType === DownloadClientType.QBITTORRENT
+        ? 'http://localhost:8080'
+        : ''
   const urlHelp =
     clientType === DownloadClientType.TRANSMISSION
       ? t`The full RPC endpoint, normally ${{ urlExample }}`
-      : t`The WebUI address, for example ${{ urlExample }}`
+      : clientType === DownloadClientType.QBITTORRENT
+        ? t`The WebUI address, for example ${{ urlExample }}`
+        : t`Select a client first`
 
   const isGoingToRemove = (url ?? '') === ''
   const connectionKey = `${clientType} ${url} ${username} ${password}`
@@ -137,6 +142,14 @@ const DownloadClientSettings = () => {
     values: DownloadClientFormValues,
   ): DownloadClientSetting | null => {
     clearErrors()
+
+    if (values.download_client_type === '') {
+      setError('download_client_type', {
+        type: 'manual',
+        message: t`Select a client first`,
+      })
+      return null
+    }
 
     const fallbackRatio = Number(values.download_client_fallback_ratio)
     if (
@@ -316,12 +329,27 @@ const DownloadClientSettings = () => {
                   value={field.value}
                   onChange={(event) => {
                     clearTransientState()
-                    field.onChange(event.target.value as DownloadClientType)
+                    clearErrors('download_client_type')
+                    const nextType = event.target.value as DownloadClientType
+                    field.onChange(nextType)
+                    // The URL is specific to the client (RPC endpoint vs WebUI
+                    // address), so one client's URL is meaningless for the
+                    // other. Only the saved client gets its saved URL back.
+                    setValue(
+                      'download_client_url',
+                      nextType === formValues?.download_client_type
+                        ? formValues.download_client_url
+                        : '',
+                    )
                   }}
                   onBlur={field.onBlur}
                   ref={field.ref}
+                  error={errors.download_client_type?.message}
                   required
                 >
+                  <option value="" disabled>
+                    {t`Select an option`}
+                  </option>
                   <option value={DownloadClientType.QBITTORRENT}>
                     qBittorrent
                   </option>

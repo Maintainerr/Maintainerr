@@ -63,7 +63,7 @@ export const settingsUpdateSchema = z.object({
   tracearr_api_key: z.string().trim().optional(),
   tracearr_server_id: z.string().trim().optional(),
 
-  download_client_type: z.enum(DownloadClientType).optional(),
+  download_client_type: z.enum(DownloadClientType).nullable().optional(),
   download_client_url: serviceUrlSchema.optional(),
   // Not trimmed: the download client compares credentials verbatim.
   download_client_username: z.string().optional(),

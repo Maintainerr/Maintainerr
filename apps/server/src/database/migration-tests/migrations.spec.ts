@@ -174,12 +174,12 @@ describe('database migrations', () => {
         dflt_value: null,
       });
 
-      // AddDownloadClientType: existing installs continue to use qBittorrent
-      // until an administrator explicitly selects another client.
+      // MakeDownloadClientTypeNullable: null until a client is chosen, like
+      // media_server_type, so an unconfigured integration never reads as one.
       expect(settings.download_client_type).toMatchObject({
         type: 'varchar',
-        notnull: 1,
-        dflt_value: "'qbittorrent'",
+        notnull: 0,
+        dflt_value: null,
       });
     } finally {
       await ds.destroy();
@@ -193,7 +193,7 @@ describe('database migrations', () => {
     // emits a full create-temporary-table / copy / drop / rename rebuild for the
     // changed tables. A hand-written ALTER shortcut lacks it - this is the
     // cheapest signal the migration was generated rather than authored. The
-    // newest migration adds a settings column, so it rebuilds that table.
+    // newest migration relaxes a settings column, so it rebuilds that table.
     expect(src).toContain('CREATE TABLE "temporary_settings"');
   });
 
@@ -209,13 +209,18 @@ describe('database migrations', () => {
       await ds.query(
         `INSERT INTO settings ("id", "applicationTitle", "applicationUrl", "locale", "metadata_provider_preference", "download_client_url", "download_client_delete_data", "download_client_fallback_ratio") VALUES (1, 'Media Manager', 'http://localhost:6246', 'en', 'tmdb_primary', 'http://localhost:8080', 0, 1.25)`,
       );
+      await ds.query(
+        `INSERT INTO settings ("id", "applicationTitle", "applicationUrl", "locale", "metadata_provider_preference") VALUES (2, 'Fresh', 'http://localhost:6246', 'en', 'tmdb_primary')`,
+      );
 
       const runner = ds.createQueryRunner();
       await new newest.cls().up(runner);
       await runner.release();
 
-      const rows = await ds.query(`SELECT * FROM settings`);
-      expect(rows).toHaveLength(1);
+      const rows = await ds.query(`SELECT * FROM settings ORDER BY id`);
+      expect(rows).toHaveLength(2);
+      // A configured client keeps the qBittorrent backfill: the only client
+      // that existed before the type column did.
       expect(rows[0]).toMatchObject({
         applicationTitle: 'Media Manager',
         applicationUrl: 'http://localhost:6246',
@@ -223,6 +228,12 @@ describe('database migrations', () => {
         download_client_delete_data: 0,
         download_client_fallback_ratio: 1.25,
         download_client_type: 'qbittorrent',
+      });
+      // No URL means no client, so the earlier default is cleared.
+      expect(rows[1]).toMatchObject({
+        applicationTitle: 'Fresh',
+        download_client_url: null,
+        download_client_type: null,
       });
     } finally {
       await ds.destroy();
@@ -237,15 +248,25 @@ describe('database migrations', () => {
     const ds = await makeDS(all.map((m) => m.cls)).initialize();
     try {
       await ds.runMigrations();
-      const has = async () =>
-        (await columns(ds, 'settings')).some(
-          (c) => c.name === 'download_client_type',
-        );
-      expect(await has()).toBe(true);
+      const typeColumn = async () =>
+        byName(await columns(ds, 'settings')).download_client_type;
+      expect(await typeColumn()).toMatchObject({
+        notnull: 0,
+        dflt_value: null,
+      });
+      // A row without a client must survive the return to NOT NULL.
+      await ds.query(
+        `INSERT INTO settings ("id", "applicationTitle", "applicationUrl", "locale", "metadata_provider_preference") VALUES (1, 'Fresh', 'http://localhost:6246', 'en', 'tmdb_primary')`,
+      );
 
       await ds.undoLastMigration();
 
-      expect(await has()).toBe(false);
+      expect(await typeColumn()).toMatchObject({
+        notnull: 1,
+        dflt_value: "'qbittorrent'",
+      });
+      const [row] = await ds.query(`SELECT download_client_type FROM settings`);
+      expect(row.download_client_type).toBe('qbittorrent');
       const [{ c }] = await ds.query(`SELECT COUNT(*) AS c FROM migrations`);
       expect(Number(c)).toBe(all.length - 1);
     } finally {

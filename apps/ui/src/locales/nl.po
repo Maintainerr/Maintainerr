@@ -3444,6 +3444,10 @@ msgstr "Selecteer {title}"
 msgid "Select <0>items</0>"
 msgstr "Selecteer <0>items</0>"
 
+#: src/components/Settings/DownloadClient/index.tsx
+msgid "Select a client first"
+msgstr ""
+
 #: src/components/Settings/Plex/index.tsx
 msgid "Select a Plex server before testing."
 msgstr "Selecteer een Plex server voordat je test."
@@ -3472,6 +3476,7 @@ msgstr "Selecteer actie..."
 msgid "Select an element to edit its properties"
 msgstr "Selecteer een element om de eigenschappen ervan te bewerken"
 
+#: src/components/Settings/DownloadClient/index.tsx
 #: src/components/Settings/ExternalServiceSettingsPage.tsx
 msgid "Select an option"
 msgstr "Selecteer een optie"
