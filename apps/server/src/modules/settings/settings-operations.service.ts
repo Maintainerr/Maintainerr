@@ -1,6 +1,5 @@
 import {
   BasicResponseDto,
-  DownloadClientType,
   EmbySetting,
   JellyfinSetting,
   DownloadClientSetting,
@@ -500,7 +499,7 @@ export class SettingsOperationsService {
       // later reconfigure starts from defaults).
       await this.settingsDataService.saveSettings({
         ...settingsDb,
-        download_client_type: DownloadClientType.QBITTORRENT,
+        download_client_type: null,
         download_client_url: null,
         download_client_username: null,
         download_client_password: null,

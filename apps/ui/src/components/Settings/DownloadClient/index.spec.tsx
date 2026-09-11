@@ -11,7 +11,7 @@ const showError = vi.fn()
 const clearError = vi.fn()
 
 let downloadClientData: {
-  download_client_type: DownloadClientType
+  download_client_type: DownloadClientType | null
   download_client_url: string
   download_client_username: string
   download_client_password: string
@@ -188,5 +188,37 @@ describe('DownloadClientSettings', () => {
         }),
       )
     })
+  })
+  it('starts with no client selected and refuses to test without one', async () => {
+    downloadClientData = {
+      download_client_type: null,
+      download_client_url: '',
+      download_client_username: '',
+      download_client_password: '',
+      download_client_delete_data: true,
+      download_client_fallback_ratio: 0.5,
+    }
+
+    render(<DownloadClientSettings />)
+
+    const clientSelect = (await screen.findByLabelText(
+      'Client *',
+    )) as HTMLSelectElement
+    expect(clientSelect.value).toBe('')
+
+    fireEvent.change(screen.getByLabelText(/^URL \*/), {
+      target: { value: 'http://localhost:8080' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Test Connection' }))
+
+    await waitFor(() => {
+      expect(clientSelect.getAttribute('aria-invalid')).toBe('true')
+    })
+    expect(testMock).not.toHaveBeenCalled()
+
+    fireEvent.change(clientSelect, {
+      target: { value: DownloadClientType.TRANSMISSION },
+    })
+    expect(clientSelect.getAttribute('aria-invalid')).toBe('false')
   })
 })
