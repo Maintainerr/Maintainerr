@@ -119,9 +119,9 @@ export class Settings implements SettingDto {
   @Column({ nullable: true })
   tracearr_server_id: string;
 
-  // Download client integration
-  @Column({ nullable: false, default: DownloadClientType.QBITTORRENT })
-  download_client_type: DownloadClientType;
+  // Download client integration - null until the user chooses a client
+  @Column({ type: 'varchar', nullable: true, default: null })
+  download_client_type: DownloadClientType | null;
 
   @Column({ nullable: true })
   download_client_url: string;

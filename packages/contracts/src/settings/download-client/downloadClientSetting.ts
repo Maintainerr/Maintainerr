@@ -24,3 +24,9 @@ export const downloadClientSettingSchema = z.object({
 })
 
 export type DownloadClientSetting = z.infer<typeof downloadClientSettingSchema>
+
+// What the settings endpoint reads back: no client selected reads as null.
+export type DownloadClientSettingResponse = Omit<
+  DownloadClientSetting,
+  'download_client_type'
+> & { download_client_type: DownloadClientType | null }

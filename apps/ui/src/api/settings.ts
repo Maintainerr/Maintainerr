@@ -2,6 +2,7 @@ import { t } from '@lingui/core/macro'
 import {
   BasicResponseDto,
   DownloadClientSetting,
+  DownloadClientSettingResponse,
   DownloadClientType,
   EmbySetting,
   JellyfinSetting,
@@ -70,7 +71,7 @@ export interface ISettings {
   tracearr_api_key?: string
   tracearr_server_id?: string
   // Download client integration
-  download_client_type?: DownloadClientType
+  download_client_type?: DownloadClientType | null
   download_client_url?: string
   download_client_username?: string
   download_client_password?: string
@@ -517,9 +518,9 @@ type UseDownloadClientSettingsQueryKey = ['settings', 'download-client']
 
 type UseDownloadClientSettingsOptions = Omit<
   UseQueryOptions<
-    DownloadClientSetting,
+    DownloadClientSettingResponse,
     Error,
-    DownloadClientSetting,
+    DownloadClientSettingResponse,
     UseDownloadClientSettingsQueryKey
   >,
   'queryKey' | 'queryFn'
@@ -529,14 +530,14 @@ export const useDownloadClientSettings = (
   options?: UseDownloadClientSettingsOptions,
 ) => {
   return useQuery<
-    DownloadClientSetting,
+    DownloadClientSettingResponse,
     Error,
-    DownloadClientSetting,
+    DownloadClientSettingResponse,
     UseDownloadClientSettingsQueryKey
   >({
     queryKey: ['settings', 'download-client'],
     queryFn: async () => {
-      return await GetApiHandler<DownloadClientSetting>(
+      return await GetApiHandler<DownloadClientSettingResponse>(
         `/settings/download-client`,
       )
     },
