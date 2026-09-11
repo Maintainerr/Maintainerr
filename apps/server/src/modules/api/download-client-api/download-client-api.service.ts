@@ -1,26 +1,11 @@
 import { BasicResponseDto } from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
-import { AxiosError } from 'axios';
 import { SettingsDataService } from '../../../modules/settings/settings-data.service';
 import {
   formatConnectionFailureMessage,
   logConnectionTestError,
 } from '../../../utils/connection-error';
 import { CONNECTION_TEST_TIMEOUT_MS } from '../lib/httpTimeouts';
-
-// qBittorrent rejects an authenticated request with 403 when its Web UI security
-// blocks the caller. Bad credentials are NOT this case (they are rejected at
-// login instead), so "Invalid API key" (the shared util's 401/403 message) is
-// misleading. The reliable fix is whitelisting Maintainerr's IP - it and
-// qBittorrent commonly run on different (Docker) IPs - so lead with that and
-// only mention proxy/host validation as a secondary cause.
-const DOWNLOAD_CLIENT_FORBIDDEN_MESSAGE =
-  'The download client accepted the login but returned 403 Forbidden - a ' +
-  'qBittorrent Web UI security restriction, not a wrong username or password. ' +
-  'In qBittorrent → Options → Web UI → Security, add Maintainerr’s IP or ' +
-  'subnet to “Bypass authentication for clients in whitelisted IP subnets” ' +
-  '(Maintainerr and qBittorrent often run on different Docker IPs). A reverse ' +
-  'proxy or host-header validation can also cause this.';
 import {
   MaintainerrLogger,
   MaintainerrLoggerFactory,
@@ -43,9 +28,8 @@ const FALLBACK_SEEDING_HOURS = 23;
 
 /**
  * Talks to the configured download client to clean up completed downloads for
- * media Radarr/Sonarr removes. qBittorrent is currently the only supported
- * backend; the qBittorrent specifics live in the helper so additional backends
- * can be added behind this service later.
+ * media Radarr/Sonarr removes. Client-specific behavior lives behind the
+ * DownloadClient contract.
  */
 @Injectable()
 export class DownloadClientApiService {
@@ -70,6 +54,7 @@ export class DownloadClientApiService {
 
     this.api = createDownloadClient(
       {
+        type: this.settings.download_client_type,
         url: this.settings.download_client_url,
         username: this.settings.download_client_username,
         password: this.settings.download_client_password,
@@ -93,25 +78,13 @@ export class DownloadClientApiService {
           status: 'NOK',
           code: 0,
           message:
-            'Unexpected response from the download client. Verify the URL points to a qBittorrent WebUI.',
+            'Unexpected response from the download client. Verify the URL points to the selected client API.',
         };
       }
 
       return { status: 'OK', code: 1, message: version };
     } catch (error) {
       logConnectionTestError(this.logger, 'Download client');
-
-      if (error instanceof AxiosError && error.response?.status === 403) {
-        // Make this common, hard-to-diagnose case obvious in the logs.
-        this.logger.warn(DOWNLOAD_CLIENT_FORBIDDEN_MESSAGE);
-        this.logger.debug(error);
-        return {
-          status: 'NOK',
-          code: 0,
-          message: DOWNLOAD_CLIENT_FORBIDDEN_MESSAGE,
-        };
-      }
-
       this.logger.debug(error);
 
       return {

@@ -49,6 +49,7 @@ flowchart LR
   Media --> Jellyfin["Jellyfin adapter"]
   Media --> Emby["Emby adapter"]
   API --> Servarr["Radarr / Sonarr"]
+  API --> DownloadClients["qBittorrent / Transmission"]
   API --> Seerr["Seerr"]
   API --> Tautulli["Tautulli"]
   API --> Streamystats["Streamystats"]
@@ -156,6 +157,8 @@ Maintainerr integrates with:
 
 - Plex, Jellyfin, and Emby through the media-server abstraction.
 - Radarr and Sonarr for unmonitoring, deleting, and quality profile actions.
+- qBittorrent and Transmission for optional completed-download cleanup after
+  Radarr or Sonarr media deletion.
 - Seerr-compatible services for request cleanup.
 - Tautulli for Plex analytics and rule data.
 - Streamystats for Jellyfin item-level analytics surfaced on the media modal.

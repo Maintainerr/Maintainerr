@@ -112,6 +112,25 @@ describe('QbittorrentApi auth', () => {
     expect(axiosMock.post).toHaveBeenCalledTimes(1);
   });
 
+  it('names the Web UI security block on a 403 that survives a re-login', async () => {
+    const { api, axiosMock } = buildApi();
+    axiosMock.post.mockResolvedValue({ data: 'Ok.', headers: {} });
+    axiosMock.get.mockRejectedValue(
+      new AxiosError(
+        'Request failed with status code 403',
+        undefined,
+        {
+          headers: new AxiosHeaders(),
+        },
+        undefined,
+        { status: 403 } as AxiosResponse,
+      ),
+    );
+
+    await expect(api.getVersion()).rejects.toThrow('whitelisted IP subnets');
+    expect(axiosMock.post).toHaveBeenCalledTimes(2);
+  });
+
   // A raw qBittorrent torrent with the limit fields the mapper reads.
   const rawTorrent = (overrides = {}) => ({
     hash: 'abc',

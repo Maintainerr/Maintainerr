@@ -741,6 +741,10 @@ msgstr "Effacer"
 msgid "Clear credentials?"
 msgstr "Effacer les identifiants ?"
 
+#: src/components/Settings/DownloadClient/index.tsx
+msgid "Client"
+msgstr ""
+
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Clone"
 msgstr "Cloner"
@@ -2151,8 +2155,8 @@ msgid "Least Watched"
 msgstr "Les moins regardés"
 
 #: src/components/Settings/DownloadClient/index.tsx
-msgid "Leave blank if the client's WebUI allows unauthenticated access."
-msgstr "Laissez vide si l'interface web du client autorise l'accès non authentifié."
+msgid "Leave blank if the client allows unauthenticated access."
+msgstr ""
 
 #: src/components/Settings/Jobs/index.tsx
 msgid "Leave empty to disable scheduled overlay runs."
@@ -4029,6 +4033,10 @@ msgstr "Les données suivantes seront effacées ou réinitialisées :"
 msgid "The following data will be permanently deleted:"
 msgstr "Les données suivantes seront définitivement supprimées :"
 
+#: src/components/Settings/DownloadClient/index.tsx
+msgid "The full RPC endpoint, normally {urlExample}"
+msgstr ""
+
 #: src/components/Settings/index.tsx
 msgid "The Logs page stays available during setup if you need to troubleshoot your connection."
 msgstr "La page Journaux reste disponible pendant la configuration si vous devez résoudre un problème de connexion."
@@ -4088,6 +4096,10 @@ msgstr "Le type de médias TV auquel les règles doivent s'appliquer"
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "The user list could not be loaded"
 msgstr "La liste des utilisateurs n'a pas pu être chargée"
+
+#: src/components/Settings/DownloadClient/index.tsx
+msgid "The WebUI address, for example {urlExample}"
+msgstr ""
 
 #: src/components/Settings/index.tsx
 msgid "There was a problem loading settings."
@@ -4590,12 +4602,12 @@ msgid "What we send"
 msgstr "Ce que nous envoyons"
 
 #: src/components/Settings/DownloadClient/index.tsx
-msgid "When media is removed through Radarr, Sonarr or Sportarr, Maintainerr can remove the completed download (and optionally its data) from your download client. The download is matched via that service's download history, so media removed without one of them is left untouched. qBittorrent is currently the only supported client."
-msgstr "Lorsqu'un média est supprimé via Radarr, Sonarr ou Sportarr, Maintainerr peut supprimer le téléchargement terminé (et éventuellement ses données) de votre client de téléchargement. Le téléchargement est mis en correspondance via l'historique de téléchargement de ce service, donc un média supprimé sans l'un d'eux reste intact. qBittorrent est actuellement le seul client pris en charge."
+msgid "When media is removed through Radarr, Sonarr or Sportarr, Maintainerr can remove the completed download (and optionally its data) from your download client. The download is matched via that service's download history, so media removed without one of them is left untouched."
+msgstr ""
 
 #: src/components/Settings/DownloadClient/index.tsx
-msgid "Whether a download has finished seeding is decided by qBittorrent's own ratio/seed-time limits. This ratio only applies to downloads qBittorrent isn't limiting, and can't be set below 0.5."
-msgstr "Le fait qu'un téléchargement ait terminé son seed est décidé par les propres limites de ratio/temps de seed de qBittorrent. Ce ratio s'applique uniquement aux téléchargements que qBittorrent ne limite pas, et ne peut pas être défini en dessous de 0,5."
+msgid "Whether a download has finished seeding is decided by the client's own ratio or idle-time limits. This ratio only applies when the client enforces no limit, and can't be set below 0.5."
+msgstr ""
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Will also be the name of the collection in {mediaServerName}."

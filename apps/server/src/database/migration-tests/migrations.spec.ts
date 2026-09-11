@@ -173,6 +173,14 @@ describe('database migrations', () => {
         notnull: 0,
         dflt_value: null,
       });
+
+      // AddDownloadClientType: existing installs continue to use qBittorrent
+      // until an administrator explicitly selects another client.
+      expect(settings.download_client_type).toMatchObject({
+        type: 'varchar',
+        notnull: 1,
+        dflt_value: "'qbittorrent'",
+      });
     } finally {
       await ds.destroy();
     }
@@ -185,44 +193,36 @@ describe('database migrations', () => {
     // emits a full create-temporary-table / copy / drop / rename rebuild for the
     // changed tables. A hand-written ALTER shortcut lacks it - this is the
     // cheapest signal the migration was generated rather than authored. The
-    // newest migration adds a rule-removal marker column, so it rebuilds that
-    // table.
-    expect(src).toContain(
-      'CREATE TABLE "temporary_collection_media_rule_removal"',
-    );
+    // newest migration adds a settings column, so it rebuilds that table.
+    expect(src).toContain('CREATE TABLE "temporary_settings"');
   });
 
   // The rebuild in (3) drops and recreates the table, so its INSERT...SELECT is
   // the only thing carrying an existing install's settings across. Every other
   // test here migrates an empty DB, where a rebuild that copies nothing looks
   // identical to one that copies correctly.
-  it('carry existing rule-removal markers through the newest rebuild', async () => {
+  it('carry existing settings through the newest rebuild', async () => {
     const newest = all[all.length - 1];
     const ds = await makeDS(all.slice(0, -1).map((m) => m.cls)).initialize();
     try {
       await ds.runMigrations();
-      // The marker's collection FK is enforced, so the parent has to exist.
       await ds.query(
-        `INSERT INTO collection ("id", "libraryId", "title") VALUES (1, '1', 'Sample Collection')`,
-      );
-      await ds.query(
-        `INSERT INTO collection_media_rule_removal ("collectionId", "mediaServerId") VALUES (1, 'abc')`,
+        `INSERT INTO settings ("id", "applicationTitle", "applicationUrl", "locale", "metadata_provider_preference", "download_client_url", "download_client_delete_data", "download_client_fallback_ratio") VALUES (1, 'Media Manager', 'http://localhost:6246', 'en', 'tmdb_primary', 'http://localhost:8080', 0, 1.25)`,
       );
 
       const runner = ds.createQueryRunner();
       await new newest.cls().up(runner);
       await runner.release();
 
-      const rows = await ds.query(
-        `SELECT * FROM collection_media_rule_removal`,
-      );
+      const rows = await ds.query(`SELECT * FROM settings`);
       expect(rows).toHaveLength(1);
       expect(rows[0]).toMatchObject({
-        collectionId: 1,
-        mediaServerId: 'abc',
-        // Grandfathered: a marker written before the add direction existed is a
-        // rule removal, and must keep meaning that.
-        direction: 'remove',
+        applicationTitle: 'Media Manager',
+        applicationUrl: 'http://localhost:6246',
+        download_client_url: 'http://localhost:8080',
+        download_client_delete_data: 0,
+        download_client_fallback_ratio: 1.25,
+        download_client_type: 'qbittorrent',
       });
     } finally {
       await ds.destroy();
@@ -238,8 +238,8 @@ describe('database migrations', () => {
     try {
       await ds.runMigrations();
       const has = async () =>
-        (await columns(ds, 'collection_media_rule_removal')).some(
-          (c) => c.name === 'direction',
+        (await columns(ds, 'settings')).some(
+          (c) => c.name === 'download_client_type',
         );
       expect(await has()).toBe(true);
 
