@@ -8,8 +8,8 @@ msgstr ""
 "Language: de\n"
 "Project-Id-Version: \n"
 "Report-Msgid-Bugs-To: \n"
-"PO-Revision-Date: 2026-08-19 06:02+0000\n"
-"Last-Translator: Anonymous <noreply@weblate.org>\n"
+"PO-Revision-Date: 2026-09-11 07:14+0000\n"
+"Last-Translator: Elster <admin@myclnet.de>\n"
 "Language-Team: German <https://hosted.weblate.org/projects/maintainerr/app/de/>\n"
 "Plural-Forms: nplurals=2; plural=n != 1;\n"
 
@@ -19,486 +19,500 @@ msgstr ""
 
 #: src/components/Settings/Servarr/ExclusionTagSettings.tsx
 msgid "\"{label}\" is not a valid {name} tag. Lowercase letters, numbers and hyphens only ({chars}), with no leading, trailing, or repeated hyphens."
-msgstr ""
+msgstr "„{label}“ ist kein gültiger {name}-Tag. Es sind nur Kleinbuchstaben, Zahlen und Bindestriche erlaubt ({chars}), ohne führende, abschließende oder aufeinanderfolgende Bindestriche."
 
 #: src/pages/OverlayTemplateListPage.tsx
 msgid "\"{templateName}\" set as the default poster template"
-msgstr ""
+msgstr "„{templateName}“ wurde als Standard-Poster-Vorlage festgelegt"
 
 #: src/pages/OverlayTemplateListPage.tsx
 msgid "\"{templateName}\" set as the default title card template"
-msgstr ""
+msgstr "„{templateName}“ wurde als Standard-Titelkarten-Vorlage festgelegt"
 
 #: src/components/Collection/CollectionDetail/CollectionInfo/CollectionLogsTable.tsx
 msgid "(manual)"
-msgstr ""
+msgstr "(manual)"
 
 #. placeholder {0}: formatWhen(nextAt, locale)
 #: src/components/Settings/Telemetry/index.tsx
+#, fuzzy
 msgid "(Next: {0})"
-msgstr ""
+msgstr "(Next: {0})"
 
 #: src/components/OverlayEditor/OverlayCanvas.tsx
+#, fuzzy
 msgid "[Image]"
-msgstr ""
+msgstr "[Image]"
 
 #: src/components/StorageMetrics/index.tsx
 msgid "{accurateMountCount} of {mountCount} mounts report total capacity"
-msgstr ""
+msgstr "{accurateMountCount} von {mountCount} Einhängepunkten melden die Gesamtkapazität"
 
 #: src/components/Rules/RuleGroup/AddModal/ArrAction/index.tsx
 msgid "{actionOwnerName} action"
-msgstr ""
+msgstr "{actionOwnerName}-Aktion"
 
 #: src/components/Rules/RuleGroup/AddModal/ConfigureNotificationModal/index.tsx
 msgid "{agentName} - {agentType} (disabled)"
-msgstr ""
+msgstr "{agentName} – {agentType} (deaktiviert)"
 
 #: src/components/Settings/MediaServerSelector/index.tsx
+#, fuzzy
 msgid "{clearedCollectionLogs, plural, one {# log entry} other {# log entries}}"
-msgstr ""
+msgstr "{clearedCollectionLogs, plural, one {# log entry} other {# log entries}}"
 
 #: src/components/Settings/MediaServerSelector/index.tsx
+#, fuzzy
 msgid "{clearedCollectionMedia, plural, one {# collection media item} other {# collection media items}}"
-msgstr ""
+msgstr "{clearedCollectionMedia, plural, one {# collection media item} other {# collection media items}}"
 
 #: src/components/Settings/MediaServerSelector/index.tsx
+#, fuzzy
 msgid "{clearedCollections, plural, one {# collection will be preserved (media server references reset)} other {# collections will be preserved (media server references reset)}}"
-msgstr ""
+msgstr "{clearedCollections, plural, one {# collection will be preserved (media server references reset)} other {# collections will be preserved (media server references reset)}}"
 
 #: src/components/Settings/MediaServerSelector/index.tsx
+#, fuzzy
 msgid "{clearedCollections, plural, one {# collection} other {# collections}}"
-msgstr ""
+msgstr "{clearedCollections, plural, one {# collection} other {# collections}}"
 
 #: src/components/Settings/MediaServerSelector/index.tsx
+#, fuzzy
 msgid "{clearedExclusions, plural, one {# exclusion} other {# exclusions}}"
-msgstr ""
+msgstr "{clearedExclusions, plural, one {# exclusion} other {# exclusions}}"
 
 #: src/components/StorageMetrics/index.tsx
+#, fuzzy
 msgid "{collectionCount, plural, one {# collection} other {# collections}}"
-msgstr ""
+msgstr "{collectionCount, plural, one {# collection} other {# collections}}"
 
 #: src/components/Collection/CollectionItem/index.tsx
+#, fuzzy
 msgid "{collectionName} (custom)"
-msgstr ""
+msgstr "{collectionName} (custom)"
 
 #: src/pages/CollectionDetailPage.tsx
+#, fuzzy
 msgid "{collectionTitle} - Maintainerr"
-msgstr ""
+msgstr "{collectionTitle} - Maintainerr"
 
 #: src/components/Collection/CollectionDetail/CollectionInfo/index.tsx
 msgid "{count, plural, one {# day} other {# days}}"
-msgstr ""
+msgstr "{count, plural, one {# Tag} other {# Tage}}"
 
 #: src/components/Collection/CollectionDetail/CollectionInfo/index.tsx
 msgid "{count, plural, one {# hour} other {# hours}}"
-msgstr ""
+msgstr "{count, plural, one {# Stunde} other {# Stunden}}"
 
 #: src/utils/bulkOutcome.ts
 msgid "{count, plural, one {# item added.} other {# items added.}}"
-msgstr ""
+msgstr "{count, plural, one {# Element hinzugefügt.} other {# Elemente hinzugefügt.}}"
 
 #: src/utils/bulkOutcome.ts
 msgid "{count, plural, one {# item could not be added{why}; the failed items stay selected.} other {# items could not be added{why}; the failed items stay selected.}}"
-msgstr ""
+msgstr "{count, plural, one {# Element konnte nicht hinzugefügt werden{why}; das fehlgeschlagene Element bleibt ausgewählt.} other {# Elemente konnten nicht hinzugefügt werden{why}; die fehlgeschlagenen Elemente bleiben ausgewählt.}}"
 
 #: src/utils/bulkOutcome.ts
 msgid "{count, plural, one {# item could not be excluded everywhere{why}; the failed items stay selected.} other {# items could not be excluded everywhere{why}; the failed items stay selected.}}"
-msgstr ""
+msgstr "{count, plural, one {# Element konnte nicht überall ausgeschlossen werden{why}; das fehlgeschlagene Element bleibt ausgewählt.} other {# Elemente konnten nicht überall ausgeschlossen werden{why}; die fehlgeschlagenen Elemente bleiben ausgewählt.}}"
 
 #: src/utils/bulkOutcome.ts
 msgid "{count, plural, one {# item could not be excluded{why}; the failed items stay selected.} other {# items could not be excluded{why}; the failed items stay selected.}}"
-msgstr ""
+msgstr "{count, plural, one {# Element konnte nicht ausgeschlossen werden{why}; das fehlgeschlagene Element bleibt ausgewählt.} other {# Elemente konnten nicht ausgeschlossen werden{why}; die fehlgeschlagenen Elemente bleiben ausgewählt.}}"
 
 #: src/utils/bulkOutcome.ts
 msgid "{count, plural, one {# item could not be removed from every collection{why}; the failed items stay selected.} other {# items could not be removed from every collection{why}; the failed items stay selected.}}"
-msgstr ""
+msgstr "{count, plural, one {# Element konnte nicht aus allen Sammlungen entfernt werden{why}; das fehlgeschlagene Element bleibt ausgewählt.} other {# Elemente konnten nicht aus allen Sammlungen entfernt werden{why}; die fehlgeschlagenen Elemente bleiben ausgewählt.}}"
 
 #: src/utils/bulkOutcome.ts
 msgid "{count, plural, one {# item could not be removed{why}; the failed items stay selected.} other {# items could not be removed{why}; the failed items stay selected.}}"
-msgstr ""
+msgstr "{count, plural, one {# Element konnte nicht entfernt werden{why}; das fehlgeschlagene Element bleibt ausgewählt.} other {# Elemente konnten nicht entfernt werden{why}; die fehlgeschlagenen Elemente bleiben ausgewählt.}}"
 
 #: src/utils/bulkOutcome.ts
 msgid "{count, plural, one {# item could not be un-excluded{why}; the failed items stay selected.} other {# items could not be un-excluded{why}; the failed items stay selected.}}"
-msgstr ""
+msgstr "{count, plural, one {# Element konnte nicht wieder eingeschlossen werden{why}; das fehlgeschlagene Element bleibt ausgewählt.} other {# Elemente konnten nicht wieder eingeschlossen werden{why}; die fehlgeschlagenen Elemente bleiben ausgewählt.}}"
 
 #: src/utils/bulkOutcome.ts
 msgid "{count, plural, one {# item excluded everywhere.} other {# items excluded everywhere.}}"
-msgstr ""
+msgstr "{count, plural, one {# Element wurde überall ausgeschlossen.} other {# Elemente wurden überall ausgeschlossen.}}"
 
 #: src/utils/bulkOutcome.ts
 msgid "{count, plural, one {# item excluded.} other {# items excluded.}}"
-msgstr ""
+msgstr "{count, plural, one {# Element ausgeschlossen.} other {# Elemente ausgeschlossen.}}"
 
 #: src/utils/bulkOutcome.ts
 msgid "{count, plural, one {# item removed from every collection.} other {# items removed from every collection.}}"
-msgstr ""
+msgstr "{count, plural, one {# Element aus allen Sammlungen entfernt.} other {# Elemente aus allen Sammlungen entfernt.}}"
 
 #: src/utils/bulkOutcome.ts
 msgid "{count, plural, one {# item removed.} other {# items removed.}}"
-msgstr ""
+msgstr "{count, plural, one {# Element entfernt.} other {# Elemente entfernt.}}"
 
 #: src/utils/bulkOutcome.ts
 msgid "{count, plural, one {# item un-excluded.} other {# items un-excluded.}}"
-msgstr ""
+msgstr "{count, plural, one {# Element wieder eingeschlossen.} other {# Elemente wieder eingeschlossen.}}"
 
 #: src/components/Collection/CollectionDetail/CollectionInfo/index.tsx
 msgid "{count, plural, one {# minute} other {# minutes}}"
-msgstr ""
+msgstr "{count, plural, one {# Minute} other {# Minuten}}"
 
 #: src/components/Collection/CollectionDetail/CollectionInfo/index.tsx
 msgid "{count, plural, one {# month} other {# months}}"
-msgstr ""
+msgstr "{count, plural, one {# Monat} other {# Monate}}"
 
 #: src/components/Collection/CollectionDetail/CollectionInfo/index.tsx
 msgid "{count, plural, one {# second} other {# seconds}}"
-msgstr ""
+msgstr "{count, plural, one {# Sekunde} other {# Sekunden}}"
 
 #: src/components/Collection/CollectionDetail/CollectionInfo/index.tsx
 msgid "{count, plural, one {# year} other {# years}}"
-msgstr ""
+msgstr "{count, plural, one {# Jahr} other {# Jahre}}"
 
 #: src/components/Settings/About/Releases/index.tsx
 msgid "{daysAgo, plural, one {# day ago} other {# days ago}}"
-msgstr ""
+msgstr "{daysAgo, plural, one {vor # Tag} other {vor # Tagen}}"
 
 #: src/pages/OverlayTemplateListPage.tsx
 msgid "{elementCount, plural, one {# element} other {# elements}}"
-msgstr ""
+msgstr "{elementCount, plural, one {# Element} other {# Elemente}}"
 
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "{formatList} - up to {imageUploadMaxLabel}."
-msgstr ""
+msgstr "{formatList} – bis zu {imageUploadMaxLabel}."
 
 #: src/components/StorageMetrics/StorageUsageBar.tsx
 msgid "{freeSize} free"
-msgstr ""
+msgstr "{freeSize} frei"
 
 #: src/components/Settings/MediaServerSelector/index.tsx
 msgid "{furtherSkippedRules, plural, one {...and # more} other {...and # more}}"
-msgstr ""
+msgstr "{furtherSkippedRules, plural, one {…und # weitere} other {…und # weitere}}"
 
 #: src/components/Settings/About/Releases/index.tsx
 msgid "{hoursAgo, plural, one {# hour ago} other {# hours ago}}"
-msgstr ""
+msgstr "{hoursAgo, plural, one {vor # Stunde} other {vor # Stunden}}"
 
 #: src/api/calendar.ts
 #: src/components/StorageMetrics/index.tsx
 msgid "{itemCount, plural, one {# item} other {# items}}"
-msgstr ""
+msgstr "{itemCount, plural, one {# Element} other {# Elemente}}"
 
 #: src/components/Common/MediaActionModal.tsx
 msgid "{itemCount, plural, one {Add exclusion applies to # item across every collection. For shows and seasons this covers everything they contain.} other {Add exclusion applies to # items across every collection. For shows and seasons this covers everything they contain.}}"
-msgstr ""
+msgstr "{itemCount, plural, one {Der Ausschluss gilt für # Element in allen Sammlungen. Bei Serien und Staffeln umfasst dies alle darin enthaltenen Elemente.} other {Der Ausschluss gilt für # Elemente in allen Sammlungen. Bei Serien und Staffeln umfasst dies alle darin enthaltenen Elemente.}}"
 
 #: src/components/Common/MediaActionModal.tsx
 msgid "{itemCount, plural, one {Applies to # item.} other {Applies to # items.}}"
-msgstr ""
+msgstr "{itemCount, plural, one {Gilt für # Element.} other {Gilt für # Elemente.}}"
 
 #: src/components/Common/MediaActionModal.tsx
 msgid "{itemCount, plural, one {Remove exclusion applies to # item across every collection. For shows and seasons this covers everything they contain.} other {Remove exclusion applies to # items across every collection. For shows and seasons this covers everything they contain.}}"
-msgstr ""
+msgstr "{itemCount, plural, one {Das Entfernen des Ausschlusses gilt für # Element in allen Sammlungen. Bei Serien und Staffeln umfasst dies alle darin enthaltenen Elemente.} other {Das Entfernen des Ausschlusses gilt für # Elemente in allen Sammlungen. Bei Serien und Staffeln umfasst dies alle darin enthaltenen Elemente.}}"
 
 #: src/components/Common/MediaActionModal.tsx
 msgid "{itemCount, plural, one {Remove from collection applies to # item across every collection. For shows and seasons this covers everything they contain.} other {Remove from collection applies to # items across every collection. For shows and seasons this covers everything they contain.}}"
-msgstr ""
+msgstr "{itemCount, plural, one {Das Entfernen aus der Sammlung gilt für # Element in allen Sammlungen. Bei Serien und Staffeln umfasst dies alle darin enthaltenen Elemente.} other {Das Entfernen aus der Sammlung gilt für # Elemente in allen Sammlungen. Bei Serien und Staffeln umfasst dies alle darin enthaltenen Elemente.}}"
 
 #: src/components/Settings/MediaServerSelector/index.tsx
 msgid "{migratableRules} of {totalRules} rules can be migrated."
-msgstr ""
+msgstr "{migratableRules} von {totalRules} Regeln können migriert werden."
 
 #: src/components/Settings/About/Releases/index.tsx
 msgid "{minutesAgo, plural, one {# minute ago} other {# minutes ago}}"
-msgstr ""
+msgstr "{minutesAgo, plural, one {vor # Minute} other {vor # Minuten}}"
 
 #: src/components/StorageMetrics/index.tsx
 msgid "{mountCount, plural, one {# mount} other {# mounts}}"
-msgstr ""
+msgstr "{mountCount, plural, one {# Einhängepunkt} other {# Einhängepunkte}}"
 
 #: src/components/StorageMetrics/index.tsx
 msgid "{mountCount, plural, one {Aggregated across # mount} other {Aggregated across # mounts}}"
-msgstr ""
+msgstr "{mountCount, plural, one {Über # Einhängepunkt zusammengefasst} other {Über # Einhängepunkte zusammengefasst}}"
 
 #: src/components/Settings/Servarr/ExclusionTagSettings.tsx
 msgid "{name} exclusion tag settings could not be updated"
-msgstr ""
+msgstr "Die Einstellungen für den Ausschluss-Tag {name} konnten nicht aktualisiert werden"
 
 #: src/components/Settings/Servarr/ExclusionTagSettings.tsx
 msgid "{name} exclusion tag settings updated"
-msgstr ""
+msgstr "Die Einstellungen für den Ausschluss-Tag {name} wurden aktualisiert"
 
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "{path} (saved selection; total space unavailable)"
-msgstr ""
+msgstr "{path} (gespeicherte Auswahl; Gesamtspeicherplatz nicht verfügbar)"
 
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "{path} (saved selection)"
-msgstr ""
+msgstr "{path} (gespeicherte Auswahl)"
 
 #: src/components/Settings/Metadata/index.tsx
 msgid "{providerTitle} metadata refresh started"
-msgstr ""
+msgstr "Aktualisierung der {providerTitle}-Metadaten gestartet"
 
 #: src/components/Settings/Metadata/index.tsx
 msgid "{providerTitle} primary"
-msgstr ""
+msgstr "{providerTitle} primär"
 
 #: src/components/Settings/Metadata/index.tsx
 msgid "{providerTitle} settings could not be updated"
-msgstr ""
+msgstr "Die Einstellungen für {providerTitle} konnten nicht aktualisiert werden"
 
 #: src/components/Settings/Metadata/index.tsx
 msgid "{providerTitle} settings updated"
-msgstr ""
+msgstr "Die Einstellungen für {providerTitle} wurden aktualisiert"
 
 #: src/components/Settings/About/Releases/index.tsx
 msgid "{secondsAgo, plural, one {# second ago} other {# seconds ago}}"
-msgstr ""
+msgstr "{secondsAgo, plural, one {vor # Sekunde} other {vor # Sekunden}}"
 
 #: src/components/Settings/Servarr/ServarrSettingsModal.tsx
 msgid "{serviceName} metadata refresh started"
-msgstr ""
+msgstr "Aktualisierung der {serviceName}-Metadaten gestartet"
 
 #: src/components/Rules/RuleGroup/AddModal/QualityProfileSelector.tsx
 msgid "{serviceName} quality profile *"
-msgstr ""
+msgstr "{serviceName}-Qualitätsprofil *"
 
 #: src/components/StorageMetrics/index.tsx
 msgid "{size} reclaimed"
-msgstr ""
+msgstr "{size} freigegeben"
 
 #: src/components/StorageMetrics/index.tsx
 msgid "{size} reclaimed total"
-msgstr ""
+msgstr "Insgesamt {size} freigegeben"
 
 #: src/components/StorageMetrics/index.tsx
 msgid "{sizedCount} of {reclaimableCount} reclaimable collections sized - duplicates counted once"
-msgstr ""
+msgstr "{sizedCount} von {reclaimableCount} freigebbaren Sammlungen größenmäßig erfasst – Duplikate werden nur einmal gezählt"
 
 #: src/components/StorageMetrics/index.tsx
 msgid "{sizedCount} of {reclaimableCount} reclaimable collections sized - duplicates not yet deduplicated, refreshes after next collection run"
-msgstr ""
+msgstr "{sizedCount} von {reclaimableCount} freigebbaren Sammlungen größenmäßig erfasst – Duplikate wurden noch nicht dedupliziert; Aktualisierung nach dem nächsten Sammlungslauf"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "{skipped, plural, one {# rule was skipped - it uses a property that isn't available.} other {# rules were skipped - they use properties that aren't available.}}"
-msgstr ""
+msgstr "{skipped, plural, one {# Regel wurde übersprungen – sie verwendet eine Eigenschaft, die nicht verfügbar ist.} other {# Regeln wurden übersprungen – sie verwenden Eigenschaften, die nicht verfügbar sind.}}"
 
 #: src/components/Settings/MediaServerSelector/index.tsx
 msgid "{skippedRuleCount, plural, one {# rule uses properties not available in {pendingName}.} other {# rules use properties not available in {pendingName}.}}"
-msgstr ""
+msgstr "{skippedRuleCount, plural, one {# Regel verwendet Eigenschaften, die in {pendingName} nicht verfügbar sind.} other {# Regeln verwenden Eigenschaften, die in {pendingName} nicht verfügbar sind.}}"
 
 #: src/pages/OverlayTemplateEditorPage.tsx
 msgid "{templateName} - Overlay Editor - Maintainerr"
-msgstr ""
+msgstr "{templateName} – Overlay-Editor – Maintainerr"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "{templateName} (default)"
-msgstr ""
+msgstr "{templateName} (Standard)"
 
 #: src/components/Calendar/index.tsx
 msgid "{totalScheduledCount, plural, one {# scheduled} other {# scheduled}}"
-msgstr ""
+msgstr "{totalScheduledCount, plural, one {# geplant} other {# geplant}}"
 
 #: src/components/Rules/RuleGroup/AddModal/ArrAction/index.tsx
 msgid "{type} server *"
-msgstr ""
+msgstr "{type}-Server *"
 
 #: src/components/StorageMetrics/StorageUsageBar.tsx
 msgid "{usedSize} used"
-msgstr ""
+msgstr "{usedSize} belegt"
 
 #: src/components/StorageMetrics/StorageUsageBar.tsx
 msgid "{usedSize} used of {totalSize}"
-msgstr ""
+msgstr "{usedSize} von {totalSize} belegt"
 
 #: src/components/Settings/About/Releases/index.tsx
 msgid "{version} Changelog"
-msgstr ""
+msgstr "{version} Changelog"
 
 #: src/components/Common/MediaCard/MediaModal/StreamystatsStatsPanel/index.tsx
 msgid "{watchedEpisodes}/{totalEpisodes} episodes watched"
-msgstr ""
+msgstr "{watchedEpisodes}/{totalEpisodes} Episoden angesehen"
 
 #: src/components/Common/MediaCard/MediaModal/StreamystatsStatsPanel/index.tsx
 msgid "{watchedSeasons}/{totalSeasons} seasons complete"
-msgstr ""
+msgstr "{watchedSeasons}/{totalSeasons} Staffeln abgeschlossen"
 
 #: src/components/OverlayEditor/PropertiesPanel.tsx
+#, fuzzy
 msgid "+ Text"
-msgstr ""
+msgstr "+ Text"
 
 #: src/components/OverlayEditor/PropertiesPanel.tsx
+#, fuzzy
 msgid "+ Variable"
-msgstr ""
+msgstr "+ Variable"
 
 #: src/components/Calendar/index.tsx
 msgid "+{hiddenCount} more..."
-msgstr ""
+msgstr "+{hiddenCount} weitere…"
 
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "1 day text"
-msgstr ""
+msgstr "Text für 1 Tag"
 
 #: src/components/Settings/Servarr/ExclusionTagSettings.tsx
 msgid "A tag label is required when exclusion tagging is enabled. Lowercase letters, numbers and hyphens only ({chars})."
-msgstr ""
+msgstr "Wenn Ausschluss-Tags aktiviert sind, ist eine Tag-Bezeichnung erforderlich. Es sind nur Kleinbuchstaben, Zahlen und Bindestriche erlaubt ({chars})."
 
 #: src/components/Settings/index.tsx
 msgid "About"
-msgstr ""
+msgstr "Über"
 
 #: src/components/Settings/About/index.tsx
 msgid "About - Maintainerr"
-msgstr ""
+msgstr "Über – Maintainerr"
 
 #: src/components/Settings/About/index.tsx
 msgid "About Maintainerr"
-msgstr ""
+msgstr "Über Maintainerr"
 
 #: src/components/Common/MediaActionModal.tsx
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "Action"
-msgstr ""
+msgstr "Aktion"
 
 #: src/components/Collection/CollectionItem/index.tsx
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 #: src/components/Rules/RuleGroup/index.tsx
 #: src/components/StorageMetrics/index.tsx
 msgid "Active"
-msgstr ""
+msgstr "Aktiv"
 
 #: src/components/Common/MediaActionModal.tsx
 msgid "Add / Remove Media"
-msgstr ""
+msgstr "Medien hinzufügen / entfernen"
 
 #: src/components/Rules/Rule/RuleCreator/index.tsx
 msgid "Add a new rule to Section {sectionNumber}"
-msgstr ""
+msgstr "Neue Regel zu Abschnitt {sectionNumber} hinzufügen"
 
 #: src/components/Rules/Rule/RuleCreator/index.tsx
 msgid "Add a new section"
-msgstr ""
+msgstr "Neuen Abschnitt hinzufügen"
 
 #: src/components/Settings/Notifications/index.tsx
 msgid "Add Agent"
-msgstr ""
+msgstr "Agent hinzufügen"
 
 #: src/components/Common/MediaActionModal.tsx
 msgid "Add exclusion"
-msgstr ""
+msgstr "Ausschluss hinzufügen"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Add import list exclusions"
-msgstr ""
+msgstr "Ausschlüsse zur Importliste hinzufügen"
 
 #: src/components/Rules/Rule/RuleCreator/index.tsx
 msgid "Add Rule"
-msgstr ""
+msgstr "Regel hinzufügen"
 
 #: src/components/Settings/Radarr/index.tsx
 #: src/components/Settings/Sonarr/index.tsx
 #: src/components/Settings/Sportarr/index.tsx
 msgid "Add server"
-msgstr ""
+msgstr "Server hinzufügen"
 
 #: src/components/Settings/Servarr/ExclusionTagSettings.tsx
 msgid "Add the tag below to {name} when an item is excluded"
-msgstr ""
+msgstr "Den untenstehenden Tag zu {name} hinzufügen, wenn ein Element ausgeschlossen wird"
 
 #: src/components/Common/MediaActionModal.tsx
 msgid "Add to collection"
-msgstr ""
+msgstr "Zur Sammlung hinzufügen"
 
 #: src/components/Common/MediaSelectionActions.tsx
 msgid "Add/Exclude <0>selected</0>"
-msgstr ""
+msgstr "<0>Ausgewählte</0> hinzufügen/ausschließen"
 
 #: src/components/Calendar/index.tsx
 msgid "Added On"
-msgstr ""
+msgstr "Hinzugefügt am"
 
 #: src/components/Settings/Radarr/index.tsx
 #: src/components/Settings/Sonarr/index.tsx
 #: src/components/Settings/Sportarr/index.tsx
 msgid "Address"
-msgstr ""
+msgstr "Adresse"
 
 #: src/components/Settings/Emby/index.tsx
 #: src/components/Settings/Jellyfin/index.tsx
 msgid "Admin User"
-msgstr ""
+msgstr "Administrator"
 
 #: src/components/Settings/Plex/index.tsx
 msgid "Advanced Settings"
-msgstr ""
+msgstr "Erweiterte Einstellungen"
 
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "After"
-msgstr ""
+msgstr "Nach"
 
 #: src/components/Collection/CollectionItem/index.tsx
 msgid "After {dayCount}"
-msgstr ""
+msgstr "Nach {dayCount}"
 
 #: src/components/Settings/MediaServerSelector/index.tsx
 msgid "After migration, you must manually assign a library to each rule group before rules can run."
-msgstr ""
+msgstr "Nach der Migration musst du jeder Regelgruppe manuell eine Bibliothek zuweisen, bevor die Regeln ausgeführt werden können."
 
 #: src/components/Settings/Notifications/CreateNotificationModal/index.tsx
+#, fuzzy
 msgid "Agent *"
-msgstr ""
+msgstr "Agent *"
 
 #: src/components/Rules/RuleGroup/AddModal/ConfigureNotificationModal/index.tsx
+#, fuzzy
 msgid "Agents"
-msgstr ""
+msgstr "Agents"
 
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "Aggregate (all paths)"
-msgstr ""
+msgstr "Zusammenfassen (alle Pfade)"
 
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "Align"
-msgstr ""
+msgstr "Ausrichten"
 
 #: src/components/Common/LibrarySwitcher/index.tsx
 msgid "All"
-msgstr ""
+msgstr "Alle"
 
 #: src/components/Common/MediaActionModal.tsx
 msgid "All collections"
-msgstr ""
+msgstr "Alle Sammlungen"
 
 #: src/components/Common/MediaActionModal.tsx
 msgid "All episodes"
-msgstr ""
+msgstr "Alle Episoden"
 
 #: src/components/Settings/Overlays/index.tsx
 msgid "All overlays have been reset"
-msgstr ""
+msgstr "Alle Overlays wurden zurückgesetzt"
 
 #: src/components/Common/MediaActionModal.tsx
 msgid "All seasons"
-msgstr ""
+msgstr "Alle Staffeln"
 
 #: src/components/Settings/DownloadClient/index.tsx
 msgid "Also delete the download's data from disk when removing it. Turn off if you cross-seed."
-msgstr ""
+msgstr "Beim Entfernen auch die Daten des Downloads von der Festplatte löschen. Deaktivieren, wenn du Cross-Seeding verwendest."
 
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "Amount of days"
-msgstr ""
+msgstr "Anzahl der Tage"
 
 #: src/components/Common/CommunityRuleModal/index.tsx
 msgid "An error occurred fetching community rules. Please try again later."
-msgstr ""
+msgstr "Beim Abrufen der Community-Regeln ist ein Fehler aufgetreten. Bitte versuche es später erneut."
 
 #: src/components/Common/MediaActionModal.tsx
 msgid "An item excluded globally is un-excluded everywhere, not just here."
-msgstr ""
+msgstr "Ein global ausgeschlossenes Element wird überall wieder eingeschlossen, nicht nur hier."
 
 #: src/components/Layout/index.tsx
 msgid "An unexpected error occurred."
-msgstr ""
+msgstr "Ein unerwarteter Fehler ist aufgetreten."
 
 #: src/components/Settings/Main/index.tsx
 #: src/components/Settings/Seerr/index.tsx
@@ -506,33 +520,33 @@ msgstr ""
 #: src/components/Settings/Tautulli/index.tsx
 #: src/components/Settings/Tracearr/index.tsx
 msgid "API key"
-msgstr ""
+msgstr "API Schlüssel"
 
 #: src/components/Settings/Emby/index.tsx
 #: src/components/Settings/Jellyfin/index.tsx
 #: src/components/Settings/Metadata/index.tsx
 msgid "API Key"
-msgstr ""
+msgstr "API Schlüssel"
 
 #: src/components/Settings/Metadata/index.tsx
 msgid "API key configured."
-msgstr ""
+msgstr "API-Schlüssel konfiguriert."
 
 #: src/components/Settings/Metadata/index.tsx
 msgid "API key not configured."
-msgstr ""
+msgstr "API-Schlüssel nicht konfiguriert."
 
 #: src/components/Settings/Servarr/ExclusionTagSettings.tsx
 msgid "Apply a protective tag to the matching {name} movie whenever Maintainerr excludes an item, so {name} carries a single source of truth for \"do not touch\"."
-msgstr ""
+msgstr "Wende ein schützendes Tag auf den passenden {name}-Film an, sobald Maintainerr ein Element ausschließt, damit {name} eine zentrale Referenz für „nicht verändern“ enthält."
 
 #: src/components/Settings/Servarr/ExclusionTagSettings.tsx
 msgid "Apply a protective tag to the matching {name} series whenever Maintainerr excludes an item, so {name} carries a single source of truth for \"do not touch\"."
-msgstr ""
+msgstr "Wende ein schützendes Tag auf die passende {name}-Serie an, sobald Maintainerr ein Element ausschließt, damit {name} eine zentrale Referenz für „nicht verändern“ enthält."
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Apply date overlays to posters in this collection"
-msgstr ""
+msgstr "Datums-Overlays auf Poster in dieser Sammlung anwenden"
 
 #: src/components/Rules/RuleGroup/index.tsx
 #: src/components/Settings/Notifications/index.tsx
@@ -540,129 +554,130 @@ msgstr ""
 #: src/components/Settings/Sonarr/index.tsx
 #: src/components/Settings/Sportarr/index.tsx
 msgid "Are you sure?"
-msgstr ""
+msgstr "Bist du sicher?"
 
 #: src/components/Collection/CollectionDetail/CollectionInfo/index.tsx
 msgid "Ascending"
-msgstr ""
+msgstr "Aufsteigend"
 
 #: src/components/Login/Plex/index.tsx
 msgid "Authenticate with Plex"
-msgstr ""
+msgstr "Mit Plex authentifizieren"
 
 #: src/components/Settings/Plex/index.tsx
 msgid "Authenticate with Plex before saving server settings."
-msgstr ""
+msgstr "Vor dem Speichern der Servereinstellungen mit Plex authentifizieren."
 
 #: src/components/Settings/Plex/index.tsx
 msgid "Authenticate with Plex before testing the connection."
-msgstr ""
+msgstr "Vor dem Testen der Verbindung mit Plex authentifizieren."
 
 #: src/components/Settings/Emby/index.tsx
 #: src/components/Settings/Plex/index.tsx
 msgid "Authenticated"
-msgstr ""
+msgstr "Authentifiziert"
 
 #: src/components/Settings/Emby/index.tsx
 msgid "Authenticated against {serverName}"
-msgstr ""
+msgstr "Bei {serverName} authentifiziert"
 
 #: src/components/Login/Emby/EmbyLoginButton.tsx
 msgid "Authenticates against <0>{embyUrl}</0> with an admin username and password. The resulting access token is stored as the API key."
-msgstr ""
+msgstr "Authentifiziert sich bei <0>{embyUrl}</0> mit einem Administrator-Benutzernamen und Passwort. Das daraus resultierende Zugriffstoken wird als API-Schlüssel gespeichert."
 
 #: src/components/Login/Plex/index.tsx
 msgid "Authenticating…"
-msgstr ""
+msgstr "Authentifizierung läuft…"
 
 #: src/components/Settings/Plex/index.tsx
 msgid "Authentication"
-msgstr ""
+msgstr "Authentifizierung"
 
 #: src/components/Login/Emby/EmbyLoginButton.tsx
 msgid "Authentication failed"
-msgstr ""
+msgstr "Authentifizierung fehlgeschlagen"
 
 #: src/utils/PlexAuth.ts
 msgid "Authentication PIN expired. Please try again."
-msgstr ""
+msgstr "Authentifizierungs-PIN ist abgelaufen. Bitte versuche es erneut."
 
 #: src/utils/PlexAuth.ts
 msgid "Authentication timed out. Please try again."
-msgstr ""
+msgstr "Zeitüberschreitung bei der Authentifizierung. Bitte versuche es erneut."
 
 #: src/components/Settings/Plex/index.tsx
 msgid "Authentication with the server's admin account is required to access the Plex API"
-msgstr ""
+msgstr "Für den Zugriff auf die Plex-API ist eine Authentifizierung mit dem Administratorkonto des Servers erforderlich"
 
 #: src/components/Collection/CollectionOverview/index.tsx
 msgid "Automatic collections"
-msgstr ""
+msgstr "Automatische Sammlungen"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Automatically sort items inside the collection on {mediaServerName}. Disabling later does not restore the default order - change it in {mediaServerName} if needed."
-msgstr ""
+msgstr "Elemente innerhalb der Sammlung auf {mediaServerName} automatisch sortieren. Eine spätere Deaktivierung stellt die Standardsortierung nicht wieder her – ändere sie bei Bedarf in {mediaServerName}."
 
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "Background"
-msgstr ""
+msgstr "Hintergrund"
 
 #: src/components/Settings/Main/DatabaseBackupModal.tsx
+#, fuzzy
 msgid "Backup"
-msgstr ""
+msgstr "Backup"
 
 #: src/components/Settings/Main/DatabaseBackupModal.tsx
 #: src/components/Settings/Main/index.tsx
 msgid "Backup Database"
-msgstr ""
+msgstr "Backup Datenbank"
 
 #: src/components/Settings/Servarr/ServarrSettingsModal.tsx
 msgid "Base URL"
-msgstr ""
+msgstr "Basis-URL"
 
 #: src/components/StorageMetrics/index.tsx
 msgid "Based on cached collection sizes, deduplicated across collections. Run collection processing jobs to refresh size data."
-msgstr ""
+msgstr "Basierend auf zwischengespeicherten Sammlungsgrößen, sammlungsübergreifend dedupliziert. Führe die Verarbeitungsjobs für Sammlungen aus, um die Größendaten zu aktualisieren."
 
 #: src/components/StorageMetrics/index.tsx
 msgid "Based on cached collection totals while per-item sizes are still backfilling. Duplicates across collections are resolved after the next collection size refresh."
-msgstr ""
+msgstr "Basierend auf zwischengespeicherten Gesamtgrößen der Sammlungen, während die Größen einzelner Elemente noch nachträglich ermittelt werden. Duplikate zwischen Sammlungen werden nach der nächsten Aktualisierung der Sammlungsgrößen berücksichtigt."
 
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "Before"
-msgstr ""
+msgstr "Vor"
 
 #: src/components/Collection/CollectionDetail/CollectionInfo/index.tsx
 msgid "Below are the rule evaluation results that triggered this action. The output follows the same format as Test Media. Refer to the documentation for guidance on interpreting this output."
-msgstr ""
+msgstr "Unten findest du die Ergebnisse der Regelauswertung, die diese Aktion ausgelöst haben. Die Ausgabe entspricht demselben Format wie bei „Medien testen“. Hinweise zur Interpretation dieser Ausgabe findest du in der Dokumentation."
 
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "Bigger"
-msgstr ""
+msgstr "Größer"
 
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "bold"
-msgstr ""
+msgstr "fett"
 
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "Boolean"
-msgstr ""
+msgstr "Boolesch"
 
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "bottom"
-msgstr ""
+msgstr "unten"
 
 #: src/components/Layout/NavBar/index.tsx
 msgid "Calendar"
-msgstr ""
+msgstr "Kalender"
 
 #: src/pages/CalendarPage.tsx
 msgid "Calendar - Maintainerr"
-msgstr ""
+msgstr "Kalender – Maintainerr"
 
 #: src/components/Settings/Jobs/index.tsx
 msgid "Can be overridden by individual rule groups."
-msgstr ""
+msgstr "Kann von einzelnen Regelgruppen überschrieben werden."
 
 #: src/components/Common/ColorPickerModal/index.tsx
 #: src/components/Common/Modal/index.tsx
@@ -671,55 +686,55 @@ msgstr ""
 #: src/components/Settings/MediaServerSelector/index.tsx
 #: src/components/StorageMetrics/index.tsx
 msgid "Cancel"
-msgstr ""
+msgstr "Abbrechen"
 
 #: src/pages/OverlayTemplateListPage.tsx
 msgid "Cannot delete preset templates"
-msgstr ""
+msgstr "Voreingestellte Vorlagen können nicht gelöscht werden"
 
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "center"
-msgstr ""
+msgstr "zentriert"
 
 #: src/components/Settings/Plex/index.tsx
 msgid "Change"
-msgstr ""
+msgstr "Ändern"
 
 #: src/api/calendar.ts
 msgid "Change Quality"
-msgstr ""
+msgstr "Qualität ändern"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Change quality profile"
-msgstr ""
+msgstr "Qualitätsprofil ändern"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Change quality profile and search"
-msgstr ""
+msgstr "Qualitätsprofil ändern und suchen"
 
 #: src/components/Collection/CollectionDetail/TriggerRuleActionButton/index.tsx
 msgid "Change the quality profile"
-msgstr ""
+msgstr "Qualitätsprofil ändern"
 
 #: src/components/Collection/CollectionDetail/TriggerRuleActionButton/index.tsx
 msgid "Change the quality profile and trigger a search"
-msgstr ""
+msgstr "Qualitätsprofil ändern und eine Suche starten"
 
 #: src/components/Settings/Plex/index.tsx
 msgid "Checking authentication..."
-msgstr ""
+msgstr "Authentifizierung wird überprüft..."
 
 #: src/components/Common/ColorPickerModal/index.tsx
 msgid "Choose a color"
-msgstr ""
+msgstr "Farbe auswählen"
 
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "Choose a color for {fieldLabel}"
-msgstr ""
+msgstr "Farbe für {fieldLabel} auswählen"
 
 #: src/components/Settings/Main/DatabaseBackupModal.tsx
 msgid "Choose the filename for your database backup."
-msgstr ""
+msgstr "Wähle den Dateinamen für deine Datenbanksicherung."
 
 #: src/components/Settings/index.tsx
 msgid "Choose your media server, confirm the connection, and then you can continue configuring the rest of Maintainerr."
