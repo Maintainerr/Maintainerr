@@ -1,4 +1,5 @@
 import {
+  DownloadClientType,
   MediaServerType,
   MetadataProviderPreference,
 } from '@maintainerr/contracts';
@@ -65,6 +66,8 @@ export class SettingDto {
   tracearr_api_key: string;
 
   tracearr_server_id: string;
+
+  download_client_type: DownloadClientType;
 
   download_client_url: string;
 

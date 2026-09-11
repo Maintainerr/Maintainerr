@@ -2,6 +2,7 @@ import { t } from '@lingui/core/macro'
 import {
   BasicResponseDto,
   DownloadClientSetting,
+  DownloadClientType,
   EmbySetting,
   JellyfinSetting,
   MediaServerSwitchPreview,
@@ -68,7 +69,8 @@ export interface ISettings {
   tracearr_url?: string
   tracearr_api_key?: string
   tracearr_server_id?: string
-  // Download client integration (currently qBittorrent)
+  // Download client integration
+  download_client_type?: DownloadClientType
   download_client_url?: string
   download_client_username?: string
   download_client_password?: string
@@ -508,7 +510,7 @@ export type UseDeleteJellyfinSettingsResult = ReturnType<
 >
 
 // --------------------------------------------------------------------------
-// Download client (currently qBittorrent)
+// Download client
 // --------------------------------------------------------------------------
 
 type UseDownloadClientSettingsQueryKey = ['settings', 'download-client']

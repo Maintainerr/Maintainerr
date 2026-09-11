@@ -33,7 +33,7 @@ Docker images for amd64 & arm64 are available from:
 
 [![Docker Hub](https://img.shields.io/badge/Docker_Hub-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://hub.docker.com/r/maintainerr/maintainerr)
 
-> **Data directory.** Maintainerr stores its data at `/opt/data` inside the container. Mount a persistent volume there in your `docker run` command or Compose file. The directory must be readable and writable by the configured `user`; if no `user` is set, make it accessible to UID:GID `1000:1000`.
+> **Data directory.** Maintainerr stores its data at `/opt/data` inside the container. Mount a persistent volume there in your `docker run` command, Compose file or Quadlet unit. The directory must be readable and writable by the configured `user`; if no `user` is set, make it accessible to UID:GID `1000:1000`.
 
 > **CPU requirement (x86-64).** Image features (overlays and collection posters) use `sharp`, whose prebuilt binaries require a CPU with the `x86-64-v2` microarchitecture. Maintainerr still starts on older CPUs, but those features are disabled. If you run in a VM and hit this, set the VM CPU type to `host`, `x86-64-v2`, or newer (e.g. Proxmox/QEMU's default `kvm64` does not expose `x86-64-v2`). This does not apply to arm64.
 
@@ -91,6 +91,49 @@ services:
           start_period: 40s
           retries: 3
 ```
+
+</details>
+
+<details>
+<summary><b>Podman (Quadlet)</b></summary>
+
+Save this as `~/.config/containers/systemd/maintainerr.container`. Quadlet does not allow comments after a value, so every optional line is commented out as a whole.
+
+```ini
+[Unit]
+Description=Maintainerr
+
+[Container]
+Image=ghcr.io/maintainerr/maintainerr:latest
+ContainerName=maintainerr
+# Maps your own user to 1000:1000 inside the container, so the data directory only has to be owned by you.
+UserNS=keep-id:uid=1000,gid=1000
+Volume=%h/maintainerr/data:/opt/data:Z
+# Uncomment for the leftover-folder cleanup: your library, at the same path Radarr/Sonarr report it at
+#Volume=/path/to/media:/path/to/media:Z
+Environment=TZ=Europe/Brussels
+# Uncomment if you're serving maintainerr from a subdirectory
+#Environment=BASE_PATH=/maintainerr
+PublishPort=6246:6246
+# Uncomment to let `podman auto-update` pull new images
+#AutoUpdate=registry
+
+[Service]
+Restart=always
+TimeoutStartSec=900
+
+[Install]
+WantedBy=default.target
+```
+
+```bash
+mkdir -p ~/maintainerr/data
+systemctl --user daemon-reload
+systemctl --user start maintainerr
+loginctl enable-linger "$USER" # keeps it running while you are logged out
+```
+
+For a rootful install, put the file in `/etc/containers/systemd/` instead, replace `UserNS=` with `User=1000` and `Group=1000` (the data directory must then be owned by `1000:1000`), use an absolute data path, set `WantedBy=multi-user.target`, and run `systemctl` without `--user`.
 
 </details>
 

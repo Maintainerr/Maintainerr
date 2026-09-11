@@ -247,6 +247,19 @@ describe('SeerrApiService', () => {
     results,
   });
 
+  it('reads the show uncached when fresh', async () => {
+    const getWithoutCache = jest.fn().mockResolvedValue({ id: 1 });
+    const get = jest.fn();
+    service.api = { get, getWithoutCache } as never;
+
+    await expect(service.getShow(1, { fresh: true })).resolves.toEqual({
+      id: 1,
+    });
+
+    expect(getWithoutCache).toHaveBeenCalledWith('/tv/1');
+    expect(get).not.toHaveBeenCalled();
+  });
+
   describe('removeSeasonRequest', () => {
     const tvRequest = (id: number, seasonNumbers: number[]) =>
       ({
@@ -297,6 +310,7 @@ describe('SeerrApiService', () => {
 
       await expect(service.removeSeasonRequest(100, 1)).resolves.toBe(true);
 
+      expect(service.getShow).toHaveBeenCalledWith(100, { fresh: true });
       expect(del).toHaveBeenCalledTimes(1);
       expect(del).toHaveBeenCalledWith('/request/10', undefined, {
         rethrow: true,

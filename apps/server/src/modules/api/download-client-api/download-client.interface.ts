@@ -1,12 +1,12 @@
 import { RawAxiosRequestConfig } from 'axios';
 
 /**
- * The fields of a download-client "download" (a torrent, for qBittorrent) that
+ * The fields of a download-client "download" (currently a torrent) that
  * Maintainerr consumes. Kept to exactly what the generic layer uses so a new
  * client only has to supply these.
  */
 export interface DownloadClientTorrent {
-  /** The download-client identifier; a torrent infohash for qBittorrent. */
+  /** The download-client identifier; a torrent infohash for torrent clients. */
   hash: string;
   /** Display name, used for logging. */
   name: string;
@@ -14,10 +14,12 @@ export interface DownloadClientTorrent {
   content_path: string;
   /**
    * Current share ratio, with an effectively-unbounded ratio normalized to
-   * `Infinity` (qBittorrent reports it as -1). Only used for the caller's
+   * `Infinity`. Only used for the caller's
    * fallback when the client enforces no seeding goal of its own.
    */
   ratio: number;
+  /** Seconds spent seeding since the download completed. Same use as `ratio`. */
+  seedingTime: number;
   /**
    * Whether the client's OWN seeding goal (its ratio / seed-time limit) is met,
    * decided entirely by the client:
@@ -30,8 +32,7 @@ export interface DownloadClientTorrent {
 }
 
 /**
- * Backend-agnostic contract every download client implements. qBittorrent is the
- * only implementation today (see `helpers/qbittorrent.helper.ts`); additional
+ * Backend-agnostic contract every download client implements. Additional
  * clients plug in via `download-client.factory.ts` without touching the service.
  */
 export interface DownloadClient {

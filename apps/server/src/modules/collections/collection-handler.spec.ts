@@ -499,7 +499,7 @@ describe('CollectionHandler', () => {
     expect(seerrApi.removeMediaByTmdbId).not.toHaveBeenCalled();
   });
 
-  it('should not mutate Seerr requests for DELETE_SHOW_IF_EMPTY season actions', async () => {
+  it('removes the season request for DELETE_SHOW_IF_EMPTY when forced', async () => {
     const collection = createCollection({
       arrAction: ServarrAction.DELETE_SHOW_IF_EMPTY,
       forceSeerr: true,
@@ -517,13 +517,40 @@ describe('CollectionHandler', () => {
       }),
     );
     mockMediaServerMetadata(collectionMedia.mediaData);
+    sonarrActionHandler.handleAction.mockResolvedValue(true);
 
-    await collectionHandler.handleMedia(collection, collectionMedia);
+    await expect(
+      collectionHandler.handleMedia(collection, collectionMedia),
+    ).resolves.toBe('handled');
 
-    expect(sonarrActionHandler.handleAction).toHaveBeenCalledWith(
-      collection,
-      collectionMedia,
+    expect(seerrApi.removeSeasonRequest).toHaveBeenCalledWith(
+      collectionMedia.tmdbId,
+      collectionMedia.mediaData.index,
     );
+  });
+
+  it('does not touch Seerr for UNMONITOR_SHOW_IF_EMPTY (no files are removed)', async () => {
+    const collection = createCollection({
+      arrAction: ServarrAction.UNMONITOR_SHOW_IF_EMPTY,
+      forceSeerr: true,
+      sonarrSettingsId: 1,
+      type: 'season',
+    });
+    const collectionMedia = createCollectionMediaWithMetadata(collection);
+
+    settings.seerrConfigured.mockReturnValue(true);
+    mediaServer.getLibraries.mockResolvedValue(
+      createMediaLibraries({
+        id: collection.libraryId.toString(),
+        type: 'show',
+      }),
+    );
+    sonarrActionHandler.handleAction.mockResolvedValue(true);
+
+    await expect(
+      collectionHandler.handleMedia(collection, collectionMedia),
+    ).resolves.toBe('handled');
+
     expect(seerrApi.removeSeasonRequest).not.toHaveBeenCalled();
     expect(seerrApi.removeMediaByTmdbId).not.toHaveBeenCalled();
   });

@@ -8,7 +8,7 @@ msgstr ""
 "Language: sv\n"
 "Project-Id-Version: \n"
 "Report-Msgid-Bugs-To: \n"
-"PO-Revision-Date: 2026-08-31 14:51+0000\n"
+"PO-Revision-Date: 2026-09-11 18:21+0000\n"
 "Last-Translator: bittin1ddc447d824349b2 <bittin@reimu.nl>\n"
 "Language-Team: Swedish <https://hosted.weblate.org/projects/maintainerr/app/sv/>\n"
 "Plural-Forms: nplurals=2; plural=n != 1;\n"
@@ -740,6 +740,10 @@ msgstr "Rensa"
 #: src/components/Settings/Plex/index.tsx
 msgid "Clear credentials?"
 msgstr "Rensa inloggningsuppgifter?"
+
+#: src/components/Settings/DownloadClient/index.tsx
+msgid "Client"
+msgstr ""
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Clone"
@@ -2151,8 +2155,8 @@ msgid "Least Watched"
 msgstr "Minst sedda"
 
 #: src/components/Settings/DownloadClient/index.tsx
-msgid "Leave blank if the client's WebUI allows unauthenticated access."
-msgstr "Lämna tomt om klientens WebUI tillåter åtkomst utan inloggning."
+msgid "Leave blank if the client allows unauthenticated access."
+msgstr ""
 
 #: src/components/Settings/Jobs/index.tsx
 msgid "Leave empty to disable scheduled overlay runs."
@@ -4029,6 +4033,10 @@ msgstr "Följande data rensas eller återställs:"
 msgid "The following data will be permanently deleted:"
 msgstr "Följande data raderas permanent:"
 
+#: src/components/Settings/DownloadClient/index.tsx
+msgid "The full RPC endpoint, normally {urlExample}"
+msgstr ""
+
 #: src/components/Settings/index.tsx
 msgid "The Logs page stays available during setup if you need to troubleshoot your connection."
 msgstr "Loggsidan är tillgänglig under konfigurationen om du behöver felsöka din anslutning."
@@ -4088,6 +4096,10 @@ msgstr "Typen av TV-media som reglerna ska gälla för"
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "The user list could not be loaded"
 msgstr "Användarlistan kunde inte läsas in"
+
+#: src/components/Settings/DownloadClient/index.tsx
+msgid "The WebUI address, for example {urlExample}"
+msgstr ""
 
 #: src/components/Settings/index.tsx
 msgid "There was a problem loading settings."
@@ -4590,12 +4602,12 @@ msgid "What we send"
 msgstr "Vad vi skickar"
 
 #: src/components/Settings/DownloadClient/index.tsx
-msgid "When media is removed through Radarr, Sonarr or Sportarr, Maintainerr can remove the completed download (and optionally its data) from your download client. The download is matched via that service's download history, so media removed without one of them is left untouched. qBittorrent is currently the only supported client."
-msgstr "När media tas bort via Radarr, Sonarr eller Sportarr kan Maintainerr ta bort den färdiga nedladdningen (och eventuellt dess data) från din nedladdningsklient. Nedladdningen matchas via tjänstens nedladdningshistorik, så media som tas bort utan någon av dem rörs inte. qBittorrent är för närvarande den enda klienten som stöds."
+msgid "When media is removed through Radarr, Sonarr or Sportarr, Maintainerr can remove the completed download (and optionally its data) from your download client. The download is matched via that service's download history, so media removed without one of them is left untouched."
+msgstr ""
 
 #: src/components/Settings/DownloadClient/index.tsx
-msgid "Whether a download has finished seeding is decided by qBittorrent's own ratio/seed-time limits. This ratio only applies to downloads qBittorrent isn't limiting, and can't be set below 0.5."
-msgstr "Om en nedladdning är klar med seedningen avgörs av qBittorrents egna gränser för ratio/seedtid. Den här ration gäller bara nedladdningar som qBittorrent inte begränsar, och kan inte sättas under 0,5."
+msgid "Whether a download has finished seeding is decided by the client's own ratio or idle-time limits. This ratio only applies when the client enforces no limit, and can't be set below 0.5."
+msgstr ""
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Will also be the name of the collection in {mediaServerName}."

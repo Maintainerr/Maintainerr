@@ -6,11 +6,23 @@ import {
   DownloadClientTorrent,
 } from '../download-client.interface';
 
+// A 403 after a successful login is qBittorrent's Web UI security blocking the
+// caller, so the shared 401/403 text ("Invalid API key") would mislead.
+const FORBIDDEN_MESSAGE =
+  'The download client accepted the login but returned 403 Forbidden - a ' +
+  'qBittorrent Web UI security restriction, not a wrong username or password. ' +
+  'In qBittorrent → Options → Web UI → Security, add Maintainerr’s IP or ' +
+  'subnet to “Bypass authentication for clients in whitelisted IP subnets” ' +
+  '(Maintainerr and qBittorrent often run on different Docker IPs). A reverse ' +
+  'proxy or host-header validation can also cause this.';
+
 /**
  * The qBittorrent `torrents/info` fields we read. `max_ratio` /
  * `max_seeding_time` are the EFFECTIVE limits qBittorrent enforces ("…until
  * torrent is stopped from seeding"), already resolving any global default; `-1`
- * means "no limit". `seeding_time` and `max_seeding_time` are in seconds.
+ * means "no limit". `seeding_time` is in seconds; `max_seeding_time` is in
+ * MINUTES, like the preference it mirrors (qBittorrent itself compares
+ * `finishedTime() / 60` against it).
  */
 interface RawQbittorrentTorrent {
   hash: string;
@@ -44,7 +56,7 @@ const toDownloadClientTorrent = (
   } else {
     reachedSeedingGoal =
       (hasRatioLimit && ratio >= raw.max_ratio) ||
-      (hasTimeLimit && raw.seeding_time >= raw.max_seeding_time);
+      (hasTimeLimit && raw.seeding_time >= raw.max_seeding_time * 60);
   }
 
   return {
@@ -52,6 +64,7 @@ const toDownloadClientTorrent = (
     name: raw.name,
     content_path: raw.content_path,
     ratio,
+    seedingTime: raw.seeding_time,
     reachedSeedingGoal,
   };
 };
@@ -220,7 +233,14 @@ export class QbittorrentApi
         this.authenticated = false;
         delete this.axios.defaults.headers.common['Cookie'];
         await this.login();
-        return await fn();
+        try {
+          return await fn();
+        } catch (retryError) {
+          throw retryError instanceof AxiosError &&
+            retryError.response?.status === 403
+            ? new Error(FORBIDDEN_MESSAGE)
+            : retryError;
+        }
       }
       throw error;
     }

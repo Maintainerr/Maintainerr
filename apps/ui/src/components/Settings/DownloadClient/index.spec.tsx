@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '../../../test-utils/render'
+import { DownloadClientType } from '@maintainerr/contracts'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import DownloadClientSettings from './index'
 
@@ -10,6 +11,7 @@ const showError = vi.fn()
 const clearError = vi.fn()
 
 let downloadClientData: {
+  download_client_type: DownloadClientType
   download_client_url: string
   download_client_username: string
   download_client_password: string
@@ -56,6 +58,7 @@ describe('DownloadClientSettings', () => {
     showError.mockReset()
     clearError.mockReset()
     downloadClientData = {
+      download_client_type: DownloadClientType.QBITTORRENT,
       download_client_url: 'http://localhost:8080',
       download_client_username: 'admin',
       download_client_password: 'secret',
@@ -73,6 +76,7 @@ describe('DownloadClientSettings', () => {
 
     await waitFor(() => {
       expect(saveSettingsMock).toHaveBeenCalledWith({
+        download_client_type: DownloadClientType.QBITTORRENT,
         download_client_url: 'http://localhost:8080',
         download_client_username: 'admin',
         download_client_password: 'secret',
@@ -102,6 +106,7 @@ describe('DownloadClientSettings', () => {
 
   it('deletes the integration when the URL is cleared', async () => {
     downloadClientData = {
+      download_client_type: DownloadClientType.QBITTORRENT,
       download_client_url: '',
       download_client_username: '',
       download_client_password: '',
@@ -139,5 +144,24 @@ describe('DownloadClientSettings', () => {
     expect(
       await screen.findByText(/Successfully connected to the download client/),
     ).toBeTruthy()
+  })
+
+  it('saves Transmission as the selected client', async () => {
+    saveSettingsMock.mockResolvedValue({ status: 'OK', code: 1 })
+
+    render(<DownloadClientSettings />)
+
+    fireEvent.change(await screen.findByLabelText('Client *'), {
+      target: { value: DownloadClientType.TRANSMISSION },
+    })
+    fireEvent.click(await screen.findByRole('button', { name: 'Save Changes' }))
+
+    await waitFor(() => {
+      expect(saveSettingsMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          download_client_type: DownloadClientType.TRANSMISSION,
+        }),
+      )
+    })
   })
 })

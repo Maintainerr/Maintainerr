@@ -1,26 +1,11 @@
 import { BasicResponseDto } from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
-import { AxiosError } from 'axios';
 import { SettingsDataService } from '../../../modules/settings/settings-data.service';
 import {
   formatConnectionFailureMessage,
   logConnectionTestError,
 } from '../../../utils/connection-error';
 import { CONNECTION_TEST_TIMEOUT_MS } from '../lib/httpTimeouts';
-
-// qBittorrent rejects an authenticated request with 403 when its Web UI security
-// blocks the caller. Bad credentials are NOT this case (they are rejected at
-// login instead), so "Invalid API key" (the shared util's 401/403 message) is
-// misleading. The reliable fix is whitelisting Maintainerr's IP - it and
-// qBittorrent commonly run on different (Docker) IPs - so lead with that and
-// only mention proxy/host validation as a secondary cause.
-const DOWNLOAD_CLIENT_FORBIDDEN_MESSAGE =
-  'The download client accepted the login but returned 403 Forbidden - a ' +
-  'qBittorrent Web UI security restriction, not a wrong username or password. ' +
-  'In qBittorrent → Options → Web UI → Security, add Maintainerr’s IP or ' +
-  'subnet to “Bypass authentication for clients in whitelisted IP subnets” ' +
-  '(Maintainerr and qBittorrent often run on different Docker IPs). A reverse ' +
-  'proxy or host-header validation can also cause this.';
 import {
   MaintainerrLogger,
   MaintainerrLoggerFactory,
@@ -35,10 +20,16 @@ import {
 } from './download-client.interface';
 
 /**
+ * Seed-time floor for a download the client does not limit. The fallback ratio
+ * alone lets a tracker's seed-time rule be broken the moment the ratio is met,
+ * so both must hold before such a download is removed.
+ */
+const FALLBACK_SEEDING_HOURS = 23;
+
+/**
  * Talks to the configured download client to clean up completed downloads for
- * media Radarr/Sonarr removes. qBittorrent is currently the only supported
- * backend; the qBittorrent specifics live in the helper so additional backends
- * can be added behind this service later.
+ * media Radarr/Sonarr removes. Client-specific behavior lives behind the
+ * DownloadClient contract.
  */
 @Injectable()
 export class DownloadClientApiService {
@@ -63,6 +54,7 @@ export class DownloadClientApiService {
 
     this.api = createDownloadClient(
       {
+        type: this.settings.download_client_type,
         url: this.settings.download_client_url,
         username: this.settings.download_client_username,
         password: this.settings.download_client_password,
@@ -86,25 +78,13 @@ export class DownloadClientApiService {
           status: 'NOK',
           code: 0,
           message:
-            'Unexpected response from the download client. Verify the URL points to a qBittorrent WebUI.',
+            'Unexpected response from the download client. Verify the URL points to the selected client API.',
         };
       }
 
       return { status: 'OK', code: 1, message: version };
     } catch (error) {
       logConnectionTestError(this.logger, 'Download client');
-
-      if (error instanceof AxiosError && error.response?.status === 403) {
-        // Make this common, hard-to-diagnose case obvious in the logs.
-        this.logger.warn(DOWNLOAD_CLIENT_FORBIDDEN_MESSAGE);
-        this.logger.debug(error);
-        return {
-          status: 'NOK',
-          code: 0,
-          message: DOWNLOAD_CLIENT_FORBIDDEN_MESSAGE,
-        };
-      }
-
       this.logger.debug(error);
 
       return {
@@ -127,8 +107,8 @@ export class DownloadClientApiService {
    * is a side effect.
    *
    * Whether a download has finished seeding is decided by the download client's
-   * own ratio / seed-time limits. Only when the client enforces no limit does
-   * Maintainerr's fallback ratio apply.
+   * own ratio / seed-time limits. Only when the client enforces no limit do
+   * Maintainerr's fallbacks apply, and then both must be met.
    *
    * Cross-seed protection (inspired by qbit_manage): when deleting data, a
    * download whose content path is shared by another download is removed
@@ -167,7 +147,7 @@ export class DownloadClientApiService {
           this.logger.log(
             torrent.reachedSeedingGoal === false
               ? `Keeping download '${torrent.name}' seeding: its download-client seeding goal isn't met yet`
-              : `Keeping download '${torrent.name}' seeding: the download client enforces no limit and ratio ${torrent.ratio} is below the fallback minimum of ${fallbackRatio}`,
+              : `Keeping download '${torrent.name}' seeding: the download client enforces no limit and it is at ratio ${torrent.ratio} after ${(torrent.seedingTime / 3600).toFixed(1)}h against fallback minimums of ${fallbackRatio} and ${FALLBACK_SEEDING_HOURS}h`,
           );
           continue;
         }
@@ -227,9 +207,9 @@ export class DownloadClientApiService {
 
   /**
    * Defer to the download client's own seeding goal; only when it enforces no
-   * limit (`reachedSeedingGoal === null`) apply Maintainerr's fallback ratio.
-   * The client normalizes an unbounded ratio to Infinity, so a plain `>=`
-   * covers that case too.
+   * limit (`reachedSeedingGoal === null`) apply Maintainerr's fallbacks, both
+   * of which must be met. The client normalizes an unbounded ratio to
+   * Infinity, so a plain `>=` covers that case too.
    */
   private shouldRemove(
     torrent: DownloadClientTorrent,
@@ -238,6 +218,9 @@ export class DownloadClientApiService {
     if (torrent.reachedSeedingGoal !== null) {
       return torrent.reachedSeedingGoal;
     }
-    return torrent.ratio >= fallbackRatio;
+    return (
+      torrent.ratio >= fallbackRatio &&
+      torrent.seedingTime >= FALLBACK_SEEDING_HOURS * 3600
+    );
   }
 }

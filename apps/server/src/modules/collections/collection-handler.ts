@@ -104,11 +104,7 @@ export class CollectionHandler {
       !collection.sonarrSettingsId &&
       !collection.sportarrSettingsId
     ) {
-      if (
-        collection.arrAction !== ServarrAction.UNMONITOR &&
-        collection.arrAction !== ServarrAction.UNMONITOR_SHOW_IF_EMPTY &&
-        collection.arrAction !== ServarrAction.CHANGE_QUALITY_PROFILE
-      ) {
+      if (freesDisk) {
         this.logger.log(
           `Couldn't utilize *arr to find and remove the media with id ${media.mediaServerId}. Attempting to remove from the filesystem via media server. No unmonitor action was taken.`,
         );
@@ -156,14 +152,9 @@ export class CollectionHandler {
       return 'removed-missing';
     }
 
-    // Only remove requests & file if needed
-    if (
-      collection.arrAction !== ServarrAction.UNMONITOR &&
-      collection.arrAction !== ServarrAction.UNMONITOR_SHOW_IF_EMPTY &&
-      collection.arrAction !== ServarrAction.DELETE_SHOW_IF_EMPTY &&
-      collection.arrAction !== ServarrAction.CHANGE_QUALITY_PROFILE
-    ) {
-      // Seerr, if forced. Otherwise rely on media sync
+    // The request goes with the files. Seerr, if forced; otherwise rely on
+    // its availability sync.
+    if (freesDisk) {
       if (this.settings.seerrConfigured() && collection.forceSeerr) {
         const ids = await this.metadataService.resolveIdsForService(
           media.mediaServerId,

@@ -1,5 +1,6 @@
 import {
   BasicResponseDto,
+  DownloadClientType,
   EmbySetting,
   JellyfinSetting,
   DownloadClientSetting,
@@ -499,6 +500,7 @@ export class SettingsOperationsService {
       // later reconfigure starts from defaults).
       await this.settingsDataService.saveSettings({
         ...settingsDb,
+        download_client_type: DownloadClientType.QBITTORRENT,
         download_client_url: null,
         download_client_username: null,
         download_client_password: null,
@@ -525,6 +527,7 @@ export class SettingsOperationsService {
 
       await this.settingsDataService.saveSettings({
         ...settingsDb,
+        download_client_type: settings.download_client_type,
         download_client_url: settings.download_client_url,
         download_client_username: settings.download_client_username || null,
         download_client_password: settings.download_client_password || null,
@@ -1473,29 +1476,14 @@ export class SettingsOperationsService {
     }
   }
 
-  public async testDownloadClient(
-    setting?: DownloadClientSetting,
+  public testDownloadClient(
+    setting: DownloadClientSetting,
   ): Promise<BasicResponseDto> {
-    if (setting) {
-      return await this.downloadClient.testConnection({
-        url: setting.download_client_url,
-        username: setting.download_client_username,
-        password: setting.download_client_password,
-      });
-    }
-
-    if (!this.settingsDataService.downloadClientConfigured()) {
-      return {
-        status: 'NOK',
-        code: 0,
-        message: 'Download client is not configured',
-      };
-    }
-
-    return await this.downloadClient.testConnection({
-      url: this.settingsDataService.download_client_url,
-      username: this.settingsDataService.download_client_username,
-      password: this.settingsDataService.download_client_password,
+    return this.downloadClient.testConnection({
+      type: setting.download_client_type,
+      url: setting.download_client_url,
+      username: setting.download_client_username,
+      password: setting.download_client_password,
     });
   }
 
