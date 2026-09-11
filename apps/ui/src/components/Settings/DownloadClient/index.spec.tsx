@@ -146,6 +146,27 @@ describe('DownloadClientSettings', () => {
     ).toBeTruthy()
   })
 
+  it('clears the URL when the client changes and restores it for the saved client', async () => {
+    render(<DownloadClientSettings />)
+
+    const clientSelect = await screen.findByLabelText('Client *')
+    const urlInput = screen.getByLabelText(/^URL \*/) as HTMLInputElement
+    expect(urlInput.value).toBe('http://localhost:8080')
+
+    fireEvent.change(clientSelect, {
+      target: { value: DownloadClientType.TRANSMISSION },
+    })
+    expect(urlInput.value).toBe('')
+    expect(
+      screen.getByRole('button', { name: 'Test Connection' }),
+    ).toHaveProperty('disabled', true)
+
+    fireEvent.change(clientSelect, {
+      target: { value: DownloadClientType.QBITTORRENT },
+    })
+    expect(urlInput.value).toBe('http://localhost:8080')
+  })
+
   it('saves Transmission as the selected client', async () => {
     saveSettingsMock.mockResolvedValue({ status: 'OK', code: 1 })
 
@@ -154,12 +175,16 @@ describe('DownloadClientSettings', () => {
     fireEvent.change(await screen.findByLabelText('Client *'), {
       target: { value: DownloadClientType.TRANSMISSION },
     })
+    fireEvent.change(screen.getByLabelText(/^URL \*/), {
+      target: { value: 'http://localhost:9091/transmission/rpc' },
+    })
     fireEvent.click(await screen.findByRole('button', { name: 'Save Changes' }))
 
     await waitFor(() => {
       expect(saveSettingsMock).toHaveBeenCalledWith(
         expect.objectContaining({
           download_client_type: DownloadClientType.TRANSMISSION,
+          download_client_url: 'http://localhost:9091/transmission/rpc',
         }),
       )
     })

@@ -96,6 +96,7 @@ const DownloadClientSettings = () => {
     getValues,
     reset,
     setError,
+    setValue,
     clearErrors,
     formState: { errors },
   } = useForm<DownloadClientFormValues>({
@@ -316,7 +317,17 @@ const DownloadClientSettings = () => {
                   value={field.value}
                   onChange={(event) => {
                     clearTransientState()
-                    field.onChange(event.target.value as DownloadClientType)
+                    const nextType = event.target.value as DownloadClientType
+                    field.onChange(nextType)
+                    // The URL is specific to the client (RPC endpoint vs WebUI
+                    // address), so one client's URL is meaningless for the
+                    // other. Only the saved client gets its saved URL back.
+                    setValue(
+                      'download_client_url',
+                      nextType === formValues?.download_client_type
+                        ? formValues.download_client_url
+                        : '',
+                    )
                   }}
                   onBlur={field.onBlur}
                   ref={field.ref}
