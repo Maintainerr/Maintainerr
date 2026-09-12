@@ -160,6 +160,12 @@ export interface ContextActionResult extends CollectionAddResult {
 
 @Injectable()
 export class CollectionsService {
+  // In-flight size sweeps, keyed by collection. See updateCollectionTotalSize.
+  private readonly sizeSweeps = new Map<
+    number,
+    { done: Promise<void>; rerun: () => void }
+  >();
+
   constructor(
     @InjectRepository(Collection)
     private readonly collectionRepo: Repository<Collection>,
@@ -3469,8 +3475,10 @@ export class CollectionsService {
           });
         }
 
-        // Update cached total size (non-blocking)
-        this.updateCollectionTotalSize(collectionDbId).catch(() => {});
+        // The shared-manual paths insert rows of their own and shrink newMedia.
+        if (newMedia.length > 0 || isSharedManualCollection) {
+          void this.updateCollectionTotalSize(collectionDbId);
+        }
 
         return {
           collection,
@@ -3765,9 +3773,12 @@ export class CollectionsService {
             }
           }
         }
-      }
 
-      this.updateCollectionTotalSize(collectionDbId).catch(() => {});
+        // The shared-manual reconcile adds and drops rows of its own.
+        if (removedItemIds.size > 0 || isSharedManualCollection) {
+          void this.updateCollectionTotalSize(collectionDbId);
+        }
+      }
 
       return collection;
     } catch (error) {
@@ -5035,11 +5046,44 @@ export class CollectionsService {
   }
 
   /**
-   * Calculate and cache the total file size (in bytes) for a collection.
+   * Calculate and cache the total file size (in bytes) for a collection, one
+   * sweep per collection at a time. A call while a sweep runs flags a
+   * follow-up instead of starting another, so removals made during a sweep
+   * share one more read rather than each opening an overlapping one (#3716).
+   * Resolves once the size reflects the membership at the time of the call.
+   */
+  updateCollectionTotalSize(collectionId: number): Promise<void> {
+    const running = this.sizeSweeps.get(collectionId);
+    if (running) {
+      running.rerun();
+      return running.done;
+    }
+
+    let again = false;
+    const done = (async () => {
+      try {
+        do {
+          again = false;
+          await this.sweepCollectionSize(collectionId);
+        } while (again);
+      } finally {
+        this.sizeSweeps.delete(collectionId);
+      }
+    })();
+    this.sizeSweeps.set(collectionId, {
+      done,
+      rerun: () => {
+        again = true;
+      },
+    });
+    return done;
+  }
+
+  /**
    * Sums sizeBytes from mediaSources on each media item.
    * For show/season items without direct file sizes, traverses children.
    */
-  async updateCollectionTotalSize(collectionId: number): Promise<void> {
+  private async sweepCollectionSize(collectionId: number): Promise<void> {
     try {
       const collection = await this.collectionRepo.findOne({
         where: { id: collectionId },
