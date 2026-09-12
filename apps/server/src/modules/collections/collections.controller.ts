@@ -552,6 +552,10 @@ export class CollectionsController {
           'The collection action could not be executed for this item',
         );
       }
+
+      if (result === 'handled') {
+        await this.collectionHandler.scanLibraryAfterDelete(collection);
+      }
     } finally {
       release();
     }

@@ -23,6 +23,12 @@ import { RecentlyHandledMediaService } from './recently-handled-media.service';
  */
 export type HandleMediaResult = 'handled' | 'failed' | 'removed-missing';
 
+const actionDeletesFiles = (action: ServarrAction): boolean =>
+  action === ServarrAction.DELETE ||
+  action === ServarrAction.UNMONITOR_DELETE_ALL ||
+  action === ServarrAction.UNMONITOR_DELETE_EXISTING ||
+  action === ServarrAction.DELETE_SHOW_IF_EMPTY;
+
 @Injectable()
 export class CollectionHandler {
   constructor(
@@ -67,10 +73,7 @@ export class CollectionHandler {
     // is null and the post-action increment below would silently drop the
     // bytes. After a delete-style action the file is gone and the media
     // server's metadata loses the size, so this lookup has to happen first.
-    const freesDisk =
-      collection.arrAction !== ServarrAction.UNMONITOR &&
-      collection.arrAction !== ServarrAction.UNMONITOR_SHOW_IF_EMPTY &&
-      collection.arrAction !== ServarrAction.CHANGE_QUALITY_PROFILE;
+    const freesDisk = actionDeletesFiles(collection.arrAction);
     let resolvedSizeBytes: number | null =
       media.sizeBytes != null && Number(media.sizeBytes) > 0
         ? Number(media.sizeBytes)
@@ -306,6 +309,26 @@ export class CollectionHandler {
     await this.collectionService.saveCollection(collection);
 
     return 'handled';
+  }
+
+  /**
+   * Reconcile a Plex library after a successful file-deleting action.
+   * Scanning is best-effort and does not retry the deletion.
+   */
+  public async scanLibraryAfterDelete(collection: Collection): Promise<void> {
+    if (!actionDeletesFiles(collection.arrAction)) return;
+
+    const mediaServer = await this.getMediaServer();
+    if (!mediaServer.scanLibrary) return;
+
+    try {
+      await mediaServer.scanLibrary(collection.libraryId.toString());
+    } catch (error) {
+      this.logger.warn(
+        `Failed to scan library ${collection.libraryId} after handling collection '${collection.title}'`,
+      );
+      this.logger.debug(error);
+    }
   }
 
   /**

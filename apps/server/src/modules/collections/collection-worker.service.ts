@@ -413,6 +413,10 @@ export class CollectionWorkerService extends TaskBase {
           emitProgressedEvent();
         }
 
+        if (handledMediaForNotification.length > 0) {
+          await this.collectionHandler.scanLibraryAfterDelete(collection);
+        }
+
         // handle notification
         if (handledMediaForNotification.length > 0) {
           this.eventEmitter.emit(
