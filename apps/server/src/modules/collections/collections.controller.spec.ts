@@ -57,6 +57,7 @@ describe('CollectionsController', () => {
 
   const collectionHandler = {
     handleMedia: jest.fn(),
+    scanLibraryAfterDelete: jest.fn(),
   } as unknown as jest.Mocked<CollectionHandler>;
 
   const collectionPosterService = {
@@ -423,6 +424,9 @@ describe('CollectionsController', () => {
     expect(collectionHandler.handleMedia).toHaveBeenCalledWith(
       collection,
       media,
+    );
+    expect(collectionHandler.scanLibraryAfterDelete).toHaveBeenCalledWith(
+      collection,
     );
     expect(executionLock.tryAcquire).toHaveBeenCalledWith(
       RULES_COLLECTIONS_EXECUTION_LOCK_KEY,
