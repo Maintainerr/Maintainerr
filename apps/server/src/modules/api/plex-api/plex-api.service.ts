@@ -1280,6 +1280,27 @@ export class PlexApiService {
     );
   }
 
+  public async scanLibrary(libraryId: string | number): Promise<void> {
+    if (`${libraryId}`.trim() === '') {
+      throw new Error(
+        'scanLibrary called with empty libraryId - aborting library scan request',
+      );
+    }
+
+    try {
+      await this.plexClient.postQuery({
+        uri: `/library/sections/${libraryId}/refresh`,
+      });
+      this.logger.log(`[Plex] Started library scan for section ${libraryId}`);
+    } catch (error) {
+      this.logger.warn(
+        `Failed to start Plex library scan for section ${libraryId}`,
+      );
+      this.logger.debug(error);
+      throw error;
+    }
+  }
+
   public async refreshMediaMetadata(ratingKey: string): Promise<void> {
     try {
       await this.plexClient.putQuery({

@@ -740,6 +740,36 @@ describe('PlexApiService.deleteMediaFromDisk', () => {
   });
 });
 
+describe('PlexApiService.scanLibrary', () => {
+  let service: PlexApiService;
+
+  beforeEach(async () => {
+    const { unit } = await TestBed.solitary(PlexApiService).compile();
+    service = unit;
+  });
+
+  it('starts a scan for a library section', async () => {
+    const postQuery = jest.fn().mockResolvedValue(undefined);
+    (service as any).plexClient = { postQuery };
+
+    await service.scanLibrary('2');
+
+    expect(postQuery).toHaveBeenCalledWith({
+      uri: '/library/sections/2/refresh',
+    });
+  });
+
+  it('rejects an empty library id', async () => {
+    const postQuery = jest.fn();
+    (service as any).plexClient = { postQuery };
+
+    await expect(service.scanLibrary('  ')).rejects.toThrow(
+      'scanLibrary called with empty libraryId - aborting library scan request',
+    );
+    expect(postQuery).not.toHaveBeenCalled();
+  });
+});
+
 describe('PlexApiService.getCollections (invalid section vs auth)', () => {
   let service: PlexApiService;
   let settingsDataService: PlexApiSettingsStub;

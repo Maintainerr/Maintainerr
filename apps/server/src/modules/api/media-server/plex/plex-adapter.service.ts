@@ -935,6 +935,16 @@ export class PlexAdapterService implements IMediaServerService {
     }
   }
 
+  async scanLibrary(libraryId: string): Promise<void> {
+    if (!libraryId || libraryId.trim() === '') {
+      throw new Error(
+        'scanLibrary called with empty libraryId - aborting library scan request',
+      );
+    }
+
+    await this.plexApi.scanLibrary(libraryId);
+  }
+
   async getAllIdsForContextAction(
     collectionType: MediaItemType | undefined,
     context: { type: MediaItemType; id: string },

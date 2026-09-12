@@ -449,6 +449,12 @@ export interface IMediaServerService {
   deleteFromDisk(itemId: string): Promise<void>;
 
   /**
+   * Ask the media server to scan a library for filesystem changes.
+   * Currently implemented by Plex only.
+   */
+  scanLibrary?(libraryId: string): Promise<void>;
+
+  /**
    * Get all media server IDs for a context action (add/remove from collection).
    * Handles show→season→episode traversal based on collection type.
    *

@@ -144,6 +144,24 @@ describe('PlexAdapterService', () => {
     });
   });
 
+  describe('scanLibrary', () => {
+    it('delegates a library scan to PlexApiService', async () => {
+      plexApi.scanLibrary.mockResolvedValue(undefined);
+
+      await service.scanLibrary('2');
+
+      expect(plexApi.scanLibrary).toHaveBeenCalledWith('2');
+    });
+
+    it('rejects blank library ids before calling PlexApiService', async () => {
+      await expect(service.scanLibrary('   ')).rejects.toThrow(
+        'scanLibrary called with empty libraryId - aborting library scan request',
+      );
+
+      expect(plexApi.scanLibrary).not.toHaveBeenCalled();
+    });
+  });
+
   describe('getStatus', () => {
     it('should return undefined when PlexApiService returns undefined', async () => {
       plexApi.getStatus.mockResolvedValue(undefined);

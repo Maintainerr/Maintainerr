@@ -114,6 +114,32 @@ describe('CollectionHandler', () => {
     expect(mediaServer.deleteFromDisk).toHaveBeenCalled();
   });
 
+  it('scans the library after a file-removal action', async () => {
+    mediaServer.scanLibrary = jest.fn().mockResolvedValue(undefined);
+    const collection = createCollection({
+      arrAction: ServarrAction.DELETE,
+      type: 'show',
+    });
+
+    await collectionHandler.scanLibraryAfterDelete(collection);
+
+    expect(mediaServer.scanLibrary).toHaveBeenCalledWith(
+      collection.libraryId.toString(),
+    );
+  });
+
+  it('does not scan the library for an unmonitor-only action', async () => {
+    mediaServer.scanLibrary = jest.fn().mockResolvedValue(undefined);
+    const collection = createCollection({
+      arrAction: ServarrAction.UNMONITOR,
+      type: 'show',
+    });
+
+    await collectionHandler.scanLibraryAfterDelete(collection);
+
+    expect(mediaServer.scanLibrary).not.toHaveBeenCalled();
+  });
+
   it('prunes the item from sibling collections after a file-removal action', async () => {
     const collection = createCollection({
       arrAction: ServarrAction.DELETE,
