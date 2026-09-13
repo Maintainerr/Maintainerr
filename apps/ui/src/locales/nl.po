@@ -8,8 +8,8 @@ msgstr ""
 "Language: nl\n"
 "Project-Id-Version: \n"
 "Report-Msgid-Bugs-To: \n"
-"PO-Revision-Date: 2026-09-11 18:20+0000\n"
-"Last-Translator: Maintainerr <get@maintainerr.info>\n"
+"PO-Revision-Date: 2026-09-13 05:51+0000\n"
+"Last-Translator: COTMO <moermantom1@gmail.com>\n"
 "Language-Team: Dutch <https://hosted.weblate.org/projects/maintainerr/app/nl/>\n"
 "Plural-Forms: nplurals=2; plural=n != 1;\n"
 
@@ -743,7 +743,7 @@ msgstr "Inloggegevens leegmaken?"
 
 #: src/components/Settings/DownloadClient/index.tsx
 msgid "Client"
-msgstr ""
+msgstr "Client"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Clone"
@@ -2156,7 +2156,7 @@ msgstr "Minst bekeken"
 
 #: src/components/Settings/DownloadClient/index.tsx
 msgid "Leave blank if the client allows unauthenticated access."
-msgstr ""
+msgstr "Leeglaten als de client ongeauthenticeerde toegang toestaat."
 
 #: src/components/Settings/Jobs/index.tsx
 msgid "Leave empty to disable scheduled overlay runs."
@@ -3446,7 +3446,7 @@ msgstr "Selecteer <0>items</0>"
 
 #: src/components/Settings/DownloadClient/index.tsx
 msgid "Select a client first"
-msgstr ""
+msgstr "Selecteer eerst een client"
 
 #: src/components/Settings/Plex/index.tsx
 msgid "Select a Plex server before testing."
@@ -4040,7 +4040,7 @@ msgstr "De volgende gegevens worden definitief gewist:"
 
 #: src/components/Settings/DownloadClient/index.tsx
 msgid "The full RPC endpoint, normally {urlExample}"
-msgstr ""
+msgstr "Het volledige RPC-eindpunt, normaal gesproken {urlExample}"
 
 #: src/components/Settings/index.tsx
 msgid "The Logs page stays available during setup if you need to troubleshoot your connection."
@@ -4104,7 +4104,7 @@ msgstr "De gebruikerslijst kon niet worden geladen"
 
 #: src/components/Settings/DownloadClient/index.tsx
 msgid "The WebUI address, for example {urlExample}"
-msgstr ""
+msgstr "Het WebUI-adres, bijvoorbeeld {urlExample}"
 
 #: src/components/Settings/index.tsx
 msgid "There was a problem loading settings."
@@ -4608,11 +4608,11 @@ msgstr "Wat wij verzenden"
 
 #: src/components/Settings/DownloadClient/index.tsx
 msgid "When media is removed through Radarr, Sonarr or Sportarr, Maintainerr can remove the completed download (and optionally its data) from your download client. The download is matched via that service's download history, so media removed without one of them is left untouched."
-msgstr ""
+msgstr "Wanneer media wordt verwijderd via Radarr, Sonarr of Sportarr, kan Maintainerr de voltooide download (en optioneel de data) verwijderen uit je downloadclient. De download wordt gekoppeld via de downloadgeschiedenis van die dienst; media die buiten deze diensten om wordt verwijderd, blijft daardoor onaangeraakt."
 
 #: src/components/Settings/DownloadClient/index.tsx
 msgid "Whether a download has finished seeding is decided by the client's own ratio or idle-time limits. This ratio only applies when the client enforces no limit, and can't be set below 0.5."
-msgstr ""
+msgstr "Of een download klaar is met seeden, wordt bepaald door de ratio- of inactiviteitslimieten van de client zelf. Deze ratio is alleen van toepassing wanneer de client geen limiet afdwingt, en kan niet lager dan 0,5 worden ingesteld."
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Will also be the name of the collection in {mediaServerName}."
