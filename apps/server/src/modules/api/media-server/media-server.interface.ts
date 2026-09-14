@@ -478,4 +478,11 @@ export interface IMediaServerService {
    * on the server side - the call returns quickly while the server works async.
    */
   refreshItemMetadata(itemId: string): Promise<void>;
+
+  /**
+   * Ask the media server to rescan one folder, so an item whose files were
+   * removed behind its back (an *arr delete) drops out without a full library
+   * scan. Best-effort; the server works asynchronously.
+   */
+  scanFolder(libraryId: string, folderPath: string): Promise<void>;
 }

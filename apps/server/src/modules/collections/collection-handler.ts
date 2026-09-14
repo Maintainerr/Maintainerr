@@ -23,6 +23,12 @@ import { RecentlyHandledMediaService } from './recently-handled-media.service';
  */
 export type HandleMediaResult = 'handled' | 'failed' | 'removed-missing';
 
+// The media server may run on Windows, so either separator can appear.
+const folderOf = (filePath: string): string => {
+  const cut = Math.max(filePath.lastIndexOf('/'), filePath.lastIndexOf('\\'));
+  return cut > 0 ? filePath.slice(0, cut) : filePath;
+};
+
 @Injectable()
 export class CollectionHandler {
   constructor(
@@ -82,6 +88,18 @@ export class CollectionHandler {
       );
     }
 
+    // An *arr deletes behind the media server's back, which keeps listing the
+    // item until it rescans that folder; read the folder before it is gone.
+    const usesArr = !!(
+      collection.radarrSettingsId ||
+      collection.sonarrSettingsId ||
+      collection.sportarrSettingsId
+    );
+    const folder =
+      freesDisk && usesArr
+        ? await this.resolveFolder(mediaServer, media.mediaServerId)
+        : undefined;
+
     let actionHandled = false;
 
     if (library?.type === 'movie' && collection.radarrSettingsId) {
@@ -99,11 +117,7 @@ export class CollectionHandler {
         collection,
         media,
       );
-    } else if (
-      !collection.radarrSettingsId &&
-      !collection.sonarrSettingsId &&
-      !collection.sportarrSettingsId
-    ) {
+    } else if (!usesArr) {
       if (freesDisk) {
         this.logger.log(
           `Couldn't utilize *arr to find and remove the media with id ${media.mediaServerId}. Attempting to remove from the filesystem via media server. No unmonitor action was taken.`,
@@ -305,7 +319,42 @@ export class CollectionHandler {
 
     await this.collectionService.saveCollection(collection);
 
+    if (folder) {
+      try {
+        await mediaServer.scanFolder(collection.libraryId.toString(), folder);
+      } catch (error) {
+        this.logger.warn(
+          `Could not ask the media server to rescan '${folder}' after removing media ${media.mediaServerId}; it may keep listing the item until its next library scan`,
+        );
+        this.logger.debug(error);
+      }
+    }
+
     return 'handled';
+  }
+
+  /**
+   * The folder holding an item's files, in the media server's own path
+   * namespace; undefined when the server reports no path.
+   */
+  private async resolveFolder(
+    mediaServer: IMediaServerService,
+    itemId: string,
+  ): Promise<string | undefined> {
+    try {
+      let item = await mediaServer.getMetadata(itemId);
+      // A Plex season has no path of its own; its show does.
+      if (item?.type === 'season' && !item.path && item.parentId) {
+        item = await mediaServer.getMetadata(item.parentId);
+      }
+      if (!item?.path) return undefined;
+      return item.type === 'movie' || item.type === 'episode'
+        ? folderOf(item.path)
+        : item.path;
+    } catch (error) {
+      this.logger.debug(error);
+      return undefined;
+    }
   }
 
   /**

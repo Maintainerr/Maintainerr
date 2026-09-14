@@ -179,6 +179,16 @@ describe('JellyfinMapper', () => {
         expect(result.type).toBe('episode');
       });
 
+      it('carries the item path', () => {
+        expect(JellyfinMapper.toMediaItem(episodeItem).path).toBeUndefined();
+        expect(
+          JellyfinMapper.toMediaItem({
+            ...episodeItem,
+            Path: '/media/series/Show A/Season 1/Show A - S01E01.mkv',
+          }).path,
+        ).toBe('/media/series/Show A/Season 1/Show A - S01E01.mkv');
+      });
+
       it('should convert timestamps to Date objects', () => {
         const result = JellyfinMapper.toMediaItem(episodeItem);
 

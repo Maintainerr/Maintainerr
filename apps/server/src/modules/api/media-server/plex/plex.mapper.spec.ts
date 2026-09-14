@@ -386,6 +386,27 @@ describe('PlexMapper', () => {
       expect(result.library.id).toBe('1');
       expect(result.library.title).toBe('Movies');
     });
+
+    it('carries the file path, or the folder for a show', () => {
+      expect(
+        PlexMapper.metadataToMediaItem({
+          ...baseMetadata,
+          Media: [
+            {
+              id: 1,
+              Part: [{ file: '/media/movies/Movie A (2021)/Movie A.mkv' }],
+            },
+          ] as unknown as PlexMetadata['Media'],
+        }).path,
+      ).toBe('/media/movies/Movie A (2021)/Movie A.mkv');
+      expect(
+        PlexMapper.metadataToMediaItem({
+          ...baseMetadata,
+          type: 'show',
+          Location: [{ path: '/media/series/Show A' }],
+        }).path,
+      ).toBe('/media/series/Show A');
+    });
   });
 
   describe('toMediaLibrary', () => {

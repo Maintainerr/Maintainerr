@@ -968,4 +968,8 @@ export class PlexAdapterService implements IMediaServerService {
 
     await this.plexApi.refreshMediaMetadata(itemId);
   }
+
+  async scanFolder(libraryId: string, folderPath: string): Promise<void> {
+    await this.plexApi.scanFolder(libraryId, folderPath);
+  }
 }

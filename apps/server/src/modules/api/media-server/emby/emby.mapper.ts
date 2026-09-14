@@ -133,6 +133,7 @@ export class EmbyMapper {
         : undefined,
       providerIds: EmbyMapper.extractProviderIds(item.ProviderIds),
       mediaSources: EmbyMapper.toMediaSources(item.MediaSources),
+      path: item.Path || undefined,
       library: {
         id: item.ParentId || '',
         title: '',
