@@ -740,6 +740,39 @@ describe('PlexApiService.deleteMediaFromDisk', () => {
   });
 });
 
+describe('PlexApiService.scanFolder', () => {
+  let service: PlexApiService;
+
+  beforeEach(async () => {
+    const { unit } = await TestBed.solitary(PlexApiService).compile();
+    service = unit;
+  });
+
+  it('asks for an uncached partial scan of the folder', async () => {
+    const query = jest.fn().mockResolvedValue('');
+    (service as any).plexClient = { query };
+
+    await service.scanFolder('2', '/media/movies/Movie A (2021)');
+
+    expect(query).toHaveBeenCalledWith(
+      {
+        uri: '/library/sections/2/refresh?path=%2Fmedia%2Fmovies%2FMovie%20A%20(2021)',
+      },
+      false,
+    );
+  });
+
+  it('refuses an empty path, which would scan the whole section', async () => {
+    const query = jest.fn();
+    (service as any).plexClient = { query };
+
+    await expect(service.scanFolder('2', '')).rejects.toThrow(
+      'scanFolder called without a folder path',
+    );
+    expect(query).not.toHaveBeenCalled();
+  });
+});
+
 describe('PlexApiService.getCollections (invalid section vs auth)', () => {
   let service: PlexApiService;
   let settingsDataService: PlexApiSettingsStub;

@@ -82,7 +82,7 @@ import type {
 // which is why batch rows are cached apart from the direct-route rows
 // getMetadata serves.
 export const EMBY_METADATA_FIELDS =
-  'ProviderIds,DateCreated,Overview,Tags,MediaSources,Genres,People,Studios,ParentId,ChildCount,PremiereDate,CommunityRating,OfficialRating,ProductionYear,IndexNumberEnd,CriticRating,DateLastSaved';
+  'ProviderIds,DateCreated,Overview,Tags,MediaSources,Path,Genres,People,Studios,ParentId,ChildCount,PremiereDate,CommunityRating,OfficialRating,ProductionYear,IndexNumberEnd,CriticRating,DateLastSaved';
 
 @Injectable()
 export class EmbyAdapterService implements IMediaServerService {
@@ -982,6 +982,15 @@ export class EmbyAdapterService implements IMediaServerService {
       );
       throw error;
     }
+  }
+
+  async scanFolder(libraryId: string, folderPath: string): Promise<void> {
+    if (!this.http) {
+      throw new Error('Emby not initialized');
+    }
+    await this.http.post('/Library/Media/Updated', {
+      Updates: [{ Path: folderPath, UpdateType: 'Deleted' }],
+    });
   }
 
   // ============================================================================

@@ -32,6 +32,7 @@ const jellyfinApiMocks = {
   getItemUserData: jest.fn(),
   updateItem: jest.fn(),
   refreshItem: jest.fn(),
+  postUpdatedMedia: jest.fn(),
   getItemImage: jest.fn(),
   setItemImage: jest.fn(),
   getSessions: jest.fn(),
@@ -158,6 +159,8 @@ jest.mock('@jellyfin/sdk/lib/utils/api/index.js', () => ({
     getAncestors: (...args: unknown[]) =>
       jellyfinApiMocks.getAncestors(...args),
     deleteItem: (...args: unknown[]) => jellyfinApiMocks.deleteItem(...args),
+    postUpdatedMedia: (...args: unknown[]) =>
+      jellyfinApiMocks.postUpdatedMedia(...args),
   })),
   getUserApi: jest.fn().mockImplementation(() => ({
     getUsers: (...args: unknown[]) => jellyfinApiMocks.getUsers(...args),
@@ -937,6 +940,27 @@ describe('JellyfinAdapterService', () => {
       );
 
       expect(jellyfinApiMocks.refreshItem).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('scanFolder', () => {
+    it('reports the folder as deleted so Jellyfin re-validates it', async () => {
+      settingsDataService.getSettings.mockResolvedValue(
+        mockSettings as unknown as Awaited<
+          ReturnType<SettingsDataService['getSettings']>
+        >,
+      );
+      await service.initialize();
+
+      await service.scanFolder('lib-1', '/media/series/Show A/Season 1');
+
+      expect(jellyfinApiMocks.postUpdatedMedia).toHaveBeenCalledWith({
+        mediaUpdateInfoDto: {
+          Updates: [
+            { Path: '/media/series/Show A/Season 1', UpdateType: 'Deleted' },
+          ],
+        },
+      });
     });
   });
 

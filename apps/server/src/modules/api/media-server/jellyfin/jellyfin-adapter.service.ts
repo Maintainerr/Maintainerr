@@ -2763,6 +2763,17 @@ export class JellyfinAdapterService implements IMediaServerService {
     }
   }
 
+  async scanFolder(libraryId: string, folderPath: string): Promise<void> {
+    if (!this.api) {
+      throw new Error('Jellyfin API not initialized - cannot scan folder');
+    }
+    await getLibraryApi(this.api).postUpdatedMedia({
+      mediaUpdateInfoDto: {
+        Updates: [{ Path: folderPath, UpdateType: 'Deleted' }],
+      },
+    });
+  }
+
   /**
    * Log a library access error, distinguishing migration issues from real failures.
    */

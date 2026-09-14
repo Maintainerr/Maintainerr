@@ -4,6 +4,7 @@ import {
   createCollection,
   createCollectionMedia,
   createCollectionMediaWithMetadata,
+  createMediaItem,
   createMediaLibraries,
 } from '../../../test/utils/data';
 import { RadarrActionHandler } from '../actions/radarr-action-handler';
@@ -64,6 +65,7 @@ describe('CollectionHandler', () => {
       deleteFromDisk: jest.fn(),
       getLibraries: jest.fn(),
       itemExists: jest.fn().mockResolvedValue(true),
+      scanFolder: jest.fn(),
     } as unknown as Mocked<IMediaServerService>;
     mediaServerFactory.getService.mockResolvedValue(mediaServer);
   });
@@ -281,6 +283,171 @@ describe('CollectionHandler', () => {
     ).toBeLessThan(
       collectionsService.removeFromCollection.mock.invocationCallOrder[0],
     );
+  });
+
+  it.each([
+    [
+      '/media/movies/Movie A (2021)/Movie A (2021).mkv',
+      '/media/movies/Movie A (2021)',
+    ],
+    [
+      'C:\\Media\\Movie A (2021)\\Movie A (2021).mkv',
+      'C:\\Media\\Movie A (2021)',
+    ],
+  ])(
+    'asks the media server to rescan the movie folder after an *arr delete (%s)',
+    async (path, folder) => {
+      const collection = createCollection({
+        arrAction: ServarrAction.DELETE,
+        radarrSettingsId: 1,
+        type: 'movie',
+      });
+      const collectionMedia = createCollectionMedia(collection);
+
+      mediaServer.getLibraries.mockResolvedValue(
+        createMediaLibraries({
+          id: collection.libraryId.toString(),
+          type: 'movie',
+        }),
+      );
+      mediaServer.getMetadata.mockResolvedValue(
+        createMediaItem({ type: 'movie', path }),
+      );
+      radarrActionHandler.handleAction.mockResolvedValue(true);
+
+      await collectionHandler.handleMedia(collection, collectionMedia);
+
+      expect(mediaServer.scanFolder).toHaveBeenCalledWith(
+        collection.libraryId.toString(),
+        folder,
+      );
+      expect(
+        radarrActionHandler.handleAction.mock.invocationCallOrder[0],
+      ).toBeLessThan(mediaServer.scanFolder.mock.invocationCallOrder[0]);
+    },
+  );
+
+  it('rescans the show folder for a season the server reports no path for', async () => {
+    const collection = createCollection({
+      arrAction: ServarrAction.UNMONITOR_DELETE_EXISTING,
+      sonarrSettingsId: 1,
+      type: 'season',
+    });
+    const collectionMedia = createCollectionMedia(collection);
+
+    mediaServer.getLibraries.mockResolvedValue(
+      createMediaLibraries({
+        id: collection.libraryId.toString(),
+        type: 'show',
+      }),
+    );
+    mediaServer.getMetadata
+      .mockResolvedValueOnce(
+        createMediaItem({ type: 'season', parentId: 'show-1' }),
+      )
+      .mockResolvedValueOnce(
+        createMediaItem({ type: 'show', path: '/media/series/Show A' }),
+      );
+    sonarrActionHandler.handleAction.mockResolvedValue(true);
+
+    await collectionHandler.handleMedia(collection, collectionMedia);
+
+    expect(mediaServer.getMetadata).toHaveBeenCalledWith('show-1');
+    expect(mediaServer.scanFolder).toHaveBeenCalledWith(
+      collection.libraryId.toString(),
+      '/media/series/Show A',
+    );
+  });
+
+  it('reads no folder and does not rescan for an unmonitor-only action', async () => {
+    const collection = createCollection({
+      arrAction: ServarrAction.UNMONITOR,
+      sonarrSettingsId: 1,
+      type: 'show',
+    });
+    const collectionMedia = createCollectionMedia(collection);
+
+    mediaServer.getLibraries.mockResolvedValue(
+      createMediaLibraries({
+        id: collection.libraryId.toString(),
+        type: 'show',
+      }),
+    );
+    sonarrActionHandler.handleAction.mockResolvedValue(true);
+
+    await collectionHandler.handleMedia(collection, collectionMedia);
+
+    expect(mediaServer.getMetadata).not.toHaveBeenCalled();
+    expect(mediaServer.scanFolder).not.toHaveBeenCalled();
+  });
+
+  it('still handles the item when its folder cannot be read', async () => {
+    const collection = createCollection({
+      arrAction: ServarrAction.DELETE,
+      radarrSettingsId: 1,
+      type: 'movie',
+    });
+    const collectionMedia = createCollectionMedia(collection);
+
+    mediaServer.getLibraries.mockResolvedValue(
+      createMediaLibraries({
+        id: collection.libraryId.toString(),
+        type: 'movie',
+      }),
+    );
+    mediaServer.getMetadata.mockRejectedValue(new Error('offline'));
+    radarrActionHandler.handleAction.mockResolvedValue(true);
+
+    await expect(
+      collectionHandler.handleMedia(collection, collectionMedia),
+    ).resolves.toBe('handled');
+    expect(mediaServer.scanFolder).not.toHaveBeenCalled();
+  });
+
+  it('does not rescan when the media server deleted the files itself', async () => {
+    const collection = createCollection({
+      arrAction: ServarrAction.DELETE,
+      type: 'show',
+    });
+    const collectionMedia = createCollectionMedia(collection);
+
+    mediaServer.getLibraries.mockResolvedValue(
+      createMediaLibraries({ id: collection.libraryId.toString() }),
+    );
+
+    await collectionHandler.handleMedia(collection, collectionMedia);
+
+    expect(mediaServer.deleteFromDisk).toHaveBeenCalled();
+    expect(mediaServer.scanFolder).not.toHaveBeenCalled();
+  });
+
+  it('keeps the action handled when the rescan request fails', async () => {
+    const collection = createCollection({
+      arrAction: ServarrAction.DELETE,
+      radarrSettingsId: 1,
+      type: 'movie',
+    });
+    const collectionMedia = createCollectionMedia(collection);
+
+    mediaServer.getLibraries.mockResolvedValue(
+      createMediaLibraries({
+        id: collection.libraryId.toString(),
+        type: 'movie',
+      }),
+    );
+    mediaServer.getMetadata.mockResolvedValue(
+      createMediaItem({
+        type: 'movie',
+        path: '/media/movies/Movie A (2021)/Movie A (2021).mkv',
+      }),
+    );
+    mediaServer.scanFolder.mockRejectedValue(new Error('offline'));
+    radarrActionHandler.handleAction.mockResolvedValue(true);
+
+    await expect(
+      collectionHandler.handleMedia(collection, collectionMedia),
+    ).resolves.toBe('handled');
+    expect(logger.warn).toHaveBeenCalled();
   });
 
   it('should call Sonarr action handler', async () => {

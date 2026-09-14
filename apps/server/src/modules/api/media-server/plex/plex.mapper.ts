@@ -263,6 +263,9 @@ export class PlexMapper {
       updatedAt: plex.updatedAt ? new Date(plex.updatedAt * 1000) : undefined,
       providerIds: PlexMapper.extractProviderIds(plex.Guid, plex.guid),
       mediaSources: PlexMapper.toMediaSources(plex.Media || plex.media),
+      path:
+        (plex.Media || plex.media)?.[0]?.Part?.[0]?.file ??
+        plex.Location?.[0]?.path,
       library: {
         id: plex.librarySectionID?.toString() ?? '',
         title: plex.librarySectionTitle ?? '',

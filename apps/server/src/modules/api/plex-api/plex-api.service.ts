@@ -1280,6 +1280,22 @@ export class PlexApiService {
     );
   }
 
+  public async scanFolder(
+    libraryId: string,
+    folderPath: string,
+  ): Promise<void> {
+    // Without a path Plex scans the whole section, which is what this avoids.
+    if (!folderPath) {
+      throw new Error('scanFolder called without a folder path');
+    }
+    await this.plexClient.query(
+      {
+        uri: `/library/sections/${libraryId}/refresh?path=${encodeURIComponent(folderPath)}`,
+      },
+      false,
+    );
+  }
+
   public async refreshMediaMetadata(ratingKey: string): Promise<void> {
     try {
       await this.plexClient.putQuery({
