@@ -138,6 +138,7 @@ describe('JellyfinMapper', () => {
         ],
         Overview: 'Test summary',
         UserData: {
+          Key: 'episode123',
           PlayCount: 5,
           LastPlayedDate: '2021-01-03T00:00:00.000Z',
           Played: true,

@@ -29,7 +29,6 @@ const jellyfinApiMocks = {
   getConfiguration: jest.fn(),
   getItems: jest.fn(),
   getItem: jest.fn(),
-  getItemUserData: jest.fn(),
   updateItem: jest.fn(),
   refreshItem: jest.fn(),
   postUpdatedMedia: jest.fn(),
@@ -136,24 +135,20 @@ jest.mock('@jellyfin/sdk/lib/generated-client/models', () => ({
 jest.mock('@jellyfin/sdk/lib/utils/api/index.js', () => ({
   __esModule: true,
   getSystemApi: jest.fn().mockImplementation(() => ({
+    getConfiguration: (...args: unknown[]) =>
+      jellyfinApiMocks.getConfiguration(...args),
     getPublicSystemInfo: (...args: unknown[]) =>
       jellyfinApiMocks.getPublicSystemInfo(...args),
     getSystemStorage: (...args: unknown[]) =>
       jellyfinApiMocks.getSystemStorage(...args),
   })),
-  getConfigurationApi: jest.fn().mockImplementation(() => ({
-    getConfiguration: (...args: unknown[]) =>
-      jellyfinApiMocks.getConfiguration(...args),
-  })),
-  getItemsApi: jest.fn().mockImplementation(() => ({
-    getItems: (...args: unknown[]) => jellyfinApiMocks.getItems(...args),
-    getItemUserData: (...args: unknown[]) =>
-      jellyfinApiMocks.getItemUserData(...args),
-  })),
-  getTvShowsApi: jest.fn().mockImplementation(() => ({
+  getShowApi: jest.fn().mockImplementation(() => ({
     getSeasons: (...args: unknown[]) => jellyfinApiMocks.getSeasons(...args),
   })),
   getLibraryApi: jest.fn().mockImplementation(() => ({
+    getItems: (...args: unknown[]) => jellyfinApiMocks.getItems(...args),
+    getItem: (...args: unknown[]) => jellyfinApiMocks.getItem(...args),
+    refreshItem: (...args: unknown[]) => jellyfinApiMocks.refreshItem(...args),
     getMediaFolders: (...args: unknown[]) =>
       jellyfinApiMocks.getMediaFolders(...args),
     getAncestors: (...args: unknown[]) =>
@@ -166,9 +161,6 @@ jest.mock('@jellyfin/sdk/lib/utils/api/index.js', () => ({
     getUsers: (...args: unknown[]) => jellyfinApiMocks.getUsers(...args),
     getUserById: (...args: unknown[]) => jellyfinApiMocks.getUserById(...args),
   })),
-  getUserLibraryApi: jest.fn().mockImplementation(() => ({
-    getItem: (...args: unknown[]) => jellyfinApiMocks.getItem(...args),
-  })),
   getCollectionApi: jest.fn().mockImplementation(() => ({
     createCollection: (...args: unknown[]) =>
       collectionApiMocks.createCollection(...args),
@@ -180,9 +172,6 @@ jest.mock('@jellyfin/sdk/lib/utils/api/index.js', () => ({
   getItemUpdateApi: jest.fn().mockImplementation(() => ({
     updateItem: (...args: unknown[]) => jellyfinApiMocks.updateItem(...args),
   })),
-  getItemRefreshApi: jest.fn().mockImplementation(() => ({
-    refreshItem: (...args: unknown[]) => jellyfinApiMocks.refreshItem(...args),
-  })),
   getImageApi: jest.fn().mockImplementation(() => ({
     getItemImage: (...args: unknown[]) =>
       jellyfinApiMocks.getItemImage(...args),
@@ -192,9 +181,7 @@ jest.mock('@jellyfin/sdk/lib/utils/api/index.js', () => ({
   getSessionApi: jest.fn().mockImplementation(() => ({
     getSessions: (...args: unknown[]) => jellyfinApiMocks.getSessions(...args),
   })),
-  getSearchApi: jest.fn(),
-  getPlaylistsApi: jest.fn(),
-  getUserViewsApi: jest.fn(),
+  getPlaylistApi: jest.fn(),
 }));
 
 jest.mock('../../../../utils/delay', () => ({
@@ -286,7 +273,6 @@ describe('JellyfinAdapterService', () => {
     });
     collectionApiMocks.addToCollection.mockResolvedValue(undefined);
     collectionApiMocks.removeFromCollection.mockResolvedValue(undefined);
-    jellyfinApiMocks.getItemUserData.mockResolvedValue({ data: undefined });
     jellyfinApiMocks.getItemImage.mockResolvedValue({
       data: new ArrayBuffer(0),
     });
@@ -721,6 +707,30 @@ describe('JellyfinAdapterService', () => {
       await service.computeLibraryStorageSizes();
       expectCollapseFalse();
     });
+
+    it('computeLibraryStorageSizes keeps the pages summed before a page fails', async () => {
+      jellyfinApiMocks.getMediaFolders.mockResolvedValueOnce({
+        data: {
+          Items: [
+            { Id: 'library-1', Name: 'Movies', CollectionType: 'movies' },
+          ],
+        },
+      });
+      jellyfinApiMocks.getItems
+        .mockResolvedValueOnce({
+          data: {
+            Items: Array.from({ length: 100 }, () => ({
+              MediaSources: [{ Size: 1 }],
+            })),
+            TotalRecordCount: 200,
+          },
+        })
+        .mockRejectedValueOnce(new Error('boom'));
+
+      await expect(service.computeLibraryStorageSizes()).resolves.toEqual(
+        new Map([['library-1', 100]]),
+      );
+    });
   });
 
   // #3550: a library grouping films into collections answered a Movie-typed
@@ -811,7 +821,7 @@ describe('JellyfinAdapterService', () => {
       ]);
     });
 
-    it('deduplicates device-level UsedSpace when a library has multiple folders on the same drive', async () => {
+    it('deduplicates device-level UsedSpace per drive and drops libraries without a usage figure', async () => {
       jellyfinApiMocks.getSystemStorage.mockResolvedValue({
         data: {
           Libraries: [
@@ -834,6 +844,11 @@ describe('JellyfinAdapterService', () => {
                   UsedSpace: 50,
                 },
               ],
+            },
+            // Jellyfin 12 reports media folders without a DeviceId and -1 usage
+            {
+              Id: 'library-2',
+              Folders: [{ Path: '/media/series', UsedSpace: -1 }],
             },
           ],
         },

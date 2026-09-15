@@ -353,7 +353,7 @@ Quick checks (Jellyfin server configured):
 - **Jellyfin 12 reports `Version: 12.0.0`, and nothing may compare that
   string.** Upstream dropped the leading `10.`, so `10.12` became `12.0`. The
   adapter stores and logs the version as an opaque string
-  (`jellyfin-adapter.service.ts` L231 and L348) and no code path compares it,
+  (`jellyfin-adapter.service.ts` L233 and L350) and no code path compares it,
   which is the only reason 12 works unchanged. Keep it that way: a naive
   comparison against `"10.11"` reads `12.0.0` as older. `getLibrariesStorage`
   is the shape to copy - it decides on the response status of
@@ -366,7 +366,7 @@ Quick checks (Jellyfin server configured):
   own scripts rather than Maintainerr, and it is worth naming in a support
   reply. Checked against 12.0-rc5 with 10.11.11 as a control: public system
   info, users, media folders, item listings and `GET /System/Info/Storage` all
-  answer on both, on the pinned `@jellyfin/sdk` 0.13.0.
+  answer on both, on `@jellyfin/sdk` 0.13.0; re-checked on 1.0.0 against 12.0.0.
 - **Collection collapsing is where 12 does behave differently, and
   `collapseBoxSetItems=false` is what makes that safe.**
   `Folder.CollapseBoxSetItems` is identical on both branches and short-circuits

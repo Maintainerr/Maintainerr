@@ -12,18 +12,14 @@ import {
 } from '@jellyfin/sdk/lib/generated-client/models';
 import {
   getCollectionApi,
-  getConfigurationApi,
   getImageApi,
-  getItemRefreshApi,
-  getItemsApi,
   getItemUpdateApi,
   getLibraryApi,
-  getPlaylistsApi,
+  getPlaylistApi,
   getSessionApi,
+  getShowApi,
   getSystemApi,
-  getTvShowsApi,
   getUserApi,
-  getUserLibraryApi,
 } from '@jellyfin/sdk/lib/utils/api/index.js';
 import {
   MediaServerFeature,
@@ -413,7 +409,7 @@ export class JellyfinAdapterService implements IMediaServerService {
     }
 
     try {
-      const response = await getConfigurationApi(this.api).getConfiguration();
+      const response = await getSystemApi(this.api).getConfiguration();
       const threshold = response.data.MaxResumePct;
 
       if (typeof threshold !== 'number' || Number.isNaN(threshold)) {
@@ -465,7 +461,7 @@ export class JellyfinAdapterService implements IMediaServerService {
       // the caller omits the param. Anything else is unsupported - the
       // recursive getItems call spans the selected parent or the whole server.
       const parentId = sectionIds?.[0];
-      const response = await getItemsApi(this.api).getItems({
+      const response = await getLibraryApi(this.api).getItems({
         ...JELLYFIN_LIBRARY_QUERY_DEFAULTS,
         userId,
         parentId,
@@ -670,15 +666,12 @@ export class JellyfinAdapterService implements IMediaServerService {
 
     try {
       const response = await getSystemApi(this.api).getSystemStorage();
-      for (const library of response.data.Libraries ?? []) {
-        if (!library.Id) continue;
+      for (const library of response.data.Libraries) {
         const usedByDevice = new Map<string, number>();
 
-        for (const folder of library.Folders ?? []) {
+        for (const folder of library.Folders) {
           const deviceKey = folder.DeviceId ?? folder.Path;
-          if (!deviceKey || usedByDevice.has(deviceKey)) {
-            continue;
-          }
+          if (usedByDevice.has(deviceKey)) continue;
 
           usedByDevice.set(deviceKey, folder.UsedSpace ?? 0);
         }
@@ -734,10 +727,9 @@ export class JellyfinAdapterService implements IMediaServerService {
     let startIndex = 0;
     const pageSize = JELLYFIN_BATCH_SIZE.DEFAULT_PAGE_SIZE;
 
-    while (true) {
-      let page: Awaited<ReturnType<ReturnType<typeof getItemsApi>['getItems']>>;
-      try {
-        page = await getItemsApi(this.api!).getItems({
+    try {
+      while (true) {
+        const page = await getLibraryApi(this.api!).getItems({
           ...JELLYFIN_LIBRARY_QUERY_DEFAULTS,
           userId,
           parentId: library.id,
@@ -747,21 +739,20 @@ export class JellyfinAdapterService implements IMediaServerService {
           startIndex,
           limit: pageSize,
         });
-      } catch (error) {
-        this.logLibraryError(library.id, 'compute library size', error);
-        return total;
-      }
 
-      const items = page.data.Items ?? [];
-      for (const item of items) {
-        for (const source of item.MediaSources ?? []) {
-          total += source.Size ?? 0;
+        const items = page.data.Items ?? [];
+        for (const item of items) {
+          for (const source of item.MediaSources ?? []) {
+            total += source.Size ?? 0;
+          }
         }
-      }
 
-      const totalRecordCount = page.data.TotalRecordCount ?? items.length;
-      startIndex += items.length;
-      if (items.length < pageSize || startIndex >= totalRecordCount) break;
+        const totalRecordCount = page.data.TotalRecordCount ?? items.length;
+        startIndex += items.length;
+        if (items.length < pageSize || startIndex >= totalRecordCount) break;
+      }
+    } catch (error) {
+      this.logLibraryError(library.id, 'compute library size', error);
     }
 
     return total;
@@ -809,7 +800,7 @@ export class JellyfinAdapterService implements IMediaServerService {
       const response = await this.retryLibraryRequestOnce(
         `get Jellyfin library contents for ${libraryId}`,
         async () =>
-          await getItemsApi(this.api!).getItems({
+          await getLibraryApi(this.api!).getItems({
             ...JELLYFIN_LIBRARY_QUERY_DEFAULTS,
             userId,
             parentId: libraryId,
@@ -857,7 +848,7 @@ export class JellyfinAdapterService implements IMediaServerService {
 
     try {
       const userId = await this.getUserId();
-      const response = await getItemsApi(this.api).getItems({
+      const response = await getLibraryApi(this.api).getItems({
         ...JELLYFIN_LIBRARY_QUERY_DEFAULTS,
         userId,
         parentId: libraryId,
@@ -889,7 +880,7 @@ export class JellyfinAdapterService implements IMediaServerService {
       const includeItemTypes = JellyfinMapper.toBaseItemKinds(
         type ? [type] : undefined,
       );
-      const response = await getItemsApi(this.api).getItems({
+      const response = await getLibraryApi(this.api).getItems({
         ...JELLYFIN_LIBRARY_QUERY_DEFAULTS,
         userId,
         parentId: libraryId,
@@ -959,7 +950,7 @@ export class JellyfinAdapterService implements IMediaServerService {
   ): Promise<MediaItem | undefined> {
     try {
       const userId = await this.getUserId();
-      const response = await getItemsApi(this.api).getItems({
+      const response = await getLibraryApi(this.api).getItems({
         userId,
         ids: [itemId],
         fields: JELLYFIN_METADATA_FIELDS,
@@ -1006,7 +997,7 @@ export class JellyfinAdapterService implements IMediaServerService {
       },
       readBatch: async (idBatch) => {
         const userId = await this.getUserId();
-        const response = await getItemsApi(this.api).getItems({
+        const response = await getLibraryApi(this.api).getItems({
           userId,
           ids: idBatch,
           fields: JELLYFIN_METADATA_FIELDS,
@@ -1039,7 +1030,7 @@ export class JellyfinAdapterService implements IMediaServerService {
 
     const userId = await this.getUserId();
     try {
-      const response = await getItemsApi(this.api).getItems({
+      const response = await getLibraryApi(this.api).getItems({
         userId,
         ids: [itemId],
         enableUserData: false,
@@ -1084,7 +1075,7 @@ export class JellyfinAdapterService implements IMediaServerService {
       // the Jellyfin data model where seasons have SeriesId pointing to the show,
       // not ParentId (which points to the library folder).
       if (childType === 'season') {
-        const response = await getTvShowsApi(this.api).getSeasons({
+        const response = await getShowApi(this.api).getSeasons({
           seriesId: parentId,
           userId,
           fields: [
@@ -1103,7 +1094,7 @@ export class JellyfinAdapterService implements IMediaServerService {
       }
 
       // For episodes and other types, parentId works correctly
-      const response = await getItemsApi(this.api).getItems({
+      const response = await getLibraryApi(this.api).getItems({
         userId,
         parentId,
         fields: [
@@ -1162,7 +1153,7 @@ export class JellyfinAdapterService implements IMediaServerService {
       const includeItemTypes = JellyfinMapper.toBaseItemKinds(
         options?.type ? [options.type] : undefined,
       );
-      const response = await getItemsApi(this.api).getItems({
+      const response = await getLibraryApi(this.api).getItems({
         ...JELLYFIN_LIBRARY_QUERY_DEFAULTS,
         userId,
         parentId: libraryId,
@@ -1198,7 +1189,7 @@ export class JellyfinAdapterService implements IMediaServerService {
         BaseItemKind.Series,
         BaseItemKind.Episode,
       ];
-      const response = await getItemsApi(this.api).getItems({
+      const response = await getLibraryApi(this.api).getItems({
         ...JELLYFIN_LIBRARY_QUERY_DEFAULTS,
         userId,
         recursive: true,
@@ -1467,7 +1458,7 @@ export class JellyfinAdapterService implements IMediaServerService {
 
     do {
       abortSignal?.throwIfAborted();
-      const response = await getItemsApi(this.api!).getItems({
+      const response = await getLibraryApi(this.api!).getItems({
         // Include BoxSet members: libraries with "Group films into
         // collections" hide them by default, which would leave those items
         // out of the snapshot entirely (#2554).
@@ -1638,7 +1629,7 @@ export class JellyfinAdapterService implements IMediaServerService {
       // The per-item route 404s for users the item is invisible to, which is
       // no data for that user rather than a failed read; the list form answers
       // 200 with an empty list. Mirrors getItemUserData.
-      const response = await getItemsApi(this.api!).getItems({
+      const response = await getLibraryApi(this.api!).getItems({
         userId: user.id,
         ids: [itemId],
         enableUserData: true,
@@ -1768,7 +1759,7 @@ export class JellyfinAdapterService implements IMediaServerService {
 
     const users = await this.getUsers(true);
     const entries = await this.mapUsersBatched(async (user) => {
-      const response = await getItemsApi(this.api!).getItems({
+      const response = await getLibraryApi(this.api!).getItems({
         userId: user.id,
         parentId,
         recursive: true,
@@ -1981,7 +1972,7 @@ export class JellyfinAdapterService implements IMediaServerService {
       // getItemUserData endpoint - the latter does not reliably return
       // per-user data when authenticating with an API key on all
       // Jellyfin versions.
-      const response = await getItemsApi(this.api).getItems({
+      const response = await getLibraryApi(this.api).getItems({
         userId,
         ids: [itemId],
         enableUserData: true,
@@ -2034,7 +2025,7 @@ export class JellyfinAdapterService implements IMediaServerService {
 
       try {
         const userId = await this.getUserId();
-        const response = await getItemsApi(this.api).getItems({
+        const response = await getLibraryApi(this.api).getItems({
           userId,
           parentId: libraryId,
           includeItemTypes: [BaseItemKind.BoxSet],
@@ -2087,7 +2078,7 @@ export class JellyfinAdapterService implements IMediaServerService {
 
     try {
       const userId = await this.getUserId();
-      const response = await getUserLibraryApi(this.api).getItem({
+      const response = await getLibraryApi(this.api).getItem({
         itemId: collectionId,
         userId,
       });
@@ -2218,7 +2209,7 @@ export class JellyfinAdapterService implements IMediaServerService {
         const response = await this.retryLibraryRequestOnce(
           `get Jellyfin collection children for ${collectionId}`,
           async () =>
-            await getItemsApi(this.api!).getItems({
+            await getLibraryApi(this.api!).getItems({
               userId,
               parentId: collectionId,
               fields: [
@@ -2239,7 +2230,7 @@ export class JellyfinAdapterService implements IMediaServerService {
           const itemsResponse = await this.retryLibraryRequestOnce(
             `get Jellyfin collection children recursively for ${collectionId}`,
             async () =>
-              await getItemsApi(this.api!).getItems({
+              await getLibraryApi(this.api!).getItems({
                 userId,
                 parentId: collectionId,
                 recursive: true,
@@ -2512,7 +2503,7 @@ export class JellyfinAdapterService implements IMediaServerService {
     try {
       const userId = await this.getUserId();
       // First, get the existing collection to preserve all properties
-      const existingResponse = await getItemsApi(this.api).getItems({
+      const existingResponse = await getLibraryApi(this.api).getItems({
         userId,
         ids: [params.collectionId],
         includeItemTypes: [BaseItemKind.BoxSet],
@@ -2556,7 +2547,7 @@ export class JellyfinAdapterService implements IMediaServerService {
       });
 
       // Return updated collection info
-      const response = await getItemsApi(this.api).getItems({
+      const response = await getLibraryApi(this.api).getItems({
         userId,
         ids: [params.collectionId],
         includeItemTypes: [BaseItemKind.BoxSet],
@@ -2622,7 +2613,7 @@ export class JellyfinAdapterService implements IMediaServerService {
 
       // Jellyfin playlists are not library-specific, but we filter by parentId
       // to maintain consistency with the interface contract
-      const response = await getItemsApi(this.api).getItems({
+      const response = await getLibraryApi(this.api).getItems({
         userId,
         parentId: libraryId,
         includeItemTypes: [BaseItemKind.Playlist],
@@ -2645,7 +2636,7 @@ export class JellyfinAdapterService implements IMediaServerService {
 
     try {
       const userId = await this.getUserId();
-      const response = await getPlaylistsApi(this.api).getPlaylistItems({
+      const response = await getPlaylistApi(this.api).getPlaylistItems({
         userId,
         playlistId,
       });
@@ -2749,7 +2740,7 @@ export class JellyfinAdapterService implements IMediaServerService {
     }
 
     try {
-      await getItemRefreshApi(this.api).refreshItem({
+      await getLibraryApi(this.api).refreshItem({
         itemId,
         metadataRefreshMode: 'Default',
         imageRefreshMode: 'Default',

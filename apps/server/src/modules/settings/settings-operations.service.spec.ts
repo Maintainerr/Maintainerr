@@ -210,6 +210,28 @@ describe('SettingsOperationsService', () => {
     expect(tracearr.invalidateHistory).toHaveBeenCalledTimes(1);
   });
 
+  it('defaults the Jellyfin admin user to the first admin the connection test lists', async () => {
+    settingsRepo.findOne.mockResolvedValue(createSettings({}));
+    jest.spyOn(service, 'testJellyfin').mockResolvedValue({
+      status: 'OK',
+      code: 1,
+      message: 'Success',
+      users: [
+        { id: 'admin-1', name: 'admin' },
+        { id: 'admin-2', name: 'other' },
+      ],
+    });
+
+    await service.saveJellyfinSettings({
+      jellyfin_url: 'http://jellyfin.local',
+      jellyfin_api_key: 'jellyfin-key',
+    });
+
+    expect(settingsDataService.saveSettings).toHaveBeenCalledWith(
+      expect.objectContaining({ jellyfin_user_id: 'admin-1' }),
+    );
+  });
+
   it('rejects Plex server setting changes when no Plex credentials are stored', async () => {
     settingsRepo.findOne.mockResolvedValue(
       createSettings({ plex_auth_token: null }),
