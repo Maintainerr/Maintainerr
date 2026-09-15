@@ -213,9 +213,10 @@ export class JellyfinGetterService {
 
         case 'collections': {
           // Number of collections this item is in
+          // An episode's own library id is its season; the group knows the library
           const collectionNames = await this.getCollectionNames(
             metadata.id,
-            metadata.library.id,
+            libraryId ?? metadata.library.id,
             ruleGroup,
           );
           return collectionNames.length;
@@ -458,7 +459,7 @@ export class JellyfinGetterService {
         case 'collection_names': {
           return await this.getCollectionNames(
             metadata.id,
-            metadata.library.id,
+            libraryId ?? metadata.library.id,
             ruleGroup,
           );
         }
@@ -478,7 +479,7 @@ export class JellyfinGetterService {
             metadata.id,
             parent?.id,
             grandparent?.id,
-            metadata.library.id,
+            libraryId ?? metadata.library.id,
             ruleGroup,
           );
         }
@@ -490,7 +491,7 @@ export class JellyfinGetterService {
             metadata.id,
             parent?.id,
             grandparent?.id,
-            metadata.library.id,
+            libraryId ?? metadata.library.id,
             ruleGroup,
           );
         }
@@ -1020,19 +1021,9 @@ export class JellyfinGetterService {
     let allCollectionNames = this.cache.data.get<string[]>(cacheKey);
 
     if (!allCollectionNames) {
-      const collections = await this.jellyfinAdapter.getCollections(libraryId);
-      allCollectionNames = [];
-
-      for (const collection of collections) {
-        const children = await this.jellyfinAdapter.getCollectionChildren(
-          collection.id,
-        );
-
-        if (children.some((child) => child.id === itemId)) {
-          allCollectionNames.push(collection.title.trim());
-        }
-      }
-
+      allCollectionNames = (
+        await this.collectionNamesContaining([itemId], libraryId)
+      ).map((name) => name.trim());
       this.cache.data.set(cacheKey, allCollectionNames, 600);
     }
 
@@ -1133,28 +1124,52 @@ export class JellyfinGetterService {
     libraryId: string,
     ruleGroup?: RuleGroupDto,
   ): Promise<string[]> {
-    const collections = await this.jellyfinAdapter.getCollections(libraryId);
-    const collectionNames: string[] = [];
-
     const idsToCheck = [itemId, parentId, grandparentId].filter(
       (id): id is string => id !== undefined,
     );
-
-    for (const collection of collections) {
-      const children = await this.jellyfinAdapter.getCollectionChildren(
-        collection.id,
-      );
-
-      const hasMatch = children.some((child) => idsToCheck.includes(child.id));
-
-      if (hasMatch) {
-        collectionNames.push(collection.title);
-      }
-    }
+    const collectionNames = await this.collectionNamesContaining(
+      idsToCheck,
+      libraryId,
+    );
 
     return Array.from(
       new Set(filterRuleCollectionNames(collectionNames, ruleGroup)),
     );
+  }
+
+  /**
+   * Titles of the collections holding any of the ids, one entry per match.
+   * Jellyfin 12 lists an item's collections directly; older servers fall back
+   * to scanning the children of every collection in the library.
+   */
+  private async collectionNamesContaining(
+    ids: string[],
+    libraryId: string,
+  ): Promise<string[]> {
+    const names: string[] = [];
+    for (const id of ids) {
+      const direct = await this.jellyfinAdapter.getCollectionsContaining(id);
+      if (!direct) return this.collectionNamesByChildScan(ids, libraryId);
+      names.push(...direct.map((collection) => collection.title));
+    }
+    return names;
+  }
+
+  private async collectionNamesByChildScan(
+    ids: string[],
+    libraryId: string,
+  ): Promise<string[]> {
+    const collections = await this.jellyfinAdapter.getCollections(libraryId);
+    const names: string[] = [];
+    for (const collection of collections) {
+      const children = await this.jellyfinAdapter.getCollectionChildren(
+        collection.id,
+      );
+      if (children.some((child) => ids.includes(child.id))) {
+        names.push(collection.title);
+      }
+    }
+    return names;
   }
 
   private async getCollectionSiblingsLastViewedAt(

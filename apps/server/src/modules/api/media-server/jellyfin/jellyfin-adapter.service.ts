@@ -146,6 +146,8 @@ export class JellyfinAdapterService implements IMediaServerService {
   private api: Api | undefined;
   private initialized = false;
   private jellyfinUserId: string | undefined;
+  // Set once GET /Items/{id}/Collections answers 404 (route added in Jellyfin 12)
+  private itemCollectionsUnsupported = false;
   private readonly cache: Cache;
   // Shared in-flight prefetch, so concurrent rule groups sweep once.
   private watchHistoryPrefetches = new Map<string, Promise<void>>();
@@ -270,6 +272,7 @@ export class JellyfinAdapterService implements IMediaServerService {
     }
 
     this.api = api;
+    this.itemCollectionsUnsupported = false;
     this.initialized = true;
     this.jellyfinUserId = settings.jellyfin_user_id ?? undefined;
     this.logger.log(
@@ -1040,6 +1043,53 @@ export class JellyfinAdapterService implements IMediaServerService {
     } catch (error) {
       if (isAxiosError(error) && error.response?.status === 404) {
         return false;
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Collections that directly contain the item (ids and titles only), or
+   * undefined when the server predates the route so the caller can scan
+   * collection children instead. Cached per item like the scan's reads.
+   */
+  async getCollectionsContaining(
+    itemId: string,
+  ): Promise<MediaCollection[] | undefined> {
+    if (!this.api) {
+      throw new Error('Jellyfin not initialized');
+    }
+    if (this.itemCollectionsUnsupported) return undefined;
+
+    const cacheKey = `${JELLYFIN_CACHE_KEYS.COLLECTIONS}:item:${itemId}`;
+    const cached = this.cache.data.get<MediaCollection[]>(cacheKey);
+    if (cached) return cached;
+
+    const userId = await this.getUserId();
+    try {
+      const response = await getLibraryApi(this.api).getItemCollections({
+        itemId,
+        userId,
+      });
+      const collections = (response.data.Items ?? []).map(
+        JellyfinMapper.toMediaCollection,
+      );
+      this.cache.data.set(
+        cacheKey,
+        collections,
+        JELLYFIN_CACHE_TTL.COLLECTIONS,
+      );
+      return collections;
+    } catch (error) {
+      if (isAxiosError(error) && error.response?.status === 404) {
+        // The route also 404s for an item that is gone; only a live item
+        // proves the route itself is missing
+        if (!(await this.itemExists(itemId))) return [];
+        this.logger.debug(
+          'Jellyfin /Items/{itemId}/Collections not available - scanning collection children instead',
+        );
+        this.itemCollectionsUnsupported = true;
+        return undefined;
       }
       throw error;
     }
@@ -2308,6 +2358,12 @@ export class JellyfinAdapterService implements IMediaServerService {
     this.cache.data.del(
       `${JELLYFIN_CACHE_KEYS.COLLECTIONS}:children:${collectionId}`,
     );
+    // Membership changed, so the per-item collection reads are stale too
+    const itemPrefix = `${JELLYFIN_CACHE_KEYS.COLLECTIONS}:item:`;
+    const stale = this.cache.data
+      .keys()
+      .filter((key) => key.startsWith(itemPrefix));
+    if (stale.length > 0) this.cache.data.del(stale);
   }
 
   private async addToCollectionInternal(
