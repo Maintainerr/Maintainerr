@@ -44,7 +44,7 @@
     "semantic-release": "^25.0.9",
     "turbo": "^2.10.12",
     "typescript": "^6.0.3",
-    "yaml": "^2.9.0"
+    "yaml": "^2.9.1"
   },
   "release": {
     "plugins": [
