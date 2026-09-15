@@ -64,7 +64,7 @@
     "@lingui/babel-plugin-lingui-macro": "^6.7.0",
     "@lingui/cli": "^6.6.0",
     "@lingui/format-po": "^6.6.0",
-    "@lingui/vite-plugin": "^6.6.0",
+    "@lingui/vite-plugin": "^6.7.0",
     "@rolldown/plugin-babel": "^0.2.4",
     "@tailwindcss/forms": "^0.5.11",
     "@tailwindcss/typography": "^0.5.20",

@@ -2657,6 +2657,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@lingui/babel-plugin-extract-messages@npm:6.7.0":
+  version: 6.7.0
+  resolution: "@lingui/babel-plugin-extract-messages@npm:6.7.0"
+  dependencies:
+    "@lingui/conf": "npm:6.7.0"
+  checksum: 10c0/1c89fbc25532fab830052a3cf36023de3b48a909ecc99e211178c6125a196de30203c12e6b8ed9eae5ee3c5d9eb57ef1a6e674c118a5b4695823e7c35b613eb8
+  languageName: node
+  linkType: hard
+
 "@lingui/babel-plugin-lingui-macro@npm:6.6.0":
   version: 6.6.0
   resolution: "@lingui/babel-plugin-lingui-macro@npm:6.6.0"
@@ -2675,7 +2684,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@lingui/babel-plugin-lingui-macro@npm:^6.7.0":
+"@lingui/babel-plugin-lingui-macro@npm:6.7.0, @lingui/babel-plugin-lingui-macro@npm:^6.7.0":
   version: 6.7.0
   resolution: "@lingui/babel-plugin-lingui-macro@npm:6.7.0"
   dependencies:
@@ -2693,7 +2702,46 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@lingui/cli@npm:6.6.0, @lingui/cli@npm:^6.6.0":
+"@lingui/cli@npm:6.7.0":
+  version: 6.7.0
+  resolution: "@lingui/cli@npm:6.7.0"
+  dependencies:
+    "@babel/core": "npm:^7.21.0"
+    "@babel/generator": "npm:^7.28.5"
+    "@babel/parser": "npm:^7.22.0"
+    "@babel/types": "npm:^7.21.2"
+    "@lingui/babel-plugin-extract-messages": "npm:6.7.0"
+    "@lingui/babel-plugin-lingui-macro": "npm:6.7.0"
+    "@lingui/conf": "npm:6.7.0"
+    "@lingui/core": "npm:6.7.0"
+    "@lingui/format-po": "npm:6.7.0"
+    "@lingui/message-utils": "npm:6.7.0"
+    chokidar: "npm:5.0.0"
+    cli-table3: "npm:^0.6.5"
+    commander: "npm:^14.0.2"
+    jiti: "npm:^2.6.1"
+    micromatch: "npm:^4.0.7"
+    ms: "npm:^2.1.3"
+    normalize-path: "npm:^3.0.0"
+    ora: "npm:^9.1.0"
+    pseudolocale: "npm:^3.1.0"
+    source-map: "npm:^0.7.6"
+    tinypool: "npm:^2.1.0"
+  peerDependencies:
+    esbuild: ^0.28.1
+    rolldown: ^1.0.0
+  peerDependenciesMeta:
+    esbuild:
+      optional: true
+    rolldown:
+      optional: true
+  bin:
+    lingui: dist/lingui.js
+  checksum: 10c0/13b148f5519e8d19714007425564095575ebe374954da9ad18d9783fe3a4bec03d5b6840af566d4fe5a2fd33c72c9b31b1c727fab1011501155dc4e4b81f8be5
+  languageName: node
+  linkType: hard
+
+"@lingui/cli@npm:^6.6.0":
   version: 6.6.0
   resolution: "@lingui/cli@npm:6.6.0"
   dependencies:
@@ -2771,6 +2819,21 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@lingui/core@npm:6.7.0":
+  version: 6.7.0
+  resolution: "@lingui/core@npm:6.7.0"
+  dependencies:
+    "@lingui/babel-plugin-lingui-macro": "npm:6.7.0"
+    "@lingui/message-utils": "npm:6.7.0"
+  peerDependencies:
+    babel-plugin-macros: 2 || 3
+  peerDependenciesMeta:
+    babel-plugin-macros:
+      optional: true
+  checksum: 10c0/5515e1a2a8d132efa2b18d3845915f5e32623b220908aef5efdafda990555ee5183e074b754fbb51f86e5f66e5d44e1502095428e8c6404e394ec140bff3710e
+  languageName: node
+  linkType: hard
+
 "@lingui/format-po@npm:6.6.0, @lingui/format-po@npm:^6.6.0":
   version: 6.6.0
   resolution: "@lingui/format-po@npm:6.6.0"
@@ -2779,6 +2842,17 @@ __metadata:
     "@lingui/message-utils": "npm:6.6.0"
     pofile-ts: "npm:^4.0.3"
   checksum: 10c0/d6236a61b652738681845db9e7a999e713f2b34944c901120423a8d867a78ba92b20ed04a81fc200aabeb56b746eb9e34dbc13c71e89cdc11d7ebb81fe14fb80
+  languageName: node
+  linkType: hard
+
+"@lingui/format-po@npm:6.7.0":
+  version: 6.7.0
+  resolution: "@lingui/format-po@npm:6.7.0"
+  dependencies:
+    "@lingui/conf": "npm:6.7.0"
+    "@lingui/message-utils": "npm:6.7.0"
+    pofile-ts: "npm:^4.0.3"
+  checksum: 10c0/e1c458a8625608500a8f2fef64def6f0fec52e18e405b8457adbc0a16bac37433a3c12616a20f10cf46725be7afe121de3e7ae451ae46298111bddb1d3bd3d72
   languageName: node
   linkType: hard
 
@@ -2821,12 +2895,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@lingui/vite-plugin@npm:^6.6.0":
-  version: 6.6.0
-  resolution: "@lingui/vite-plugin@npm:6.6.0"
+"@lingui/vite-plugin@npm:^6.7.0":
+  version: 6.7.0
+  resolution: "@lingui/vite-plugin@npm:6.7.0"
   dependencies:
-    "@lingui/cli": "npm:6.6.0"
-    "@lingui/conf": "npm:6.6.0"
+    "@lingui/cli": "npm:6.7.0"
+    "@lingui/conf": "npm:6.7.0"
   peerDependencies:
     "@babel/core": ^7.29.0 || ^8.0.0
     "@lingui/babel-plugin-lingui-macro": ^5 || ^6
@@ -2842,7 +2916,7 @@ __metadata:
       optional: true
     rolldown:
       optional: true
-  checksum: 10c0/f42a15a6fc60d5c5555de38f512ab07102400372bc12f40f5e42e7ca2dd9b519a0be94e004d6cb3ba5fc008f8ca84d958a5a20450ac050f9837c9adc797603f7
+  checksum: 10c0/3da382e99ed70641aefa00ac51a1915bcd7562b730274a0f389d25697356aae6fdcd61d313f558d84d749d0c7cbaf71f260bb7632793cd9131bbef15276e9ae7
   languageName: node
   linkType: hard
 
@@ -2965,7 +3039,7 @@ __metadata:
     "@lingui/core": "npm:^6.6.0"
     "@lingui/format-po": "npm:^6.6.0"
     "@lingui/react": "npm:^6.6.0"
-    "@lingui/vite-plugin": "npm:^6.6.0"
+    "@lingui/vite-plugin": "npm:^6.7.0"
     "@maintainerr/contracts": "workspace:^"
     "@monaco-editor/react": "npm:^4.7.0"
     "@rolldown/plugin-babel": "npm:^0.2.4"
@@ -8081,6 +8155,13 @@ __metadata:
   version: 12.1.0
   resolution: "commander@npm:12.1.0"
   checksum: 10c0/6e1996680c083b3b897bfc1cfe1c58dfbcd9842fd43e1aaf8a795fbc237f65efcc860a3ef457b318e73f29a4f4a28f6403c3d653d021d960e4632dd45bde54a9
+  languageName: node
+  linkType: hard
+
+"commander@npm:^13.1.0":
+  version: 13.1.0
+  resolution: "commander@npm:13.1.0"
+  checksum: 10c0/7b8c5544bba704fbe84b7cab2e043df8586d5c114a4c5b607f83ae5060708940ed0b5bd5838cf8ce27539cde265c1cbd59ce3c8c6b017ed3eec8943e3a415164
   languageName: node
   linkType: hard
 
@@ -15219,6 +15300,17 @@ __metadata:
   bin:
     pseudolocale: dist/cli.mjs
   checksum: 10c0/7448280f1b82cc6acc24df2a8dad8cecaa14ed16aaba7417d370533ee24e34fccdfbdc0df37bfa79596bea1e7812ac2d3050db944a105d6bfd4f7d1eb4faf604
+  languageName: node
+  linkType: hard
+
+"pseudolocale@npm:^3.1.0":
+  version: 3.1.0
+  resolution: "pseudolocale@npm:3.1.0"
+  dependencies:
+    commander: "npm:^13.1.0"
+  bin:
+    pseudolocale: dist/cli.mjs
+  checksum: 10c0/13793a4bae60a75d659d1db6b01266957865f4452018e0f00cc3857d859a275b42772544c3a68eb614ddcae6d99a8884d2a0fb6750791bf1e50929b07f9905e8
   languageName: node
   linkType: hard
 
