@@ -45,7 +45,7 @@
     "better-sqlite3": "^13.0.3",
     "canvas": "^3.2.3",
     "chalk": "^4.1.2",
-    "compression": "^1.8.1",
+    "compression": "^1.8.2",
     "cron-validator": "^1.4.0",
     "date-fns": "^4.4.0",
     "email-templates": "13.0.1",
