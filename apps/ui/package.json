@@ -39,7 +39,7 @@
     "monaco-editor": "0.56.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
-    "react-hook-form": "^7.87.0",
+    "react-hook-form": "^7.88.0",
     "react-konva": "^19.2.6",
     "react-markdown": "10.1.0",
     "react-movable": "^3.4.1",
