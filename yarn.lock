@@ -2842,7 +2842,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@lingui/core@npm:6.6.0, @lingui/core@npm:^6.6.0":
+"@lingui/core@npm:6.6.0":
   version: 6.6.0
   resolution: "@lingui/core@npm:6.6.0"
   dependencies:
@@ -2857,7 +2857,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@lingui/core@npm:6.7.0":
+"@lingui/core@npm:6.7.0, @lingui/core@npm:^6.7.0":
   version: 6.7.0
   resolution: "@lingui/core@npm:6.7.0"
   dependencies:
@@ -3074,7 +3074,7 @@ __metadata:
     "@hookform/resolvers": "npm:^5.9.1"
     "@lingui/babel-plugin-lingui-macro": "npm:^6.7.0"
     "@lingui/cli": "npm:^6.6.0"
-    "@lingui/core": "npm:^6.6.0"
+    "@lingui/core": "npm:^6.7.0"
     "@lingui/format-po": "npm:^6.6.0"
     "@lingui/react": "npm:^6.6.0"
     "@lingui/vite-plugin": "npm:^6.7.0"
