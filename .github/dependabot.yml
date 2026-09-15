@@ -20,6 +20,9 @@ updates:
         patterns:
           - "@eslint/js"
           - "eslint"
+      lingui:
+        patterns:
+          - "@lingui/*"
     ignore:
       - dependency-name: "@heroicons/react"
       - dependency-name: "chalk"
