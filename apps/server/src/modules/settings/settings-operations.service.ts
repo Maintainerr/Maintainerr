@@ -656,10 +656,10 @@ export class SettingsOperationsService {
         };
       }
 
-      // Auto-detect admin user if not provided
+      // The connection test already lists the admin users; default to the first
       let userId = settings.jellyfin_user_id;
       if (!userId) {
-        userId = await this.autoDetectJellyfinAdminUser(settings);
+        userId = testResult.users?.[0]?.id;
         if (userId) {
           this.logger.log(`Auto-detected Jellyfin admin user ID: ${userId}`);
         } else {
@@ -715,50 +715,6 @@ export class SettingsOperationsService {
       const message =
         error instanceof Error ? error.message : 'Failed to save settings';
       return { status: 'NOK', code: 0, message };
-    }
-  }
-
-  /**
-   * Auto-detect an admin user from Jellyfin
-   */
-  private async autoDetectJellyfinAdminUser(
-    settings: Pick<JellyfinSetting, 'jellyfin_url' | 'jellyfin_api_key'>,
-  ): Promise<string | undefined> {
-    try {
-      const { Jellyfin } = await import('@jellyfin/sdk');
-      const { getUserApi } =
-        await import('@jellyfin/sdk/lib/utils/api/index.js');
-
-      const jellyfin = new Jellyfin({
-        clientInfo: { name: 'Maintainerr', version: '2.0.0' },
-        deviceInfo: {
-          name: 'Maintainerr-AutoDetect',
-          id: 'maintainerr-detect',
-        },
-      });
-
-      const api = jellyfin.createApi(
-        settings.jellyfin_url,
-        settings.jellyfin_api_key,
-      );
-
-      const response = await getUserApi(api).getUsers();
-      const users = response.data || [];
-
-      // Find first admin user
-      const adminUser = users.find((user) => user.Policy?.IsAdministrator);
-      if (adminUser?.Id) {
-        this.logger.debug(
-          `Found Jellyfin admin user: ${adminUser.Name} (${adminUser.Id})`,
-        );
-        return adminUser.Id;
-      }
-
-      return undefined;
-    } catch (error) {
-      this.logger.error('Failed to auto-detect Jellyfin admin user');
-      this.logger.debug(error);
-      return undefined;
     }
   }
 
