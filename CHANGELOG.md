@@ -1,3 +1,13 @@
+# [3.29.0](https://github.com/Maintainerr/Maintainerr/compare/v3.28.0...v3.29.0) (2026-09-16)
+
+
+## Highlights
+- Trigger a targeted media server folder rescan immediately after an *arr delete to ensure items are removed from libraries without waiting for a full scan (#3720).
+- Optimize collection size calculations to perform one sweep per collection instead of one per removed item, preventing media server flooding (#3718).
+
+## Dependencies
+- Update 18 dependencies including yaml, nodemailer, konva, @types/node, react-konva, lingui, compression, @jellyfin/sdk, @babel/core, react-hook-form, @lingui/vite-plugin, rolldown, knip, vite, @lingui/babel-plugin-lingui-macro, zod, react, and @nestjs/schematics.
+
 # [3.28.0](https://github.com/Maintainerr/Maintainerr/compare/v3.27.0...v3.28.0) (2026-09-11)
 
 
