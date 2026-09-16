@@ -174,6 +174,7 @@ export class JellyfinMapper {
         : undefined,
       providerIds: JellyfinMapper.extractProviderIds(item.ProviderIds),
       mediaSources: JellyfinMapper.toMediaSources(item.MediaSources),
+      path: item.Path || undefined,
       library: {
         id: item.ParentId || '',
         title: '',

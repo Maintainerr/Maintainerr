@@ -805,6 +805,20 @@ describe('EmbyAdapterService', () => {
     });
   });
 
+  describe('scanFolder', () => {
+    it('reports the folder as deleted so Emby re-validates it', async () => {
+      http.post.mockResolvedValueOnce({ status: 204 });
+
+      await service.scanFolder('lib-1', '/media/movies/Movie A (2021)');
+
+      expect(http.post).toHaveBeenCalledWith('/Library/Media/Updated', {
+        Updates: [
+          { Path: '/media/movies/Movie A (2021)', UpdateType: 'Deleted' },
+        ],
+      });
+    });
+  });
+
   describe('getCollections cache preference', () => {
     it('bypasses the cached listing when the caller needs a live answer', async () => {
       embyCacheMocks.data.get.mockReturnValue([

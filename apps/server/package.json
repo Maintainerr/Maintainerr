@@ -25,7 +25,7 @@
     "migration:show": "yarn exec typeorm-ts-node-commonjs migration:show --dataSource ./src/datasource-config.ts"
   },
   "dependencies": {
-    "@jellyfin/sdk": "^0.13.0",
+    "@jellyfin/sdk": "^1.0.0",
     "@maintainerr/contracts": "workspace:^",
     "@nestjs/common": "^12.0.1",
     "@nestjs/core": "^12.0.1",
@@ -45,7 +45,7 @@
     "better-sqlite3": "^13.0.3",
     "canvas": "^3.2.3",
     "chalk": "^4.1.2",
-    "compression": "^1.8.1",
+    "compression": "^1.8.2",
     "cron-validator": "^1.4.0",
     "date-fns": "^4.4.0",
     "email-templates": "13.0.1",
@@ -53,7 +53,7 @@
     "mime-types": "^3.0.2",
     "nestjs-zod": "^5.5.0",
     "node-cache": "^5.1.2",
-    "nodemailer": "10.0.1",
+    "nodemailer": "10.0.9",
     "octokit": "^3.2.2",
     "openpgp": "^6.3.1",
     "read-last-lines": "^1.10.0",
@@ -64,15 +64,15 @@
     "winston": "^3.19.0",
     "winston-daily-rotate-file": "^5.0.0",
     "xml2js": "^0.6.2",
-    "yaml": "^2.9.0",
-    "zod": "^4.5.4"
+    "yaml": "^2.9.1",
+    "zod": "^4.6.2"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.7",
     "@eslint/js": "^10.0.1",
     "@faker-js/faker": "^10.6.0",
     "@nestjs/cli": "^12.0.0",
-    "@nestjs/schematics": "^12.0.0",
+    "@nestjs/schematics": "^12.0.1",
     "@nestjs/testing": "^12.0.1",
     "@suites/di.nestjs": "^3.1.0",
     "@suites/doubles.jest": "^3.1.0",

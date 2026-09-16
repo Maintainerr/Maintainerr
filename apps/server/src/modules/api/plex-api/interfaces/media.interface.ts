@@ -35,6 +35,8 @@ export interface PlexMetadata {
   Role?: PlexActor[];
   originallyAvailableAt: string;
   Media: Media[];
+  // A show's folder(s); only the single-item read carries it.
+  Location?: { path: string }[];
   Genre?: PlexGenre[];
   parentTitle?: string;
   grandparentTitle?: string;

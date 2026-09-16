@@ -241,6 +241,16 @@ describe('EmbyMapper', () => {
       Studios: [{ Name: 'Studio One' }, { Name: '' }, {}],
     };
 
+    it('carries the item path', () => {
+      expect(EmbyMapper.toMediaItem(baseItem).path).toBeUndefined();
+      expect(
+        EmbyMapper.toMediaItem({
+          ...baseItem,
+          Path: '/media/movies/Movie A (2021)/Movie A (2021).mkv',
+        }).path,
+      ).toBe('/media/movies/Movie A (2021)/Movie A (2021).mkv');
+    });
+
     it('converts ISO timestamps to Date objects', () => {
       const result = EmbyMapper.toMediaItem(baseItem);
 

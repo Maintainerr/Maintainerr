@@ -138,6 +138,7 @@ describe('JellyfinMapper', () => {
         ],
         Overview: 'Test summary',
         UserData: {
+          Key: 'episode123',
           PlayCount: 5,
           LastPlayedDate: '2021-01-03T00:00:00.000Z',
           Played: true,
@@ -177,6 +178,16 @@ describe('JellyfinMapper', () => {
         expect(result.grandparentTitle).toBe('Test Series');
         expect(result.guid).toBe('episode123');
         expect(result.type).toBe('episode');
+      });
+
+      it('carries the item path', () => {
+        expect(JellyfinMapper.toMediaItem(episodeItem).path).toBeUndefined();
+        expect(
+          JellyfinMapper.toMediaItem({
+            ...episodeItem,
+            Path: '/media/series/Show A/Season 1/Show A - S01E01.mkv',
+          }).path,
+        ).toBe('/media/series/Show A/Season 1/Show A - S01E01.mkv');
       });
 
       it('should convert timestamps to Date objects', () => {

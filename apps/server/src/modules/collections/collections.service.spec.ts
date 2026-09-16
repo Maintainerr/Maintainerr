@@ -4486,6 +4486,77 @@ describe('CollectionsService', () => {
     });
   });
 
+  describe('addToCollection', () => {
+    it('resweeps the size only when a row was added', async () => {
+      const collection = createCollection({
+        id: 8,
+        mediaServerId: 'remote-collection',
+      });
+      collectionRepo.findOne.mockResolvedValue(collection);
+      collectionMediaRepo.find.mockResolvedValue([
+        createCollectionMedia(collection, { id: 1, mediaServerId: 'member' }),
+      ]);
+      jest
+        .spyOn(service as never, 'checkAutomaticMediaServerLink')
+        .mockResolvedValue(collection as never);
+      jest
+        .spyOn(service as never, 'insertCollectionMediaMembership')
+        .mockResolvedValue(undefined as never);
+
+      await service.addToCollection(8, [{ mediaServerId: 'member' }]);
+      expect(service.updateCollectionTotalSize).not.toHaveBeenCalled();
+
+      await service.addToCollection(8, [{ mediaServerId: 'new' }]);
+      expect(service.updateCollectionTotalSize).toHaveBeenCalledWith(8);
+    });
+  });
+
+  describe('removeFromCollection', () => {
+    it('resweeps the size only when a row was removed', async () => {
+      const collection = createCollection({
+        id: 7,
+        manualCollection: true,
+        mediaServerId: null,
+      });
+      collectionRepo.findOne.mockResolvedValue(collection);
+      collectionMediaRepo.find.mockResolvedValue([
+        createCollectionMedia(collection, { id: 1, mediaServerId: 'kept' }),
+      ]);
+      jest
+        .spyOn(service as never, 'removeChildrenFromCollection')
+        .mockResolvedValue(['kept'] as never);
+
+      expect(
+        await service.removeFromCollection(7, [{ mediaServerId: 'absent' }]),
+      ).toBe(collection);
+      expect(service.updateCollectionTotalSize).not.toHaveBeenCalled();
+
+      await service.removeFromCollection(7, [{ mediaServerId: 'kept' }]);
+      expect(service.updateCollectionTotalSize).toHaveBeenCalledWith(7);
+    });
+
+    it('resweeps a shared manual collection when the reconcile ran', async () => {
+      const collection = createCollection({
+        id: 9,
+        manualCollection: true,
+        mediaServerId: 'ms-9',
+      });
+      collectionRepo.findOne.mockResolvedValue(collection);
+      collectionMediaRepo.find.mockResolvedValue([
+        createCollectionMedia(collection, { id: 1, mediaServerId: 'kept' }),
+      ]);
+      jest
+        .spyOn(service, 'isMediaServerCollectionShared')
+        .mockResolvedValue(true);
+      jest
+        .spyOn(service, 'reconcileSharedManualCollectionState')
+        .mockResolvedValue(undefined);
+
+      await service.removeFromCollection(9, [{ mediaServerId: 'absent' }]);
+      expect(service.updateCollectionTotalSize).toHaveBeenCalledWith(9);
+    });
+  });
+
   describe('updateCollectionTotalSize', () => {
     beforeEach(() => {
       (
@@ -4493,6 +4564,40 @@ describe('CollectionsService', () => {
           typeof service.updateCollectionTotalSize
         >
       ).mockRestore();
+    });
+
+    it('runs one sweep per collection at a time and folds calls made meanwhile into one follow-up', async () => {
+      const finishSweep: Array<() => void> = [];
+      const sweep = jest
+        .spyOn(service as never, 'sweepCollectionSize')
+        .mockImplementation(
+          (() =>
+            new Promise<void>((resolve) => finishSweep.push(resolve))) as never,
+        );
+
+      let settled = false;
+      const first = service.updateCollectionTotalSize(1).then(() => {
+        settled = true;
+      });
+      void service.updateCollectionTotalSize(1);
+      void service.updateCollectionTotalSize(2);
+
+      expect(sweep).toHaveBeenCalledTimes(2);
+      expect(sweep).toHaveBeenLastCalledWith(2);
+
+      finishSweep[0]();
+      finishSweep[1]();
+      await new Promise((resolve) => setImmediate(resolve));
+      expect(sweep).toHaveBeenCalledTimes(3);
+      expect(settled).toBe(false);
+
+      finishSweep[2]();
+      await first;
+
+      const fourth = service.updateCollectionTotalSize(1);
+      expect(sweep).toHaveBeenCalledTimes(4);
+      finishSweep[3]();
+      await fourth;
     });
 
     const sizedItem = (id: string, sizeBytes: number) =>
