@@ -48,7 +48,7 @@
     "react-toastify": "^11.1.0",
     "reconnecting-eventsource": "^1.6.5",
     "yaml": "^2.9.1",
-    "zod": "^4.6.4"
+    "zod": "^4.6.5"
   },
   "browserslist": [
     "> 0.5%",
