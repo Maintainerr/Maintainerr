@@ -565,7 +565,8 @@ export class JellyfinAdapterService implements IMediaServerService {
   /**
    * Upload artwork used by Maintainerr overlays. Jellyfin's indexed upload
    * endpoint appends on some server versions, so backdrop uploads first clear
-   * every existing backdrop and then create exactly one. Existing
+   * every existing backdrop and thumb (landscape) image and then create one
+   * of each. Existing
    * poster/title-card behaviour continues to use Jellyfin's regular endpoint.
    */
   async setOverlayImage(
@@ -588,22 +589,20 @@ export class JellyfinAdapterService implements IMediaServerService {
       itemId,
       userId: await this.getUserId(),
     });
-    const backdropCount = item.data?.BackdropImageTags?.length ?? 0;
-    for (let imageIndex = backdropCount - 1; imageIndex >= 0; imageIndex--) {
-      await getImageApi(this.api).deleteItemImageByIndex({
-        itemId,
-        imageType: ImageType.Backdrop,
-        imageIndex,
-      });
+    const imageApi = getImageApi(this.api);
+    const imageTypes = [
+      { type: ImageType.Backdrop, count: item.data?.BackdropImageTags?.length ?? 0 },
+      { type: ImageType.Thumb, count: item.data?.ImageTags?.Thumb ? 1 : 0 },
+    ];
+    for (const { type, count } of imageTypes) {
+      for (let imageIndex = count - 1; imageIndex >= 0; imageIndex--) {
+        await imageApi.deleteItemImageByIndex({ itemId, imageType: type, imageIndex });
+      }
+      await imageApi.setItemImage(
+        { itemId, imageType: type, body: buffer.toString('base64') as unknown as File },
+        { headers: { 'Content-Type': contentType } },
+      );
     }
-    await getImageApi(this.api).setItemImage(
-      {
-        itemId,
-        imageType: ImageType.Backdrop,
-        body: buffer.toString('base64') as unknown as File,
-      },
-      { headers: { 'Content-Type': contentType } },
-    );
   }
 
   async setCollectionImage(
