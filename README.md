@@ -340,6 +340,8 @@ It also saves you real money: every terabyte Maintainerr clears is a terabyte of
 
 [![Donate](https://img.shields.io/badge/Donate-Open_Collective-78350f?style=for-the-badge&logo=opencollective&logoColor=white)](https://opencollective.com/maintainerr)
 
+Thank you to everyone who keeps Maintainerr online. [Become a backer](https://opencollective.com/maintainerr)
+
 [![Backers](https://opencollective.com/maintainerr/backers.svg?width=890&button=false)](https://opencollective.com/maintainerr)
 
 # Credits
