@@ -13,7 +13,7 @@ import { Collection } from '../../collections/entities/collection.entities';
 @Entity('overlay_item_state')
 @Index(
   'IDX_overlay_item_state_collection_media',
-  ['collectionId', 'mediaServerId'],
+  ['collectionId', 'mediaServerId', 'overlayMode'],
   {
     unique: true,
   },
@@ -27,6 +27,9 @@ export class OverlayItemStateEntity {
 
   @Column({ type: 'varchar' })
   mediaServerId: string;
+
+  @Column({ type: 'varchar', default: 'poster' })
+  overlayMode: string;
 
   @Column({ type: 'varchar', nullable: true })
   originalPosterPath: string | null;

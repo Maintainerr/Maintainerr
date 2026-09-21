@@ -447,14 +447,14 @@ export class OverlayProcessorService {
     mediaServerId: string,
     provider: IOverlayProvider,
   ): Promise<RevertItemResult> {
+    const backdropBuf = this.loadOriginalBackdrop(mediaServerId);
+    const mode: OverlayTemplateMode = backdropBuf ? 'backdrop' : 'poster';
     // Null for a saved poster no state row claims - there is nothing to clear.
     const clearState = () =>
       collectionId == null
         ? Promise.resolve()
-        : this.stateService.removeState(collectionId, mediaServerId);
+        : this.stateService.removeState(collectionId, mediaServerId, mode);
 
-    const backdropBuf = this.loadOriginalBackdrop(mediaServerId);
-    const mode: OverlayTemplateMode = backdropBuf ? 'backdrop' : 'poster';
     const originalBuf = backdropBuf ?? this.loadOriginalPoster(mediaServerId);
 
     if (!originalBuf) {
@@ -733,6 +733,7 @@ export class OverlayProcessorService {
       const existingState = await this.stateService.getItemState(
         collection.id,
         itemId,
+        target.template.mode,
       );
 
       // Forced runs bypass the stale-state skip so template changes can be reapplied.
@@ -1122,6 +1123,7 @@ export class OverlayProcessorService {
           ? this.getOriginalBackdropPath(itemId)
           : this.getOriginalPosterPath(itemId),
         daysLeft,
+        mode,
       );
       return true;
     } catch (error) {

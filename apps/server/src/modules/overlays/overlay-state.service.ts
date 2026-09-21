@@ -17,8 +17,9 @@ export class OverlayStateService {
   async getItemState(
     collectionId: number,
     mediaServerId: string,
+    overlayMode = 'poster',
   ): Promise<OverlayItemStateEntity | null> {
-    return this.repo.findOne({ where: { collectionId, mediaServerId } });
+    return this.repo.findOne({ where: { collectionId, mediaServerId, overlayMode } });
   }
 
   async markProcessed(
@@ -26,8 +27,9 @@ export class OverlayStateService {
     mediaServerId: string,
     originalPosterPath: string | null,
     daysLeftShown: number | null,
+    overlayMode = 'poster',
   ): Promise<OverlayItemStateEntity> {
-    let entity = await this.getItemState(collectionId, mediaServerId);
+    let entity = await this.getItemState(collectionId, mediaServerId, overlayMode);
 
     if (entity) {
       entity.originalPosterPath =
@@ -38,6 +40,7 @@ export class OverlayStateService {
       entity = this.repo.create({
         collectionId,
         mediaServerId,
+        overlayMode,
         originalPosterPath,
         daysLeftShown,
         processedAt: new Date(),
@@ -50,8 +53,9 @@ export class OverlayStateService {
   async removeState(
     collectionId: number,
     mediaServerId: string,
+    overlayMode?: string,
   ): Promise<void> {
-    await this.repo.delete({ collectionId, mediaServerId });
+    await this.repo.delete({ collectionId, mediaServerId, ...(overlayMode ? { overlayMode } : {}) });
   }
 
   async getCollectionStates(
