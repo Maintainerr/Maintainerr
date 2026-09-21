@@ -3215,7 +3215,7 @@ __metadata:
     react: "npm:^19.3.0"
     react-dom: "npm:^19.3.0"
     react-hook-form: "npm:^7.88.0"
-    react-konva: "npm:^19.2.7"
+    react-konva: "npm:^19.3.0"
     react-markdown: "npm:10.1.0"
     react-movable: "npm:^3.4.1"
     react-router-dom: "npm:^7.18.3"
@@ -15613,19 +15613,19 @@ __metadata:
   languageName: node
   linkType: hard
 
-"react-konva@npm:^19.2.7":
-  version: 19.2.7
-  resolution: "react-konva@npm:19.2.7"
+"react-konva@npm:^19.3.0":
+  version: 19.3.0
+  resolution: "react-konva@npm:19.3.0"
   dependencies:
     "@types/react-reconciler": "npm:^0.33.0"
     its-fine: "npm:^2.0.0"
-    react-reconciler: "npm:0.33.0"
-    scheduler: "npm:0.27.0"
+    react-reconciler: "npm:0.34.0"
+    scheduler: "npm:0.28.0"
   peerDependencies:
     konva: ^8.0.1 || ^7.2.5 || ^9.0.0 || ^10.0.0
-    react: ^19.2.0
-    react-dom: ^19.2.0
-  checksum: 10c0/05a80b09209e1f21a1fe9699b17ea52f9cceb9527768c7c7cbc58af27186e4a7358d3a386a9ba94509f6759fb34eed8e7628892e263f4d6bbfff63071cfd7452
+    react: ^19.3.0
+    react-dom: ^19.3.0
+  checksum: 10c0/e9c72f49f4e9ffaebd0cdbd2fe9db6688af5d9de406a0b5da06f2c3876541f6e300e7c9e99e96d6b5b9a2be81d8b4566a7317d925f96c6bff884fd29e24d27ec
   languageName: node
   linkType: hard
 
@@ -15661,14 +15661,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"react-reconciler@npm:0.33.0":
-  version: 0.33.0
-  resolution: "react-reconciler@npm:0.33.0"
+"react-reconciler@npm:0.34.0":
+  version: 0.34.0
+  resolution: "react-reconciler@npm:0.34.0"
   dependencies:
-    scheduler: "npm:^0.27.0"
+    scheduler: "npm:^0.28.0"
   peerDependencies:
-    react: ^19.2.0
-  checksum: 10c0/3f7b27ea8d0ff4c8bf0e402a285e1af9b7d0e6f4c1a70a28f4384938bc1130bc82a90a31df0b79ef5e380e2e55e2598bd90b4dbf802b1203d735ba0355817d3a
+    react: ^19.3.0
+  checksum: 10c0/9a73a044a1909e63687a8edc3f8b4e7cd236374061dd4c931427fc88c3e6efc3b2fd990376dba4bd955125c5c0563df891fb196ff9906a6bc2c63d0e93e26d36
   languageName: node
   linkType: hard
 
@@ -16140,14 +16140,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"scheduler@npm:0.27.0, scheduler@npm:^0.27.0":
-  version: 0.27.0
-  resolution: "scheduler@npm:0.27.0"
-  checksum: 10c0/4f03048cb05a3c8fddc45813052251eca00688f413a3cee236d984a161da28db28ba71bd11e7a3dd02f7af84ab28d39fb311431d3b3772fed557945beb00c452
-  languageName: node
-  linkType: hard
-
-"scheduler@npm:^0.28.0":
+"scheduler@npm:0.28.0, scheduler@npm:^0.28.0":
   version: 0.28.0
   resolution: "scheduler@npm:0.28.0"
   checksum: 10c0/783c8e5ce89d41273a02ed6dc0e3d24bd60e05c9e8f7e3adfc6c82e7c69935500d90e343f1ee26d592fc7504e8a2532573c6368def3e93bfe812391fa53efaf4

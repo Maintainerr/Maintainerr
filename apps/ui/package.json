@@ -40,7 +40,7 @@
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "react-hook-form": "^7.88.0",
-    "react-konva": "^19.2.7",
+    "react-konva": "^19.3.0",
     "react-markdown": "10.1.0",
     "react-movable": "^3.4.1",
     "react-router-dom": "^7.18.3",
