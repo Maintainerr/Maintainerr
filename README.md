@@ -325,6 +325,7 @@ Maintainerr is community-driven, and we're always looking for more hands. You do
 Start with [CONTRIBUTING.md](CONTRIBUTING.md), then dive into the [issues](https://github.com/Maintainerr/Maintainerr/issues) or our [Discord](https://discord.maintainerr.info). New contributors are genuinely welcome.
 
 ## Translations
+
 [![Translation status](https://hosted.weblate.org/widget/maintainerr/matrix-auto.svg)](https://hosted.weblate.org/engage/maintainerr/)
 
 Maintainerr uses [Weblate](https://hosted.weblate.org/engage/maintainerr/) for translations. Pick your language, edit in the browser, and your work reaches everyone in the next release - no git, no pull request, no build tooling.
@@ -333,19 +334,25 @@ Missing a language? Request it on Weblate and start it yourself.
 
 # Support us
 
-Maintainerr is free and open source. We cover the server costs ourselves and spend countless hours keeping it stable, adding features, and fixing issues. If it saves you time, chipping in keeps it going - and is hugely appreciated.
+Maintainerr is free and open source. We cover the server costs ourselves and spend countless hours keeping it stable, adding features, and fixing issues.
+
+It also saves you real money: every terabyte Maintainerr clears is a terabyte of disk you don't have to buy. NAS drives currently cost around €40 to €50 per TB (a lot more on SSD), so a library trimmed by 1 TB is real money back in your pocket. If Maintainerr has done that for you, consider passing half of it on - it keeps the project going, and is hugely appreciated.
 
 [![Donate](https://img.shields.io/badge/Donate-Open_Collective-78350f?style=for-the-badge&logo=opencollective&logoColor=white)](https://opencollective.com/maintainerr)
 
+[![Backers](https://opencollective.com/maintainerr/backers.svg?width=890&button=false)](https://opencollective.com/maintainerr)
+
 # Credits
 
-Maintainerr is built and maintained by:
+Active maintainers:
 
-- [@jorenn92](https://github.com/jorenn92) - founder & original author
-- [@ydkmlt84](https://github.com/ydkmlt84) - code owner
-- [@benscobie](https://github.com/benscobie) - core developer (2024-2026)
-- [@enoch85](https://github.com/enoch85) - code owner & current maintainer
-- [@SmolSoftBoi](https://github.com/SmolSoftBoi) - core contributor
+- [@enoch85](https://github.com/enoch85) - code owner & maintainer [ 2025 --> present ]
+
+Built by:
+
+- [@jorenn92](https://github.com/jorenn92) - founder & original author [ 2021 --> 2025 ]
+- [@ydkmlt84](https://github.com/ydkmlt84) - code owner [ 2023 --> present ]
+- [@benscobie](https://github.com/benscobie) - core developer [ 2024 --> 2026 ]
 
 The overlay system was built by [@gssariev](https://github.com/gssariev), with [@MrLinford](https://github.com/MrLinford), [@SmolSoftBoi](https://github.com/SmolSoftBoi) and [@Simon-Eklundh](https://github.com/Simon-Eklundh).
 
