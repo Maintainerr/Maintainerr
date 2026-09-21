@@ -565,8 +565,8 @@ export class JellyfinAdapterService implements IMediaServerService {
   /**
    * Upload artwork used by Maintainerr overlays. Jellyfin's indexed upload
    * endpoint appends on some server versions, so backdrop uploads first clear
-   * every existing backdrop and thumb (landscape) image and then create one
-   * of each. Existing
+   * every existing backdrop, thumb, and banner (landscape) image and then
+   * create one of each. Existing
    * poster/title-card behaviour continues to use Jellyfin's regular endpoint.
    */
   async setOverlayImage(
@@ -593,6 +593,7 @@ export class JellyfinAdapterService implements IMediaServerService {
     const imageTypes = [
       { type: ImageType.Backdrop, count: item.data?.BackdropImageTags?.length ?? 0 },
       { type: ImageType.Thumb, count: item.data?.ImageTags?.Thumb ? 1 : 0 },
+      { type: ImageType.Banner, count: item.data?.ImageTags?.Banner ? 1 : 0 },
     ];
     for (const { type, count } of imageTypes) {
       for (let imageIndex = count - 1; imageIndex >= 0; imageIndex--) {
