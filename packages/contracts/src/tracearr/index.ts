@@ -1,4 +1,5 @@
 export * from './tracearr.constants'
 export * from './history'
+export * from './media'
 export * from './servers'
 export * from './users'

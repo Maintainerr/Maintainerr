@@ -1,16 +1,22 @@
 import {
   BasicResponseDto,
   MediaItem,
+  MediaWatchStats,
   MINIMUM_TRACEARR_VERSION,
+  stripTrailingSlashes,
   TracearrServer,
   TracearrHistoryItem,
+  TracearrItemHistoryRow,
+  tracearrItemHistoryPageSchema,
   tracearrHistoryPageSchema,
   tracearrLibrariesPageSchema,
+  tracearrMediaSchema,
   tracearrRecentlyAddedPageSchema,
   tracearrServerSchema,
   tracearrUsersPageSchema,
 } from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
+import { isAxiosError } from 'axios';
 import { SettingsDataService } from '../../settings/settings-data.service';
 import { resolveDescendants } from '../media-server/context-action.util';
 import { MediaServerFactory } from '../media-server/media-server.factory';
@@ -28,6 +34,7 @@ import {
   TRACEARR_CACHE_ID,
   TRACEARR_HISTORY_CACHE_KEY,
   TRACEARR_HISTORY_MAX_RECORDS,
+  TRACEARR_ITEM_HISTORY_MAX_PAGES,
   TRACEARR_PAGE_SIZE,
   TRACEARR_SERVER_MATCH_THRESHOLD,
   TRACEARR_SERVER_PROBE_MINIMUM,
@@ -67,6 +74,32 @@ const sameSecond = (left: Date | undefined, right: number): boolean =>
   left != null &&
   !Number.isNaN(right) &&
   Math.floor(left.getTime() / 1000) === Math.floor(right / 1000);
+
+/**
+ * The plays of a show that belong to this show, or to this season of it.
+ * Undefined when the item cannot be placed: a season is only told apart by
+ * its show and its number, and one without either must not read as unwatched.
+ */
+export const keepPlaysOfShowOrSeason = <
+  T extends Pick<
+    TracearrHistoryItem,
+    'grandparent_rating_key' | 'season_number'
+  >,
+>(
+  plays: T[],
+  item: MediaItem,
+): T[] | undefined => {
+  const showRatingKey = item.type === 'show' ? item.id : item.parentId;
+  if (!showRatingKey || (item.type === 'season' && item.index === undefined)) {
+    return undefined;
+  }
+
+  return plays.filter(
+    (play) =>
+      play.grandparent_rating_key === showRatingKey &&
+      (item.type === 'show' || play.season_number === item.index),
+  );
+};
 
 export interface TracearrHistoryIndex {
   rowsById: Map<string, TracearrHistoryItem>;
@@ -166,6 +199,155 @@ export class TracearrApiService {
       this.sweepPromise = undefined;
     });
     return this.sweepPromise;
+  }
+
+  /**
+   * Per-user totals for one item, from its own plays on the bound server. Null
+   * when Tracearr has none, undefined when that could not be read.
+   *
+   * Read from /history by rating key rather than from Tracearr's per-title
+   * statistics: those follow its own media identity, which can merge two items
+   * of one server and credit an unwatched one with the other's plays.
+   */
+  public async getItemStats(
+    itemId: string,
+  ): Promise<MediaWatchStats | null | undefined> {
+    try {
+      const serverId = await this.resolveActiveServerId();
+      const mediaServer = await this.mediaServerFactory.getService();
+      const item = await mediaServer.getMetadata(itemId);
+      if (!serverId || !item) {
+        return undefined;
+      }
+
+      const history = await this.fetchItemHistory(item, serverId);
+      if (!history) {
+        return undefined;
+      }
+      const { mediaId, rows } = history;
+      if (rows.length === 0) {
+        return null;
+      }
+
+      const users = new Map<string, MediaWatchStats['users'][number]>();
+      for (const row of rows) {
+        const user = users.get(row.user.id) ?? {
+          name: row.user.username ?? 'Unknown',
+          plays: 0,
+          watchTime: 0,
+          lastWatched: null,
+        };
+        const playedAt = row.stopped_at ?? row.started_at;
+        user.plays += 1;
+        user.watchTime += Math.round((row.duration_ms ?? 0) / 1000);
+        if (!user.lastWatched || playedAt > user.lastWatched) {
+          user.lastWatched = playedAt;
+        }
+        users.set(row.user.id, user);
+      }
+
+      const stats = [...users.values()].sort(
+        (left, right) => right.plays - left.plays,
+      );
+      return {
+        url: mediaId
+          ? `${stripTrailingSlashes(this.settings.tracearr_url)}/media/${mediaId}`
+          : undefined,
+        plays: rows.length,
+        watchTime: stats.reduce((total, user) => total + user.watchTime, 0),
+        lastWatched:
+          stats
+            .map((user) => user.lastWatched)
+            .sort()
+            .at(-1) ?? null,
+        users: stats,
+      };
+    } catch (error) {
+      this.logger.log("Couldn't fetch Tracearr item stats");
+      this.logger.debug(error);
+      return undefined;
+    }
+  }
+
+  /**
+   * History filters on a play's own rating key, which answers a movie or an
+   * episode directly. A show has to be found by provider id first, so one
+   * Tracearr cannot place that way reads as unwatched, and its plays are then
+   * narrowed to the ones this very show, or season, carries.
+   */
+  private async fetchItemHistory(
+    item: MediaItem,
+    serverId: string,
+  ): Promise<
+    { mediaId: string | null; rows: TracearrItemHistoryRow[] } | undefined
+  > {
+    const isLeaf = item.type === 'movie' || item.type === 'episode';
+    const showMediaId = isLeaf ? null : await this.resolveShowMediaId(item);
+    if (!isLeaf && !showMediaId) {
+      return { mediaId: null, rows: [] };
+    }
+    const scope = isLeaf ? { rating_key: item.id } : { media_id: showMediaId };
+
+    const rows: TracearrItemHistoryRow[] = [];
+    let cursor: string | undefined;
+    for (let page = 0; page < TRACEARR_ITEM_HISTORY_MAX_PAGES; page += 1) {
+      const response = await this.api.getRawWithoutCache<unknown>('/history', {
+        params: {
+          ...scope,
+          server_id: serverId,
+          pageSize: TRACEARR_PAGE_SIZE,
+          ...(cursor ? { cursor } : {}),
+        },
+      });
+      const parsed = tracearrItemHistoryPageSchema.parse(response.data);
+      const plays = isLeaf
+        ? parsed.data
+        : keepPlaysOfShowOrSeason(parsed.data, item);
+      if (!plays) {
+        return undefined;
+      }
+      rows.push(...plays);
+
+      cursor = parsed.meta.nextCursor ?? undefined;
+      if (!cursor) {
+        // A movie or an episode is only known by the id its own plays carry.
+        return { mediaId: showMediaId ?? rows[0]?.media_id ?? null, rows };
+      }
+    }
+
+    // A partial total would read as a fact, so past the cap there is none.
+    return undefined;
+  }
+
+  private async resolveShowMediaId(item: MediaItem): Promise<string | null> {
+    const mediaServer = await this.mediaServerFactory.getService();
+    const show =
+      item.type === 'season' && item.parentId
+        ? await mediaServer.getMetadata(item.parentId)
+        : item;
+
+    for (const provider of ['tvdb', 'tmdb', 'imdb'] as const) {
+      for (const id of show?.providerIds[provider] ?? []) {
+        const raw = await this.getOrNull(`/media/show:${provider}:${id}`);
+        if (raw) {
+          return tracearrMediaSchema.parse(raw).id;
+        }
+      }
+    }
+
+    return null;
+  }
+
+  /** Null on a 404, which is how Tracearr answers an item it does not know. */
+  private async getOrNull(path: string): Promise<unknown> {
+    try {
+      return (await this.api.getRawWithoutCache<unknown>(path)).data;
+    } catch (error) {
+      if (isAxiosError(error) && error.response?.status === 404) {
+        return null;
+      }
+      throw error;
+    }
   }
 
   public async getServers(

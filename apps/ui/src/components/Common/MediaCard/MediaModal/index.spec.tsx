@@ -792,6 +792,60 @@ describe('MediaModal', () => {
     expect(getApiHandlerMock).not.toHaveBeenCalledWith('/streamystats/info')
   })
 
+  // Tautulli only knows Plex rating keys, while Tracearr follows whichever
+  // media server is active.
+  it('asks Tautulli for watch statistics on Plex only, and Tracearr wherever it is configured', async () => {
+    const stats = {
+      url: 'http://t/media/1',
+      plays: 1,
+      watchTime: 60,
+      lastWatched: null,
+      users: [],
+    }
+    getApiHandlerMock.mockImplementation((path: string) =>
+      Promise.resolve(
+        path === '/settings'
+          ? { tautulli_url: 'http://tautulli.local', tracearr_url: 'http://t' }
+          : path.includes('/items/')
+            ? stats
+            : {},
+      ),
+    )
+
+    render(
+      <MediaModal onClose={() => {}} id={93} mediaType="movie" title="Movie" />,
+    )
+
+    await waitFor(() =>
+      expect(getApiHandlerMock).toHaveBeenCalledWith('/tracearr/items/93'),
+    )
+    expect(getApiHandlerMock).not.toHaveBeenCalledWith('/tautulli/items/93')
+    // The badge opens the item's own page, which it learns from the panel's
+    // query rather than a request of its own.
+    await waitFor(() =>
+      expect(
+        screen.getByAltText('Tracearr').closest('a')?.getAttribute('href'),
+      ).toBe(stats.url),
+    )
+    expect(
+      getApiHandlerMock.mock.calls.filter(
+        ([path]) => path === '/tracearr/items/93',
+      ),
+    ).toHaveLength(1)
+
+    useMediaServerTypeMock.mockReturnValue({
+      ...useMediaServerTypeMock(),
+      isPlex: true,
+    })
+    render(
+      <MediaModal onClose={() => {}} id={93} mediaType="movie" title="Movie" />,
+    )
+
+    await waitFor(() =>
+      expect(getApiHandlerMock).toHaveBeenCalledWith('/tautulli/items/93'),
+    )
+  })
+
   it('names the season and falls back to the provider description when the media server has none', async () => {
     getApiHandlerMock.mockImplementation((path: string) => {
       if (path === '/media-server') {

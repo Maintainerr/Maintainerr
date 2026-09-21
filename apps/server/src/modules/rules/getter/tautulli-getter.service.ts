@@ -9,7 +9,7 @@ import { Repository } from 'typeorm';
 import { PlexApiService } from '../../api/plex-api/plex-api.service';
 import {
   TautulliApiService,
-  TautulliHistoryRequestOptions,
+  tautulliHistoryScope,
   TautulliMetadata,
 } from '../../api/tautulli-api/tautulli-api.service';
 import { Collection } from '../../collections/entities/collection.entities';
@@ -317,15 +317,8 @@ export class TautulliGetterService {
   }
 
   private async getHistoryForMetadata(metadata: TautulliMetadata) {
-    const options: TautulliHistoryRequestOptions = {};
-
-    if (metadata.media_type == 'movie' || metadata.media_type == 'episode') {
-      options.rating_key = metadata.rating_key;
-    } else if (metadata.media_type == 'season') {
-      options.parent_rating_key = metadata.rating_key;
-    } else if (metadata.media_type == 'show') {
-      options.grandparent_rating_key = metadata.rating_key;
-    } else {
+    const options = tautulliHistoryScope(metadata);
+    if (!options) {
       return [];
     }
 

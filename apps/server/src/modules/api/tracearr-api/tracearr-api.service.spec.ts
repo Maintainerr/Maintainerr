@@ -15,6 +15,7 @@ const apiMock = {
 };
 
 jest.mock('./helpers/tracearr-api.helper', () => ({
+  ...jest.requireActual('./helpers/tracearr-api.helper'),
   TracearrApi: jest.fn().mockImplementation(() => apiMock),
 }));
 
@@ -996,5 +997,89 @@ describe('TracearrApiService', () => {
         apiKey: 'trr_pub_token',
       }),
     ).resolves.toEqual({ status: 'OK', code: 1, message: '2.0.0' });
+  });
+  describe('getItemStats', () => {
+    const MEDIA_ID = '55555555-5555-4555-8555-555555555555';
+    const SHOW_MEDIA_ID = '66666666-6666-4666-8666-666666666666';
+    const play = (overrides: Record<string, unknown> = {}) => ({
+      media_id: MEDIA_ID,
+      grandparent_rating_key: null,
+      season_number: null,
+      duration_ms: 600_000,
+      started_at: '2026-01-01T00:00:00.000Z',
+      stopped_at: '2026-01-01T00:10:00.000Z',
+      user: { id: USER_ID, username: 'alice' },
+      ...overrides,
+    });
+    const useItem = (item: Record<string, unknown>) =>
+      mediaServerFactory.getService.mockResolvedValue({
+        getMetadata: jest.fn(async () => item),
+      } as never);
+    const answerHistory = (rows: unknown[]) =>
+      apiMock.getRawWithoutCache.mockImplementation(async (path: string) =>
+        path === '/history'
+          ? { data: { data: rows, meta: { nextCursor: null } } }
+          : { data: { id: SHOW_MEDIA_ID } },
+      );
+
+    it('totals a movie from the plays carrying its rating key', async () => {
+      useItem({ id: 'movie-1', type: 'movie' });
+      answerHistory([
+        play(),
+        play({ stopped_at: null, started_at: '2026-02-01T00:00:00.000Z' }),
+      ]);
+
+      await expect(service.getItemStats('movie-1')).resolves.toEqual({
+        url: `http://tracearr.local/media/${MEDIA_ID}`,
+        plays: 2,
+        watchTime: 1200,
+        lastWatched: '2026-02-01T00:00:00.000Z',
+        users: [
+          {
+            name: 'alice',
+            plays: 2,
+            watchTime: 1200,
+            lastWatched: '2026-02-01T00:00:00.000Z',
+          },
+        ],
+      });
+      expect(apiMock.getRawWithoutCache).toHaveBeenCalledWith('/history', {
+        params: { rating_key: 'movie-1', server_id: SERVER_ID, pageSize: 100 },
+      });
+    });
+
+    // Tracearr can file two items of one server under one title, so a season
+    // only counts the plays that name its own show and number.
+    it('keeps a season to the plays of its own show and number', async () => {
+      useItem({
+        id: 'season-2',
+        type: 'season',
+        parentId: 'show-1',
+        index: 2,
+        providerIds: { tvdb: ['1234'] },
+      });
+      answerHistory([
+        play({ grandparent_rating_key: 'show-1', season_number: 2 }),
+        play({ grandparent_rating_key: 'show-1', season_number: 1 }),
+        play({ grandparent_rating_key: 'other-show', season_number: 2 }),
+      ]);
+
+      await expect(service.getItemStats('season-2')).resolves.toMatchObject({
+        url: `http://tracearr.local/media/${SHOW_MEDIA_ID}`,
+        plays: 1,
+      });
+      expect(apiMock.getRawWithoutCache).toHaveBeenCalledWith(
+        '/media/show:tvdb:1234',
+      );
+    });
+
+    it('answers null for an item nobody played and undefined when unreadable', async () => {
+      useItem({ id: 'movie-1', type: 'movie' });
+      answerHistory([]);
+      await expect(service.getItemStats('movie-1')).resolves.toBeNull();
+
+      apiMock.getRawWithoutCache.mockRejectedValue(new Error('timeout'));
+      await expect(service.getItemStats('movie-1')).resolves.toBeUndefined();
+    });
   });
 });

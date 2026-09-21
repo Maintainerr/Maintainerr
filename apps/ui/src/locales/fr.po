@@ -840,7 +840,7 @@ msgstr "Règles de la communauté"
 msgid "Community Short Name *"
 msgstr "Nom court de la communauté *"
 
-#: src/components/Common/MediaCard/MediaModal/StreamystatsStatsPanel/index.tsx
+#: src/components/Common/MediaCard/MediaModal/WatchStatsPanel/index.tsx
 msgid "Completion"
 msgstr "Progression"
 
@@ -1679,6 +1679,10 @@ msgstr "Échec du démarrage de la gestion des collections."
 msgid "Failed to initiate rule execution."
 msgstr "Échec de l'initialisation de l'exécution de la règle."
 
+#: src/components/Common/MediaCard/MediaModal/WatchStatsPanel/index.tsx
+msgid "Failed to load {name} data"
+msgstr ""
+
 #: src/components/Settings/Metadata/index.tsx
 msgid "Failed to load {providerTitle} settings"
 msgstr "Échec du chargement des paramètres {providerTitle}"
@@ -1698,10 +1702,6 @@ msgstr "Échec du chargement des modèles de superposition"
 #: src/components/Settings/Plex/index.tsx
 msgid "Failed to load servers - press refresh to retry"
 msgstr "Échec du chargement des serveurs - appuyez sur actualiser pour réessayer"
-
-#: src/components/Common/MediaCard/MediaModal/StreamystatsStatsPanel/index.tsx
-msgid "Failed to load Streamystats data"
-msgstr "Échec du chargement des données Streamystats"
 
 #: src/components/Collection/CollectionDetail/PostponeButton/index.tsx
 msgid "Failed to postpone the deletion for this item."
@@ -2137,7 +2137,7 @@ msgstr "Plus grandes collections"
 msgid "Last duration"
 msgstr "Dernière durée"
 
-#: src/components/Common/MediaCard/MediaModal/StreamystatsStatsPanel/index.tsx
+#: src/components/Common/MediaCard/MediaModal/WatchStatsPanel/index.tsx
 msgid "Last watched"
 msgstr "Dernier visionnage"
 
@@ -2668,7 +2668,7 @@ msgstr "Aucun résumé disponible."
 msgid "No users reported by the media server"
 msgstr "Aucun utilisateur signalé par le serveur multimédia"
 
-#: src/components/Common/MediaCard/MediaModal/StreamystatsStatsPanel/index.tsx
+#: src/components/Common/MediaCard/MediaModal/WatchStatsPanel/index.tsx
 msgid "No watch history recorded yet."
 msgstr "Aucun historique de visionnage enregistré pour le moment."
 
@@ -2795,6 +2795,7 @@ msgid "Open Job Settings"
 msgstr "Ouvrir les paramètres des tâches"
 
 #: src/components/Common/MediaCard/MediaModal/index.tsx
+#: src/components/Common/MediaCard/MediaModal/WatchStatsPanel/index.tsx
 msgid "Open on {provider}"
 msgstr "Ouvrir sur {provider}"
 
@@ -2884,7 +2885,7 @@ msgstr "Marge intérieure"
 msgid "Password"
 msgstr "Mot de passe"
 
-#: src/components/Common/MediaCard/MediaModal/StreamystatsStatsPanel/index.tsx
+#: src/components/Common/MediaCard/MediaModal/WatchStatsPanel/index.tsx
 msgid "Plays"
 msgstr "Lectures"
 
@@ -4507,7 +4508,7 @@ msgstr "Utilisé"
 msgid "Useful Links"
 msgstr "Liens utiles"
 
-#: src/components/Common/MediaCard/MediaModal/StreamystatsStatsPanel/index.tsx
+#: src/components/Common/MediaCard/MediaModal/WatchStatsPanel/index.tsx
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "User"
 msgstr "Utilisateur"
@@ -4554,10 +4555,6 @@ msgstr "Voir les métadonnées"
 msgid "View on GitHub"
 msgstr "Voir sur GitHub"
 
-#: src/components/Common/MediaCard/MediaModal/StreamystatsStatsPanel/index.tsx
-msgid "View on Streamystats"
-msgstr "Voir sur Streamystats"
-
 #: src/components/Settings/Plex/index.tsx
 msgid "Wait for Plex authentication to finish before saving."
 msgstr "Attendez que l'authentification Plex se termine avant d'enregistrer."
@@ -4574,7 +4571,7 @@ msgstr "Avertissement"
 msgid "Warning"
 msgstr "Avertissement"
 
-#: src/components/Common/MediaCard/MediaModal/StreamystatsStatsPanel/index.tsx
+#: src/components/Common/MediaCard/MediaModal/WatchStatsPanel/index.tsx
 msgid "Watch time"
 msgstr "Temps de visionnage"
 
