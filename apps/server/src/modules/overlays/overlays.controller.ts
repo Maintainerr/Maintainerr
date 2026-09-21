@@ -171,13 +171,14 @@ export class OverlaysController {
   @Get('poster')
   async getPoster(
     @Query('itemId') itemId: string,
+    @Query('mode') mode: 'poster' | 'titlecard' | 'backdrop' = 'poster',
     @Res({ passthrough: true }) res: Response,
   ): Promise<StreamableFile> {
     if (!itemId) {
       throw new HttpException('itemId is required', HttpStatus.BAD_REQUEST);
     }
     const provider = await this.requireProvider();
-    const buf = await provider.downloadImage(itemId);
+    const buf = await provider.downloadImage(itemId, mode);
     if (!buf) {
       throw new HttpException('Poster not found', HttpStatus.NOT_FOUND);
     }

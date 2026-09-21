@@ -41,4 +41,5 @@ export interface ICollection {
   mediaServerSort?: MediaServerCollectionSort | null;
   overlayEnabled?: boolean;
   overlayTemplateId?: number | null;
+  overlayMode?: 'poster' | 'titlecard' | 'backdrop' | null;
 }

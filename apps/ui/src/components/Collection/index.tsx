@@ -15,6 +15,7 @@ export interface ICollection {
   visibleOnHome?: boolean
   overlayEnabled?: boolean
   overlayTemplateId?: number | null
+  overlayMode?: 'poster' | 'titlecard' | 'backdrop' | null
   deleteAfterDays?: number
   listExclusions?: boolean
   cleanupLeftoverFolders?: boolean

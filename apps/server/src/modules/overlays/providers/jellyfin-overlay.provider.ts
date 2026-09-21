@@ -5,6 +5,7 @@ import {
 import {
   OverlayLibrarySection,
   OverlayPreviewItem,
+  OverlayTemplateMode,
 } from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
 import { JellyfinAdapterService } from '../../api/media-server/jellyfin/jellyfin-adapter.service';
@@ -58,15 +59,23 @@ export class JellyfinOverlayProvider implements IOverlayProvider {
     return { itemId: ep.Id, title };
   }
 
-  async downloadImage(itemId: string): Promise<Buffer | null> {
-    return this.jf.getItemImageBuffer(itemId, ImageType.Primary);
+  async downloadImage(itemId: string, mode: OverlayTemplateMode = 'poster'): Promise<Buffer | null> {
+    return this.jf.getItemImageBuffer(
+      itemId,
+      mode === 'backdrop' ? ImageType.Backdrop : ImageType.Primary,
+    );
   }
 
   async uploadImage(
     itemId: string,
     buffer: Buffer,
     contentType: string,
+    mode: OverlayTemplateMode = 'poster',
   ): Promise<void> {
-    await this.jf.setItemImage(itemId, ImageType.Primary, buffer, contentType);
+    if (mode === 'poster' || mode === 'titlecard') {
+      await this.jf.setItemImage(itemId, ImageType.Primary, buffer, contentType);
+    } else {
+      await this.jf.setOverlayImage(itemId, mode, buffer, contentType);
+    }
   }
 }

@@ -8,7 +8,11 @@ import type {
   OverlayTemplateMode,
   OverlayTemplateUpdate,
 } from '@maintainerr/contracts'
-import { POSTER_CANVAS, TITLECARD_CANVAS } from '@maintainerr/contracts'
+import {
+  BACKDROP_CANVAS,
+  POSTER_CANVAS,
+  TITLECARD_CANVAS,
+} from '@maintainerr/contracts'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import {
@@ -47,7 +51,7 @@ import { useUndoRedo } from '../hooks/useUndoRedo'
 import { getApiErrorMessage } from '../utils/ApiError'
 
 const defaults = (mode: OverlayTemplateMode) =>
-  mode === 'poster' ? POSTER_CANVAS : TITLECARD_CANVAS
+  mode === 'poster' ? POSTER_CANVAS : mode === 'backdrop' ? BACKDROP_CANVAS : TITLECARD_CANVAS
 
 // Labels for the mobile panel switcher. The tab ids double as state values and
 // React keys, so only the label is translated - and a literal descriptor map is
@@ -268,7 +272,7 @@ const OverlayTemplateEditor = ({ routeId }: { routeId: string }) => {
     const fetcher = mode === 'titlecard' ? getRandomEpisode : getRandomItem
     const item = await fetcher(selectedSection)
     if (item) {
-      setBackgroundUrl(buildItemImageUrl(item.itemId))
+      setBackgroundUrl(buildItemImageUrl(item.itemId, mode))
     }
   }, [mode, selectedSection])
 
@@ -287,7 +291,7 @@ const OverlayTemplateEditor = ({ routeId }: { routeId: string }) => {
     let cancelled = false
     void fetcher(selectedSection).then((item) => {
       if (cancelled || !item) return
-      setBackgroundUrl(buildItemImageUrl(item.itemId))
+      setBackgroundUrl(buildItemImageUrl(item.itemId, mode))
     })
     return () => {
       cancelled = true
@@ -501,6 +505,7 @@ const OverlayTemplateEditor = ({ routeId }: { routeId: string }) => {
                 >
                   <option value="poster">{t`Poster`}</option>
                   <option value="titlecard">{t`Title Card`}</option>
+                  <option value="backdrop">{t`Backdrop`}</option>
                 </Select>
               </div>
               <div className="flex w-56 items-center gap-2">

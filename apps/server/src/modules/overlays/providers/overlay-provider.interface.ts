@@ -2,6 +2,7 @@ import {
   OverlayLibrarySection,
   OverlayPreviewItem,
 } from '@maintainerr/contracts';
+import type { OverlayTemplateMode } from '@maintainerr/contracts';
 
 /**
  * Server-agnostic contract for overlay-specific media-server interactions.
@@ -46,7 +47,7 @@ export interface IOverlayProvider {
    * episodes - so providers don't need a kind hint. Returns null when no
    * artwork exists for the item.
    */
-  downloadImage(itemId: string): Promise<Buffer | null>;
+  downloadImage(itemId: string, mode?: OverlayTemplateMode): Promise<Buffer | null>;
 
   /**
    * Replace the item's artwork. Upload semantics are a provider detail
@@ -57,5 +58,6 @@ export interface IOverlayProvider {
     itemId: string,
     buffer: Buffer,
     contentType: string,
+    mode?: OverlayTemplateMode,
   ): Promise<void>;
 }

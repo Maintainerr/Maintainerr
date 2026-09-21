@@ -41,6 +41,7 @@ import {
   type UpdateCollectionParams,
   type WatchRecord,
 } from '@maintainerr/contracts';
+import type { OverlayTemplateMode } from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
 // isAxiosError duck-types on the error's own flag, so it also matches errors
 // thrown by @jellyfin/sdk. The SDK is ESM-only and pulls axios's ESM build,
@@ -558,6 +559,50 @@ export class JellyfinAdapterService implements IMediaServerService {
       {
         headers: { 'Content-Type': contentType },
       },
+    );
+  }
+
+  /**
+   * Upload artwork used by Maintainerr overlays. Jellyfin's indexed upload
+   * endpoint appends on some server versions, so backdrop uploads first clear
+   * every existing backdrop and then create exactly one. Existing
+   * poster/title-card behaviour continues to use Jellyfin's regular endpoint.
+   */
+  async setOverlayImage(
+    itemId: string,
+    mode: OverlayTemplateMode,
+    buffer: Buffer,
+    contentType: string,
+  ): Promise<void> {
+    if (mode !== 'backdrop') {
+      await this.setItemImage(
+        itemId,
+        ImageType.Primary,
+        buffer,
+        contentType,
+      );
+      return;
+    }
+    if (!this.api) throw new Error('Jellyfin API not initialized');
+    const item = await getLibraryApi(this.api).getItem({
+      itemId,
+      userId: await this.getUserId(),
+    });
+    const backdropCount = item.data?.BackdropImageTags?.length ?? 0;
+    for (let imageIndex = backdropCount - 1; imageIndex >= 0; imageIndex--) {
+      await getImageApi(this.api).deleteItemImageByIndex({
+        itemId,
+        imageType: ImageType.Backdrop,
+        imageIndex,
+      });
+    }
+    await getImageApi(this.api).setItemImage(
+      {
+        itemId,
+        imageType: ImageType.Backdrop,
+        body: buffer.toString('base64') as unknown as File,
+      },
+      { headers: { 'Content-Type': contentType } },
     );
   }
 

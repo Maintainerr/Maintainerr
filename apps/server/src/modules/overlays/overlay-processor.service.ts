@@ -131,7 +131,7 @@ export class OverlayProcessorService {
   private getMemberTargets(
     collection: Collection & { collectionMedia: CollectionMedia[] },
   ): OverlayTarget[] {
-    const mode = overlayModeForType(collection.type);
+    const mode = collection.overlayMode ?? overlayModeForType(collection.type);
     const targets: OverlayTarget[] = [];
     for (const media of collection.collectionMedia) {
       const deleteDate = getCollectionDeleteDate(
@@ -353,6 +353,10 @@ export class OverlayProcessorService {
     return path.join(this.getOriginalsDir(), `${mediaServerId}.jpg`);
   }
 
+  private getOriginalBackdropPath(mediaServerId: string): string {
+    return path.join(this.getOriginalsDir(), `${mediaServerId}.backdrop.jpg`);
+  }
+
   private async saveOriginalPoster(
     mediaServerId: string,
     buffer: Buffer,
@@ -371,6 +375,23 @@ export class OverlayProcessorService {
 
   private deleteOriginalPoster(mediaServerId: string): void {
     const p = this.getOriginalPosterPath(mediaServerId);
+    if (fs.existsSync(p)) fs.unlinkSync(p);
+  }
+
+  private loadOriginalBackdrop(mediaServerId: string): Buffer | null {
+    const p = this.getOriginalBackdropPath(mediaServerId);
+    return fs.existsSync(p) ? fs.readFileSync(p) : null;
+  }
+
+  private saveOriginalBackdrop(mediaServerId: string, buffer: Buffer): string {
+    const p = this.getOriginalBackdropPath(mediaServerId);
+    fs.mkdirSync(path.dirname(p), { recursive: true });
+    fs.writeFileSync(p, buffer);
+    return p;
+  }
+
+  private deleteOriginalBackdrop(mediaServerId: string): void {
+    const p = this.getOriginalBackdropPath(mediaServerId);
     if (fs.existsSync(p)) fs.unlinkSync(p);
   }
 
@@ -432,11 +453,13 @@ export class OverlayProcessorService {
         ? Promise.resolve()
         : this.stateService.removeState(collectionId, mediaServerId);
 
-    const originalBuf = this.loadOriginalPoster(mediaServerId);
+    const backdropBuf = this.loadOriginalBackdrop(mediaServerId);
+    const mode: OverlayTemplateMode = backdropBuf ? 'backdrop' : 'poster';
+    const originalBuf = backdropBuf ?? this.loadOriginalPoster(mediaServerId);
 
     if (!originalBuf) {
       this.logger.warn(
-        `No saved original poster for ${mediaServerId}, cannot restore`,
+        `No saved original artwork for ${mediaServerId}, cannot restore`,
       );
       await clearState();
       return 'no-backup';
@@ -459,23 +482,25 @@ export class OverlayProcessorService {
       this.logger.log(
         `Item ${mediaServerId} no longer exists on the media server, dropping overlay state and backup`,
       );
-      this.deleteOriginalPoster(mediaServerId);
+      if (mode === 'backdrop') this.deleteOriginalBackdrop(mediaServerId);
+      else this.deleteOriginalPoster(mediaServerId);
       await clearState();
       return 'item-gone';
     }
 
     try {
-      await provider.uploadImage(mediaServerId, originalBuf, 'image/jpeg');
+      await provider.uploadImage(mediaServerId, originalBuf, 'image/jpeg', mode);
     } catch (error) {
       this.logger.warn(
-        `Failed to restore original poster for ${mediaServerId}; keeping backup for retry`,
+        `Failed to restore original ${mode} for ${mediaServerId}: ${error instanceof Error ? error.message : String(error)}; keeping backup for retry`,
       );
       this.logger.debug(error);
       return 'failed';
     }
 
     this.logger.log(`Restored original poster for item ${mediaServerId}`);
-    this.deleteOriginalPoster(mediaServerId);
+    if (mode === 'backdrop') this.deleteOriginalBackdrop(mediaServerId);
+    else this.deleteOriginalPoster(mediaServerId);
     await clearState();
     return 'restored';
   }
@@ -641,7 +666,7 @@ export class OverlayProcessorService {
       return result;
     }
 
-    const mode = overlayModeForType(collection.type);
+    const mode = collection.overlayMode ?? overlayModeForType(collection.type);
 
     // Resolve the template: collection override → default for mode → null
     const template = await this.templateService.resolveForCollection(
@@ -1026,12 +1051,16 @@ export class OverlayProcessorService {
     provider: IOverlayProvider,
   ): Promise<boolean> {
     let posterBuf: Buffer;
-    const savedOriginal = this.loadOriginalPoster(itemId);
+    const mode = template.mode;
+    const savedOriginal =
+      mode === 'backdrop'
+        ? this.loadOriginalBackdrop(itemId)
+        : this.loadOriginalPoster(itemId);
     if (savedOriginal) {
       posterBuf = savedOriginal;
     } else {
       try {
-        const downloaded = await provider.downloadImage(itemId);
+        const downloaded = await provider.downloadImage(itemId, mode);
         if (!downloaded) {
           this.logger.warn(
             `No ${template.mode} artwork available for item ${itemId}, skipping`,
@@ -1044,7 +1073,8 @@ export class OverlayProcessorService {
         this.logger.debug(error);
         return false;
       }
-      await this.saveOriginalPoster(itemId, posterBuf);
+      if (mode === 'backdrop') this.saveOriginalBackdrop(itemId, posterBuf);
+      else await this.saveOriginalPoster(itemId, posterBuf);
     }
 
     // Build render context - raw data; per-element formatting is done by the render service
@@ -1071,7 +1101,10 @@ export class OverlayProcessorService {
       // Nothing was uploaded, so a backup this pass just took records no
       // change. Leaving it would have reset restoring - and on Plex selecting
       // - a poster the item still has.
-      if (!savedOriginal) this.deleteOriginalPoster(itemId);
+      if (!savedOriginal) {
+        if (mode === 'backdrop') this.deleteOriginalBackdrop(itemId);
+        else this.deleteOriginalPoster(itemId);
+      }
       return false;
     }
 
@@ -1080,16 +1113,21 @@ export class OverlayProcessorService {
         itemId,
         Buffer.from(result.buffer),
         result.contentType,
+        mode,
       );
       await this.stateService.markProcessed(
         collectionId,
         itemId,
-        this.getOriginalPosterPath(itemId),
+        mode === 'backdrop'
+          ? this.getOriginalBackdropPath(itemId)
+          : this.getOriginalPosterPath(itemId),
         daysLeft,
       );
       return true;
     } catch (error) {
-      this.logger.warn(`Failed to apply template overlay for ${itemId}`);
+      this.logger.warn(
+        `Failed to apply ${mode} template overlay for ${itemId}: ${error instanceof Error ? error.message : String(error)}`,
+      );
       this.logger.debug(error);
       return false;
     }
@@ -1111,7 +1149,7 @@ export class OverlayProcessorService {
       );
     }
 
-    const posterBuf = await provider.downloadImage(itemId);
+    const posterBuf = await provider.downloadImage(itemId, template.mode);
     if (!posterBuf) {
       throw new Error(
         `Could not find ${template.mode} artwork for item ${itemId}`,

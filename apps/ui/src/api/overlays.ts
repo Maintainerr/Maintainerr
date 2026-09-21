@@ -95,8 +95,8 @@ export const getRandomEpisode = (sectionId: string) =>
     `/overlays/random-episode?sectionId=${encodeURIComponent(sectionId)}`,
   )
 
-export const buildItemImageUrl = (itemId: string) =>
-  `${API_BASE_PATH}/api/overlays/poster?itemId=${encodeURIComponent(itemId)}`
+export const buildItemImageUrl = (itemId: string, mode: string = 'poster') =>
+  `${API_BASE_PATH}/api/overlays/poster?itemId=${encodeURIComponent(itemId)}&mode=${encodeURIComponent(mode)}`
 
 export const getOverlayFonts = () =>
   GetApiHandler<{ name: string; path: string }[]>('/overlays/fonts')

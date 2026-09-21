@@ -75,6 +75,7 @@ export interface RuleGroupCollectionPayload {
   visibleOnHome: boolean
   overlayEnabled?: boolean
   overlayTemplateId?: number | null
+  overlayMode?: 'poster' | 'titlecard' | 'backdrop' | null
   deleteAfterDays?: number
   manualCollection?: boolean
   manualCollectionName?: string

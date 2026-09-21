@@ -4,7 +4,7 @@ import { overlayElementSchema, type OverlayElement } from './overlay-element'
 
 // ── Template mode ─────────────────────────────────────────────────────────
 
-export const overlayTemplateModeValues = ['poster', 'titlecard'] as const
+export const overlayTemplateModeValues = ['poster', 'titlecard', 'backdrop'] as const
 export type OverlayTemplateMode = (typeof overlayTemplateModeValues)[number]
 
 /**
@@ -19,6 +19,7 @@ export const overlayModeForType = (type: MediaItemType): OverlayTemplateMode =>
 
 export const POSTER_CANVAS = { width: 1000, height: 1500 } as const
 export const TITLECARD_CANVAS = { width: 1920, height: 1080 } as const
+export const BACKDROP_CANVAS = { width: 1920, height: 1080 } as const
 
 // ── Schema ────────────────────────────────────────────────────────────────
 
@@ -87,6 +88,33 @@ export interface PresetTemplate {
 /** Built-in preset definitions. Seeded on first run. */
 export const PRESET_TEMPLATES: PresetTemplate[] = [
   // 1. Classic Pill - poster, top-left
+  {
+    name: 'Backdrop Banner',
+    description: 'Landscape backdrop banner showing the deletion date',
+    mode: 'backdrop',
+    canvasWidth: BACKDROP_CANVAS.width,
+    canvasHeight: BACKDROP_CANVAS.height,
+    elements: [
+      {
+        id: 'backdrop-banner-bg', type: 'shape', x: 0, y: 0, width: 1920,
+        height: 90, rotation: 0, layerOrder: 0, opacity: 0.88, visible: true,
+        shapeType: 'rectangle', fillColor: '#B20710', strokeColor: null,
+        strokeWidth: 0, cornerRadius: 0,
+      },
+      {
+        id: 'backdrop-banner-text', type: 'variable', x: 0, y: 0,
+        width: 1920, height: 90, rotation: 0, layerOrder: 1, opacity: 1,
+        visible: true, segments: [{ type: 'variable', field: 'daysText' }],
+        fontFamily: 'Inter', fontPath: 'Inter-Bold.ttf', fontSize: 42,
+        fontColor: '#FFFFFF', fontWeight: 'bold', textAlign: 'center',
+        verticalAlign: 'middle', backgroundColor: null, backgroundRadius: 0,
+        backgroundPadding: 0, shadow: true, uppercase: true,
+        dateFormat: 'MMM d', language: 'en-US', enableDaySuffix: false,
+        textToday: 'TODAY', textDay: 'LEAVING IN 1 DAY',
+        textDays: 'LEAVING IN {0} DAYS',
+      },
+    ],
+  },
   {
     name: 'Classic Pill',
     description: 'Rounded pill in the top-left corner showing "Leaving <date>"',

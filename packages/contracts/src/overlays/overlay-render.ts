@@ -5,7 +5,7 @@ import { overlayTextConfigSchema } from './overlay-text-config'
 
 export const overlayPreviewRequestSchema = z.object({
   plexId: z.string().min(1),
-  mode: z.enum(['poster', 'titlecard']).optional().default('poster'),
+  mode: z.enum(['poster', 'titlecard', 'backdrop']).optional().default('poster'),
 })
 
 export const overlayPreviewWithSettingsSchema = z.object({

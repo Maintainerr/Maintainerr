@@ -149,6 +149,9 @@ const OverlayTemplateListPage = () => {
   const titleCardTemplates = templates.filter(
     (template) => template.mode === 'titlecard',
   )
+  const backdropTemplates = templates.filter(
+    (template) => template.mode === 'backdrop',
+  )
 
   return (
     <>
@@ -213,6 +216,17 @@ const OverlayTemplateListPage = () => {
               title={t`Title Card Templates`}
               description={t`Drawn on episodes.`}
               templates={titleCardTemplates}
+              onEdit={handleEdit}
+              onDuplicate={handleDuplicate}
+              onDelete={handleDelete}
+              onSetDefault={handleSetDefault}
+              onExport={handleExport}
+            />
+
+            <TemplateSection
+              title={t`Backdrop Templates`}
+              description={t`Drawn on landscape backdrop artwork.`}
+              templates={backdropTemplates}
               onEdit={handleEdit}
               onDuplicate={handleDuplicate}
               onDelete={handleDelete}

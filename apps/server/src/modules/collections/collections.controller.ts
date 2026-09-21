@@ -181,6 +181,7 @@ const collectionBaseShape = {
   mediaServerSort: collectionMediaSortKeySchema.optional().nullable(),
   overlayEnabled: z.boolean().optional(),
   overlayTemplateId: z.coerce.number().int().optional().nullable(),
+  overlayMode: z.enum(['poster', 'titlecard', 'backdrop']).optional().nullable(),
 };
 
 export const collectionBodySchema = z.object({

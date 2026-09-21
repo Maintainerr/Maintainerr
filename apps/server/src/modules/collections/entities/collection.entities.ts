@@ -15,6 +15,7 @@ import {
 } from 'typeorm';
 import { CollectionLog } from '../../collections/entities/collection_log.entities';
 import { OverlayTemplateEntity } from '../../overlays/entities/overlay-template.entities';
+import type { OverlayTemplateMode } from '@maintainerr/contracts';
 import { RuleGroup } from '../../rules/entities/rule-group.entities';
 import { RadarrSettings } from '../../settings/entities/radarr_settings.entities';
 import { SonarrSettings } from '../../settings/entities/sonarr_settings.entities';
@@ -141,6 +142,9 @@ export class Collection {
 
   @Column({ nullable: true, default: null })
   overlayTemplateId: number | null;
+
+  @Column({ type: 'varchar', nullable: true, default: null })
+  overlayMode?: OverlayTemplateMode | null;
 
   @ManyToOne(() => OverlayTemplateEntity, {
     nullable: true,

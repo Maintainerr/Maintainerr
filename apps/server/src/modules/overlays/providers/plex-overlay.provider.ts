@@ -1,6 +1,7 @@
 import {
   OverlayLibrarySection,
   OverlayPreviewItem,
+  type OverlayTemplateMode,
 } from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
 import { PlexApiService } from '../../api/plex-api/plex-api.service';
@@ -47,7 +48,8 @@ export class PlexOverlayProvider implements IOverlayProvider {
     return r ? { itemId: r.plexId, title: r.title } : null;
   }
 
-  async downloadImage(itemId: string): Promise<Buffer | null> {
+  async downloadImage(itemId: string, mode: OverlayTemplateMode = 'poster'): Promise<Buffer | null> {
+    if (mode === 'backdrop') return null;
     const thumb = await this.plex.getBestPosterUrl(itemId);
     if (!thumb) return null;
     return this.plex.downloadPoster(thumb);
@@ -57,7 +59,11 @@ export class PlexOverlayProvider implements IOverlayProvider {
     itemId: string,
     buffer: Buffer,
     contentType: string,
+    mode: OverlayTemplateMode = 'poster',
   ): Promise<void> {
+    if (mode === 'backdrop') {
+      throw new Error('Plex does not support backdrop overlays');
+    }
     await this.plex.setThumb(itemId, buffer, contentType);
   }
 }
