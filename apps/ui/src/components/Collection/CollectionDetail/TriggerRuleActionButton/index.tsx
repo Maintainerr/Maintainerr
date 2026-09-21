@@ -30,7 +30,9 @@ const getActionSummary = (collection: ICollection) => {
           ? globalT`Delete this movie`
           : globalT`Delete this item`
     case ServarrAction.UNMONITOR_DELETE_ALL:
-      return globalT`Unmonitor the show and delete all existing episodes`
+      return collection.type === 'movie'
+        ? globalT`Unmonitor this movie and delete its files`
+        : globalT`Unmonitor the show and delete all existing episodes`
     case ServarrAction.UNMONITOR_DELETE_EXISTING:
       return collection.type === 'movie'
         ? globalT`Unmonitor this movie and delete its files`
