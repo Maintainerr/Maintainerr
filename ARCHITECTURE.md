@@ -160,10 +160,14 @@ Maintainerr integrates with:
 - qBittorrent and Transmission for optional completed-download cleanup after
   Radarr or Sonarr media deletion.
 - Seerr-compatible services for request cleanup.
-- Tautulli for Plex analytics and rule data.
+- Tautulli for Plex analytics and rule data, and per-item watch statistics on
+  the media modal.
 - Streamystats for Jellyfin item-level analytics surfaced on the media modal.
   Authentication reuses the configured Jellyfin API key. Emby is not supported
   upstream.
+- Tracearr for watch-history rule data on Plex, Jellyfin, and Emby, and
+  per-item watch statistics on the media modal. Everything is read by rating
+  key from the one Tracearr server bound to the managed media server.
 - TMDB and TVDB for metadata resolution, and the Sportarr metadata API for
   Sportarr leagues, which answers ahead of the primary provider for a show
   that carries a Sportarr id. It reads the configured Sportarr connections,

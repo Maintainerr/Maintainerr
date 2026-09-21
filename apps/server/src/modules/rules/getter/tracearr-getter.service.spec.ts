@@ -513,6 +513,10 @@ describe('TracearrGetterService', () => {
         parent_rating_key: null,
         season_number: 2,
       }),
+      historyItem('44444444-4444-4444-8444-444444444444', {
+        parent_rating_key: null,
+        season_number: 1,
+      }),
     ]);
 
     await expect(service.get(AMOUNT_OF_VIEWS, season, ruleGroup)).resolves.toBe(

@@ -1,0 +1,12 @@
+tracearr.svg
+
+Source:   https://github.com/connorgallopo/Tracearr/blob/main/apps/web/public/favicon.svg
+Author:   Tracearr contributors
+License:  GNU Affero General Public License v3.0 (AGPL-3.0)
+URL:      https://www.gnu.org/licenses/agpl-3.0.html
+
+This file is an unmodified copy of the upstream source above.
+
+Note: the Tracearr name and logo belong to the Tracearr project. This icon is
+used to identify the Tracearr integration in the Maintainerr UI; nothing in
+this file implies endorsement by the Tracearr project.

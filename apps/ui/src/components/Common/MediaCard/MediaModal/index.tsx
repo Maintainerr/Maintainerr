@@ -5,11 +5,13 @@ import {
   type MaintainerrMediaStatusDetails,
   type MaintainerrMediaStatusEntry,
   type MediaItemType,
+  type MediaWatchStats,
   type MediaProviderIds,
 } from '@maintainerr/contracts'
 import { Trans, useLingui } from '@lingui/react/macro'
 import React, { memo, useEffect, useMemo, useState } from 'react'
 import { useMetadataOverview } from '../../../../api/metadata'
+import { useWatchStats } from '../../../../api/watchStats'
 import useCloseOnEscape from '../../../../hooks/useCloseOnEscape'
 import { useLockBodyScroll } from '../../../../hooks/useLockBodyScroll'
 import { useMediaServerType } from '../../../../hooks/useMediaServerType'
@@ -24,6 +26,7 @@ import {
 import Button from '../../Button'
 import LoadingSpinner from '../../LoadingSpinner'
 import StreamystatsStatsPanel from './StreamystatsStatsPanel'
+import WatchStatsPanel from './WatchStatsPanel'
 import {
   emptyMaintainerrMediaStatusDetails,
   getMaintainerrStatusDetailsKey,
@@ -171,6 +174,8 @@ const emptyBackdropResult: BackdropResult = {
   providerId: null,
 }
 
+const asWatchStatsView = (stats: MediaWatchStats) => stats
+
 const maintainerrStatusCardStyles = {
   cardClassName: 'bg-zinc-900/70',
   titleClassName: 'text-white',
@@ -215,6 +220,7 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
     const [streamystatsItemUrl, setStreamystatsItemUrl] = useState<
       string | null
     >(null)
+    const [tracearrUrl, setTracearrUrl] = useState<string | null>(null)
     const [metadata, setMetadata] = useState<MediaItem | null>(null)
     const [seerrConfigured, setSeerrConfigured] = useState<boolean>(false)
     // Keyed by the path it was fetched for, like the backdrop below, so a
@@ -332,6 +338,13 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
       mediaServerSummary ||
       providerOverview ||
       (loading || isOverviewPending ? '' : t`No summary available.`)
+    // The same query the Tracearr panel reads, so the badge learns the item's
+    // own page without a second request.
+    const tracearrStatsPath = `/tracearr/items/${id}`
+    const { data: tracearrStats } = useWatchStats<MediaWatchStats>(
+      tracearrStatsPath,
+      !!tracearrUrl,
+    )
     const providerLogo = useMemo(() => {
       if (!isCurrentBackdrop || !backdropResult.provider) return null
       const cfg = metadataProviderLogos[backdropResult.provider]
@@ -418,6 +431,7 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
           if (!active) return
           setTautulliModalUrl(resp?.tautulli_url || null)
           setSeerrConfigured(!!resp?.seerr_url)
+          setTracearrUrl(resp?.tracearr_url || null)
         })
         .catch(() => {})
       // Streamystats is Jellyfin-only (Emby is unsupported upstream), so only
@@ -785,6 +799,23 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
                       </a>
                     </div>
                   )}
+                  {tracearrUrl && (
+                    <div>
+                      <a
+                        href={tracearrStats?.url ?? tracearrUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        <img
+                          src={`${basePath}/icons_logos/tracearr.svg`}
+                          alt="Tracearr"
+                          width={128}
+                          height={32}
+                          className="mt-1 h-8 w-32 rounded-lg bg-black/70 object-contain p-1 shadow-lg"
+                        />
+                      </a>
+                    </div>
+                  )}
                 </div>
                 {/* One row of genres on a phone. Wrapped, they ran past the
                     short backdrop and the overflow sliced them in half. The cap
@@ -831,6 +862,22 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
               <StreamystatsStatsPanel
                 itemId={String(id)}
                 itemUrl={streamystatsItemUrl}
+              />
+            ) : null}
+
+            {isPlex && tautulliModalUrl ? (
+              <WatchStatsPanel
+                name="Tautulli"
+                path={`/tautulli/items/${id}`}
+                toView={asWatchStatsView}
+              />
+            ) : null}
+
+            {tracearrUrl ? (
+              <WatchStatsPanel
+                name="Tracearr"
+                path={tracearrStatsPath}
+                toView={asWatchStatsView}
               />
             ) : null}
 
