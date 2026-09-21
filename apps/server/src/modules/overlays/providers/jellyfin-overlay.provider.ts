@@ -60,9 +60,16 @@ export class JellyfinOverlayProvider implements IOverlayProvider {
   }
 
   async downloadImage(itemId: string, mode: OverlayTemplateMode = 'poster'): Promise<Buffer | null> {
-    return this.jf.getItemImageBuffer(
-      itemId,
-      mode === 'backdrop' ? ImageType.Backdrop : ImageType.Primary,
+    if (mode !== 'backdrop') {
+      return this.jf.getItemImageBuffer(itemId, ImageType.Primary);
+    }
+    // Seasons and some Jellyfin libraries have no Backdrop image. Thumb is
+    // the landscape artwork used by Infuse for those items; Primary is the
+    // final fallback so the configured overlay is still applied.
+    return (
+      (await this.jf.getItemImageBuffer(itemId, ImageType.Backdrop)) ??
+      (await this.jf.getItemImageBuffer(itemId, ImageType.Thumb)) ??
+      (await this.jf.getItemImageBuffer(itemId, ImageType.Primary))
     );
   }
 
