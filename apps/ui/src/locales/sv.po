@@ -367,6 +367,10 @@ msgstr "Åtgärd"
 msgid "Active"
 msgstr "Aktiv"
 
+#: src/components/Rules/ruleGroupSort.ts
+msgid "Active First"
+msgstr ""
+
 #: src/components/Common/MediaActionModal.tsx
 msgid "Add / Remove Media"
 msgstr "Lägg till eller ta bort media"
@@ -2203,6 +2207,14 @@ msgstr "Bibliotek rapporterade av {typeLabel}. Siffrorna motsvarar vad Maintaine
 msgid "Library"
 msgstr "Bibliotek"
 
+#: src/components/Rules/ruleGroupSort.ts
+msgid "Library (A-Z) Ascending"
+msgstr ""
+
+#: src/components/Rules/ruleGroupSort.ts
+msgid "Library (Z-A) Descending"
+msgstr ""
+
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Library *"
 msgstr "Bibliotek *"
@@ -2515,6 +2527,14 @@ msgstr "Text för N dagar"
 msgid "Name"
 msgstr "Namn"
 
+#: src/components/Rules/ruleGroupSort.ts
+msgid "Name (A-Z) Ascending"
+msgstr ""
+
+#: src/components/Rules/ruleGroupSort.ts
+msgid "Name (Z-A) Descending"
+msgstr ""
+
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 #: src/components/Settings/Notifications/CreateNotificationModal/index.tsx
 msgid "Name *"
@@ -2556,6 +2576,10 @@ msgstr "Ny mall"
 #: src/pages/OverlayTemplateEditorPage.tsx
 msgid "New Template - Overlay Editor - Maintainerr"
 msgstr "Ny mall - Overlay-redigeraren - Maintainerr"
+
+#: src/components/Rules/ruleGroupSort.ts
+msgid "Newest First"
+msgstr ""
 
 #: src/components/Calendar/index.tsx
 #: src/components/Common/Pagination/index.tsx
@@ -2785,6 +2809,10 @@ msgstr "OK"
 #: src/components/Rules/RuleGroup/AddModal/ConfigureNotificationModal/index.tsx
 msgid "OK"
 msgstr "OK"
+
+#: src/components/Rules/ruleGroupSort.ts
+msgid "Oldest First"
+msgstr ""
 
 #: src/components/Layout/TelemetryConsentModal.tsx
 msgid "Once a week we log which version and platform people actually run. The payload below is the whole of it. It carries no server identifier, no {TERM_IP}, no hostname, no {TERM_MAC} address and no account id: nothing that can be traced back to you, your network or your machine."
@@ -3698,6 +3726,10 @@ msgstr "Sortera samlingens objekt"
 #: src/components/Overview/index.tsx
 msgid "Sort overview items"
 msgstr "Sortera översiktens objekt"
+
+#: src/pages/RulesListPage.tsx
+msgid "Sort rules"
+msgstr ""
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Sort title"

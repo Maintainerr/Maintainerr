@@ -30,19 +30,18 @@ interface SortOption<TSortParams extends SortParams = MediaLibrarySortParams> {
   sortParams?: TSortParams
 }
 
-interface SortConfig<TSortParams extends SortParams = MediaLibrarySortParams> {
+export interface SortConfig<
+  TSortParams extends SortParams = MediaLibrarySortParams,
+> {
   defaultValue: string
   options: SortOption<TSortParams>[]
 }
 
-const createMediaLibrarySortOption = (
-  value: MediaLibrarySortKey,
+export const createSortOption = <TSort extends string>(
+  value: `${TSort}.${MediaSortOrder}`,
   label: string,
-): SortOption<MediaLibrarySortParams> => {
-  const [sort, sortOrder] = value.split('.') as [
-    MediaLibrarySortParams['sort'],
-    MediaSortOrder,
-  ]
+): SortOption<{ sort: TSort; sortOrder: MediaSortOrder }> => {
+  const [sort, sortOrder] = value.split('.') as [TSort, MediaSortOrder]
 
   return {
     value,
@@ -53,6 +52,12 @@ const createMediaLibrarySortOption = (
     },
   }
 }
+
+const createMediaLibrarySortOption = (
+  value: MediaLibrarySortKey,
+  label: string,
+): SortOption<MediaLibrarySortParams> =>
+  createSortOption<MediaLibrarySortParams['sort']>(value, label)
 
 const getSortOptionByValue = <TSortParams extends SortParams>(
   options: ReadonlyArray<SortOption<TSortParams>>,
