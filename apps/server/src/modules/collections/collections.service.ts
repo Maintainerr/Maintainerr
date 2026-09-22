@@ -1593,9 +1593,9 @@ export class CollectionsService {
         };
       }
 
-      // Explicit sort on a MediaItem-side key (airDate / rating / watchCount /
-      // title) - the sort value isn't on `collection_media`, so we have to
-      // hydrate the whole collection before paginating. Acceptable because
+      // Explicit sort on a MediaItem-side key - the sort value isn't on
+      // `collection_media`, so we have to hydrate the whole collection before
+      // paginating. Acceptable because
       // these sorts are rarely used compared to `deleteSoonest` and the
       // default load.
       const { entities } = await queryBuilder

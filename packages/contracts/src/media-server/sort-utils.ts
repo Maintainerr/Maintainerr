@@ -10,12 +10,19 @@ import type { MediaItem } from './types'
 
 const defaultMediaLibrarySort: MediaLibrarySortKey = 'title.asc'
 
-const toDayBucket = (
+const toMs = (
   value: Date | string | number | null | undefined,
 ): number | undefined => {
   if (value == null) return undefined
   const ms = value instanceof Date ? value.getTime() : new Date(value).getTime()
-  return Number.isNaN(ms) ? undefined : Math.floor(ms / 86400000)
+  return Number.isNaN(ms) ? undefined : ms
+}
+
+const toDayBucket = (
+  value: Date | string | number | null | undefined,
+): number | undefined => {
+  const ms = toMs(value)
+  return ms === undefined ? undefined : Math.floor(ms / 86400000)
 }
 
 export const getAudienceRating = (item: MediaItem): number | undefined => {
@@ -24,6 +31,10 @@ export const getAudienceRating = (item: MediaItem): number | undefined => {
 
 const getAirDateBucket = (item: MediaItem): number | undefined =>
   toDayBucket(item.originallyAvailableAt)
+
+// Full timestamp, not a day bucket: this is when the file landed on the
+// server, and the servers themselves order it to the second or finer.
+const getAddedAtMs = (item: MediaItem): number | undefined => toMs(item.addedAt)
 
 const getWatchCount = (item: MediaItem): number | undefined => item.viewCount
 
@@ -169,6 +180,13 @@ export const compareMediaItemsBySort = (
         leftItem,
         rightItem,
         getAirDateBucket,
+        direction,
+      )
+    case 'addedAt':
+      return compareNumericWithTitleFallback(
+        leftItem,
+        rightItem,
+        getAddedAtMs,
         direction,
       )
     case 'rating':

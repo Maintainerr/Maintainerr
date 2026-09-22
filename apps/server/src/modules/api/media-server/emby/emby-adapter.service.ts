@@ -1996,6 +1996,8 @@ export class EmbyAdapterService implements IMediaServerService {
     switch (sort) {
       case 'airDate':
         return 'PremiereDate';
+      case 'addedAt':
+        return 'DateCreated';
       case 'rating':
         return 'CommunityRating';
       case 'watchCount':

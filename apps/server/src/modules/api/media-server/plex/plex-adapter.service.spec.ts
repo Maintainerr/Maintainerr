@@ -79,6 +79,21 @@ describe('PlexAdapterService', () => {
         undefined,
       );
     });
+
+    it('asks Plex to sort a library by date added natively', async () => {
+      plexApi.getLibraryContents.mockResolvedValue({ items: [], totalSize: 0 });
+
+      await service.getLibraryContents('1', {
+        sort: 'addedAt',
+        sortOrder: 'desc',
+      });
+
+      expect(plexApi.getLibraryContents).toHaveBeenCalledWith(
+        '1',
+        expect.objectContaining({ sort: 'addedAt:desc' }),
+        undefined,
+      );
+    });
   });
 
   describe('getActiveSessions', () => {

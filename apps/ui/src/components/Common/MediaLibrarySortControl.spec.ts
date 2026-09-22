@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   getCollectionMediaSortConfig,
   getCollectionSortConfig,
+  getMediaLibrarySortConfig,
 } from './MediaLibrarySortControl'
 
 const statusSortValues = ['manual.desc', 'excluded.desc']
@@ -34,6 +35,19 @@ describe('getCollectionMediaSortConfig', () => {
     const values = valuesOf(getCollectionSortConfig('movie').options)
 
     statusSortValues.forEach((value) => expect(values).not.toContain(value))
+  })
+
+  it('offers the date added sorts on every view', () => {
+    const addedAtValues = ['addedAt.desc', 'addedAt.asc']
+
+    for (const options of [
+      getMediaLibrarySortConfig('movie').options,
+      getCollectionSortConfig('movie').options,
+      getCollectionMediaSortConfig('movie').options,
+      getCollectionMediaSortConfig('movie', true).options,
+    ]) {
+      expect(valuesOf(options)).toEqual(expect.arrayContaining(addedAtValues))
+    }
   })
 
   it('offers the studio sorts only when the media server can sort by studio', () => {

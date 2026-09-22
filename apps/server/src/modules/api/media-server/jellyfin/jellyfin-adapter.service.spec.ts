@@ -487,6 +487,27 @@ describe('JellyfinAdapterService', () => {
       );
     });
 
+    it('uses Jellyfin native date added sorting', async () => {
+      jellyfinApiMocks.getItems.mockResolvedValue({
+        data: { Items: [], TotalRecordCount: 0 },
+      });
+
+      await service.getLibraryContents('library-1', {
+        offset: 0,
+        limit: 30,
+        type: 'movie',
+        sort: 'addedAt',
+        sortOrder: 'asc',
+      });
+
+      expect(jellyfinApiMocks.getItems).toHaveBeenCalledWith(
+        expect.objectContaining({
+          sortBy: ['DateCreated'],
+          sortOrder: ['Ascending'],
+        }),
+      );
+    });
+
     it('includes studios in global search results for local studio sorting', async () => {
       jellyfinApiMocks.getItems.mockResolvedValue({
         data: { Items: [], TotalRecordCount: 0 },
