@@ -1079,6 +1079,14 @@ msgstr "Datum / dagen configuratie"
 msgid "Date Added"
 msgstr "Datum toegevoegd"
 
+#: src/components/Common/MediaLibrarySortControl.tsx
+msgid "Date Added Ascending"
+msgstr ""
+
+#: src/components/Common/MediaLibrarySortControl.tsx
+msgid "Date Added Descending"
+msgstr ""
+
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "Date Format"
 msgstr "Datumnotatie"

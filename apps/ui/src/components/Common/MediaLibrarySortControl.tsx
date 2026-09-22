@@ -123,6 +123,11 @@ const getMediaLibrarySortOptions = (
         ? globalT`First Air Date Ascending`
         : globalT`Release Date Ascending`,
     ),
+    createMediaLibrarySortOption(
+      'addedAt.desc',
+      globalT`Date Added Descending`,
+    ),
+    createMediaLibrarySortOption('addedAt.asc', globalT`Date Added Ascending`),
     createMediaLibrarySortOption('rating.desc', globalT`Rating Descending`),
     createMediaLibrarySortOption('rating.asc', globalT`Rating Ascending`),
     createMediaLibrarySortOption('watchCount.desc', globalT`Most Watched`),

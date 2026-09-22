@@ -417,6 +417,26 @@ describe('compareMediaItemsBySort missing values', () => {
     ]);
   });
 
+  it('orders addedAt by full timestamp and sends an unparseable date to the end', () => {
+    const items: MediaItem[] = [
+      item({ title: 'Evening', addedAt: new Date('2024-01-01T22:00:00Z') }),
+      // Jellyfin and Emby map a missing DateCreated to an Invalid Date.
+      item({ title: 'Unknown', addedAt: new Date('') }),
+      item({ title: 'Morning', addedAt: new Date('2024-01-01T06:00:00Z') }),
+    ];
+
+    expect(sortBy(items, 'addedAt', 'asc')).toEqual([
+      'Morning',
+      'Evening',
+      'Unknown',
+    ]);
+    expect(sortBy(items, 'addedAt', 'desc')).toEqual([
+      'Evening',
+      'Morning',
+      'Unknown',
+    ]);
+  });
+
   it('sorts items without a rating to the end regardless of direction', () => {
     const items: MediaItem[] = [
       item({ title: 'Unrated', ratings: undefined }),

@@ -93,6 +93,8 @@ const toJellyfinSortBy = (sort?: MediaLibrarySortField): ItemSortBy => {
   switch (sort) {
     case 'airDate':
       return ItemSortBy.PremiereDate;
+    case 'addedAt':
+      return ItemSortBy.DateCreated;
     case 'rating':
       return ItemSortBy.CommunityRating;
     case 'watchCount':

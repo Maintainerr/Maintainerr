@@ -3080,6 +3080,72 @@ describe('CollectionsService', () => {
     });
   });
 
+  it('sorts addedAt by the library date, not by when the item joined the collection', async () => {
+    // Both read as "date added": collection_media.addDate feeds the SQL fast
+    // path, MediaItem.addedAt is the media server's own timestamp.
+    const collection = createCollection({
+      id: 8,
+      mediaServerId: 'remote-collection',
+      type: 'movie',
+    });
+    const joinedFirst = createCollectionMedia(collection, {
+      mediaServerId: 'joined-first',
+      addDate: new Date('2024-01-01T10:00:00Z'),
+    });
+    const joinedLast = createCollectionMedia(collection, {
+      mediaServerId: 'joined-last',
+      addDate: new Date('2024-02-01T10:00:00Z'),
+    });
+    const entities = [joinedLast, joinedFirst];
+    const metadataByMediaServerId = new Map([
+      [
+        'joined-first',
+        createMediaItem({
+          id: 'joined-first',
+          addedAt: new Date('2020-06-01T00:00:00Z'),
+        }),
+      ],
+      [
+        'joined-last',
+        createMediaItem({
+          id: 'joined-last',
+          addedAt: new Date('2010-06-01T00:00:00Z'),
+        }),
+      ],
+    ]);
+    const queryBuilder = {
+      where: jest.fn().mockReturnThis(),
+      getCount: jest.fn().mockResolvedValue(entities.length),
+      clone: jest.fn(),
+    };
+    const cloneBuilder = {
+      orderBy: jest.fn().mockReturnThis(),
+      addOrderBy: jest.fn().mockReturnThis(),
+      getRawAndEntities: jest.fn().mockResolvedValue({ entities }),
+    };
+
+    queryBuilder.clone.mockReturnValue(cloneBuilder);
+    collectionMediaRepo.createQueryBuilder.mockReturnValue(queryBuilder as any);
+    jest
+      .spyOn(service as any, 'getCollectionMediaMetadata')
+      .mockResolvedValue(metadataByMediaServerId);
+    const hydrateSpy = jest
+      .spyOn(service as any, 'hydrateCollectionMediaWithMetadata')
+      .mockResolvedValue([]);
+
+    await (service as any).getCollectionMediaWithServerDataAndPaging(
+      collection.id,
+      { sort: 'addedAt', sortOrder: 'desc' },
+    );
+
+    // Newest library addition first, although it joined the collection first.
+    expect(hydrateSpy).toHaveBeenCalledWith(
+      [joinedFirst, joinedLast],
+      mediaServer,
+      metadataByMediaServerId,
+    );
+  });
+
   it('paginates deleteSoonest at the SQL level by collection_media.addDate', async () => {
     // `deleteSoonest` is equivalent to ordering by `collection_media.addDate`
     // because `deleteAfterDays` is constant across a collection. SQL does the
