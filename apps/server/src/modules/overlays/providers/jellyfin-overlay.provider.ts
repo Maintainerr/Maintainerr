@@ -9,15 +9,14 @@ import {
 } from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
 import { JellyfinAdapterService } from '../../api/media-server/jellyfin/jellyfin-adapter.service';
-import { IOverlayProvider } from './overlay-provider.interface';
+import { IOverlayProvider, OverlayArtwork } from './overlay-provider.interface';
 
 /**
  * Jellyfin implementation of IOverlayProvider.
  *
- * Reads/writes only the `Primary` image: movies and shows have their poster
- * there, and episodes have their still there (Jellyfin's `Thumb` is mostly
- * unpopulated for episodes and shows a 16:9 series banner for
- * continue-watching fallback - neither is what an overlay should target).
+ * Poster/title-card overlays use Jellyfin's `Primary` image. Backdrop
+ * overlays additionally synchronize the landscape artwork used by clients
+ * such as Infuse (`Backdrop`, `Thumb`, and `Banner`).
  */
 @Injectable()
 export class JellyfinOverlayProvider implements IOverlayProvider {
@@ -59,7 +58,10 @@ export class JellyfinOverlayProvider implements IOverlayProvider {
     return { itemId: ep.Id, title };
   }
 
-  async downloadImage(itemId: string, mode: OverlayTemplateMode = 'poster'): Promise<Buffer | null> {
+  async downloadImage(
+    itemId: string,
+    mode: OverlayTemplateMode = 'poster',
+  ): Promise<Buffer | null> {
     if (mode !== 'backdrop') {
       return this.jf.getItemImageBuffer(itemId, ImageType.Primary);
     }
@@ -80,9 +82,22 @@ export class JellyfinOverlayProvider implements IOverlayProvider {
     mode: OverlayTemplateMode = 'poster',
   ): Promise<void> {
     if (mode === 'poster' || mode === 'titlecard') {
-      await this.jf.setItemImage(itemId, ImageType.Primary, buffer, contentType);
+      await this.jf.setItemImage(
+        itemId,
+        ImageType.Primary,
+        buffer,
+        contentType,
+      );
     } else {
       await this.jf.setOverlayImage(itemId, mode, buffer, contentType);
     }
+  }
+
+  async downloadArtwork(itemId: string): Promise<OverlayArtwork> {
+    return this.jf.getOverlayArtwork(itemId);
+  }
+
+  async uploadArtwork(itemId: string, artwork: OverlayArtwork): Promise<void> {
+    await this.jf.setOverlayArtwork(itemId, artwork);
   }
 }

@@ -5,10 +5,11 @@ such as Infuse. The feature adds a `backdrop` template mode with a 1920×1080
 canvas and a separate collection setting. Existing collections keep the poster
 mode unless they explicitly select `backdrop`.
 
-For Jellyfin, the implementation reads and replaces backdrop image index 0.
-This is intentional: uploading through the unindexed endpoint appends another
-backdrop, allowing a client to select the untouched original. The original is
-stored separately as `<item-id>.backdrop.jpg` and restored with the same mode.
+For Jellyfin, the implementation synchronizes the landscape artwork types used
+by clients: `Backdrop`, `Thumb`, and `Banner`. Before applying an overlay, all
+existing images are backed up independently (`<item-id>.<type>.jpg`). Reverting
+restores exactly those images and removes types that did not exist originally;
+poster and backdrop state rows are tracked independently.
 
 The first release targets Jellyfin. Other media-server providers continue to
 support poster and title-card modes and must opt into backdrop support before

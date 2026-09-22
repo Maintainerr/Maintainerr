@@ -4,6 +4,12 @@ import {
 } from '@maintainerr/contracts';
 import type { OverlayTemplateMode } from '@maintainerr/contracts';
 
+export type OverlayArtwork = {
+  backdrop: Buffer[];
+  thumb: Buffer[];
+  banner: Buffer[];
+};
+
 /**
  * Server-agnostic contract for overlay-specific media-server interactions.
  *
@@ -47,7 +53,10 @@ export interface IOverlayProvider {
    * episodes - so providers don't need a kind hint. Returns null when no
    * artwork exists for the item.
    */
-  downloadImage(itemId: string, mode?: OverlayTemplateMode): Promise<Buffer | null>;
+  downloadImage(
+    itemId: string,
+    mode?: OverlayTemplateMode,
+  ): Promise<Buffer | null>;
 
   /**
    * Replace the item's artwork. Upload semantics are a provider detail
@@ -60,4 +69,8 @@ export interface IOverlayProvider {
     contentType: string,
     mode?: OverlayTemplateMode,
   ): Promise<void>;
+
+  /** Optional lossless landscape-artwork operations used by Jellyfin. */
+  downloadArtwork?(itemId: string): Promise<OverlayArtwork>;
+  uploadArtwork?(itemId: string, artwork: OverlayArtwork): Promise<void>;
 }

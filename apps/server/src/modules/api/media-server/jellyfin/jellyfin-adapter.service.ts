@@ -42,6 +42,7 @@ import {
   type WatchRecord,
 } from '@maintainerr/contracts';
 import type { OverlayTemplateMode } from '@maintainerr/contracts';
+import type { OverlayArtwork } from '../../../overlays/providers/overlay-provider.interface';
 import { Injectable } from '@nestjs/common';
 // isAxiosError duck-types on the error's own flag, so it also matches errors
 // thrown by @jellyfin/sdk. The SDK is ESM-only and pulls axios's ESM build,
@@ -508,12 +509,13 @@ export class JellyfinAdapterService implements IMediaServerService {
   async getItemImageBuffer(
     itemId: string,
     imageType: ImageType,
+    imageIndex?: number,
   ): Promise<Buffer | null> {
     if (!this.api) return null;
 
     try {
       const response = await getImageApi(this.api).getItemImage(
-        { itemId, imageType, format: ImageFormat.Jpg },
+        { itemId, imageType, imageIndex, format: ImageFormat.Jpg },
         { responseType: 'arraybuffer' },
       );
       return Buffer.from(response.data as unknown as ArrayBuffer);
@@ -576,12 +578,7 @@ export class JellyfinAdapterService implements IMediaServerService {
     contentType: string,
   ): Promise<void> {
     if (mode !== 'backdrop') {
-      await this.setItemImage(
-        itemId,
-        ImageType.Primary,
-        buffer,
-        contentType,
-      );
+      await this.setItemImage(itemId, ImageType.Primary, buffer, contentType);
       return;
     }
     if (!this.api) throw new Error('Jellyfin API not initialized');
@@ -591,18 +588,103 @@ export class JellyfinAdapterService implements IMediaServerService {
     });
     const imageApi = getImageApi(this.api);
     const imageTypes = [
-      { type: ImageType.Backdrop, count: item.data?.BackdropImageTags?.length ?? 0 },
+      {
+        type: ImageType.Backdrop,
+        count: item.data?.BackdropImageTags?.length ?? 0,
+      },
       { type: ImageType.Thumb, count: item.data?.ImageTags?.Thumb ? 1 : 0 },
       { type: ImageType.Banner, count: item.data?.ImageTags?.Banner ? 1 : 0 },
     ];
     for (const { type, count } of imageTypes) {
       for (let imageIndex = count - 1; imageIndex >= 0; imageIndex--) {
-        await imageApi.deleteItemImageByIndex({ itemId, imageType: type, imageIndex });
+        await imageApi.deleteItemImageByIndex({
+          itemId,
+          imageType: type,
+          imageIndex,
+        });
       }
       await imageApi.setItemImage(
-        { itemId, imageType: type, body: buffer.toString('base64') as unknown as File },
+        {
+          itemId,
+          imageType: type,
+          body: buffer.toString('base64') as unknown as File,
+        },
         { headers: { 'Content-Type': contentType } },
       );
+    }
+  }
+
+  async getOverlayArtwork(itemId: string): Promise<OverlayArtwork> {
+    if (!this.api) return { backdrop: [], thumb: [], banner: [] };
+    const item = await getLibraryApi(this.api).getItem({
+      itemId,
+      userId: await this.getUserId(),
+    });
+    const counts = {
+      backdrop: item.data?.BackdropImageTags?.length ?? 0,
+      thumb: item.data?.ImageTags?.Thumb ? 1 : 0,
+      banner: item.data?.ImageTags?.Banner ? 1 : 0,
+    };
+    const read = async (type: ImageType, count: number): Promise<Buffer[]> => {
+      const result: Buffer[] = [];
+      for (let i = 0; i < count; i++) {
+        const buffer = await this.getItemImageBuffer(itemId, type, i);
+        if (buffer) result.push(buffer);
+      }
+      return result;
+    };
+    return {
+      backdrop: await read(ImageType.Backdrop, counts.backdrop),
+      thumb: await read(ImageType.Thumb, counts.thumb),
+      banner: await read(ImageType.Banner, counts.banner),
+    };
+  }
+
+  async setOverlayArtwork(
+    itemId: string,
+    artwork: OverlayArtwork,
+  ): Promise<void> {
+    if (!this.api) throw new Error('Jellyfin API not initialized');
+    const imageApi = getImageApi(this.api);
+    const item = await getLibraryApi(this.api).getItem({
+      itemId,
+      userId: await this.getUserId(),
+    });
+    const counts = [
+      {
+        type: ImageType.Backdrop,
+        count: item.data?.BackdropImageTags?.length ?? 0,
+        buffers: artwork.backdrop,
+      },
+      {
+        type: ImageType.Thumb,
+        count: item.data?.ImageTags?.Thumb ? 1 : 0,
+        buffers: artwork.thumb,
+      },
+      {
+        type: ImageType.Banner,
+        count: item.data?.ImageTags?.Banner ? 1 : 0,
+        buffers: artwork.banner,
+      },
+    ];
+    for (const { type, count, buffers } of counts) {
+      for (let index = count - 1; index >= 0; index--) {
+        await imageApi.deleteItemImageByIndex({
+          itemId,
+          imageType: type,
+          imageIndex: index,
+        });
+      }
+      for (const buffer of buffers) {
+        await imageApi.setItemImage(
+          {
+            itemId,
+            imageType: type,
+            body: buffer.toString('base64') as unknown as File,
+          },
+          { headers: { 'Content-Type': 'image/jpeg' } },
+        );
+      }
     }
   }
 

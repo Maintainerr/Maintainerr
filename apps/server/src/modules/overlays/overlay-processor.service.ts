@@ -357,6 +357,13 @@ export class OverlayProcessorService {
     return path.join(this.getOriginalsDir(), `${mediaServerId}.backdrop.jpg`);
   }
 
+  private getOriginalArtworkPath(
+    mediaServerId: string,
+    type: 'backdrop' | 'thumb' | 'banner',
+  ): string {
+    return path.join(this.getOriginalsDir(), `${mediaServerId}.${type}.jpg`);
+  }
+
   private async saveOriginalPoster(
     mediaServerId: string,
     buffer: Buffer,
@@ -395,15 +402,61 @@ export class OverlayProcessorService {
     if (fs.existsSync(p)) fs.unlinkSync(p);
   }
 
-  /** Every item whose original poster is still saved on disk. */
-  private listBackedUpItemIds(): string[] {
+  private loadOriginalArtwork(
+    mediaServerId: string,
+    type: 'backdrop' | 'thumb' | 'banner',
+  ): Buffer[] {
+    const p = this.getOriginalArtworkPath(mediaServerId, type);
+    return fs.existsSync(p) ? [fs.readFileSync(p)] : [];
+  }
+
+  private saveOriginalArtwork(
+    mediaServerId: string,
+    type: 'backdrop' | 'thumb' | 'banner',
+    buffer: Buffer,
+  ): void {
+    const p = this.getOriginalArtworkPath(mediaServerId, type);
+    fs.mkdirSync(path.dirname(p), { recursive: true });
+    fs.writeFileSync(p, buffer);
+  }
+
+  private deleteOriginalArtwork(mediaServerId: string): void {
+    for (const type of ['backdrop', 'thumb', 'banner'] as const) {
+      const p = this.getOriginalArtworkPath(mediaServerId, type);
+      if (fs.existsSync(p)) fs.unlinkSync(p);
+    }
+  }
+
+  /** Every item whose original artwork is still saved on disk. */
+  private listBackedUpItemIds(): {
+    mediaServerId: string;
+    overlayMode: OverlayTemplateMode;
+  }[] {
     const dir = this.getOriginalsDir();
     if (!fs.existsSync(dir)) return [];
     const suffix = '.jpg';
     return fs
       .readdirSync(dir)
-      .filter((name) => name.length > suffix.length && name.endsWith(suffix))
-      .map((name) => name.slice(0, -suffix.length));
+      .filter(
+        (name) =>
+          name.endsWith(suffix) &&
+          !name.endsWith('.backdrop.jpg') &&
+          !name.endsWith('.thumb.jpg') &&
+          !name.endsWith('.banner.jpg'),
+      )
+      .map((name) => ({
+        mediaServerId: name.slice(0, -suffix.length),
+        overlayMode: 'poster' as OverlayTemplateMode,
+      }))
+      .concat(
+        fs
+          .readdirSync(dir)
+          .filter((name) => name.endsWith('.backdrop.jpg'))
+          .map((name) => ({
+            mediaServerId: name.slice(0, -'.backdrop.jpg'.length),
+            overlayMode: 'backdrop' as OverlayTemplateMode,
+          })),
+      );
   }
 
   private async getOverlayCollections(): Promise<
@@ -446,16 +499,25 @@ export class OverlayProcessorService {
     collectionId: number | null,
     mediaServerId: string,
     provider: IOverlayProvider,
+    requestedMode: OverlayTemplateMode = 'poster',
   ): Promise<RevertItemResult> {
-    const backdropBuf = this.loadOriginalBackdrop(mediaServerId);
-    const mode: OverlayTemplateMode = backdropBuf ? 'backdrop' : 'poster';
+    const mode = requestedMode;
+    const backdropBuf =
+      mode === 'backdrop' ? this.loadOriginalBackdrop(mediaServerId) : null;
     // Null for a saved poster no state row claims - there is nothing to clear.
     const clearState = () =>
       collectionId == null
         ? Promise.resolve()
-        : this.stateService.removeState(collectionId, mediaServerId, mode);
+        : mode === 'poster'
+          ? this.stateService.removeState(collectionId, mediaServerId)
+          : this.stateService.removeState(collectionId, mediaServerId, mode);
 
-    const originalBuf = backdropBuf ?? this.loadOriginalPoster(mediaServerId);
+    const originalBuf =
+      mode === 'backdrop'
+        ? (backdropBuf ??
+          this.loadOriginalArtwork(mediaServerId, 'thumb')[0] ??
+          this.loadOriginalArtwork(mediaServerId, 'banner')[0])
+        : this.loadOriginalPoster(mediaServerId);
 
     if (!originalBuf) {
       this.logger.warn(
@@ -482,14 +544,31 @@ export class OverlayProcessorService {
       this.logger.log(
         `Item ${mediaServerId} no longer exists on the media server, dropping overlay state and backup`,
       );
-      if (mode === 'backdrop') this.deleteOriginalBackdrop(mediaServerId);
+      if (mode === 'backdrop') this.deleteOriginalArtwork(mediaServerId);
       else this.deleteOriginalPoster(mediaServerId);
       await clearState();
       return 'item-gone';
     }
 
     try {
-      await provider.uploadImage(mediaServerId, originalBuf, 'image/jpeg', mode);
+      if (mode === 'backdrop' && provider.uploadArtwork) {
+        await provider.uploadArtwork(mediaServerId, {
+          backdrop: this.loadOriginalArtwork(mediaServerId, 'backdrop'),
+          thumb: this.loadOriginalArtwork(mediaServerId, 'thumb'),
+          banner: this.loadOriginalArtwork(mediaServerId, 'banner'),
+        });
+      } else {
+        if (mode === 'poster') {
+          await provider.uploadImage(mediaServerId, originalBuf, 'image/jpeg');
+        } else {
+          await provider.uploadImage(
+            mediaServerId,
+            originalBuf,
+            'image/jpeg',
+            mode,
+          );
+        }
+      }
     } catch (error) {
       this.logger.warn(
         `Failed to restore original ${mode} for ${mediaServerId}: ${error instanceof Error ? error.message : String(error)}; keeping backup for retry`,
@@ -499,7 +578,7 @@ export class OverlayProcessorService {
     }
 
     this.logger.log(`Restored original poster for item ${mediaServerId}`);
-    if (mode === 'backdrop') this.deleteOriginalBackdrop(mediaServerId);
+    if (mode === 'backdrop') this.deleteOriginalArtwork(mediaServerId);
     else this.deleteOriginalPoster(mediaServerId);
     await clearState();
     return 'restored';
@@ -539,7 +618,7 @@ export class OverlayProcessorService {
 
   private async revertWhenFree(
     collectionId: number,
-    states: { mediaServerId: string }[],
+    states: { mediaServerId: string; overlayMode: string }[],
     collectionName?: string,
   ): Promise<void> {
     const release = await this.executionLock.acquire(
@@ -558,7 +637,7 @@ export class OverlayProcessorService {
   private async revertHolding(
     release: () => void,
     collectionId: number,
-    states: { mediaServerId: string }[],
+    states: { mediaServerId: string; overlayMode: string }[],
     collectionName?: string,
   ): Promise<void> {
     this.status = 'running';
@@ -578,7 +657,7 @@ export class OverlayProcessorService {
    */
   async revertMultipleItems(
     collectionId: number,
-    mediaItems: { mediaServerId: string }[],
+    mediaItems: { mediaServerId: string; overlayMode?: string }[],
     collectionName?: string,
   ): Promise<void> {
     if (mediaItems.length === 0) return;
@@ -598,6 +677,7 @@ export class OverlayProcessorService {
           collectionId,
           item.mediaServerId,
           provider,
+          (item.overlayMode as OverlayTemplateMode | undefined) ?? 'poster',
         );
 
         if (result === 'restored') {
@@ -985,7 +1065,11 @@ export class OverlayProcessorService {
       }
 
       const allStates = await this.stateService.getAllStates();
-      const tracked = new Set(allStates.map((state) => state.mediaServerId));
+      const tracked = new Set(
+        allStates.map(
+          (state) => `${state.mediaServerId}:${state.overlayMode ?? 'poster'}`,
+        ),
+      );
       // A saved original no state row claims is an upload whose state write
       // failed; the backup is the only record left that the artwork may have
       // been changed, so reset owns it too (#3549).
@@ -993,10 +1077,22 @@ export class OverlayProcessorService {
         ...allStates.map((state) => ({
           collectionId: state.collectionId as number | null,
           mediaServerId: state.mediaServerId,
+          overlayMode: (state.overlayMode ?? 'poster') as OverlayTemplateMode,
         })),
         ...this.listBackedUpItemIds()
-          .filter((mediaServerId) => !tracked.has(mediaServerId))
-          .map((mediaServerId) => ({ collectionId: null, mediaServerId })),
+          .map((target) =>
+            typeof target === 'string'
+              ? {
+                  mediaServerId: target,
+                  overlayMode: 'poster' as OverlayTemplateMode,
+                }
+              : target,
+          )
+          .filter(
+            (target) =>
+              !tracked.has(`${target.mediaServerId}:${target.overlayMode}`),
+          )
+          .map((target) => ({ collectionId: null, ...target })),
       ];
 
       const revertedMediaItems: { mediaServerId: string }[] = [];
@@ -1006,6 +1102,7 @@ export class OverlayProcessorService {
             target.collectionId,
             target.mediaServerId,
             provider,
+            target.overlayMode,
           );
 
           if (result === 'restored') {
@@ -1051,31 +1148,52 @@ export class OverlayProcessorService {
     template: OverlayTemplate,
     provider: IOverlayProvider,
   ): Promise<boolean> {
-    let posterBuf: Buffer;
+    let posterBuf: Buffer | undefined;
     const mode = template.mode;
     const savedOriginal =
       mode === 'backdrop'
-        ? this.loadOriginalBackdrop(itemId)
+        ? (this.loadOriginalBackdrop(itemId) ??
+          this.loadOriginalArtwork(itemId, 'thumb')[0] ??
+          this.loadOriginalArtwork(itemId, 'banner')[0])
         : this.loadOriginalPoster(itemId);
     if (savedOriginal) {
       posterBuf = savedOriginal;
     } else {
       try {
-        const downloaded = await provider.downloadImage(itemId, mode);
-        if (!downloaded) {
+        let downloaded: Buffer | null = null;
+        let artworkSaved = false;
+        if (mode === 'backdrop' && provider.downloadArtwork) {
+          const artwork = await provider.downloadArtwork(itemId);
+          const source =
+            artwork.backdrop[0] ?? artwork.thumb[0] ?? artwork.banner[0];
+          if (source) {
+            posterBuf = source;
+            if (artwork.backdrop[0])
+              this.saveOriginalArtwork(itemId, 'backdrop', artwork.backdrop[0]);
+            if (artwork.thumb[0])
+              this.saveOriginalArtwork(itemId, 'thumb', artwork.thumb[0]);
+            if (artwork.banner[0])
+              this.saveOriginalArtwork(itemId, 'banner', artwork.banner[0]);
+            artworkSaved = true;
+          }
+        } else {
+          downloaded = await provider.downloadImage(itemId, mode);
+        }
+        if (!posterBuf && downloaded) posterBuf = downloaded;
+        if (!posterBuf) {
           this.logger.warn(
             `No ${template.mode} artwork available for item ${itemId}, skipping`,
           );
           return false;
         }
-        posterBuf = downloaded;
+        if (mode === 'backdrop' && !artworkSaved)
+          this.saveOriginalBackdrop(itemId, posterBuf);
       } catch (error) {
         this.logger.warn(`Failed to download poster for ${itemId}`);
         this.logger.debug(error);
         return false;
       }
-      if (mode === 'backdrop') this.saveOriginalBackdrop(itemId, posterBuf);
-      else await this.saveOriginalPoster(itemId, posterBuf);
+      if (mode !== 'backdrop') await this.saveOriginalPoster(itemId, posterBuf);
     }
 
     // Build render context - raw data; per-element formatting is done by the render service
@@ -1103,7 +1221,7 @@ export class OverlayProcessorService {
       // change. Leaving it would have reset restoring - and on Plex selecting
       // - a poster the item still has.
       if (!savedOriginal) {
-        if (mode === 'backdrop') this.deleteOriginalBackdrop(itemId);
+        if (mode === 'backdrop') this.deleteOriginalArtwork(itemId);
         else this.deleteOriginalPoster(itemId);
       }
       return false;
