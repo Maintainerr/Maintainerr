@@ -1,7 +1,7 @@
+import { i18n } from '@lingui/core'
 import { t as globalT } from '@lingui/core/macro'
 import type { MediaLibrary, MediaSortOrder } from '@maintainerr/contracts'
 import { findLibraryTitle } from '../../hooks/useLibraryDisplay'
-import { compareByName, compareLocalized } from '../../utils/collation'
 import {
   createSortOption,
   type SortConfig,
@@ -29,6 +29,10 @@ export const getRuleGroupSortConfig = (): SortConfig<RuleGroupSortParams> => ({
   ],
 })
 
+// Collate with the app locale, as the rule form does for its action lists.
+const compareByName = (left: IRuleGroup, right: IRuleGroup): number =>
+  left.name.localeCompare(right.name, i18n.locale)
+
 export const sortRuleGroups = (
   groups: IRuleGroup[],
   sortParams: RuleGroupSortParams | undefined,
@@ -55,7 +59,7 @@ export const sortRuleGroups = (
         if (leftTitle === undefined) return 1
         if (rightTitle === undefined) return -1
         return (
-          compareLocalized(leftTitle, rightTitle) * direction ||
+          leftTitle.localeCompare(rightTitle, i18n.locale) * direction ||
           compareByName(left, right)
         )
       }
