@@ -69,6 +69,7 @@ export const createCollection = (
     collectionMedia: [],
     deleteAfterDays: 30,
     forceSeerr: false,
+    forceOmbi: false,
     handledMediaAmount: 0,
     keepLogsForMonths: 6,
     lastDurationInSeconds: 0,

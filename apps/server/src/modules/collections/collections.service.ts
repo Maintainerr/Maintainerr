@@ -4689,6 +4689,7 @@ export class CollectionsService {
             listExclusions: collection.listExclusions,
             cleanupLeftoverFolders: collection.cleanupLeftoverFolders ?? false,
             forceSeerr: collection.forceSeerr,
+            forceOmbi: collection.forceOmbi,
             keepLogsForMonths: collection.keepLogsForMonths,
             tautulliWatchedPercentOverride:
               collection.tautulliWatchedPercentOverride ?? null,

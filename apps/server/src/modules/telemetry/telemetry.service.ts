@@ -345,6 +345,7 @@ export class TelemetryService {
       ['sonarr', sonarr > 0],
       ['sportarr', sportarr > 0],
       ['seerr', this.settings.seerrConfigured()],
+      ['ombi', this.settings.ombiConfigured()],
       ['tautulli', this.settings.tautulliConfigured()],
       ['streamystats', Boolean(this.settings.streamystats_url)],
       ['tracearr', Boolean(this.settings.tracearr_url)],

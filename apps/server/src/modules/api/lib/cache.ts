@@ -8,6 +8,7 @@ type AvailableCacheIds =
   | 'plextv'
   | 'seerr'
   | 'seerrrequests'
+  | 'ombirequests'
   | 'plexcommunity'
   | 'tautulli'
   | 'streamystats'
@@ -178,6 +179,14 @@ class CacheManager {
         maxKeys: 0,
       },
     ),
+    // The Ombi counterpart of seerrrequests: one movie and one show list per
+    // rule run, held as Maps. Ombi has no per-item response cache: every read
+    // is either this index or a fresh lookup ahead of a write.
+    ombirequests: new Cache('ombirequests', 'Ombi requests', 'ombirequests', {
+      stdTtl: 3600,
+      useClones: false,
+      maxKeys: 0,
+    }),
     plexcommunity: new Cache(
       'plexcommunity',
       'community.Plex.tv',

@@ -4,6 +4,7 @@ import { SonarrActionHandler } from '../actions/sonarr-action-handler';
 import { SportarrActionHandler } from '../actions/sportarr-action-handler';
 import { MediaServerFactory } from '../api/media-server/media-server.factory';
 import { IMediaServerService } from '../api/media-server/media-server.interface';
+import { OmbiApiService } from '../api/ombi-api/ombi-api.service';
 import { SeerrApiService } from '../api/seerr-api/seerr-api.service';
 import { MaintainerrLogger } from '../logging/logs.service';
 import { MetadataService } from '../metadata/metadata.service';
@@ -23,6 +24,18 @@ import { RecentlyHandledMediaService } from './recently-handled-media.service';
  */
 export type HandleMediaResult = 'handled' | 'failed' | 'removed-missing';
 
+/** What the request removal needs from Seerr and Ombi alike. */
+interface RequestService {
+  removeSeasonRequest(
+    tmdbId: number,
+    season: number,
+  ): Promise<boolean | undefined>;
+  removeMediaByTmdbId(
+    tmdbId: number,
+    type: 'movie' | 'tv',
+  ): Promise<boolean | undefined>;
+}
+
 // The media server may run on Windows, so either separator can appear.
 const folderOf = (filePath: string): string => {
   const cut = Math.max(filePath.lastIndexOf('/'), filePath.lastIndexOf('\\'));
@@ -35,6 +48,7 @@ export class CollectionHandler {
     private readonly mediaServerFactory: MediaServerFactory,
     private readonly collectionService: CollectionsService,
     private readonly seerrApi: SeerrApiService,
+    private readonly ombiApi: OmbiApiService,
     private readonly settings: SettingsDataService,
     private readonly metadataService: MetadataService,
     private readonly radarrActionHandler: RadarrActionHandler,
@@ -166,84 +180,14 @@ export class CollectionHandler {
       return 'removed-missing';
     }
 
-    // The request goes with the files. Seerr, if forced; otherwise rely on
-    // its availability sync.
+    // The request goes with the files, when forced. Seerr otherwise reconciles
+    // through its availability sync; Ombi never un-marks an available request.
     if (freesDisk) {
       if (this.settings.seerrConfigured() && collection.forceSeerr) {
-        const ids = await this.metadataService.resolveIdsForService(
-          media.mediaServerId,
-          'seerr',
-        );
-        const tmdbId = (ids?.tmdb as number | undefined) ?? media.tmdbId;
-
-        if (!tmdbId) {
-          this.logger.warn(
-            `[Seerr] Could not resolve TMDB ID for media server ID ${media.mediaServerId}. Skipping Seerr request removal.`,
-          );
-        } else {
-          switch (collection.type) {
-            case 'season': {
-              const mediaDataSeason = await mediaServer.getMetadata(
-                media.mediaServerId,
-              );
-
-              // != null: a null season index must not reach Seerr as a season
-              // number either
-              if (mediaDataSeason?.index != null) {
-                const removed = await this.seerrApi.removeSeasonRequest(
-                  tmdbId,
-                  mediaDataSeason.index,
-                );
-
-                if (removed === undefined) {
-                  this.logger.warn(
-                    `[Seerr] Couldn't remove the request of season ${mediaDataSeason.index} from show with TMDB ID '${tmdbId}'`,
-                  );
-                } else if (removed) {
-                  this.logger.log(
-                    `[Seerr] Removed request of season ${mediaDataSeason.index} from show with TMDB ID '${tmdbId}'`,
-                  );
-                }
-              }
-              break;
-            }
-            case 'episode': {
-              // Seerr tracks requests per season, not per episode, so there is
-              // no per-episode request to remove - deleting the season request
-              // would drop the request for every other (still-present) episode
-              // in that season. Skip the force-removal and let Seerr's
-              // availability sync reconcile, as it does when Force Seerr is off.
-              // The UI hides the toggle for episode rules; this also guards
-              // existing collections that still have it set.
-              this.logger.debug(
-                `[Seerr] Skipping request removal for episode-level collection '${collection.title}' (TMDB ID '${tmdbId}'): Seerr has no per-episode request granularity. Relying on availability sync.`,
-              );
-              break;
-            }
-            default:
-              // Keyed on the collection's own type, not the library lookup:
-              // `library` is undefined whenever the media server stops listing
-              // the id, and `undefined?.type` silently reads as 'movie'. TMDB
-              // numbers movies and shows independently, so that sends a show's
-              // id to the movie endpoint, where it can resolve to an unrelated
-              // film whose Seerr record is then deleted.
-              const removed = await this.seerrApi.removeMediaByTmdbId(
-                tmdbId,
-                collection.type === 'show' ? 'tv' : 'movie',
-              );
-
-              if (removed === undefined) {
-                this.logger.warn(
-                  `[Seerr] Couldn't remove the requests of media with TMDB ID '${tmdbId}'`,
-                );
-              } else if (removed) {
-                this.logger.log(
-                  `[Seerr] Removed requests of media with TMDB ID '${tmdbId}'`,
-                );
-              }
-              break;
-          }
-        }
+        await this.removeRequests('seerr', this.seerrApi, collection, media);
+      }
+      if (this.settings.ombiConfigured() && collection.forceOmbi) {
+        await this.removeRequests('ombi', this.ombiApi, collection, media);
       }
     }
 
@@ -354,6 +298,76 @@ export class CollectionHandler {
     } catch (error) {
       this.logger.debug(error);
       return undefined;
+    }
+  }
+
+  /**
+   * Removes the title's requests from a request service. Both services take a
+   * TMDB id and answer `undefined` when the outcome is unknown, so only a
+   * confirmed removal is reported as one.
+   */
+  private async removeRequests(
+    service: 'seerr' | 'ombi',
+    api: RequestService,
+    collection: Collection,
+    media: CollectionMedia,
+  ): Promise<void> {
+    const label = service === 'seerr' ? 'Seerr' : 'Ombi';
+    const ids = await this.metadataService.resolveIdsForService(
+      media.mediaServerId,
+      service,
+    );
+    const tmdbId = (ids?.tmdb as number | undefined) ?? media.tmdbId;
+
+    if (!tmdbId) {
+      this.logger.warn(
+        `[${label}] Could not resolve TMDB ID for media server ID ${media.mediaServerId}. Skipping ${label} request removal.`,
+      );
+      return;
+    }
+
+    let removed: boolean | undefined;
+    let subject: string;
+    switch (collection.type) {
+      case 'season': {
+        const mediaServer = await this.getMediaServer();
+        const season = await mediaServer.getMetadata(media.mediaServerId);
+        // != null: a null season index must not reach the service as a
+        // season number either
+        if (season?.index == null) {
+          return;
+        }
+        removed = await api.removeSeasonRequest(tmdbId, season.index);
+        subject = `request of season ${season.index} from show with TMDB ID '${tmdbId}'`;
+        break;
+      }
+      case 'episode':
+        // Neither service tracks a request per episode, so removing the
+        // season's request would drop the still-present episodes with it. The
+        // UI hides the toggle for episode rules; this also guards existing
+        // collections that still have it set.
+        this.logger.debug(
+          `[${label}] Skipping request removal for episode-level collection '${collection.title}' (TMDB ID '${tmdbId}'): requests are not tracked per episode.`,
+        );
+        return;
+      default:
+        // Keyed on the collection's own type, not the library lookup:
+        // `library` is undefined whenever the media server stops listing
+        // the id, and `undefined?.type` silently reads as 'movie'. TMDB
+        // numbers movies and shows independently, so that sends a show's id
+        // to the movie endpoint, where it can resolve to an unrelated film
+        // whose request is then deleted.
+        removed = await api.removeMediaByTmdbId(
+          tmdbId,
+          collection.type === 'show' ? 'tv' : 'movie',
+        );
+        subject = `requests of media with TMDB ID '${tmdbId}'`;
+    }
+
+    if (removed === undefined) {
+      this.logger.warn(`[${label}] Couldn't remove the ${subject}`);
+    } else if (removed) {
+      this.logger.log(`[${label}] Removed ${subject}`);
     }
   }
 

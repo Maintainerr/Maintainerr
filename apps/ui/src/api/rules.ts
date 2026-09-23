@@ -93,6 +93,7 @@ export interface RuleGroupCreatePayload {
   listExclusions: boolean
   cleanupLeftoverFolders: boolean
   forceSeerr: boolean
+  forceOmbi: boolean
   tautulliWatchedPercentOverride?: number
   radarrSettingsId?: number
   sonarrSettingsId?: number

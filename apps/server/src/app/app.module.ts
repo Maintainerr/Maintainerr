@@ -12,6 +12,8 @@ import { MediaServerFactory } from '../modules/api/media-server/media-server.fac
 import { MediaServerModule } from '../modules/api/media-server/media-server.module';
 import { DownloadClientApiModule } from '../modules/api/download-client-api/download-client-api.module';
 import { DownloadClientApiService } from '../modules/api/download-client-api/download-client-api.service';
+import { OmbiApiModule } from '../modules/api/ombi-api/ombi-api.module';
+import { OmbiApiService } from '../modules/api/ombi-api/ombi-api.service';
 import { PlexApiModule } from '../modules/api/plex-api/plex-api.module';
 import { SeerrApiModule } from '../modules/api/seerr-api/seerr-api.module';
 import { SeerrApiService } from '../modules/api/seerr-api/seerr-api.service';
@@ -57,6 +59,7 @@ import { resolveUiRootPath } from './config/uiPath';
     MetadataModule,
     ServarrApiModule,
     SeerrApiModule,
+    OmbiApiModule,
     TautulliApiModule,
     StreamystatsApiModule,
     TracearrApiModule,
@@ -99,6 +102,7 @@ export class AppModule implements OnModuleInit {
     private readonly settingsDataService: SettingsDataService,
     private readonly mediaServerFactory: MediaServerFactory,
     private readonly seerrApi: SeerrApiService,
+    private readonly ombiApi: OmbiApiService,
     private readonly tautulliApi: TautulliApiService,
     private readonly streamystatsApi: StreamystatsApiService,
     private readonly tracearrApi: TracearrApiService,
@@ -113,6 +117,7 @@ export class AppModule implements OnModuleInit {
     await this.mediaServerFactory.initialize();
 
     this.seerrApi.init();
+    this.ombiApi.init();
     this.tautulliApi.init();
     this.streamystatsApi.init();
     this.tracearrApi.init();

@@ -505,6 +505,7 @@ msgid "An unexpected error occurred."
 msgstr "Ett oväntat fel inträffade."
 
 #: src/components/Settings/Main/index.tsx
+#: src/components/Settings/Ombi/index.tsx
 #: src/components/Settings/Seerr/index.tsx
 #: src/components/Settings/Servarr/ServarrSettingsModal.tsx
 #: src/components/Settings/Tautulli/index.tsx
@@ -1503,6 +1504,7 @@ msgstr "Ungefär var {SAMPLE_MONTHS}:e månad"
 msgid "Every attempt should be made to only upload working rules. Rules with less than -100 karma and uploads with no rules, are removed nightly."
 msgstr "Försök att bara ladda upp fungerande regler. Regler med mindre än -100 karma och uppladdningar utan regler tas bort varje natt."
 
+#: src/components/Settings/Ombi/index.tsx
 #: src/components/Settings/Seerr/index.tsx
 #: src/components/Settings/Streamystats/index.tsx
 #: src/components/Settings/Tautulli/index.tsx
@@ -1585,6 +1587,10 @@ msgstr "Anslutningen till Emby misslyckades. Kontrollera URL och API-nyckel."
 #: src/components/Settings/Jellyfin/index.tsx
 msgid "Failed to connect to Jellyfin. Verify URL and API key."
 msgstr "Anslutningen till Jellyfin misslyckades. Kontrollera URL och API-nyckel."
+
+#: src/components/Settings/Ombi/index.tsx
+msgid "Failed to connect to Ombi. Verify URL and API key."
+msgstr ""
 
 #: src/components/Settings/Plex/index.tsx
 msgid "Failed to connect to Plex. Verify your Plex configuration."
@@ -1854,6 +1860,10 @@ msgstr "Typsnitt"
 #: src/pages/OverlayTemplateEditorPage.tsx
 msgid "Font \"{fontName}\" uploaded"
 msgstr "Typsnittet \"{fontName}\" uppladdat"
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Force delete Ombi request"
+msgstr ""
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Force delete Seerr request"
@@ -2814,6 +2824,26 @@ msgstr "OK"
 msgid "Oldest First"
 msgstr ""
 
+#: src/components/Settings/Ombi/index.tsx
+msgid "Ombi configuration"
+msgstr ""
+
+#: src/components/Settings/Ombi/index.tsx
+msgid "Ombi Settings"
+msgstr ""
+
+#: src/components/Settings/Ombi/index.tsx
+msgid "Ombi settings - Maintainerr"
+msgstr ""
+
+#: src/components/Settings/Ombi/index.tsx
+msgid "Ombi settings could not be updated"
+msgstr ""
+
+#: src/components/Settings/Ombi/index.tsx
+msgid "Ombi settings updated"
+msgstr ""
+
 #: src/components/Layout/TelemetryConsentModal.tsx
 msgid "Once a week we log which version and platform people actually run. The payload below is the whole of it. It carries no server identifier, no {TERM_IP}, no hostname, no {TERM_MAC} address and no account id: nothing that can be traced back to you, your network or your machine."
 msgstr "En gång i veckan loggar vi vilken version och plattform folk faktiskt kör. Exempeldatan nedan är allt som skickas. Den innehåller ingen serveridentifierare, ingen {TERM_IP}, inget värdnamn, ingen {TERM_MAC}-adress och inget konto-id: ingenting som kan spåras tillbaka till dig, ditt nätverk eller din maskin."
@@ -3217,6 +3247,10 @@ msgstr "Ta bort taggen när exkluderingen tas bort"
 #: src/components/Collection/CollectionDetail/RemoveFromCollectionButton/index.tsx
 msgid "Remove?"
 msgstr "Ta bort?"
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Removes the related Ombi request immediately. Otherwise, Ombi keeps listing the request as available."
+msgstr ""
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Removes the related Seerr request immediately. Otherwise, Maintainerr waits for Seerr availability sync."

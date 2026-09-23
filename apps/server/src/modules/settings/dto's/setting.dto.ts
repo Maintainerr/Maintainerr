@@ -49,6 +49,10 @@ export class SettingDto {
 
   seerr_api_key: string;
 
+  ombi_url: string;
+
+  ombi_api_key: string;
+
   tmdb_api_key?: string;
 
   tvdb_api_key?: string;

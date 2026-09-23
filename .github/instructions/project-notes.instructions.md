@@ -27,7 +27,9 @@ conversational chat.
   (`modules/api/seerr-api/`, `SeerrApiService`). Naming one leaks implementation
   and implies favoritism. Even when verifying behavior against a specific
   upstream's source, write "Seerr" in the output. Use a product-specific name
-  only in code provably specific to it (none exists today).
+  only in code provably specific to it (none exists today). Ombi is a
+  different request service with its own integration (`modules/api/ombi-api/`)
+  and keeps its own name.
 
 - **Never use real media titles** (movies, shows, books, games) in any committed
   artifact. Use generic placeholders: "Sample Series", "Franchise A Collection",
