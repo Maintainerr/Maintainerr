@@ -30,19 +30,21 @@ interface SortOption<TSortParams extends SortParams = MediaLibrarySortParams> {
   sortParams?: TSortParams
 }
 
-interface SortConfig<TSortParams extends SortParams = MediaLibrarySortParams> {
+export interface SortConfig<
+  TSortParams extends SortParams = MediaLibrarySortParams,
+> {
   defaultValue: string
   options: SortOption<TSortParams>[]
 }
 
-const createMediaLibrarySortOption = (
-  value: MediaLibrarySortKey,
+export const createSortOption = <TSort extends string>(
+  value: `${TSort}.${MediaSortOrder}`,
   label: string,
-): SortOption<MediaLibrarySortParams> => {
-  const [sort, sortOrder] = value.split('.') as [
-    MediaLibrarySortParams['sort'],
-    MediaSortOrder,
-  ]
+): SortOption<{ sort: TSort; sortOrder: MediaSortOrder }> => {
+  // The field itself may contain a dot, so split at the last one.
+  const dot = value.lastIndexOf('.')
+  const sort = value.slice(0, dot) as TSort
+  const sortOrder = value.slice(dot + 1) as MediaSortOrder
 
   return {
     value,
@@ -53,6 +55,12 @@ const createMediaLibrarySortOption = (
     },
   }
 }
+
+const createMediaLibrarySortOption = (
+  value: MediaLibrarySortKey,
+  label: string,
+): SortOption<MediaLibrarySortParams> =>
+  createSortOption<MediaLibrarySortParams['sort']>(value, label)
 
 const getSortOptionByValue = <TSortParams extends SortParams>(
   options: ReadonlyArray<SortOption<TSortParams>>,
@@ -176,18 +184,12 @@ export const getCollectionSortConfig = (
 }
 
 const collectionDeleteSoonestSortOption =
-  (): SortOption<CollectionMediaSortParams> => ({
-    value: 'deleteSoonest.asc',
-    label: globalT`Delete Soonest`,
-    sortParams: { sort: 'deleteSoonest', sortOrder: 'asc' },
-  })
+  (): SortOption<CollectionMediaSortParams> =>
+    createSortOption('deleteSoonest.asc', globalT`Delete Soonest`)
 
 const collectionDeleteLatestSortOption =
-  (): SortOption<CollectionMediaSortParams> => ({
-    value: 'deleteSoonest.desc',
-    label: globalT`Delete Latest`,
-    sortParams: { sort: 'deleteSoonest', sortOrder: 'desc' },
-  })
+  (): SortOption<CollectionMediaSortParams> =>
+    createSortOption('deleteSoonest.desc', globalT`Delete Latest`)
 
 export const getCollectionMediaSortConfig = (
   libraryType?: MediaLibrary['type'],
