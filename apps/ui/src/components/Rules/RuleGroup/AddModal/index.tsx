@@ -1,4 +1,3 @@
-import { i18n } from '@lingui/core'
 import { plural, t as globalT } from '@lingui/core/macro'
 import { Trans, useLingui } from '@lingui/react/macro'
 import { CloudDownloadIcon } from '@heroicons/react/outline'
@@ -53,6 +52,7 @@ import LazyModalBoundary from '../../../Common/LazyModalBoundary'
 import LoadingSpinner from '../../../Common/LoadingSpinner'
 import Modal from '../../../Common/Modal'
 import { getCollectionMediaSortConfig } from '../../../Common/MediaLibrarySortControl'
+import { compareByName } from '../../../../utils/collation'
 import SaveButton from '../../../Common/SaveButton'
 import { Input } from '../../../Forms/Input'
 import { Select } from '../../../Forms/Select'
@@ -174,13 +174,8 @@ const numberOrUndefined = (value: unknown): number | undefined => {
   return value as number | undefined
 }
 
-const sortActionOptions = <T extends { name: string }>(options: T[]): T[] => {
-  // Collate with the app locale: the names are translated, and the browser
-  // default would order Swedish labels with English rules.
-  return [...options].sort((left, right) =>
-    left.name.localeCompare(right.name, i18n.locale),
-  )
-}
+const sortActionOptions = <T extends { name: string }>(options: T[]): T[] =>
+  [...options].sort(compareByName)
 
 const buildRadarrActionOptions = () =>
   sortActionOptions([

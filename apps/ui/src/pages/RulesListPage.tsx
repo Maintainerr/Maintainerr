@@ -76,7 +76,7 @@ const RulesListPage = () => {
       <title>{t`Rules - Maintainerr`}</title>
       <div className="w-full px-4">
         <PageControlRow
-          controlsClassName="sm:w-auto"
+          controlsLayout="pair"
           actions={
             <>
               <AddButton
@@ -97,29 +97,23 @@ const RulesListPage = () => {
             </>
           }
           controls={
-            // Two across on a phone, as on the Overview: the pair shares the
-            // row with the actions, so stacked they would eat the screen.
-            <div className="ml-auto grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:items-center sm:justify-end">
-              <div className="w-full sm:w-[18rem]">
-                <LibrarySwitcher
-                  containerClassName="mb-0"
-                  formClassName="max-w-none"
-                  onLibraryChange={onSwitchLibrary}
-                  selectedLibraryId={selectedLibrary}
-                  libraries={libraries}
-                  librariesLoading={librariesLoading}
-                  librariesError={!!librariesError}
-                />
-              </div>
-              <div className="w-full sm:w-[18rem]">
-                <MediaLibrarySortControl
-                  ariaLabel={t`Sort rules`}
-                  options={sortConfig.options}
-                  value={sortValue}
-                  onSortChange={onSortChange}
-                />
-              </div>
-            </div>
+            <>
+              <LibrarySwitcher
+                containerClassName="mb-0"
+                formClassName="max-w-none"
+                onLibraryChange={onSwitchLibrary}
+                selectedLibraryId={selectedLibrary}
+                libraries={libraries}
+                librariesLoading={librariesLoading}
+                librariesError={!!librariesError}
+              />
+              <MediaLibrarySortControl
+                ariaLabel={t`Sort rules`}
+                options={sortConfig.options}
+                value={sortValue}
+                onSortChange={onSortChange}
+              />
+            </>
           }
         />
         <h1 className="mb-3 text-lg font-bold text-zinc-200">

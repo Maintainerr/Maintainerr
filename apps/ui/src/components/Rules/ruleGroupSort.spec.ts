@@ -1,44 +1,33 @@
 import type { MediaLibrary } from '@maintainerr/contracts'
 import { describe, expect, it } from 'vitest'
+import { buildRuleGroup } from '../../test-utils/ruleGroups'
 import type { IRuleGroup } from './RuleGroup'
 import { getRuleGroupSortConfig, sortRuleGroups } from './ruleGroupSort'
-
-const group = (overrides: Partial<IRuleGroup>): IRuleGroup => ({
-  id: 1,
-  name: 'Group',
-  description: '',
-  libraryId: '1',
-  isActive: true,
-  collectionId: 1,
-  rules: [],
-  useRules: true,
-  dataType: 'movie',
-  ...overrides,
-})
 
 const libraries: MediaLibrary[] = [
   { id: '1', title: 'Movies', type: 'movie' },
   { id: '2', title: 'Anime', type: 'show' },
 ]
 
+// Deliberately not in id order, so the creation sort has work to do.
 const groups = [
-  group({ id: 1, name: 'Zulu', libraryId: '1', isActive: false }),
-  group({ id: 2, name: 'Alpha', libraryId: '2' }),
-  group({ id: 3, name: 'Mike', libraryId: 'gone' }),
-  group({ id: 4, name: 'Bravo', libraryId: '1' }),
+  buildRuleGroup({ id: 4, name: 'Zulu', libraryId: '1', isActive: false }),
+  buildRuleGroup({ id: 2, name: 'Alpha', libraryId: '2' }),
+  buildRuleGroup({ id: 3, name: 'Mike', libraryId: 'gone' }),
+  buildRuleGroup({ id: 1, name: 'Bravo', libraryId: '1' }),
 ]
 
 const namesOf = (sorted: IRuleGroup[]) => sorted.map((item) => item.name)
 
 describe('sortRuleGroups', () => {
-  it('keeps creation order by default and reverses it for newest first', () => {
-    expect(getRuleGroupSortConfig().defaultValue).toBe('created.asc')
-    expect(namesOf(sortRuleGroups(groups, undefined, libraries))).toEqual([
-      'Zulu',
-      'Alpha',
-      'Mike',
-      'Bravo',
-    ])
+  it('sorts by creation order through the default option, newest first reversed', () => {
+    const { defaultValue, options } = getRuleGroupSortConfig()
+    const byDefault = options.find((option) => option.value === defaultValue)
+
+    expect(defaultValue).toBe('created.asc')
+    expect(
+      namesOf(sortRuleGroups(groups, byDefault?.sortParams, libraries)),
+    ).toEqual(['Bravo', 'Alpha', 'Mike', 'Zulu'])
     expect(
       namesOf(
         sortRuleGroups(
@@ -47,7 +36,7 @@ describe('sortRuleGroups', () => {
           libraries,
         ),
       ),
-    ).toEqual(['Bravo', 'Mike', 'Alpha', 'Zulu'])
+    ).toEqual(['Zulu', 'Mike', 'Alpha', 'Bravo'])
   })
 
   it('orders by name in both directions', () => {

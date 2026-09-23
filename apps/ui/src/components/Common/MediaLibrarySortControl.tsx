@@ -41,7 +41,10 @@ export const createSortOption = <TSort extends string>(
   value: `${TSort}.${MediaSortOrder}`,
   label: string,
 ): SortOption<{ sort: TSort; sortOrder: MediaSortOrder }> => {
-  const [sort, sortOrder] = value.split('.') as [TSort, MediaSortOrder]
+  // The field itself may contain a dot, so split at the last one.
+  const dot = value.lastIndexOf('.')
+  const sort = value.slice(0, dot) as TSort
+  const sortOrder = value.slice(dot + 1) as MediaSortOrder
 
   return {
     value,
@@ -181,18 +184,12 @@ export const getCollectionSortConfig = (
 }
 
 const collectionDeleteSoonestSortOption =
-  (): SortOption<CollectionMediaSortParams> => ({
-    value: 'deleteSoonest.asc',
-    label: globalT`Delete Soonest`,
-    sortParams: { sort: 'deleteSoonest', sortOrder: 'asc' },
-  })
+  (): SortOption<CollectionMediaSortParams> =>
+    createSortOption('deleteSoonest.asc', globalT`Delete Soonest`)
 
 const collectionDeleteLatestSortOption =
-  (): SortOption<CollectionMediaSortParams> => ({
-    value: 'deleteSoonest.desc',
-    label: globalT`Delete Latest`,
-    sortParams: { sort: 'deleteSoonest', sortOrder: 'desc' },
-  })
+  (): SortOption<CollectionMediaSortParams> =>
+    createSortOption('deleteSoonest.desc', globalT`Delete Latest`)
 
 export const getCollectionMediaSortConfig = (
   libraryType?: MediaLibrary['type'],

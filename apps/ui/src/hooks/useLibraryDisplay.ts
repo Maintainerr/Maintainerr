@@ -1,3 +1,4 @@
+import type { MediaLibrary } from '@maintainerr/contracts'
 import { useMediaServerLibraries } from '../api/media-server'
 
 export interface LibraryDisplay {
@@ -5,6 +6,12 @@ export interface LibraryDisplay {
   hasLibraryId: boolean
   isUnreachable: boolean
 }
+
+export const findLibraryTitle = (
+  libraries: MediaLibrary[] | undefined,
+  libraryId: string | number | null | undefined,
+): string | undefined =>
+  libraries?.find((lib) => String(lib.id) === String(libraryId))?.title
 
 /**
  * Resolves a stored libraryId to a display title while distinguishing an
@@ -18,7 +25,7 @@ export function useLibraryDisplay(
 
   const hasLibraryId = libraryId != null && libraryId !== ''
   const title = hasLibraryId
-    ? libraries?.find((lib) => String(lib.id) === String(libraryId))?.title
+    ? findLibraryTitle(libraries, libraryId)
     : undefined
   const isUnreachable = hasLibraryId && !title && librariesError
 
