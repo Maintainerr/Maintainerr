@@ -69,7 +69,6 @@ export class OmbiGetterService {
     try {
       let origLibItem: MediaItem = undefined;
 
-      // Ombi keys shows by TMDB id, so seasons and episodes read their show.
       if (dataType === 'season' || dataType === 'episode') {
         origLibItem = cloneDeep(libItem);
         const mediaServer = await this.mediaServerFactory.getService();
@@ -79,8 +78,6 @@ export class OmbiGetterService {
       }
 
       const prop = this.appProperties.find((el) => el.id === id);
-      // Same run-scoped memo as the Seerr getter: one id resolution per item,
-      // evicted when it yields no tmdb so a transient failure retries.
       const resolveIds = () =>
         this.metadataService.resolveIdsFromMediaItemForService(libItem, 'ombi');
       const resolvedIds = await (arrLookupCache
@@ -96,7 +93,6 @@ export class OmbiGetterService {
         this.logger.debug(
           `Couldn't find tmdb id for media '${libItem.title}' with id '${libItem.id}'. As a result, no Ombi query could be made.`,
         );
-        // Transient: not being able to look it up is not "not requested".
         return undefined;
       }
 
@@ -114,7 +110,6 @@ export class OmbiGetterService {
 
   private async getMovieValue(name: string | undefined, tmdbId: number) {
     const request = await this.ombiApi.getMovieRequest(tmdbId);
-    // The sweep failed: skip so the comparator protects the item.
     if (request === undefined) {
       return undefined;
     }
@@ -133,7 +128,7 @@ export class OmbiGetterService {
       case 'mediaAddedAt':
         return request?.available ? ombiDate(request.markedAsAvailable) : null;
       case 'amountRequested':
-        // Ombi holds one request per movie, whoever asks after the first.
+        // Ombi holds one request per movie.
         return request ? 1 : 0;
       case 'isRequested':
         return request ? 1 : 0;
@@ -204,10 +199,8 @@ export class OmbiGetterService {
     }
   }
 
-  /**
-   * Ombi stores an air date per requested episode only, so a season answers
-   * with its earliest requested episode and an episode with its own.
-   */
+  // Ombi stores air dates per requested episode only, so a season answers
+  // with its earliest requested one.
   private getAirDate(
     children: OmbiChildRequest[],
     seasonNumber: number | undefined,

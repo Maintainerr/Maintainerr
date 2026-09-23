@@ -9,7 +9,6 @@ import {
   OmbiTvRequest,
 } from '../../api/ombi-api/ombi-api.service';
 import { MetadataService } from '../../metadata/metadata.service';
-import { ArrLookupCache } from '../helpers/arr-lookup-cache';
 import { OmbiGetterService } from './ombi-getter.service';
 
 describe('OmbiGetterService', () => {
@@ -118,12 +117,8 @@ describe('OmbiGetterService', () => {
       metadataService,
       createMockLogger(),
     );
-    const get = (
-      id: number,
-      item: MediaItem,
-      dataType?: MediaItemType,
-      cache?: ArrLookupCache,
-    ) => service.get(id, item, dataType, cache);
+    const get = (id: number, item: MediaItem, dataType?: MediaItemType) =>
+      service.get(id, item, dataType);
 
     return { get, ombiApi, metadataService, getMetadata };
   };
@@ -260,18 +255,5 @@ describe('OmbiGetterService', () => {
       expect(await get(IS_REQUESTED, episodeLibItem, 'episode')).toBe(1);
       expect(getMetadata).toHaveBeenCalledWith(showLibItem.id);
     });
-  });
-
-  it('resolves the id once per item across conditions sharing a run cache', async () => {
-    const { get, ombiApi, metadataService } = createService();
-    ombiApi.getMovieRequest.mockResolvedValue(movie());
-    const cache = new ArrLookupCache();
-
-    await get(IS_REQUESTED, movieLibItem, undefined, cache);
-    await get(AMOUNT_REQUESTED, movieLibItem, undefined, cache);
-
-    expect(
-      metadataService.resolveIdsFromMediaItemForService,
-    ).toHaveBeenCalledTimes(1);
   });
 });

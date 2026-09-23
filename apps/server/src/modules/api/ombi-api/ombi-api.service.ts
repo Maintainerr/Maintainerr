@@ -53,7 +53,6 @@ export interface OmbiSeasonRequest {
   episodes: OmbiEpisodeRequest[];
 }
 
-/** One user's request for a set of episodes of a show. */
 export interface OmbiChildRequest extends OmbiBaseRequest {
   parentRequestId: number;
   seasonRequests: OmbiSeasonRequest[];
@@ -102,7 +101,6 @@ export const resolveOmbiRequester = (
 ): string | undefined =>
   request.requestedByAlias || request.requestedUser?.userName || undefined;
 
-/** The child requests covering a season; every child when none is given. */
 export const childRequestsForSeason = (
   show: OmbiTvRequest | null | undefined,
   season?: number,
@@ -150,10 +148,8 @@ export class OmbiApiService {
   }
 
   /**
-   * Run-scoped lookup backed by one movie and one show list per rule-group
-   * run. `null` means Ombi answered and holds no request for the title;
-   * `undefined` means the sweep failed, so the getter treats it as transient.
-   * Copies, since the index is shared across items.
+   * `null`: Ombi answered and holds no request. `undefined`: the sweep failed,
+   * so the getter treats it as transient. Copies, the index is shared.
    */
   public async getMovieRequest(
     tmdbId: number,
@@ -177,11 +173,7 @@ export class OmbiApiService {
     return request ? cloneDeep(request) : null;
   }
 
-  /**
-   * Usernames of everyone who requested a title. An unreachable Ombi yields
-   * `[]`: failing to name the requester must never suppress the pre-deletion
-   * warning itself.
-   */
+  /** `[]` when unreachable: a missing name must not suppress the warning. */
   public async getRequestedByUsernames(
     tmdbId: number,
     type: OmbiRequestType,
@@ -203,10 +195,7 @@ export class OmbiApiService {
     return [...new Set(usernames)];
   }
 
-  /**
-   * Whether the request was removed. `undefined` when that could not be
-   * established, so a caller never reports a removal that did not happen.
-   */
+  /** `undefined` when the outcome is unknown, never a removal that did not happen. */
   public async removeMediaByTmdbId(
     tmdbId: number,
     type: OmbiRequestType,
@@ -232,10 +221,7 @@ export class OmbiApiService {
     }
   }
 
-  /**
-   * Removes every child request covering the season. Ombi drops the show
-   * request itself with its last child, so nothing stale is left behind.
-   */
+  /** Ombi drops the show request itself with its last child. */
   public async removeSeasonRequest(
     tmdbId: number,
     season: number,
@@ -263,10 +249,7 @@ export class OmbiApiService {
     }
   }
 
-  /**
-   * Whether another season of the show is still waiting to arrive, with the
-   * same contract as {@link removeSeasonRequest}.
-   */
+  /** Whether another season is still waiting to arrive. */
   public async hasRemainingSeasonRequests(
     tmdbId: number,
     removedSeasonNumber: number,
@@ -382,11 +365,7 @@ export class OmbiApiService {
     return index;
   }
 
-  /**
-   * Ombi keys its request endpoints by its own request id, which only the
-   * search view exposes for a TMDB id. `0` means not requested; `undefined`
-   * means Ombi could not be asked.
-   */
+  /** Only the search view maps a TMDB id to Ombi's request id; 0 = unrequested. */
   private async findRequestId(
     tmdbId: number,
     type: OmbiRequestType,
@@ -399,7 +378,6 @@ export class OmbiApiService {
     return result ? (result.requestId ?? 0) : undefined;
   }
 
-  /** The show's child requests, `[]` when it is not requested at all. */
   private async getChildRequests(
     tmdbId: number,
   ): Promise<OmbiChildRequest[] | undefined> {
@@ -417,11 +395,8 @@ export class OmbiApiService {
     return Array.isArray(children) ? children : undefined;
   }
 
-  /**
-   * The movie and child deletes answer a result object with HTTP 200 even
-   * when refused, while the show delete answers an empty body, so only a
-   * refusal in the body or a thrown error means the request is still there.
-   */
+  // Movie and child deletes answer 200 with a result body even when refused;
+  // the show delete answers an empty body.
   private async deleteRequest(path: string): Promise<void> {
     const result = await this.api.delete<OmbiRequestEngineResult | ''>(
       path,
