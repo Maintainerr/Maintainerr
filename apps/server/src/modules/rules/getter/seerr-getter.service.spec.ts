@@ -385,6 +385,19 @@ describe('SeerrGetterService', () => {
       expect((mediaServer as any).getUsers).not.toHaveBeenCalled();
     });
 
+    it('skips a season whose show cannot be read instead of failing the run', async () => {
+      const { service, seerrApi } = createService();
+
+      const result = await service.get(
+        ADD_USER_PROP_ID,
+        seasonLibItem,
+        'season',
+      );
+
+      expect(result).toBeUndefined();
+      expect(seerrApi.getRequestsForMedia).not.toHaveBeenCalled();
+    });
+
     it('should filter TV requests by season for season dataType', async () => {
       const { service, seerrApi, mediaServerFactory } = createService();
 

@@ -13,6 +13,7 @@ import {
 import { MediaServerFactory } from '../api/media-server/media-server.factory';
 import { IMediaServerService } from '../api/media-server/media-server.interface';
 import { DownloadClientApiService } from '../api/download-client-api/download-client-api.service';
+import { OmbiApiService } from '../api/ombi-api/ombi-api.service';
 import { SeerrApiService } from '../api/seerr-api/seerr-api.service';
 import { ServarrService } from '../api/servarr-api/servarr.service';
 import { ServarrAction } from '../collections/interfaces/collection.interface';
@@ -28,6 +29,7 @@ describe('SonarrActionHandler', () => {
   let mediaServer: Mocked<IMediaServerService>;
   let servarrService: Mocked<ServarrService>;
   let seerrApi: Mocked<SeerrApiService>;
+  let ombiApi: Mocked<OmbiApiService>;
   let metadataService: Mocked<MetadataService>;
   let settings: Mocked<SettingsDataService>;
   let downloadClient: Mocked<DownloadClientApiService>;
@@ -45,6 +47,7 @@ describe('SonarrActionHandler', () => {
     mediaServerFactory = unitRef.get(MediaServerFactory);
     servarrService = unitRef.get(ServarrService);
     seerrApi = unitRef.get(SeerrApiService);
+    ombiApi = unitRef.get(OmbiApiService);
     metadataService = unitRef.get(MetadataService);
     settings = unitRef.get(SettingsDataService);
     downloadClient = unitRef.get(DownloadClientApiService);
@@ -78,6 +81,7 @@ describe('SonarrActionHandler', () => {
     mediaServerFactory.getService.mockResolvedValue(mediaServer);
     seerrApi.isConfigured.mockReturnValue(true);
     seerrApi.hasRemainingSeasonRequests.mockResolvedValue(undefined);
+    ombiApi.isConfigured.mockReturnValue(false);
   });
 
   // Helper to setup media server mock for each test
@@ -625,6 +629,76 @@ describe('SonarrActionHandler', () => {
       true,
     );
   });
+
+  // Any configured request service can hold the show; only a clear "nothing
+  // remains" from every one of them lets it go.
+  it.each([
+    ['Seerr has nothing pending but Ombi has', true, false, true, false],
+    [
+      'only Ombi is configured and cannot answer',
+      false,
+      undefined,
+      undefined,
+      false,
+    ],
+    [
+      'only Ombi is configured and nothing remains',
+      false,
+      undefined,
+      false,
+      true,
+    ],
+  ])(
+    'DELETE_SHOW_IF_EMPTY when %s',
+    async (_, seerrConfigured, seerrAnswer, ombiAnswer, deletes) => {
+      const collection = createCollection({
+        arrAction: ServarrAction.DELETE_SHOW_IF_EMPTY,
+        sonarrSettingsId: 1,
+        type: 'season',
+      });
+      const collectionMedia = createCollectionMediaWithMetadata(collection, {
+        tmdbId: 1,
+      });
+
+      mockMediaServerMetadata(collectionMedia.mediaData);
+      seerrApi.isConfigured.mockReturnValue(seerrConfigured);
+      seerrApi.hasRemainingSeasonRequests.mockResolvedValue(seerrAnswer);
+      ombiApi.isConfigured.mockReturnValue(true);
+      ombiApi.hasRemainingSeasonRequests.mockResolvedValue(ombiAnswer);
+
+      const series = createSonarrSeries({
+        id: 42,
+        status: 'continuing',
+        seasons: [
+          { seasonNumber: 0, monitored: false },
+          { seasonNumber: 1, monitored: false },
+        ],
+        statistics: {
+          seasonCount: 1,
+          episodeFileCount: 0,
+          episodeCount: 10,
+          totalEpisodeCount: 10,
+          sizeOnDisk: 0,
+          percentOfEpisodes: 0,
+        },
+      });
+
+      const mockedSonarrApi = mockSonarrApi(servarrService, logger);
+      jest
+        .spyOn(mockedSonarrApi, 'getSeriesByTvdbId')
+        .mockResolvedValue(series);
+      jest.spyOn(mockedSonarrApi, 'unmonitorSeasons').mockResolvedValue(series);
+      mediaIdFinder.findTvdbId.mockResolvedValue(1);
+
+      await sonarrActionHandler.handleAction(collection, collectionMedia);
+
+      expect(ombiApi.hasRemainingSeasonRequests).toHaveBeenCalledWith(
+        collectionMedia.tmdbId,
+        collectionMedia.mediaData.index,
+      );
+      expect(mockedSonarrApi.deleteShow).toHaveBeenCalledTimes(deletes ? 1 : 0);
+    },
+  );
 
   it('should delete continuing empty show when Seerr has no remaining requested seasons', async () => {
     const collection = createCollection({

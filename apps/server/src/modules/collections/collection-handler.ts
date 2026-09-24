@@ -342,10 +342,11 @@ export class CollectionHandler {
         break;
       }
       case 'episode':
-        // Neither service tracks a request per episode, so removing the
-        // season's request would drop the still-present episodes with it. The
-        // UI hides the toggle for episode rules; this also guards existing
-        // collections that still have it set.
+        // Neither service can remove one episode's request: Seerr tracks
+        // requests per season and Ombi only deletes a whole child request, so
+        // the still-present episodes would go with it. The UI hides the toggle
+        // for episode rules; this also guards existing collections that still
+        // have it set.
         this.logger.debug(
           `[${label}] Skipping request removal for episode-level collection '${collection.title}' (TMDB ID '${tmdbId}'): requests are not tracked per episode.`,
         );

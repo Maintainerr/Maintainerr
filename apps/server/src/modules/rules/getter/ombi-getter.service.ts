@@ -97,6 +97,10 @@ export class OmbiGetterService {
         libItem = await mediaServer.getMetadata(
           dataType === 'season' ? libItem.parentId : libItem.grandparentId,
         );
+        // An unreadable show is transient: protect the item, not the run.
+        if (!libItem) {
+          return undefined;
+        }
       }
 
       const prop = this.appProperties.find((el) => el.id === id);
@@ -123,7 +127,7 @@ export class OmbiGetterService {
         : await this.getShowValue(prop?.name, tmdbId, dataType, origLibItem);
     } catch (error) {
       this.logger.warn(
-        `Ombi-Getter - Action failed for '${libItem.title}' with id '${libItem.id}'`,
+        `Ombi-Getter - Action failed for '${libItem?.title}' with id '${libItem?.id}'`,
       );
       this.logger.debug(error);
       return undefined;

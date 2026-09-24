@@ -148,8 +148,9 @@ export class NotificationTimerService extends TaskBase {
           ? metadata.parentIndex
           : undefined;
 
-    // Ombi keys movies and shows separately, so it needs the type the
-    // metadata carries; Seerr keys both by TMDB id alone.
+    // Ombi keys movies and shows separately and requests episodes one by one,
+    // so it needs the type and episode the metadata carries; Seerr keys both
+    // by TMDB id and tracks requests per season.
     const [seerr, ombi] = await Promise.all([
       this.seerrApi.getRequestedByUsernames(media.tmdbId, season),
       metadata
@@ -157,6 +158,7 @@ export class NotificationTimerService extends TaskBase {
             media.tmdbId,
             metadata.type === 'movie' ? 'movie' : 'tv',
             season,
+            metadata.type === 'episode' ? metadata.index : undefined,
           )
         : [],
     ]);

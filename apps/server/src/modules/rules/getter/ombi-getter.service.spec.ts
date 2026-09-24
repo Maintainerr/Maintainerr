@@ -270,6 +270,14 @@ describe('OmbiGetterService', () => {
       expect(await get(ADD_USER, unrequested, 'season')).toEqual([]);
     });
 
+    it('skips a season whose show cannot be read instead of failing the run', async () => {
+      const { get, ombiApi, getMetadata } = createService();
+      getMetadata.mockResolvedValue(undefined);
+
+      expect(await get(IS_REQUESTED, seasonLibItem, 'season')).toBeUndefined();
+      expect(ombiApi.getShowRequest).not.toHaveBeenCalled();
+    });
+
     it('scopes an episode to the child requests that include it', async () => {
       const { get, ombiApi, getMetadata } = createService();
       ombiApi.getShowRequest.mockResolvedValue(show([older]));

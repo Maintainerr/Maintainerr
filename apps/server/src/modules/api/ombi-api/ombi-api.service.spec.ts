@@ -147,6 +147,12 @@ describe('OmbiApiService', () => {
         'alice',
         'bob',
       ]);
+      expect(await service.getRequestedByUsernames(200, 'tv', 1, 1)).toEqual([
+        'alice',
+      ]);
+      expect(await service.getRequestedByUsernames(200, 'tv', 1, 9)).toEqual(
+        [],
+      );
     });
 
     it('returns [] when Ombi is unreachable or not configured', async () => {

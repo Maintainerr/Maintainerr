@@ -190,6 +190,7 @@ export class OmbiApiService {
     tmdbId: number,
     type: OmbiRequestType,
     season?: number,
+    episode?: number,
   ): Promise<string[]> {
     if (!this.isConfigured() || !tmdbId) {
       return [];
@@ -198,7 +199,7 @@ export class OmbiApiService {
     const requests =
       type === 'movie'
         ? [await this.getMovieRequest(tmdbId)]
-        : childRequestsFor(await this.getShowRequest(tmdbId), season);
+        : childRequestsFor(await this.getShowRequest(tmdbId), season, episode);
 
     const usernames = requests
       .map((request) => request && resolveOmbiRequester(request))
