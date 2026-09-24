@@ -32,6 +32,7 @@ import { chunk } from 'lodash';
 import { Brackets, DataSource, In, LessThan, Not, Repository } from 'typeorm';
 import { CollectionLog } from '../../modules/collections/entities/collection_log.entities';
 import { getErrorMessage } from '../../utils/connection-error';
+import { ServarrTagService } from '../actions/servarr-tag.service';
 import { readItemPresence } from '../api/media-server/item-presence.util';
 import {
   ENRICHMENT_ID_CHUNK,
@@ -187,6 +188,7 @@ export class CollectionsService {
     private readonly eventEmitter: EventEmitter2,
     private readonly collectionPosterService: CollectionPosterService,
     private readonly overlayProcessor: OverlayProcessorService,
+    private readonly servarrTagService: ServarrTagService,
     private readonly logger: MaintainerrLogger,
   ) {
     logger.setContext(CollectionsService.name);
@@ -3699,10 +3701,6 @@ export class CollectionsService {
               )
             : new Set<string>();
 
-        collectionMedia = collectionMedia.filter(
-          (existingMedia) => !removedItemIds.has(existingMedia.mediaServerId),
-        );
-
         if (removedItemIds.size > 0) {
           this.eventEmitter.emit(
             MaintainerrEvent.CollectionMedia_Removed,
@@ -3714,7 +3712,21 @@ export class CollectionsService {
               collection.deleteAfterDays,
             ),
           );
+
+          // Every leave passes through here, so this is where the collection's
+          // *arr membership tag comes off. No-op unless it tags its content.
+          await this.servarrTagService.syncMembershipTags(
+            collection,
+            [],
+            collectionMedia.filter((existingMedia) =>
+              removedItemIds.has(existingMedia.mediaServerId),
+            ),
+          );
         }
+
+        collectionMedia = collectionMedia.filter(
+          (existingMedia) => !removedItemIds.has(existingMedia.mediaServerId),
+        );
 
         const isSharedManualCollection =
           collection.manualCollection &&

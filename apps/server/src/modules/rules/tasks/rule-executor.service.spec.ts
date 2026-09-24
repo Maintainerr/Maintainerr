@@ -153,6 +153,7 @@ describe('RuleExecutorService', () => {
       prefetchHistory: jest.fn().mockResolvedValue(undefined),
     } as unknown as jest.Mocked<TracearrApiService>;
 
+    const servarrTagService = createMockServarrTagService();
     const service = new RuleExecutorService(
       rulesService,
       mediaServerFactory,
@@ -163,7 +164,7 @@ describe('RuleExecutorService', () => {
       progressManager,
       logger,
       recentlyHandledMedia,
-      createMockServarrTagService(),
+      servarrTagService,
       tracearrApi,
     );
 
@@ -178,6 +179,7 @@ describe('RuleExecutorService', () => {
       progressManager,
       logger,
       recentlyHandledMedia,
+      servarrTagService,
       tracearrApi,
     };
   };
@@ -1767,6 +1769,50 @@ describe('RuleExecutorService', () => {
       expect.stringContaining(
         "Suppressed re-add of 1 media item in 'Watched + idle'",
       ),
+    );
+  });
+
+  it('tags what the run added and leaves untagging to the collection service', async () => {
+    const { service, collectionService, servarrTagService } = createService(
+      MediaServerType.PLEX,
+    );
+
+    const collection = {
+      id: 1,
+      title: 'Tagged',
+      mediaServerId: 'coll-1',
+      manualCollection: false,
+      deleteAfterDays: 10,
+    };
+    collectionService.getCollection.mockResolvedValue(collection as any);
+    // 'm-old' no longer matches and leaves; 'm-new' matches and is added.
+    collectionService.getCollectionMedia
+      .mockResolvedValueOnce([
+        { mediaServerId: 'm-old', tmdbId: 1, includedByRule: true },
+      ] as any)
+      .mockResolvedValueOnce([
+        { mediaServerId: 'm-new', tmdbId: 2, includedByRule: true },
+      ] as any);
+
+    (service as any).startTime = new Date();
+    (service as any).resultData = [{ id: 'm-new' }];
+    (service as any).statisticsData = [];
+
+    await (service as any).handleCollection({ id: 10, collectionId: 1 });
+
+    expect(
+      collectionService.removeFromCollectionWithResolvedLink,
+    ).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 1 }),
+      [expect.objectContaining({ mediaServerId: 'm-old' })],
+      'rule',
+    );
+    // The removal untags 'm-old' itself; passing it here again would write
+    // the same tag removal twice.
+    expect(servarrTagService.syncMembershipTags).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 1 }),
+      [{ mediaServerId: 'm-new', tmdbId: 2, tvdbId: undefined }],
+      [],
     );
   });
 

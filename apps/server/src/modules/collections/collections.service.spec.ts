@@ -14,6 +14,7 @@ import {
   createCollectionMedia,
   createMediaItem,
 } from '../../../test/utils/data';
+import { ServarrTagService } from '../actions/servarr-tag.service';
 import { MediaItemEnrichmentService } from '../api/media-server/media-item-enrichment.service';
 import { MediaServerFactory } from '../api/media-server/media-server.factory';
 import { IMediaServerService } from '../api/media-server/media-server.interface';
@@ -49,6 +50,7 @@ describe('CollectionsService', () => {
   let settingsDataService: Mocked<SettingsDataService>;
   let collectionPosterService: Mocked<CollectionPosterService>;
   let overlayProcessor: Mocked<OverlayProcessorService>;
+  let servarrTagService: Mocked<ServarrTagService>;
   let eventEmitter: Mocked<EventEmitter2>;
   let logger: Mocked<MaintainerrLogger>;
 
@@ -58,6 +60,7 @@ describe('CollectionsService', () => {
 
     service = unit;
     mediaServerFactory = unitRef.get(MediaServerFactory);
+    servarrTagService = unitRef.get(ServarrTagService);
     dataSource = unitRef.get(DataSource);
     collectionRepo = unitRef.get(getRepositoryToken(Collection) as string);
     collectionMediaRepo = unitRef.get(
@@ -571,6 +574,44 @@ describe('CollectionsService', () => {
     ]);
 
     expect(mediaServer.deleteCollection).not.toHaveBeenCalled();
+  });
+
+  it('removes the *arr membership tag from items that leave the collection', async () => {
+    const collection = createCollection({
+      id: 1,
+      mediaServerId: 'remote-collection',
+      manualCollection: false,
+      tagInArr: true,
+    });
+    const collectionMedia = [
+      createCollectionMedia(collection, {
+        mediaServerId: 'item-1',
+        tmdbId: 101,
+      }),
+      createCollectionMedia(collection, { mediaServerId: 'item-2' }),
+    ];
+
+    collectionRepo.findOne.mockResolvedValue(collection);
+    collectionMediaRepo.find.mockResolvedValue(collectionMedia);
+    jest
+      .spyOn(service as any, 'checkAutomaticMediaServerLink')
+      .mockResolvedValue(collection);
+    jest
+      .spyOn(service as any, 'removeChildrenFromCollection')
+      .mockResolvedValue(['item-1']);
+
+    await service.removeFromCollection(collection.id, [
+      { mediaServerId: 'item-1' },
+      { mediaServerId: 'item-2' },
+    ]);
+
+    // Only the item that was actually removed is untagged, with its cached
+    // provider ids as resolution fallbacks.
+    expect(servarrTagService.syncMembershipTags).toHaveBeenCalledWith(
+      collection,
+      [],
+      [expect.objectContaining({ mediaServerId: 'item-1', tmdbId: 101 })],
+    );
   });
 
   it('treats a media server collection link as shared when another local collection points to it', async () => {

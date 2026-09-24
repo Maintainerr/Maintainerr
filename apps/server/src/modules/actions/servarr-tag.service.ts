@@ -1,5 +1,7 @@
 import { MediaItemType, normalizeArrTagLabel } from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { In, Repository } from 'typeorm';
 import { RadarrApi } from '../api/servarr-api/helpers/radarr.helper';
 import { SonarrApi } from '../api/servarr-api/helpers/sonarr.helper';
 import { ServarrService } from '../api/servarr-api/servarr.service';
@@ -10,6 +12,7 @@ import {
   MetadataLookupCandidate,
 } from '../metadata/metadata-lookup.util';
 import { MetadataService } from '../metadata/metadata.service';
+import { Exclusion } from '../rules/entities/exclusion.entities';
 import { SettingsDataService } from '../settings/settings-data.service';
 
 type ArrService = 'radarr' | 'sonarr';
@@ -40,6 +43,8 @@ const RESOLVE_CONCURRENCY = 5;
 // The *arr editor accepts a single batch, but cap the id list per request so a
 // huge membership change can't build an unbounded body.
 const EDITOR_BATCH_SIZE = 100;
+// Ids per exclusion lookup, under SQLite's bound-parameter cap.
+const EXCLUSION_LOOKUP_CHUNK = 500;
 
 /**
  * Applies/removes Radarr & Sonarr tags as a side effect of Maintainerr state -
@@ -47,7 +52,9 @@ const EDITOR_BATCH_SIZE = 100;
  *
  * - **Membership (Behavior A):** while a `tagInArr` collection holds an item, the
  *   matching *arr entity carries a tag whose label is the collection / rule group
- *   name. Driven from the rule executor's per-run membership deltas.
+ *   name. Adds come from the rule executor's per-run delta; removals from
+ *   `CollectionsService.removeFromCollectionInternal`, which every leave passes
+ *   through (rule run, exclusion, handling action, manual and global removal).
  * - **Exclusion (Behavior B,
  *   https://features.maintainerr.info/posts/81):** when an item is excluded, the
  *   matching *arr entity gets a protective tag (default "dnd"); removal on
@@ -70,6 +77,8 @@ const EDITOR_BATCH_SIZE = 100;
  * - **Two groups sharing a name** share one tag (labels are case-insensitive);
  *   untagging from one can strip a tag the other still wants, but the other group
  *   re-adds it on its next run.
+ * - **A group named like the exclusion label** shares the protective tag; a
+ *   removal keeps it on items that are still excluded (`withoutExcluded`).
  * - **Stale id in an editor batch** (an item deleted from *arr between resolve and
  *   write) can't error the run: `resolveArrId` already drops not-tracked items
  *   (null), and `writeTags` goes through the best-effort `runPut` (returns false,
@@ -81,6 +90,8 @@ export class ServarrTagService {
     private readonly servarrService: ServarrService,
     private readonly metadataService: MetadataService,
     private readonly settings: SettingsDataService,
+    @InjectRepository(Exclusion)
+    private readonly exclusionRepo: Repository<Exclusion>,
     private readonly logger: MaintainerrLogger,
   ) {
     logger.setContext(ServarrTagService.name);
@@ -88,10 +99,10 @@ export class ServarrTagService {
 
   /**
    * Behavior A - reconcile *arr tags for the items that just entered/left a
-   * collection this run. `added`/`removed` are the executor's rule-scope deltas
-   * (manual / co-owned members are already excluded from `removed`), each
-   * carrying the item's cached provider ids. The tag label is the collection
-   * title (== rule group name).
+   * collection. `added` is the executor's per-run delta, `removed` the rows a
+   * removal deleted (a co-owned row that only lost its rule membership stays
+   * and is not in it), each carrying the item's cached provider ids. The tag
+   * label is the collection title (== rule group name).
    */
   public async syncMembershipTags(
     collection: Collection,
@@ -150,7 +161,11 @@ export class ServarrTagService {
 
       const [addIds, removeIds] = await Promise.all([
         this.resolveArrIds(client, service, added),
-        this.resolveArrIds(client, service, removed),
+        this.resolveArrIds(
+          client,
+          service,
+          await this.withoutExcluded(service, label, removed),
+        ),
       ]);
 
       const tagged = await this.writeTags(
@@ -373,6 +388,41 @@ export class ServarrTagService {
     return (await client.getTags()).find(
       (tag) => tag.label?.toLowerCase() === target,
     )?.id;
+  }
+
+  /**
+   * A group name can normalize to the service's exclusion label. An item that
+   * is still excluded needs that label as its protective tag, so a removal
+   * leaves it alone. Any exclusion counts: keeping protection is the safe side.
+   */
+  private async withoutExcluded(
+    service: ArrService,
+    label: string,
+    removed: ArrTagItem[],
+  ): Promise<ArrTagItem[]> {
+    const exclusion = this.serviceSettings(service);
+    if (
+      removed.length === 0 ||
+      !exclusion.enabled ||
+      normalizeArrTagLabel(exclusion.label ?? '') !== label
+    ) {
+      return removed;
+    }
+
+    const excluded = new Set<string>();
+    for (const ids of this.chunk(
+      removed.map((item) => item.mediaServerId),
+      EXCLUSION_LOOKUP_CHUNK,
+    )) {
+      const rows = await this.exclusionRepo.find({
+        select: { mediaServerId: true },
+        where: { mediaServerId: In(ids) },
+      });
+      for (const row of rows) {
+        excluded.add(row.mediaServerId);
+      }
+    }
+    return removed.filter((item) => !excluded.has(item.mediaServerId));
   }
 
   /**
