@@ -31,6 +31,10 @@ describe('OmbiApiService', () => {
     releaseDate: '2020-01-01T00:00:00Z',
     has4KRequest: false,
     requestedDate4k: '0001-01-01T00:00:00Z',
+    approved4K: false,
+    markedAsApproved4K: '0001-01-01T00:00:00Z',
+    available4K: false,
+    markedAsAvailable4K: null,
     requestedByAlias: null,
     requestedUser: { userName: 'alice' },
     ...overrides,
@@ -190,10 +194,14 @@ describe('OmbiApiService', () => {
   });
 
   describe('removeSeasonRequest', () => {
-    it('deletes only the child requests covering the season', async () => {
+    it('deletes only the child requests that cover nothing but the season', async () => {
       answer({
         '/v2/Search/tv/moviedb/200': { requestId: 5 },
-        '/v1/Request/tv/5/child': [child([1]), child([2], { id: 11 })],
+        '/v1/Request/tv/5/child': [
+          child([1]),
+          child([2], { id: 11 }),
+          child([2, 3], { id: 12 }),
+        ],
       });
       api.delete.mockResolvedValue({ result: true, isError: false });
 
@@ -204,6 +212,16 @@ describe('OmbiApiService', () => {
         undefined,
         { rethrow: true },
       );
+    });
+
+    it('keeps a request that would take other seasons down with it', async () => {
+      answer({
+        '/v2/Search/tv/moviedb/200': { requestId: 5 },
+        '/v1/Request/tv/5/child': [child([1, 2])],
+      });
+
+      expect(await service.removeSeasonRequest(200, 1)).toBe(false);
+      expect(api.delete).not.toHaveBeenCalled();
     });
 
     it('leaves the other seasons alone when none covers it', async () => {

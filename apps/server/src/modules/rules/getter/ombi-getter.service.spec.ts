@@ -49,6 +49,10 @@ describe('OmbiGetterService', () => {
     releaseDate: '2020-01-01T00:00:00Z',
     has4KRequest: false,
     requestedDate4k: '0001-01-01T00:00:00Z',
+    approved4K: false,
+    markedAsApproved4K: '0001-01-01T00:00:00Z',
+    available4K: false,
+    markedAsAvailable4K: null,
     requestedByAlias: null,
     requestedUser: { userName: 'alice' },
     ...overrides,
@@ -158,22 +162,43 @@ describe('OmbiGetterService', () => {
       expect(await get(IS_REQUESTED, movieLibItem)).toBe(0);
     });
 
-    it('reads a year-1 stamp as unset and a 4K-only request from its own date', async () => {
+    it('reads an auto-approved request as approved when it was made', async () => {
+      const { get, ombiApi } = createService();
+      ombiApi.getMovieRequest.mockResolvedValue(
+        movie({ markedAsApproved: '0001-01-01T00:00:00Z' }),
+      );
+
+      expect(await get(APPROVAL_DATE, movieLibItem)).toEqual(
+        new Date('2026-01-01T00:00:00Z'),
+      );
+    });
+
+    it('reads a 4K-only request from its 4K fields', async () => {
       const { get, ombiApi } = createService();
       ombiApi.getMovieRequest.mockResolvedValue(
         movie({
           requestedDate: '0001-01-01T00:00:00Z',
-          requestedDate4k: '2026-02-01T00:00:00Z',
+          approved: false,
           markedAsApproved: '0001-01-01T00:00:00Z',
+          available: false,
+          markedAsAvailable: null,
+          has4KRequest: true,
+          requestedDate4k: '2026-02-01T00:00:00Z',
+          approved4K: true,
+          markedAsApproved4K: '2026-02-02T00:00:00Z',
+          available4K: true,
+          markedAsAvailable4K: '2026-02-03T00:00:00Z',
         }),
       );
 
       expect(await get(REQUEST_DATE, movieLibItem)).toEqual(
         new Date('2026-02-01T00:00:00Z'),
       );
-      // Approved without a stamp: auto-approval, so the request date stands in.
       expect(await get(APPROVAL_DATE, movieLibItem)).toEqual(
-        new Date('2026-02-01T00:00:00Z'),
+        new Date('2026-02-02T00:00:00Z'),
+      );
+      expect(await get(MEDIA_ADDED_AT, movieLibItem)).toEqual(
+        new Date('2026-02-03T00:00:00Z'),
       );
     });
 
@@ -245,7 +270,7 @@ describe('OmbiGetterService', () => {
       expect(await get(ADD_USER, unrequested, 'season')).toEqual([]);
     });
 
-    it('resolves an episode through its show and answers its own air date', async () => {
+    it('scopes an episode to the child requests that include it', async () => {
       const { get, ombiApi, getMetadata } = createService();
       ombiApi.getShowRequest.mockResolvedValue(show([older]));
 
@@ -254,6 +279,16 @@ describe('OmbiGetterService', () => {
       );
       expect(await get(IS_REQUESTED, episodeLibItem, 'episode')).toBe(1);
       expect(getMetadata).toHaveBeenCalledWith(showLibItem.id);
+
+      // S2E4 was never requested, although S2E1-E3 were.
+      const unrequested = createMediaItem({
+        type: 'episode',
+        grandparentId: showLibItem.id,
+        parentIndex: 2,
+        index: 4,
+      });
+      expect(await get(IS_REQUESTED, unrequested, 'episode')).toBe(0);
+      expect(await get(ADD_USER, unrequested, 'episode')).toEqual([]);
     });
   });
 });

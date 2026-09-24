@@ -3,10 +3,11 @@ import { Injectable } from '@nestjs/common';
 import { cloneDeep } from 'lodash';
 import { MediaServerFactory } from '../../api/media-server/media-server.factory';
 import {
-  childRequestsForSeason,
+  childRequestsFor,
   ombiDate,
   OmbiApiService,
   OmbiChildRequest,
+  OmbiMovieRequest,
   resolveOmbiRequester,
 } from '../../api/ombi-api/ombi-api.service';
 import { MaintainerrLogger } from '../../logging/logs.service';
@@ -24,24 +25,45 @@ const earliest = (dates: (Date | null)[]): Date | null =>
     null,
   );
 
-// A 4K-only movie request stamps only the 4K date.
-const requestedAt = (request: {
-  requestedDate: string;
-  requestedDate4k?: string;
-}): Date | null =>
+// A 4K-only movie request keeps its dates and flags in the 4K fields.
+type OmbiRequestState = Pick<
+  OmbiChildRequest,
+  | 'approved'
+  | 'markedAsApproved'
+  | 'requestedDate'
+  | 'available'
+  | 'markedAsAvailable'
+> &
+  Partial<
+    Pick<
+      OmbiMovieRequest,
+      | 'requestedDate4k'
+      | 'approved4K'
+      | 'markedAsApproved4K'
+      | 'available4K'
+      | 'markedAsAvailable4K'
+    >
+  >;
+
+const requestedAt = (request: OmbiRequestState): Date | null =>
   ombiDate(request.requestedDate) ?? ombiDate(request.requestedDate4k);
 
 // Ombi stamps markedAsApproved on a manual approval only. An auto-approved
 // request is approved the moment it is made, so its request date stands in.
-const approvedAt = (request: {
-  approved: boolean;
-  markedAsApproved: string;
-  requestedDate: string;
-  requestedDate4k?: string;
-}): Date | null =>
+const approvedAt = (request: OmbiRequestState): Date | null =>
   request.approved
-    ? (ombiDate(request.markedAsApproved) ?? requestedAt(request))
-    : null;
+    ? (ombiDate(request.markedAsApproved) ?? ombiDate(request.requestedDate))
+    : request.approved4K
+      ? (ombiDate(request.markedAsApproved4K) ??
+        ombiDate(request.requestedDate4k))
+      : null;
+
+const availableAt = (request: OmbiRequestState): Date | null =>
+  request.available
+    ? ombiDate(request.markedAsAvailable)
+    : request.available4K
+      ? ombiDate(request.markedAsAvailable4K)
+      : null;
 
 @Injectable()
 export class OmbiGetterService {
@@ -126,7 +148,7 @@ export class OmbiGetterService {
       case 'approvalDate':
         return request ? approvedAt(request) : null;
       case 'mediaAddedAt':
-        return request?.available ? ombiDate(request.markedAsAvailable) : null;
+        return request ? availableAt(request) : null;
       case 'amountRequested':
         // Ombi holds one request per movie.
         return request ? 1 : 0;
@@ -159,8 +181,12 @@ export class OmbiGetterService {
       seasonScoped
         ? seasonNumber == null
           ? []
-          : childRequestsForSeason(show, seasonNumber)
-        : childRequestsForSeason(show)
+          : childRequestsFor(
+              show,
+              seasonNumber,
+              dataType === 'episode' ? origLibItem.index : undefined,
+            )
+        : childRequestsFor(show)
     ).sort(
       (a, b) =>
         new Date(a.requestedDate).getTime() -
@@ -185,11 +211,7 @@ export class OmbiGetterService {
       case 'approvalDate':
         return earliest(children.map(approvedAt));
       case 'mediaAddedAt':
-        return earliest(
-          children
-            .filter((child) => child.available)
-            .map((child) => ombiDate(child.markedAsAvailable)),
-        );
+        return earliest(children.map(availableAt));
       case 'amountRequested':
         return children.length;
       case 'isRequested':

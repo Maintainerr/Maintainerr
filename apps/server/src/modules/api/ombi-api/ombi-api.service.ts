@@ -38,8 +38,13 @@ export interface OmbiMovieRequest extends OmbiBaseRequest {
   theMovieDbId: number;
   title: string;
   releaseDate: string;
+  // A 4K request lives on the same row with its own state.
   has4KRequest: boolean;
   requestedDate4k: string;
+  approved4K: boolean;
+  markedAsApproved4K: string;
+  available4K: boolean;
+  markedAsAvailable4K: string | null;
 }
 
 export interface OmbiEpisodeRequest {
@@ -101,14 +106,21 @@ export const resolveOmbiRequester = (
 ): string | undefined =>
   request.requestedByAlias || request.requestedUser?.userName || undefined;
 
-export const childRequestsForSeason = (
+/** The child requests covering the season, or the episode when given. */
+export const childRequestsFor = (
   show: OmbiTvRequest | null | undefined,
   season?: number,
+  episode?: number,
 ): OmbiChildRequest[] =>
   (show?.childRequests ?? []).filter(
     (child) =>
       season === undefined ||
-      child.seasonRequests.some((s) => s.seasonNumber === season),
+      child.seasonRequests.some(
+        (s) =>
+          s.seasonNumber === season &&
+          (episode === undefined ||
+            s.episodes.some((e) => e.episodeNumber === episode)),
+      ),
   );
 
 @Injectable()
@@ -186,7 +198,7 @@ export class OmbiApiService {
     const requests =
       type === 'movie'
         ? [await this.getMovieRequest(tmdbId)]
-        : childRequestsForSeason(await this.getShowRequest(tmdbId), season);
+        : childRequestsFor(await this.getShowRequest(tmdbId), season);
 
     const usernames = requests
       .map((request) => request && resolveOmbiRequester(request))
@@ -221,25 +233,37 @@ export class OmbiApiService {
     }
   }
 
-  /** Ombi drops the show request itself with its last child. */
+  /**
+   * A child request can only be deleted whole (Ombi's child update cannot
+   * drop a season), so one that also covers other seasons is kept rather than
+   * taking their requests down with it. Ombi drops the show request itself
+   * with its last child.
+   */
   public async removeSeasonRequest(
     tmdbId: number,
     season: number,
   ): Promise<boolean | undefined> {
     try {
-      const children = await this.getChildRequests(tmdbId);
-      if (children === undefined) {
+      const covering = await this.getChildRequests(tmdbId, season);
+      if (covering === undefined) {
         return undefined;
       }
 
-      const covering = children.filter((child) =>
-        child.seasonRequests.some((s) => s.seasonNumber === season),
+      const shared = covering.filter((child) =>
+        child.seasonRequests.some((s) => s.seasonNumber !== season),
       );
-      if (covering.length === 0) {
+      if (shared.length > 0) {
+        this.logger.log(
+          `Kept ${shared.length} Ombi request(s) covering season ${season} of show with TMDB ID '${tmdbId}': they also cover other seasons`,
+        );
+      }
+
+      const own = covering.filter((child) => !shared.includes(child));
+      if (own.length === 0) {
         return false;
       }
 
-      for (const child of covering) {
+      for (const child of own) {
         await this.deleteRequest(`/v1/Request/tv/child/${child.id}`);
       }
       return true;
@@ -380,6 +404,7 @@ export class OmbiApiService {
 
   private async getChildRequests(
     tmdbId: number,
+    season?: number,
   ): Promise<OmbiChildRequest[] | undefined> {
     const requestId = await this.findRequestId(tmdbId, 'tv');
     if (requestId === undefined) {
@@ -392,7 +417,9 @@ export class OmbiApiService {
     const children = await this.api.getWithoutCache<OmbiChildRequest[]>(
       `/v1/Request/tv/${requestId}/child`,
     );
-    return Array.isArray(children) ? children : undefined;
+    return Array.isArray(children)
+      ? childRequestsFor({ childRequests: children } as OmbiTvRequest, season)
+      : undefined;
   }
 
   // Movie and child deletes answer 200 with a result body even when refused;

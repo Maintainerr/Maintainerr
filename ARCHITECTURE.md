@@ -163,7 +163,9 @@ Maintainerr integrates with:
 - Seerr-compatible services for request cleanup.
 - Ombi for request cleanup and request-based rules. Requests are matched by
   TMDB id; a season is removed through the per-user child requests that
-  cover it, since Ombi never marks a fulfilled request unavailable itself.
+  cover only that season (a child covering other seasons too is kept, since
+  Ombi cannot trim one), and Ombi never marks a fulfilled request unavailable
+  itself.
 - Tautulli for Plex analytics and rule data, and per-item watch statistics on
   the media modal.
 - Streamystats for Jellyfin item-level analytics surfaced on the media modal.
