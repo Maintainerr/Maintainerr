@@ -86,6 +86,7 @@ describe('CollectionsService.markRuleRemoved (real SQLite)', () => {
       {} as any, // eventEmitter
       {} as any, // collectionPosterService
       {} as any, // overlayProcessor
+      {} as any, // servarrTagService
       createMockLogger() as any,
     );
   });

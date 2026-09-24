@@ -1139,13 +1139,12 @@ export class RuleExecutorService {
         );
 
         // Cached provider ids per item, so *arr tag resolution has a tmdb/tvdb
-        // fallback even when the media-server item omits them. collMediaData
-        // covers removed/existing rows; updatedMedia covers freshly added ones.
+        // fallback even when the media-server item omits them.
         const providerIdsByMediaServerId = new Map<
           string,
           { tmdbId?: number | null; tvdbId?: number | null }
         >();
-        for (const m of [...collMediaData, ...updatedMedia]) {
+        for (const m of updatedMedia) {
           providerIdsByMediaServerId.set(m.mediaServerId, {
             tmdbId: m.tmdbId,
             tvdbId: m.tvdbId,
@@ -1196,14 +1195,13 @@ export class RuleExecutorService {
           );
         }
 
-        // Reconcile Radarr/Sonarr membership tags off the just-applied deltas.
-        // Best-effort and self-guarded (no-ops unless the collection opted in):
-        // it never throws, alters membership, or raises eval concurrency, so a
-        // tagging failure can't affect the run.
+        // Tag what this run added; the removals were untagged where their rows
+        // went (removeFromCollectionInternal). Best-effort: never throws or
+        // alters membership, so a tagging failure can't affect the run.
         await this.servarrTagService.syncMembershipTags(
           collection,
           addedToCollection.map(toArrTagItem),
-          removedFromCollection.map(toArrTagItem),
+          [],
         );
 
         // add the run duration to the collection

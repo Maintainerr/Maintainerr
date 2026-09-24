@@ -814,9 +814,9 @@ export class RulesService {
         }
 
         // Behavior A: one-time *arr membership-tag reconcile on a tagInArr toggle
-        // - enabling tags current members, disabling untags them (ongoing changes
-        // are handled by the executor's per-run deltas). Best-effort; awaited so
-        // the backfill completes before the save returns.
+        // - enabling tags current members, disabling untags them (from then on
+        // the executor tags adds and the collection service untags leaves).
+        // Best-effort; awaited so the backfill completes before the save returns.
         if (
           savedCollection &&
           (dbCollection?.tagInArr ?? false) !== savedCollection.tagInArr

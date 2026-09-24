@@ -1,5 +1,7 @@
+import { getRepositoryToken } from '@nestjs/typeorm';
 import { Mocked } from '@suites/doubles.jest';
 import { TestBed } from '@suites/unit';
+import { Repository } from 'typeorm';
 import {
   createCollection,
   createRadarrMovie,
@@ -9,6 +11,7 @@ import { mockRadarrApi, mockSonarrApi } from '../../../test/utils/servarr-mock';
 import { ServarrService } from '../api/servarr-api/servarr.service';
 import { MaintainerrLogger } from '../logging/logs.service';
 import { MetadataService } from '../metadata/metadata.service';
+import { Exclusion } from '../rules/entities/exclusion.entities';
 import { SettingsDataService } from '../settings/settings-data.service';
 import { ServarrTagService } from './servarr-tag.service';
 
@@ -17,6 +20,7 @@ describe('ServarrTagService', () => {
   let servarrService: Mocked<ServarrService>;
   let metadataService: Mocked<MetadataService>;
   let settings: Mocked<SettingsDataService>;
+  let exclusionRepo: Mocked<Repository<Exclusion>>;
   let logger: Mocked<MaintainerrLogger>;
 
   beforeEach(async () => {
@@ -27,6 +31,12 @@ describe('ServarrTagService', () => {
     servarrService = unitRef.get(ServarrService);
     metadataService = unitRef.get(MetadataService);
     settings = unitRef.get(SettingsDataService);
+    exclusionRepo = unitRef.get(getRepositoryToken(Exclusion) as string);
+    exclusionRepo.find.mockResolvedValue([]);
+    // The automock answers every settings property with a mock; exclusion
+    // tagging is off unless a test turns it on.
+    settings.radarr_tag_exclusions = false;
+    settings.sonarr_tag_exclusions = false;
     logger = unitRef.get(MaintainerrLogger);
 
     // By default every media-server id resolves to a tmdb/tvdb candidate; the
@@ -214,6 +224,36 @@ describe('ServarrTagService', () => {
       );
 
       expect(radarr.setMovieTags).toHaveBeenCalledWith([11], 5, 'remove');
+    });
+
+    it('keeps a label that doubles as the exclusion tag on items still excluded', async () => {
+      const radarr = mockRadarrApi(servarrService, logger);
+      jest
+        .spyOn(radarr, 'getMovieByTmdbId')
+        .mockResolvedValue(createRadarrMovie({ id: 12 }));
+      jest.spyOn(radarr, 'ensureTag').mockResolvedValue(5);
+      settings.radarr_tag_exclusions = true;
+      settings.radarr_exclusion_tag = 'dnd';
+      exclusionRepo.find.mockResolvedValue([
+        { mediaServerId: 'movie-1' },
+      ] as Exclusion[]);
+
+      const collection = createCollection({
+        type: 'movie',
+        radarrSettingsId: 1,
+        tagInArr: true,
+        title: 'DND',
+      });
+
+      await service.syncMembershipTags(
+        collection,
+        [],
+        [{ mediaServerId: 'movie-1' }, { mediaServerId: 'movie-2' }],
+      );
+
+      // The excluded item keeps its protective tag; only the other is untagged.
+      expect(radarr.getMovieByTmdbId).toHaveBeenCalledTimes(1);
+      expect(radarr.setMovieTags).toHaveBeenCalledWith([12], 5, 'remove');
     });
 
     it('tags added shows in Sonarr', async () => {

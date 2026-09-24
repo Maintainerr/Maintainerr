@@ -1,10 +1,12 @@
 import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
 import { DownloadClientApiModule } from '../api/download-client-api/download-client-api.module';
 import { MediaServerModule } from '../api/media-server/media-server.module';
 import { OmbiApiModule } from '../api/ombi-api/ombi-api.module';
 import { SeerrApiModule } from '../api/seerr-api/seerr-api.module';
 import { ServarrApiModule } from '../api/servarr-api/servarr-api.module';
 import { MetadataModule } from '../metadata/metadata.module';
+import { Exclusion } from '../rules/entities/exclusion.entities';
 import { LeftoverFolderCleanupService } from './leftover-folder-cleanup.service';
 import { RadarrActionHandler } from './radarr-action-handler';
 import { ServarrTagService } from './servarr-tag.service';
@@ -19,6 +21,7 @@ import { SportarrActionHandler } from './sportarr-action-handler';
     OmbiApiModule,
     DownloadClientApiModule,
     MetadataModule,
+    TypeOrmModule.forFeature([Exclusion]),
   ],
   providers: [
     RadarrActionHandler,
