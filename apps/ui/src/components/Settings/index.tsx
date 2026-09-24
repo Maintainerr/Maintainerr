@@ -166,6 +166,11 @@ const SettingsWrapper = () => {
         regex: /^\/settings\/seerr$/,
       },
       {
+        text: 'Ombi',
+        route: '/settings/ombi',
+        regex: /^\/settings\/ombi$/,
+      },
+      {
         text: 'Radarr',
         route: '/settings/radarr',
         regex: /^\/settings\/radarr$/,

@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ActionsModule } from '../actions/actions.module';
 import { MediaServerModule } from '../api/media-server/media-server.module';
+import { OmbiApiModule } from '../api/ombi-api/ombi-api.module';
 import { SeerrApiModule } from '../api/seerr-api/seerr-api.module';
 import { PlexApiModule } from '../api/plex-api/plex-api.module';
 import { ServarrApiModule } from '../api/servarr-api/servarr-api.module';
@@ -38,6 +39,7 @@ import { RecentlyHandledMediaService } from './recently-handled-media.service';
       Exclusion,
     ]),
     SeerrApiModule,
+    OmbiApiModule,
     TautulliApiModule,
     MetadataModule,
     ServarrApiModule,

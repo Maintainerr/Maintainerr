@@ -5,6 +5,7 @@ import {
   DownloadClientSetting,
   MediaServerType,
   MINIMUM_SPORTARR_VERSION,
+  OmbiSetting,
   SeerrSetting,
   StreamystatsSetting,
   TautulliSetting,
@@ -24,6 +25,7 @@ import { InternalApiService } from '../api/internal-api/internal-api.service';
 import { MediaServerFactory } from '../api/media-server/media-server.factory';
 import { DownloadClientApiService } from '../api/download-client-api/download-client-api.service';
 import { PlexApiService } from '../api/plex-api/plex-api.service';
+import { OmbiApiService } from '../api/ombi-api/ombi-api.service';
 import { SeerrApiService } from '../api/seerr-api/seerr-api.service';
 import { isBelowMinimumVersion } from '../../utils/required-version-helper';
 import { ServarrService } from '../api/servarr-api/servarr.service';
@@ -60,6 +62,7 @@ export class SettingsOperationsService {
     private readonly mediaServerFactory: MediaServerFactory,
     private readonly servarr: ServarrService,
     private readonly seerr: SeerrApiService,
+    private readonly ombi: OmbiApiService,
     private readonly tautulli: TautulliApiService,
     private readonly streamystats: StreamystatsApiService,
     private readonly tracearr: TracearrApiService,
@@ -100,6 +103,10 @@ export class SettingsOperationsService {
 
   public seerrConfigured(): boolean {
     return this.settingsDataService.seerrConfigured();
+  }
+
+  public ombiConfigured(): boolean {
+    return this.settingsDataService.ombiConfigured();
   }
 
   public tautulliConfigured(): boolean {
@@ -584,6 +591,50 @@ export class SettingsOperationsService {
       return { status: 'OK', code: 1, message: 'Success' };
     } catch (error) {
       this.logger.error('Error while updating Seerr settings');
+      this.logger.debug(error);
+      return { status: 'NOK', code: 0, message: 'Failed' };
+    }
+  }
+
+  public async removeOmbiSetting() {
+    try {
+      const settingsDb = await this.settingsRepo.findOne({ where: {} });
+
+      await this.settingsDataService.saveSettings({
+        ...settingsDb,
+        ombi_url: null,
+        ombi_api_key: null,
+      });
+
+      await this.settingsDataService.init();
+      this.ombi.init();
+
+      return { status: 'OK', code: 1, message: 'Success' };
+    } catch (error) {
+      this.logger.error('Error removing Ombi settings');
+      this.logger.debug(error);
+      return { status: 'NOK', code: 0, message: 'Failed' };
+    }
+  }
+
+  public async updateOmbiSetting(
+    settings: OmbiSetting,
+  ): Promise<BasicResponseDto> {
+    try {
+      const settingsDb = await this.settingsRepo.findOne({ where: {} });
+
+      await this.settingsDataService.saveSettings({
+        ...settingsDb,
+        ombi_url: settings.url,
+        ombi_api_key: settings.api_key,
+      });
+
+      await this.settingsDataService.init();
+      this.ombi.init();
+
+      return { status: 'OK', code: 1, message: 'Success' };
+    } catch (error) {
+      this.logger.error('Error while updating Ombi settings');
       this.logger.debug(error);
       return { status: 'NOK', code: 0, message: 'Failed' };
     }
@@ -1321,6 +1372,7 @@ export class SettingsOperationsService {
       this.logger.log('Settings updated');
       await this.mediaServerFactory.initialize();
       this.seerr.init();
+      this.ombi.init();
       this.tautulli.init();
       this.downloadClient.init();
       this.internalApi.init();
@@ -1361,6 +1413,12 @@ export class SettingsOperationsService {
             url: setting.url,
           }
         : undefined,
+    );
+  }
+
+  public async testOmbi(setting?: OmbiSetting): Promise<BasicResponseDto> {
+    return await this.ombi.testConnection(
+      setting ? { apiKey: setting.api_key, url: setting.url } : undefined,
     );
   }
 
@@ -1682,6 +1740,7 @@ export class SettingsOperationsService {
         radarrResults,
         sonarrResults,
         seerrState,
+        ombiState,
         tautulliState,
       ] = await Promise.all([
         this.testMediaServerConnection(),
@@ -1698,6 +1757,9 @@ export class SettingsOperationsService {
         this.seerrConfigured()
           ? this.testSeerr().then((r) => r.status === 'OK')
           : true,
+        this.ombiConfigured()
+          ? this.testOmbi().then((r) => r.status === 'OK')
+          : true,
         this.tautulliConfigured()
           ? this.testTautulli().then((r) => r.status === 'OK')
           : true,
@@ -1708,6 +1770,7 @@ export class SettingsOperationsService {
         radarrResults.every(Boolean) &&
         sonarrResults.every(Boolean) &&
         seerrState &&
+        ombiState &&
         tautulliState
       );
     } catch (error) {

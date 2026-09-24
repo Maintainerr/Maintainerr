@@ -64,6 +64,9 @@ export interface ISettings {
   emby_server_name?: string
   // Seerr integration
   seerr_api_key: string
+  // Ombi integration
+  ombi_url?: string
+  ombi_api_key?: string
   tautulli_url: string
   tautulli_api_key: string
   streamystats_url?: string

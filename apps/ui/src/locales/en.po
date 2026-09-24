@@ -505,6 +505,7 @@ msgid "An unexpected error occurred."
 msgstr "An unexpected error occurred."
 
 #: src/components/Settings/Main/index.tsx
+#: src/components/Settings/Ombi/index.tsx
 #: src/components/Settings/Seerr/index.tsx
 #: src/components/Settings/Servarr/ServarrSettingsModal.tsx
 #: src/components/Settings/Tautulli/index.tsx
@@ -1503,6 +1504,7 @@ msgstr "Every ~{SAMPLE_MONTHS} months"
 msgid "Every attempt should be made to only upload working rules. Rules with less than -100 karma and uploads with no rules, are removed nightly."
 msgstr "Every attempt should be made to only upload working rules. Rules with less than -100 karma and uploads with no rules, are removed nightly."
 
+#: src/components/Settings/Ombi/index.tsx
 #: src/components/Settings/Seerr/index.tsx
 #: src/components/Settings/Streamystats/index.tsx
 #: src/components/Settings/Tautulli/index.tsx
@@ -1585,6 +1587,10 @@ msgstr "Failed to connect to Emby. Verify URL and API key."
 #: src/components/Settings/Jellyfin/index.tsx
 msgid "Failed to connect to Jellyfin. Verify URL and API key."
 msgstr "Failed to connect to Jellyfin. Verify URL and API key."
+
+#: src/components/Settings/Ombi/index.tsx
+msgid "Failed to connect to Ombi. Verify URL and API key."
+msgstr "Failed to connect to Ombi. Verify URL and API key."
 
 #: src/components/Settings/Plex/index.tsx
 msgid "Failed to connect to Plex. Verify your Plex configuration."
@@ -1854,6 +1860,10 @@ msgstr "Font"
 #: src/pages/OverlayTemplateEditorPage.tsx
 msgid "Font \"{fontName}\" uploaded"
 msgstr "Font \"{fontName}\" uploaded"
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Force delete Ombi request"
+msgstr "Force delete Ombi request"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Force delete Seerr request"
@@ -2814,6 +2824,26 @@ msgstr "OK"
 msgid "Oldest First"
 msgstr "Oldest First"
 
+#: src/components/Settings/Ombi/index.tsx
+msgid "Ombi configuration"
+msgstr "Ombi configuration"
+
+#: src/components/Settings/Ombi/index.tsx
+msgid "Ombi Settings"
+msgstr "Ombi Settings"
+
+#: src/components/Settings/Ombi/index.tsx
+msgid "Ombi settings - Maintainerr"
+msgstr "Ombi settings - Maintainerr"
+
+#: src/components/Settings/Ombi/index.tsx
+msgid "Ombi settings could not be updated"
+msgstr "Ombi settings could not be updated"
+
+#: src/components/Settings/Ombi/index.tsx
+msgid "Ombi settings updated"
+msgstr "Ombi settings updated"
+
 #: src/components/Layout/TelemetryConsentModal.tsx
 msgid "Once a week we log which version and platform people actually run. The payload below is the whole of it. It carries no server identifier, no {TERM_IP}, no hostname, no {TERM_MAC} address and no account id: nothing that can be traced back to you, your network or your machine."
 msgstr "Once a week we log which version and platform people actually run. The payload below is the whole of it. It carries no server identifier, no {TERM_IP}, no hostname, no {TERM_MAC} address and no account id: nothing that can be traced back to you, your network or your machine."
@@ -3217,6 +3247,10 @@ msgstr "Remove tag on un-exclude"
 #: src/components/Collection/CollectionDetail/RemoveFromCollectionButton/index.tsx
 msgid "Remove?"
 msgstr "Remove?"
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Removes the related Ombi request immediately. Otherwise, Ombi keeps listing the request as available."
+msgstr "Removes the related Ombi request immediately. Otherwise, Ombi keeps listing the request as available."
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Removes the related Seerr request immediately. Otherwise, Maintainerr waits for Seerr availability sync."

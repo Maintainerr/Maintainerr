@@ -17,6 +17,7 @@ export class RuleGroupDto {
   listExclusions?: boolean;
   cleanupLeftoverFolders?: boolean;
   forceSeerr?: boolean;
+  forceOmbi?: boolean;
   rules: RuleDto[] | RuleDbDto[];
   manualCollection?: boolean;
   manualCollectionName?: string;

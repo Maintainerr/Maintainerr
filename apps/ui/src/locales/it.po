@@ -505,6 +505,7 @@ msgid "An unexpected error occurred."
 msgstr ""
 
 #: src/components/Settings/Main/index.tsx
+#: src/components/Settings/Ombi/index.tsx
 #: src/components/Settings/Seerr/index.tsx
 #: src/components/Settings/Servarr/ServarrSettingsModal.tsx
 #: src/components/Settings/Tautulli/index.tsx
@@ -1503,6 +1504,7 @@ msgstr ""
 msgid "Every attempt should be made to only upload working rules. Rules with less than -100 karma and uploads with no rules, are removed nightly."
 msgstr ""
 
+#: src/components/Settings/Ombi/index.tsx
 #: src/components/Settings/Seerr/index.tsx
 #: src/components/Settings/Streamystats/index.tsx
 #: src/components/Settings/Tautulli/index.tsx
@@ -1584,6 +1586,10 @@ msgstr ""
 
 #: src/components/Settings/Jellyfin/index.tsx
 msgid "Failed to connect to Jellyfin. Verify URL and API key."
+msgstr ""
+
+#: src/components/Settings/Ombi/index.tsx
+msgid "Failed to connect to Ombi. Verify URL and API key."
 msgstr ""
 
 #: src/components/Settings/Plex/index.tsx
@@ -1853,6 +1859,10 @@ msgstr ""
 
 #: src/pages/OverlayTemplateEditorPage.tsx
 msgid "Font \"{fontName}\" uploaded"
+msgstr ""
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Force delete Ombi request"
 msgstr ""
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
@@ -2814,6 +2824,26 @@ msgstr ""
 msgid "Oldest First"
 msgstr ""
 
+#: src/components/Settings/Ombi/index.tsx
+msgid "Ombi configuration"
+msgstr ""
+
+#: src/components/Settings/Ombi/index.tsx
+msgid "Ombi Settings"
+msgstr ""
+
+#: src/components/Settings/Ombi/index.tsx
+msgid "Ombi settings - Maintainerr"
+msgstr ""
+
+#: src/components/Settings/Ombi/index.tsx
+msgid "Ombi settings could not be updated"
+msgstr ""
+
+#: src/components/Settings/Ombi/index.tsx
+msgid "Ombi settings updated"
+msgstr ""
+
 #: src/components/Layout/TelemetryConsentModal.tsx
 msgid "Once a week we log which version and platform people actually run. The payload below is the whole of it. It carries no server identifier, no {TERM_IP}, no hostname, no {TERM_MAC} address and no account id: nothing that can be traced back to you, your network or your machine."
 msgstr ""
@@ -3216,6 +3246,10 @@ msgstr ""
 
 #: src/components/Collection/CollectionDetail/RemoveFromCollectionButton/index.tsx
 msgid "Remove?"
+msgstr ""
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Removes the related Ombi request immediately. Otherwise, Ombi keeps listing the request as available."
 msgstr ""
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx

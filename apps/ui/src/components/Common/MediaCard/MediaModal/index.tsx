@@ -222,7 +222,12 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
     >(null)
     const [tracearrUrl, setTracearrUrl] = useState<string | null>(null)
     const [metadata, setMetadata] = useState<MediaItem | null>(null)
-    const [seerrConfigured, setSeerrConfigured] = useState<boolean>(false)
+    // Requests are keyed by the show, so a season or episode reads its show.
+    const [showMetadata, setShowMetadata] = useState<MediaItem | null>(null)
+    const [requestServices, setRequestServices] = useState({
+      seerr: false,
+      ombi: false,
+    })
     // Keyed by the path it was fetched for, like the backdrop below, so a
     // change of item derives an empty list instead of resetting state.
     const [requesterResult, setRequesterResult] = useState<{
@@ -289,12 +294,24 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
       () => mergeProviderIds(metadata?.providerIds, fallbackProviderIds),
       [metadata?.providerIds, fallbackProviderIds],
     )
-    // Seerr tracks TV requests per season, so ask for this item's own season or
-    // the show's other requesters get credited here too.
-    const seerrRequestersPath = useMemo(() => {
-      const tmdbId = providerIds?.tmdb?.[0]
-      if (!seerrConfigured || !tmdbId) {
-        return null
+    // Seerr tracks TV requests per season and Ombi per episode, so ask for
+    // this item's own season or episode or the show's other requesters get
+    // credited here too. The paths are joined into the one key the result is
+    // stored under.
+    const requesterPaths = useMemo(() => {
+      const showId =
+        metadata?.type === 'season'
+          ? metadata.parentId
+          : metadata?.type === 'episode'
+            ? metadata.grandparentId
+            : undefined
+      const tmdbId = showId
+        ? showMetadata?.id === showId
+          ? showMetadata.providerIds?.tmdb?.[0]
+          : undefined
+        : providerIds?.tmdb?.[0]
+      if (!tmdbId) {
+        return ''
       }
 
       const season =
@@ -303,13 +320,29 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
           : metadata?.type === 'episode'
             ? metadata.parentIndex
             : undefined
+      const seasonParam = season != null ? `season=${season}` : ''
+      const episodeParam =
+        metadata?.type === 'episode' && metadata.index != null
+          ? `&episode=${metadata.index}`
+          : ''
 
-      const base = `/seerr/requests/${tmdbId}/users`
-      return season != null ? `${base}?season=${season}` : base
-    }, [seerrConfigured, providerIds, metadata])
+      const paths: string[] = []
+      if (requestServices.seerr) {
+        paths.push(
+          `/seerr/requests/${tmdbId}/users${seasonParam ? `?${seasonParam}` : ''}`,
+        )
+      }
+      if (requestServices.ombi) {
+        const type = mediaType === 'movie' ? 'movie' : 'tv'
+        paths.push(
+          `/ombi/requests/${tmdbId}/users?type=${type}${seasonParam ? `&${seasonParam}` : ''}${episodeParam}`,
+        )
+      }
+      return paths.join(' ')
+    }, [requestServices, providerIds, metadata, showMetadata, mediaType])
 
     const requestedBy =
-      requesterResult?.requestKey === seerrRequestersPath
+      requesterPaths && requesterResult?.requestKey === requesterPaths
         ? requesterResult.users
         : []
     const requesters = requestedBy.join(', ')
@@ -430,7 +463,10 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
         .then((resp) => {
           if (!active) return
           setTautulliModalUrl(resp?.tautulli_url || null)
-          setSeerrConfigured(!!resp?.seerr_url)
+          setRequestServices({
+            seerr: !!resp?.seerr_url,
+            ombi: !!resp?.ombi_url,
+          })
           setTracearrUrl(resp?.tracearr_url || null)
         })
         .catch(() => {})
@@ -455,6 +491,19 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
           if (!active) return
           setMetadata(data)
           setLoading(false)
+          const showId =
+            data?.type === 'season'
+              ? data.parentId
+              : data?.type === 'episode'
+                ? data.grandparentId
+                : undefined
+          if (showId) {
+            GetApiHandler<MediaItem>(`/media-server/meta/${showId}`)
+              .then((show) => {
+                if (active) setShowMetadata(show)
+              })
+              .catch(() => {})
+          }
         })
         .catch(() => {
           if (active) setLoading(false)
@@ -466,26 +515,30 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
     }, [id, isJellyfin])
 
     useEffect(() => {
-      if (!seerrRequestersPath) {
+      if (!requesterPaths) {
         return
       }
 
       let active = true
 
-      GetApiHandler<string[]>(seerrRequestersPath)
-        .then((users) => {
-          if (!active) return
-          setRequesterResult({
-            requestKey: seerrRequestersPath,
-            users: users ?? [],
-          })
+      Promise.all(
+        requesterPaths.split(' ').map((path) =>
+          GetApiHandler<string[]>(path)
+            .then((users) => users ?? [])
+            .catch(() => []),
+        ),
+      ).then((lists) => {
+        if (!active) return
+        setRequesterResult({
+          requestKey: requesterPaths,
+          users: [...new Set(lists.flat())],
         })
-        .catch(() => {})
+      })
 
       return () => {
         active = false
       }
-    }, [seerrRequestersPath])
+    }, [requesterPaths])
 
     useEffect(() => {
       if (!backdropRequestPath) {

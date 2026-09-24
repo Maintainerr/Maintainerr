@@ -36,6 +36,7 @@ the spec does not:
 
 - Tautulli: https://docs.tautulli.com/extending-tautulli/api-reference - no machine-readable spec, a single `/api/v2?cmd=` endpoint
 - Seerr: https://docs.seerr.dev/
+- Ombi: no static spec; a running instance serves Swagger UI at `<url>/swagger`, and the controllers live in https://github.com/Ombi-app/Ombi under `src/Ombi/Controllers`
 - Jellyfin: https://api.jellyfin.org/
 - Plex (python-plexapi): https://python-plexapi.readthedocs.io/en/latest/index.html
 - Plex (additional): https://www.plexopedia.com/plex-media-server/api/

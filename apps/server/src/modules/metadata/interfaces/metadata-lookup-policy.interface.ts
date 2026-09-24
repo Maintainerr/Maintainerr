@@ -19,4 +19,8 @@ export const metadataLookupPoliciesByService: Record<
     providerKeys: ['tmdb'],
     providerMatchMode: 'any',
   },
+  ombi: {
+    providerKeys: ['tmdb'],
+    providerMatchMode: 'any',
+  },
 };

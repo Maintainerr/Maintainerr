@@ -493,6 +493,8 @@ export class RulesService {
           // created before it was hidden.
           forceSeerr:
             collectionType !== 'episode' && params.forceSeerr ? true : false,
+          forceOmbi:
+            collectionType !== 'episode' && params.forceOmbi ? true : false,
           tautulliWatchedPercentOverride:
             params.tautulliWatchedPercentOverride ?? null,
           radarrSettingsId: params.radarrSettingsId ?? null,
@@ -723,6 +725,8 @@ export class RulesService {
           // created before it was hidden.
           forceSeerr:
             collectionType !== 'episode' && params.forceSeerr ? true : false,
+          forceOmbi:
+            collectionType !== 'episode' && params.forceOmbi ? true : false,
           tautulliWatchedPercentOverride:
             params.tautulliWatchedPercentOverride ?? null,
           radarrSettingsId: params.radarrSettingsId ?? null,
@@ -2434,6 +2438,7 @@ export class RulesService {
     // Drop the run-scoped Seerr request index too, so a single-item test rebuilds
     // it from a fresh /request sweep and agrees with a full run (#3152).
     cacheManager.getCache('seerrrequests').data.flushAll();
+    cacheManager.getCache('ombirequests').data.flushAll();
     cacheManager.getCache('tautulli').data.flushAll();
     cacheManager.getCache('streamystats').data.flushAll();
     cacheManager

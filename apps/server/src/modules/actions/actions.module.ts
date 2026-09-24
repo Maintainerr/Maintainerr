@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { DownloadClientApiModule } from '../api/download-client-api/download-client-api.module';
 import { MediaServerModule } from '../api/media-server/media-server.module';
+import { OmbiApiModule } from '../api/ombi-api/ombi-api.module';
 import { SeerrApiModule } from '../api/seerr-api/seerr-api.module';
 import { ServarrApiModule } from '../api/servarr-api/servarr-api.module';
 import { MetadataModule } from '../metadata/metadata.module';
@@ -15,6 +16,7 @@ import { SportarrActionHandler } from './sportarr-action-handler';
     MediaServerModule,
     ServarrApiModule,
     SeerrApiModule,
+    OmbiApiModule,
     DownloadClientApiModule,
     MetadataModule,
   ],

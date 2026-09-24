@@ -11,6 +11,7 @@ import { RadarrActionHandler } from '../actions/radarr-action-handler';
 import { SonarrActionHandler } from '../actions/sonarr-action-handler';
 import { MediaServerFactory } from '../api/media-server/media-server.factory';
 import { IMediaServerService } from '../api/media-server/media-server.interface';
+import { OmbiApiService } from '../api/ombi-api/ombi-api.service';
 import { SeerrApiService } from '../api/seerr-api/seerr-api.service';
 import { MaintainerrLogger } from '../logging/logs.service';
 import { MetadataService } from '../metadata/metadata.service';
@@ -28,6 +29,7 @@ describe('CollectionHandler', () => {
   let radarrActionHandler: Mocked<RadarrActionHandler>;
   let sonarrActionHandler: Mocked<SonarrActionHandler>;
   let seerrApi: Mocked<SeerrApiService>;
+  let ombiApi: Mocked<OmbiApiService>;
   let settings: Mocked<SettingsDataService>;
   let metadataService: Mocked<MetadataService>;
   let recentlyHandledMedia: Mocked<RecentlyHandledMediaService>;
@@ -43,6 +45,7 @@ describe('CollectionHandler', () => {
     radarrActionHandler = unitRef.get(RadarrActionHandler);
     sonarrActionHandler = unitRef.get(SonarrActionHandler);
     seerrApi = unitRef.get(SeerrApiService);
+    ombiApi = unitRef.get(OmbiApiService);
     settings = unitRef.get(SettingsDataService);
     metadataService = unitRef.get(MetadataService);
     recentlyHandledMedia = unitRef.get(RecentlyHandledMediaService);
@@ -862,6 +865,37 @@ describe('CollectionHandler', () => {
       'movie',
     );
     expect(seerrApi.removeMediaByTmdbId).toHaveBeenCalledTimes(1);
+  });
+
+  it('removes the Ombi request when forced, independently of Seerr', async () => {
+    const collection = createCollection({
+      arrAction: ServarrAction.DELETE,
+      forceOmbi: true,
+      type: 'movie',
+    });
+    const collectionMedia = createCollectionMedia(collection);
+
+    settings.ombiConfigured.mockReturnValue(true);
+    ombiApi.removeMediaByTmdbId.mockResolvedValue(true);
+    mediaServer.getLibraries.mockResolvedValue(
+      createMediaLibraries({
+        id: collection.libraryId.toString(),
+        type: 'movie',
+      }),
+    );
+
+    await expect(
+      collectionHandler.handleMedia(collection, collectionMedia),
+    ).resolves.toBe('handled');
+
+    expect(ombiApi.removeMediaByTmdbId).toHaveBeenCalledWith(
+      collectionMedia.tmdbId,
+      'movie',
+    );
+    expect(seerrApi.removeMediaByTmdbId).not.toHaveBeenCalled();
+    expect(logger.log).toHaveBeenCalledWith(
+      expect.stringContaining('[Ombi] Removed'),
+    );
   });
 
   it('should call removeMediaByTmdbId for shows', async () => {

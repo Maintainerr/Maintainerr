@@ -7,6 +7,7 @@ import { Injectable } from '@nestjs/common';
 import { dirname } from 'path';
 import { DownloadClientApiService } from '../api/download-client-api/download-client-api.service';
 import { MediaServerFactory } from '../api/media-server/media-server.factory';
+import { OmbiApiService } from '../api/ombi-api/ombi-api.service';
 import { SeerrApiService } from '../api/seerr-api/seerr-api.service';
 import {
   SonarrEpisode,
@@ -43,6 +44,7 @@ export class SonarrActionHandler {
     private readonly servarrApi: ServarrService,
     private readonly mediaServerFactory: MediaServerFactory,
     private readonly seerrApi: SeerrApiService,
+    private readonly ombiApi: OmbiApiService,
     private readonly metadataService: MetadataService,
     private readonly settings: SettingsDataService,
     private readonly downloadClient: DownloadClientApiService,
@@ -817,28 +819,33 @@ export class SonarrActionHandler {
       return false;
     }
 
-    const hasSeerrCheckInputs =
+    const requestServices = [
+      { label: 'Seerr', api: this.seerrApi },
+      { label: 'Ombi', api: this.ombiApi },
+    ].filter(({ api }) => api.isConfigured());
+    const hasRequestCheckInputs =
       tmdbId !== undefined && removedSeasonNumber !== undefined;
 
-    if (this.seerrApi.isConfigured() && hasSeerrCheckInputs) {
-      const hasRemainingRequests =
-        await this.seerrApi.hasRemainingSeasonRequests(
+    if (requestServices.length > 0 && hasRequestCheckInputs) {
+      for (const { label, api } of requestServices) {
+        const hasRemainingRequests = await api.hasRemainingSeasonRequests(
           tmdbId,
           removedSeasonNumber,
         );
 
-      if (hasRemainingRequests === true) {
-        this.logger.debug(
-          `[Sonarr] Show '${series.title}' has other active Seerr season requests - skipping show deletion`,
-        );
-        return false;
-      }
+        if (hasRemainingRequests === true) {
+          this.logger.debug(
+            `[Sonarr] Show '${series.title}' has other active ${label} season requests - skipping show deletion`,
+          );
+          return false;
+        }
 
-      if (hasRemainingRequests === undefined) {
-        this.logger.debug(
-          `[Sonarr] Show '${series.title}' Seerr state could not be determined - skipping show deletion`,
-        );
-        return false;
+        if (hasRemainingRequests === undefined) {
+          this.logger.debug(
+            `[Sonarr] Show '${series.title}' ${label} state could not be determined - skipping show deletion`,
+          );
+          return false;
+        }
       }
 
       if (
@@ -847,12 +854,12 @@ export class SonarrActionHandler {
         return false;
       }
       this.logger.log(
-        `[Sonarr] Show '${series.title}' has no files and no remaining Seerr season requests - deleted from Sonarr`,
+        `[Sonarr] Show '${series.title}' has no files and no remaining season requests - deleted from Sonarr`,
       );
       return true;
     }
 
-    // No-Seerr fallback. The file gate above already proved the show has no
+    // No request-service fallback. The file gate above already proved the show has no
     // episode files; `ended` confirms no further episodes are coming. We do
     // NOT additionally require every season to be unmonitored: Sonarr carries
     // every TVDB season on the series, including ones the user never

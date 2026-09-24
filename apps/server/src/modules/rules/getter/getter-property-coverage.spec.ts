@@ -8,6 +8,7 @@ import {
 } from '../constants/rules.constants';
 import { EmbyGetterService } from './emby-getter.service';
 import { JellyfinGetterService } from './jellyfin-getter.service';
+import { OmbiGetterService } from './ombi-getter.service';
 import { PlexGetterService } from './plex-getter.service';
 import { RadarrGetterService } from './radarr-getter.service';
 import { SeerrGetterService } from './seerr-getter.service';
@@ -104,6 +105,13 @@ const apps: Array<{
     app: Application.SEERR,
     build: async () => {
       const g = await buildGetter(SeerrGetterService);
+      return { get: (id) => g.get(id, libItem, undefined) };
+    },
+  },
+  {
+    app: Application.OMBI,
+    build: async () => {
+      const g = await buildGetter(OmbiGetterService);
       return { get: (id) => g.get(id, libItem, undefined) };
     },
   },

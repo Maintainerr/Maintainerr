@@ -6,6 +6,8 @@ const allConfigured = {
   media_server_type: MediaServerType.PLEX,
   seerr_url: 'http://seerr',
   seerr_api_key: 'key',
+  ombi_url: 'http://ombi',
+  ombi_api_key: 'key',
   tautulli_url: 'http://tautulli',
   tautulli_api_key: 'key',
   streamystats_url: 'http://streamystats',
@@ -58,6 +60,7 @@ describe('unavailableRuleApplications', () => {
 
   it.each([
     ['Seerr', { seerr_api_key: null }, Application.SEERR],
+    ['Ombi', { ombi_url: null }, Application.OMBI],
     ['Tautulli', { tautulli_url: null }, Application.TAUTULLI],
     ['Streamystats', { streamystats_url: null }, Application.STREAMYSTATS],
     ['Tracearr', { tracearr_server_id: null }, Application.TRACEARR],

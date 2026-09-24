@@ -88,6 +88,13 @@ export class Settings implements SettingDto {
   @Column({ nullable: true })
   seerr_api_key: string;
 
+  // Ombi integration
+  @Column({ nullable: true })
+  ombi_url: string;
+
+  @Column({ nullable: true })
+  ombi_api_key: string;
+
   @Column({ nullable: true })
   tmdb_api_key?: string;
 

@@ -50,6 +50,9 @@ export const settingsUpdateSchema = z.object({
   seerr_url: serviceUrlSchema.optional(),
   seerr_api_key: z.string().trim().optional(),
 
+  ombi_url: serviceUrlSchema.optional(),
+  ombi_api_key: z.string().trim().optional(),
+
   tmdb_api_key: z.string().trim().optional(),
   tvdb_api_key: z.string().trim().optional(),
   metadata_provider_preference: z.enum(MetadataProviderPreference).optional(),

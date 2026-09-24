@@ -12,6 +12,7 @@ import { RuleGroupDto } from '../dtos/ruleGroup.dto';
 import { ArrLookupCache } from '../helpers/arr-lookup-cache';
 import { EmbyGetterService } from './emby-getter.service';
 import { JellyfinGetterService } from './jellyfin-getter.service';
+import { OmbiGetterService } from './ombi-getter.service';
 import { PlexGetterService } from './plex-getter.service';
 import { RadarrGetterService } from './radarr-getter.service';
 import { SeerrGetterService } from './seerr-getter.service';
@@ -29,6 +30,7 @@ export class ValueGetterService {
     private readonly sonarrGetter: SonarrGetterService,
     private readonly sportarrGetter: SportarrGetterService,
     private readonly seerrGetter: SeerrGetterService,
+    private readonly ombiGetter: OmbiGetterService,
     private readonly tautulliGetter: TautulliGetterService,
     private readonly streamystatsGetter: StreamystatsGetterService,
     private readonly tracearrGetter: TracearrGetterService,
@@ -110,6 +112,14 @@ export class ValueGetterService {
       }
       case Application.SEERR: {
         return await this.seerrGetter.get(
+          val2,
+          libItem,
+          dataType,
+          arrLookupCache,
+        );
+      }
+      case Application.OMBI: {
+        return await this.ombiGetter.get(
           val2,
           libItem,
           dataType,

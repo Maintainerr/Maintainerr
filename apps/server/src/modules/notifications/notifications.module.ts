@@ -10,6 +10,7 @@ import { VersionNotificationService } from './version-notification.service';
 import { TasksModule } from '../tasks/tasks.module';
 import { CollectionsModule } from '../collections/collections.module';
 import { MediaServerModule } from '../api/media-server/media-server.module';
+import { OmbiApiModule } from '../api/ombi-api/ombi-api.module';
 import { SeerrApiModule } from '../api/seerr-api/seerr-api.module';
 import { VersionModule } from '../version/version.module';
 
@@ -20,6 +21,7 @@ import { VersionModule } from '../version/version.module';
     TasksModule,
     MediaServerModule,
     SeerrApiModule,
+    OmbiApiModule,
     VersionModule,
     TypeOrmModule.forFeature([Notification, RuleGroup]),
   ],

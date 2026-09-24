@@ -94,6 +94,9 @@ const settingsRadarrRoute = createLazyRoute(
 const settingsSeerrRoute = createLazyRoute(
   () => import('./components/Settings/Seerr'),
 )
+const settingsOmbiRoute = createLazyRoute(
+  () => import('./components/Settings/Ombi'),
+)
 const settingsTautulliRoute = createLazyRoute(
   () => import('./components/Settings/Tautulli'),
 )
@@ -302,6 +305,11 @@ const appRoutes: AppRoute[] = [
         path: 'seerr',
         lazy: settingsSeerrRoute.lazy,
         preload: settingsSeerrRoute.preload,
+      },
+      {
+        path: 'ombi',
+        lazy: settingsOmbiRoute.lazy,
+        preload: settingsOmbiRoute.preload,
       },
       {
         path: 'tautulli',

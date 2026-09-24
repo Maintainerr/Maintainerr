@@ -111,6 +111,18 @@ describe('SettingsController', () => {
         },
       },
       {
+        name: 'Ombi',
+        method: 'getOmbiSetting' as const,
+        entityOverrides: {
+          ombi_url: 'http://ombi.local',
+          ombi_api_key: 'ombi-key',
+        },
+        expected: {
+          api_key: 'ombi-key',
+          url: 'http://ombi.local',
+        },
+      },
+      {
         name: 'Jellyfin',
         method: 'getJellyfinSetting' as const,
         entityOverrides: {
@@ -152,6 +164,7 @@ describe('SettingsController', () => {
     it.each([
       { name: 'Tautulli', method: 'getTautulliSetting' as const },
       { name: 'Seerr', method: 'getSeerrSetting' as const },
+      { name: 'Ombi', method: 'getOmbiSetting' as const },
       { name: 'Jellyfin', method: 'getJellyfinSetting' as const },
       { name: 'Tracearr', method: 'getTracearrSetting' as const },
     ])(

@@ -91,6 +91,10 @@ export class SettingsDataService implements SettingDto {
 
   seerr_api_key: string;
 
+  ombi_url: string;
+
+  ombi_api_key: string;
+
   tmdb_api_key?: string;
 
   tvdb_api_key?: string;
@@ -183,6 +187,8 @@ export class SettingsDataService implements SettingDto {
       this.emby_server_name = settingsDb?.emby_server_name;
       this.seerr_url = settingsDb?.seerr_url;
       this.seerr_api_key = settingsDb?.seerr_api_key;
+      this.ombi_url = settingsDb?.ombi_url;
+      this.ombi_api_key = settingsDb?.ombi_api_key;
       this.tmdb_api_key = settingsDb?.tmdb_api_key;
       this.tvdb_api_key = settingsDb?.tvdb_api_key;
       this.metadata_provider_preference =
@@ -318,6 +324,7 @@ export class SettingsDataService implements SettingDto {
       jellyfin_api_key: maskSecret(settings.jellyfin_api_key),
       emby_api_key: maskSecret(settings.emby_api_key),
       seerr_api_key: maskSecret(settings.seerr_api_key),
+      ombi_api_key: maskSecret(settings.ombi_api_key),
       tmdb_api_key: maskSecret(settings.tmdb_api_key),
       tvdb_api_key: maskSecret(settings.tvdb_api_key),
       tautulli_api_key: maskSecret(settings.tautulli_api_key),
@@ -392,6 +399,10 @@ export class SettingsDataService implements SettingDto {
 
   public seerrConfigured(): boolean {
     return this.seerr_url !== null && this.seerr_api_key !== null;
+  }
+
+  public ombiConfigured(): boolean {
+    return this.ombi_url != null && this.ombi_api_key != null;
   }
 
   public tautulliConfigured(): boolean {
