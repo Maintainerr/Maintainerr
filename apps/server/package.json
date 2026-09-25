@@ -71,7 +71,7 @@
     "@eslint/eslintrc": "^3.3.7",
     "@eslint/js": "^10.0.1",
     "@faker-js/faker": "^10.6.0",
-    "@nestjs/cli": "^12.0.3",
+    "@nestjs/cli": "^12.0.5",
     "@nestjs/schematics": "^12.0.4",
     "@nestjs/testing": "^12.0.4",
     "@suites/di.nestjs": "^3.1.0",
