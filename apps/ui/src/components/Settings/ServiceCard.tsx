@@ -1,4 +1,4 @@
-import { PlusCircleIcon } from '@heroicons/react/solid'
+import { PlusCircleIcon, TrashIcon } from '@heroicons/react/solid'
 import { Trans, useLingui } from '@lingui/react/macro'
 import { type ReactNode, useState } from 'react'
 import Alert from '../Common/Alert'
@@ -117,6 +117,7 @@ export const ServiceCardCancelButton = ({
 )
 
 // Two-step delete for a card's header: the first click asks, the second acts.
+// Red, like the rule editor's delete button.
 export const ServiceCardDeleteButton = ({
   disabled,
   onConfirm,
@@ -128,7 +129,7 @@ export const ServiceCardDeleteButton = ({
 
   return (
     <Button
-      buttonType={confirming ? 'danger' : 'ghost'}
+      buttonType="danger"
       buttonSize="sm"
       type="button"
       disabled={disabled}
@@ -139,6 +140,7 @@ export const ServiceCardDeleteButton = ({
         }
       }}
     >
+      {confirming ? null : <TrashIcon />}
       <span className="font-semibold">
         {confirming ? <Trans>Are you sure?</Trans> : <Trans>Delete</Trans>}
       </span>
