@@ -214,7 +214,7 @@ describe('database migrations', () => {
     try {
       await ds.runMigrations();
       await ds.query(
-        `INSERT INTO settings ("id", "applicationTitle", "applicationUrl", "locale", "metadata_provider_preference", "seerr_url", "seerr_api_key") VALUES (1, 'Media Manager', 'http://localhost:6246', 'en', 'tmdb_primary', 'http://seerr.local', 'seerr-key')`,
+        `INSERT INTO settings ("id", "applicationTitle", "applicationUrl", "locale", "metadata_provider_preference", "seerr_url", "seerr_api_key", "radarr_tag_exclusions", "radarr_exclusion_tag") VALUES (1, 'Media Manager', 'http://localhost:6246', 'en', 'tmdb_primary', 'http://seerr.local', 'seerr-key', 1, 'keep')`,
       );
       await ds.query(
         `INSERT INTO radarr_settings ("id", "serverName") VALUES (1, 'HD')`,
@@ -237,6 +237,9 @@ describe('database migrations', () => {
         seerr_url: 'http://seerr.local',
         seerr_api_key: 'seerr-key',
       });
+      // The server takes over the tag settings its service had.
+      const [server] = await ds.query(`SELECT * FROM radarr_settings`);
+      expect(server).toMatchObject({ tagExclusions: 1, exclusionTag: 'keep' });
       const [collection] = await ds.query(`SELECT * FROM collection`);
       expect(collection).toMatchObject({
         title: 'Sample Collection',
