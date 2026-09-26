@@ -27,7 +27,7 @@ const MediaServerSettings = () => {
         <ServiceStatus status={feedback} />
       </div>
       {type ? (
-        <div className="border-t border-zinc-700">
+        <div className="border-t border-zinc-700 pt-16">
           {type === MediaServerType.PLEX ? (
             <PlexSettings />
           ) : type === MediaServerType.JELLYFIN ? (

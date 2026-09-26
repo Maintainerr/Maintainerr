@@ -897,6 +897,10 @@ msgstr "La prueba de conexión falló. Verifique la URL y las credenciales."
 msgid "Connection timed out after 5 seconds. Verify URL and network reachability."
 msgstr "La conexión se agotó después de 5 segundos. Verifique la accesibilidad de la URL y la red."
 
+#: src/components/Settings/Plex/index.tsx
+msgid "Connects to the host above over TLS."
+msgstr ""
+
 #: src/components/Settings/About/index.tsx
 msgid "Container Config Path"
 msgstr "Ruta de configuración del contenedor"
@@ -2327,10 +2331,6 @@ msgstr "Manual"
 msgid "Manual Added First"
 msgstr "Manual agregado primero"
 
-#: src/components/Settings/Plex/index.tsx
-msgid "Manual connection override"
-msgstr "Anulación de conexión manual"
-
 #: src/components/Common/MediaCard/MediaModal/index.tsx
 msgid "Manually Added To"
 msgstr "Agregado manualmente a"
@@ -2932,10 +2932,6 @@ msgid "Please select a library first."
 msgstr "Primero selecciona una biblioteca."
 
 #: src/components/Settings/Plex/index.tsx
-msgid "Plex authentication (above) is still required"
-msgstr "La autenticación Plex (arriba) aún es necesaria"
-
-#: src/components/Settings/Plex/index.tsx
 msgid "Plex authentication could not be verified. Please try again."
 msgstr "No se pudo verificar la autenticación de Plex. Por favor inténtalo de nuevo."
 
@@ -3113,6 +3109,10 @@ msgstr "Rectángulo"
 #: src/components/Settings/Servarr/ServarrServerCard.tsx
 msgid "Refresh metadata"
 msgstr "Actualizar metadatos"
+
+#: src/components/Settings/Plex/index.tsx
+msgid "Refresh servers"
+msgstr ""
 
 #: src/components/Settings/Metadata/index.tsx
 #: src/components/Settings/Servarr/ServarrServerCard.tsx

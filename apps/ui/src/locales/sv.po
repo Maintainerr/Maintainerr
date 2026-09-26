@@ -897,6 +897,10 @@ msgstr "Anslutningstestet misslyckades. Kontrollera URL och inloggningsuppgifter
 msgid "Connection timed out after 5 seconds. Verify URL and network reachability."
 msgstr "Anslutningen fick timeout efter 5 sekunder. Kontrollera URL och nätverksåtkomst."
 
+#: src/components/Settings/Plex/index.tsx
+msgid "Connects to the host above over TLS."
+msgstr ""
+
 #: src/components/Settings/About/index.tsx
 msgid "Container Config Path"
 msgstr "Konfigurationssökväg i containern"
@@ -2327,10 +2331,6 @@ msgstr "Manuell"
 msgid "Manual Added First"
 msgstr "Manuellt tillagda först"
 
-#: src/components/Settings/Plex/index.tsx
-msgid "Manual connection override"
-msgstr "Manuell åsidosättning av anslutningen"
-
 #: src/components/Common/MediaCard/MediaModal/index.tsx
 msgid "Manually Added To"
 msgstr "Manuellt tillagd i"
@@ -2932,10 +2932,6 @@ msgid "Please select a library first."
 msgstr "Välj ett bibliotek först."
 
 #: src/components/Settings/Plex/index.tsx
-msgid "Plex authentication (above) is still required"
-msgstr "Plex-autentisering (ovan) krävs fortfarande"
-
-#: src/components/Settings/Plex/index.tsx
 msgid "Plex authentication could not be verified. Please try again."
 msgstr "Plex-autentiseringen kunde inte verifieras. Försök igen."
 
@@ -3113,6 +3109,10 @@ msgstr "Rektangel"
 #: src/components/Settings/Servarr/ServarrServerCard.tsx
 msgid "Refresh metadata"
 msgstr "Uppdatera metadata"
+
+#: src/components/Settings/Plex/index.tsx
+msgid "Refresh servers"
+msgstr ""
 
 #: src/components/Settings/Metadata/index.tsx
 #: src/components/Settings/Servarr/ServarrServerCard.tsx

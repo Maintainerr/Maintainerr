@@ -109,7 +109,7 @@ export const ServiceCardCancelButton = ({
 }: {
   onClick?: () => void
 }) => (
-  <Button buttonType="ghost" buttonSize="sm" type="button" onClick={onClick}>
+  <Button buttonType="default" buttonSize="sm" type="button" onClick={onClick}>
     <span className="font-semibold">
       <Trans>Cancel</Trans>
     </span>

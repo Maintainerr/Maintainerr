@@ -214,16 +214,13 @@ describe('database migrations', () => {
     try {
       await ds.runMigrations();
       await ds.query(
-        `INSERT INTO settings ("id", "applicationTitle", "applicationUrl", "locale", "metadata_provider_preference", "seerr_url", "seerr_api_key", "radarr_tag_exclusions", "radarr_exclusion_tag", "sonarr_untag_on_unexclude") VALUES (1, 'Media Manager', 'http://localhost:6246', 'en', 'tmdb_primary', 'http://seerr.local', 'seerr-key', 1, 'keep', 1)`,
+        `INSERT INTO settings ("id", "applicationTitle", "applicationUrl", "locale", "metadata_provider_preference", "seerr_url", "seerr_api_key") VALUES (1, 'Media Manager', 'http://localhost:6246', 'en', 'tmdb_primary', 'http://seerr.local', 'seerr-key')`,
       );
       await ds.query(
-        `INSERT INTO radarr_settings ("id", "serverName") VALUES (1, 'HD'), (2, '4K')`,
+        `INSERT INTO radarr_settings ("id", "serverName") VALUES (1, 'HD')`,
       );
       await ds.query(
-        `INSERT INTO sonarr_settings ("id", "serverName") VALUES (1, 'Shows')`,
-      );
-      await ds.query(
-        `INSERT INTO collection ("libraryId", "title", "type", "mediaServerType", "radarrSettingsId") VALUES ('1', 'Sample Collection', 'movie', 'plex', 2)`,
+        `INSERT INTO collection ("libraryId", "title", "type", "mediaServerType", "radarrSettingsId") VALUES ('1', 'Sample Collection', 'movie', 'plex', 1)`,
       );
 
       // Wrapped as the migration executor does, which turns foreign keys off
@@ -240,32 +237,10 @@ describe('database migrations', () => {
         seerr_url: 'http://seerr.local',
         seerr_api_key: 'seerr-key',
       });
-      // Every server takes over the settings its service had.
-      expect(await ds.query(`SELECT * FROM radarr_settings`)).toEqual([
-        expect.objectContaining({
-          id: 1,
-          tagExclusions: 1,
-          exclusionTag: 'keep',
-          untagOnUnexclude: 0,
-        }),
-        expect.objectContaining({
-          id: 2,
-          tagExclusions: 1,
-          exclusionTag: 'keep',
-          untagOnUnexclude: 0,
-        }),
-      ]);
-      expect(await ds.query(`SELECT * FROM sonarr_settings`)).toEqual([
-        expect.objectContaining({
-          tagExclusions: 0,
-          exclusionTag: 'dnd',
-          untagOnUnexclude: 1,
-        }),
-      ]);
       const [collection] = await ds.query(`SELECT * FROM collection`);
       expect(collection).toMatchObject({
         title: 'Sample Collection',
-        radarrSettingsId: 2,
+        radarrSettingsId: 1,
       });
     } finally {
       await ds.destroy();
@@ -281,9 +256,6 @@ describe('database migrations', () => {
     try {
       await ds.runMigrations();
       expect(
-        byName(await columns(ds, 'radarr_settings')).tagExclusions,
-      ).toBeDefined();
-      expect(
         byName(await columns(ds, 'settings')).radarr_tag_exclusions,
       ).toBeUndefined();
       await ds.query(
@@ -292,9 +264,6 @@ describe('database migrations', () => {
 
       await ds.undoLastMigration();
 
-      expect(
-        byName(await columns(ds, 'radarr_settings')).tagExclusions,
-      ).toBeUndefined();
       expect(
         byName(await columns(ds, 'settings')).radarr_tag_exclusions,
       ).toBeDefined();

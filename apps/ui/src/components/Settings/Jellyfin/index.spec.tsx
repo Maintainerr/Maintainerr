@@ -3,10 +3,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import JellyfinSettings from './index'
 
 const saveSettingsMock = vi.fn()
+const testMock = vi.fn()
 const showUpdated = vi.fn()
 const showUpdateError = vi.fn()
 const showError = vi.fn()
-const clearError = vi.fn()
+const clear = vi.fn()
 
 vi.mock('..', () => ({
   useSettingsOutletContext: () => ({
@@ -25,7 +26,7 @@ vi.mock('../../../api/settings', () => ({
     },
   }),
   useTestJellyfin: () => ({
-    mutateAsync: vi.fn(),
+    mutateAsync: testMock,
     isPending: false,
   }),
   useSaveJellyfinSettings: () => ({
@@ -44,7 +45,7 @@ vi.mock('../useSettingsFeedback', () => ({
     showUpdated,
     showUpdateError,
     showError,
-    clearError,
+    clear,
   }),
 }))
 
@@ -55,10 +56,11 @@ vi.mock('../../Common/DocsButton', () => ({
 describe('JellyfinSettings', () => {
   beforeEach(() => {
     saveSettingsMock.mockReset()
+    testMock.mockReset()
+    clear.mockReset()
     showUpdated.mockReset()
     showUpdateError.mockReset()
     showError.mockReset()
-    clearError.mockReset()
   })
 
   it('surfaces backend validation failures instead of showing a success message', async () => {
@@ -80,5 +82,18 @@ describe('JellyfinSettings', () => {
 
     expect(showUpdated).not.toHaveBeenCalled()
     expect(showUpdateError).not.toHaveBeenCalled()
+  })
+
+  it('shows the result of a test run after saving in place of "Saved"', async () => {
+    testMock.mockResolvedValue({ code: 1, version: '10.11.0' })
+
+    render(<JellyfinSettings />)
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Test Connection' }),
+    )
+
+    expect(await screen.findByText('Success! (10.11.0)')).toBeTruthy()
+    expect(clear).toHaveBeenCalled()
   })
 })

@@ -897,6 +897,10 @@ msgstr "Connection test failed. Verify URL and credentials."
 msgid "Connection timed out after 5 seconds. Verify URL and network reachability."
 msgstr "Connection timed out after 5 seconds. Verify URL and network reachability."
 
+#: src/components/Settings/Plex/index.tsx
+msgid "Connects to the host above over TLS."
+msgstr "Connects to the host above over TLS."
+
 #: src/components/Settings/About/index.tsx
 msgid "Container Config Path"
 msgstr "Container Config Path"
@@ -2327,10 +2331,6 @@ msgstr "Manual"
 msgid "Manual Added First"
 msgstr "Manual Added First"
 
-#: src/components/Settings/Plex/index.tsx
-msgid "Manual connection override"
-msgstr "Manual connection override"
-
 #: src/components/Common/MediaCard/MediaModal/index.tsx
 msgid "Manually Added To"
 msgstr "Manually Added To"
@@ -2932,10 +2932,6 @@ msgid "Please select a library first."
 msgstr "Please select a library first."
 
 #: src/components/Settings/Plex/index.tsx
-msgid "Plex authentication (above) is still required"
-msgstr "Plex authentication (above) is still required"
-
-#: src/components/Settings/Plex/index.tsx
 msgid "Plex authentication could not be verified. Please try again."
 msgstr "Plex authentication could not be verified. Please try again."
 
@@ -3113,6 +3109,10 @@ msgstr "Rectangle"
 #: src/components/Settings/Servarr/ServarrServerCard.tsx
 msgid "Refresh metadata"
 msgstr "Refresh metadata"
+
+#: src/components/Settings/Plex/index.tsx
+msgid "Refresh servers"
+msgstr "Refresh servers"
 
 #: src/components/Settings/Metadata/index.tsx
 #: src/components/Settings/Servarr/ServarrServerCard.tsx

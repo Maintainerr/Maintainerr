@@ -20,9 +20,9 @@ import { getApiErrorMessage } from '../../../utils/ApiError'
 import SaveButton from '../../Common/SaveButton'
 import TestingButton from '../../Common/TestingButton'
 import { InputGroup } from '../../Forms/Input'
-import { Select } from '../../Forms/Select'
+import { SelectGroup } from '../../Forms/Select'
 import EmbyLoginButton from '../../Login/Emby/EmbyLoginButton'
-import { ServiceActions } from '../ServiceCard'
+import ServiceCard, { ServiceCardFooter } from '../ServiceCard'
 import { useSettingsFeedback } from '../useSettingsFeedback'
 import { releaseVersion } from '../../../utils/version'
 
@@ -52,7 +52,7 @@ const EmbySettings = () => {
   const [embyUsers, setEmbyUsers] = useState<
     Array<{ id: string; name: string }>
   >([])
-  const { feedback, showUpdated, showError, clearError } = useSettingsFeedback({
+  const { feedback, showUpdated, showError, clear } = useSettingsFeedback({
     updated: t`Saved`,
     updateError: t`Emby settings could not be updated`,
   })
@@ -110,7 +110,7 @@ const EmbySettings = () => {
     !isEmbyLoading && !isTestPending && !isSavePending && !isDeletePending
 
   const clearTransientState = () => {
-    clearError()
+    clear()
     setTestResult(null)
     setTestedSettings(null)
     setEmbyUsers([])
@@ -125,6 +125,8 @@ const EmbySettings = () => {
   const handleTest = async () => {
     if (isTestPending || !(await trigger())) return
 
+    // The status shows whatever happened last, so a new test hides "Saved".
+    clear()
     setTestResult(null)
 
     try {
@@ -173,7 +175,7 @@ const EmbySettings = () => {
   }
 
   const onSubmit = async (data: EmbySettingFormResult) => {
-    clearError()
+    clear()
 
     if (data.emby_url === '' && data.emby_api_key === '') {
       try {
@@ -205,146 +207,141 @@ const EmbySettings = () => {
   const savedUserId = settings?.emby_user_id ?? ''
   const maskedUserId = maskSecret(savedUserId)
 
+  const usersLoaded = embyUsers.length > 0 && enteredSettingsHaveBeenTested
+
   return (
     <>
       <title>{t`Emby settings - Maintainerr`}</title>
-      <div className="h-full w-full">
-        <div className="section">
-          <form onSubmit={handleSubmit(onSubmit)}>
-            <Controller
-              name="emby_url"
-              control={control}
-              render={({ field }) => (
-                <InputGroup
-                  label={t`Emby URL`}
-                  value={field.value}
-                  placeholder="http://emby.local:8096"
-                  onChange={(event) => {
-                    clearTransientState()
-                    field.onChange(event)
-                  }}
-                  onBlur={(event) =>
-                    field.onChange(stripTrailingSlashes(event.target.value))
-                  }
-                  ref={field.ref}
-                  name={field.name}
-                  type="text"
-                  error={errors.emby_url?.message}
-                  required
-                />
-              )}
-            />
-
-            <InputGroup
-              label={t`API Key`}
-              type="password"
-              {...registerApiKey}
-              error={errors.emby_api_key?.message}
-              helpText={
-                <Trans>
-                  In Emby, go to{' '}
-                  <strong>Dashboard &rarr; Advanced &rarr; API Keys</strong> and
-                  create a new key named &quot;Maintainerr&quot;. Or use{' '}
-                  <em>Sign in with Emby</em> below to obtain one automatically.
-                </Trans>
-              }
-            />
-
-            <div className="mt-6 max-w-6xl sm:mt-5 sm:grid sm:grid-cols-3 sm:items-start sm:gap-4">
-              <label htmlFor="emby_user_id" className="sm:mt-2">
-                <Trans>Admin User</Trans>
-              </label>
-              <div className="px-3 py-2 sm:col-span-2">
-                <div className="max-w-xl">
-                  {embyUsers.length > 0 && enteredSettingsHaveBeenTested ? (
-                    <Select {...register('emby_user_id')}>
-                      {embyUsers.map((user) => (
-                        <option key={user.id} value={user.id}>
-                          {user.name} ({maskSecret(user.id)})
-                        </option>
-                      ))}
-                    </Select>
-                  ) : (
-                    <Select disabled value={savedUserId}>
-                      {savedUserId ? (
-                        <option value={savedUserId}>
-                          <Trans>Selected: {maskedUserId}</Trans>
-                        </option>
-                      ) : (
-                        <option value="">
-                          {t`Test connection to load Emby admin users`}
-                        </option>
-                      )}
-                    </Select>
-                  )}
-                  <p className="mt-1 text-sm text-zinc-400">
-                    {embyUsers.length > 0 && enteredSettingsHaveBeenTested
-                      ? t`Select the admin user for Maintainerr operations.`
-                      : savedUserId
-                        ? t`Saved admin user. Test connection to change.`
-                        : t`Test connection to load available admin users.`}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="actions mt-5 w-full">
-              <ServiceActions
-                status={
-                  feedback ??
-                  (testResult
-                    ? {
-                        type: testResult.status ? 'success' : 'error',
-                        title: testResult.message,
-                      }
-                    : null)
-                }
-              >
-                <div className="ml-auto flex justify-end">
-                  <EmbyLoginButton
-                    embyUrl={embyUrl}
-                    onAuthenticated={(result) => {
-                      setValue('emby_api_key', result.token)
-                      setValue('emby_user_id', result.userId)
-                      if (result.users) setEmbyUsers(result.users)
-                      setTestResult({
-                        status: true,
-                        message: t`Authenticated`,
-                      })
-                      setTestedSettings({
-                        url: embyUrl,
-                        apiKey: result.token,
-                      })
+      <div className="max-w-6xl">
+        <ServiceCard title="Emby">
+          <form
+            className="flex flex-1 flex-col gap-3"
+            onSubmit={handleSubmit(onSubmit)}
+          >
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <Controller
+                name="emby_url"
+                control={control}
+                render={({ field }) => (
+                  <InputGroup
+                    layout="stacked"
+                    label={t`Emby URL`}
+                    value={field.value}
+                    placeholder="http://emby.local:8096"
+                    onChange={(event) => {
+                      clearTransientState()
+                      field.onChange(event)
                     }}
-                  />
-                  <TestingButton
-                    type="button"
-                    buttonType="success"
-                    onClick={handleTest}
-                    className="ml-3"
-                    disabled={
-                      isEmbyLoading || isTestPending || isGoingToRemoveSettings
+                    onBlur={(event) =>
+                      field.onChange(stripTrailingSlashes(event.target.value))
                     }
-                    isPending={isTestPending}
-                    feedbackStatus={
-                      enteredSettingsHaveBeenTested
-                        ? testResult?.status
-                        : undefined
-                    }
+                    ref={field.ref}
+                    name={field.name}
+                    type="text"
+                    error={errors.emby_url?.message}
+                    required
                   />
-
-                  <span className="ml-3 inline-flex rounded-md shadow-xs">
-                    <SaveButton
-                      type="submit"
-                      disabled={!canSaveSettings}
-                      isPending={isSavePending || isDeletePending}
-                    />
-                  </span>
-                </div>
-              </ServiceActions>
+                )}
+              />
+              <InputGroup
+                layout="stacked"
+                label={t`API Key`}
+                type="password"
+                {...registerApiKey}
+                error={errors.emby_api_key?.message}
+                helpText={
+                  <Trans>
+                    In Emby, go to{' '}
+                    <strong>Dashboard &rarr; Advanced &rarr; API Keys</strong>{' '}
+                    and create a new key named &quot;Maintainerr&quot;. Or use{' '}
+                    <em>Sign in with Emby</em> below to obtain one
+                    automatically.
+                  </Trans>
+                }
+              />
             </div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {usersLoaded ? (
+                <SelectGroup
+                  layout="stacked"
+                  label={t`Admin User`}
+                  helpText={t`Select the admin user for Maintainerr operations.`}
+                  {...register('emby_user_id')}
+                >
+                  {embyUsers.map((user) => (
+                    <option key={user.id} value={user.id}>
+                      {user.name} ({maskSecret(user.id)})
+                    </option>
+                  ))}
+                </SelectGroup>
+              ) : (
+                <SelectGroup
+                  layout="stacked"
+                  name="emby_user_id"
+                  label={t`Admin User`}
+                  helpText={
+                    savedUserId
+                      ? t`Saved admin user. Test connection to change.`
+                      : t`Test connection to load available admin users.`
+                  }
+                  disabled
+                  value={savedUserId}
+                >
+                  {savedUserId ? (
+                    <option value={savedUserId}>
+                      {t`Selected: ${{ maskedUserId }}`}
+                    </option>
+                  ) : (
+                    <option value="">
+                      {t`Test connection to load Emby admin users`}
+                    </option>
+                  )}
+                </SelectGroup>
+              )}
+            </div>
+
+            <ServiceCardFooter
+              status={
+                feedback ??
+                (testResult
+                  ? {
+                      type: testResult.status ? 'success' : 'error',
+                      title: testResult.message,
+                    }
+                  : null)
+              }
+            >
+              <EmbyLoginButton
+                embyUrl={embyUrl}
+                onAuthenticated={(result) => {
+                  clear()
+                  setValue('emby_api_key', result.token)
+                  setValue('emby_user_id', result.userId)
+                  if (result.users) setEmbyUsers(result.users)
+                  setTestResult({ status: true, message: t`Authenticated` })
+                  setTestedSettings({ url: embyUrl, apiKey: result.token })
+                }}
+              />
+              <TestingButton
+                type="button"
+                buttonType="success"
+                onClick={handleTest}
+                disabled={
+                  isEmbyLoading || isTestPending || isGoingToRemoveSettings
+                }
+                isPending={isTestPending}
+                feedbackStatus={
+                  enteredSettingsHaveBeenTested ? testResult?.status : undefined
+                }
+              />
+              <SaveButton
+                type="submit"
+                disabled={!canSaveSettings}
+                isPending={isSavePending || isDeletePending}
+              />
+            </ServiceCardFooter>
           </form>
-        </div>
+        </ServiceCard>
       </div>
     </>
   )

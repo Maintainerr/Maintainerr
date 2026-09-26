@@ -18,7 +18,9 @@ export const fieldDescribedBy = (
 }
 
 // Label, help and error around one control. `row` is the settings-page grid
-// (label beside the field); `stacked` is the card layout (label above).
+// (label beside the field); `stacked` is the card layout (label above). Without
+// an id the stacked label is plain text, for content that is not one control:
+// a <label> would rename a button inside it.
 const FieldGroup = ({
   layout = 'row',
   id,
@@ -29,7 +31,7 @@ const FieldGroup = ({
   children,
 }: {
   layout?: FieldGroupLayout
-  id: string
+  id?: string
   label: string
   required?: boolean
   helpText?: ReactNode
@@ -39,7 +41,7 @@ const FieldGroup = ({
   const errorText = error ? (
     <p
       className={`mt-2 min-h-5 text-error-500 ${layout === 'stacked' ? 'text-xs' : 'text-sm'}`}
-      id={`${id}-error`}
+      id={id && `${id}-error`}
     >
       {error}
     </p>
@@ -48,13 +50,23 @@ const FieldGroup = ({
   if (layout === 'stacked') {
     return (
       <div>
-        <label htmlFor={id} className="block text-sm font-medium text-zinc-300">
-          {label} {required && <>*</>}
-        </label>
+        {id ? (
+          <label
+            htmlFor={id}
+            className="block text-sm font-medium text-zinc-300"
+          >
+            {label} {required && <>*</>}
+          </label>
+        ) : (
+          <p className="block text-sm font-medium text-zinc-300">{label}</p>
+        )}
         <div className="mt-1">{children}</div>
         {errorText ??
           (helpText ? (
-            <p className="mt-2 min-h-5 text-xs text-zinc-400" id={`${id}-help`}>
+            <p
+              className="mt-2 min-h-5 text-xs text-zinc-400"
+              id={id && `${id}-help`}
+            >
               {helpText}
             </p>
           ) : null)}
@@ -67,7 +79,7 @@ const FieldGroup = ({
       <label htmlFor={id} className="sm:mt-2">
         {label} {required && <>*</>}
         {helpText ? (
-          <p className="text-xs font-normal" id={`${id}-help`}>
+          <p className="text-xs font-normal" id={id && `${id}-help`}>
             {helpText}
           </p>
         ) : null}
