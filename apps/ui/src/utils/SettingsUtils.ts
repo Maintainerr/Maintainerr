@@ -62,6 +62,8 @@ export function getBaseUrl(url: string): string | undefined {
   }
 }
 
+const acronyms = new Set(['id', 'json', 'pgp', 'smtp', 'tls', 'url'])
+
 export function camelCaseToPrettyText(camelCaseStr: string): string {
   let spaced = ''
   for (let i = 0; i < camelCaseStr.length; i++) {
@@ -74,7 +76,13 @@ export function camelCaseToPrettyText(camelCaseStr: string): string {
     }
     spaced += camelCaseStr[i]
   }
-  return (spaced.charAt(0).toUpperCase() + spaced.slice(1)).trim()
+  return (spaced.charAt(0).toUpperCase() + spaced.slice(1))
+    .trim()
+    .split(' ')
+    .map((word) =>
+      acronyms.has(word.toLowerCase()) ? word.toUpperCase() : word,
+    )
+    .join(' ')
 }
 
 export const handleSettingsInputChange = (

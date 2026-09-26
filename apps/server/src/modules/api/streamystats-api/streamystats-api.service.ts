@@ -253,7 +253,7 @@ export class StreamystatsApiService {
         message: version,
       };
     } catch (error) {
-      logConnectionTestError(this.logger, 'Streamystats');
+      logConnectionTestError(this.logger, 'Streamystats', error);
       this.logger.debug(error);
 
       return {

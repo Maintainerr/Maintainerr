@@ -3,16 +3,11 @@ import { fireEvent, render, screen, within } from '../../../test-utils/render'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import MediaServerSelector from './index'
 
-const navigate = vi.fn()
 const invalidateQueries = vi.fn()
 const refetchQueries = vi.fn()
 const previewSwitch = vi.fn()
 const switchServer = vi.fn()
 let switchPending = false
-
-vi.mock('react-router-dom', () => ({
-  useNavigate: () => navigate,
-}))
 
 vi.mock('@tanstack/react-query', async () => {
   const actual = await vi.importActual<typeof import('@tanstack/react-query')>(
@@ -45,7 +40,6 @@ vi.mock('../../../utils/ClientLogger', () => ({
 
 describe('MediaServerSelector', () => {
   beforeEach(() => {
-    navigate.mockReset()
     invalidateQueries.mockReset()
     refetchQueries.mockReset()
     previewSwitch.mockReset()

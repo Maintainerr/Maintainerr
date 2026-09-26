@@ -102,12 +102,14 @@ describe('database migrations', () => {
       // SQLite reports INTEGER affinity uppercased via PRAGMA table_info.
       const intNullable = { type: 'INTEGER', notnull: 0, dflt_value: null };
       expect(collection.tagInArr).toMatchObject(bool);
-      expect(settings.radarr_tag_exclusions).toMatchObject(bool);
-      expect(settings.radarr_exclusion_tag).toMatchObject(dnd);
-      expect(settings.radarr_untag_on_unexclude).toMatchObject(bool);
-      expect(settings.sonarr_tag_exclusions).toMatchObject(bool);
-      expect(settings.sonarr_exclusion_tag).toMatchObject(dnd);
-      expect(settings.sonarr_untag_on_unexclude).toMatchObject(bool);
+      // MoveExclusionTagToServers: the exclusion tag is set per server.
+      expect(settings.radarr_tag_exclusions).toBeUndefined();
+      for (const table of ['radarr_settings', 'sonarr_settings']) {
+        const server = byName(await columns(ds, table));
+        expect(server.tagExclusions).toMatchObject(bool);
+        expect(server.exclusionTag).toMatchObject(dnd);
+        expect(server.untagOnUnexclude).toMatchObject(bool);
+      }
 
       // AddCollectionMediaRuleRemoval: the rule-removal marker table columns.
       const ruleRemoval = byName(
@@ -198,7 +200,7 @@ describe('database migrations', () => {
     // emits a full create-temporary-table / copy / drop / rename rebuild for the
     // changed tables. A hand-written ALTER shortcut lacks it - this is the
     // cheapest signal the migration was generated rather than authored. The
-    // newest migration adds settings columns, so it rebuilds that table.
+    // newest migration drops settings columns, so it rebuilds that table.
     expect(src).toContain('CREATE TABLE "temporary_settings"');
   });
 
@@ -212,14 +214,24 @@ describe('database migrations', () => {
     try {
       await ds.runMigrations();
       await ds.query(
-        `INSERT INTO settings ("id", "applicationTitle", "applicationUrl", "locale", "metadata_provider_preference", "seerr_url", "seerr_api_key") VALUES (1, 'Media Manager', 'http://localhost:6246', 'en', 'tmdb_primary', 'http://seerr.local', 'seerr-key')`,
+        `INSERT INTO settings ("id", "applicationTitle", "applicationUrl", "locale", "metadata_provider_preference", "seerr_url", "seerr_api_key", "radarr_tag_exclusions", "radarr_exclusion_tag", "sonarr_untag_on_unexclude") VALUES (1, 'Media Manager', 'http://localhost:6246', 'en', 'tmdb_primary', 'http://seerr.local', 'seerr-key', 1, 'keep', 1)`,
       );
       await ds.query(
-        `INSERT INTO collection ("libraryId", "title", "type", "forceSeerr", "mediaServerType") VALUES ('1', 'Sample Collection', 'movie', 1, 'plex')`,
+        `INSERT INTO radarr_settings ("id", "serverName") VALUES (1, 'HD'), (2, '4K')`,
+      );
+      await ds.query(
+        `INSERT INTO sonarr_settings ("id", "serverName") VALUES (1, 'Shows')`,
+      );
+      await ds.query(
+        `INSERT INTO collection ("libraryId", "title", "type", "mediaServerType", "radarrSettingsId") VALUES ('1', 'Sample Collection', 'movie', 'plex', 2)`,
       );
 
+      // Wrapped as the migration executor does, which turns foreign keys off
+      // so a rebuilt table may be one that other rows reference.
       const runner = ds.createQueryRunner();
+      await runner.beforeMigration();
       await new newest.cls().up(runner);
+      await runner.afterMigration();
       await runner.release();
 
       const [settings] = await ds.query(`SELECT * FROM settings`);
@@ -227,15 +239,33 @@ describe('database migrations', () => {
         applicationTitle: 'Media Manager',
         seerr_url: 'http://seerr.local',
         seerr_api_key: 'seerr-key',
-        ombi_url: null,
-        ombi_api_key: null,
       });
-      // The existing toggle is carried; the new one starts off.
+      // Every server takes over the settings its service had.
+      expect(await ds.query(`SELECT * FROM radarr_settings`)).toEqual([
+        expect.objectContaining({
+          id: 1,
+          tagExclusions: 1,
+          exclusionTag: 'keep',
+          untagOnUnexclude: 0,
+        }),
+        expect.objectContaining({
+          id: 2,
+          tagExclusions: 1,
+          exclusionTag: 'keep',
+          untagOnUnexclude: 0,
+        }),
+      ]);
+      expect(await ds.query(`SELECT * FROM sonarr_settings`)).toEqual([
+        expect.objectContaining({
+          tagExclusions: 0,
+          exclusionTag: 'dnd',
+          untagOnUnexclude: 1,
+        }),
+      ]);
       const [collection] = await ds.query(`SELECT * FROM collection`);
       expect(collection).toMatchObject({
         title: 'Sample Collection',
-        forceSeerr: 1,
-        forceOmbi: 0,
+        radarrSettingsId: 2,
       });
     } finally {
       await ds.destroy();
@@ -250,16 +280,24 @@ describe('database migrations', () => {
     const ds = await makeDS(all.map((m) => m.cls)).initialize();
     try {
       await ds.runMigrations();
-      expect(byName(await columns(ds, 'settings')).ombi_url).toBeDefined();
-      expect(byName(await columns(ds, 'collection')).forceOmbi).toBeDefined();
+      expect(
+        byName(await columns(ds, 'radarr_settings')).tagExclusions,
+      ).toBeDefined();
+      expect(
+        byName(await columns(ds, 'settings')).radarr_tag_exclusions,
+      ).toBeUndefined();
       await ds.query(
         `INSERT INTO settings ("id", "applicationTitle", "applicationUrl", "locale", "metadata_provider_preference") VALUES (1, 'Fresh', 'http://localhost:6246', 'en', 'tmdb_primary')`,
       );
 
       await ds.undoLastMigration();
 
-      expect(byName(await columns(ds, 'settings')).ombi_url).toBeUndefined();
-      expect(byName(await columns(ds, 'collection')).forceOmbi).toBeUndefined();
+      expect(
+        byName(await columns(ds, 'radarr_settings')).tagExclusions,
+      ).toBeUndefined();
+      expect(
+        byName(await columns(ds, 'settings')).radarr_tag_exclusions,
+      ).toBeDefined();
       const [row] = await ds.query(`SELECT "applicationTitle" FROM settings`);
       expect(row.applicationTitle).toBe('Fresh');
       const [{ c }] = await ds.query(`SELECT COUNT(*) AS c FROM migrations`);

@@ -1,6 +1,10 @@
-import { RefreshIcon } from '@heroicons/react/solid'
 import { Trans, useLingui } from '@lingui/react/macro'
-import { BasicResponseDto, stripTrailingSlashes } from '@maintainerr/contracts'
+import {
+  ARR_TAG_LABEL_HINT,
+  BasicResponseDto,
+  isValidArrTagLabel,
+  stripTrailingSlashes,
+} from '@maintainerr/contracts'
 import { useMemo, useState } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
 import {
@@ -14,22 +18,19 @@ import {
   getHostname,
   getPortFromUrl,
 } from '../../../utils/SettingsUtils'
-import Alert from '../../Common/Alert'
 import Button from '../../Common/Button'
-import DocsButton from '../../Common/DocsButton'
-import Modal from '../../Common/Modal'
 import SaveButton from '../../Common/SaveButton'
 import TestingButton from '../../Common/TestingButton'
-import { getTestingButtonType } from '../../Common/TestingButton'
-import { Input } from '../../Forms/Input'
-import SettingsAlertSlot from '../SettingsAlertSlot'
-
-interface ServarrSettingShape {
-  id?: number
-  serverName: string
-  url: string
-  apiKey: string
-}
+import { CheckboxGroup } from '../../Forms/CheckboxGroup'
+import { InputGroup } from '../../Forms/Input'
+import ServiceCard, {
+  ServiceCardCancelButton,
+  ServiceCardDeleteButton,
+  ServiceCardFooter,
+} from '../ServiceCard'
+import { useSettingsFeedback } from '../useSettingsFeedback'
+import type { IServarrSetting } from '../../../api/settings'
+import { releaseVersion } from '../../../utils/version'
 
 interface ServarrFormState {
   serverName: string
@@ -37,6 +38,9 @@ interface ServarrFormState {
   port: string
   baseUrl: string
   apiKey: string
+  tagExclusions: boolean
+  exclusionTag: string
+  untagOnUnexclude: boolean
 }
 
 interface ServarrConnectionState {
@@ -46,17 +50,12 @@ interface ServarrConnectionState {
   apiKey: string
 }
 
-interface TestStatus {
-  status: boolean
-  version: string
-}
-
-type ServarrSaveResponse<TSetting extends ServarrSettingShape> =
+type ServarrSaveResponse =
   | {
       status: 'OK'
       code: 1
       message: string
-      data: TSetting
+      data: IServarrSetting
     }
   | {
       status: 'NOK'
@@ -71,22 +70,34 @@ interface ServarrTestResponse {
   message: string
 }
 
-interface ServarrSettingsModalProps<TSetting extends ServarrSettingShape> {
+interface ServarrServerCardProps {
   title: string
-  docsPage: string
   settingsPath: string
   testPath: string
   serviceName: string
   // Set by a service whose metadata Maintainerr caches, so the cache can be
   // dropped from the same place the connection is configured.
   metadataRefreshPath?: string
-  settings?: TSetting
-  onUpdate: (setting: TSetting) => void
+  // Radarr and Sonarr can tag the items Maintainerr excludes.
+  canTagExclusions?: boolean
+  // Undefined for a server that has not been saved yet.
+  settings?: IServarrSetting
+  // Set on the card that replaces a just-saved new server, which carries the
+  // save confirmation over from the draft.
+  created?: boolean
+  onSaved: (setting: IServarrSetting) => void
+  // Resolves false when the removal failed for a reason nobody has shown yet.
   onDelete: (id: number) => Promise<boolean>
-  onCancel: () => void
+  // Only a server that has not been saved yet can be cancelled.
+  onCancel?: () => void
 }
 
-const isEmptyServarrState = (state: ServarrFormState) =>
+const isEmptyServarrState = (
+  state: Pick<
+    ServarrFormState,
+    'serverName' | 'hostname' | 'port' | 'baseUrl' | 'apiKey'
+  >,
+) =>
   state.serverName === '' &&
   state.hostname === '' &&
   state.port === '' &&
@@ -101,14 +112,15 @@ const resolveServarrPort = ({ hostname, port }: ServarrFormState) => {
   return hostname.includes('https://') ? '443' : '80'
 }
 
-const buildInitialState = <TSetting extends ServarrSettingShape>(
-  settings?: TSetting,
-): ServarrFormState => ({
+const buildInitialState = (settings?: IServarrSetting): ServarrFormState => ({
   serverName: settings?.serverName ?? '',
   hostname: settings?.url ? (getHostname(settings.url) ?? '') : '',
   port: settings?.url ? (getPortFromUrl(settings.url) ?? '') : '',
   baseUrl: settings?.url ? (getBaseUrl(settings.url) ?? '') : '',
   apiKey: settings?.apiKey ?? '',
+  tagExclusions: settings?.tagExclusions ?? false,
+  exclusionTag: settings?.exclusionTag ?? 'dnd',
+  untagOnUnexclude: settings?.untagOnUnexclude ?? false,
 })
 
 const areMatchingConnectionStates = (
@@ -136,9 +148,10 @@ const toConnectionState = (
   apiKey: state.apiKey,
 })
 
-const buildServarrPayload = <TSetting extends ServarrSettingShape>(
+const buildServarrPayload = (
   state: ServarrFormState,
-  settings?: TSetting,
+  settings?: IServarrSetting,
+  canTagExclusions?: boolean,
 ) => {
   const port = resolveServarrPort(state)
   const hostnameValue = state.hostname.includes('://')
@@ -159,25 +172,42 @@ const buildServarrPayload = <TSetting extends ServarrSettingShape>(
       ),
       apiKey: state.apiKey,
       serverName: state.serverName,
+      ...(canTagExclusions
+        ? {
+            tagExclusions: state.tagExclusions,
+            exclusionTag: state.exclusionTag.trim() || 'dnd',
+            untagOnUnexclude: state.untagOnUnexclude,
+          }
+        : {}),
       ...(settings?.id ? { id: settings.id } : {}),
     },
     port,
   }
 }
 
-const ServarrSettingsModal = <TSetting extends ServarrSettingShape>({
+const ServarrServerCard = ({
   title,
-  docsPage,
   settingsPath,
   testPath,
   serviceName,
   metadataRefreshPath,
+  canTagExclusions,
   settings,
-  onUpdate,
+  created,
+  onSaved,
   onDelete,
   onCancel,
-}: ServarrSettingsModalProps<TSetting>) => {
+}: ServarrServerCardProps) => {
   const { t } = useLingui()
+  // Named as in the exclusion-tag messages, which keep their translations.
+  const name = serviceName
+  const chars = ARR_TAG_LABEL_HINT
+  const updatedMessage = t`Saved`
+  const feedback = useSettingsFeedback({
+    updated: updatedMessage,
+    updateError: t`Failed to update ${{ serviceName }} settings.`,
+  })
+  const [showCreated, setShowCreated] = useState(!!created)
   const initialState = useMemo(() => buildInitialState(settings), [settings])
   const savedConnectionState = settings
     ? toConnectionState(initialState)
@@ -186,47 +216,39 @@ const ServarrSettingsModal = <TSetting extends ServarrSettingShape>({
     settings?.id != null
       ? `${settings.id}:${settings.url}:${settings.apiKey}`
       : '__new__'
-  const [errorMessage, setErrorMessage] = useState<string>()
+  const idPrefix = `${serviceName.toLowerCase()}-${settings?.id ?? 'new'}`
   const [testedConnectionState, setTestedConnectionState] =
     useState<ServarrConnectionState>()
   const [testedConnectionStateKey, setTestedConnectionStateKey] =
     useState<string>()
   const [saving, setSaving] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
-  const [refreshMessage, setRefreshMessage] = useState<{
-    status: boolean
-    message: string
-  }>()
   const [testing, setTesting] = useState(false)
-  const [testResult, setTestResult] = useState<TestStatus>()
+  const [testStatus, setTestStatus] = useState<boolean>()
 
-  const { register, handleSubmit, control, getValues } =
-    useForm<ServarrFormState>({
-      defaultValues: initialState,
-      // `values` keeps the form synced to the loaded setting via deep compare;
-      // no effect needed and no render loop on an unstable reference.
-      values: initialState,
-    })
+  const {
+    register,
+    handleSubmit,
+    control,
+    getValues,
+    formState: { errors },
+  } = useForm<ServarrFormState>({
+    defaultValues: initialState,
+    // `values` keeps the form synced to the loaded setting via deep compare;
+    // no effect needed and no render loop on an unstable reference.
+    values: initialState,
+  })
 
   const serverName = useWatch({ control, name: 'serverName' }) ?? ''
   const hostname = useWatch({ control, name: 'hostname' }) ?? ''
   const port = useWatch({ control, name: 'port' }) ?? ''
   const baseUrl = useWatch({ control, name: 'baseUrl' }) ?? ''
   const apiKey = useWatch({ control, name: 'apiKey' }) ?? ''
+  const tagExclusions = useWatch({ control, name: 'tagExclusions' })
 
-  const currentState = useMemo<ServarrFormState>(
-    () => ({
-      serverName,
-      hostname,
-      port,
-      baseUrl,
-      apiKey,
-    }),
-    [apiKey, baseUrl, hostname, port, serverName],
-  )
   const currentConnectionState = useMemo(
-    () => toConnectionState(currentState),
-    [currentState],
+    () => ({ hostname, port, baseUrl, apiKey }),
+    [apiKey, baseUrl, hostname, port],
   )
   const activeTestedConnectionState =
     testedConnectionStateKey === settingsKey
@@ -234,27 +256,26 @@ const ServarrSettingsModal = <TSetting extends ServarrSettingShape>({
       : savedConnectionState
 
   const isClearingExistingSetting =
-    settings?.id != null && isEmptyServarrState(currentState)
+    settings?.id != null &&
+    isEmptyServarrState({ ...currentConnectionState, serverName })
   const hasCompleteRequiredFields =
-    currentState.hostname !== '' &&
-    currentState.apiKey !== '' &&
-    currentState.serverName !== ''
+    hostname !== '' && apiKey !== '' && serverName !== ''
   const canSave =
     !saving && (isClearingExistingSetting || hasCompleteRequiredFields)
   const testFeedbackStatus = areMatchingConnectionStates(
     currentConnectionState,
     activeTestedConnectionState,
   )
-    ? testResult?.status
+    ? testStatus
     : undefined
 
   // Nothing to refresh until the server it belongs to exists.
   const canRefresh = Boolean(metadataRefreshPath) && settings?.id != null
 
   const clearFeedback = () => {
-    setErrorMessage(undefined)
-    setTestResult(undefined)
-    setRefreshMessage(undefined)
+    feedback.clear()
+    setShowCreated(false)
+    setTestStatus(undefined)
   }
 
   const refreshMetadata = async () => {
@@ -271,25 +292,35 @@ const ServarrSettingsModal = <TSetting extends ServarrSettingShape>({
         {},
       )
 
-      const started = response?.code === 1
-
       // The server answers with the provider name upper-cased, which suits
       // TMDB and TVDB and shouts for a product name, so the known outcome
       // reads from the catalogue and anything else keeps its own reason.
-      setRefreshMessage({
-        status: started,
-        message: started
-          ? t`${{ serviceName }} metadata refresh started`
-          : (response?.message ??
-            t`Failed to refresh ${{ serviceName }} metadata`),
-      })
+      if (response?.code === 1) {
+        feedback.showSuccess(t`Refreshing`)
+      } else {
+        feedback.showError(
+          response?.message ?? t`Failed to refresh ${{ serviceName }} metadata`,
+        )
+      }
     } catch {
-      setRefreshMessage({
-        status: false,
-        message: t`Failed to refresh ${{ serviceName }} metadata`,
-      })
+      feedback.showError(t`Failed to refresh ${{ serviceName }} metadata`)
     } finally {
       setRefreshing(false)
+    }
+  }
+
+  const deleteServer = async (id: number) => {
+    clearFeedback()
+    setSaving(true)
+
+    try {
+      if (!(await onDelete(id))) {
+        feedback.showError(t`Failed to remove ${{ serviceName }} settings.`)
+      }
+    } catch {
+      feedback.showError(t`Failed to remove ${{ serviceName }} settings.`)
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -297,20 +328,7 @@ const ServarrSettingsModal = <TSetting extends ServarrSettingShape>({
     clearFeedback()
 
     if (settings?.id != null && isEmptyServarrState(values)) {
-      setSaving(true)
-
-      try {
-        const wasDeleted = await onDelete(settings.id)
-
-        if (!wasDeleted) {
-          setErrorMessage(t`Failed to remove ${{ serviceName }} settings.`)
-        }
-      } catch {
-        setErrorMessage(t`Failed to remove ${{ serviceName }} settings.`)
-      } finally {
-        setSaving(false)
-      }
-
+      await deleteServer(settings.id)
       return
     }
 
@@ -318,7 +336,7 @@ const ServarrSettingsModal = <TSetting extends ServarrSettingShape>({
     // apiKey and serverName, and resolveServarrPort only yields an empty port
     // when hostname is empty - which canSave rejects. The all-empty case is
     // taken by the removal branch above before reaching this point.
-    const { payload } = buildServarrPayload(values, settings)
+    const { payload } = buildServarrPayload(values, settings, canTagExclusions)
 
     const endpoint = settings?.id
       ? `${settingsPath}/${settings.id}`
@@ -328,18 +346,16 @@ const ServarrSettingsModal = <TSetting extends ServarrSettingShape>({
     setSaving(true)
 
     try {
-      const response = await handler<ServarrSaveResponse<TSetting>>(
-        endpoint,
-        payload,
-      )
+      const response = await handler<ServarrSaveResponse>(endpoint, payload)
 
       if (response.code === 1) {
-        onUpdate(response.data)
+        feedback.showUpdated()
+        onSaved(response.data)
       } else {
-        setErrorMessage(t`Failed to update ${{ serviceName }} settings.`)
+        feedback.showUpdateError()
       }
     } catch {
-      setErrorMessage(t`Failed to update ${{ serviceName }} settings.`)
+      feedback.showUpdateError()
     } finally {
       setSaving(false)
     }
@@ -350,6 +366,7 @@ const ServarrSettingsModal = <TSetting extends ServarrSettingShape>({
       return
     }
 
+    clearFeedback()
     const values = getValues()
     const { payload, port } = buildServarrPayload(values, settings)
     const { id: ignoredId, ...testPayload } = payload
@@ -358,56 +375,151 @@ const ServarrSettingsModal = <TSetting extends ServarrSettingShape>({
 
     await PostApiHandler<ServarrTestResponse>(testPath, testPayload)
       .then((response: ServarrTestResponse) => {
-        setTestResult({
-          status: response.code === 1,
-          version: normalizeConnectionErrorMessage(
-            response.message,
-            t`Failed to connect to ${{ serviceName }}. Verify URL and API key.`,
-          ),
-        })
+        const message = normalizeConnectionErrorMessage(
+          response.message,
+          t`Failed to connect to ${{ serviceName }}. Verify URL and API key.`,
+        )
+        setTestStatus(response.code === 1)
 
         if (response.code === 1) {
+          feedback.showSuccess(
+            t`Success! (${{ version: releaseVersion(message) }})`,
+          )
           setTestedConnectionState(toConnectionState({ ...values, port }))
           setTestedConnectionStateKey(settingsKey)
+        } else {
+          feedback.showError(message)
         }
       })
       .catch((error: unknown) => {
-        setTestResult({
-          status: false,
-          version: getApiErrorMessage(
+        setTestStatus(false)
+        feedback.showError(
+          getApiErrorMessage(
             error,
             t`Failed to connect to ${{ serviceName }}. Verify URL and API key.`,
           ),
-        })
+        )
       })
       .finally(() => {
         setTesting(false)
       })
   }
 
+  const field = (
+    fieldName: 'serverName' | 'hostname' | 'port' | 'baseUrl' | 'apiKey',
+    label: string,
+    type: 'text' | 'number' | 'password' = 'text',
+    helpText?: string,
+  ) => (
+    <InputGroup
+      layout="stacked"
+      id={`${idPrefix}-${fieldName}`}
+      label={label}
+      type={type}
+      helpText={helpText}
+      {...register(fieldName, { onChange: clearFeedback })}
+    />
+  )
+
   return (
-    <Modal
-      loading={false}
-      backgroundClickable={false}
-      onCancel={onCancel}
+    <ServiceCard
       title={title}
-      iconSvg=""
-      footerActions={
+      actions={
         <>
-          <SaveButton
-            className="ml-3"
-            type="button"
-            disabled={!canSave}
-            isPending={saving}
-            onClick={() => void handleSubmit(saveSettings)()}
-          />
+          {canRefresh ? (
+            <Button
+              buttonType="ghost"
+              buttonSize="sm"
+              type="button"
+              onClick={() => void refreshMetadata()}
+              disabled={refreshing}
+            >
+              <span className="font-semibold">
+                <Trans>Refresh metadata</Trans>
+              </span>
+            </Button>
+          ) : null}
+          {settings?.id != null ? (
+            <ServiceCardDeleteButton
+              disabled={saving}
+              onConfirm={() => void deleteServer(settings.id)}
+            />
+          ) : (
+            <ServiceCardCancelButton onClick={onCancel} />
+          )}
+        </>
+      }
+    >
+      <form
+        className="flex flex-1 flex-col gap-3"
+        onSubmit={handleSubmit(saveSettings)}
+      >
+        {field('serverName', t`Server Name`)}
+        <div className="grid grid-cols-3 gap-3">
+          <div className="col-span-2">
+            {field('hostname', t`Hostname or IP`)}
+          </div>
+          {field('port', t`Port`, 'number')}
+        </div>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {field('baseUrl', t`Base URL`, 'text', t`No Leading Slash`)}
+          {field('apiKey', t`API key`, 'password')}
+        </div>
+        {canTagExclusions ? (
+          <>
+            <InputGroup
+              layout="stacked"
+              id={`${idPrefix}-exclusionTag`}
+              label={t`Tag label`}
+              type="text"
+              placeholder="dnd"
+              disabled={!tagExclusions}
+              error={errors.exclusionTag?.message}
+              helpText={
+                <>
+                  <Trans>The {name} tag to apply, created if missing.</Trans>{' '}
+                  <Trans>
+                    Lowercase letters, numbers and hyphens only ({chars}).
+                  </Trans>
+                </>
+              }
+              {...register('exclusionTag', {
+                onChange: clearFeedback,
+                validate: (value, values) => {
+                  const label = value.trim()
+                  if (!values.tagExclusions || isValidArrTagLabel(label)) {
+                    return true
+                  }
+                  return label === ''
+                    ? t`A tag label is required when exclusion tagging is enabled. Lowercase letters, numbers and hyphens only (${{ chars }}).`
+                    : t`"${{ label }}" is not a valid ${{ name }} tag. Lowercase letters, numbers and hyphens only (${{ chars }}), with no leading, trailing, or repeated hyphens.`
+                },
+              })}
+            />
+            <CheckboxGroup
+              id={`${idPrefix}-tagExclusions`}
+              label={t`Tag excluded content`}
+              helpText={t`Tags the item in ${{ name }} when it is excluded.`}
+              {...register('tagExclusions', { onChange: clearFeedback })}
+            />
+            <CheckboxGroup
+              id={`${idPrefix}-untagOnUnexclude`}
+              label={t`Remove tag on un-exclude`}
+              helpText={t`Removes only this tag when the item is un-excluded.`}
+              disabled={!tagExclusions}
+              {...register('untagOnUnexclude', { onChange: clearFeedback })}
+            />
+          </>
+        ) : null}
+
+        <ServiceCardFooter
+          status={
+            feedback.feedback ??
+            (showCreated ? { type: 'success', title: updatedMessage } : null)
+          }
+        >
           <TestingButton
-            buttonType={getTestingButtonType(
-              'success',
-              testFeedbackStatus,
-              testing,
-            )}
-            className="ml-3"
+            buttonType="success"
             type="button"
             onClick={() => void performTest()}
             disabled={testing || isClearingExistingSetting}
@@ -415,137 +527,11 @@ const ServarrSettingsModal = <TSetting extends ServarrSettingShape>({
             isPending={testing}
             feedbackStatus={testFeedbackStatus}
           />
-          {metadataRefreshPath ? (
-            <Button
-              buttonType="default"
-              className="ml-3"
-              type="button"
-              onClick={() => void refreshMetadata()}
-              disabled={!canRefresh || refreshing}
-            >
-              <RefreshIcon />
-              <Trans>Refresh metadata</Trans>
-            </Button>
-          ) : null}
-        </>
-      }
-    >
-      <SettingsAlertSlot>
-        {errorMessage || testResult || refreshMessage ? (
-          <div className="space-y-4">
-            {errorMessage ? (
-              <Alert type="warning" title={errorMessage} />
-            ) : null}
-            {refreshMessage ? (
-              <Alert
-                type={refreshMessage.status ? 'success' : 'error'}
-                title={refreshMessage.message}
-              />
-            ) : null}
-            {testResult ? (
-              <Alert
-                type={testResult.status ? 'success' : 'error'}
-                title={
-                  testResult.status
-                    ? t`Successfully connected to ${{ serviceName }} (${{ version: testResult.version }})`
-                    : // Always set on failure: both test paths run the message
-                      // through normalizeConnectionErrorMessage, which falls
-                      // back to its own sentence rather than returning empty.
-                      testResult.version
-                }
-              />
-            ) : null}
-          </div>
-        ) : null}
-      </SettingsAlertSlot>
-
-      <div className="form-row">
-        <label htmlFor="serverName" className="text-label">
-          <Trans>Server Name</Trans>
-        </label>
-        <div className="form-input">
-          <div className="form-input-field">
-            <Input
-              id="serverName"
-              type="text"
-              {...register('serverName', { onChange: clearFeedback })}
-            />
-          </div>
-        </div>
-      </div>
-
-      <div className="form-row">
-        <label htmlFor="hostname" className="text-label">
-          <Trans>Hostname or IP</Trans>
-        </label>
-        <div className="form-input">
-          <div className="form-input-field">
-            <Input
-              id="hostname"
-              type="text"
-              {...register('hostname', { onChange: clearFeedback })}
-            />
-          </div>
-        </div>
-      </div>
-
-      <div className="form-row">
-        <label htmlFor="port" className="text-label">
-          <Trans>Port</Trans>
-        </label>
-        <div className="form-input">
-          <div className="form-input-field">
-            <Input
-              id="port"
-              type="number"
-              {...register('port', { onChange: clearFeedback })}
-            />
-          </div>
-        </div>
-      </div>
-
-      <div className="form-row">
-        <label htmlFor="baseUrl" className="text-label">
-          <Trans>Base URL</Trans>
-          <span className="label-tip">
-            <Trans>No Leading Slash</Trans>
-          </span>
-        </label>
-        <div className="form-input">
-          <div className="form-input-field">
-            <Input
-              id="baseUrl"
-              type="text"
-              {...register('baseUrl', { onChange: clearFeedback })}
-            />
-          </div>
-        </div>
-      </div>
-
-      <div className="form-row">
-        <label htmlFor="apikey" className="text-label">
-          <Trans>API key</Trans>
-        </label>
-        <div className="form-input">
-          <div className="form-input-field">
-            <Input
-              id="apikey"
-              type="password"
-              {...register('apiKey', { onChange: clearFeedback })}
-            />
-          </div>
-        </div>
-      </div>
-
-      <div className="actions mt-5 w-full">
-        <div className="flex w-full flex-wrap sm:flex-nowrap">
-          <span className="m-auto rounded-md shadow-xs sm:mr-auto sm:ml-3">
-            <DocsButton page={docsPage} />
-          </span>
-        </div>
-      </div>
-    </Modal>
+          <SaveButton type="submit" disabled={!canSave} isPending={saving} />
+        </ServiceCardFooter>
+      </form>
+    </ServiceCard>
   )
 }
 
-export default ServarrSettingsModal
+export default ServarrServerCard

@@ -1,6 +1,6 @@
 import React, { ReactNode } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { prefetchRoute } from '../../../router'
+import { prefetchHandlers, prefetchRoute } from '../../../router'
 import { Select } from '../../Forms/Select'
 import { showMediaServerSetupRequiredToast } from '../../Layout/MediaServerSetupGuard'
 import { Trans, useLingui } from '@lingui/react/macro'
@@ -9,16 +9,16 @@ export interface SettingsRoute {
   text: string
   content?: React.ReactNode
   route: string
-  regex: RegExp
+  // Without a pattern, a tab is active on its exact route.
+  regex?: RegExp
   // Allows a route to render one tab target while matching active state against another pattern.
-  // This is used for the loading placeholder media-server tab so it does not appear selected.
   activeRegex?: RegExp
 }
 export interface ISettingsLink {
   tabType: 'default' | 'button'
   currentPath: string
   route: string
-  regex: RegExp
+  regex?: RegExp
   hidden?: boolean
   isMobile?: boolean
   disabled?: boolean
@@ -36,7 +36,6 @@ const SettingsLink: React.FC<ISettingsLink> = (props: ISettingsLink) => {
   }
 
   let linkClasses =
-    (props.disabled ? 'cursor-not-allowed opacity-50 ' : '') +
     'px-1 py-4 ml-8 text-sm font-medium leading-5 transition duration-300 border-b-2  whitespace-nowrap first:ml-0'
   let activeLinkColor = 'text-maintainerr border-maintainerr-600 border-b'
   let inactiveLinkColor =
@@ -49,24 +48,14 @@ const SettingsLink: React.FC<ISettingsLink> = (props: ISettingsLink) => {
     inactiveLinkColor = 'bg-zinc-800 hover:bg-zinc-700 focus:bg-zinc-700'
   }
 
+  const active = props.regex
+    ? props.regex.test(props.currentPath)
+    : props.currentPath === props.route
+
   return (
     <Link
       to={props.route}
-      onMouseEnter={() => {
-        if (!props.disabled) {
-          void prefetchRoute(props.route)
-        }
-      }}
-      onFocus={() => {
-        if (!props.disabled) {
-          void prefetchRoute(props.route)
-        }
-      }}
-      onTouchStart={() => {
-        if (!props.disabled) {
-          void prefetchRoute(props.route)
-        }
-      }}
+      {...prefetchHandlers(props.route, !props.disabled)}
       onClick={(event) => {
         if (props.disabled) {
           event.preventDefault()
@@ -74,10 +63,8 @@ const SettingsLink: React.FC<ISettingsLink> = (props: ISettingsLink) => {
         }
       }}
       className={`${linkClasses} ${
-        props.currentPath.match(props.regex)
-          ? activeLinkColor
-          : inactiveLinkColor
-      }`}
+        props.disabled ? 'cursor-not-allowed opacity-50' : ''
+      } ${active ? activeLinkColor : inactiveLinkColor}`}
       aria-disabled={props.disabled}
       aria-current="page"
     >
@@ -108,9 +95,12 @@ const SettingsTabs: React.FC<{
   }
 
   const currentRoute =
-    settingsRoutes.find((route) =>
-      (route.activeRegex ?? route.regex).test(location.pathname),
-    )?.route ?? ''
+    settingsRoutes.find((route) => {
+      const pattern = route.activeRegex ?? route.regex
+      return pattern
+        ? pattern.test(location.pathname)
+        : location.pathname === route.route
+    })?.route ?? ''
 
   return (
     <>

@@ -1,512 +1,443 @@
 import { Trans, useLingui } from '@lingui/react/macro'
 import { BasicResponseDto } from '@maintainerr/contracts'
-import { useEffect, useState } from 'react'
-import GetApiHandler, { PostApiHandler } from '../../../../utils/ApiHandler'
-import { camelCaseToPrettyText } from '../../../../utils/SettingsUtils'
-import Alert from '../../../Common/Alert'
-import LazyMonacoEditor from '../../../Common/LazyMonacoEditor'
-import LoadingSpinner from '../../../Common/LoadingSpinner'
-import Modal from '../../../Common/Modal'
-import SaveButton from '../../../Common/SaveButton'
-import TestingButton, {
-  getTestingButtonType,
-} from '../../../Common/TestingButton'
-import ToggleItem from '../../../Common/ToggleButton'
-import { Input } from '../../../Forms/Input'
-import { Select } from '../../../Forms/Select'
-import SettingsAlertSlot from '../../SettingsAlertSlot'
+import { useMemo, useState } from 'react'
+import { Controller, useForm, useWatch } from 'react-hook-form'
+import type {
+  AgentConfiguration,
+  NotificationAgentSpec,
+  NotificationTypeSpec,
+} from '../../../api/notifications'
+import { PostApiHandler } from '../../../utils/ApiHandler'
+import { camelCaseToPrettyText } from '../../../utils/SettingsUtils'
+import Badge from '../../Common/Badge'
+import Button from '../../Common/Button'
+import LazyMonacoEditor from '../../Common/LazyMonacoEditor'
+import SaveButton from '../../Common/SaveButton'
+import TestingButton from '../../Common/TestingButton'
+import { CheckboxGroup } from '../../Forms/CheckboxGroup'
+import { InputGroup } from '../../Forms/Input'
+import { SelectGroup } from '../../Forms/Select'
+import ServiceCard, {
+  ServiceCardCancelButton,
+  ServiceCardDeleteButton,
+  ServiceCardFooter,
+} from '../ServiceCard'
+import { useSettingsFeedback } from '../useSettingsFeedback'
 
-interface agentSpec {
+interface AgentFormValues {
   name: string
-  friendlyName: string
-  options: Array<{
-    field: string
-    type: string
-    required: boolean
-    extraInfo: string
-  }>
-}
-
-interface typeSpec {
-  title: string
-  id: number
-}
-
-export interface AgentConfiguration {
-  id?: number
-  name: string
-  agent: string
   enabled: boolean
+  agent: string
   types: number[]
   aboutScale: number
-  options: object
+  options: Record<string, unknown>
 }
 
-interface CreateNotificationModal {
-  selected?: AgentConfiguration
-  onSave: () => void
-  onTest: () => void
-  onCancel: () => void
-}
+// "Media About To Be Handled" is the one type that needs a lead time.
+const ABOUT_TO_BE_HANDLED = 8
 
-interface TestStatus {
-  status: boolean
-  message: string
-}
+const sectionHeading = 'mb-3 text-sm font-semibold text-zinc-200'
 
-const CreateNotificationModal = (props: CreateNotificationModal) => {
+const NotificationAgentCard = ({
+  config,
+  agents,
+  types,
+  created,
+  onSaved,
+  onDelete,
+  onCancel,
+}: {
+  // Undefined for an agent that has not been saved yet.
+  config?: AgentConfiguration
+  agents: NotificationAgentSpec[]
+  types: NotificationTypeSpec[]
+  // Set on the card that replaces a just-saved new agent.
+  created?: boolean
+  onSaved: () => void
+  // Resolves false when the agent could not be deleted.
+  onDelete: (id: number) => Promise<boolean>
+  onCancel?: () => void
+}) => {
   const { t } = useLingui()
-  const [availableAgents, setAvailableAgents] = useState<agentSpec[]>()
-  const [availableTypes, setAvailableTypes] = useState<typeSpec[]>()
-  const [name, setName] = useState(props.selected?.name ?? '')
-  const [aboutScale, setAboutScale] = useState(props.selected?.aboutScale ?? 3)
-  const [enabled, setEnabled] = useState(props.selected?.enabled ?? false)
-  const [formValues, setFormValues] = useState<any>(
-    props.selected?.options ?? {},
-  )
-
-  const [targetAgent, setTargetAgent] = useState<agentSpec>()
-  const [targetTypes, setTargetTypes] = useState<typeSpec[]>([])
-  // Severity travels with the message: deriving it by comparing the rendered
-  // text breaks the moment that text is translated.
-  const [error, setError] = useState<{
-    message: string
-    severity: 'warning' | 'error'
-  }>()
+  const [expanded, setExpanded] = useState(!config || !!created)
   const [saving, setSaving] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const [testing, setTesting] = useState(false)
-  const [testResult, setTestResult] = useState<TestStatus>()
+  const [testStatus, setTestStatus] = useState<boolean>()
+  const [invalidJson, setInvalidJson] = useState(false)
+  const savedMessage = t`Saved`
+  const feedback = useSettingsFeedback({
+    updated: savedMessage,
+    updateError: t`Failed to save notification agent`,
+  })
+  const [showCreated, setShowCreated] = useState(!!created)
+  const idPrefix = `notification-${config?.id ?? 'new'}`
 
-  const selectedAgentIndex = targetAgent
-    ? (availableAgents?.findIndex((agent) => agent.name === targetAgent.name) ??
-      0)
-    : 0
-
-  const hasValidTargetAgent = Boolean(targetAgent && targetAgent.name !== '-')
-  const isLoading = !availableAgents || !availableTypes
-  const canSave =
-    !isLoading && hasValidTargetAgent && name.trim() !== '' && !saving
+  const initialValues = useMemo<AgentFormValues>(
+    () => ({
+      name: config?.name ?? '',
+      enabled: config?.enabled ?? false,
+      agent: config?.agent ?? '',
+      types: config?.types ?? [],
+      aboutScale: config?.aboutScale ?? 3,
+      options: (config?.options as Record<string, unknown>) ?? {},
+    }),
+    [config],
+  )
+  const { register, control, handleSubmit, getValues, setValue } =
+    useForm<AgentFormValues>({
+      defaultValues: initialValues,
+      values: initialValues,
+    })
+  const name = useWatch({ control, name: 'name' })
+  const agentName = useWatch({ control, name: 'agent' })
+  const selectedTypes = useWatch({ control, name: 'types' })
+  const agent = agents.find((spec) => spec.name === agentName)
+  const canSave = !!agent && name.trim() !== '' && !saving && !invalidJson
 
   const clearFeedback = () => {
-    setError(undefined)
-    setTestResult(undefined)
+    feedback.clear()
+    setShowCreated(false)
+    setTestStatus(undefined)
   }
 
-  const handleSubmit = async () => {
-    const types = targetTypes ? targetTypes.map((type) => type.id) : []
-
-    if (hasValidTargetAgent && name.trim() !== '') {
-      const payload: AgentConfiguration = {
-        id: props.selected?.id,
-        name,
-        agent: targetAgent!.name,
-        enabled,
-        types: types,
-        aboutScale,
-        options: formValues,
-      }
-      clearFeedback()
-      await postNotificationConfig(payload)
-    } else {
-      setError({
-        message: t`Not all fields contain values`,
-        severity: 'warning',
-      })
+  // Null when the form cannot be sent yet.
+  const toPayload = (values: AgentFormValues): AgentConfiguration | null => {
+    // The server refuses an agent missing a required field without saying why.
+    if (
+      !agent ||
+      values.name.trim() === '' ||
+      agent.options.some(
+        (option) =>
+          option.required && (values.options[option.field] ?? '') === '',
+      )
+    ) {
+      feedback.showWarning(t`Not all fields contain values`)
+      return null
+    }
+    if (invalidJson) {
+      feedback.showWarning(t`The JSON payload is not valid.`)
+      return null
+    }
+    return {
+      ...values,
+      id: config?.id,
+      agent: agent.name,
+      // Types the server no longer offers, and fields left empty, are dropped.
+      types: values.types.filter((id) => types.some((type) => type.id === id)),
+      options: Object.fromEntries(
+        Object.entries(values.options).filter(([, value]) => value !== ''),
+      ),
     }
   }
 
-  const doTest = async () => {
-    if (testing) return
+  const save = async (values: AgentFormValues) => {
+    clearFeedback()
+    const payload = toPayload(values)
+    if (!payload) return
 
-    if (hasValidTargetAgent && name.trim() !== '') {
-      const types = targetTypes ? targetTypes.map((type) => type.id) : []
-      clearFeedback()
-      setTesting(true)
-
-      await PostApiHandler<string>(`/notifications/test`, {
-        id: props.selected?.id,
-        name,
-        agent: targetAgent!.name,
-        enabled,
-        types: types,
-        aboutScale,
-        options: formValues,
-      })
-        .then((resp) => {
-          setTestResult({
-            status: resp === 'Success',
-            message:
-              resp === 'Success'
-                ? t`Successfully fired the notification!`
-                : resp,
-          })
-        })
-        .catch(() => {
-          setTestResult({
-            status: false,
-            message: t`Failed to fire the notification.`,
-          })
-        })
-        .finally(() => {
-          setTesting(false)
-        })
-    } else {
-      setError({
-        message: t`Not all fields contain values`,
-        severity: 'warning',
-      })
-    }
-  }
-
-  useEffect(() => {
-    GetApiHandler('/notifications/agents').then((agents) => {
-      const agentsWithPlaceholder = [
-        { name: '-', friendlyName: '', options: [] },
-        ...agents,
-      ]
-
-      setAvailableAgents(agentsWithPlaceholder)
-
-      // load selected agents if editing
-      if (props.selected && props.selected.agent) {
-        setTargetAgent(
-          agentsWithPlaceholder.find(
-            (agent: agentSpec) => props.selected!.agent === agent.name,
-          ),
-        )
-      }
-    })
-
-    GetApiHandler('/notifications/types').then((types: typeSpec[]) => {
-      setAvailableTypes(types)
-
-      // load selected types if editing
-      if (props.selected && props.selected.types) {
-        setTargetTypes(
-          types.filter((type) => props.selected!.types.includes(type.id)),
-        )
-      }
-    })
-  }, [props.selected])
-
-  const postNotificationConfig = async (payload: AgentConfiguration) => {
     setSaving(true)
-
     try {
-      const status = await PostApiHandler<BasicResponseDto>(
+      const response = await PostApiHandler<BasicResponseDto>(
         '/notifications/configuration/add',
         payload,
       )
-
-      if (status.status === 'OK') {
-        props.onSave()
-        return
+      if (response.status === 'OK') {
+        feedback.showUpdated()
+        onSaved()
+      } else if (response.message) {
+        feedback.showError(response.message)
+      } else {
+        feedback.showUpdateError()
       }
-
-      setError({
-        message: status.message ?? t`Failed to save notification agent`,
-        severity: 'error',
-      })
     } catch {
-      setError({
-        message: t`Failed to save notification agent`,
-        severity: 'error',
-      })
+      feedback.showUpdateError()
     } finally {
       setSaving(false)
     }
   }
 
-  const handleInputChange = (fieldName: string, value: any) => {
-    setFormValues((prevValues: any) => ({
-      ...prevValues,
-      [fieldName]: value,
-    }))
+  const test = async () => {
+    if (testing) return
     clearFeedback()
+    const payload = toPayload(getValues())
+    if (!payload) return
+
+    setTesting(true)
+    try {
+      const response = await PostApiHandler<string>(
+        '/notifications/test',
+        payload,
+      )
+      setTestStatus(response === 'Success')
+      if (response === 'Success') {
+        feedback.showSuccess(t`Success!`)
+      } else {
+        feedback.showError(response)
+      }
+    } catch {
+      setTestStatus(false)
+      feedback.showError(t`Failed to fire the notification.`)
+    } finally {
+      setTesting(false)
+    }
   }
 
-  const modalTitle = props.selected?.id
-    ? t`Edit Notification Agent`
-    : t`New Notification Agent`
+  const remove = async (id: number) => {
+    clearFeedback()
+    setDeleting(true)
+    if (!(await onDelete(id))) {
+      setExpanded(true)
+      feedback.showError(t`Failed to delete notification agent.`)
+    }
+    setDeleting(false)
+  }
+
+  const savedAgent = agents.find((spec) => spec.name === config?.agent)
 
   return (
-    <Modal
-      loading={false}
-      backgroundClickable={false}
-      onCancel={() => props.onCancel()}
-      title={modalTitle}
-      iconSvg={''}
-      footerActions={
-        <>
-          <SaveButton
-            className="ml-3"
-            type="button"
-            disabled={!canSave}
-            isPending={saving}
-            onClick={() => void handleSubmit()}
-          />
-          <TestingButton
-            buttonType={getTestingButtonType(
-              'success',
-              testResult?.status,
-              testing,
-            )}
-            className="ml-3"
-            type="button"
-            disabled={isLoading || testing}
-            isPending={testing}
-            feedbackStatus={testResult?.status}
-            onClick={() => void doTest()}
-          />
-        </>
+    <ServiceCard
+      title={
+        <span className="flex min-w-0 items-center gap-3">
+          <span className="truncate">{config?.name ?? t`Add Agent`}</span>
+          {config && !config.enabled ? (
+            <Badge badgeType="light" className="shrink-0">
+              <Trans>Disabled</Trans>
+            </Badge>
+          ) : null}
+          {savedAgent ? (
+            <span className="hidden shrink-0 text-sm font-normal text-zinc-400 sm:inline">
+              {savedAgent.friendlyName}
+            </span>
+          ) : null}
+        </span>
+      }
+      actions={
+        config?.id != null ? (
+          <>
+            <Button
+              buttonType="ghost"
+              buttonSize="sm"
+              type="button"
+              aria-expanded={expanded}
+              onClick={() => setExpanded(!expanded)}
+            >
+              <span className="font-semibold">
+                {expanded ? <Trans>Close</Trans> : <Trans>Edit</Trans>}
+              </span>
+            </Button>
+            <ServiceCardDeleteButton
+              disabled={saving || deleting}
+              onConfirm={() => void remove(config.id!)}
+            />
+          </>
+        ) : (
+          <ServiceCardCancelButton onClick={onCancel} />
+        )
       }
     >
-      <div className="min-h-64">
-        {isLoading ? (
-          <LoadingSpinner />
-        ) : (
-          <form className="space-y-4">
-            <SettingsAlertSlot>
-              {error || testResult ? (
-                <div className="space-y-4">
-                  {error ? (
-                    <Alert type={error.severity} title={error.message} />
-                  ) : null}
-                  {testResult ? (
-                    <Alert
-                      type={testResult.status ? 'success' : 'error'}
-                      title={testResult.message}
-                    />
-                  ) : null}
-                </div>
+      {expanded ? (
+        <form className="flex flex-1 flex-col" onSubmit={handleSubmit(save)}>
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+            <section className="flex flex-col gap-3">
+              <h5 className={sectionHeading}>
+                <Trans>General</Trans>
+              </h5>
+              <InputGroup
+                layout="stacked"
+                id={`${idPrefix}-name`}
+                label={t`Name *`}
+                type="text"
+                {...register('name', { onChange: clearFeedback })}
+              />
+              <SelectGroup
+                layout="stacked"
+                id={`${idPrefix}-agent`}
+                label={t`Agent *`}
+                {...register('agent', {
+                  onChange: () => {
+                    // Each agent has its own fields; another agent's values mean nothing.
+                    setValue('options', {})
+                    setInvalidJson(false)
+                    clearFeedback()
+                  },
+                })}
+              >
+                <option value="" disabled>
+                  {t`Select an option`}
+                </option>
+                {agents.map((spec) => (
+                  <option key={spec.name} value={spec.name}>
+                    {spec.friendlyName}
+                  </option>
+                ))}
+              </SelectGroup>
+              <CheckboxGroup
+                id={`${idPrefix}-enabled`}
+                label={t`Enabled`}
+                helpText={t`Nothing is sent while this is off.`}
+                {...register('enabled', { onChange: clearFeedback })}
+              />
+            </section>
+
+            <section className="flex flex-col gap-3">
+              {agent ? (
+                <>
+                  <h5 className={sectionHeading}>{agent.friendlyName}</h5>
+                  {/* Fields first, then the on/off options together. */}
+                  {[
+                    ...agent.options.filter((o) => o.type !== 'checkbox'),
+                    ...agent.options.filter((o) => o.type === 'checkbox'),
+                  ].map((option) => {
+                    const id = `${idPrefix}-${agent.name}-${option.field}`
+                    const label =
+                      (option.label ?? camelCaseToPrettyText(option.field)) +
+                      (option.required ? ' *' : '')
+                    const helpText = option.extraInfo || undefined
+
+                    if (option.type === 'checkbox') {
+                      return (
+                        <CheckboxGroup
+                          key={id}
+                          id={id}
+                          label={label}
+                          helpText={helpText}
+                          {...register(`options.${option.field}`, {
+                            onChange: clearFeedback,
+                          })}
+                        />
+                      )
+                    }
+
+                    if (option.type === 'json') {
+                      return (
+                        <div key={id}>
+                          <span className="block text-sm font-medium text-zinc-300">
+                            {label}
+                          </span>
+                          <Controller
+                            name={`options.${option.field}`}
+                            control={control}
+                            render={({ field }) => (
+                              <LazyMonacoEditor
+                                height="200px"
+                                defaultLanguage="json"
+                                theme="vs-dark"
+                                defaultValue={
+                                  field.value
+                                    ? JSON.stringify(field.value, null, 2)
+                                    : '{}'
+                                }
+                                options={{
+                                  minimap: { enabled: false },
+                                  formatOnPaste: true,
+                                  formatOnType: true,
+                                }}
+                                onChange={(value) => {
+                                  clearFeedback()
+                                  try {
+                                    field.onChange(
+                                      value ? JSON.parse(value) : {},
+                                    )
+                                    setInvalidJson(false)
+                                  } catch {
+                                    setInvalidJson(true)
+                                  }
+                                }}
+                              />
+                            )}
+                          />
+                          {helpText ? (
+                            <p className="mt-2 text-xs text-zinc-400">
+                              {helpText}
+                            </p>
+                          ) : null}
+                        </div>
+                      )
+                    }
+
+                    return (
+                      <InputGroup
+                        key={id}
+                        layout="stacked"
+                        id={id}
+                        label={label}
+                        type={option.type}
+                        helpText={helpText}
+                        {...register(`options.${option.field}`, {
+                          onChange: clearFeedback,
+                        })}
+                      />
+                    )
+                  })}
+                </>
               ) : null}
-            </SettingsAlertSlot>
+            </section>
 
-            {/* Config Name */}
-            <div className="form-row">
-              <label htmlFor="name" className="text-label">
-                <Trans>Name *</Trans>
-              </label>
-              <div className="form-input">
-                <div className="form-input-field">
-                  <Input
-                    type="text"
-                    id="name"
-                    name="name"
-                    value={name}
-                    onChange={(event: React.ChangeEvent<HTMLInputElement>) => {
-                      setName(event.target.value)
-                      clearFeedback()
-                    }}
-                  />
-                </div>
-              </div>
-            </div>
-            {/* Enabled */}
-            <div className="form-row">
-              <label htmlFor="enabled" className="text-label">
-                <Trans>Enabled</Trans>
-              </label>
-              <div className="form-input">
-                <div className="form-input-field">
-                  <input
-                    type="checkbox"
-                    name="enabled"
-                    id="enabled"
-                    className="checkbox"
-                    checked={enabled}
-                    onChange={(event: React.ChangeEvent<HTMLInputElement>) => {
-                      setEnabled(event.target.checked)
-                      clearFeedback()
-                    }}
-                  ></input>
-                </div>
-              </div>
-            </div>
-            {/* Select agent */}
-            <div className="form-row">
-              <label htmlFor="agent" className="text-label">
-                <Trans>Agent *</Trans>
-              </label>
-              <div className="form-input">
-                <div className="form-input-field">
-                  <Select
-                    id="agent"
-                    name="agent"
-                    value={selectedAgentIndex}
-                    onChange={(e) => {
-                      setFormValues({})
-                      setTargetAgent(availableAgents[Number(e.target.value)])
-                      clearFeedback()
-                    }}
-                  >
-                    {availableAgents?.map((agent, index) => (
-                      <option key={`agent-${index}`} value={index}>
-                        {`${agent.friendlyName ? agent.friendlyName : ''}`}
-                      </option>
-                    ))}
-                  </Select>
-                </div>
-              </div>
-            </div>
-
-            <div>
-              {/* Load fields */}
-              {targetAgent?.options.map((option) => {
-                return (
-                  <div className="form-row" key={`form-row-${option.field}`}>
-                    <label
-                      htmlFor={`${targetAgent.name}-${option.field}`}
-                      className="text-label"
-                    >
-                      {camelCaseToPrettyText(
-                        option.field + (option.required ? ' *' : ''),
-                      )}
-                      {option.extraInfo ? (
-                        <span className="label-tip">{option.extraInfo}</span>
-                      ) : null}
-                    </label>
-                    <div className="form-input">
-                      <div className="form-input-field">
-                        {option.type === 'json' ? (
-                          <LazyMonacoEditor
-                            height="200px"
-                            defaultLanguage="json"
-                            theme="vs-dark"
-                            defaultValue={
-                              formValues?.[option.field]
-                                ? JSON.stringify(
-                                    formValues?.[option.field],
-                                    null,
-                                    2,
-                                  )
-                                : '{}'
-                            }
-                            options={{
-                              minimap: { enabled: false },
-                              formatOnPaste: true,
-                              formatOnType: true,
-                            }}
-                            onChange={(value) =>
-                              handleInputChange(
-                                option.field,
-                                value ? JSON.parse(value) : {},
-                              )
-                            }
-                          />
-                        ) : option.type === 'checkbox' ? (
-                          <input
-                            name={option.field}
-                            id={`${targetAgent.name}-${option.field}`}
-                            type={option.type}
-                            required={option.required}
-                            key={`${targetAgent.name}-option-${option.field}`}
-                            defaultValue={
-                              formValues?.[option.field]
-                                ? formValues?.[option.field]
-                                : undefined
-                            }
-                            defaultChecked={
-                              option.type == 'checkbox'
-                                ? formValues?.[option.field]
-                                : false
-                            }
-                            onChange={(e) => {
-                              if (option.type == 'checkbox') {
-                                handleInputChange(
-                                  option.field,
-                                  e.target.checked,
-                                )
-                              } else {
-                                handleInputChange(option.field, e.target.value)
-                              }
-                            }}
-                          ></input>
-                        ) : (
-                          <Input
-                            name={option.field}
-                            id={`${targetAgent.name}-${option.field}`}
-                            type={option.type}
-                            required={option.required}
-                            key={`${targetAgent.name}-option-${option.field}`}
-                            defaultValue={
-                              formValues?.[option.field]
-                                ? formValues?.[option.field]
-                                : undefined
-                            }
-                            onChange={(e) => {
-                              handleInputChange(option.field, e.target.value)
-                            }}
-                          />
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                )
-              })}
-
-              {/* Select types */}
-              <div className="form-row">
-                <label className="text-label">
-                  <Trans>Types *</Trans>
-                </label>
-                <div className="form-input">
-                  {availableTypes.map((n) => (
-                    <div key={n.id}>
-                      <ToggleItem
-                        label={n.title}
-                        toggled={targetTypes.some((type) => type.id === n.id)}
-                        onStateChange={(state) => {
-                          if (state) {
-                            setTargetTypes((current) => {
-                              if (current.some((type) => type.id === n.id)) {
-                                return current
-                              }
-
-                              return [...current, n]
-                            })
-                          } else {
-                            setTargetTypes((current) =>
-                              current.filter((el) => el.id !== n.id),
-                            )
-                          }
-
+            <section className="flex flex-col gap-2">
+              <h5 className={sectionHeading}>
+                <Trans>Types *</Trans>
+              </h5>
+              <Controller
+                name="types"
+                control={control}
+                render={({ field }) => (
+                  <>
+                    {types.map((type) => (
+                      <CheckboxGroup
+                        key={type.id}
+                        id={`${idPrefix}-type-${type.id}`}
+                        label={type.title}
+                        checked={field.value.includes(type.id)}
+                        onChange={(event) => {
+                          field.onChange(
+                            event.target.checked
+                              ? [...field.value, type.id]
+                              : field.value.filter((id) => id !== type.id),
+                          )
                           clearFeedback()
                         }}
                       />
-                      {/* Show only when 'Media About To Be Handled' is selected */}
-                      {targetTypes.find((el) => el.id === 8) && n.id === 8 && (
-                        <div className="form-row mt-0 mb-0 ml-9">
-                          <label htmlFor="about-scale" className="text-label">
-                            <Trans>Notify x days before removal</Trans>
-                          </label>
-                          <div className="form-input">
-                            <div className="form-input-field">
-                              <Input
-                                type="number"
-                                name="about-scale"
-                                id="about-scale"
-                                value={aboutScale}
-                                onChange={(
-                                  event: React.ChangeEvent<HTMLInputElement>,
-                                ) => {
-                                  setAboutScale(+event.target.value)
-                                  clearFeedback()
-                                }}
-                              />
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </form>
-        )}
-      </div>
-    </Modal>
+                    ))}
+                  </>
+                )}
+              />
+              {selectedTypes.includes(ABOUT_TO_BE_HANDLED) ? (
+                <InputGroup
+                  layout="stacked"
+                  id={`${idPrefix}-about-scale`}
+                  label={t`Notify x days before removal`}
+                  type="number"
+                  {...register('aboutScale', {
+                    // An emptied field saves as 0, as it always has.
+                    setValueAs: (value) => (value === '' ? 0 : Number(value)),
+                    onChange: clearFeedback,
+                  })}
+                />
+              ) : null}
+            </section>
+          </div>
+
+          <ServiceCardFooter
+            status={
+              feedback.feedback ??
+              (showCreated ? { type: 'success', title: savedMessage } : null)
+            }
+          >
+            <TestingButton
+              buttonType="success"
+              type="button"
+              onClick={() => void test()}
+              disabled={testing}
+              isPending={testing}
+              feedbackStatus={testStatus}
+            />
+            <SaveButton type="submit" disabled={!canSave} isPending={saving} />
+          </ServiceCardFooter>
+        </form>
+      ) : null}
+    </ServiceCard>
   )
 }
-export default CreateNotificationModal
+
+export default NotificationAgentCard

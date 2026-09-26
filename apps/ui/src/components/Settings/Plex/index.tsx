@@ -19,14 +19,14 @@ import {
 import GetApiHandler from '../../../utils/ApiHandler'
 import Alert from '../../Common/Alert'
 import Button from '../../Common/Button'
-import DocsButton from '../../Common/DocsButton'
 import SaveButton from '../../Common/SaveButton'
 import TestingButton from '../../Common/TestingButton'
 import { Input } from '../../Forms/Input'
 import { Select } from '../../Forms/Select'
 import PlexLoginButton from '../../Login/Plex'
-import SettingsAlertSlot from '../SettingsAlertSlot'
+import { ServiceActions } from '../ServiceCard'
 import { useSettingsFeedback } from '../useSettingsFeedback'
+import { releaseVersion } from '../../../utils/version'
 
 interface PresetServerDisplay {
   name: string
@@ -139,7 +139,7 @@ const PlexSettings = () => {
     showWarning,
     clearError,
   } = useSettingsFeedback({
-    updated: t`Plex settings updated`,
+    updated: t`Saved`,
     updateError: t`Plex settings could not be updated`,
   })
 
@@ -469,47 +469,12 @@ const PlexSettings = () => {
     <>
       <title>{t`Plex settings - Maintainerr`}</title>
       <div className="h-full w-full">
-        <div className="section h-full w-full">
-          <h3 className="heading">
-            <Trans>Plex Settings</Trans>
-          </h3>
-          <p className="description">
-            <Trans>Plex configuration</Trans>
-          </p>
-        </div>
-
         {!isAuthenticated && !(tokenValidationPending && hasStoredPlexToken) ? (
           <Alert
             type="info"
             title={t`Plex configuration is required. Authenticate with Plex to get started.`}
           />
         ) : null}
-
-        <SettingsAlertSlot>
-          {feedback || storedTokenValidationAlert || testBanner.version ? (
-            <div className="space-y-4">
-              {feedback ? (
-                <Alert type={feedback.type} title={feedback.title} />
-              ) : null}
-              {storedTokenValidationAlert ? (
-                <Alert
-                  type={storedTokenValidationAlert.type}
-                  title={storedTokenValidationAlert.title}
-                />
-              ) : null}
-              {testBanner.version ? (
-                testBanner.status ? (
-                  <Alert
-                    type="success"
-                    title={t`Successfully connected to Plex (${{ version: testBanner.version }})`}
-                  />
-                ) : (
-                  <Alert type="error" title={testBanner.version} />
-                )
-              ) : null}
-            </div>
-          ) : null}
-        </SettingsAlertSlot>
 
         <div className="section">
           <div>
@@ -860,11 +825,22 @@ const PlexSettings = () => {
             )}
 
             <div className="actions mt-5 w-full">
-              <div className="flex w-full flex-wrap sm:flex-nowrap">
-                <span className="m-auto rounded-md shadow-xs sm:mr-auto sm:ml-3">
-                  <DocsButton page="Configuration/#plex" />
-                </span>
-                <div className="m-auto mt-3 flex xs:mt-0 sm:m-0 sm:justify-end">
+              <ServiceActions
+                status={
+                  feedback ??
+                  (testBanner.version
+                    ? {
+                        type: testBanner.status ? 'success' : 'error',
+                        title: testBanner.status
+                          ? t`Success! (${{ version: releaseVersion(testBanner.version) }})`
+                          : testBanner.version,
+                      }
+                    : null) ??
+                  storedTokenValidationAlert ??
+                  null
+                }
+              >
+                <div className="ml-auto flex justify-end">
                   <TestingButton
                     type="button"
                     buttonType="success"
@@ -913,7 +889,7 @@ const PlexSettings = () => {
                     />
                   </span>
                 </div>
-              </div>
+              </ServiceActions>
             </div>
           </div>
         </div>

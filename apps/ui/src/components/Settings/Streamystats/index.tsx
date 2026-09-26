@@ -51,24 +51,20 @@ const StreamystatsSettings = () => {
 
   // Streamystats is Jellyfin-only upstream; redirect away from the route if
   // the active media server is anything else (e.g. Plex/Emby user typing
-  // /settings/streamystats directly).
+  // /services/streamystats directly).
   if (!isJellyfin) {
-    return <Navigate to="/settings/main" replace />
+    return <Navigate to="/services" replace />
   }
 
   return (
     <ExternalServiceSettingsPage
-      updatedMessage={t`Streamystats settings updated`}
       updateErrorMessage={t`Streamystats settings could not be updated`}
       pageTitle={t`Streamystats settings - Maintainerr`}
-      heading={t`Streamystats Settings`}
-      description={t`Streamystats configuration. Authentication reuses the configured Jellyfin API key.`}
-      docsPage="Configuration/#streamystats"
       settingsPath="/settings/streamystats"
       testPath="/settings/test/streamystats"
       schema={StreamystatsSettingFormSchema}
       fields={buildFields()}
-      testSuccessTitle="Streamystats"
+      serviceName="Streamystats"
       testFailureMessage={t`Failed to connect to Streamystats. Verify URL and that the service is running.`}
     />
   )

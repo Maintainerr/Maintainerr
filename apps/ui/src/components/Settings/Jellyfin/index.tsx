@@ -17,14 +17,13 @@ import {
   useTestJellyfin,
 } from '../../../api/settings'
 import { getApiErrorMessage } from '../../../utils/ApiError'
-import Alert from '../../Common/Alert'
-import DocsButton from '../../Common/DocsButton'
 import SaveButton from '../../Common/SaveButton'
 import TestingButton from '../../Common/TestingButton'
 import { InputGroup } from '../../Forms/Input'
 import { Select } from '../../Forms/Select'
-import SettingsAlertSlot from '../SettingsAlertSlot'
+import { ServiceActions } from '../ServiceCard'
 import { useSettingsFeedback } from '../useSettingsFeedback'
+import { releaseVersion } from '../../../utils/version'
 
 const JellyfinSettingDeleteSchema = z.object({
   jellyfin_url: z.literal(''),
@@ -53,7 +52,7 @@ const JellyfinSettings = () => {
     Array<{ id: string; name: string }>
   >([])
   const { feedback, showUpdated, showError, clearError } = useSettingsFeedback({
-    updated: t`Jellyfin settings updated`,
+    updated: t`Saved`,
     updateError: t`Jellyfin settings could not be updated`,
   })
 
@@ -139,9 +138,9 @@ const JellyfinSettings = () => {
       if (result.code === 1) {
         setTestResult({
           status: true,
-          message: result.serverName
-            ? t`Connected to ${{ serverName: result.serverName }} (v${{ version: result.version }})`
-            : result.message,
+          message: result.version
+            ? t`Success! (${{ version: releaseVersion(result.version) }})`
+            : t`Success!`,
         })
         setTestedSettings({ url: jellyfinUrl, apiKey: jellyfinApiKey })
 
@@ -216,31 +215,6 @@ const JellyfinSettings = () => {
     <>
       <title>{t`Jellyfin settings - Maintainerr`}</title>
       <div className="h-full w-full">
-        <div className="section h-full w-full">
-          <h3 className="heading">
-            <Trans>Jellyfin Settings</Trans>
-          </h3>
-          <p className="description">
-            <Trans>Configure your Jellyfin server connection</Trans>
-          </p>
-        </div>
-
-        <SettingsAlertSlot>
-          {feedback || testResult ? (
-            <div className="space-y-4">
-              {feedback ? (
-                <Alert type={feedback.type} title={feedback.title} />
-              ) : null}
-              {testResult ? (
-                <Alert
-                  type={testResult.status ? 'success' : 'error'}
-                  title={testResult.message}
-                />
-              ) : null}
-            </div>
-          ) : null}
-        </SettingsAlertSlot>
-
         <div className="section">
           <form onSubmit={handleSubmit(onSubmit)}>
             <Controller
@@ -319,11 +293,18 @@ const JellyfinSettings = () => {
             </div>
 
             <div className="actions mt-5 w-full">
-              <div className="flex w-full flex-wrap sm:flex-nowrap">
-                <span className="m-auto rounded-md shadow-xs sm:mr-auto sm:ml-3">
-                  <DocsButton page="Configuration/#jellyfin" />
-                </span>
-                <div className="m-auto mt-3 flex xs:mt-0 sm:m-0 sm:justify-end">
+              <ServiceActions
+                status={
+                  feedback ??
+                  (testResult
+                    ? {
+                        type: testResult.status ? 'success' : 'error',
+                        title: testResult.message,
+                      }
+                    : null)
+                }
+              >
+                <div className="ml-auto flex justify-end">
                   <TestingButton
                     type="button"
                     buttonType="success"
@@ -350,7 +331,7 @@ const JellyfinSettings = () => {
                     />
                   </span>
                 </div>
-              </div>
+              </ServiceActions>
             </div>
           </form>
         </div>

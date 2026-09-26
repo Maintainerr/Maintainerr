@@ -331,7 +331,7 @@ export class OmbiApiService {
 
       return { status: 'OK', code: 1, message: response.data.version };
     } catch (error) {
-      logConnectionTestError(this.logger, 'Ombi');
+      logConnectionTestError(this.logger, 'Ombi', error);
 
       return {
         status: 'NOK',

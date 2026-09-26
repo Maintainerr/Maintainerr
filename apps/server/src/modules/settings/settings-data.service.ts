@@ -129,18 +129,6 @@ export class SettingsDataService implements SettingDto {
 
   rules_handler_job_cron: string;
 
-  radarr_tag_exclusions: boolean;
-
-  radarr_exclusion_tag: string;
-
-  radarr_untag_on_unexclude: boolean;
-
-  sonarr_tag_exclusions: boolean;
-
-  sonarr_exclusion_tag: string;
-
-  sonarr_untag_on_unexclude: boolean;
-
   telemetryEnabled: boolean | null;
 
   constructor(
@@ -211,14 +199,6 @@ export class SettingsDataService implements SettingDto {
       this.collection_handler_job_cron =
         settingsDb?.collection_handler_job_cron;
       this.rules_handler_job_cron = settingsDb?.rules_handler_job_cron;
-      this.radarr_tag_exclusions = settingsDb?.radarr_tag_exclusions ?? false;
-      this.radarr_exclusion_tag = settingsDb?.radarr_exclusion_tag ?? 'dnd';
-      this.radarr_untag_on_unexclude =
-        settingsDb?.radarr_untag_on_unexclude ?? false;
-      this.sonarr_tag_exclusions = settingsDb?.sonarr_tag_exclusions ?? false;
-      this.sonarr_exclusion_tag = settingsDb?.sonarr_exclusion_tag ?? 'dnd';
-      this.sonarr_untag_on_unexclude =
-        settingsDb?.sonarr_untag_on_unexclude ?? false;
       this.telemetryEnabled = settingsDb?.telemetryEnabled ?? null;
 
       // Auto-detect media server type when not set but credentials exist.

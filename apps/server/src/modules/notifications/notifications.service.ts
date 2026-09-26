@@ -352,7 +352,8 @@ export class NotificationService implements OnModuleInit {
     const notification = new Notification();
     notification.id = -1;
     notification.agent = payload.agent;
-    notification.enabled = payload.enabled;
+    // A test is sent whether or not the agent is switched on yet.
+    notification.enabled = true;
     notification.aboutScale = payload.aboutScale;
     notification.name = payload.name;
     notification.options = payload.options;
@@ -566,19 +567,25 @@ export class NotificationService implements OnModuleInit {
             field: 'secure',
             type: 'checkbox',
             required: false,
-            extraInfo: 'TLS: Use implicit TLS',
+            label: 'Use implicit TLS',
+            extraInfo:
+              'Encrypts from the first byte. Usually needed on port 465; leave off for 587 and 25.',
           },
           {
             field: 'ignoreTls',
             type: 'checkbox',
             required: false,
-            extraInfo: 'TLS: None',
+            label: 'Never use TLS',
+            extraInfo:
+              'Sends unencrypted even when the server offers STARTTLS. Only for a server whose STARTTLS fails.',
           },
           {
             field: 'requireTls',
             type: 'checkbox',
             required: false,
-            extraInfo: 'TLS: Always use STARTLS',
+            label: 'Always use STARTTLS',
+            extraInfo:
+              'Without it, mail goes out unencrypted when the server does not offer STARTTLS. With it, the email is not sent instead.',
           },
           { field: 'authUser', type: 'text', required: false, extraInfo: '' },
           {
@@ -591,7 +598,9 @@ export class NotificationService implements OnModuleInit {
             field: 'allowSelfSigned',
             type: 'checkbox',
             required: false,
-            extraInfo: '',
+            label: 'Allow self-signed certificates',
+            extraInfo:
+              'Needed when your SMTP server uses a certificate it signed itself, as many home servers do.',
           },
           { field: 'pgpKey', type: 'text', required: false, extraInfo: '' },
           {
@@ -669,7 +678,9 @@ export class NotificationService implements OnModuleInit {
             field: 'sendSilently',
             type: 'checkbox',
             required: false,
-            extraInfo: 'Send notifications with no sound',
+            label: 'Send silently',
+            extraInfo:
+              'Recipients get the message without a notification sound.',
           },
         ],
       },

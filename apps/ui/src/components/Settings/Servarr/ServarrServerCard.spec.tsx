@@ -1,6 +1,7 @@
+import type { ComponentProps } from 'react'
 import { fireEvent, render, screen, waitFor } from '../../../test-utils/render'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import ServarrSettingsModal from './ServarrSettingsModal'
+import ServarrServerCard from './ServarrServerCard'
 
 const postApiHandler = vi.fn()
 const putApiHandler = vi.fn()
@@ -12,36 +13,31 @@ vi.mock('../../../utils/ApiHandler', () => ({
     putApiHandler(url, payload),
 }))
 
-vi.mock('../../Common/DocsButton', () => ({
-  default: () => <button type="button">Docs</button>,
-}))
+type CardProps = ComponentProps<typeof ServarrServerCard>
 
-vi.mock('../../Common/Modal', () => ({
-  default: ({
-    title,
-    children,
-    footerActions,
-    onCancel,
-  }: {
-    title: string
-    children: React.ReactNode
-    footerActions?: React.ReactNode
-    onCancel?: () => void
-  }) => (
-    <div>
-      <h1>{title}</h1>
-      <div>{children}</div>
-      {footerActions}
-      {onCancel ? (
-        <button type="button" onClick={onCancel}>
-          Cancel
-        </button>
-      ) : null}
-    </div>
-  ),
-}))
+const saved = {
+  id: 42,
+  serverName: 'Radarr',
+  url: 'http://radarr.local:7878/api',
+  apiKey: 'secret',
+}
 
-describe('ServarrSettingsModal', () => {
+const Harness = (props: Partial<CardProps>) => (
+  <ServarrServerCard
+    title="Radarr"
+    settingsPath="/settings/radarr"
+    testPath="/settings/test/radarr"
+    serviceName="Radarr"
+    onSaved={vi.fn()}
+    onDelete={vi.fn().mockResolvedValue(true)}
+    {...props}
+  />
+)
+
+const button = (name: RegExp) =>
+  screen.getByRole('button', { name }) as HTMLButtonElement
+
+describe('ServarrServerCard', () => {
   beforeEach(() => {
     postApiHandler.mockReset()
     putApiHandler.mockReset()
@@ -49,133 +45,49 @@ describe('ServarrSettingsModal', () => {
 
   it('allows clearing an existing server and saving to remove it', async () => {
     const onDelete = vi.fn().mockResolvedValue(true)
-    const onUpdate = vi.fn()
+    const onSaved = vi.fn()
+    render(<Harness settings={saved} onDelete={onDelete} onSaved={onSaved} />)
 
-    render(
-      <ServarrSettingsModal
-        title="Radarr Settings"
-        docsPage="Configuration/#radarr"
-        settingsPath="/settings/radarr"
-        testPath="/settings/test/radarr"
-        serviceName="Radarr"
-        settings={{
-          id: 42,
-          serverName: 'Radarr',
-          url: 'http://radarr.local:7878/api',
-          apiKey: 'secret',
-        }}
-        onUpdate={onUpdate}
-        onDelete={onDelete}
-        onCancel={() => undefined}
-      />,
-    )
+    for (const label of [
+      'Server Name',
+      'Hostname or IP',
+      'Port',
+      /Base URL/i,
+      'API key',
+    ]) {
+      fireEvent.change(screen.getByLabelText(label), { target: { value: '' } })
+    }
 
-    const saveButton = screen.getByRole('button', { name: /Save Changes/i })
+    expect(button(/Save Changes/i).disabled).toBe(false)
+    expect(button(/Test Connection/i).disabled).toBe(true)
 
-    expect((saveButton as HTMLButtonElement).disabled).toBe(false)
-
-    fireEvent.change(screen.getByLabelText('Server Name'), {
-      target: { value: '' },
-    })
-    fireEvent.change(screen.getByLabelText('Hostname or IP'), {
-      target: { value: '' },
-    })
-    fireEvent.change(screen.getByLabelText('Port'), {
-      target: { value: '' },
-    })
-    fireEvent.change(screen.getByLabelText(/Base URL/i), {
-      target: { value: '' },
-    })
-    fireEvent.change(screen.getByLabelText('API key'), {
-      target: { value: '' },
-    })
-
-    expect(
-      (
-        screen.getByRole('button', {
-          name: /Save Changes/i,
-        }) as HTMLButtonElement
-      ).disabled,
-    ).toBe(false)
-    expect(
-      (
-        screen.getByRole('button', {
-          name: /Test Connection/i,
-        }) as HTMLButtonElement
-      ).disabled,
-    ).toBe(true)
-
-    fireEvent.click(screen.getByRole('button', { name: /Save Changes/i }))
+    fireEvent.click(button(/Save Changes/i))
 
     await waitFor(() => {
       expect(onDelete).toHaveBeenCalledWith(42)
     })
-
-    expect(onUpdate).not.toHaveBeenCalled()
+    expect(onSaved).not.toHaveBeenCalled()
     expect(postApiHandler).not.toHaveBeenCalled()
     expect(putApiHandler).not.toHaveBeenCalled()
   })
 
-  it('keeps Save Changes enabled when editing an existing server connection', async () => {
-    const onDelete = vi.fn().mockResolvedValue(true)
-    const onUpdate = vi.fn()
+  it('keeps Save Changes enabled when editing a saved server without a retest', () => {
+    render(<Harness settings={saved} />)
 
-    render(
-      <ServarrSettingsModal
-        title="Radarr Settings"
-        docsPage="Configuration/#radarr"
-        settingsPath="/settings/radarr"
-        testPath="/settings/test/radarr"
-        serviceName="Radarr"
-        settings={{
-          id: 42,
-          serverName: 'Radarr',
-          url: 'http://radarr.local:7878/api',
-          apiKey: 'secret',
-        }}
-        onUpdate={onUpdate}
-        onDelete={onDelete}
-        onCancel={() => undefined}
-      />,
-    )
-
+    fireEvent.change(screen.getByLabelText('Server Name'), {
+      target: { value: 'Radarr Backup' },
+    })
     fireEvent.change(screen.getByLabelText('Hostname or IP'), {
       target: { value: 'radarr.internal' },
     })
 
-    expect(
-      (
-        screen.getByRole('button', {
-          name: /Save Changes/i,
-        }) as HTMLButtonElement
-      ).disabled,
-    ).toBe(false)
+    expect(button(/Save Changes/i).disabled).toBe(false)
   })
 
-  it('allows saving a new server without a prior connection test once required fields are filled', () => {
-    const onDelete = vi.fn().mockResolvedValue(true)
-    const onUpdate = vi.fn()
+  it('enables saving a new server once the required fields are filled', () => {
+    render(<Harness />)
 
-    render(
-      <ServarrSettingsModal
-        title="Radarr Settings"
-        docsPage="Configuration/#radarr"
-        settingsPath="/settings/radarr"
-        testPath="/settings/test/radarr"
-        serviceName="Radarr"
-        onUpdate={onUpdate}
-        onDelete={onDelete}
-        onCancel={() => undefined}
-      />,
-    )
-
-    expect(
-      (
-        screen.getByRole('button', {
-          name: /Save Changes/i,
-        }) as HTMLButtonElement
-      ).disabled,
-    ).toBe(true)
+    expect(button(/Save Changes/i).disabled).toBe(true)
 
     fireEvent.change(screen.getByLabelText('Server Name'), {
       target: { value: 'Radarr' },
@@ -187,101 +99,158 @@ describe('ServarrSettingsModal', () => {
       target: { value: 'secret' },
     })
 
-    expect(
-      (
-        screen.getByRole('button', {
-          name: /Save Changes/i,
-        }) as HTMLButtonElement
-      ).disabled,
-    ).toBe(false)
+    expect(button(/Save Changes/i).disabled).toBe(false)
   })
 
-  it('does not require a connection retest when only the server name changes', () => {
-    const onDelete = vi.fn().mockResolvedValue(true)
-    const onUpdate = vi.fn()
+  it('posts a new server and hands the saved setting back', async () => {
+    const onSaved = vi.fn()
+    postApiHandler.mockResolvedValue({ code: 1, data: saved })
+    render(<Harness onSaved={onSaved} />)
 
-    render(
-      <ServarrSettingsModal
-        title="Radarr Settings"
-        docsPage="Configuration/#radarr"
-        settingsPath="/settings/radarr"
-        testPath="/settings/test/radarr"
-        serviceName="Radarr"
-        settings={{
-          id: 42,
-          serverName: 'Radarr',
-          url: 'http://radarr.local:7878/api',
-          apiKey: 'secret',
-        }}
-        onUpdate={onUpdate}
-        onDelete={onDelete}
-        onCancel={() => undefined}
-      />,
-    )
+    fireEvent.change(screen.getByLabelText('Server Name'), {
+      target: { value: 'Radarr' },
+    })
+    fireEvent.change(screen.getByLabelText('Hostname or IP'), {
+      target: { value: 'radarr.local' },
+    })
+    fireEvent.change(screen.getByLabelText('Port'), {
+      target: { value: '7878' },
+    })
+    fireEvent.change(screen.getByLabelText('API key'), {
+      target: { value: 'secret' },
+    })
+    fireEvent.click(button(/Save Changes/i))
+
+    await waitFor(() => {
+      expect(onSaved).toHaveBeenCalledWith(saved)
+    })
+    expect(postApiHandler).toHaveBeenCalledWith('/settings/radarr', {
+      url: 'http://radarr.local:7878',
+      apiKey: 'secret',
+      serverName: 'Radarr',
+    })
+  })
+
+  it('puts an edited server to its own path', async () => {
+    putApiHandler.mockResolvedValue({ code: 1, data: saved })
+    render(<Harness settings={saved} />)
 
     fireEvent.change(screen.getByLabelText('Server Name'), {
       target: { value: 'Radarr Backup' },
     })
+    fireEvent.click(button(/Save Changes/i))
+
+    await waitFor(() => {
+      expect(putApiHandler).toHaveBeenCalledWith('/settings/radarr/42', {
+        url: 'http://radarr.local:7878/api',
+        apiKey: 'secret',
+        serverName: 'Radarr Backup',
+        id: 42,
+      })
+    })
+    expect(await screen.findByText('Saved')).toBeTruthy()
+  })
+
+  it('saves the exclusion tag with the server, and refuses an invalid label', async () => {
+    putApiHandler.mockResolvedValue({ code: 1, data: saved })
+    render(<Harness settings={saved} canTagExclusions />)
+
+    fireEvent.click(screen.getByLabelText('Tag excluded content'))
+    fireEvent.change(screen.getByLabelText('Tag label'), {
+      target: { value: 'Not Valid' },
+    })
+    fireEvent.click(button(/Save Changes/i))
 
     expect(
-      (
-        screen.getByRole('button', {
-          name: /Save Changes/i,
-        }) as HTMLButtonElement
-      ).disabled,
-    ).toBe(false)
+      await screen.findByText(/"Not Valid" is not a valid Radarr tag/),
+    ).toBeTruthy()
+    expect(putApiHandler).not.toHaveBeenCalled()
+
+    fireEvent.change(screen.getByLabelText('Tag label'), {
+      target: { value: 'keep' },
+    })
+    fireEvent.click(screen.getByLabelText('Remove tag on un-exclude'))
+    fireEvent.click(button(/Save Changes/i))
+
+    await waitFor(() => {
+      expect(putApiHandler).toHaveBeenCalledWith(
+        '/settings/radarr/42',
+        expect.objectContaining({
+          tagExclusions: true,
+          exclusionTag: 'keep',
+          untagOnUnexclude: true,
+        }),
+      )
+    })
   })
+
+  it('shows the test result beside the buttons', async () => {
+    postApiHandler.mockResolvedValue({ code: 1, message: '6.0.0.1234' })
+    render(<Harness settings={saved} />)
+
+    fireEvent.click(button(/Test Connection/i))
+
+    expect(await screen.findByText('Success! (6.0.0)')).toBeTruthy()
+    expect(postApiHandler).toHaveBeenCalledWith('/settings/test/radarr', {
+      url: 'http://radarr.local:7878/api',
+      apiKey: 'secret',
+      serverName: 'Radarr',
+    })
+  })
+
+  it('asks for confirmation before deleting, and cancels a new server', async () => {
+    const onDelete = vi.fn().mockResolvedValue(true)
+    const onCancel = vi.fn()
+    const { rerender } = render(
+      <Harness settings={saved} onDelete={onDelete} />,
+    )
+
+    fireEvent.click(button(/^Delete$/))
+    expect(onDelete).not.toHaveBeenCalled()
+    fireEvent.click(button(/Are you sure\?/))
+    await waitFor(() => {
+      expect(onDelete).toHaveBeenCalledWith(42)
+    })
+
+    rerender(<Harness onCancel={onCancel} />)
+    fireEvent.click(button(/Cancel/))
+    expect(onCancel).toHaveBeenCalled()
+  })
+
+  it('says when a server could not be removed', async () => {
+    render(
+      <Harness settings={saved} onDelete={vi.fn().mockResolvedValue(false)} />,
+    )
+
+    fireEvent.click(button(/^Delete$/))
+    fireEvent.click(button(/Are you sure\?/))
+
+    expect(await screen.findByText('Error (check logs)')).toBeTruthy()
+  })
+
   it('offers a metadata refresh only when a refresh path is given, and posts to it', async () => {
     // What the server really answers: the provider name, upper-cased.
     postApiHandler.mockResolvedValue({
       code: 1,
       message: 'SPORTARR metadata refresh started',
     })
+    const sportarr = { ...saved, id: 7, serverName: 'Sportarr' }
 
     const { rerender } = render(
-      <ServarrSettingsModal
-        title="Sportarr Settings"
-        docsPage="Configuration/#sportarr"
-        settingsPath="/settings/sportarr"
-        testPath="/settings/test/sportarr"
-        serviceName="Sportarr"
-        settings={{
-          id: 7,
-          serverName: 'Sportarr',
-          url: 'http://sportarr.local:1867/api',
-          apiKey: 'secret',
-        }}
-        onUpdate={vi.fn()}
-        onDelete={vi.fn()}
-        onCancel={() => undefined}
-      />,
+      <Harness serviceName="Sportarr" settings={sportarr} />,
     )
-
     expect(
       screen.queryByRole('button', { name: /Refresh metadata/i }),
     ).toBeNull()
 
     rerender(
-      <ServarrSettingsModal
-        title="Sportarr Settings"
-        docsPage="Configuration/#sportarr"
-        settingsPath="/settings/sportarr"
-        testPath="/settings/test/sportarr"
+      <Harness
         serviceName="Sportarr"
+        settings={sportarr}
         metadataRefreshPath="/settings/metadata/refresh/sportarr"
-        settings={{
-          id: 7,
-          serverName: 'Sportarr',
-          url: 'http://sportarr.local:1867/api',
-          apiKey: 'secret',
-        }}
-        onUpdate={vi.fn()}
-        onDelete={vi.fn()}
-        onCancel={() => undefined}
       />,
     )
-
-    fireEvent.click(screen.getByRole('button', { name: /Refresh metadata/i }))
+    fireEvent.click(button(/Refresh metadata/i))
 
     await waitFor(() => {
       expect(postApiHandler).toHaveBeenCalledWith(
@@ -289,32 +258,19 @@ describe('ServarrSettingsModal', () => {
         {},
       )
     })
-
-    await waitFor(() => {
-      expect(screen.getByText('Sportarr metadata refresh started')).toBeTruthy()
-    })
+    expect(await screen.findByText('Refreshing')).toBeTruthy()
   })
+
   it('does not offer a refresh on a server that has not been saved yet', () => {
     render(
-      <ServarrSettingsModal
-        title="Sportarr Settings"
-        docsPage="Configuration/#sportarr"
-        settingsPath="/settings/sportarr"
-        testPath="/settings/test/sportarr"
+      <Harness
         serviceName="Sportarr"
         metadataRefreshPath="/settings/metadata/refresh/sportarr"
-        onUpdate={vi.fn()}
-        onDelete={vi.fn()}
-        onCancel={() => undefined}
       />,
     )
 
-    const refresh = screen.getByRole('button', {
-      name: /Refresh metadata/i,
-    }) as HTMLButtonElement
-
-    expect(refresh.disabled).toBe(true)
-    fireEvent.click(refresh)
-    expect(postApiHandler).not.toHaveBeenCalled()
+    expect(
+      screen.queryByRole('button', { name: /Refresh metadata/i }),
+    ).toBeNull()
   })
 })

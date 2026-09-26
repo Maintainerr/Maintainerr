@@ -576,7 +576,7 @@ export class TracearrApiService {
         message: version,
       };
     } catch (error) {
-      logConnectionTestError(this.logger, 'Tracearr');
+      logConnectionTestError(this.logger, 'Tracearr', error);
       this.logger.debug(error);
       return {
         status: 'NOK',

@@ -1,5 +1,9 @@
 import clsx from 'clsx'
 import { HTMLAttributes, ReactNode, Ref, InputHTMLAttributes } from 'react'
+import FieldGroup, {
+  fieldDescribedBy,
+  type FieldGroupLayout,
+} from './FieldGroup'
 
 // Field base styling lives in the global `input/select/textarea` rule in
 // globals.css (single source of truth). Only deltas live here.
@@ -86,49 +90,40 @@ type InputGroupProps = {
   label: string
   helpText?: ReactNode
   error?: string
+  layout?: FieldGroupLayout
   ref?: Ref<HTMLInputElement>
 } & InputHTMLAttributes<HTMLInputElement>
 
 export const InputGroup = ({
   label,
   helpText,
+  layout,
   ref,
   ...props
 }: InputGroupProps) => {
-  const ariaDescribedBy = []
-  if (helpText) ariaDescribedBy.push(`${props.name}-help`)
-  if (props.error) ariaDescribedBy.push(`${props.name}-error`)
+  const id = props.id || props.name
 
   return (
-    <div className="mt-6 max-w-6xl sm:mt-5 sm:grid sm:grid-cols-3 sm:items-start sm:gap-4">
-      <label htmlFor={props.id || props.name} className="sm:mt-2">
-        {label} {props.required && <>*</>}
-        {helpText && (
-          <p className={'text-xs font-normal'} id={`${props.name}-help`}>
-            {helpText}
-          </p>
+    <FieldGroup
+      layout={layout}
+      id={id}
+      label={label}
+      required={props.required}
+      helpText={helpText}
+      error={props.error}
+    >
+      <Input
+        {...props}
+        id={id}
+        ref={ref}
+        aria-describedby={fieldDescribedBy(
+          id,
+          layout ?? 'row',
+          helpText,
+          props.error,
         )}
-      </label>
-      <div className="px-3 py-2 sm:col-span-2">
-        <div className="max-w-xl">
-          <Input
-            {...props}
-            ref={ref}
-            aria-describedby={
-              ariaDescribedBy.length ? ariaDescribedBy.join(' ') : undefined
-            }
-            error={!!props.error}
-          />
-          {props.error && (
-            <p
-              className={'mt-2 min-h-5 text-sm text-error-500'}
-              id={`${props.name}-error`}
-            >
-              {props.error}
-            </p>
-          )}
-        </div>
-      </div>
-    </div>
+        error={!!props.error}
+      />
+    </FieldGroup>
   )
 }

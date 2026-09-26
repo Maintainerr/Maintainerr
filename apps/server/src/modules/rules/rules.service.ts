@@ -1192,7 +1192,7 @@ export class RulesService {
       // not each traversed season/episode id. Covers both collection-scoped and
       // global exclusions (a global exclusion resolves the single configured *arr
       // instance). Best-effort; never blocks the exclusion.
-      if (this.servarrTagService.anyExclusionTaggingEnabled()) {
+      if (await this.servarrTagService.anyExclusionTaggingEnabled()) {
         await this.syncExclusionTag(
           'add',
           { mediaServerId: String(data.mediaId), type: topLevelType },
@@ -1510,7 +1510,7 @@ export class RulesService {
       // exclusions. Conservative by default (off) so a manually-set tag is never
       // stripped; only ever touches the configured label. Runs after the delete so
       // the shared-tag guard can see that no other exclusion still wants the tag.
-      if (this.servarrTagService.anyExclusionUntaggingEnabled()) {
+      if (await this.servarrTagService.anyExclusionUntaggingEnabled()) {
         await this.syncExclusionTag(
           'remove',
           { mediaServerId: exclcusion.mediaServerId, type: exclcusion.type },
@@ -1645,7 +1645,7 @@ export class RulesService {
       // the protective *arr tag on un-exclude - this is the POST /rules/exclusion
       // remove path used by the media modal. Untag the top-level item once, after
       // its rows are deleted so the shared-tag guard is accurate.
-      if (this.servarrTagService.anyExclusionUntaggingEnabled()) {
+      if (await this.servarrTagService.anyExclusionUntaggingEnabled()) {
         const type =
           topLevelType ??
           (await mediaServer.getMetadata(String(data.mediaId)))?.type;
@@ -1696,7 +1696,7 @@ export class RulesService {
       // the protective *arr tag once every exclusion for the item is cleared.
       // Instance-wide, so a scoped exclusion's tag is cleared too; the guard
       // always passes (no rows remain).
-      if (this.servarrTagService.anyExclusionUntaggingEnabled()) {
+      if (await this.servarrTagService.anyExclusionUntaggingEnabled()) {
         await this.syncExclusionTag(
           'remove',
           { mediaServerId, type: metaData.type },

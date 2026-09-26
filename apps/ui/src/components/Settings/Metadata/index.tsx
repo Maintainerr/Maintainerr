@@ -8,11 +8,13 @@ import {
   tmdbSettingSchema,
   tvdbSettingSchema,
 } from '@maintainerr/contracts'
+import { useQueryClient } from '@tanstack/react-query'
 import { type ReactNode, useEffect, useState } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
 import {
   useMetadataProviderPreference,
   useUpdateMetadataProviderPreference,
+  type UseSettingsQueryKey,
 } from '../../../api/settings'
 import {
   getApiErrorMessage,
@@ -22,14 +24,15 @@ import GetApiHandler, {
   DeleteApiHandler,
   PostApiHandler,
 } from '../../../utils/ApiHandler'
+import { resolveMetadataPreference } from '../../../utils/metadataPreference'
 import BrandLink from '../../Common/BrandLink'
 import Button from '../../Common/Button'
 import SaveButton from '../../Common/SaveButton'
 import TestingButton from '../../Common/TestingButton'
-import { Input } from '../../Forms/Input'
+import { InputGroup } from '../../Forms/Input'
+import ServiceCard, { ServiceCardFooter } from '../ServiceCard'
 import {
   type SettingsFeedback,
-  SettingsFeedbackAlert,
   useSettingsFeedback,
 } from '../useSettingsFeedback'
 
@@ -42,6 +45,8 @@ interface ProviderConfig {
   // whenever it exists, so giving a provider both would leave this one dead.
   apiKeyEmptyText?: MessageDescriptor
   helpText?: MessageDescriptor
+  // Tested and used with the built-in shared key when left empty.
+  hasBuiltInKey?: boolean
   testFailureMessage: MessageDescriptor
   schema: typeof tmdbSettingSchema | typeof tvdbSettingSchema
 }
@@ -53,16 +58,6 @@ interface ApiKeyFormResult {
 interface RefreshActionState {
   canRun: boolean
   label: string
-}
-
-function resolveMetadataPreference(
-  preference: MetadataProviderPreference,
-  tvdbCanBePrimary: boolean,
-) {
-  return preference === MetadataProviderPreference.TVDB_PRIMARY &&
-    !tvdbCanBePrimary
-    ? MetadataProviderPreference.TMDB_PRIMARY
-    : preference
 }
 
 function useOptimisticMetadataPreference(
@@ -160,6 +155,7 @@ const providers: ProviderConfig[] = [
       </Trans>
     ),
     helpText: msg`Leave empty to use the built-in shared key.`,
+    hasBuiltInKey: true,
     testFailureMessage: msg`Failed to connect to TMDB. Verify the API key.`,
     schema: tmdbSettingSchema,
   },
@@ -184,6 +180,7 @@ const providers: ProviderConfig[] = [
 
 function useProviderForm(config: ProviderConfig) {
   const { t } = useLingui()
+  const queryClient = useQueryClient()
   const [testStatus, setTestStatus] = useState<boolean | undefined>()
   const [testing, setTesting] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
@@ -196,7 +193,7 @@ function useProviderForm(config: ProviderConfig) {
     showUpdated,
     showUpdateError,
   } = useSettingsFeedback({
-    updated: t`${{ providerTitle: config.title }} settings updated`,
+    updated: t`Saved`,
     updateError: t`${{ providerTitle: config.title }} settings could not be updated`,
   })
 
@@ -257,6 +254,13 @@ function useProviderForm(config: ProviderConfig) {
 
       if (response.code) {
         reset({ api_key: data.api_key })
+        // A TVDB key decides whether TVDB can be primary, which the services
+        // switcher reads from the shared settings.
+        if (config.key === 'tvdb') {
+          void queryClient.invalidateQueries({
+            queryKey: ['settings'] satisfies UseSettingsQueryKey,
+          })
+        }
         if (data.api_key === '') {
           setTestStatus(undefined)
         }
@@ -286,9 +290,7 @@ function useProviderForm(config: ProviderConfig) {
 
         if (response.code === 1) {
           setTestStatus(true)
-          showSuccess(
-            t`Successfully connected to ${{ providerTitle: config.title }}`,
-          )
+          showSuccess(t`Success!`)
         } else {
           setTestStatus(false)
           showError(message)
@@ -315,10 +317,8 @@ function useProviderForm(config: ProviderConfig) {
     )
       .then((response) => {
         if (response.code === 1) {
-          showSuccess(
-            response.message ??
-              t`${{ providerTitle: config.title }} metadata refresh started`,
-          )
+          // Also true when a refresh was already running.
+          showSuccess(t`Refreshing`)
         } else {
           showError(
             response.message ??
@@ -436,6 +436,7 @@ function ProviderSection({
   performTest,
   performRefresh,
   onTogglePrimary,
+  status,
 }: {
   config: ProviderConfig
   isPrimary: boolean
@@ -457,16 +458,15 @@ function ProviderSection({
   performTest: ReturnType<typeof useProviderForm>['performTest']
   performRefresh: ReturnType<typeof useProviderForm>['performRefresh']
   onTogglePrimary: () => void
+  status: SettingsFeedback
 }) {
   const { t } = useLingui()
 
   return (
-    <div className="flex h-full flex-col rounded-xl bg-zinc-800 px-4 pt-5 pb-4 text-zinc-400 shadow-sm ring-1 ring-zinc-700">
-      <div className="mb-4 flex items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="text-base font-medium text-white sm:text-lg">
-            {config.title}
-          </div>
+    <ServiceCard
+      title={config.title}
+      actions={
+        <>
           <Button
             buttonType="ghost"
             buttonSize="sm"
@@ -476,8 +476,6 @@ function ProviderSection({
           >
             <span className="font-semibold">{refreshAction.label}</span>
           </Button>
-        </div>
-        <div className="flex items-center gap-3">
           <span className="text-sm font-medium text-zinc-300">
             <Trans>Primary</Trans>
           </span>
@@ -488,65 +486,53 @@ function ProviderSection({
             disabled={isPreferencePending || isPrimary || !canBePrimary}
             onToggle={onTogglePrimary}
           />
-        </div>
-      </div>
-
+        </>
+      }
+    >
       <form className="flex flex-1 flex-col" onSubmit={handleSubmit(onSubmit)}>
-        <div>
-          <label
-            htmlFor={`${config.key}-api-key`}
-            className="block text-sm font-medium text-zinc-300"
-          >
-            <Trans>API Key</Trans>
-          </label>
-          <div className="mt-1">
-            <Input
-              id={`${config.key}-api-key`}
-              type="password"
-              {...registerApiKey}
-              error={!!errors.api_key?.message}
-            />
-          </div>
-          <div className="mt-2 min-h-5 text-xs text-zinc-500">
-            {errors.api_key?.message ??
-              (config.helpText ? t(config.helpText) : undefined) ??
-              (isConfigured
-                ? t`API key configured.`
-                : config.apiKeyEmptyText
-                  ? t(config.apiKeyEmptyText)
-                  : undefined)}
-          </div>
-          <div className="mt-2 text-xs leading-5 text-zinc-400">
-            {config.description}
-          </div>
-        </div>
+        <InputGroup
+          layout="stacked"
+          id={`${config.key}-api-key`}
+          label={t`API Key`}
+          type="password"
+          error={errors.api_key?.message}
+          helpText={
+            (config.helpText ? t(config.helpText) : undefined) ??
+            (isConfigured
+              ? t`API key configured.`
+              : config.apiKeyEmptyText
+                ? t(config.apiKeyEmptyText)
+                : undefined)
+          }
+          {...registerApiKey}
+        />
+        <p className="mt-2 text-xs leading-5 text-zinc-400">
+          {config.description}
+        </p>
 
-        <div className="mt-auto pt-4">
-          <div className="flex w-full flex-col gap-3 sm:flex-row sm:justify-end">
-            <span className="inline-flex w-full rounded-md shadow-xs sm:w-auto">
-              <TestingButton
-                buttonType="success"
-                className="h-10 w-full sm:w-auto"
-                type="button"
-                onClick={performTest}
-                disabled={testing || isGoingToRemove || loadError || isLoading}
-                label={t`Test Connection`}
-                isPending={testing}
-                feedbackStatus={testStatus}
-              />
-            </span>
-            <span className="inline-flex w-full rounded-md shadow-xs sm:w-auto">
-              <SaveButton
-                className="h-10 w-full sm:w-auto"
-                type="submit"
-                disabled={!canSave}
-                isPending={isSubmitting}
-              />
-            </span>
-          </div>
-        </div>
+        <ServiceCardFooter status={status}>
+          <TestingButton
+            buttonType="success"
+            type="button"
+            onClick={performTest}
+            disabled={
+              testing ||
+              (isGoingToRemove && !config.hasBuiltInKey) ||
+              loadError ||
+              isLoading
+            }
+            label={t`Test Connection`}
+            isPending={testing}
+            feedbackStatus={testStatus}
+          />
+          <SaveButton
+            type="submit"
+            disabled={!canSave}
+            isPending={isSubmitting}
+          />
+        </ServiceCardFooter>
       </form>
-    </div>
+    </ServiceCard>
   )
 }
 
@@ -554,7 +540,7 @@ const MetadataSettings = () => {
   const { t } = useLingui()
   const { feedback, clear, showUpdated, showUpdateError, showWarning } =
     useSettingsFeedback({
-      updated: t`Metadata provider preference updated`,
+      updated: t`Saved`,
       updateError: t`Metadata provider preference could not be updated`,
     })
   const {
@@ -570,10 +556,8 @@ const MetadataSettings = () => {
     tmdb: tmdbProvider,
     tvdb: tvdbProvider,
   }
-  const pageFeedback =
-    feedback ??
-    getProviderAlertFeedback(tmdbProvider, providers[0]) ??
-    getProviderAlertFeedback(tvdbProvider, providers[1])
+  // Preference feedback belongs to the card whose switch was flipped.
+  const [preferenceKey, setPreferenceKey] = useState<ProviderConfig['key']>()
 
   const tvdbCanBePrimary = tvdbProvider.isConfigured
   const resolvedPreference = resolveMetadataPreference(
@@ -589,7 +573,8 @@ const MetadataSettings = () => {
     tvdbProvider.clearFeedback()
   }
 
-  const handlePreferenceChange = async (value: MetadataProviderPreference) => {
+  const handlePreferenceChange = async (config: ProviderConfig) => {
+    const value = config.preference
     if (
       value === effectivePreference ||
       preferenceLoading ||
@@ -598,12 +583,14 @@ const MetadataSettings = () => {
       return
     }
 
+    setPreferenceKey(config.key)
+
     if (
       value === MetadataProviderPreference.TVDB_PRIMARY &&
       !tvdbCanBePrimary
     ) {
       clearAllFeedback()
-      showWarning(t`TVDB must be configured before it can be primary`)
+      showWarning(t`Add a TVDB key first`)
       return
     }
 
@@ -623,27 +610,7 @@ const MetadataSettings = () => {
     <>
       <title>{t`Metadata settings - Maintainerr`}</title>
       <div className="h-full w-full">
-        <div className="section h-full w-full">
-          <h3 className="heading">
-            <Trans>Metadata Settings</Trans>
-          </h3>
-          <p className="description">
-            <Trans>
-              Configure metadata providers and set the primary source for
-              posters, backdrops, and metadata enrichment. Adding a TVDB
-              developer API key gives Maintainerr a fallback source for provider
-              cross-references, which helps recover missing IDs when the primary
-              provider cannot resolve a match and can provide a second opinion
-              for some items through existing external ID cross-references.
-            </Trans>
-          </p>
-        </div>
-
-        <div className="mt-4 max-w-6xl">
-          <SettingsFeedbackAlert feedback={pageFeedback} />
-        </div>
-
-        <ul className="mt-4 grid max-w-6xl grid-cols-1 gap-6 lg:grid-cols-2 xl:grid-cols-2">
+        <ul className="grid max-w-6xl grid-cols-1 gap-6 lg:grid-cols-2">
           {providers.map((config) => {
             const provider = providerControllers[config.key]
             const clearProviderPageFeedback = () => {
@@ -698,8 +665,12 @@ const MetadataSettings = () => {
                   performTest={performTest}
                   performRefresh={performRefresh}
                   onTogglePrimary={() => {
-                    void handlePreferenceChange(config.preference)
+                    void handlePreferenceChange(config)
                   }}
+                  status={
+                    (preferenceKey === config.key ? feedback : null) ??
+                    getProviderAlertFeedback(provider, config)
+                  }
                 />
               </li>
             )

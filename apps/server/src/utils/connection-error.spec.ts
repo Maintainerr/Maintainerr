@@ -1,5 +1,8 @@
 import { AxiosError } from 'axios';
-import { formatConnectionFailureMessage } from './connection-error';
+import {
+  formatConnectionFailureMessage,
+  logConnectionTestError,
+} from './connection-error';
 
 const FALLBACK = 'Failed to connect. Verify URL and credentials.';
 
@@ -80,5 +83,21 @@ describe('formatConnectionFailureMessage', () => {
 
   it('falls back to the provided message for an unclassifiable error', () => {
     expect(formatConnectionFailureMessage({}, FALLBACK)).toBe(FALLBACK);
+  });
+});
+
+describe('logConnectionTestError', () => {
+  it('logs the same reason the UI shows', () => {
+    const logger = { error: jest.fn() };
+
+    logConnectionTestError(
+      logger as any,
+      'Seerr',
+      new AxiosError('', 'ENOTFOUND'),
+    );
+
+    expect(logger.error).toHaveBeenCalledWith(
+      'Seerr connection test failed: Unable to resolve host. Verify hostname or IP address.',
+    );
   });
 });

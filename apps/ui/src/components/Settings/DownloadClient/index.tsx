@@ -15,14 +15,17 @@ import {
   useTestDownloadClient,
 } from '../../../api/settings'
 import { getApiErrorMessage } from '../../../utils/ApiError'
-import Alert from '../../Common/Alert'
-import DocsButton from '../../Common/DocsButton'
 import SaveButton from '../../Common/SaveButton'
 import TestingButton from '../../Common/TestingButton'
+import { CheckboxGroup } from '../../Forms/CheckboxGroup'
 import { InputGroup } from '../../Forms/Input'
 import { SelectGroup } from '../../Forms/Select'
-import SettingsAlertSlot from '../SettingsAlertSlot'
-import { useSettingsFeedback } from '../useSettingsFeedback'
+import ServiceCard, { ServiceCardFooter } from '../ServiceCard'
+import {
+  type SettingsFeedback,
+  useSettingsFeedback,
+} from '../useSettingsFeedback'
+import { releaseVersion } from '../../../utils/version'
 
 interface DownloadClientFormValues {
   download_client_type: DownloadClientType | ''
@@ -52,10 +55,11 @@ const DownloadClientSettings = () => {
     message: string
   } | null>(null)
   const [testedConnection, setTestedConnection] = useState<string | null>(null)
-  const { feedback, showUpdated, showError, clearError } = useSettingsFeedback({
-    updated: t`Download client settings updated`,
-    updateError: t`Download client settings could not be updated`,
-  })
+  const { feedback, showUpdated, showError, clear, clearError } =
+    useSettingsFeedback({
+      updated: t`Saved`,
+      updateError: t`Download client settings could not be updated`,
+    })
 
   const { settings } = useSettingsOutletContext()
 
@@ -131,7 +135,7 @@ const DownloadClientSettings = () => {
     !isLoading && !isTestPending && !isSavePending && !isDeletePending
 
   const clearTransientState = () => {
-    clearError()
+    clear()
     setTestResult(null)
     setTestedConnection(null)
   }
@@ -240,6 +244,7 @@ const DownloadClientSettings = () => {
       return
     }
 
+    clear()
     setTestResult(null)
 
     try {
@@ -273,98 +278,43 @@ const DownloadClientSettings = () => {
     }
   }
 
+  const status: SettingsFeedback =
+    feedback ??
+    (testResult
+      ? {
+          type: testResult.status ? 'success' : 'error',
+          title: testResult.status
+            ? testResult.message
+              ? t`Success! (${{ version: releaseVersion(testResult.message) }})`
+              : t`Success!`
+            : testResult.message,
+        }
+      : null)
+
   return (
     <>
       <title>{t`Download client settings - Maintainerr`}</title>
-      <div className="h-full w-full">
-        <div className="section h-full w-full">
-          <h3 className="heading flex items-center gap-2">
-            <Trans>Download Client</Trans>
-            <span className="ml-1.5 rounded-full bg-maintainerr-600 px-3 text-sm font-medium text-white">
-              BETA
+      <div className="max-w-6xl">
+        <ServiceCard
+          title={
+            <span className="flex items-center gap-2">
+              <Trans>Download client</Trans>
+              <span className="rounded-full bg-maintainerr-600 px-2 text-xs font-medium text-white">
+                BETA
+              </span>
             </span>
-          </h3>
-          <p className="description">
-            <Trans>
-              When media is removed through Radarr, Sonarr or Sportarr,
-              Maintainerr can remove the completed download (and optionally its
-              data) from your download client. The download is matched via that
-              service&apos;s download history, so media removed without one of
-              them is left untouched.
-            </Trans>
-          </p>
-        </div>
-
-        <SettingsAlertSlot>
-          {feedback || testResult ? (
-            <div className="space-y-4">
-              {feedback ? (
-                <Alert type={feedback.type} title={feedback.title} />
-              ) : null}
-              {testResult ? (
-                <Alert
-                  type={testResult.status ? 'success' : 'error'}
-                  title={
-                    testResult.status
-                      ? testResult.message
-                        ? t`Successfully connected to the download client (${{ version: testResult.message }})`
-                        : t`Successfully connected to the download client`
-                      : testResult.message
-                  }
-                />
-              ) : null}
-            </div>
-          ) : null}
-        </SettingsAlertSlot>
-
-        <div className="section">
-          <form onSubmit={handleSubmit(onSubmit)}>
-            <Controller
-              name="download_client_type"
-              control={control}
-              render={({ field }) => (
-                <SelectGroup
-                  name={field.name}
-                  label={t`Client`}
-                  value={field.value}
-                  onChange={(event) => {
-                    clearTransientState()
-                    clearErrors('download_client_type')
-                    const nextType = event.target.value as DownloadClientType
-                    field.onChange(nextType)
-                    // The URL is specific to the client (RPC endpoint vs WebUI
-                    // address), so one client's URL is meaningless for the
-                    // other. Only the saved client gets its saved URL back.
-                    setValue(
-                      'download_client_url',
-                      nextType === formValues?.download_client_type
-                        ? formValues.download_client_url
-                        : '',
-                    )
-                  }}
-                  onBlur={field.onBlur}
-                  ref={field.ref}
-                  error={errors.download_client_type?.message}
-                  required
-                >
-                  <option value="" disabled>
-                    {t`Select an option`}
-                  </option>
-                  <option value={DownloadClientType.QBITTORRENT}>
-                    qBittorrent
-                  </option>
-                  <option value={DownloadClientType.TRANSMISSION}>
-                    Transmission
-                  </option>
-                </SelectGroup>
-              )}
-            />
-
+          }
+        >
+          <form
+            className="flex flex-1 flex-col gap-3"
+            onSubmit={handleSubmit(onSubmit)}
+          >
             <Controller
               name="download_client_url"
               control={control}
               render={({ field }) => (
                 <InputGroup
+                  layout="stacked"
                   label="URL"
                   value={field.value}
                   placeholder={urlExample}
@@ -384,134 +334,153 @@ const DownloadClientSettings = () => {
                 />
               )}
             />
-
-            <Controller
-              name="download_client_username"
-              control={control}
-              render={({ field }) => (
-                <InputGroup
-                  label={t`Username`}
-                  value={field.value}
-                  onChange={(event) => {
-                    clearTransientState()
-                    field.onChange(event)
-                  }}
-                  onBlur={field.onBlur}
-                  ref={field.ref}
-                  name={field.name}
-                  type="text"
-                  error={errors.download_client_username?.message}
-                  helpText={t`Leave blank if the client allows unauthenticated access.`}
-                />
-              )}
-            />
-
-            <Controller
-              name="download_client_password"
-              control={control}
-              render={({ field }) => (
-                <InputGroup
-                  label={t`Password`}
-                  value={field.value}
-                  onChange={(event) => {
-                    clearTransientState()
-                    field.onChange(event)
-                  }}
-                  onBlur={field.onBlur}
-                  ref={field.ref}
-                  name={field.name}
-                  type="password"
-                  error={errors.download_client_password?.message}
-                />
-              )}
-            />
-
-            <div className="mt-6 max-w-6xl sm:mt-5 sm:grid sm:grid-cols-3 sm:items-start sm:gap-4">
-              <label htmlFor="download_client_delete_data" className="sm:mt-2">
-                <Trans>Delete downloaded data</Trans>
-                <p className="text-xs font-normal">
-                  <Trans>
-                    Also delete the download&apos;s data from disk when removing
-                    it. Turn off if you cross-seed.
-                  </Trans>
-                </p>
-              </label>
-              <div className="px-3 py-2 sm:col-span-2">
-                <Controller
-                  name="download_client_delete_data"
-                  control={control}
-                  render={({ field }) => (
-                    <input
-                      id="download_client_delete_data"
-                      type="checkbox"
-                      className="checkbox"
-                      checked={field.value}
-                      onChange={(event) => {
-                        clearError()
-                        field.onChange(event.target.checked)
-                      }}
-                    />
-                  )}
-                />
-              </div>
-            </div>
-
-            <Controller
-              name="download_client_fallback_ratio"
-              control={control}
-              render={({ field }) => (
-                <InputGroup
-                  label={t`Fallback seeding ratio`}
-                  value={field.value}
-                  placeholder="0.5"
-                  onChange={(event) => {
-                    clearError()
-                    field.onChange(event)
-                  }}
-                  onBlur={field.onBlur}
-                  ref={field.ref}
-                  name={field.name}
-                  type="number"
-                  step="0.1"
-                  min="0.5"
-                  error={errors.download_client_fallback_ratio?.message}
-                  helpText={t`Whether a download has finished seeding is decided by the client's own ratio or idle-time limits. This ratio only applies when the client enforces no limit, and can't be set below 0.5.`}
-                />
-              )}
-            />
-
-            <div className="actions mt-5 w-full">
-              <div className="flex w-full flex-wrap sm:flex-nowrap">
-                <span className="m-auto rounded-md shadow-xs sm:mr-auto sm:ml-3">
-                  <DocsButton page="Configuration/#download-client" />
-                </span>
-                <div className="m-auto mt-3 flex xs:mt-0 sm:m-0 sm:justify-end">
-                  <TestingButton
-                    type="button"
-                    buttonType="success"
-                    onClick={handleTest}
-                    className="ml-3"
-                    disabled={isLoading || isTestPending || isGoingToRemove}
-                    isPending={isTestPending}
-                    feedbackStatus={
-                      enteredConnectionHasBeenTested
-                        ? testResult?.status
-                        : undefined
-                    }
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <Controller
+                name="download_client_type"
+                control={control}
+                render={({ field }) => (
+                  <SelectGroup
+                    layout="stacked"
+                    name={field.name}
+                    label={t`Client`}
+                    value={field.value}
+                    onChange={(event) => {
+                      clearTransientState()
+                      clearErrors('download_client_type')
+                      const nextType = event.target.value as DownloadClientType
+                      field.onChange(nextType)
+                      // The URL is specific to the client (RPC endpoint vs WebUI
+                      // address), so one client's URL is meaningless for the
+                      // other. Only the saved client gets its saved URL back.
+                      setValue(
+                        'download_client_url',
+                        nextType === formValues?.download_client_type
+                          ? formValues.download_client_url
+                          : '',
+                      )
+                    }}
+                    onBlur={field.onBlur}
+                    ref={field.ref}
+                    error={errors.download_client_type?.message}
+                    required
+                  >
+                    <option value="" disabled>
+                      {t`Select an option`}
+                    </option>
+                    <option value={DownloadClientType.QBITTORRENT}>
+                      qBittorrent
+                    </option>
+                    <option value={DownloadClientType.TRANSMISSION}>
+                      Transmission
+                    </option>
+                  </SelectGroup>
+                )}
+              />
+              <Controller
+                name="download_client_fallback_ratio"
+                control={control}
+                render={({ field }) => (
+                  <InputGroup
+                    layout="stacked"
+                    label={t`Fallback seeding ratio`}
+                    value={field.value}
+                    placeholder="0.5"
+                    onChange={(event) => {
+                      clear()
+                      field.onChange(event)
+                    }}
+                    onBlur={field.onBlur}
+                    ref={field.ref}
+                    name={field.name}
+                    type="number"
+                    step="0.1"
+                    min="0.5"
+                    error={errors.download_client_fallback_ratio?.message}
+                    helpText={t`Used only when the client sets no ratio or idle limit. Minimum 0.5.`}
                   />
-
-                  <span className="ml-3 inline-flex rounded-md shadow-xs">
-                    <SaveButton
-                      type="submit"
-                      disabled={!canSave}
-                      isPending={isSavePending || isDeletePending}
-                    />
-                  </span>
-                </div>
-              </div>
+                )}
+              />
             </div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <Controller
+                name="download_client_username"
+                control={control}
+                render={({ field }) => (
+                  <InputGroup
+                    layout="stacked"
+                    label={t`Username`}
+                    value={field.value}
+                    onChange={(event) => {
+                      clearTransientState()
+                      field.onChange(event)
+                    }}
+                    onBlur={field.onBlur}
+                    ref={field.ref}
+                    name={field.name}
+                    type="text"
+                    error={errors.download_client_username?.message}
+                    helpText={t`Leave blank if the client allows unauthenticated access.`}
+                  />
+                )}
+              />
+              <Controller
+                name="download_client_password"
+                control={control}
+                render={({ field }) => (
+                  <InputGroup
+                    layout="stacked"
+                    label={t`Password`}
+                    value={field.value}
+                    onChange={(event) => {
+                      clearTransientState()
+                      field.onChange(event)
+                    }}
+                    onBlur={field.onBlur}
+                    ref={field.ref}
+                    name={field.name}
+                    type="password"
+                    error={errors.download_client_password?.message}
+                  />
+                )}
+              />
+            </div>
+            <Controller
+              name="download_client_delete_data"
+              control={control}
+              render={({ field }) => (
+                <CheckboxGroup
+                  id="download_client_delete_data"
+                  label={t`Delete downloaded data`}
+                  helpText={t`Turn off if you cross-seed.`}
+                  checked={field.value}
+                  onChange={(event) => {
+                    clear()
+                    field.onChange(event.target.checked)
+                  }}
+                />
+              )}
+            />
+            <ServiceCardFooter status={status}>
+              <TestingButton
+                type="button"
+                buttonType="success"
+                onClick={handleTest}
+                disabled={isLoading || isTestPending || isGoingToRemove}
+                isPending={isTestPending}
+                feedbackStatus={
+                  enteredConnectionHasBeenTested
+                    ? testResult?.status
+                    : undefined
+                }
+              />
+              <SaveButton
+                type="submit"
+                disabled={!canSave}
+                isPending={isSavePending || isDeletePending}
+              />
+            </ServiceCardFooter>
           </form>
-        </div>
+        </ServiceCard>
       </div>
     </>
   )

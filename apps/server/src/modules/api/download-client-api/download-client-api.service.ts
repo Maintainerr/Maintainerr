@@ -84,7 +84,7 @@ export class DownloadClientApiService {
 
       return { status: 'OK', code: 1, message: version };
     } catch (error) {
-      logConnectionTestError(this.logger, 'Download client');
+      logConnectionTestError(this.logger, 'Download client', error);
       this.logger.debug(error);
 
       return {
