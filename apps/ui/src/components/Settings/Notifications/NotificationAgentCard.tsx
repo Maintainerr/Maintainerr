@@ -220,7 +220,12 @@ const NotificationAgentCard = ({
               buttonSize="sm"
               type="button"
               aria-expanded={expanded}
-              onClick={() => setExpanded(!expanded)}
+              onClick={() => {
+                // Reopening remounts the JSON editor with the last valid
+                // payload, so an invalid edit left behind no longer applies.
+                setInvalidJson(false)
+                setExpanded(!expanded)
+              }}
             >
               <span className="font-semibold">
                 {expanded ? <Trans>Close</Trans> : <Trans>Edit</Trans>}
