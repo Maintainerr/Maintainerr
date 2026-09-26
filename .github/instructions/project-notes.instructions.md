@@ -557,6 +557,6 @@ The workspace configures MCP servers (kept in sync across `.codex/config.toml`,
 
 - **github** (HTTP, read-only): use for GitHub queries (issues, PRs, repo
   metadata) instead of shelling out to `gh` when an MCP tool is available.
-- **playwright** (stdio, `--headless --isolated`): use for browser-driven testing
-  / verification of UI changes instead of asking for manual verification. Save
-  screenshots under `.playwright-mcp/`.
+- **playwright** (stdio, `--headless --isolated`): often fails to connect, so
+  drive browser checks through the global `playwright` library instead (see
+  AGENTS.md). Save screenshots under `.playwright-mcp/`.
