@@ -477,6 +477,10 @@ msgstr "Toutes les superpositions ont été réinitialisées"
 msgid "All seasons"
 msgstr "Toutes les saisons"
 
+#: src/components/Settings/Servarr/ServarrServerCard.tsx
+msgid "Allowed: {chars}"
+msgstr ""
+
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "Amount of days"
 msgstr "Nombre de jours"
@@ -2282,10 +2286,6 @@ msgstr "Journaux - Maintainerr"
 #: src/components/Settings/About/index.tsx
 msgid "Loving Maintainerr?"
 msgstr "Vous aimez Maintainerr ?"
-
-#: src/components/Settings/Servarr/ServarrServerCard.tsx
-msgid "Lowercase letters, numbers and hyphens only ({chars})."
-msgstr "Uniquement des lettres minuscules, des chiffres et des tirets ({chars})."
 
 #: src/components/Common/CommunityRuleModal/index.tsx
 msgid "Made with Version"

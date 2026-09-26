@@ -15,6 +15,7 @@ import {
   useTestDownloadClient,
 } from '../../../api/settings'
 import { getApiErrorMessage } from '../../../utils/ApiError'
+import Badge from '../../Common/Badge'
 import SaveButton from '../../Common/SaveButton'
 import TestingButton from '../../Common/TestingButton'
 import { CheckboxGroup } from '../../Forms/CheckboxGroup'
@@ -299,9 +300,7 @@ const DownloadClientSettings = () => {
           title={
             <span className="flex items-center gap-2">
               <Trans>Download client</Trans>
-              <span className="rounded-full bg-maintainerr-600 px-2 text-xs font-medium text-white">
-                BETA
-              </span>
+              <Badge badgeType="maintainerr">BETA</Badge>
             </span>
           }
         >

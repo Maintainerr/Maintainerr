@@ -201,7 +201,7 @@ const NotificationAgentCard = ({
         <span className="flex min-w-0 items-center gap-3">
           <span className="truncate">{config?.name ?? t`Add Agent`}</span>
           {config && !config.enabled ? (
-            <Badge badgeType="light" className="shrink-0">
+            <Badge badgeType="maintainerr" className="shrink-0">
               <Trans>Disabled</Trans>
             </Badge>
           ) : null}
@@ -216,7 +216,7 @@ const NotificationAgentCard = ({
         config?.id != null ? (
           <>
             <Button
-              buttonType="ghost"
+              buttonType="default"
               buttonSize="sm"
               type="button"
               aria-expanded={expanded}

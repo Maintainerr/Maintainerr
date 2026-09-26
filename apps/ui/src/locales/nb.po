@@ -477,6 +477,10 @@ msgstr ""
 msgid "All seasons"
 msgstr ""
 
+#: src/components/Settings/Servarr/ServarrServerCard.tsx
+msgid "Allowed: {chars}"
+msgstr ""
+
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "Amount of days"
 msgstr ""
@@ -2281,10 +2285,6 @@ msgstr ""
 
 #: src/components/Settings/About/index.tsx
 msgid "Loving Maintainerr?"
-msgstr ""
-
-#: src/components/Settings/Servarr/ServarrServerCard.tsx
-msgid "Lowercase letters, numbers and hyphens only ({chars})."
 msgstr ""
 
 #: src/components/Common/CommunityRuleModal/index.tsx
