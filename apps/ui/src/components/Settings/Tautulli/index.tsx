@@ -48,17 +48,13 @@ const TautulliSettings = () => {
 
   return (
     <ExternalServiceSettingsPage
-      updatedMessage={t`Tautulli settings updated`}
       updateErrorMessage={t`Tautulli settings could not be updated`}
       pageTitle={t`Tautulli settings - Maintainerr`}
-      heading={t`Tautulli Settings`}
-      description={t`Tautulli configuration`}
-      docsPage="Configuration/#tautulli"
       settingsPath="/settings/tautulli"
       testPath="/settings/test/tautulli"
       schema={TautulliSettingFormSchema}
       fields={buildFields()}
-      testSuccessTitle="Tautulli"
+      serviceName="Tautulli"
       testFailureMessage={t`Failed to connect to Tautulli. Verify URL and API key.`}
     />
   )

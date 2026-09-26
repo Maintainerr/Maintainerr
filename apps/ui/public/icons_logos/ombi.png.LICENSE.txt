@@ -1,0 +1,12 @@
+ombi.png
+
+Source:   https://github.com/Ombi-app/Ombi/blob/c95c6958fae49c9620406f8ae428e952703ef757/src/Ombi/wwwroot/images/favicon/android-chrome-192x192.png
+Author:   Ombi contributors
+License:  GNU General Public License v2.0 (GPL-2.0)
+URL:      https://www.gnu.org/licenses/old-licenses/gpl-2.0.html
+
+This file is an unmodified copy of the upstream source above.
+
+Note: the Ombi name and logo belong to the Ombi project. This icon is
+used to identify the Ombi integration in the Maintainerr UI; nothing in
+this file implies endorsement by the Ombi project.

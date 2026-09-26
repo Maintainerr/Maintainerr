@@ -33,10 +33,6 @@ vi.mock('../../Common/DocsButton', () => ({
   default: () => <button type="button">Docs</button>,
 }))
 
-vi.mock('../MediaServerSelector', () => ({
-  default: () => <div>Media Server Selector</div>,
-}))
-
 vi.mock('./DatabaseBackupModal', () => ({
   default: () => <div>Backup Modal</div>,
 }))

@@ -23,10 +23,6 @@ vi.mock('../../utils/ApiHandler', () => ({
   DeleteApiHandler: (url: string) => deleteApiHandler(url),
 }))
 
-vi.mock('../Common/DocsButton', () => ({
-  default: () => <button type="button">Docs</button>,
-}))
-
 const urlApiKeyFields: ExternalServiceFieldConfig[] = [
   {
     name: 'url',
@@ -87,17 +83,13 @@ describe('ExternalServiceSettingsPage', () => {
   it('keeps Save Changes enabled regardless of whether connection values have changed', async () => {
     render(
       <ExternalServiceSettingsPage
-        updatedMessage="Seerr settings updated"
         updateErrorMessage="Seerr settings could not be updated"
         pageTitle="Seerr settings - Maintainerr"
-        heading="Seerr Settings"
-        description="Seerr configuration"
-        docsPage="Configuration/#seerr"
         settingsPath="/settings/seerr"
         testPath="/settings/test/seerr"
         schema={urlApiKeySchema}
         fields={urlApiKeyFields}
-        testSuccessTitle="Seerr"
+        serviceName="Seerr"
         testFailureMessage="Failed to connect"
       />,
     )
@@ -126,17 +118,13 @@ describe('ExternalServiceSettingsPage', () => {
 
     render(
       <ExternalServiceSettingsPage
-        updatedMessage="Seerr settings updated"
         updateErrorMessage="Seerr settings could not be updated"
         pageTitle="Seerr settings - Maintainerr"
-        heading="Seerr Settings"
-        description="Seerr configuration"
-        docsPage="Configuration/#seerr"
         settingsPath="/settings/seerr"
         testPath="/settings/test/seerr"
         schema={urlApiKeySchema}
         fields={urlApiKeyFields}
-        testSuccessTitle="Seerr"
+        serviceName="Seerr"
         testFailureMessage="Failed to connect"
       />,
     )
@@ -174,17 +162,13 @@ describe('ExternalServiceSettingsPage', () => {
 
     render(
       <ExternalServiceSettingsPage
-        updatedMessage="Streamystats settings updated"
         updateErrorMessage="Streamystats settings could not be updated"
         pageTitle="Streamystats settings - Maintainerr"
-        heading="Streamystats Settings"
-        description="Streamystats configuration"
-        docsPage="Configuration/#streamystats"
         settingsPath="/settings/streamystats"
         testPath="/settings/test/streamystats"
         schema={urlOnlySchema}
         fields={urlOnlyFields}
-        testSuccessTitle="Streamystats"
+        serviceName="Streamystats"
         testFailureMessage="Failed to connect"
       />,
     )
@@ -220,12 +204,8 @@ describe('ExternalServiceSettingsPage', () => {
 
     render(
       <ExternalServiceSettingsPage
-        updatedMessage="Tracearr settings updated"
         updateErrorMessage="Tracearr settings could not be updated"
         pageTitle="Tracearr settings - Maintainerr"
-        heading="Tracearr Settings"
-        description="Tracearr configuration"
-        docsPage="Configuration/#tracearr"
         settingsPath="/settings/tracearr"
         testPath="/settings/test/tracearr"
         schema={z.object({
@@ -234,7 +214,7 @@ describe('ExternalServiceSettingsPage', () => {
           server_id: z.string().uuid(),
         })}
         fields={tracearrFields}
-        testSuccessTitle="Tracearr"
+        serviceName="Tracearr"
         testFailureMessage="Failed to connect"
       />,
     )
@@ -274,12 +254,8 @@ describe('ExternalServiceSettingsPage', () => {
 
     render(
       <ExternalServiceSettingsPage
-        updatedMessage="Tracearr settings updated"
         updateErrorMessage="Tracearr settings could not be updated"
         pageTitle="Tracearr settings - Maintainerr"
-        heading="Tracearr Settings"
-        description="Tracearr configuration"
-        docsPage="Configuration/#tracearr"
         settingsPath="/settings/tracearr"
         testPath="/settings/test/tracearr"
         schema={z.object({
@@ -288,7 +264,7 @@ describe('ExternalServiceSettingsPage', () => {
           server_id: z.string().uuid(),
         })}
         fields={tracearrFields}
-        testSuccessTitle="Tracearr"
+        serviceName="Tracearr"
         testFailureMessage="Failed to connect"
       />,
     )
@@ -312,12 +288,8 @@ describe('ExternalServiceSettingsPage', () => {
 
     render(
       <ExternalServiceSettingsPage
-        updatedMessage="Tracearr settings updated"
         updateErrorMessage="Tracearr settings could not be updated"
         pageTitle="Tracearr settings - Maintainerr"
-        heading="Tracearr Settings"
-        description="Tracearr configuration"
-        docsPage="Configuration/#tracearr"
         settingsPath="/settings/tracearr"
         testPath="/settings/test/tracearr"
         schema={z.object({
@@ -326,7 +298,7 @@ describe('ExternalServiceSettingsPage', () => {
           server_id: z.string().uuid(),
         })}
         fields={tracearrFields}
-        testSuccessTitle="Tracearr"
+        serviceName="Tracearr"
         testFailureMessage="Failed to connect"
       />,
     )
@@ -363,12 +335,8 @@ describe('ExternalServiceSettingsPage', () => {
 
     render(
       <ExternalServiceSettingsPage
-        updatedMessage="Tracearr settings updated"
         updateErrorMessage="Tracearr settings could not be updated"
         pageTitle="Tracearr settings - Maintainerr"
-        heading="Tracearr Settings"
-        description="Tracearr configuration"
-        docsPage="Configuration/#tracearr"
         settingsPath="/settings/tracearr"
         testPath="/settings/test/tracearr"
         schema={z.object({
@@ -377,7 +345,7 @@ describe('ExternalServiceSettingsPage', () => {
           server_id: z.string().uuid().optional(),
         })}
         fields={tracearrFields}
-        testSuccessTitle="Tracearr"
+        serviceName="Tracearr"
         testFailureMessage="Failed to connect"
       />,
     )
@@ -394,6 +362,38 @@ describe('ExternalServiceSettingsPage', () => {
 
   // Most services answer a bare "Failed", which says less than the scoped
   // message the page shows by default.
+  it('shows the test result, then the save result, beside the buttons', async () => {
+    postApiHandler.mockImplementation((url: string) =>
+      Promise.resolve({
+        status: 'OK',
+        code: 1,
+        message: url === '/settings/test/seerr' ? '2.0.0' : 'OK',
+      }),
+    )
+
+    render(
+      <ExternalServiceSettingsPage
+        updateErrorMessage="Seerr settings could not be updated"
+        pageTitle="Seerr settings - Maintainerr"
+        settingsPath="/settings/seerr"
+        testPath="/settings/test/seerr"
+        schema={urlApiKeySchema}
+        fields={urlApiKeyFields}
+        serviceName="Seerr"
+        testFailureMessage="Failed to connect"
+      />,
+    )
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Test Connection' }),
+    )
+    expect(await screen.findByText('Success! (2.0.0)')).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save Changes' }))
+    expect(await screen.findByText('Saved')).toBeTruthy()
+    expect(screen.queryByText('Success! (2.0.0)')).toBeNull()
+  })
+
   it('keeps the scoped message when a save fails without a reason', async () => {
     postApiHandler.mockResolvedValue({
       status: 'NOK',
@@ -403,17 +403,13 @@ describe('ExternalServiceSettingsPage', () => {
 
     render(
       <ExternalServiceSettingsPage
-        updatedMessage="Seerr settings updated"
         updateErrorMessage="Seerr settings could not be updated"
         pageTitle="Seerr settings - Maintainerr"
-        heading="Seerr Settings"
-        description="Seerr configuration"
-        docsPage="Configuration/#seerr"
         settingsPath="/settings/seerr"
         testPath="/settings/test/seerr"
         schema={urlApiKeySchema}
         fields={urlApiKeyFields}
-        testSuccessTitle="Seerr"
+        serviceName="Seerr"
         testFailureMessage="Failed to connect"
       />,
     )
@@ -434,17 +430,13 @@ describe('ExternalServiceSettingsPage', () => {
 
     render(
       <ExternalServiceSettingsPage
-        updatedMessage="Seerr settings updated"
         updateErrorMessage="Seerr settings could not be updated"
         pageTitle="Seerr settings - Maintainerr"
-        heading="Seerr Settings"
-        description="Seerr configuration"
-        docsPage="Configuration/#seerr"
         settingsPath="/settings/seerr"
         testPath="/settings/test/seerr"
         schema={urlApiKeySchema}
         fields={urlApiKeyFields}
-        testSuccessTitle="Seerr"
+        serviceName="Seerr"
         testFailureMessage="Failed to connect"
       />,
     )
@@ -456,6 +448,7 @@ describe('ExternalServiceSettingsPage', () => {
         'Pick the Tracearr server for this media server.',
       ),
     ).toBeTruthy()
+    expect(screen.getByText('Error (check logs)')).toBeTruthy()
     expect(screen.queryByText('Seerr settings could not be updated')).toBeNull()
   })
 
@@ -479,12 +472,8 @@ describe('ExternalServiceSettingsPage', () => {
 
     render(
       <ExternalServiceSettingsPage
-        updatedMessage="Tracearr settings updated"
         updateErrorMessage="Tracearr settings could not be updated"
         pageTitle="Tracearr settings - Maintainerr"
-        heading="Tracearr Settings"
-        description="Tracearr configuration"
-        docsPage="Configuration/#tracearr"
         settingsPath="/settings/tracearr"
         testPath="/settings/test/tracearr"
         schema={z.object({
@@ -493,7 +482,7 @@ describe('ExternalServiceSettingsPage', () => {
           server_id: z.string().uuid().optional(),
         })}
         fields={tracearrFields}
-        testSuccessTitle="Tracearr"
+        serviceName="Tracearr"
         testFailureMessage="Failed to connect"
       />,
     )

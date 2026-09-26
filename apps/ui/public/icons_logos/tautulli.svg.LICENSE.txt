@@ -1,0 +1,12 @@
+tautulli.svg
+
+Source:   https://github.com/Tautulli/Tautulli/blob/8ef48fc5488c9a4695e798c9e093a02f95b18207/data/interfaces/default/images/logo.svg
+Author:   Tautulli contributors
+License:  GNU General Public License v3.0 (GPL-3.0)
+URL:      https://www.gnu.org/licenses/gpl-3.0.html
+
+This file is an unmodified copy of the upstream source above.
+
+Note: the Tautulli name and logo belong to the Tautulli project. This icon is
+used to identify the Tautulli integration in the Maintainerr UI; nothing in
+this file implies endorsement by the Tautulli project.

@@ -1,3 +1,5 @@
+import z from 'zod'
+
 /**
  * Radarr and Sonarr restrict tag labels to `^[a-z0-9-]+$` - lowercase letters,
  * digits and hyphens only. `POST /api/v3/tag` returns HTTP 400
@@ -52,4 +54,14 @@ export function normalizeArrTagLabel(label: string): string {
     parts.push(current)
   }
   return parts.join('-')
+}
+
+/**
+ * A Radarr or Sonarr server's exclusion tag: applied to the item while it is
+ * excluded, and removed on un-exclude only when that is switched on.
+ */
+export const arrExclusionTagFields = {
+  tagExclusions: z.boolean().optional(),
+  exclusionTag: z.string().trim().optional(),
+  untagOnUnexclude: z.boolean().optional(),
 }

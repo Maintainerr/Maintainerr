@@ -47,21 +47,7 @@ describe('StreamystatsSettings', () => {
     expect(getApiHandler).not.toHaveBeenCalled()
   })
 
-  it('redirects to /settings/main when the active server is Plex', () => {
-    useMediaServerTypeMock.mockReturnValue({
-      isJellyfin: false,
-      isLoading: false,
-    })
-
-    render(<StreamystatsSettings />)
-
-    const nav = screen.getByTestId('navigate')
-    expect(nav.getAttribute('data-to')).toBe('/settings/main')
-    // The settings form must not mount, so its initial GET must not fire.
-    expect(getApiHandler).not.toHaveBeenCalled()
-  })
-
-  it('redirects to /settings/main when the active server is Emby', () => {
+  it('redirects to the services hub when the active server is not Jellyfin', () => {
     useMediaServerTypeMock.mockReturnValue({
       isJellyfin: false,
       isLoading: false,
@@ -70,8 +56,9 @@ describe('StreamystatsSettings', () => {
     render(<StreamystatsSettings />)
 
     expect(screen.getByTestId('navigate').getAttribute('data-to')).toBe(
-      '/settings/main',
+      '/services',
     )
+    // The settings form must not mount, so its initial GET must not fire.
     expect(getApiHandler).not.toHaveBeenCalled()
   })
 

@@ -17,7 +17,7 @@ msgstr ""
 msgid "- uses {propertyName}"
 msgstr "- verwendet {propertyName}"
 
-#: src/components/Settings/Servarr/ExclusionTagSettings.tsx
+#: src/components/Settings/Servarr/ServarrServerCard.tsx
 msgid "\"{label}\" is not a valid {name} tag. Lowercase letters, numbers and hyphens only ({chars}), with no leading, trailing, or repeated hyphens."
 msgstr "„{label}“ ist kein gültiger {name}-Tag. Es sind nur Kleinbuchstaben, Zahlen und Bindestriche erlaubt ({chars}), ohne führende, abschließende oder aufeinanderfolgende Bindestriche."
 
@@ -166,6 +166,10 @@ msgstr "{daysAgo, plural, one {vor # Tag} other {vor # Tagen}}"
 msgid "{elementCount, plural, one {# element} other {# elements}}"
 msgstr "{elementCount, plural, one {# Element} other {# Elemente}}"
 
+#: src/components/Services/useServices.tsx
+msgid "{enabledAgentCount, plural, one {# agent enabled} other {# agents enabled}}"
+msgstr ""
+
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "{formatList} - up to {imageUploadMaxLabel}."
 msgstr "{formatList} – bis zu {imageUploadMaxLabel}."
@@ -219,14 +223,6 @@ msgstr "{mountCount, plural, one {# Einhängepunkt} other {# Einhängepunkte}}"
 msgid "{mountCount, plural, one {Aggregated across # mount} other {Aggregated across # mounts}}"
 msgstr "{mountCount, plural, one {Über # Einhängepunkt zusammengefasst} other {Über # Einhängepunkte zusammengefasst}}"
 
-#: src/components/Settings/Servarr/ExclusionTagSettings.tsx
-msgid "{name} exclusion tag settings could not be updated"
-msgstr "Die Einstellungen für den Ausschluss-Tag {name} konnten nicht aktualisiert werden"
-
-#: src/components/Settings/Servarr/ExclusionTagSettings.tsx
-msgid "{name} exclusion tag settings updated"
-msgstr "Die Einstellungen für den Ausschluss-Tag {name} wurden aktualisiert"
-
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "{path} (saved selection; total space unavailable)"
 msgstr "{path} (gespeicherte Auswahl; Gesamtspeicherplatz nicht verfügbar)"
@@ -235,9 +231,9 @@ msgstr "{path} (gespeicherte Auswahl; Gesamtspeicherplatz nicht verfügbar)"
 msgid "{path} (saved selection)"
 msgstr "{path} (gespeicherte Auswahl)"
 
-#: src/components/Settings/Metadata/index.tsx
-msgid "{providerTitle} metadata refresh started"
-msgstr "Aktualisierung der {providerTitle}-Metadaten gestartet"
+#: src/components/Services/useServices.tsx
+msgid "{provider} primary"
+msgstr ""
 
 #: src/components/Settings/Metadata/index.tsx
 msgid "{providerTitle} primary"
@@ -247,17 +243,13 @@ msgstr "{providerTitle} primär"
 msgid "{providerTitle} settings could not be updated"
 msgstr "Die Einstellungen für {providerTitle} konnten nicht aktualisiert werden"
 
-#: src/components/Settings/Metadata/index.tsx
-msgid "{providerTitle} settings updated"
-msgstr "Die Einstellungen für {providerTitle} wurden aktualisiert"
-
 #: src/components/Settings/About/Releases/index.tsx
 msgid "{secondsAgo, plural, one {# second ago} other {# seconds ago}}"
 msgstr "{secondsAgo, plural, one {vor # Sekunde} other {vor # Sekunden}}"
 
-#: src/components/Settings/Servarr/ServarrSettingsModal.tsx
-msgid "{serviceName} metadata refresh started"
-msgstr "Aktualisierung der {serviceName}-Metadaten gestartet"
+#: src/components/Services/useServices.tsx
+msgid "{serverCount, plural, one {# server} other {# servers}}"
+msgstr ""
 
 #: src/components/Rules/RuleGroup/AddModal/QualityProfileSelector.tsx
 msgid "{serviceName} quality profile *"
@@ -339,7 +331,7 @@ msgstr "+{hiddenCount} weitere…"
 msgid "1 day text"
 msgstr "Text für 1 Tag"
 
-#: src/components/Settings/Servarr/ExclusionTagSettings.tsx
+#: src/components/Settings/Servarr/ServarrServerCard.tsx
 msgid "A tag label is required when exclusion tagging is enabled. Lowercase letters, numbers and hyphens only ({chars})."
 msgstr "Wenn Ausschluss-Tags aktiviert sind, ist eine Tag-Bezeichnung erforderlich. Es sind nur Kleinbuchstaben, Zahlen und Bindestriche erlaubt ({chars})."
 
@@ -383,7 +375,12 @@ msgstr "Neue Regel zu Abschnitt {sectionNumber} hinzufügen"
 msgid "Add a new section"
 msgstr "Neuen Abschnitt hinzufügen"
 
+#: src/components/Settings/Metadata/index.tsx
+msgid "Add a TVDB key first"
+msgstr ""
+
 #: src/components/Settings/Notifications/index.tsx
+#: src/components/Settings/Notifications/NotificationAgentCard.tsx
 msgid "Add Agent"
 msgstr "Agent hinzufügen"
 
@@ -395,19 +392,21 @@ msgstr "Ausschluss hinzufügen"
 msgid "Add import list exclusions"
 msgstr "Ausschlüsse zur Importliste hinzufügen"
 
+#: src/components/Settings/Servarr/ServarrSettings.tsx
+msgid "Add Radarr server"
+msgstr ""
+
 #: src/components/Rules/Rule/RuleCreator/index.tsx
 msgid "Add Rule"
 msgstr "Regel hinzufügen"
 
-#: src/components/Settings/Radarr/index.tsx
-#: src/components/Settings/Sonarr/index.tsx
-#: src/components/Settings/Sportarr/index.tsx
-msgid "Add server"
-msgstr "Server hinzufügen"
+#: src/components/Settings/Servarr/ServarrSettings.tsx
+msgid "Add Sonarr server"
+msgstr ""
 
-#: src/components/Settings/Servarr/ExclusionTagSettings.tsx
-msgid "Add the tag below to {name} when an item is excluded"
-msgstr "Den untenstehenden Tag zu {name} hinzufügen, wenn ein Element ausgeschlossen wird"
+#: src/components/Settings/Servarr/ServarrSettings.tsx
+msgid "Add Sportarr server"
+msgstr ""
 
 #: src/components/Common/MediaActionModal.tsx
 msgid "Add to collection"
@@ -420,12 +419,6 @@ msgstr "<0>Ausgewählte</0> hinzufügen/ausschließen"
 #: src/components/Calendar/index.tsx
 msgid "Added On"
 msgstr "Hinzugefügt am"
-
-#: src/components/Settings/Radarr/index.tsx
-#: src/components/Settings/Sonarr/index.tsx
-#: src/components/Settings/Sportarr/index.tsx
-msgid "Address"
-msgstr "Adresse"
 
 #: src/components/Settings/Emby/index.tsx
 #: src/components/Settings/Jellyfin/index.tsx
@@ -448,7 +441,7 @@ msgstr "Nach {dayCount}"
 msgid "After migration, you must manually assign a library to each rule group before rules can run."
 msgstr "Nach der Migration musst du jeder Regelgruppe manuell eine Bibliothek zuweisen, bevor die Regeln ausgeführt werden können."
 
-#: src/components/Settings/Notifications/CreateNotificationModal/index.tsx
+#: src/components/Settings/Notifications/NotificationAgentCard.tsx
 msgid "Agent *"
 msgstr "Agent *"
 
@@ -484,10 +477,6 @@ msgstr "Alle Overlays wurden zurückgesetzt"
 msgid "All seasons"
 msgstr "Alle Staffeln"
 
-#: src/components/Settings/DownloadClient/index.tsx
-msgid "Also delete the download's data from disk when removing it. Turn off if you cross-seed."
-msgstr "Beim Entfernen auch die Daten des Downloads von der Festplatte löschen. Deaktivieren, wenn du Cross-Seeding verwendest."
-
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "Amount of days"
 msgstr "Anzahl der Tage"
@@ -507,7 +496,7 @@ msgstr "Ein unerwarteter Fehler ist aufgetreten."
 #: src/components/Settings/Main/index.tsx
 #: src/components/Settings/Ombi/index.tsx
 #: src/components/Settings/Seerr/index.tsx
-#: src/components/Settings/Servarr/ServarrSettingsModal.tsx
+#: src/components/Settings/Servarr/ServarrServerCard.tsx
 #: src/components/Settings/Tautulli/index.tsx
 #: src/components/Settings/Tracearr/index.tsx
 msgid "API key"
@@ -527,23 +516,12 @@ msgstr "API-Schlüssel konfiguriert."
 msgid "API key not configured."
 msgstr "API-Schlüssel nicht konfiguriert."
 
-#: src/components/Settings/Servarr/ExclusionTagSettings.tsx
-msgid "Apply a protective tag to the matching {name} movie whenever Maintainerr excludes an item, so {name} carries a single source of truth for \"do not touch\"."
-msgstr "Wende ein schützendes Tag auf den passenden {name}-Film an, sobald Maintainerr ein Element ausschließt, damit {name} eine zentrale Referenz für „nicht verändern“ enthält."
-
-#: src/components/Settings/Servarr/ExclusionTagSettings.tsx
-msgid "Apply a protective tag to the matching {name} series whenever Maintainerr excludes an item, so {name} carries a single source of truth for \"do not touch\"."
-msgstr "Wende ein schützendes Tag auf die passende {name}-Serie an, sobald Maintainerr ein Element ausschließt, damit {name} eine zentrale Referenz für „nicht verändern“ enthält."
-
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Apply date overlays to posters in this collection"
 msgstr "Datums-Overlays auf Poster in dieser Sammlung anwenden"
 
 #: src/components/Rules/RuleGroup/index.tsx
-#: src/components/Settings/Notifications/index.tsx
-#: src/components/Settings/Radarr/index.tsx
-#: src/components/Settings/Sonarr/index.tsx
-#: src/components/Settings/Sportarr/index.tsx
+#: src/components/Settings/ServiceCard.tsx
 msgid "Are you sure?"
 msgstr "Bist du sicher?"
 
@@ -568,10 +546,6 @@ msgstr "Vor dem Testen der Verbindung mit Plex authentifizieren."
 msgid "Authenticated"
 msgstr "Authentifiziert"
 
-#: src/components/Settings/Emby/index.tsx
-msgid "Authenticated against {serverName}"
-msgstr "Bei {serverName} authentifiziert"
-
 #: src/components/Login/Emby/EmbyLoginButton.tsx
 msgid "Authenticates against <0>{embyUrl}</0> with an admin username and password. The resulting access token is stored as the API key."
 msgstr "Authentifiziert sich bei <0>{embyUrl}</0> mit einem Administrator-Benutzernamen und Passwort. Das daraus resultierende Zugriffstoken wird als API-Schlüssel gespeichert."
@@ -591,6 +565,10 @@ msgstr "Authentifizierung fehlgeschlagen"
 #: src/utils/PlexAuth.ts
 msgid "Authentication PIN expired. Please try again."
 msgstr "Authentifizierungs-PIN ist abgelaufen. Bitte versuche es erneut."
+
+#: src/components/Services/useServices.tsx
+msgid "Authentication reuses the configured Jellyfin API key."
+msgstr ""
 
 #: src/utils/PlexAuth.ts
 msgid "Authentication timed out. Please try again."
@@ -621,7 +599,7 @@ msgstr "Backup"
 msgid "Backup Database"
 msgstr "Backup Datenbank"
 
-#: src/components/Settings/Servarr/ServarrSettingsModal.tsx
+#: src/components/Settings/Servarr/ServarrServerCard.tsx
 msgid "Base URL"
 msgstr "Basis-URL"
 
@@ -674,6 +652,7 @@ msgstr "Kann von einzelnen Regelgruppen überschrieben werden."
 #: src/components/Rules/Rule/RuleCreator/CommunityRuleUpload/index.tsx
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 #: src/components/Settings/MediaServerSelector/index.tsx
+#: src/components/Settings/ServiceCard.tsx
 #: src/components/StorageMetrics/index.tsx
 msgid "Cancel"
 msgstr "Abbrechen"
@@ -726,6 +705,10 @@ msgstr "Farbe für {fieldLabel} auswählen"
 msgid "Choose the filename for your database backup."
 msgstr "Wähle den Dateinamen für deine Datenbanksicherung."
 
+#: src/components/Services/useServices.tsx
+msgid "Choose the primary source for posters, backdrops and metadata. A TVDB API key is highly recommended: when the primary provider cannot match a movie or show, Maintainerr falls back to TVDB for its IDs and details."
+msgstr ""
+
 #: src/components/Settings/index.tsx
 msgid "Choose your media server, confirm the connection, and then you can continue configuring the rest of Maintainerr."
 msgstr "Wähle deinen Medienserver aus, bestätige die Verbindung und du kannst anschließend mit der restlichen Konfiguration von Maintainerr fortfahren."
@@ -766,6 +749,7 @@ msgstr "Regel klonen – Maintainerr"
 #: src/components/Login/Emby/EmbyLoginButton.tsx
 #: src/components/Rules/Rule/RuleCreator/CommunityRuleUpload/index.tsx
 #: src/components/Settings/About/Releases/index.tsx
+#: src/components/Settings/Notifications/NotificationAgentCard.tsx
 msgid "Close"
 msgstr "Schließen"
 
@@ -866,20 +850,16 @@ msgid "Configure global settings"
 msgstr "Globale Einstellungen konfigurieren"
 
 #: src/components/Settings/Metadata/index.tsx
-msgid "Configure metadata providers and set the primary source for posters, backdrops, and metadata enrichment. Adding a TVDB developer API key gives Maintainerr a fallback source for provider cross-references, which helps recover missing IDs when the primary provider cannot resolve a match and can provide a second opinion for some items through existing external ID cross-references."
-msgstr "Konfiguriere Metadatenanbieter und lege die primäre Quelle für Poster, Hintergründe und die Anreicherung von Metadaten fest. Wenn du einen TVDB-Entwickler-API-Schlüssel hinzufügst, erhält Maintainerr eine Fallback-Quelle für Querverweise zwischen Anbietern. Dadurch können fehlende IDs wiederhergestellt werden, wenn der primäre Anbieter keine Übereinstimmung findet, und für einige Elemente kann anhand bestehender externer ID-Querverweise eine zweite Einschätzung geliefert werden."
-
-#: src/components/Settings/Metadata/index.tsx
 msgid "Configure to refresh"
 msgstr "Für die Aktualisierung konfigurieren"
 
-#: src/components/Settings/Emby/index.tsx
+#: src/components/Services/useServices.tsx
 msgid "Configure your Emby server connection. Enter the server URL plus an API key, or sign in with admin credentials to obtain one."
 msgstr "Konfiguriere deine Emby-Serververbindung. Gib die Server-URL und einen API-Schlüssel ein oder melde dich mit Administrator-Zugangsdaten an, um einen zu erhalten."
 
-#: src/components/Settings/Jellyfin/index.tsx
-msgid "Configure your Jellyfin server connection"
-msgstr "Konfiguriere deine Jellyfin-Serververbindung"
+#: src/components/Services/useServices.tsx
+msgid "Configured"
+msgstr ""
 
 #: src/components/Common/MediaActionModal.tsx
 msgid "Confirm Global Exclusion"
@@ -894,17 +874,16 @@ msgid "Confirm Removing Every Exclusion"
 msgstr "Entfernung aller Ausschlüsse bestätigen"
 
 #: src/components/StorageMetrics/index.tsx
-msgid "Connect a Plex or Jellyfin server in Settings to see library item counts here."
-msgstr "Verbinde in den Einstellungen einen Plex- oder Jellyfin-Server, um hier die Anzahl der Bibliothekselemente zu sehen."
+msgid "Connect a Plex or Jellyfin server in Services to see library item counts here."
+msgstr ""
+
+#: src/components/Services/ServicesHub.tsx
+msgid "Connect Maintainerr to your media server and the apps it works with."
+msgstr ""
 
 #: src/components/Settings/index.tsx
 msgid "Connect your media server to finish setup."
 msgstr "Verbinde deinen Medienserver, um die Einrichtung abzuschließen."
-
-#: src/components/Settings/Emby/index.tsx
-#: src/components/Settings/Jellyfin/index.tsx
-msgid "Connected to {serverName} (v{version})"
-msgstr "Mit {serverName} verbunden (v{version})"
 
 #: src/utils/ApiError.ts
 msgid "Connection refused. Verify host, port, and that the service is running."
@@ -966,6 +945,10 @@ msgstr "Gespeichertes Poster konnte nicht gelöscht werden"
 #: src/components/Common/LibrarySwitcher/index.tsx
 msgid "Could not fetch libraries"
 msgstr "Bibliotheken konnten nicht abgerufen werden"
+
+#: src/components/Services/useServices.tsx
+msgid "Could not load"
+msgstr ""
 
 #: src/pages/OverlayTemplateEditorPage.tsx
 msgid "Could not load font list. Text elements will fall back to the default font."
@@ -1131,10 +1114,7 @@ msgstr "Vorlage für Standard-Titelkarte"
 #: src/components/Rules/RuleGroup/AddModal/ArrAction/index.tsx
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 #: src/components/Rules/RuleGroup/index.tsx
-#: src/components/Settings/Notifications/index.tsx
-#: src/components/Settings/Radarr/index.tsx
-#: src/components/Settings/Sonarr/index.tsx
-#: src/components/Settings/Sportarr/index.tsx
+#: src/components/Settings/ServiceCard.tsx
 #: src/pages/OverlayTemplateListPage.tsx
 msgid "Delete"
 msgstr "Löschen"
@@ -1211,7 +1191,8 @@ msgstr "Beschreibung"
 msgid "Design overlay elements on the canvas. Enter a valid template name in the Template Name field before saving your changes."
 msgstr "Gestalte Overlay-Elemente auf der Arbeitsfläche. Gib im Feld „Vorlagenname“ einen gültigen Vorlagennamen ein, bevor du deine Änderungen speicherst."
 
-#: src/components/Settings/Notifications/index.tsx
+#: src/components/Services/useServices.tsx
+#: src/components/Settings/Notifications/NotificationAgentCard.tsx
 msgid "Disabled"
 msgstr "Deaktiviert"
 
@@ -1281,12 +1262,9 @@ msgstr "Auswahl <0>abgeschlossen</0>"
 msgid "Download"
 msgstr "Herunterladen"
 
-#: src/components/Settings/index.tsx
-msgid "Download client"
-msgstr "Download-Client"
-
+#: src/components/Services/useServices.tsx
 #: src/components/Settings/DownloadClient/index.tsx
-msgid "Download Client"
+msgid "Download client"
 msgstr "Download-Client"
 
 #: src/components/Settings/DownloadClient/index.tsx
@@ -1298,13 +1276,13 @@ msgstr "Einstellungen des Download-Clients – Maintainerr"
 msgid "Download client settings could not be updated"
 msgstr "Die Einstellungen des Download-Clients konnten nicht aktualisiert werden"
 
-#: src/components/Settings/DownloadClient/index.tsx
-msgid "Download client settings updated"
-msgstr "Die Einstellungen des Download-Clients wurden aktualisiert"
-
 #: src/components/Settings/Logs/index.tsx
 msgid "Download log files"
 msgstr "Protokolldateien herunterladen"
+
+#: src/components/Services/ServicesHub.tsx
+msgid "Downloads"
+msgstr ""
 
 #: src/components/Rules/Rule/RuleCreator/index.tsx
 msgid "Drag handle for rule {tagId} in section {sectionNumber}"
@@ -1347,17 +1325,10 @@ msgid "e.g., {sortPrefixExample} My Collection"
 msgstr "z. B. {sortPrefixExample} Meine Sammlung"
 
 #: src/components/Rules/RuleGroup/index.tsx
-#: src/components/Settings/Notifications/index.tsx
-#: src/components/Settings/Radarr/index.tsx
-#: src/components/Settings/Sonarr/index.tsx
-#: src/components/Settings/Sportarr/index.tsx
+#: src/components/Settings/Notifications/NotificationAgentCard.tsx
 #: src/pages/OverlayTemplateListPage.tsx
 msgid "Edit"
 msgstr "Bearbeiten"
-
-#: src/components/Settings/Notifications/CreateNotificationModal/index.tsx
-msgid "Edit Notification Agent"
-msgstr "Benachrichtigungsagent bearbeiten"
 
 #: src/pages/RuleFormPage.tsx
 msgid "Edit rule - Maintainerr"
@@ -1385,13 +1356,9 @@ msgstr "Elemente"
 msgid "Ellipse"
 msgstr "Ellipse"
 
-#: src/components/Settings/MediaServerSelector/index.tsx
+#: src/components/Services/mediaServerOptions.ts
 msgid "Emby Media Server"
 msgstr "Emby Media Server"
-
-#: src/components/Settings/Emby/index.tsx
-msgid "Emby Settings"
-msgstr "Emby-Einstellungen"
 
 #: src/components/Settings/Emby/index.tsx
 msgid "Emby settings - Maintainerr"
@@ -1401,10 +1368,6 @@ msgstr "Emby-Einstellungen – Maintainerr"
 #: src/components/Settings/Emby/index.tsx
 msgid "Emby settings could not be updated"
 msgstr "Emby-Einstellungen konnten nicht aktualisiert werden"
-
-#: src/components/Settings/Emby/index.tsx
-msgid "Emby settings updated"
-msgstr "Emby-Einstellungen aktualisiert"
 
 #: src/components/Settings/Emby/index.tsx
 msgid "Emby URL"
@@ -1427,7 +1390,7 @@ msgstr "Overlays aktivieren und zum manuellen Ausführen speichern"
 msgid "Enable overlays in Settings to manage templates."
 msgstr "Aktiviere Overlays in den Einstellungen, um Vorlagen zu verwalten."
 
-#: src/components/Settings/Notifications/CreateNotificationModal/index.tsx
+#: src/components/Settings/Notifications/NotificationAgentCard.tsx
 msgid "Enabled"
 msgstr "Aktiviert"
 
@@ -1484,6 +1447,10 @@ msgstr "Ist gleich"
 msgid "Error"
 msgstr "Fehler"
 
+#: src/components/Settings/ServiceCard.tsx
+msgid "Error (check logs)"
+msgstr ""
+
 #: src/pages/RuleFormPage.tsx
 msgid "Error loading rule data"
 msgstr "Fehler beim Laden der Regeldaten"
@@ -1539,10 +1506,6 @@ msgstr "Ausgeschlossen aus"
 msgid "Excluding..."
 msgstr "Wird ausgeschlossen ..."
 
-#: src/components/Settings/Servarr/ExclusionTagSettings.tsx
-msgid "Exclusion tag"
-msgstr "Ausschluss-Tag"
-
 #: src/pages/CollectionDetailPage.tsx
 msgid "Exclusions"
 msgstr "Ausschlüsse"
@@ -1576,7 +1539,7 @@ msgstr "Erweiterte Beschreibung *"
 msgid "Failed to compute library sizes. Check that Maintainerr can reach your media server."
 msgstr "Die Größen der Bibliotheken konnten nicht berechnet werden. Überprüfe, ob Maintainerr deinen Medienserver erreichen kann."
 
-#: src/components/Settings/Servarr/ServarrSettingsModal.tsx
+#: src/components/Settings/Servarr/ServarrServerCard.tsx
 msgid "Failed to connect to {serviceName}. Verify URL and API key."
 msgstr "Verbindung zu {serviceName} konnte nicht hergestellt werden. Überprüfe die URL und den API-Schlüssel."
 
@@ -1641,13 +1604,9 @@ msgstr "Regelgruppe konnte nicht erstellt werden"
 msgid "Failed to create template"
 msgstr "Vorlage konnte nicht erstellt werden"
 
-#: src/components/Settings/Radarr/index.tsx
-msgid "Failed to delete Radarr setting."
-msgstr "Radarr-Einstellung konnte nicht gelöscht werden."
-
-#: src/components/Settings/Radarr/index.tsx
-msgid "Failed to delete Radarr setting. Check logs for details."
-msgstr "Radarr-Einstellung konnte nicht gelöscht werden. Einzelheiten findest du in den Protokollen."
+#: src/components/Settings/Notifications/NotificationAgentCard.tsx
+msgid "Failed to delete notification agent."
+msgstr ""
 
 #: src/components/Rules/RuleGroup/index.tsx
 msgid "Failed to delete rule group."
@@ -1657,22 +1616,6 @@ msgstr "Regelgruppe konnte nicht gelöscht werden."
 msgid "Failed to delete rule group. Check logs for details."
 msgstr "Regelgruppe konnte nicht gelöscht werden. Einzelheiten findest du in den Protokollen."
 
-#: src/components/Settings/Sonarr/index.tsx
-msgid "Failed to delete Sonarr setting."
-msgstr "Sonarr-Einstellung konnte nicht gelöscht werden."
-
-#: src/components/Settings/Sonarr/index.tsx
-msgid "Failed to delete Sonarr setting. Check logs for details."
-msgstr "Sonarr-Einstellung konnte nicht gelöscht werden. Einzelheiten findest du in den Protokollen."
-
-#: src/components/Settings/Sportarr/index.tsx
-msgid "Failed to delete Sportarr setting."
-msgstr "Sportarr-Einstellung konnte nicht gelöscht werden."
-
-#: src/components/Settings/Sportarr/index.tsx
-msgid "Failed to delete Sportarr setting. Check logs for details."
-msgstr "Sportarr-Einstellung konnte nicht gelöscht werden. Weitere Informationen findest du in den Protokollen."
-
 #: src/pages/OverlayTemplateListPage.tsx
 msgid "Failed to duplicate template"
 msgstr "Vorlage konnte nicht dupliziert werden"
@@ -1681,7 +1624,7 @@ msgstr "Vorlage konnte nicht dupliziert werden"
 msgid "Failed to fetch releases"
 msgstr "Veröffentlichungen konnten nicht abgerufen werden"
 
-#: src/components/Settings/Notifications/CreateNotificationModal/index.tsx
+#: src/components/Settings/Notifications/NotificationAgentCard.tsx
 msgid "Failed to fire the notification."
 msgstr "Benachrichtigung konnte nicht ausgelöst werden."
 
@@ -1737,11 +1680,11 @@ msgstr "Overlays konnten nicht verarbeitet werden"
 msgid "Failed to refresh {providerTitle} metadata"
 msgstr "{providerTitle}-Metadaten konnten nicht aktualisiert werden"
 
-#: src/components/Settings/Servarr/ServarrSettingsModal.tsx
+#: src/components/Settings/Servarr/ServarrServerCard.tsx
 msgid "Failed to refresh {serviceName} metadata"
 msgstr "{serviceName}-Metadaten konnten nicht aktualisiert werden"
 
-#: src/components/Settings/Servarr/ServarrSettingsModal.tsx
+#: src/components/Settings/Servarr/ServarrServerCard.tsx
 msgid "Failed to remove {serviceName} settings."
 msgstr "{serviceName}-Einstellungen konnten nicht entfernt werden."
 
@@ -1757,7 +1700,7 @@ msgstr "Das Beenden der Regelausführung konnte nicht angefordert werden."
 msgid "Failed to reset overlays"
 msgstr "Overlays konnten nicht zurückgesetzt werden"
 
-#: src/components/Settings/Notifications/CreateNotificationModal/index.tsx
+#: src/components/Settings/Notifications/NotificationAgentCard.tsx
 msgid "Failed to save notification agent"
 msgstr "Benachrichtigungsagent konnte nicht gespeichert werden"
 
@@ -1789,7 +1732,7 @@ msgstr "Medien konnten nicht getestet werden"
 msgid "Failed to trigger the collection action for this item."
 msgstr "Sammlungsaktion für dieses Element konnte nicht ausgelöst werden."
 
-#: src/components/Settings/Servarr/ServarrSettingsModal.tsx
+#: src/components/Settings/Servarr/ServarrServerCard.tsx
 msgid "Failed to update {serviceName} settings."
 msgstr "{serviceName}-Einstellungen konnten nicht aktualisiert werden."
 
@@ -1879,6 +1822,7 @@ msgstr "Nur freier Speicherplatz - Sonarr/Radarr melden für NFS-/CIFS-Einhänge
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 #: src/components/Settings/index.tsx
+#: src/components/Settings/Notifications/NotificationAgentCard.tsx
 msgid "General"
 msgstr "Allgemein"
 
@@ -1956,7 +1900,7 @@ msgstr "Hostname"
 msgid "Hostname / IP"
 msgstr "Hostname / IP"
 
-#: src/components/Settings/Servarr/ServarrSettingsModal.tsx
+#: src/components/Settings/Servarr/ServarrServerCard.tsx
 msgid "Hostname or IP"
 msgstr "Hostname oder IP"
 
@@ -2062,13 +2006,9 @@ msgstr "Elemente"
 msgid "Items handled"
 msgstr "Verarbeitete Elemente"
 
-#: src/components/Settings/MediaServerSelector/index.tsx
+#: src/components/Services/mediaServerOptions.ts
 msgid "Jellyfin Media Server"
 msgstr "Jellyfin Media Server"
-
-#: src/components/Settings/Jellyfin/index.tsx
-msgid "Jellyfin Settings"
-msgstr "Jellyfin-Einstellungen"
 
 #: src/components/Settings/Jellyfin/index.tsx
 msgid "Jellyfin settings - Maintainerr"
@@ -2078,10 +2018,6 @@ msgstr "Jellyfin-Einstellungen – Maintainerr"
 #: src/components/Settings/Jellyfin/index.tsx
 msgid "Jellyfin settings could not be updated"
 msgstr "Jellyfin-Einstellungen konnten nicht aktualisiert werden"
-
-#: src/components/Settings/Jellyfin/index.tsx
-msgid "Jellyfin settings updated"
-msgstr "Jellyfin-Einstellungen aktualisiert"
 
 #: src/components/Settings/Jellyfin/index.tsx
 msgid "Jellyfin URL"
@@ -2233,6 +2169,10 @@ msgstr "Bibliothek *"
 msgid "Library is required"
 msgstr "Bibliothek ist erforderlich"
 
+#: src/components/Services/ServicesHub.tsx
+msgid "Library managers"
+msgstr ""
+
 #: src/pages/OverlayTemplateEditorPage.tsx
 msgid "Load different poster"
 msgstr "Anderes Poster laden"
@@ -2339,7 +2279,7 @@ msgstr "Logs – Maintainerr"
 msgid "Loving Maintainerr?"
 msgstr "Gefällt dir Maintainerr?"
 
-#: src/components/Settings/Servarr/ExclusionTagSettings.tsx
+#: src/components/Settings/Servarr/ServarrServerCard.tsx
 msgid "Lowercase letters, numbers and hyphens only ({chars})."
 msgstr "Nur Kleinbuchstaben, Zahlen und Bindestriche ({chars})."
 
@@ -2351,7 +2291,7 @@ msgstr "Erstellt mit Version"
 msgid "Maintainerr logo"
 msgstr "Maintainerr-Logo"
 
-#: src/components/Settings/Tracearr/index.tsx
+#: src/components/Services/useServices.tsx
 msgid "Maintainerr picks the Tracearr media server backend automatically: the one tracking the media server configured in Maintainerr."
 msgstr "Maintainerr wählt automatisch das Tracearr-Medienserver-Backend aus: das Backend, das den in Maintainerr konfigurierten Medienserver überwacht."
 
@@ -2422,22 +2362,24 @@ msgstr "Maximum ist 100"
 msgid "Media"
 msgstr "Medien"
 
+#: src/components/Services/ServicesHub.tsx
+#: src/components/Services/useServices.tsx
 #: src/components/StorageMetrics/index.tsx
 msgid "Media server"
 msgstr "Medienserver"
 
-#: src/components/Settings/MediaServerSelector/index.tsx
-msgid "Media Server"
-msgstr "Medienserver"
-
 #: src/components/StorageMetrics/index.tsx
-msgid "Media server is not reachable. Check your Settings."
-msgstr "Der Medienserver ist nicht erreichbar. Überprüfe deine Einstellungen."
+msgid "Media server is not reachable. Check it in Services."
+msgstr ""
 
 #: src/components/Collection/CollectionItem/index.tsx
 #: src/components/Rules/RuleGroup/index.tsx
 msgid "Media server is unreachable. The stored library selection is preserved."
 msgstr "Der Medienserver ist nicht erreichbar. Die gespeicherte Bibliotheksauswahl bleibt erhalten."
+
+#: src/components/Settings/MediaServer/MediaServerSettings.tsx
+msgid "Media server settings - Maintainerr"
+msgstr ""
 
 #: src/components/Settings/MediaServerSelector/index.tsx
 msgid "Media server switch could not be completed: {switchError}"
@@ -2456,21 +2398,14 @@ msgid "Media type*"
 msgstr "Medientyp*"
 
 #: src/components/Collection/CollectionDetail/CollectionInfo/index.tsx
-#: src/components/Settings/index.tsx
+#: src/components/Services/ServicesHub.tsx
+#: src/components/Services/useServices.tsx
 msgid "Metadata"
 msgstr "Metadaten"
 
 #: src/components/Settings/Metadata/index.tsx
 msgid "Metadata provider preference could not be updated"
 msgstr "Die Präferenz für den Metadatenanbieter konnte nicht aktualisiert werden"
-
-#: src/components/Settings/Metadata/index.tsx
-msgid "Metadata provider preference updated"
-msgstr "Die Präferenz für den Metadatenanbieter wurde aktualisiert"
-
-#: src/components/Settings/Metadata/index.tsx
-msgid "Metadata Settings"
-msgstr "Metadateneinstellungen"
 
 #: src/components/Settings/Metadata/index.tsx
 msgid "Metadata settings - Maintainerr"
@@ -2546,7 +2481,7 @@ msgid "Name (Z-A) Descending"
 msgstr ""
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
-#: src/components/Settings/Notifications/CreateNotificationModal/index.tsx
+#: src/components/Settings/Notifications/NotificationAgentCard.tsx
 msgid "Name *"
 msgstr "Name *"
 
@@ -2558,13 +2493,41 @@ msgstr "Name ist erforderlich"
 msgid "Native color picker"
 msgstr "Native Farbauswahl"
 
+#: src/components/Services/useServices.tsx
+msgid "Needed to use Ombi in rules and remove Ombi requests."
+msgstr ""
+
+#: src/components/Services/useServices.tsx
+msgid "Needed to use Radarr in rules and to remove or unmonitor movies."
+msgstr ""
+
+#: src/components/Services/useServices.tsx
+msgid "Needed to use Seerr in rules, remove Seerr requests, and show requesters in pre-deletion notifications."
+msgstr ""
+
+#: src/components/Services/useServices.tsx
+msgid "Needed to use Sonarr in rules and to remove or unmonitor shows."
+msgstr ""
+
+#: src/components/Services/useServices.tsx
+msgid "Needed to use Sportarr in rules and to manage sports leagues, seasons and events."
+msgstr ""
+
+#: src/components/Services/useServices.tsx
+msgid "Needed to use Streamystats watchlists in rules."
+msgstr ""
+
+#: src/components/Services/useServices.tsx
+msgid "Needed to use Tautulli watch history in rules."
+msgstr ""
+
+#: src/components/Services/useServices.tsx
+msgid "Needed to use Tracearr watch history in rules."
+msgstr ""
+
 #: src/components/Collection/CollectionItem/index.tsx
 msgid "Never"
 msgstr "Nie"
-
-#: src/components/Settings/Notifications/CreateNotificationModal/index.tsx
-msgid "New Notification Agent"
-msgstr "Neuer Benachrichtigungsagent"
 
 #: src/pages/RulesListPage.tsx
 msgid "New Rule"
@@ -2662,7 +2625,7 @@ msgstr "Keine Elemente gefunden."
 msgid "No items processed yet"
 msgstr "Noch keine Elemente verarbeitet"
 
-#: src/components/Settings/Servarr/ServarrSettingsModal.tsx
+#: src/components/Settings/Servarr/ServarrServerCard.tsx
 msgid "No Leading Slash"
 msgstr "Kein führender Schrägstrich"
 
@@ -2691,8 +2654,8 @@ msgid "No notification agents configured."
 msgstr "Keine Benachrichtigungsagenten konfiguriert."
 
 #: src/components/StorageMetrics/index.tsx
-msgid "No Radarr or Sonarr instances are configured yet. Add one in Settings to see disk usage here."
-msgstr "Es sind noch keine Radarr- oder Sonarr-Instanzen konfiguriert. Füge unter Einstellungen eine hinzu, um hier die Festplattennutzung zu sehen."
+msgid "No Radarr or Sonarr instances are configured yet. Add one in Services to see disk usage here."
+msgstr ""
 
 #: src/components/Common/SearchMediaITem/index.tsx
 msgid "No results"
@@ -2726,7 +2689,7 @@ msgstr "Keine der gesendeten Daten kann deinem Server zugeordnet werden."
 msgid "normal"
 msgstr "normal"
 
-#: src/components/Settings/Notifications/CreateNotificationModal/index.tsx
+#: src/components/Settings/Notifications/NotificationAgentCard.tsx
 msgid "Not all fields contain values"
 msgstr "Nicht alle Felder enthalten Werte"
 
@@ -2766,36 +2729,33 @@ msgstr "Keiner Sammlung manuell hinzugefügt."
 msgid "Not set"
 msgstr "Nicht festgelegt"
 
+#: src/components/Services/useServices.tsx
+msgid "Not set up"
+msgstr ""
+
 #: src/components/Settings/Telemetry/index.tsx
 msgid "Nothing extra is configured to send."
 msgstr "Es ist nichts Zusätzliches zum Senden konfiguriert."
 
-#: src/components/Settings/Notifications/index.tsx
-msgid "Notification Agent configuration"
-msgstr "Konfiguration des Benachrichtigungsagenten"
-
-#: src/components/Settings/Notifications/index.tsx
-msgid "Notification agent saved"
-msgstr "Benachrichtigungsagent gespeichert"
+#: src/components/Settings/Notifications/NotificationAgentCard.tsx
+msgid "Nothing is sent while this is off."
+msgstr ""
 
 #: src/components/Rules/RuleGroup/AddModal/ConfigureNotificationModal/index.tsx
 msgid "Notification Agents"
 msgstr "Benachrichtigungsagenten"
 
 #: src/components/Settings/Notifications/index.tsx
-msgid "Notification Settings"
-msgstr "Benachrichtigungseinstellungen"
-
-#: src/components/Settings/Notifications/index.tsx
 msgid "Notification settings - Maintainerr"
 msgstr "Benachrichtigungseinstellungen – Maintainerr"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
-#: src/components/Settings/index.tsx
+#: src/components/Services/ServicesHub.tsx
+#: src/components/Services/useServices.tsx
 msgid "Notifications"
 msgstr "Benachrichtigungen"
 
-#: src/components/Settings/Notifications/CreateNotificationModal/index.tsx
+#: src/components/Settings/Notifications/NotificationAgentCard.tsx
 msgid "Notify x days before removal"
 msgstr "x Tage vor der Entfernung benachrichtigen"
 
@@ -2806,10 +2766,6 @@ msgstr "Zahl"
 #: src/components/Settings/About/index.tsx
 msgid "Number Of Rules"
 msgstr "Anzahl der Regeln"
-
-#: src/components/Settings/Servarr/ExclusionTagSettings.tsx
-msgid "Off by default so a manually-set tag is never stripped. When on, Maintainerr removes only this label when an item is un-excluded."
-msgstr "Standardmäßig deaktiviert, damit ein manuell gesetzter Tag niemals entfernt wird. Wenn aktiviert, entfernt Maintainerr nur dieses Label, sobald der Ausschluss eines Elements aufgehoben wird."
 
 #: src/components/Collection/CollectionDetail/RemoveFromCollectionButton/index.tsx
 #: src/components/Settings/Servarr/ServerInUseModal.tsx
@@ -2825,14 +2781,6 @@ msgid "Oldest First"
 msgstr ""
 
 #: src/components/Settings/Ombi/index.tsx
-msgid "Ombi configuration"
-msgstr ""
-
-#: src/components/Settings/Ombi/index.tsx
-msgid "Ombi Settings"
-msgstr ""
-
-#: src/components/Settings/Ombi/index.tsx
 msgid "Ombi settings - Maintainerr"
 msgstr ""
 
@@ -2840,13 +2788,13 @@ msgstr ""
 msgid "Ombi settings could not be updated"
 msgstr ""
 
-#: src/components/Settings/Ombi/index.tsx
-msgid "Ombi settings updated"
-msgstr ""
-
 #: src/components/Layout/TelemetryConsentModal.tsx
 msgid "Once a week we log which version and platform people actually run. The payload below is the whole of it. It carries no server identifier, no {TERM_IP}, no hostname, no {TERM_MAC} address and no account id: nothing that can be traced back to you, your network or your machine."
 msgstr "Einmal pro Woche protokollieren wir, welche Version und Plattform tatsächlich verwendet werden. Die folgende Nutzlast enthält alle diese Daten. Sie enthält keine Serverkennung, keine {TERM_IP}, keinen Hostnamen, keine {TERM_MAC}-Adresse und keine Konto-ID – nichts, das zu dir, deinem Netzwerk oder deinem Gerät zurückverfolgt werden kann."
+
+#: src/components/Settings/index.tsx
+msgid "Once connected, adding a TVDB API key under Services, Metadata is highly recommended. When the primary provider cannot match a movie or show, Maintainerr falls back to TVDB for its IDs and details."
+msgstr ""
 
 #: src/components/Common/YamlImporterModal/index.tsx
 msgid "Only {yamlExtension} or {ymlExtension} files are allowed."
@@ -2992,10 +2940,6 @@ msgid "Plex authentication could not be verified. Please try again."
 msgstr "Die Plex-Authentifizierung konnte nicht überprüft werden. Bitte versuche es erneut."
 
 #: src/components/Settings/Plex/index.tsx
-msgid "Plex configuration"
-msgstr "Plex-Konfiguration"
-
-#: src/components/Settings/Plex/index.tsx
 msgid "Plex configuration is required. Authenticate with Plex to get started."
 msgstr "Eine Plex-Konfiguration ist erforderlich. Authentifiziere dich bei Plex, um zu beginnen."
 
@@ -3003,13 +2947,9 @@ msgstr "Eine Plex-Konfiguration ist erforderlich. Authentifiziere dich bei Plex,
 msgid "Plex login popup was blocked. Please allow popups for this site."
 msgstr "Das Plex-Anmelde-Popup wurde blockiert. Bitte erlaube Popups für diese Website."
 
-#: src/components/Settings/MediaServerSelector/index.tsx
+#: src/components/Services/mediaServerOptions.ts
 msgid "Plex Media Server"
 msgstr "Plex Media Server"
-
-#: src/components/Settings/Plex/index.tsx
-msgid "Plex Settings"
-msgstr "Plex-Einstellungen"
 
 #: src/components/Settings/Plex/index.tsx
 msgid "Plex settings - Maintainerr"
@@ -3019,16 +2959,12 @@ msgstr "Plex-Einstellungen – Maintainerr"
 msgid "Plex settings could not be updated"
 msgstr "Plex-Einstellungen konnten nicht aktualisiert werden"
 
-#: src/components/Settings/Plex/index.tsx
-msgid "Plex settings updated"
-msgstr "Plex-Einstellungen aktualisiert"
-
 #: src/utils/PlexAuth.ts
 msgid "Popup closed without completing login"
 msgstr "Das Popup wurde geschlossen, ohne die Anmeldung abzuschließen"
 
 #: src/components/Settings/Plex/index.tsx
-#: src/components/Settings/Servarr/ServarrSettingsModal.tsx
+#: src/components/Settings/Servarr/ServarrServerCard.tsx
 msgid "Port"
 msgstr "Port"
 
@@ -3135,19 +3071,7 @@ msgstr "Verschiebe die Löschung dieses Elements um die unten angegebene Anzahl 
 msgid "Quality profile is required for this action"
 msgstr "Für diese Aktion ist ein Qualitätsprofil erforderlich"
 
-#: src/components/Settings/Radarr/index.tsx
-msgid "Radarr configuration"
-msgstr "Radarr-Konfiguration"
-
-#: src/components/Settings/Radarr/index.tsx
-msgid "Radarr server removed"
-msgstr "Radarr-Server entfernt"
-
-#: src/components/Settings/Radarr/index.tsx
-msgid "Radarr Settings"
-msgstr "Radarr-Einstellungen"
-
-#: src/components/Settings/Radarr/index.tsx
+#: src/components/Settings/Servarr/ServarrSettings.tsx
 msgid "Radarr settings - Maintainerr"
 msgstr "Radarr-Einstellungen – Maintainerr"
 
@@ -3186,9 +3110,14 @@ msgid "Rectangle"
 msgstr "Rechteck"
 
 #: src/components/Settings/Metadata/index.tsx
-#: src/components/Settings/Servarr/ServarrSettingsModal.tsx
+#: src/components/Settings/Servarr/ServarrServerCard.tsx
 msgid "Refresh metadata"
 msgstr "Metadaten aktualisieren"
+
+#: src/components/Settings/Metadata/index.tsx
+#: src/components/Settings/Servarr/ServarrServerCard.tsx
+msgid "Refreshing"
+msgstr ""
 
 #: src/components/Settings/Metadata/index.tsx
 msgid "Refreshing..."
@@ -3240,13 +3169,17 @@ msgstr "Aus Sammlung entfernen"
 msgid "Remove rule {ruleNumber}, section {sectionNumber}"
 msgstr "Regel {ruleNumber}, Abschnitt {sectionNumber} entfernen"
 
-#: src/components/Settings/Servarr/ExclusionTagSettings.tsx
+#: src/components/Settings/Servarr/ServarrServerCard.tsx
 msgid "Remove tag on un-exclude"
 msgstr "Tag beim Aufheben des Ausschlusses entfernen"
 
 #: src/components/Collection/CollectionDetail/RemoveFromCollectionButton/index.tsx
 msgid "Remove?"
 msgstr "Entfernen?"
+
+#: src/components/Settings/Servarr/ServarrServerCard.tsx
+msgid "Removes only this tag when the item is un-excluded."
+msgstr ""
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Removes the related Ombi request immediately. Otherwise, Ombi keeps listing the request as available."
@@ -3283,6 +3216,10 @@ msgstr "Es wurde angefordert, die Ausführung aller Regeln zu stoppen."
 #: src/components/Rules/RuleGroup/index.tsx
 msgid "Requested to stop rule execution."
 msgstr "Es wurde angefordert, die Regelausführung zu stoppen."
+
+#: src/components/Services/ServicesHub.tsx
+msgid "Requests"
+msgstr ""
 
 #: src/components/StorageMetrics/index.tsx
 msgid "Requires total-space reporting"
@@ -3405,6 +3342,17 @@ msgstr "Zum Aktualisieren speichern"
 msgid "Save your settings before testing."
 msgstr "Speichere deine Einstellungen, bevor du testest."
 
+#: src/components/Settings/DownloadClient/index.tsx
+#: src/components/Settings/Emby/index.tsx
+#: src/components/Settings/ExternalServiceSettingsPage.tsx
+#: src/components/Settings/Jellyfin/index.tsx
+#: src/components/Settings/Metadata/index.tsx
+#: src/components/Settings/Notifications/NotificationAgentCard.tsx
+#: src/components/Settings/Plex/index.tsx
+#: src/components/Settings/Servarr/ServarrServerCard.tsx
+msgid "Saved"
+msgstr ""
+
 #: src/components/Settings/Emby/index.tsx
 #: src/components/Settings/Jellyfin/index.tsx
 msgid "Saved admin user. Test connection to change."
@@ -3480,24 +3428,12 @@ msgid "secure"
 msgstr "sicher"
 
 #: src/components/Settings/Seerr/index.tsx
-msgid "Seerr configuration"
-msgstr "Seerr-Konfiguration"
-
-#: src/components/Settings/Seerr/index.tsx
-msgid "Seerr Settings"
-msgstr "Seerr-Einstellungen"
-
-#: src/components/Settings/Seerr/index.tsx
 msgid "Seerr settings - Maintainerr"
 msgstr "Seerr-Einstellungen – Maintainerr"
 
 #: src/components/Settings/Seerr/index.tsx
 msgid "Seerr settings could not be updated"
 msgstr "Seerr-Einstellungen konnten nicht aktualisiert werden"
-
-#: src/components/Settings/Seerr/index.tsx
-msgid "Seerr settings updated"
-msgstr "Seerr-Einstellungen aktualisiert"
 
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "Segments"
@@ -3549,6 +3485,7 @@ msgstr "Wähle ein Element aus, um seine Eigenschaften zu bearbeiten"
 
 #: src/components/Settings/DownloadClient/index.tsx
 #: src/components/Settings/ExternalServiceSettingsPage.tsx
+#: src/components/Settings/Notifications/NotificationAgentCard.tsx
 msgid "Select an option"
 msgstr "Option auswählen"
 
@@ -3573,11 +3510,11 @@ msgstr "Zweiten Wert auswählen..."
 msgid "Select the admin user for Maintainerr operations."
 msgstr "Wähle den Admin-Benutzer für Maintainerr-Vorgänge aus."
 
-#: src/components/Settings/MediaServerSelector/index.tsx
+#: src/components/Services/useServices.tsx
 msgid "Select your media server to get started with Maintainerr."
 msgstr "Wähle deinen Medienserver aus, um mit Maintainerr zu beginnen."
 
-#: src/components/Settings/MediaServerSelector/index.tsx
+#: src/components/Services/useServices.tsx
 msgid "Select your media server type. Switching will reset media server-specific data."
 msgstr "Wähle den Typ deines Medienservers aus. Beim Wechsel werden medienserverspezifische Daten zurückgesetzt."
 
@@ -3598,6 +3535,10 @@ msgstr "Ausgewählter Tab"
 msgid "Selected: {maskedUserId}"
 msgstr "Ausgewählt: {maskedUserId}"
 
+#: src/components/Services/useServices.tsx
+msgid "Send alerts about collections, rules, overlays and updates to email, chat and push services."
+msgstr ""
+
 #: src/components/Settings/Telemetry/index.tsx
 msgid "Send anonymous usage data"
 msgstr "Anonyme Nutzungsdaten senden"
@@ -3610,13 +3551,22 @@ msgstr "Server"
 msgid "Server in-use"
 msgstr "Aktuell verwendeter Server"
 
-#: src/components/Settings/Servarr/ServarrSettingsModal.tsx
+#: src/components/Settings/Servarr/ServarrServerCard.tsx
 msgid "Server Name"
 msgstr "Servername"
 
 #: src/api/bulkMediaAction.ts
 msgid "server responded {status}"
 msgstr "Server hat mit {status} geantwortet"
+
+#: src/components/Layout/NavBar/index.tsx
+#: src/components/Services/ServicesHub.tsx
+msgid "Services"
+msgstr ""
+
+#: src/components/Services/ServicesHub.tsx
+msgid "Services - Maintainerr"
+msgstr ""
 
 #: src/components/Settings/About/index.tsx
 msgid "Services Status"
@@ -3733,19 +3683,7 @@ msgstr "Kleiner"
 msgid "Some incomplete rules won't be saved"
 msgstr "Einige unvollständige Regeln werden nicht gespeichert"
 
-#: src/components/Settings/Sonarr/index.tsx
-msgid "Sonarr configuration"
-msgstr "Sonarr-Konfiguration"
-
-#: src/components/Settings/Sonarr/index.tsx
-msgid "Sonarr server removed"
-msgstr "Sonarr-Server entfernt"
-
-#: src/components/Settings/Sonarr/index.tsx
-msgid "Sonarr Settings"
-msgstr "Sonarr-Einstellungen"
-
-#: src/components/Settings/Sonarr/index.tsx
+#: src/components/Settings/Servarr/ServarrSettings.tsx
 msgid "Sonarr settings - Maintainerr"
 msgstr "Sonarr-Einstellungen - Maintainerr"
 
@@ -3777,19 +3715,7 @@ msgstr "Bestimmtes Datum"
 msgid "Specify the rules this group needs to enforce"
 msgstr "Lege fest, welche Regeln diese Gruppe durchsetzen muss"
 
-#: src/components/Settings/Sportarr/index.tsx
-msgid "Sportarr configuration"
-msgstr "Sportarr-Konfiguration"
-
-#: src/components/Settings/Sportarr/index.tsx
-msgid "Sportarr server removed"
-msgstr "Sportarr-Server entfernt"
-
-#: src/components/Settings/Sportarr/index.tsx
-msgid "Sportarr Settings"
-msgstr "Sportarr-Einstellungen"
-
-#: src/components/Settings/Sportarr/index.tsx
+#: src/components/Settings/Servarr/ServarrSettings.tsx
 msgid "Sportarr settings - Maintainerr"
 msgstr "Sportarr-Einstellungen - Maintainerr"
 
@@ -3841,24 +3767,12 @@ msgid "Stored Plex credentials are invalid. Re-authenticate with Plex."
 msgstr "Die gespeicherten Plex-Anmeldedaten sind ungültig. Authentifiziere dich erneut bei Plex."
 
 #: src/components/Settings/Streamystats/index.tsx
-msgid "Streamystats configuration. Authentication reuses the configured Jellyfin API key."
-msgstr "Streamystats-Konfiguration. Für die Authentifizierung wird der konfigurierte Jellyfin-API-Schlüssel verwendet."
-
-#: src/components/Settings/Streamystats/index.tsx
-msgid "Streamystats Settings"
-msgstr "Streamystats-Einstellungen"
-
-#: src/components/Settings/Streamystats/index.tsx
 msgid "Streamystats settings - Maintainerr"
 msgstr "Streamystats-Einstellungen - Maintainerr"
 
 #: src/components/Settings/Streamystats/index.tsx
 msgid "Streamystats settings could not be updated"
 msgstr "Streamystats-Einstellungen konnten nicht aktualisiert werden"
-
-#: src/components/Settings/Streamystats/index.tsx
-msgid "Streamystats settings updated"
-msgstr "Streamystats-Einstellungen aktualisiert"
 
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "Stroke"
@@ -3888,30 +3802,22 @@ msgstr "Wird gesendet ..."
 msgid "Success"
 msgstr "Erfolg"
 
+#: src/components/Settings/DownloadClient/index.tsx
+#: src/components/Settings/Emby/index.tsx
+#: src/components/Settings/Jellyfin/index.tsx
 #: src/components/Settings/Metadata/index.tsx
-msgid "Successfully connected to {providerTitle}"
-msgstr "Erfolgreich mit {providerTitle} verbunden"
+#: src/components/Settings/Notifications/NotificationAgentCard.tsx
+msgid "Success!"
+msgstr ""
 
+#: src/components/Settings/DownloadClient/index.tsx
+#: src/components/Settings/Emby/index.tsx
 #: src/components/Settings/ExternalServiceSettingsPage.tsx
-#: src/components/Settings/Servarr/ServarrSettingsModal.tsx
-msgid "Successfully connected to {serviceName} ({version})"
-msgstr "Erfolgreich mit {serviceName} ({version}) verbunden"
-
+#: src/components/Settings/Jellyfin/index.tsx
 #: src/components/Settings/Plex/index.tsx
-msgid "Successfully connected to Plex ({version})"
-msgstr "Erfolgreich mit Plex ({version}) verbunden"
-
-#: src/components/Settings/DownloadClient/index.tsx
-msgid "Successfully connected to the download client"
-msgstr "Erfolgreich mit dem Download-Client verbunden"
-
-#: src/components/Settings/DownloadClient/index.tsx
-msgid "Successfully connected to the download client ({version})"
-msgstr "Erfolgreich mit dem Download-Client ({version}) verbunden"
-
-#: src/components/Settings/Notifications/CreateNotificationModal/index.tsx
-msgid "Successfully fired the notification!"
-msgstr "Benachrichtigung erfolgreich ausgelöst!"
+#: src/components/Settings/Servarr/ServarrServerCard.tsx
+msgid "Success! ({version})"
+msgstr ""
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Successfully imported rules from Yaml."
@@ -3937,11 +3843,11 @@ msgstr "Wird gewechselt ..."
 msgid "Tabs"
 msgstr "Registerkarten"
 
-#: src/components/Settings/Servarr/ExclusionTagSettings.tsx
+#: src/components/Settings/Servarr/ServarrServerCard.tsx
 msgid "Tag excluded content"
 msgstr "Ausgeschlossene Inhalte mit einem Tag versehen"
 
-#: src/components/Settings/Servarr/ExclusionTagSettings.tsx
+#: src/components/Settings/Servarr/ServarrServerCard.tsx
 msgid "Tag label"
 msgstr "Tag-Bezeichnung"
 
@@ -3956,6 +3862,10 @@ msgstr "Serien, die den Kriterien entsprechen, in {tagArrName} mit einem Tag ver
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Tag this content in {tagArrName}"
 msgstr "Diesen Inhalt in {tagArrName} mit einem Tag versehen"
+
+#: src/components/Settings/Servarr/ServarrServerCard.tsx
+msgid "Tags the item in {name} when it is excluded."
+msgstr ""
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Take action after days is required for this action"
@@ -3982,24 +3892,12 @@ msgid "Target quality profile to change to"
 msgstr "Ziel-Qualitätsprofil, zu dem gewechselt werden soll"
 
 #: src/components/Settings/Tautulli/index.tsx
-msgid "Tautulli configuration"
-msgstr "Tautulli-Konfiguration"
-
-#: src/components/Settings/Tautulli/index.tsx
-msgid "Tautulli Settings"
-msgstr "Tautulli-Einstellungen"
-
-#: src/components/Settings/Tautulli/index.tsx
 msgid "Tautulli settings - Maintainerr"
 msgstr "Tautulli-Einstellungen – Maintainerr"
 
 #: src/components/Settings/Tautulli/index.tsx
 msgid "Tautulli settings could not be updated"
 msgstr "Tautulli-Einstellungen konnten nicht aktualisiert werden"
-
-#: src/components/Settings/Tautulli/index.tsx
-msgid "Tautulli settings updated"
-msgstr "Tautulli-Einstellungen aktualisiert"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Tautulli watched percent override"
@@ -4056,7 +3954,7 @@ msgstr "Test"
 
 #: src/components/Common/TestingButton.tsx
 #: src/components/Settings/Metadata/index.tsx
-#: src/components/Settings/Servarr/ServarrSettingsModal.tsx
+#: src/components/Settings/Servarr/ServarrServerCard.tsx
 msgid "Test Connection"
 msgstr "Verbindung testen"
 
@@ -4101,7 +3999,7 @@ msgstr "Text ..."
 msgid "Thank you for contributing."
 msgstr "Danke für deinen Beitrag."
 
-#: src/components/Settings/Servarr/ExclusionTagSettings.tsx
+#: src/components/Settings/Servarr/ServarrServerCard.tsx
 msgid "The {name} tag to apply, created if missing."
 msgstr "Der anzuwendende Tag {name}, wird bei Bedarf erstellt."
 
@@ -4115,6 +4013,10 @@ msgstr "Die folgenden Daten werden dauerhaft gelöscht:"
 
 #: src/components/Settings/DownloadClient/index.tsx
 msgid "The full RPC endpoint, normally {urlExample}"
+msgstr ""
+
+#: src/components/Settings/Notifications/NotificationAgentCard.tsx
+msgid "The JSON payload is not valid."
 msgstr ""
 
 #: src/components/Settings/index.tsx
@@ -4294,20 +4196,12 @@ msgid "Tracearr server"
 msgstr "Tracearr-Server"
 
 #: src/components/Settings/Tracearr/index.tsx
-msgid "Tracearr Settings"
-msgstr "Tracearr-Einstellungen"
-
-#: src/components/Settings/Tracearr/index.tsx
 msgid "Tracearr settings - Maintainerr"
 msgstr "Tracearr-Einstellungen – Maintainerr"
 
 #: src/components/Settings/Tracearr/index.tsx
 msgid "Tracearr settings could not be updated"
 msgstr "Tracearr-Einstellungen konnten nicht aktualisiert werden"
-
-#: src/components/Settings/Tracearr/index.tsx
-msgid "Tracearr settings updated"
-msgstr "Tracearr-Einstellungen aktualisiert"
 
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "Transform"
@@ -4333,16 +4227,16 @@ msgstr "Wahr"
 msgid "Turn it off in settings"
 msgstr "In den Einstellungen deaktivieren"
 
-#: src/components/Settings/Metadata/index.tsx
-msgid "TVDB must be configured before it can be primary"
-msgstr "TVDB muss konfiguriert sein, bevor es als primäre Quelle festgelegt werden kann"
+#: src/components/Settings/DownloadClient/index.tsx
+msgid "Turn off if you cross-seed."
+msgstr ""
 
 #: src/components/Calendar/index.tsx
 #: src/components/StorageMetrics/index.tsx
 msgid "Type"
 msgstr "Typ"
 
-#: src/components/Settings/Notifications/CreateNotificationModal/index.tsx
+#: src/components/Settings/Notifications/NotificationAgentCard.tsx
 msgid "Types *"
 msgstr "Typen *"
 
@@ -4578,6 +4472,10 @@ msgstr "Regeln verwenden"
 msgid "Used"
 msgstr "Verwendet"
 
+#: src/components/Settings/DownloadClient/index.tsx
+msgid "Used only when the client sets no ratio or idle limit. Minimum 0.5."
+msgstr ""
+
 #: src/components/Settings/About/index.tsx
 msgid "Useful Links"
 msgstr "Nützliche Links"
@@ -4645,6 +4543,10 @@ msgstr "Warnung"
 msgid "Warning"
 msgstr "Warnung"
 
+#: src/components/Services/ServicesHub.tsx
+msgid "Watch statistics"
+msgstr ""
+
 #: src/components/Common/MediaCard/MediaModal/WatchStatsPanel/index.tsx
 msgid "Watch time"
 msgstr "Wiedergabezeit"
@@ -4677,12 +4579,8 @@ msgstr "Willkommen bei Maintainerr!"
 msgid "What we send"
 msgstr "Was wir senden"
 
-#: src/components/Settings/DownloadClient/index.tsx
+#: src/components/Services/useServices.tsx
 msgid "When media is removed through Radarr, Sonarr or Sportarr, Maintainerr can remove the completed download (and optionally its data) from your download client. The download is matched via that service's download history, so media removed without one of them is left untouched."
-msgstr ""
-
-#: src/components/Settings/DownloadClient/index.tsx
-msgid "Whether a download has finished seeding is decided by the client's own ratio or idle-time limits. This ratio only applies when the client enforces no limit, and can't be set below 0.5."
 msgstr ""
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx

@@ -231,8 +231,13 @@ The built Docker image includes `/opt/app/healthcheck.sh` as its
 Project MCP server config lives in `.codex/config.toml` for Codex, `.mcp.json`
 for Claude Code, and `.vscode/mcp.json` for VS Code. Keep all three files in
 sync when adding or changing servers. The configured GitHub MCP server is
-read-only, and Playwright MCP screenshots should be written under
-`.playwright-mcp/`.
+read-only.
+
+For browser checks, always drive the globally installed `playwright` library in
+devbox, not the Playwright MCP server (it often fails to connect). Require it
+from `npm root -g` (`/usr/local/lib/node_modules/playwright`) and launch
+Chromium with `executablePath: '/usr/bin/chromium'` and
+`args: ['--no-sandbox']`. Write screenshots under `.playwright-mcp/`.
 
 ### Package-Specific Commands
 

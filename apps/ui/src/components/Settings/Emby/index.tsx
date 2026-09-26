@@ -17,15 +17,14 @@ import {
   useTestEmby,
 } from '../../../api/settings'
 import { getApiErrorMessage } from '../../../utils/ApiError'
-import Alert from '../../Common/Alert'
-import DocsButton from '../../Common/DocsButton'
 import SaveButton from '../../Common/SaveButton'
 import TestingButton from '../../Common/TestingButton'
 import { InputGroup } from '../../Forms/Input'
 import { Select } from '../../Forms/Select'
 import EmbyLoginButton from '../../Login/Emby/EmbyLoginButton'
-import SettingsAlertSlot from '../SettingsAlertSlot'
+import { ServiceActions } from '../ServiceCard'
 import { useSettingsFeedback } from '../useSettingsFeedback'
+import { releaseVersion } from '../../../utils/version'
 
 const EmbySettingDeleteSchema = z.object({
   emby_url: z.literal(''),
@@ -54,7 +53,7 @@ const EmbySettings = () => {
     Array<{ id: string; name: string }>
   >([])
   const { feedback, showUpdated, showError, clearError } = useSettingsFeedback({
-    updated: t`Emby settings updated`,
+    updated: t`Saved`,
     updateError: t`Emby settings could not be updated`,
   })
 
@@ -137,9 +136,9 @@ const EmbySettings = () => {
       if (result.code === 1) {
         setTestResult({
           status: true,
-          message: result.serverName
-            ? t`Connected to ${{ serverName: result.serverName }} (v${{ version: result.version }})`
-            : result.message,
+          message: result.version
+            ? t`Success! (${{ version: releaseVersion(result.version) }})`
+            : t`Success!`,
         })
         setTestedSettings({ url: embyUrl, apiKey: embyApiKey })
 
@@ -210,34 +209,6 @@ const EmbySettings = () => {
     <>
       <title>{t`Emby settings - Maintainerr`}</title>
       <div className="h-full w-full">
-        <div className="section h-full w-full">
-          <h3 className="heading">
-            <Trans>Emby Settings</Trans>
-          </h3>
-          <p className="description">
-            <Trans>
-              Configure your Emby server connection. Enter the server URL plus
-              an API key, or sign in with admin credentials to obtain one.
-            </Trans>
-          </p>
-        </div>
-
-        <SettingsAlertSlot>
-          {feedback || testResult ? (
-            <div className="space-y-4">
-              {feedback ? (
-                <Alert type={feedback.type} title={feedback.title} />
-              ) : null}
-              {testResult ? (
-                <Alert
-                  type={testResult.status ? 'success' : 'error'}
-                  title={testResult.message}
-                />
-              ) : null}
-            </div>
-          ) : null}
-        </SettingsAlertSlot>
-
         <div className="section">
           <form onSubmit={handleSubmit(onSubmit)}>
             <Controller
@@ -318,11 +289,18 @@ const EmbySettings = () => {
             </div>
 
             <div className="actions mt-5 w-full">
-              <div className="flex w-full flex-wrap sm:flex-nowrap">
-                <span className="m-auto rounded-md shadow-xs sm:mr-auto sm:ml-3">
-                  <DocsButton page="Configuration/#emby" />
-                </span>
-                <div className="m-auto mt-3 flex xs:mt-0 sm:m-0 sm:justify-end">
+              <ServiceActions
+                status={
+                  feedback ??
+                  (testResult
+                    ? {
+                        type: testResult.status ? 'success' : 'error',
+                        title: testResult.message,
+                      }
+                    : null)
+                }
+              >
+                <div className="ml-auto flex justify-end">
                   <EmbyLoginButton
                     embyUrl={embyUrl}
                     onAuthenticated={(result) => {
@@ -331,9 +309,7 @@ const EmbySettings = () => {
                       if (result.users) setEmbyUsers(result.users)
                       setTestResult({
                         status: true,
-                        message: result.serverName
-                          ? t`Authenticated against ${{ serverName: result.serverName }}`
-                          : t`Authenticated`,
+                        message: t`Authenticated`,
                       })
                       setTestedSettings({
                         url: embyUrl,
@@ -365,7 +341,7 @@ const EmbySettings = () => {
                     />
                   </span>
                 </div>
-              </div>
+              </ServiceActions>
             </div>
           </form>
         </div>

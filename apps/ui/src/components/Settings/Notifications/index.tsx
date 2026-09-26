@@ -1,186 +1,97 @@
 import { Trans, useLingui } from '@lingui/react/macro'
+import { useQueryClient } from '@tanstack/react-query'
+import { useState } from 'react'
 import {
-  DocumentAddIcon,
-  PlusCircleIcon,
-  TrashIcon,
-} from '@heroicons/react/solid'
-
-import { useEffect, useState } from 'react'
-import GetApiHandler, { DeleteApiHandler } from '../../../utils/ApiHandler'
-import Button from '../../Common/Button'
-import {
-  SettingsFeedbackAlert,
-  useSettingsFeedback,
-} from '../useSettingsFeedback'
-import CreateNotificationModal, {
   type AgentConfiguration,
-} from './CreateNotificationModal'
+  useNotificationAgents,
+  useNotificationConfigurations,
+  type UseNotificationConfigurationsQueryKey,
+  useNotificationTypes,
+} from '../../../api/notifications'
+import { DeleteApiHandler } from '../../../utils/ApiHandler'
+import { ServiceCardAddTile } from '../ServiceCard'
+import NotificationAgentCard from './NotificationAgentCard'
 
 const NotificationSettings = () => {
   const { t } = useLingui()
-  const [addModalActive, setAddModalActive] = useState(false)
-  const [configurations, setConfigurations] = useState<AgentConfiguration[]>()
-  const [editConfig, setEditConfig] = useState<AgentConfiguration>()
-  const { feedback, showSuccess } = useSettingsFeedback()
+  const queryClient = useQueryClient()
+  const { data: configurations } = useNotificationConfigurations()
+  const { data: agents } = useNotificationAgents()
+  const { data: types } = useNotificationTypes()
+  const [adding, setAdding] = useState(false)
+  // The agent just added, so its card can confirm the save.
+  const [createdId, setCreatedId] = useState<number>()
 
-  useEffect(() => {
-    GetApiHandler<AgentConfiguration[]>('/notifications/configurations').then(
-      (configs) => setConfigurations(configs),
-    )
-  }, [])
-
-  const updateAddModalActive = (active: boolean) => {
-    setAddModalActive(active)
-    GetApiHandler<AgentConfiguration[]>('/notifications/configurations').then(
-      (configs) => setConfigurations(configs),
-    )
+  // The services hub reads the same query, so it follows along.
+  const refetch = async () => {
+    const queryKey = [
+      'notifications',
+      'configurations',
+    ] satisfies UseNotificationConfigurationsQueryKey
+    await queryClient.refetchQueries({ queryKey })
+    return queryClient.getQueryData<AgentConfiguration[]>(queryKey) ?? []
   }
 
-  const doEdit = (id: number) => {
-    const config = configurations?.find((c) => c.id === id)
-
-    setEditConfig(config)
-    updateAddModalActive(!addModalActive)
-  }
-
-  function confirmedDelete(id: any) {
-    DeleteApiHandler(`/notifications/configuration/${id}`).then(() => {
-      setConfigurations(configurations?.filter((c) => c.id !== id))
-    })
+  const deleteAgent = async (id: number) => {
+    try {
+      const response = await DeleteApiHandler<{ code: number }>(
+        `/notifications/configuration/${id}`,
+      )
+      if (response.code !== 1) return false
+      await refetch()
+      return true
+    } catch {
+      return false
+    }
   }
 
   return (
     <>
       <title>{t`Notification settings - Maintainerr`}</title>
-      <div className="h-full w-full">
-        <div className="section h-full w-full">
-          <h3 className="heading">
-            <Trans>Notification Settings</Trans>
-          </h3>
-          <p className="description">
-            <Trans>Notification Agent configuration</Trans>
-          </p>
-        </div>
-
-        <SettingsFeedbackAlert feedback={feedback} />
-
-        <div className="max-w-6xl">
-          <ul className="mt-4 grid grid-cols-1 gap-6 lg:grid-cols-2 xl:grid-cols-3">
-            {configurations?.map((config) => (
-              <li
-                key={config.id}
-                className="h-full rounded-xl bg-zinc-800 p-4 text-zinc-400 shadow-sm ring-1 ring-zinc-700"
-              >
-                <div className="mb-2 flex items-center gap-x-3">
-                  <div className="text-base font-bold text-white sm:text-lg">
-                    {config.name}
-                  </div>
-                  {!config.enabled && (
-                    <div className="rounded-sm bg-maintainerr-600 px-2 py-0.5 text-xs text-zinc-200 shadow-md">
-                      <Trans>Disabled</Trans>
-                    </div>
-                  )}
-                </div>
-
-                <p className="mb-4 space-x-2 truncate text-gray-300">
-                  <span className="font-semibold">{config.agent}</span>
-                </p>
-                <div>
-                  <Button
-                    buttonType="twin-primary-l"
-                    buttonSize="md"
-                    className="h-10 w-1/2"
-                    onClick={() => {
-                      if (config.id) {
-                        doEdit(config.id)
-                      }
-                    }}
-                  >
-                    {<DocumentAddIcon className="m-auto" />}{' '}
-                    <p className="m-auto font-semibold">
-                      <Trans>Edit</Trans>
-                    </p>
-                  </Button>
-                  <DeleteButton
-                    onDeleteRequested={() => confirmedDelete(config.id)}
-                  />
-                </div>
+      {/* Reserve the card-row height so the list doesn't pop in / shift the
+          page (no layout shift) while the agents load. The cards wait for the
+          agent and type lists, since every form is built from them. */}
+      <ul className="flex min-h-39 max-w-6xl flex-col gap-6">
+        {configurations && agents && types ? (
+          <>
+            {configurations.map((config) => (
+              <li key={config.id}>
+                <NotificationAgentCard
+                  config={config}
+                  agents={agents}
+                  types={types}
+                  created={config.id === createdId}
+                  onSaved={() => void refetch()}
+                  onDelete={deleteAgent}
+                />
               </li>
             ))}
-
-            <li className="flex h-full items-center justify-center rounded-xl border-2 border-dashed border-gray-400 bg-zinc-800 p-4 text-zinc-400 shadow-sm">
-              <button
-                type="button"
-                className="add-button m-auto flex h-9 rounded-md bg-maintainerr-600 px-4 text-zinc-200 shadow-md hover:bg-maintainerr"
-                onClick={() => updateAddModalActive(!addModalActive)}
-              >
-                {<PlusCircleIcon className="m-auto h-5" />}
-                <p className="m-auto ml-1 font-semibold">
-                  <Trans>Add Agent</Trans>
-                </p>
-              </button>
+            <li>
+              {adding ? (
+                <NotificationAgentCard
+                  agents={agents}
+                  types={types}
+                  onSaved={async () => {
+                    const before = new Set(configurations.map((c) => c.id))
+                    const after = await refetch()
+                    setCreatedId(after.find((c) => !before.has(c.id))?.id)
+                    // Close the draft once its saved card is in the list.
+                    setAdding(false)
+                  }}
+                  onDelete={deleteAgent}
+                  onCancel={() => setAdding(false)}
+                />
+              ) : (
+                <ServiceCardAddTile
+                  label={<Trans>Add Agent</Trans>}
+                  onClick={() => setAdding(true)}
+                />
+              )}
             </li>
-          </ul>
-        </div>
-
-        {addModalActive ? (
-          <CreateNotificationModal
-            onCancel={() => {
-              updateAddModalActive(!addModalActive)
-              setEditConfig(undefined)
-            }}
-            onSave={() => {
-              updateAddModalActive(!addModalActive)
-              setEditConfig(undefined)
-              showSuccess(t`Notification agent saved`)
-            }}
-            onTest={() => {}}
-            {...(editConfig
-              ? {
-                  selected: {
-                    id: editConfig.id!,
-                    name: editConfig.name!,
-                    enabled: editConfig.enabled!,
-                    agent: editConfig.agent!,
-                    types: editConfig.types!,
-                    options: editConfig.options!,
-                    aboutScale: editConfig.aboutScale!,
-                  },
-                }
-              : {})}
-          />
+          </>
         ) : null}
-      </div>
+      </ul>
     </>
-  )
-}
-
-const DeleteButton = ({
-  onDeleteRequested,
-}: {
-  onDeleteRequested: () => void
-}) => {
-  const [showSureDelete, setShowSureDelete] = useState(false)
-
-  return (
-    <Button
-      buttonSize="md"
-      buttonType="twin-secondary-r"
-      className="h-10 w-1/2"
-      onClick={() => {
-        if (showSureDelete) {
-          onDeleteRequested()
-          setShowSureDelete(false)
-        } else {
-          setShowSureDelete(true)
-        }
-      }}
-    >
-      {<TrashIcon className="m-auto" />}{' '}
-      <p className="m-auto font-semibold">
-        {showSureDelete ? <Trans>Are you sure?</Trans> : <Trans>Delete</Trans>}
-      </p>
-    </Button>
   )
 }
 

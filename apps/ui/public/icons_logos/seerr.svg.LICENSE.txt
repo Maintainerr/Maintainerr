@@ -1,0 +1,12 @@
+seerr.svg
+
+Source:   https://github.com/seerr-team/seerr/blob/55c2d541e6a1db41275460706abb5d7cbc481a63/public/os_icon.svg
+Author:   Seerr contributors
+License:  MIT License (MIT)
+URL:      https://opensource.org/license/mit
+
+This file is an unmodified copy of the upstream source above.
+
+Note: the Seerr name and logo belong to the Seerr project. This icon is
+used to identify the Seerr integration in the Maintainerr UI; nothing in
+this file implies endorsement by the Seerr project.

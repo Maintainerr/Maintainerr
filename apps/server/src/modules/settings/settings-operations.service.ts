@@ -6,7 +6,9 @@ import {
   MediaServerType,
   MINIMUM_SPORTARR_VERSION,
   OmbiSetting,
+  RadarrSetting,
   SeerrSetting,
+  SonarrSetting,
   StreamystatsSetting,
   TautulliSetting,
   TracearrConnection,
@@ -181,7 +183,7 @@ export class SettingsOperationsService {
   // ==========================================================================
 
   public async addRadarrSetting(
-    settings: Omit<RadarrSettings, 'id' | 'collections'>,
+    settings: RadarrSetting,
   ): Promise<RadarrSettingResponseDto> {
     try {
       settings.url = settings.url.toLowerCase();
@@ -203,7 +205,7 @@ export class SettingsOperationsService {
   }
 
   public async updateRadarrSetting(
-    settings: Omit<RadarrSettings, 'collections'>,
+    settings: RadarrSetting & { id: number },
   ): Promise<RadarrSettingResponseDto> {
     try {
       settings.url = settings.url.toLowerCase();
@@ -676,7 +678,7 @@ export class SettingsOperationsService {
         ),
       };
     } catch (error) {
-      logConnectionTestError(this.logger, 'Jellyfin');
+      logConnectionTestError(this.logger, 'Jellyfin', error);
       return {
         status: 'NOK',
         code: 0,
@@ -842,7 +844,7 @@ export class SettingsOperationsService {
         ),
       };
     } catch (error) {
-      logConnectionTestError(this.logger, 'Emby');
+      logConnectionTestError(this.logger, 'Emby', error);
       return {
         status: 'NOK',
         code: 0,
@@ -998,7 +1000,7 @@ export class SettingsOperationsService {
   }
 
   public async addSonarrSetting(
-    settings: Omit<SonarrSettings, 'id' | 'collections'>,
+    settings: SonarrSetting,
   ): Promise<SonarrSettingResponseDto> {
     try {
       settings.url = settings.url.toLowerCase();
@@ -1020,7 +1022,7 @@ export class SettingsOperationsService {
   }
 
   public async updateSonarrSetting(
-    settings: Omit<SonarrSettings, 'collections'>,
+    settings: SonarrSetting & { id: number },
   ): Promise<SonarrSettingResponseDto> {
     try {
       settings.url = settings.url.toLowerCase();
@@ -1442,7 +1444,7 @@ export class SettingsOperationsService {
           }
         : { status: 'NOK', code: 0, message: 'Failure' };
     } catch (error) {
-      logConnectionTestError(this.logger, 'Tautulli');
+      logConnectionTestError(this.logger, 'Tautulli', error);
       return {
         status: 'NOK',
         code: 0,
@@ -1477,7 +1479,7 @@ export class SettingsOperationsService {
           }
         : { status: 'NOK', code: 0, message: 'Failure' };
     } catch (error) {
-      logConnectionTestError(this.logger, 'Streamystats');
+      logConnectionTestError(this.logger, 'Streamystats', error);
       return {
         status: 'NOK',
         code: 0,
@@ -1519,7 +1521,7 @@ export class SettingsOperationsService {
         ? { status: 'OK', code: 1, message: resp.version }
         : { status: 'NOK', code: 0, message: 'Failure' };
     } catch (error) {
-      logConnectionTestError(this.logger, 'Radarr');
+      logConnectionTestError(this.logger, 'Radarr', error);
       return {
         status: 'NOK',
         code: 0,
@@ -1550,7 +1552,7 @@ export class SettingsOperationsService {
         ? { status: 'OK', code: 1, message: resp.version }
         : { status: 'NOK', code: 0, message: 'Failure' };
     } catch (error) {
-      logConnectionTestError(this.logger, 'Sonarr');
+      logConnectionTestError(this.logger, 'Sonarr', error);
       return {
         status: 'NOK',
         code: 0,
@@ -1591,7 +1593,7 @@ export class SettingsOperationsService {
         ? { status: 'OK', code: 1, message: resp.version }
         : { status: 'NOK', code: 0, message: 'Failure' };
     } catch (error) {
-      logConnectionTestError(this.logger, 'Sportarr');
+      logConnectionTestError(this.logger, 'Sportarr', error);
       return {
         status: 'NOK',
         code: 0,
@@ -1618,7 +1620,7 @@ export class SettingsOperationsService {
         ? { status: 'OK', code: 1, message: resp.version }
         : { status: 'NOK', code: 0, message: 'Failure' };
     } catch (error) {
-      logConnectionTestError(this.logger, 'Plex');
+      logConnectionTestError(this.logger, 'Plex', error);
       return {
         status: 'NOK',
         code: 0,
@@ -1664,7 +1666,7 @@ export class SettingsOperationsService {
           };
       }
     } catch (error) {
-      logConnectionTestError(this.logger, 'Plex auth');
+      logConnectionTestError(this.logger, 'Plex auth', error);
       return {
         status: 'NOK',
         code: 0,

@@ -19,6 +19,8 @@ import { Rules } from '../rules/entities/rules.entities';
 import { SettingsDataService } from '../settings/settings-data.service';
 import { VersionService } from '../version/version.service';
 import { TelemetryService } from './telemetry.service';
+import { RadarrSettings } from '../settings/entities/radarr_settings.entities';
+import { SonarrSettings } from '../settings/entities/sonarr_settings.entities';
 
 /** Collector allowlist: word characters, dots, dashes, plus. */
 const COLLECTOR_TOKEN = /^[\w.\-+]+$/;
@@ -98,6 +100,8 @@ describe('TelemetryService', () => {
     settings.getRadarrSettingsCount.mockResolvedValue(0);
     settings.getSonarrSettingsCount.mockResolvedValue(0);
     settings.getSportarrSettingsCount.mockResolvedValue(0);
+    settings.getRadarrSettings.mockResolvedValue([]);
+    settings.getSonarrSettings.mockResolvedValue([]);
     settings.seerrConfigured.mockReturnValue(false);
     settings.tautulliConfigured.mockReturnValue(false);
     settings.downloadClientConfigured.mockReturnValue(false);
@@ -363,8 +367,14 @@ describe('TelemetryService', () => {
       collectionRepo.count.mockImplementation(async (options?: any) =>
         options?.where?.overlayEnabled ? 4 : 0,
       );
-      settings.radarr_tag_exclusions = true;
-      settings.sonarr_tag_exclusions = false;
+      // Set per server; one Radarr server with it on is enough.
+      settings.getRadarrSettings.mockResolvedValue([
+        { tagExclusions: false },
+        { tagExclusions: true },
+      ] as RadarrSettings[]);
+      settings.getSonarrSettings.mockResolvedValue([
+        { tagExclusions: false },
+      ] as SonarrSettings[]);
       settings.metadata_provider_preference =
         MetadataProviderPreference.TVDB_PRIMARY;
 
@@ -387,8 +397,12 @@ describe('TelemetryService', () => {
      */
     it('emits only the feature tokens the collector README discloses', async () => {
       collectionRepo.count.mockResolvedValue(1); // every per-collection opt-in on
-      settings.radarr_tag_exclusions = true;
-      settings.sonarr_tag_exclusions = true;
+      settings.getRadarrSettings.mockResolvedValue([
+        { tagExclusions: true },
+      ] as RadarrSettings[]);
+      settings.getSonarrSettings.mockResolvedValue([
+        { tagExclusions: true },
+      ] as SonarrSettings[]);
       settings.metadata_provider_preference =
         MetadataProviderPreference.TMDB_PRIMARY;
 
@@ -541,8 +555,12 @@ describe('TelemetryService', () => {
       settings.downloadClientConfigured.mockReturnValue(true);
       settings.streamystats_url = 'http://streamystats.local';
       settings.tracearr_url = 'http://tracearr.local';
-      settings.radarr_tag_exclusions = true;
-      settings.sonarr_tag_exclusions = true;
+      settings.getRadarrSettings.mockResolvedValue([
+        { tagExclusions: true },
+      ] as RadarrSettings[]);
+      settings.getSonarrSettings.mockResolvedValue([
+        { tagExclusions: true },
+      ] as SonarrSettings[]);
       collectionRepo.count.mockImplementation(async (options?: any) =>
         options?.where?.overlayEnabled ? 1 : 30,
       );

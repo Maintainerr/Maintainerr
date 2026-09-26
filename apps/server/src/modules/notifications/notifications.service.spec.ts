@@ -5,7 +5,10 @@ import {
   CollectionMediaAddedDto,
   CollectionMediaRemovedDto,
 } from '../events/events.dto';
-import { NotificationType } from './notifications-interfaces';
+import {
+  NotificationAgentKey,
+  NotificationType,
+} from './notifications-interfaces';
 import { NotificationService } from './notifications.service';
 
 describe('NotificationService', () => {
@@ -34,6 +37,25 @@ describe('NotificationService', () => {
 
     return { service, mediaServerFactory };
   };
+
+  it('sends a test through an agent that is not switched on yet', () => {
+    const { service } = createService();
+
+    const agent = service.createDummyTestAgent({
+      agent: NotificationAgentKey.GOTIFY,
+      name: 'Draft',
+      enabled: false,
+      types: [],
+      aboutScale: 3,
+      options: {
+        agent: NotificationAgentKey.GOTIFY,
+        url: 'http://gotify.local',
+        token: 'token',
+      },
+    });
+
+    expect(agent.shouldSend()).toBe(true);
+  });
 
   it('renders a movie by title even when the server reports a parent (Emby/Jellyfin library folder)', async () => {
     // Emby/Jellyfin set parentId to the containing library folder for movies;

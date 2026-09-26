@@ -1,0 +1,12 @@
+radarr.svg
+
+Source:   https://github.com/Radarr/Radarr/blob/b40c63dcfe0e51e1e2796d41a0e129bf04ff5908/Logo/Radarr.svg
+Author:   Radarr contributors
+License:  GNU General Public License v3.0 (GPL-3.0)
+URL:      https://www.gnu.org/licenses/gpl-3.0.html
+
+This file is an unmodified copy of the upstream source above.
+
+Note: the Radarr name and logo belong to the Radarr project. This icon is
+used to identify the Radarr integration in the Maintainerr UI; nothing in
+this file implies endorsement by the Radarr project.

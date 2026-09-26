@@ -5,7 +5,7 @@ import Button from '../../../../Common/Button'
 import { SmallLoadingSpinner } from '../../../../Common/LoadingSpinner'
 import Modal from '../../../../Common/Modal'
 import ToggleItem from '../../../../Common/ToggleButton'
-import type { AgentConfiguration } from '../../../../Settings/Notifications/CreateNotificationModal'
+import type { AgentConfiguration } from '../../../../../api/notifications'
 
 interface ConfigureNotificationModal {
   onCancel: () => void

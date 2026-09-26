@@ -6,7 +6,7 @@ import {
   buildQueryLoadingResult,
   buildQuerySuccessResult,
 } from '../../../../../test-utils/queryResults'
-import type { ISonarrSetting } from '../../../../Settings/Sonarr'
+import type { IServarrSetting } from '../../../../../api/settings'
 import ArrAction from './index'
 
 vi.mock('../../../../../api/settings', () => ({
@@ -19,7 +19,7 @@ describe('ArrAction', () => {
   beforeEach(() => {
     useServarrSettingsMock.mockReset()
     useServarrSettingsMock.mockReturnValue(
-      buildQuerySuccessResult<ISonarrSetting[]>([]),
+      buildQuerySuccessResult<IServarrSetting[]>([]),
     )
   })
 
@@ -27,7 +27,7 @@ describe('ArrAction', () => {
     const onUpdate = vi.fn()
 
     useServarrSettingsMock.mockReturnValue(
-      buildQueryLoadingResult<ISonarrSetting[]>(),
+      buildQueryLoadingResult<IServarrSetting[]>(),
     )
 
     render(
@@ -56,7 +56,7 @@ describe('ArrAction', () => {
     const onUpdate = vi.fn()
 
     useServarrSettingsMock.mockReturnValue(
-      buildQuerySuccessResult<ISonarrSetting[]>([]),
+      buildQuerySuccessResult<IServarrSetting[]>([]),
     )
 
     render(
@@ -111,7 +111,7 @@ describe('ArrAction', () => {
   })
 
   it('shows quality profile action after a Sonarr server is selected', async () => {
-    const sonarrSettings: ISonarrSetting[] = [
+    const sonarrSettings: IServarrSetting[] = [
       {
         id: 12,
         serverName: 'Primary Sonarr',
