@@ -43,7 +43,7 @@ describe('MediaServerSetupGuard', () => {
     vi.unstubAllEnvs()
   })
 
-  it('redirects to settings outside development when setup is incomplete', async () => {
+  it('redirects to the media server page outside development when setup is incomplete', async () => {
     vi.stubEnv('MODE', 'test')
     useMediaServerType.mockReturnValue({
       isLoading: false,
@@ -56,7 +56,7 @@ describe('MediaServerSetupGuard', () => {
     render(<MediaServerSetupGuard />)
 
     expect(screen.getByTestId('navigate').getAttribute('data-to')).toBe(
-      '/settings/main',
+      '/services/media-server',
     )
     expect(toastError).not.toHaveBeenCalled()
   })
@@ -86,16 +86,13 @@ describe('MediaServerSetupGuard', () => {
     expect(isAllowedDuringMediaServerSetup('/settings/logs/live')).toBe(true)
   })
 
-  it('allows the selected media server settings route during setup', async () => {
+  it('allows the media server page but no other service or settings page during setup', async () => {
     const { isAllowedDuringMediaServerSetup } =
       await import('./MediaServerSetupGuard')
 
-    expect(
-      isAllowedDuringMediaServerSetup('/settings/jellyfin', 'jellyfin' as any),
-    ).toBe(true)
-    expect(
-      isAllowedDuringMediaServerSetup('/settings/plex', 'plex' as any),
-    ).toBe(true)
+    expect(isAllowedDuringMediaServerSetup('/services/media-server')).toBe(true)
+    expect(isAllowedDuringMediaServerSetup('/services/radarr')).toBe(false)
+    expect(isAllowedDuringMediaServerSetup('/settings/main')).toBe(false)
   })
 
   it('skips the guard entirely in development mode by default', async () => {
@@ -129,7 +126,7 @@ describe('MediaServerSetupGuard', () => {
     render(<MediaServerSetupGuard />)
 
     expect(screen.getByTestId('navigate').getAttribute('data-to')).toBe(
-      '/settings/main',
+      '/services/media-server',
     )
     expect(toastError).not.toHaveBeenCalled()
   })

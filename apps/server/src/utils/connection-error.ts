@@ -125,9 +125,13 @@ export const getErrorMessage = (
   return fallbackMessage;
 };
 
+// Carries the same short reason the UI shows, so the log answers "why".
 export const logConnectionTestError = (
   logger: MaintainerrLogger,
   serviceName: string,
+  error: unknown,
 ) => {
-  logger.error(`${serviceName} connection test failed`);
+  logger.error(
+    `${serviceName} connection test failed: ${formatConnectionFailureMessage(error, getErrorMessage(error))}`,
+  );
 };

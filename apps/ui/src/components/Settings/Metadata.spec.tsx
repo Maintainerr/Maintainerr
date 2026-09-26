@@ -1,8 +1,23 @@
 import { MetadataProviderPreference } from '@maintainerr/contracts'
-import { fireEvent, render, screen, waitFor } from '../../test-utils/render'
+import { QueryClientProvider } from '@tanstack/react-query'
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '../../test-utils/render'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createDeferred } from '../../test-utils/createDeferred'
+import { createTestQueryClient } from '../../test-utils/queryClient'
 import MetadataSettings from './Metadata'
+
+const renderMetadata = () =>
+  render(
+    <QueryClientProvider client={createTestQueryClient()}>
+      <MetadataSettings />
+    </QueryClientProvider>,
+  )
 
 const getApiHandler = vi.fn()
 const deleteApiHandler = vi.fn()
@@ -87,11 +102,8 @@ describe('MetadataSettings', () => {
       throw new Error(`Unexpected request: ${url}`)
     })
 
-    render(<MetadataSettings />)
+    renderMetadata()
 
-    expect(
-      screen.getByRole('heading', { name: 'Metadata Settings' }),
-    ).toBeTruthy()
     const tmdbSwitch = screen.getByRole('switch', {
       name: 'TMDB primary',
     })
@@ -103,7 +115,9 @@ describe('MetadataSettings', () => {
     expect(tvdbSwitch).toBeTruthy()
     expect(screen.getAllByText('TVDB').length).toBeGreaterThan(0)
     expect(screen.getAllByRole('listitem')).toHaveLength(2)
-    expect(screen.queryByRole('status')).toBeNull()
+    screen
+      .getAllByRole('status')
+      .forEach((status) => expect(status.textContent).toBe(''))
 
     expect(tmdbSwitch.getAttribute('aria-disabled')).toBe('true')
     expect(tvdbSwitch.getAttribute('aria-disabled')).toBe('true')
@@ -122,7 +136,7 @@ describe('MetadataSettings', () => {
       throw new Error(`Unexpected request: ${url}`)
     })
 
-    render(<MetadataSettings />)
+    renderMetadata()
 
     await waitFor(() => {
       expect(
@@ -149,7 +163,7 @@ describe('MetadataSettings', () => {
     })
 
     expect(
-      await screen.findByText('Metadata provider preference updated'),
+      await within(screen.getAllByRole('listitem')[1]).findByText('Saved'),
     ).toBeTruthy()
     expect(
       screen
@@ -161,7 +175,7 @@ describe('MetadataSettings', () => {
   it('falls back to TMDB as primary when TVDB is selected without a configured API key', async () => {
     currentPreference = MetadataProviderPreference.TVDB_PRIMARY
 
-    render(<MetadataSettings />)
+    renderMetadata()
 
     await waitFor(() => {
       expect(
@@ -183,7 +197,7 @@ describe('MetadataSettings', () => {
     ).toBe('true')
   })
 
-  it('renders provider feedback in the shared page feedback slot above the cards', async () => {
+  it('shows provider feedback beside the title of that provider card', async () => {
     postApiHandler.mockImplementation((url: string) => {
       if (url === '/settings/test/tmdb') {
         return Promise.resolve({
@@ -204,7 +218,7 @@ describe('MetadataSettings', () => {
       throw new Error(`Unexpected request: ${url}`)
     })
 
-    render(<MetadataSettings />)
+    renderMetadata()
 
     const [tmdbApiKeyInput] = await screen.findAllByLabelText('API Key')
     fireEvent.change(tmdbApiKeyInput, { target: { value: 'tmdb-key' } })
@@ -213,27 +227,16 @@ describe('MetadataSettings', () => {
       screen.getAllByRole('button', { name: 'Test Connection' })[0],
     )
 
-    const testStatusMessage = await screen.findByText(
-      'Successfully connected to TMDB',
-    )
-    const firstProviderCard = screen.getAllByRole('listitem')[0]
+    const tmdbCard = screen.getAllByRole('listitem')[0]
 
-    expect(
-      testStatusMessage.compareDocumentPosition(firstProviderCard) &
-        Node.DOCUMENT_POSITION_FOLLOWING,
-    ).not.toBe(0)
+    expect(tmdbCard.contains(await screen.findByText('Success!'))).toBe(true)
 
     fireEvent.click(screen.getAllByRole('button', { name: 'Save Changes' })[0])
 
-    const saveStatusMessage = await screen.findByText('TMDB settings updated')
-
-    expect(
-      saveStatusMessage.compareDocumentPosition(firstProviderCard) &
-        Node.DOCUMENT_POSITION_FOLLOWING,
-    ).not.toBe(0)
+    expect(tmdbCard.contains(await screen.findByText('Saved'))).toBe(true)
   })
 
-  it('shows the refresh-started message when metadata refresh succeeds', async () => {
+  it('shows that a refresh is running once it starts', async () => {
     postApiHandler.mockImplementation((url: string) => {
       if (url === '/settings/metadata/refresh/tmdb') {
         return Promise.resolve({
@@ -246,7 +249,7 @@ describe('MetadataSettings', () => {
       throw new Error(`Unexpected request: ${url}`)
     })
 
-    render(<MetadataSettings />)
+    renderMetadata()
 
     await waitFor(() => {
       expect(
@@ -262,13 +265,25 @@ describe('MetadataSettings', () => {
       screen.getAllByRole('button', { name: 'Refresh metadata' })[0],
     )
 
-    expect(
-      await screen.findByText('TMDB metadata refresh started'),
-    ).toBeTruthy()
+    expect(await screen.findByText('Refreshing')).toBeTruthy()
+  })
+
+  it('tests TMDB with the built-in key while its field is empty', async () => {
+    renderMetadata()
+
+    await screen.findAllByLabelText('API Key')
+    const [tmdbTest, tvdbTest] = screen.getAllByRole('button', {
+      name: 'Test Connection',
+    }) as HTMLButtonElement[]
+
+    await waitFor(() => {
+      expect(tmdbTest.disabled).toBe(false)
+    })
+    expect(tvdbTest.disabled).toBe(true)
   })
 
   it('keeps Save Changes enabled regardless of whether the API key has changed', async () => {
-    render(<MetadataSettings />)
+    renderMetadata()
 
     await screen.findAllByLabelText('API Key')
 
@@ -279,44 +294,6 @@ describe('MetadataSettings', () => {
         })[0] as HTMLButtonElement
       ).disabled,
     ).toBe(false)
-  })
-
-  it('uses stacked full-width action buttons on mobile and keeps inline buttons on larger screens', async () => {
-    const { container } = render(<MetadataSettings />)
-
-    await screen.findAllByLabelText('API Key')
-
-    const actionButtons = [
-      ...screen.getAllByRole('button', { name: 'Test Connection' }),
-      ...screen.getAllByRole('button', { name: 'Save Changes' }),
-    ]
-
-    expect(actionButtons).toHaveLength(4)
-
-    actionButtons.forEach((button) => {
-      expect(button.className).toContain('w-full')
-      expect(button.className).toContain('sm:w-auto')
-
-      const wrapper = button.parentElement
-
-      expect(wrapper).toBeTruthy()
-      expect(wrapper?.className).toContain('w-full')
-      expect(wrapper?.className).toContain('sm:w-auto')
-    })
-
-    const actionRows = Array.from(container.querySelectorAll('div')).filter(
-      (element) =>
-        element.className.includes('flex-col') &&
-        element.className.includes('sm:flex-row') &&
-        element.className.includes('sm:justify-end'),
-    )
-
-    expect(actionRows).toHaveLength(2)
-    actionRows.forEach((row) => {
-      expect(row.className).toContain('flex-col')
-      expect(row.className).toContain('sm:flex-row')
-      expect(row.className).toContain('gap-3')
-    })
   })
 
   it('allows clearing a saved API key and saving the empty value', async () => {
@@ -338,7 +315,7 @@ describe('MetadataSettings', () => {
       message: 'Deleted',
     })
 
-    render(<MetadataSettings />)
+    renderMetadata()
 
     const [tmdbApiKeyInput] = await screen.findAllByLabelText('API Key')
 
@@ -394,7 +371,7 @@ describe('MetadataSettings', () => {
       throw new Error(`Unexpected request: ${url}`)
     })
 
-    render(<MetadataSettings />)
+    renderMetadata()
 
     await waitFor(() => {
       expect(
@@ -406,32 +383,25 @@ describe('MetadataSettings', () => {
 
     fireEvent.click(screen.getByRole('switch', { name: 'TVDB primary' }))
 
-    expect(
-      await screen.findByText('Metadata provider preference updated'),
-    ).toBeTruthy()
+    const [tmdbCard, tvdbCard] = screen.getAllByRole('listitem')
+    expect(await within(tvdbCard).findByText('Saved')).toBeTruthy()
 
     const [tmdbApiKeyInput] = await screen.findAllByLabelText('API Key')
     fireEvent.change(tmdbApiKeyInput, { target: { value: 'tmdb-key' } })
 
     await waitFor(() => {
-      expect(
-        screen.queryByText('Metadata provider preference updated'),
-      ).toBeNull()
+      expect(within(tvdbCard).queryByText('Saved')).toBeNull()
     })
 
     fireEvent.click(
       screen.getAllByRole('button', { name: 'Test Connection' })[0],
     )
 
-    expect(
-      await screen.findByText('Successfully connected to TMDB'),
-    ).toBeTruthy()
+    expect(await within(tmdbCard).findByText('Success!')).toBeTruthy()
 
     fireEvent.click(screen.getAllByRole('button', { name: 'Save Changes' })[0])
 
-    expect(await screen.findByText('TMDB settings updated')).toBeTruthy()
-    expect(
-      screen.queryByText('Metadata provider preference updated'),
-    ).toBeNull()
+    expect(await within(tmdbCard).findByText('Saved')).toBeTruthy()
+    expect(within(tvdbCard).queryByText('Saved')).toBeNull()
   })
 })

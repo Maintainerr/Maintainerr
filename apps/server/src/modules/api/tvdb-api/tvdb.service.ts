@@ -194,7 +194,7 @@ export class TvdbApiService extends ExternalApiService {
         ? { status: 'OK', code: 1, message: 'Success' }
         : { status: 'NOK', code: 0, message: 'Unexpected response' };
     } catch (error) {
-      logConnectionTestError(this.logger, 'TVDB');
+      logConnectionTestError(this.logger, 'TVDB', error);
       this.logger.debug(error);
 
       return {

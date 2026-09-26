@@ -48,17 +48,13 @@ const SeerrSettings = () => {
 
   return (
     <ExternalServiceSettingsPage
-      updatedMessage={t`Seerr settings updated`}
       updateErrorMessage={t`Seerr settings could not be updated`}
       pageTitle={t`Seerr settings - Maintainerr`}
-      heading={t`Seerr Settings`}
-      description={t`Seerr configuration`}
-      docsPage="Configuration/#seerr"
       settingsPath="/settings/seerr"
       testPath="/settings/test/seerr"
       schema={SeerrSettingFormSchema}
       fields={buildFields()}
-      testSuccessTitle="Seerr"
+      serviceName="Seerr"
       testFailureMessage={t`Failed to connect to Seerr. Verify URL and API key.`}
     />
   )

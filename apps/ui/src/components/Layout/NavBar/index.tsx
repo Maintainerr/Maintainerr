@@ -7,13 +7,14 @@ import {
   CollectionIcon,
   EyeIcon,
   PhotographIcon,
+  ServerIcon,
   XIcon,
 } from '@heroicons/react/outline'
 import { useLingui } from '@lingui/react/macro'
 import { ReactNode, use, useMemo, useRef } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import SearchContext from '../../../contexts/search-context'
-import { prefetchRoute } from '../../../router'
+import { prefetchHandlers } from '../../../router'
 import Messages from '../../Messages/Messages'
 import VersionStatus from '../../VersionStatus'
 import { useMediaServerSetupNavigationGuard } from '../MediaServerSetupGuard'
@@ -42,8 +43,8 @@ const NavBar: React.FC<NavBarProps> = ({ open, setClosed }) => {
   // Keep variable for potential future customization
   const collectionsLabel = t`Collections`
 
-  const navBarItems: NavBarLink[] = useMemo(() => {
-    const items: NavBarLink[] = [
+  const navBarItems: NavBarLink[] = useMemo(
+    () => [
       {
         key: '0',
         href: '/overview',
@@ -80,24 +81,29 @@ const NavBar: React.FC<NavBarProps> = ({ open, setClosed }) => {
         matchPattern: /^\/storage-metrics(?:\/.*)?$/,
       },
       {
+        key: '5',
+        href: '/overlays',
+        svgIcon: <PhotographIcon className="mr-3 h-6 w-6" />,
+        name: t`Overlays`,
+        matchPattern: /^\/overlays(?:\/.*)?$/,
+      },
+      {
+        key: '7',
+        href: '/services',
+        svgIcon: <ServerIcon className="mr-3 h-6 w-6" />,
+        name: t`Services`,
+        matchPattern: /^\/services(?:\/.*)?$/,
+      },
+      {
         key: '3',
         href: '/settings',
         svgIcon: <CogIcon className="mr-3 h-6 w-6" />,
         name: t`Settings`,
         matchPattern: /^\/settings(?:\/.*)?$/,
       },
-    ]
-
-    items.splice(5, 0, {
-      key: '5',
-      href: '/overlays',
-      svgIcon: <PhotographIcon className="mr-3 h-6 w-6" />,
-      name: t`Overlays`,
-      matchPattern: /^\/overlays(?:\/.*)?$/,
-    })
-
-    return items
-  }, [collectionsLabel, t])
+    ],
+    [collectionsLabel, t],
+  )
 
   const linkIsActive = (link: NavBarLink) => {
     if (link.matchPattern) {
@@ -105,10 +111,6 @@ const NavBar: React.FC<NavBarProps> = ({ open, setClosed }) => {
     }
 
     return location.pathname === link.href
-  }
-
-  const handlePrefetch = (path: string) => {
-    void prefetchRoute(path)
   }
 
   const linkIsDisabled = (href: string) => {
@@ -120,21 +122,7 @@ const NavBar: React.FC<NavBarProps> = ({ open, setClosed }) => {
     isDisabled: boolean,
     onNavigate?: () => void,
   ) => ({
-    onMouseEnter: () => {
-      if (!isDisabled) {
-        handlePrefetch(link.href)
-      }
-    },
-    onFocus: () => {
-      if (!isDisabled) {
-        handlePrefetch(link.href)
-      }
-    },
-    onTouchStart: () => {
-      if (!isDisabled) {
-        handlePrefetch(link.href)
-      }
-    },
+    ...prefetchHandlers(link.href, !isDisabled),
     onClick: (event: React.MouseEvent<HTMLAnchorElement>) => {
       if (isDisabled) {
         event.preventDefault()

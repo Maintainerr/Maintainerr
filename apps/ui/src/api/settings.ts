@@ -24,15 +24,23 @@ import {
   UseQueryOptions,
 } from '@tanstack/react-query'
 import axios from 'axios'
-import type { IRadarrSetting } from '../components/Settings/Radarr'
-import type { ISonarrSetting } from '../components/Settings/Sonarr'
-import type { ISportarrSetting } from '../components/Settings/Sportarr'
 import GetApiHandler, {
   API_BASE_PATH,
   DeleteApiHandler,
   PatchApiHandler,
   PostApiHandler,
 } from '../utils/ApiHandler'
+
+export interface IServarrSetting {
+  id: number
+  serverName: string
+  url: string
+  apiKey: string
+  // Radarr and Sonarr only.
+  tagExclusions?: boolean
+  exclusionTag?: string
+  untagOnUnexclude?: boolean
+}
 
 export interface ISettings {
   id: number
@@ -83,13 +91,8 @@ export interface ISettings {
   collection_handler_job_cron: string
   rules_handler_job_cron: string
   metadata_provider_preference?: MetadataProviderPreference
+  tvdb_api_key?: string | null
   // *arr exclusion tagging (https://features.maintainerr.info/posts/81) - Radarr and Sonarr configured independently
-  radarr_tag_exclusions?: boolean
-  radarr_exclusion_tag?: string
-  radarr_untag_on_unexclude?: boolean
-  sonarr_tag_exclusions?: boolean
-  sonarr_exclusion_tag?: string
-  sonarr_untag_on_unexclude?: boolean
   telemetryEnabled?: boolean | null
 }
 
@@ -120,7 +123,7 @@ export interface EmbyLoginResult extends JellyfinTestResult {
   }>
 }
 
-type UseSettingsQueryKey = ['settings']
+export type UseSettingsQueryKey = ['settings']
 
 type UseSettingsOptions = Omit<
   UseQueryOptions<ISettings, Error, ISettings, UseSettingsQueryKey>,
@@ -391,21 +394,29 @@ export const usePlexServers = (options?: UsePlexServersOptions) => {
   })
 }
 
-type UseServarrSettingsOptions<TSetting> = Omit<
-  UseQueryOptions<TSetting[], Error, TSetting[], UseServarrSettingsQueryKey>,
+type UseServarrSettingsOptions = Omit<
+  UseQueryOptions<
+    IServarrSetting[],
+    Error,
+    IServarrSetting[],
+    UseServarrSettingsQueryKey
+  >,
   'queryKey' | 'queryFn'
 >
 
-export const useServarrSettings = <
-  TSetting extends IRadarrSetting | ISonarrSetting | ISportarrSetting,
->(
+export const useServarrSettings = (
   type: 'radarr' | 'sonarr' | 'sportarr',
-  options?: UseServarrSettingsOptions<TSetting>,
+  options?: UseServarrSettingsOptions,
 ) => {
-  return useQuery<TSetting[], Error, TSetting[], UseServarrSettingsQueryKey>({
+  return useQuery<
+    IServarrSetting[],
+    Error,
+    IServarrSetting[],
+    UseServarrSettingsQueryKey
+  >({
     queryKey: ['settings', 'servarr', type],
     queryFn: async () => {
-      return await GetApiHandler<TSetting[]>(`/settings/${type}`)
+      return await GetApiHandler<IServarrSetting[]>(`/settings/${type}`)
     },
     staleTime: 0,
     ...options,

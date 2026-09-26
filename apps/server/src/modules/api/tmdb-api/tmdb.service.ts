@@ -86,7 +86,7 @@ export class TmdbApiService extends ExternalApiService {
         ? { status: 'OK', code: 1, message: 'Success' }
         : { status: 'NOK', code: 0, message: 'Unexpected response' };
     } catch (error) {
-      logConnectionTestError(this.logger, 'TMDB');
+      logConnectionTestError(this.logger, 'TMDB', error);
       this.logger.debug(error);
 
       return {

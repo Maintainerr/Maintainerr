@@ -1,5 +1,4 @@
-import type { MessageDescriptor } from '@lingui/core'
-import { msg, plural } from '@lingui/core/macro'
+import { plural } from '@lingui/core/macro'
 import { Plural, Trans, useLingui } from '@lingui/react/macro'
 import {
   ArrowNarrowRightIcon,
@@ -12,7 +11,6 @@ import {
 } from '@maintainerr/contracts'
 import { useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import {
   usePreviewMediaServerSwitch,
   useSwitchMediaServer,
@@ -20,6 +18,10 @@ import {
 import { logClientError } from '../../../utils/ClientLogger'
 import PendingButton from '../../Common/PendingButton'
 import Modal from '../../Common/Modal'
+import {
+  mediaServerOptions,
+  serviceTileClass,
+} from '../../Services/mediaServerOptions'
 
 interface MediaServerSelectorProps {
   currentType: MediaServerType | null
@@ -29,36 +31,8 @@ interface MediaServerSelectorProps {
   onError?: (message: string) => void
 }
 
-const basePath = import.meta.env.VITE_BASE_PATH ?? ''
-
-const serverOptions: {
-  value: MediaServerType
-  name: string
-  description: MessageDescriptor
-  icon: string
-}[] = [
-  {
-    value: MediaServerType.PLEX,
-    name: 'Plex',
-    description: msg`Plex Media Server`,
-    icon: `${basePath}/icons_logos/plex_logo.svg`,
-  },
-  {
-    value: MediaServerType.JELLYFIN,
-    name: 'Jellyfin',
-    description: msg`Jellyfin Media Server`,
-    icon: `${basePath}/icons_logos/jellyfin.svg`,
-  },
-  {
-    value: MediaServerType.EMBY,
-    name: 'Emby',
-    description: msg`Emby Media Server`,
-    icon: `${basePath}/icons_logos/emby.png`,
-  },
-]
-
 const nameOf = (type: MediaServerType | null): string =>
-  serverOptions.find((o) => o.value === type)?.name ?? ''
+  mediaServerOptions.find((o) => o.value === type)?.name ?? ''
 
 const MediaServerSelector = ({
   currentType,
@@ -68,7 +42,6 @@ const MediaServerSelector = ({
   onError,
 }: MediaServerSelectorProps) => {
   const { t } = useLingui()
-  const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [pendingType, setPendingType] = useState<MediaServerType | null>(null)
   const [showConfirmModal, setShowConfirmModal] = useState(false)
@@ -100,15 +73,12 @@ const MediaServerSelector = ({
           t`Selected ${{ serverName: nameOf(type) }} as your media server`,
         )
 
-        // Wait for settings to refetch before navigating
+        // The page below renders the chosen server's form from these settings.
         await queryClient.invalidateQueries({ queryKey: ['settings'] })
-        // Wait for the queries to actually refetch
         await queryClient.refetchQueries({ queryKey: ['settings'] })
 
         onSwitch?.()
         setPendingType(null)
-        // Navigate to the new media server's settings page
-        navigate(`/settings/${type}`, { replace: true })
       } catch (error) {
         void logClientError(
           'Failed to set media server',
@@ -160,7 +130,6 @@ const MediaServerSelector = ({
   const handleFinish = async () => {
     setShowConfirmModal(false)
     onSwitch?.()
-    const type = pendingType
     setPendingType(null)
     setIsSwitchComplete(false)
 
@@ -171,8 +140,6 @@ const MediaServerSelector = ({
       queryClient.invalidateQueries({ queryKey: ['collections'] }),
       queryClient.invalidateQueries({ queryKey: ['rules'] }),
     ])
-
-    navigate(`/settings/${type}`)
   }
 
   const handleCancelSwitch = () => {
@@ -217,18 +184,9 @@ const MediaServerSelector = ({
 
   return (
     <>
-      <div className="section">
-        <h3 className="heading">
-          <Trans>Media Server</Trans>
-        </h3>
-        <p className="description">
-          {currentType
-            ? t`Select your media server type. Switching will reset media server-specific data.`
-            : t`Select your media server to get started with Maintainerr.`}
-        </p>
-
-        <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
-          {serverOptions.map((option) => {
+      <div className="max-w-6xl">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          {mediaServerOptions.map((option) => {
             const isSelected = currentType === option.value
             const isPending =
               (isPreviewPending || isSwitchPending) &&
@@ -240,7 +198,7 @@ const MediaServerSelector = ({
                 type="button"
                 onClick={() => handleServerClick(option.value)}
                 disabled={isPreviewPending || isSwitchPending}
-                className={`relative flex cursor-pointer rounded-lg border p-4 shadow-xs transition-colors duration-150 focus:ring-2 focus:ring-maintainerr focus:outline-hidden ${
+                className={`relative flex cursor-pointer ${serviceTileClass} ${
                   isSelected
                     ? 'border-maintainerr bg-maintainerr/10'
                     : 'border-zinc-700 bg-zinc-800 hover:border-zinc-600'
@@ -314,8 +272,9 @@ const MediaServerSelector = ({
                     <div className="flex items-center justify-center">
                       <img
                         src={
-                          serverOptions.find((o) => o.value === currentType)
-                            ?.icon
+                          mediaServerOptions.find(
+                            (o) => o.value === currentType,
+                          )?.icon
                         }
                         alt={nameOf(currentType)}
                         className="h-16 w-auto object-contain"
@@ -336,7 +295,8 @@ const MediaServerSelector = ({
                 <div className="flex items-center justify-center">
                   <img
                     src={
-                      serverOptions.find((o) => o.value === pendingType)?.icon
+                      mediaServerOptions.find((o) => o.value === pendingType)
+                        ?.icon
                     }
                     alt={nameOf(pendingType)}
                     className="h-16 w-auto object-contain"

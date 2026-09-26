@@ -13,9 +13,12 @@ import {
 } from '../metadata/metadata-lookup.util';
 import { MetadataService } from '../metadata/metadata.service';
 import { Exclusion } from '../rules/entities/exclusion.entities';
+import { RadarrSettings } from '../settings/entities/radarr_settings.entities';
+import { SonarrSettings } from '../settings/entities/sonarr_settings.entities';
 import { SettingsDataService } from '../settings/settings-data.service';
 
 type ArrService = 'radarr' | 'sonarr';
+type ArrServer = RadarrSettings | SonarrSettings;
 
 interface ArrInstanceRef {
   radarrSettingsId?: number | null;
@@ -58,8 +61,9 @@ const EXCLUSION_LOOKUP_CHUNK = 500;
  * - **Exclusion (Behavior B,
  *   https://features.maintainerr.info/posts/81):** when an item is excluded, the
  *   matching *arr entity gets a protective tag (default "dnd"); removal on
- *   un-exclude is opt-in. A collection exclusion targets that collection's
- *   instance, a global one every configured instance that tracks the item.
+ *   un-exclude is opt-in. Both are set per server. A collection exclusion
+ *   targets that collection's server, a global one every configured server that
+ *   tracks the item.
  *
  * Everything here is strictly best-effort: it logs and swallows failures, never
  * throws, never mutates collection membership, and resolves items with the #3125
@@ -164,7 +168,13 @@ export class ServarrTagService {
         this.resolveArrIds(
           client,
           service,
-          await this.withoutExcluded(service, label, removed),
+          await this.withoutExcluded(
+            (await this.servers(service)).find(
+              (server) => server.id === settingsId,
+            ),
+            label,
+            removed,
+          ),
         ),
       ]);
 
@@ -196,93 +206,61 @@ export class ServarrTagService {
     }
   }
 
-  /**
-   * Per-service exclusion-tag settings. Radarr and Sonarr are configured
-   * independently; only the apply/remove logic below is shared.
-   */
-  private serviceSettings(service: ArrService): {
-    enabled: boolean;
-    label: string;
-    untag: boolean;
-  } {
-    return service === 'radarr'
-      ? {
-          enabled: this.settings.radarr_tag_exclusions,
-          label: this.settings.radarr_exclusion_tag,
-          untag: this.settings.radarr_untag_on_unexclude,
-        }
-      : {
-          enabled: this.settings.sonarr_tag_exclusions,
-          label: this.settings.sonarr_exclusion_tag,
-          untag: this.settings.sonarr_untag_on_unexclude,
-        };
+  /** Every configured server of the service, with its exclusion-tag settings. */
+  private async servers(service: ArrService): Promise<ArrServer[]> {
+    const configured =
+      service === 'radarr'
+        ? await this.settings.getRadarrSettings()
+        : await this.settings.getSonarrSettings();
+    // The getters answer with an error DTO instead of throwing.
+    return Array.isArray(configured) ? configured : [];
   }
 
-  /** True if either *arr has exclusion tagging on - lets callers skip the
-   * collection lookup entirely when both are off. */
-  public anyExclusionTaggingEnabled(): boolean {
-    return (
-      this.settings.radarr_tag_exclusions || this.settings.sonarr_tag_exclusions
+  /** True if any Radarr or Sonarr server tags exclusions - lets callers skip
+   * the collection lookup entirely when none does. */
+  public async anyExclusionTaggingEnabled(): Promise<boolean> {
+    const all = [
+      ...(await this.servers('radarr')),
+      ...(await this.servers('sonarr')),
+    ];
+    return all.some((server) => server.tagExclusions);
+  }
+
+  /** True if any server has the opt-in un-exclude removal on. */
+  public async anyExclusionUntaggingEnabled(): Promise<boolean> {
+    const all = [
+      ...(await this.servers('radarr')),
+      ...(await this.servers('sonarr')),
+    ];
+    return all.some(
+      (server) => server.tagExclusions && server.untagOnUnexclude,
     );
-  }
-
-  /** True if either *arr has opt-in un-exclude removal on. */
-  public anyExclusionUntaggingEnabled(): boolean {
-    return (
-      (this.settings.radarr_tag_exclusions &&
-        this.settings.radarr_untag_on_unexclude) ||
-      (this.settings.sonarr_tag_exclusions &&
-        this.settings.sonarr_untag_on_unexclude)
-    );
-  }
-
-  /** Cheap gate (by item type) so callers can skip the collection lookup. */
-  public exclusionTaggingEnabled(type: MediaItemType | undefined): boolean {
-    const service = this.serviceForType(type);
-    return service ? this.serviceSettings(service).enabled : false;
-  }
-
-  /** Cheap gate (by item type) for the opt-in un-exclude removal. */
-  public exclusionUntaggingEnabled(type: MediaItemType | undefined): boolean {
-    const service = this.serviceForType(type);
-    if (!service) {
-      return false;
-    }
-    const s = this.serviceSettings(service);
-    return s.enabled && s.untag;
   }
 
   /**
    * Behavior B - apply the protective exclusion tag to the excluded item's *arr
-   * entity. No-ops unless exclusion tagging is enabled. `instance` scopes a
-   * collection exclusion to its rule group's instance; omitting it (a global
-   * exclusion) covers every configured instance. Adding on exclude is
-   * unconditional when enabled.
+   * entity, on each server that tags exclusions. `instance` scopes a collection
+   * exclusion to its rule group's server; omitting it (a global exclusion)
+   * covers every configured server.
    */
   public async applyExclusionTag(
     target: ExclusionTagTarget,
     instance?: ArrInstanceRef,
   ): Promise<void> {
-    if (!this.exclusionTaggingEnabled(target.type)) {
-      return;
-    }
     await this.tagExclusionTarget(target, instance, 'add');
   }
 
   /**
    * Behavior B - remove the protective exclusion tag on un-exclude. This is
-   * conservative on purpose (Zipties' "second dnd source" pain): it only runs
-   * when the user opts in via `<service>_untag_on_unexclude`, and even then only
-   * ever touches the configured label - never the user's other tags. With the
-   * default (opt-in OFF) a manually-set "dnd" is never stripped by Maintainerr.
+   * conservative on purpose (Zipties' "second dnd source" pain): it only runs on
+   * a server whose `untagOnUnexclude` the user turned on, and even then only
+   * ever touches that server's label - never the user's other tags. With the
+   * default (off) a manually-set "dnd" is never stripped by Maintainerr.
    */
   public async removeExclusionTag(
     target: ExclusionTagTarget,
     instance?: ArrInstanceRef,
   ): Promise<void> {
-    if (!this.exclusionUntaggingEnabled(target.type)) {
-      return;
-    }
     await this.tagExclusionTarget(target, instance, 'remove');
   }
 
@@ -300,20 +278,19 @@ export class ServarrTagService {
         return;
       }
 
-      const label = normalizeArrTagLabel(
-        this.serviceSettings(service).label ?? '',
-      );
-      if (!label) {
-        this.logger.debug(
-          `Skipping ${service} exclusion tagging: no usable exclusion tag label configured.`,
-        );
-        return;
-      }
-
-      const instances = await this.exclusionInstances(service, instance);
+      const instances = (await this.exclusionInstances(service, instance))
+        .filter(
+          (server) =>
+            server.tagExclusions && (mode === 'add' || server.untagOnUnexclude),
+        )
+        .map((server) => ({
+          ...server,
+          label: normalizeArrTagLabel(server.exclusionTag ?? ''),
+        }))
+        .filter((server) => server.label !== '');
       if (instances.length === 0) {
         this.logger.debug(
-          `Skipping *arr exclusion tagging for item ${target.mediaServerId}: no ${service} instance associated with the exclusion.`,
+          `Skipping *arr exclusion tag ${mode} for item ${target.mediaServerId}: no ${service} server for this exclusion has it turned on.`,
         );
         return;
       }
@@ -344,25 +321,25 @@ export class ServarrTagService {
         // label up instead: an instance without it has nothing to strip.
         const tagId =
           mode === 'add'
-            ? await client.ensureTag(label)
-            : await this.findTagId(client, label);
+            ? await client.ensureTag(settings.label)
+            : await this.findTagId(client, settings.label);
         if (tagId === undefined) {
           if (mode === 'add') {
             this.logger.warn(
-              `Couldn't ensure ${service} tag '${label}' on '${settings.serverName}'; skipping exclusion add for item ${target.mediaServerId}.`,
+              `Couldn't ensure ${service} tag '${settings.label}' on '${settings.serverName}'; skipping exclusion add for item ${target.mediaServerId}.`,
             );
           }
           continue;
         }
 
         if ((await this.writeTags(client, service, [arrId], tagId, mode)) > 0) {
-          tagged.push(settings.serverName);
+          tagged.push(`'${settings.label}' on ${settings.serverName}`);
         }
       }
 
       if (tagged.length > 0) {
         this.logger.log(
-          `${mode === 'add' ? 'Applied' : 'Removed'} ${service} exclusion tag '${label}' ${mode === 'add' ? 'to' : 'from'} item ${target.mediaServerId} on ${tagged.join(', ')}.`,
+          `${mode === 'add' ? 'Applied' : 'Removed'} ${service} exclusion tag ${tagged.join(', ')} ${mode === 'add' ? 'to' : 'from'} item ${target.mediaServerId}.`,
         );
       } else if (!matched) {
         // The write failing is already reported by the *arr client, so only the
@@ -391,20 +368,20 @@ export class ServarrTagService {
   }
 
   /**
-   * A group name can normalize to the service's exclusion label. An item that
-   * is still excluded needs that label as its protective tag, so a removal
-   * leaves it alone. Any exclusion counts: keeping protection is the safe side.
+   * A group name can normalize to the exclusion label of the server it tags on.
+   * An item that is still excluded needs that label as its protective tag, so a
+   * removal leaves it alone. Any exclusion counts: keeping protection is the
+   * safe side.
    */
   private async withoutExcluded(
-    service: ArrService,
+    server: ArrServer | undefined,
     label: string,
     removed: ArrTagItem[],
   ): Promise<ArrTagItem[]> {
-    const exclusion = this.serviceSettings(service);
     if (
       removed.length === 0 ||
-      !exclusion.enabled ||
-      normalizeArrTagLabel(exclusion.label ?? '') !== label
+      !server?.tagExclusions ||
+      normalizeArrTagLabel(server.exclusionTag ?? '') !== label
     ) {
       return removed;
     }
@@ -426,21 +403,16 @@ export class ServarrTagService {
   }
 
   /**
-   * The instances an exclusion tags: the one its collection is bound to, or -
+   * The servers an exclusion tags: the one its collection is bound to, or -
    * for a global exclusion, which has no collection to inherit from - every
-   * configured instance of the service, so the item is tagged wherever it is
+   * configured server of the service, so the item is tagged wherever it is
    * actually tracked.
    */
   private async exclusionInstances(
     service: ArrService,
     instance: ArrInstanceRef | undefined,
-  ): Promise<{ id: number; serverName: string }[]> {
-    const configured =
-      service === 'radarr'
-        ? await this.settings.getRadarrSettings()
-        : await this.settings.getSonarrSettings();
-    // The getters answer with an error DTO instead of throwing.
-    const all = Array.isArray(configured) ? configured : [];
+  ): Promise<ArrServer[]> {
+    const all = await this.servers(service);
 
     if (!instance) {
       return all;

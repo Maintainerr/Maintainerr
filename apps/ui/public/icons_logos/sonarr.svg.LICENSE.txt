@@ -1,0 +1,12 @@
+sonarr.svg
+
+Source:   https://github.com/Sonarr/Sonarr/blob/ef70df1db3f66ae99bf4d7054335310b9fa317fa/Logo/Sonarr.svg
+Author:   Sonarr contributors
+License:  GNU General Public License v3.0 (GPL-3.0)
+URL:      https://www.gnu.org/licenses/gpl-3.0.html
+
+This file is an unmodified copy of the upstream source above.
+
+Note: the Sonarr name and logo belong to the Sonarr project. This icon is
+used to identify the Sonarr integration in the Maintainerr UI; nothing in
+this file implies endorsement by the Sonarr project.

@@ -17,14 +17,13 @@ import {
   useTestJellyfin,
 } from '../../../api/settings'
 import { getApiErrorMessage } from '../../../utils/ApiError'
-import Alert from '../../Common/Alert'
-import DocsButton from '../../Common/DocsButton'
 import SaveButton from '../../Common/SaveButton'
 import TestingButton from '../../Common/TestingButton'
 import { InputGroup } from '../../Forms/Input'
-import { Select } from '../../Forms/Select'
-import SettingsAlertSlot from '../SettingsAlertSlot'
+import { SelectGroup } from '../../Forms/Select'
+import ServiceCard, { ServiceCardFooter } from '../ServiceCard'
 import { useSettingsFeedback } from '../useSettingsFeedback'
+import { releaseVersion } from '../../../utils/version'
 
 const JellyfinSettingDeleteSchema = z.object({
   jellyfin_url: z.literal(''),
@@ -52,8 +51,8 @@ const JellyfinSettings = () => {
   const [jellyfinUsers, setJellyfinUsers] = useState<
     Array<{ id: string; name: string }>
   >([])
-  const { feedback, showUpdated, showError, clearError } = useSettingsFeedback({
-    updated: t`Jellyfin settings updated`,
+  const { feedback, showUpdated, showError, clear } = useSettingsFeedback({
+    updated: t`Saved`,
     updateError: t`Jellyfin settings could not be updated`,
   })
 
@@ -113,7 +112,7 @@ const JellyfinSettings = () => {
     !isJellyfinLoading && !isTestPending && !isSavePending && !isDeletePending
 
   const clearTransientState = () => {
-    clearError()
+    clear()
     setTestResult(null)
     setTestedSettings(null)
     setJellyfinUsers([])
@@ -128,6 +127,8 @@ const JellyfinSettings = () => {
   const handleTest = async () => {
     if (isTestPending || !(await trigger())) return
 
+    // The status shows whatever happened last, so a new test hides "Saved".
+    clear()
     setTestResult(null)
 
     try {
@@ -139,9 +140,9 @@ const JellyfinSettings = () => {
       if (result.code === 1) {
         setTestResult({
           status: true,
-          message: result.serverName
-            ? t`Connected to ${{ serverName: result.serverName }} (v${{ version: result.version }})`
-            : result.message,
+          message: result.version
+            ? t`Success! (${{ version: releaseVersion(result.version) }})`
+            : t`Success!`,
         })
         setTestedSettings({ url: jellyfinUrl, apiKey: jellyfinApiKey })
 
@@ -176,7 +177,7 @@ const JellyfinSettings = () => {
   }
 
   const onSubmit = async (data: JellyfinSettingFormResult) => {
-    clearError()
+    clear()
 
     if (data.jellyfin_url === '' && data.jellyfin_api_key === '') {
       try {
@@ -212,148 +213,128 @@ const JellyfinSettings = () => {
   const savedUserId = settings?.jellyfin_user_id ?? ''
   const maskedUserId = maskSecret(savedUserId)
 
+  const usersLoaded = jellyfinUsers.length > 0 && enteredSettingsHaveBeenTested
+
   return (
     <>
       <title>{t`Jellyfin settings - Maintainerr`}</title>
-      <div className="h-full w-full">
-        <div className="section h-full w-full">
-          <h3 className="heading">
-            <Trans>Jellyfin Settings</Trans>
-          </h3>
-          <p className="description">
-            <Trans>Configure your Jellyfin server connection</Trans>
-          </p>
-        </div>
-
-        <SettingsAlertSlot>
-          {feedback || testResult ? (
-            <div className="space-y-4">
-              {feedback ? (
-                <Alert type={feedback.type} title={feedback.title} />
-              ) : null}
-              {testResult ? (
-                <Alert
-                  type={testResult.status ? 'success' : 'error'}
-                  title={testResult.message}
-                />
-              ) : null}
-            </div>
-          ) : null}
-        </SettingsAlertSlot>
-
-        <div className="section">
-          <form onSubmit={handleSubmit(onSubmit)}>
-            <Controller
-              name="jellyfin_url"
-              control={control}
-              render={({ field }) => (
-                <InputGroup
-                  label={t`Jellyfin URL`}
-                  value={field.value}
-                  placeholder="http://jellyfin.local:8096"
-                  onChange={(event) => {
-                    clearTransientState()
-                    field.onChange(event)
-                  }}
-                  onBlur={(event) =>
-                    field.onChange(stripTrailingSlashes(event.target.value))
-                  }
-                  ref={field.ref}
-                  name={field.name}
-                  type="text"
-                  error={errors.jellyfin_url?.message}
-                  required
-                />
-              )}
-            />
-
-            <InputGroup
-              label={t`API Key`}
-              type="password"
-              {...registerApiKey}
-              error={errors.jellyfin_api_key?.message}
-              helpText={
-                <Trans>
-                  In Jellyfin, go to <strong>Dashboard &rarr; API Keys</strong>{' '}
-                  and create a new API key named &quot;Maintainerr&quot;.
-                </Trans>
-              }
-            />
-
-            <div className="mt-6 max-w-6xl sm:mt-5 sm:grid sm:grid-cols-3 sm:items-start sm:gap-4">
-              <label htmlFor="jellyfin_user_id" className="sm:mt-2">
-                <Trans>Admin User</Trans>
-              </label>
-              <div className="px-3 py-2 sm:col-span-2">
-                <div className="max-w-xl">
-                  {jellyfinUsers.length > 0 && enteredSettingsHaveBeenTested ? (
-                    <Select {...register('jellyfin_user_id')}>
-                      {jellyfinUsers.map((user) => (
-                        <option key={user.id} value={user.id}>
-                          {user.name} ({maskSecret(user.id)})
-                        </option>
-                      ))}
-                    </Select>
-                  ) : (
-                    <Select disabled value={savedUserId}>
-                      {savedUserId ? (
-                        <option value={savedUserId}>
-                          <Trans>Selected: {maskedUserId}</Trans>
-                        </option>
-                      ) : (
-                        <option value="">
-                          {t`Test connection to load Jellyfin admin users`}
-                        </option>
-                      )}
-                    </Select>
-                  )}
-                  <p className="mt-1 text-sm text-zinc-400">
-                    {jellyfinUsers.length > 0 && enteredSettingsHaveBeenTested
-                      ? t`Select the admin user for Maintainerr operations.`
-                      : savedUserId
-                        ? t`Saved admin user. Test connection to change.`
-                        : t`Test connection to load available admin users.`}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="actions mt-5 w-full">
-              <div className="flex w-full flex-wrap sm:flex-nowrap">
-                <span className="m-auto rounded-md shadow-xs sm:mr-auto sm:ml-3">
-                  <DocsButton page="Configuration/#jellyfin" />
-                </span>
-                <div className="m-auto mt-3 flex xs:mt-0 sm:m-0 sm:justify-end">
-                  <TestingButton
-                    type="button"
-                    buttonType="success"
-                    onClick={handleTest}
-                    className="ml-3"
-                    disabled={
-                      isJellyfinLoading ||
-                      isTestPending ||
-                      isGoingToRemoveSettings
+      <div className="max-w-6xl">
+        <ServiceCard title="Jellyfin">
+          <form
+            className="flex flex-1 flex-col gap-3"
+            onSubmit={handleSubmit(onSubmit)}
+          >
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <Controller
+                name="jellyfin_url"
+                control={control}
+                render={({ field }) => (
+                  <InputGroup
+                    layout="stacked"
+                    label={t`Jellyfin URL`}
+                    value={field.value}
+                    placeholder="http://jellyfin.local:8096"
+                    onChange={(event) => {
+                      clearTransientState()
+                      field.onChange(event)
+                    }}
+                    onBlur={(event) =>
+                      field.onChange(stripTrailingSlashes(event.target.value))
                     }
-                    isPending={isTestPending}
-                    feedbackStatus={
-                      enteredSettingsHaveBeenTested
-                        ? testResult?.status
-                        : undefined
-                    }
+                    ref={field.ref}
+                    name={field.name}
+                    type="text"
+                    error={errors.jellyfin_url?.message}
+                    required
                   />
-
-                  <span className="ml-3 inline-flex rounded-md shadow-xs">
-                    <SaveButton
-                      type="submit"
-                      disabled={!canSaveSettings}
-                      isPending={isSavePending || isDeletePending}
-                    />
-                  </span>
-                </div>
-              </div>
+                )}
+              />
+              <InputGroup
+                layout="stacked"
+                label={t`API Key`}
+                type="password"
+                {...registerApiKey}
+                error={errors.jellyfin_api_key?.message}
+                helpText={
+                  <Trans>
+                    In Jellyfin, go to{' '}
+                    <strong>Dashboard &rarr; API Keys</strong> and create a new
+                    API key named &quot;Maintainerr&quot;.
+                  </Trans>
+                }
+              />
             </div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {usersLoaded ? (
+                <SelectGroup
+                  layout="stacked"
+                  label={t`Admin User`}
+                  helpText={t`Select the admin user for Maintainerr operations.`}
+                  {...register('jellyfin_user_id')}
+                >
+                  {jellyfinUsers.map((user) => (
+                    <option key={user.id} value={user.id}>
+                      {user.name} ({maskSecret(user.id)})
+                    </option>
+                  ))}
+                </SelectGroup>
+              ) : (
+                <SelectGroup
+                  layout="stacked"
+                  name="jellyfin_user_id"
+                  label={t`Admin User`}
+                  helpText={
+                    savedUserId
+                      ? t`Saved admin user. Test connection to change.`
+                      : t`Test connection to load available admin users.`
+                  }
+                  disabled
+                  value={savedUserId}
+                >
+                  {savedUserId ? (
+                    <option value={savedUserId}>
+                      {t`Selected: ${{ maskedUserId }}`}
+                    </option>
+                  ) : (
+                    <option value="">
+                      {t`Test connection to load Jellyfin admin users`}
+                    </option>
+                  )}
+                </SelectGroup>
+              )}
+            </div>
+
+            <ServiceCardFooter
+              status={
+                feedback ??
+                (testResult
+                  ? {
+                      type: testResult.status ? 'success' : 'error',
+                      title: testResult.message,
+                    }
+                  : null)
+              }
+            >
+              <TestingButton
+                type="button"
+                buttonType="success"
+                onClick={handleTest}
+                disabled={
+                  isJellyfinLoading || isTestPending || isGoingToRemoveSettings
+                }
+                isPending={isTestPending}
+                feedbackStatus={
+                  enteredSettingsHaveBeenTested ? testResult?.status : undefined
+                }
+              />
+              <SaveButton
+                type="submit"
+                disabled={!canSaveSettings}
+                isPending={isSavePending || isDeletePending}
+              />
+            </ServiceCardFooter>
           </form>
-        </div>
+        </ServiceCard>
       </div>
     </>
   )

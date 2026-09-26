@@ -56,7 +56,7 @@ import { getCollectionMediaSortConfig } from '../../../Common/MediaLibrarySortCo
 import SaveButton from '../../../Common/SaveButton'
 import { Input } from '../../../Forms/Input'
 import { Select } from '../../../Forms/Select'
-import type { AgentConfiguration } from '../../../Settings/Notifications/CreateNotificationModal'
+import type { AgentConfiguration } from '../../../../api/notifications'
 import RuleCreator, { IRule } from '../../Rule/RuleCreator'
 import ArrAction from './ArrAction'
 import CollectionPosterPicker from './CollectionPosterPicker'

@@ -8,6 +8,7 @@ const deleteSettingsMock = vi.fn()
 const testMock = vi.fn()
 const showUpdated = vi.fn()
 const showError = vi.fn()
+const clear = vi.fn()
 const clearError = vi.fn()
 
 let downloadClientData: {
@@ -41,12 +42,9 @@ vi.mock('../useSettingsFeedback', () => ({
     feedback: null,
     showUpdated,
     showError,
+    clear,
     clearError,
   }),
-}))
-
-vi.mock('../../Common/DocsButton', () => ({
-  default: () => <button type="button">Docs</button>,
 }))
 
 describe('DownloadClientSettings', () => {
@@ -56,6 +54,7 @@ describe('DownloadClientSettings', () => {
     testMock.mockReset()
     showUpdated.mockReset()
     showError.mockReset()
+    clear.mockReset()
     clearError.mockReset()
     downloadClientData = {
       download_client_type: DownloadClientType.QBITTORRENT,
@@ -141,9 +140,7 @@ describe('DownloadClientSettings', () => {
         }),
       )
     })
-    expect(
-      await screen.findByText(/Successfully connected to the download client/),
-    ).toBeTruthy()
+    expect(await screen.findByText(/Success!/)).toBeTruthy()
   })
 
   it('clears the URL when the client changes and restores it for the saved client', async () => {

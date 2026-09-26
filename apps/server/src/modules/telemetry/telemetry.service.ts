@@ -361,19 +361,24 @@ export class TelemetryService {
   private async collectFeatures(): Promise<string[]> {
     // Counted rather than read from a setting: each is a per-collection opt-in,
     // so the only question worth reporting is whether anyone turned it on.
-    const [overlays, keepInMaintainerrOnly, leftoverCleanup] =
+    const [overlays, keepInMaintainerrOnly, leftoverCleanup, radarr, sonarr] =
       await Promise.all([
         this.collectionRepo.count({ where: { overlayEnabled: true } }),
         this.collectionRepo.count({ where: { keepInMaintainerrOnly: true } }),
         this.collectionRepo.count({ where: { cleanupLeftoverFolders: true } }),
+        this.settings.getRadarrSettings(),
+        this.settings.getSonarrSettings(),
       ]);
+    // Set per server; reported as on when any server has it.
+    const tagsExclusions = (servers: typeof radarr | typeof sonarr) =>
+      Array.isArray(servers) && servers.some((server) => server.tagExclusions);
 
     const features: Array<[string, boolean]> = [
       ['overlays', overlays > 0],
       ['keepInMaintainerrOnly', keepInMaintainerrOnly > 0],
       ['leftoverCleanup', leftoverCleanup > 0],
-      ['arrTagExclusionsRadarr', Boolean(this.settings.radarr_tag_exclusions)],
-      ['arrTagExclusionsSonarr', Boolean(this.settings.sonarr_tag_exclusions)],
+      ['arrTagExclusionsRadarr', tagsExclusions(radarr)],
+      ['arrTagExclusionsSonarr', tagsExclusions(sonarr)],
     ];
 
     const active = features.filter(([, on]) => on).map(([name]) => name);

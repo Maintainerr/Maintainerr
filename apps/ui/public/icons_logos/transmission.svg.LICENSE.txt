@@ -1,0 +1,14 @@
+transmission.svg
+
+Source:   https://github.com/transmission/transmission/blob/3e9f5f614a875aae987235d3836d0ca555a80d80/icons/hicolor_apps_scalable_transmission.svg
+Author:   Transmission contributors
+License:  GNU General Public License v2.0 or v3.0 (GPL-2.0-only OR GPL-3.0-only)
+URL:      https://www.gnu.org/licenses/old-licenses/gpl-2.0.html
+          https://www.gnu.org/licenses/gpl-3.0.html
+
+This file is an unmodified copy of the upstream source above. It is not listed
+in upstream icons/SOURCES.md, so Transmission's COPYING applies.
+
+Note: the Transmission name and logo belong to the Transmission project. This
+icon is used to identify the Transmission integration in the Maintainerr UI;
+nothing in this file implies endorsement by the Transmission project.

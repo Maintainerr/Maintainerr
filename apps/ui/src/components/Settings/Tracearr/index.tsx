@@ -7,6 +7,7 @@ import {
   tracearrSettingSchema,
 } from '@maintainerr/contracts'
 import { PostApiHandler } from '../../../utils/ApiHandler'
+import BrandLink from '../../Common/BrandLink'
 import ExternalServiceSettingsPage, {
   type ExternalServiceFieldConfig,
 } from '../ExternalServiceSettingsPage'
@@ -29,14 +30,12 @@ const buildFields = (): ExternalServiceFieldConfig[] => [
     // service URL. Anything else, a javascript: value included, stays text.
     helpText: (values) =>
       serviceUrlSchema.safeParse(values.url).success ? (
-        <a
-          className="underline"
+        <BrandLink
+          external
           href={`${stripTrailingSlashes(values.url)}/settings`}
-          target="_blank"
-          rel="noreferrer"
         >
           <Trans>Find it in Tracearr under Settings, General, API Key.</Trans>
-        </a>
+        </BrandLink>
       ) : (
         globalT`Find it in Tracearr under Settings, General, API Key.`
       ),
@@ -70,17 +69,13 @@ const TracearrSettings = () => {
 
   return (
     <ExternalServiceSettingsPage
-      updatedMessage={t`Tracearr settings updated`}
       updateErrorMessage={t`Tracearr settings could not be updated`}
       pageTitle={t`Tracearr settings - Maintainerr`}
-      heading={t`Tracearr Settings`}
-      description={t`Maintainerr picks the Tracearr media server backend automatically: the one tracking the media server configured in Maintainerr.`}
-      docsPage="Configuration/#tracearr"
       settingsPath="/settings/tracearr"
       testPath="/settings/test/tracearr"
       schema={tracearrSettingSchema}
       fields={buildFields()}
-      testSuccessTitle="Tracearr"
+      serviceName="Tracearr"
       testFailureMessage={t`Failed to connect to Tracearr. Verify the URL and API key.`}
     />
   )

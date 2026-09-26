@@ -1,0 +1,12 @@
+sportarr.svg
+
+Source:   https://github.com/Sportarr/Sportarr/blob/7e772e2b638a17c7eb0f50836f73d5d4c6b4f8fd/Logo/circle-white-bg/Sportarr.svg
+Author:   Sportarr contributors
+License:  GNU General Public License v3.0 (GPL-3.0)
+URL:      https://www.gnu.org/licenses/gpl-3.0.html
+
+This file is an unmodified copy of the upstream source above.
+
+Note: the Sportarr name and logo belong to the Sportarr project. This icon is
+used to identify the Sportarr integration in the Maintainerr UI; nothing in
+this file implies endorsement by the Sportarr project.

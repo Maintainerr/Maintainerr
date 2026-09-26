@@ -4,7 +4,6 @@ import {
   type ChangeEvent,
   type FocusEvent,
   type JSX,
-  type ReactNode,
   useEffect,
   useEffectEvent,
   useRef,
@@ -20,14 +19,16 @@ import GetApiHandler, {
   DeleteApiHandler,
   PostApiHandler,
 } from '../../utils/ApiHandler'
-import Alert from '../Common/Alert'
-import DocsButton from '../Common/DocsButton'
 import SaveButton from '../Common/SaveButton'
 import TestingButton from '../Common/TestingButton'
 import { InputGroup } from '../Forms/Input'
 import { SelectGroup } from '../Forms/Select'
-import SettingsAlertSlot from './SettingsAlertSlot'
-import { useSettingsFeedback } from './useSettingsFeedback'
+import ServiceCard, { ServiceCardFooter } from './ServiceCard'
+import {
+  type SettingsFeedback,
+  useSettingsFeedback,
+} from './useSettingsFeedback'
+import { releaseVersion } from '../../utils/version'
 
 export interface ExternalServiceSelectOption {
   value: string
@@ -60,17 +61,13 @@ interface TestStatus {
 
 interface ExternalServiceSettingsPageProps {
   // Whole sentences rather than a scope noun: see useSettingsFeedback.
-  updatedMessage: string
   updateErrorMessage: string
   pageTitle: string
-  heading: string
-  description: ReactNode
-  docsPage: string
+  serviceName: string
   settingsPath: string
   testPath: string
   schema: z.ZodTypeAny
   fields: ExternalServiceFieldConfig[]
-  testSuccessTitle: string
   testFailureMessage: string
 }
 
@@ -109,17 +106,13 @@ const valuesEqual = (a: SettingsValues, b: SettingsValues): boolean =>
   Object.keys(a).every((key) => a[key] === b[key])
 
 const ExternalServiceSettingsPage = ({
-  updatedMessage,
   updateErrorMessage,
   pageTitle,
-  heading,
-  description,
-  docsPage,
+  serviceName,
   settingsPath,
   testPath,
   schema,
   fields,
-  testSuccessTitle,
   testFailureMessage,
 }: ExternalServiceSettingsPageProps) => {
   const { t } = useLingui()
@@ -134,9 +127,9 @@ const ExternalServiceSettingsPage = ({
   >({})
   const loadingOptionFieldNamesRef = useRef(new Set<string>())
   const selectOptionsVersionRef = useRef(0)
-  const { feedback, showUpdated, showUpdateError, showError, clearError } =
+  const { feedback, showUpdated, showUpdateError, showError, clear } =
     useSettingsFeedback({
-      updated: updatedMessage,
+      updated: t`Saved`,
       updateError: updateErrorMessage,
     })
 
@@ -166,7 +159,7 @@ const ExternalServiceSettingsPage = ({
   const canSave = !isSubmitting && !isLoading
 
   const clearTransientState = (clearLoadedOptions = true) => {
-    clearError()
+    clear()
     clearErrors()
     setTestResult(undefined)
     if (clearLoadedOptions) {
@@ -272,7 +265,7 @@ const ExternalServiceSettingsPage = ({
   const onSubmit = async () => {
     const data = withoutEmptySelects(getValues(), fields)
 
-    clearError()
+    clear()
 
     const removingSetting = allEmpty(data, fields)
 
@@ -311,6 +304,8 @@ const ExternalServiceSettingsPage = ({
       return
     }
 
+    clear()
+    setTestResult(undefined)
     setTesting(true)
 
     await PostApiHandler<BasicResponseDto>(testPath, values)
@@ -338,37 +333,24 @@ const ExternalServiceSettingsPage = ({
       })
   }
 
+  const status: SettingsFeedback =
+    feedback ??
+    (testResult
+      ? {
+          type: testResult.status ? 'success' : 'error',
+          title: testResult.status
+            ? t`Success! (${{ version: releaseVersion(testResult.message) }})`
+            : testResult.message,
+        }
+      : null)
+
   return (
     <>
       <title>{pageTitle}</title>
-      <div className="h-full w-full">
-        <div className="section h-full w-full">
-          <h3 className="heading">{heading}</h3>
-          <p className="description">{description}</p>
-        </div>
-
-        <SettingsAlertSlot>
-          {feedback || testResult ? (
-            <div className="space-y-4">
-              {feedback ? (
-                <Alert type={feedback.type} title={feedback.title} />
-              ) : null}
-              {testResult ? (
-                <Alert
-                  type={testResult.status ? 'success' : 'error'}
-                  title={
-                    testResult.status
-                      ? t`Successfully connected to ${{ serviceName: testSuccessTitle }} (${{ version: testResult.message }})`
-                      : testResult.message
-                  }
-                />
-              ) : null}
-            </div>
-          ) : null}
-        </SettingsAlertSlot>
-
-        <div className="section">
+      <div className="grid max-w-6xl grid-cols-1 gap-6 lg:grid-cols-2">
+        <ServiceCard title={serviceName}>
           <form
+            className="flex flex-1 flex-col gap-3"
             onSubmit={(event) => {
               event.preventDefault()
               void onSubmit()
@@ -417,6 +399,7 @@ const ExternalServiceSettingsPage = ({
 
                     return (
                       <SelectGroup
+                        layout="stacked"
                         label={fieldConfig.label}
                         value={field.value}
                         onChange={(event: ChangeEvent<HTMLSelectElement>) => {
@@ -467,6 +450,7 @@ const ExternalServiceSettingsPage = ({
 
                   return (
                     <InputGroup
+                      layout="stacked"
                       label={fieldConfig.label}
                       value={field.value}
                       placeholder={fieldConfig.placeholder}
@@ -506,33 +490,23 @@ const ExternalServiceSettingsPage = ({
               />
             ))}
 
-            <div className="actions mt-5 w-full">
-              <div className="flex w-full flex-wrap sm:flex-nowrap">
-                <span className="m-auto rounded-md shadow-xs sm:mr-auto sm:ml-3">
-                  <DocsButton page={docsPage} />
-                </span>
-                <div className="m-auto mt-3 flex xs:mt-0 sm:m-0 sm:justify-end">
-                  <TestingButton
-                    type="button"
-                    buttonType="success"
-                    onClick={performTest}
-                    className="ml-3"
-                    disabled={testing || isGoingToRemove}
-                    isPending={testing}
-                    feedbackStatus={testFeedbackStatus}
-                  />
-                  <span className="ml-3 inline-flex rounded-md shadow-xs">
-                    <SaveButton
-                      type="submit"
-                      disabled={!canSave}
-                      isPending={isSubmitting}
-                    />
-                  </span>
-                </div>
-              </div>
-            </div>
+            <ServiceCardFooter status={status}>
+              <TestingButton
+                type="button"
+                buttonType="success"
+                onClick={performTest}
+                disabled={testing || isGoingToRemove}
+                isPending={testing}
+                feedbackStatus={testFeedbackStatus}
+              />
+              <SaveButton
+                type="submit"
+                disabled={!canSave}
+                isPending={isSubmitting}
+              />
+            </ServiceCardFooter>
           </form>
-        </div>
+        </ServiceCard>
       </div>
     </>
   )

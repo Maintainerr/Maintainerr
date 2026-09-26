@@ -1,12 +1,13 @@
 import type { ComponentType } from 'react'
 import type { RouteObject } from 'react-router-dom'
-import { createBrowserRouter, Navigate } from 'react-router-dom'
+import { createBrowserRouter, Navigate, useParams } from 'react-router-dom'
 import Layout, { LayoutErrorBoundary } from './components/Layout'
 import MediaServerSetupGuard from './components/Layout/MediaServerSetupGuard'
 import LoadingSpinner from './components/Common/LoadingSpinner'
 import Overview from './components/Overview'
-// Settings is kept eager because it wraps an <Outlet /> - making it lazy
-// would cause two sequential fetches (wrapper then child) on every settings navigation.
+// Settings (which also wraps /services) is kept eager because it wraps an
+// <Outlet /> - making it lazy would cause two sequential fetches (wrapper then
+// child) on every settings navigation.
 import Overlays from './components/Overlays'
 import Settings from './components/Settings'
 
@@ -70,26 +71,17 @@ const ruleFormRoute = createLazyRoute(() => import('./pages/RuleFormPage'))
 const settingsMainRoute = createLazyRoute(
   () => import('./components/Settings/Main'),
 )
-const settingsPlexRoute = createLazyRoute(
-  () => import('./components/Settings/Plex'),
+const servicesHubRoute = createLazyRoute(
+  () => import('./components/Services/ServicesHub'),
 )
-const settingsJellyfinRoute = createLazyRoute(
-  () => import('./components/Settings/Jellyfin'),
-)
-const settingsEmbyRoute = createLazyRoute(
-  () => import('./components/Settings/Emby'),
-)
-const settingsSonarrRoute = createLazyRoute(
-  () => import('./components/Settings/Sonarr'),
-)
-const settingsSportarrRoute = createLazyRoute(
-  () => import('./components/Settings/Sportarr'),
+const settingsMediaServerRoute = createLazyRoute(
+  () => import('./components/Settings/MediaServer/MediaServerSettings'),
 )
 const settingsMetadataRoute = createLazyRoute(
   () => import('./components/Settings/Metadata'),
 )
-const settingsRadarrRoute = createLazyRoute(
-  () => import('./components/Settings/Radarr'),
+const settingsServarrRoute = createLazyRoute(
+  () => import('./components/Settings/Servarr/ServarrSettings'),
 )
 const settingsSeerrRoute = createLazyRoute(
   () => import('./components/Settings/Seerr'),
@@ -133,6 +125,14 @@ const overlayTemplateListRoute = createLazyRoute(
 const overlayTemplateEditorRoute = createLazyRoute(
   () => import('./pages/OverlayTemplateEditorPage'),
 )
+
+const MovedToServices = () => {
+  const { page = '' } = useParams()
+  const mediaServer = ['plex', 'jellyfin', 'emby'].includes(page)
+  return (
+    <Navigate to={`/services/${mediaServer ? 'media-server' : page}`} replace />
+  )
+}
 
 /**
  * Preloadable route definition - single source of truth for both
@@ -267,76 +267,6 @@ const appRoutes: AppRoute[] = [
         preload: settingsMainRoute.preload,
       },
       {
-        path: 'plex',
-        lazy: settingsPlexRoute.lazy,
-        preload: settingsPlexRoute.preload,
-      },
-      {
-        path: 'jellyfin',
-        lazy: settingsJellyfinRoute.lazy,
-        preload: settingsJellyfinRoute.preload,
-      },
-      {
-        path: 'emby',
-        lazy: settingsEmbyRoute.lazy,
-        preload: settingsEmbyRoute.preload,
-      },
-      {
-        path: 'sonarr',
-        lazy: settingsSonarrRoute.lazy,
-        preload: settingsSonarrRoute.preload,
-      },
-      {
-        path: 'sportarr',
-        lazy: settingsSportarrRoute.lazy,
-        preload: settingsSportarrRoute.preload,
-      },
-      {
-        path: 'metadata',
-        lazy: settingsMetadataRoute.lazy,
-        preload: settingsMetadataRoute.preload,
-      },
-      {
-        path: 'radarr',
-        lazy: settingsRadarrRoute.lazy,
-        preload: settingsRadarrRoute.preload,
-      },
-      {
-        path: 'seerr',
-        lazy: settingsSeerrRoute.lazy,
-        preload: settingsSeerrRoute.preload,
-      },
-      {
-        path: 'ombi',
-        lazy: settingsOmbiRoute.lazy,
-        preload: settingsOmbiRoute.preload,
-      },
-      {
-        path: 'tautulli',
-        lazy: settingsTautulliRoute.lazy,
-        preload: settingsTautulliRoute.preload,
-      },
-      {
-        path: 'streamystats',
-        lazy: settingsStreamystatsRoute.lazy,
-        preload: settingsStreamystatsRoute.preload,
-      },
-      {
-        path: 'tracearr',
-        lazy: settingsTracearrRoute.lazy,
-        preload: settingsTracearrRoute.preload,
-      },
-      {
-        path: 'download-client',
-        lazy: settingsDownloadClientRoute.lazy,
-        preload: settingsDownloadClientRoute.preload,
-      },
-      {
-        path: 'notifications',
-        lazy: settingsNotificationsRoute.lazy,
-        preload: settingsNotificationsRoute.preload,
-      },
-      {
         path: 'jobs',
         lazy: settingsJobsRoute.lazy,
         preload: settingsJobsRoute.preload,
@@ -355,6 +285,74 @@ const appRoutes: AppRoute[] = [
         path: 'about',
         lazy: settingsAboutRoute.lazy,
         preload: settingsAboutRoute.preload,
+      },
+      {
+        // Service pages lived here before they moved to /services.
+        path: ':page',
+        element: <MovedToServices />,
+      },
+    ],
+  },
+  {
+    path: 'services',
+    element: <Settings section="services" />,
+    children: [
+      {
+        index: true,
+        lazy: servicesHubRoute.lazy,
+        preload: servicesHubRoute.preload,
+      },
+      {
+        path: 'media-server',
+        lazy: settingsMediaServerRoute.lazy,
+        preload: settingsMediaServerRoute.preload,
+      },
+      {
+        path: 'seerr',
+        lazy: settingsSeerrRoute.lazy,
+        preload: settingsSeerrRoute.preload,
+      },
+      {
+        path: 'ombi',
+        lazy: settingsOmbiRoute.lazy,
+        preload: settingsOmbiRoute.preload,
+      },
+      {
+        // Radarr, Sonarr and Sportarr share one page; it reads which from the
+        // path and sends anything else back to the hub.
+        path: ':service',
+        lazy: settingsServarrRoute.lazy,
+        preload: settingsServarrRoute.preload,
+      },
+      {
+        path: 'metadata',
+        lazy: settingsMetadataRoute.lazy,
+        preload: settingsMetadataRoute.preload,
+      },
+      {
+        path: 'tracearr',
+        lazy: settingsTracearrRoute.lazy,
+        preload: settingsTracearrRoute.preload,
+      },
+      {
+        path: 'tautulli',
+        lazy: settingsTautulliRoute.lazy,
+        preload: settingsTautulliRoute.preload,
+      },
+      {
+        path: 'streamystats',
+        lazy: settingsStreamystatsRoute.lazy,
+        preload: settingsStreamystatsRoute.preload,
+      },
+      {
+        path: 'download-client',
+        lazy: settingsDownloadClientRoute.lazy,
+        preload: settingsDownloadClientRoute.preload,
+      },
+      {
+        path: 'notifications',
+        lazy: settingsNotificationsRoute.lazy,
+        preload: settingsNotificationsRoute.preload,
       },
     ],
   },
@@ -456,6 +454,12 @@ export const prefetchRoute = (path: string) => {
 
   if (preloaders.length === 0) return Promise.resolve()
   return Promise.all(preloaders.map((fn) => fn())).then(() => undefined)
+}
+
+// Hover, focus and touch handlers that warm a route before it is clicked.
+export const prefetchHandlers = (path: string, enabled = true) => {
+  const prefetch = enabled ? () => void prefetchRoute(path) : undefined
+  return { onMouseEnter: prefetch, onFocus: prefetch, onTouchStart: prefetch }
 }
 
 export const router = createBrowserRouter(

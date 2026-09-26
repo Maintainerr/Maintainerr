@@ -45,17 +45,13 @@ const OmbiSettings = () => {
 
   return (
     <ExternalServiceSettingsPage
-      updatedMessage={t`Ombi settings updated`}
       updateErrorMessage={t`Ombi settings could not be updated`}
       pageTitle={t`Ombi settings - Maintainerr`}
-      heading={t`Ombi Settings`}
-      description={t`Ombi configuration`}
-      docsPage="Configuration/#ombi"
       settingsPath="/settings/ombi"
       testPath="/settings/test/ombi"
       schema={OmbiSettingFormSchema}
       fields={buildFields()}
-      testSuccessTitle="Ombi"
+      serviceName="Ombi"
       testFailureMessage={t`Failed to connect to Ombi. Verify URL and API key.`}
     />
   )

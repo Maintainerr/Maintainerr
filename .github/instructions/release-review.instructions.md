@@ -184,7 +184,7 @@ or empty database, so every reviewer hits the same deterministic dataset.
      `MEDIA_SERVER=plex node tools/dev/seed-db.mjs`.
    - Re-run the seed after any DB-shape migration in the release so the
      dataset matches the migrated schema.
-3. Drive the UI with **Playwright** (the `playwright` MCP server) - do not
+3. Drive the UI with **Playwright** (the global library, see AGENTS.md) - do not
    rely on eyeballing screenshots alone. At minimum, for the areas the diff
    touches: load the page, perform the changed interaction, and assert on
    the resulting DOM/network. Capture a screenshot of each flow you touched
