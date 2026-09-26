@@ -50,8 +50,22 @@ export const Input = ({
   ref,
   ...props
 }: InputProps) => {
+  // A password field here holds a stored secret such as an API key, not a
+  // login, so password managers are told to leave it alone. A real sign-in
+  // passes its own autoComplete.
+  const secret =
+    props.type === 'password' && props.autoComplete === undefined
+      ? {
+          autoComplete: 'new-password',
+          'data-1p-ignore': true,
+          'data-lpignore': 'true',
+          'data-bwignore': true,
+        }
+      : undefined
+
   return (
     <input
+      {...secret}
       {...props}
       ref={ref}
       id={props.id || props.name}
