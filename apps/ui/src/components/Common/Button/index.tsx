@@ -6,7 +6,6 @@ export type ButtonType =
   | 'danger'
   | 'warning'
   | 'success'
-  | 'ghost'
   | 'twin-primary-l'
   | 'twin-primary-r'
   | 'twin-secondary-l'
@@ -70,11 +69,6 @@ function Button<P extends ElementTypes = 'button'>({
         'text-white bg-maintainerrdark border-maintainerrdark hover:bg-maintainerrdark-700 hover:border-maintainerrdark-700 focus:border-maintainerrdark-700 rounded-md focus:ring-maintainerr active:bg-maintainerrdark-700 active:border-maintainerrdark-700',
       )
       break
-    case 'ghost':
-      buttonStyle.push(
-        'text-white bg-transparent border-zinc-600 hover:border-zinc-200 focus:border-zinc-100 rounded-md active:border-zinc-100',
-      )
-      break
     case 'twin-primary-l':
       buttonStyle.push(
         'text-white bg-maintainerr-600 border-maintainerr-600 hover:bg-maintainerr hover:border-maintainerr focus:border-maintainerr-700 focus:ring-maintainerr active:bg-maintainerr-700 active:border-maintainerr-700 rounded-l',
@@ -97,7 +91,7 @@ function Button<P extends ElementTypes = 'button'>({
       break
     default:
       buttonStyle.push(
-        'text-zinc-200 bg-zinc-600 border-zinc-600 hover:text-white hover:bg-zinc-500 hover:border-zinc-500 group-hover:text-white rounded-md group-hover:bg-zinc-500 group-hover:border-zinc-500 focus:border-maintainerr-600 focus:ring-maintainerr active:text-zinc-200 active:bg-zinc-500 active:border-zinc-500',
+        'text-zinc-200 bg-zinc-600 border-zinc-600 hover:text-white hover:bg-zinc-500 hover:border-zinc-500 group-hover:text-white rounded-md group-hover:bg-zinc-500 group-hover:border-zinc-500 focus-visible:border-maintainerr-600 focus:ring-maintainerr active:text-zinc-200 active:bg-zinc-500 active:border-zinc-500',
       )
   }
 

@@ -468,7 +468,7 @@ function ProviderSection({
       actions={
         <>
           <Button
-            buttonType="ghost"
+            buttonType="default"
             buttonSize="sm"
             type="button"
             onClick={() => void performRefresh()}

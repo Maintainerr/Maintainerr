@@ -477,6 +477,10 @@ msgstr "Alle overlays zijn gereset"
 msgid "All seasons"
 msgstr "Alle seizoenen"
 
+#: src/components/Settings/Servarr/ServarrServerCard.tsx
+msgid "Allowed: {chars}"
+msgstr ""
+
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "Amount of days"
 msgstr "Aantal dagen"
@@ -2282,10 +2286,6 @@ msgstr "Logboeken - Maintainerr"
 #: src/components/Settings/About/index.tsx
 msgid "Loving Maintainerr?"
 msgstr "Tevreden over Maintainerr?"
-
-#: src/components/Settings/Servarr/ServarrServerCard.tsx
-msgid "Lowercase letters, numbers and hyphens only ({chars})."
-msgstr "Alleen kleine letters, cijfers en koppeltekens toegestaan ({chars})."
 
 #: src/components/Common/CommunityRuleModal/index.tsx
 msgid "Made with Version"

@@ -428,7 +428,7 @@ const ServarrServerCard = ({
         <>
           {canRefresh ? (
             <Button
-              buttonType="ghost"
+              buttonType="default"
               buttonSize="sm"
               type="button"
               onClick={() => void refreshMetadata()}
@@ -478,9 +478,7 @@ const ServarrServerCard = ({
               helpText={
                 <>
                   <Trans>The {name} tag to apply, created if missing.</Trans>{' '}
-                  <Trans>
-                    Lowercase letters, numbers and hyphens only ({chars}).
-                  </Trans>
+                  <Trans>Allowed: {chars}</Trans>
                 </>
               }
               {...register('exclusionTag', {

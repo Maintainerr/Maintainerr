@@ -477,6 +477,10 @@ msgstr "Alle Overlays wurden zurückgesetzt"
 msgid "All seasons"
 msgstr "Alle Staffeln"
 
+#: src/components/Settings/Servarr/ServarrServerCard.tsx
+msgid "Allowed: {chars}"
+msgstr ""
+
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "Amount of days"
 msgstr "Anzahl der Tage"
@@ -2282,10 +2286,6 @@ msgstr "Logs – Maintainerr"
 #: src/components/Settings/About/index.tsx
 msgid "Loving Maintainerr?"
 msgstr "Gefällt dir Maintainerr?"
-
-#: src/components/Settings/Servarr/ServarrServerCard.tsx
-msgid "Lowercase letters, numbers and hyphens only ({chars})."
-msgstr "Nur Kleinbuchstaben, Zahlen und Bindestriche ({chars})."
 
 #: src/components/Common/CommunityRuleModal/index.tsx
 msgid "Made with Version"
