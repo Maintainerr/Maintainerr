@@ -1,9 +1,6 @@
+import { assertApiKey, connectionTestConfig } from '../../lib/connectionTest';
 import { MaintainerrLogger } from '../../../logging/logs.service';
-import {
-  CONNECTION_TEST_TIMEOUT_MS,
-  NO_TIMEOUT,
-  SLOW_INSTANCE_TIMEOUT_MS,
-} from '../../lib/httpTimeouts';
+import { NO_TIMEOUT, SLOW_INSTANCE_TIMEOUT_MS } from '../../lib/httpTimeouts';
 import { ServarrApi } from '../common/servarr-api.service';
 import {
   SportarrDownloadHistoryItem,
@@ -40,18 +37,13 @@ export class SportarrApi extends ServarrApi<{
   }
 
   public async info(): Promise<SportarrInfo> {
-    try {
-      const info: SportarrInfo = (
-        await this.axios.get(`system/status`, {
-          signal: AbortSignal.timeout(CONNECTION_TEST_TIMEOUT_MS),
-        })
-      ).data;
-      return info ? info : null;
-    } catch (error) {
-      this.logger.warn("Couldn't fetch Sportarr info.. Is Sportarr up?");
-      this.logger.debug(error);
-      return null;
-    }
+    assertApiKey(this.axios.defaults.params?.apikey);
+    return (
+      await this.axios.get<SportarrInfo>(
+        'system/status',
+        connectionTestConfig(),
+      )
+    ).data;
   }
 
   // undefined = the fetch itself failed; callers fail closed.

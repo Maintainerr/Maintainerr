@@ -327,6 +327,10 @@ msgstr "+ Variabel"
 msgid "+{hiddenCount} more..."
 msgstr "+{hiddenCount} till..."
 
+#: src/components/Forms/ServiceBasePathInput.tsx
+msgid "<0>Optional</0> path configured on the service."
+msgstr ""
+
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "1 day text"
 msgstr "Text för 1 dag"
@@ -603,9 +607,9 @@ msgstr "Säkerhetskopiera"
 msgid "Backup Database"
 msgstr "Säkerhetskopiera databasen"
 
-#: src/components/Settings/Servarr/ServarrServerCard.tsx
-msgid "Base URL"
-msgstr "Bas-URL"
+#: src/components/Forms/ServiceBasePathInput.tsx
+msgid "Base Path"
+msgstr ""
 
 #: src/components/StorageMetrics/index.tsx
 msgid "Based on cached collection sizes, deduplicated across collections. Run collection processing jobs to refresh size data."
@@ -900,10 +904,6 @@ msgstr "Anslutningstestet misslyckades. Kontrollera URL och inloggningsuppgifter
 #: src/utils/ApiError.ts
 msgid "Connection timed out after 5 seconds. Verify URL and network reachability."
 msgstr "Anslutningen fick timeout efter 5 sekunder. Kontrollera URL och nätverksåtkomst."
-
-#: src/components/Settings/Plex/index.tsx
-msgid "Connects to the host above over TLS."
-msgstr ""
 
 #: src/components/Settings/About/index.tsx
 msgid "Container Config Path"
@@ -1479,10 +1479,7 @@ msgstr "Ungefär var {SAMPLE_MONTHS}:e månad"
 msgid "Every attempt should be made to only upload working rules. Rules with less than -100 karma and uploads with no rules, are removed nightly."
 msgstr "Försök att bara ladda upp fungerande regler. Regler med mindre än -100 karma och uppladdningar utan regler tas bort varje natt."
 
-#: src/components/Settings/Ombi/index.tsx
-#: src/components/Settings/Seerr/index.tsx
-#: src/components/Settings/Streamystats/index.tsx
-#: src/components/Settings/Tautulli/index.tsx
+#: src/components/Forms/ServiceUrlExamples.tsx
 msgid "Example URL formats:"
 msgstr "Exempel på URL-format:"
 
@@ -1788,9 +1785,35 @@ msgstr "Fyllnad"
 msgid "Fill & Stroke"
 msgstr "Fyllnad och kontur"
 
+#: src/components/Settings/Metadata/index.tsx
+msgid "Find it here: Dashboard → Account → API Keys"
+msgstr ""
+
+#: src/components/Settings/Emby/index.tsx
+#: src/components/Settings/Jellyfin/index.tsx
+msgid "Find it here: Dashboard → API Keys"
+msgstr ""
+
+#: src/components/Settings/Metadata/index.tsx
+msgid "Find it here: Settings → API"
+msgstr ""
+
 #: src/components/Settings/Tracearr/index.tsx
-msgid "Find it in Tracearr under Settings, General, API Key."
-msgstr "Du hittar den i Tracearr under Settings, General, API Key."
+msgid "Find it here: Settings → API → API Key"
+msgstr ""
+
+#: src/components/Settings/Seerr/index.tsx
+#: src/components/Settings/Servarr/ServarrServerCard.tsx
+msgid "Find it here: Settings → General → API Key"
+msgstr ""
+
+#: src/components/Settings/Ombi/index.tsx
+msgid "Find it here: Settings → Ombi → API Key"
+msgstr ""
+
+#: src/components/Settings/Tautulli/index.tsx
+msgid "Find it here: Settings → Web Interface"
+msgstr ""
 
 #: src/components/Common/MediaLibrarySortControl.tsx
 msgid "First Air Date Ascending"
@@ -1904,14 +1927,6 @@ msgstr "Dölj"
 msgid "Hostname"
 msgstr "Värdnamn"
 
-#: src/components/Settings/Plex/index.tsx
-msgid "Hostname / IP"
-msgstr "Värdnamn/IP"
-
-#: src/components/Settings/Servarr/ServarrServerCard.tsx
-msgid "Hostname or IP"
-msgstr "Värdnamn eller IP"
-
 #: src/components/Collection/CollectionDetail/TriggerRuleActionButton/index.tsx
 msgid "If the action succeeds, the item will be removed from the collection right away instead of waiting for the normal schedule."
 msgstr "Om åtgärden lyckas tas objektet bort från samlingen direkt i stället för att vänta på det ordinarie schemat."
@@ -1956,14 +1971,6 @@ msgstr "Viktigt:"
 #: src/pages/OverlayTemplateListPage.tsx
 msgid "Imported template \"{templateName}\""
 msgstr "Importerade mallen \"{templateName}\""
-
-#: src/components/Settings/Emby/index.tsx
-msgid "In Emby, go to <0>Dashboard → Advanced → API Keys</0> and create a new key named \"Maintainerr\". Or use <1>Sign in with Emby</1> below to obtain one automatically."
-msgstr "I Emby, gå till <0>Dashboard → Advanced → API Keys</0> och skapa en ny nyckel med namnet \"Maintainerr\". Eller använd <1>Logga in med Emby</1> nedan för att hämta en automatiskt."
-
-#: src/components/Settings/Jellyfin/index.tsx
-msgid "In Jellyfin, go to <0>Dashboard → API Keys</0> and create a new API key named \"Maintainerr\"."
-msgstr "I Jellyfin, gå till <0>Dashboard → API Keys</0> och skapa en ny API-nyckel med namnet \"Maintainerr\"."
 
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "In Last"
@@ -2625,10 +2632,6 @@ msgstr "Inga objekt hittades."
 msgid "No items processed yet"
 msgstr "Inga objekt bearbetade ännu"
 
-#: src/components/Settings/Servarr/ServarrServerCard.tsx
-msgid "No Leading Slash"
-msgstr "Inget inledande snedstreck"
-
 #: src/components/StorageMetrics/index.tsx
 msgid "No libraries reported. Add libraries in your media server, then refresh."
 msgstr "Inga bibliotek rapporterade. Lägg till bibliotek i din mediaserver och uppdatera sedan."
@@ -2912,12 +2915,12 @@ msgid "Please edit this rule and select a library"
 msgstr "Redigera den här regeln och välj ett bibliotek"
 
 #: src/components/Settings/Plex/index.tsx
-msgid "Please enter a hostname or IP address."
-msgstr "Ange ett värdnamn eller en IP-adress."
+msgid "Please enter a valid server URL with no path."
+msgstr ""
 
-#: src/components/Settings/Plex/index.tsx
-msgid "Please enter a valid port."
-msgstr "Ange en giltig port."
+#: src/components/Settings/Servarr/ServarrServerCard.tsx
+msgid "Please enter a valid URL."
+msgstr ""
 
 #: src/components/Settings/Jobs/index.tsx
 msgid "Please make sure all values are valid"
@@ -2958,11 +2961,6 @@ msgstr "Plex-inställningarna kunde inte uppdateras"
 #: src/utils/PlexAuth.ts
 msgid "Popup closed without completing login"
 msgstr "Popup-fönstret stängdes utan att inloggningen slutfördes"
-
-#: src/components/Settings/Plex/index.tsx
-#: src/components/Settings/Servarr/ServarrServerCard.tsx
-msgid "Port"
-msgstr "Port"
 
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "Position"
@@ -4011,10 +4009,6 @@ msgstr "Följande data rensas eller återställs:"
 msgid "The following data will be permanently deleted:"
 msgstr "Följande data raderas permanent:"
 
-#: src/components/Settings/DownloadClient/index.tsx
-msgid "The full RPC endpoint, normally {urlExample}"
-msgstr ""
-
 #: src/components/Settings/Notifications/NotificationAgentCard.tsx
 msgid "The JSON payload is not valid."
 msgstr ""
@@ -4078,10 +4072,6 @@ msgstr "Typen av TV-media som reglerna ska gälla för"
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "The user list could not be loaded"
 msgstr "Användarlistan kunde inte läsas in"
-
-#: src/components/Settings/DownloadClient/index.tsx
-msgid "The WebUI address, for example {urlExample}"
-msgstr ""
 
 #: src/components/Settings/index.tsx
 msgid "There was a problem loading settings."
@@ -4460,10 +4450,6 @@ msgstr "Den uppladdade YAML-filen är tom."
 msgid "Uppercase"
 msgstr "Versaler"
 
-#: src/components/Settings/Plex/index.tsx
-msgid "Use HTTPS"
-msgstr "Använd HTTPS"
-
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Use rules"
 msgstr "Använd regler"
@@ -4598,14 +4584,6 @@ msgstr "YAML-regelredigerare"
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "You are cloning the rule group ''{clonedRuleGroupName}''."
 msgstr "Du klonar regelgruppen \"{clonedRuleGroupName}\"."
-
-#: src/components/Settings/Metadata/index.tsx
-msgid "You can create a free API key at <0>{tmdbDomain}</0>."
-msgstr "Du kan skapa en gratis API-nyckel på <0>{tmdbDomain}</0>."
-
-#: src/components/Settings/Metadata/index.tsx
-msgid "You can create a free developer API key at <0>{tvdbDomain}</0>."
-msgstr "Du kan skapa en gratis developer API-nyckel på <0>{tvdbDomain}</0>."
 
 #: src/components/Layout/index.tsx
 msgid "You can try going back or reloading the page. If the problem persists, please check the browser console for more details."

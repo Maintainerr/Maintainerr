@@ -2,6 +2,8 @@ import { t as globalT } from '@lingui/core/macro'
 import { Trans, useLingui } from '@lingui/react/macro'
 import { ombiSettingSchema, stripTrailingSlashes } from '@maintainerr/contracts'
 import { z } from 'zod'
+import { ServiceApiKeyHelp } from '../../Forms/ServiceApiKeyHelp'
+import { ServiceUrlExamples } from '../../Forms/ServiceUrlExamples'
 import ExternalServiceSettingsPage, {
   type ExternalServiceFieldConfig,
 } from '../ExternalServiceSettingsPage'
@@ -20,16 +22,15 @@ const OmbiSettingFormSchema = z.union([
 const buildFields = (): ExternalServiceFieldConfig[] => [
   {
     name: 'url',
+    fullWidth: true,
     label: 'URL',
     placeholder: 'http://localhost:3579',
     helpText: (
-      <>
-        <Trans>Example URL formats:</Trans>{' '}
-        <span className="whitespace-nowrap">http://localhost:3579</span>,{' '}
-        <span className="whitespace-nowrap">http://192.168.1.5/ombi</span>,{' '}
-        <span className="whitespace-nowrap">https://ombi.example.com</span>
-      </>
+      <ServiceUrlExamples
+        examples={['http://localhost:3579', 'https://ombi.example.com']}
+      />
     ),
+    basePath: true,
     normalize: stripTrailingSlashes,
     required: true,
   },
@@ -37,6 +38,11 @@ const buildFields = (): ExternalServiceFieldConfig[] => [
     name: 'api_key',
     label: globalT`API key`,
     type: 'password',
+    helpText: (values) => (
+      <ServiceApiKeyHelp url={values.url} path="/Settings/Ombi">
+        <Trans>Find it here: Settings → Ombi → API Key</Trans>
+      </ServiceApiKeyHelp>
+    ),
   },
 ]
 

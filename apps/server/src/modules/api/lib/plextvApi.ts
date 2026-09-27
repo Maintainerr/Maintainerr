@@ -1,5 +1,6 @@
 import { AxiosError } from 'axios';
 import { parseStringPromise } from 'xml2js';
+import { connectionTestConfig } from './connectionTest';
 import { PLEX_TV_USERS_CACHE_KEY } from '../../api/plex-api/plex-api.constants';
 import { PlexDevice } from '../../api/plex-api/interfaces/server.interface';
 import { MaintainerrLogger } from '../../logging/logs.service';
@@ -146,9 +147,12 @@ export class PlexTvApi extends ExternalApiService {
   }
 
   public async validateToken(): Promise<PlexTokenValidation> {
+    if (!this.authToken?.trim()) return 'invalid';
+
     try {
       const response = await this.getRawWithoutCache<PlexAccountResponse>(
         '/users/account.json',
+        connectionTestConfig(),
       );
 
       return response.data?.user ? 'valid' : 'unreachable';

@@ -327,6 +327,10 @@ msgstr "+ Variable"
 msgid "+{hiddenCount} more..."
 msgstr "+{hiddenCount} more..."
 
+#: src/components/Forms/ServiceBasePathInput.tsx
+msgid "<0>Optional</0> path configured on the service."
+msgstr "<0>Optional</0> path configured on the service."
+
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "1 day text"
 msgstr "1 day text"
@@ -603,9 +607,9 @@ msgstr "Backup"
 msgid "Backup Database"
 msgstr "Backup Database"
 
-#: src/components/Settings/Servarr/ServarrServerCard.tsx
-msgid "Base URL"
-msgstr "Base URL"
+#: src/components/Forms/ServiceBasePathInput.tsx
+msgid "Base Path"
+msgstr "Base Path"
 
 #: src/components/StorageMetrics/index.tsx
 msgid "Based on cached collection sizes, deduplicated across collections. Run collection processing jobs to refresh size data."
@@ -900,10 +904,6 @@ msgstr "Connection test failed. Verify URL and credentials."
 #: src/utils/ApiError.ts
 msgid "Connection timed out after 5 seconds. Verify URL and network reachability."
 msgstr "Connection timed out after 5 seconds. Verify URL and network reachability."
-
-#: src/components/Settings/Plex/index.tsx
-msgid "Connects to the host above over TLS."
-msgstr "Connects to the host above over TLS."
 
 #: src/components/Settings/About/index.tsx
 msgid "Container Config Path"
@@ -1479,10 +1479,7 @@ msgstr "Every ~{SAMPLE_MONTHS} months"
 msgid "Every attempt should be made to only upload working rules. Rules with less than -100 karma and uploads with no rules, are removed nightly."
 msgstr "Every attempt should be made to only upload working rules. Rules with less than -100 karma and uploads with no rules, are removed nightly."
 
-#: src/components/Settings/Ombi/index.tsx
-#: src/components/Settings/Seerr/index.tsx
-#: src/components/Settings/Streamystats/index.tsx
-#: src/components/Settings/Tautulli/index.tsx
+#: src/components/Forms/ServiceUrlExamples.tsx
 msgid "Example URL formats:"
 msgstr "Example URL formats:"
 
@@ -1788,9 +1785,35 @@ msgstr "Fill"
 msgid "Fill & Stroke"
 msgstr "Fill & Stroke"
 
+#: src/components/Settings/Metadata/index.tsx
+msgid "Find it here: Dashboard → Account → API Keys"
+msgstr "Find it here: Dashboard → Account → API Keys"
+
+#: src/components/Settings/Emby/index.tsx
+#: src/components/Settings/Jellyfin/index.tsx
+msgid "Find it here: Dashboard → API Keys"
+msgstr "Find it here: Dashboard → API Keys"
+
+#: src/components/Settings/Metadata/index.tsx
+msgid "Find it here: Settings → API"
+msgstr "Find it here: Settings → API"
+
 #: src/components/Settings/Tracearr/index.tsx
-msgid "Find it in Tracearr under Settings, General, API Key."
-msgstr "Find it in Tracearr under Settings, General, API Key."
+msgid "Find it here: Settings → API → API Key"
+msgstr "Find it here: Settings → API → API Key"
+
+#: src/components/Settings/Seerr/index.tsx
+#: src/components/Settings/Servarr/ServarrServerCard.tsx
+msgid "Find it here: Settings → General → API Key"
+msgstr "Find it here: Settings → General → API Key"
+
+#: src/components/Settings/Ombi/index.tsx
+msgid "Find it here: Settings → Ombi → API Key"
+msgstr "Find it here: Settings → Ombi → API Key"
+
+#: src/components/Settings/Tautulli/index.tsx
+msgid "Find it here: Settings → Web Interface"
+msgstr "Find it here: Settings → Web Interface"
 
 #: src/components/Common/MediaLibrarySortControl.tsx
 msgid "First Air Date Ascending"
@@ -1904,14 +1927,6 @@ msgstr "Hide"
 msgid "Hostname"
 msgstr "Hostname"
 
-#: src/components/Settings/Plex/index.tsx
-msgid "Hostname / IP"
-msgstr "Hostname / IP"
-
-#: src/components/Settings/Servarr/ServarrServerCard.tsx
-msgid "Hostname or IP"
-msgstr "Hostname or IP"
-
 #: src/components/Collection/CollectionDetail/TriggerRuleActionButton/index.tsx
 msgid "If the action succeeds, the item will be removed from the collection right away instead of waiting for the normal schedule."
 msgstr "If the action succeeds, the item will be removed from the collection right away instead of waiting for the normal schedule."
@@ -1956,14 +1971,6 @@ msgstr "Important:"
 #: src/pages/OverlayTemplateListPage.tsx
 msgid "Imported template \"{templateName}\""
 msgstr "Imported template \"{templateName}\""
-
-#: src/components/Settings/Emby/index.tsx
-msgid "In Emby, go to <0>Dashboard → Advanced → API Keys</0> and create a new key named \"Maintainerr\". Or use <1>Sign in with Emby</1> below to obtain one automatically."
-msgstr "In Emby, go to <0>Dashboard → Advanced → API Keys</0> and create a new key named \"Maintainerr\". Or use <1>Sign in with Emby</1> below to obtain one automatically."
-
-#: src/components/Settings/Jellyfin/index.tsx
-msgid "In Jellyfin, go to <0>Dashboard → API Keys</0> and create a new API key named \"Maintainerr\"."
-msgstr "In Jellyfin, go to <0>Dashboard → API Keys</0> and create a new API key named \"Maintainerr\"."
 
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "In Last"
@@ -2625,10 +2632,6 @@ msgstr "No items found."
 msgid "No items processed yet"
 msgstr "No items processed yet"
 
-#: src/components/Settings/Servarr/ServarrServerCard.tsx
-msgid "No Leading Slash"
-msgstr "No Leading Slash"
-
 #: src/components/StorageMetrics/index.tsx
 msgid "No libraries reported. Add libraries in your media server, then refresh."
 msgstr "No libraries reported. Add libraries in your media server, then refresh."
@@ -2912,12 +2915,12 @@ msgid "Please edit this rule and select a library"
 msgstr "Please edit this rule and select a library"
 
 #: src/components/Settings/Plex/index.tsx
-msgid "Please enter a hostname or IP address."
-msgstr "Please enter a hostname or IP address."
+msgid "Please enter a valid server URL with no path."
+msgstr "Please enter a valid server URL with no path."
 
-#: src/components/Settings/Plex/index.tsx
-msgid "Please enter a valid port."
-msgstr "Please enter a valid port."
+#: src/components/Settings/Servarr/ServarrServerCard.tsx
+msgid "Please enter a valid URL."
+msgstr "Please enter a valid URL."
 
 #: src/components/Settings/Jobs/index.tsx
 msgid "Please make sure all values are valid"
@@ -2958,11 +2961,6 @@ msgstr "Plex settings could not be updated"
 #: src/utils/PlexAuth.ts
 msgid "Popup closed without completing login"
 msgstr "Popup closed without completing login"
-
-#: src/components/Settings/Plex/index.tsx
-#: src/components/Settings/Servarr/ServarrServerCard.tsx
-msgid "Port"
-msgstr "Port"
 
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "Position"
@@ -4011,10 +4009,6 @@ msgstr "The following data will be cleared or reset:"
 msgid "The following data will be permanently deleted:"
 msgstr "The following data will be permanently deleted:"
 
-#: src/components/Settings/DownloadClient/index.tsx
-msgid "The full RPC endpoint, normally {urlExample}"
-msgstr "The full RPC endpoint, normally {urlExample}"
-
 #: src/components/Settings/Notifications/NotificationAgentCard.tsx
 msgid "The JSON payload is not valid."
 msgstr "The JSON payload is not valid."
@@ -4078,10 +4072,6 @@ msgstr "The type of TV media rules should apply to"
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "The user list could not be loaded"
 msgstr "The user list could not be loaded"
-
-#: src/components/Settings/DownloadClient/index.tsx
-msgid "The WebUI address, for example {urlExample}"
-msgstr "The WebUI address, for example {urlExample}"
 
 #: src/components/Settings/index.tsx
 msgid "There was a problem loading settings."
@@ -4460,10 +4450,6 @@ msgstr "Uploaded YAML file is empty."
 msgid "Uppercase"
 msgstr "Uppercase"
 
-#: src/components/Settings/Plex/index.tsx
-msgid "Use HTTPS"
-msgstr "Use HTTPS"
-
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Use rules"
 msgstr "Use rules"
@@ -4598,14 +4584,6 @@ msgstr "Yaml Rule Editor"
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "You are cloning the rule group ''{clonedRuleGroupName}''."
 msgstr "You are cloning the rule group ''{clonedRuleGroupName}''."
-
-#: src/components/Settings/Metadata/index.tsx
-msgid "You can create a free API key at <0>{tmdbDomain}</0>."
-msgstr "You can create a free API key at <0>{tmdbDomain}</0>."
-
-#: src/components/Settings/Metadata/index.tsx
-msgid "You can create a free developer API key at <0>{tvdbDomain}</0>."
-msgstr "You can create a free developer API key at <0>{tvdbDomain}</0>."
 
 #: src/components/Layout/index.tsx
 msgid "You can try going back or reloading the page. If the problem persists, please check the browser console for more details."

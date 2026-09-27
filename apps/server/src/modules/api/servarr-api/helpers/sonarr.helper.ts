@@ -1,8 +1,6 @@
+import { assertApiKey, connectionTestConfig } from '../../lib/connectionTest';
 import { MaintainerrLogger } from '../../../logging/logs.service';
-import {
-  CONNECTION_TEST_TIMEOUT_MS,
-  SLOW_INSTANCE_TIMEOUT_MS,
-} from '../../lib/httpTimeouts';
+import { SLOW_INSTANCE_TIMEOUT_MS } from '../../lib/httpTimeouts';
 import { ServarrApi } from '../common/servarr-api.service';
 import {
   DownloadHistoryItem,
@@ -454,18 +452,10 @@ export class SonarrApi extends ServarrApi<{
   }
 
   public async info(): Promise<SonarrInfo> {
-    try {
-      const info: SonarrInfo = (
-        await this.axios.get(`system/status`, {
-          signal: AbortSignal.timeout(CONNECTION_TEST_TIMEOUT_MS),
-        })
-      ).data;
-      return info ? info : null;
-    } catch (error) {
-      this.logger.warn("Couldn't fetch Sonarr info.. Is Sonarr up?");
-      this.logger.debug(error);
-      return null;
-    }
+    assertApiKey(this.axios.defaults.params?.apikey);
+    return (
+      await this.axios.get<SonarrInfo>('system/status', connectionTestConfig())
+    ).data;
   }
 
   private async unmonitorAndDeleteEpisode(

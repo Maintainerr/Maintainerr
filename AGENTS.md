@@ -408,6 +408,12 @@ When working with these integrations:
 - Retry through `applyHttpRetry` (`modules/api/lib/httpRetry.ts`), never a
   per-client axios-retry config: it already answers a 429 with the wait the
   server declared, capped, so hand-rolled rate-limit handling only drifts
+- New service connection tests must use `connectionTestConfig` and, for API-key
+  authentication, `assertApiKey` from `modules/api/lib/connectionTest.ts`. Reuse
+  one config for the entire uncached test, including login and a protected API
+  read, so the five-second deadline includes retries. Reject explicitly empty
+  keys; only TMDB may use its built-in key. Report failures through the shared
+  `formatConnectionFailureMessage` and `logConnectionTestError` helpers.
 - Implement caching where appropriate (node-cache)
 - Prefer one batched call per run over one per item: see the Seerr request
   prefetch (#3152), the batched collection writes, and the removal-notification

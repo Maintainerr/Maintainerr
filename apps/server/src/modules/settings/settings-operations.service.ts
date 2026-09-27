@@ -1427,68 +1427,21 @@ export class SettingsOperationsService {
   public async testTautulli(
     setting?: TautulliSetting,
   ): Promise<BasicResponseDto> {
-    if (setting) {
-      return await this.tautulli.testConnection({
-        apiKey: setting.api_key,
-        url: setting.url,
-      });
-    }
-
-    try {
-      const resp = await this.tautulli.info();
-      return resp?.response && resp?.response.result == 'success'
-        ? {
-            status: 'OK',
-            code: 1,
-            message: resp.response.data?.tautulli_version,
-          }
-        : { status: 'NOK', code: 0, message: 'Failure' };
-    } catch (error) {
-      logConnectionTestError(this.logger, 'Tautulli', error);
-      return {
-        status: 'NOK',
-        code: 0,
-        message: formatConnectionFailureMessage(
-          error,
-          'Failed to connect to Tautulli. Verify URL and API key.',
-        ),
-      };
-    }
+    return this.tautulli.testConnection({
+      apiKey: setting
+        ? setting.api_key
+        : this.settingsDataService.tautulli_api_key,
+      url: setting ? setting.url : this.settingsDataService.tautulli_url,
+    });
   }
 
   public async testStreamystats(
     setting?: StreamystatsSetting,
   ): Promise<BasicResponseDto> {
-    if (setting) {
-      // testConnection only hits Streamystats's unauthenticated /api/version
-      // endpoint, so we deliberately do not send the stored Jellyfin API key
-      // here. This avoids handing the stored credential to a URL the caller
-      // just supplied via the test endpoint.
-      return await this.streamystats.testConnection({
-        url: setting.url,
-      });
-    }
-
-    try {
-      const info = await this.streamystats.info();
-      return info?.currentVersion
-        ? {
-            status: 'OK',
-            code: 1,
-            message: info.currentVersion,
-          }
-        : { status: 'NOK', code: 0, message: 'Failure' };
-    } catch (error) {
-      logConnectionTestError(this.logger, 'Streamystats', error);
-      return {
-        status: 'NOK',
-        code: 0,
-        message: formatConnectionFailureMessage(
-          error,
-          'Failed to connect to Streamystats. Verify URL and that the service is running.',
-        ),
-      };
-    }
+    return this.streamystats.testConnection({
+      apiKey: this.settingsDataService.jellyfin_api_key,
+      url: setting ? setting.url : this.settingsDataService.streamystats_url,
+    });
   }
 
   public testDownloadClient(
@@ -1615,7 +1568,7 @@ export class SettingsOperationsService {
     }
 
     try {
-      const resp = await this.plexApi.getStatus();
+      const resp = await this.plexApi.testConnection();
       return resp?.version != null
         ? { status: 'OK', code: 1, message: resp.version }
         : { status: 'NOK', code: 0, message: 'Failure' };

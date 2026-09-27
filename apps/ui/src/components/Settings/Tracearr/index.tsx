@@ -1,13 +1,13 @@
 import { t as globalT } from '@lingui/core/macro'
 import { Trans, useLingui } from '@lingui/react/macro'
 import {
-  serviceUrlSchema,
   stripTrailingSlashes,
   type TracearrServer,
   tracearrSettingSchema,
 } from '@maintainerr/contracts'
+import { ServiceApiKeyHelp } from '../../Forms/ServiceApiKeyHelp'
+import { ServiceUrlExamples } from '../../Forms/ServiceUrlExamples'
 import { PostApiHandler } from '../../../utils/ApiHandler'
-import BrandLink from '../../Common/BrandLink'
 import ExternalServiceSettingsPage, {
   type ExternalServiceFieldConfig,
 } from '../ExternalServiceSettingsPage'
@@ -16,8 +16,15 @@ import ExternalServiceSettingsPage, {
 const buildFields = (): ExternalServiceFieldConfig[] => [
   {
     name: 'url',
+    fullWidth: true,
     label: 'URL',
     placeholder: 'http://localhost:3000',
+    helpText: (
+      <ServiceUrlExamples
+        examples={['http://localhost:3000', 'https://tracearr.example.com']}
+      />
+    ),
+    basePath: true,
     normalize: stripTrailingSlashes,
     required: true,
   },
@@ -25,20 +32,12 @@ const buildFields = (): ExternalServiceFieldConfig[] => [
     name: 'api_key',
     label: globalT`API key`,
     type: 'password',
+    helpText: (values) => (
+      <ServiceApiKeyHelp url={values.url} path="/settings/data/api">
+        <Trans>Find it here: Settings → API → API Key</Trans>
+      </ServiceApiKeyHelp>
+    ),
     required: true,
-    // The field is still being typed, so it is only a link once it parses as a
-    // service URL. Anything else, a javascript: value included, stays text.
-    helpText: (values) =>
-      serviceUrlSchema.safeParse(values.url).success ? (
-        <BrandLink
-          external
-          href={`${stripTrailingSlashes(values.url)}/settings`}
-        >
-          <Trans>Find it in Tracearr under Settings, General, API Key.</Trans>
-        </BrandLink>
-      ) : (
-        globalT`Find it in Tracearr under Settings, General, API Key.`
-      ),
   },
   // Only rendered when Tracearr has more than one server of the configured
   // media server's type, since that is the only case Maintainerr cannot

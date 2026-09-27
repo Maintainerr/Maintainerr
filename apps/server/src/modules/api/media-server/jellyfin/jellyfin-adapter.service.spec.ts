@@ -342,6 +342,10 @@ describe('JellyfinAdapterService', () => {
       );
       await service.initialize();
       expect(service.isSetup()).toBe(true);
+      expect(jellyfinApiMocks.getPublicSystemInfo).toHaveBeenCalledWith(
+        undefined,
+      );
+      expect(jellyfinApiMocks.getUsers).toHaveBeenCalledWith({}, undefined);
     });
 
     it('logs successful test connections at debug level', async () => {
@@ -352,6 +356,13 @@ describe('JellyfinAdapterService', () => {
         serverName: 'Test Server',
         version: '10.11.0',
       });
+
+      const config = jellyfinApiMocks.getPublicSystemInfo.mock.calls[0][0];
+      expect(config).toEqual({
+        timeout: 5000,
+        signal: expect.any(AbortSignal),
+      });
+      expect(jellyfinApiMocks.getUsers).toHaveBeenCalledWith({}, config);
 
       expect(logger.debug).toHaveBeenCalledWith(
         'Jellyfin connection test successful: Test Server (10.11.0)',

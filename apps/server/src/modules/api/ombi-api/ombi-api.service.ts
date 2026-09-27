@@ -1,6 +1,7 @@
 import { BasicResponseDto, stripTrailingSlashes } from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
 import { cloneDeep } from 'lodash';
+import { assertApiKey, connectionTestConfig } from '../lib/connectionTest';
 import { SettingsDataService } from '../../../modules/settings/settings-data.service';
 import {
   formatConnectionFailureMessage,
@@ -11,7 +12,6 @@ import {
   MaintainerrLoggerFactory,
 } from '../../logging/logs.service';
 import cacheManager from '../lib/cache';
-import { CONNECTION_TEST_TIMEOUT_MS } from '../lib/httpTimeouts';
 import { OmbiApi } from './helpers/ombi-api.helper';
 import {
   OMBI_REQUESTS_CACHE_ID,
@@ -315,9 +315,10 @@ export class OmbiApiService {
       : this.api;
 
     try {
+      assertApiKey(params ? params.apiKey : this.settings.ombi_api_key);
       const response = await api.getRawWithoutCache<OmbiAbout>(
         '/v1/Settings/about',
-        { signal: AbortSignal.timeout(CONNECTION_TEST_TIMEOUT_MS) },
+        connectionTestConfig(),
       );
 
       if (!response.data?.version) {

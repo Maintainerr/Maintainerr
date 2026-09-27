@@ -1,3 +1,7 @@
+import { t as globalT } from '@lingui/core/macro'
+import { serviceUrlSchema } from '@maintainerr/contracts'
+import { useForm, useWatch } from 'react-hook-form'
+import { ServiceUrlExamples } from '../../Forms/ServiceUrlExamples'
 import { Trans, useLingui } from '@lingui/react/macro'
 import { RefreshIcon } from '@heroicons/react/outline'
 import { ChevronDownIcon, ChevronUpIcon } from '@heroicons/react/solid'
@@ -59,9 +63,7 @@ interface SelectedServer {
 }
 
 interface PlexAdvancedDraft {
-  hostname: string
-  port: string
-  ssl: boolean
+  url: string
 }
 
 interface TokenValidationOverride {
@@ -71,6 +73,18 @@ interface TokenValidationOverride {
 
 const normalizePlexHostname = (hostname?: string) =>
   hostname?.replace('http://', '').replace('https://', '') ?? ''
+
+const plexConnectionUrlSchema = serviceUrlSchema.refine((value) => {
+  if (!URL.canParse(value)) return false
+  const url = new URL(value)
+  return (
+    url.pathname === '/' &&
+    !url.search &&
+    !url.hash &&
+    !url.username &&
+    !url.password
+  )
+})
 
 const isDirectIpAddress = (address: string) => {
   if (address.includes(':')) return true
@@ -121,9 +135,6 @@ const PlexSettings = () => {
   const [manualModeOverride, setManualModeOverride] = useState<
     boolean | undefined
   >(undefined)
-  const [advancedDraftOverride, setAdvancedDraftOverride] = useState<
-    PlexAdvancedDraft | undefined
-  >(undefined)
   const [testBanner, setTestBanner] = useState<{
     status: boolean
     version: string
@@ -161,19 +172,25 @@ const PlexSettings = () => {
         }
       : null
   const savedAdvancedDraft: PlexAdvancedDraft = {
-    hostname: normalizePlexHostname(settings?.plex_hostname) || '',
-    port: settings?.plex_port != null ? String(settings.plex_port) : '32400',
-    ssl: Boolean(settings?.plex_ssl),
+    url: settings?.plex_hostname
+      ? `${settings.plex_ssl ? 'https' : 'http'}://${normalizePlexHostname(settings.plex_hostname)}:${settings.plex_port ?? 32400}`
+      : '',
   }
+  const {
+    register: registerAdvanced,
+    control: advancedControl,
+    reset: resetAdvanced,
+    trigger: validateAdvanced,
+    formState: { errors: advancedErrors },
+  } = useForm<PlexAdvancedDraft>({ values: savedAdvancedDraft })
+
   const selectedServer =
     selectedServerOverride === undefined
       ? savedSelectedServer
       : selectedServerOverride
   const manualMode = manualModeOverride ?? settings?.plex_manual_mode === 1
-  const advancedHostname =
-    advancedDraftOverride?.hostname ?? savedAdvancedDraft.hostname
-  const advancedPort = advancedDraftOverride?.port ?? savedAdvancedDraft.port
-  const advancedSsl = advancedDraftOverride?.ssl ?? savedAdvancedDraft.ssl
+  const advancedUrl = useWatch({ control: advancedControl, name: 'url' }) ?? ''
+
   const storedAuthToken = settings?.plex_auth_token
   const {
     data: storedTokenValidation,
@@ -231,10 +248,7 @@ const PlexSettings = () => {
 
   // Track whether the user has edited the advanced fields since last save
   const hasUnsavedAdvancedChanges =
-    manualMode &&
-    (advancedHostname !== savedAdvancedDraft.hostname ||
-      advancedPort !== savedAdvancedDraft.port ||
-      advancedSsl !== savedAdvancedDraft.ssl)
+    manualMode && advancedUrl !== savedAdvancedDraft.url
 
   const clearTestBanner = () => {
     setTestBanner({ status: false, version: '' })
@@ -250,28 +264,19 @@ const PlexSettings = () => {
 
     try {
       if (manualMode) {
-        // Advanced settings: save manual override (no server selection required)
-        const normalizedHostname =
-          normalizePlexHostname(advancedHostname).trim()
-        const port = Number(advancedPort.trim())
-
-        if (!normalizedHostname) {
-          showInfo(t`Please enter a hostname or IP address.`)
-          return
-        }
-
-        if (!Number.isInteger(port) || port <= 0 || port > 65535) {
-          showInfo(t`Please enter a valid port.`)
-          return
-        }
+        if (!(await validateAdvanced('url'))) return
+        const url = new URL(advancedUrl.trim())
+        const ssl = url.protocol === 'https:'
+        const port = Number(url.port || (ssl ? 443 : 80))
+        const normalizedHostname = url.hostname
 
         await updateSettings({
-          plex_hostname: advancedSsl
+          plex_hostname: ssl
             ? `https://${normalizedHostname}`
             : normalizedHostname,
           plex_port: port,
           plex_name: selectedServer?.name || normalizedHostname,
-          plex_ssl: Number(advancedSsl),
+          plex_ssl: Number(ssl),
           plex_manual_mode: 1,
         })
       } else {
@@ -295,7 +300,7 @@ const PlexSettings = () => {
 
       setSelectedServerOverride(undefined)
       setManualModeOverride(undefined)
-      setAdvancedDraftOverride(undefined)
+      resetAdvanced(savedAdvancedDraft)
       clearTestBanner()
       showUpdated()
     } catch {
@@ -384,7 +389,7 @@ const PlexSettings = () => {
       setClearTokenClicked(false)
       setSelectedServerOverride(null)
       setManualModeOverride(false)
-      setAdvancedDraftOverride(undefined)
+      resetAdvanced(savedAdvancedDraft)
       clearTestBanner()
       showUpdated()
     } catch {
@@ -578,7 +583,7 @@ const PlexSettings = () => {
                         onClick={() => {
                           setSelectedServerOverride(null)
                           setManualModeOverride(false)
-                          setAdvancedDraftOverride(undefined)
+                          resetAdvanced(savedAdvancedDraft)
                           setAdvancedOpen(false)
                           clear()
                           clearTestBanner()
@@ -608,7 +613,7 @@ const PlexSettings = () => {
                                 latency: preset.latency,
                               })
                               setManualModeOverride(false)
-                              setAdvancedDraftOverride(undefined)
+                              resetAdvanced(savedAdvancedDraft)
                               setAdvancedOpen(false)
                               clear()
                               clearTestBanner()
@@ -680,46 +685,28 @@ const PlexSettings = () => {
 
                 {advancedOpen && (
                   <div className="mt-3 flex flex-col gap-3">
-                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                      <InputGroup
-                        layout="stacked"
-                        id="advanced-hostname"
-                        name="advanced-hostname"
-                        label={t`Hostname / IP`}
-                        // Example values stay untranslated per the
-                        // do-not-translate list.
-                        helpText="e.g. plex, 192.168.1.50, or localhost"
-                        type="text"
-                        disabled={!manualMode}
-                        value={advancedHostname}
-                        onChange={(e) => {
-                          setAdvancedDraftOverride((currentDraft) => ({
-                            ...(currentDraft ?? savedAdvancedDraft),
-                            hostname: e.target.value,
-                          }))
-                        }}
-                        placeholder={
-                          normalizePlexHostname(settings?.plex_hostname) ||
-                          'plex'
-                        }
-                      />
-                      <InputGroup
-                        layout="stacked"
-                        id="advanced-port"
-                        name="advanced-port"
-                        label={t`Port`}
-                        type="number"
-                        disabled={!manualMode}
-                        value={advancedPort}
-                        onChange={(e) => {
-                          setAdvancedDraftOverride((currentDraft) => ({
-                            ...(currentDraft ?? savedAdvancedDraft),
-                            port: e.target.value,
-                          }))
-                        }}
-                        placeholder="32400"
-                      />
-                    </div>
+                    <InputGroup
+                      layout="stacked"
+                      id="advanced-url"
+                      label="URL"
+                      type="text"
+                      disabled={!manualMode}
+                      placeholder="http://localhost:32400"
+                      helpText={
+                        <ServiceUrlExamples
+                          examples={[
+                            'http://localhost:32400',
+                            'https://plex.example.com',
+                          ]}
+                        />
+                      }
+                      error={advancedErrors.url?.message}
+                      {...registerAdvanced('url', {
+                        validate: (value) =>
+                          plexConnectionUrlSchema.safeParse(value).success ||
+                          globalT`Please enter a valid server URL with no path.`,
+                      })}
+                    />
                     <CheckboxGroup
                       id="advanced-manual-mode"
                       label={t`Enable manual mode`}
@@ -743,19 +730,6 @@ const PlexSettings = () => {
                           setSelectedServerOverride(null)
                           clearTestBanner()
                         }
-                      }}
-                    />
-                    <CheckboxGroup
-                      id="advanced-ssl"
-                      label={t`Use HTTPS`}
-                      helpText={t`Connects to the host above over TLS.`}
-                      disabled={!manualMode}
-                      checked={advancedSsl}
-                      onChange={(e) => {
-                        setAdvancedDraftOverride((currentDraft) => ({
-                          ...(currentDraft ?? savedAdvancedDraft),
-                          ssl: e.target.checked,
-                        }))
                       }}
                     />
                   </div>

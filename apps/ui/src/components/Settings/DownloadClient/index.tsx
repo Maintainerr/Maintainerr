@@ -14,6 +14,8 @@ import {
   useSaveDownloadClientSettings,
   useTestDownloadClient,
 } from '../../../api/settings'
+import { ServiceUrlExamples } from '../../Forms/ServiceUrlExamples'
+import { ServiceBasePathInput } from '../../Forms/ServiceBasePathInput'
 import { getApiErrorMessage } from '../../../utils/ApiError'
 import Badge from '../../Common/Badge'
 import SaveButton from '../../Common/SaveButton'
@@ -121,12 +123,18 @@ const DownloadClientSettings = () => {
       : clientType === DownloadClientType.QBITTORRENT
         ? 'http://localhost:8080'
         : ''
-  const urlHelp =
-    clientType === DownloadClientType.TRANSMISSION
-      ? t`The full RPC endpoint, normally ${{ urlExample }}`
-      : clientType === DownloadClientType.QBITTORRENT
-        ? t`The WebUI address, for example ${{ urlExample }}`
-        : t`Select a client first`
+  const urlHelp = clientType ? (
+    <ServiceUrlExamples
+      examples={[
+        urlExample,
+        clientType === DownloadClientType.TRANSMISSION
+          ? 'https://bt.example.com/transmission/rpc'
+          : 'https://qbittorrent.example.com',
+      ]}
+    />
+  ) : (
+    t`Select a client first`
+  )
 
   const isGoingToRemove = (url ?? '') === ''
   const connectionKey = `${clientType} ${url} ${username} ${password}`
@@ -335,6 +343,50 @@ const DownloadClientSettings = () => {
             />
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <Controller
+                name="download_client_username"
+                control={control}
+                render={({ field }) => (
+                  <InputGroup
+                    layout="stacked"
+                    label={t`Username`}
+                    value={field.value}
+                    onChange={(event) => {
+                      clearTransientState()
+                      field.onChange(event)
+                    }}
+                    onBlur={field.onBlur}
+                    ref={field.ref}
+                    name={field.name}
+                    type="text"
+                    error={errors.download_client_username?.message}
+                    helpText={t`Leave blank if the client allows unauthenticated access.`}
+                  />
+                )}
+              />
+
+              <Controller
+                name="download_client_password"
+                control={control}
+                render={({ field }) => (
+                  <InputGroup
+                    layout="stacked"
+                    label={t`Password`}
+                    value={field.value}
+                    onChange={(event) => {
+                      clearTransientState()
+                      field.onChange(event)
+                    }}
+                    onBlur={field.onBlur}
+                    ref={field.ref}
+                    name={field.name}
+                    type="password"
+                    error={errors.download_client_password?.message}
+                  />
+                )}
+              />
+            </div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <Controller
                 name="download_client_type"
                 control={control}
                 render={({ field }) => (
@@ -375,6 +427,7 @@ const DownloadClientSettings = () => {
                   </SelectGroup>
                 )}
               />
+
               <Controller
                 name="download_client_fallback_ratio"
                 control={control}
@@ -400,65 +453,37 @@ const DownloadClientSettings = () => {
                 )}
               />
             </div>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="grid grid-cols-1 items-center gap-3 sm:grid-cols-2">
+              {clientType === DownloadClientType.QBITTORRENT && (
+                <ServiceBasePathInput
+                  name="download_client_url"
+                  value={url ?? ''}
+                  onChange={(value) => {
+                    clearTransientState()
+                    setValue('download_client_url', value, {
+                      shouldDirty: true,
+                    })
+                  }}
+                />
+              )}
+
               <Controller
-                name="download_client_username"
+                name="download_client_delete_data"
                 control={control}
                 render={({ field }) => (
-                  <InputGroup
-                    layout="stacked"
-                    label={t`Username`}
-                    value={field.value}
+                  <CheckboxGroup
+                    id="download_client_delete_data"
+                    label={t`Delete downloaded data`}
+                    helpText={t`Turn off if you cross-seed.`}
+                    checked={field.value}
                     onChange={(event) => {
-                      clearTransientState()
-                      field.onChange(event)
+                      clear()
+                      field.onChange(event.target.checked)
                     }}
-                    onBlur={field.onBlur}
-                    ref={field.ref}
-                    name={field.name}
-                    type="text"
-                    error={errors.download_client_username?.message}
-                    helpText={t`Leave blank if the client allows unauthenticated access.`}
-                  />
-                )}
-              />
-              <Controller
-                name="download_client_password"
-                control={control}
-                render={({ field }) => (
-                  <InputGroup
-                    layout="stacked"
-                    label={t`Password`}
-                    value={field.value}
-                    onChange={(event) => {
-                      clearTransientState()
-                      field.onChange(event)
-                    }}
-                    onBlur={field.onBlur}
-                    ref={field.ref}
-                    name={field.name}
-                    type="password"
-                    error={errors.download_client_password?.message}
                   />
                 )}
               />
             </div>
-            <Controller
-              name="download_client_delete_data"
-              control={control}
-              render={({ field }) => (
-                <CheckboxGroup
-                  id="download_client_delete_data"
-                  label={t`Delete downloaded data`}
-                  helpText={t`Turn off if you cross-seed.`}
-                  checked={field.value}
-                  onChange={(event) => {
-                    clear()
-                    field.onChange(event.target.checked)
-                  }}
-                />
-              )}
-            />
             <ServiceCardFooter status={status}>
               <TestingButton
                 type="button"

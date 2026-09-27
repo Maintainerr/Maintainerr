@@ -465,7 +465,7 @@ describe('PlexSettings', () => {
     })
   })
 
-  it('requires a hostname before saving manual mode', async () => {
+  it('requires a URL before saving manual mode', async () => {
     render(<PlexSettings />)
 
     await waitFor(() => {
@@ -475,7 +475,7 @@ describe('PlexSettings', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Advanced Settings' }))
     fireEvent.click(screen.getByLabelText(/Enable manual mode/i))
 
-    const hostnameInput = await screen.findByLabelText(/Hostname \/ IP/i)
+    const hostnameInput = await screen.findByLabelText('URL')
 
     fireEvent.change(hostnameInput, {
       target: { value: '   ' },
@@ -485,35 +485,67 @@ describe('PlexSettings', () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText('Please enter a hostname or IP address.'),
+        screen.getByText('Please enter a valid server URL with no path.'),
       ).toBeTruthy()
     })
 
     expect(updateSettings).not.toHaveBeenCalled()
   })
 
-  it('requires a valid port before saving manual mode', async () => {
-    render(<PlexSettings />)
+  it.each(['http://plex.local:70000', 'http://plex.local:32400/path'])(
+    'rejects an invalid manual URL: %s',
+    async (url) => {
+      render(<PlexSettings />)
 
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Authenticated' })).toBeTruthy()
-    })
+      await waitFor(() => {
+        expect(
+          screen.getByRole('button', { name: 'Authenticated' }),
+        ).toBeTruthy()
+      })
 
-    fireEvent.click(screen.getByRole('button', { name: 'Advanced Settings' }))
-    fireEvent.click(screen.getByLabelText(/Enable manual mode/i))
+      fireEvent.click(screen.getByRole('button', { name: 'Advanced Settings' }))
+      fireEvent.click(screen.getByLabelText(/Enable manual mode/i))
 
-    const portInput = await screen.findByLabelText(/^Port$/i)
+      const portInput = await screen.findByLabelText('URL')
 
-    fireEvent.change(portInput, {
-      target: { value: '70000' },
-    })
+      fireEvent.change(portInput, {
+        target: { value: url },
+      })
 
-    fireEvent.click(screen.getByRole('button', { name: 'Save Changes' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Save Changes' }))
 
-    await waitFor(() => {
-      expect(screen.getByText('Please enter a valid port.')).toBeTruthy()
-    })
+      await waitFor(() => {
+        expect(
+          screen.getByText('Please enter a valid server URL with no path.'),
+        ).toBeTruthy()
+      })
 
-    expect(updateSettings).not.toHaveBeenCalled()
-  })
+      expect(updateSettings).not.toHaveBeenCalled()
+    },
+  )
+  it.each([
+    ['http://plex.local:32400', 'plex.local', 32400, 0],
+    ['https://plex.example.com', 'https://plex.example.com', 443, 1],
+    ['http://[::1]:32400', '[::1]', 32400, 0],
+  ])(
+    'saves %s in the existing Plex fields',
+    async (url, hostname, port, ssl) => {
+      render(<PlexSettings />)
+      await screen.findByRole('button', { name: 'Authenticated' })
+      fireEvent.click(screen.getByRole('button', { name: 'Advanced Settings' }))
+      fireEvent.click(screen.getByLabelText(/Enable manual mode/i))
+      fireEvent.change(screen.getByLabelText('URL'), { target: { value: url } })
+      fireEvent.click(screen.getByRole('button', { name: 'Save Changes' }))
+      await waitFor(() =>
+        expect(updateSettings).toHaveBeenCalledWith(
+          expect.objectContaining({
+            plex_hostname: hostname,
+            plex_port: port,
+            plex_ssl: ssl,
+            plex_manual_mode: 1,
+          }),
+        ),
+      )
+    },
+  )
 })

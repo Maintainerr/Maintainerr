@@ -87,7 +87,10 @@ describe('SettingsOperationsService', () => {
     mediaServerFactory.initialize.mockResolvedValue(undefined);
     plexApi.initialize.mockResolvedValue(undefined);
     plexApi.validateAuthToken.mockResolvedValue('valid');
-    plexApi.getStatus.mockResolvedValue({ version: '1.0.0' } as never);
+    plexApi.testConnection.mockResolvedValue({
+      version: '1.0.0',
+      machineIdentifier: 'server-id',
+    });
     seerr.init.mockImplementation();
     tautulli.init.mockImplementation();
     streamystats.init.mockImplementation();
@@ -417,7 +420,7 @@ describe('SettingsOperationsService', () => {
       code: 0,
       message: 'Authenticate with Plex before testing the connection.',
     });
-    expect(plexApi.getStatus).not.toHaveBeenCalled();
+    expect(plexApi.testConnection).not.toHaveBeenCalled();
   });
 
   it('validates stored Plex auth tokens without requiring server settings', async () => {
@@ -427,7 +430,7 @@ describe('SettingsOperationsService', () => {
 
     expect(response).toEqual({ status: 'OK', code: 1, message: 'Success' });
     expect(plexApi.validateAuthToken).toHaveBeenCalledTimes(1);
-    expect(plexApi.getStatus).not.toHaveBeenCalled();
+    expect(plexApi.testConnection).not.toHaveBeenCalled();
   });
 
   it('reports invalid credentials when plex.tv rejects the stored token', async () => {

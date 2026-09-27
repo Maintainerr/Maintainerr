@@ -28,6 +28,7 @@ const Harness = (props: Partial<CardProps>) => (
     settingsPath="/settings/radarr"
     testPath="/settings/test/radarr"
     serviceName="Radarr"
+    defaultPort={7878}
     onSaved={vi.fn()}
     onDelete={vi.fn().mockResolvedValue(true)}
     {...props}
@@ -48,13 +49,7 @@ describe('ServarrServerCard', () => {
     const onSaved = vi.fn()
     render(<Harness settings={saved} onDelete={onDelete} onSaved={onSaved} />)
 
-    for (const label of [
-      'Server Name',
-      'Hostname or IP',
-      'Port',
-      /Base URL/i,
-      'API key',
-    ]) {
+    for (const label of ['Server Name', 'URL', 'API key']) {
       fireEvent.change(screen.getByLabelText(label), { target: { value: '' } })
     }
 
@@ -77,8 +72,8 @@ describe('ServarrServerCard', () => {
     fireEvent.change(screen.getByLabelText('Server Name'), {
       target: { value: 'Radarr Backup' },
     })
-    fireEvent.change(screen.getByLabelText('Hostname or IP'), {
-      target: { value: 'radarr.internal' },
+    fireEvent.change(screen.getByLabelText('URL'), {
+      target: { value: 'http://radarr.internal' },
     })
 
     expect(button(/Save Changes/i).disabled).toBe(false)
@@ -92,8 +87,8 @@ describe('ServarrServerCard', () => {
     fireEvent.change(screen.getByLabelText('Server Name'), {
       target: { value: 'Radarr' },
     })
-    fireEvent.change(screen.getByLabelText('Hostname or IP'), {
-      target: { value: 'radarr.local' },
+    fireEvent.change(screen.getByLabelText('URL'), {
+      target: { value: 'http://radarr.local:7878' },
     })
     fireEvent.change(screen.getByLabelText('API key'), {
       target: { value: 'secret' },
@@ -110,11 +105,8 @@ describe('ServarrServerCard', () => {
     fireEvent.change(screen.getByLabelText('Server Name'), {
       target: { value: 'Radarr' },
     })
-    fireEvent.change(screen.getByLabelText('Hostname or IP'), {
-      target: { value: 'radarr.local' },
-    })
-    fireEvent.change(screen.getByLabelText('Port'), {
-      target: { value: '7878' },
+    fireEvent.change(screen.getByLabelText('URL'), {
+      target: { value: 'http://radarr.local:7878' },
     })
     fireEvent.change(screen.getByLabelText('API key'), {
       target: { value: 'secret' },
@@ -129,6 +121,38 @@ describe('ServarrServerCard', () => {
       apiKey: 'secret',
       serverName: 'Radarr',
     })
+  })
+
+  it('rejects an invalid port in the URL before saving or testing', async () => {
+    render(<Harness settings={saved} />)
+    fireEvent.change(screen.getByLabelText('URL'), {
+      target: { value: 'http://radarr.local:70000' },
+    })
+    fireEvent.click(button(/Save Changes/i))
+    await screen.findByText('Please enter a valid URL.')
+    fireEvent.click(button(/Test Connection/i))
+    await waitFor(() => expect(button(/Test Connection/i).disabled).toBe(false))
+    expect(putApiHandler).not.toHaveBeenCalled()
+    expect(postApiHandler).not.toHaveBeenCalled()
+  })
+
+  it('edits the base path without losing the saved port', async () => {
+    putApiHandler.mockResolvedValue({ code: 1, data: saved })
+    render(<Harness settings={saved} />)
+    fireEvent.change(screen.getByLabelText('Base Path'), {
+      target: { value: '/radarr/' },
+    })
+    fireEvent.blur(screen.getByLabelText('Base Path'))
+    expect((screen.getByLabelText('URL') as HTMLInputElement).value).toBe(
+      'http://radarr.local:7878/radarr',
+    )
+    fireEvent.click(button(/Save Changes/i))
+    await waitFor(() =>
+      expect(putApiHandler).toHaveBeenCalledWith(
+        '/settings/radarr/42',
+        expect.objectContaining({ url: 'http://radarr.local:7878/radarr' }),
+      ),
+    )
   })
 
   it('puts an edited server to its own path', async () => {

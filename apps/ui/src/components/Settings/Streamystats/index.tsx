@@ -1,10 +1,11 @@
-import { Trans, useLingui } from '@lingui/react/macro'
+import { useLingui } from '@lingui/react/macro'
 import {
   streamystatsSettingSchema,
   stripTrailingSlashes,
 } from '@maintainerr/contracts'
 import { Navigate } from 'react-router-dom'
 import { z } from 'zod'
+import { ServiceUrlExamples } from '../../Forms/ServiceUrlExamples'
 import { useMediaServerType } from '../../../hooks/useMediaServerType'
 import ExternalServiceSettingsPage, {
   type ExternalServiceFieldConfig,
@@ -23,19 +24,15 @@ const StreamystatsSettingFormSchema = z.union([
 const buildFields = (): ExternalServiceFieldConfig[] => [
   {
     name: 'url',
+    fullWidth: true,
     label: 'URL',
     placeholder: 'http://localhost:3000',
     helpText: (
-      <>
-        <Trans>Example URL formats:</Trans>
-        <br />
-        <span className="whitespace-nowrap">http://localhost:3000</span>
-        <br />
-        <span className="whitespace-nowrap">
-          https://streamystats.example.com
-        </span>
-      </>
+      <ServiceUrlExamples
+        examples={['http://localhost:3000', 'https://streamystats.example.com']}
+      />
     ),
+    basePath: true,
     normalize: stripTrailingSlashes,
     required: true,
   },

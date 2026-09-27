@@ -17,6 +17,7 @@ import {
 } from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
 import { isAxiosError } from 'axios';
+import { assertApiKey, connectionTestConfig } from '../lib/connectionTest';
 import { SettingsDataService } from '../../settings/settings-data.service';
 import { resolveDescendants } from '../media-server/context-action.util';
 import { MediaServerFactory } from '../media-server/media-server.factory';
@@ -24,7 +25,6 @@ import {
   formatConnectionFailureMessage,
   logConnectionTestError,
 } from '../../../utils/connection-error';
-import { CONNECTION_TEST_TIMEOUT_MS } from '../lib/httpTimeouts';
 import {
   MaintainerrLogger,
   MaintainerrLoggerFactory,
@@ -547,6 +547,7 @@ export class TracearrApiService {
     const api = new TracearrApi(params, this.loggerFactory.createLogger());
 
     try {
+      assertApiKey(params.apiKey);
       const document = await this.getOpenApiDocument(api);
 
       const version = document.info?.version;
@@ -577,7 +578,6 @@ export class TracearrApiService {
       };
     } catch (error) {
       logConnectionTestError(this.logger, 'Tracearr', error);
-      this.logger.debug(error);
       return {
         status: 'NOK',
         code: 0,
@@ -840,7 +840,7 @@ export class TracearrApiService {
   ): Promise<TracearrOpenApiDocument> {
     const response = await api.getRawWithoutCache<TracearrOpenApiDocument>(
       '/docs',
-      { signal: AbortSignal.timeout(CONNECTION_TEST_TIMEOUT_MS) },
+      connectionTestConfig(),
     );
     return response.data;
   }

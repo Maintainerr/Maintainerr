@@ -1,23 +1,22 @@
+import { t as globalT } from '@lingui/core/macro'
 import { Trans, useLingui } from '@lingui/react/macro'
 import {
   ARR_TAG_LABEL_HINT,
   BasicResponseDto,
   isValidArrTagLabel,
   stripTrailingSlashes,
+  serviceUrlSchema,
 } from '@maintainerr/contracts'
-import { useMemo, useState } from 'react'
+import { type ReactNode, useMemo, useState } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
+import { ServiceBasePathInput } from '../../Forms/ServiceBasePathInput'
+import { ServiceApiKeyHelp } from '../../Forms/ServiceApiKeyHelp'
+import { ServiceUrlExamples } from '../../Forms/ServiceUrlExamples'
 import {
   getApiErrorMessage,
   normalizeConnectionErrorMessage,
 } from '../../../utils/ApiError'
 import { PostApiHandler, PutApiHandler } from '../../../utils/ApiHandler'
-import {
-  addPortToUrl,
-  getBaseUrl,
-  getHostname,
-  getPortFromUrl,
-} from '../../../utils/SettingsUtils'
 import Button from '../../Common/Button'
 import SaveButton from '../../Common/SaveButton'
 import TestingButton from '../../Common/TestingButton'
@@ -34,9 +33,7 @@ import { releaseVersion } from '../../../utils/version'
 
 interface ServarrFormState {
   serverName: string
-  hostname: string
-  port: string
-  baseUrl: string
+  url: string
   apiKey: string
   tagExclusions: boolean
   exclusionTag: string
@@ -44,9 +41,7 @@ interface ServarrFormState {
 }
 
 interface ServarrConnectionState {
-  hostname: string
-  port: string
-  baseUrl: string
+  url: string
   apiKey: string
 }
 
@@ -75,6 +70,7 @@ interface ServarrServerCardProps {
   settingsPath: string
   testPath: string
   serviceName: string
+  defaultPort: number
   // Set by a service whose metadata Maintainerr caches, so the cache can be
   // dropped from the same place the connection is configured.
   metadataRefreshPath?: string
@@ -93,30 +89,12 @@ interface ServarrServerCardProps {
 }
 
 const isEmptyServarrState = (
-  state: Pick<
-    ServarrFormState,
-    'serverName' | 'hostname' | 'port' | 'baseUrl' | 'apiKey'
-  >,
-) =>
-  state.serverName === '' &&
-  state.hostname === '' &&
-  state.port === '' &&
-  state.baseUrl === '' &&
-  state.apiKey === ''
-
-const resolveServarrPort = ({ hostname, port }: ServarrFormState) => {
-  if (port !== '' || hostname === '') {
-    return port
-  }
-
-  return hostname.includes('https://') ? '443' : '80'
-}
+  state: Pick<ServarrFormState, 'serverName' | 'url' | 'apiKey'>,
+) => state.serverName === '' && state.url === '' && state.apiKey === ''
 
 const buildInitialState = (settings?: IServarrSetting): ServarrFormState => ({
   serverName: settings?.serverName ?? '',
-  hostname: settings?.url ? (getHostname(settings.url) ?? '') : '',
-  port: settings?.url ? (getPortFromUrl(settings.url) ?? '') : '',
-  baseUrl: settings?.url ? (getBaseUrl(settings.url) ?? '') : '',
+  url: settings?.url ?? '',
   apiKey: settings?.apiKey ?? '',
   tagExclusions: settings?.tagExclusions ?? false,
   exclusionTag: settings?.exclusionTag ?? 'dnd',
@@ -131,20 +109,13 @@ const areMatchingConnectionStates = (
     return false
   }
 
-  return (
-    left.hostname === right.hostname &&
-    left.port === right.port &&
-    left.baseUrl === right.baseUrl &&
-    left.apiKey === right.apiKey
-  )
+  return left.url === right.url && left.apiKey === right.apiKey
 }
 
 const toConnectionState = (
   state: ServarrFormState,
 ): ServarrConnectionState => ({
-  hostname: state.hostname,
-  port: state.port,
-  baseUrl: state.baseUrl,
+  url: state.url,
   apiKey: state.apiKey,
 })
 
@@ -153,35 +124,18 @@ const buildServarrPayload = (
   settings?: IServarrSetting,
   canTagExclusions?: boolean,
 ) => {
-  const port = resolveServarrPort(state)
-  const hostnameValue = state.hostname.includes('://')
-    ? state.hostname
-    : port === '443'
-      ? `https://${state.hostname}`
-      : `http://${state.hostname}`
-
-  const url = stripTrailingSlashes(addPortToUrl(hostnameValue, Number(port)))
-
   return {
-    payload: {
-      // The base URL slot can contribute its own trailing slash (#3416), so
-      // the composed URL is stripped as well - the host strip above still
-      // keeps a slash-ended hostname from doubling at the join.
-      url: stripTrailingSlashes(
-        `${url}${state.baseUrl ? `/${state.baseUrl}` : ''}`,
-      ),
-      apiKey: state.apiKey,
-      serverName: state.serverName,
-      ...(canTagExclusions
-        ? {
-            tagExclusions: state.tagExclusions,
-            exclusionTag: state.exclusionTag.trim() || 'dnd',
-            untagOnUnexclude: state.untagOnUnexclude,
-          }
-        : {}),
-      ...(settings?.id ? { id: settings.id } : {}),
-    },
-    port,
+    url: stripTrailingSlashes(state.url.trim()),
+    apiKey: state.apiKey,
+    serverName: state.serverName,
+    ...(canTagExclusions
+      ? {
+          tagExclusions: state.tagExclusions,
+          exclusionTag: state.exclusionTag.trim() || 'dnd',
+          untagOnUnexclude: state.untagOnUnexclude,
+        }
+      : {}),
+    ...(settings?.id ? { id: settings.id } : {}),
   }
 }
 
@@ -190,6 +144,7 @@ const ServarrServerCard = ({
   settingsPath,
   testPath,
   serviceName,
+  defaultPort,
   metadataRefreshPath,
   canTagExclusions,
   settings,
@@ -231,6 +186,8 @@ const ServarrServerCard = ({
     handleSubmit,
     control,
     getValues,
+    setValue,
+    trigger,
     formState: { errors },
   } = useForm<ServarrFormState>({
     defaultValues: initialState,
@@ -240,16 +197,11 @@ const ServarrServerCard = ({
   })
 
   const serverName = useWatch({ control, name: 'serverName' }) ?? ''
-  const hostname = useWatch({ control, name: 'hostname' }) ?? ''
-  const port = useWatch({ control, name: 'port' }) ?? ''
-  const baseUrl = useWatch({ control, name: 'baseUrl' }) ?? ''
+  const url = useWatch({ control, name: 'url' }) ?? ''
   const apiKey = useWatch({ control, name: 'apiKey' }) ?? ''
   const tagExclusions = useWatch({ control, name: 'tagExclusions' })
 
-  const currentConnectionState = useMemo(
-    () => ({ hostname, port, baseUrl, apiKey }),
-    [apiKey, baseUrl, hostname, port],
-  )
+  const currentConnectionState = useMemo(() => ({ url, apiKey }), [apiKey, url])
   const activeTestedConnectionState =
     testedConnectionStateKey === settingsKey
       ? testedConnectionState
@@ -259,7 +211,7 @@ const ServarrServerCard = ({
     settings?.id != null &&
     isEmptyServarrState({ ...currentConnectionState, serverName })
   const hasCompleteRequiredFields =
-    hostname !== '' && apiKey !== '' && serverName !== ''
+    url !== '' && apiKey !== '' && serverName !== ''
   const canSave =
     !saving && (isClearingExistingSetting || hasCompleteRequiredFields)
   const testFeedbackStatus = areMatchingConnectionStates(
@@ -332,11 +284,7 @@ const ServarrServerCard = ({
       return
     }
 
-    // No completeness check here on purpose: canSave already requires hostname,
-    // apiKey and serverName, and resolveServarrPort only yields an empty port
-    // when hostname is empty - which canSave rejects. The all-empty case is
-    // taken by the removal branch above before reaching this point.
-    const { payload } = buildServarrPayload(values, settings, canTagExclusions)
+    const payload = buildServarrPayload(values, settings, canTagExclusions)
 
     const endpoint = settings?.id
       ? `${settingsPath}/${settings.id}`
@@ -362,13 +310,13 @@ const ServarrServerCard = ({
   }
 
   const performTest = async () => {
-    if (testing) {
+    if (testing || !(await trigger('url'))) {
       return
     }
 
     clearFeedback()
     const values = getValues()
-    const { payload, port } = buildServarrPayload(values, settings)
+    const payload = buildServarrPayload(values, settings)
     const { id: ignoredId, ...testPayload } = payload
 
     setTesting(true)
@@ -385,7 +333,7 @@ const ServarrServerCard = ({
           feedback.showSuccess(
             t`Success! (${{ version: releaseVersion(message) }})`,
           )
-          setTestedConnectionState(toConnectionState({ ...values, port }))
+          setTestedConnectionState(toConnectionState(values))
           setTestedConnectionStateKey(settingsKey)
         } else {
           feedback.showError(message)
@@ -406,10 +354,10 @@ const ServarrServerCard = ({
   }
 
   const field = (
-    fieldName: 'serverName' | 'hostname' | 'port' | 'baseUrl' | 'apiKey',
+    fieldName: 'serverName' | 'url' | 'apiKey',
     label: string,
     type: 'text' | 'number' | 'password' = 'text',
-    helpText?: string,
+    helpText?: ReactNode,
   ) => (
     <InputGroup
       layout="stacked"
@@ -417,7 +365,19 @@ const ServarrServerCard = ({
       label={label}
       type={type}
       helpText={helpText}
-      {...register(fieldName, { onChange: clearFeedback })}
+      error={errors[fieldName]?.message}
+      {...register(fieldName, {
+        onChange: clearFeedback,
+        validate:
+          fieldName === 'url'
+            ? (value) => {
+                if (isClearingExistingSetting) return true
+                const result = serviceUrlSchema.safeParse(value)
+                if (!result.success) return result.error.issues[0].message
+                return URL.canParse(value) || globalT`Please enter a valid URL.`
+              }
+            : undefined,
+      })}
     />
   )
 
@@ -455,15 +415,34 @@ const ServarrServerCard = ({
         onSubmit={handleSubmit(saveSettings)}
       >
         {field('serverName', t`Server Name`)}
-        <div className="grid grid-cols-3 gap-3">
-          <div className="col-span-2">
-            {field('hostname', t`Hostname or IP`)}
-          </div>
-          {field('port', t`Port`, 'number')}
-        </div>
+        {field(
+          'url',
+          'URL',
+          'text',
+          <ServiceUrlExamples
+            examples={[
+              `http://localhost:${defaultPort}`,
+              `https://${serviceName.toLowerCase()}.example.com`,
+            ]}
+          />,
+        )}
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          {field('baseUrl', t`Base URL`, 'text', t`No Leading Slash`)}
-          {field('apiKey', t`API key`, 'password')}
+          <ServiceBasePathInput
+            name={`${idPrefix}-url`}
+            value={url}
+            onChange={(value) => {
+              clearFeedback()
+              setValue('url', value, { shouldDirty: true })
+            }}
+          />
+          {field(
+            'apiKey',
+            t`API key`,
+            'password',
+            <ServiceApiKeyHelp url={url} path="/settings/general">
+              <Trans>Find it here: Settings → General → API Key</Trans>
+            </ServiceApiKeyHelp>,
+          )}
         </div>
         {canTagExclusions ? (
           <>

@@ -16,6 +16,9 @@ import {
   useSaveJellyfinSettings,
   useTestJellyfin,
 } from '../../../api/settings'
+import { ServiceBasePathInput } from '../../Forms/ServiceBasePathInput'
+import { ServiceApiKeyHelp } from '../../Forms/ServiceApiKeyHelp'
+import { ServiceUrlExamples } from '../../Forms/ServiceUrlExamples'
 import { getApiErrorMessage } from '../../../utils/ApiError'
 import SaveButton from '../../Common/SaveButton'
 import TestingButton from '../../Common/TestingButton'
@@ -224,30 +227,46 @@ const JellyfinSettings = () => {
             className="flex flex-1 flex-col gap-3"
             onSubmit={handleSubmit(onSubmit)}
           >
+            <Controller
+              name="jellyfin_url"
+              control={control}
+              render={({ field }) => (
+                <InputGroup
+                  layout="stacked"
+                  label={t`Jellyfin URL`}
+                  value={field.value}
+                  placeholder="http://jellyfin.local:8096"
+                  helpText={
+                    <ServiceUrlExamples
+                      examples={[
+                        'http://localhost:8096',
+                        'https://jellyfin.example.com',
+                      ]}
+                    />
+                  }
+                  onChange={(event) => {
+                    clearTransientState()
+                    field.onChange(event)
+                  }}
+                  onBlur={(event) =>
+                    field.onChange(stripTrailingSlashes(event.target.value))
+                  }
+                  ref={field.ref}
+                  name={field.name}
+                  type="text"
+                  error={errors.jellyfin_url?.message}
+                  required
+                />
+              )}
+            />
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <Controller
+              <ServiceBasePathInput
                 name="jellyfin_url"
-                control={control}
-                render={({ field }) => (
-                  <InputGroup
-                    layout="stacked"
-                    label={t`Jellyfin URL`}
-                    value={field.value}
-                    placeholder="http://jellyfin.local:8096"
-                    onChange={(event) => {
-                      clearTransientState()
-                      field.onChange(event)
-                    }}
-                    onBlur={(event) =>
-                      field.onChange(stripTrailingSlashes(event.target.value))
-                    }
-                    ref={field.ref}
-                    name={field.name}
-                    type="text"
-                    error={errors.jellyfin_url?.message}
-                    required
-                  />
-                )}
+                value={jellyfinUrl ?? ''}
+                onChange={(value) => {
+                  clearTransientState()
+                  setValue('jellyfin_url', value, { shouldDirty: true })
+                }}
               />
               <InputGroup
                 layout="stacked"
@@ -256,11 +275,12 @@ const JellyfinSettings = () => {
                 {...registerApiKey}
                 error={errors.jellyfin_api_key?.message}
                 helpText={
-                  <Trans>
-                    In Jellyfin, go to{' '}
-                    <strong>Dashboard &rarr; API Keys</strong> and create a new
-                    API key named &quot;Maintainerr&quot;.
-                  </Trans>
+                  <ServiceApiKeyHelp
+                    url={jellyfinUrl}
+                    path="/web/#/dashboard/keys"
+                  >
+                    <Trans>Find it here: Dashboard → API Keys</Trans>
+                  </ServiceApiKeyHelp>
                 }
               />
             </div>
