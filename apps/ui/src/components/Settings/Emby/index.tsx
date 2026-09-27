@@ -219,39 +219,39 @@ const EmbySettings = () => {
             className="flex flex-1 flex-col gap-3"
             onSubmit={handleSubmit(onSubmit)}
           >
+            <Controller
+              name="emby_url"
+              control={control}
+              render={({ field }) => (
+                <InputGroup
+                  layout="stacked"
+                  label={t`Emby URL`}
+                  value={field.value}
+                  placeholder="http://emby.local:8096"
+                  helpText={
+                    <ServiceUrlExamples
+                      examples={[
+                        'http://localhost:8096',
+                        'https://emby.example.com',
+                      ]}
+                    />
+                  }
+                  onChange={(event) => {
+                    clearTransientState()
+                    field.onChange(event)
+                  }}
+                  onBlur={(event) =>
+                    field.onChange(stripTrailingSlashes(event.target.value))
+                  }
+                  ref={field.ref}
+                  name={field.name}
+                  type="text"
+                  error={errors.emby_url?.message}
+                  required
+                />
+              )}
+            />
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <Controller
-                name="emby_url"
-                control={control}
-                render={({ field }) => (
-                  <InputGroup
-                    layout="stacked"
-                    label={t`Emby URL`}
-                    value={field.value}
-                    placeholder="http://emby.local:8096"
-                    helpText={
-                      <ServiceUrlExamples
-                        examples={[
-                          'http://localhost:8096',
-                          'https://emby.example.com',
-                        ]}
-                      />
-                    }
-                    onChange={(event) => {
-                      clearTransientState()
-                      field.onChange(event)
-                    }}
-                    onBlur={(event) =>
-                      field.onChange(stripTrailingSlashes(event.target.value))
-                    }
-                    ref={field.ref}
-                    name={field.name}
-                    type="text"
-                    error={errors.emby_url?.message}
-                    required
-                  />
-                )}
-              />
               <InputGroup
                 layout="stacked"
                 label={t`API Key`}
@@ -268,8 +268,6 @@ const EmbySettings = () => {
                   </Trans>
                 }
               />
-            </div>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               {usersLoaded ? (
                 <SelectGroup
                   layout="stacked"

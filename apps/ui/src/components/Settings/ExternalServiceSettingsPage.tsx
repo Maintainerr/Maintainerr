@@ -49,6 +49,7 @@ export interface ExternalServiceFieldConfig {
     JSX.Element | string | ((values: SettingsValues) => JSX.Element | string)
   normalize?: (value: string) => string
   required?: boolean
+  fullWidth?: boolean
   basePath?: boolean
   options?: ExternalServiceSelectOption[]
   loadOptions?: (
@@ -358,152 +359,162 @@ const ExternalServiceSettingsPage = ({
               void onSubmit()
             }}
           >
-            {fields.map((fieldConfig) => (
-              <Controller
-                key={fieldConfig.name}
-                name={fieldConfig.name}
-                defaultValue=""
-                control={control}
-                render={({ field }) => {
-                  const error = errors[fieldConfig.name]?.message as
-                    string | undefined
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {fields.map((fieldConfig) => (
+                <Controller
+                  key={fieldConfig.name}
+                  name={fieldConfig.name}
+                  defaultValue=""
+                  control={control}
+                  render={({ field }) => {
+                    const error = errors[fieldConfig.name]?.message as
+                      string | undefined
 
-                  if (fieldConfig.type === 'select') {
-                    const options =
-                      loadedOptionsByFieldName[fieldConfig.name] ??
-                      fieldConfig.options ??
-                      []
-                    const selectedOption = options.some(
-                      (option) => option.value === field.value,
-                    )
-                    const selectOptions =
-                      field.value && !selectedOption
-                        ? [
-                            { value: field.value, label: field.value },
-                            ...options,
-                          ]
-                        : options
+                    if (fieldConfig.type === 'select') {
+                      const options =
+                        loadedOptionsByFieldName[fieldConfig.name] ??
+                        fieldConfig.options ??
+                        []
+                      const selectedOption = options.some(
+                        (option) => option.value === field.value,
+                      )
+                      const selectOptions =
+                        field.value && !selectedOption
+                          ? [
+                              { value: field.value, label: field.value },
+                              ...options,
+                            ]
+                          : options
 
-                    // One candidate is not a choice: the backend resolves that
-                    // case itself, so the field would only ask the user to
-                    // confirm something that cannot vary. It stays hidden while
-                    // the options load as well, since appearing and then
-                    // vanishing reads as a glitch. An error is the exception,
-                    // because it would otherwise have nowhere to appear.
-                    const optionsLoaded =
-                      loadedOptionsByFieldName[fieldConfig.name] !== undefined
-                    if (
-                      !error &&
-                      (!optionsLoaded || selectOptions.length < 2)
-                    ) {
-                      return <></>
-                    }
+                      // One candidate is not a choice: the backend resolves that
+                      // case itself, so the field would only ask the user to
+                      // confirm something that cannot vary. It stays hidden while
+                      // the options load as well, since appearing and then
+                      // vanishing reads as a glitch. An error is the exception,
+                      // because it would otherwise have nowhere to appear.
+                      const optionsLoaded =
+                        loadedOptionsByFieldName[fieldConfig.name] !== undefined
+                      if (
+                        !error &&
+                        (!optionsLoaded || selectOptions.length < 2)
+                      ) {
+                        return <></>
+                      }
 
-                    return (
-                      <SelectGroup
-                        layout="stacked"
-                        label={fieldConfig.label}
-                        value={field.value}
-                        onChange={(event: ChangeEvent<HTMLSelectElement>) => {
-                          clearTransientState(false)
-                          field.onChange(event)
-                        }}
-                        onFocus={() => {
-                          void loadFieldOptions(fieldConfig, getValues())
-                        }}
-                        onBlur={(event: FocusEvent<HTMLSelectElement>) => {
-                          if (fieldConfig.normalize) {
-                            field.onChange(
-                              fieldConfig.normalize(event.target.value),
-                            )
-                          } else {
-                            field.onBlur()
+                      return (
+                        <SelectGroup
+                          layout="stacked"
+                          label={fieldConfig.label}
+                          value={field.value}
+                          onChange={(event: ChangeEvent<HTMLSelectElement>) => {
+                            clearTransientState(false)
+                            field.onChange(event)
+                          }}
+                          onFocus={() => {
+                            void loadFieldOptions(fieldConfig, getValues())
+                          }}
+                          onBlur={(event: FocusEvent<HTMLSelectElement>) => {
+                            if (fieldConfig.normalize) {
+                              field.onChange(
+                                fieldConfig.normalize(event.target.value),
+                              )
+                            } else {
+                              field.onBlur()
+                            }
+                          }}
+                          ref={field.ref}
+                          name={field.name}
+                          error={error}
+                          helpText={
+                            typeof fieldConfig.helpText === 'function'
+                              ? fieldConfig.helpText(currentValues)
+                              : (fieldConfig.helpText ?? undefined)
                           }
-                        }}
-                        ref={field.ref}
-                        name={field.name}
-                        error={error}
-                        helpText={
-                          typeof fieldConfig.helpText === 'function'
-                            ? fieldConfig.helpText(currentValues)
-                            : (fieldConfig.helpText ?? undefined)
-                        }
-                        required={fieldConfig.required}
-                        disabled={loadingOptionsByFieldName[fieldConfig.name]}
-                      >
-                        {/* A load error keeps this field mounted (see the
+                          required={fieldConfig.required}
+                          disabled={loadingOptionsByFieldName[fieldConfig.name]}
+                        >
+                          {/* A load error keeps this field mounted (see the
                             guard above) without ever filling
                             loadedOptionsByFieldName, so focusing it starts a
                             real retry on a visible select - that is when this
                             loading placeholder is on screen. */}
-                        <option value="" disabled>
-                          {loadingOptionsByFieldName[fieldConfig.name]
-                            ? t`Loading...`
-                            : t`Select an option`}
-                        </option>
-                        {selectOptions.map((option) => (
-                          <option key={option.value} value={option.value}>
-                            {option.label}
+                          <option value="" disabled>
+                            {loadingOptionsByFieldName[fieldConfig.name]
+                              ? t`Loading...`
+                              : t`Select an option`}
                           </option>
-                        ))}
-                      </SelectGroup>
-                    )
-                  }
+                          {selectOptions.map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </SelectGroup>
+                      )
+                    }
 
-                  return (
-                    <>
-                      <InputGroup
-                        layout="stacked"
-                        label={fieldConfig.label}
-                        value={field.value}
-                        placeholder={fieldConfig.placeholder}
-                        onChange={(event: ChangeEvent<HTMLInputElement>) => {
-                          clearTransientState()
-                          field.onChange(event)
-                        }}
-                        onBlur={(event: FocusEvent<HTMLInputElement>) => {
-                          const value = fieldConfig.normalize
-                            ? fieldConfig.normalize(event.target.value)
-                            : event.target.value
-
-                          if (fieldConfig.normalize) {
-                            field.onChange(value)
-                          } else {
-                            field.onBlur()
+                    return (
+                      <>
+                        <div
+                          className={
+                            fieldConfig.fullWidth ? 'sm:col-span-2' : undefined
                           }
+                        >
+                          <InputGroup
+                            layout="stacked"
+                            label={fieldConfig.label}
+                            value={field.value}
+                            placeholder={fieldConfig.placeholder}
+                            onChange={(
+                              event: ChangeEvent<HTMLInputElement>,
+                            ) => {
+                              clearTransientState()
+                              field.onChange(event)
+                            }}
+                            onBlur={(event: FocusEvent<HTMLInputElement>) => {
+                              const value = fieldConfig.normalize
+                                ? fieldConfig.normalize(event.target.value)
+                                : event.target.value
 
-                          loadSelectOptions({
-                            ...getValues(),
-                            [fieldConfig.name]: value,
-                          })
-                        }}
-                        ref={field.ref}
-                        name={field.name}
-                        type={fieldConfig.type ?? 'text'}
-                        error={error}
-                        helpText={
-                          typeof fieldConfig.helpText === 'function'
-                            ? fieldConfig.helpText(currentValues)
-                            : (fieldConfig.helpText ?? undefined)
-                        }
-                        required={fieldConfig.required}
-                      />
-                      {fieldConfig.basePath && (
-                        <ServiceBasePathInput
-                          name={field.name}
-                          value={field.value}
-                          onChange={(value) => {
-                            clearTransientState()
-                            field.onChange(value)
-                          }}
-                          onBlur={() => loadSelectOptions(getValues())}
-                        />
-                      )}
-                    </>
-                  )
-                }}
-              />
-            ))}
+                              if (fieldConfig.normalize) {
+                                field.onChange(value)
+                              } else {
+                                field.onBlur()
+                              }
+
+                              loadSelectOptions({
+                                ...getValues(),
+                                [fieldConfig.name]: value,
+                              })
+                            }}
+                            ref={field.ref}
+                            name={field.name}
+                            type={fieldConfig.type ?? 'text'}
+                            error={error}
+                            helpText={
+                              typeof fieldConfig.helpText === 'function'
+                                ? fieldConfig.helpText(currentValues)
+                                : (fieldConfig.helpText ?? undefined)
+                            }
+                            required={fieldConfig.required}
+                          />
+                        </div>
+                        {fieldConfig.basePath && (
+                          <ServiceBasePathInput
+                            name={field.name}
+                            value={field.value}
+                            onChange={(value) => {
+                              clearTransientState()
+                              field.onChange(value)
+                            }}
+                            onBlur={() => loadSelectOptions(getValues())}
+                          />
+                        )}
+                      </>
+                    )
+                  }}
+                />
+              ))}
+            </div>
 
             <ServiceCardFooter status={status}>
               <TestingButton

@@ -24,6 +24,7 @@ const TautulliSettingFormSchema = z.union([
 const buildFields = (): ExternalServiceFieldConfig[] => [
   {
     name: 'url',
+    fullWidth: true,
     label: 'URL',
     placeholder: 'http://localhost:8181',
     helpText: (

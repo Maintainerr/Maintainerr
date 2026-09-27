@@ -24,6 +24,7 @@ const SeerrSettingFormSchema = z.union([
 const buildFields = (): ExternalServiceFieldConfig[] => [
   {
     name: 'url',
+    fullWidth: true,
     label: 'URL',
     placeholder: 'http://localhost:5055',
     helpText: (

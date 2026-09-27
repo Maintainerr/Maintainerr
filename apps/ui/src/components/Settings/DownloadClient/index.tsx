@@ -341,17 +341,19 @@ const DownloadClientSettings = () => {
                 />
               )}
             />
-            {clientType === DownloadClientType.QBITTORRENT && (
-              <ServiceBasePathInput
-                name="download_client_url"
-                value={url ?? ''}
-                onChange={(value) => {
-                  clearTransientState()
-                  setValue('download_client_url', value, { shouldDirty: true })
-                }}
-              />
-            )}
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {clientType === DownloadClientType.QBITTORRENT && (
+                <ServiceBasePathInput
+                  name="download_client_url"
+                  value={url ?? ''}
+                  onChange={(value) => {
+                    clearTransientState()
+                    setValue('download_client_url', value, {
+                      shouldDirty: true,
+                    })
+                  }}
+                />
+              )}
               <Controller
                 name="download_client_type"
                 control={control}

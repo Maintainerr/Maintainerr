@@ -148,6 +148,9 @@ The UI is on **Tailwind v4, CSS-first** - there is **no `tailwind.config.js`**.
   `SaveButton` and `TestingButton`, instead of recreating equivalent markup and
   Tailwind classes inline. If something is missing, extend the shared primitive
   rather than introducing a one-off version in a page component.
+- **Service card layout:** keep names, URLs and tag labels full width. Pair
+  short fields such as Base Path and API key in two-column rows, stacked on
+  mobile. Use the shared form inputs and global field styles.
 - **DRY** - no one-off duplicated feedback/loading patterns. Use
   `apps/ui/src/components/Settings/useSettingsFeedback.tsx` for inline page
   feedback (not toasts) on normal settings saves. For joined field layouts and

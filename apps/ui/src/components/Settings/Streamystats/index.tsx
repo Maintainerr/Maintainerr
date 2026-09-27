@@ -24,6 +24,7 @@ const StreamystatsSettingFormSchema = z.union([
 const buildFields = (): ExternalServiceFieldConfig[] => [
   {
     name: 'url',
+    fullWidth: true,
     label: 'URL',
     placeholder: 'http://localhost:3000',
     helpText: (

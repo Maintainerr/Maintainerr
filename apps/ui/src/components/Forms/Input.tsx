@@ -43,6 +43,7 @@ type InputProps = {
 } & InputHTMLAttributes<HTMLInputElement>
 
 export const Input = ({
+  type = 'text',
   className,
   required,
   error,
@@ -54,7 +55,7 @@ export const Input = ({
   // login, so password managers are told to leave it alone. A real sign-in
   // passes its own autoComplete.
   const secret =
-    props.type === 'password' && props.autoComplete === undefined
+    type === 'password' && props.autoComplete === undefined
       ? {
           autoComplete: 'new-password',
           'data-1p-ignore': true,
@@ -67,6 +68,7 @@ export const Input = ({
     <input
       {...secret}
       {...props}
+      type={type}
       ref={ref}
       id={props.id || props.name}
       className={clsx(
