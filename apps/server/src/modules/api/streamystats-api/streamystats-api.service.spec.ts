@@ -1,6 +1,5 @@
 import { Mocked, TestBed } from '@suites/unit';
 import { SettingsDataService } from '../../settings/settings-data.service';
-import { StreamystatsApi } from './helpers/streamystats-api.helper';
 import { StreamystatsApiService } from './streamystats-api.service';
 
 const apiMock = {
@@ -247,59 +246,62 @@ describe('StreamystatsApiService', () => {
   });
 
   describe('testConnection', () => {
-    it('returns OK with the reported version on a healthy probe', async () => {
-      apiMock.getRawWithoutCache.mockResolvedValue({
-        data: {
-          currentVersion: '2.18.0',
-          latestVersion: '2.18.0',
-          hasUpdate: false,
-          buildTime: 0,
+    it('checks Jellyfin access and version with one deadline', async () => {
+      apiMock.getRawWithoutCache
+        .mockResolvedValueOnce({ data: { currentVersion: '2.18.0' } })
+        .mockResolvedValueOnce({ data: { data: [] } });
+
+      await expect(
+        service.testConnection({
+          url: 'http://streamystats',
+          apiKey: 'jellyfin-key',
+        }),
+      ).resolves.toMatchObject({ code: 1, message: '2.18.0' });
+      const config = apiMock.getRawWithoutCache.mock.calls[0][1];
+      expect(apiMock.getRawWithoutCache).toHaveBeenLastCalledWith(
+        '/api/watchlists',
+        {
+          ...config,
+          headers: { Authorization: 'MediaBrowser Token="jellyfin-key"' },
         },
-      });
-
-      const result = await service.testConnection({
-        url: 'http://streamystats',
-        apiKey: 'jellyfin-key',
-      });
-
-      expect(result.status).toBe('OK');
-      expect(result.message).toBe('2.18.0');
+      );
     });
 
-    it('returns NOK when the probe fails', async () => {
-      apiMock.getRawWithoutCache.mockRejectedValue(new Error('ECONNREFUSED'));
+    it('rejects a reachable service that cannot authenticate with Jellyfin', async () => {
+      apiMock.getRawWithoutCache
+        .mockResolvedValueOnce({ data: { currentVersion: '2.18.0' } })
+        .mockRejectedValueOnce(new Error('Invalid API key'));
 
-      const result = await service.testConnection({
-        url: 'http://streamystats',
-        apiKey: 'jellyfin-key',
-      });
-
-      expect(result.status).toBe('NOK');
+      await expect(
+        service.testConnection({
+          url: 'http://streamystats',
+          apiKey: 'invalid-key',
+        }),
+      ).resolves.toMatchObject({ code: 0, message: 'Invalid API key' });
     });
 
-    it('supports being called without an apiKey (no Authorization header)', async () => {
-      const StreamystatsApiMock = StreamystatsApi as unknown as jest.Mock;
-      StreamystatsApiMock.mockClear();
-      apiMock.getRawWithoutCache.mockResolvedValue({
-        data: {
-          currentVersion: '2.18.0',
-          latestVersion: '2.18.0',
-          hasUpdate: false,
-          buildTime: 0,
-        },
-      });
+    it('rejects an unexpected protected response', async () => {
+      apiMock.getRawWithoutCache
+        .mockResolvedValueOnce({ data: { currentVersion: '2.18.0' } })
+        .mockResolvedValueOnce({ data: {} });
 
-      const result = await service.testConnection({
-        url: 'http://streamystats',
-      });
-
-      expect(result.status).toBe('OK');
-      // The helper is constructed with url only - no apiKey leaks to a
-      // user-supplied URL via /api/settings/test/streamystats.
-      const callArgs = StreamystatsApiMock.mock.calls.at(-1)?.[0];
-      expect(callArgs?.url).toBe('http://streamystats');
-      expect(callArgs?.apiKey).toBeUndefined();
+      await expect(
+        service.testConnection({
+          url: 'http://streamystats',
+          apiKey: 'jellyfin-key',
+        }),
+      ).resolves.toMatchObject({ code: 0 });
     });
+
+    it.each([undefined, '', '   '])(
+      'rejects a missing Jellyfin key: %j',
+      async (apiKey) => {
+        await expect(
+          service.testConnection({ url: 'http://streamystats', apiKey }),
+        ).resolves.toMatchObject({ code: 0, message: 'API key is required' });
+        expect(apiMock.getRawWithoutCache).not.toHaveBeenCalled();
+      },
+    );
   });
 
   describe('getWatchlistMembership', () => {

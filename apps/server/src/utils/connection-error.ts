@@ -38,6 +38,7 @@ const normalizeMessageText = (message?: string): string | undefined => {
     lower.includes('timeout') ||
     lower.includes('aborted') ||
     lower.includes('econnaborted') ||
+    lower.includes('err_canceled') ||
     lower.includes('etimedout')
   ) {
     return `Connection timed out after ${CONNECTION_TEST_TIMEOUT_MS / 1000} seconds. Verify URL and network reachability.`;
@@ -50,6 +51,9 @@ export const formatConnectionFailureMessage = (
   error: unknown,
   fallbackMessage: string,
 ): string => {
+  if (error instanceof Error && isAxiosError(error.cause)) {
+    return formatConnectionFailureMessage(error.cause, fallbackMessage);
+  }
   if (isAxiosError(error)) {
     if (error.response?.status === 401 || error.response?.status === 403) {
       return 'Invalid API key';
@@ -125,13 +129,11 @@ export const getErrorMessage = (
   return fallbackMessage;
 };
 
-// Carries the same short reason the UI shows, so the log answers "why".
 export const logConnectionTestError = (
-  logger: MaintainerrLogger,
+  logger: Pick<MaintainerrLogger, 'error' | 'debug'>,
   serviceName: string,
   error: unknown,
 ) => {
-  logger.error(
-    `${serviceName} connection test failed: ${formatConnectionFailureMessage(error, getErrorMessage(error))}`,
-  );
+  logger.error(`${serviceName} connection test failed`);
+  logger.debug(error);
 };

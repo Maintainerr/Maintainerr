@@ -18,6 +18,13 @@ const buildFields = (): ExternalServiceFieldConfig[] => [
     name: 'url',
     label: 'URL',
     placeholder: 'http://localhost:3000',
+    helpText: (
+      <>
+        <Trans>Example URL formats:</Trans>{' '}
+        <span className="whitespace-nowrap">http://localhost:3000</span>,{' '}
+        <span className="whitespace-nowrap">https://tracearr.example.com</span>
+      </>
+    ),
     normalize: stripTrailingSlashes,
     required: true,
   },

@@ -455,18 +455,14 @@ const ServarrServerCard = ({
         onSubmit={handleSubmit(saveSettings)}
       >
         {field('serverName', t`Server Name`)}
-        <div className="grid grid-cols-3 gap-3">
-          <div className="col-span-2">
-            {field('hostname', t`Hostname or IP`)}
-          </div>
-          {field('port', t`Port`, 'number')}
-        </div>
+        {field('hostname', t`Hostname or IP`)}
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {field('baseUrl', t`Base URL`, 'text', t`No Leading Slash`)}
           {field('apiKey', t`API key`, 'password')}
         </div>
-        {canTagExclusions ? (
-          <>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {field('port', t`Port`, 'number')}
+          {canTagExclusions ? (
             <InputGroup
               layout="stacked"
               id={`${idPrefix}-exclusionTag`}
@@ -494,6 +490,10 @@ const ServarrServerCard = ({
                 },
               })}
             />
+          ) : null}
+        </div>
+        {canTagExclusions ? (
+          <>
             <CheckboxGroup
               id={`${idPrefix}-tagExclusions`}
               label={t`Tag excluded content`}

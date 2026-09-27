@@ -48,7 +48,11 @@ import { Injectable } from '@nestjs/common';
 // module instances, two error classes, so an instanceof check against the
 // imported class silently never matches an SDK failure.
 import { isAxiosError } from 'axios';
-import { formatConnectionFailureMessage } from '../../../../utils/connection-error';
+import { assertApiKey, connectionTestConfig } from '../../lib/connectionTest';
+import {
+  formatConnectionFailureMessage,
+  logConnectionTestError,
+} from '../../../../utils/connection-error';
 import { delay } from '../../../../utils/delay';
 import { MaintainerrLogger } from '../../../logging/logs.service';
 import { SettingsDataService } from '../../../settings/settings-data.service';
@@ -201,7 +205,10 @@ export class JellyfinAdapterService implements IMediaServerService {
   /**
    * Verify connection to a Jellyfin server and return server info.
    */
-  private async verifyConnection(api: Api): Promise<{
+  private async verifyConnection(
+    api: Api,
+    apiKey: string,
+  ): Promise<{
     success: boolean;
     serverName?: string;
     version?: string;
@@ -210,26 +217,13 @@ export class JellyfinAdapterService implements IMediaServerService {
     users?: Array<{ id: string; name: string }>;
   }> {
     try {
-      // First get public system info to check if server is reachable
-      const systemInfo = await getSystemApi(api).getPublicSystemInfo();
-
-      // Then verify API key by calling an authenticated endpoint
-      let users: Array<{ id: string; name: string }> = [];
-      try {
-        const usersResponse = await getUserApi(api).getUsers();
-        users = (usersResponse.data || [])
-          .filter((u) => u.Policy?.IsAdministrator)
-          .map((u) => ({
-            id: u.Id || '',
-            name: u.Name || '',
-          }));
-      } catch (authError) {
-        return {
-          success: false,
-          error: 'Invalid API key',
-          cause: authError,
-        };
-      }
+      assertApiKey(apiKey);
+      const config = connectionTestConfig();
+      const systemInfo = await getSystemApi(api).getPublicSystemInfo(config);
+      const usersResponse = await getUserApi(api).getUsers({}, config);
+      const users = (usersResponse.data || [])
+        .filter((u) => u.Policy?.IsAdministrator)
+        .map((u) => ({ id: u.Id || '', name: u.Name || '' }));
 
       return {
         success: true,
@@ -266,7 +260,7 @@ export class JellyfinAdapterService implements IMediaServerService {
       settings.clientId || 'default',
     );
 
-    const result = await this.verifyConnection(api);
+    const result = await this.verifyConnection(api, settings.jellyfin_api_key);
 
     if (!result.success) {
       this.initialized = false;
@@ -311,15 +305,18 @@ export class JellyfinAdapterService implements IMediaServerService {
     users?: Array<{ id: string; name: string }>;
   }> {
     const api = this.createApiClient(url, apiKey, 'test');
-    const result = await this.verifyConnection(api);
+    const result = await this.verifyConnection(api, apiKey);
 
     if (result.success) {
       this.logger.debug(
         `Jellyfin connection test successful: ${result.serverName} (${result.version})`,
       );
     } else {
-      this.logger.error('Jellyfin connection test failed');
-      this.logger.debug(result.cause ?? result.error);
+      logConnectionTestError(
+        this.logger,
+        'Jellyfin',
+        result.cause ?? result.error,
+      );
     }
 
     return result;

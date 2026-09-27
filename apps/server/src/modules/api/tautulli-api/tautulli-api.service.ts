@@ -2,12 +2,12 @@ import { BasicResponseDto, MediaWatchStats } from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
 import { AxiosError } from 'axios';
 import { unionBy } from 'lodash';
+import { assertApiKey, connectionTestConfig } from '../lib/connectionTest';
 import { SettingsDataService } from '../../..//modules/settings/settings-data.service';
 import {
   formatConnectionFailureMessage,
   logConnectionTestError,
 } from '../../../utils/connection-error';
-import { CONNECTION_TEST_TIMEOUT_MS } from '../lib/httpTimeouts';
 import {
   MaintainerrLogger,
   MaintainerrLoggerFactory,
@@ -157,25 +157,6 @@ export class TautulliApiService {
       },
       this.loggerFactory.createLogger(),
     );
-  }
-
-  public async info(): Promise<Response<TautulliInfo> | null> {
-    try {
-      const response: Response<TautulliInfo> = await this.api.getWithoutCache(
-        '',
-        {
-          signal: AbortSignal.timeout(CONNECTION_TEST_TIMEOUT_MS),
-          params: {
-            cmd: 'get_tautulli_info',
-          },
-        },
-      );
-      return response;
-    } catch (error) {
-      this.logger.log("Couldn't fetch Tautulli info");
-      this.logger.debug(error);
-      return null;
-    }
   }
 
   public async getPaginatedHistory(
@@ -409,10 +390,11 @@ export class TautulliApiService {
     );
 
     try {
+      assertApiKey(params.apiKey);
       const response = await api.getRawWithoutCache<
         Response<TautulliInfo> | string | undefined
       >('', {
-        signal: AbortSignal.timeout(CONNECTION_TEST_TIMEOUT_MS),
+        ...connectionTestConfig(),
         params: {
           cmd: 'get_tautulli_info',
         },

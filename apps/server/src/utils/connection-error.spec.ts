@@ -61,6 +61,15 @@ describe('formatConnectionFailureMessage', () => {
     );
   });
 
+  it('classifies a deadline cancellation wrapped by the Plex client', () => {
+    const error = new Error('Plex request failed', {
+      cause: new AxiosError('canceled', 'ERR_CANCELED'),
+    });
+    expect(formatConnectionFailureMessage(error, FALLBACK)).toContain(
+      'Connection timed out after 5 seconds',
+    );
+  });
+
   it('reports other HTTP status codes', () => {
     const error = new AxiosError(
       'Request failed',
@@ -87,17 +96,13 @@ describe('formatConnectionFailureMessage', () => {
 });
 
 describe('logConnectionTestError', () => {
-  it('logs the same reason the UI shows', () => {
-    const logger = { error: jest.fn() };
+  it('keeps exception details at debug level', () => {
+    const logger = { error: jest.fn(), debug: jest.fn() };
+    const error = new AxiosError('Sensitive upstream details', 'ENOTFOUND');
 
-    logConnectionTestError(
-      logger as any,
-      'Seerr',
-      new AxiosError('', 'ENOTFOUND'),
-    );
+    logConnectionTestError(logger, 'Seerr', error);
 
-    expect(logger.error).toHaveBeenCalledWith(
-      'Seerr connection test failed: Unable to resolve host. Verify hostname or IP address.',
-    );
+    expect(logger.error).toHaveBeenCalledWith('Seerr connection test failed');
+    expect(logger.debug).toHaveBeenCalledWith(error);
   });
 });

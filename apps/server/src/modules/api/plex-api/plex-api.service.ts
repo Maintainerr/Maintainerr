@@ -2,6 +2,7 @@ import { BasicResponseDto, PlexSetting } from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
 import axios from 'axios';
 import { isIP } from 'net';
+import { assertApiKey, connectionTestConfig } from '../lib/connectionTest';
 import { getErrorMessage } from '../../../utils/connection-error';
 import { createPrefetchProgressReporter } from '../../../utils/prefetch-progress';
 import cacheManager from '../../api/lib/cache';
@@ -398,6 +399,23 @@ export class PlexApiService {
       this.logger.debug('Plex status probe failed');
       return undefined;
     }
+  }
+
+  public async testConnection(): Promise<
+    PlexStatusResponse['MediaContainer'] | undefined
+  > {
+    assertApiKey(this.settings.plex_auth_token);
+    if (!this.isPlexSetup()) {
+      throw new Error('Plex client is not initialized');
+    }
+    const config = connectionTestConfig();
+    // /identity is public; verify library access with the same deadline.
+    await this.plexClient.query({ uri: '/library/sections', ...config }, false);
+    const response = await this.plexClient.query<PlexStatusResponse>(
+      { uri: '/identity', ...config },
+      false,
+    );
+    return response?.MediaContainer;
   }
 
   public async validateAuthToken(token?: string): Promise<PlexTokenValidation> {
