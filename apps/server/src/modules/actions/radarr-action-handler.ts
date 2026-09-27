@@ -49,6 +49,7 @@ export class RadarrActionHandler {
           tmdb: media.tmdbId,
           tvdb: media.tvdbId,
         },
+        () => radarrApiClient.getMovies(),
       );
 
     if (lookupCandidates.length > 0) {

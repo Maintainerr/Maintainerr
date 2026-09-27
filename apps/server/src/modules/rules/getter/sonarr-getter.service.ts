@@ -17,6 +17,7 @@ import {
   formatMetadataLookupCandidates,
   MetadataLookupCandidate,
 } from '../../metadata/metadata-lookup.util';
+import { ArrLibrary } from '../../metadata/interfaces/metadata-lookup-policy.interface';
 import { MetadataService } from '../../metadata/metadata.service';
 import {
   Application,
@@ -115,8 +116,23 @@ export class SonarrGetterService {
         );
       }
 
+      const settingsId = ruleGroup.collection.sonarrSettingsId;
+      const sonarrApiClient =
+        await this.servarrService.getSonarrApiClient(settingsId);
+
+      // The library is the same for every item in the run.
+      const library = () =>
+        arrLookupCache
+          ? arrLookupCache.memoize(
+              `sonarr:${settingsId}:library`,
+              () => sonarrApiClient.getSeries(),
+              (series) => series === undefined,
+            )
+          : sonarrApiClient.getSeries();
+
       const lookupCandidates = await this.findLookupCandidatesFromMediaItem(
         libItem,
+        library,
         arrLookupCache,
       );
 
@@ -126,7 +142,7 @@ export class SonarrGetterService {
         // stays transient either way: "we could not look it up" is not the same
         // claim as "it is not there", and a definitive one would let unmatched
         // and personal media match NOT_EXISTS rules.
-        const message = `Failed to resolve external IDs for '${libItem.title}' (media server ID '${libItem.id}'). As a result, no Sonarr query could be made.`;
+        const message = `Failed to resolve external IDs for '${libItem.title}' (media server ID '${libItem.id}') through the metadata providers or Sonarr.`;
         if (this.metadataService.hasExternalIds(libItem)) {
           this.logger.warn(message);
         } else {
@@ -136,17 +152,12 @@ export class SonarrGetterService {
         return undefined;
       }
 
-      const sonarrApiClient = await this.servarrService.getSonarrApiClient(
-        ruleGroup.collection.sonarrSettingsId,
-      );
-
       // The series lookup is keyed on the resolved tvdbId and is identical for
       // every episode/season of a show. The API call stays uncached (the
       // cleanup needs post-deletion truth - #2757/#2891), but during rule
       // evaluation we dedupe it through the run-scoped memo, which is gone
       // before any deletion runs. Evict on a failed (undefined) lookup so a
       // transient error doesn't mark the whole series unresolved for the run.
-      const settingsId = ruleGroup.collection.sonarrSettingsId;
       const resolveSeries = (lookupId: number) =>
         arrLookupCache
           ? arrLookupCache.memoize(
@@ -763,6 +774,7 @@ export class SonarrGetterService {
 
   public async findLookupCandidatesFromMediaItem(
     libItem: MediaItem,
+    library: ArrLibrary,
     arrLookupCache?: ArrLookupCache,
   ): Promise<MetadataLookupCandidate[]> {
     // Candidate resolution (media-server ids -> validated provider ids) is
@@ -778,6 +790,8 @@ export class SonarrGetterService {
       this.metadataService.resolveLookupCandidatesFromMediaItemForService(
         libItem,
         'sonarr',
+        {},
+        library,
       );
 
     return arrLookupCache

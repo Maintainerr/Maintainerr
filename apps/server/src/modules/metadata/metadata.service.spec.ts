@@ -805,7 +805,7 @@ describe('MetadataService', () => {
 
     expect(result).toBeUndefined();
     expect(logger.warn).toHaveBeenCalledWith(
-      'Rejected direct provider IDs for media server item "Fixture Chronicle" (2025) because no configured metadata provider confirmed the release year. Disagreements: TMDB returned 2014. The media server likely has incorrect metadata for this item, so no external IDs will be returned from this resolution attempt.',
+      'Rejected direct provider IDs for media server item "Fixture Chronicle" (2025) because no configured metadata provider confirmed the release year. Disagreements: TMDB returned 2014. The media server likely has incorrect metadata for this item.',
     );
   });
 
@@ -1352,6 +1352,110 @@ describe('MetadataService', () => {
     expect(logger.warn).toHaveBeenCalledWith(
       expect.stringContaining('TMDB returned 2097'),
     );
+  });
+
+  describe('*arr library fallback (#3787)', () => {
+    it('matches an item no provider resolves to the *arr entry carrying its imdb id', async () => {
+      const { service } = createService({});
+      const item = createMediaItem({
+        type: 'movie',
+        year: 2000,
+        providerIds: { imdb: ['tt0000002'] },
+      });
+      const library = jest.fn().mockResolvedValue([
+        { tmdbId: 11, imdbId: 'tt0000001', year: 2000 },
+        { tmdbId: 12, imdbId: 'tt0000002', year: 2001 },
+      ]);
+
+      await expect(
+        service.resolveLookupCandidatesFromMediaItemForService(
+          item,
+          'radarr',
+          {},
+          library,
+        ),
+      ).resolves.toEqual([{ providerKey: 'tmdb', id: 12 }]);
+    });
+
+    it('rejects the *arr entry when its year disagrees as well', async () => {
+      const { service } = createService({
+        tmdbDetails: { year: 2014, externalIds: { tmdb: 771, type: 'movie' } },
+      });
+      const item = createMediaItem({
+        type: 'movie',
+        year: 2025,
+        providerIds: { tmdb: ['771'] },
+      });
+      const library = jest
+        .fn()
+        .mockResolvedValue([{ tmdbId: 771, year: 2014 }]);
+
+      await expect(
+        service.resolveLookupCandidatesFromMediaItemForService(
+          item,
+          'radarr',
+          {},
+          library,
+        ),
+      ).resolves.toEqual([]);
+      expect(library).toHaveBeenCalled();
+    });
+
+    it('leaves an item the providers resolve to them', async () => {
+      const { service } = createService({
+        tmdbDetails: { year: 2014, externalIds: { tmdb: 771, type: 'movie' } },
+      });
+      const item = createMediaItem({
+        type: 'movie',
+        year: 2014,
+        providerIds: { tmdb: ['771'] },
+      });
+      const library = jest.fn();
+
+      await expect(
+        service.resolveLookupCandidatesFromMediaItemForService(
+          item,
+          'radarr',
+          {},
+          library,
+        ),
+      ).resolves.toEqual([{ providerKey: 'tmdb', id: 771 }]);
+      expect(library).not.toHaveBeenCalled();
+    });
+
+    it('searches it for the show of an episode resolved by media server id', async () => {
+      const show = createMediaItem({
+        id: 'show-1',
+        type: 'show',
+        year: 2010,
+        providerIds: { tvdb: ['303'] },
+      });
+      const mediaServer = {
+        getMetadata: jest.fn(async (id: string) =>
+          id === 'show-1'
+            ? show
+            : createMediaItem({
+                id,
+                type: 'episode',
+                grandparentId: 'show-1',
+                providerIds: {},
+              }),
+        ),
+      };
+      const { service } = createService({ mediaServer });
+      const library = jest
+        .fn()
+        .mockResolvedValue([{ tvdbId: 303, year: 2010 }]);
+
+      await expect(
+        service.resolveLookupCandidatesForService(
+          'episode-1',
+          'sonarr',
+          {},
+          library,
+        ),
+      ).resolves.toEqual([{ providerKey: 'tvdb', id: 303 }]);
+    });
   });
 
   describe('getDetails({ merge: true })', () => {

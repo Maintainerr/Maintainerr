@@ -9,6 +9,7 @@ import { MediaServerFactory } from '../api/media-server/media-server.factory';
 import { MaintainerrLogger } from '../logging/logs.service';
 import { SettingsDataService } from '../settings/settings-data.service';
 import {
+  ArrLibrary,
   MetadataLookupPolicy,
   metadataLookupPoliciesByService,
 } from './interfaces/metadata-lookup-policy.interface';
@@ -237,10 +238,11 @@ export class MetadataService {
     mediaServerId: string,
     service: string,
     fallbackIds: Partial<ProviderIds> = {},
+    arrLibrary?: ArrLibrary,
   ): Promise<MetadataLookupCandidate[]> {
     return this.resolveLookupCandidates(
       mediaServerId,
-      this.getLookupPolicyForService(service),
+      { ...this.getLookupPolicyForService(service), arrLibrary },
       fallbackIds,
     );
   }
@@ -267,10 +269,11 @@ export class MetadataService {
     item: MediaItem,
     service: string,
     fallbackIds: Partial<ProviderIds> = {},
+    arrLibrary?: ArrLibrary,
   ): Promise<MetadataLookupCandidate[]> {
     return this.resolveLookupCandidatesFromMediaItem(
       item,
-      this.getLookupPolicyForService(service),
+      { ...this.getLookupPolicyForService(service), arrLibrary },
       fallbackIds,
     );
   }
@@ -324,6 +327,7 @@ export class MetadataService {
     providerKeys: string[] = [],
     providerMatchMode: 'all' | 'any' = 'all',
     sourceMediaServerId?: string,
+    arrLibrary?: ArrLibrary,
   ): Promise<ResolvedMediaIds | undefined> {
     try {
       const resolutionItem = await this.getHierarchyResolutionItem(
@@ -339,6 +343,7 @@ export class MetadataService {
         resolutionItem,
         providerKeys,
         providerMatchMode,
+        arrLibrary,
       );
     } catch (error) {
       this.logger.warn('Failed to resolve IDs from hierarchy media item');
@@ -351,6 +356,7 @@ export class MetadataService {
     item: MediaItem,
     providerKeys: string[] = [],
     providerMatchMode: 'all' | 'any' = 'all',
+    arrLibrary?: ArrLibrary,
   ): Promise<ResolvedMediaIds | undefined> {
     try {
       const ids = this.extractDirectIds(item);
@@ -363,7 +369,7 @@ export class MetadataService {
         metadataDetails = await this.validateDirectIds(item, ids);
 
         if (!metadataDetails) {
-          return undefined;
+          return await this.resolveIdsFromArrLibrary(item, arrLibrary);
         }
 
         if (metadataDetails.externalIds) {
@@ -388,12 +394,55 @@ export class MetadataService {
 
       return this.hasRequiredIds(ids, providerKeys, providerMatchMode)
         ? ids
-        : undefined;
+        : await this.resolveIdsFromArrLibrary(item, arrLibrary);
     } catch (error) {
       this.logger.warn('Failed to resolve IDs from media item');
       this.logger.debug(error);
       return undefined;
     }
+  }
+
+  /**
+   * The *arr entry carrying one of the media server's own ids, for an item no
+   * provider resolves (#3787). Held to the same year tolerance as a provider.
+   */
+  private async resolveIdsFromArrLibrary(
+    item: MediaItem,
+    arrLibrary?: ArrLibrary,
+  ): Promise<ResolvedMediaIds | undefined> {
+    if (!arrLibrary || !this.hasExternalIds(item)) {
+      return undefined;
+    }
+
+    const ids = this.extractDirectIds(item);
+    const entry = (await arrLibrary())?.find(
+      (candidate) =>
+        (ids.tmdb && candidate.tmdbId === ids.tmdb) ||
+        (ids.tvdb && candidate.tvdbId === ids.tvdb) ||
+        (ids.imdb && candidate.imdbId === ids.imdb),
+    );
+    if (!entry) {
+      return undefined;
+    }
+
+    const itemYear = this.readItemYear(item);
+    if (
+      itemYear !== undefined &&
+      entry.year &&
+      Math.abs(itemYear - entry.year) > 1
+    ) {
+      this.logger.debug(
+        `Rejected the *arr entry for "${item.title}" (${itemYear}): the *arr has ${entry.year}.`,
+      );
+      return undefined;
+    }
+
+    this.logger.debug(
+      `Resolved "${item.title}" from the *arr library, as no metadata provider could.`,
+    );
+    const resolved: ResolvedMediaIds = { type: ids.type };
+    this.fillMissingIds(resolved, { tmdb: entry.tmdbId, tvdb: entry.tvdbId });
+    return resolved;
   }
 
   private async getHierarchyResolutionItem(
@@ -481,6 +530,7 @@ export class MetadataService {
         providerKeys,
         lookupPolicy.providerMatchMode ?? 'any',
         mediaServerId,
+        lookupPolicy.arrLibrary,
       );
     } catch (error) {
       this.logger.warn(`Failed to resolve IDs for ${mediaServerId}`);
@@ -541,6 +591,7 @@ export class MetadataService {
       item,
       providerKeys,
       lookupPolicy.providerMatchMode ?? 'any',
+      lookupPolicy.arrLibrary,
     );
   }
 
@@ -1178,7 +1229,7 @@ export class MetadataService {
           disagreements,
         ).join(
           '; ',
-        )}. The media server likely has incorrect metadata for this item, so no external IDs will be returned from this resolution attempt.`,
+        )}. The media server likely has incorrect metadata for this item.`,
       );
     }
 

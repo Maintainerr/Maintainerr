@@ -556,6 +556,35 @@ describe('ServarrTagService', () => {
       ).toHaveBeenCalledTimes(1);
     });
 
+    it('searches each instance library for an item no provider resolves (#3787)', async () => {
+      const tracking = mockRadarrApi(servarrService, logger);
+      const other = mockRadarrApi(servarrService, logger);
+      metadataService.resolveLookupCandidatesForService.mockImplementation(
+        async (mediaServerId, service, fallbackIds, library) =>
+          (await library?.())?.length ? [{ providerKey: 'tmdb', id: 100 }] : [],
+      );
+      jest
+        .spyOn(tracking, 'getMovies')
+        .mockResolvedValue([createRadarrMovie()]);
+      jest
+        .spyOn(tracking, 'getMovieByTmdbId')
+        .mockResolvedValue(createRadarrMovie({ id: 30 }));
+      jest.spyOn(tracking, 'ensureTag').mockResolvedValue(9);
+      jest.spyOn(other, 'getMovies').mockResolvedValue([]);
+      servarrService.getRadarrApiClient.mockImplementation(async (id) =>
+        id === 1 ? tracking : other,
+      );
+      settings.getRadarrSettings.mockResolvedValue([
+        radarrServer({ serverName: 'HD', tagExclusions: true }),
+        radarrServer({ id: 2, serverName: '4K', tagExclusions: true }),
+      ]);
+
+      await service.applyExclusionTag(movieTarget);
+
+      expect(tracking.setMovieTags).toHaveBeenCalledWith([30], 9, 'add');
+      expect(other.setMovieTags).not.toHaveBeenCalled();
+    });
+
     it('uses the label of each server, and skips a server with it off', async () => {
       const hd = mockRadarrApi(servarrService, logger);
       const uhd = mockRadarrApi(servarrService, logger);

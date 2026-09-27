@@ -1,6 +1,19 @@
+/** The ids and release year of a Radarr movie or Sonarr series. */
+export interface ArrLibraryEntry {
+  tmdbId?: number;
+  tvdbId?: number;
+  imdbId?: string;
+  year?: number;
+}
+
+/** Reads an *arr's whole library; undefined when the read failed. */
+export type ArrLibrary = () => Promise<ArrLibraryEntry[] | undefined>;
+
 export interface MetadataLookupPolicy {
   providerKeys?: string[];
   providerMatchMode?: 'all' | 'any';
+  /** Searched for the item's own ids when no provider resolves them. */
+  arrLibrary?: ArrLibrary;
 }
 
 export const metadataLookupPoliciesByService: Record<

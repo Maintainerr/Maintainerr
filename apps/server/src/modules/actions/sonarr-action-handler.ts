@@ -97,6 +97,7 @@ export class SonarrActionHandler {
           tvdb: media.tvdbId,
           tmdb: media.tmdbId,
         },
+        () => sonarrApiClient.getSeries(),
       );
 
     if (lookupCandidates.length === 0) {
