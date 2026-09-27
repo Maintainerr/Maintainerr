@@ -603,9 +603,9 @@ msgstr "Backup"
 msgid "Backup Database"
 msgstr "Backup Datenbank"
 
-#: src/components/Settings/Servarr/ServarrServerCard.tsx
-msgid "Base URL"
-msgstr "Basis-URL"
+#: src/components/Forms/ServiceBasePathInput.tsx
+msgid "Base Path"
+msgstr ""
 
 #: src/components/StorageMetrics/index.tsx
 msgid "Based on cached collection sizes, deduplicated across collections. Run collection processing jobs to refresh size data."
@@ -900,10 +900,6 @@ msgstr "Verbindungstest fehlgeschlagen. Überprüfe URL und Zugangsdaten."
 #: src/utils/ApiError.ts
 msgid "Connection timed out after 5 seconds. Verify URL and network reachability."
 msgstr "Zeitüberschreitung der Verbindung nach 5 Sekunden. Überprüfe URL und Netzwerkverbindung."
-
-#: src/components/Settings/Plex/index.tsx
-msgid "Connects to the host above over TLS."
-msgstr ""
 
 #: src/components/Settings/About/index.tsx
 msgid "Container Config Path"
@@ -1479,10 +1475,7 @@ msgstr "Alle ~{SAMPLE_MONTHS} Monate"
 msgid "Every attempt should be made to only upload working rules. Rules with less than -100 karma and uploads with no rules, are removed nightly."
 msgstr "Es sollte alles versucht werden, nur funktionierende Regeln hochzuladen. Regeln mit weniger als -100 Karma sowie Uploads ohne Regeln werden jede Nacht entfernt."
 
-#: src/components/Settings/Ombi/index.tsx
-#: src/components/Settings/Seerr/index.tsx
-#: src/components/Settings/Streamystats/index.tsx
-#: src/components/Settings/Tautulli/index.tsx
+#: src/components/Forms/ServiceUrlExamples.tsx
 msgid "Example URL formats:"
 msgstr "Beispielformate für URLs:"
 
@@ -1903,14 +1896,6 @@ msgstr "Ausblenden"
 #: src/components/Settings/Main/index.tsx
 msgid "Hostname"
 msgstr "Hostname"
-
-#: src/components/Settings/Plex/index.tsx
-msgid "Hostname / IP"
-msgstr "Hostname / IP"
-
-#: src/components/Settings/Servarr/ServarrServerCard.tsx
-msgid "Hostname or IP"
-msgstr "Hostname oder IP"
 
 #: src/components/Collection/CollectionDetail/TriggerRuleActionButton/index.tsx
 msgid "If the action succeeds, the item will be removed from the collection right away instead of waiting for the normal schedule."
@@ -2625,10 +2610,6 @@ msgstr "Keine Elemente gefunden."
 msgid "No items processed yet"
 msgstr "Noch keine Elemente verarbeitet"
 
-#: src/components/Settings/Servarr/ServarrServerCard.tsx
-msgid "No Leading Slash"
-msgstr "Kein führender Schrägstrich"
-
 #: src/components/StorageMetrics/index.tsx
 msgid "No libraries reported. Add libraries in your media server, then refresh."
 msgstr "Keine Bibliotheken gemeldet. Füge Bibliotheken in deinem Medienserver hinzu und aktualisiere anschließend."
@@ -2821,6 +2802,10 @@ msgstr "Seitenleiste öffnen"
 msgid "Operator"
 msgstr "Operator"
 
+#: src/components/Forms/ServiceBasePathInput.tsx
+msgid "Optional path configured on the service."
+msgstr ""
+
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Options"
 msgstr "Optionen"
@@ -2912,12 +2897,12 @@ msgid "Please edit this rule and select a library"
 msgstr "Bitte bearbeite diese Regel und wähle eine Bibliothek aus"
 
 #: src/components/Settings/Plex/index.tsx
-msgid "Please enter a hostname or IP address."
-msgstr "Bitte gib einen Hostnamen oder eine IP-Adresse ein."
+msgid "Please enter a valid server URL with no path."
+msgstr ""
 
-#: src/components/Settings/Plex/index.tsx
-msgid "Please enter a valid port."
-msgstr "Bitte gib einen gültigen Port ein."
+#: src/components/Settings/Servarr/ServarrServerCard.tsx
+msgid "Please enter a valid URL."
+msgstr ""
 
 #: src/components/Settings/Jobs/index.tsx
 msgid "Please make sure all values are valid"
@@ -2958,11 +2943,6 @@ msgstr "Plex-Einstellungen konnten nicht aktualisiert werden"
 #: src/utils/PlexAuth.ts
 msgid "Popup closed without completing login"
 msgstr "Das Popup wurde geschlossen, ohne die Anmeldung abzuschließen"
-
-#: src/components/Settings/Plex/index.tsx
-#: src/components/Settings/Servarr/ServarrServerCard.tsx
-msgid "Port"
-msgstr "Port"
 
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "Position"
@@ -4011,10 +3991,6 @@ msgstr "Die folgenden Daten werden gelöscht oder zurückgesetzt:"
 msgid "The following data will be permanently deleted:"
 msgstr "Die folgenden Daten werden dauerhaft gelöscht:"
 
-#: src/components/Settings/DownloadClient/index.tsx
-msgid "The full RPC endpoint, normally {urlExample}"
-msgstr ""
-
 #: src/components/Settings/Notifications/NotificationAgentCard.tsx
 msgid "The JSON payload is not valid."
 msgstr ""
@@ -4078,10 +4054,6 @@ msgstr "Der Medientyp, auf den TV-Medienregeln angewendet werden sollen"
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "The user list could not be loaded"
 msgstr "Die Benutzerliste konnte nicht geladen werden"
-
-#: src/components/Settings/DownloadClient/index.tsx
-msgid "The WebUI address, for example {urlExample}"
-msgstr ""
 
 #: src/components/Settings/index.tsx
 msgid "There was a problem loading settings."
@@ -4459,10 +4431,6 @@ msgstr "Die hochgeladene YAML-Datei ist leer."
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "Uppercase"
 msgstr "Großbuchstaben"
-
-#: src/components/Settings/Plex/index.tsx
-msgid "Use HTTPS"
-msgstr "HTTPS verwenden"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Use rules"

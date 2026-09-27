@@ -14,6 +14,8 @@ import {
   useSaveDownloadClientSettings,
   useTestDownloadClient,
 } from '../../../api/settings'
+import { ServiceUrlExamples } from '../../Forms/ServiceUrlExamples'
+import { ServiceBasePathInput } from '../../Forms/ServiceBasePathInput'
 import { getApiErrorMessage } from '../../../utils/ApiError'
 import Badge from '../../Common/Badge'
 import SaveButton from '../../Common/SaveButton'
@@ -121,12 +123,18 @@ const DownloadClientSettings = () => {
       : clientType === DownloadClientType.QBITTORRENT
         ? 'http://localhost:8080'
         : ''
-  const urlHelp =
-    clientType === DownloadClientType.TRANSMISSION
-      ? t`The full RPC endpoint, normally ${{ urlExample }}`
-      : clientType === DownloadClientType.QBITTORRENT
-        ? t`The WebUI address, for example ${{ urlExample }}`
-        : t`Select a client first`
+  const urlHelp = clientType ? (
+    <ServiceUrlExamples
+      examples={[
+        urlExample,
+        clientType === DownloadClientType.TRANSMISSION
+          ? 'https://bt.example.com/transmission/rpc'
+          : 'https://qbittorrent.example.com',
+      ]}
+    />
+  ) : (
+    t`Select a client first`
+  )
 
   const isGoingToRemove = (url ?? '') === ''
   const connectionKey = `${clientType} ${url} ${username} ${password}`
@@ -333,6 +341,16 @@ const DownloadClientSettings = () => {
                 />
               )}
             />
+            {clientType === DownloadClientType.QBITTORRENT && (
+              <ServiceBasePathInput
+                name="download_client_url"
+                value={url ?? ''}
+                onChange={(value) => {
+                  clearTransientState()
+                  setValue('download_client_url', value, { shouldDirty: true })
+                }}
+              />
+            )}
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <Controller
                 name="download_client_type"

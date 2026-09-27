@@ -603,8 +603,8 @@ msgstr ""
 msgid "Backup Database"
 msgstr ""
 
-#: src/components/Settings/Servarr/ServarrServerCard.tsx
-msgid "Base URL"
+#: src/components/Forms/ServiceBasePathInput.tsx
+msgid "Base Path"
 msgstr ""
 
 #: src/components/StorageMetrics/index.tsx
@@ -899,10 +899,6 @@ msgstr ""
 
 #: src/utils/ApiError.ts
 msgid "Connection timed out after 5 seconds. Verify URL and network reachability."
-msgstr ""
-
-#: src/components/Settings/Plex/index.tsx
-msgid "Connects to the host above over TLS."
 msgstr ""
 
 #: src/components/Settings/About/index.tsx
@@ -1479,10 +1475,7 @@ msgstr ""
 msgid "Every attempt should be made to only upload working rules. Rules with less than -100 karma and uploads with no rules, are removed nightly."
 msgstr ""
 
-#: src/components/Settings/Ombi/index.tsx
-#: src/components/Settings/Seerr/index.tsx
-#: src/components/Settings/Streamystats/index.tsx
-#: src/components/Settings/Tautulli/index.tsx
+#: src/components/Forms/ServiceUrlExamples.tsx
 msgid "Example URL formats:"
 msgstr ""
 
@@ -1902,14 +1895,6 @@ msgstr ""
 
 #: src/components/Settings/Main/index.tsx
 msgid "Hostname"
-msgstr ""
-
-#: src/components/Settings/Plex/index.tsx
-msgid "Hostname / IP"
-msgstr ""
-
-#: src/components/Settings/Servarr/ServarrServerCard.tsx
-msgid "Hostname or IP"
 msgstr ""
 
 #: src/components/Collection/CollectionDetail/TriggerRuleActionButton/index.tsx
@@ -2625,10 +2610,6 @@ msgstr ""
 msgid "No items processed yet"
 msgstr ""
 
-#: src/components/Settings/Servarr/ServarrServerCard.tsx
-msgid "No Leading Slash"
-msgstr ""
-
 #: src/components/StorageMetrics/index.tsx
 msgid "No libraries reported. Add libraries in your media server, then refresh."
 msgstr ""
@@ -2821,6 +2802,10 @@ msgstr ""
 msgid "Operator"
 msgstr ""
 
+#: src/components/Forms/ServiceBasePathInput.tsx
+msgid "Optional path configured on the service."
+msgstr ""
+
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Options"
 msgstr ""
@@ -2912,11 +2897,11 @@ msgid "Please edit this rule and select a library"
 msgstr ""
 
 #: src/components/Settings/Plex/index.tsx
-msgid "Please enter a hostname or IP address."
+msgid "Please enter a valid server URL with no path."
 msgstr ""
 
-#: src/components/Settings/Plex/index.tsx
-msgid "Please enter a valid port."
+#: src/components/Settings/Servarr/ServarrServerCard.tsx
+msgid "Please enter a valid URL."
 msgstr ""
 
 #: src/components/Settings/Jobs/index.tsx
@@ -2957,11 +2942,6 @@ msgstr ""
 
 #: src/utils/PlexAuth.ts
 msgid "Popup closed without completing login"
-msgstr ""
-
-#: src/components/Settings/Plex/index.tsx
-#: src/components/Settings/Servarr/ServarrServerCard.tsx
-msgid "Port"
 msgstr ""
 
 #: src/components/OverlayEditor/PropertiesPanel.tsx
@@ -4011,10 +3991,6 @@ msgstr ""
 msgid "The following data will be permanently deleted:"
 msgstr ""
 
-#: src/components/Settings/DownloadClient/index.tsx
-msgid "The full RPC endpoint, normally {urlExample}"
-msgstr ""
-
 #: src/components/Settings/Notifications/NotificationAgentCard.tsx
 msgid "The JSON payload is not valid."
 msgstr ""
@@ -4077,10 +4053,6 @@ msgstr ""
 
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "The user list could not be loaded"
-msgstr ""
-
-#: src/components/Settings/DownloadClient/index.tsx
-msgid "The WebUI address, for example {urlExample}"
 msgstr ""
 
 #: src/components/Settings/index.tsx
@@ -4458,10 +4430,6 @@ msgstr ""
 
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "Uppercase"
-msgstr ""
-
-#: src/components/Settings/Plex/index.tsx
-msgid "Use HTTPS"
 msgstr ""
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx

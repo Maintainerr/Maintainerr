@@ -19,6 +19,7 @@ import GetApiHandler, {
   DeleteApiHandler,
   PostApiHandler,
 } from '../../utils/ApiHandler'
+import { ServiceBasePathInput } from '../Forms/ServiceBasePathInput'
 import SaveButton from '../Common/SaveButton'
 import TestingButton from '../Common/TestingButton'
 import { InputGroup } from '../Forms/Input'
@@ -48,6 +49,7 @@ export interface ExternalServiceFieldConfig {
     JSX.Element | string | ((values: SettingsValues) => JSX.Element | string)
   normalize?: (value: string) => string
   required?: boolean
+  basePath?: boolean
   options?: ExternalServiceSelectOption[]
   loadOptions?: (
     values: SettingsValues,
@@ -449,42 +451,55 @@ const ExternalServiceSettingsPage = ({
                   }
 
                   return (
-                    <InputGroup
-                      layout="stacked"
-                      label={fieldConfig.label}
-                      value={field.value}
-                      placeholder={fieldConfig.placeholder}
-                      onChange={(event: ChangeEvent<HTMLInputElement>) => {
-                        clearTransientState()
-                        field.onChange(event)
-                      }}
-                      onBlur={(event: FocusEvent<HTMLInputElement>) => {
-                        const value = fieldConfig.normalize
-                          ? fieldConfig.normalize(event.target.value)
-                          : event.target.value
+                    <>
+                      <InputGroup
+                        layout="stacked"
+                        label={fieldConfig.label}
+                        value={field.value}
+                        placeholder={fieldConfig.placeholder}
+                        onChange={(event: ChangeEvent<HTMLInputElement>) => {
+                          clearTransientState()
+                          field.onChange(event)
+                        }}
+                        onBlur={(event: FocusEvent<HTMLInputElement>) => {
+                          const value = fieldConfig.normalize
+                            ? fieldConfig.normalize(event.target.value)
+                            : event.target.value
 
-                        if (fieldConfig.normalize) {
-                          field.onChange(value)
-                        } else {
-                          field.onBlur()
+                          if (fieldConfig.normalize) {
+                            field.onChange(value)
+                          } else {
+                            field.onBlur()
+                          }
+
+                          loadSelectOptions({
+                            ...getValues(),
+                            [fieldConfig.name]: value,
+                          })
+                        }}
+                        ref={field.ref}
+                        name={field.name}
+                        type={fieldConfig.type ?? 'text'}
+                        error={error}
+                        helpText={
+                          typeof fieldConfig.helpText === 'function'
+                            ? fieldConfig.helpText(currentValues)
+                            : (fieldConfig.helpText ?? undefined)
                         }
-
-                        loadSelectOptions({
-                          ...getValues(),
-                          [fieldConfig.name]: value,
-                        })
-                      }}
-                      ref={field.ref}
-                      name={field.name}
-                      type={fieldConfig.type ?? 'text'}
-                      error={error}
-                      helpText={
-                        typeof fieldConfig.helpText === 'function'
-                          ? fieldConfig.helpText(currentValues)
-                          : (fieldConfig.helpText ?? undefined)
-                      }
-                      required={fieldConfig.required}
-                    />
+                        required={fieldConfig.required}
+                      />
+                      {fieldConfig.basePath && (
+                        <ServiceBasePathInput
+                          name={field.name}
+                          value={field.value}
+                          onChange={(value) => {
+                            clearTransientState()
+                            field.onChange(value)
+                          }}
+                          onBlur={() => loadSelectOptions(getValues())}
+                        />
+                      )}
+                    </>
                   )
                 }}
               />

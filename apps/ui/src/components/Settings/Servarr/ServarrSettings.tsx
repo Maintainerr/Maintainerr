@@ -34,20 +34,28 @@ type DeleteServarrSettingResponseDto =
 // as a sentence.
 const serviceCopy: Record<
   ServarrService,
-  { name: string; title: MessageDescriptor; add: MessageDescriptor }
+  {
+    name: string
+    title: MessageDescriptor
+    add: MessageDescriptor
+    defaultPort: number
+  }
 > = {
   radarr: {
     name: 'Radarr',
+    defaultPort: 7878,
     title: msg`Radarr settings - Maintainerr`,
     add: msg`Add Radarr server`,
   },
   sonarr: {
     name: 'Sonarr',
+    defaultPort: 8989,
     title: msg`Sonarr settings - Maintainerr`,
     add: msg`Add Sonarr server`,
   },
   sportarr: {
     name: 'Sportarr',
+    defaultPort: 1867,
     title: msg`Sportarr settings - Maintainerr`,
     add: msg`Add Sportarr server`,
   },
@@ -102,6 +110,7 @@ export const ServarrSettings = ({ service }: { service: ServarrService }) => {
     settingsPath: `/settings/${service}`,
     testPath: `/settings/test/${service}`,
     serviceName,
+    defaultPort: copy.defaultPort,
     metadataRefreshPath:
       service === 'sportarr'
         ? '/settings/metadata/refresh/sportarr'

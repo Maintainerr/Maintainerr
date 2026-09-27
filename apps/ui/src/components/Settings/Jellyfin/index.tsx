@@ -16,6 +16,8 @@ import {
   useSaveJellyfinSettings,
   useTestJellyfin,
 } from '../../../api/settings'
+import { ServiceBasePathInput } from '../../Forms/ServiceBasePathInput'
+import { ServiceUrlExamples } from '../../Forms/ServiceUrlExamples'
 import { getApiErrorMessage } from '../../../utils/ApiError'
 import SaveButton from '../../Common/SaveButton'
 import TestingButton from '../../Common/TestingButton'
@@ -234,6 +236,14 @@ const JellyfinSettings = () => {
                     label={t`Jellyfin URL`}
                     value={field.value}
                     placeholder="http://jellyfin.local:8096"
+                    helpText={
+                      <ServiceUrlExamples
+                        examples={[
+                          'http://localhost:8096',
+                          'https://jellyfin.example.com',
+                        ]}
+                      />
+                    }
                     onChange={(event) => {
                       clearTransientState()
                       field.onChange(event)
@@ -264,6 +274,14 @@ const JellyfinSettings = () => {
                 }
               />
             </div>
+            <ServiceBasePathInput
+              name="jellyfin_url"
+              value={jellyfinUrl ?? ''}
+              onChange={(value) => {
+                clearTransientState()
+                setValue('jellyfin_url', value, { shouldDirty: true })
+              }}
+            />
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               {usersLoaded ? (
                 <SelectGroup

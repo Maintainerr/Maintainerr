@@ -6,6 +6,7 @@ import {
   type TracearrServer,
   tracearrSettingSchema,
 } from '@maintainerr/contracts'
+import { ServiceUrlExamples } from '../../Forms/ServiceUrlExamples'
 import { PostApiHandler } from '../../../utils/ApiHandler'
 import BrandLink from '../../Common/BrandLink'
 import ExternalServiceSettingsPage, {
@@ -19,12 +20,11 @@ const buildFields = (): ExternalServiceFieldConfig[] => [
     label: 'URL',
     placeholder: 'http://localhost:3000',
     helpText: (
-      <>
-        <Trans>Example URL formats:</Trans>{' '}
-        <span className="whitespace-nowrap">http://localhost:3000</span>,{' '}
-        <span className="whitespace-nowrap">https://tracearr.example.com</span>
-      </>
+      <ServiceUrlExamples
+        examples={['http://localhost:3000', 'https://tracearr.example.com']}
+      />
     ),
+    basePath: true,
     normalize: stripTrailingSlashes,
     required: true,
   },

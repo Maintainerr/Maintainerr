@@ -16,6 +16,7 @@ import {
   useSaveEmbySettings,
   useTestEmby,
 } from '../../../api/settings'
+import { ServiceUrlExamples } from '../../Forms/ServiceUrlExamples'
 import { getApiErrorMessage } from '../../../utils/ApiError'
 import SaveButton from '../../Common/SaveButton'
 import TestingButton from '../../Common/TestingButton'
@@ -228,6 +229,14 @@ const EmbySettings = () => {
                     label={t`Emby URL`}
                     value={field.value}
                     placeholder="http://emby.local:8096"
+                    helpText={
+                      <ServiceUrlExamples
+                        examples={[
+                          'http://localhost:8096',
+                          'https://emby.example.com',
+                        ]}
+                      />
+                    }
                     onChange={(event) => {
                       clearTransientState()
                       field.onChange(event)

@@ -1,10 +1,11 @@
 import { t as globalT } from '@lingui/core/macro'
-import { Trans, useLingui } from '@lingui/react/macro'
+import { useLingui } from '@lingui/react/macro'
 import {
   stripTrailingSlashes,
   tautulliSettingSchema,
 } from '@maintainerr/contracts'
 import { z } from 'zod'
+import { ServiceUrlExamples } from '../../Forms/ServiceUrlExamples'
 import ExternalServiceSettingsPage, {
   type ExternalServiceFieldConfig,
 } from '../ExternalServiceSettingsPage'
@@ -26,13 +27,11 @@ const buildFields = (): ExternalServiceFieldConfig[] => [
     label: 'URL',
     placeholder: 'http://localhost:8181',
     helpText: (
-      <>
-        <Trans>Example URL formats:</Trans>{' '}
-        <span className="whitespace-nowrap">http://localhost:8181</span>,{' '}
-        <span className="whitespace-nowrap">http://192.168.1.5/tautulli</span>,{' '}
-        <span className="whitespace-nowrap">https://tautulli.example.com</span>
-      </>
+      <ServiceUrlExamples
+        examples={['http://localhost:8181', 'https://tautulli.example.com']}
+      />
     ),
+    basePath: true,
     normalize: stripTrailingSlashes,
     required: true,
   },
