@@ -1,4 +1,4 @@
-import { useLingui } from '@lingui/react/macro'
+import { Trans, useLingui } from '@lingui/react/macro'
 import { stripTrailingSlashes } from '@maintainerr/contracts'
 import { InputGroup } from './Input'
 
@@ -24,7 +24,11 @@ export const ServiceBasePathInput = ({
       type="text"
       name={`${name}-base-path`}
       label={t`Base Path`}
-      helpText={t`Optional path configured on the service.`}
+      helpText={
+        <Trans>
+          <strong>Optional</strong> path configured on the service.
+        </Trans>
+      }
       value={url?.pathname === '/' ? '' : (url?.pathname ?? '')}
       disabled={!url}
       onChange={(event) => {

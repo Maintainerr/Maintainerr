@@ -47,7 +47,7 @@ import { Injectable } from '@nestjs/common';
 // while this server compiles to CommonJS and gets axios's CJS build - two
 // module instances, two error classes, so an instanceof check against the
 // imported class silently never matches an SDK failure.
-import { isAxiosError } from 'axios';
+import { isAxiosError, type AxiosRequestConfig } from 'axios';
 import { assertApiKey, connectionTestConfig } from '../../lib/connectionTest';
 import {
   formatConnectionFailureMessage,
@@ -208,6 +208,7 @@ export class JellyfinAdapterService implements IMediaServerService {
   private async verifyConnection(
     api: Api,
     apiKey: string,
+    config?: AxiosRequestConfig,
   ): Promise<{
     success: boolean;
     serverName?: string;
@@ -218,7 +219,6 @@ export class JellyfinAdapterService implements IMediaServerService {
   }> {
     try {
       assertApiKey(apiKey);
-      const config = connectionTestConfig();
       const systemInfo = await getSystemApi(api).getPublicSystemInfo(config);
       const usersResponse = await getUserApi(api).getUsers({}, config);
       const users = (usersResponse.data || [])
@@ -305,7 +305,11 @@ export class JellyfinAdapterService implements IMediaServerService {
     users?: Array<{ id: string; name: string }>;
   }> {
     const api = this.createApiClient(url, apiKey, 'test');
-    const result = await this.verifyConnection(api, apiKey);
+    const result = await this.verifyConnection(
+      api,
+      apiKey,
+      connectionTestConfig(),
+    );
 
     if (result.success) {
       this.logger.debug(

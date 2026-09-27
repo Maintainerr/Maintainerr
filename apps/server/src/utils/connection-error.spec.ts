@@ -70,6 +70,27 @@ describe('formatConnectionFailureMessage', () => {
     );
   });
 
+  it('preserves permission guidance from a wrapped forbidden response', () => {
+    const cause = new AxiosError(
+      'Request failed',
+      'ERR_BAD_REQUEST',
+      undefined,
+      undefined,
+      {
+        status: 403,
+        statusText: 'Forbidden',
+        data: undefined,
+        headers: {},
+        config: {} as never,
+      },
+    );
+    const error = new Error(
+      'Plex Server denied request due to lack of managed user permissions!',
+      { cause },
+    );
+    expect(formatConnectionFailureMessage(error, FALLBACK)).toBe(error.message);
+  });
+
   it('reports other HTTP status codes', () => {
     const error = new AxiosError(
       'Request failed',

@@ -17,6 +17,7 @@ import {
   useTestJellyfin,
 } from '../../../api/settings'
 import { ServiceBasePathInput } from '../../Forms/ServiceBasePathInput'
+import { ServiceApiKeyHelp } from '../../Forms/ServiceApiKeyHelp'
 import { ServiceUrlExamples } from '../../Forms/ServiceUrlExamples'
 import { getApiErrorMessage } from '../../../utils/ApiError'
 import SaveButton from '../../Common/SaveButton'
@@ -274,11 +275,12 @@ const JellyfinSettings = () => {
                 {...registerApiKey}
                 error={errors.jellyfin_api_key?.message}
                 helpText={
-                  <Trans>
-                    In Jellyfin, go to{' '}
-                    <strong>Dashboard &rarr; API Keys</strong> and create a new
-                    API key named &quot;Maintainerr&quot;.
-                  </Trans>
+                  <ServiceApiKeyHelp
+                    url={jellyfinUrl}
+                    path="/web/#/dashboard/keys"
+                  >
+                    <Trans>Find it here: Dashboard → API Keys</Trans>
+                  </ServiceApiKeyHelp>
                 }
               />
             </div>

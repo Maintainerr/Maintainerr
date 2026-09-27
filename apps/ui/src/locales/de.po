@@ -327,6 +327,10 @@ msgstr "+ Variable"
 msgid "+{hiddenCount} more..."
 msgstr "+{hiddenCount} weitere…"
 
+#: src/components/Forms/ServiceBasePathInput.tsx
+msgid "<0>Optional</0> path configured on the service."
+msgstr ""
+
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "1 day text"
 msgstr "Text für 1 Tag"
@@ -1781,9 +1785,35 @@ msgstr "Füllung"
 msgid "Fill & Stroke"
 msgstr "Füllung & Kontur"
 
+#: src/components/Settings/Metadata/index.tsx
+msgid "Find it here: Dashboard → Account → API Keys"
+msgstr ""
+
+#: src/components/Settings/Emby/index.tsx
+#: src/components/Settings/Jellyfin/index.tsx
+msgid "Find it here: Dashboard → API Keys"
+msgstr ""
+
+#: src/components/Settings/Metadata/index.tsx
+msgid "Find it here: Settings → API"
+msgstr ""
+
 #: src/components/Settings/Tracearr/index.tsx
-msgid "Find it in Tracearr under Settings, General, API Key."
-msgstr "Du findest ihn in Tracearr unter Einstellungen, Allgemein, API-Schlüssel."
+msgid "Find it here: Settings → API → API Key"
+msgstr ""
+
+#: src/components/Settings/Seerr/index.tsx
+#: src/components/Settings/Servarr/ServarrServerCard.tsx
+msgid "Find it here: Settings → General → API Key"
+msgstr ""
+
+#: src/components/Settings/Ombi/index.tsx
+msgid "Find it here: Settings → Ombi → API Key"
+msgstr ""
+
+#: src/components/Settings/Tautulli/index.tsx
+msgid "Find it here: Settings → Web Interface"
+msgstr ""
 
 #: src/components/Common/MediaLibrarySortControl.tsx
 msgid "First Air Date Ascending"
@@ -1941,14 +1971,6 @@ msgstr "Wichtig:"
 #: src/pages/OverlayTemplateListPage.tsx
 msgid "Imported template \"{templateName}\""
 msgstr "Vorlage „{templateName}“ importiert"
-
-#: src/components/Settings/Emby/index.tsx
-msgid "In Emby, go to <0>Dashboard → Advanced → API Keys</0> and create a new key named \"Maintainerr\". Or use <1>Sign in with Emby</1> below to obtain one automatically."
-msgstr "Gehe in Emby zu <0>Dashboard → Erweitert → API-Schlüssel</0> und erstelle einen neuen Schlüssel mit dem Namen „Maintainerr“. Oder nutze unten <1>Mit Emby anmelden</1>, um automatisch einen zu erhalten."
-
-#: src/components/Settings/Jellyfin/index.tsx
-msgid "In Jellyfin, go to <0>Dashboard → API Keys</0> and create a new API key named \"Maintainerr\"."
-msgstr "Gehe in Jellyfin zu <0>Dashboard → API-Schlüssel</0> und erstelle einen neuen API-Schlüssel mit dem Namen „Maintainerr“."
 
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "In Last"
@@ -2801,10 +2823,6 @@ msgstr "Seitenleiste öffnen"
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "Operator"
 msgstr "Operator"
-
-#: src/components/Forms/ServiceBasePathInput.tsx
-msgid "Optional path configured on the service."
-msgstr ""
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Options"
@@ -4566,14 +4584,6 @@ msgstr "YAML-Regel-Editor"
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "You are cloning the rule group ''{clonedRuleGroupName}''."
 msgstr "Du klonst die Regelgruppe „{clonedRuleGroupName}“."
-
-#: src/components/Settings/Metadata/index.tsx
-msgid "You can create a free API key at <0>{tmdbDomain}</0>."
-msgstr "Du kannst unter <0>{tmdbDomain}</0> einen kostenlosen API-Schlüssel erstellen."
-
-#: src/components/Settings/Metadata/index.tsx
-msgid "You can create a free developer API key at <0>{tvdbDomain}</0>."
-msgstr "Du kannst unter <0>{tvdbDomain}</0> einen kostenlosen API-Schlüssel für Entwickler erstellen."
 
 #: src/components/Layout/index.tsx
 msgid "You can try going back or reloading the page. If the problem persists, please check the browser console for more details."

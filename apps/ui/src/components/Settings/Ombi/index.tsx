@@ -1,7 +1,8 @@
 import { t as globalT } from '@lingui/core/macro'
-import { useLingui } from '@lingui/react/macro'
+import { Trans, useLingui } from '@lingui/react/macro'
 import { ombiSettingSchema, stripTrailingSlashes } from '@maintainerr/contracts'
 import { z } from 'zod'
+import { ServiceApiKeyHelp } from '../../Forms/ServiceApiKeyHelp'
 import { ServiceUrlExamples } from '../../Forms/ServiceUrlExamples'
 import ExternalServiceSettingsPage, {
   type ExternalServiceFieldConfig,
@@ -37,6 +38,11 @@ const buildFields = (): ExternalServiceFieldConfig[] => [
     name: 'api_key',
     label: globalT`API key`,
     type: 'password',
+    helpText: (values) => (
+      <ServiceApiKeyHelp url={values.url} path="/Settings/Ombi">
+        <Trans>Find it here: Settings → Ombi → API Key</Trans>
+      </ServiceApiKeyHelp>
+    ),
   },
 ]
 

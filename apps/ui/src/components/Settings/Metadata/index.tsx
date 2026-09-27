@@ -25,7 +25,7 @@ import GetApiHandler, {
   PostApiHandler,
 } from '../../../utils/ApiHandler'
 import { resolveMetadataPreference } from '../../../utils/metadataPreference'
-import BrandLink from '../../Common/BrandLink'
+import { ServiceApiKeyHelp } from '../../Forms/ServiceApiKeyHelp'
 import Button from '../../Common/Button'
 import SaveButton from '../../Common/SaveButton'
 import TestingButton from '../../Common/TestingButton'
@@ -135,24 +135,15 @@ function getRefreshActionState({
   }
 }
 
-// The visible link text rides through the messages as placeholders, so a
-// translation cannot show a different domain than the href opens.
-const tmdbDomain = 'themoviedb.org'
-const tvdbDomain = 'thetvdb.com'
-
 const providers: ProviderConfig[] = [
   {
     key: 'tmdb',
     preference: MetadataProviderPreference.TMDB_PRIMARY,
     title: 'TMDB',
     description: (
-      <Trans>
-        You can create a free API key at{' '}
-        <BrandLink external href="https://www.themoviedb.org/settings/api">
-          {tmdbDomain}
-        </BrandLink>
-        .
-      </Trans>
+      <ServiceApiKeyHelp url="https://www.themoviedb.org/settings/api">
+        <Trans>Find it here: Settings → API</Trans>
+      </ServiceApiKeyHelp>
     ),
     helpText: msg`Leave empty to use the built-in shared key.`,
     hasBuiltInKey: true,
@@ -164,13 +155,9 @@ const providers: ProviderConfig[] = [
     preference: MetadataProviderPreference.TVDB_PRIMARY,
     title: 'TVDB',
     description: (
-      <Trans>
-        You can create a free developer API key at{' '}
-        <BrandLink external href="https://thetvdb.com/dashboard/account/apikey">
-          {tvdbDomain}
-        </BrandLink>
-        .
-      </Trans>
+      <ServiceApiKeyHelp url="https://thetvdb.com/dashboard/account/apikey">
+        <Trans>Find it here: Dashboard → Account → API Keys</Trans>
+      </ServiceApiKeyHelp>
     ),
     apiKeyEmptyText: msg`API key not configured.`,
     testFailureMessage: msg`Failed to connect to TVDB. Verify the API key.`,

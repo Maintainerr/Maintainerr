@@ -52,6 +52,9 @@ export const formatConnectionFailureMessage = (
   fallbackMessage: string,
 ): string => {
   if (error instanceof Error && isAxiosError(error.cause)) {
+    if (error.cause.response?.status === 403 && error.message) {
+      return error.message;
+    }
     return formatConnectionFailureMessage(error.cause, fallbackMessage);
   }
   if (isAxiosError(error)) {

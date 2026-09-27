@@ -16,6 +16,7 @@ import {
   useSaveEmbySettings,
   useTestEmby,
 } from '../../../api/settings'
+import { ServiceApiKeyHelp } from '../../Forms/ServiceApiKeyHelp'
 import { ServiceUrlExamples } from '../../Forms/ServiceUrlExamples'
 import { getApiErrorMessage } from '../../../utils/ApiError'
 import SaveButton from '../../Common/SaveButton'
@@ -259,13 +260,12 @@ const EmbySettings = () => {
                 {...registerApiKey}
                 error={errors.emby_api_key?.message}
                 helpText={
-                  <Trans>
-                    In Emby, go to{' '}
-                    <strong>Dashboard &rarr; Advanced &rarr; API Keys</strong>{' '}
-                    and create a new key named &quot;Maintainerr&quot;. Or use{' '}
-                    <em>Sign in with Emby</em> below to obtain one
-                    automatically.
-                  </Trans>
+                  <ServiceApiKeyHelp
+                    url={embyUrl}
+                    path="/web/index.html#!/apikeys"
+                  >
+                    <Trans>Find it here: Dashboard → API Keys</Trans>
+                  </ServiceApiKeyHelp>
                 }
               />
               {usersLoaded ? (

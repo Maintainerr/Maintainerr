@@ -10,6 +10,7 @@ import {
 import { type ReactNode, useMemo, useState } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
 import { ServiceBasePathInput } from '../../Forms/ServiceBasePathInput'
+import { ServiceApiKeyHelp } from '../../Forms/ServiceApiKeyHelp'
 import { ServiceUrlExamples } from '../../Forms/ServiceUrlExamples'
 import {
   getApiErrorMessage,
@@ -434,7 +435,14 @@ const ServarrServerCard = ({
               setValue('url', value, { shouldDirty: true })
             }}
           />
-          {field('apiKey', t`API key`, 'password')}
+          {field(
+            'apiKey',
+            t`API key`,
+            'password',
+            <ServiceApiKeyHelp url={url} path="/settings/general">
+              <Trans>Find it here: Settings → General → API Key</Trans>
+            </ServiceApiKeyHelp>,
+          )}
         </div>
         {canTagExclusions ? (
           <>

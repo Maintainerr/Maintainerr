@@ -1,10 +1,11 @@
 import { t as globalT } from '@lingui/core/macro'
-import { useLingui } from '@lingui/react/macro'
+import { Trans, useLingui } from '@lingui/react/macro'
 import {
   stripTrailingSlashes,
   tautulliSettingSchema,
 } from '@maintainerr/contracts'
 import { z } from 'zod'
+import { ServiceApiKeyHelp } from '../../Forms/ServiceApiKeyHelp'
 import { ServiceUrlExamples } from '../../Forms/ServiceUrlExamples'
 import ExternalServiceSettingsPage, {
   type ExternalServiceFieldConfig,
@@ -40,6 +41,14 @@ const buildFields = (): ExternalServiceFieldConfig[] => [
     name: 'api_key',
     label: globalT`API key`,
     type: 'password',
+    helpText: (values) => (
+      <ServiceApiKeyHelp
+        url={values.url}
+        path="/settings#tabs_tabs-web_interface"
+      >
+        <Trans>Find it here: Settings → Web Interface</Trans>
+      </ServiceApiKeyHelp>
+    ),
   },
 ]
 
