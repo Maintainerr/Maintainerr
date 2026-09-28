@@ -464,6 +464,35 @@ describe('SonarrActionHandler', () => {
   );
 
   it.each([
+    { sonarrTmdbId: 771, expected: 771 },
+    { sonarrTmdbId: 0, expected: null },
+  ])(
+    'caches the matched series TMDB id $sonarrTmdbId on the row for the request removal',
+    async ({ sonarrTmdbId, expected }) => {
+      const collection = createCollection({
+        arrAction: ServarrAction.UNMONITOR,
+        sonarrSettingsId: 1,
+        type: 'show',
+      });
+      const collectionMedia = createCollectionMediaWithMetadata(collection, {
+        tmdbId: null,
+      });
+      mockMediaServerMetadata(collectionMedia.mediaData);
+      const mockedSonarrApi = mockSonarrApi(servarrService, logger);
+      jest
+        .spyOn(mockedSonarrApi, 'getSeriesByTvdbId')
+        .mockResolvedValue(
+          createSonarrSeries({ id: 42, tmdbId: sonarrTmdbId }),
+        );
+      mediaIdFinder.findTvdbId.mockResolvedValue(1);
+
+      await sonarrActionHandler.handleAction(collection, collectionMedia);
+
+      expect(collectionMedia.tmdbId).toBe(expected);
+    },
+  );
+
+  it.each([
     {
       type: 'season',
       title: 'SEASONS',

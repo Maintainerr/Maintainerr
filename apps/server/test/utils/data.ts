@@ -490,6 +490,7 @@ export const createSonarrSeries = (
     imdbId: faker.string.sample(10),
     path: faker.system.directoryPath(),
     tvdbId: faker.number.int(),
+    tmdbId: faker.number.int(),
     qualityProfileId: faker.number.int(),
     ratings: {
       votes: faker.number.int(),

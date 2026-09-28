@@ -202,9 +202,11 @@ section-boundary default is AND. YAML export/import must use a **null check**
   no user-facing knob.
 - **`ArrLookupCache`** (`modules/rules/helpers/arr-lookup-cache.ts`): a run-scoped
   memo created in the executor for the eval loop only, never passed to
-  `handleCollection`/actions, so empty-show cleanup still reads fresh. Used only
-  by the sonarr/radarr getters (others already cache at the API layer); the API
-  lookup itself stays `getWithoutCache`.
+  `handleCollection`/actions, so empty-show cleanup still reads fresh. The
+  handling loop has a separate instance that memoizes only the full-library
+  listings the id fallback reads (#3787); identity lookups stay fresh there.
+  Used only by the sonarr/radarr getters (others already cache at the API
+  layer); the API lookup itself stays `getWithoutCache`.
 - **Do not retain full comparison stats for every scanned item.**
   `RuleExecutorService` should keep detailed `IComparisonStatistics` only for
   items that may be newly added to a collection. Holding per-item stats across

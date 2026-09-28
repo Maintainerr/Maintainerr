@@ -9,6 +9,7 @@ import { MediaServerFactory } from '../api/media-server/media-server.factory';
 import { MaintainerrLogger } from '../logging/logs.service';
 import { SettingsDataService } from '../settings/settings-data.service';
 import {
+  ArrLibrary,
   MetadataLookupPolicy,
   metadataLookupPoliciesByService,
 } from './interfaces/metadata-lookup-policy.interface';
@@ -24,6 +25,14 @@ import {
   TvHierarchyRef,
 } from './interfaces/metadata.types';
 import { MetadataLookupCandidate } from './metadata-lookup.util';
+
+const ARR_ID_KEYS = ['tmdb', 'tvdb', 'imdb'] as const;
+
+/** Each id `ids` carries, paired with the *arr library field that holds it. */
+const arrIdPairs = (ids: Partial<ProviderIds>) =>
+  ARR_ID_KEYS.filter((key) => ids[key]).map(
+    (key) => [`${key}Id` as const, ids[key]] as const,
+  );
 
 /** A provider's year that disagreed with the media server's, kept for agreement checks. */
 interface ProviderYearDisagreement {
@@ -237,10 +246,14 @@ export class MetadataService {
     mediaServerId: string,
     service: string,
     fallbackIds: Partial<ProviderIds> = {},
+    arrLibrary?: ArrLibrary,
   ): Promise<MetadataLookupCandidate[]> {
     return this.resolveLookupCandidates(
       mediaServerId,
-      this.getLookupPolicyForService(service),
+      {
+        ...this.getLookupPolicyForService(service),
+        arr: arrLibrary && { library: arrLibrary, cachedIds: fallbackIds },
+      },
       fallbackIds,
     );
   }
@@ -267,10 +280,14 @@ export class MetadataService {
     item: MediaItem,
     service: string,
     fallbackIds: Partial<ProviderIds> = {},
+    arrLibrary?: ArrLibrary,
   ): Promise<MetadataLookupCandidate[]> {
     return this.resolveLookupCandidatesFromMediaItem(
       item,
-      this.getLookupPolicyForService(service),
+      {
+        ...this.getLookupPolicyForService(service),
+        arr: arrLibrary && { library: arrLibrary, cachedIds: fallbackIds },
+      },
       fallbackIds,
     );
   }
@@ -324,6 +341,7 @@ export class MetadataService {
     providerKeys: string[] = [],
     providerMatchMode: 'all' | 'any' = 'all',
     sourceMediaServerId?: string,
+    arr?: MetadataLookupPolicy['arr'],
   ): Promise<ResolvedMediaIds | undefined> {
     try {
       const resolutionItem = await this.getHierarchyResolutionItem(
@@ -339,6 +357,7 @@ export class MetadataService {
         resolutionItem,
         providerKeys,
         providerMatchMode,
+        arr,
       );
     } catch (error) {
       this.logger.warn('Failed to resolve IDs from hierarchy media item');
@@ -351,19 +370,23 @@ export class MetadataService {
     item: MediaItem,
     providerKeys: string[] = [],
     providerMatchMode: 'all' | 'any' = 'all',
+    arr?: MetadataLookupPolicy['arr'],
   ): Promise<ResolvedMediaIds | undefined> {
     try {
       const ids = this.extractDirectIds(item);
       const hasAvailableDirectIds = this.getOrderedProviders().some(
         (provider) => provider.extractId(ids) !== undefined,
       );
-      let metadataDetails: MetadataDetails | undefined;
+      let metadataDetails: MetadataDetails | null | undefined;
 
       if (hasAvailableDirectIds) {
         metadataDetails = await this.validateDirectIds(item, ids);
 
         if (!metadataDetails) {
-          return undefined;
+          // null is a year rejection, which the *arr must not overrule.
+          return metadataDetails === null
+            ? undefined
+            : await this.resolveIdsFromArrLibrary(item, arr);
         }
 
         if (metadataDetails.externalIds) {
@@ -386,14 +409,66 @@ export class MetadataService {
         providerMatchMode,
       );
 
+      // A provider that answered, even without the key the policy needs,
+      // rules the *arr library out.
       return this.hasRequiredIds(ids, providerKeys, providerMatchMode)
         ? ids
-        : undefined;
+        : this.getOrderedProviders().some(
+              (provider) => provider.extractId(ids) !== undefined,
+            )
+          ? undefined
+          : await this.resolveIdsFromArrLibrary(item, arr);
     } catch (error) {
       this.logger.warn('Failed to resolve IDs from media item');
       this.logger.debug(error);
       return undefined;
     }
+  }
+
+  /**
+   * The *arr entry for an item no provider could look up (#3787). It must share
+   * one of the item's ids, contradict none of them or the cached ones, be the
+   * only such entry, and have a year within the provider tolerance.
+   */
+  private async resolveIdsFromArrLibrary(
+    item: MediaItem,
+    arr?: MetadataLookupPolicy['arr'],
+  ): Promise<ResolvedMediaIds | undefined> {
+    const own = arrIdPairs(this.extractDirectIds(item));
+    const itemYear = this.readItemYear(item);
+    if (!arr || own.length === 0 || itemYear === undefined) {
+      return undefined;
+    }
+
+    const known = [...own, ...arrIdPairs(arr.cachedIds)];
+    const matches = (await arr.library())?.filter(
+      (entry) =>
+        own.some(([field, id]) => entry[field] === id) &&
+        known.every(([field, id]) => !entry[field] || entry[field] === id),
+    );
+    if (matches?.length !== 1) {
+      if (matches) {
+        this.logger.debug(
+          `${matches.length} *arr library entries match the ids of "${item.title}"; exactly one is needed.`,
+        );
+      }
+      return undefined;
+    }
+
+    const [entry] = matches;
+    if (!entry.year || Math.abs(itemYear - entry.year) > 1) {
+      this.logger.debug(
+        `Rejected the *arr entry for "${item.title}" (${itemYear}): the *arr has ${entry.year || 'no year'}.`,
+      );
+      return undefined;
+    }
+
+    this.logger.debug(
+      `Resolved "${item.title}" from the *arr library, as no metadata provider could.`,
+    );
+    const resolved: ResolvedMediaIds = { type: this.mediaTypeFromItem(item) };
+    this.fillMissingIds(resolved, { tmdb: entry.tmdbId, tvdb: entry.tvdbId });
+    return resolved;
   }
 
   private async getHierarchyResolutionItem(
@@ -481,6 +556,7 @@ export class MetadataService {
         providerKeys,
         lookupPolicy.providerMatchMode ?? 'any',
         mediaServerId,
+        lookupPolicy.arr,
       );
     } catch (error) {
       this.logger.warn(`Failed to resolve IDs for ${mediaServerId}`);
@@ -541,6 +617,7 @@ export class MetadataService {
       item,
       providerKeys,
       lookupPolicy.providerMatchMode ?? 'any',
+      lookupPolicy.arr,
     );
   }
 
@@ -1064,7 +1141,7 @@ export class MetadataService {
   private async validateDirectIds(
     item: MediaItem,
     ids: ResolvedMediaIds,
-  ): Promise<MetadataDetails | undefined> {
+  ): Promise<MetadataDetails | null | undefined> {
     const itemYear = this.readItemYear(item);
     const disagreements: ProviderYearDisagreement[] = [];
     const consulted = new Set<IMetadataProvider>();
@@ -1180,6 +1257,7 @@ export class MetadataService {
           '; ',
         )}. The media server likely has incorrect metadata for this item, so no external IDs will be returned from this resolution attempt.`,
       );
+      return null;
     }
 
     return undefined;

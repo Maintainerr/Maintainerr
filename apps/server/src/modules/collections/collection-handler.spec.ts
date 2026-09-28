@@ -140,7 +140,11 @@ describe('CollectionHandler', () => {
 
     expect(
       collectionsService.removeMediaFromOtherCollections,
-    ).toHaveBeenCalledWith(collectionMedia.mediaServerId, collection.id);
+    ).toHaveBeenCalledWith(
+      collectionMedia.mediaServerId,
+      collection.id,
+      undefined,
+    );
     // The dead-link cleanup must run after the item left its own collection,
     // so the sibling removal sees the up-to-date membership.
     expect(
@@ -181,7 +185,11 @@ describe('CollectionHandler', () => {
 
     expect(
       collectionsService.removeMediaFromOtherCollections,
-    ).toHaveBeenCalledWith(collectionMedia.mediaServerId, collection.id);
+    ).toHaveBeenCalledWith(
+      collectionMedia.mediaServerId,
+      collection.id,
+      undefined,
+    );
   });
 
   it('does not prune sibling collections for unmonitor-only actions (file stays)', async () => {
@@ -565,10 +573,16 @@ describe('CollectionHandler', () => {
     expect(collectionsService.removeFromCollection).toHaveBeenCalledWith(
       collection.id,
       [{ mediaServerId: collectionMedia.mediaServerId }],
+      'all',
+      undefined,
     );
     expect(
       collectionsService.removeMediaFromOtherCollections,
-    ).toHaveBeenCalledWith(collectionMedia.mediaServerId, collection.id);
+    ).toHaveBeenCalledWith(
+      collectionMedia.mediaServerId,
+      collection.id,
+      undefined,
+    );
     expect(recentlyHandledMedia.markHandled).toHaveBeenCalledWith(
       42,
       collectionMedia.mediaServerId,
@@ -750,6 +764,7 @@ describe('CollectionHandler', () => {
     expect(sonarrActionHandler.handleAction).toHaveBeenCalledWith(
       collection,
       collectionMedia,
+      undefined,
     );
     expect(seerrApi.removeSeasonRequest).not.toHaveBeenCalled();
     expect(seerrApi.removeMediaByTmdbId).not.toHaveBeenCalled();

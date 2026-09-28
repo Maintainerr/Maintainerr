@@ -60,6 +60,7 @@ import { CommunityRuleKarma } from './entities/community-rule-karma.entities';
 import { Exclusion } from './entities/exclusion.entities';
 import { RuleGroup } from './entities/rule-group.entities';
 import { Rules } from './entities/rules.entities';
+import { ArrLookupCache } from './helpers/arr-lookup-cache';
 import { unavailableRuleApplications } from './helpers/rule-application-availability.helper';
 import { RuleComparatorServiceFactory } from './helpers/rule.comparator.service';
 import { RuleYamlService } from './helpers/yaml.service';
@@ -2466,6 +2467,9 @@ export class RulesService {
         const result = await ruleComparator.executeRulesWithData(
           group as RuleGroupDto,
           [mediaResp],
+          undefined,
+          undefined,
+          new ArrLookupCache(),
         );
         return { code: 1, result: result.stats };
       } catch (error) {

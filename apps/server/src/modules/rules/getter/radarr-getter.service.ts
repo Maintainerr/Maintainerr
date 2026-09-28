@@ -2,6 +2,7 @@ import { MediaItem } from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
 import { ServarrService } from '../../api/servarr-api/servarr.service';
 import { MaintainerrLogger } from '../../logging/logs.service';
+import { ArrLibrary } from '../../metadata/interfaces/metadata-lookup-policy.interface';
 import { MetadataService } from '../../metadata/metadata.service';
 import {
   findMetadataLookupMatch,
@@ -67,8 +68,23 @@ export class RadarrGetterService {
         );
       }
 
+      const settingsId = ruleGroup.collection.radarrSettingsId;
+      const radarrApiClient =
+        await this.servarrService.getRadarrApiClient(settingsId);
+
+      // The library is the same for every item in the run.
+      const library = () =>
+        arrLookupCache
+          ? arrLookupCache.memoize(
+              `radarr:${settingsId}:library`,
+              () => radarrApiClient.getMovies(),
+              (movies) => movies === undefined,
+            )
+          : radarrApiClient.getMovies();
+
       const lookupCandidates = await this.findLookupCandidatesFromMediaItem(
         libItem,
+        library,
         arrLookupCache,
       );
 
@@ -78,7 +94,7 @@ export class RadarrGetterService {
         // stays transient either way: "we could not look it up" is not the same
         // claim as "it is not there", and a definitive one would let unmatched
         // and personal media match NOT_EXISTS rules.
-        const message = `Failed to resolve external IDs for '${libItem.title}' (media server ID '${libItem.id}'). As a result, no Radarr query could be made.`;
+        const message = `Failed to resolve external IDs for '${libItem.title}' (media server ID '${libItem.id}'). As a result, no Radarr movie could be identified.`;
         if (this.metadataService.hasExternalIds(libItem)) {
           this.logger.warn(message);
         } else {
@@ -88,15 +104,10 @@ export class RadarrGetterService {
         return undefined;
       }
 
-      const radarrApiClient = await this.servarrService.getRadarrApiClient(
-        ruleGroup.collection.radarrSettingsId,
-      );
-
       // Same uncached-at-the-API-layer lookup as Sonarr (#2897): keep it
       // uncached for the cleanup's post-deletion freshness, but dedupe it
       // through the run-scoped memo during rule evaluation. Evict on a failed
       // (undefined) lookup so a transient error doesn't stick for the run.
-      const settingsId = ruleGroup.collection.radarrSettingsId;
       const resolveMovie = (lookupId: number) =>
         arrLookupCache
           ? arrLookupCache.memoize(
@@ -262,6 +273,7 @@ export class RadarrGetterService {
 
   public async findLookupCandidatesFromMediaItem(
     libItem: MediaItem,
+    library: ArrLibrary,
     arrLookupCache?: ArrLookupCache,
   ): Promise<MetadataLookupCandidate[]> {
     // Candidate resolution (media-server ids -> validated provider ids) is
@@ -275,6 +287,8 @@ export class RadarrGetterService {
       this.metadataService.resolveLookupCandidatesFromMediaItemForService(
         libItem,
         'radarr',
+        {},
+        library,
       );
 
     return arrLookupCache
