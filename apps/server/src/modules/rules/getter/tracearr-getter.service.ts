@@ -8,6 +8,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import {
+  keepPlaysOfShowOrSeason,
   TracearrApiService,
   TracearrHistoryIndex,
 } from '../../api/tracearr-api/tracearr-api.service';
@@ -189,20 +190,10 @@ export class TracearrGetterService {
 
     const showRatingKey =
       libItem.type === 'show' ? libItem.id : libItem.parentId;
-    if (!showRatingKey) {
-      return undefined;
-    }
-
-    const showHistory =
-      historyIndex.rowsByShowRatingKey.get(showRatingKey) ?? [];
-    if (libItem.type === 'show') {
-      return showHistory;
-    }
-    if (libItem.index === undefined) {
-      return undefined;
-    }
-
-    return showHistory.filter((item) => item.season_number === libItem.index);
+    return keepPlaysOfShowOrSeason(
+      historyIndex.rowsByShowRatingKey.get(showRatingKey ?? '') ?? [],
+      libItem,
+    );
   }
 
   private isWatched(

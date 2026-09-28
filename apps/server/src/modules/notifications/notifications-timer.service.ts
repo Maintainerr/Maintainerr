@@ -1,6 +1,7 @@
 import { MediaItem } from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
 import { MediaServerFactory } from '../api/media-server/media-server.factory';
+import { OmbiApiService } from '../api/ombi-api/ombi-api.service';
 import { SeerrApiService } from '../api/seerr-api/seerr-api.service';
 import { CollectionsService } from '../collections/collections.service';
 import { CollectionMedia } from '../collections/entities/collection_media.entities';
@@ -28,6 +29,7 @@ export class NotificationTimerService extends TaskBase {
     private readonly notificationService: NotificationService,
     private readonly mediaServerFactory: MediaServerFactory,
     private readonly seerrApi: SeerrApiService,
+    private readonly ombiApi: OmbiApiService,
   ) {
     logger.setContext(NotificationTimerService.name);
     super(taskService, logger);
@@ -146,6 +148,21 @@ export class NotificationTimerService extends TaskBase {
           ? metadata.parentIndex
           : undefined;
 
-    return this.seerrApi.getRequestedByUsernames(media.tmdbId, season);
+    // Ombi keys movies and shows separately and requests episodes one by one,
+    // so it needs the type and episode the metadata carries; Seerr keys both
+    // by TMDB id and tracks requests per season.
+    const [seerr, ombi] = await Promise.all([
+      this.seerrApi.getRequestedByUsernames(media.tmdbId, season),
+      metadata
+        ? this.ombiApi.getRequestedByUsernames(
+            media.tmdbId,
+            metadata.type === 'movie' ? 'movie' : 'tv',
+            season,
+            metadata.type === 'episode' ? metadata.index : undefined,
+          )
+        : [],
+    ]);
+
+    return [...new Set([...seerr, ...ombi])];
   }
 }

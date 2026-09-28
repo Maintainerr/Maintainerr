@@ -1,5 +1,7 @@
+import { getRepositoryToken } from '@nestjs/typeorm';
 import { Mocked } from '@suites/doubles.jest';
 import { TestBed } from '@suites/unit';
+import { Repository } from 'typeorm';
 import {
   createCollection,
   createRadarrMovie,
@@ -9,14 +11,29 @@ import { mockRadarrApi, mockSonarrApi } from '../../../test/utils/servarr-mock';
 import { ServarrService } from '../api/servarr-api/servarr.service';
 import { MaintainerrLogger } from '../logging/logs.service';
 import { MetadataService } from '../metadata/metadata.service';
+import { Exclusion } from '../rules/entities/exclusion.entities';
+import { RadarrSettings } from '../settings/entities/radarr_settings.entities';
+import { SonarrSettings } from '../settings/entities/sonarr_settings.entities';
 import { SettingsDataService } from '../settings/settings-data.service';
 import { ServarrTagService } from './servarr-tag.service';
+
+// A server with its exclusion-tag settings, which each server holds itself.
+const radarrServer = (overrides: Partial<RadarrSettings> = {}) =>
+  ({
+    id: 1,
+    serverName: 'Radarr',
+    tagExclusions: false,
+    exclusionTag: 'dnd',
+    untagOnUnexclude: false,
+    ...overrides,
+  }) as RadarrSettings;
 
 describe('ServarrTagService', () => {
   let service: ServarrTagService;
   let servarrService: Mocked<ServarrService>;
   let metadataService: Mocked<MetadataService>;
   let settings: Mocked<SettingsDataService>;
+  let exclusionRepo: Mocked<Repository<Exclusion>>;
   let logger: Mocked<MaintainerrLogger>;
 
   beforeEach(async () => {
@@ -27,6 +44,8 @@ describe('ServarrTagService', () => {
     servarrService = unitRef.get(ServarrService);
     metadataService = unitRef.get(MetadataService);
     settings = unitRef.get(SettingsDataService);
+    exclusionRepo = unitRef.get(getRepositoryToken(Exclusion) as string);
+    exclusionRepo.find.mockResolvedValue([]);
     logger = unitRef.get(MaintainerrLogger);
 
     // By default every media-server id resolves to a tmdb/tvdb candidate; the
@@ -38,14 +57,12 @@ describe('ServarrTagService', () => {
       ],
     );
 
-    // One configured instance of each; exclusion tagging reads these to know
-    // which instances to cover.
-    settings.getRadarrSettings.mockResolvedValue([
-      { id: 1, serverName: 'Radarr' },
-    ] as any);
+    // One configured instance of each, exclusion tagging off unless a test
+    // turns it on for a server.
+    settings.getRadarrSettings.mockResolvedValue([radarrServer()]);
     settings.getSonarrSettings.mockResolvedValue([
-      { id: 1, serverName: 'Sonarr' },
-    ] as any);
+      { ...radarrServer(), serverName: 'Sonarr' } as SonarrSettings,
+    ]);
   });
 
   describe('Behavior A - membership tagging', () => {
@@ -78,6 +95,36 @@ describe('ServarrTagService', () => {
         expect.anything(),
         'replace',
       );
+    });
+
+    it('retries a failed library read on the next chunk of the batch', async () => {
+      const radarr = mockRadarrApi(servarrService, logger);
+      jest
+        .spyOn(radarr, 'getMovies')
+        .mockResolvedValueOnce(undefined)
+        .mockResolvedValue([createRadarrMovie()]);
+      metadataService.resolveLookupCandidatesForService.mockImplementation(
+        async (mediaServerId, service, fallbackIds, library) =>
+          (await library?.())?.length ? [{ providerKey: 'tmdb', id: 100 }] : [],
+      );
+      jest
+        .spyOn(radarr, 'getMovieByTmdbId')
+        .mockResolvedValue(createRadarrMovie({ id: 10 }));
+      jest.spyOn(radarr, 'ensureTag').mockResolvedValue(5);
+
+      // Six items span two chunks of RESOLVE_CONCURRENCY (5).
+      await service.syncMembershipTags(
+        createCollection({
+          type: 'movie',
+          radarrSettingsId: 1,
+          tagInArr: true,
+        }),
+        Array.from({ length: 6 }, (_, i) => ({ mediaServerId: `movie-${i}` })),
+        [],
+      );
+
+      expect(radarr.getMovies).toHaveBeenCalledTimes(2);
+      expect(radarr.setMovieTags).toHaveBeenCalledWith([10], 5, 'add');
     });
 
     it('uses the current (renamed) group name as the tag - no stale old-label removal', async () => {
@@ -214,6 +261,37 @@ describe('ServarrTagService', () => {
       );
 
       expect(radarr.setMovieTags).toHaveBeenCalledWith([11], 5, 'remove');
+    });
+
+    it('keeps a label that doubles as the exclusion tag on items still excluded', async () => {
+      const radarr = mockRadarrApi(servarrService, logger);
+      jest
+        .spyOn(radarr, 'getMovieByTmdbId')
+        .mockResolvedValue(createRadarrMovie({ id: 12 }));
+      jest.spyOn(radarr, 'ensureTag').mockResolvedValue(5);
+      settings.getRadarrSettings.mockResolvedValue([
+        radarrServer({ tagExclusions: true }),
+      ]);
+      exclusionRepo.find.mockResolvedValue([
+        { mediaServerId: 'movie-1' },
+      ] as Exclusion[]);
+
+      const collection = createCollection({
+        type: 'movie',
+        radarrSettingsId: 1,
+        tagInArr: true,
+        title: 'DND',
+      });
+
+      await service.syncMembershipTags(
+        collection,
+        [],
+        [{ mediaServerId: 'movie-1' }, { mediaServerId: 'movie-2' }],
+      );
+
+      // The excluded item keeps its protective tag; only the other is untagged.
+      expect(radarr.getMovieByTmdbId).toHaveBeenCalledTimes(1);
+      expect(radarr.setMovieTags).toHaveBeenCalledWith([12], 5, 'remove');
     });
 
     it('tags added shows in Sonarr', async () => {
@@ -409,7 +487,6 @@ describe('ServarrTagService', () => {
 
     it('does nothing when exclusion tagging is disabled', async () => {
       const radarr = mockRadarrApi(servarrService, logger);
-      settings.radarr_tag_exclusions = false;
 
       await service.applyExclusionTag(movieTarget, { radarrSettingsId: 1 });
 
@@ -422,8 +499,9 @@ describe('ServarrTagService', () => {
         .spyOn(radarr, 'getMovieByTmdbId')
         .mockResolvedValue(createRadarrMovie({ id: 30 }));
       jest.spyOn(radarr, 'ensureTag').mockResolvedValue(9);
-      settings.radarr_tag_exclusions = true;
-      settings.radarr_exclusion_tag = 'dnd';
+      settings.getRadarrSettings.mockResolvedValue([
+        radarrServer({ tagExclusions: true }),
+      ]);
 
       await service.applyExclusionTag(movieTarget, { radarrSettingsId: 1 });
 
@@ -433,9 +511,9 @@ describe('ServarrTagService', () => {
 
     it('does not remove the tag on un-exclude unless opted in (conservative default)', async () => {
       const radarr = mockRadarrApi(servarrService, logger);
-      settings.radarr_tag_exclusions = true;
-      settings.radarr_exclusion_tag = 'dnd';
-      settings.radarr_untag_on_unexclude = false;
+      settings.getRadarrSettings.mockResolvedValue([
+        radarrServer({ tagExclusions: true }),
+      ]);
 
       await service.removeExclusionTag(movieTarget, { radarrSettingsId: 1 });
 
@@ -451,9 +529,9 @@ describe('ServarrTagService', () => {
       jest
         .spyOn(radarr, 'getTags')
         .mockResolvedValue([{ id: 9, label: 'dnd' }]);
-      settings.radarr_tag_exclusions = true;
-      settings.radarr_exclusion_tag = 'dnd';
-      settings.radarr_untag_on_unexclude = true;
+      settings.getRadarrSettings.mockResolvedValue([
+        radarrServer({ tagExclusions: true, untagOnUnexclude: true }),
+      ]);
 
       await service.removeExclusionTag(movieTarget, { radarrSettingsId: 1 });
 
@@ -464,8 +542,9 @@ describe('ServarrTagService', () => {
 
     it('skips when the collection names no *arr instance', async () => {
       const radarr = mockRadarrApi(servarrService, logger);
-      settings.radarr_tag_exclusions = true;
-      settings.radarr_exclusion_tag = 'dnd';
+      settings.getRadarrSettings.mockResolvedValue([
+        radarrServer({ tagExclusions: true }),
+      ]);
 
       await service.applyExclusionTag(movieTarget, {
         radarrSettingsId: null,
@@ -491,11 +570,9 @@ describe('ServarrTagService', () => {
         id === 1 ? tracking : other,
       );
       settings.getRadarrSettings.mockResolvedValue([
-        { id: 1, serverName: 'HD' },
-        { id: 2, serverName: '4K' },
-      ] as any);
-      settings.radarr_tag_exclusions = true;
-      settings.radarr_exclusion_tag = 'dnd';
+        radarrServer({ serverName: 'HD', tagExclusions: true }),
+        radarrServer({ id: 2, serverName: '4K', tagExclusions: true }),
+      ]);
 
       await service.applyExclusionTag(movieTarget);
 
@@ -507,6 +584,88 @@ describe('ServarrTagService', () => {
       expect(
         metadataService.resolveLookupCandidatesForService,
       ).toHaveBeenCalledTimes(1);
+    });
+
+    it('resolves an item no provider answers for against each instance library (#3787)', async () => {
+      // The same film sits under TMDB 111 in the HD instance and 222 in 4K.
+      const hd = mockRadarrApi(servarrService, logger);
+      const hdMovie = createRadarrMovie({ id: 30, tmdbId: 111 });
+      jest.spyOn(hd, 'getMovies').mockResolvedValue([hdMovie]);
+      jest
+        .spyOn(hd, 'getMovieByTmdbId')
+        .mockImplementation(async (tmdbId) =>
+          tmdbId === 111 ? hdMovie : null,
+        );
+      jest.spyOn(hd, 'ensureTag').mockResolvedValue(9);
+      const uhd = mockRadarrApi(servarrService, logger);
+      const uhdMovie = createRadarrMovie({ id: 40, tmdbId: 222 });
+      jest.spyOn(uhd, 'getMovies').mockResolvedValue([uhdMovie]);
+      jest
+        .spyOn(uhd, 'getMovieByTmdbId')
+        .mockImplementation(async (tmdbId) =>
+          tmdbId === 222 ? uhdMovie : null,
+        );
+      jest.spyOn(uhd, 'ensureTag').mockResolvedValue(9);
+      // No provider answers; the candidate is whatever the given library holds.
+      metadataService.resolveLookupCandidatesForService.mockImplementation(
+        async (mediaServerId, service, fallbackIds, library) => {
+          const [entry] = (await library?.()) ?? [];
+          return entry ? [{ providerKey: 'tmdb', id: entry.tmdbId }] : [];
+        },
+      );
+      servarrService.getRadarrApiClient.mockImplementation(async (id) =>
+        id === 1 ? hd : uhd,
+      );
+      settings.getRadarrSettings.mockResolvedValue([
+        radarrServer({ serverName: 'HD', tagExclusions: true }),
+        radarrServer({ id: 2, serverName: '4K', tagExclusions: true }),
+      ]);
+
+      await service.applyExclusionTag(movieTarget);
+
+      expect(hd.setMovieTags).toHaveBeenCalledWith([30], 9, 'add');
+      expect(uhd.setMovieTags).toHaveBeenCalledWith([40], 9, 'add');
+    });
+
+    it('uses the label of each server, and skips a server with it off', async () => {
+      const hd = mockRadarrApi(servarrService, logger);
+      const uhd = mockRadarrApi(servarrService, logger);
+      for (const client of [hd, uhd]) {
+        jest
+          .spyOn(client, 'getMovieByTmdbId')
+          .mockResolvedValue(createRadarrMovie({ id: 30 }));
+        jest.spyOn(client, 'ensureTag').mockResolvedValue(9);
+      }
+      servarrService.getRadarrApiClient.mockImplementation(async (id) =>
+        id === 1 ? hd : uhd,
+      );
+      settings.getRadarrSettings.mockResolvedValue([
+        radarrServer({ serverName: 'HD', tagExclusions: true }),
+        radarrServer({
+          id: 2,
+          serverName: '4K',
+          tagExclusions: true,
+          exclusionTag: 'keep-4k',
+        }),
+        radarrServer({ id: 3, serverName: 'SD' }),
+      ]);
+
+      await service.applyExclusionTag(movieTarget);
+
+      expect(hd.ensureTag).toHaveBeenCalledWith('dnd');
+      expect(uhd.ensureTag).toHaveBeenCalledWith('keep-4k');
+      expect(servarrService.getRadarrApiClient).not.toHaveBeenCalledWith(3);
+    });
+
+    it('reports tagging and un-tagging on only when one server has them', async () => {
+      settings.getRadarrSettings.mockResolvedValue([
+        radarrServer({ tagExclusions: true }),
+        radarrServer({ id: 2, untagOnUnexclude: true }),
+      ]);
+
+      expect(await service.anyExclusionTaggingEnabled()).toBe(true);
+      // Removal needs tagging on for the same server.
+      expect(await service.anyExclusionUntaggingEnabled()).toBe(false);
     });
   });
 });

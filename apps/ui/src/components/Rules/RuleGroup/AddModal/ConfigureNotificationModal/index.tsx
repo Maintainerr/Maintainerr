@@ -1,11 +1,13 @@
 import { Trans, useLingui } from '@lingui/react/macro'
-import { useEffect, useState } from 'react'
-import GetApiHandler from '../../../../../utils/ApiHandler'
+import { useState } from 'react'
+import {
+  type AgentConfiguration,
+  useNotificationConfigurations,
+} from '../../../../../api/notifications'
 import Button from '../../../../Common/Button'
 import { SmallLoadingSpinner } from '../../../../Common/LoadingSpinner'
 import Modal from '../../../../Common/Modal'
 import ToggleItem from '../../../../Common/ToggleButton'
-import type { AgentConfiguration } from '../../../../Settings/Notifications/CreateNotificationModal'
 
 interface ConfigureNotificationModal {
   onCancel: () => void
@@ -14,23 +16,10 @@ interface ConfigureNotificationModal {
 }
 const ConfigureNotificationModal = (props: ConfigureNotificationModal) => {
   const { t } = useLingui()
-  const [notifications, setNotifications] = useState<AgentConfiguration[]>()
+  const { data: notifications, isLoading } = useNotificationConfigurations()
   const [activatedNotifications, setActivatedNotifications] = useState<
     AgentConfiguration[]
-  >([])
-  const [isLoading, setIsLoading] = useState(true)
-
-  useEffect(() => {
-    GetApiHandler('/notifications/configurations').then(
-      (notificationConfigs) => {
-        setNotifications(notificationConfigs)
-        if (props.selectedAgents) {
-          setActivatedNotifications(props.selectedAgents)
-        }
-        setIsLoading(false)
-      },
-    )
-  }, [props.selectedAgents])
+  >(props.selectedAgents ?? [])
 
   return (
     <Modal
@@ -61,37 +50,36 @@ const ConfigureNotificationModal = (props: ConfigureNotificationModal) => {
                 {/* Immediate: the delayed spinner may just have shown for
                     the chunk, and a fresh one would restart its timer. */}
                 {isLoading && <SmallLoadingSpinner className="h-6 w-6" />}
-                {!isLoading &&
-                  notifications!.map((n) => (
-                    <ToggleItem
-                      key={n.id}
-                      label={
-                        n.enabled
-                          ? `${n.name} - ${n.agent}`
-                          : t`${{ agentName: n.name }} - ${{ agentType: n.agent }} (disabled)`
+                {notifications?.map((n) => (
+                  <ToggleItem
+                    key={n.id}
+                    label={
+                      n.enabled
+                        ? `${n.name} - ${n.agent}`
+                        : t`${{ agentName: n.name }} - ${{ agentType: n.agent }} (disabled)`
+                    }
+                    toggled={
+                      activatedNotifications.find((an) => an.id === n.id)
+                        ? true
+                        : false
+                    }
+                    onStateChange={(state) => {
+                      if (state) {
+                        setActivatedNotifications([
+                          ...activatedNotifications,
+                          n,
+                        ])
+                      } else {
+                        setActivatedNotifications([
+                          ...activatedNotifications.filter(
+                            (el) => el.id !== n.id,
+                          ),
+                        ])
                       }
-                      toggled={
-                        activatedNotifications.find((an) => an.id === n.id)
-                          ? true
-                          : false
-                      }
-                      onStateChange={(state) => {
-                        if (state) {
-                          setActivatedNotifications([
-                            ...activatedNotifications,
-                            n,
-                          ])
-                        } else {
-                          setActivatedNotifications([
-                            ...activatedNotifications.filter(
-                              (el) => el.id !== n.id,
-                            ),
-                          ])
-                        }
-                      }}
-                    />
-                  ))}
-                {!isLoading && notifications!.length === 0 && (
+                    }}
+                  />
+                ))}
+                {notifications?.length === 0 && (
                   <p className="text-zinc-400">
                     <Trans>No notification agents configured.</Trans>
                   </p>

@@ -9,6 +9,7 @@ export const PLEX_BATCH_SIZE = {
 
 const PLEX_SORT_FIELDS: Partial<Record<MediaLibrarySortField, string>> = {
   airDate: 'originallyAvailableAt',
+  addedAt: 'addedAt',
   rating: 'audienceRating',
   watchCount: 'viewCount',
   title: 'titleSort',

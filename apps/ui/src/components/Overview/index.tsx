@@ -574,7 +574,7 @@ const Overview = () => {
         <PageControlRow
           sticky
           actionsClassName="justify-center sm:justify-start"
-          controlsClassName="sm:w-auto"
+          controlsLayout="pair"
           actions={
             <MediaSelectionActions
               selectionMode={selectionMode}
@@ -589,31 +589,25 @@ const Overview = () => {
           }
           controls={
             !searchUsed ? (
-              // Two across on a phone: they share the pinned row with the
-              // actions, so a stacked pair would eat the screen.
-              <div className="ml-auto grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:items-center sm:justify-end">
-                <div className="w-full sm:w-[18rem]">
-                  <LibrarySwitcher
-                    shouldShowAllOption={false}
-                    containerClassName="mb-0"
-                    onLibraryChange={onSwitchLibrary}
-                    selectedLibraryId={effectiveSelectedLibraryId}
-                    formClassName="max-w-none"
-                    libraries={libraries}
-                    librariesLoading={librariesLoading}
-                    librariesError={!!librariesError}
-                  />
-                </div>
-                <div className="w-full sm:w-[18rem]">
-                  <MediaLibrarySortControl
-                    ariaLabel={t`Sort overview items`}
-                    options={sortConfig.options}
-                    value={sortValue}
-                    onSortChange={handleSortChange}
-                    isLoading={showRefreshing}
-                  />
-                </div>
-              </div>
+              <>
+                <LibrarySwitcher
+                  shouldShowAllOption={false}
+                  containerClassName="mb-0"
+                  onLibraryChange={onSwitchLibrary}
+                  selectedLibraryId={effectiveSelectedLibraryId}
+                  formClassName="max-w-none"
+                  libraries={libraries}
+                  librariesLoading={librariesLoading}
+                  librariesError={!!librariesError}
+                />
+                <MediaLibrarySortControl
+                  ariaLabel={t`Sort overview items`}
+                  options={sortConfig.options}
+                  value={sortValue}
+                  onSortChange={handleSortChange}
+                  isLoading={showRefreshing}
+                />
+              </>
             ) : undefined
           }
         />

@@ -1,13 +1,13 @@
-import { BasicResponseDto } from '@maintainerr/contracts';
+import { BasicResponseDto, MediaWatchStats } from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
 import { AxiosError } from 'axios';
 import { unionBy } from 'lodash';
+import { assertApiKey, connectionTestConfig } from '../lib/connectionTest';
 import { SettingsDataService } from '../../..//modules/settings/settings-data.service';
 import {
   formatConnectionFailureMessage,
   logConnectionTestError,
 } from '../../../utils/connection-error';
-import { CONNECTION_TEST_TIMEOUT_MS } from '../lib/httpTimeouts';
 import {
   MaintainerrLogger,
   MaintainerrLoggerFactory,
@@ -30,6 +30,13 @@ export interface TautulliMetadata {
   parent_rating_key: string;
   grandparent_rating_key: string;
   added_at: string;
+}
+
+interface TautulliItemUserStats {
+  friendly_name: string;
+  total_plays: number;
+  // Seconds.
+  total_time: number;
 }
 
 interface TautulliChildrenMetadata {
@@ -98,6 +105,26 @@ interface Response<T> {
       };
 }
 
+/**
+ * Which history filter reaches an item's plays: Tautulli files a play under
+ * its own key, its season's and its show's. Undefined for anything else.
+ */
+export const tautulliHistoryScope = (
+  metadata: Pick<TautulliMetadata, 'media_type' | 'rating_key'>,
+): TautulliHistoryRequestOptions | undefined => {
+  switch (metadata.media_type) {
+    case 'movie':
+    case 'episode':
+      return { rating_key: metadata.rating_key };
+    case 'season':
+      return { parent_rating_key: metadata.rating_key };
+    case 'show':
+      return { grandparent_rating_key: metadata.rating_key };
+    default:
+      return undefined;
+  }
+};
+
 const MAX_PAGE_SIZE = 100;
 
 @Injectable()
@@ -130,25 +157,6 @@ export class TautulliApiService {
       },
       this.loggerFactory.createLogger(),
     );
-  }
-
-  public async info(): Promise<Response<TautulliInfo> | null> {
-    try {
-      const response: Response<TautulliInfo> = await this.api.getWithoutCache(
-        '',
-        {
-          signal: AbortSignal.timeout(CONNECTION_TEST_TIMEOUT_MS),
-          params: {
-            cmd: 'get_tautulli_info',
-          },
-        },
-      );
-      return response;
-    } catch (error) {
-      this.logger.log("Couldn't fetch Tautulli info");
-      this.logger.debug(error);
-      return null;
-    }
   }
 
   public async getPaginatedHistory(
@@ -291,6 +299,65 @@ export class TautulliApiService {
     }
   }
 
+  /** Null when nobody played the item, undefined when that could not be read. */
+  public async getItemStats(
+    ratingKey: string,
+  ): Promise<MediaWatchStats | null | undefined> {
+    try {
+      const response: Response<TautulliItemUserStats[]> = await this.api.get(
+        '',
+        { params: { cmd: 'get_item_user_stats', rating_key: ratingKey } },
+      );
+
+      if (response.response.result !== 'success') {
+        throw new Error(
+          'Non-success response when fetching Tautulli item user stats',
+        );
+      }
+
+      if (response.response.data.length === 0) {
+        return null;
+      }
+
+      const users = response.response.data.map((user) => ({
+        name: user.friendly_name,
+        plays: user.total_plays,
+        watchTime: user.total_time,
+        lastWatched: null,
+      }));
+
+      return {
+        url: `${this.settings.tautulli_url}/info?rating_key=${ratingKey}&source=history`,
+        plays: users.reduce((total, user) => total + user.plays, 0),
+        watchTime: users.reduce((total, user) => total + user.watchTime, 0),
+        lastWatched: await this.getLastPlayedAt(ratingKey),
+        users,
+      };
+    } catch (error) {
+      this.logger.log("Couldn't fetch Tautulli item stats");
+      this.logger.debug(error);
+      return undefined;
+    }
+  }
+
+  // The per-user stats carry no dates, so the newest history row supplies it.
+  private async getLastPlayedAt(ratingKey: string): Promise<string | null> {
+    const metadata = await this.getMetadata(ratingKey);
+    const scope = metadata && tautulliHistoryScope(metadata);
+    if (!scope) {
+      return null;
+    }
+
+    const history = await this.getPaginatedHistory({
+      ...scope,
+      order_column: 'date',
+      order_dir: 'desc',
+      length: 1,
+    });
+    const stopped = history?.data[0]?.stopped;
+    return stopped ? new Date(stopped * 1000).toISOString() : null;
+  }
+
   public async getUsers(): Promise<TautulliUser[] | null> {
     try {
       const response: Response<TautulliUser[]> = await this.api.get('', {
@@ -323,10 +390,11 @@ export class TautulliApiService {
     );
 
     try {
+      assertApiKey(params.apiKey);
       const response = await api.getRawWithoutCache<
         Response<TautulliInfo> | string | undefined
       >('', {
-        signal: AbortSignal.timeout(CONNECTION_TEST_TIMEOUT_MS),
+        ...connectionTestConfig(),
         params: {
           cmd: 'get_tautulli_info',
         },
@@ -357,7 +425,7 @@ export class TautulliApiService {
         };
       }
     } catch (error) {
-      logConnectionTestError(this.logger, 'Tautulli');
+      logConnectionTestError(this.logger, 'Tautulli', error);
 
       if (error instanceof AxiosError) {
         if (error.response?.status === 400) {

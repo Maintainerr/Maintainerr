@@ -1,5 +1,4 @@
 import { t } from '@lingui/core/macro'
-import { MediaServerType } from '@maintainerr/contracts'
 import { useCallback } from 'react'
 import { Navigate, Outlet } from 'react-router-dom'
 import { toast } from 'react-toastify'
@@ -17,37 +16,15 @@ export const mediaServerSetupRequiredToastId = 'media-server-setup-required'
 export const mediaServerSetupRequiredMessage = () =>
   t`You need to set up the media server first.`
 
-export const getMediaServerSetupRoute = (
-  mediaServerType?: MediaServerType | null,
-) => {
-  if (mediaServerType === MediaServerType.JELLYFIN) {
-    return '/settings/jellyfin'
-  }
+export const mediaServerSetupRoute = '/services/media-server'
 
-  if (mediaServerType === MediaServerType.EMBY) {
-    return '/settings/emby'
-  }
-
-  if (mediaServerType === MediaServerType.PLEX) {
-    return '/settings/plex'
-  }
-
-  return '/settings/main'
-}
-
-export const isAllowedDuringMediaServerSetup = (
-  pathname: string,
-  mediaServerType?: MediaServerType | null,
-) => {
-  const setupRoute = getMediaServerSetupRoute(mediaServerType)
-
-  return (
-    pathname === '/settings' ||
-    pathname.startsWith('/settings/main') ||
-    pathname.startsWith('/settings/logs') ||
-    (setupRoute !== '/settings/main' && pathname.startsWith(setupRoute))
-  )
-}
+// Only the media server page and Logs work before a server is connected. The
+// two section entries stay open so the sidebar can still lead to them.
+export const isAllowedDuringMediaServerSetup = (pathname: string) =>
+  pathname === '/settings' ||
+  pathname === '/services' ||
+  pathname.startsWith('/settings/logs') ||
+  pathname.startsWith(mediaServerSetupRoute)
 
 export const showMediaServerSetupRequiredToast = () => {
   if (bypassMediaServerSetupGuard) {
@@ -60,7 +37,7 @@ export const showMediaServerSetupRequiredToast = () => {
 }
 
 export const useMediaServerSetupNavigationGuard = () => {
-  const { isLoading, isNotConfigured, mediaServerType } = useMediaServerType()
+  const { isLoading, isNotConfigured } = useMediaServerType()
 
   const isRouteBlocked = useCallback(
     (pathname: string) => {
@@ -71,26 +48,22 @@ export const useMediaServerSetupNavigationGuard = () => {
       return (
         !isLoading &&
         isNotConfigured &&
-        !isAllowedDuringMediaServerSetup(pathname, mediaServerType)
+        !isAllowedDuringMediaServerSetup(pathname)
       )
     },
-    [isLoading, isNotConfigured, mediaServerType],
+    [isLoading, isNotConfigured],
   )
 
   return {
     isLoading,
     isNotConfigured,
-    mediaServerType,
     isRouteBlocked,
     showBlockedNavigationToast: showMediaServerSetupRequiredToast,
   }
 }
 
 const MediaServerSetupGuard = () => {
-  const { isLoading, isNotConfigured, mediaServerType } =
-    useMediaServerSetupNavigationGuard()
-
-  const setupRoute = getMediaServerSetupRoute(mediaServerType)
+  const { isLoading, isNotConfigured } = useMediaServerSetupNavigationGuard()
 
   if (bypassMediaServerSetupGuard) {
     return <Outlet />
@@ -101,7 +74,7 @@ const MediaServerSetupGuard = () => {
   }
 
   if (isNotConfigured) {
-    return <Navigate to={setupRoute} replace />
+    return <Navigate to={mediaServerSetupRoute} replace />
   }
 
   return <Outlet />

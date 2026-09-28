@@ -158,6 +158,7 @@ const collectionBaseShape = {
   listExclusions: z.boolean().optional(),
   cleanupLeftoverFolders: z.boolean().optional(),
   forceSeerr: z.boolean().optional(),
+  forceOmbi: z.boolean().optional(),
   deleteAfterDays: z.coerce
     .number()
     .int()

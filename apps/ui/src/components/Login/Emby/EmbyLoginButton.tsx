@@ -127,6 +127,7 @@ const EmbyLoginButton: React.FC<EmbyLoginButtonProps> = ({
                 name="username"
                 label={t`Username`}
                 type="text"
+                autoComplete="username"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
               />
@@ -134,6 +135,7 @@ const EmbyLoginButton: React.FC<EmbyLoginButtonProps> = ({
                 name="password"
                 label={t`Password`}
                 type="password"
+                autoComplete="current-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />

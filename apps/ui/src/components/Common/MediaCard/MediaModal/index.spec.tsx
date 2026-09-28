@@ -792,6 +792,60 @@ describe('MediaModal', () => {
     expect(getApiHandlerMock).not.toHaveBeenCalledWith('/streamystats/info')
   })
 
+  // Tautulli only knows Plex rating keys, while Tracearr follows whichever
+  // media server is active.
+  it('asks Tautulli for watch statistics on Plex only, and Tracearr wherever it is configured', async () => {
+    const stats = {
+      url: 'http://t/media/1',
+      plays: 1,
+      watchTime: 60,
+      lastWatched: null,
+      users: [],
+    }
+    getApiHandlerMock.mockImplementation((path: string) =>
+      Promise.resolve(
+        path === '/settings'
+          ? { tautulli_url: 'http://tautulli.local', tracearr_url: 'http://t' }
+          : path.includes('/items/')
+            ? stats
+            : {},
+      ),
+    )
+
+    render(
+      <MediaModal onClose={() => {}} id={93} mediaType="movie" title="Movie" />,
+    )
+
+    await waitFor(() =>
+      expect(getApiHandlerMock).toHaveBeenCalledWith('/tracearr/items/93'),
+    )
+    expect(getApiHandlerMock).not.toHaveBeenCalledWith('/tautulli/items/93')
+    // The badge opens the item's own page, which it learns from the panel's
+    // query rather than a request of its own.
+    await waitFor(() =>
+      expect(
+        screen.getByAltText('Tracearr').closest('a')?.getAttribute('href'),
+      ).toBe(stats.url),
+    )
+    expect(
+      getApiHandlerMock.mock.calls.filter(
+        ([path]) => path === '/tracearr/items/93',
+      ),
+    ).toHaveLength(1)
+
+    useMediaServerTypeMock.mockReturnValue({
+      ...useMediaServerTypeMock(),
+      isPlex: true,
+    })
+    render(
+      <MediaModal onClose={() => {}} id={93} mediaType="movie" title="Movie" />,
+    )
+
+    await waitFor(() =>
+      expect(getApiHandlerMock).toHaveBeenCalledWith('/tautulli/items/93'),
+    )
+  })
+
   it('names the season and falls back to the provider description when the media server has none', async () => {
     getApiHandlerMock.mockImplementation((path: string) => {
       if (path === '/media-server') {
@@ -935,5 +989,72 @@ describe('MediaModal', () => {
 
     await screen.findByText('Excluded From')
     expect(screen.queryByText('trigger-rule-action')).toBeNull()
+  })
+
+  it('asks both request services for a season by its show, not by the season itself', async () => {
+    getApiHandlerMock.mockImplementation((path: string) => {
+      if (path === '/media-server') {
+        return Promise.resolve({})
+      }
+      if (path === '/settings') {
+        return Promise.resolve({
+          seerr_url: 'http://seerr.local',
+          ombi_url: 'http://ombi.local',
+        })
+      }
+      if (path === '/media-server/meta/8') {
+        return Promise.resolve({
+          id: '8',
+          type: 'season',
+          parentId: '7',
+          index: 1,
+          providerIds: { tmdb: ['13993'] },
+        } as MediaItem)
+      }
+      if (path === '/media-server/meta/7') {
+        return Promise.resolve({
+          id: '7',
+          type: 'show',
+          providerIds: { tmdb: ['4600'] },
+        } as MediaItem)
+      }
+      if (
+        path.startsWith('/seerr/requests/') ||
+        path.startsWith('/ombi/requests/')
+      ) {
+        return Promise.resolve(['alice'])
+      }
+      if (path.startsWith('/metadata/backdrop/')) {
+        return Promise.resolve(undefined)
+      }
+      if (path === '/streamystats/info') {
+        return Promise.reject(new Error('404 Streamystats not configured'))
+      }
+      throw new Error(`Unexpected request: ${path}`)
+    })
+
+    render(
+      <MediaModal
+        onClose={() => {}}
+        id={8}
+        mediaType="season"
+        title="Season 1"
+        summary="Season summary"
+        providerIds={{ tmdb: ['13993'] }}
+      />,
+    )
+
+    await waitFor(() => {
+      expect(getApiHandlerMock).toHaveBeenCalledWith(
+        '/ombi/requests/4600/users?type=tv&season=1',
+      )
+    })
+    expect(getApiHandlerMock).toHaveBeenCalledWith(
+      '/seerr/requests/4600/users?season=1',
+    )
+    expect(getApiHandlerMock).not.toHaveBeenCalledWith(
+      expect.stringContaining('/requests/13993/'),
+    )
+    expect(await screen.findByText('alice')).toBeTruthy()
   })
 })

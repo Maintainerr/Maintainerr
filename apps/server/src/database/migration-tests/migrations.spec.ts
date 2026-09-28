@@ -102,12 +102,14 @@ describe('database migrations', () => {
       // SQLite reports INTEGER affinity uppercased via PRAGMA table_info.
       const intNullable = { type: 'INTEGER', notnull: 0, dflt_value: null };
       expect(collection.tagInArr).toMatchObject(bool);
-      expect(settings.radarr_tag_exclusions).toMatchObject(bool);
-      expect(settings.radarr_exclusion_tag).toMatchObject(dnd);
-      expect(settings.radarr_untag_on_unexclude).toMatchObject(bool);
-      expect(settings.sonarr_tag_exclusions).toMatchObject(bool);
-      expect(settings.sonarr_exclusion_tag).toMatchObject(dnd);
-      expect(settings.sonarr_untag_on_unexclude).toMatchObject(bool);
+      // MoveExclusionTagToServers: the exclusion tag is set per server.
+      expect(settings.radarr_tag_exclusions).toBeUndefined();
+      for (const table of ['radarr_settings', 'sonarr_settings']) {
+        const server = byName(await columns(ds, table));
+        expect(server.tagExclusions).toMatchObject(bool);
+        expect(server.exclusionTag).toMatchObject(dnd);
+        expect(server.untagOnUnexclude).toMatchObject(bool);
+      }
 
       // AddCollectionMediaRuleRemoval: the rule-removal marker table columns.
       const ruleRemoval = byName(
@@ -181,6 +183,11 @@ describe('database migrations', () => {
         notnull: 0,
         dflt_value: null,
       });
+
+      // AddOmbiSettings: the Ombi connection and the per-collection opt-in.
+      expect(settings.ombi_url).toMatchObject(nullableVarchar);
+      expect(settings.ombi_api_key).toMatchObject(nullableVarchar);
+      expect(collection.forceOmbi).toMatchObject(bool);
     } finally {
       await ds.destroy();
     }
@@ -193,47 +200,50 @@ describe('database migrations', () => {
     // emits a full create-temporary-table / copy / drop / rename rebuild for the
     // changed tables. A hand-written ALTER shortcut lacks it - this is the
     // cheapest signal the migration was generated rather than authored. The
-    // newest migration relaxes a settings column, so it rebuilds that table.
+    // newest migration drops settings columns, so it rebuilds that table.
     expect(src).toContain('CREATE TABLE "temporary_settings"');
   });
 
-  // The rebuild in (3) drops and recreates the table, so its INSERT...SELECT is
-  // the only thing carrying an existing install's settings across. Every other
-  // test here migrates an empty DB, where a rebuild that copies nothing looks
+  // The rebuild in (3) drops and recreates the tables, so its INSERT...SELECT is
+  // the only thing carrying an existing install's rows across. Every other test
+  // here migrates an empty DB, where a rebuild that copies nothing looks
   // identical to one that copies correctly.
-  it('carry existing settings through the newest rebuild', async () => {
+  it('carry existing settings and collections through the newest rebuild', async () => {
     const newest = all[all.length - 1];
     const ds = await makeDS(all.slice(0, -1).map((m) => m.cls)).initialize();
     try {
       await ds.runMigrations();
       await ds.query(
-        `INSERT INTO settings ("id", "applicationTitle", "applicationUrl", "locale", "metadata_provider_preference", "download_client_url", "download_client_delete_data", "download_client_fallback_ratio") VALUES (1, 'Media Manager', 'http://localhost:6246', 'en', 'tmdb_primary', 'http://localhost:8080', 0, 1.25)`,
+        `INSERT INTO settings ("id", "applicationTitle", "applicationUrl", "locale", "metadata_provider_preference", "seerr_url", "seerr_api_key", "radarr_tag_exclusions", "radarr_exclusion_tag") VALUES (1, 'Media Manager', 'http://localhost:6246', 'en', 'tmdb_primary', 'http://seerr.local', 'seerr-key', 1, 'keep')`,
       );
       await ds.query(
-        `INSERT INTO settings ("id", "applicationTitle", "applicationUrl", "locale", "metadata_provider_preference") VALUES (2, 'Fresh', 'http://localhost:6246', 'en', 'tmdb_primary')`,
+        `INSERT INTO radarr_settings ("id", "serverName") VALUES (1, 'HD')`,
+      );
+      await ds.query(
+        `INSERT INTO collection ("libraryId", "title", "type", "mediaServerType", "radarrSettingsId") VALUES ('1', 'Sample Collection', 'movie', 'plex', 1)`,
       );
 
+      // Wrapped as the migration executor does, which turns foreign keys off
+      // so a rebuilt table may be one that other rows reference.
       const runner = ds.createQueryRunner();
+      await runner.beforeMigration();
       await new newest.cls().up(runner);
+      await runner.afterMigration();
       await runner.release();
 
-      const rows = await ds.query(`SELECT * FROM settings ORDER BY id`);
-      expect(rows).toHaveLength(2);
-      // A configured client keeps the qBittorrent backfill: the only client
-      // that existed before the type column did.
-      expect(rows[0]).toMatchObject({
+      const [settings] = await ds.query(`SELECT * FROM settings`);
+      expect(settings).toMatchObject({
         applicationTitle: 'Media Manager',
-        applicationUrl: 'http://localhost:6246',
-        download_client_url: 'http://localhost:8080',
-        download_client_delete_data: 0,
-        download_client_fallback_ratio: 1.25,
-        download_client_type: 'qbittorrent',
+        seerr_url: 'http://seerr.local',
+        seerr_api_key: 'seerr-key',
       });
-      // No URL means no client, so the earlier default is cleared.
-      expect(rows[1]).toMatchObject({
-        applicationTitle: 'Fresh',
-        download_client_url: null,
-        download_client_type: null,
+      // The server takes over the tag settings its service had.
+      const [server] = await ds.query(`SELECT * FROM radarr_settings`);
+      expect(server).toMatchObject({ tagExclusions: 1, exclusionTag: 'keep' });
+      const [collection] = await ds.query(`SELECT * FROM collection`);
+      expect(collection).toMatchObject({
+        title: 'Sample Collection',
+        radarrSettingsId: 1,
       });
     } finally {
       await ds.destroy();
@@ -248,25 +258,20 @@ describe('database migrations', () => {
     const ds = await makeDS(all.map((m) => m.cls)).initialize();
     try {
       await ds.runMigrations();
-      const typeColumn = async () =>
-        byName(await columns(ds, 'settings')).download_client_type;
-      expect(await typeColumn()).toMatchObject({
-        notnull: 0,
-        dflt_value: null,
-      });
-      // A row without a client must survive the return to NOT NULL.
+      expect(
+        byName(await columns(ds, 'settings')).radarr_tag_exclusions,
+      ).toBeUndefined();
       await ds.query(
         `INSERT INTO settings ("id", "applicationTitle", "applicationUrl", "locale", "metadata_provider_preference") VALUES (1, 'Fresh', 'http://localhost:6246', 'en', 'tmdb_primary')`,
       );
 
       await ds.undoLastMigration();
 
-      expect(await typeColumn()).toMatchObject({
-        notnull: 1,
-        dflt_value: "'qbittorrent'",
-      });
-      const [row] = await ds.query(`SELECT download_client_type FROM settings`);
-      expect(row.download_client_type).toBe('qbittorrent');
+      expect(
+        byName(await columns(ds, 'settings')).radarr_tag_exclusions,
+      ).toBeDefined();
+      const [row] = await ds.query(`SELECT "applicationTitle" FROM settings`);
+      expect(row.applicationTitle).toBe('Fresh');
       const [{ c }] = await ds.query(`SELECT COUNT(*) AS c FROM migrations`);
       expect(Number(c)).toBe(all.length - 1);
     } finally {

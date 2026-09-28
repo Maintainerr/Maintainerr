@@ -16,6 +16,8 @@ import {
   MetadataProviderPreference,
   MetadataProviderSetting,
   metadataProviderSettingSchema,
+  OmbiSetting,
+  ombiSettingSchema,
   PlexAuthToken,
   plexAuthTokenSchema,
   RadarrSetting,
@@ -614,6 +616,41 @@ export class SettingsController {
     payload: SeerrSetting,
   ): Promise<BasicResponseDto> {
     return this.settingsOperationsService.testSeerr(payload);
+  }
+
+  @Get('/ombi')
+  async getOmbiSetting(): Promise<OmbiSetting | BasicResponseDto> {
+    const settings = await this.settingsOperationsService.getSettings();
+
+    if (!(settings instanceof Settings)) {
+      return settings;
+    }
+
+    return {
+      api_key: settings.ombi_api_key,
+      url: settings.ombi_url,
+    };
+  }
+
+  @Post('/ombi')
+  async updateOmbiSetting(
+    @Body(new ZodValidationPipe(ombiSettingSchema))
+    payload: OmbiSetting,
+  ) {
+    return await this.settingsOperationsService.updateOmbiSetting(payload);
+  }
+
+  @Delete('/ombi')
+  async removeOmbiSetting() {
+    return await this.settingsOperationsService.removeOmbiSetting();
+  }
+
+  @Post('/test/ombi')
+  testOmbi(
+    @Body(new ZodValidationPipe(ombiSettingSchema))
+    payload: OmbiSetting,
+  ): Promise<BasicResponseDto> {
+    return this.settingsOperationsService.testOmbi(payload);
   }
 
   @Get('/jellyfin')

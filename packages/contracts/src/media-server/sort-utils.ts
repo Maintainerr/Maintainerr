@@ -10,12 +10,19 @@ import type { MediaItem } from './types'
 
 const defaultMediaLibrarySort: MediaLibrarySortKey = 'title.asc'
 
-const toDayBucket = (
+const toMs = (
   value: Date | string | number | null | undefined,
 ): number | undefined => {
   if (value == null) return undefined
   const ms = value instanceof Date ? value.getTime() : new Date(value).getTime()
-  return Number.isNaN(ms) ? undefined : Math.floor(ms / 86400000)
+  return Number.isNaN(ms) ? undefined : ms
+}
+
+const toDayBucket = (
+  value: Date | string | number | null | undefined,
+): number | undefined => {
+  const ms = toMs(value)
+  return ms === undefined ? undefined : Math.floor(ms / 86400000)
 }
 
 export const getAudienceRating = (item: MediaItem): number | undefined => {
@@ -24,6 +31,10 @@ export const getAudienceRating = (item: MediaItem): number | undefined => {
 
 const getAirDateBucket = (item: MediaItem): number | undefined =>
   toDayBucket(item.originallyAvailableAt)
+
+// Full timestamp, not a day bucket: this is when the file landed on the
+// server, and the servers themselves order it to the second or finer.
+const getAddedAtMs = (item: MediaItem): number | undefined => toMs(item.addedAt)
 
 const getWatchCount = (item: MediaItem): number | undefined => item.viewCount
 
@@ -35,14 +46,15 @@ const getStudio = (item: MediaItem): string | undefined => {
 export interface CompareMediaItemsOptions {
   /**
    * Override the timestamp used for the `deleteSoonest` sort. Collection
-   * callers pass `collection_media.addDate` (when Maintainerr started the
-   * deletion timer) so ordering reflects the user-visible "Leaving in X
-   * days" overlay rather than `MediaItem.addedAt` (when the file was added
-   * to the underlying media-server library).
+   * callers pass the deadline Maintainerr's deletion timer sets, so ordering
+   * reflects the user-visible "Leaving in X days" overlay rather than
+   * `MediaItem.addedAt` (when the file was added to the underlying
+   * media-server library). `null` means the item has no deadline: it sorts
+   * last instead of falling back to `addedAt`.
    */
   deleteSoonestDate?: (item: MediaItem) => Date | string | undefined | null
   /**
-   * Anchor for `daysLeft` bucketing - pass `now - deleteAfterDays * dayMs`.
+   * Anchor for `daysLeft` bucketing - pass `now` alongside those deadlines.
    * When set, items with the same overlay countdown tie even if they
    * straddle UTC midnight (e.g. addedAt 23:00 vs. 01:00 the next day with
    * the same "Leaves in 3 days" label). When omitted, items bucket by UTC
@@ -63,7 +75,9 @@ const getDeleteSoonestDayBucket = (
   item: MediaItem,
   options: CompareMediaItemsOptions | undefined,
 ): number | undefined => {
-  const value = options?.deleteSoonestDate?.(item) ?? item.addedAt
+  const override = options?.deleteSoonestDate?.(item)
+  if (override === null) return undefined
+  const value = override ?? item.addedAt
   const referenceMs = toReferenceMs(options?.deleteSoonestReferenceTime)
   if (referenceMs === undefined) {
     // No collection context - bucket by UTC midnight.
@@ -71,9 +85,9 @@ const getDeleteSoonestDayBucket = (
   }
   const ms = value instanceof Date ? value.getTime() : new Date(value).getTime()
   if (Number.isNaN(ms)) return undefined
-  // daysLeft = ceil((addDate + N*day - now) / dayMs) = ceil((addDate - R) / dayMs).
-  // Two items tie iff they share the same daysLeft window, which keeps the
-  // sort aligned with the visible countdown across UTC midnight.
+  // daysLeft = ceil((deadline - now) / dayMs). Two items tie iff they share
+  // the same daysLeft window, which keeps the sort aligned with the visible
+  // countdown across UTC midnight.
   return Math.ceil((ms - referenceMs) / 86400000)
 }
 
@@ -169,6 +183,13 @@ export const compareMediaItemsBySort = (
         leftItem,
         rightItem,
         getAirDateBucket,
+        direction,
+      )
+    case 'addedAt':
+      return compareNumericWithTitleFallback(
+        leftItem,
+        rightItem,
+        getAddedAtMs,
         direction,
       )
     case 'rating':

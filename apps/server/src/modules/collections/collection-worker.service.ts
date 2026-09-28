@@ -37,6 +37,7 @@ import {
   CollectionsService,
   getCollectionDangerDate,
 } from './collections.service';
+import { ArrLookupCache } from '../rules/helpers/arr-lookup-cache';
 import { Collection } from './entities/collection.entities';
 import {
   CollectionMedia,
@@ -345,6 +346,9 @@ export class CollectionWorkerService extends TaskBase {
         this.logger.log(`Handling collection '${collection.title}'`);
         const handledMediaForNotification: NotificationMediaItem[] = [];
         const failedMediaForNotification: { mediaServerId: string }[] = [];
+        // Memoizes only the full-library listings the id fallback reads; every
+        // identity lookup and post-deletion read stays fresh.
+        const libraryReads = new ArrLookupCache();
 
         for (const media of collectionMedia) {
           // Snapshot the metadata before handling: a delete-style action removes
@@ -366,6 +370,7 @@ export class CollectionWorkerService extends TaskBase {
             result = await this.collectionHandler.handleMedia(
               collection,
               media,
+              libraryReads,
             );
           } catch (error) {
             handlingError = error;

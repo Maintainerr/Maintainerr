@@ -6,7 +6,7 @@ const saveSettingsMock = vi.fn()
 const showUpdated = vi.fn()
 const showUpdateError = vi.fn()
 const showError = vi.fn()
-const clearError = vi.fn()
+const clear = vi.fn()
 
 vi.mock('..', () => ({
   useSettingsOutletContext: () => ({
@@ -44,7 +44,7 @@ vi.mock('../useSettingsFeedback', () => ({
     showUpdated,
     showUpdateError,
     showError,
-    clearError,
+    clear,
   }),
 }))
 
@@ -62,7 +62,7 @@ describe('EmbySettings', () => {
     showUpdated.mockReset()
     showUpdateError.mockReset()
     showError.mockReset()
-    clearError.mockReset()
+    clear.mockReset()
   })
 
   it('surfaces backend validation failures instead of showing a success message', async () => {

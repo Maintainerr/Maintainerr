@@ -5,11 +5,13 @@ import {
   type MaintainerrMediaStatusDetails,
   type MaintainerrMediaStatusEntry,
   type MediaItemType,
+  type MediaWatchStats,
   type MediaProviderIds,
 } from '@maintainerr/contracts'
 import { Trans, useLingui } from '@lingui/react/macro'
 import React, { memo, useEffect, useMemo, useState } from 'react'
 import { useMetadataOverview } from '../../../../api/metadata'
+import { useWatchStats } from '../../../../api/watchStats'
 import useCloseOnEscape from '../../../../hooks/useCloseOnEscape'
 import { useLockBodyScroll } from '../../../../hooks/useLockBodyScroll'
 import { useMediaServerType } from '../../../../hooks/useMediaServerType'
@@ -24,6 +26,7 @@ import {
 import Button from '../../Button'
 import LoadingSpinner from '../../LoadingSpinner'
 import StreamystatsStatsPanel from './StreamystatsStatsPanel'
+import WatchStatsPanel from './WatchStatsPanel'
 import {
   emptyMaintainerrMediaStatusDetails,
   getMaintainerrStatusDetailsKey,
@@ -171,6 +174,8 @@ const emptyBackdropResult: BackdropResult = {
   providerId: null,
 }
 
+const asWatchStatsView = (stats: MediaWatchStats) => stats
+
 const maintainerrStatusCardStyles = {
   cardClassName: 'bg-zinc-900/70',
   titleClassName: 'text-white',
@@ -215,8 +220,14 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
     const [streamystatsItemUrl, setStreamystatsItemUrl] = useState<
       string | null
     >(null)
+    const [tracearrUrl, setTracearrUrl] = useState<string | null>(null)
     const [metadata, setMetadata] = useState<MediaItem | null>(null)
-    const [seerrConfigured, setSeerrConfigured] = useState<boolean>(false)
+    // Requests are keyed by the show, so a season or episode reads its show.
+    const [showMetadata, setShowMetadata] = useState<MediaItem | null>(null)
+    const [requestServices, setRequestServices] = useState({
+      seerr: false,
+      ombi: false,
+    })
     // Keyed by the path it was fetched for, like the backdrop below, so a
     // change of item derives an empty list instead of resetting state.
     const [requesterResult, setRequesterResult] = useState<{
@@ -283,12 +294,24 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
       () => mergeProviderIds(metadata?.providerIds, fallbackProviderIds),
       [metadata?.providerIds, fallbackProviderIds],
     )
-    // Seerr tracks TV requests per season, so ask for this item's own season or
-    // the show's other requesters get credited here too.
-    const seerrRequestersPath = useMemo(() => {
-      const tmdbId = providerIds?.tmdb?.[0]
-      if (!seerrConfigured || !tmdbId) {
-        return null
+    // Seerr tracks TV requests per season and Ombi per episode, so ask for
+    // this item's own season or episode or the show's other requesters get
+    // credited here too. The paths are joined into the one key the result is
+    // stored under.
+    const requesterPaths = useMemo(() => {
+      const showId =
+        metadata?.type === 'season'
+          ? metadata.parentId
+          : metadata?.type === 'episode'
+            ? metadata.grandparentId
+            : undefined
+      const tmdbId = showId
+        ? showMetadata?.id === showId
+          ? showMetadata.providerIds?.tmdb?.[0]
+          : undefined
+        : providerIds?.tmdb?.[0]
+      if (!tmdbId) {
+        return ''
       }
 
       const season =
@@ -297,13 +320,29 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
           : metadata?.type === 'episode'
             ? metadata.parentIndex
             : undefined
+      const seasonParam = season != null ? `season=${season}` : ''
+      const episodeParam =
+        metadata?.type === 'episode' && metadata.index != null
+          ? `&episode=${metadata.index}`
+          : ''
 
-      const base = `/seerr/requests/${tmdbId}/users`
-      return season != null ? `${base}?season=${season}` : base
-    }, [seerrConfigured, providerIds, metadata])
+      const paths: string[] = []
+      if (requestServices.seerr) {
+        paths.push(
+          `/seerr/requests/${tmdbId}/users${seasonParam ? `?${seasonParam}` : ''}`,
+        )
+      }
+      if (requestServices.ombi) {
+        const type = mediaType === 'movie' ? 'movie' : 'tv'
+        paths.push(
+          `/ombi/requests/${tmdbId}/users?type=${type}${seasonParam ? `&${seasonParam}` : ''}${episodeParam}`,
+        )
+      }
+      return paths.join(' ')
+    }, [requestServices, providerIds, metadata, showMetadata, mediaType])
 
     const requestedBy =
-      requesterResult?.requestKey === seerrRequestersPath
+      requesterPaths && requesterResult?.requestKey === requesterPaths
         ? requesterResult.users
         : []
     const requesters = requestedBy.join(', ')
@@ -332,6 +371,13 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
       mediaServerSummary ||
       providerOverview ||
       (loading || isOverviewPending ? '' : t`No summary available.`)
+    // The same query the Tracearr panel reads, so the badge learns the item's
+    // own page without a second request.
+    const tracearrStatsPath = `/tracearr/items/${id}`
+    const { data: tracearrStats } = useWatchStats<MediaWatchStats>(
+      tracearrStatsPath,
+      !!tracearrUrl,
+    )
     const providerLogo = useMemo(() => {
       if (!isCurrentBackdrop || !backdropResult.provider) return null
       const cfg = metadataProviderLogos[backdropResult.provider]
@@ -417,7 +463,11 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
         .then((resp) => {
           if (!active) return
           setTautulliModalUrl(resp?.tautulli_url || null)
-          setSeerrConfigured(!!resp?.seerr_url)
+          setRequestServices({
+            seerr: !!resp?.seerr_url,
+            ombi: !!resp?.ombi_url,
+          })
+          setTracearrUrl(resp?.tracearr_url || null)
         })
         .catch(() => {})
       // Streamystats is Jellyfin-only (Emby is unsupported upstream), so only
@@ -441,6 +491,19 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
           if (!active) return
           setMetadata(data)
           setLoading(false)
+          const showId =
+            data?.type === 'season'
+              ? data.parentId
+              : data?.type === 'episode'
+                ? data.grandparentId
+                : undefined
+          if (showId) {
+            GetApiHandler<MediaItem>(`/media-server/meta/${showId}`)
+              .then((show) => {
+                if (active) setShowMetadata(show)
+              })
+              .catch(() => {})
+          }
         })
         .catch(() => {
           if (active) setLoading(false)
@@ -452,26 +515,30 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
     }, [id, isJellyfin])
 
     useEffect(() => {
-      if (!seerrRequestersPath) {
+      if (!requesterPaths) {
         return
       }
 
       let active = true
 
-      GetApiHandler<string[]>(seerrRequestersPath)
-        .then((users) => {
-          if (!active) return
-          setRequesterResult({
-            requestKey: seerrRequestersPath,
-            users: users ?? [],
-          })
+      Promise.all(
+        requesterPaths.split(' ').map((path) =>
+          GetApiHandler<string[]>(path)
+            .then((users) => users ?? [])
+            .catch(() => []),
+        ),
+      ).then((lists) => {
+        if (!active) return
+        setRequesterResult({
+          requestKey: requesterPaths,
+          users: [...new Set(lists.flat())],
         })
-        .catch(() => {})
+      })
 
       return () => {
         active = false
       }
-    }, [seerrRequestersPath])
+    }, [requesterPaths])
 
     useEffect(() => {
       if (!backdropRequestPath) {
@@ -785,6 +852,23 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
                       </a>
                     </div>
                   )}
+                  {tracearrUrl && (
+                    <div>
+                      <a
+                        href={tracearrStats?.url ?? tracearrUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        <img
+                          src={`${basePath}/icons_logos/tracearr.svg`}
+                          alt="Tracearr"
+                          width={128}
+                          height={32}
+                          className="mt-1 h-8 w-32 rounded-lg bg-black/70 object-contain p-1 shadow-lg"
+                        />
+                      </a>
+                    </div>
+                  )}
                 </div>
                 {/* One row of genres on a phone. Wrapped, they ran past the
                     short backdrop and the overflow sliced them in half. The cap
@@ -831,6 +915,22 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
               <StreamystatsStatsPanel
                 itemId={String(id)}
                 itemUrl={streamystatsItemUrl}
+              />
+            ) : null}
+
+            {isPlex && tautulliModalUrl ? (
+              <WatchStatsPanel
+                name="Tautulli"
+                path={`/tautulli/items/${id}`}
+                toView={asWatchStatsView}
+              />
+            ) : null}
+
+            {tracearrUrl ? (
+              <WatchStatsPanel
+                name="Tracearr"
+                path={tracearrStatsPath}
+                toView={asWatchStatsView}
               />
             ) : null}
 

@@ -50,6 +50,9 @@ export const settingsUpdateSchema = z.object({
   seerr_url: serviceUrlSchema.optional(),
   seerr_api_key: z.string().trim().optional(),
 
+  ombi_url: serviceUrlSchema.optional(),
+  ombi_api_key: z.string().trim().optional(),
+
   tmdb_api_key: z.string().trim().optional(),
   tvdb_api_key: z.string().trim().optional(),
   metadata_provider_preference: z.enum(MetadataProviderPreference).optional(),
@@ -73,13 +76,6 @@ export const settingsUpdateSchema = z.object({
 
   collection_handler_job_cron: z.string().trim().optional(),
   rules_handler_job_cron: z.string().trim().optional(),
-
-  radarr_tag_exclusions: z.boolean().optional(),
-  radarr_exclusion_tag: z.string().trim().optional(),
-  radarr_untag_on_unexclude: z.boolean().optional(),
-  sonarr_tag_exclusions: z.boolean().optional(),
-  sonarr_exclusion_tag: z.string().trim().optional(),
-  sonarr_untag_on_unexclude: z.boolean().optional(),
 })
 
 export type SettingsUpdate = z.infer<typeof settingsUpdateSchema>

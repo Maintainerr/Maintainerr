@@ -1,11 +1,12 @@
 import { t as globalT } from '@lingui/core/macro'
 import { Trans, useLingui } from '@lingui/react/macro'
 import {
-  serviceUrlSchema,
   stripTrailingSlashes,
   type TracearrServer,
   tracearrSettingSchema,
 } from '@maintainerr/contracts'
+import { ServiceApiKeyHelp } from '../../Forms/ServiceApiKeyHelp'
+import { ServiceUrlExamples } from '../../Forms/ServiceUrlExamples'
 import { PostApiHandler } from '../../../utils/ApiHandler'
 import ExternalServiceSettingsPage, {
   type ExternalServiceFieldConfig,
@@ -15,8 +16,15 @@ import ExternalServiceSettingsPage, {
 const buildFields = (): ExternalServiceFieldConfig[] => [
   {
     name: 'url',
+    fullWidth: true,
     label: 'URL',
     placeholder: 'http://localhost:3000',
+    helpText: (
+      <ServiceUrlExamples
+        examples={['http://localhost:3000', 'https://tracearr.example.com']}
+      />
+    ),
+    basePath: true,
     normalize: stripTrailingSlashes,
     required: true,
   },
@@ -24,22 +32,12 @@ const buildFields = (): ExternalServiceFieldConfig[] => [
     name: 'api_key',
     label: globalT`API key`,
     type: 'password',
+    helpText: (values) => (
+      <ServiceApiKeyHelp url={values.url} path="/settings/data/api">
+        <Trans>Find it here: Settings → API → API Key</Trans>
+      </ServiceApiKeyHelp>
+    ),
     required: true,
-    // The field is still being typed, so it is only a link once it parses as a
-    // service URL. Anything else, a javascript: value included, stays text.
-    helpText: (values) =>
-      serviceUrlSchema.safeParse(values.url).success ? (
-        <a
-          className="underline"
-          href={`${stripTrailingSlashes(values.url)}/settings`}
-          target="_blank"
-          rel="noreferrer"
-        >
-          <Trans>Find it in Tracearr under Settings, General, API Key.</Trans>
-        </a>
-      ) : (
-        globalT`Find it in Tracearr under Settings, General, API Key.`
-      ),
   },
   // Only rendered when Tracearr has more than one server of the configured
   // media server's type, since that is the only case Maintainerr cannot
@@ -70,17 +68,13 @@ const TracearrSettings = () => {
 
   return (
     <ExternalServiceSettingsPage
-      updatedMessage={t`Tracearr settings updated`}
       updateErrorMessage={t`Tracearr settings could not be updated`}
       pageTitle={t`Tracearr settings - Maintainerr`}
-      heading={t`Tracearr Settings`}
-      description={t`Maintainerr picks the Tracearr media server backend automatically: the one tracking the media server configured in Maintainerr.`}
-      docsPage="Configuration/#tracearr"
       settingsPath="/settings/tracearr"
       testPath="/settings/test/tracearr"
       schema={tracearrSettingSchema}
       fields={buildFields()}
-      testSuccessTitle="Tracearr"
+      serviceName="Tracearr"
       testFailureMessage={t`Failed to connect to Tracearr. Verify the URL and API key.`}
     />
   )

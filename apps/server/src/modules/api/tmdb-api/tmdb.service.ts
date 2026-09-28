@@ -1,6 +1,7 @@
 import { BasicResponseDto, MaintainerrEvent } from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
+import { connectionTestConfig } from '../lib/connectionTest';
 import { MaintainerrLogger } from '../../logging/logs.service';
 import { SettingsDataService } from '../../settings/settings-data.service';
 import {
@@ -71,14 +72,14 @@ export class TmdbApiService extends ExternalApiService {
   }
 
   public async testConnection(apiKey?: string): Promise<BasicResponseDto> {
-    const testKey = apiKey || String(this.axios.defaults.params?.api_key || '');
-
-    if (!testKey) {
-      return { status: 'NOK', code: 0, message: 'No TMDB API key configured' };
-    }
+    const testKey =
+      apiKey === undefined
+        ? String(this.axios.defaults.params?.api_key || TMDB_DEFAULT_API_KEY)
+        : apiKey.trim() || TMDB_DEFAULT_API_KEY;
 
     try {
       const response = await this.axios.get<{ id: number }>('/movie/550', {
+        ...connectionTestConfig(),
         params: { api_key: testKey },
       });
 
@@ -86,8 +87,7 @@ export class TmdbApiService extends ExternalApiService {
         ? { status: 'OK', code: 1, message: 'Success' }
         : { status: 'NOK', code: 0, message: 'Unexpected response' };
     } catch (error) {
-      logConnectionTestError(this.logger, 'TMDB');
-      this.logger.debug(error);
+      logConnectionTestError(this.logger, 'TMDB', error);
 
       return {
         status: 'NOK',

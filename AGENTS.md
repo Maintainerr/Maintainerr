@@ -16,7 +16,7 @@ yarn test | tail -20
 
 ## Project Overview
 
-Maintainerr is a media management application that helps users automatically manage their media libraries by creating rules to handle unused or unwatched content. It integrates with Plex, Jellyfin, Emby, \*arr applications (Radarr/Sonarr), Seerr, Tautulli, and Streamystats (Jellyfin only) to provide comprehensive media lifecycle management.
+Maintainerr is a media management application that helps users automatically manage their media libraries by creating rules to handle unused or unwatched content. It integrates with Plex, Jellyfin, Emby, \*arr applications (Radarr/Sonarr), Seerr, Ombi, Tautulli, and Streamystats (Jellyfin only) to provide comprehensive media lifecycle management.
 
 For the broader system architecture map, see [ARCHITECTURE.md](ARCHITECTURE.md).
 
@@ -24,7 +24,7 @@ For the broader system architecture map, see [ARCHITECTURE.md](ARCHITECTURE.md).
 
 **Standing rules - read before writing any code (they apply to all work):**
 
-- [implementation.instructions.md](.github/instructions/implementation.instructions.md) - implementation rules and API-doc references.
+- [implementation.instructions.md](.github/instructions/implementation.instructions.md) - implementation rules, PR workflow, validation requirements, and API-doc references.
 - [project-notes.instructions.md](.github/instructions/project-notes.instructions.md) - non-obvious project knowledge, conventions, and gotchas (rule engine, Tailwind v4, migrations, naming) that isn't derivable from the code or git history.
 
 **Task-specific - read only when the task calls for it (don't load them every session):**
@@ -79,12 +79,13 @@ This is a **TypeScript monorepo** managed with **Turborepo** and **Yarn workspac
 
 ## Development Environment
 
-The development environment runs inside **`devbox`** - a rootless **podman** container
-managed by systemd quadlets in `~/infra/podman/quadlet/` on the host. This IS the
-devcontainer for this project. There is no docker on the host: no binary, no daemon, no
-socket.
+The development environment runs inside **`devbox-app`** (hostname `devbox-app`, called
+`devbox` below) - a rootless **podman** container managed by systemd quadlets in
+`~/infra/podman/quadlet/` on the host. This IS the devcontainer for this project. There is
+no docker on the host: no binary, no daemon, no socket.
 
-- `devbox` mounts the repo at `/workspace` and has Node 26 + Yarn 4.11 pre-installed.
+- `devbox` mounts the repo at `/workspace` and has Node 26 + Yarn 4 pre-installed (the
+  exact Yarn version is the `packageManager` pin in the root `package.json`, via corepack).
   Work directly inside the container at `/workspace` - open your editor/agent here,
   run all `yarn` commands here. Node is only installed in the container, not the host.
 - Git works normally from `/workspace`: `git commit` and `git push` directly. The
@@ -99,38 +100,69 @@ socket.
 - **`/tmp` inside the box does not survive.** The quadlet runs `podman run --rm --replace`,
   so every restart recreates the container and wipes its writable layer. Anything you want
   to keep goes under `/workspace` (a bind mount) - never `/tmp`.
-- `yarn dev` serves UI on port 3000 and API on port 6246. Logs at `/tmp/yarn-dev.log`.
+- The image entrypoint runs `yarn dev` when the container starts: UI on port 3000, API on
+  port 6246, logs at `/tmp/yarn-dev.log`. Check `curl localhost:6246/api/health/live`
+  before starting another instance; a duplicate dies with `EADDRINUSE`.
 
 **Dev media servers** (Plex, Jellyfin, Emby) run as separate rootless podman containers,
 each its own quadlet in `~/infra/podman/quadlet/`, reachable from inside `devbox` by
 hostname:
+
 - Plex → `http://dev-plex:32400`
 - Jellyfin → `http://dev-jellyfin:8096`
 - Emby → `http://dev-emby:8096`
 
-Credentials are in `~/dev-media-creds.env` (not committed). Media lives on `/mnt/dev-media`.
+Credentials are mounted read-only into the box at `/host/dev-media-creds.env` (host path
+`~/dev-media-creds.env`, not committed); some values are quoted, so strip quotes when parsing
+it. Media lives on `/mnt/dev-media`.
 
 ### Security model - you are L3, the confined devbox
 
-Three trust levels, privilege descending: **`root`@host** (everything) › **`maintainerr-dev`**
-(the SSH host - runs the dev media stack, holds its secrets, controls the devbox) ›
-**`devbox`** (you: dev/test only). You can reach the media/service stack by hostname
-(`dev-plex`, `dev-radarr`, …) to test and seed against it, but you **cannot break out** to
-the host - and that boundary is enforced from above you, so you can't disable it:
+Three trust levels, privilege descending: **`root`@host** (everything) › **`maintainerr`**
+(the podman account on the host - runs the dev media stack and every devbox, holds the
+stack's secrets, controls this box) › **`devbox`** (you: dev/test only). You can reach the
+media/service stack by hostname (`dev-plex`, `dev-radarr`, …) to test and seed against it,
+but you **cannot break out** to the host - that boundary is enforced from above you:
 
-- **No container engine at all** - there is no docker/podman client, no socket and no
-  `DOCKER_*` variable in here. Read-only container status comes from a text snapshot the
-  host refreshes at `/host/containers`; it is data, never an API handle.
 - **Host egress firewall** - outbound is default-deny to an allowlist (GitHub, npm, Anthropic,
-  Plex/TMDB) plus the local podman networks. The rules live in a separate netns holder that
-  installs them before this container starts, so they cannot be altered from in here.
-  DNS is equally confined: the only resolver you can reach is the allowlisting one.
-- **`DropCapability=ALL` + `NoNewPrivileges` + rootless** - this container holds *zero*
+  Plex/TMDB and a few package mirrors) plus the local podman networks; a blocked host times
+  out rather than refusing. The rules are installed into this box's network namespace by
+  host units (`devbox-egress@<slug>`, `devbox-dnsmasq@<slug>`) before the container starts
+  and re-applied every minute, so they cannot be altered from in here. DNS is equally
+  confined: the only resolver you can reach is the allowlisting one.
+- **`DropCapability=ALL` + `NoNewPrivileges` + rootless** - this container holds _zero_
   capabilities, bounding set included, so they cannot be regained. Even container-root is
-  an unprivileged subuid, never the host user.
+  an unprivileged subuid, never the host user. `apt` fails on `setgroups`, not on network.
+- **Sibling devboxes are unreachable** - every devbox has its own `isolate=strict` bridge and
+  only `devbox-app` is also on the `dev-media` network. The other boxes' hostnames do not
+  resolve from here, by design.
 
-Don't fight these (e.g. trying to `exec` into another container, or reaching a non-allowlisted
-host) - they're intentional, not bugs. Operator-side detail lives in `~/infra/README.md`.
+Read-only stack status (state, restarts, health, logs) is the text snapshot the host refreshes
+about once a minute at `/host/containers/`. The quadlets are also visible read-only at
+`/host/quadlet/`; do not read them - they are live host config, not project code. Get port
+and mount facts from `/host/containers/` or from each service's own API instead.
+
+**The podman socket - lab control, deliberately granted.** `/run/podman/podman.sock` is the
+host account's rootless podman socket, `DOCKER_HOST`/`CONTAINER_HOST` point at it, and
+`podman` (a `podman-remote` client) is installed. It is there so this box can operate the
+lab: start, stop, restart, `exec` into and read logs of the `dev-*` services, and stand up
+an extra lab container when a test needs one. The same handle would let you cross the L3
+boundary, so here the boundary is a rule you keep, not a wall:
+
+- Never bind-mount host paths, never `--network host`, never `--privileged` or `--cap-add`,
+  never mount the socket into a container you create.
+- Never touch anything named `devbox-*` (the other boxes and their `-net` netns anchors),
+  and never stop or replace `devbox-app` or `devbox-app-net` yourself.
+- Anything you create is ad-hoc: name it `lab-*`, attach it to `dev-media`, give it a memory
+  cap, and remove it when done. It is not a quadlet, it will not survive a reboot and it is
+  not in the host's audit lists. A service that should stay in the lab has to be added by
+  the operator as a quadlet on the host; ask.
+- For fault injection or request counting, prefer a small in-process Node reverse proxy in
+  this box (listen on a spare port, forward to the service, inject the fault) over a new
+  container; it needs no socket at all.
+
+Don't fight the remaining limits (e.g. reaching a non-allowlisted host) - they're intentional,
+not bugs. Operator-side detail lives in `~/infra/README.md`.
 
 ## Development Workflow
 
@@ -199,8 +231,13 @@ The built Docker image includes `/opt/app/healthcheck.sh` as its
 Project MCP server config lives in `.codex/config.toml` for Codex, `.mcp.json`
 for Claude Code, and `.vscode/mcp.json` for VS Code. Keep all three files in
 sync when adding or changing servers. The configured GitHub MCP server is
-read-only, and Playwright MCP screenshots should be written under
-`.playwright-mcp/`.
+read-only.
+
+For browser checks, always drive the globally installed `playwright` library in
+devbox, not the Playwright MCP server (it often fails to connect). Require it
+from `npm root -g` (`/usr/local/lib/node_modules/playwright`) and launch
+Chromium with `executablePath: '/usr/bin/chromium'` and
+`args: ['--no-sandbox']`. Write screenshots under `.playwright-mcp/`.
 
 ### Package-Specific Commands
 
@@ -344,13 +381,13 @@ When modifying existing code, follow these specific refactoring priorities:
 
 - **React Hook Forms Migration**: Forms that do not use React Hook Form should be refactored to use it, along with their Zod validation schemas and corresponding DTOs from the contracts package. See [PR #1871](https://github.com/Maintainerr/Maintainerr/pull/1871) as a reference example.
 - **Form Components**: Use existing form components from `apps/ui/src/components/Forms/` (Input, Select, etc.) and create new ones in this directory if necessary, following the same patterns.
-- **Component Naming**: Component file names should follow the exported type name(s) rather than using generic `index.tsx` files. For example, use `UserSettingsForm.tsx` instead of `index.tsx`.
+- **Component Naming**: New component file names should follow the exported type name(s) rather than using generic `index.tsx` files. Keep existing filenames during focused fixes unless a rename is required. For example, use `UserSettingsForm.tsx` instead of `index.tsx`.
 
 ### Server-Side Type Safety
 
 - **Strict Typing Evolution**: Extra care should be taken in the **server** project. While strict type checking is not currently enabled (`strictNullChecks: false`, `noImplicitAny: false`), we are moving toward stricter standards.
 - **Type Specifications**: When creating new code, specify explicit types including `undefined` when applicable, rather than relying on computed types.
-- **Any Type Elimination**: When encountering `any` types during code changes, attempt to use proper types or create specific type definitions. This includes external API requests and responses.
+- **Any Type Elimination**: Avoid introducing `any`; use proper types for changed logic, including external API requests and responses. Keep unrelated type cleanup out of focused fixes.
 - **Gradual Migration**: Incrementally improve type safety without breaking existing functionality.
 - **Logging**: In injectable server code, prefer `MaintainerrLogger` over raw Nest `Logger`. Set the context once in the constructor. For paired caught-error logs, keep `warn`/`log`/`error` messages plain and put the throwable on `logger.debug(error)`; only use `logger.error('message', error)` when the higher-level log should intentionally carry the throwable.
 
@@ -371,6 +408,12 @@ When working with these integrations:
 - Retry through `applyHttpRetry` (`modules/api/lib/httpRetry.ts`), never a
   per-client axios-retry config: it already answers a 429 with the wait the
   server declared, capped, so hand-rolled rate-limit handling only drifts
+- New service connection tests must use `connectionTestConfig` and, for API-key
+  authentication, `assertApiKey` from `modules/api/lib/connectionTest.ts`. Reuse
+  one config for the entire uncached test, including login and a protected API
+  read, so the five-second deadline includes retries. Reject explicitly empty
+  keys; only TMDB may use its built-in key. Report failures through the shared
+  `formatConnectionFailureMessage` and `logConnectionTestError` helpers.
 - Implement caching where appropriate (node-cache)
 - Prefer one batched call per run over one per item: see the Seerr request
   prefetch (#3152), the batched collection writes, and the removal-notification
@@ -386,6 +429,9 @@ weekly so the list stays verified. References that have no fetchable spec live i
 
 ## Testing Guidelines
 
+Follow the shared [PR workflow](.github/instructions/implementation.instructions.md#pr-workflow)
+for real-stack coverage, behavioral tests, and final validation timing.
+
 ### Backend Testing
 
 - **Unit Tests**: Jest with @suites for dependency mocking
@@ -400,10 +446,10 @@ weekly so the list stays verified. References that have no fetchable spec live i
 
 ### Local dev mocks & seeding (manual / Playwright testing)
 
-For end-to-end checks of media-server-dependent flows (rules, collections,
-overview, calendar, storage) without a real Plex/Jellyfin, the `tools/dev/` folder
-has scripts that **complement Playwright** - Playwright drives the UI, these
-provide the backend data:
+Use the real Podman stack for affected integration flows. The `tools/dev/`
+scripts provide deterministic supplemental coverage or a reported fallback when
+real services are unavailable; they do not replace real-stack verification.
+Playwright drives the UI, while these scripts provide backend data:
 
 - `tools/dev/fake-jellyfin.mjs` - stateless mock Jellyfin (`:8096`).
 - `tools/dev/fake-plex.mjs` - stateless mock Plex (`:32400`); covers the Plex-only
@@ -421,8 +467,10 @@ provide the backend data:
   exercises the Radarr exclusion path against `fake-radarr.mjs`. Target a server
   with `MEDIA_SERVER=plex|jellyfin` (default `jellyfin`).
 
-Workflow: start the matching mock(s), stop `yarn dev` (SQLite is single-writer),
-run the seed, restart `yarn dev`. Inspect a getter's live output with
+Workflow: start the matching mock(s) and use an isolated application data directory.
+Set `MAINTAINERR_DB` to that directory's database when running the seed; it resets
+existing data. Stop the application using that database before seeding, then
+restart it. Inspect a getter's live output with
 `POST /api/rules/test {"mediaId","rulegroupId"}`, run a rule with
 `POST /api/rules/:id/execute`, or run collection handling with
 `POST /api/collections/handle`. Note: after editing server code, **restart
@@ -435,7 +483,7 @@ degrade gracefully.
 ### Environment Setup
 
 - **Node.js**: 26+ (root `package.json` `engines` is the source of truth; Docker, the devcontainer and every workflow ship Node 26)
-- **Package Manager**: Yarn 4.11 (managed via corepack)
+- **Package Manager**: Yarn 4, pinned by `packageManager` in the root `package.json` (managed via corepack)
 - **Data Directory**: Requires `data/` folder with proper permissions for development
 
 ### Key Configuration Files
@@ -460,9 +508,9 @@ Before contributing:
 
 1. Read `CONTRIBUTING.md` for detailed guidelines
 2. Follow the branching strategy (meaningful branch names)
-3. Ensure all tests pass: `yarn test`
-4. Verify linting: `yarn lint`
-5. Format code: `yarn format`
+3. Follow the [PR workflow](.github/instructions/implementation.instructions.md#pr-workflow) for focused checks and final full-suite validation, including the PR branch update sequence.
+4. Verify linting for the change; `yarn lint` checks the full workspace.
+5. Format changed files; avoid unrelated formatting churn.
 6. Use conventional commit messages
 
 **Before suggesting or writing any code, you must read and follow `.github/instructions/implementation.instructions.md`.**

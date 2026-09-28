@@ -1,3 +1,7 @@
+import { t as globalT } from '@lingui/core/macro'
+import { serviceUrlSchema } from '@maintainerr/contracts'
+import { useForm, useWatch } from 'react-hook-form'
+import { ServiceUrlExamples } from '../../Forms/ServiceUrlExamples'
 import { Trans, useLingui } from '@lingui/react/macro'
 import { RefreshIcon } from '@heroicons/react/outline'
 import { ChevronDownIcon, ChevronUpIcon } from '@heroicons/react/solid'
@@ -19,14 +23,16 @@ import {
 import GetApiHandler from '../../../utils/ApiHandler'
 import Alert from '../../Common/Alert'
 import Button from '../../Common/Button'
-import DocsButton from '../../Common/DocsButton'
 import SaveButton from '../../Common/SaveButton'
 import TestingButton from '../../Common/TestingButton'
-import { Input } from '../../Forms/Input'
+import { CheckboxGroup } from '../../Forms/CheckboxGroup'
+import FieldGroup from '../../Forms/FieldGroup'
+import { InputGroup } from '../../Forms/Input'
 import { Select } from '../../Forms/Select'
 import PlexLoginButton from '../../Login/Plex'
-import SettingsAlertSlot from '../SettingsAlertSlot'
+import ServiceCard, { ServiceCardFooter } from '../ServiceCard'
 import { useSettingsFeedback } from '../useSettingsFeedback'
+import { releaseVersion } from '../../../utils/version'
 
 interface PresetServerDisplay {
   name: string
@@ -57,9 +63,7 @@ interface SelectedServer {
 }
 
 interface PlexAdvancedDraft {
-  hostname: string
-  port: string
-  ssl: boolean
+  url: string
 }
 
 interface TokenValidationOverride {
@@ -69,6 +73,18 @@ interface TokenValidationOverride {
 
 const normalizePlexHostname = (hostname?: string) =>
   hostname?.replace('http://', '').replace('https://', '') ?? ''
+
+const plexConnectionUrlSchema = serviceUrlSchema.refine((value) => {
+  if (!URL.canParse(value)) return false
+  const url = new URL(value)
+  return (
+    url.pathname === '/' &&
+    !url.search &&
+    !url.hash &&
+    !url.username &&
+    !url.password
+  )
+})
 
 const isDirectIpAddress = (address: string) => {
   if (address.includes(':')) return true
@@ -119,9 +135,6 @@ const PlexSettings = () => {
   const [manualModeOverride, setManualModeOverride] = useState<
     boolean | undefined
   >(undefined)
-  const [advancedDraftOverride, setAdvancedDraftOverride] = useState<
-    PlexAdvancedDraft | undefined
-  >(undefined)
   const [testBanner, setTestBanner] = useState<{
     status: boolean
     version: string
@@ -137,9 +150,9 @@ const PlexSettings = () => {
     showUpdateError,
     showError,
     showWarning,
-    clearError,
+    clear,
   } = useSettingsFeedback({
-    updated: t`Plex settings updated`,
+    updated: t`Saved`,
     updateError: t`Plex settings could not be updated`,
   })
 
@@ -159,19 +172,25 @@ const PlexSettings = () => {
         }
       : null
   const savedAdvancedDraft: PlexAdvancedDraft = {
-    hostname: normalizePlexHostname(settings?.plex_hostname) || '',
-    port: settings?.plex_port != null ? String(settings.plex_port) : '32400',
-    ssl: Boolean(settings?.plex_ssl),
+    url: settings?.plex_hostname
+      ? `${settings.plex_ssl ? 'https' : 'http'}://${normalizePlexHostname(settings.plex_hostname)}:${settings.plex_port ?? 32400}`
+      : '',
   }
+  const {
+    register: registerAdvanced,
+    control: advancedControl,
+    reset: resetAdvanced,
+    trigger: validateAdvanced,
+    formState: { errors: advancedErrors },
+  } = useForm<PlexAdvancedDraft>({ values: savedAdvancedDraft })
+
   const selectedServer =
     selectedServerOverride === undefined
       ? savedSelectedServer
       : selectedServerOverride
   const manualMode = manualModeOverride ?? settings?.plex_manual_mode === 1
-  const advancedHostname =
-    advancedDraftOverride?.hostname ?? savedAdvancedDraft.hostname
-  const advancedPort = advancedDraftOverride?.port ?? savedAdvancedDraft.port
-  const advancedSsl = advancedDraftOverride?.ssl ?? savedAdvancedDraft.ssl
+  const advancedUrl = useWatch({ control: advancedControl, name: 'url' }) ?? ''
+
   const storedAuthToken = settings?.plex_auth_token
   const {
     data: storedTokenValidation,
@@ -229,17 +248,14 @@ const PlexSettings = () => {
 
   // Track whether the user has edited the advanced fields since last save
   const hasUnsavedAdvancedChanges =
-    manualMode &&
-    (advancedHostname !== savedAdvancedDraft.hostname ||
-      advancedPort !== savedAdvancedDraft.port ||
-      advancedSsl !== savedAdvancedDraft.ssl)
+    manualMode && advancedUrl !== savedAdvancedDraft.url
 
   const clearTestBanner = () => {
     setTestBanner({ status: false, version: '' })
   }
 
   const submit = async () => {
-    clearError()
+    clear()
 
     if (!isAuthenticated) {
       showWarning(t`Authenticate with Plex before saving server settings.`)
@@ -248,28 +264,19 @@ const PlexSettings = () => {
 
     try {
       if (manualMode) {
-        // Advanced settings: save manual override (no server selection required)
-        const normalizedHostname =
-          normalizePlexHostname(advancedHostname).trim()
-        const port = Number(advancedPort.trim())
-
-        if (!normalizedHostname) {
-          showInfo(t`Please enter a hostname or IP address.`)
-          return
-        }
-
-        if (!Number.isInteger(port) || port <= 0 || port > 65535) {
-          showInfo(t`Please enter a valid port.`)
-          return
-        }
+        if (!(await validateAdvanced('url'))) return
+        const url = new URL(advancedUrl.trim())
+        const ssl = url.protocol === 'https:'
+        const port = Number(url.port || (ssl ? 443 : 80))
+        const normalizedHostname = url.hostname
 
         await updateSettings({
-          plex_hostname: advancedSsl
+          plex_hostname: ssl
             ? `https://${normalizedHostname}`
             : normalizedHostname,
           plex_port: port,
           plex_name: selectedServer?.name || normalizedHostname,
-          plex_ssl: Number(advancedSsl),
+          plex_ssl: Number(ssl),
           plex_manual_mode: 1,
         })
       } else {
@@ -293,7 +300,7 @@ const PlexSettings = () => {
 
       setSelectedServerOverride(undefined)
       setManualModeOverride(undefined)
-      setAdvancedDraftOverride(undefined)
+      resetAdvanced(savedAdvancedDraft)
       clearTestBanner()
       showUpdated()
     } catch {
@@ -345,7 +352,7 @@ const PlexSettings = () => {
   }
 
   const persistToken = async (token: string) => {
-    clearError()
+    clear()
     clearTestBanner()
     setTokenValidationOverride({ pending: true, valid: false })
 
@@ -374,7 +381,7 @@ const PlexSettings = () => {
   }
 
   const deleteToken = async () => {
-    clearError()
+    clear()
 
     try {
       await deletePlexAuth()
@@ -382,7 +389,7 @@ const PlexSettings = () => {
       setClearTokenClicked(false)
       setSelectedServerOverride(null)
       setManualModeOverride(false)
-      setAdvancedDraftOverride(undefined)
+      resetAdvanced(savedAdvancedDraft)
       clearTestBanner()
       showUpdated()
     } catch {
@@ -426,6 +433,9 @@ const PlexSettings = () => {
   const performTest = async () => {
     if (testing) return
 
+    // The status shows whatever happened last, so a new test hides "Saved".
+    clear()
+
     if (updatePlexAuthPending) {
       showWarning(t`Wait for Plex authentication to finish before testing.`)
       return
@@ -468,164 +478,125 @@ const PlexSettings = () => {
   return (
     <>
       <title>{t`Plex settings - Maintainerr`}</title>
-      <div className="h-full w-full">
-        <div className="section h-full w-full">
-          <h3 className="heading">
-            <Trans>Plex Settings</Trans>
-          </h3>
-          <p className="description">
-            <Trans>Plex configuration</Trans>
-          </p>
-        </div>
+      <div className="max-w-6xl">
+        <ServiceCard title="Plex">
+          <div className="flex flex-1 flex-col gap-3">
+            {!isAuthenticated &&
+            !(tokenValidationPending && hasStoredPlexToken) ? (
+              <Alert
+                type="info"
+                title={t`Plex configuration is required. Authenticate with Plex to get started.`}
+              />
+            ) : null}
 
-        {!isAuthenticated && !(tokenValidationPending && hasStoredPlexToken) ? (
-          <Alert
-            type="info"
-            title={t`Plex configuration is required. Authenticate with Plex to get started.`}
-          />
-        ) : null}
-
-        <SettingsAlertSlot>
-          {feedback || storedTokenValidationAlert || testBanner.version ? (
-            <div className="space-y-4">
-              {feedback ? (
-                <Alert type={feedback.type} title={feedback.title} />
-              ) : null}
-              {storedTokenValidationAlert ? (
-                <Alert
-                  type={storedTokenValidationAlert.type}
-                  title={storedTokenValidationAlert.title}
-                />
-              ) : null}
-              {testBanner.version ? (
-                testBanner.status ? (
-                  <Alert
-                    type="success"
-                    title={t`Successfully connected to Plex (${{ version: testBanner.version }})`}
-                  />
-                ) : (
-                  <Alert type="error" title={testBanner.version} />
-                )
-              ) : null}
-            </div>
-          ) : null}
-        </SettingsAlertSlot>
-
-        <div className="section">
-          <div>
-            {/* Authentication */}
-            <div className="form-row">
-              <label className="text-label">
-                <Trans>Authentication</Trans>
-                <span className="label-tip">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <FieldGroup
+                layout="stacked"
+                label={t`Authentication`}
+                helpText={
                   <Trans>
                     Authentication with the server&apos;s admin account is
                     required to access the Plex API
                   </Trans>
-                </span>
-              </label>
-              <div className="form-input">
-                <div className="form-input-field">
-                  {tokenValidationPending ? (
-                    <Button type="button" buttonType="default" disabled>
-                      <Trans>Checking authentication...</Trans>
+                }
+              >
+                {tokenValidationPending ? (
+                  <Button type="button" buttonType="default" disabled>
+                    <Trans>Checking authentication...</Trans>
+                  </Button>
+                ) : isAuthenticated ? (
+                  clearTokenClicked ? (
+                    <Button
+                      type="button"
+                      onClick={deleteToken}
+                      buttonType="warning"
+                      disabled={deletePlexAuthPending}
+                    >
+                      <Trans>Clear credentials?</Trans>
                     </Button>
-                  ) : isAuthenticated ? (
-                    clearTokenClicked ? (
-                      <Button
-                        type="button"
-                        onClick={deleteToken}
-                        buttonType="warning"
-                        disabled={deletePlexAuthPending}
-                      >
-                        <Trans>Clear credentials?</Trans>
-                      </Button>
-                    ) : (
-                      <Button
-                        type="button"
-                        onClick={() => setClearTokenClicked(true)}
-                        buttonType="success"
-                      >
-                        <Trans>Authenticated</Trans>
-                      </Button>
-                    )
                   ) : (
-                    <PlexLoginButton
-                      onAuthToken={authsuccess}
-                      onError={authFailed}
-                      isProcessing={updatePlexAuthPending}
-                      clientIdentifier={settings?.clientId ?? ''}
-                    />
-                  )}
-                </div>
-              </div>
-            </div>
+                    <Button
+                      type="button"
+                      onClick={() => setClearTokenClicked(true)}
+                      buttonType="success"
+                    >
+                      <Trans>Authenticated</Trans>
+                    </Button>
+                  )
+                ) : (
+                  <PlexLoginButton
+                    onAuthToken={authsuccess}
+                    onError={authFailed}
+                    isProcessing={updatePlexAuthPending}
+                    clientIdentifier={settings?.clientId ?? ''}
+                  />
+                )}
+              </FieldGroup>
 
-            {/* Server - only shown when authenticated */}
-            {isAuthenticated && (
-              <div className="form-row">
-                <label className="text-label">
-                  <Trans>Server</Trans>
-                  <span className="label-tip">
+              {isAuthenticated ? (
+                <FieldGroup
+                  layout="stacked"
+                  // Only the dropdown is a control the label can name.
+                  id={selectedServer ? undefined : 'plex-server'}
+                  label={t`Server`}
+                  helpText={
                     <Trans>
                       Ensure DNS is properly configured since Plex depends on
                       working DNS resolution
                     </Trans>
-                  </span>
-                </label>
-                <div className="form-input">
+                  }
+                >
                   {selectedServer ? (
-                    <div className="max-w-xl rounded-xl bg-zinc-800 p-4 ring-1 ring-zinc-700">
-                      <div className="flex items-center justify-between gap-4">
-                        <div className="min-w-0">
-                          <p className="truncate font-medium text-white">
-                            {selectedServer.name}
-                          </p>
-                          <p className="mt-1 flex flex-wrap items-center gap-1.5 text-sm text-zinc-400">
-                            <span>
-                              {selectedServer.hostname}:{selectedServer.port}
+                    <div className="flex items-center justify-between gap-4 rounded-md px-3 py-2 ring-1 ring-zinc-700">
+                      <div className="min-w-0">
+                        <p className="truncate font-medium text-white">
+                          {selectedServer.name}
+                        </p>
+                        <p className="mt-1 flex flex-wrap items-center gap-1.5 text-sm text-zinc-400">
+                          <span>
+                            {selectedServer.hostname}:{selectedServer.port}
+                          </span>
+                          {selectedServer.ssl && (
+                            <span className="inline-flex items-center rounded-sm bg-zinc-700 px-1.5 py-0.5 text-xs text-zinc-300">
+                              SSL/TLS
                             </span>
-                            {selectedServer.ssl && (
-                              <span className="inline-flex items-center rounded-sm bg-zinc-700 px-1.5 py-0.5 text-xs text-zinc-300">
-                                SSL/TLS
-                              </span>
-                            )}
-                            {selectedServer.local !== undefined && (
-                              <span className="inline-flex items-center rounded-sm bg-zinc-700 px-1.5 py-0.5 text-xs text-zinc-300">
-                                {selectedServer.local ? (
-                                  <Trans>Local</Trans>
-                                ) : (
-                                  <Trans>Remote</Trans>
-                                )}
-                              </span>
-                            )}
-                            {selectedServer.latency !== undefined && (
-                              <span className="inline-flex items-center rounded-sm bg-zinc-700 px-1.5 py-0.5 text-xs text-zinc-300">
-                                {selectedServer.latency}ms
-                              </span>
-                            )}
-                          </p>
-                        </div>
-                        <Button
-                          type="button"
-                          buttonType="default"
-                          onClick={() => {
-                            setSelectedServerOverride(null)
-                            setManualModeOverride(false)
-                            setAdvancedDraftOverride(undefined)
-                            setAdvancedOpen(false)
-                            clearError()
-                            clearTestBanner()
-                          }}
-                        >
-                          <Trans>Change</Trans>
-                        </Button>
+                          )}
+                          {selectedServer.local !== undefined && (
+                            <span className="inline-flex items-center rounded-sm bg-zinc-700 px-1.5 py-0.5 text-xs text-zinc-300">
+                              {selectedServer.local ? (
+                                <Trans>Local</Trans>
+                              ) : (
+                                <Trans>Remote</Trans>
+                              )}
+                            </span>
+                          )}
+                          {selectedServer.latency !== undefined && (
+                            <span className="inline-flex items-center rounded-sm bg-zinc-700 px-1.5 py-0.5 text-xs text-zinc-300">
+                              {selectedServer.latency}ms
+                            </span>
+                          )}
+                        </p>
                       </div>
+                      <Button
+                        type="button"
+                        buttonType="default"
+                        onClick={() => {
+                          setSelectedServerOverride(null)
+                          setManualModeOverride(false)
+                          resetAdvanced(savedAdvancedDraft)
+                          setAdvancedOpen(false)
+                          clear()
+                          clearTestBanner()
+                        }}
+                      >
+                        <Trans>Change</Trans>
+                      </Button>
                     </div>
                   ) : (
-                    <div className="form-input-field">
+                    <div className="flex">
                       <div className="min-w-0 flex-1">
                         <Select
+                          id="plex-server"
                           join="left"
                           defaultValue=""
                           disabled={isRefreshingPresets}
@@ -642,9 +613,9 @@ const PlexSettings = () => {
                                 latency: preset.latency,
                               })
                               setManualModeOverride(false)
-                              setAdvancedDraftOverride(undefined)
+                              resetAdvanced(savedAdvancedDraft)
                               setAdvancedOpen(false)
-                              clearError()
+                              clear()
                               clearTestBanner()
                             }
                           }}
@@ -677,6 +648,7 @@ const PlexSettings = () => {
                         onClick={() => void refetchServers()}
                         disabled={!isAuthenticated || updatePlexAuthPending}
                         className="input-action"
+                        aria-label={t`Refresh servers`}
                       >
                         <RefreshIcon
                           className={isRefreshingPresets ? 'animate-spin' : ''}
@@ -685,16 +657,17 @@ const PlexSettings = () => {
                       </button>
                     </div>
                   )}
-                </div>
-              </div>
-            )}
+                </FieldGroup>
+              ) : null}
+            </div>
 
-            {/* Advanced Settings - hidden collapsible section */}
+            {/* Advanced settings: a collapsed manual connection override */}
             {isAuthenticated && (
-              <div className="mt-6">
+              <div>
                 <button
                   type="button"
                   className="flex items-center gap-1 text-sm text-zinc-400 transition-colors hover:text-white"
+                  aria-expanded={advancedOpen}
                   onClick={() => setAdvancedOpen((prev) => !prev)}
                 >
                   {advancedOpen ? (
@@ -711,214 +684,123 @@ const PlexSettings = () => {
                 </button>
 
                 {advancedOpen && (
-                  <div className="mt-3 rounded-xl bg-zinc-800/50 p-4 ring-1 ring-zinc-700">
-                    <div className="form-row">
-                      <label
-                        htmlFor="advanced-manual-mode"
-                        className="text-label"
-                      >
-                        <Trans>Manual connection override</Trans>
-                        <span className="label-tip">
-                          <Trans>
-                            Override the connection discovered by Plex.
-                            <br />
-                            Disables automatic reconnection - you manage the
-                            connection.
-                          </Trans>
-                        </span>
-                      </label>
-                      <div className="form-input">
-                        <div className="form-input-field">
-                          <label className="inline-flex items-center gap-2">
-                            <input
-                              id="advanced-manual-mode"
-                              name="advanced-manual-mode"
-                              type="checkbox"
-                              checked={manualMode}
-                              onChange={(e) => {
-                                setManualModeOverride(e.target.checked)
-                                // When disabling manual mode while it's the saved state,
-                                // clear server selection to force re-discovery from plex.tv
-                                if (
-                                  !e.target.checked &&
-                                  settings?.plex_manual_mode === 1
-                                ) {
-                                  setSelectedServerOverride(null)
-                                  clearTestBanner()
-                                }
-                              }}
-                              className="checkbox"
-                            />
-                            <span className="text-sm text-zinc-300">
-                              <Trans>Enable manual mode</Trans>
-                              <br />
-                              <span className="text-xs text-zinc-500">
-                                <Trans>
-                                  Plex authentication (above) is still required
-                                </Trans>
-                              </span>
-                            </span>
-                          </label>
-                        </div>
-                      </div>
-                    </div>
-
-                    {manualMode && (
-                      <>
-                        <div className="form-row">
-                          <label
-                            htmlFor="advanced-hostname"
-                            className="text-label"
-                          >
-                            <Trans>Hostname / IP</Trans>
-                            <span className="label-tip">
-                              {/* Example values stay untranslated per the
-                                  do-not-translate list. */}
-                              e.g. plex, 192.168.1.50, or localhost
-                            </span>
-                          </label>
-                          <div className="form-input">
-                            <div className="form-input-field">
-                              <Input
-                                id="advanced-hostname"
-                                name="advanced-hostname"
-                                type="text"
-                                value={advancedHostname}
-                                onChange={(e) => {
-                                  setAdvancedDraftOverride((currentDraft) => ({
-                                    ...(currentDraft ?? savedAdvancedDraft),
-                                    hostname: e.target.value,
-                                  }))
-                                }}
-                                placeholder={
-                                  normalizePlexHostname(
-                                    settings?.plex_hostname,
-                                  ) || 'plex'
-                                }
-                              />
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="form-row">
-                          <label htmlFor="advanced-port" className="text-label">
-                            <Trans>Port</Trans>
-                          </label>
-                          <div className="form-input">
-                            <div className="form-input-field">
-                              <Input
-                                id="advanced-port"
-                                name="advanced-port"
-                                type="number"
-                                value={advancedPort}
-                                onChange={(e) => {
-                                  setAdvancedDraftOverride((currentDraft) => ({
-                                    ...(currentDraft ?? savedAdvancedDraft),
-                                    port: e.target.value,
-                                  }))
-                                }}
-                                placeholder="32400"
-                              />
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="form-row">
-                          <label htmlFor="advanced-ssl" className="text-label">
-                            TLS
-                          </label>
-                          <div className="form-input">
-                            <div className="form-input-field">
-                              <label className="inline-flex items-center gap-2">
-                                <input
-                                  id="advanced-ssl"
-                                  name="advanced-ssl"
-                                  type="checkbox"
-                                  checked={advancedSsl}
-                                  onChange={(e) => {
-                                    setAdvancedDraftOverride(
-                                      (currentDraft) => ({
-                                        ...(currentDraft ?? savedAdvancedDraft),
-                                        ssl: e.target.checked,
-                                      }),
-                                    )
-                                  }}
-                                  className="checkbox"
-                                />
-                                <span className="text-sm text-zinc-300">
-                                  <Trans>Use HTTPS</Trans>
-                                </span>
-                              </label>
-                            </div>
-                          </div>
-                        </div>
-                      </>
-                    )}
+                  <div className="mt-3 flex flex-col gap-3">
+                    <InputGroup
+                      layout="stacked"
+                      id="advanced-url"
+                      label="URL"
+                      type="text"
+                      disabled={!manualMode}
+                      placeholder="http://localhost:32400"
+                      helpText={
+                        <ServiceUrlExamples
+                          examples={[
+                            'http://localhost:32400',
+                            'https://plex.example.com',
+                          ]}
+                        />
+                      }
+                      error={advancedErrors.url?.message}
+                      {...registerAdvanced('url', {
+                        validate: (value) =>
+                          plexConnectionUrlSchema.safeParse(value).success ||
+                          globalT`Please enter a valid server URL with no path.`,
+                      })}
+                    />
+                    <CheckboxGroup
+                      id="advanced-manual-mode"
+                      label={t`Enable manual mode`}
+                      helpText={
+                        <Trans>
+                          Override the connection discovered by Plex.
+                          <br />
+                          Disables automatic reconnection - you manage the
+                          connection.
+                        </Trans>
+                      }
+                      checked={manualMode}
+                      onChange={(e) => {
+                        setManualModeOverride(e.target.checked)
+                        // When disabling manual mode while it's the saved state,
+                        // clear server selection to force re-discovery from plex.tv
+                        if (
+                          !e.target.checked &&
+                          settings?.plex_manual_mode === 1
+                        ) {
+                          setSelectedServerOverride(null)
+                          clearTestBanner()
+                        }
+                      }}
+                    />
                   </div>
                 )}
               </div>
             )}
 
-            <div className="actions mt-5 w-full">
-              <div className="flex w-full flex-wrap sm:flex-nowrap">
-                <span className="m-auto rounded-md shadow-xs sm:mr-auto sm:ml-3">
-                  <DocsButton page="Configuration/#plex" />
-                </span>
-                <div className="m-auto mt-3 flex xs:mt-0 sm:m-0 sm:justify-end">
-                  <TestingButton
-                    type="button"
-                    buttonType="success"
-                    onClick={performTest}
-                    className="ml-3"
-                    disabled={
-                      testing ||
-                      !isAuthenticated ||
-                      (!hasSelectedServer && !manualMode) ||
-                      updatePlexAuthPending ||
-                      testWouldTestWrongServer ||
-                      hasUnsavedAdvancedChanges
+            <ServiceCardFooter
+              status={
+                feedback ??
+                (testBanner.version
+                  ? {
+                      type: testBanner.status ? 'success' : 'error',
+                      title: testBanner.status
+                        ? t`Success! (${{ version: releaseVersion(testBanner.version) }})`
+                        : testBanner.version,
                     }
-                    isPending={testing}
-                    feedbackStatus={
-                      testBanner.version ? testBanner.status : undefined
-                    }
-                    title={
-                      updatePlexAuthPending
-                        ? t`Wait for Plex authentication to finish before testing.`
-                        : !isAuthenticated
-                          ? t`Authenticate with Plex before testing the connection.`
-                          : !hasSelectedServer && !manualMode
-                            ? t`Select a Plex server before testing.`
-                            : testWouldTestWrongServer ||
-                                hasUnsavedAdvancedChanges
-                              ? t`Save your settings before testing.`
-                              : undefined
-                    }
-                  />
-                  <span className="ml-3 inline-flex rounded-md shadow-xs">
-                    <SaveButton
-                      type="button"
-                      onClick={() => void submit()}
-                      disabled={
-                        isPending || updatePlexAuthPending || !isAuthenticated
-                      }
-                      isPending={isPending}
-                      title={
-                        updatePlexAuthPending
-                          ? t`Wait for Plex authentication to finish before saving.`
-                          : !isAuthenticated
-                            ? t`Authenticate with Plex before saving server settings.`
-                            : undefined
-                      }
-                    />
-                  </span>
-                </div>
-              </div>
-            </div>
+                  : null) ??
+                storedTokenValidationAlert ??
+                null
+              }
+            >
+              <TestingButton
+                type="button"
+                buttonType="success"
+                onClick={performTest}
+                disabled={
+                  testing ||
+                  !isAuthenticated ||
+                  (!hasSelectedServer && !manualMode) ||
+                  updatePlexAuthPending ||
+                  testWouldTestWrongServer ||
+                  hasUnsavedAdvancedChanges
+                }
+                isPending={testing}
+                feedbackStatus={
+                  testBanner.version ? testBanner.status : undefined
+                }
+                title={
+                  updatePlexAuthPending
+                    ? t`Wait for Plex authentication to finish before testing.`
+                    : !isAuthenticated
+                      ? t`Authenticate with Plex before testing the connection.`
+                      : !hasSelectedServer && !manualMode
+                        ? t`Select a Plex server before testing.`
+                        : testWouldTestWrongServer || hasUnsavedAdvancedChanges
+                          ? t`Save your settings before testing.`
+                          : undefined
+                }
+              />
+              <SaveButton
+                type="button"
+                onClick={() => void submit()}
+                disabled={
+                  isPending || updatePlexAuthPending || !isAuthenticated
+                }
+                isPending={isPending}
+                title={
+                  updatePlexAuthPending
+                    ? t`Wait for Plex authentication to finish before saving.`
+                    : !isAuthenticated
+                      ? t`Authenticate with Plex before saving server settings.`
+                      : undefined
+                }
+              />
+            </ServiceCardFooter>
           </div>
-        </div>
+        </ServiceCard>
       </div>
     </>
   )
 }
+
 export default PlexSettings

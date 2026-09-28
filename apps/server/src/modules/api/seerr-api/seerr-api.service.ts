@@ -1,6 +1,7 @@
 import { BasicResponseDto, stripTrailingSlashes } from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
 import { cloneDeep } from 'lodash';
+import { assertApiKey, connectionTestConfig } from '../lib/connectionTest';
 import { SettingsDataService } from '../../../modules/settings/settings-data.service';
 import {
   formatConnectionFailureMessage,
@@ -750,11 +751,10 @@ export class SeerrApiService {
       : this.api;
 
     try {
+      assertApiKey(params ? params.apiKey : this.settings.seerr_api_key);
       const response = await api.getRawWithoutCache<SeerrAbout>(
         `/settings/about`,
-        {
-          signal: AbortSignal.timeout(CONNECTION_TEST_TIMEOUT_MS),
-        },
+        connectionTestConfig(),
       );
 
       if (!response.data?.version) {
@@ -772,7 +772,7 @@ export class SeerrApiService {
         message: response.data.version,
       };
     } catch (error) {
-      logConnectionTestError(this.logger, 'Seerr');
+      logConnectionTestError(this.logger, 'Seerr', error);
 
       return {
         status: 'NOK',

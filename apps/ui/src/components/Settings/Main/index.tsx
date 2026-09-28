@@ -11,7 +11,6 @@ import DocsButton from '../../Common/DocsButton'
 import PageControlRow from '../../Common/PageControlRow'
 import SaveButton from '../../Common/SaveButton'
 import { FieldJoin, Input } from '../../Forms/Input'
-import MediaServerSelector from '../MediaServerSelector'
 import {
   SettingsFeedbackAlert,
   useSettingsFeedback,
@@ -29,19 +28,11 @@ interface GeneralSettingsFormValues {
 const MainSettings = () => {
   const { t } = useLingui()
   const [showDownloadModal, setShowDownloadModal] = useState(false)
-  const {
-    feedback,
-    showUpdated,
-    showUpdateError,
-    showInfo,
-    showSuccess,
-    showError,
-    clear,
-    clearError,
-  } = useSettingsFeedback({
-    updated: t`General settings updated`,
-    updateError: t`General settings could not be updated`,
-  })
+  const { feedback, showUpdated, showUpdateError, showSuccess, clearError } =
+    useSettingsFeedback({
+      updated: t`General settings updated`,
+      updateError: t`General settings could not be updated`,
+    })
   const { settings } = useSettingsOutletContext()
   const { locale } = use(LocaleContext)
 
@@ -85,13 +76,6 @@ const MainSettings = () => {
             onUpdateError={showUpdateError}
           />
         </div>
-
-        <MediaServerSelector
-          currentType={settings.media_server_type ?? null}
-          onClearFeedback={clear}
-          onInfo={showInfo}
-          onError={showError}
-        />
       </div>
     </>
   )

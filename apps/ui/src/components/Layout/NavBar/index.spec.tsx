@@ -6,7 +6,7 @@ import SearchContext from '../../../contexts/search-context'
 import NavBar from './index'
 
 vi.mock('../../../router', () => ({
-  prefetchRoute: vi.fn(),
+  prefetchHandlers: () => ({}),
 }))
 
 vi.mock('../MediaServerSetupGuard', () => ({
@@ -52,5 +52,18 @@ describe('NavBar', () => {
     renderNavBar()
 
     expect(screen.getAllByText('Overlays')).toHaveLength(2)
+  })
+
+  it('links the services section between overlays and settings', () => {
+    const { container } = renderNavBar()
+
+    const desktopHrefs = Array.from(
+      container.querySelectorAll('.lg\\:flex nav a'),
+    ).map((link) => link.getAttribute('href'))
+    expect(desktopHrefs.slice(-3)).toEqual([
+      '/overlays',
+      '/services',
+      '/settings',
+    ])
   })
 })

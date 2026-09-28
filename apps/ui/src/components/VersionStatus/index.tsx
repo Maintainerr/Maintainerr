@@ -8,7 +8,7 @@ import { Trans, useLingui } from '@lingui/react/macro'
 import { type VersionResponse } from '@maintainerr/contracts'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { prefetchRoute } from '../../router'
+import { prefetchHandlers } from '../../router'
 import GetApiHandler from '../../utils/ApiHandler'
 import { startsWithDigit } from '../../utils/version'
 import { useMediaServerSetupNavigationGuard } from '../Layout/MediaServerSetupGuard'
@@ -39,12 +39,6 @@ const VersionStatus = ({ onClick }: VersionStatusProps) => {
 
   const containerClassName =
     'mx-2 flex min-h-[56px] items-center rounded-lg p-2 text-xs ring-1 ring-zinc-700 transition duration-300'
-
-  const handlePrefetch = () => {
-    if (!isBlocked) {
-      void prefetchRoute(aboutRoute)
-    }
-  }
 
   const handleClick = (event: React.MouseEvent<HTMLAnchorElement>) => {
     if (isBlocked) {
@@ -124,9 +118,7 @@ const VersionStatus = ({ onClick }: VersionStatusProps) => {
     return (
       <Link
         to={aboutRoute}
-        onMouseEnter={handlePrefetch}
-        onFocus={handlePrefetch}
-        onTouchStart={handlePrefetch}
+        {...prefetchHandlers(aboutRoute, !isBlocked)}
         onClick={handleClick}
         onKeyDown={handleKeyDown}
         role="button"
@@ -150,9 +142,7 @@ const VersionStatus = ({ onClick }: VersionStatusProps) => {
   return (
     <Link
       to={aboutRoute}
-      onMouseEnter={handlePrefetch}
-      onFocus={handlePrefetch}
-      onTouchStart={handlePrefetch}
+      {...prefetchHandlers(aboutRoute, !isBlocked)}
       onClick={handleClick}
       onKeyDown={handleKeyDown}
       role="button"

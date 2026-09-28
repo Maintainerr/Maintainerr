@@ -51,6 +51,7 @@ flowchart LR
   API --> Servarr["Radarr / Sonarr"]
   API --> DownloadClients["qBittorrent / Transmission"]
   API --> Seerr["Seerr"]
+  API --> Ombi["Ombi"]
   API --> Tautulli["Tautulli"]
   API --> Streamystats["Streamystats"]
   API --> Metadata["TMDB / TVDB / Sportarr"]
@@ -102,7 +103,7 @@ integrations, and production static serving.
   `src/modules/api/media-server/emby/` contain server-specific adapters,
   constants, mappers, caching, and SDK/API calls.
 - Other `src/modules/api/` submodules wrap integration clients and helper
-  APIs, including Plex legacy routes, Servarr, Seerr, Tautulli, Streamystats, TMDB, TVDB,
+  APIs, including Plex legacy routes, Servarr, Seerr, Ombi, Tautulli, Streamystats, TMDB, TVDB,
   the Sportarr metadata API,
   GitHub, external API, internal API, and shared request/cache helpers.
 - `src/modules/rules/` evaluates rule groups against media-server and external
@@ -160,10 +161,19 @@ Maintainerr integrates with:
 - qBittorrent and Transmission for optional completed-download cleanup after
   Radarr or Sonarr media deletion.
 - Seerr-compatible services for request cleanup.
-- Tautulli for Plex analytics and rule data.
+- Ombi for request cleanup and request-based rules. Requests are matched by
+  TMDB id; a season is removed through the per-user child requests that
+  cover only that season (a child covering other seasons too is kept, since
+  Ombi cannot trim one), and Ombi never marks a fulfilled request unavailable
+  itself.
+- Tautulli for Plex analytics and rule data, and per-item watch statistics on
+  the media modal.
 - Streamystats for Jellyfin item-level analytics surfaced on the media modal.
   Authentication reuses the configured Jellyfin API key. Emby is not supported
   upstream.
+- Tracearr for watch-history rule data on Plex, Jellyfin, and Emby, and
+  per-item watch statistics on the media modal. Everything is read by rating
+  key from the one Tracearr server bound to the managed media server.
 - TMDB and TVDB for metadata resolution, and the Sportarr metadata API for
   Sportarr leagues, which answers ahead of the primary provider for a show
   that carries a Sportarr id. It reads the configured Sportarr connections,
@@ -308,4 +318,6 @@ architecture and intent only; for how the code works, read the code.
   Maintainerr collection.
 - Seerr: The request-management integration (github.com/seerr-team/seerr) used
   for request cleanup.
+- Ombi: The other supported request service (github.com/Ombi-app/Ombi), with
+  its own settings, rule application and request cleanup.
 - SSE: Server-sent events used for live rule and collection job updates.

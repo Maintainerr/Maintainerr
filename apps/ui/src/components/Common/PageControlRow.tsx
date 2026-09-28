@@ -10,6 +10,12 @@ interface PageControlRowProps {
    * sticky element only travels as far as its parent box.
    */
   sticky?: boolean
+  /**
+   * Two controls side by side: two across on a phone, where they share the
+   * row with the actions and a stacked pair would eat the screen, and two
+   * fixed cells right-aligned from `sm` up.
+   */
+  controlsLayout?: 'pair'
   className?: string
   actionsClassName?: string
   controlsClassName?: string
@@ -22,6 +28,7 @@ const PageControlRow = ({
   actions,
   controls,
   sticky,
+  controlsLayout,
   className,
   actionsClassName,
   controlsClassName,
@@ -76,9 +83,21 @@ const PageControlRow = ({
 
       {controls ? (
         <div
-          className={clsx('w-full sm:ml-auto sm:w-[18rem]', controlsClassName)}
+          className={clsx(
+            'w-full sm:ml-auto',
+            controlsLayout === 'pair' ? 'min-w-0 sm:w-auto' : 'sm:w-[18rem]',
+            controlsClassName,
+          )}
         >
-          {controls}
+          {controlsLayout === 'pair' ? (
+            // Each control starts at 18rem and gives way before the row
+            // overflows; a fixed width scrolled the page sideways on tablets.
+            <div className="grid w-full grid-cols-2 gap-2 *:w-full *:min-w-0 sm:flex sm:items-center sm:justify-end sm:*:basis-[18rem]">
+              {controls}
+            </div>
+          ) : (
+            controls
+          )}
         </div>
       ) : null}
     </div>

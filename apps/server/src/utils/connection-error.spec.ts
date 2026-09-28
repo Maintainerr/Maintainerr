@@ -1,5 +1,8 @@
 import { AxiosError } from 'axios';
-import { formatConnectionFailureMessage } from './connection-error';
+import {
+  formatConnectionFailureMessage,
+  logConnectionTestError,
+} from './connection-error';
 
 const FALLBACK = 'Failed to connect. Verify URL and credentials.';
 
@@ -58,6 +61,36 @@ describe('formatConnectionFailureMessage', () => {
     );
   });
 
+  it('classifies a deadline cancellation wrapped by the Plex client', () => {
+    const error = new Error('Plex request failed', {
+      cause: new AxiosError('canceled', 'ERR_CANCELED'),
+    });
+    expect(formatConnectionFailureMessage(error, FALLBACK)).toContain(
+      'Connection timed out after 5 seconds',
+    );
+  });
+
+  it('preserves permission guidance from a wrapped forbidden response', () => {
+    const cause = new AxiosError(
+      'Request failed',
+      'ERR_BAD_REQUEST',
+      undefined,
+      undefined,
+      {
+        status: 403,
+        statusText: 'Forbidden',
+        data: undefined,
+        headers: {},
+        config: {} as never,
+      },
+    );
+    const error = new Error(
+      'Plex Server denied request due to lack of managed user permissions!',
+      { cause },
+    );
+    expect(formatConnectionFailureMessage(error, FALLBACK)).toBe(error.message);
+  });
+
   it('reports other HTTP status codes', () => {
     const error = new AxiosError(
       'Request failed',
@@ -80,5 +113,17 @@ describe('formatConnectionFailureMessage', () => {
 
   it('falls back to the provided message for an unclassifiable error', () => {
     expect(formatConnectionFailureMessage({}, FALLBACK)).toBe(FALLBACK);
+  });
+});
+
+describe('logConnectionTestError', () => {
+  it('keeps exception details at debug level', () => {
+    const logger = { error: jest.fn(), debug: jest.fn() };
+    const error = new AxiosError('Sensitive upstream details', 'ENOTFOUND');
+
+    logConnectionTestError(logger, 'Seerr', error);
+
+    expect(logger.error).toHaveBeenCalledWith('Seerr connection test failed');
+    expect(logger.debug).toHaveBeenCalledWith(error);
   });
 });

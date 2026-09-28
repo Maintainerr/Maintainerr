@@ -5,6 +5,8 @@ import {
   tautulliSettingSchema,
 } from '@maintainerr/contracts'
 import { z } from 'zod'
+import { ServiceApiKeyHelp } from '../../Forms/ServiceApiKeyHelp'
+import { ServiceUrlExamples } from '../../Forms/ServiceUrlExamples'
 import ExternalServiceSettingsPage, {
   type ExternalServiceFieldConfig,
 } from '../ExternalServiceSettingsPage'
@@ -23,16 +25,15 @@ const TautulliSettingFormSchema = z.union([
 const buildFields = (): ExternalServiceFieldConfig[] => [
   {
     name: 'url',
+    fullWidth: true,
     label: 'URL',
     placeholder: 'http://localhost:8181',
     helpText: (
-      <>
-        <Trans>Example URL formats:</Trans>{' '}
-        <span className="whitespace-nowrap">http://localhost:8181</span>,{' '}
-        <span className="whitespace-nowrap">http://192.168.1.5/tautulli</span>,{' '}
-        <span className="whitespace-nowrap">https://tautulli.example.com</span>
-      </>
+      <ServiceUrlExamples
+        examples={['http://localhost:8181', 'https://tautulli.example.com']}
+      />
     ),
+    basePath: true,
     normalize: stripTrailingSlashes,
     required: true,
   },
@@ -40,6 +41,14 @@ const buildFields = (): ExternalServiceFieldConfig[] => [
     name: 'api_key',
     label: globalT`API key`,
     type: 'password',
+    helpText: (values) => (
+      <ServiceApiKeyHelp
+        url={values.url}
+        path="/settings#tabs_tabs-web_interface"
+      >
+        <Trans>Find it here: Settings → Web Interface</Trans>
+      </ServiceApiKeyHelp>
+    ),
   },
 ]
 
@@ -48,17 +57,13 @@ const TautulliSettings = () => {
 
   return (
     <ExternalServiceSettingsPage
-      updatedMessage={t`Tautulli settings updated`}
       updateErrorMessage={t`Tautulli settings could not be updated`}
       pageTitle={t`Tautulli settings - Maintainerr`}
-      heading={t`Tautulli Settings`}
-      description={t`Tautulli configuration`}
-      docsPage="Configuration/#tautulli"
       settingsPath="/settings/tautulli"
       testPath="/settings/test/tautulli"
       schema={TautulliSettingFormSchema}
       fields={buildFields()}
-      testSuccessTitle="Tautulli"
+      serviceName="Tautulli"
       testFailureMessage={t`Failed to connect to Tautulli. Verify URL and API key.`}
     />
   )

@@ -715,9 +715,6 @@ export class OverlayProcessorService {
         force || !existingState || existingState.daysLeftShown !== daysLeft;
 
       if (shouldApply) {
-        this.logger.log(
-          `Applying template overlay to item ${itemId} - ${daysLeft} day(s) left`,
-        );
         const success = await this.applyTemplateOverlay(
           itemId,
           collection.id,
@@ -725,7 +722,12 @@ export class OverlayProcessorService {
           target.template,
           provider,
         );
-        if (success) {
+        if (success === 'unchanged') {
+          result.skipped++;
+        } else if (success) {
+          this.logger.log(
+            `Applied template overlay to item ${itemId} - ${daysLeft} day(s) left`,
+          );
           result.processed++;
           this.addUniqueMediaItem(processedMediaItems, itemId);
         } else {
@@ -1024,7 +1026,7 @@ export class OverlayProcessorService {
     deleteDate: Date,
     template: OverlayTemplate,
     provider: IOverlayProvider,
-  ): Promise<boolean> {
+  ): Promise<boolean | 'unchanged'> {
     let posterBuf: Buffer;
     const savedOriginal = this.loadOriginalPoster(itemId);
     if (savedOriginal) {
@@ -1075,19 +1077,29 @@ export class OverlayProcessorService {
       return false;
     }
 
+    const rendered = Buffer.from(result.buffer);
+    let unchanged = false;
+    if (savedOriginal) {
+      try {
+        // Read current artwork so a forced run can still repair external changes.
+        const current = await provider.downloadImage(itemId);
+        unchanged = current?.equals(rendered) ?? false;
+      } catch (error) {
+        this.logger.debug(error);
+      }
+    }
+
     try {
-      await provider.uploadImage(
-        itemId,
-        Buffer.from(result.buffer),
-        result.contentType,
-      );
+      if (!unchanged) {
+        await provider.uploadImage(itemId, rendered, result.contentType);
+      }
       await this.stateService.markProcessed(
         collectionId,
         itemId,
         this.getOriginalPosterPath(itemId),
         daysLeft,
       );
-      return true;
+      return unchanged ? 'unchanged' : true;
     } catch (error) {
       this.logger.warn(`Failed to apply template overlay for ${itemId}`);
       this.logger.debug(error);

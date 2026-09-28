@@ -60,6 +60,7 @@ import { CommunityRuleKarma } from './entities/community-rule-karma.entities';
 import { Exclusion } from './entities/exclusion.entities';
 import { RuleGroup } from './entities/rule-group.entities';
 import { Rules } from './entities/rules.entities';
+import { ArrLookupCache } from './helpers/arr-lookup-cache';
 import { unavailableRuleApplications } from './helpers/rule-application-availability.helper';
 import { RuleComparatorServiceFactory } from './helpers/rule.comparator.service';
 import { RuleYamlService } from './helpers/yaml.service';
@@ -493,6 +494,8 @@ export class RulesService {
           // created before it was hidden.
           forceSeerr:
             collectionType !== 'episode' && params.forceSeerr ? true : false,
+          forceOmbi:
+            collectionType !== 'episode' && params.forceOmbi ? true : false,
           tautulliWatchedPercentOverride:
             params.tautulliWatchedPercentOverride ?? null,
           radarrSettingsId: params.radarrSettingsId ?? null,
@@ -723,6 +726,8 @@ export class RulesService {
           // created before it was hidden.
           forceSeerr:
             collectionType !== 'episode' && params.forceSeerr ? true : false,
+          forceOmbi:
+            collectionType !== 'episode' && params.forceOmbi ? true : false,
           tautulliWatchedPercentOverride:
             params.tautulliWatchedPercentOverride ?? null,
           radarrSettingsId: params.radarrSettingsId ?? null,
@@ -810,9 +815,9 @@ export class RulesService {
         }
 
         // Behavior A: one-time *arr membership-tag reconcile on a tagInArr toggle
-        // - enabling tags current members, disabling untags them (ongoing changes
-        // are handled by the executor's per-run deltas). Best-effort; awaited so
-        // the backfill completes before the save returns.
+        // - enabling tags current members, disabling untags them (from then on
+        // the executor tags adds and the collection service untags leaves).
+        // Best-effort; awaited so the backfill completes before the save returns.
         if (
           savedCollection &&
           (dbCollection?.tagInArr ?? false) !== savedCollection.tagInArr
@@ -1188,7 +1193,7 @@ export class RulesService {
       // not each traversed season/episode id. Covers both collection-scoped and
       // global exclusions (a global exclusion resolves the single configured *arr
       // instance). Best-effort; never blocks the exclusion.
-      if (this.servarrTagService.anyExclusionTaggingEnabled()) {
+      if (await this.servarrTagService.anyExclusionTaggingEnabled()) {
         await this.syncExclusionTag(
           'add',
           { mediaServerId: String(data.mediaId), type: topLevelType },
@@ -1506,7 +1511,7 @@ export class RulesService {
       // exclusions. Conservative by default (off) so a manually-set tag is never
       // stripped; only ever touches the configured label. Runs after the delete so
       // the shared-tag guard can see that no other exclusion still wants the tag.
-      if (this.servarrTagService.anyExclusionUntaggingEnabled()) {
+      if (await this.servarrTagService.anyExclusionUntaggingEnabled()) {
         await this.syncExclusionTag(
           'remove',
           { mediaServerId: exclcusion.mediaServerId, type: exclcusion.type },
@@ -1641,7 +1646,7 @@ export class RulesService {
       // the protective *arr tag on un-exclude - this is the POST /rules/exclusion
       // remove path used by the media modal. Untag the top-level item once, after
       // its rows are deleted so the shared-tag guard is accurate.
-      if (this.servarrTagService.anyExclusionUntaggingEnabled()) {
+      if (await this.servarrTagService.anyExclusionUntaggingEnabled()) {
         const type =
           topLevelType ??
           (await mediaServer.getMetadata(String(data.mediaId)))?.type;
@@ -1692,7 +1697,7 @@ export class RulesService {
       // the protective *arr tag once every exclusion for the item is cleared.
       // Instance-wide, so a scoped exclusion's tag is cleared too; the guard
       // always passes (no rows remain).
-      if (this.servarrTagService.anyExclusionUntaggingEnabled()) {
+      if (await this.servarrTagService.anyExclusionUntaggingEnabled()) {
         await this.syncExclusionTag(
           'remove',
           { mediaServerId, type: metaData.type },
@@ -2434,6 +2439,7 @@ export class RulesService {
     // Drop the run-scoped Seerr request index too, so a single-item test rebuilds
     // it from a fresh /request sweep and agrees with a full run (#3152).
     cacheManager.getCache('seerrrequests').data.flushAll();
+    cacheManager.getCache('ombirequests').data.flushAll();
     cacheManager.getCache('tautulli').data.flushAll();
     cacheManager.getCache('streamystats').data.flushAll();
     cacheManager
@@ -2461,6 +2467,9 @@ export class RulesService {
         const result = await ruleComparator.executeRulesWithData(
           group as RuleGroupDto,
           [mediaResp],
+          undefined,
+          undefined,
+          new ArrLookupCache(),
         );
         return { code: 1, result: result.stats };
       } catch (error) {

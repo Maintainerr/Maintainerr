@@ -8,8 +8,16 @@ import AddButton from '../components/Common/AddButton'
 import ExecuteButton from '../components/Common/ExecuteButton'
 import LibrarySwitcher from '../components/Common/LibrarySwitcher'
 import LoadingSpinner from '../components/Common/LoadingSpinner'
+import {
+  MediaLibrarySortControl,
+  useMediaLibrarySort,
+} from '../components/Common/MediaLibrarySortControl'
 import PageControlRow from '../components/Common/PageControlRow'
 import RuleGroup, { IRuleGroup } from '../components/Rules/RuleGroup'
+import {
+  getRuleGroupSortConfig,
+  sortRuleGroups,
+} from '../components/Rules/ruleGroupSort'
 import { useTaskStatusContext } from '../contexts/taskstatus-context'
 import { PostApiHandler } from '../utils/ApiHandler'
 import { Trans, useLingui } from '@lingui/react/macro'
@@ -33,6 +41,10 @@ const RulesListPage = () => {
     },
   })
   const { data = [], isLoading, refetch } = useRuleGroups(selectedLibrary)
+  const sortConfig = getRuleGroupSortConfig()
+  const { sortValue, sortParams, onSortChange } =
+    useMediaLibrarySort(sortConfig)
+  const sortedGroups = sortRuleGroups(data, sortParams, libraries)
 
   const onSwitchLibrary = (libraryId: string) => {
     setSelectedLibrary(libraryId)
@@ -64,6 +76,7 @@ const RulesListPage = () => {
       <title>{t`Rules - Maintainerr`}</title>
       <div className="w-full px-4">
         <PageControlRow
+          controlsLayout="pair"
           actions={
             <>
               <AddButton
@@ -84,15 +97,23 @@ const RulesListPage = () => {
             </>
           }
           controls={
-            <LibrarySwitcher
-              containerClassName="mb-0"
-              formClassName="max-w-none"
-              onLibraryChange={onSwitchLibrary}
-              selectedLibraryId={selectedLibrary}
-              libraries={libraries}
-              librariesLoading={librariesLoading}
-              librariesError={!!librariesError}
-            />
+            <>
+              <LibrarySwitcher
+                containerClassName="mb-0"
+                formClassName="max-w-none"
+                onLibraryChange={onSwitchLibrary}
+                selectedLibraryId={selectedLibrary}
+                libraries={libraries}
+                librariesLoading={librariesLoading}
+                librariesError={!!librariesError}
+              />
+              <MediaLibrarySortControl
+                ariaLabel={t`Sort rules`}
+                options={sortConfig.options}
+                value={sortValue}
+                onSortChange={onSortChange}
+              />
+            </>
           }
         />
         <h1 className="mb-3 text-lg font-bold text-zinc-200">
@@ -102,7 +123,7 @@ const RulesListPage = () => {
           <LoadingSpinner />
         ) : (
           <ul className="grid grid-cols-1 gap-4 sm:grid-cols-[repeat(auto-fill,minmax(18rem,1fr))]">
-            {data.map((el) => (
+            {sortedGroups.map((el) => (
               <li
                 key={el.id}
                 className="collection relative flex h-fit transform-gpu flex-col rounded-xl bg-zinc-800 bg-cover bg-center p-4 text-zinc-400 shadow-sm ring-1 ring-zinc-700"

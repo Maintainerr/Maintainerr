@@ -32,6 +32,8 @@ import { chunk } from 'lodash';
 import { Brackets, DataSource, In, LessThan, Not, Repository } from 'typeorm';
 import { CollectionLog } from '../../modules/collections/entities/collection_log.entities';
 import { getErrorMessage } from '../../utils/connection-error';
+import { ServarrTagService } from '../actions/servarr-tag.service';
+import { ArrLookupCache } from '../rules/helpers/arr-lookup-cache';
 import { readItemPresence } from '../api/media-server/item-presence.util';
 import {
   ENRICHMENT_ID_CHUNK,
@@ -187,6 +189,7 @@ export class CollectionsService {
     private readonly eventEmitter: EventEmitter2,
     private readonly collectionPosterService: CollectionPosterService,
     private readonly overlayProcessor: OverlayProcessorService,
+    private readonly servarrTagService: ServarrTagService,
     private readonly logger: MaintainerrLogger,
   ) {
     logger.setContext(CollectionsService.name);
@@ -1373,32 +1376,56 @@ export class CollectionsService {
   }
 
   /**
-   * Builds the comparator options that route `deleteSoonest` to each row's
-   * `collection_media.addDate` (when Maintainerr started the deletion timer)
-   * instead of `MediaItem.addedAt` (when the file landed in the underlying
-   * media-server library). Sorting must follow the user-visible
-   * "Leaving in X days" overlay so what Maintainerr UI shows matches what is
-   * pushed to the media server collection.
-   *
-   * `deleteSoonestReferenceTime` anchors the comparator's day buckets to the
-   * same `daysLeft` rollover the overlay shows, so two items with the same
-   * countdown tie even when their `addDate`s straddle UTC midnight.
+   * Routes `deleteSoonest` to each item's deadline (`collection_media.addDate`
+   * plus its own collection's window) instead of `MediaItem.addedAt`, so the
+   * pushed order follows the "Leaving in X days" overlay. Collections sharing
+   * one media server collection each count their own window (#3799); an item
+   * in several keeps its earliest deadline, one with no window sorts last, and
+   * with no window at all the order falls back to `addDate`.
    */
   private buildCollectionMediaCompareOptions(
-    rows: ReadonlyArray<{ mediaServerId: string; addDate: Date | string }>,
-    deleteAfterDays: number | null | undefined,
+    rows: ReadonlyArray<{
+      mediaServerId: string;
+      addDate: Date | string;
+      collectionId: number;
+    }>,
+    deleteAfterDaysByCollectionId: ReadonlyMap<
+      number,
+      number | null | undefined
+    >,
   ): CompareMediaItemsOptions {
-    const addDateByMediaItemId = new Map<string, Date | string>(
-      rows.map((row) => [row.mediaServerId, row.addDate]),
-    );
-    const options: CompareMediaItemsOptions = {
-      deleteSoonestDate: (item) => addDateByMediaItemId.get(item.id),
-    };
-    if (deleteAfterDays != null) {
-      options.deleteSoonestReferenceTime =
-        getCollectionDangerDate(deleteAfterDays).getTime();
+    const deadlineByMediaItemId = new Map<string, Date | null>();
+    for (const row of rows) {
+      const deleteAfterDays = deleteAfterDaysByCollectionId.get(
+        row.collectionId,
+      );
+      const deadline =
+        deleteAfterDays == null
+          ? null
+          : new Date(
+              new Date(row.addDate).getTime() + deleteAfterDays * 86400000,
+            );
+      const earliest = deadlineByMediaItemId.get(row.mediaServerId);
+      if (earliest == null || (deadline && deadline < earliest)) {
+        deadlineByMediaItemId.set(row.mediaServerId, deadline);
+      }
     }
-    return options;
+
+    if (
+      [...deadlineByMediaItemId.values()].every((deadline) => deadline === null)
+    ) {
+      const addDateByMediaItemId = new Map<string, Date | string>(
+        rows.map((row) => [row.mediaServerId, row.addDate]),
+      );
+      return {
+        deleteSoonestDate: (item) => addDateByMediaItemId.get(item.id),
+      };
+    }
+
+    return {
+      deleteSoonestDate: (item) => deadlineByMediaItemId.get(item.id),
+      deleteSoonestReferenceTime: Date.now(),
+    };
   }
 
   async applyCollectionSort(collection: Collection): Promise<void> {
@@ -1445,11 +1472,27 @@ export class CollectionsService {
         return;
       }
 
+      // Same-titled rule groups share one media server collection, so its
+      // order covers every linked collection's items, not just this one's.
+      const linkedCollections = [
+        collection,
+        ...(await this.collectionRepo.find({
+          where: {
+            mediaServerId: collection.mediaServerId,
+            id: Not(collection.id),
+          },
+        })),
+      ];
       const allMediaRows = await this.CollectionMediaRepo.find({
-        where: { collectionId: collection.id },
+        where: { collectionId: In(linkedCollections.map(({ id }) => id)) },
       });
+      // One entry per item, however many linked collections hold it.
       const hydratedItems = await this.hydrateCollectionMediaWithMetadata(
-        allMediaRows,
+        [
+          ...new Map<string, CollectionMedia>(
+            allMediaRows.map((row) => [row.mediaServerId, row]),
+          ).values(),
+        ],
         mediaServer,
       );
       const sortable = hydratedItems.filter((item) => item.mediaData);
@@ -1458,8 +1501,13 @@ export class CollectionsService {
       }
 
       const compareOptions = this.buildCollectionMediaCompareOptions(
-        sortable,
-        collection.deleteAfterDays,
+        allMediaRows,
+        new Map<number, number | null>(
+          linkedCollections.map(({ id, deleteAfterDays }) => [
+            id,
+            deleteAfterDays,
+          ]),
+        ),
       );
 
       sortable.sort((a, b) =>
@@ -1593,9 +1641,9 @@ export class CollectionsService {
         };
       }
 
-      // Explicit sort on a MediaItem-side key (airDate / rating / watchCount /
-      // title) - the sort value isn't on `collection_media`, so we have to
-      // hydrate the whole collection before paginating. Acceptable because
+      // Explicit sort on a MediaItem-side key - the sort value isn't on
+      // `collection_media`, so we have to hydrate the whole collection before
+      // paginating. Acceptable because
       // these sorts are rarely used compared to `deleteSoonest` and the
       // default load.
       const { entities } = await queryBuilder
@@ -1625,7 +1673,7 @@ export class CollectionsService {
       const collectionRecord = await this.getCollection(id);
       const compareOptions = this.buildCollectionMediaCompareOptions(
         sortableEntities,
-        collectionRecord?.deleteAfterDays,
+        new Map([[id, collectionRecord?.deleteAfterDays]]),
       );
 
       const sortedPageEntities = sortableEntities
@@ -3504,12 +3552,15 @@ export class CollectionsService {
     collectionDbId: number,
     media: CollectionMediaChange[],
     removalScope: CollectionMediaRemovalScope = 'all',
+    libraryReads?: ArrLookupCache,
   ): Promise<Collection | undefined> {
     return this.removeFromCollectionInternal(
       collectionDbId,
       media,
       false,
       removalScope,
+      false,
+      libraryReads,
     );
   }
 
@@ -3549,6 +3600,7 @@ export class CollectionsService {
   async removeMediaFromOtherCollections(
     mediaServerId: string,
     excludeCollectionId: number,
+    libraryReads?: ArrLookupCache,
   ): Promise<number[]> {
     const memberships = await this.CollectionMediaRepo.find({
       where: { mediaServerId },
@@ -3618,6 +3670,7 @@ export class CollectionsService {
           false,
           'all',
           true,
+          libraryReads,
         );
         prunedCollectionIds.push(siblingCollection.id);
       }
@@ -3632,6 +3685,7 @@ export class CollectionsService {
     skipAutomaticLinkCheck = false,
     removalScope: CollectionMediaRemovalScope = 'all',
     skipMediaServerRemove = false,
+    libraryReads?: ArrLookupCache,
   ): Promise<Collection | undefined> {
     try {
       const mediaServer = await this.getMediaServer();
@@ -3699,10 +3753,6 @@ export class CollectionsService {
               )
             : new Set<string>();
 
-        collectionMedia = collectionMedia.filter(
-          (existingMedia) => !removedItemIds.has(existingMedia.mediaServerId),
-        );
-
         if (removedItemIds.size > 0) {
           this.eventEmitter.emit(
             MaintainerrEvent.CollectionMedia_Removed,
@@ -3714,7 +3764,22 @@ export class CollectionsService {
               collection.deleteAfterDays,
             ),
           );
+
+          // Every leave passes through here, so this is where the collection's
+          // *arr membership tag comes off. No-op unless it tags its content.
+          await this.servarrTagService.syncMembershipTags(
+            collection,
+            [],
+            collectionMedia.filter((existingMedia) =>
+              removedItemIds.has(existingMedia.mediaServerId),
+            ),
+            libraryReads,
+          );
         }
+
+        collectionMedia = collectionMedia.filter(
+          (existingMedia) => !removedItemIds.has(existingMedia.mediaServerId),
+        );
 
         const isSharedManualCollection =
           collection.manualCollection &&
@@ -4689,6 +4754,7 @@ export class CollectionsService {
             listExclusions: collection.listExclusions,
             cleanupLeftoverFolders: collection.cleanupLeftoverFolders ?? false,
             forceSeerr: collection.forceSeerr,
+            forceOmbi: collection.forceOmbi,
             keepLogsForMonths: collection.keepLogsForMonths,
             tautulliWatchedPercentOverride:
               collection.tautulliWatchedPercentOverride ?? null,

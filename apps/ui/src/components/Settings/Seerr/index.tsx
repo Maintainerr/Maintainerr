@@ -5,6 +5,8 @@ import {
   stripTrailingSlashes,
 } from '@maintainerr/contracts'
 import { z } from 'zod'
+import { ServiceApiKeyHelp } from '../../Forms/ServiceApiKeyHelp'
+import { ServiceUrlExamples } from '../../Forms/ServiceUrlExamples'
 import ExternalServiceSettingsPage, {
   type ExternalServiceFieldConfig,
 } from '../ExternalServiceSettingsPage'
@@ -23,15 +25,13 @@ const SeerrSettingFormSchema = z.union([
 const buildFields = (): ExternalServiceFieldConfig[] => [
   {
     name: 'url',
+    fullWidth: true,
     label: 'URL',
     placeholder: 'http://localhost:5055',
     helpText: (
-      <>
-        <Trans>Example URL formats:</Trans>{' '}
-        <span className="whitespace-nowrap">http://localhost:5055</span>,{' '}
-        <span className="whitespace-nowrap">http://192.168.1.5/seerr</span>,{' '}
-        <span className="whitespace-nowrap">https://seerr.example.com</span>
-      </>
+      <ServiceUrlExamples
+        examples={['http://localhost:5055', 'https://seerr.example.com']}
+      />
     ),
     normalize: stripTrailingSlashes,
     required: true,
@@ -40,6 +40,11 @@ const buildFields = (): ExternalServiceFieldConfig[] => [
     name: 'api_key',
     label: globalT`API key`,
     type: 'password',
+    helpText: (values) => (
+      <ServiceApiKeyHelp url={values.url} path="/settings/main">
+        <Trans>Find it here: Settings → General → API Key</Trans>
+      </ServiceApiKeyHelp>
+    ),
   },
 ]
 
@@ -48,17 +53,13 @@ const SeerrSettings = () => {
 
   return (
     <ExternalServiceSettingsPage
-      updatedMessage={t`Seerr settings updated`}
       updateErrorMessage={t`Seerr settings could not be updated`}
       pageTitle={t`Seerr settings - Maintainerr`}
-      heading={t`Seerr Settings`}
-      description={t`Seerr configuration`}
-      docsPage="Configuration/#seerr"
       settingsPath="/settings/seerr"
       testPath="/settings/test/seerr"
       schema={SeerrSettingFormSchema}
       fields={buildFields()}
-      testSuccessTitle="Seerr"
+      serviceName="Seerr"
       testFailureMessage={t`Failed to connect to Seerr. Verify URL and API key.`}
     />
   )

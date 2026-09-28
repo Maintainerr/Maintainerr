@@ -116,7 +116,7 @@ export class QbittorrentApi
     return this.withAuth(async () => {
       const response = await this.axios.get<string>('/app/version', config);
       return response.data;
-    });
+    }, config);
   }
 
   public async getTorrents(): Promise<DownloadClientTorrent[]> {
@@ -176,7 +176,7 @@ export class QbittorrentApi
     });
   }
 
-  private async login(): Promise<void> {
+  private async login(config?: RawAxiosRequestConfig): Promise<void> {
     const body = new URLSearchParams();
     body.set('username', this.username ?? '');
     body.set('password', this.password ?? '');
@@ -184,6 +184,7 @@ export class QbittorrentApi
     let response: AxiosResponse<string>;
     try {
       response = await this.axios.post<string>('/auth/login', body.toString(), {
+        ...config,
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       });
     } catch (error) {
@@ -214,14 +215,17 @@ export class QbittorrentApi
     this.authenticated = true;
   }
 
-  private async ensureAuth(): Promise<void> {
+  private async ensureAuth(config?: RawAxiosRequestConfig): Promise<void> {
     if (!this.authenticated) {
-      await this.login();
+      await this.login(config);
     }
   }
 
-  private async withAuth<T>(fn: () => Promise<T>): Promise<T> {
-    await this.ensureAuth();
+  private async withAuth<T>(
+    fn: () => Promise<T>,
+    config?: RawAxiosRequestConfig,
+  ): Promise<T> {
+    await this.ensureAuth(config);
     try {
       return await fn();
     } catch (error) {
@@ -232,7 +236,7 @@ export class QbittorrentApi
       ) {
         this.authenticated = false;
         delete this.axios.defaults.headers.common['Cookie'];
-        await this.login();
+        await this.login(config);
         try {
           return await fn();
         } catch (retryError) {

@@ -3,9 +3,6 @@ import { ServarrAction } from '@maintainerr/contracts'
 import { useEffect } from 'react'
 import { useServarrSettings } from '../../../../../api/settings'
 import { Select } from '../../../../Forms/Select'
-import { IRadarrSetting } from '../../../../Settings/Radarr'
-import { ISonarrSetting } from '../../../../Settings/Sonarr'
-import { ISportarrSetting } from '../../../../Settings/Sportarr'
 
 type ArrType = 'Radarr' | 'Sonarr' | 'Sportarr'
 
@@ -42,9 +39,7 @@ const ArrAction = (props: ArrActionProps) => {
     data: settings,
     isLoading: loading,
     isFetching,
-  } = useServarrSettings<IRadarrSetting | ISonarrSetting | ISportarrSetting>(
-    type.toLowerCase() as 'radarr' | 'sonarr' | 'sportarr',
-  )
+  } = useServarrSettings(type.toLowerCase() as 'radarr' | 'sonarr' | 'sportarr')
   const settingsList = settings ?? []
   const action = arrAction ?? 0
 

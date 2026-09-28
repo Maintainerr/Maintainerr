@@ -58,6 +58,10 @@ export class SeerrGetterService {
         libItem = await mediaServer.getMetadata(
           dataType === 'season' ? libItem.parentId : libItem.grandparentId,
         );
+        // An unreadable show is transient: protect the item, not the run.
+        if (!libItem) {
+          return undefined;
+        }
       }
 
       const prop = this.appProperties.find((el) => el.id === id);
@@ -252,10 +256,10 @@ export class SeerrGetterService {
       }
     } catch (error) {
       this.logger.warn(
-        `Seerr-Getter - Action failed for '${libItem.title}' with id '${libItem.id}'`,
+        `Seerr-Getter - Action failed for '${libItem?.title}' with id '${libItem?.id}'`,
       );
       this.logger.debug(
-        `Seerr-Getter - Action failed for '${libItem.title}' with id '${libItem.id}'`,
+        `Seerr-Getter - Action failed for '${libItem?.title}' with id '${libItem?.id}'`,
         error,
       );
       return undefined;

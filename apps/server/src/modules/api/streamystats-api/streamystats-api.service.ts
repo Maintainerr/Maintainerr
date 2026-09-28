@@ -6,12 +6,12 @@ import {
   streamystatsWatchlistsResponseSchema,
 } from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
+import { assertApiKey, connectionTestConfig } from '../lib/connectionTest';
 import { SettingsDataService } from '../../../modules/settings/settings-data.service';
 import {
   formatConnectionFailureMessage,
   logConnectionTestError,
 } from '../../../utils/connection-error';
-import { CONNECTION_TEST_TIMEOUT_MS } from '../lib/httpTimeouts';
 import {
   MaintainerrLogger,
   MaintainerrLoggerFactory,
@@ -79,21 +79,6 @@ export class StreamystatsApiService {
       },
       this.loggerFactory.createLogger(),
     );
-  }
-
-  public async info(): Promise<StreamystatsVersionInfo | null> {
-    try {
-      return await this.api.getWithoutCache<StreamystatsVersionInfo>(
-        '/api/version',
-        {
-          signal: AbortSignal.timeout(CONNECTION_TEST_TIMEOUT_MS),
-        },
-      );
-    } catch (error) {
-      this.logger.log("Couldn't fetch Streamystats info");
-      this.logger.debug(error);
-      return null;
-    }
   }
 
   public async getItemDetails(
@@ -220,21 +205,26 @@ export class StreamystatsApiService {
     }
   }
 
-  private mediaBrowserAuthHeader(): string {
-    return `MediaBrowser Token="${this.settings.jellyfin_api_key}"`;
+  private mediaBrowserAuthHeader(
+    apiKey = this.settings.jellyfin_api_key,
+  ): string {
+    return `MediaBrowser Token="${apiKey}"`;
   }
 
   public async testConnection(
     params: ConstructorParameters<typeof StreamystatsApi>[0],
   ): Promise<BasicResponseDto> {
-    const api = new StreamystatsApi(params, this.loggerFactory.createLogger());
+    const api = new StreamystatsApi(
+      { url: params.url },
+      this.loggerFactory.createLogger(),
+    );
 
     try {
+      assertApiKey(params.apiKey);
+      const config = connectionTestConfig();
       const response = await api.getRawWithoutCache<StreamystatsVersionInfo>(
         '/api/version',
-        {
-          signal: AbortSignal.timeout(CONNECTION_TEST_TIMEOUT_MS),
-        },
+        config,
       );
 
       const version = response?.data?.currentVersion;
@@ -247,14 +237,28 @@ export class StreamystatsApiService {
         };
       }
 
+      const watchlists = await api.getRawWithoutCache<unknown>(
+        '/api/watchlists',
+        {
+          ...config,
+          headers: {
+            Authorization: this.mediaBrowserAuthHeader(params.apiKey),
+          },
+        },
+      );
+      if (
+        !streamystatsWatchlistsResponseSchema.safeParse(watchlists.data).success
+      ) {
+        return { status: 'NOK', code: 0, message: 'Unexpected response' };
+      }
+
       return {
         status: 'OK',
         code: 1,
         message: version,
       };
     } catch (error) {
-      logConnectionTestError(this.logger, 'Streamystats');
-      this.logger.debug(error);
+      logConnectionTestError(this.logger, 'Streamystats', error);
 
       return {
         status: 'NOK',

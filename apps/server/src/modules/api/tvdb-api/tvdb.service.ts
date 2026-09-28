@@ -1,7 +1,8 @@
 import { BasicResponseDto, MaintainerrEvent } from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
-import axios, { AxiosError } from 'axios';
+import { AxiosError } from 'axios';
+import { assertApiKey, connectionTestConfig } from '../lib/connectionTest';
 import { MaintainerrLogger } from '../../logging/logs.service';
 import { SettingsDataService } from '../../settings/settings-data.service';
 import {
@@ -171,31 +172,36 @@ export class TvdbApiService extends ExternalApiService {
   }
 
   public async testConnection(apiKey?: string): Promise<BasicResponseDto> {
-    const keyToTest = apiKey || this.settings.tvdb_api_key;
-
-    if (!keyToTest) {
-      return {
-        status: 'NOK',
-        code: 0,
-        message: 'No TVDB API key configured',
-      };
-    }
+    const keyToTest = apiKey ?? this.settings.tvdb_api_key;
 
     try {
-      // Deliberately not retryingHttp: a connection test must answer fast and
-      // honestly, not sit on a rate limiter's wait behind the user's spinner.
-      // eslint-disable-next-line no-restricted-syntax
-      const response = await axios.post<{
-        status: string;
-        data: { token: string };
-      }>(`${TVDB_BASE_URL}/login`, { apikey: keyToTest });
+      assertApiKey(keyToTest);
+      const config = connectionTestConfig();
+      const login = await retryingHttp.post<TvdbApiResponse<{ token: string }>>(
+        `${TVDB_BASE_URL}/login`,
+        { apikey: keyToTest },
+        config,
+      );
+      const token = login.data?.data?.token;
+      if (login.data?.status !== 'success' || !token) {
+        return { status: 'NOK', code: 0, message: 'Unexpected response' };
+      }
 
-      return response.data?.data?.token
+      // A login token alone does not prove the key can read metadata.
+      const response = await retryingHttp.get<TvdbApiResponse<{ id: number }>>(
+        `${TVDB_BASE_URL}/series/121361/extended`,
+        {
+          ...config,
+          headers: { Authorization: `Bearer ${token}` },
+          params: { short: true },
+        },
+      );
+
+      return response.data?.status === 'success' && response.data?.data?.id
         ? { status: 'OK', code: 1, message: 'Success' }
         : { status: 'NOK', code: 0, message: 'Unexpected response' };
     } catch (error) {
-      logConnectionTestError(this.logger, 'TVDB');
-      this.logger.debug(error);
+      logConnectionTestError(this.logger, 'TVDB', error);
 
       return {
         status: 'NOK',

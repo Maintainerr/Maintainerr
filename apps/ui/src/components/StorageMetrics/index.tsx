@@ -406,7 +406,7 @@ const StorageMetrics: React.FC = () => {
             <p className="mt-3 text-sm text-zinc-400">
               <Trans>
                 No Radarr or Sonarr instances are configured yet. Add one in
-                Settings to see disk usage here.
+                Services to see disk usage here.
               </Trans>
             </p>
           ) : null}
@@ -524,7 +524,7 @@ const MediaServerSection: React.FC<MediaServerSectionProps> = ({
         </h2>
         <p className="description">
           <Trans>
-            Connect a Plex or Jellyfin server in Settings to see library item
+            Connect a Plex or Jellyfin server in Services to see library item
             counts here.
           </Trans>
         </p>
@@ -596,7 +596,7 @@ const MediaServerSection: React.FC<MediaServerSectionProps> = ({
         {!mediaServer.reachable ? (
           <p className="mt-2 text-sm text-error-200">
             {mediaServer.error ??
-              t`Media server is not reachable. Check your Settings.`}
+              t`Media server is not reachable. Check it in Services.`}
           </p>
         ) : mediaServer.libraries.length === 0 ? (
           <p className="mt-2 text-sm text-zinc-400">

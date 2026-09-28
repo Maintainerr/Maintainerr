@@ -1,0 +1,13 @@
+qbittorrent.svg
+
+Source:   https://github.com/qbittorrent/qBittorrent/blob/199d770e152275d01da6134b802f2e16fa4e96af/src/icons/qbittorrent-tray.svg
+Author:   qBittorrent contributors
+License:  GNU General Public License v3.0 or later (GPL-3.0-or-later)
+URL:      https://www.gnu.org/licenses/gpl-3.0.html
+
+This file is an unmodified copy of the upstream source above. qBittorrent's
+COPYING licenses its image assets under GPLv3+.
+
+Note: the qBittorrent name and logo belong to the qBittorrent project. This
+icon is used to identify the qBittorrent integration in the Maintainerr UI;
+nothing in this file implies endorsement by the qBittorrent project.

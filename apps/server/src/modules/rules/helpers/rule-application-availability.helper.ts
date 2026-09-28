@@ -38,6 +38,9 @@ export const unavailableRuleApplications = (
   if (!settings.seerr_api_key || !settings.seerr_url) {
     unavailable.add(Application.SEERR);
   }
+  if (!settings.ombi_api_key || !settings.ombi_url) {
+    unavailable.add(Application.OMBI);
+  }
   if (!servarr.radarr) {
     unavailable.add(Application.RADARR);
   }

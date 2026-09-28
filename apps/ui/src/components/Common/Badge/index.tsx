@@ -65,9 +65,10 @@ const Badge = ({
       }
       break
     case 'light':
-      badgeStyle.push('bg-gray-700 text-gray-300!')
+      // The default button's colours, as on the Docs button.
+      badgeStyle.push('bg-zinc-600 text-zinc-200!')
       if (href) {
-        badgeStyle.push('hover:bg-gray-600')
+        badgeStyle.push('hover:bg-zinc-500')
       }
       break
     case 'maintainerr':

@@ -25,11 +25,8 @@ const axios = jest.requireMock('axios').default as { create: jest.Mock };
 describe('PlexTvApi.validateToken', () => {
   const get = jest.fn();
 
-  const createApi = () =>
-    new PlexTvApi(
-      'a-token',
-      createMockLogger() as unknown as MaintainerrLogger,
-    );
+  const createApi = (token = 'a-token') =>
+    new PlexTvApi(token, createMockLogger() as unknown as MaintainerrLogger);
 
   const rejectWithStatus = (status: number) =>
     get.mockRejectedValue(
@@ -49,6 +46,14 @@ describe('PlexTvApi.validateToken', () => {
 
     await expect(createApi().validateToken()).resolves.toBe('valid');
   });
+
+  it.each(['', '   '])(
+    'rejects a blank token without a request: %j',
+    async (token) => {
+      await expect(createApi(token).validateToken()).resolves.toBe('invalid');
+      expect(get).not.toHaveBeenCalled();
+    },
+  );
 
   // plex.tv returns 422 {"error":"Invalid token"} for a bad token on this
   // endpoint (verified live) - not 401 - so 422 must count as invalid too.

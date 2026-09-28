@@ -23,7 +23,7 @@
 
 Libraries fill up. Users request a movie, watch it once, and never touch it again. Half-finished shows sit around for years. And somehow you're the one who has to decide what to delete.
 
-Maintainerr does the deciding for you. Write rules for the stuff that's just taking up space - unwatched, unrequested, gathering dust - and it gathers those titles into a collection, gives everyone a grace period to catch up, then clears them from your media server, the \*arrs and Seerr. **Set it up once and forget it. Everything is automated!**
+Maintainerr does the deciding for you. Write rules for the stuff that's just taking up space - unwatched, unrequested, gathering dust - and it gathers those titles into a collection, gives everyone a grace period to catch up, then clears them from your media server, the \*arrs and Seerr or Ombi. **Set it up once and forget it. Everything is automated!**
 
 # Installation
 
@@ -215,18 +215,18 @@ spec:
 
 # Features
 
-- Build rules from properties across Plex, Jellyfin, Emby, Radarr, Sonarr, Sportarr, Seerr, Tautulli, Streamystats, and Tracearr, combined with AND/OR logic.
+- Build rules from properties across Plex, Jellyfin, Emby, Radarr, Sonarr, Sportarr, Seerr, Ombi, Tautulli, Streamystats, and Tracearr, combined with AND/OR logic.
 - Use Plex, Jellyfin or Emby as your media server.
 - Switch between media server types with rule migration.
 - Deploy separate Maintainerr instances for separate media servers, each with isolated rules, collections and data.
-- Smart metadata matching - resolves every item across your media server, the \*arrs and Seerr by external IDs (IMDB/TMDB/TVDB), bridges missing IDs, and sanity-checks each match by release year so the right title is acted on.
+- Smart metadata matching - resolves every item across your media server, the \*arrs, Seerr and Ombi by external IDs (IMDB/TMDB/TVDB), bridges missing IDs, and sanity-checks each match by release year so the right title is acted on.
 - Bring your own TVDB key for a second metadata source alongside the built-in TMDB - Maintainerr cross-checks IDs and years between providers and fills the gaps from whichever has the data.
 - Collect rule-matched media into a Maintainerr collection that is held for a configurable period before action - optionally pinned to the Plex home screen as a "Leaving soon" shelf.
 - Run automatic collections, or manual ones you manage; add or exclude individual items even when they match a rule.
 - Keep a collection inside Maintainerr, with no collection created on your media server - the rule, its actions, overlays and \*arr tags all still run. Per collection, off by default.
 - Delete items from your download client.
 - Manage collection membership from within your media server - Maintainerr syncs manual changes back.
-- On handling: delete files from disk, unmonitor or delete in Radarr/Sonarr/Sportarr, change quality profile, and clear requests in Seerr.
+- On handling: delete files from disk, unmonitor or delete in Radarr/Sonarr/Sportarr, change quality profile, and clear requests in Seerr or Ombi.
 - Render configurable overlays (text, countdown, shapes, images) onto posters and title cards on your media server(s).
 - Set a custom collection poster that survives recreation.
 - Send notifications via Discord, Slack, Telegram, Pushover, Gotify, ntfy, Pushbullet, LunaSea, email or webhook, including when a newer Maintainerr version is available.
@@ -243,6 +243,7 @@ Maintainerr builds rules from data across these apps:
 [![Jellyfin](https://img.shields.io/badge/Jellyfin-00A4DC?style=for-the-badge&logo=jellyfin&logoColor=white)](https://jellyfin.org/)
 [![Emby](https://img.shields.io/badge/Emby-52B54B?style=for-the-badge&logo=emby&logoColor=white)](https://emby.media/)
 [![Seerr](https://img.shields.io/badge/Seerr-5969F8?style=for-the-badge)](https://seerr.dev/)
+[![Ombi](https://img.shields.io/badge/Ombi-DF691A?style=for-the-badge)](https://ombi.io/)
 [![Radarr](https://img.shields.io/badge/Radarr-FFC230?style=for-the-badge&logo=radarr&logoColor=white)](https://radarr.video/)
 [![Sonarr](https://img.shields.io/badge/Sonarr-2596BE?style=for-the-badge&logo=sonarr&logoColor=white)](https://sonarr.tv/)
 [![Sportarr](https://img.shields.io/badge/Sportarr-E4572E?style=for-the-badge)](https://sportarr.net/)
@@ -325,6 +326,7 @@ Maintainerr is community-driven, and we're always looking for more hands. You do
 Start with [CONTRIBUTING.md](CONTRIBUTING.md), then dive into the [issues](https://github.com/Maintainerr/Maintainerr/issues) or our [Discord](https://discord.maintainerr.info). New contributors are genuinely welcome.
 
 ## Translations
+
 [![Translation status](https://hosted.weblate.org/widget/maintainerr/matrix-auto.svg)](https://hosted.weblate.org/engage/maintainerr/)
 
 Maintainerr uses [Weblate](https://hosted.weblate.org/engage/maintainerr/) for translations. Pick your language, edit in the browser, and your work reaches everyone in the next release - no git, no pull request, no build tooling.
@@ -333,19 +335,27 @@ Missing a language? Request it on Weblate and start it yourself.
 
 # Support us
 
-Maintainerr is free and open source. We cover the server costs ourselves and spend countless hours keeping it stable, adding features, and fixing issues. If it saves you time, chipping in keeps it going - and is hugely appreciated.
+Maintainerr is free and open source. We cover the server costs ourselves and spend countless hours keeping it stable, adding features, and fixing issues.
+
+It also saves you real money: every terabyte Maintainerr clears is a terabyte of disk you don't have to buy. NAS drives currently cost around €40 to €50 per TB (a lot more on SSD), so a library trimmed by 1 TB is real money back in your pocket. If Maintainerr has done that for you, consider passing half of it on - it keeps the project going, and is hugely appreciated.
 
 [![Donate](https://img.shields.io/badge/Donate-Open_Collective-78350f?style=for-the-badge&logo=opencollective&logoColor=white)](https://opencollective.com/maintainerr)
 
+Thank you to everyone who keeps Maintainerr online. [Become a backer](https://opencollective.com/maintainerr)
+
+[![Backers](https://opencollective.com/maintainerr/backers.svg?width=890&button=false)](https://opencollective.com/maintainerr)
+
 # Credits
 
-Maintainerr is built and maintained by:
+Active maintainers:
 
-- [@jorenn92](https://github.com/jorenn92) - founder & original author
-- [@ydkmlt84](https://github.com/ydkmlt84) - code owner
-- [@benscobie](https://github.com/benscobie) - core developer (2024-2026)
-- [@enoch85](https://github.com/enoch85) - code owner & current maintainer
-- [@SmolSoftBoi](https://github.com/SmolSoftBoi) - core contributor
+- [@enoch85](https://github.com/enoch85) - code owner & maintainer [ 2025 --> present ]
+
+Built by:
+
+- [@jorenn92](https://github.com/jorenn92) - founder & original author [ 2021 --> 2025 ]
+- [@ydkmlt84](https://github.com/ydkmlt84) - code owner [ 2023 --> present ]
+- [@benscobie](https://github.com/benscobie) - core developer [ 2024 --> 2026 ]
 
 The overlay system was built by [@gssariev](https://github.com/gssariev), with [@MrLinford](https://github.com/MrLinford), [@SmolSoftBoi](https://github.com/SmolSoftBoi) and [@Simon-Eklundh](https://github.com/Simon-Eklundh).
 

@@ -2,6 +2,9 @@ export const TRACEARR_CACHE_ID = 'tracearr';
 export const TRACEARR_HISTORY_CACHE_KEY = 'history-index';
 export const TRACEARR_PAGE_SIZE = 100;
 
+// The media modal reads one item's plays while someone waits on it.
+export const TRACEARR_ITEM_HISTORY_MAX_PAGES = 50;
+
 // How many of a candidate server's most recently added items to check before
 // deciding it is not the media server Maintainerr manages. Sized for items the
 // media server no longer has, since those are skipped rather than counted.

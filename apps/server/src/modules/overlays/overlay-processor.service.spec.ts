@@ -381,6 +381,51 @@ describe('OverlayProcessorService', () => {
     });
   });
 
+  it('counts unchanged artwork as skipped when the day count moves, without an applied notification', async () => {
+    const eventEmitter = { emit: jest.fn() };
+    const service = new OverlayProcessorService(
+      makeProviderFactory(makeProvider()) as any,
+      makeMediaServerFactory() as any,
+      {} as any,
+      {} as any,
+      { getSettings: jest.fn().mockResolvedValue({ enabled: true }) } as any,
+      {
+        getItemState: jest.fn().mockResolvedValue({ daysLeftShown: 1 }),
+      } as any,
+      {} as any,
+      {
+        resolveForCollection: jest.fn().mockResolvedValue(makeTemplate()),
+      } as any,
+      eventEmitter as any,
+      createMockLogger(),
+      new ExecutionLockService(),
+    );
+
+    const collection = createCollection({
+      id: 1,
+      type: 'movie',
+      deleteAfterDays: 0,
+      overlayTemplateId: null,
+    });
+    collection.collectionMedia = [
+      createCollectionMedia(collection, {
+        mediaServerId: 'media-1',
+        addDate: new Date('2026-04-01T00:00:00.000Z'),
+      }),
+    ];
+
+    jest.spyOn(service, 'applyTemplateOverlay').mockResolvedValue('unchanged');
+
+    expect(await service.processCollection(collection as any)).toEqual({
+      processed: 0,
+      reverted: 0,
+      skipped: 1,
+      errors: 0,
+    });
+    expect(service.applyTemplateOverlay).toHaveBeenCalled();
+    expect(eventEmitter.emit).not.toHaveBeenCalled();
+  });
+
   it('blocks concurrent standalone collection runs while one is already in progress', async () => {
     const settingsService = {
       getSettings: jest.fn().mockResolvedValue({ enabled: true }),
@@ -950,6 +995,62 @@ describe('OverlayProcessorService', () => {
     expect(deleteOriginal).toHaveBeenCalledWith('media-1');
     expect(provider.uploadImage).not.toHaveBeenCalled();
   });
+
+  it.each([
+    ['identical', async () => Buffer.from('rendered'), 'unchanged', 0],
+    ['different', async () => Buffer.from('replaced'), true, 1],
+    ['missing', async () => null, true, 1],
+    [
+      'unreadable',
+      async () => {
+        throw new Error('offline');
+      },
+      true,
+      1,
+    ],
+  ] as const)(
+    'uploads only when the current artwork differs from the render (%s current artwork)',
+    async (_, current, expected, uploads) => {
+      const provider = makeProvider({ downloadImage: jest.fn(current) });
+      const stateService = { markProcessed: jest.fn() };
+      const renderService = {
+        renderFromTemplate: jest.fn().mockResolvedValue({
+          buffer: Buffer.from('rendered'),
+          contentType: 'image/jpeg',
+        }),
+      };
+
+      const service = new OverlayProcessorService(
+        makeProviderFactory(provider) as any,
+        makeMediaServerFactory() as any,
+        {} as any,
+        {} as any,
+        {} as any,
+        stateService as any,
+        renderService as any,
+        {} as any,
+        { emit: jest.fn() } as any,
+        createMockLogger(),
+        new ExecutionLockService(),
+      );
+
+      jest
+        .spyOn(service as any, 'loadOriginalPoster')
+        .mockReturnValue(Buffer.from('original'));
+
+      const applied = await service.applyTemplateOverlay(
+        'media-1',
+        1,
+        new Date(),
+        makeTemplate(),
+        provider as any,
+      );
+
+      expect(applied).toBe(expected);
+      expect(provider.uploadImage).toHaveBeenCalledTimes(uploads);
+      expect(stateService.markProcessed).toHaveBeenCalled();
+    },
+  );
 
   it('restores a saved original that no state row claims during reset-all', async () => {
     const stateService = {

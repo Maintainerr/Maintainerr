@@ -53,6 +53,9 @@ describe('NotificationTimerService', () => {
 
     const getRequestedByUsernames = jest.fn().mockResolvedValue(requestedBy);
     const seerrApi = { getRequestedByUsernames };
+    const ombiApi = {
+      getRequestedByUsernames: jest.fn().mockResolvedValue([]),
+    };
 
     const collectionService = {
       getCollectionMedia: jest.fn().mockResolvedValue(media),
@@ -65,6 +68,7 @@ describe('NotificationTimerService', () => {
       notificationService as never,
       mediaServerFactory as never,
       seerrApi as never,
+      ombiApi as never,
     );
 
     return {

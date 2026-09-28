@@ -1039,6 +1039,35 @@ describe('PlexApiService.initialize', () => {
     expect(logger.debug).toHaveBeenCalledWith('Plex status probe failed');
   });
 
+  it('requires protected library access before reporting a successful connection', async () => {
+    const query = jest.fn().mockRejectedValue(new Error('Unauthorized'));
+    Object.assign(service, { plexClient: { query } });
+
+    await expect(service.testConnection()).rejects.toThrow('Unauthorized');
+    expect(query).toHaveBeenCalledTimes(1);
+    expect(query).toHaveBeenCalledWith(
+      expect.objectContaining({ uri: '/library/sections', timeout: 5000 }),
+      false,
+    );
+  });
+
+  it('uses one uncached deadline for authentication and server identity', async () => {
+    const query = jest
+      .fn()
+      .mockResolvedValueOnce({ MediaContainer: {} })
+      .mockResolvedValueOnce({ MediaContainer: { version: '1.43.2' } });
+    Object.assign(service, { plexClient: { query } });
+
+    await expect(service.testConnection()).resolves.toEqual({
+      version: '1.43.2',
+    });
+    const config = query.mock.calls[0][0];
+    expect(query).toHaveBeenLastCalledWith(
+      { ...config, uri: '/identity' },
+      false,
+    );
+  });
+
   it('probes /identity (not bare /) so it works behind reverse proxies', async () => {
     jest.restoreAllMocks();
     // Bare `/` 401s behind reverse proxies; `/identity` returns the same

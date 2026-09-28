@@ -85,6 +85,7 @@ describe('CollectionsService.stopMediaServerSync (real SQLite)', () => {
       { emit: jest.fn() } as any,
       {} as any, // collectionPosterService
       {} as any, // overlayProcessor
+      {} as any, // servarrTagService
       createMockLogger() as any,
     );
 

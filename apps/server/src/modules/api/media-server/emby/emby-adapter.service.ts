@@ -18,7 +18,11 @@ import {
 } from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
 import { type AxiosInstance, AxiosError, isAxiosError } from 'axios';
-import { formatConnectionFailureMessage } from '../../../../utils/connection-error';
+import { assertApiKey, connectionTestConfig } from '../../lib/connectionTest';
+import {
+  formatConnectionFailureMessage,
+  logConnectionTestError,
+} from '../../../../utils/connection-error';
 import { MaintainerrLogger } from '../../../logging/logs.service';
 import { SettingsDataService } from '../../../settings/settings-data.service';
 import { EmbyApi } from '../../emby-api/emby-api.helper';
@@ -1795,13 +1799,15 @@ export class EmbyAdapterService implements IMediaServerService {
       url,
       apiKey,
       authHeader: this.buildAuthHeader(),
-      timeout: 15000,
     }).axios;
     try {
+      assertApiKey(apiKey);
+      const config = connectionTestConfig();
       const [info, users] = await Promise.all([
-        probe.get<EmbySystemInfo>('/System/Info'),
+        probe.get<EmbySystemInfo>('/System/Info', config),
         probe.get<EmbyUserDto[] | EmbyItemsQueryResponse<EmbyUserDto>>(
           '/Users/Query',
+          config,
         ),
       ]);
       const resolvedUsers = this.normalizeUsersResponse(users.data);
@@ -1814,6 +1820,7 @@ export class EmbyAdapterService implements IMediaServerService {
           .map((u) => ({ id: u.Id, name: u.Name ?? '' })),
       };
     } catch (error) {
+      logConnectionTestError(this.logger, 'Emby', error);
       return {
         success: false,
         error: formatConnectionFailureMessage(error, 'Connection failed'),
@@ -1996,6 +2003,8 @@ export class EmbyAdapterService implements IMediaServerService {
     switch (sort) {
       case 'airDate':
         return 'PremiereDate';
+      case 'addedAt':
+        return 'DateCreated';
       case 'rating':
         return 'CommunityRating';
       case 'watchCount':

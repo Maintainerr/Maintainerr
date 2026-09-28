@@ -1,11 +1,11 @@
 import { BasicResponseDto } from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
+import { connectionTestConfig } from '../lib/connectionTest';
 import { SettingsDataService } from '../../../modules/settings/settings-data.service';
 import {
   formatConnectionFailureMessage,
   logConnectionTestError,
 } from '../../../utils/connection-error';
-import { CONNECTION_TEST_TIMEOUT_MS } from '../lib/httpTimeouts';
 import {
   MaintainerrLogger,
   MaintainerrLoggerFactory,
@@ -69,9 +69,7 @@ export class DownloadClientApiService {
     const api = createDownloadClient(params, this.loggerFactory.createLogger());
 
     try {
-      const version = await api.getVersion({
-        signal: AbortSignal.timeout(CONNECTION_TEST_TIMEOUT_MS),
-      });
+      const version = await api.getVersion(connectionTestConfig());
 
       if (!version) {
         return {
@@ -84,8 +82,7 @@ export class DownloadClientApiService {
 
       return { status: 'OK', code: 1, message: version };
     } catch (error) {
-      logConnectionTestError(this.logger, 'Download client');
-      this.logger.debug(error);
+      logConnectionTestError(this.logger, 'Download client', error);
 
       return {
         status: 'NOK',

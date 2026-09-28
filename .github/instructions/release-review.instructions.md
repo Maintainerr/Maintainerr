@@ -168,35 +168,31 @@ scope is broad.
 A green build and test run is necessary but not sufficient - tests only
 catch regressions that someone thought to write a test for.
 
-### 5a. Exercise the affected flows end-to-end (seeded DB + Playwright)
+### 5a. Exercise the affected flows end-to-end (real stack + Playwright)
 
-Automated suites do not cover rendering, navigation, or the
-media-server-dependent flows (rules, collections, overview, calendar,
-storage). Always drive those in a real browser before signing off - and
-always against the **seeded dev DB + mock media server**, never a hand-set
-or empty database, so every reviewer hits the same deterministic dataset.
+Automated suites do not cover rendering, navigation, or real integration
+behavior. Follow the [PR workflow](implementation.instructions.md#pr-workflow)
+for real-stack coverage, isolated test state, observable outcomes, and cleanup.
 
-1. Start the matching mock media server:
-   - `node tools/dev/fake-jellyfin.mjs` (`:8096`), or
-   - `node tools/dev/fake-plex.mjs` (`:32400`) for the Plex-only getter paths.
-2. Stop `yarn dev` (SQLite is single-writer), seed, then restart:
-   - `node tools/dev/seed-db.mjs` (Jellyfin, default) or
-     `MEDIA_SERVER=plex node tools/dev/seed-db.mjs`.
-   - Re-run the seed after any DB-shape migration in the release so the
-     dataset matches the migrated schema.
-3. Drive the UI with **Playwright** (the `playwright` MCP server) - do not
-   rely on eyeballing screenshots alone. At minimum, for the areas the diff
-   touches: load the page, perform the changed interaction, and assert on
-   the resulting DOM/network. Capture a screenshot of each flow you touched
-   for the report.
-4. For server-side rule/getter changes, confirm live output through the
-   seeded stack: `POST /api/rules/test {"mediaId","rulegroupId"}` or
-   `POST /api/rules/:id/execute`. After editing server code, **restart
-   `yarn dev`** - a long-lived dev server serves stale getter logic.
+1. Exercise every affected provider and service in the real Podman stack. Use
+   reproducible fixtures created through the application APIs where possible.
+   Mocks and the seeded DB in [AGENTS.md](../../AGENTS.md) supplement this coverage
+   or provide an explicitly reported fallback when a service is unavailable.
+   Re-run the seed after any DB-shape migration in the release so the
+   dataset matches the migrated schema. Use the isolated test database and stop
+   its application process before seeding, then restart it.
+2. Ensure the running application serves the code under review. Restart the
+   relevant application process after server edits if necessary.
+3. Drive the UI with **Playwright** (the global library, see AGENTS.md). For each
+   affected flow, load the page, perform the changed interaction, and assert on
+   the resulting DOM, network requests, and server state. Capture a screenshot
+   of each flow for the release report.
+4. For rule/getter changes, also verify live API results through
+   `POST /api/rules/test {"mediaId","rulegroupId"}` or
+   `POST /api/rules/:id/execute`, and inspect affected service logs.
 
-Note what you exercised (and what you could not - e.g. plex.tv watchlist
-enrichment can't be mocked locally) in the report. A flow you did not drive
-is an untested flow; say so rather than implying coverage.
+Report exactly what ran and what could not be tested. Distinguish connectivity
+checks and mock-based coverage from real end-to-end verification.
 
 ### 5b. Audit the dependency tree (supply chain)
 

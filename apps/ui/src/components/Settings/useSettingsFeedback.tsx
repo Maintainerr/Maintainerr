@@ -1,7 +1,6 @@
 import { useLingui } from '@lingui/react/macro'
 import { useCallback, useMemo, useState } from 'react'
 import Alert from '../Common/Alert'
-import SettingsAlertSlot from './SettingsAlertSlot'
 
 export type SettingsFeedback = {
   type: 'warning' | 'info' | 'success' | 'error'
@@ -130,14 +129,10 @@ export const useSettingsFeedback = (messages?: {
 
 export const SettingsFeedbackAlert = ({
   feedback,
-  reserveSpace = true,
 }: {
   feedback: SettingsFeedback
-  reserveSpace?: boolean
-}) => {
-  return (
-    <SettingsAlertSlot reserveSpace={reserveSpace}>
-      {feedback ? <Alert type={feedback.type} title={feedback.title} /> : null}
-    </SettingsAlertSlot>
-  )
-}
+}) => (
+  <div className="min-h-[68px]">
+    {feedback ? <Alert type={feedback.type} title={feedback.title} /> : null}
+  </div>
+)

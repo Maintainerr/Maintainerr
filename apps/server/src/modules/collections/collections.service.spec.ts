@@ -14,6 +14,7 @@ import {
   createCollectionMedia,
   createMediaItem,
 } from '../../../test/utils/data';
+import { ServarrTagService } from '../actions/servarr-tag.service';
 import { MediaItemEnrichmentService } from '../api/media-server/media-item-enrichment.service';
 import { MediaServerFactory } from '../api/media-server/media-server.factory';
 import { IMediaServerService } from '../api/media-server/media-server.interface';
@@ -49,6 +50,7 @@ describe('CollectionsService', () => {
   let settingsDataService: Mocked<SettingsDataService>;
   let collectionPosterService: Mocked<CollectionPosterService>;
   let overlayProcessor: Mocked<OverlayProcessorService>;
+  let servarrTagService: Mocked<ServarrTagService>;
   let eventEmitter: Mocked<EventEmitter2>;
   let logger: Mocked<MaintainerrLogger>;
 
@@ -58,6 +60,7 @@ describe('CollectionsService', () => {
 
     service = unit;
     mediaServerFactory = unitRef.get(MediaServerFactory);
+    servarrTagService = unitRef.get(ServarrTagService);
     dataSource = unitRef.get(DataSource);
     collectionRepo = unitRef.get(getRepositoryToken(Collection) as string);
     collectionMediaRepo = unitRef.get(
@@ -354,6 +357,7 @@ describe('CollectionsService', () => {
         false,
         'all',
         true,
+        undefined,
       );
       expect(removeSpy).toHaveBeenCalledWith(
         3,
@@ -361,6 +365,7 @@ describe('CollectionsService', () => {
         false,
         'all',
         true,
+        undefined,
       );
       // Returns the pruned sibling ids so the caller can suppress re-adds.
       expect(pruned).toEqual([2, 3]);
@@ -571,6 +576,45 @@ describe('CollectionsService', () => {
     ]);
 
     expect(mediaServer.deleteCollection).not.toHaveBeenCalled();
+  });
+
+  it('removes the *arr membership tag from items that leave the collection', async () => {
+    const collection = createCollection({
+      id: 1,
+      mediaServerId: 'remote-collection',
+      manualCollection: false,
+      tagInArr: true,
+    });
+    const collectionMedia = [
+      createCollectionMedia(collection, {
+        mediaServerId: 'item-1',
+        tmdbId: 101,
+      }),
+      createCollectionMedia(collection, { mediaServerId: 'item-2' }),
+    ];
+
+    collectionRepo.findOne.mockResolvedValue(collection);
+    collectionMediaRepo.find.mockResolvedValue(collectionMedia);
+    jest
+      .spyOn(service as any, 'checkAutomaticMediaServerLink')
+      .mockResolvedValue(collection);
+    jest
+      .spyOn(service as any, 'removeChildrenFromCollection')
+      .mockResolvedValue(['item-1']);
+
+    await service.removeFromCollection(collection.id, [
+      { mediaServerId: 'item-1' },
+      { mediaServerId: 'item-2' },
+    ]);
+
+    // Only the item that was actually removed is untagged, with its cached
+    // provider ids as resolution fallbacks.
+    expect(servarrTagService.syncMembershipTags).toHaveBeenCalledWith(
+      collection,
+      [],
+      [expect.objectContaining({ mediaServerId: 'item-1', tmdbId: 101 })],
+      undefined,
+    );
   });
 
   it('treats a media server collection link as shared when another local collection points to it', async () => {
@@ -3080,6 +3124,72 @@ describe('CollectionsService', () => {
     });
   });
 
+  it('sorts addedAt by the library date, not by when the item joined the collection', async () => {
+    // Both read as "date added": collection_media.addDate feeds the SQL fast
+    // path, MediaItem.addedAt is the media server's own timestamp.
+    const collection = createCollection({
+      id: 8,
+      mediaServerId: 'remote-collection',
+      type: 'movie',
+    });
+    const joinedFirst = createCollectionMedia(collection, {
+      mediaServerId: 'joined-first',
+      addDate: new Date('2024-01-01T10:00:00Z'),
+    });
+    const joinedLast = createCollectionMedia(collection, {
+      mediaServerId: 'joined-last',
+      addDate: new Date('2024-02-01T10:00:00Z'),
+    });
+    const entities = [joinedLast, joinedFirst];
+    const metadataByMediaServerId = new Map([
+      [
+        'joined-first',
+        createMediaItem({
+          id: 'joined-first',
+          addedAt: new Date('2020-06-01T00:00:00Z'),
+        }),
+      ],
+      [
+        'joined-last',
+        createMediaItem({
+          id: 'joined-last',
+          addedAt: new Date('2010-06-01T00:00:00Z'),
+        }),
+      ],
+    ]);
+    const queryBuilder = {
+      where: jest.fn().mockReturnThis(),
+      getCount: jest.fn().mockResolvedValue(entities.length),
+      clone: jest.fn(),
+    };
+    const cloneBuilder = {
+      orderBy: jest.fn().mockReturnThis(),
+      addOrderBy: jest.fn().mockReturnThis(),
+      getRawAndEntities: jest.fn().mockResolvedValue({ entities }),
+    };
+
+    queryBuilder.clone.mockReturnValue(cloneBuilder);
+    collectionMediaRepo.createQueryBuilder.mockReturnValue(queryBuilder as any);
+    jest
+      .spyOn(service as any, 'getCollectionMediaMetadata')
+      .mockResolvedValue(metadataByMediaServerId);
+    const hydrateSpy = jest
+      .spyOn(service as any, 'hydrateCollectionMediaWithMetadata')
+      .mockResolvedValue([]);
+
+    await (service as any).getCollectionMediaWithServerDataAndPaging(
+      collection.id,
+      { sort: 'addedAt', sortOrder: 'desc' },
+    );
+
+    // Newest library addition first, although it joined the collection first.
+    expect(hydrateSpy).toHaveBeenCalledWith(
+      [joinedFirst, joinedLast],
+      mediaServer,
+      metadataByMediaServerId,
+    );
+  });
+
   it('paginates deleteSoonest at the SQL level by collection_media.addDate', async () => {
     // `deleteSoonest` is equivalent to ordering by `collection_media.addDate`
     // because `deleteAfterDays` is constant across a collection. SQL does the
@@ -3845,6 +3955,76 @@ describe('CollectionsService', () => {
     expect(mediaServer.reorderCollectionItems).toHaveBeenCalledWith(
       'remote-99',
       ['leaves-soonest', 'leaves-middle', 'leaves-latest'],
+    );
+  });
+
+  it('orders a shared media server collection across every linked collection by each deadline (#3799)', async () => {
+    const collection = createCollection({
+      id: 99,
+      mediaServerId: 'remote-99',
+      mediaServerSort: 'deleteSoonest.asc',
+      deleteAfterDays: 7,
+      type: 'movie',
+    });
+    const sibling = createCollection({
+      id: 100,
+      mediaServerId: 'remote-99',
+      deleteAfterDays: 30,
+    });
+    const noWindowSibling = createCollection({
+      id: 101,
+      mediaServerId: 'remote-99',
+      deleteAfterDays: null,
+    });
+    const daysAgo = (days: number) => new Date(Date.now() - days * 86400000);
+    const rows = [
+      createCollectionMedia(noWindowSibling, {
+        mediaServerId: 'never',
+        addDate: daysAgo(100),
+      }),
+      createCollectionMedia(sibling, {
+        mediaServerId: 'in-10',
+        addDate: daysAgo(20),
+      }),
+      createCollectionMedia(collection, {
+        mediaServerId: 'in-7',
+        addDate: daysAgo(0),
+      }),
+      createCollectionMedia(collection, {
+        mediaServerId: 'held-by-both',
+        addDate: daysAgo(0),
+      }),
+      createCollectionMedia(sibling, {
+        mediaServerId: 'in-5',
+        addDate: daysAgo(25),
+      }),
+      createCollectionMedia(sibling, {
+        mediaServerId: 'held-by-both',
+        addDate: daysAgo(27),
+      }),
+      createCollectionMedia(collection, {
+        mediaServerId: 'in-2',
+        addDate: daysAgo(5),
+      }),
+    ];
+
+    collectionRepo.find.mockResolvedValue([sibling, noWindowSibling]);
+    collectionMediaRepo.find.mockImplementation(async ({ where }: any) =>
+      rows.filter((row) => where.collectionId.value.includes(row.collectionId)),
+    );
+    mediaServer.supportsFeature.mockImplementation(
+      (feature) => feature === MediaServerFeature.COLLECTION_SORT,
+    );
+    mediaServer.getMetadataBatch.mockImplementation(async (ids: string[]) =>
+      ids.map((id) => createMediaItem({ id, title: id, type: 'movie' })),
+    );
+    mediaServer.reorderCollectionItems = jest.fn().mockResolvedValue(undefined);
+
+    await service.applyCollectionSort(collection as Collection);
+
+    expect(mediaServer.reorderCollectionItems).toHaveBeenCalledWith(
+      'remote-99',
+      ['in-2', 'held-by-both', 'in-5', 'in-7', 'in-10', 'never'],
     );
   });
 

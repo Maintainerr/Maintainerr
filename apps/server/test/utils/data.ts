@@ -69,6 +69,7 @@ export const createCollection = (
     collectionMedia: [],
     deleteAfterDays: 30,
     forceSeerr: false,
+    forceOmbi: false,
     handledMediaAmount: 0,
     keepLogsForMonths: 6,
     lastDurationInSeconds: 0,
@@ -489,6 +490,7 @@ export const createSonarrSeries = (
     imdbId: faker.string.sample(10),
     path: faker.system.directoryPath(),
     tvdbId: faker.number.int(),
+    tmdbId: faker.number.int(),
     qualityProfileId: faker.number.int(),
     ratings: {
       votes: faker.number.int(),

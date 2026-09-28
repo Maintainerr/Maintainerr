@@ -91,6 +91,10 @@ export class SettingsDataService implements SettingDto {
 
   seerr_api_key: string;
 
+  ombi_url: string;
+
+  ombi_api_key: string;
+
   tmdb_api_key?: string;
 
   tvdb_api_key?: string;
@@ -124,18 +128,6 @@ export class SettingsDataService implements SettingDto {
   collection_handler_job_cron: string;
 
   rules_handler_job_cron: string;
-
-  radarr_tag_exclusions: boolean;
-
-  radarr_exclusion_tag: string;
-
-  radarr_untag_on_unexclude: boolean;
-
-  sonarr_tag_exclusions: boolean;
-
-  sonarr_exclusion_tag: string;
-
-  sonarr_untag_on_unexclude: boolean;
 
   telemetryEnabled: boolean | null;
 
@@ -183,6 +175,8 @@ export class SettingsDataService implements SettingDto {
       this.emby_server_name = settingsDb?.emby_server_name;
       this.seerr_url = settingsDb?.seerr_url;
       this.seerr_api_key = settingsDb?.seerr_api_key;
+      this.ombi_url = settingsDb?.ombi_url;
+      this.ombi_api_key = settingsDb?.ombi_api_key;
       this.tmdb_api_key = settingsDb?.tmdb_api_key;
       this.tvdb_api_key = settingsDb?.tvdb_api_key;
       this.metadata_provider_preference =
@@ -205,14 +199,6 @@ export class SettingsDataService implements SettingDto {
       this.collection_handler_job_cron =
         settingsDb?.collection_handler_job_cron;
       this.rules_handler_job_cron = settingsDb?.rules_handler_job_cron;
-      this.radarr_tag_exclusions = settingsDb?.radarr_tag_exclusions ?? false;
-      this.radarr_exclusion_tag = settingsDb?.radarr_exclusion_tag ?? 'dnd';
-      this.radarr_untag_on_unexclude =
-        settingsDb?.radarr_untag_on_unexclude ?? false;
-      this.sonarr_tag_exclusions = settingsDb?.sonarr_tag_exclusions ?? false;
-      this.sonarr_exclusion_tag = settingsDb?.sonarr_exclusion_tag ?? 'dnd';
-      this.sonarr_untag_on_unexclude =
-        settingsDb?.sonarr_untag_on_unexclude ?? false;
       this.telemetryEnabled = settingsDb?.telemetryEnabled ?? null;
 
       // Auto-detect media server type when not set but credentials exist.
@@ -318,6 +304,7 @@ export class SettingsDataService implements SettingDto {
       jellyfin_api_key: maskSecret(settings.jellyfin_api_key),
       emby_api_key: maskSecret(settings.emby_api_key),
       seerr_api_key: maskSecret(settings.seerr_api_key),
+      ombi_api_key: maskSecret(settings.ombi_api_key),
       tmdb_api_key: maskSecret(settings.tmdb_api_key),
       tvdb_api_key: maskSecret(settings.tvdb_api_key),
       tautulli_api_key: maskSecret(settings.tautulli_api_key),
@@ -392,6 +379,10 @@ export class SettingsDataService implements SettingDto {
 
   public seerrConfigured(): boolean {
     return this.seerr_url !== null && this.seerr_api_key !== null;
+  }
+
+  public ombiConfigured(): boolean {
+    return this.ombi_url != null && this.ombi_api_key != null;
   }
 
   public tautulliConfigured(): boolean {

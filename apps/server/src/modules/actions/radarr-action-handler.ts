@@ -13,6 +13,7 @@ import {
   formatMetadataLookupCandidates,
 } from '../metadata/metadata-lookup.util';
 import { MetadataService } from '../metadata/metadata.service';
+import { ArrLookupCache } from '../rules/helpers/arr-lookup-cache';
 import { SettingsDataService } from '../settings/settings-data.service';
 import {
   LeftoverCleanupInput,
@@ -36,6 +37,7 @@ export class RadarrActionHandler {
   public async handleAction(
     collection: Collection,
     media: CollectionMedia,
+    libraryReads?: ArrLookupCache,
   ): Promise<boolean> {
     const radarrApiClient = await this.servarrApi.getRadarrApiClient(
       collection.radarrSettingsId,
@@ -49,6 +51,14 @@ export class RadarrActionHandler {
           tmdb: media.tmdbId,
           tvdb: media.tvdbId,
         },
+        () =>
+          libraryReads
+            ? libraryReads.memoize(
+                `radarr:${collection.radarrSettingsId}:library`,
+                () => radarrApiClient.getMovies(),
+                (entries) => entries === undefined,
+              )
+            : radarrApiClient.getMovies(),
       );
 
     if (lookupCandidates.length > 0) {
@@ -71,6 +81,10 @@ export class RadarrActionHandler {
         const matchedProvider =
           matchedResult.candidate.providerKey.toUpperCase();
         const matchedId = matchedResult.candidate.id;
+
+        // A row added through the Radarr library carries no cached ids, and
+        // the request removal that follows needs the TMDB id.
+        media.tmdbId ??= radarrMedia.tmdbId;
 
         // Capture the torrent download ids BEFORE deleting: Radarr purges a
         // movie's history when the movie is removed, so this is the last chance

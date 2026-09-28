@@ -1,6 +1,7 @@
 export const mediaLibrarySortFields = [
   'title',
   'airDate',
+  'addedAt',
   'rating',
   'watchCount',
   'manual',

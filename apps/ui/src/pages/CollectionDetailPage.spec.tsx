@@ -3,8 +3,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useCollection } from '../api/collections'
 import { useRuleGroupForCollection } from '../api/rules'
 import type { ICollection } from '../components/Collection'
-import type { IRuleGroup } from '../components/Rules/RuleGroup'
 import { buildQuerySuccessResult } from '../test-utils/queryResults'
+import { buildRuleGroup } from '../test-utils/ruleGroups'
 import CollectionDetailPage from './CollectionDetailPage'
 
 const navigate = vi.fn()
@@ -28,19 +28,6 @@ const buildCollection = (
   handledMediaAmount: 0,
   lastDurationInSeconds: 0,
   keepLogsForMonths: 0,
-  ...overrides,
-})
-
-const buildRuleGroup = (overrides: Partial<IRuleGroup> = {}): IRuleGroup => ({
-  id: 1,
-  name: 'Regression Test Rule Group',
-  description: '',
-  libraryId: 'library-1',
-  isActive: true,
-  collectionId: 42,
-  rules: [],
-  useRules: false,
-  dataType: 'movie',
   ...overrides,
 })
 

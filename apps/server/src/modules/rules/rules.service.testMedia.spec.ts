@@ -5,6 +5,7 @@ import {
 import { TracearrApiService } from '../api/tracearr-api/tracearr-api.service';
 import { Application, RulePossibility } from './constants/rules.constants';
 import { Rules } from './entities/rules.entities';
+import { ArrLookupCache } from './helpers/arr-lookup-cache';
 import { RulesService } from './rules.service';
 
 describe('RulesService Test Media Tracearr freshness', () => {
@@ -82,7 +83,13 @@ describe('RulesService Test Media Tracearr freshness', () => {
     expect(tracearrApi.prefetchHistory).toHaveBeenCalledTimes(1);
     // #3465: invalidating drops the snapshot the sweep resumes from.
     expect(tracearrApi.invalidateHistory).not.toHaveBeenCalled();
-    expect(comparator.executeRulesWithData).toHaveBeenCalledTimes(1);
+    expect(comparator.executeRulesWithData).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      undefined,
+      undefined,
+      expect.any(ArrLookupCache),
+    );
   });
 
   it('does not refresh Tracearr history for other Test Media rules', async () => {

@@ -24,6 +24,7 @@ export interface ICollection {
   keepInMaintainerrOnly?: boolean;
   cleanupLeftoverFolders?: boolean;
   forceSeerr?: boolean;
+  forceOmbi?: boolean;
   deleteAfterDays?: number; // amount of days after add
   media?: CollectionMedia[];
   manualCollection?: boolean;

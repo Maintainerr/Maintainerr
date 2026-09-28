@@ -16,6 +16,8 @@ describe('RulesService.getRuleConstants', () => {
   const settings = {
     seerr_api_key: 'key',
     seerr_url: 'http://seerr',
+    ombi_url: 'http://ombi',
+    ombi_api_key: 'key',
     tautulli_url: 'http://tautulli',
     tautulli_api_key: 'key',
     streamystats_url: 'http://streamystats',

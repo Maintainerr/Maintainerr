@@ -2093,7 +2093,8 @@
     "GET /api/v2/public/users",
     "GET /api/v2/public/users/{id}",
     "GET /api/v2/public/users/{id}/history",
-    "GET /api/v2/public/users/{id}/stats"
+    "GET /api/v2/public/users/{id}/stats",
+    "GET /api/v2/public/watched-media"
   ],
   "tvdb": [
     "GET /artwork/statuses",
