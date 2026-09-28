@@ -73,6 +73,10 @@ export class RadarrActionHandler {
           matchedResult.candidate.providerKey.toUpperCase();
         const matchedId = matchedResult.candidate.id;
 
+        // A row added through the Radarr library carries no cached ids, and
+        // the request removal that follows needs the TMDB id.
+        media.tmdbId ??= radarrMedia.tmdbId;
+
         // Capture the torrent download ids BEFORE deleting: Radarr purges a
         // movie's history when the movie is removed, so this is the last chance
         // to learn which torrent(s) produced its files.

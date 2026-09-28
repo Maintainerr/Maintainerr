@@ -14,6 +14,7 @@ import {
 } from '../metadata/metadata-lookup.util';
 import { MetadataService } from '../metadata/metadata.service';
 import { Exclusion } from '../rules/entities/exclusion.entities';
+import { ArrLookupCache } from '../rules/helpers/arr-lookup-cache';
 import { RadarrSettings } from '../settings/entities/radarr_settings.entities';
 import { SonarrSettings } from '../settings/entities/sonarr_settings.entities';
 import { SettingsDataService } from '../settings/settings-data.service';
@@ -515,10 +516,7 @@ export class ServarrTagService {
     );
   }
 
-  /**
-   * The item's provider ids to look up, cached ids included as fallbacks, and
-   * `library` searched when no provider resolves them.
-   */
+  /** The item's provider ids to look up, cached ids included as fallbacks. */
   private lookupCandidates(
     item: ArrTagItem,
     service: ArrService,
@@ -535,17 +533,18 @@ export class ServarrTagService {
     );
   }
 
-  /** Reads the instance's library once, and only if an item needs it. */
+  /** Reads the instance's library once per batch; a failed read is retried. */
   private libraryOf(
     client: RadarrApi | SonarrApi,
     service: ArrService,
   ): ArrLibrary {
-    let library: ReturnType<ArrLibrary> | undefined;
+    const reads = new ArrLookupCache();
+    const read: ArrLibrary = () =>
+      service === 'radarr'
+        ? (client as RadarrApi).getMovies()
+        : (client as SonarrApi).getSeries();
     return () =>
-      (library ??=
-        service === 'radarr'
-          ? (client as RadarrApi).getMovies()
-          : (client as SonarrApi).getSeries());
+      reads.memoize('library', read, (entries) => entries === undefined);
   }
 
   /** Match resolved candidates against one instance; see `resolveArrId`. */

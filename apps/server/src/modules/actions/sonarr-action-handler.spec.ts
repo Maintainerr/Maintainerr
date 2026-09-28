@@ -463,6 +463,27 @@ describe('SonarrActionHandler', () => {
     },
   );
 
+  it('caches the matched series TMDB id on the row for the request removal', async () => {
+    const collection = createCollection({
+      arrAction: ServarrAction.UNMONITOR,
+      sonarrSettingsId: 1,
+      type: 'show',
+    });
+    const collectionMedia = createCollectionMediaWithMetadata(collection, {
+      tmdbId: undefined,
+    });
+    mockMediaServerMetadata(collectionMedia.mediaData);
+    const mockedSonarrApi = mockSonarrApi(servarrService, logger);
+    jest
+      .spyOn(mockedSonarrApi, 'getSeriesByTvdbId')
+      .mockResolvedValue(createSonarrSeries({ id: 42, tmdbId: 771 }));
+    mediaIdFinder.findTvdbId.mockResolvedValue(1);
+
+    await sonarrActionHandler.handleAction(collection, collectionMedia);
+
+    expect(collectionMedia.tmdbId).toBe(771);
+  });
+
   it.each([
     {
       type: 'season',

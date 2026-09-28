@@ -94,7 +94,7 @@ export class RadarrGetterService {
         // stays transient either way: "we could not look it up" is not the same
         // claim as "it is not there", and a definitive one would let unmatched
         // and personal media match NOT_EXISTS rules.
-        const message = `Failed to resolve external IDs for '${libItem.title}' (media server ID '${libItem.id}') through the metadata providers or Radarr.`;
+        const message = `Failed to resolve external IDs for '${libItem.title}' (media server ID '${libItem.id}'). As a result, no Radarr movie could be identified.`;
         if (this.metadataService.hasExternalIds(libItem)) {
           this.logger.warn(message);
         } else {

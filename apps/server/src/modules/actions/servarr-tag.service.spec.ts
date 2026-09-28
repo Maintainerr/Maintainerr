@@ -97,6 +97,35 @@ describe('ServarrTagService', () => {
       );
     });
 
+    it('retries a failed library read on the next chunk of the batch', async () => {
+      const radarr = mockRadarrApi(servarrService, logger);
+      jest
+        .spyOn(radarr, 'getMovies')
+        .mockResolvedValueOnce(undefined)
+        .mockResolvedValue([createRadarrMovie()]);
+      metadataService.resolveLookupCandidatesForService.mockImplementation(
+        async (mediaServerId, service, fallbackIds, library) =>
+          (await library?.())?.length ? [{ providerKey: 'tmdb', id: 100 }] : [],
+      );
+      jest
+        .spyOn(radarr, 'getMovieByTmdbId')
+        .mockResolvedValue(createRadarrMovie({ id: 10 }));
+      jest.spyOn(radarr, 'ensureTag').mockResolvedValue(5);
+
+      await service.syncMembershipTags(
+        createCollection({
+          type: 'movie',
+          radarrSettingsId: 1,
+          tagInArr: true,
+        }),
+        Array.from({ length: 6 }, (_, i) => ({ mediaServerId: `movie-${i}` })),
+        [],
+      );
+
+      expect(radarr.getMovies).toHaveBeenCalledTimes(2);
+      expect(radarr.setMovieTags).toHaveBeenCalledWith([10], 5, 'add');
+    });
+
     it('uses the current (renamed) group name as the tag - no stale old-label removal', async () => {
       const radarr = mockRadarrApi(servarrService, logger);
       jest

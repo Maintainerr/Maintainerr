@@ -157,6 +157,10 @@ export class SonarrActionHandler {
       }
     }
 
+    // A row added through the Sonarr library carries no cached ids, and the
+    // request removal that follows needs the TMDB id.
+    media.tmdbId ??= sonarrMedia.tmdbId || undefined;
+
     // Capture the download ids before any delete (the history is consumed
     // afterwards). A whole-show delete removes every torrent the series
     // produced; a season/episode delete removes only the torrents fully covered

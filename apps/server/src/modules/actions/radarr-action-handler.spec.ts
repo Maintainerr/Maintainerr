@@ -413,6 +413,28 @@ describe('RadarrActionHandler', () => {
     },
   );
 
+  it('caches the matched movie TMDB id on the row for the request removal', async () => {
+    const collection = createCollection({
+      arrAction: ServarrAction.UNMONITOR,
+      radarrSettingsId: 1,
+      type: 'movie',
+    });
+    const collectionMedia = createCollectionMedia(collection, {
+      tmdbId: undefined,
+    });
+    metadataService.resolveLookupCandidatesForService.mockResolvedValue([
+      { providerKey: 'tmdb', id: 771 },
+    ]);
+    const mockedRadarrApi = mockRadarrApi(servarrService, logger);
+    jest
+      .spyOn(mockedRadarrApi, 'getMovieByTmdbId')
+      .mockResolvedValue(createRadarrMovie({ id: 5, tmdbId: 771 }));
+
+    await radarrActionHandler.handleAction(collection, collectionMedia);
+
+    expect(collectionMedia.tmdbId).toBe(771);
+  });
+
   it.each([{ listExclusions: true }, { listExclusions: false }])(
     'should unmonitor and delete movie when action is UNMONITOR_DELETE_ALL',
     async ({ listExclusions }) => {
