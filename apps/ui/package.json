@@ -22,8 +22,8 @@
     "@headlessui/react": "^2.2.10",
     "@heroicons/react": "^1.0.6",
     "@hookform/resolvers": "^5.9.1",
-    "@lingui/core": "^6.7.0",
-    "@lingui/react": "^6.7.0",
+    "@lingui/core": "^6.8.0",
+    "@lingui/react": "^6.8.0",
     "@maintainerr/contracts": "workspace:^",
     "@monaco-editor/react": "^4.7.0",
     "@tanstack/react-query": "^5.103.2",
@@ -36,7 +36,7 @@
     "cron-validator": "^1.4.0",
     "konva": "^10.6.0",
     "lodash-es": "^4.18.1",
-    "monaco-editor": "0.56.0",
+    "monaco-editor": "0.57.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "react-hook-form": "^7.88.0",
@@ -59,12 +59,12 @@
   ],
   "devDependencies": {
     "@babel/core": "^8.0.6",
-    "@eslint-react/eslint-plugin": "^5.20.5",
+    "@eslint-react/eslint-plugin": "^5.20.8",
     "@eslint/js": "^10.0.1",
-    "@lingui/babel-plugin-lingui-macro": "^6.7.0",
-    "@lingui/cli": "^6.7.0",
-    "@lingui/format-po": "^6.7.0",
-    "@lingui/vite-plugin": "^6.7.0",
+    "@lingui/babel-plugin-lingui-macro": "^6.8.0",
+    "@lingui/cli": "^6.8.0",
+    "@lingui/format-po": "^6.8.0",
+    "@lingui/vite-plugin": "^6.8.0",
     "@rolldown/plugin-babel": "^0.2.4",
     "@tailwindcss/forms": "^0.5.11",
     "@tailwindcss/typography": "^0.5.20",
@@ -85,10 +85,10 @@
     "prettier-plugin-tailwindcss": "^0.8.1",
     "tailwindcss": "^4.3.0",
     "typescript": "^6.0.3",
-    "vite": "^8.3.0",
-    "vitest": "^5.0.1"
+    "vite": "^8.3.1",
+    "vitest": "^5.0.2"
   },
   "optionalDependencies": {
-    "rolldown": "^1.2.9"
+    "rolldown": "^1.2.11"
   }
 }
