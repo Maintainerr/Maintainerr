@@ -904,7 +904,8 @@ export class EmbyAdapterService implements IMediaServerService {
           Recursive: true,
           SearchTerm: query,
           IncludeItemTypes: includeItemTypes,
-          Fields: 'ProviderIds,DateCreated,Overview,Studios',
+          Fields:
+            'ProviderIds,DateCreated,Overview,Studios,PremiereDate,CommunityRating,ProductionYear',
           Limit: EMBY_BATCH_SIZE.DEFAULT_PAGE_SIZE,
           ...this.libraryQueryDefaults(),
         },
@@ -1457,9 +1458,10 @@ export class EmbyAdapterService implements IMediaServerService {
           params: {
             ...(userId ? { UserId: userId } : {}),
             ParentId: collectionId,
-            // Collection grids are sorted Maintainerr-side, so studio
-            // ordering needs the field on every hydrated child.
-            Fields: 'ProviderIds,DateCreated,Overview,Studios',
+            // Collection grids are sorted Maintainerr-side, and Emby leaves out
+            // any field a list read does not name.
+            Fields:
+              'ProviderIds,DateCreated,Overview,Studios,PremiereDate,CommunityRating,ProductionYear',
             Limit: EMBY_BATCH_SIZE.MAX_PAGE_SIZE,
             StartIndex: offset,
             EnableTotalRecordCount: true,
