@@ -56,19 +56,9 @@ conversational chat.
   do the job, and say why. Such library suggestions in issues are often
   AI-sourced - don't take them at face value.
 
-- **Scope discipline.** Separate the actual blocker from cosmetic noise and fix
-  only what's needed. Before expanding scope (new deps, transformer swaps,
-  cross-cutting refactors), stop and confirm - don't turn a warning fix into an
-  architecture change. A known-benign warning can be left as a visible reminder
-  for a future dedicated overhaul rather than masked.
-
-- **But finish the job within the area you're touching.** If you're already in a
-  subsystem and spot a _real_ correctness bug adjacent to your change, fix it and
-  add coverage - "pre-existing" is not an excuse to leave a known bug. The
-  distinction from scope discipline: real-bug-in-scope → fix it; benign-noise →
-  leave it. For data changes, prefer **minimal behavioral change** - preserve how
-  existing data evaluates today, making values explicit rather than flipping
-  behavior.
+Scope, regression preservation, validation, and PR completion follow the
+[PR workflow](implementation.instructions.md#pr-workflow). For data changes,
+preserve existing evaluation semantics unless changing them is the requirement.
 
 ### Working-style preferences of the prior maintainer
 
@@ -272,8 +262,8 @@ lists `rules` (sections + operators) and `values` (shifted per getter call, in
 rule order). It is a **script that prints JSON** (`yarn workspace
 @maintainerr/server test:e2e`), meant for cross-refactor comparison - add
 scenarios here to regression-test comparator / section-combine behavior end-to-end
-through the HTTP path. Use this when you want "real results" without standing up a
-mock HTTP media server. (For a fuller live setup, see the dev mocks below.)
+through the HTTP path. This verifies the rule engine with mocked providers;
+it does not establish real media-server integration coverage.
 
 ### Testing YAML import/export and community-rule import
 
@@ -505,17 +495,16 @@ Then: `cd apps/server && TS_NODE_PROJECT=./tsconfig.migrate.json yarn migration:
 
 **Verifying a migration:** the app uses `synchronize:false` + `migrationsRun:true`
 (`typeOrmConfig.ts`), so `migration:run` ≡ `yarn dev` for schema. Definitive sync
-check: build the branch DB from empty (`rm data/maintainerr.sqlite*` then
-`migration:run`), then `migration:generate` must report **"No changes in database
-schema were found."** `data/maintainerr.sqlite` is gitignored.
+check: use an empty, isolated test database, run `migration:run`, then
+`migration:generate` must report **"No changes in database schema were found."**
+Do not delete the shared development database for this check.
 
 ---
 
 ## Local dev: seeded DB + mock media servers
 
-For end-to-end checks of media-server-dependent flows (rules, collections,
-overview, storage) without a real Plex/Jellyfin - and to drive the UI with
-Playwright against deterministic data. Full workflow is in
+These mocks supplement real-stack validation with deterministic data, or serve
+as a reported fallback when a real service is unavailable. Full workflow is in
 [AGENTS.md](../../AGENTS.md); the scripts live in `tools/dev/`:
 
 - `tools/dev/fake-jellyfin.mjs` - stateless mock Jellyfin (`:8096`). Answers the
@@ -537,9 +526,10 @@ Playwright against deterministic data. Full workflow is in
   exists yet, so the seed's show collection is DO_NOTHING.
 - `tools/dev/seed-db.mjs` - the only DB-touching script. Resets and seeds
   collections / rule groups (with rules covering ~all properties) / settings /
-  notifications / exclusions / overlays into `data/maintainerr.sqlite`. Target a
-  server with `MEDIA_SERVER=plex|jellyfin` (default jellyfin). Run with `yarn dev`
-  **stopped** (SQLite is single-writer), then restart.
+  notifications / exclusions / overlays. Set `MAINTAINERR_DB` to an isolated
+  application database; the default is the shared `data/maintainerr.sqlite`.
+  Target a server with `MEDIA_SERVER=plex|jellyfin` (default jellyfin). Stop the
+  application using that database before seeding, then restart it.
 
 **Key limitation:** a DB-only seed does **not** populate the collection-detail
 media grid or Overview - `CollectionsService.hydrateCollectionMediaWithMetadata`

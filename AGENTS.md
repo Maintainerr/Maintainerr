@@ -24,7 +24,7 @@ For the broader system architecture map, see [ARCHITECTURE.md](ARCHITECTURE.md).
 
 **Standing rules - read before writing any code (they apply to all work):**
 
-- [implementation.instructions.md](.github/instructions/implementation.instructions.md) - implementation rules and API-doc references.
+- [implementation.instructions.md](.github/instructions/implementation.instructions.md) - implementation rules, PR workflow, validation requirements, and API-doc references.
 - [project-notes.instructions.md](.github/instructions/project-notes.instructions.md) - non-obvious project knowledge, conventions, and gotchas (rule engine, Tailwind v4, migrations, naming) that isn't derivable from the code or git history.
 
 **Task-specific - read only when the task calls for it (don't load them every session):**
@@ -381,13 +381,13 @@ When modifying existing code, follow these specific refactoring priorities:
 
 - **React Hook Forms Migration**: Forms that do not use React Hook Form should be refactored to use it, along with their Zod validation schemas and corresponding DTOs from the contracts package. See [PR #1871](https://github.com/Maintainerr/Maintainerr/pull/1871) as a reference example.
 - **Form Components**: Use existing form components from `apps/ui/src/components/Forms/` (Input, Select, etc.) and create new ones in this directory if necessary, following the same patterns.
-- **Component Naming**: Component file names should follow the exported type name(s) rather than using generic `index.tsx` files. For example, use `UserSettingsForm.tsx` instead of `index.tsx`.
+- **Component Naming**: New component file names should follow the exported type name(s) rather than using generic `index.tsx` files. Keep existing filenames during focused fixes unless a rename is required. For example, use `UserSettingsForm.tsx` instead of `index.tsx`.
 
 ### Server-Side Type Safety
 
 - **Strict Typing Evolution**: Extra care should be taken in the **server** project. While strict type checking is not currently enabled (`strictNullChecks: false`, `noImplicitAny: false`), we are moving toward stricter standards.
 - **Type Specifications**: When creating new code, specify explicit types including `undefined` when applicable, rather than relying on computed types.
-- **Any Type Elimination**: When encountering `any` types during code changes, attempt to use proper types or create specific type definitions. This includes external API requests and responses.
+- **Any Type Elimination**: Avoid introducing `any`; use proper types for changed logic, including external API requests and responses. Keep unrelated type cleanup out of focused fixes.
 - **Gradual Migration**: Incrementally improve type safety without breaking existing functionality.
 - **Logging**: In injectable server code, prefer `MaintainerrLogger` over raw Nest `Logger`. Set the context once in the constructor. For paired caught-error logs, keep `warn`/`log`/`error` messages plain and put the throwable on `logger.debug(error)`; only use `logger.error('message', error)` when the higher-level log should intentionally carry the throwable.
 
@@ -429,6 +429,9 @@ weekly so the list stays verified. References that have no fetchable spec live i
 
 ## Testing Guidelines
 
+Follow the shared [PR workflow](.github/instructions/implementation.instructions.md#pr-workflow)
+for real-stack coverage, behavioral tests, and final validation timing.
+
 ### Backend Testing
 
 - **Unit Tests**: Jest with @suites for dependency mocking
@@ -443,10 +446,10 @@ weekly so the list stays verified. References that have no fetchable spec live i
 
 ### Local dev mocks & seeding (manual / Playwright testing)
 
-For end-to-end checks of media-server-dependent flows (rules, collections,
-overview, calendar, storage) without a real Plex/Jellyfin, the `tools/dev/` folder
-has scripts that **complement Playwright** - Playwright drives the UI, these
-provide the backend data:
+Use the real Podman stack for affected integration flows. The `tools/dev/`
+scripts provide deterministic supplemental coverage or a reported fallback when
+real services are unavailable; they do not replace real-stack verification.
+Playwright drives the UI, while these scripts provide backend data:
 
 - `tools/dev/fake-jellyfin.mjs` - stateless mock Jellyfin (`:8096`).
 - `tools/dev/fake-plex.mjs` - stateless mock Plex (`:32400`); covers the Plex-only
@@ -464,8 +467,10 @@ provide the backend data:
   exercises the Radarr exclusion path against `fake-radarr.mjs`. Target a server
   with `MEDIA_SERVER=plex|jellyfin` (default `jellyfin`).
 
-Workflow: start the matching mock(s), stop `yarn dev` (SQLite is single-writer),
-run the seed, restart `yarn dev`. Inspect a getter's live output with
+Workflow: start the matching mock(s) and use an isolated application data directory.
+Set `MAINTAINERR_DB` to that directory's database when running the seed; it resets
+existing data. Stop the application using that database before seeding, then
+restart it. Inspect a getter's live output with
 `POST /api/rules/test {"mediaId","rulegroupId"}`, run a rule with
 `POST /api/rules/:id/execute`, or run collection handling with
 `POST /api/collections/handle`. Note: after editing server code, **restart
@@ -503,9 +508,9 @@ Before contributing:
 
 1. Read `CONTRIBUTING.md` for detailed guidelines
 2. Follow the branching strategy (meaningful branch names)
-3. Ensure all tests pass: `yarn test`
-4. Verify linting: `yarn lint`
-5. Format code: `yarn format`
+3. Follow the [PR workflow](.github/instructions/implementation.instructions.md#pr-workflow) for focused checks and final full-suite validation, including the PR branch update sequence.
+4. Verify linting for the change; `yarn lint` checks the full workspace.
+5. Format changed files; avoid unrelated formatting churn.
 6. Use conventional commit messages
 
 **Before suggesting or writing any code, you must read and follow `.github/instructions/implementation.instructions.md`.**
