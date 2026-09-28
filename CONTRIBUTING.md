@@ -27,7 +27,7 @@ For detailed information, see the [Dev Container README](.devcontainer/README.md
 **Using GitHub Codespaces:**
 
 1. Click the "Code" button on GitHub
-2. Select "Codespaces" → "Create codespace on main"
+2. Select "Codespaces" → "Create codespace on development"
 3. Wait for the environment to build
 4. Start developing!
 
@@ -60,7 +60,7 @@ If you prefer to set up your development environment manually (specific to a Win
 3. Create a new branch:
 
    ```bash
-   git checkout -b <YOUR_NEW_BRANCH_NAME> main
+   git checkout -b <YOUR_NEW_BRANCH_NAME> development
    ```
 
    - It is recommended to give your branch a meaningful name, relevant to the feature or fix you are working on.
@@ -111,12 +111,11 @@ If you prefer to set up your development environment manually (specific to a Win
 
 8. Make your code changes/improvements and test that they work as intended.
    - Be sure to follow both the [code](#contributing-code) and [UI text](#ui-text-style) guidelines.
-   - Should you need to update your fork (from any recent ORIGIN changes), you can do so by rebasing from `upstream`:
+   - To update an unpublished branch, rebase from `upstream`. For published branches, follow the history guidance below:
 
      ```bash
      git fetch upstream
-     git rebase upstream/main
-     git push origin BRANCH_NAME -f
+     git rebase upstream/development
      ```
 
 ### Contributing Code
@@ -128,10 +127,9 @@ If you prefer to set up your development environment manually (specific to a Win
 - Each PR should target one major meaningful change, which allows us to review independent changes separately, rather than having everything blocked on a single review.
 - All commits **must** follow [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/)
   - Pull requests with commits not following this standard will **not** be merged.
-- Please make meaningful commits, or squash them prior to opening a pull request.
-  - Do not squash commits once people have begun reviewing your changes.
-- Always rebase your commit to the latest `main` branch. Do **not** merge `main` into your branch.
-- It is your responsibility to keep your branch up-to-date. Your work will **not** be merged unless it is rebased off the latest `main` branch.
+- Keep PR updates in one clean commit. Follow the [PR branch update rules](.github/instructions/project-notes.instructions.md#working-style-preferences-of-the-prior-maintainer): rebase onto latest origin first, fold the update into one commit, run the full repo suite, verify a clean fast-forward, then push without force-pushing.
+- Target `development` and keep your branch current with it. Rebase instead of merging the base branch; follow the PR branch update rules when updating an existing PR.
+- Follow the [PR workflow](.github/instructions/implementation.instructions.md#pr-workflow) for investigation, scope, regression checks, and final validation.
 - Your code **must** be formatted correctly.
   - We use Prettier to format our code base. It is recommended to have the Prettier extension installed in your editor and to format on save. Alternatively, you can run `yarn format` to format.
 - Contributors should be prepared to explain their design decisions and trade-offs during review.
@@ -151,11 +149,15 @@ Pull requests that appear to be largely unreviewed, low-effort, or misaligned wi
 
 ### Browser Testing with Playwright
 
-Playwright is not a repo dependency and there is no browser test suite. UI
-verification runs through the `playwright` MCP server, wired up per client in
+Playwright is not a repo dependency and there is no browser test suite. In
+devbox, use the globally installed `playwright` library and system Chromium as
+described in [AGENTS.md](AGENTS.md#workspace-mcp-servers). The Playwright MCP
+server is not used for validation because it often fails to connect.
+
+For reference, the Playwright MCP setup is configured per client in
 [.mcp.json](.mcp.json) (Claude Code), [.vscode/mcp.json](.vscode/mcp.json)
-(VS Code), and [.codex/config.toml](.codex/config.toml) (Codex). Keep the three
-in sync.
+(VS Code), and [.codex/config.toml](.codex/config.toml) (Codex). Keep all three
+in sync. The JSON clients use this configuration:
 
 ```json
 {
@@ -178,11 +180,16 @@ in sync.
 }
 ```
 
-`--executable-path` assumes a system Chromium; drop it and `--no-sandbox` if you
-do not have one. Start your editor from the repo root, or the project config
-never loads. For flows that need Plex, Jellyfin, or Radarr data, run the mocks
-and seed in [tools/dev/](tools/dev/) first, as described in
-[AGENTS.md](AGENTS.md).
+`--executable-path` assumes system Chromium; drop it and `--no-sandbox` if you
+do not have one. Start your editor from the repo root so the project MCP
+configuration loads. For validation in devbox, follow the library-based workflow
+above.
+
+Exercise affected integration flows against the real Podman services, using
+API calls, service logs, and Playwright assertions on the resulting UI and state.
+The [tools/dev/](tools/dev/) mocks supplement this coverage or provide a reported
+fallback when real services are unavailable. Keep test state isolated and restore
+modified fixtures afterward.
 
 #### What to Attach to a Pull Request
 
