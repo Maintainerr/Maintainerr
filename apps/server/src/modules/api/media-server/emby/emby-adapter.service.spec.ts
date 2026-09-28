@@ -334,6 +334,37 @@ describe('EmbyAdapterService', () => {
       expect(EMBY_METADATA_FIELDS.split(',')).toContain(field);
     });
 
+    it.each([
+      {
+        read: 'getCollectionChildren',
+        call: (adapter: EmbyAdapterService) =>
+          adapter.getCollectionChildren('box-1'),
+      },
+      {
+        read: 'searchContent',
+        call: (adapter: EmbyAdapterService) => adapter.searchContent('one'),
+      },
+    ])(
+      '$read names the fields its Maintainerr-side sorts read',
+      async ({ call }) => {
+        http.get.mockResolvedValue({
+          data: { Items: [], TotalRecordCount: 0 },
+        });
+
+        await call(service);
+
+        const itemsCall = http.get.mock.calls.find(([url]) => url === '/Items');
+        expect(fieldsOf(itemsCall).split(',')).toEqual(
+          expect.arrayContaining([
+            'PremiereDate',
+            'CommunityRating',
+            'ProductionYear',
+            'Studios',
+          ]),
+        );
+      },
+    );
+
     // The keys the list route answers without being asked, verified on 4.9.5
     // for a movie and an episode. Everything else the mapper consumes must be
     // named in EMBY_METADATA_FIELDS or the batched row silently loses it.
