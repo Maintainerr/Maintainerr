@@ -51,6 +51,7 @@ import * as fs from 'fs';
 import { ZodValidationPipe } from 'nestjs-zod';
 import { z } from 'zod';
 import { MaintainerrLogger } from '../logging/logs.service';
+import { OverlayProcessorService } from '../overlays/overlay-processor.service';
 import { ExclusionAction } from '../rules/dtos/exclusion.dto';
 import {
   ExecutionLockService,
@@ -283,6 +284,7 @@ export class CollectionsController {
     private readonly collectionHandler: CollectionHandler,
     private readonly collectionPosterService: CollectionPosterService,
     private readonly logger: MaintainerrLogger,
+    private readonly overlayProcessor: OverlayProcessorService,
   ) {
     this.logger.setContext(CollectionsController.name);
   }
@@ -344,6 +346,7 @@ export class CollectionsController {
 
     this.collectionWorkerService
       .execute()
+      .then(() => this.overlayProcessor.processAllCollections())
       .catch((error) =>
         this.logger.error(
           'Failed to start collection handler execution',

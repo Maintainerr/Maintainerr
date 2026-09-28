@@ -10,6 +10,7 @@ import {
   createCollectionMedia,
 } from '../../../test/utils/data';
 import { MaintainerrLogger } from '../logging/logs.service';
+import { OverlayProcessorService } from '../overlays/overlay-processor.service';
 import {
   ExecutionLockService,
   RULES_COLLECTIONS_EXECUTION_LOCK_KEY,
@@ -67,8 +68,13 @@ describe('CollectionsController', () => {
     refreshCollectionOnMediaServer: jest.fn(),
   } as unknown as jest.Mocked<CollectionPosterService>;
 
+  const overlayProcessor = {
+    processAllCollections: jest.fn().mockResolvedValue(undefined),
+  } as unknown as jest.Mocked<OverlayProcessorService>;
+
   const logger = {
     setContext: jest.fn(),
+    error: jest.fn(),
   } as unknown as jest.Mocked<MaintainerrLogger>;
 
   beforeEach(() => {
@@ -80,6 +86,7 @@ describe('CollectionsController', () => {
       collectionHandler,
       collectionPosterService,
       logger,
+      overlayProcessor,
     );
 
     collectionWorkerService.isRunning.mockReturnValue(false);
@@ -92,6 +99,28 @@ describe('CollectionsController', () => {
     collectionPosterService.refreshCollectionOnMediaServer.mockResolvedValue({
       requested: true,
     });
+  });
+
+  it('starts overlays only after manual collection handling completes', async () => {
+    let finish!: () => void;
+    collectionWorkerService.execute.mockReturnValue(
+      new Promise<void>((resolve) => {
+        finish = resolve;
+      }),
+    );
+
+    await controller.handleCollection();
+    expect(overlayProcessor.processAllCollections).not.toHaveBeenCalled();
+    finish();
+    await Promise.resolve();
+    expect(overlayProcessor.processAllCollections).toHaveBeenCalledWith();
+  });
+
+  it('does not start overlays when manual handling rejects', async () => {
+    collectionWorkerService.execute.mockRejectedValue(new Error('failed'));
+    await controller.handleCollection();
+    await Promise.resolve();
+    expect(overlayProcessor.processAllCollections).not.toHaveBeenCalled();
   });
 
   it('validates the item action request body with Zod', () => {
