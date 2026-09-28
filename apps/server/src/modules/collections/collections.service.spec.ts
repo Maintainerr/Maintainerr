@@ -3958,6 +3958,76 @@ describe('CollectionsService', () => {
     );
   });
 
+  it('orders a shared media server collection across every linked collection by each deadline (#3799)', async () => {
+    const collection = createCollection({
+      id: 99,
+      mediaServerId: 'remote-99',
+      mediaServerSort: 'deleteSoonest.asc',
+      deleteAfterDays: 7,
+      type: 'movie',
+    });
+    const sibling = createCollection({
+      id: 100,
+      mediaServerId: 'remote-99',
+      deleteAfterDays: 30,
+    });
+    const noWindowSibling = createCollection({
+      id: 101,
+      mediaServerId: 'remote-99',
+      deleteAfterDays: null,
+    });
+    const daysAgo = (days: number) => new Date(Date.now() - days * 86400000);
+    const rows = [
+      createCollectionMedia(noWindowSibling, {
+        mediaServerId: 'never',
+        addDate: daysAgo(100),
+      }),
+      createCollectionMedia(sibling, {
+        mediaServerId: 'in-10',
+        addDate: daysAgo(20),
+      }),
+      createCollectionMedia(collection, {
+        mediaServerId: 'in-7',
+        addDate: daysAgo(0),
+      }),
+      createCollectionMedia(collection, {
+        mediaServerId: 'held-by-both',
+        addDate: daysAgo(0),
+      }),
+      createCollectionMedia(sibling, {
+        mediaServerId: 'in-5',
+        addDate: daysAgo(25),
+      }),
+      createCollectionMedia(sibling, {
+        mediaServerId: 'held-by-both',
+        addDate: daysAgo(27),
+      }),
+      createCollectionMedia(collection, {
+        mediaServerId: 'in-2',
+        addDate: daysAgo(5),
+      }),
+    ];
+
+    collectionRepo.find.mockResolvedValue([sibling, noWindowSibling]);
+    collectionMediaRepo.find.mockImplementation(async ({ where }: any) =>
+      rows.filter((row) => where.collectionId.value.includes(row.collectionId)),
+    );
+    mediaServer.supportsFeature.mockImplementation(
+      (feature) => feature === MediaServerFeature.COLLECTION_SORT,
+    );
+    mediaServer.getMetadataBatch.mockImplementation(async (ids: string[]) =>
+      ids.map((id) => createMediaItem({ id, title: id, type: 'movie' })),
+    );
+    mediaServer.reorderCollectionItems = jest.fn().mockResolvedValue(undefined);
+
+    await service.applyCollectionSort(collection as Collection);
+
+    expect(mediaServer.reorderCollectionItems).toHaveBeenCalledWith(
+      'remote-99',
+      ['in-2', 'held-by-both', 'in-5', 'in-7', 'in-10', 'never'],
+    );
+  });
+
   describe('getCollectionMediaMetadata per-item fallback', () => {
     const collection = () =>
       createCollection({
