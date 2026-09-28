@@ -13,6 +13,7 @@ import { MaintainerrLogger } from '../logging/logs.service';
 import { SettingsDataService } from '../settings/settings-data.service';
 import { ExecutionLockService } from '../tasks/execution-lock.service';
 import { TasksService } from '../tasks/tasks.service';
+import { ArrLookupCache } from '../rules/helpers/arr-lookup-cache';
 import { CollectionHandler } from './collection-handler';
 import { CollectionWorkerService } from './collection-worker.service';
 import { Exclusion } from '../rules/entities/exclusion.entities';
@@ -392,6 +393,7 @@ describe('CollectionWorkerService', () => {
     expect(collectionHandler.handleMedia).toHaveBeenCalledWith(
       collection,
       flaggedManualMedia,
+      expect.any(ArrLookupCache),
     );
     expect(collectionHandler.handleMedia).not.toHaveBeenCalledWith(
       collection,
@@ -426,6 +428,7 @@ describe('CollectionWorkerService', () => {
     expect(collectionHandler.handleMedia).toHaveBeenCalledWith(
       collection,
       idleMedia,
+      expect.any(ArrLookupCache),
     );
     expect(collectionHandler.handleMedia).not.toHaveBeenCalledWith(
       collection,

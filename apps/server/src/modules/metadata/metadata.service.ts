@@ -26,18 +26,13 @@ import {
 } from './interfaces/metadata.types';
 import { MetadataLookupCandidate } from './metadata-lookup.util';
 
-/** The field of an *arr library entry holding each provider's id. */
-const ARR_ID_FIELDS = {
-  tmdb: 'tmdbId',
-  tvdb: 'tvdbId',
-  imdb: 'imdbId',
-} as const;
+const ARR_ID_KEYS = ['tmdb', 'tvdb', 'imdb'] as const;
 
 /** Each id `ids` carries, paired with the *arr library field that holds it. */
 const arrIdPairs = (ids: Partial<ProviderIds>) =>
-  Object.entries(ARR_ID_FIELDS)
-    .filter(([key]) => ids[key])
-    .map(([key, field]) => [field, ids[key]] as const);
+  ARR_ID_KEYS.filter((key) => ids[key]).map(
+    (key) => [`${key}Id` as const, ids[key]] as const,
+  );
 
 /** A provider's year that disagreed with the media server's, kept for agreement checks. */
 interface ProviderYearDisagreement {
@@ -414,9 +409,13 @@ export class MetadataService {
         providerMatchMode,
       );
 
+      // A provider that answered, even without the key the policy needs,
+      // rules the *arr library out.
       return this.hasRequiredIds(ids, providerKeys, providerMatchMode)
         ? ids
-        : metadataDetails
+        : this.getOrderedProviders().some(
+              (provider) => provider.extractId(ids) !== undefined,
+            )
           ? undefined
           : await this.resolveIdsFromArrLibrary(item, arr);
     } catch (error) {

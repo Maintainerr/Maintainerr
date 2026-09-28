@@ -114,6 +114,7 @@ export class ServarrTagService {
     collection: Collection,
     added: ArrTagItem[],
     removed: ArrTagItem[],
+    libraryReads?: ArrLookupCache,
   ): Promise<void> {
     try {
       if (!collection?.tagInArr) {
@@ -165,8 +166,9 @@ export class ServarrTagService {
         return;
       }
 
+      const library = this.libraryOf(client, service, settingsId, libraryReads);
       const [addIds, removeIds] = await Promise.all([
-        this.resolveArrIds(client, service, added),
+        this.resolveArrIds(client, service, added, library),
         this.resolveArrIds(
           client,
           service,
@@ -177,6 +179,7 @@ export class ServarrTagService {
             label,
             removed,
           ),
+          library,
         ),
       ]);
 
@@ -297,10 +300,10 @@ export class ServarrTagService {
         return;
       }
 
-      // Resolved once and reused: the candidate ids describe the item, not the
-      // instance, so a fan-out must not re-read its metadata per instance. Only
-      // an item no provider resolves is re-read, against each instance's library.
-      const candidates = await this.lookupCandidates(target, service);
+      // Resolved once, with the first instance's library: the candidate ids
+      // describe the item, not the instance. Only an item nothing resolved is
+      // read again, against the next instance's library.
+      let candidates: MetadataLookupCandidate[] = [];
 
       const tagged: string[] = [];
       let matched = false;
@@ -310,17 +313,14 @@ export class ServarrTagService {
           continue;
         }
 
-        const arrId = await this.matchArrId(
-          client,
-          service,
-          candidates.length > 0
-            ? candidates
-            : await this.lookupCandidates(
-                target,
-                service,
-                this.libraryOf(client, service),
-              ),
-        );
+        if (candidates.length === 0) {
+          candidates = await this.lookupCandidates(
+            target,
+            service,
+            this.libraryOf(client, service, settings.id),
+          );
+        }
+        const arrId = await this.matchArrId(client, service, candidates);
         if (arrId == null) {
           // undefined = transient (retried on the next exclude/un-exclude),
           // null = this instance doesn't track the item - nothing to tag.
@@ -478,9 +478,9 @@ export class ServarrTagService {
     client: RadarrApi | SonarrApi,
     service: ArrService,
     items: ArrTagItem[],
+    library: ArrLibrary,
   ): Promise<number[]> {
     const resolved = new Set<number>();
-    const library = this.libraryOf(client, service);
     for (const batch of this.chunk(items, RESOLVE_CONCURRENCY)) {
       const ids = await Promise.all(
         batch.map((item) => this.resolveArrId(client, service, item, library)),
@@ -533,18 +533,23 @@ export class ServarrTagService {
     );
   }
 
-  /** Reads the instance's library once per batch; a failed read is retried. */
+  /** Reads the instance's library once per `reads`; a failed read is retried. */
   private libraryOf(
     client: RadarrApi | SonarrApi,
     service: ArrService,
+    settingsId: number,
+    reads = new ArrLookupCache(),
   ): ArrLibrary {
-    const reads = new ArrLookupCache();
     const read: ArrLibrary = () =>
       service === 'radarr'
         ? (client as RadarrApi).getMovies()
         : (client as SonarrApi).getSeries();
     return () =>
-      reads.memoize('library', read, (entries) => entries === undefined);
+      reads.memoize(
+        `${service}:${settingsId}:library`,
+        read,
+        (entries) => entries === undefined,
+      );
   }
 
   /** Match resolved candidates against one instance; see `resolveArrId`. */

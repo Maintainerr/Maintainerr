@@ -33,6 +33,7 @@ import { Brackets, DataSource, In, LessThan, Not, Repository } from 'typeorm';
 import { CollectionLog } from '../../modules/collections/entities/collection_log.entities';
 import { getErrorMessage } from '../../utils/connection-error';
 import { ServarrTagService } from '../actions/servarr-tag.service';
+import { ArrLookupCache } from '../rules/helpers/arr-lookup-cache';
 import { readItemPresence } from '../api/media-server/item-presence.util';
 import {
   ENRICHMENT_ID_CHUNK,
@@ -3506,12 +3507,15 @@ export class CollectionsService {
     collectionDbId: number,
     media: CollectionMediaChange[],
     removalScope: CollectionMediaRemovalScope = 'all',
+    libraryReads?: ArrLookupCache,
   ): Promise<Collection | undefined> {
     return this.removeFromCollectionInternal(
       collectionDbId,
       media,
       false,
       removalScope,
+      false,
+      libraryReads,
     );
   }
 
@@ -3551,6 +3555,7 @@ export class CollectionsService {
   async removeMediaFromOtherCollections(
     mediaServerId: string,
     excludeCollectionId: number,
+    libraryReads?: ArrLookupCache,
   ): Promise<number[]> {
     const memberships = await this.CollectionMediaRepo.find({
       where: { mediaServerId },
@@ -3620,6 +3625,7 @@ export class CollectionsService {
           false,
           'all',
           true,
+          libraryReads,
         );
         prunedCollectionIds.push(siblingCollection.id);
       }
@@ -3634,6 +3640,7 @@ export class CollectionsService {
     skipAutomaticLinkCheck = false,
     removalScope: CollectionMediaRemovalScope = 'all',
     skipMediaServerRemove = false,
+    libraryReads?: ArrLookupCache,
   ): Promise<Collection | undefined> {
     try {
       const mediaServer = await this.getMediaServer();
@@ -3721,6 +3728,7 @@ export class CollectionsService {
             collectionMedia.filter((existingMedia) =>
               removedItemIds.has(existingMedia.mediaServerId),
             ),
+            libraryReads,
           );
         }
 

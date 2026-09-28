@@ -601,7 +601,7 @@ describe('ServarrTagService', () => {
       jest.spyOn(tracking, 'ensureTag').mockResolvedValue(9);
       jest.spyOn(other, 'getMovies').mockResolvedValue([]);
       servarrService.getRadarrApiClient.mockImplementation(async (id) =>
-        id === 1 ? tracking : other,
+        id === 1 ? other : tracking,
       );
       settings.getRadarrSettings.mockResolvedValue([
         radarrServer({ serverName: 'HD', tagExclusions: true }),
@@ -612,6 +612,9 @@ describe('ServarrTagService', () => {
 
       expect(tracking.setMovieTags).toHaveBeenCalledWith([30], 9, 'add');
       expect(other.setMovieTags).not.toHaveBeenCalled();
+      expect(
+        metadataService.resolveLookupCandidatesForService,
+      ).toHaveBeenCalledTimes(2);
     });
 
     it('uses the label of each server, and skips a server with it off', async () => {

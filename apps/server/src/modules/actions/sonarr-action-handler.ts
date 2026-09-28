@@ -23,6 +23,7 @@ import {
   formatMetadataLookupCandidates,
 } from '../metadata/metadata-lookup.util';
 import { MetadataService } from '../metadata/metadata.service';
+import { ArrLookupCache } from '../rules/helpers/arr-lookup-cache';
 import { SettingsDataService } from '../settings/settings-data.service';
 import {
   LeftoverCleanupInput,
@@ -57,6 +58,7 @@ export class SonarrActionHandler {
   public async handleAction(
     collection: Collection,
     media: CollectionMedia,
+    libraryReads?: ArrLookupCache,
   ): Promise<boolean> {
     const mediaServer = await this.mediaServerFactory.getService();
     const sonarrApiClient = await this.servarrApi.getSonarrApiClient(
@@ -97,7 +99,14 @@ export class SonarrActionHandler {
           tvdb: media.tvdbId,
           tmdb: media.tmdbId,
         },
-        () => sonarrApiClient.getSeries(),
+        () =>
+          libraryReads
+            ? libraryReads.memoize(
+                `sonarr:${collection.sonarrSettingsId}:library`,
+                () => sonarrApiClient.getSeries(),
+                (entries) => entries === undefined,
+              )
+            : sonarrApiClient.getSeries(),
       );
 
     if (lookupCandidates.length === 0) {
@@ -158,8 +167,11 @@ export class SonarrActionHandler {
     }
 
     // A row added through the Sonarr library carries no cached ids, and the
-    // request removal that follows needs the TMDB id.
-    media.tmdbId ??= sonarrMedia.tmdbId || undefined;
+    // request removal that follows needs the TMDB id. Sonarr reports 0 when it
+    // has none, which must leave the row as it is.
+    if (sonarrMedia.tmdbId) {
+      media.tmdbId ??= sonarrMedia.tmdbId;
+    }
 
     // Capture the download ids before any delete (the history is consumed
     // afterwards). A whole-show delete removes every torrent the series

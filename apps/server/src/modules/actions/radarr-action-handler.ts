@@ -13,6 +13,7 @@ import {
   formatMetadataLookupCandidates,
 } from '../metadata/metadata-lookup.util';
 import { MetadataService } from '../metadata/metadata.service';
+import { ArrLookupCache } from '../rules/helpers/arr-lookup-cache';
 import { SettingsDataService } from '../settings/settings-data.service';
 import {
   LeftoverCleanupInput,
@@ -36,6 +37,7 @@ export class RadarrActionHandler {
   public async handleAction(
     collection: Collection,
     media: CollectionMedia,
+    libraryReads?: ArrLookupCache,
   ): Promise<boolean> {
     const radarrApiClient = await this.servarrApi.getRadarrApiClient(
       collection.radarrSettingsId,
@@ -49,7 +51,14 @@ export class RadarrActionHandler {
           tmdb: media.tmdbId,
           tvdb: media.tvdbId,
         },
-        () => radarrApiClient.getMovies(),
+        () =>
+          libraryReads
+            ? libraryReads.memoize(
+                `radarr:${collection.radarrSettingsId}:library`,
+                () => radarrApiClient.getMovies(),
+                (entries) => entries === undefined,
+              )
+            : radarrApiClient.getMovies(),
       );
 
     if (lookupCandidates.length > 0) {

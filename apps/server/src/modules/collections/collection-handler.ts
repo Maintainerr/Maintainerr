@@ -10,6 +10,7 @@ import { MaintainerrLogger } from '../logging/logs.service';
 import { MetadataService } from '../metadata/metadata.service';
 import { SettingsDataService } from '../settings/settings-data.service';
 import { CollectionsService } from './collections.service';
+import { ArrLookupCache } from '../rules/helpers/arr-lookup-cache';
 import { Collection } from './entities/collection.entities';
 import { CollectionMedia } from './entities/collection_media.entities';
 import { ServarrAction } from './interfaces/collection.interface';
@@ -70,6 +71,7 @@ export class CollectionHandler {
   public async handleMedia(
     collection: Collection,
     media: CollectionMedia,
+    libraryReads?: ArrLookupCache,
   ): Promise<HandleMediaResult> {
     if (collection.arrAction === ServarrAction.DO_NOTHING) {
       return 'failed';
@@ -120,11 +122,13 @@ export class CollectionHandler {
       actionHandled = await this.radarrActionHandler.handleAction(
         collection,
         media,
+        libraryReads,
       );
     } else if (library?.type == 'show' && collection.sonarrSettingsId) {
       actionHandled = await this.sonarrActionHandler.handleAction(
         collection,
         media,
+        libraryReads,
       );
     } else if (library?.type == 'show' && collection.sportarrSettingsId) {
       actionHandled = await this.sportarrActionHandler.handleAction(
@@ -170,12 +174,17 @@ export class CollectionHandler {
       // skips 404, Jellyfin/Emby return 2xx), so these drop the stale DB rows.
       // A genuinely transient removal failure keeps the row, which the next run
       // retries - no permanent stale state, so no special-casing needed here.
-      await this.collectionService.removeFromCollection(collection.id, [
-        {
-          mediaServerId: media.mediaServerId,
-        },
-      ]);
-      await this.pruneSiblingCollections(collection.id, media.mediaServerId);
+      await this.collectionService.removeFromCollection(
+        collection.id,
+        [{ mediaServerId: media.mediaServerId }],
+        'all',
+        libraryReads,
+      );
+      await this.pruneSiblingCollections(
+        collection.id,
+        media.mediaServerId,
+        libraryReads,
+      );
       this.recentlyHandledMedia.markHandled(collection.id, media.mediaServerId);
       return 'removed-missing';
     }
@@ -199,11 +208,9 @@ export class CollectionHandler {
     // can only discover via a 404.
     const updatedCollection = await this.collectionService.removeFromCollection(
       collection.id,
-      [
-        {
-          mediaServerId: media.mediaServerId,
-        },
-      ],
+      [{ mediaServerId: media.mediaServerId }],
+      'all',
+      libraryReads,
     );
     if (updatedCollection) {
       collection = updatedCollection;
@@ -236,7 +243,11 @@ export class CollectionHandler {
     // exists to remove. Unmonitor / quality actions leave the file in place, so
     // the item legitimately stays.
     if (freesDisk) {
-      await this.pruneSiblingCollections(collection.id, media.mediaServerId);
+      await this.pruneSiblingCollections(
+        collection.id,
+        media.mediaServerId,
+        libraryReads,
+      );
     }
 
     collection.handledMediaAmount++;
@@ -384,11 +395,13 @@ export class CollectionHandler {
   private async pruneSiblingCollections(
     collectionId: number,
     mediaServerId: string,
+    libraryReads?: ArrLookupCache,
   ): Promise<void> {
     const prunedCollectionIds =
       await this.collectionService.removeMediaFromOtherCollections(
         mediaServerId,
         collectionId,
+        libraryReads,
       );
 
     for (const prunedCollectionId of prunedCollectionIds) {

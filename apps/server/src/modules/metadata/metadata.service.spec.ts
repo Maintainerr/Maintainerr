@@ -1369,6 +1369,7 @@ describe('MetadataService', () => {
       providerIds: Record<string, string[]>;
       year?: number | null;
       tmdbYear?: number;
+      tmdbFinds?: number;
       cached?: Record<string, number>;
       library: object[] | undefined;
       expected: { providerKey: string; id: number }[];
@@ -1409,6 +1410,17 @@ describe('MetadataService', () => {
         tmdbYear: 2000,
         library: [entry(771, 'tt0000771')],
         expected: [tmdb(771)],
+        read: false,
+      },
+      {
+        title:
+          'is not read when a provider maps an imdb id, even without the key sonarr uses',
+        arr: 'sonarr',
+        type: 'show',
+        providerIds: { imdb: ['tt0000001'] },
+        tmdbFinds: 100,
+        library: [{ tvdbId: 7, tmdbId: 200, imdbId: 'tt0000001', year: 2000 }],
+        expected: [],
         read: false,
       },
       {
@@ -1470,6 +1482,7 @@ describe('MetadataService', () => {
         providerIds,
         year = 2000,
         tmdbYear,
+        tmdbFinds,
         cached = {},
         library,
         expected,
@@ -1486,6 +1499,16 @@ describe('MetadataService', () => {
           mediaServer: { getMetadata: jest.fn().mockResolvedValue(item) },
           tmdbDetails: tmdbYear
             ? { year: tmdbYear, externalIds: { tmdb: 771, type: kind } }
+            : undefined,
+          providerMocks: tmdbFinds
+            ? [
+                {
+                  name: 'TMDB',
+                  idKey: 'tmdb',
+                  findByExternalId: async () => [{ tvShowId: tmdbFinds }],
+                },
+                { name: 'TVDB', idKey: 'tvdb', isAvailable: false },
+              ]
             : undefined,
         });
         const readLibrary = jest.fn().mockResolvedValue(library);

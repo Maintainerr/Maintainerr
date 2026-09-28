@@ -357,6 +357,7 @@ describe('CollectionsService', () => {
         false,
         'all',
         true,
+        undefined,
       );
       expect(removeSpy).toHaveBeenCalledWith(
         3,
@@ -364,6 +365,7 @@ describe('CollectionsService', () => {
         false,
         'all',
         true,
+        undefined,
       );
       // Returns the pruned sibling ids so the caller can suppress re-adds.
       expect(pruned).toEqual([2, 3]);
@@ -611,6 +613,7 @@ describe('CollectionsService', () => {
       collection,
       [],
       [expect.objectContaining({ mediaServerId: 'item-1', tmdbId: 101 })],
+      undefined,
     );
   });
 
