@@ -300,10 +300,10 @@ export class ServarrTagService {
         return;
       }
 
-      // Resolved once, with the first instance's library: the candidate ids
-      // describe the item, not the instance. Only an item nothing resolved is
-      // read again, against the next instance's library.
-      let candidates: MetadataLookupCandidate[] = [];
+      // Provider ids describe the item, so one resolution serves every
+      // instance. An id read out of an instance's library names that
+      // instance's entry only, so that lookup runs per instance.
+      const shared = await this.lookupCandidates(target, service);
 
       const tagged: string[] = [];
       let matched = false;
@@ -313,13 +313,14 @@ export class ServarrTagService {
           continue;
         }
 
-        if (candidates.length === 0) {
-          candidates = await this.lookupCandidates(
-            target,
-            service,
-            this.libraryOf(client, service, settings.id),
-          );
-        }
+        const candidates =
+          shared.length > 0
+            ? shared
+            : await this.lookupCandidates(
+                target,
+                service,
+                this.libraryOf(client, service, settings.id),
+              );
         const arrId = await this.matchArrId(client, service, candidates);
         if (arrId == null) {
           // undefined = transient (retried on the next exclude/un-exclude),
