@@ -46,14 +46,15 @@ const getStudio = (item: MediaItem): string | undefined => {
 export interface CompareMediaItemsOptions {
   /**
    * Override the timestamp used for the `deleteSoonest` sort. Collection
-   * callers pass `collection_media.addDate` (when Maintainerr started the
-   * deletion timer) so ordering reflects the user-visible "Leaving in X
-   * days" overlay rather than `MediaItem.addedAt` (when the file was added
-   * to the underlying media-server library).
+   * callers pass the deadline Maintainerr's deletion timer sets, so ordering
+   * reflects the user-visible "Leaving in X days" overlay rather than
+   * `MediaItem.addedAt` (when the file was added to the underlying
+   * media-server library). `null` means the item has no deadline: it sorts
+   * last instead of falling back to `addedAt`.
    */
   deleteSoonestDate?: (item: MediaItem) => Date | string | undefined | null
   /**
-   * Anchor for `daysLeft` bucketing - pass `now - deleteAfterDays * dayMs`.
+   * Anchor for `daysLeft` bucketing - pass `now` alongside those deadlines.
    * When set, items with the same overlay countdown tie even if they
    * straddle UTC midnight (e.g. addedAt 23:00 vs. 01:00 the next day with
    * the same "Leaves in 3 days" label). When omitted, items bucket by UTC
@@ -74,7 +75,9 @@ const getDeleteSoonestDayBucket = (
   item: MediaItem,
   options: CompareMediaItemsOptions | undefined,
 ): number | undefined => {
-  const value = options?.deleteSoonestDate?.(item) ?? item.addedAt
+  const override = options?.deleteSoonestDate?.(item)
+  if (override === null) return undefined
+  const value = override ?? item.addedAt
   const referenceMs = toReferenceMs(options?.deleteSoonestReferenceTime)
   if (referenceMs === undefined) {
     // No collection context - bucket by UTC midnight.
@@ -82,9 +85,9 @@ const getDeleteSoonestDayBucket = (
   }
   const ms = value instanceof Date ? value.getTime() : new Date(value).getTime()
   if (Number.isNaN(ms)) return undefined
-  // daysLeft = ceil((addDate + N*day - now) / dayMs) = ceil((addDate - R) / dayMs).
-  // Two items tie iff they share the same daysLeft window, which keeps the
-  // sort aligned with the visible countdown across UTC midnight.
+  // daysLeft = ceil((deadline - now) / dayMs). Two items tie iff they share
+  // the same daysLeft window, which keeps the sort aligned with the visible
+  // countdown across UTC midnight.
   return Math.ceil((ms - referenceMs) / 86400000)
 }
 
