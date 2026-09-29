@@ -86,13 +86,15 @@ describe('MediaServerSetupGuard', () => {
     expect(isAllowedDuringMediaServerSetup('/settings/logs/live')).toBe(true)
   })
 
-  it('allows the media server page but no other service or settings page during setup', async () => {
+  it('allows the media server page and General but no other service or settings page during setup', async () => {
     const { isAllowedDuringMediaServerSetup } =
       await import('./MediaServerSetupGuard')
 
     expect(isAllowedDuringMediaServerSetup('/services/media-server')).toBe(true)
     expect(isAllowedDuringMediaServerSetup('/services/radarr')).toBe(false)
-    expect(isAllowedDuringMediaServerSetup('/settings/main')).toBe(false)
+    // General holds the language picker.
+    expect(isAllowedDuringMediaServerSetup('/settings/main')).toBe(true)
+    expect(isAllowedDuringMediaServerSetup('/settings/jobs')).toBe(false)
   })
 
   it('skips the guard entirely in development mode by default', async () => {

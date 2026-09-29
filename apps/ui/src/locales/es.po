@@ -4021,6 +4021,10 @@ msgstr "La página «Registros» permanece disponible durante la configuración 
 msgid "The media server has no user named ''{username}''"
 msgstr "El servidor de medios no tiene ningún usuario llamado ''{username}''"
 
+#: src/components/Settings/Notifications/index.tsx
+msgid "The notification agents could not be loaded."
+msgstr ""
+
 #: src/components/Settings/Telemetry/index.tsx
 msgid "The preview could not be loaded."
 msgstr ""
@@ -4060,6 +4064,10 @@ msgstr "La selección mezcla tipos de contenido multimedia, por lo que solo se l
 #: src/components/Common/MediaActionModal.tsx
 msgid "The selection spans more than one library, so only exclusions can be applied to it."
 msgstr "La selección abarca más de una biblioteca, por lo que solo se le pueden aplicar exclusiones."
+
+#: src/components/Settings/Servarr/ServarrSettings.tsx
+msgid "The server list could not be loaded."
+msgstr ""
 
 #: src/components/Layout/index.tsx
 msgid "The server returned an unexpected response."

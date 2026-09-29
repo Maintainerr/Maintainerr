@@ -1,4 +1,5 @@
 import { Trans, useLingui } from '@lingui/react/macro'
+import { stripTrailingSlashes } from '@maintainerr/contracts'
 import { useEffect, useState } from 'react'
 import {
   Navigate,
@@ -82,9 +83,8 @@ const SettingsWrapper = ({
             regex: /^\/settings\/about$/,
           },
         ]
-  const activeService = services.find(
-    (service) => location.pathname === service.route,
-  )
+  const pathname = stripTrailingSlashes(location.pathname)
+  const activeService = services.find((service) => pathname === service.route)
   const tabType = section === 'services' ? 'button' : 'default'
   // The services hub is itself the picker, so only service pages get the row.
   const showTabs = section === 'settings' || location.pathname !== '/services'
@@ -149,12 +149,15 @@ const SettingsWrapper = ({
     return <Navigate to={mediaServerSetupRoute} replace />
   }
 
-  // During setup each section opens on the one page that can be used yet.
+  // During setup the services hub opens on the one service usable yet.
   if (isSetupRestrictedRoute && location.pathname === '/services') {
     return <Navigate to={mediaServerSetupRoute} replace />
   }
-  if (isSetupRestrictedRoute && location.pathname === '/settings') {
-    return <Navigate to="/settings/logs" replace />
+
+  // A service the hub leaves out, such as Tautulli without Plex or the
+  // download client without Radarr, Sonarr or Sportarr, has no page either.
+  if (section === 'services' && pathname !== '/services' && !activeService) {
+    return <Navigate to="/services" replace />
   }
 
   if (settings) {

@@ -44,6 +44,7 @@ export class NotificationTimerService extends TaskBase {
     const activeAgents = this.notificationService.getActiveAgents();
     const allNotificationConfigurations =
       await this.notificationService.getNotificationConfigurations(true);
+    if (!allNotificationConfigurations) return;
 
     // Agents run concurrently and can share a rule group, so memoise the
     // in-flight promise to keep each item at one media-server + Seerr lookup.

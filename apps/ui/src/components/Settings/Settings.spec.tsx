@@ -21,7 +21,8 @@ type SettingsData = {
 }
 
 let currentSettingsResult: UseQueryResult<SettingsData>
-let currentServarrSettings = buildQuerySuccessResult<{ id: number }[]>([])
+let currentServarrSettings: UseQueryResult<{ id: number }[]> =
+  buildQuerySuccessResult([])
 
 vi.mock('../../api/settings', () => ({
   useSettings: () => currentSettingsResult,
@@ -135,11 +136,17 @@ describe('SettingsWrapper', () => {
     )
   })
 
-  it.each([
-    ['/services', 'services', '/services/media-server'],
-    ['/settings', 'settings', '/settings/logs'],
-    ['/settings/main', 'settings', '/services/media-server'],
-  ] as const)(
+  it('keeps General open during setup for the language picker', () => {
+    loaded(noServer)
+
+    render(<SettingsWrapper />)
+
+    expect(screen.queryByTestId('navigate')).toBeNull()
+    expect(screen.getByText('settings outlet')).toBeTruthy()
+    expect(toastError).not.toHaveBeenCalled()
+  })
+
+  it.each([['/services', 'services', '/services/media-server']] as const)(
     'opens %s on the page usable during setup',
     (path, section, target) => {
       currentPath = path
@@ -195,6 +202,32 @@ describe('SettingsWrapper', () => {
     currentServarrSettings = buildQuerySuccessResult([{ id: 1 }])
     rerender(<SettingsWrapper section="services" />)
     expect(getDesktopTabLabels(container)).toContain('Download client')
+  })
+
+  it.each([
+    ['/services/tautulli', 'a Jellyfin server'],
+    ['/services/download-client', 'no Radarr, Sonarr or Sportarr server'],
+    ['/services/unknown', 'any setup'],
+  ])('sends %s back to the hub with %s', (path) => {
+    currentPath = path
+
+    render(<SettingsWrapper section="services" />)
+
+    expect(screen.getByTestId('navigate').getAttribute('data-to')).toBe(
+      '/services',
+    )
+  })
+
+  it('keeps the download client page while the server lists load', () => {
+    currentPath = '/services/download-client'
+    currentServarrSettings = buildQueryLoadingResult()
+
+    render(<SettingsWrapper section="services" />)
+
+    expect(screen.queryByTestId('navigate')).toBeNull()
+    expect(
+      screen.getByRole('heading', { name: 'Download client' }),
+    ).toBeTruthy()
   })
 
   it('shows no switcher on the services hub', () => {

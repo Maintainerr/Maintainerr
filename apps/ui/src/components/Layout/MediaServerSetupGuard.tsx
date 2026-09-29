@@ -18,11 +18,13 @@ export const mediaServerSetupRequiredMessage = () =>
 
 export const mediaServerSetupRoute = '/services/media-server'
 
-// Only the media server page and Logs work before a server is connected. The
-// two section entries stay open so the sidebar can still lead to them.
+// Only the media server page, General (for the language) and Logs work before
+// a server is connected. The two section entries stay open so the sidebar can
+// still lead to them.
 export const isAllowedDuringMediaServerSetup = (pathname: string) =>
   pathname === '/settings' ||
   pathname === '/services' ||
+  pathname === '/settings/main' ||
   pathname.startsWith('/settings/logs') ||
   pathname.startsWith(mediaServerSetupRoute)
 

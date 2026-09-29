@@ -4021,6 +4021,10 @@ msgstr "Loggsidan är tillgänglig under konfigurationen om du behöver felsöka
 msgid "The media server has no user named ''{username}''"
 msgstr "Mediaservern har ingen användare med namnet ''{username}''"
 
+#: src/components/Settings/Notifications/index.tsx
+msgid "The notification agents could not be loaded."
+msgstr ""
+
 #: src/components/Settings/Telemetry/index.tsx
 msgid "The preview could not be loaded."
 msgstr "Förhandsgranskningen kunde inte läsas in."
@@ -4060,6 +4064,10 @@ msgstr "Urvalet blandar mediatyper, så endast exkluderingar kan tillämpas på 
 #: src/components/Common/MediaActionModal.tsx
 msgid "The selection spans more than one library, so only exclusions can be applied to it."
 msgstr "Urvalet spänner över mer än ett bibliotek, så endast exkluderingar kan tillämpas på det."
+
+#: src/components/Settings/Servarr/ServarrSettings.tsx
+msgid "The server list could not be loaded."
+msgstr ""
 
 #: src/components/Layout/index.tsx
 msgid "The server returned an unexpected response."

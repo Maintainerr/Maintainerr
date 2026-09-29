@@ -6,8 +6,8 @@ import { createDeferred } from '../../test-utils/createDeferred'
 import { createTestQueryClient } from '../../test-utils/queryClient'
 import { ServarrSettings } from './Servarr/ServarrSettings'
 
-// The page embeds ExclusionTagSettings, which reads global settings via
-// TanStack Query, so renders need a QueryClient in the tree.
+// The server list is a TanStack Query, so renders need a QueryClient in the
+// tree.
 const renderWithClient = (ui: ReactElement): RenderResult =>
   render(
     <QueryClientProvider client={createTestQueryClient()}>
@@ -56,11 +56,6 @@ describe.each([
         return request.promise
       }
 
-      // ExclusionTagSettings fetches global settings; answer benignly.
-      if (url === '/settings') {
-        return Promise.resolve({})
-      }
-
       throw new Error(`Unexpected request: ${url}`)
     })
 
@@ -86,5 +81,18 @@ describe.each([
     expect(
       screen.getByRole('button', { name: `Add ${label} server` }),
     ).toBeTruthy()
+  })
+
+  it('says the list failed to load instead of offering only Add', async () => {
+    getApiHandler.mockRejectedValue(new Error('Request failed'))
+
+    renderWithClient(<ServarrSettings service={service} />)
+
+    expect(
+      await screen.findByText('The server list could not be loaded.'),
+    ).toBeTruthy()
+    expect(
+      screen.queryByRole('button', { name: `Add ${label} server` }),
+    ).toBeNull()
   })
 })
