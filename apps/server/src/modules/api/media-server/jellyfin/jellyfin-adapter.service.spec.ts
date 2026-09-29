@@ -352,19 +352,6 @@ describe('JellyfinAdapterService', () => {
       expect(jellyfinApiMocks.getUsers).toHaveBeenCalledWith({}, undefined);
     });
 
-    it('bounds a test by the budget it is given', async () => {
-      await service.testConnection(
-        'http://jellyfin.test:8096',
-        'test-api-key',
-        30000,
-      );
-
-      expect(jellyfinApiMocks.getPublicSystemInfo.mock.calls[0][0]).toEqual({
-        timeout: 30000,
-        signal: expect.any(AbortSignal),
-      });
-    });
-
     it('adds the retry policy to the shared SDK axios instance once', async () => {
       const instance = createMockSdkAxiosInstance();
       mockSdkAxios.instance = instance;

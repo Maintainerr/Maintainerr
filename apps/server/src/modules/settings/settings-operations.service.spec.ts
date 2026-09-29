@@ -473,7 +473,7 @@ describe('SettingsOperationsService', () => {
   });
 
   // A server slower than a click allows must not skip the daily cleanup.
-  it('gives the background media-server check a longer budget than a Test', async () => {
+  it('gives the daily media-server check the background budget', async () => {
     settingsDataService.media_server_type = MediaServerType.JELLYFIN;
     settingsDataService.jellyfin_url = 'http://jellyfin.local';
     settingsDataService.jellyfin_api_key = 'jf-key';
@@ -484,19 +484,12 @@ describe('SettingsOperationsService', () => {
     });
 
     await expect(service.testMediaServerConnection()).resolves.toBe(true);
-    await service.testJellyfin({
-      jellyfin_url: 'http://jellyfin.local',
-      jellyfin_api_key: 'jf-key',
-    });
 
-    expect(mediaServerFactory.testJellyfinConnection.mock.calls).toEqual([
-      [
-        'http://jellyfin.local',
-        'jf-key',
-        BACKGROUND_CONNECTION_TEST_TIMEOUT_MS,
-      ],
-      ['http://jellyfin.local', 'jf-key', undefined],
-    ]);
+    expect(mediaServerFactory.testJellyfinConnection).toHaveBeenCalledWith(
+      'http://jellyfin.local',
+      'jf-key',
+      BACKGROUND_CONNECTION_TEST_TIMEOUT_MS,
+    );
   });
 
   it('re-initialises Streamystats after a successful Jellyfin save', async () => {

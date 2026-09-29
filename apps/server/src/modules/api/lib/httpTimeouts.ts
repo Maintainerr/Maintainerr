@@ -10,9 +10,10 @@ export const CONNECTION_TEST_TIMEOUT_MS = 5_000;
 
 /**
  * A connection test run in the background rather than for a click, such as the
- * daily maintenance gate: a server the runtime clients work with must pass it.
+ * daily maintenance gate. It bounds the whole test, retries included, so a
+ * server on slow hardware still passes.
  */
-export const BACKGROUND_CONNECTION_TEST_TIMEOUT_MS = 30_000;
+export const BACKGROUND_CONNECTION_TEST_TIMEOUT_MS = 60_000;
 
 /**
  * Uncached arr reads whose failure would change action or rule behaviour.
