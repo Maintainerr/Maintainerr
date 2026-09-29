@@ -552,184 +552,101 @@ export class NotificationService implements OnModuleInit {
       .replace(/\b\w/g, (char) => char.toUpperCase());
   }
 
+  // Labels and help for these options live in the UI, where they translate.
   public getAgentSpec() {
     return [
       {
         name: NotificationAgentKey.EMAIL,
         friendlyName: 'Email',
         options: [
-          { field: 'emailFrom', type: 'text', required: true, extraInfo: '' },
-          { field: 'senderName', type: 'text', required: true, extraInfo: '' },
-          { field: 'emailTo', type: 'text', required: true, extraInfo: '' },
-          { field: 'smtpHost', type: 'text', required: true, extraInfo: '' },
-          { field: 'smtpPort', type: 'number', required: true, extraInfo: '' },
-          {
-            field: 'secure',
-            type: 'checkbox',
-            required: false,
-            label: 'Use implicit TLS',
-            extraInfo:
-              'Encrypts from the first byte. Usually needed on port 465; leave off for 587 and 25.',
-          },
-          {
-            field: 'ignoreTls',
-            type: 'checkbox',
-            required: false,
-            label: 'Never use TLS',
-            extraInfo:
-              'Sends unencrypted even when the server offers STARTTLS. Only for a server whose STARTTLS fails.',
-          },
-          {
-            field: 'requireTls',
-            type: 'checkbox',
-            required: false,
-            label: 'Always use STARTTLS',
-            extraInfo:
-              'Without it, mail goes out unencrypted when the server does not offer STARTTLS. With it, the email is not sent instead.',
-          },
-          { field: 'authUser', type: 'text', required: false, extraInfo: '' },
-          {
-            field: 'authPass',
-            type: 'password',
-            required: false,
-            extraInfo: '',
-          },
-          {
-            field: 'allowSelfSigned',
-            type: 'checkbox',
-            required: false,
-            label: 'Allow self-signed certificates',
-            extraInfo:
-              'Needed when your SMTP server uses a certificate it signed itself, as many home servers do.',
-          },
-          { field: 'pgpKey', type: 'text', required: false, extraInfo: '' },
-          {
-            field: 'pgpPassword',
-            type: 'password',
-            required: false,
-            extraInfo: '',
-          },
+          { field: 'emailFrom', type: 'text', required: true },
+          { field: 'senderName', type: 'text', required: true },
+          { field: 'emailTo', type: 'text', required: true },
+          { field: 'smtpHost', type: 'text', required: true },
+          { field: 'smtpPort', type: 'number', required: true },
+          { field: 'secure', type: 'checkbox', required: false },
+          { field: 'ignoreTls', type: 'checkbox', required: false },
+          { field: 'requireTls', type: 'checkbox', required: false },
+          { field: 'authUser', type: 'text', required: false },
+          { field: 'authPass', type: 'password', required: false },
+          { field: 'allowSelfSigned', type: 'checkbox', required: false },
+          { field: 'pgpKey', type: 'text', required: false },
+          { field: 'pgpPassword', type: 'password', required: false },
         ],
       },
       {
         name: NotificationAgentKey.DISCORD,
         friendlyName: 'Discord',
         options: [
-          { field: 'webhookUrl', type: 'text', required: true, extraInfo: '' },
-          {
-            field: 'botUsername',
-            type: 'text',
-            required: false,
-            extraInfo: '',
-          },
-          {
-            field: 'botAvatarUrl',
-            type: 'text',
-            required: false,
-            extraInfo: '',
-          },
+          { field: 'webhookUrl', type: 'text', required: true },
+          { field: 'botUsername', type: 'text', required: false },
+          { field: 'botAvatarUrl', type: 'text', required: false },
         ],
       },
       {
         name: NotificationAgentKey.LUNASEA,
         friendlyName: 'LunaSea',
         options: [
-          { field: 'webhookUrl', type: 'text', required: true, extraInfo: '' },
-          {
-            field: 'profileName',
-            type: 'text',
-            required: false,
-            extraInfo: 'Only required if not using the default profile',
-          },
+          { field: 'webhookUrl', type: 'text', required: true },
+          { field: 'profileName', type: 'text', required: false },
         ],
       },
       {
         name: NotificationAgentKey.SLACK,
         friendlyName: 'Slack',
-        options: [
-          { field: 'webhookUrl', type: 'text', required: true, extraInfo: '' },
-        ],
+        options: [{ field: 'webhookUrl', type: 'text', required: true }],
       },
       {
         name: NotificationAgentKey.TELEGRAM,
         friendlyName: 'Telegram',
         options: [
-          {
-            field: 'botAuthToken',
-            type: 'text',
-            required: true,
-            extraInfo: '',
-          },
-          {
-            field: 'botUsername',
-            type: 'text',
-            required: false,
-            extraInfo:
-              'Allow users to also start a chat with your bot and configure their own notifications',
-          },
-          {
-            field: 'chatId',
-            type: 'text',
-            required: true,
-            extraInfo:
-              'Start a chat with your bot, add @get_id_bot, and issue the /my_id command',
-          },
-          {
-            field: 'sendSilently',
-            type: 'checkbox',
-            required: false,
-            label: 'Send silently',
-            extraInfo:
-              'Recipients get the message without a notification sound.',
-          },
+          { field: 'botAuthToken', type: 'text', required: true },
+          { field: 'botUsername', type: 'text', required: false },
+          { field: 'chatId', type: 'text', required: true },
+          { field: 'sendSilently', type: 'checkbox', required: false },
         ],
       },
       {
         name: NotificationAgentKey.PUSHBULLET,
         friendlyName: 'Pushbullet',
         options: [
-          { field: 'accessToken', type: 'text', required: true, extraInfo: '' },
-          { field: 'channelTag', type: 'text', required: false, extraInfo: '' },
+          { field: 'accessToken', type: 'text', required: true },
+          { field: 'channelTag', type: 'text', required: false },
         ],
       },
       {
         name: NotificationAgentKey.PUSHOVER,
         friendlyName: 'Pushover',
         options: [
-          { field: 'accessToken', type: 'text', required: true, extraInfo: '' },
-          {
-            field: 'userToken',
-            type: 'text',
-            required: true,
-            extraInfo: 'Your 30-character user or group identifier',
-          },
-          { field: 'sound', type: 'text', required: false, extraInfo: '' },
+          { field: 'accessToken', type: 'text', required: true },
+          { field: 'userToken', type: 'text', required: true },
+          { field: 'sound', type: 'text', required: false },
         ],
       },
       {
         name: NotificationAgentKey.WEBHOOK,
         friendlyName: 'Webhook',
         options: [
-          { field: 'webhookUrl', type: 'text', required: true, extraInfo: '' },
-          { field: 'jsonPayload', type: 'json', required: true, extraInfo: '' },
-          { field: 'authHeader', type: 'text', required: false, extraInfo: '' },
+          { field: 'webhookUrl', type: 'text', required: true },
+          { field: 'jsonPayload', type: 'json', required: true },
+          { field: 'authHeader', type: 'text', required: false },
         ],
       },
       {
         name: NotificationAgentKey.GOTIFY,
         friendlyName: 'Gotify',
         options: [
-          { field: 'url', type: 'text', required: true, extraInfo: '' },
-          { field: 'token', type: 'text', required: true, extraInfo: '' },
+          { field: 'url', type: 'text', required: true },
+          { field: 'token', type: 'text', required: true },
         ],
       },
       {
         name: NotificationAgentKey.NTFY,
         friendlyName: 'Ntfy',
         options: [
-          { field: 'url', type: 'text', required: true, extraInfo: '' },
-          { field: 'topic', type: 'text', required: true, extraInfo: '' },
-          { field: 'token', type: 'text', required: false, extraInfo: '' },
+          { field: 'url', type: 'text', required: true },
+          { field: 'topic', type: 'text', required: true },
+          { field: 'token', type: 'text', required: false },
         ],
       },
     ];
