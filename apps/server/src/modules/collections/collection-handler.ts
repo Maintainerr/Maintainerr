@@ -403,8 +403,6 @@ export class CollectionHandler {
       this.logger.warn(`[${label}] Couldn't remove the ${subject}`);
     } else if (removed) {
       this.logger.log(`[${label}] Removed ${subject}`);
-    } else {
-      this.logger.debug(`[${label}] No ${subject} to remove`);
     }
   }
 
