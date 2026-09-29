@@ -655,6 +655,46 @@ describe('CollectionHandler', () => {
     expect(seerrApi.removeSeasonRequest).toHaveBeenCalledTimes(1);
   });
 
+  it('reads the season number before a media-server delete takes the season with it', async () => {
+    const collection = createCollection({
+      arrAction: ServarrAction.DELETE,
+      forceSeerr: true,
+      forceOmbi: true,
+      type: 'season',
+    });
+    const collectionMedia = createCollectionMediaWithMetadata(collection);
+
+    settings.seerrConfigured.mockReturnValue(true);
+    settings.ombiConfigured.mockReturnValue(true);
+    mediaServer.getLibraries.mockResolvedValue(
+      createMediaLibraries({
+        id: collection.libraryId.toString(),
+        type: 'show',
+      }),
+    );
+    let deleted = false;
+    mediaServer.deleteFromDisk.mockImplementation(async () => {
+      deleted = true;
+    });
+    mediaServer.getMetadata.mockImplementation(async () =>
+      deleted ? undefined : collectionMedia.mediaData,
+    );
+    ombiApi.removeSeasonRequest.mockResolvedValue(true);
+
+    await expect(
+      collectionHandler.handleMedia(collection, collectionMedia),
+    ).resolves.toBe('handled');
+
+    expect(seerrApi.removeSeasonRequest).toHaveBeenCalledWith(
+      collectionMedia.tmdbId,
+      collectionMedia.mediaData.index,
+    );
+    expect(ombiApi.removeSeasonRequest).toHaveBeenCalledWith(
+      collectionMedia.tmdbId,
+      collectionMedia.mediaData.index,
+    );
+  });
+
   it('does not mutate Seerr requests for episodes (no per-episode request granularity)', async () => {
     const collection = createCollection({
       arrAction: ServarrAction.DELETE,

@@ -1,6 +1,7 @@
 import { MediaServerType, type MediaItem } from '@maintainerr/contracts'
 import { QueryClientProvider } from '@tanstack/react-query'
 import {
+  act,
   fireEvent,
   render as renderComponent,
   screen,
@@ -1050,11 +1051,83 @@ describe('MediaModal', () => {
       )
     })
     expect(getApiHandlerMock).toHaveBeenCalledWith(
-      '/seerr/requests/4600/users?season=1',
+      '/seerr/requests/4600/users?type=tv&season=1',
     )
     expect(getApiHandlerMock).not.toHaveBeenCalledWith(
       expect.stringContaining('/requests/13993/'),
     )
     expect(await screen.findByText('alice')).toBeTruthy()
+  })
+
+  it("waits for a season card's metadata before asking who requested it", async () => {
+    const seasonMetadata = createDeferred<MediaItem>()
+    getApiHandlerMock.mockImplementation((path: string) => {
+      if (path === '/media-server') {
+        return Promise.resolve({})
+      }
+      if (path === '/settings') {
+        return Promise.resolve({ seerr_url: 'http://seerr.local' })
+      }
+      if (path === '/media-server/meta/8') {
+        return seasonMetadata.promise
+      }
+      if (path === '/media-server/meta/7') {
+        return Promise.resolve({
+          id: '7',
+          type: 'show',
+          providerIds: { tmdb: ['4600'] },
+        } as MediaItem)
+      }
+      if (path.startsWith('/seerr/requests/')) {
+        return Promise.resolve(['alice'])
+      }
+      if (path.startsWith('/metadata/backdrop/')) {
+        return Promise.resolve(undefined)
+      }
+      if (path === '/streamystats/info') {
+        return Promise.reject(new Error('404 Streamystats not configured'))
+      }
+      throw new Error(`Unexpected request: ${path}`)
+    })
+
+    // A season card's fallback ids are its show's.
+    render(
+      <MediaModal
+        onClose={() => {}}
+        id={8}
+        mediaType="season"
+        title="Season 1"
+        summary="Season summary"
+        providerIds={{ tmdb: ['4600'] }}
+      />,
+    )
+
+    await waitFor(() => {
+      expect(getApiHandlerMock).toHaveBeenCalledWith('/settings')
+    })
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 20))
+    })
+    expect(getApiHandlerMock).not.toHaveBeenCalledWith(
+      expect.stringContaining('/seerr/requests/'),
+    )
+
+    await act(async () => {
+      seasonMetadata.resolve({
+        id: '8',
+        type: 'season',
+        parentId: '7',
+        index: 1,
+        providerIds: { tmdb: ['13993'] },
+      } as MediaItem)
+    })
+    await waitFor(() => {
+      expect(getApiHandlerMock).toHaveBeenCalledWith(
+        '/seerr/requests/4600/users?type=tv&season=1',
+      )
+    })
+    expect(getApiHandlerMock).not.toHaveBeenCalledWith(
+      '/seerr/requests/4600/users?type=tv',
+    )
   })
 })

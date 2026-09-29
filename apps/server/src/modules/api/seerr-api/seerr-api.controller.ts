@@ -3,10 +3,13 @@ import {
   Delete,
   Get,
   Param,
+  ParseEnumPipe,
   ParseIntPipe,
   Query,
 } from '@nestjs/common';
 import { SeerrApiService } from './seerr-api.service';
+
+const REQUEST_TYPES = ['movie', 'tv'] as const;
 
 @Controller(['api/seerr', 'api/overseerr', 'api/jellyseerr'])
 export class SeerrApiController {
@@ -21,9 +24,11 @@ export class SeerrApiController {
   @Get('requests/:tmdbId/users')
   getRequestedByUsernames(
     @Param('tmdbId', ParseIntPipe) tmdbId: number,
+    @Query('type', new ParseEnumPipe(REQUEST_TYPES))
+    type: (typeof REQUEST_TYPES)[number],
     @Query('season', new ParseIntPipe({ optional: true })) season?: number,
   ): Promise<string[]> {
-    return this.seerrApi.getRequestedByUsernames(tmdbId, season);
+    return this.seerrApi.getRequestedByUsernames(tmdbId, type, season);
   }
 
   @Get('show/:id')
