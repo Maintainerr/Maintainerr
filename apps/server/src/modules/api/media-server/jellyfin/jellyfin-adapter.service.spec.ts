@@ -57,22 +57,26 @@ const jellyfinCacheMocks = {
   },
 };
 
+// Like the real SDK, every client shares one module-wide axios instance.
+// axios-retry attaches interceptors to it during createApiClient; stub them so
+// the real attach call is a no-op in tests.
+const createMockSdkAxiosInstance = () => ({
+  interceptors: {
+    request: { use: jest.fn() },
+    response: { use: jest.fn() },
+  },
+});
+const mockSdkAxios = { instance: createMockSdkAxiosInstance() };
+
 // Mock the @jellyfin/sdk module and its generated client
 jest.mock('@jellyfin/sdk', () => ({
   __esModule: true,
   Jellyfin: jest.fn().mockImplementation(() => ({
-    createApi: jest.fn().mockReturnValue({
+    createApi: jest.fn().mockImplementation(() => ({
       accessToken: '',
       configuration: {},
-      // axios-retry attaches interceptors to this instance during
-      // createApiClient; stub them so the real attach call is a no-op in tests.
-      axiosInstance: {
-        interceptors: {
-          request: { use: jest.fn() },
-          response: { use: jest.fn() },
-        },
-      },
-    }),
+      axiosInstance: mockSdkAxios.instance,
+    })),
   })),
 }));
 
@@ -346,6 +350,29 @@ describe('JellyfinAdapterService', () => {
         undefined,
       );
       expect(jellyfinApiMocks.getUsers).toHaveBeenCalledWith({}, undefined);
+    });
+
+    it('bounds a test by the budget it is given', async () => {
+      await service.testConnection(
+        'http://jellyfin.test:8096',
+        'test-api-key',
+        30000,
+      );
+
+      expect(jellyfinApiMocks.getPublicSystemInfo.mock.calls[0][0]).toEqual({
+        timeout: 30000,
+        signal: expect.any(AbortSignal),
+      });
+    });
+
+    it('adds the retry policy to the shared SDK axios instance once', async () => {
+      const instance = createMockSdkAxiosInstance();
+      mockSdkAxios.instance = instance;
+
+      await service.testConnection('http://jellyfin.test:8096', 'test-api-key');
+      await service.testConnection('http://jellyfin.test:8096', 'test-api-key');
+
+      expect(instance.interceptors.response.use).toHaveBeenCalledTimes(1);
     });
 
     it('logs successful test connections at debug level', async () => {

@@ -1790,6 +1790,7 @@ export class EmbyAdapterService implements IMediaServerService {
   async testConnection(
     url: string,
     apiKey: string,
+    timeoutMs?: number,
   ): Promise<{
     success: boolean;
     serverName?: string;
@@ -1804,7 +1805,7 @@ export class EmbyAdapterService implements IMediaServerService {
     }).axios;
     try {
       assertApiKey(apiKey);
-      const config = connectionTestConfig();
+      const config = connectionTestConfig(timeoutMs);
       const [info, users] = await Promise.all([
         probe.get<EmbySystemInfo>('/System/Info', config),
         probe.get<EmbyUserDto[] | EmbyItemsQueryResponse<EmbyUserDto>>(

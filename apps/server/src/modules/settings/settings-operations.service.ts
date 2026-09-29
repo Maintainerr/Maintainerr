@@ -24,6 +24,7 @@ import {
   logConnectionTestError,
 } from '../../utils/connection-error';
 import { InternalApiService } from '../api/internal-api/internal-api.service';
+import { BACKGROUND_CONNECTION_TEST_TIMEOUT_MS } from '../api/lib/httpTimeouts';
 import { MediaServerFactory } from '../api/media-server/media-server.factory';
 import { DownloadClientApiService } from '../api/download-client-api/download-client-api.service';
 import { PlexApiService } from '../api/plex-api/plex-api.service';
@@ -645,7 +646,10 @@ export class SettingsOperationsService {
   /**
    * Test connection to a Jellyfin server
    */
-  public async testJellyfin(settings: JellyfinSetting): Promise<
+  public async testJellyfin(
+    settings: JellyfinSetting,
+    timeoutMs?: number,
+  ): Promise<
     BasicResponseDto & {
       serverName?: string;
       version?: string;
@@ -656,6 +660,7 @@ export class SettingsOperationsService {
       const result = await this.mediaServerFactory.testJellyfinConnection(
         settings.jellyfin_url,
         settings.jellyfin_api_key,
+        timeoutMs,
       );
 
       if (result.success) {
@@ -811,7 +816,10 @@ export class SettingsOperationsService {
   /**
    * Test connection to an Emby server using the API-key flow.
    */
-  public async testEmby(settings: EmbySetting): Promise<
+  public async testEmby(
+    settings: EmbySetting,
+    timeoutMs?: number,
+  ): Promise<
     BasicResponseDto & {
       serverName?: string;
       version?: string;
@@ -822,6 +830,7 @@ export class SettingsOperationsService {
       const result = await this.mediaServerFactory.testEmbyConnection(
         settings.emby_url,
         settings.emby_api_key,
+        timeoutMs,
       );
 
       if (result.success) {
@@ -1558,7 +1567,7 @@ export class SettingsOperationsService {
     }
   }
 
-  public async testPlex(): Promise<BasicResponseDto> {
+  public async testPlex(timeoutMs?: number): Promise<BasicResponseDto> {
     if (!this.settingsDataService.plex_auth_token) {
       return {
         status: 'NOK',
@@ -1568,7 +1577,7 @@ export class SettingsOperationsService {
     }
 
     try {
-      const resp = await this.plexApi.testConnection();
+      const resp = await this.plexApi.testConnection(timeoutMs);
       return resp?.version != null
         ? { status: 'OK', code: 1, message: resp.version }
         : { status: 'NOK', code: 0, message: 'Failure' };
@@ -1645,11 +1654,14 @@ export class SettingsOperationsService {
 
         return (
           (
-            await this.testJellyfin({
-              jellyfin_url: this.settingsDataService.jellyfin_url,
-              jellyfin_api_key: this.settingsDataService.jellyfin_api_key,
-              jellyfin_user_id: this.settingsDataService.jellyfin_user_id,
-            })
+            await this.testJellyfin(
+              {
+                jellyfin_url: this.settingsDataService.jellyfin_url,
+                jellyfin_api_key: this.settingsDataService.jellyfin_api_key,
+                jellyfin_user_id: this.settingsDataService.jellyfin_user_id,
+              },
+              BACKGROUND_CONNECTION_TEST_TIMEOUT_MS,
+            )
           ).status === 'OK'
         );
       }
@@ -1662,16 +1674,22 @@ export class SettingsOperationsService {
         }
         return (
           (
-            await this.testEmby({
-              emby_url: this.settingsDataService.emby_url,
-              emby_api_key: this.settingsDataService.emby_api_key,
-              emby_user_id: this.settingsDataService.emby_user_id,
-            })
+            await this.testEmby(
+              {
+                emby_url: this.settingsDataService.emby_url,
+                emby_api_key: this.settingsDataService.emby_api_key,
+                emby_user_id: this.settingsDataService.emby_user_id,
+              },
+              BACKGROUND_CONNECTION_TEST_TIMEOUT_MS,
+            )
           ).status === 'OK'
         );
       }
       case MediaServerType.PLEX:
-        return (await this.testPlex()).status === 'OK';
+        return (
+          (await this.testPlex(BACKGROUND_CONNECTION_TEST_TIMEOUT_MS))
+            .status === 'OK'
+        );
       default:
         return false;
     }

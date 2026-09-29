@@ -2,6 +2,7 @@ import { MediaServerType, TracearrSetting } from '@maintainerr/contracts';
 import { TestBed, type Mocked } from '@suites/unit';
 import { Repository } from 'typeorm';
 import { InternalApiService } from '../api/internal-api/internal-api.service';
+import { BACKGROUND_CONNECTION_TEST_TIMEOUT_MS } from '../api/lib/httpTimeouts';
 import { MediaServerFactory } from '../api/media-server/media-server.factory';
 import { PlexApiService } from '../api/plex-api/plex-api.service';
 import { SeerrApiService } from '../api/seerr-api/seerr-api.service';
@@ -469,6 +470,33 @@ describe('SettingsOperationsService', () => {
       message: 'Authenticate with Plex before validating the connection.',
     });
     expect(plexApi.validateAuthToken).not.toHaveBeenCalled();
+  });
+
+  // A server slower than a click allows must not skip the daily cleanup.
+  it('gives the background media-server check a longer budget than a Test', async () => {
+    settingsDataService.media_server_type = MediaServerType.JELLYFIN;
+    settingsDataService.jellyfin_url = 'http://jellyfin.local';
+    settingsDataService.jellyfin_api_key = 'jf-key';
+    mediaServerFactory.testJellyfinConnection.mockResolvedValue({
+      success: true,
+      serverName: 'My Server',
+      version: '12.0.0',
+    });
+
+    await expect(service.testMediaServerConnection()).resolves.toBe(true);
+    await service.testJellyfin({
+      jellyfin_url: 'http://jellyfin.local',
+      jellyfin_api_key: 'jf-key',
+    });
+
+    expect(mediaServerFactory.testJellyfinConnection.mock.calls).toEqual([
+      [
+        'http://jellyfin.local',
+        'jf-key',
+        BACKGROUND_CONNECTION_TEST_TIMEOUT_MS,
+      ],
+      ['http://jellyfin.local', 'jf-key', undefined],
+    ]);
   });
 
   it('re-initialises Streamystats after a successful Jellyfin save', async () => {
