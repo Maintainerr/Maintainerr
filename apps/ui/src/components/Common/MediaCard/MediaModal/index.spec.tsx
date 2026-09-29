@@ -49,6 +49,8 @@ vi.mock('../../../../utils/ClientLogger', () => ({
 describe('MediaModal', () => {
   const useMediaServerTypeMock = vi.mocked(useMediaServerType)
   const getApiHandlerMock = vi.mocked(GetApiHandler)
+  const requestedPaths = () =>
+    getApiHandlerMock.mock.calls.map(([path]) => path)
 
   beforeEach(() => {
     useMediaServerTypeMock.mockReset()
@@ -817,9 +819,12 @@ describe('MediaModal', () => {
     )
 
     await waitFor(() =>
-      expect(getApiHandlerMock).toHaveBeenCalledWith('/tracearr/items/93'),
+      expect(getApiHandlerMock).toHaveBeenCalledWith(
+        '/tracearr/items/93',
+        expect.any(AbortSignal),
+      ),
     )
-    expect(getApiHandlerMock).not.toHaveBeenCalledWith('/tautulli/items/93')
+    expect(requestedPaths()).not.toContain('/tautulli/items/93')
     // The badge opens the item's own page, which it learns from the panel's
     // query rather than a request of its own.
     await waitFor(() =>
@@ -842,7 +847,10 @@ describe('MediaModal', () => {
     )
 
     await waitFor(() =>
-      expect(getApiHandlerMock).toHaveBeenCalledWith('/tautulli/items/93'),
+      expect(getApiHandlerMock).toHaveBeenCalledWith(
+        '/tautulli/items/93',
+        expect.any(AbortSignal),
+      ),
     )
   })
 
@@ -1085,14 +1093,55 @@ describe('MediaModal', () => {
     await waitFor(() => {
       expect(getApiHandlerMock).toHaveBeenCalledWith(
         '/ombi/requests/4600/users?type=tv&season=1',
+        expect.any(AbortSignal),
       )
     })
     expect(getApiHandlerMock).toHaveBeenCalledWith(
       '/seerr/requests/4600/users?season=1',
+      expect.any(AbortSignal),
     )
-    expect(getApiHandlerMock).not.toHaveBeenCalledWith(
-      expect.stringContaining('/requests/13993/'),
-    )
+    expect(
+      requestedPaths().some((path) => path.includes('/requests/13993/')),
+    ).toBe(false)
     expect(await screen.findByText('alice')).toBeTruthy()
+  })
+  // A slow service otherwise holds one of the browser's few connections to
+  // Maintainerr after the modal is gone, which stalls the posters behind it.
+  it('cancels its pending reads when it closes', async () => {
+    getApiHandlerMock.mockImplementation((path: string) =>
+      path === '/settings'
+        ? Promise.resolve({
+            seerr_url: 'http://seerr.local',
+            tracearr_url: 'http://t',
+          })
+        : path.startsWith('/seerr/') || path.startsWith('/tracearr/')
+          ? new Promise(() => {})
+          : Promise.resolve({}),
+    )
+
+    const { unmount } = render(
+      <MediaModal
+        onClose={() => {}}
+        id={93}
+        mediaType="movie"
+        title="Movie"
+        providerIds={{ tmdb: ['500'] }}
+      />,
+    )
+    await waitFor(() =>
+      expect(
+        requestedPaths().filter(
+          (path) => path.startsWith('/seerr/') || path.startsWith('/tracearr/'),
+        ),
+      ).toHaveLength(2),
+    )
+    unmount()
+
+    const signals = getApiHandlerMock.mock.calls
+      .filter(
+        ([path]) => path.startsWith('/seerr/') || path.startsWith('/tracearr/'),
+      )
+      .map(([, signal]) => signal)
+    expect(signals.every((signal) => signal?.aborted)).toBe(true)
   })
 })

@@ -520,10 +520,11 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
       }
 
       let active = true
+      const controller = new AbortController()
 
       Promise.all(
         requesterPaths.split(' ').map((path) =>
-          GetApiHandler<string[]>(path)
+          GetApiHandler<string[]>(path, controller.signal)
             .then((users) => users ?? [])
             .catch(() => []),
         ),
@@ -537,6 +538,7 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
 
       return () => {
         active = false
+        controller.abort()
       }
     }, [requesterPaths])
 
