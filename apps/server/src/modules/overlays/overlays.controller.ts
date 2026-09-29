@@ -64,6 +64,19 @@ import { OverlayTemplateService } from './overlay-template.service';
 import { OverlayProviderFactory } from './providers/overlay-provider.factory';
 import { IOverlayProvider } from './providers/overlay-provider.interface';
 
+// Multer leaves fieldArrayIndexLimit unbounded unless set (GHSA-535w-7cp7-47q4)
+// and no upload takes bracketed field names. Nest's MulterLimits type does not
+// list it yet, so these are named rather than inline literals. Fonts are
+// buffered in memory; CJK font collections reach ~20 MB.
+const FONT_UPLOAD_LIMITS = {
+  fileSize: 32 * 1024 * 1024,
+  fieldArrayIndexLimit: 0,
+};
+const IMAGE_UPLOAD_LIMITS = {
+  fileSize: OVERLAY_IMAGE_MAX_BYTES,
+  fieldArrayIndexLimit: 0,
+};
+
 @Controller('api/overlays')
 @UseGuards(MediaServerSetupGuard)
 export class OverlaysController {
@@ -348,7 +361,11 @@ export class OverlaysController {
   }
 
   @Post('fonts')
-  @UseInterceptors(FileInterceptor('font'))
+  @UseInterceptors(
+    FileInterceptor('font', {
+      limits: FONT_UPLOAD_LIMITS,
+    }),
+  )
   async uploadFont(
     @UploadedFile() file: { originalname: string; buffer: Buffer },
   ) {
@@ -425,7 +442,7 @@ export class OverlaysController {
   @Post('images')
   @UseInterceptors(
     FileInterceptor('image', {
-      limits: { fileSize: OVERLAY_IMAGE_MAX_BYTES },
+      limits: IMAGE_UPLOAD_LIMITS,
     }),
   )
   async uploadImage(
