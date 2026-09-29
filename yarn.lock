@@ -2915,7 +2915,7 @@ __metadata:
     eslint-config-prettier: "npm:^10.1.8"
     globals: "npm:^17.12.0"
     nestjs-zod: "npm:^5.5.0"
-    prettier: "npm:^3.9.8"
+    prettier: "npm:^3.9.9"
     reflect-metadata: "npm:^0.2.2"
     rxjs: "npm:^7.8.2"
     typescript: "npm:^6.0.3"
@@ -2982,7 +2982,7 @@ __metadata:
     nodemailer: "npm:10.0.12"
     octokit: "npm:^3.2.2"
     openpgp: "npm:^6.3.1"
-    prettier: "npm:^3.9.8"
+    prettier: "npm:^3.9.9"
     read-last-lines: "npm:^1.10.0"
     reflect-metadata: "npm:^0.2.2"
     rxjs: "npm:^7.8.2"
@@ -3020,8 +3020,8 @@ __metadata:
     "@tailwindcss/forms": "npm:^0.5.11"
     "@tailwindcss/typography": "npm:^0.5.20"
     "@tailwindcss/vite": "npm:^4.3.3"
-    "@tanstack/eslint-plugin-query": "npm:^5.103.2"
-    "@tanstack/react-query": "npm:^5.103.2"
+    "@tanstack/eslint-plugin-query": "npm:^5.104.0"
+    "@tanstack/react-query": "npm:^5.104.0"
     "@testing-library/dom": "npm:^10.4.2"
     "@testing-library/react": "npm:^16.3.3"
     "@types/lodash-es": "npm:^4.17.12"
@@ -3040,10 +3040,10 @@ __metadata:
     eslint-config-prettier: "npm:^10.1.8"
     eslint-plugin-react-hooks: "npm:^7.1.1"
     jsdom: "npm:^30.1.1"
-    konva: "npm:^10.6.0"
+    konva: "npm:^10.7.0"
     lodash-es: "npm:^4.18.1"
     monaco-editor: "npm:0.57.0"
-    prettier: "npm:^3.9.8"
+    prettier: "npm:^3.9.9"
     prettier-plugin-tailwindcss: "npm:^0.8.1"
     react: "npm:^19.3.0"
     react-dom: "npm:^19.3.0"
@@ -5575,36 +5575,36 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@tanstack/eslint-plugin-query@npm:^5.103.2":
-  version: 5.103.2
-  resolution: "@tanstack/eslint-plugin-query@npm:5.103.2"
+"@tanstack/eslint-plugin-query@npm:^5.104.0":
+  version: 5.104.0
+  resolution: "@tanstack/eslint-plugin-query@npm:5.104.0"
   dependencies:
-    "@typescript-eslint/utils": "npm:^8.58.1"
+    "@typescript-eslint/utils": "npm:^8.70.1"
   peerDependencies:
     eslint: ^8.57.0 || ^9.0.0 || ^10.0.0
     typescript: ^5.6.0 || ^6.0.0 || ^7.0.0
   peerDependenciesMeta:
     typescript:
       optional: true
-  checksum: 10c0/df07fac8dbb4ff4925682ae228af45167d2ec3d14ecee2104ce2fb5bb2571c5341c4bf66fc075ca4e55e2e67bc5e6b326ae20260f32465b415f56f3621e4935f
+  checksum: 10c0/df1bcaa7654b628887ac6fff42cc9ea3507027f281173b9b0d06cb29c0fea24729ac91f1a134882ee89d151443b20ce3665af3a18666dd3dce6704e88737b1dc
   languageName: node
   linkType: hard
 
-"@tanstack/query-core@npm:5.103.2":
-  version: 5.103.2
-  resolution: "@tanstack/query-core@npm:5.103.2"
-  checksum: 10c0/52362dd214a487b2194728a79c7fd1bd7af1831f21928030866a8ad28877eaec050e7215a6f3b3a0c4fdf601644ae8edb652e4cef7270f6f82d7371d2bbe9f41
+"@tanstack/query-core@npm:5.104.0":
+  version: 5.104.0
+  resolution: "@tanstack/query-core@npm:5.104.0"
+  checksum: 10c0/e080454f308dc41bf0e52e46aac455af3112f454519d369740aacaec4d260a3bfddde569204908ff7a6e1b1b84f8e065e0ac1375555e2bc1b023d398c0b44f96
   languageName: node
   linkType: hard
 
-"@tanstack/react-query@npm:^5.103.2":
-  version: 5.103.2
-  resolution: "@tanstack/react-query@npm:5.103.2"
+"@tanstack/react-query@npm:^5.104.0":
+  version: 5.104.0
+  resolution: "@tanstack/react-query@npm:5.104.0"
   dependencies:
-    "@tanstack/query-core": "npm:5.103.2"
+    "@tanstack/query-core": "npm:5.104.0"
   peerDependencies:
     react: ^18 || ^19
-  checksum: 10c0/7845c13af6761c00141ef6025c4ee385bff8f16e053f8583ba1b95db47a2c1df9764a751080981226658f45487881933517d24813f47c98238b8dbdd6acee80a
+  checksum: 10c0/efcf6328c95847c99e4b41c6e68f74d303b8e9eef673473648643dd2fcc8d9d3368223f27a4e510526f3fa3fd5508554e804141a67a9cf37c90842f8639cb430
   languageName: node
   linkType: hard
 
@@ -6568,7 +6568,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@typescript-eslint/utils@npm:8.70.1":
+"@typescript-eslint/utils@npm:8.70.1, @typescript-eslint/utils@npm:^8.70.1":
   version: 8.70.1
   resolution: "@typescript-eslint/utils@npm:8.70.1"
   dependencies:
@@ -6583,7 +6583,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@typescript-eslint/utils@npm:^8.0.0, @typescript-eslint/utils@npm:^8.58.1":
+"@typescript-eslint/utils@npm:^8.0.0":
   version: 8.67.0
   resolution: "@typescript-eslint/utils@npm:8.67.0"
   dependencies:
@@ -12129,9 +12129,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"knip@npm:^6.37.0":
-  version: 6.37.0
-  resolution: "knip@npm:6.37.0"
+"knip@npm:^6.38.0":
+  version: 6.38.0
+  resolution: "knip@npm:6.38.0"
   dependencies:
     fdir: "npm:^6.5.0"
     formatly: "npm:^0.7.0"
@@ -12149,13 +12149,13 @@ __metadata:
   bin:
     knip: bin/knip.js
     knip-bun: bin/knip-bun.js
-  checksum: 10c0/7043798047205c26c1ecdcf677944d25d6dcb78329c9798c0922f09cf3e2b494aa055985ed5eee890e87b8120da133bfa39862a08de1cc43ea97f5924adf1dcf
+  checksum: 10c0/c5f95d1baebfc746133bdcc4a9f244d071f683b40916db1f30cb4f566c5b5b6d730008f8d778a350ddc9507e1016bf7fc01c2b1b580898a221afb5216b4f7d45
   languageName: node
   linkType: hard
 
-"konva@npm:^10.6.0":
-  version: 10.6.0
-  resolution: "konva@npm:10.6.0"
+"konva@npm:^10.7.0":
+  version: 10.7.0
+  resolution: "konva@npm:10.7.0"
   peerDependencies:
     canvas: ^3.0.0
     skia-canvas: ^3.0.0
@@ -12164,7 +12164,7 @@ __metadata:
       optional: true
     skia-canvas:
       optional: true
-  checksum: 10c0/cd333d114ed26010deb4e1af968f98edbcfe7b8f54d0790e0c83df029657bf4fe3895e763deee120c2da1786cdf7ae25c34bca12f6442b465bac8e2ee9f88211
+  checksum: 10c0/75f9d93290ce0c58e600f80fae74239e7467ca95120728bea4b2f1e76585821d3965ec58f52bba6e5020f7bd3f001aa3ac86bc1fb32774b4ee0400f5dd5f1ad0
   languageName: node
   linkType: hard
 
@@ -12921,7 +12921,7 @@ __metadata:
     "@semantic-release/exec": "npm:^7.1.0"
     "@semantic-release/git": "npm:^11.0.1"
     "@types/node": "npm:^26.6.2"
-    knip: "npm:^6.37.0"
+    knip: "npm:^6.38.0"
     pofile-ts: "npm:^4.0.3"
     semantic-release: "npm:^25.0.9"
     turbo: "npm:^2.11.4"
@@ -15177,12 +15177,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"prettier@npm:^3.9.8":
-  version: 3.9.8
-  resolution: "prettier@npm:3.9.8"
+"prettier@npm:^3.9.9":
+  version: 3.9.9
+  resolution: "prettier@npm:3.9.9"
   bin:
     prettier: bin/prettier.cjs
-  checksum: 10c0/257e5ef11ba5006d0b0712271705701c065c8003e07763f996ce185d39633902f3fe1f814839eed76f75c97b6d5376d6157bd9f44db18cacb1dbdcb263cc66ae
+  checksum: 10c0/d50ea2537b2ff7dbd5088a214f4d936484e55c665cea2185b477a55b0770be55f3b156a71f63a9a639def6b334667bb327139dc85f2a1041c0a34752cdc74647
   languageName: node
   linkType: hard
 
