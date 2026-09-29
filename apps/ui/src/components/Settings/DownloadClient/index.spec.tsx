@@ -143,6 +143,21 @@ describe('DownloadClientSettings', () => {
     expect(await screen.findByText(/Success!/)).toBeTruthy()
   })
 
+  it('keeps the test result when the base path loses focus unchanged', async () => {
+    testMock.mockResolvedValue({ status: 'OK', code: 1, message: 'v4.6.0' })
+
+    render(<DownloadClientSettings />)
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Test Connection' }),
+    )
+    expect(await screen.findByText(/Success!/)).toBeTruthy()
+
+    fireEvent.blur(screen.getByLabelText('Base Path'))
+
+    expect(screen.getByText(/Success!/)).toBeTruthy()
+  })
+
   it('clears the URL when the client changes and restores it for the saved client', async () => {
     render(<DownloadClientSettings />)
 
@@ -217,5 +232,9 @@ describe('DownloadClientSettings', () => {
       target: { value: DownloadClientType.TRANSMISSION },
     })
     expect(clientSelect.getAttribute('aria-invalid')).toBe('false')
+    expect(screen.getByLabelText(/^URL \*/)).toHaveProperty(
+      'value',
+      'http://localhost:8080',
+    )
   })
 })

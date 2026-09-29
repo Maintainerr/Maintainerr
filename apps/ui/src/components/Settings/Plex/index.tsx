@@ -1,4 +1,3 @@
-import { t as globalT } from '@lingui/core/macro'
 import { serviceUrlSchema } from '@maintainerr/contracts'
 import { useForm, useWatch } from 'react-hook-form'
 import { ServiceUrlExamples } from '../../Forms/ServiceUrlExamples'
@@ -180,7 +179,8 @@ const PlexSettings = () => {
     register: registerAdvanced,
     control: advancedControl,
     reset: resetAdvanced,
-    trigger: validateAdvanced,
+    setError: setAdvancedError,
+    clearErrors: clearAdvancedErrors,
     formState: { errors: advancedErrors },
   } = useForm<PlexAdvancedDraft>({ values: savedAdvancedDraft })
 
@@ -249,6 +249,7 @@ const PlexSettings = () => {
   // Track whether the user has edited the advanced fields since last save
   const hasUnsavedAdvancedChanges =
     manualMode && advancedUrl !== savedAdvancedDraft.url
+  const invalidAdvancedUrl = t`Please enter a valid server URL with no path.`
 
   const clearTestBanner = () => {
     setTestBanner({ status: false, version: '' })
@@ -264,7 +265,14 @@ const PlexSettings = () => {
 
     try {
       if (manualMode) {
-        if (!(await validateAdvanced('url'))) return
+        // Collapsing Advanced unmounts the URL field, and react-hook-form does
+        // not validate unmounted fields, so the value is checked directly.
+        if (!plexConnectionUrlSchema.safeParse(advancedUrl.trim()).success) {
+          setAdvancedOpen(true)
+          setAdvancedError('url', { message: invalidAdvancedUrl })
+          return
+        }
+        clearAdvancedErrors('url')
         const url = new URL(advancedUrl.trim())
         const ssl = url.protocol === 'https:'
         const port = Number(url.port || (ssl ? 443 : 80))
@@ -701,11 +709,7 @@ const PlexSettings = () => {
                         />
                       }
                       error={advancedErrors.url?.message}
-                      {...registerAdvanced('url', {
-                        validate: (value) =>
-                          plexConnectionUrlSchema.safeParse(value).success ||
-                          globalT`Please enter a valid server URL with no path.`,
-                      })}
+                      {...registerAdvanced('url')}
                     />
                     <CheckboxGroup
                       id="advanced-manual-mode"
