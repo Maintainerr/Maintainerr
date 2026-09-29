@@ -4105,6 +4105,25 @@ describe('CollectionsService', () => {
       expect(collectionMediaRepo.delete).toHaveBeenCalledWith(2);
     });
 
+    it('untags the rows it drops from a collection that tags its content', async () => {
+      const gone = Object.assign(buildMedia(2, 'gone'), { collectionId: 5 });
+      collectionMediaRepo.find.mockResolvedValue([
+        Object.assign(buildMedia(1, 'present'), { collectionId: 5 }),
+        gone,
+      ]);
+      mediaServer.itemExists.mockImplementation(async (id) => id !== 'gone');
+      const tagging = createCollection({ id: 5, tagInArr: true });
+      collectionRepo.find.mockResolvedValue([tagging]);
+
+      await service.removeStaleCollectionMedia();
+
+      expect(servarrTagService.syncMembershipTags).toHaveBeenCalledWith(
+        tagging,
+        [],
+        [gone],
+      );
+    });
+
     it('keeps the row when the existence check is inconclusive (throws)', async () => {
       collectionMediaRepo.find.mockResolvedValue([buildMedia(1, 'maybe')]);
       // A transient failure must never be read as "gone".
@@ -5296,6 +5315,32 @@ describe('CollectionsService', () => {
           isActive: false,
           mediaServerId: 'own-collection',
         }),
+      );
+    });
+
+    it('untags the members of a deactivated collection that tags its content', async () => {
+      const collection = createCollection({
+        id: 51,
+        mediaServerId: 'own-collection',
+        tagInArr: true,
+      });
+      const member = Object.assign(new CollectionMedia(), {
+        id: 1,
+        collectionId: 51,
+        mediaServerId: 'm1',
+      });
+      collectionRepo.findOne.mockResolvedValue(collection);
+      collectionRepo.count.mockResolvedValue(0);
+      collectionRepo.save.mockImplementation(async (c) => c as Collection);
+      collectionMediaRepo.find.mockResolvedValue([member]);
+      jest.spyOn(service, 'addLogRecord').mockResolvedValue(undefined);
+
+      await service.deactivateCollection(collection.id);
+
+      expect(servarrTagService.syncMembershipTags).toHaveBeenCalledWith(
+        collection,
+        [],
+        [member],
       );
     });
 
