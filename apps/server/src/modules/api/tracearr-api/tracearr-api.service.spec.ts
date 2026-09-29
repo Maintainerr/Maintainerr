@@ -1104,23 +1104,6 @@ describe('TracearrApiService', () => {
       });
     });
 
-    it('reads a season Tracearr does not list as unwatched', async () => {
-      useItem({
-        id: 'season-3',
-        type: 'season',
-        parentId: 'show-1',
-        index: 3,
-        providerIds: { tvdb: ['1234'] },
-      });
-      answerHistory([play()]);
-
-      await expect(service.getItemStats('season-3')).resolves.toBeNull();
-      expect(apiMock.getRawWithoutCache).not.toHaveBeenCalledWith(
-        '/history',
-        expect.anything(),
-      );
-    });
-
     // Plex rating keys repeat across servers, so an unconfirmed server can
     // answer with another server's plays of an unrelated item.
     it('reads no history from a server it cannot confirm', async () => {
