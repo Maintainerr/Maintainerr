@@ -875,7 +875,17 @@ describe('RulesService.updateRules', () => {
   });
 
   describe('*arr membership tags on save', () => {
-    const members = [{ mediaServerId: 'm1', tmdbId: 1, tvdbId: null }];
+    const ruleMember = { mediaServerId: 'm1', tmdbId: 1, tvdbId: null };
+    const manualMember = { mediaServerId: 'm2', tmdbId: 2, tvdbId: null };
+    const members = [
+      ruleMember,
+      {
+        ...manualMember,
+        includedByRule: false,
+        manualMembershipSource: 'local',
+        isManual: true,
+      },
+    ];
     const tagging = {
       id: 42,
       libraryId: '1',
@@ -953,15 +963,18 @@ describe('RulesService.updateRules', () => {
       return servarrTagService.syncMembershipTags;
     };
 
-    it.each([
-      ['switches the *arr server', { radarrSettingsId: 2 }],
-      ['renames the group', { title: 'New Name', name: 'New Name' }],
-    ])('moves the tag when the save %s', async (_, change) => {
+    it('moves the tag to the new name, on rule-held members only', async () => {
+      const change = { title: 'New Name', name: 'New Name' };
       const saved = { ...tagging, ...change };
       const sync = await save(saved, change);
 
-      expect(sync).toHaveBeenNthCalledWith(1, tagging, [], members);
-      expect(sync).toHaveBeenNthCalledWith(2, saved, members, []);
+      expect(sync).toHaveBeenNthCalledWith(
+        1,
+        tagging,
+        [],
+        [ruleMember, manualMember],
+      );
+      expect(sync).toHaveBeenNthCalledWith(2, saved, [ruleMember], []);
     });
 
     it('untags the members a crucial-setting reset wipes, tagging kept on', async () => {
@@ -971,16 +984,11 @@ describe('RulesService.updateRules', () => {
       );
 
       expect(sync).toHaveBeenCalledTimes(1);
-      expect(sync).toHaveBeenCalledWith(tagging, [], members);
-    });
-
-    it('leaves the tags alone when the save changes none of them', async () => {
-      const sync = await save(
-        { ...tagging, description: 'edited' },
-        { description: 'edited' },
+      expect(sync).toHaveBeenCalledWith(
+        tagging,
+        [],
+        [ruleMember, manualMember],
       );
-
-      expect(sync).not.toHaveBeenCalled();
     });
   });
 

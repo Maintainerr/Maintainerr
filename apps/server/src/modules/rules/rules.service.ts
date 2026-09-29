@@ -32,7 +32,10 @@ import { IMediaServerService } from '../api/media-server/media-server.interface'
 import { TracearrApiService } from '../api/tracearr-api/tracearr-api.service';
 import { CollectionsService } from '../collections/collections.service';
 import { Collection } from '../collections/entities/collection.entities';
-import { CollectionMedia } from '../collections/entities/collection_media.entities';
+import {
+  CollectionMedia,
+  hasCollectionMediaRuleMembership,
+} from '../collections/entities/collection_media.entities';
 import {
   AlterableMediaContext,
   CollectionMediaChange,
@@ -893,11 +896,12 @@ export class RulesService {
     };
   }
 
-  // Behavior A: members carry the tag of the collection holding them, so a save
-  // that turns tagging on or off, renames the group or switches its *arr server
-  // untags them under the previous collection and tags them under the saved one.
-  // `preDeleteMembers` is the snapshot a crucial-setting reset took before it
-  // wiped the rows: those items left, so they only lose the previous tag.
+  // Behavior A: rule-held members carry the tag of the collection holding them,
+  // so a save that turns tagging on or off, renames the group or switches its
+  // *arr server untags them under the previous collection and tags them under
+  // the saved one. `preDeleteMembers` is the snapshot a crucial-setting reset
+  // took before it wiped the rows: those items left, so they only lose the
+  // previous tag.
   private async reconcileMembershipTags(
     previous: Collection | undefined,
     saved: Collection,
@@ -923,7 +927,9 @@ export class RulesService {
       if (after && after !== before && !preDeleteMembers) {
         await this.servarrTagService.syncMembershipTags(
           saved,
-          (await members()).map((m) => this.toArrTagItem(m)),
+          (await members())
+            .filter(hasCollectionMediaRuleMembership)
+            .map((m) => this.toArrTagItem(m)),
           [],
         );
       }

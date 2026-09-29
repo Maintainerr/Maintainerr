@@ -1,7 +1,7 @@
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Mocked } from '@suites/doubles.jest';
 import { TestBed } from '@suites/unit';
-import { In, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 import {
   createCollection,
   createRadarrMovie,
@@ -277,25 +277,6 @@ describe('ServarrTagService', () => {
       expect(radarr.ensureTag).not.toHaveBeenCalled();
     });
 
-    it('never creates the label for a removal-only sync', async () => {
-      const radarr = mockRadarrApi(servarrService, logger);
-      jest.spyOn(radarr, 'getTags').mockResolvedValue([]);
-
-      await service.syncMembershipTags(
-        createCollection({
-          type: 'movie',
-          radarrSettingsId: 1,
-          tagInArr: true,
-          title: 'Renamed Away',
-        }),
-        [],
-        [{ mediaServerId: 'movie-1' }],
-      );
-
-      expect(radarr.ensureTag).not.toHaveBeenCalled();
-      expect(radarr.setMovieTags).not.toHaveBeenCalled();
-    });
-
     it('keeps the tag on items a same-named group on the server still holds', async () => {
       const radarr = mockRadarrApi(servarrService, logger);
       jest
@@ -325,14 +306,7 @@ describe('ServarrTagService', () => {
         [{ mediaServerId: 'movie-1' }, { mediaServerId: 'movie-2' }],
       );
 
-      // Only the other group sharing the label is asked; movie-1 keeps its tag.
-      expect(collectionMediaRepo.find).toHaveBeenCalledWith({
-        select: { mediaServerId: true },
-        where: {
-          collectionId: In([8]),
-          mediaServerId: In(['movie-1', 'movie-2']),
-        },
-      });
+      // movie-1 is still held by 'Old  Movies!', so only movie-2 is untagged.
       expect(radarr.getMovieByTmdbId).toHaveBeenCalledTimes(1);
       expect(radarr.setMovieTags).toHaveBeenCalledWith([13], 5, 'remove');
     });

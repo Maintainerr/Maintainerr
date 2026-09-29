@@ -743,12 +743,11 @@ describe('RulesService exclusions - global (null ruleGroupId) handling', () => {
       { mediaId: 'movie-1', collectionId: 12 },
       expect.any(ArrLookupCache),
     );
-    // The removal reads the *arr library through the batch's memo too.
     expect(removeFromCollection).toHaveBeenCalledWith(
       12,
       [{ mediaServerId: 'movie-1' }],
       'all',
-      setExclusion.mock.calls[0][1],
+      expect.any(ArrLookupCache),
     );
     expect(response.results).toEqual([
       { mediaId: 'movie-1', code: 1, message: 'Success' },

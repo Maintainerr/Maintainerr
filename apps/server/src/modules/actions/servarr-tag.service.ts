@@ -63,7 +63,7 @@ const ID_LOOKUP_CHUNK = 500;
  *   through (rule run, exclusion, handling action, manual and global removal),
  *   and from the paths that drop rows wholesale (deactivation, stale cleanup,
  *   a crucial-setting reset). A save that turns tagging on or off, renames the
- *   group or switches its *arr server moves the tag on every member.
+ *   group or switches its *arr server moves the tag.
  * - **Exclusion (Behavior B,
  *   https://features.maintainerr.info/posts/81):** when an item is excluded, the
  *   matching *arr entity gets a protective tag (default "dnd"); removal on
@@ -80,7 +80,7 @@ const ID_LOOKUP_CHUNK = 500;
  * so season/episode collections are skipped with a debug log.
  *
  * Known edge cases:
- * - **Manual members** are not tagged: adds come from the rule executor only.
+ * - **Manual-only members** are not tagged; only rule-held ones are.
  * - **Two groups sharing a name** on one server share one tag (labels are
  *   case-insensitive); a leave from one keeps it on items the other still holds
  *   (`withoutStillHeld`).
