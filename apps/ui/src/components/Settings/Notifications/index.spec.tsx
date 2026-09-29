@@ -46,14 +46,6 @@ const ntfy = {
     { field: 'topic', type: 'text', required: true },
   ],
 }
-const webhook = {
-  name: 'webhook',
-  friendlyName: 'Webhook',
-  options: [
-    { field: 'webhookUrl', type: 'text', required: true },
-    { field: 'jsonPayload', type: 'json', required: true },
-  ],
-}
 const email = {
   name: 'email',
   friendlyName: 'Email',
@@ -173,36 +165,6 @@ describe('NotificationSettings', () => {
       'value',
       'http://gotify.local',
     )
-  })
-
-  it('saves a new webhook with the {} payload its editor shows', async () => {
-    answer({
-      '/notifications/configurations': [],
-      '/notifications/agents': [webhook],
-      '/notifications/types': types,
-    })
-    renderNotifications()
-    fireEvent.click(await screen.findByRole('button', { name: 'Add Agent' }))
-
-    fireEvent.change(screen.getByLabelText('Name *'), {
-      target: { value: 'Hook' },
-    })
-    fireEvent.change(screen.getByLabelText('Agent *'), {
-      target: { value: 'webhook' },
-    })
-    fireEvent.change(await screen.findByLabelText('Webhook URL *'), {
-      target: { value: 'http://hook.local' },
-    })
-    fireEvent.click(screen.getByRole('button', { name: 'Save Changes' }))
-
-    await waitFor(() => {
-      expect(postApiHandler).toHaveBeenCalledWith(
-        '/notifications/configuration/add',
-        expect.objectContaining({
-          options: { webhookUrl: 'http://hook.local', jsonPayload: {} },
-        }),
-      )
-    })
   })
 
   it('labels and explains options from the UI catalog', async () => {

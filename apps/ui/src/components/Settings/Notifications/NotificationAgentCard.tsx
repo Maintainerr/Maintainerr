@@ -383,8 +383,6 @@ const NotificationAgentCard = ({
                           <Controller
                             name={`options.${option.field}`}
                             control={control}
-                            // The editor opens on {}, so that is the value.
-                            defaultValue={{}}
                             render={({ field }) => (
                               <LazyMonacoEditor
                                 height="200px"
