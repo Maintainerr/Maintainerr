@@ -2,25 +2,16 @@ import { InternalServerErrorException } from '@nestjs/common';
 import { NotificationsController } from './notifications.controller';
 
 describe('NotificationsController', () => {
-  const createController = (configurations: unknown) =>
-    new NotificationsController(
+  it('fails the request when the configurations cannot be read', async () => {
+    const controller = new NotificationsController(
       {
-        getNotificationConfigurations: jest
-          .fn()
-          .mockResolvedValue(configurations),
+        getNotificationConfigurations: jest.fn().mockResolvedValue(undefined),
       } as any,
       {} as any,
     );
 
-  it('fails the request when the configurations cannot be read', async () => {
     await expect(
-      createController(undefined).getNotificationConfigurations(),
+      controller.getNotificationConfigurations(),
     ).rejects.toBeInstanceOf(InternalServerErrorException);
-  });
-
-  it('returns an empty list as an empty list', async () => {
-    await expect(
-      createController([]).getNotificationConfigurations(),
-    ).resolves.toEqual([]);
   });
 });

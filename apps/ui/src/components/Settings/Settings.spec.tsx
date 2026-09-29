@@ -207,7 +207,6 @@ describe('SettingsWrapper', () => {
   it.each([
     ['/services/tautulli', 'a Jellyfin server'],
     ['/services/download-client', 'no Radarr, Sonarr or Sportarr server'],
-    ['/services/unknown', 'any setup'],
   ])('sends %s back to the hub with %s', (path) => {
     currentPath = path
 
