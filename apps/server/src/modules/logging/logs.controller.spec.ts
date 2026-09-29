@@ -200,6 +200,36 @@ describe('LogsController', () => {
     expect(createReadStreamMock).not.toHaveBeenCalled();
   });
 
+  // Logs were written to and read from /opt/data whatever DATA_DIR said.
+  it('reads log files from DATA_DIR in production', async () => {
+    const nodeEnv = process.env.NODE_ENV;
+    process.env.NODE_ENV = 'production';
+    process.env.DATA_DIR = '/srv/maintainerr';
+    try {
+      await jest.isolateModulesAsync(async () => {
+        const { LogsController: ProductionController } =
+          await import('./logs.controller');
+        const promises = await import('fs/promises');
+        jest.mocked(promises.lstat).mockRejectedValue(new Error('stop'));
+        const controller = new ProductionController(
+          {} as unknown as LogSettingsService,
+          new EventEmitter2(),
+          createMockLogger(),
+        );
+
+        await expect(
+          controller.getFile('maintainerr-2026-04-28.log'),
+        ).rejects.toThrow('stop');
+        expect(promises.lstat).toHaveBeenCalledWith(
+          '/srv/maintainerr/logs/maintainerr-2026-04-28.log',
+        );
+      });
+    } finally {
+      process.env.NODE_ENV = nodeEnv;
+      delete process.env.DATA_DIR;
+    }
+  });
+
   it('streams regular log files from the resolved canonical path', async () => {
     const controller = createController();
     const stream = new PassThrough();

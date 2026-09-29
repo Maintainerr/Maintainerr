@@ -7,6 +7,7 @@ import path from 'path';
 import { Repository } from 'typeorm';
 import winston from 'winston';
 import DailyRotateFile from 'winston-daily-rotate-file';
+import { dataDir } from '../../app/config/dataDir';
 import {
   DEFAULT_LOG_LEVEL,
   DEFAULT_LOG_MAX_FILES,
@@ -25,11 +26,6 @@ import { EventEmitterTransport } from './winston/eventEmitterTransport';
 import { installStdioPipeGuards } from './winston/stdioPipeGuard';
 
 installStdioPipeGuards();
-
-const dataDir =
-  process.env.NODE_ENV === 'production'
-    ? '/opt/data'
-    : path.join(__dirname, '../../../../../data');
 
 const sanitizeLogFormat = winston.format((info): TransformableInfo =>
   sanitizeLogInfo(info),
