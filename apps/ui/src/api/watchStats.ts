@@ -26,5 +26,8 @@ export const useWatchStats = <T>(path: string, enabled = true) =>
       }
     },
     retry: false,
+    // Each fetch re-reads the service, a show's up to 50 history pages, so an
+    // open panel is not refreshed just because the window regained focus.
+    refetchOnWindowFocus: false,
     enabled,
   })

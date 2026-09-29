@@ -39,13 +39,15 @@ describe('TautulliApiService', () => {
   });
   describe('getItemStats', () => {
     const answer = (byCommand: Record<string, unknown>) => {
-      service.api = {
-        get: jest.fn(
-          async (_path: string, config: { params: { cmd: string } }) => ({
-            response: { result: 'success', data: byCommand[config.params.cmd] },
-          }),
-        ),
-      } as never;
+      const reply = async (
+        _path: string,
+        config: { params: { cmd: string } },
+      ) => ({
+        response: { result: 'success', data: byCommand[config.params.cmd] },
+      });
+      const api = { get: jest.fn(reply), getWithoutCache: jest.fn(reply) };
+      service.api = api as never;
+      return api;
     };
 
     beforeEach(() => {
@@ -72,7 +74,7 @@ describe('TautulliApiService', () => {
           { name: 'bob', plays: 1, watchTime: 60, lastWatched: null },
         ],
       });
-      expect(service.api.get).toHaveBeenCalledWith('', {
+      expect(service.api.getWithoutCache).toHaveBeenCalledWith('', {
         params: expect.objectContaining({
           cmd: 'get_history',
           grandparent_rating_key: '7',
@@ -80,11 +82,36 @@ describe('TautulliApiService', () => {
       });
     });
 
+    // The shared cache holds a read for 20 minutes and only a rule run clears
+    // it, so a panel read through it showed old counts on every reopen.
+    it('reads the plays past the cache and only the metadata through it', async () => {
+      const api = answer({
+        get_item_user_stats: [
+          { friendly_name: 'alice', total_plays: 1, total_time: 60 },
+        ],
+        get_metadata: { media_type: 'movie', rating_key: '7' },
+        get_history: { data: [{ stopped: 1767225600 }] },
+      });
+
+      await service.getItemStats('7');
+
+      const commands = (mock: jest.Mock) =>
+        mock.mock.calls.map(([, config]) => config.params.cmd);
+      expect(commands(api.getWithoutCache)).toEqual([
+        'get_item_user_stats',
+        'get_history',
+      ]);
+      expect(commands(api.get)).toEqual(['get_metadata']);
+    });
+
     it('answers null for an item nobody played and undefined when unreadable', async () => {
       answer({ get_item_user_stats: [] });
       await expect(service.getItemStats('7')).resolves.toBeNull();
 
-      service.api = { get: jest.fn().mockResolvedValue(undefined) } as never;
+      service.api = {
+        get: jest.fn().mockResolvedValue(undefined),
+        getWithoutCache: jest.fn().mockResolvedValue(undefined),
+      } as never;
       await expect(service.getItemStats('7')).resolves.toBeUndefined();
     });
   });

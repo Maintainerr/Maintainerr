@@ -10,6 +10,7 @@ import {
   tracearrItemHistoryPageSchema,
   tracearrHistoryPageSchema,
   tracearrLibrariesPageSchema,
+  tracearrMediaChildrenSchema,
   tracearrMediaSchema,
   tracearrRecentlyAddedPageSchema,
   tracearrServerSchema,
@@ -35,6 +36,7 @@ import {
   TRACEARR_HISTORY_CACHE_KEY,
   TRACEARR_HISTORY_MAX_RECORDS,
   TRACEARR_ITEM_HISTORY_MAX_PAGES,
+  TRACEARR_ITEM_SERVER_RETRY_MS,
   TRACEARR_PAGE_SIZE,
   TRACEARR_SERVER_MATCH_THRESHOLD,
   TRACEARR_SERVER_PROBE_MINIMUM,
@@ -116,6 +118,9 @@ export class TracearrApiService {
   private activeUsernamesByTracearrUserId: Map<string, string[]> | undefined;
   private episodeIdsByItemId = new Map<string, Promise<string[]>>();
   private resolvedServerId: string | undefined;
+  // The server the media modal reads, once confirmed; see getItemServerId.
+  private itemServer:
+    { serverId: Promise<string | undefined>; retryAt: number } | undefined;
   private historyGeneration = 0;
   private sweepPromise: Promise<void> | undefined;
 
@@ -159,6 +164,7 @@ export class TracearrApiService {
     this.activeUsernamesByTracearrUserId = undefined;
     this.episodeIdsByItemId.clear();
     this.resolvedServerId = undefined;
+    this.itemServer = undefined;
     // A sweep already in flight resolves after this, so mark its results stale
     // rather than let them repopulate what was just discarded.
     this.historyGeneration += 1;
@@ -213,7 +219,7 @@ export class TracearrApiService {
     itemId: string,
   ): Promise<MediaWatchStats | null | undefined> {
     try {
-      const serverId = await this.resolveActiveServerId();
+      const serverId = await this.getItemServerId();
       const mediaServer = await this.mediaServerFactory.getService();
       const item = await mediaServer.getMetadata(itemId);
       if (!serverId || !item) {
@@ -273,7 +279,8 @@ export class TracearrApiService {
    * History filters on a play's own rating key, which answers a movie or an
    * episode directly. A show has to be found by provider id first, so one
    * Tracearr cannot place that way reads as unwatched, and its plays are then
-   * narrowed to the ones this very show, or season, carries.
+   * narrowed to the ones this very show, or season, carries. A season is read
+   * by its own id from the show's children, not through every play of the show.
    */
   private async fetchItemHistory(
     item: MediaItem,
@@ -286,7 +293,17 @@ export class TracearrApiService {
     if (!isLeaf && !showMediaId) {
       return { mediaId: null, rows: [] };
     }
-    const scope = isLeaf ? { rating_key: item.id } : { media_id: showMediaId };
+    if (item.type === 'season' && item.index === undefined) {
+      return undefined;
+    }
+    const scopeMediaId =
+      item.type === 'season'
+        ? await this.resolveSeasonMediaId(showMediaId, item.index)
+        : showMediaId;
+    if (!isLeaf && !scopeMediaId) {
+      return { mediaId: showMediaId, rows: [] };
+    }
+    const scope = isLeaf ? { rating_key: item.id } : { media_id: scopeMediaId };
 
     const rows: TracearrItemHistoryRow[] = [];
     let cursor: string | undefined;
@@ -336,6 +353,26 @@ export class TracearrApiService {
     }
 
     return null;
+  }
+
+  private async resolveSeasonMediaId(
+    showMediaId: string,
+    seasonNumber: number | null,
+  ): Promise<string | null> {
+    const raw = await this.getOrNull(`/media/${showMediaId}/children`);
+    if (!raw) {
+      return null;
+    }
+
+    return (
+      tracearrMediaChildrenSchema
+        .parse(raw)
+        .data.find(
+          (child) =>
+            child.media_type === 'season' &&
+            child.season_number === seasonNumber,
+        )?.id ?? null
+    );
   }
 
   /** Null on a 404, which is how Tracearr answers an item it does not know. */
@@ -617,6 +654,54 @@ export class TracearrApiService {
 
     this.resolvedServerId = resolved;
     return this.resolvedServerId;
+  }
+
+  /**
+   * The bound server, confirmed to track the managed media server the way the
+   * rule sweep confirms it: Plex rating keys repeat across servers, so an
+   * unconfirmed one can answer with another server's plays. A confirmed server
+   * is kept until the settings change; finding none is kept for a while, and a
+   * failed lookup not at all.
+   */
+  private getItemServerId(): Promise<string | undefined> {
+    if (this.itemServer && Date.now() < this.itemServer.retryAt) {
+      return this.itemServer.serverId;
+    }
+
+    const entry = {
+      serverId: this.confirmItemServerId(),
+      retryAt: Number.POSITIVE_INFINITY,
+    };
+    this.itemServer = entry;
+    entry.serverId.then(
+      (serverId) => {
+        if (!serverId) {
+          entry.retryAt = Date.now() + TRACEARR_ITEM_SERVER_RETRY_MS;
+        }
+      },
+      () => {
+        if (this.itemServer === entry) {
+          this.itemServer = undefined;
+        }
+      },
+    );
+    return entry.serverId;
+  }
+
+  private async confirmItemServerId(): Promise<string | undefined> {
+    const serverId = await this.resolveActiveServerId();
+    if (!serverId) {
+      return undefined;
+    }
+
+    const sharesLibrary = await this.serverSharesLibrary(
+      {
+        url: this.settings.tracearr_url,
+        apiKey: this.settings.tracearr_api_key,
+      },
+      serverId,
+    );
+    return sharesLibrary ? serverId : undefined;
   }
 
   private async prefetchHistoryInternal(): Promise<void> {

@@ -818,8 +818,11 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
                       </a>
                     </div>
                   )}
+                  {/* The watch statistics badges stay off a phone's short
+                      backdrop, where they left no room for the genres. Each
+                      panel below links to the same page. */}
                   {isPlex && tautulliModalUrl && (
-                    <div>
+                    <div className="hidden sm:block">
                       <a
                         href={`${tautulliModalUrl}/info?rating_key=${id}&source=history`}
                         target="_blank"
@@ -836,7 +839,7 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
                     </div>
                   )}
                   {isJellyfin && streamystatsItemUrl && (
-                    <div>
+                    <div className="hidden sm:block">
                       <a
                         href={streamystatsItemUrl}
                         target="_blank"
@@ -853,7 +856,7 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
                     </div>
                   )}
                   {tracearrUrl && (
-                    <div>
+                    <div className="hidden sm:block">
                       <a
                         href={tracearrStats?.url ?? tracearrUrl}
                         target="_blank"
@@ -922,6 +925,7 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
               <WatchStatsPanel
                 name="Tautulli"
                 path={`/tautulli/items/${id}`}
+                url={`${tautulliModalUrl}/info?rating_key=${id}&source=history`}
                 toView={asWatchStatsView}
               />
             ) : null}
@@ -930,6 +934,7 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
               <WatchStatsPanel
                 name="Tracearr"
                 path={tracearrStatsPath}
+                url={tracearrStats?.url ?? tracearrUrl}
                 toView={asWatchStatsView}
               />
             ) : null}

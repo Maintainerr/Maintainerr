@@ -846,6 +846,44 @@ describe('MediaModal', () => {
     )
   })
 
+  // A phone hides the service badges, so the panels carry the same links,
+  // including for an item nobody has played.
+  it('links each watch statistics panel to its service with no plays to show', async () => {
+    useMediaServerTypeMock.mockReturnValue({
+      ...useMediaServerTypeMock(),
+      isPlex: true,
+    })
+    const notFound = Object.assign(new Error('Not Found'), {
+      isAxiosError: true,
+      response: { status: 404 },
+    })
+    getApiHandlerMock.mockImplementation((path: string) =>
+      path === '/settings'
+        ? Promise.resolve({
+            tautulli_url: 'http://tautulli.local',
+            tracearr_url: 'http://t',
+          })
+        : path.includes('/items/')
+          ? Promise.reject(notFound)
+          : Promise.resolve({}),
+    )
+
+    render(
+      <MediaModal onClose={() => {}} id={93} mediaType="movie" title="Movie" />,
+    )
+
+    expect(
+      (
+        await screen.findByRole('link', { name: /Open on Tautulli/ })
+      ).getAttribute('href'),
+    ).toBe('http://tautulli.local/info?rating_key=93&source=history')
+    expect(
+      screen
+        .getByRole('link', { name: /Open on Tracearr/ })
+        .getAttribute('href'),
+    ).toBe('http://t')
+  })
+
   it('names the season and falls back to the provider description when the media server has none', async () => {
     getApiHandlerMock.mockImplementation((path: string) => {
       if (path === '/media-server') {

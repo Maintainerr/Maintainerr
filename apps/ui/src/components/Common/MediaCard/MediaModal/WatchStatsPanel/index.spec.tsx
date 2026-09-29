@@ -1,9 +1,9 @@
 import type { MediaWatchStats } from '@maintainerr/contracts'
-import { QueryClientProvider } from '@tanstack/react-query'
+import { focusManager, QueryClientProvider } from '@tanstack/react-query'
 import { AxiosError, type AxiosResponse } from 'axios'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createTestQueryClient } from '../../../../../test-utils/queryClient'
-import { render, screen } from '../../../../../test-utils/render'
+import { act, render, screen } from '../../../../../test-utils/render'
 import WatchStatsPanel from './'
 
 const getApiHandler = vi.fn()
@@ -48,6 +48,22 @@ describe('WatchStatsPanel', () => {
     ).toHaveProperty('href', stats.url)
     // No user carries a date, so the table has no column of dashes.
     expect(screen.getAllByText('Last watched')).toHaveLength(1)
+  })
+
+  // A show's read pages through up to 50 history pages on the server.
+  it('does not read the service again when the window regains focus', async () => {
+    getApiHandler.mockResolvedValue(stats)
+    renderPanel()
+    await screen.findByText('alice')
+
+    act(() => {
+      focusManager.setFocused(false)
+      focusManager.setFocused(true)
+    })
+    await act(async () => {})
+
+    expect(getApiHandler).toHaveBeenCalledTimes(1)
+    focusManager.setFocused(undefined)
   })
 
   it('reads a 404 as an item nobody watched, not as a failure', async () => {
