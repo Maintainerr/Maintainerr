@@ -1,3 +1,4 @@
+import { t as globalT } from '@lingui/core/macro'
 import { serviceUrlSchema } from '@maintainerr/contracts'
 import { useForm, useWatch } from 'react-hook-form'
 import { ServiceUrlExamples } from '../../Forms/ServiceUrlExamples'
@@ -249,7 +250,6 @@ const PlexSettings = () => {
   // Track whether the user has edited the advanced fields since last save
   const hasUnsavedAdvancedChanges =
     manualMode && advancedUrl !== savedAdvancedDraft.url
-  const invalidAdvancedUrl = t`Please enter a valid server URL with no path.`
 
   const clearTestBanner = () => {
     setTestBanner({ status: false, version: '' })
@@ -269,7 +269,9 @@ const PlexSettings = () => {
         // not validate unmounted fields, so the value is checked directly.
         if (!plexConnectionUrlSchema.safeParse(advancedUrl.trim()).success) {
           setAdvancedOpen(true)
-          setAdvancedError('url', { message: invalidAdvancedUrl })
+          setAdvancedError('url', {
+            message: globalT`Please enter a valid server URL with no path.`,
+          })
           return
         }
         clearAdvancedErrors('url')
