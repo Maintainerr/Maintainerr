@@ -71,6 +71,12 @@ import {
 // giving up. Long enough to ride out a run that is finishing, short enough to
 // stay within a browser's patience.
 const POSTPONE_LOCK_WAIT_MS = 30000;
+// Multer leaves fieldArrayIndexLimit unbounded unless set (GHSA-535w-7cp7-47q4);
+// Nest's MulterLimits type does not list it yet, hence a named object.
+const POSTER_UPLOAD_LIMITS = {
+  fileSize: COLLECTION_POSTER_MAX_BYTES,
+  fieldArrayIndexLimit: 0,
+};
 
 const collectionMediaSortQuerySchema = z
   .enum(collectionMediaSortFields)
@@ -720,7 +726,7 @@ export class CollectionsController {
   @Post('/:id/poster')
   @UseInterceptors(
     FileInterceptor('poster', {
-      limits: { fileSize: COLLECTION_POSTER_MAX_BYTES },
+      limits: POSTER_UPLOAD_LIMITS,
     }),
   )
   @ApiOperation({
