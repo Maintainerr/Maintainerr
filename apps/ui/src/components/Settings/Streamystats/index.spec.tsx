@@ -1,8 +1,13 @@
-import { render, waitFor } from '../../../test-utils/render'
+import { render, screen, waitFor } from '../../../test-utils/render'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import StreamystatsSettings from './index'
 
+const useMediaServerTypeMock = vi.fn()
 const getApiHandler = vi.fn()
+
+vi.mock('../../../hooks/useMediaServerType', () => ({
+  useMediaServerType: () => useMediaServerTypeMock(),
+}))
 
 vi.mock('../../../utils/ApiHandler', () => ({
   default: (url: string) => getApiHandler(url),
@@ -10,22 +15,65 @@ vi.mock('../../../utils/ApiHandler', () => ({
   DeleteApiHandler: vi.fn(),
 }))
 
+vi.mock('react-router-dom', async () => {
+  const actual =
+    await vi.importActual<typeof import('react-router-dom')>('react-router-dom')
+  return {
+    ...actual,
+    Navigate: ({ to }: { to: string }) => (
+      <div data-testid="navigate" data-to={to} />
+    ),
+  }
+})
+
 vi.mock('../../Common/DocsButton', () => ({
   default: () => <button type="button">Docs</button>,
 }))
 
 describe('StreamystatsSettings', () => {
   beforeEach(() => {
+    useMediaServerTypeMock.mockReset()
     getApiHandler.mockReset()
   })
 
-  it('loads the saved Streamystats settings', async () => {
+  it('renders nothing while settings are loading', () => {
+    useMediaServerTypeMock.mockReturnValue({
+      isJellyfin: false,
+      isLoading: true,
+    })
+
+    const { container } = render(<StreamystatsSettings />)
+    expect(container.firstChild).toBeNull()
+    expect(getApiHandler).not.toHaveBeenCalled()
+  })
+
+  it('redirects to the services hub when the active server is not Jellyfin', () => {
+    useMediaServerTypeMock.mockReturnValue({
+      isJellyfin: false,
+      isLoading: false,
+    })
+
+    render(<StreamystatsSettings />)
+
+    expect(screen.getByTestId('navigate').getAttribute('data-to')).toBe(
+      '/services',
+    )
+    // The settings form must not mount, so its initial GET must not fire.
+    expect(getApiHandler).not.toHaveBeenCalled()
+  })
+
+  it('renders the settings form when the active server is Jellyfin', async () => {
+    useMediaServerTypeMock.mockReturnValue({
+      isJellyfin: true,
+      isLoading: false,
+    })
     getApiHandler.mockResolvedValue({ url: '' })
 
     render(<StreamystatsSettings />)
 
     await waitFor(() => {
-      expect(getApiHandler).toHaveBeenCalledWith('/settings/streamystats')
+      expect(screen.queryByTestId('navigate')).toBeNull()
     })
+    expect(getApiHandler).toHaveBeenCalledWith('/settings/streamystats')
   })
 })
