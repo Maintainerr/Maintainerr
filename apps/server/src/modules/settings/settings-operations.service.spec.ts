@@ -474,7 +474,6 @@ describe('SettingsOperationsService', () => {
     expect(plexApi.validateAuthToken).not.toHaveBeenCalled();
   });
 
-  // A server slower than a click allows must not skip the daily cleanup.
   // Answered, not thrown, so it was never logged behind "check logs".
   it('logs why a Radarr test failed when another *arr answers', async () => {
     servarr.getRadarrApiClient.mockResolvedValue({

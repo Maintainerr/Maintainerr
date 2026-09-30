@@ -411,6 +411,9 @@ export class SettingsOperationsService {
           apiKey: settings.api_key,
         }));
       if (!serverId) {
+        this.logger.warn(
+          'No single Tracearr server matches the managed media server',
+        );
         return {
           status: 'NOK',
           code: 0,
@@ -425,6 +428,9 @@ export class SettingsOperationsService {
         serverId,
       );
       if (sharesLibrary === false) {
+        this.logger.warn(
+          'The chosen Tracearr server tracks a different media server',
+        );
         return {
           status: 'NOK',
           code: 0,

@@ -83,9 +83,10 @@ export class TmdbApiService extends ExternalApiService {
         params: { api_key: testKey },
       });
 
-      return response.data?.id
-        ? { status: 'OK', code: 1, message: 'Success' }
-        : { status: 'NOK', code: 0, message: 'Unexpected response' };
+      if (!response.data?.id) {
+        throw new Error('Unexpected response');
+      }
+      return { status: 'OK', code: 1, message: 'Success' };
     } catch (error) {
       logConnectionTestError(this.logger, 'TMDB', error);
 

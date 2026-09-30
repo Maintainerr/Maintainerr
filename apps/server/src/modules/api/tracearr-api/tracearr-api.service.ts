@@ -556,19 +556,14 @@ export class TracearrApiService {
         document.info?.title !== 'Tracearr Public API' ||
         !version
       ) {
-        return {
-          status: 'NOK',
-          code: 0,
-          message:
-            'Unexpected response from Tracearr. Verify the URL points to a Tracearr v2 instance.',
-        };
+        throw new Error(
+          'Unexpected response from Tracearr. Verify the URL points to a Tracearr v2 instance.',
+        );
       }
       if (isBelowMinimumVersion(version, MINIMUM_TRACEARR_VERSION)) {
-        return {
-          status: 'NOK',
-          code: 0,
-          message: `Tracearr ${version} is below the minimum supported version ${MINIMUM_TRACEARR_VERSION}. Please update Tracearr.`,
-        };
+        throw new Error(
+          `Tracearr ${version} is below the minimum supported version ${MINIMUM_TRACEARR_VERSION}. Please update Tracearr.`,
+        );
       }
 
       return {

@@ -184,7 +184,7 @@ export class TvdbApiService extends ExternalApiService {
       );
       const token = login.data?.data?.token;
       if (login.data?.status !== 'success' || !token) {
-        return { status: 'NOK', code: 0, message: 'Unexpected response' };
+        throw new Error('Unexpected response');
       }
 
       // A login token alone does not prove the key can read metadata.
@@ -197,9 +197,10 @@ export class TvdbApiService extends ExternalApiService {
         },
       );
 
-      return response.data?.status === 'success' && response.data?.data?.id
-        ? { status: 'OK', code: 1, message: 'Success' }
-        : { status: 'NOK', code: 0, message: 'Unexpected response' };
+      if (response.data?.status !== 'success' || !response.data?.data?.id) {
+        throw new Error('Unexpected response');
+      }
+      return { status: 'OK', code: 1, message: 'Success' };
     } catch (error) {
       logConnectionTestError(this.logger, 'TVDB', error);
 
