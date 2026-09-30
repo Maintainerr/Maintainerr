@@ -9,6 +9,8 @@ import {
 } from '../../../test/utils/data';
 import { mockRadarrApi, mockSonarrApi } from '../../../test/utils/servarr-mock';
 import { ServarrService } from '../api/servarr-api/servarr.service';
+import { Collection } from '../collections/entities/collection.entities';
+import { CollectionMedia } from '../collections/entities/collection_media.entities';
 import { MaintainerrLogger } from '../logging/logs.service';
 import { MetadataService } from '../metadata/metadata.service';
 import { Exclusion } from '../rules/entities/exclusion.entities';
@@ -34,6 +36,8 @@ describe('ServarrTagService', () => {
   let metadataService: Mocked<MetadataService>;
   let settings: Mocked<SettingsDataService>;
   let exclusionRepo: Mocked<Repository<Exclusion>>;
+  let collectionRepo: Mocked<Repository<Collection>>;
+  let collectionMediaRepo: Mocked<Repository<CollectionMedia>>;
   let logger: Mocked<MaintainerrLogger>;
 
   beforeEach(async () => {
@@ -46,6 +50,12 @@ describe('ServarrTagService', () => {
     settings = unitRef.get(SettingsDataService);
     exclusionRepo = unitRef.get(getRepositoryToken(Exclusion) as string);
     exclusionRepo.find.mockResolvedValue([]);
+    collectionRepo = unitRef.get(getRepositoryToken(Collection) as string);
+    collectionRepo.find.mockResolvedValue([]);
+    collectionMediaRepo = unitRef.get(
+      getRepositoryToken(CollectionMedia) as string,
+    );
+    collectionMediaRepo.find.mockResolvedValue([]);
     logger = unitRef.get(MaintainerrLogger);
 
     // By default every media-server id resolves to a tmdb/tvdb candidate; the
@@ -246,12 +256,15 @@ describe('ServarrTagService', () => {
       jest
         .spyOn(radarr, 'getMovieByTmdbId')
         .mockResolvedValue(createRadarrMovie({ id: 11 }));
-      jest.spyOn(radarr, 'ensureTag').mockResolvedValue(5);
+      jest
+        .spyOn(radarr, 'getTags')
+        .mockResolvedValue([{ id: 5, label: 'my-group' }]);
 
       const collection = createCollection({
         type: 'movie',
         radarrSettingsId: 1,
         tagInArr: true,
+        title: 'My Group',
       });
 
       await service.syncMembershipTags(
@@ -261,6 +274,41 @@ describe('ServarrTagService', () => {
       );
 
       expect(radarr.setMovieTags).toHaveBeenCalledWith([11], 5, 'remove');
+      expect(radarr.ensureTag).not.toHaveBeenCalled();
+    });
+
+    it('keeps the tag on items a same-named group on the server still holds', async () => {
+      const radarr = mockRadarrApi(servarrService, logger);
+      jest
+        .spyOn(radarr, 'getMovieByTmdbId')
+        .mockResolvedValue(createRadarrMovie({ id: 13 }));
+      jest
+        .spyOn(radarr, 'getTags')
+        .mockResolvedValue([{ id: 5, label: 'old-movies' }]);
+      collectionRepo.find.mockResolvedValue([
+        createCollection({ id: 7, title: 'Old Movies' }),
+        createCollection({ id: 8, title: 'Old  Movies!' }),
+        createCollection({ id: 9, title: 'Other Group' }),
+      ]);
+      collectionMediaRepo.find.mockResolvedValue([
+        { mediaServerId: 'movie-1' },
+      ] as CollectionMedia[]);
+
+      await service.syncMembershipTags(
+        createCollection({
+          id: 7,
+          type: 'movie',
+          radarrSettingsId: 1,
+          tagInArr: true,
+          title: 'Old Movies',
+        }),
+        [],
+        [{ mediaServerId: 'movie-1' }, { mediaServerId: 'movie-2' }],
+      );
+
+      // movie-1 is still held by 'Old  Movies!', so only movie-2 is untagged.
+      expect(radarr.getMovieByTmdbId).toHaveBeenCalledTimes(1);
+      expect(radarr.setMovieTags).toHaveBeenCalledWith([13], 5, 'remove');
     });
 
     it('keeps a label that doubles as the exclusion tag on items still excluded', async () => {
@@ -268,7 +316,9 @@ describe('ServarrTagService', () => {
       jest
         .spyOn(radarr, 'getMovieByTmdbId')
         .mockResolvedValue(createRadarrMovie({ id: 12 }));
-      jest.spyOn(radarr, 'ensureTag').mockResolvedValue(5);
+      jest
+        .spyOn(radarr, 'getTags')
+        .mockResolvedValue([{ id: 5, label: 'dnd' }]);
       settings.getRadarrSettings.mockResolvedValue([
         radarrServer({ tagExclusions: true }),
       ]);
