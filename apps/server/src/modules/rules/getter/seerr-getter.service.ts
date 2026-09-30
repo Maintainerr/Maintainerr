@@ -115,7 +115,10 @@ export class SeerrGetterService {
       // instead of a per-item getMovie/getShow - the per-item path rate-limited
       // under whole-library runs and silently degraded matches to near-zero
       // (#3152).
-      const requestsForMedia = await this.seerrApi.getRequestsForMedia(tmdbId);
+      const requestsForMedia = await this.seerrApi.getRequestsForMedia(
+        tmdbId,
+        resolvedIds.type,
+      );
       // undefined => the bulk sweep failed (Seerr unreachable). Transient: skip
       // so the comparator protects the item rather than treating it as "not
       // requested" (mirrors #3125).
