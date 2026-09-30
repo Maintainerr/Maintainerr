@@ -300,8 +300,8 @@ export class TautulliApiService {
 
   /**
    * Null when nobody played the item, undefined when that could not be read.
-   * Read past the cache, which only a rule run refreshes, so reopening an item
-   * shows its plays as they are now.
+   * Read past the 20-minute cache, so reopening an item shows its plays as they
+   * are now.
    */
   public async getItemStats(
     ratingKey: string,

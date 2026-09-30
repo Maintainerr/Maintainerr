@@ -829,7 +829,7 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
                       backdrop, where they left no room for the genres. Each
                       panel below links to the same page. */}
                   {isPlex && tautulliModalUrl && (
-                    <div className="hidden sm:block">
+                    <div className="hidden sm:[@media(min-height:26rem)]:block">
                       <a
                         href={tautulliItemUrl}
                         target="_blank"
@@ -846,7 +846,7 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
                     </div>
                   )}
                   {isJellyfin && streamystatsItemUrl && (
-                    <div className="hidden sm:block">
+                    <div className="hidden sm:[@media(min-height:26rem)]:block">
                       <a
                         href={streamystatsItemUrl}
                         target="_blank"
@@ -863,7 +863,7 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
                     </div>
                   )}
                   {tracearrUrl && (
-                    <div className="hidden sm:block">
+                    <div className="hidden sm:[@media(min-height:26rem)]:block">
                       <a
                         href={tracearrStats?.url ?? tracearrUrl}
                         target="_blank"
