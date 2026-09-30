@@ -411,13 +411,10 @@ export class TautulliApiService {
             ? response.data.response?.message
             : undefined;
 
-        return {
-          status: 'NOK',
-          code: 0,
-          message:
-            message ??
+        throw new Error(
+          message ??
             'Failure, an unexpected response was returned. The URL is likely incorrect.',
-        };
+        );
       } else {
         return {
           status: 'OK',

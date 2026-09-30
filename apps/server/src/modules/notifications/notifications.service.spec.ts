@@ -35,7 +35,7 @@ describe('NotificationService', () => {
       { createLogger: jest.fn().mockReturnValue(createMockLogger()) } as any,
     );
 
-    return { service, mediaServerFactory };
+    return { service, mediaServerFactory, notificationRepo };
   };
 
   it('sends a test through an agent that is not switched on yet', () => {
@@ -818,6 +818,19 @@ describe('NotificationService', () => {
       await expect(
         service.handleUpdateAvailableNotification('3.18.0', '3.19.0'),
       ).resolves.toBe(false);
+    });
+  });
+
+  describe('registerConfiguredAgents', () => {
+    it('keeps the registered agents when the configurations cannot be read', async () => {
+      const { service, notificationRepo } = createService();
+      const agent = { getNotification: () => ({ id: 1 }) };
+      service.registerAgents([agent as any], true);
+      notificationRepo.find.mockRejectedValue(new Error('database is locked'));
+
+      await service.registerConfiguredAgents(true);
+
+      expect(service.getActiveAgents()).toEqual([agent]);
     });
   });
 

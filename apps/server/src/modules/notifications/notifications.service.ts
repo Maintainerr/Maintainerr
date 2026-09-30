@@ -316,7 +316,10 @@ export class NotificationService implements OnModuleInit {
     }
   }
 
-  async getNotificationConfigurations(withRelation = false) {
+  // Undefined when the table could not be read, which is not "no agents".
+  async getNotificationConfigurations(
+    withRelation = false,
+  ): Promise<Notification[] | undefined> {
     try {
       if (withRelation) {
         const notifConfigs = await this.notificationRepo.find();
@@ -364,6 +367,7 @@ export class NotificationService implements OnModuleInit {
 
   public async registerConfiguredAgents(skiplog = false) {
     const configuredAgents = await this.getNotificationConfigurations();
+    if (!configuredAgents) return;
 
     const sameAgents = (a: Notification[], b: Notification[]) =>
       isEqual(sortBy(a, 'id'), sortBy(b, 'id'));
@@ -378,7 +382,7 @@ export class NotificationService implements OnModuleInit {
       // configuring a newer agent type) yields no agent. Drop it here rather
       // than letting an undefined entry reach the send paths.
       const agents: NotificationAgent[] = [];
-      for (const notification of configuredAgents ?? []) {
+      for (const notification of configuredAgents) {
         const agent = this.createAgent(notification);
 
         if (!agent) {
