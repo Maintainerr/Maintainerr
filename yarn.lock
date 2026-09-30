@@ -2981,7 +2981,7 @@ __metadata:
     node-cache: "npm:^5.1.2"
     nodemailer: "npm:10.0.12"
     octokit: "npm:^3.2.2"
-    openpgp: "npm:^6.3.1"
+    openpgp: "npm:^6.3.2"
     prettier: "npm:^3.9.9"
     read-last-lines: "npm:^1.10.0"
     reflect-metadata: "npm:^0.2.2"
@@ -14401,15 +14401,15 @@ __metadata:
   languageName: node
   linkType: hard
 
-"openpgp@npm:^6.3.1":
-  version: 6.3.1
-  resolution: "openpgp@npm:6.3.1"
+"openpgp@npm:^6.3.2":
+  version: 6.3.2
+  resolution: "openpgp@npm:6.3.2"
   peerDependencies:
     "@openpgp/web-stream-tools": ~0.3.0
   peerDependenciesMeta:
     "@openpgp/web-stream-tools":
       optional: true
-  checksum: 10c0/5c3d3d973219a1c53ca5994720aabdc36312d39ea3199dcf7010d6b20cd46a66ee6289a403697a9d33676e4e5dd4799ddba3396eb08a23a24419711909b635cd
+  checksum: 10c0/f4c4da52b272af5a9d2435143a909f304146a085db5d468affc61c02e954060790a93d17fc9dfce17b59ee3a00fe64340002292259f5b1dcfd94b5bae9e2a0e3
   languageName: node
   linkType: hard
 
