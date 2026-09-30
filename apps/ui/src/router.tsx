@@ -318,13 +318,6 @@ const appRoutes: AppRoute[] = [
         preload: settingsOmbiRoute.preload,
       },
       {
-        // Radarr, Sonarr and Sportarr share one page; it reads which from the
-        // path and sends anything else back to the hub.
-        path: ':service',
-        lazy: settingsServarrRoute.lazy,
-        preload: settingsServarrRoute.preload,
-      },
-      {
         path: 'metadata',
         lazy: settingsMetadataRoute.lazy,
         preload: settingsMetadataRoute.preload,
@@ -353,6 +346,14 @@ const appRoutes: AppRoute[] = [
         path: 'notifications',
         lazy: settingsNotificationsRoute.lazy,
         preload: settingsNotificationsRoute.preload,
+      },
+      {
+        // Radarr, Sonarr and Sportarr share one page; it reads which from the
+        // path and sends anything else back to the hub. Last, because
+        // prefetchRoute takes the first route that matches.
+        path: ':service',
+        lazy: settingsServarrRoute.lazy,
+        preload: settingsServarrRoute.preload,
       },
     ],
   },

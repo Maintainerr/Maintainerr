@@ -22,6 +22,7 @@ import {
   buildProviderUrl,
   displayProviderId,
   mediaTypeLabel,
+  toApiMediaType,
 } from '../../../../utils/mediaTypeUtils'
 import Button from '../../Button'
 import LoadingSpinner from '../../LoadingSpinner'
@@ -305,11 +306,14 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
           : metadata?.type === 'episode'
             ? metadata.grandparentId
             : undefined
-      const tmdbId = showId
-        ? showMetadata?.id === showId
-          ? showMetadata.providerIds?.tmdb?.[0]
-          : undefined
-        : providerIds?.tmdb?.[0]
+      // Keyed on the card's type, known before the metadata arrives: until
+      // then a season or episode only has fallback ids, which are the show's.
+      const tmdbId =
+        mediaType === 'season' || mediaType === 'episode'
+          ? showId && showMetadata?.id === showId
+            ? showMetadata.providerIds?.tmdb?.[0]
+            : undefined
+          : providerIds?.tmdb?.[0]
       if (!tmdbId) {
         return ''
       }
@@ -326,14 +330,14 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
           ? `&episode=${metadata.index}`
           : ''
 
+      const type = toApiMediaType(mediaType)
       const paths: string[] = []
       if (requestServices.seerr) {
         paths.push(
-          `/seerr/requests/${tmdbId}/users${seasonParam ? `?${seasonParam}` : ''}`,
+          `/seerr/requests/${tmdbId}/users?type=${type}${seasonParam ? `&${seasonParam}` : ''}`,
         )
       }
       if (requestServices.ombi) {
-        const type = mediaType === 'movie' ? 'movie' : 'tv'
         paths.push(
           `/ombi/requests/${tmdbId}/users?type=${type}${seasonParam ? `&${seasonParam}` : ''}${episodeParam}`,
         )

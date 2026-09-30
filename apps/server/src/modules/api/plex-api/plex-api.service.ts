@@ -401,14 +401,14 @@ export class PlexApiService {
     }
   }
 
-  public async testConnection(): Promise<
-    PlexStatusResponse['MediaContainer'] | undefined
-  > {
+  public async testConnection(
+    timeoutMs?: number,
+  ): Promise<PlexStatusResponse['MediaContainer'] | undefined> {
     assertApiKey(this.settings.plex_auth_token);
     if (!this.isPlexSetup()) {
       throw new Error('Plex client is not initialized');
     }
-    const config = connectionTestConfig();
+    const config = connectionTestConfig(timeoutMs);
     // /identity is public; verify library access with the same deadline.
     await this.plexClient.query({ uri: '/library/sections', ...config }, false);
     const response = await this.plexClient.query<PlexStatusResponse>(
