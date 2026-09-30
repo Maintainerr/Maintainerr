@@ -38,7 +38,10 @@ export const ServiceBasePathInput = ({
         onChange(nextUrl.toString())
       }}
       onBlur={() => {
-        if (url) onChange(stripTrailingSlashes(url.toString()))
+        if (url) {
+          const normalized = stripTrailingSlashes(url.toString())
+          if (normalized !== value) onChange(normalized)
+        }
         onBlur?.()
       }}
     />
