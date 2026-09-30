@@ -22,6 +22,19 @@ const agents = [
     friendlyName: 'Gotify',
     options: [{ field: 'url', type: 'text', required: true }],
   },
+  {
+    name: 'ntfy',
+    friendlyName: 'Ntfy',
+    options: [
+      { field: 'url', type: 'text', required: true },
+      { field: 'topic', type: 'text', required: true },
+    ],
+  },
+  {
+    name: 'email',
+    friendlyName: 'Email',
+    options: [{ field: 'secure', type: 'checkbox', required: false }],
+  },
 ]
 const types = [{ id: 1, title: 'Added' }]
 const existing = {
@@ -32,24 +45,6 @@ const existing = {
   types: [1],
   aboutScale: 3,
   options: { url: 'http://gotify.local' },
-}
-
-vi.mock('../../Common/LazyMonacoEditor', () => ({
-  default: () => null,
-}))
-
-const ntfy = {
-  name: 'ntfy',
-  friendlyName: 'Ntfy',
-  options: [
-    { field: 'url', type: 'text', required: true },
-    { field: 'topic', type: 'text', required: true },
-  ],
-}
-const email = {
-  name: 'email',
-  friendlyName: 'Email',
-  options: [{ field: 'secure', type: 'checkbox', required: false }],
 }
 
 const renderNotifications = () =>
@@ -144,11 +139,6 @@ describe('NotificationSettings', () => {
   })
 
   it('opens another agent type empty and gives the saved one its values back', async () => {
-    answer({
-      '/notifications/configurations': [existing],
-      '/notifications/agents': [...agents, ntfy],
-      '/notifications/types': types,
-    })
     renderNotifications()
     fireEvent.click(await screen.findByRole('button', { name: 'Edit' }))
 
@@ -168,11 +158,6 @@ describe('NotificationSettings', () => {
   })
 
   it('labels and explains options from the UI catalog', async () => {
-    answer({
-      '/notifications/configurations': [],
-      '/notifications/agents': [email],
-      '/notifications/types': types,
-    })
     renderNotifications()
     fireEvent.click(await screen.findByRole('button', { name: 'Add Agent' }))
 

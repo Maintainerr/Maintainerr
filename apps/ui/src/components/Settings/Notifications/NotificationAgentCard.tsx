@@ -38,8 +38,7 @@ interface AgentFormValues {
 // "Media About To Be Handled" is the one type that needs a lead time.
 const ABOUT_TO_BE_HANDLED = 8
 
-// What a field name alone would not say, by agent then field. Any other
-// option is labelled from its field name.
+// What a field name alone would not say, by agent then field.
 const optionText: Record<
   string,
   Record<string, { label?: MessageDescriptor; help?: MessageDescriptor }>
@@ -312,8 +311,7 @@ const NotificationAgentCard = ({
                 {...register('agent', {
                   onChange: (event) => {
                     // Each agent has its own fields. The defaults are reset
-                    // too, or a field of the same name shows the saved agent's
-                    // value; only the saved agent gets its own values back.
+                    // too, or a field of the same name shows the saved value.
                     resetField('options', {
                       defaultValue:
                         event.target.value === config?.agent
