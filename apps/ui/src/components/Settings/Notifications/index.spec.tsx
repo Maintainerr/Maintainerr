@@ -16,6 +16,8 @@ vi.mock('../../../utils/ApiHandler', () => ({
     postApiHandler(url, payload),
 }))
 
+vi.mock('../../Common/LazyMonacoEditor')
+
 const agents = [
   {
     name: 'gotify',
@@ -34,6 +36,14 @@ const agents = [
     name: 'email',
     friendlyName: 'Email',
     options: [{ field: 'secure', type: 'checkbox', required: false }],
+  },
+  {
+    name: 'webhook',
+    friendlyName: 'Webhook',
+    options: [
+      { field: 'webhookUrl', type: 'text', required: true },
+      { field: 'jsonPayload', type: 'json', required: true },
+    ],
   },
 ]
 const types = [{ id: 1, title: 'Added' }]
@@ -136,6 +146,31 @@ describe('NotificationSettings', () => {
       }),
     )
     expect(screen.getByRole('button', { name: 'Add Agent' })).toBeTruthy()
+  })
+
+  it('saves a new webhook with the payload its editor shows', async () => {
+    renderNotifications()
+    fireEvent.click(await screen.findByRole('button', { name: 'Add Agent' }))
+
+    fireEvent.change(screen.getByLabelText('Name *'), {
+      target: { value: 'Hook' },
+    })
+    fireEvent.change(screen.getByLabelText('Agent *'), {
+      target: { value: 'webhook' },
+    })
+    fireEvent.change(await screen.findByLabelText('Webhook URL *'), {
+      target: { value: 'http://hook.local' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Save Changes' }))
+
+    await waitFor(() =>
+      expect(postApiHandler).toHaveBeenCalledWith(
+        '/notifications/configuration/add',
+        expect.objectContaining({
+          options: { webhookUrl: 'http://hook.local', jsonPayload: {} },
+        }),
+      ),
+    )
   })
 
   it('opens another agent type empty and gives the saved one its values back', async () => {

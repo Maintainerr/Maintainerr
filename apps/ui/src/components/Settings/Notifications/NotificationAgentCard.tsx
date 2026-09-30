@@ -381,6 +381,8 @@ const NotificationAgentCard = ({
                           <Controller
                             name={`options.${option.field}`}
                             control={control}
+                            // Untouched, the payload is the {} the editor shows.
+                            defaultValue={{}}
                             render={({ field }) => (
                               <LazyMonacoEditor
                                 height="200px"
