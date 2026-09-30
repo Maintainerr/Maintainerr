@@ -5,6 +5,8 @@ import { MediaServerModule } from '../api/media-server/media-server.module';
 import { OmbiApiModule } from '../api/ombi-api/ombi-api.module';
 import { SeerrApiModule } from '../api/seerr-api/seerr-api.module';
 import { ServarrApiModule } from '../api/servarr-api/servarr-api.module';
+import { Collection } from '../collections/entities/collection.entities';
+import { CollectionMedia } from '../collections/entities/collection_media.entities';
 import { MetadataModule } from '../metadata/metadata.module';
 import { Exclusion } from '../rules/entities/exclusion.entities';
 import { LeftoverFolderCleanupService } from './leftover-folder-cleanup.service';
@@ -21,7 +23,7 @@ import { SportarrActionHandler } from './sportarr-action-handler';
     OmbiApiModule,
     DownloadClientApiModule,
     MetadataModule,
-    TypeOrmModule.forFeature([Exclusion]),
+    TypeOrmModule.forFeature([Exclusion, Collection, CollectionMedia]),
   ],
   providers: [
     RadarrActionHandler,

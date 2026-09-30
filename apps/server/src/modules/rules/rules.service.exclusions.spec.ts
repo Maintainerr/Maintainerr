@@ -3,6 +3,7 @@ import {
   createMockLogger,
   createMockServarrTagService,
 } from '../../../test/utils/data';
+import { ArrLookupCache } from './helpers/arr-lookup-cache';
 import { BULK_EXCLUSION_CONCURRENCY, RulesService } from './rules.service';
 
 // Regression coverage for global-exclusion handling (ruleGroupId IS NULL).
@@ -178,6 +179,7 @@ describe('RulesService exclusions - global (null ruleGroupId) handling', () => {
         tmdbId: 4242,
       }),
       { radarrSettingsId: 1, sonarrSettingsId: undefined },
+      undefined,
     );
   });
 
@@ -308,6 +310,7 @@ describe('RulesService exclusions - global (null ruleGroupId) handling', () => {
     expect(servarrTagService.removeExclusionTag).toHaveBeenCalledWith(
       expect.objectContaining({ mediaServerId: 'movie-1', type: 'movie' }),
       { radarrSettingsId: 1, sonarrSettingsId: undefined },
+      undefined,
     );
   });
 
@@ -347,6 +350,7 @@ describe('RulesService exclusions - global (null ruleGroupId) handling', () => {
     expect(servarrTagService.applyExclusionTag).toHaveBeenCalledWith(
       { mediaServerId: 'movie-1', type: 'movie', tmdbId: 4242, tvdbId: null },
       undefined,
+      undefined,
     );
     expect(collectionMediaRepository.findOne).toHaveBeenCalledWith({
       where: { mediaServerId: 'movie-1' },
@@ -382,6 +386,7 @@ describe('RulesService exclusions - global (null ruleGroupId) handling', () => {
     expect(servarrTagService.removeExclusionTag).toHaveBeenCalledWith(
       expect.objectContaining({ mediaServerId: 'movie-1', type: 'movie' }),
       undefined,
+      undefined,
     );
   });
 
@@ -410,6 +415,7 @@ describe('RulesService exclusions - global (null ruleGroupId) handling', () => {
 
     expect(servarrTagService.removeExclusionTag).toHaveBeenCalledWith(
       expect.objectContaining({ mediaServerId: 'show-1', type: 'show' }),
+      undefined,
       undefined,
     );
   });
@@ -485,6 +491,7 @@ describe('RulesService exclusions - global (null ruleGroupId) handling', () => {
     expect(servarrTagService.removeExclusionTag).toHaveBeenCalledWith(
       expect.objectContaining({ mediaServerId: 'movie-1', type: 'movie' }),
       { radarrSettingsId: 1, sonarrSettingsId: undefined },
+      undefined,
     );
   });
 
@@ -587,8 +594,18 @@ describe('RulesService exclusions - global (null ruleGroupId) handling', () => {
       ],
     });
     expect(setExclusion).toHaveBeenCalledTimes(2);
-    expect(setExclusion).toHaveBeenNthCalledWith(1, { mediaId: 'movie-1' });
-    expect(setExclusion).toHaveBeenNthCalledWith(2, { mediaId: 'movie-2' });
+    expect(setExclusion).toHaveBeenNthCalledWith(
+      1,
+      { mediaId: 'movie-1' },
+      expect.any(ArrLookupCache),
+    );
+    expect(setExclusion).toHaveBeenNthCalledWith(
+      2,
+      { mediaId: 'movie-2' },
+      expect.any(ArrLookupCache),
+    );
+    // One *arr library read per server for the whole batch.
+    expect(setExclusion.mock.calls[0][1]).toBe(setExclusion.mock.calls[1][1]);
   });
 
   it('setBulkExclusions collapses ids nested under another selected id', async () => {
@@ -612,8 +629,14 @@ describe('RulesService exclusions - global (null ruleGroupId) handling', () => {
     ]);
 
     expect(setExclusion).toHaveBeenCalledTimes(2);
-    expect(setExclusion).toHaveBeenCalledWith({ mediaId: 'show-1' });
-    expect(setExclusion).toHaveBeenCalledWith({ mediaId: 'movie-1' });
+    expect(setExclusion).toHaveBeenCalledWith(
+      { mediaId: 'show-1' },
+      expect.any(ArrLookupCache),
+    );
+    expect(setExclusion).toHaveBeenCalledWith(
+      { mediaId: 'movie-1' },
+      expect.any(ArrLookupCache),
+    );
     // collapsed children report their covering ancestor's outcome
     expect(response.results).toEqual([
       { mediaId: 'episode-1', code: 1, message: 'Success' },
@@ -715,13 +738,17 @@ describe('RulesService exclusions - global (null ruleGroupId) handling', () => {
       12,
     );
 
-    expect(setExclusion).toHaveBeenNthCalledWith(1, {
-      mediaId: 'movie-1',
-      collectionId: 12,
-    });
-    expect(removeFromCollection).toHaveBeenCalledWith(12, [
-      { mediaServerId: 'movie-1' },
-    ]);
+    expect(setExclusion).toHaveBeenNthCalledWith(
+      1,
+      { mediaId: 'movie-1', collectionId: 12 },
+      expect.any(ArrLookupCache),
+    );
+    expect(removeFromCollection).toHaveBeenCalledWith(
+      12,
+      [{ mediaServerId: 'movie-1' }],
+      'all',
+      expect.any(ArrLookupCache),
+    );
     expect(response.results).toEqual([
       { mediaId: 'movie-1', code: 1, message: 'Success' },
       { mediaId: 'movie-2', code: 0, message: 'Failed - no rule group' },
@@ -762,10 +789,12 @@ describe('RulesService exclusions - global (null ruleGroupId) handling', () => {
 
     await service.setBulkExclusions(['show-1'], 12);
 
-    expect(removeFromCollection).toHaveBeenCalledWith(12, [
-      { mediaServerId: 'season-1' },
-      { mediaServerId: 'season-2' },
-    ]);
+    expect(removeFromCollection).toHaveBeenCalledWith(
+      12,
+      [{ mediaServerId: 'season-1' }, { mediaServerId: 'season-2' }],
+      'all',
+      expect.any(ArrLookupCache),
+    );
   });
 
   it('setBulkExclusions with no collection drops the items from every collection', async () => {
@@ -780,10 +809,10 @@ describe('RulesService exclusions - global (null ruleGroupId) handling', () => {
     await expect(service.setBulkExclusions(['show-1'])).resolves.toEqual({
       results: [{ mediaId: 'show-1', code: 1, message: 'Success' }],
     });
-    expect(removeFromAllCollections).toHaveBeenCalledWith([
-      { mediaServerId: 'season-1' },
-      { mediaServerId: 'season-2' },
-    ]);
+    expect(removeFromAllCollections).toHaveBeenCalledWith(
+      [{ mediaServerId: 'season-1' }, { mediaServerId: 'season-2' }],
+      expect.any(ArrLookupCache),
+    );
     expect(removeFromCollection).not.toHaveBeenCalled();
   });
 
