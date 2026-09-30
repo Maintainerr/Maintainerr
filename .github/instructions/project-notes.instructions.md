@@ -539,8 +539,8 @@ hydrates each row against the **live** media server and drops any id it can't
 resolve. You need the matching mock running for grids to render and for rule
 evaluation to run end-to-end via `POST /api/rules/test {rulegroupId, mediaId}`.
 
-After editing server code, **restart `yarn dev`** - a long-lived dev server serves
-stale getter logic. Watchlist / plex.tv user enrichment can't be mocked locally
+After a `yarn install`, **restart `yarn dev`** - its watcher keeps the old module
+resolution. Watchlist / plex.tv user enrichment can't be mocked locally
 (they hit plex.tv) and degrade gracefully.
 
 ---

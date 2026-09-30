@@ -31,9 +31,9 @@ export class SonarrApi extends ServarrApi<{
   }
 
   /**
-   * Every tracked series. Uncached: its only caller fences a filesystem delete
-   * on the other series' folders, and a series added since the last read would
-   * be missing from a cached snapshot - so the fence would not see it.
+   * Every tracked series. Uncached: the filesystem-delete fence must see a
+   * series added since the last read; the id fallback memoizes it per run
+   * or batch itself.
    */
   public async getSeries(): Promise<SonarrSeries[]> {
     try {
