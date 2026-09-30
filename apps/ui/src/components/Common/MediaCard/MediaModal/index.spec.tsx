@@ -1050,7 +1050,7 @@ describe('MediaModal', () => {
       )
     })
     expect(getApiHandlerMock).toHaveBeenCalledWith(
-      '/seerr/requests/4600/users?season=1',
+      '/seerr/requests/4600/users?type=tv&season=1',
     )
     expect(getApiHandlerMock).not.toHaveBeenCalledWith(
       expect.stringContaining('/requests/13993/'),

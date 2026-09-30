@@ -626,7 +626,7 @@ describe('CollectionHandler', () => {
     ).not.toHaveBeenCalled();
   });
 
-  it('should call removeSeasonRequest for seasons', async () => {
+  it('reads the season number before a media-server delete takes the season with it', async () => {
     const collection = createCollection({
       arrAction: ServarrAction.DELETE,
       forceSeerr: true,
@@ -642,7 +642,13 @@ describe('CollectionHandler', () => {
         type: 'show',
       }),
     );
-    mockMediaServerMetadata(collectionMedia.mediaData);
+    let deleted = false;
+    mediaServer.deleteFromDisk.mockImplementation(async () => {
+      deleted = true;
+    });
+    mediaServer.getMetadata.mockImplementation(async () =>
+      deleted ? undefined : collectionMedia.mediaData,
+    );
 
     await expect(
       collectionHandler.handleMedia(collection, collectionMedia),

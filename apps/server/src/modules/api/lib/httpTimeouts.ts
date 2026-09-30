@@ -9,6 +9,13 @@ export const DEFAULT_REQUEST_TIMEOUT_MS = 10_000;
 export const CONNECTION_TEST_TIMEOUT_MS = 5_000;
 
 /**
+ * A connection test run in the background rather than for a click, such as the
+ * daily maintenance gate. It bounds the whole test, retries included, so a
+ * server on slow hardware still passes.
+ */
+export const BACKGROUND_CONNECTION_TEST_TIMEOUT_MS = 60_000;
+
+/**
  * Uncached arr reads whose failure would change action or rule behaviour.
  * Slow or underpowered instances take more than the default even for simple
  * reads (#3181).

@@ -93,6 +93,8 @@ import { readMetadataInBatches } from '../metadata-batch.util';
 import { JellyfinMapper } from './jellyfin.mapper';
 import type { JellyfinWatchSnapshot } from './jellyfin.types';
 
+const retryingSdkInstances = new WeakSet<object>();
+
 const toJellyfinSortBy = (sort?: MediaLibrarySortField): ItemSortBy => {
   switch (sort) {
     case 'airDate':
@@ -196,8 +198,13 @@ export class JellyfinAdapterService implements IMediaServerService {
 
     // Retry transient failures with exponential backoff, like every other
     // outbound client (e.g. so a momentary blip doesn't surface as a null
-    // active-sessions lookup that would defer deletions).
-    applyHttpRetry(api.axiosInstance);
+    // active-sessions lookup that would defer deletions). The SDK hands every
+    // client its one module-wide axios instance, so the policy goes on once
+    // rather than stacking another interceptor per client.
+    if (!retryingSdkInstances.has(api.axiosInstance)) {
+      applyHttpRetry(api.axiosInstance);
+      retryingSdkInstances.add(api.axiosInstance);
+    }
 
     return api;
   }
@@ -297,6 +304,7 @@ export class JellyfinAdapterService implements IMediaServerService {
   async testConnection(
     url: string,
     apiKey: string,
+    timeoutMs?: number,
   ): Promise<{
     success: boolean;
     serverName?: string;
@@ -308,7 +316,7 @@ export class JellyfinAdapterService implements IMediaServerService {
     const result = await this.verifyConnection(
       api,
       apiKey,
-      connectionTestConfig(),
+      connectionTestConfig(timeoutMs),
     );
 
     if (result.success) {

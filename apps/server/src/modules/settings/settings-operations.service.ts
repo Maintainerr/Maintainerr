@@ -24,6 +24,7 @@ import {
   logConnectionTestError,
 } from '../../utils/connection-error';
 import { InternalApiService } from '../api/internal-api/internal-api.service';
+import { BACKGROUND_CONNECTION_TEST_TIMEOUT_MS } from '../api/lib/httpTimeouts';
 import { MediaServerFactory } from '../api/media-server/media-server.factory';
 import { DownloadClientApiService } from '../api/download-client-api/download-client-api.service';
 import { PlexApiService } from '../api/plex-api/plex-api.service';
@@ -410,6 +411,9 @@ export class SettingsOperationsService {
           apiKey: settings.api_key,
         }));
       if (!serverId) {
+        this.logger.warn(
+          'No single Tracearr server matches the managed media server',
+        );
         return {
           status: 'NOK',
           code: 0,
@@ -424,6 +428,9 @@ export class SettingsOperationsService {
         serverId,
       );
       if (sharesLibrary === false) {
+        this.logger.warn(
+          'The chosen Tracearr server tracks a different media server',
+        );
         return {
           status: 'NOK',
           code: 0,
@@ -645,7 +652,10 @@ export class SettingsOperationsService {
   /**
    * Test connection to a Jellyfin server
    */
-  public async testJellyfin(settings: JellyfinSetting): Promise<
+  public async testJellyfin(
+    settings: JellyfinSetting,
+    timeoutMs?: number,
+  ): Promise<
     BasicResponseDto & {
       serverName?: string;
       version?: string;
@@ -656,6 +666,7 @@ export class SettingsOperationsService {
       const result = await this.mediaServerFactory.testJellyfinConnection(
         settings.jellyfin_url,
         settings.jellyfin_api_key,
+        timeoutMs,
       );
 
       if (result.success) {
@@ -726,6 +737,7 @@ export class SettingsOperationsService {
       if (userId && testResult.users && testResult.users.length > 0) {
         const selectedUser = testResult.users.find((u) => u.id === userId);
         if (!selectedUser) {
+          this.logger.warn('Selected Jellyfin user is not an admin');
           return {
             status: 'NOK',
             code: 0,
@@ -811,7 +823,10 @@ export class SettingsOperationsService {
   /**
    * Test connection to an Emby server using the API-key flow.
    */
-  public async testEmby(settings: EmbySetting): Promise<
+  public async testEmby(
+    settings: EmbySetting,
+    timeoutMs?: number,
+  ): Promise<
     BasicResponseDto & {
       serverName?: string;
       version?: string;
@@ -822,6 +837,7 @@ export class SettingsOperationsService {
       const result = await this.mediaServerFactory.testEmbyConnection(
         settings.emby_url,
         settings.emby_api_key,
+        timeoutMs,
       );
 
       if (result.success) {
@@ -931,6 +947,7 @@ export class SettingsOperationsService {
       if (userId && testResult.users && testResult.users.length > 0) {
         const selectedUser = testResult.users.find((u) => u.id === userId);
         if (!selectedUser) {
+          this.logger.warn('Selected Emby user is not an admin');
           return {
             status: 'NOK',
             code: 0,
@@ -1464,15 +1481,14 @@ export class SettingsOperationsService {
       const resp = await apiClient.info();
       //Make sure it's actually Radarr and not Sonarr
       if (resp?.appName && resp.appName.toLowerCase() !== 'radarr') {
-        return {
-          status: 'NOK',
-          code: 0,
-          message: `Unexpected application name returned: ${resp.appName}`,
-        };
+        throw new Error(
+          `Unexpected application name returned: ${resp.appName}`,
+        );
       }
-      return resp?.version != null
-        ? { status: 'OK', code: 1, message: resp.version }
-        : { status: 'NOK', code: 0, message: 'Failure' };
+      if (resp?.version == null) {
+        throw new Error('Failure');
+      }
+      return { status: 'OK', code: 1, message: resp.version };
     } catch (error) {
       logConnectionTestError(this.logger, 'Radarr', error);
       return {
@@ -1495,15 +1511,14 @@ export class SettingsOperationsService {
       const resp = await apiClient.info();
       //Make sure it's actually Sonarr and not Radarr
       if (resp?.appName && resp.appName.toLowerCase() !== 'sonarr') {
-        return {
-          status: 'NOK',
-          code: 0,
-          message: `Unexpected application name returned: ${resp.appName}`,
-        };
+        throw new Error(
+          `Unexpected application name returned: ${resp.appName}`,
+        );
       }
-      return resp?.version != null
-        ? { status: 'OK', code: 1, message: resp.version }
-        : { status: 'NOK', code: 0, message: 'Failure' };
+      if (resp?.version == null) {
+        throw new Error('Failure');
+      }
+      return { status: 'OK', code: 1, message: resp.version };
     } catch (error) {
       logConnectionTestError(this.logger, 'Sonarr', error);
       return {
@@ -1526,25 +1541,22 @@ export class SettingsOperationsService {
       const resp = await apiClient.info();
       // Make sure it's actually Sportarr and not another *arr behind the URL
       if (resp?.appName && resp.appName.toLowerCase() !== 'sportarr') {
-        return {
-          status: 'NOK',
-          code: 0,
-          message: `Unexpected application name returned: ${resp.appName}`,
-        };
+        throw new Error(
+          `Unexpected application name returned: ${resp.appName}`,
+        );
       }
       if (
         resp?.version != null &&
         isBelowMinimumVersion(resp.version, MINIMUM_SPORTARR_VERSION)
       ) {
-        return {
-          status: 'NOK',
-          code: 0,
-          message: `Sportarr ${resp.version} is below the minimum supported version ${MINIMUM_SPORTARR_VERSION}. Please update Sportarr.`,
-        };
+        throw new Error(
+          `Sportarr ${resp.version} is below the minimum supported version ${MINIMUM_SPORTARR_VERSION}. Please update Sportarr.`,
+        );
       }
-      return resp?.version != null
-        ? { status: 'OK', code: 1, message: resp.version }
-        : { status: 'NOK', code: 0, message: 'Failure' };
+      if (resp?.version == null) {
+        throw new Error('Failure');
+      }
+      return { status: 'OK', code: 1, message: resp.version };
     } catch (error) {
       logConnectionTestError(this.logger, 'Sportarr', error);
       return {
@@ -1558,7 +1570,7 @@ export class SettingsOperationsService {
     }
   }
 
-  public async testPlex(): Promise<BasicResponseDto> {
+  public async testPlex(timeoutMs?: number): Promise<BasicResponseDto> {
     if (!this.settingsDataService.plex_auth_token) {
       return {
         status: 'NOK',
@@ -1568,10 +1580,11 @@ export class SettingsOperationsService {
     }
 
     try {
-      const resp = await this.plexApi.testConnection();
-      return resp?.version != null
-        ? { status: 'OK', code: 1, message: resp.version }
-        : { status: 'NOK', code: 0, message: 'Failure' };
+      const resp = await this.plexApi.testConnection(timeoutMs);
+      if (resp?.version == null) {
+        throw new Error('Failure');
+      }
+      return { status: 'OK', code: 1, message: resp.version };
     } catch (error) {
       logConnectionTestError(this.logger, 'Plex', error);
       return {
@@ -1645,11 +1658,14 @@ export class SettingsOperationsService {
 
         return (
           (
-            await this.testJellyfin({
-              jellyfin_url: this.settingsDataService.jellyfin_url,
-              jellyfin_api_key: this.settingsDataService.jellyfin_api_key,
-              jellyfin_user_id: this.settingsDataService.jellyfin_user_id,
-            })
+            await this.testJellyfin(
+              {
+                jellyfin_url: this.settingsDataService.jellyfin_url,
+                jellyfin_api_key: this.settingsDataService.jellyfin_api_key,
+                jellyfin_user_id: this.settingsDataService.jellyfin_user_id,
+              },
+              BACKGROUND_CONNECTION_TEST_TIMEOUT_MS,
+            )
           ).status === 'OK'
         );
       }
@@ -1662,16 +1678,22 @@ export class SettingsOperationsService {
         }
         return (
           (
-            await this.testEmby({
-              emby_url: this.settingsDataService.emby_url,
-              emby_api_key: this.settingsDataService.emby_api_key,
-              emby_user_id: this.settingsDataService.emby_user_id,
-            })
+            await this.testEmby(
+              {
+                emby_url: this.settingsDataService.emby_url,
+                emby_api_key: this.settingsDataService.emby_api_key,
+                emby_user_id: this.settingsDataService.emby_user_id,
+              },
+              BACKGROUND_CONNECTION_TEST_TIMEOUT_MS,
+            )
           ).status === 'OK'
         );
       }
       case MediaServerType.PLEX:
-        return (await this.testPlex()).status === 'OK';
+        return (
+          (await this.testPlex(BACKGROUND_CONNECTION_TEST_TIMEOUT_MS))
+            .status === 'OK'
+        );
       default:
         return false;
     }
