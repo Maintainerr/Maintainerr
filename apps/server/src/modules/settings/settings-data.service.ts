@@ -378,11 +378,11 @@ export class SettingsDataService implements SettingDto {
   }
 
   public seerrConfigured(): boolean {
-    return this.seerr_url !== null && this.seerr_api_key !== null;
+    return !!this.seerr_url && !!this.seerr_api_key;
   }
 
   public ombiConfigured(): boolean {
-    return this.ombi_url != null && this.ombi_api_key != null;
+    return !!this.ombi_url && !!this.ombi_api_key;
   }
 
   public tautulliConfigured(): boolean {

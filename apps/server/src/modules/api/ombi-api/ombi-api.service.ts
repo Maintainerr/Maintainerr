@@ -74,6 +74,7 @@ export interface OmbiTvRequest {
 }
 
 interface OmbiSearchResult {
+  id: number;
   requestId: number;
 }
 
@@ -346,6 +347,9 @@ export class OmbiApiService {
   }
 
   private async getRequestIndex(): Promise<OmbiRequestIndex | undefined> {
+    if (!this.api) {
+      return undefined;
+    }
     const cache = cacheManager.getCache(OMBI_REQUESTS_CACHE_ID)?.data;
     const cached = cache?.get<OmbiRequestIndex>(OMBI_REQUESTS_CACHE_KEY);
     if (cached) {
@@ -391,7 +395,11 @@ export class OmbiApiService {
     return index;
   }
 
-  /** Only the search view maps a TMDB id to Ombi's request id; 0 = unrequested. */
+  /**
+   * Only the search view maps a TMDB id to Ombi's request id; 0 = unrequested.
+   * It echoes the id it resolved, and a title Ombi's own TMDB lookup could not
+   * resolve answers with id 0 - unknown, not unrequested.
+   */
   private async findRequestId(
     tmdbId: number,
     type: OmbiRequestType,
@@ -401,7 +409,7 @@ export class OmbiApiService {
         ? `/v2/Search/movie/${tmdbId}`
         : `/v2/Search/tv/moviedb/${tmdbId}`,
     );
-    return result ? (result.requestId ?? 0) : undefined;
+    return result?.id === tmdbId ? result.requestId : undefined;
   }
 
   private async getChildRequests(
