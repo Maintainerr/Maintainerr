@@ -16,7 +16,7 @@ vi.mock('../../../utils/ApiHandler', () => ({
     postApiHandler(url, payload),
 }))
 
-vi.mock('../../Common/LazyMonacoEditor')
+vi.mock('../../Common/LazyMonacoEditor', () => ({ default: () => null }))
 
 const agents = [
   {

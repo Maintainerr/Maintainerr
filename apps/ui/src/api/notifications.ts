@@ -18,6 +18,7 @@ export interface NotificationAgentSpec {
     field: string
     type: string
     required: boolean
+    extraInfo: string
   }>
 }
 
