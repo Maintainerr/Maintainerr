@@ -758,12 +758,9 @@ export class SeerrApiService {
       );
 
       if (!response.data?.version) {
-        return {
-          status: 'NOK',
-          code: 0,
-          message:
-            'Failure, an unexpected response was returned. The URL is likely incorrect.',
-        };
+        throw new Error(
+          'Failure, an unexpected response was returned. The URL is likely incorrect.',
+        );
       }
 
       return {

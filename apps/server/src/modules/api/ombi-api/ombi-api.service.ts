@@ -322,12 +322,9 @@ export class OmbiApiService {
       );
 
       if (!response.data?.version) {
-        return {
-          status: 'NOK',
-          code: 0,
-          message:
-            'Failure, an unexpected response was returned. The URL is likely incorrect.',
-        };
+        throw new Error(
+          'Failure, an unexpected response was returned. The URL is likely incorrect.',
+        );
       }
 
       return { status: 'OK', code: 1, message: response.data.version };

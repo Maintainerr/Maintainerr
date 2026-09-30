@@ -72,11 +72,11 @@ const mockSdkAxios = { instance: createMockSdkAxiosInstance() };
 jest.mock('@jellyfin/sdk', () => ({
   __esModule: true,
   Jellyfin: jest.fn().mockImplementation(() => ({
-    createApi: jest.fn().mockImplementation(() => ({
+    createApi: jest.fn().mockReturnValue({
       accessToken: '',
       configuration: {},
       axiosInstance: mockSdkAxios.instance,
-    })),
+    }),
   })),
 }));
 

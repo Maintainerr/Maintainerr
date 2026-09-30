@@ -28,6 +28,8 @@ describe('SettingsOperationsService', () => {
   let streamystats: Mocked<StreamystatsApiService>;
   let tracearr: Mocked<TracearrApiService>;
   let internalApi: Mocked<InternalApiService>;
+  let servarr: Mocked<ServarrService>;
+  let logger: Mocked<MaintainerrLogger>;
 
   const createSettings = (overrides: Partial<Settings> = {}): Settings =>
     Object.assign(new Settings(), {
@@ -64,13 +66,13 @@ describe('SettingsOperationsService', () => {
     unitRef.get<Mocked<Repository<SonarrSettings>>>('SonarrSettingsRepository');
     mediaServerFactory = unitRef.get(MediaServerFactory);
     plexApi = unitRef.get(PlexApiService);
-    unitRef.get(ServarrService);
+    servarr = unitRef.get(ServarrService);
     seerr = unitRef.get(SeerrApiService);
     tautulli = unitRef.get(TautulliApiService);
     streamystats = unitRef.get(StreamystatsApiService);
     tracearr = unitRef.get(TracearrApiService);
     internalApi = unitRef.get(InternalApiService);
-    unitRef.get(MaintainerrLogger);
+    logger = unitRef.get(MaintainerrLogger);
 
     settingsRepo.findOne.mockResolvedValue(createSettings());
     settingsRepo.save.mockImplementation(
@@ -473,6 +475,24 @@ describe('SettingsOperationsService', () => {
   });
 
   // A server slower than a click allows must not skip the daily cleanup.
+  // Answered, not thrown, so it was never logged behind "check logs".
+  it('logs why a Radarr test failed when another *arr answers', async () => {
+    servarr.getRadarrApiClient.mockResolvedValue({
+      info: jest
+        .fn()
+        .mockResolvedValue({ appName: 'Sonarr', version: '4.0.0' }),
+    } as never);
+
+    await expect(service.testRadarr(1)).resolves.toEqual({
+      status: 'NOK',
+      code: 0,
+      message: 'Unexpected application name returned: Sonarr',
+    });
+    expect(logger.error).toHaveBeenCalledWith(
+      'Radarr connection test failed: Unexpected application name returned: Sonarr',
+    );
+  });
+
   it('gives the daily media-server check the background budget', async () => {
     settingsDataService.media_server_type = MediaServerType.JELLYFIN;
     settingsDataService.jellyfin_url = 'http://jellyfin.local';

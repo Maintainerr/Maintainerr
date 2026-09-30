@@ -731,6 +731,7 @@ export class SettingsOperationsService {
       if (userId && testResult.users && testResult.users.length > 0) {
         const selectedUser = testResult.users.find((u) => u.id === userId);
         if (!selectedUser) {
+          this.logger.warn('Selected Jellyfin user is not an admin');
           return {
             status: 'NOK',
             code: 0,
@@ -940,6 +941,7 @@ export class SettingsOperationsService {
       if (userId && testResult.users && testResult.users.length > 0) {
         const selectedUser = testResult.users.find((u) => u.id === userId);
         if (!selectedUser) {
+          this.logger.warn('Selected Emby user is not an admin');
           return {
             status: 'NOK',
             code: 0,
@@ -1473,15 +1475,14 @@ export class SettingsOperationsService {
       const resp = await apiClient.info();
       //Make sure it's actually Radarr and not Sonarr
       if (resp?.appName && resp.appName.toLowerCase() !== 'radarr') {
-        return {
-          status: 'NOK',
-          code: 0,
-          message: `Unexpected application name returned: ${resp.appName}`,
-        };
+        throw new Error(
+          `Unexpected application name returned: ${resp.appName}`,
+        );
       }
-      return resp?.version != null
-        ? { status: 'OK', code: 1, message: resp.version }
-        : { status: 'NOK', code: 0, message: 'Failure' };
+      if (resp?.version == null) {
+        throw new Error('Failure');
+      }
+      return { status: 'OK', code: 1, message: resp.version };
     } catch (error) {
       logConnectionTestError(this.logger, 'Radarr', error);
       return {
@@ -1504,15 +1505,14 @@ export class SettingsOperationsService {
       const resp = await apiClient.info();
       //Make sure it's actually Sonarr and not Radarr
       if (resp?.appName && resp.appName.toLowerCase() !== 'sonarr') {
-        return {
-          status: 'NOK',
-          code: 0,
-          message: `Unexpected application name returned: ${resp.appName}`,
-        };
+        throw new Error(
+          `Unexpected application name returned: ${resp.appName}`,
+        );
       }
-      return resp?.version != null
-        ? { status: 'OK', code: 1, message: resp.version }
-        : { status: 'NOK', code: 0, message: 'Failure' };
+      if (resp?.version == null) {
+        throw new Error('Failure');
+      }
+      return { status: 'OK', code: 1, message: resp.version };
     } catch (error) {
       logConnectionTestError(this.logger, 'Sonarr', error);
       return {
@@ -1535,25 +1535,22 @@ export class SettingsOperationsService {
       const resp = await apiClient.info();
       // Make sure it's actually Sportarr and not another *arr behind the URL
       if (resp?.appName && resp.appName.toLowerCase() !== 'sportarr') {
-        return {
-          status: 'NOK',
-          code: 0,
-          message: `Unexpected application name returned: ${resp.appName}`,
-        };
+        throw new Error(
+          `Unexpected application name returned: ${resp.appName}`,
+        );
       }
       if (
         resp?.version != null &&
         isBelowMinimumVersion(resp.version, MINIMUM_SPORTARR_VERSION)
       ) {
-        return {
-          status: 'NOK',
-          code: 0,
-          message: `Sportarr ${resp.version} is below the minimum supported version ${MINIMUM_SPORTARR_VERSION}. Please update Sportarr.`,
-        };
+        throw new Error(
+          `Sportarr ${resp.version} is below the minimum supported version ${MINIMUM_SPORTARR_VERSION}. Please update Sportarr.`,
+        );
       }
-      return resp?.version != null
-        ? { status: 'OK', code: 1, message: resp.version }
-        : { status: 'NOK', code: 0, message: 'Failure' };
+      if (resp?.version == null) {
+        throw new Error('Failure');
+      }
+      return { status: 'OK', code: 1, message: resp.version };
     } catch (error) {
       logConnectionTestError(this.logger, 'Sportarr', error);
       return {
@@ -1578,9 +1575,10 @@ export class SettingsOperationsService {
 
     try {
       const resp = await this.plexApi.testConnection(timeoutMs);
-      return resp?.version != null
-        ? { status: 'OK', code: 1, message: resp.version }
-        : { status: 'NOK', code: 0, message: 'Failure' };
+      if (resp?.version == null) {
+        throw new Error('Failure');
+      }
+      return { status: 'OK', code: 1, message: resp.version };
     } catch (error) {
       logConnectionTestError(this.logger, 'Plex', error);
       return {
