@@ -492,6 +492,26 @@ describe('PlexSettings', () => {
     expect(updateSettings).not.toHaveBeenCalled()
   })
 
+  it('checks a manual URL left behind collapsed Advanced settings', async () => {
+    render(<PlexSettings />)
+    await screen.findByRole('button', { name: 'Authenticated' })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Advanced Settings' }))
+    fireEvent.click(screen.getByLabelText(/Enable manual mode/i))
+    fireEvent.change(screen.getByLabelText('URL'), {
+      target: { value: 'plex:32400' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: /Advanced Settings/ }))
+    expect(screen.queryByLabelText('URL')).toBeNull()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save Changes' }))
+
+    expect(
+      await screen.findByText('Please enter a valid server URL with no path.'),
+    ).toBeTruthy()
+    expect(updateSettings).not.toHaveBeenCalled()
+  })
+
   it.each(['http://plex.local:70000', 'http://plex.local:32400/path'])(
     'rejects an invalid manual URL: %s',
     async (url) => {

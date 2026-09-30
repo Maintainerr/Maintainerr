@@ -180,7 +180,8 @@ const PlexSettings = () => {
     register: registerAdvanced,
     control: advancedControl,
     reset: resetAdvanced,
-    trigger: validateAdvanced,
+    setError: setAdvancedError,
+    clearErrors: clearAdvancedErrors,
     formState: { errors: advancedErrors },
   } = useForm<PlexAdvancedDraft>({ values: savedAdvancedDraft })
 
@@ -264,7 +265,17 @@ const PlexSettings = () => {
 
     try {
       if (manualMode) {
-        if (!(await validateAdvanced('url'))) return
+        // Collapsing Advanced unmounts the URL field, and react-hook-form does
+        // not validate unmounted fields, so the value is checked directly.
+        if (!plexConnectionUrlSchema.safeParse(advancedUrl).success) {
+          setAdvancedOpen(true)
+          setAdvancedError('url', {
+            type: 'manual',
+            message: globalT`Please enter a valid server URL with no path.`,
+          })
+          return
+        }
+        clearAdvancedErrors('url')
         const url = new URL(advancedUrl.trim())
         const ssl = url.protocol === 'https:'
         const port = Number(url.port || (ssl ? 443 : 80))
@@ -701,11 +712,7 @@ const PlexSettings = () => {
                         />
                       }
                       error={advancedErrors.url?.message}
-                      {...registerAdvanced('url', {
-                        validate: (value) =>
-                          plexConnectionUrlSchema.safeParse(value).success ||
-                          globalT`Please enter a valid server URL with no path.`,
-                      })}
+                      {...registerAdvanced('url')}
                     />
                     <CheckboxGroup
                       id="advanced-manual-mode"

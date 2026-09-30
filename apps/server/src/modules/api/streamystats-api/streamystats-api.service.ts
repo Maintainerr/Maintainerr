@@ -229,12 +229,9 @@ export class StreamystatsApiService {
 
       const version = response?.data?.currentVersion;
       if (!version) {
-        return {
-          status: 'NOK',
-          code: 0,
-          message:
-            'Unexpected response from Streamystats. Verify the URL points to a Streamystats instance.',
-        };
+        throw new Error(
+          'Unexpected response from Streamystats. Verify the URL points to a Streamystats instance.',
+        );
       }
 
       const watchlists = await api.getRawWithoutCache<unknown>(
@@ -249,7 +246,7 @@ export class StreamystatsApiService {
       if (
         !streamystatsWatchlistsResponseSchema.safeParse(watchlists.data).success
       ) {
-        return { status: 'NOK', code: 0, message: 'Unexpected response' };
+        throw new Error('Unexpected response');
       }
 
       return {

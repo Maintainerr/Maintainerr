@@ -72,6 +72,21 @@ describe('NotificationSettings', () => {
     expect(screen.getByDisplayValue('http://gotify.local')).toBeTruthy()
   })
 
+  it('says the agents failed to load instead of showing an empty page', async () => {
+    getApiHandler.mockImplementation((url: string) =>
+      url === '/notifications/configurations'
+        ? Promise.reject(new Error('Request failed'))
+        : Promise.resolve(url === '/notifications/types' ? types : agents),
+    )
+
+    renderNotifications()
+
+    expect(
+      await screen.findByText('The notification agents could not be loaded.'),
+    ).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Add Agent' })).toBeNull()
+  })
+
   it('waits for the agent lists before showing any card', async () => {
     const agentsRequest = createDeferred<typeof agents>()
     getApiHandler.mockImplementation((url: string) =>
