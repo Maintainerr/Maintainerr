@@ -116,6 +116,15 @@ export class CollectionHandler {
         ? await this.resolveFolder(mediaServer, media.mediaServerId)
         : undefined;
 
+    // Requests are removed per season, and a delete through the media server
+    // takes the season's metadata with it: read its number first.
+    const forceSeerr = this.settings.seerrConfigured() && collection.forceSeerr;
+    const forceOmbi = this.settings.ombiConfigured() && collection.forceOmbi;
+    const seasonIndex =
+      freesDisk && collection.type === 'season' && (forceSeerr || forceOmbi)
+        ? (await mediaServer.getMetadata(media.mediaServerId))?.index
+        : undefined;
+
     let actionHandled = false;
 
     if (library?.type === 'movie' && collection.radarrSettingsId) {
@@ -192,11 +201,23 @@ export class CollectionHandler {
     // The request goes with the files, when forced. Seerr otherwise reconciles
     // through its availability sync; Ombi never un-marks an available request.
     if (freesDisk) {
-      if (this.settings.seerrConfigured() && collection.forceSeerr) {
-        await this.removeRequests('seerr', this.seerrApi, collection, media);
+      if (forceSeerr) {
+        await this.removeRequests(
+          'seerr',
+          this.seerrApi,
+          collection,
+          media,
+          seasonIndex,
+        );
       }
-      if (this.settings.ombiConfigured() && collection.forceOmbi) {
-        await this.removeRequests('ombi', this.ombiApi, collection, media);
+      if (forceOmbi) {
+        await this.removeRequests(
+          'ombi',
+          this.ombiApi,
+          collection,
+          media,
+          seasonIndex,
+        );
       }
     }
 
@@ -322,6 +343,7 @@ export class CollectionHandler {
     api: RequestService,
     collection: Collection,
     media: CollectionMedia,
+    seasonIndex: number | null | undefined,
   ): Promise<void> {
     const label = service === 'seerr' ? 'Seerr' : 'Ombi';
     const ids = await this.metadataService.resolveIdsForService(
@@ -341,15 +363,16 @@ export class CollectionHandler {
     let subject: string;
     switch (collection.type) {
       case 'season': {
-        const mediaServer = await this.getMediaServer();
-        const season = await mediaServer.getMetadata(media.mediaServerId);
         // != null: a null season index must not reach the service as a
         // season number either
-        if (season?.index == null) {
+        if (seasonIndex == null) {
+          this.logger.warn(
+            `[${label}] Couldn't read the season number of media server ID ${media.mediaServerId}. Skipping ${label} request removal.`,
+          );
           return;
         }
-        removed = await api.removeSeasonRequest(tmdbId, season.index);
-        subject = `request of season ${season.index} from show with TMDB ID '${tmdbId}'`;
+        removed = await api.removeSeasonRequest(tmdbId, seasonIndex);
+        subject = `request of season ${seasonIndex} from show with TMDB ID '${tmdbId}'`;
         break;
       }
       case 'episode':
