@@ -4050,7 +4050,7 @@ describe('CollectionsService', () => {
         mediaServerId: 'added-in-between',
         addDate: new Date('2024-02-01T00:00:00Z'),
       }),
-      // Read after its earlier row, so keeping the last one moved it behind.
+      // Listed last, so a last-row-wins map would take this later date.
       createCollectionMedia(sibling, {
         mediaServerId: 'held-by-both',
         addDate: new Date('2024-03-01T00:00:00Z'),
