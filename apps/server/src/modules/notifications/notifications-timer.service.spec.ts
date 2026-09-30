@@ -38,7 +38,11 @@ describe('NotificationTimerService', () => {
           aboutScale: ABOUT_SCALE,
           rulegroups: [
             {
-              collection: { id: 10, deleteAfterDays: DELETE_AFTER_DAYS },
+              collection: {
+                id: 10,
+                type: 'movie',
+                deleteAfterDays: DELETE_AFTER_DAYS,
+              },
             },
           ],
         })),
@@ -122,7 +126,11 @@ describe('NotificationTimerService', () => {
       requestedBy: ['alice'],
     });
     // A movie has no season to narrow by.
-    expect(getRequestedByUsernames).toHaveBeenCalledWith(500, undefined);
+    expect(getRequestedByUsernames).toHaveBeenCalledWith(
+      500,
+      'movie',
+      undefined,
+    );
   });
 
   it('narrows the requester lookup to the season of a season item', async () => {
@@ -134,7 +142,7 @@ describe('NotificationTimerService', () => {
 
     await (service as never as { executeTask(): Promise<void> }).executeTask();
 
-    expect(getRequestedByUsernames).toHaveBeenCalledWith(500, 2);
+    expect(getRequestedByUsernames).toHaveBeenCalledWith(500, 'tv', 2);
   });
 
   it('narrows to the parent season of an episode item', async () => {
@@ -150,7 +158,7 @@ describe('NotificationTimerService', () => {
 
     await (service as never as { executeTask(): Promise<void> }).executeTask();
 
-    expect(getRequestedByUsernames).toHaveBeenCalledWith(500, 2);
+    expect(getRequestedByUsernames).toHaveBeenCalledWith(500, 'tv', 2);
   });
 
   it('omits requestedBy when nobody requested the item', async () => {
@@ -169,7 +177,12 @@ describe('NotificationTimerService', () => {
 
   it('still notifies when the media server lookup throws', async () => {
     // Losing the title snapshot must not suppress the warning itself.
-    const { service, handleNotification, getMetadata } = createService({
+    const {
+      service,
+      handleNotification,
+      getMetadata,
+      getRequestedByUsernames,
+    } = createService({
       media: [{ mediaServerId: '1', tmdbId: 500, addDate: dueAddDate() }],
       requestedBy: ['alice'],
     });
@@ -182,6 +195,11 @@ describe('NotificationTimerService', () => {
       mediaServerId: '1',
       requestedBy: ['alice'],
     });
+    expect(getRequestedByUsernames).toHaveBeenCalledWith(
+      500,
+      'movie',
+      undefined,
+    );
   });
 
   it('skips the Seerr lookup for an item with no tmdbId', async () => {

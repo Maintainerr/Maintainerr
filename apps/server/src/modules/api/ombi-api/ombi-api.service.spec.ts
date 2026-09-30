@@ -167,7 +167,7 @@ describe('OmbiApiService', () => {
 
   describe('removeMediaByTmdbId', () => {
     it('deletes the request the search view names', async () => {
-      answer({ '/v2/Search/movie/100': { requestId: 7 } });
+      answer({ '/v2/Search/movie/100': { id: 100, requestId: 7 } });
       api.delete.mockResolvedValue({ result: true, isError: false });
 
       expect(await service.removeMediaByTmdbId(100, 'movie')).toBe(true);
@@ -179,14 +179,21 @@ describe('OmbiApiService', () => {
     });
 
     it('reports an unrequested title as nothing to remove', async () => {
-      answer({ '/v2/Search/tv/moviedb/200': { requestId: 0 } });
+      answer({ '/v2/Search/tv/moviedb/200': { id: 200, requestId: 0 } });
 
       expect(await service.removeMediaByTmdbId(200, 'tv')).toBe(false);
       expect(api.delete).not.toHaveBeenCalled();
     });
 
+    it('reports a title Ombi could not resolve as unknown, not unrequested', async () => {
+      answer({ '/v2/Search/movie/100': { id: 0, requestId: 0 } });
+
+      expect(await service.removeMediaByTmdbId(100, 'movie')).toBeUndefined();
+      expect(api.delete).not.toHaveBeenCalled();
+    });
+
     it('reports a refused or unanswered removal as unknown', async () => {
-      answer({ '/v2/Search/movie/100': { requestId: 7 } });
+      answer({ '/v2/Search/movie/100': { id: 100, requestId: 7 } });
       api.delete.mockResolvedValue({
         result: false,
         isError: true,
@@ -202,7 +209,7 @@ describe('OmbiApiService', () => {
   describe('removeSeasonRequest', () => {
     it('deletes only the child requests that cover nothing but the season', async () => {
       answer({
-        '/v2/Search/tv/moviedb/200': { requestId: 5 },
+        '/v2/Search/tv/moviedb/200': { id: 200, requestId: 5 },
         '/v1/Request/tv/5/child': [
           child([1]),
           child([2], { id: 11 }),
@@ -222,7 +229,7 @@ describe('OmbiApiService', () => {
 
     it('keeps a request that would take other seasons down with it', async () => {
       answer({
-        '/v2/Search/tv/moviedb/200': { requestId: 5 },
+        '/v2/Search/tv/moviedb/200': { id: 200, requestId: 5 },
         '/v1/Request/tv/5/child': [child([1, 2])],
       });
 
@@ -232,7 +239,7 @@ describe('OmbiApiService', () => {
 
     it('leaves the other seasons alone when none covers it', async () => {
       answer({
-        '/v2/Search/tv/moviedb/200': { requestId: 5 },
+        '/v2/Search/tv/moviedb/200': { id: 200, requestId: 5 },
         '/v1/Request/tv/5/child': [child([1])],
       });
 
@@ -244,7 +251,7 @@ describe('OmbiApiService', () => {
   describe('hasRemainingSeasonRequests', () => {
     it('is true only while another season still has episodes to arrive', async () => {
       answer({
-        '/v2/Search/tv/moviedb/200': { requestId: 5 },
+        '/v2/Search/tv/moviedb/200': { id: 200, requestId: 5 },
         '/v1/Request/tv/5/child': [child([1]), child([2], { id: 11 })],
       });
       expect(await service.hasRemainingSeasonRequests(200, 1)).toBe(true);
@@ -252,7 +259,7 @@ describe('OmbiApiService', () => {
       const arrived = child([2], { id: 11 });
       arrived.seasonRequests[0].episodes[0].available = true;
       answer({
-        '/v2/Search/tv/moviedb/200': { requestId: 5 },
+        '/v2/Search/tv/moviedb/200': { id: 200, requestId: 5 },
         '/v1/Request/tv/5/child': [child([1]), arrived],
       });
       expect(await service.hasRemainingSeasonRequests(200, 1)).toBe(false);
