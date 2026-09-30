@@ -72,12 +72,9 @@ export class DownloadClientApiService {
       const version = await api.getVersion(connectionTestConfig());
 
       if (!version) {
-        return {
-          status: 'NOK',
-          code: 0,
-          message:
-            'Unexpected response from the download client. Verify the URL points to the selected client API.',
-        };
+        throw new Error(
+          'Unexpected response from the download client. Verify the URL points to the selected client API.',
+        );
       }
 
       return { status: 'OK', code: 1, message: version };
