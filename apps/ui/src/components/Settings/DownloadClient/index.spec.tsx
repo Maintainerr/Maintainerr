@@ -216,9 +216,13 @@ describe('DownloadClientSettings', () => {
     })
     expect(testMock).not.toHaveBeenCalled()
 
-    fireEvent.change(clientSelect, {
-      target: { value: DownloadClientType.TRANSMISSION },
-    })
+    // Arrow keys reach the second client through the first.
+    for (const client of [
+      DownloadClientType.QBITTORRENT,
+      DownloadClientType.TRANSMISSION,
+    ]) {
+      fireEvent.change(clientSelect, { target: { value: client } })
+    }
     expect(clientSelect.getAttribute('aria-invalid')).toBe('false')
     expect(screen.getByLabelText(/^URL \*/)).toHaveProperty(
       'value',

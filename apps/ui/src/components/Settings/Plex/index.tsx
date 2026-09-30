@@ -270,6 +270,7 @@ const PlexSettings = () => {
         if (!plexConnectionUrlSchema.safeParse(advancedUrl).success) {
           setAdvancedOpen(true)
           setAdvancedError('url', {
+            type: 'manual',
             message: globalT`Please enter a valid server URL with no path.`,
           })
           return

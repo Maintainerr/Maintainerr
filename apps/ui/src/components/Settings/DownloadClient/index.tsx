@@ -403,11 +403,11 @@ const DownloadClientSettings = () => {
                       // The URL is specific to the client (RPC endpoint vs WebUI
                       // address), so one client's URL is meaningless for the
                       // other. Only the saved client gets its saved URL back,
-                      // and a URL typed before any client was picked is kept.
-                      if (field.value !== '') {
+                      // and before one is saved the typed URL is left alone.
+                      if (formValues?.download_client_type) {
                         setValue(
                           'download_client_url',
-                          nextType === formValues?.download_client_type
+                          nextType === formValues.download_client_type
                             ? formValues.download_client_url
                             : '',
                         )
