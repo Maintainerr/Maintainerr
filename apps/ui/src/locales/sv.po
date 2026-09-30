@@ -4065,6 +4065,10 @@ msgstr "Loggsidan är tillgänglig under konfigurationen om du behöver felsöka
 msgid "The media server has no user named ''{username}''"
 msgstr "Mediaservern har ingen användare med namnet ''{username}''"
 
+#: src/components/Settings/Notifications/index.tsx
+msgid "The notification agents could not be loaded."
+msgstr ""
+
 #: src/components/Settings/Telemetry/index.tsx
 msgid "The preview could not be loaded."
 msgstr "Förhandsgranskningen kunde inte läsas in."
