@@ -88,6 +88,7 @@ no docker on the host: no binary, no daemon, no socket.
   exact Yarn version is the `packageManager` pin in the root `package.json`, via corepack).
   Work directly inside the container at `/workspace` - open your editor/agent here,
   run all `yarn` commands here. Node is only installed in the container, not the host.
+  Build, run and test from `/workspace` only: `yarn dev` serves it and reloads on change.
 - Git works normally from `/workspace`: `git commit` and `git push` directly. The
   SSH key for GitHub is mounted into the container, so no host-side push relay is
   needed.
@@ -473,8 +474,8 @@ existing data. Stop the application using that database before seeding, then
 restart it. Inspect a getter's live output with
 `POST /api/rules/test {"mediaId","rulegroupId"}`, run a rule with
 `POST /api/rules/:id/execute`, or run collection handling with
-`POST /api/collections/handle`. Note: after editing server code, **restart
-`yarn dev`** - a long-lived dev server can serve stale getter logic. Watchlist
+`POST /api/collections/handle`. Note: after a `yarn install`, **restart
+`yarn dev`** - its watcher keeps the old module resolution. Watchlist
 and plex.tv user enrichment can't be mocked locally (they hit plex.tv) and
 degrade gracefully.
 

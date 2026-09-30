@@ -36,8 +36,8 @@ yarn workspace @maintainerr/server migration:generate src/database/migrations/<m
 // Run migrations
 yarn workspace @maintainerr/server migration:run
 
-// Revert migrations
-yarn workspace @maintainerr/server migration:revert
+// Never migration:revert: TypeORM runs down() with foreign keys on, so dependent
+// rows cascade away. Restore a database backup instead.
 
 // Show migration status
 yarn workspace @maintainerr/server migration:show
