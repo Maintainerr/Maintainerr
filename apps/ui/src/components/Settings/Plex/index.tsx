@@ -267,7 +267,7 @@ const PlexSettings = () => {
       if (manualMode) {
         // Collapsing Advanced unmounts the URL field, and react-hook-form does
         // not validate unmounted fields, so the value is checked directly.
-        if (!plexConnectionUrlSchema.safeParse(advancedUrl.trim()).success) {
+        if (!plexConnectionUrlSchema.safeParse(advancedUrl).success) {
           setAdvancedOpen(true)
           setAdvancedError('url', {
             message: globalT`Please enter a valid server URL with no path.`,

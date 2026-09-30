@@ -124,7 +124,7 @@ describe('DownloadClientSettings', () => {
     expect(saveSettingsMock).not.toHaveBeenCalled()
   })
 
-  it('tests the connection and shows a success alert', async () => {
+  it('tests the connection and keeps the success through an unchanged base path', async () => {
     testMock.mockResolvedValue({ status: 'OK', code: 1, message: 'v4.6.0' })
 
     render(<DownloadClientSettings />)
@@ -141,20 +141,8 @@ describe('DownloadClientSettings', () => {
       )
     })
     expect(await screen.findByText(/Success!/)).toBeTruthy()
-  })
-
-  it('keeps the test result when the base path loses focus unchanged', async () => {
-    testMock.mockResolvedValue({ status: 'OK', code: 1, message: 'v4.6.0' })
-
-    render(<DownloadClientSettings />)
-
-    fireEvent.click(
-      await screen.findByRole('button', { name: 'Test Connection' }),
-    )
-    expect(await screen.findByText(/Success!/)).toBeTruthy()
 
     fireEvent.blur(screen.getByLabelText('Base Path'))
-
     expect(screen.getByText(/Success!/)).toBeTruthy()
   })
 
@@ -201,7 +189,7 @@ describe('DownloadClientSettings', () => {
       )
     })
   })
-  it('starts with no client selected and refuses to test without one', async () => {
+  it('starts with no client selected, refuses to test without one and keeps the typed URL', async () => {
     downloadClientData = {
       download_client_type: null,
       download_client_url: '',

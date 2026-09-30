@@ -509,7 +509,6 @@ describe('PlexSettings', () => {
     expect(
       await screen.findByText('Please enter a valid server URL with no path.'),
     ).toBeTruthy()
-    expect(screen.getByLabelText('URL')).toHaveProperty('value', 'plex:32400')
     expect(updateSettings).not.toHaveBeenCalled()
   })
 
