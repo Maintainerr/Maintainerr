@@ -7,6 +7,7 @@ import { Navigate, useParams } from 'react-router-dom'
 import { useServarrSettings } from '../../../api/settings'
 import { DeleteApiHandler } from '../../../utils/ApiHandler'
 import { logClientError } from '../../../utils/ClientLogger'
+import Alert from '../../Common/Alert'
 import { ICollection } from '../../Collection'
 import { ServiceCardAddTile } from '../ServiceCard'
 import ServarrServerCard from './ServarrServerCard'
@@ -66,7 +67,7 @@ export const ServarrSettings = ({ service }: { service: ServarrService }) => {
   const queryClient = useQueryClient()
   const copy = serviceCopy[service]
   const serviceName = copy.name
-  const { data: servers, isLoading } = useServarrSettings(service)
+  const { data: servers, isLoading, isError } = useServarrSettings(service)
   const [adding, setAdding] = useState(false)
   // The server just added, so its card can confirm the save.
   const [createdId, setCreatedId] = useState<number>()
@@ -126,7 +127,15 @@ export const ServarrSettings = ({ service }: { service: ServarrService }) => {
         {/* Reserve the card-row height so the list doesn't pop in / shift the
             page (no layout shift) while the server list loads. */}
         <ul className="grid min-h-39 max-w-6xl grid-cols-1 gap-6 lg:grid-cols-2">
-          {isLoading ? null : (
+          {isLoading ? null : isError && !servers ? (
+            // No Add tile: with the list unknown it could add a duplicate.
+            <li className="lg:col-span-2">
+              <Alert
+                type="error"
+                title={t`The server list could not be loaded.`}
+              />
+            </li>
+          ) : (
             <>
               {servers?.map((server) => (
                 <li key={server.id} className="h-full">
