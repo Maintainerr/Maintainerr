@@ -186,7 +186,6 @@ describe('OmbiApiService', () => {
     });
 
     it('reports a title Ombi could not resolve as unknown, not unrequested', async () => {
-      // Ombi answers a TMDB id its own lookup cannot resolve with id 0.
       answer({ '/v2/Search/movie/100': { id: 0, requestId: 0 } });
 
       expect(await service.removeMediaByTmdbId(100, 'movie')).toBeUndefined();

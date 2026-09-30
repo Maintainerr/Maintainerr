@@ -165,9 +165,8 @@ export class NotificationTimerService extends TaskBase {
           ? metadata.parentIndex
           : undefined;
 
-    // TMDB numbers movies and shows independently, so both services need the
-    // type: the metadata's, or the collection's when that read failed. Ombi
-    // also requests episodes one by one, so it needs the metadata.
+    // The collection's type when the metadata read failed; Ombi's episodes
+    // need the metadata.
     const type =
       (metadata?.type ?? collectionType) === 'movie' ? 'movie' : 'tv';
     const [seerr, ombi] = await Promise.all([

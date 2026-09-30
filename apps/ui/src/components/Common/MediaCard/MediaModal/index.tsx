@@ -22,6 +22,7 @@ import {
   buildProviderUrl,
   displayProviderId,
   mediaTypeLabel,
+  toApiMediaType,
 } from '../../../../utils/mediaTypeUtils'
 import Button from '../../Button'
 import LoadingSpinner from '../../LoadingSpinner'
@@ -329,8 +330,7 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
           ? `&episode=${metadata.index}`
           : ''
 
-      // TMDB numbers movies and shows independently, so both need the type.
-      const type = mediaType === 'movie' ? 'movie' : 'tv'
+      const type = toApiMediaType(mediaType)
       const paths: string[] = []
       if (requestServices.seerr) {
         paths.push(

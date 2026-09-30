@@ -195,7 +195,6 @@ describe('NotificationTimerService', () => {
       mediaServerId: '1',
       requestedBy: ['alice'],
     });
-    // The collection's type stands in for the metadata's.
     expect(getRequestedByUsernames).toHaveBeenCalledWith(
       500,
       'movie',

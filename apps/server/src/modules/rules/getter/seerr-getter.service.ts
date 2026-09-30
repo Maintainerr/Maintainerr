@@ -117,7 +117,7 @@ export class SeerrGetterService {
       // (#3152).
       const requestsForMedia = await this.seerrApi.getRequestsForMedia(
         tmdbId,
-        libItem.type === 'movie' ? 'movie' : 'tv',
+        resolvedIds.type,
       );
       // undefined => the bulk sweep failed (Seerr unreachable). Transient: skip
       // so the comparator protects the item rather than treating it as "not

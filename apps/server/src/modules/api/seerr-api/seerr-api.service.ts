@@ -519,7 +519,7 @@ export class SeerrApiService {
         a.id - b.id,
     );
 
-    // Group by type and media.tmdbId: Seerr keys every media row by tmdbId (non-null,
+    // Group by type and tmdbId: Seerr keys every media row by tmdbId (non-null,
     // indexed - tvdbId/imdbId are optional extras), and the metadata service
     // resolves each library item to that tmdbId via all its providers (with
     // tvdb/imdb -> tmdb bridging), so tmdbId is the canonical join key (and

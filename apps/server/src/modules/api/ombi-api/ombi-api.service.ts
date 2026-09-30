@@ -409,9 +409,7 @@ export class OmbiApiService {
         ? `/v2/Search/movie/${tmdbId}`
         : `/v2/Search/tv/moviedb/${tmdbId}`,
     );
-    return result?.id === tmdbId && typeof result.requestId === 'number'
-      ? result.requestId
-      : undefined;
+    return result?.id === tmdbId ? result.requestId : undefined;
   }
 
   private async getChildRequests(
