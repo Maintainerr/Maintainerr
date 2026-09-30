@@ -1,8 +1,7 @@
 type PrefetchRoute = (path: string) => Promise<void>
 
-// router.tsx registers its route walker here, so the components it renders can
-// warm a route without importing it back. That import cycle made every hot
-// update of Layout or Settings fail and reload the page.
+// router.tsx registers its route walker here, so the components it renders
+// can warm a route without importing router.tsx, which broke hot updates.
 let walker: PrefetchRoute = () => Promise.resolve()
 
 export const registerPrefetch = (prefetch: PrefetchRoute) => {
