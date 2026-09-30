@@ -2,6 +2,7 @@ import { MediaServerType, TracearrSetting } from '@maintainerr/contracts';
 import { TestBed, type Mocked } from '@suites/unit';
 import { Repository } from 'typeorm';
 import { InternalApiService } from '../api/internal-api/internal-api.service';
+import { BACKGROUND_CONNECTION_TEST_TIMEOUT_MS } from '../api/lib/httpTimeouts';
 import { MediaServerFactory } from '../api/media-server/media-server.factory';
 import { PlexApiService } from '../api/plex-api/plex-api.service';
 import { SeerrApiService } from '../api/seerr-api/seerr-api.service';
@@ -27,6 +28,8 @@ describe('SettingsOperationsService', () => {
   let streamystats: Mocked<StreamystatsApiService>;
   let tracearr: Mocked<TracearrApiService>;
   let internalApi: Mocked<InternalApiService>;
+  let servarr: Mocked<ServarrService>;
+  let logger: Mocked<MaintainerrLogger>;
 
   const createSettings = (overrides: Partial<Settings> = {}): Settings =>
     Object.assign(new Settings(), {
@@ -63,13 +66,13 @@ describe('SettingsOperationsService', () => {
     unitRef.get<Mocked<Repository<SonarrSettings>>>('SonarrSettingsRepository');
     mediaServerFactory = unitRef.get(MediaServerFactory);
     plexApi = unitRef.get(PlexApiService);
-    unitRef.get(ServarrService);
+    servarr = unitRef.get(ServarrService);
     seerr = unitRef.get(SeerrApiService);
     tautulli = unitRef.get(TautulliApiService);
     streamystats = unitRef.get(StreamystatsApiService);
     tracearr = unitRef.get(TracearrApiService);
     internalApi = unitRef.get(InternalApiService);
-    unitRef.get(MaintainerrLogger);
+    logger = unitRef.get(MaintainerrLogger);
 
     settingsRepo.findOne.mockResolvedValue(createSettings());
     settingsRepo.save.mockImplementation(
@@ -469,6 +472,43 @@ describe('SettingsOperationsService', () => {
       message: 'Authenticate with Plex before validating the connection.',
     });
     expect(plexApi.validateAuthToken).not.toHaveBeenCalled();
+  });
+
+  // Answered, not thrown, so it was never logged behind "check logs".
+  it('logs why a Radarr test failed when another *arr answers', async () => {
+    servarr.getRadarrApiClient.mockResolvedValue({
+      info: jest
+        .fn()
+        .mockResolvedValue({ appName: 'Sonarr', version: '4.0.0' }),
+    } as never);
+
+    await expect(service.testRadarr(1)).resolves.toEqual({
+      status: 'NOK',
+      code: 0,
+      message: 'Unexpected application name returned: Sonarr',
+    });
+    expect(logger.error).toHaveBeenCalledWith(
+      'Radarr connection test failed: Unexpected application name returned: Sonarr',
+    );
+  });
+
+  it('gives the daily media-server check the background budget', async () => {
+    settingsDataService.media_server_type = MediaServerType.JELLYFIN;
+    settingsDataService.jellyfin_url = 'http://jellyfin.local';
+    settingsDataService.jellyfin_api_key = 'jf-key';
+    mediaServerFactory.testJellyfinConnection.mockResolvedValue({
+      success: true,
+      serverName: 'My Server',
+      version: '12.0.0',
+    });
+
+    await expect(service.testMediaServerConnection()).resolves.toBe(true);
+
+    expect(mediaServerFactory.testJellyfinConnection).toHaveBeenCalledWith(
+      'http://jellyfin.local',
+      'jf-key',
+      BACKGROUND_CONNECTION_TEST_TIMEOUT_MS,
+    );
   });
 
   it('re-initialises Streamystats after a successful Jellyfin save', async () => {

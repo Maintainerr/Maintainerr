@@ -2,7 +2,6 @@
 // SDKs (e.g. @jellyfin/sdk) come from a second axios module instance, so an
 // instanceof check against this CommonJS build never matches them.
 import { isAxiosError } from 'axios';
-import { CONNECTION_TEST_TIMEOUT_MS } from '../modules/api/lib/httpTimeouts';
 import type { MaintainerrLogger } from '../modules/logging/logs.service';
 
 const normalizeMessageText = (message?: string): string | undefined => {
@@ -41,7 +40,7 @@ const normalizeMessageText = (message?: string): string | undefined => {
     lower.includes('err_canceled') ||
     lower.includes('etimedout')
   ) {
-    return `Connection timed out after ${CONNECTION_TEST_TIMEOUT_MS / 1000} seconds. Verify URL and network reachability.`;
+    return 'Connection timed out. Verify URL and network reachability.';
   }
 
   return undefined;
@@ -132,11 +131,15 @@ export const getErrorMessage = (
   return fallbackMessage;
 };
 
+// The settings pages point at the log for the reason, so the line carries the
+// one the test answered with; the throwable stays at debug.
 export const logConnectionTestError = (
   logger: Pick<MaintainerrLogger, 'error' | 'debug'>,
   serviceName: string,
   error: unknown,
 ) => {
-  logger.error(`${serviceName} connection test failed`);
+  logger.error(
+    `${serviceName} connection test failed: ${formatConnectionFailureMessage(error, 'unknown error')}`,
+  );
   logger.debug(error);
 };
