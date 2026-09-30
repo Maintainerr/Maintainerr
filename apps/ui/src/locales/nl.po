@@ -4065,10 +4065,6 @@ msgstr "De selectie bevat verschillende mediatypen, waardoor hierop alleen uitsl
 msgid "The selection spans more than one library, so only exclusions can be applied to it."
 msgstr "De selectie beslaat meer dan één bibliotheek, dus hierop kunnen alleen uitsluitingen worden toegepast."
 
-#: src/components/Settings/Servarr/ServarrSettings.tsx
-msgid "The server list could not be loaded."
-msgstr ""
-
 #: src/components/Layout/index.tsx
 msgid "The server returned an unexpected response."
 msgstr "De server heeft een onverwacht antwoord geretourneerd."

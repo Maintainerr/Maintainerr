@@ -21,7 +21,6 @@ import {
   normalizeConnectionErrorMessage,
 } from '../../../utils/ApiError'
 import GetApiHandler from '../../../utils/ApiHandler'
-import { logClientError } from '../../../utils/ClientLogger'
 import Alert from '../../Common/Alert'
 import Button from '../../Common/Button'
 import SaveButton from '../../Common/SaveButton'
@@ -373,19 +372,11 @@ const PlexSettings = () => {
     }
 
     if (errorMessage) {
-      void logClientError(
-        'Plex authentication could not be verified',
-        errorMessage,
-        'Settings.Plex',
-      )
       showError(errorMessage)
     }
   }
 
-  // Sign-in and its token check run between the browser and plex.tv, so the
-  // reason goes to the server log that the error label points at.
   const authFailed = (message: string) => {
-    void logClientError('Plex sign-in failed', message, 'Settings.Plex')
     showError(message)
   }
 

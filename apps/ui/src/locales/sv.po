@@ -4065,10 +4065,6 @@ msgstr "Urvalet blandar mediatyper, så endast exkluderingar kan tillämpas på 
 msgid "The selection spans more than one library, so only exclusions can be applied to it."
 msgstr "Urvalet spänner över mer än ett bibliotek, så endast exkluderingar kan tillämpas på det."
 
-#: src/components/Settings/Servarr/ServarrSettings.tsx
-msgid "The server list could not be loaded."
-msgstr ""
-
 #: src/components/Layout/index.tsx
 msgid "The server returned an unexpected response."
 msgstr "Servern returnerade ett oväntat svar."

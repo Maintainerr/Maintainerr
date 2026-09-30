@@ -4065,10 +4065,6 @@ msgstr "La sélection mélange des types de médias, donc seules des exclusions 
 msgid "The selection spans more than one library, so only exclusions can be applied to it."
 msgstr "La sélection couvre plusieurs bibliothèques, donc seules des exclusions peuvent lui être appliquées."
 
-#: src/components/Settings/Servarr/ServarrSettings.tsx
-msgid "The server list could not be loaded."
-msgstr ""
-
 #: src/components/Layout/index.tsx
 msgid "The server returned an unexpected response."
 msgstr "Le serveur a renvoyé une réponse inattendue."

@@ -76,11 +76,6 @@ vi.mock('../../../utils/ApiHandler', () => ({
   default: (url: string) => getApiHandler(url),
 }))
 
-const logClientError = vi.fn()
-vi.mock('../../../utils/ClientLogger', () => ({
-  logClientError: (...args: unknown[]) => logClientError(...args),
-}))
-
 vi.mock('axios', () => ({
   default: {
     get: (...args: unknown[]) => axiosGet(...args),
@@ -120,7 +115,6 @@ vi.mock('../../Login/Plex', () => ({
 }))
 
 beforeEach(() => {
-  logClientError.mockReset()
   currentSettings = {
     clientId: 'client-id',
     plex_hostname: 'plex.local',
@@ -469,12 +463,6 @@ describe('PlexSettings', () => {
         screen.getByText('Authentication timed out. Please try again.'),
       ).toBeTruthy()
     })
-    // The label says "check logs", and this failure never reached the server.
-    expect(logClientError).toHaveBeenCalledWith(
-      'Plex sign-in failed',
-      'Authentication timed out. Please try again.',
-      'Settings.Plex',
-    )
   })
 
   it('requires a URL before saving manual mode', async () => {
