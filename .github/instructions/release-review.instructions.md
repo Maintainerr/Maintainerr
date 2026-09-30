@@ -172,7 +172,7 @@ catch regressions that someone thought to write a test for.
 
 Automated suites do not cover rendering, navigation, or real integration
 behavior. Follow the [PR workflow](implementation.instructions.md#pr-workflow)
-for real-stack coverage, isolated test state, observable outcomes, and cleanup.
+for real-stack coverage, observable outcomes, and cleanup.
 
 1. Exercise every affected provider and service in the real Podman stack. Use
    reproducible fixtures created through the application APIs where possible.

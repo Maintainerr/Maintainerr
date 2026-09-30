@@ -188,8 +188,7 @@ above.
 Exercise affected integration flows against the real Podman services, using
 API calls, service logs, and Playwright assertions on the resulting UI and state.
 The [tools/dev/](tools/dev/) mocks supplement this coverage or provide a reported
-fallback when real services are unavailable. Keep test state isolated and restore
-modified fixtures afterward.
+fallback when real services are unavailable. Restore modified fixtures afterward.
 
 #### What to Attach to a Pull Request
 
