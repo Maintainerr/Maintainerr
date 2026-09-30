@@ -35,9 +35,9 @@ export class RadarrApi extends ServarrApi<{ movieId: number }> {
   }
 
   /**
-   * Every tracked movie. Uncached: its only caller fences a filesystem delete
-   * on the other movies' folders, and a movie added since the last read would
-   * be missing from a cached snapshot - so the fence would not see it.
+   * Every tracked movie. Uncached: the filesystem-delete fence must see a
+   * movie added since the last read; the id fallback memoizes it per run
+   * or batch itself.
    */
   public getMovies = async (): Promise<RadarrMovie[]> => {
     try {
