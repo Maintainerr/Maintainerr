@@ -1,4 +1,4 @@
-import { MediaItem } from '@maintainerr/contracts';
+import { MediaItem, MediaItemType } from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
 import { MediaServerFactory } from '../api/media-server/media-server.factory';
 import { OmbiApiService } from '../api/ombi-api/ombi-api.service';
@@ -48,10 +48,16 @@ export class NotificationTimerService extends TaskBase {
     // Agents run concurrently and can share a rule group, so memoise the
     // in-flight promise to keep each item at one media-server + Seerr lookup.
     const enriched = new Map<string, Promise<NotificationMediaItem>>();
-    const enrich = (media: CollectionMedia): Promise<NotificationMediaItem> => {
+    const enrich = ({
+      media,
+      collectionType,
+    }: {
+      media: CollectionMedia;
+      collectionType: MediaItemType;
+    }): Promise<NotificationMediaItem> => {
       const pending =
         enriched.get(media.mediaServerId) ??
-        this.toNotificationMediaItem(media);
+        this.toNotificationMediaItem(media, collectionType);
       enriched.set(media.mediaServerId, pending);
       return pending;
     };
@@ -81,13 +87,18 @@ export class NotificationTimerService extends TaskBase {
                 );
 
               return (
-                collectionMedia?.filter((media) => {
-                  const mediaDate = new Date(media.addDate);
-                  return (
-                    getDayStart(mediaDate).getTime() ===
-                    getDayStart(notifyDate).getTime()
-                  );
-                }) || []
+                collectionMedia
+                  ?.filter((media) => {
+                    const mediaDate = new Date(media.addDate);
+                    return (
+                      getDayStart(mediaDate).getTime() ===
+                      getDayStart(notifyDate).getTime()
+                    );
+                  })
+                  .map((media) => ({
+                    media,
+                    collectionType: group.collection.type,
+                  })) || []
               );
             }),
           )
@@ -113,6 +124,7 @@ export class NotificationTimerService extends TaskBase {
    */
   private async toNotificationMediaItem(
     media: CollectionMedia,
+    collectionType: MediaItemType,
   ): Promise<NotificationMediaItem> {
     let metadata: MediaItem | undefined;
     try {
@@ -122,7 +134,11 @@ export class NotificationTimerService extends TaskBase {
       this.logger.debug(error);
     }
 
-    const requestedBy = await this.resolveRequesters(media, metadata);
+    const requestedBy = await this.resolveRequesters(
+      media,
+      metadata,
+      collectionType,
+    );
 
     return {
       mediaServerId: media.mediaServerId,
@@ -134,6 +150,7 @@ export class NotificationTimerService extends TaskBase {
   private async resolveRequesters(
     media: CollectionMedia,
     metadata: MediaItem | undefined,
+    collectionType: MediaItemType,
   ): Promise<string[]> {
     if (!media.tmdbId) {
       return [];
@@ -148,15 +165,16 @@ export class NotificationTimerService extends TaskBase {
           ? metadata.parentIndex
           : undefined;
 
-    // Ombi keys movies and shows separately and requests episodes one by one,
-    // so it needs the type and episode the metadata carries; Seerr keys both
-    // by TMDB id and tracks requests per season.
+    // The collection's type when the metadata read failed; Ombi's episodes
+    // need the metadata.
+    const type =
+      (metadata?.type ?? collectionType) === 'movie' ? 'movie' : 'tv';
     const [seerr, ombi] = await Promise.all([
-      this.seerrApi.getRequestedByUsernames(media.tmdbId, season),
+      this.seerrApi.getRequestedByUsernames(media.tmdbId, type, season),
       metadata
         ? this.ombiApi.getRequestedByUsernames(
             media.tmdbId,
-            metadata.type === 'movie' ? 'movie' : 'tv',
+            type,
             season,
             metadata.type === 'episode' ? metadata.index : undefined,
           )

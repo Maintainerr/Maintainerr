@@ -1,5 +1,13 @@
 import { BasicResponseDto } from '@maintainerr/contracts';
-import { Body, Controller, Delete, Get, Param, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  InternalServerErrorException,
+  Param,
+  Post,
+} from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import {
   NotificationAgentKey,
@@ -93,7 +101,14 @@ export class NotificationsController {
 
   @Get('/configurations')
   async getNotificationConfigurations() {
-    return this.notificationService.getNotificationConfigurations();
+    const configurations =
+      await this.notificationService.getNotificationConfigurations();
+    if (!configurations) {
+      throw new InternalServerErrorException(
+        'Notification configurations could not be read',
+      );
+    }
+    return configurations;
   }
 
   @Delete('/configuration/:id')

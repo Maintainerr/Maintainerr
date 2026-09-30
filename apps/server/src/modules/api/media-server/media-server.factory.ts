@@ -207,6 +207,7 @@ export class MediaServerFactory {
   async testJellyfinConnection(
     url: string,
     apiKey: string,
+    timeoutMs?: number,
   ): Promise<{
     success: boolean;
     serverName?: string;
@@ -214,7 +215,7 @@ export class MediaServerFactory {
     error?: string;
     users?: Array<{ id: string; name: string }>;
   }> {
-    return this.jellyfinAdapter.testConnection(url, apiKey);
+    return this.jellyfinAdapter.testConnection(url, apiKey, timeoutMs);
   }
 
   /**
@@ -223,6 +224,7 @@ export class MediaServerFactory {
   async testEmbyConnection(
     url: string,
     apiKey: string,
+    timeoutMs?: number,
   ): Promise<{
     success: boolean;
     serverName?: string;
@@ -230,7 +232,7 @@ export class MediaServerFactory {
     error?: string;
     users?: Array<{ id: string; name: string }>;
   }> {
-    return this.embyAdapter.testConnection(url, apiKey);
+    return this.embyAdapter.testConnection(url, apiKey, timeoutMs);
   }
 
   /**

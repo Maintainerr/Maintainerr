@@ -9,15 +9,17 @@ import {
   useNotificationTypes,
 } from '../../../api/notifications'
 import { DeleteApiHandler } from '../../../utils/ApiHandler'
+import Alert from '../../Common/Alert'
 import { ServiceCardAddTile } from '../ServiceCard'
 import NotificationAgentCard from './NotificationAgentCard'
 
 const NotificationSettings = () => {
   const { t } = useLingui()
   const queryClient = useQueryClient()
-  const { data: configurations } = useNotificationConfigurations()
-  const { data: agents } = useNotificationAgents()
-  const { data: types } = useNotificationTypes()
+  const { data: configurations, isError: configurationsFailed } =
+    useNotificationConfigurations()
+  const { data: agents, isError: agentsFailed } = useNotificationAgents()
+  const { data: types, isError: typesFailed } = useNotificationTypes()
   const [adding, setAdding] = useState(false)
   // The agent just added, so its card can confirm the save.
   const [createdId, setCreatedId] = useState<number>()
@@ -89,6 +91,13 @@ const NotificationSettings = () => {
               )}
             </li>
           </>
+        ) : configurationsFailed || agentsFailed || typesFailed ? (
+          <li>
+            <Alert
+              type="error"
+              title={t`The notification agents could not be loaded.`}
+            />
+          </li>
         ) : null}
       </ul>
     </>
