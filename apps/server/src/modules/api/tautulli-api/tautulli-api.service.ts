@@ -161,14 +161,14 @@ export class TautulliApiService {
 
   public async getPaginatedHistory(
     options?: TautulliHistoryRequestOptions,
-    cached = true,
+    useCache = true,
   ): Promise<TautulliHistory | null> {
     try {
       options.length = options.length ? options.length : MAX_PAGE_SIZE;
       options.start = options.start || options.start === 0 ? options.start : 0;
 
       const request = { params: { cmd: 'get_history', ...options } };
-      const response: Response<TautulliHistory> = cached
+      const response: Response<TautulliHistory> = useCache
         ? await this.api.get('', request)
         : await this.api.getWithoutCache('', request);
 

@@ -118,7 +118,6 @@ export class TracearrApiService {
   private activeUsernamesByTracearrUserId: Map<string, string[]> | undefined;
   private episodeIdsByItemId = new Map<string, Promise<string[]>>();
   private resolvedServerId: string | undefined;
-  // The server the media modal reads, once confirmed; see getItemServerId.
   private itemServer:
     { serverId: Promise<string | undefined>; retryAt: number } | undefined;
   private historyGeneration = 0;
@@ -367,11 +366,7 @@ export class TracearrApiService {
     return (
       tracearrMediaChildrenSchema
         .parse(raw)
-        .data.find(
-          (child) =>
-            child.media_type === 'season' &&
-            child.season_number === seasonNumber,
-        )?.id ?? null
+        .data.find((child) => child.season_number === seasonNumber)?.id ?? null
     );
   }
 
@@ -660,8 +655,8 @@ export class TracearrApiService {
    * The bound server, confirmed to track the managed media server the way the
    * rule sweep confirms it: Plex rating keys repeat across servers, so an
    * unconfirmed one can answer with another server's plays. A confirmed server
-   * is kept until the settings change; finding none is kept for a while, and a
-   * failed lookup not at all.
+   * is kept until the settings change and an unconfirmed one for a minute; only
+   * a lookup that throws is not kept.
    */
   private getItemServerId(): Promise<string | undefined> {
     if (this.itemServer && Date.now() < this.itemServer.retryAt) {

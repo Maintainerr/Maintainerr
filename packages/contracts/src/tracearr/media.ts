@@ -9,7 +9,6 @@ export const tracearrMediaChildrenSchema = z.object({
   data: z.array(
     z.object({
       id: z.uuid(),
-      media_type: z.string(),
       season_number: z.number().int().nullable(),
     }),
   ),

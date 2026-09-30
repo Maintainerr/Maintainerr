@@ -1021,17 +1021,13 @@ describe('TracearrApiService', () => {
         getMetadata: jest.fn(async (id: string) =>
           id.startsWith('confirm-') ? confirmingItem : item,
         ),
-        itemExists: jest.fn().mockResolvedValue(true),
       } as never);
-    const seasons = {
-      data: [{ id: SEASON_MEDIA_ID, media_type: 'season', season_number: 2 }],
-    };
     const answerHistory = (rows: unknown[]) =>
       apiMock.getRawWithoutCache.mockImplementation(async (path: string) =>
         path === '/history'
           ? { data: { data: rows, meta: { nextCursor: null } } }
           : path === `/media/${SHOW_MEDIA_ID}/children`
-            ? { data: seasons }
+            ? { data: { data: [{ id: SEASON_MEDIA_ID, season_number: 2 }] } }
             : { data: { id: SHOW_MEDIA_ID } },
       );
     const recentlyAddedCalls = () =>
@@ -1094,7 +1090,6 @@ describe('TracearrApiService', () => {
       expect(apiMock.getRawWithoutCache).toHaveBeenCalledWith(
         '/media/show:tvdb:1234',
       );
-      // Paged by the season's own id, not through every play of the show.
       expect(apiMock.getRawWithoutCache).toHaveBeenCalledWith('/history', {
         params: {
           media_id: SEASON_MEDIA_ID,
@@ -1104,25 +1099,7 @@ describe('TracearrApiService', () => {
       });
     });
 
-    // Plex rating keys repeat across servers, so an unconfirmed server can
-    // answer with another server's plays of an unrelated item.
-    it('reads no history from a server it cannot confirm', async () => {
-      useItem({ id: 'movie-1', type: 'movie' });
-      mediaServerFactory.getService.mockResolvedValue({
-        getMetadata: jest.fn(async (id: string) =>
-          id.startsWith('confirm-')
-            ? { ...confirmingItem, title: 'Another Title' }
-            : { id: 'movie-1', type: 'movie' },
-        ),
-        itemExists: jest.fn().mockResolvedValue(true),
-      } as never);
-      answerHistory([play()]);
-
-      await expect(service.getItemStats('movie-1')).resolves.toBeUndefined();
-      expect(apiMock.getRawWithoutCache).not.toHaveBeenCalled();
-    });
-
-    it('confirms the server once, and retries a miss only after a while', async () => {
+    it('confirms the server once, and reads nothing from an unconfirmed one for a while', async () => {
       useItem({ id: 'movie-1', type: 'movie' });
       answerHistory([play()]);
 
@@ -1133,11 +1110,13 @@ describe('TracearrApiService', () => {
       service.invalidateHistory();
       apiMock.getWithoutCache.mockClear();
       apiMock.getWithoutCache.mockResolvedValue(undefined);
+      apiMock.getRawWithoutCache.mockClear();
       const now = jest.spyOn(Date, 'now').mockReturnValue(1_000_000);
       try {
         await expect(service.getItemStats('movie-1')).resolves.toBeUndefined();
         await expect(service.getItemStats('movie-1')).resolves.toBeUndefined();
         expect(recentlyAddedCalls()).toBe(1);
+        expect(apiMock.getRawWithoutCache).not.toHaveBeenCalled();
 
         now.mockReturnValue(1_000_000 + 60_000);
         await service.getItemStats('movie-1');

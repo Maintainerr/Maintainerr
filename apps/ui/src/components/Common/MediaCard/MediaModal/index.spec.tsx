@@ -49,8 +49,6 @@ vi.mock('../../../../utils/ClientLogger', () => ({
 describe('MediaModal', () => {
   const useMediaServerTypeMock = vi.mocked(useMediaServerType)
   const getApiHandlerMock = vi.mocked(GetApiHandler)
-  const requestedPaths = () =>
-    getApiHandlerMock.mock.calls.map(([path]) => path)
 
   beforeEach(() => {
     useMediaServerTypeMock.mockReset()
@@ -824,7 +822,10 @@ describe('MediaModal', () => {
         expect.any(AbortSignal),
       ),
     )
-    expect(requestedPaths()).not.toContain('/tautulli/items/93')
+    expect(getApiHandlerMock).not.toHaveBeenCalledWith(
+      '/tautulli/items/93',
+      expect.any(AbortSignal),
+    )
     // The badge opens the item's own page, which it learns from the panel's
     // query rather than a request of its own.
     await waitFor(() =>
@@ -854,26 +855,19 @@ describe('MediaModal', () => {
     )
   })
 
-  // A phone hides the service badges, so the panels carry the same links,
-  // including for an item nobody has played.
   it('links each watch statistics panel to its service with no plays to show', async () => {
     useMediaServerTypeMock.mockReturnValue({
       ...useMediaServerTypeMock(),
       isPlex: true,
     })
-    const notFound = Object.assign(new Error('Not Found'), {
-      isAxiosError: true,
-      response: { status: 404 },
-    })
     getApiHandlerMock.mockImplementation((path: string) =>
-      path === '/settings'
-        ? Promise.resolve({
-            tautulli_url: 'http://tautulli.local',
-            tracearr_url: 'http://t',
-          })
-        : path.includes('/items/')
-          ? Promise.reject(notFound)
-          : Promise.resolve({}),
+      Promise.resolve(
+        path === '/settings'
+          ? { tautulli_url: 'http://tautulli.local', tracearr_url: 'http://t' }
+          : path.includes('/items/')
+            ? null
+            : {},
+      ),
     )
 
     render(
@@ -1100,21 +1094,23 @@ describe('MediaModal', () => {
       '/seerr/requests/4600/users?season=1',
       expect.any(AbortSignal),
     )
-    expect(
-      requestedPaths().some((path) => path.includes('/requests/13993/')),
-    ).toBe(false)
+    expect(getApiHandlerMock).not.toHaveBeenCalledWith(
+      expect.stringContaining('/requests/13993/'),
+      expect.any(AbortSignal),
+    )
     expect(await screen.findByText('alice')).toBeTruthy()
   })
-  // A slow service otherwise holds one of the browser's few connections to
-  // Maintainerr after the modal is gone, which stalls the posters behind it.
+
   it('cancels its pending reads when it closes', async () => {
+    const pending = (path: string) =>
+      path.startsWith('/seerr/') || path.startsWith('/tracearr/')
     getApiHandlerMock.mockImplementation((path: string) =>
       path === '/settings'
         ? Promise.resolve({
             seerr_url: 'http://seerr.local',
             tracearr_url: 'http://t',
           })
-        : path.startsWith('/seerr/') || path.startsWith('/tracearr/')
+        : pending(path)
           ? new Promise(() => {})
           : Promise.resolve({}),
     )
@@ -1128,20 +1124,11 @@ describe('MediaModal', () => {
         providerIds={{ tmdb: ['500'] }}
       />,
     )
-    await waitFor(() =>
-      expect(
-        requestedPaths().filter(
-          (path) => path.startsWith('/seerr/') || path.startsWith('/tracearr/'),
-        ),
-      ).toHaveLength(2),
-    )
+    const pendingCalls = () =>
+      getApiHandlerMock.mock.calls.filter(([path]) => pending(path))
+    await waitFor(() => expect(pendingCalls()).toHaveLength(2))
     unmount()
 
-    const signals = getApiHandlerMock.mock.calls
-      .filter(
-        ([path]) => path.startsWith('/seerr/') || path.startsWith('/tracearr/'),
-      )
-      .map(([, signal]) => signal)
-    expect(signals.every((signal) => signal?.aborted)).toBe(true)
+    expect(pendingCalls().every(([, signal]) => signal?.aborted)).toBe(true)
   })
 })

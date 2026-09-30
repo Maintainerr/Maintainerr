@@ -378,6 +378,7 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
       tracearrStatsPath,
       !!tracearrUrl,
     )
+    const tautulliItemUrl = `${tautulliModalUrl}/info?rating_key=${id}&source=history`
     const providerLogo = useMemo(() => {
       if (!isCurrentBackdrop || !backdropResult.provider) return null
       const cfg = metadataProviderLogos[backdropResult.provider]
@@ -826,7 +827,7 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
                   {isPlex && tautulliModalUrl && (
                     <div className="hidden sm:block">
                       <a
-                        href={`${tautulliModalUrl}/info?rating_key=${id}&source=history`}
+                        href={tautulliItemUrl}
                         target="_blank"
                         rel="noreferrer"
                       >
@@ -927,7 +928,7 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
               <WatchStatsPanel
                 name="Tautulli"
                 path={`/tautulli/items/${id}`}
-                url={`${tautulliModalUrl}/info?rating_key=${id}&source=history`}
+                url={tautulliItemUrl}
                 toView={asWatchStatsView}
               />
             ) : null}
