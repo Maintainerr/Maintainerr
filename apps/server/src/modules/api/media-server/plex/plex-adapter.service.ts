@@ -862,10 +862,14 @@ export class PlexAdapterService implements IMediaServerService {
 
     // Short-circuit when the collection is already in the requested order:
     // skip both the prefs PUT and every move PUT. A failed read only skips
-    // the short-circuit; the reorder itself still proceeds.
+    // the short-circuit; the reorder itself still proceeds. Read past the
+    // cache, which still holds the order from before the last push.
     let currentChildren: PlexLibraryItem[] = [];
     try {
-      currentChildren = await this.plexApi.getCollectionChildren(collectionId);
+      currentChildren = await this.plexApi.getCollectionChildren(
+        collectionId,
+        false,
+      );
     } catch (error) {
       this.logger.debug(error);
     }
