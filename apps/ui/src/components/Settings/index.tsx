@@ -1,12 +1,7 @@
 import { Trans, useLingui } from '@lingui/react/macro'
 import { useEffect, useState } from 'react'
-import {
-  Navigate,
-  Outlet,
-  useLocation,
-  useOutletContext,
-} from 'react-router-dom'
-import { useSettings, type UseSettingsResult } from '../../api/settings'
+import { Navigate, Outlet, useLocation } from 'react-router-dom'
+import { useSettings } from '../../api/settings'
 import {
   hasCompletedMediaServerSetup,
   hasSelectedMediaServerType,
@@ -25,12 +20,8 @@ import ServiceLogo from '../Services/ServiceLogo'
 import { useServices } from '../Services/useServices'
 import SettingsTabs, { SettingsRoute } from './Tabs'
 
-export type SettingsOutletContext = {
-  settings: NonNullable<UseSettingsResult['data']>
-}
-
-export const useSettingsOutletContext = () =>
-  useOutletContext<SettingsOutletContext>()
+// In its own module, so an edit here hot-updates instead of reloading the page.
+export { useSettingsOutletContext } from './useSettingsOutletContext'
 
 // Shared by /settings and /services: both need the settings outlet context and
 // the same first-setup gating, and differ only in their tab row.
