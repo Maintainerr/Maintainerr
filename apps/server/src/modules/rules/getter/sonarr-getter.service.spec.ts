@@ -2257,6 +2257,56 @@ describe('SonarrGetterService', () => {
     });
   });
 
+  it.each([
+    [18, 23],
+    [22, 16],
+  ])(
+    'answers property %i for the episode its TVDB id names (#3819)',
+    async (propertyId, expected) => {
+      const collectionMedia = createCollectionMedia('episode');
+      collectionMedia.collection.sonarrSettingsId = 1;
+      mockMediaServer.getMetadata.mockResolvedValue(
+        createMediaItem({ type: 'show' }),
+      );
+      const sonarrApi = mockSonarrApi(
+        createSonarrSeries({
+          seasons: [
+            { seasonNumber: 1, monitored: true },
+            { seasonNumber: 23, monitored: true },
+          ],
+        }),
+      );
+      const episode = createSonarrEpisode({
+        seasonNumber: 23,
+        episodeNumber: 16,
+        tvdbId: 501,
+      });
+      jest
+        .spyOn(sonarrApi, 'getEpisodes')
+        .mockImplementation(async (_seriesId, seasonNumber) =>
+          seasonNumber === 1 ? [] : [episode],
+        );
+
+      const response = await sonarrGetterService.get(
+        propertyId,
+        createMediaItem({
+          type: 'episode',
+          parentIndex: 1,
+          index: 1171,
+          grandparentId: 'show-1',
+          providerIds: { tvdb: ['501'] },
+        }),
+        'episode',
+        createRuleGroupDto({
+          collection: collectionMedia.collection,
+          dataType: 'episode',
+        }),
+      );
+
+      expect(response).toBe(expected);
+    },
+  );
+
   describe('specials season', () => {
     it('resolves season 0 rather than reading it as no season', async () => {
       const collectionMedia = createCollectionMedia('season');

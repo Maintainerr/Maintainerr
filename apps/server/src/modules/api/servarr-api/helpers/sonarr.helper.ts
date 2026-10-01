@@ -1,3 +1,4 @@
+import { MediaItem } from '@maintainerr/contracts';
 import { assertApiKey, connectionTestConfig } from '../../lib/connectionTest';
 import { MaintainerrLogger } from '../../../logging/logs.service';
 import { SLOW_INSTANCE_TIMEOUT_MS } from '../../lib/httpTimeouts';
@@ -9,6 +10,24 @@ import {
   SonarrInfo,
   SonarrSeries,
 } from '../interfaces/sonarr.interface';
+
+/**
+ * The one Sonarr episode the item's TVDB episode id names. A media server can
+ * number an episode differently from Sonarr (#3819), so the id finds it
+ * wherever Sonarr files it. A legacy Plex agent files the series id under the
+ * episode, which is ignored.
+ */
+export const findEpisodeByTvdbId = (
+  episodes: SonarrEpisode[],
+  item: MediaItem,
+  seriesTvdbId: number,
+): SonarrEpisode | undefined => {
+  const ids = (item.providerIds?.tvdb ?? [])
+    .map(Number)
+    .filter((id) => id > 0 && id !== seriesTvdbId);
+  const matches = episodes.filter((episode) => ids.includes(episode.tvdbId));
+  return matches.length === 1 ? matches[0] : undefined;
+};
 
 export class SonarrApi extends ServarrApi<{
   seriesId: number;
@@ -281,7 +300,6 @@ export class SonarrApi extends ServarrApi<{
     episodeIds: number[],
     deleteFiles = true,
     airDate?: string | Date,
-    tvdbIds: number[] = [],
   ): Promise<boolean> {
     // Without a season number the episode read below drops its season filter,
     // so an episode number would match - and delete - that episode in every
@@ -303,13 +321,19 @@ export class SonarrApi extends ServarrApi<{
     }
 
     try {
-      const matchedEpisodes = await this.findEpisodes(
+      const episodes = await this.getEpisodes(
         seriesId,
         seasonNumber,
+        undefined,
+        {
+          fresh: true,
+        },
+      );
+
+      const matchedEpisodes = this.findEpisodesForAction(
+        episodes,
         validEpisodeIds,
         airDate,
-        tvdbIds,
-        { fresh: true },
       );
 
       if (!matchedEpisodes.length) {
@@ -319,16 +343,32 @@ export class SonarrApi extends ServarrApi<{
         return false;
       }
 
+      // A file can hold several episodes. Deleting it leaves all of them
+      // without it, so each is unmonitored, or Sonarr fetches the file again.
+      const fileIds = new Set(
+        matchedEpisodes.map((e) => e.episodeFileId).filter(Boolean),
+      );
+      const targets = deleteFiles
+        ? episodes.filter(
+            (e) => matchedEpisodes.includes(e) || fileIds.has(e.episodeFileId),
+          )
+        : matchedEpisodes;
+
       this.logger.log(
         `${!deleteFiles ? 'Unmonitoring' : 'Deleting'} ${
-          matchedEpisodes.length
+          targets.length
         } episode(s) from show with ID ${seriesId} from Sonarr.`,
       );
 
       let success = true;
-      for (const e of matchedEpisodes) {
+      const deletedFileIds = new Set<number>();
+      for (const e of targets) {
         success =
-          (await this.unmonitorAndDeleteEpisode(e, deleteFiles)) && success;
+          (await this.unmonitorAndDeleteEpisode(
+            e,
+            deleteFiles && !deletedFileIds.has(e.episodeFileId),
+          )) && success;
+        deletedFileIds.add(e.episodeFileId);
       }
 
       return success;
@@ -339,41 +379,6 @@ export class SonarrApi extends ServarrApi<{
       this.logger.debug(error);
       return false;
     }
-  }
-
-  /**
-   * The episodes an episode action targets. A media server can number an
-   * episode differently from Sonarr (#3819), so a TVDB episode id naming one
-   * episode wins wherever Sonarr files it; numbers stay in the item's season.
-   */
-  public async findEpisodes(
-    seriesId: number,
-    seasonNumber: number,
-    episodeNumbers: number[],
-    airDate: string | Date | undefined,
-    tvdbIds: number[],
-    options?: { fresh?: boolean },
-  ): Promise<SonarrEpisode[]> {
-    const byTvdbId = (episodes: SonarrEpisode[]) => {
-      const matches = episodes.filter((e) => tvdbIds.includes(e.tvdbId));
-      return matches.length === 1 ? matches : undefined;
-    };
-    const season = await this.getEpisodes(
-      seriesId,
-      seasonNumber,
-      undefined,
-      options,
-    );
-
-    return (
-      byTvdbId(season) ??
-      (tvdbIds.length
-        ? byTvdbId(
-            await this.getEpisodes(seriesId, undefined, undefined, options),
-          )
-        : undefined) ??
-      this.findEpisodesForAction(season, episodeNumbers, airDate)
-    );
   }
 
   /**

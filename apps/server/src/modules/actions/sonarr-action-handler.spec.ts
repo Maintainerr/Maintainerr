@@ -4,6 +4,7 @@ import { TestBed } from '@suites/unit';
 import {
   createCollection,
   createCollectionMediaWithMetadata,
+  createSonarrEpisode,
   createSonarrSeries,
 } from '../../../test/utils/data';
 import {
@@ -1345,7 +1346,6 @@ describe('SonarrActionHandler', () => {
       [collectionMedia.mediaData.index],
       true,
       undefined,
-      collectionMedia.mediaData.providerIds.tvdb.map(Number),
     );
   });
 
@@ -1382,7 +1382,46 @@ describe('SonarrActionHandler', () => {
       [],
       true,
       airDate,
-      collectionMedia.mediaData.providerIds.tvdb.map(Number),
+    );
+  });
+
+  it("acts on the episode the item's TVDB id names, by Sonarr's numbers (#3819)", async () => {
+    const collection = createCollection({
+      arrAction: ServarrAction.DELETE,
+      sonarrSettingsId: 1,
+      type: 'episode',
+    });
+    const collectionMedia = createCollectionMediaWithMetadata(collection, {
+      tmdbId: 1,
+      mediaData: {
+        parentIndex: 1,
+        index: 1171,
+        providerIds: { tvdb: ['501'] },
+      },
+    });
+    mockMediaServerMetadata(collectionMedia.mediaData);
+    const series = createSonarrSeries();
+    const mockedSonarrApi = mockSonarrApi(servarrService, logger);
+    jest.spyOn(mockedSonarrApi, 'getSeriesByTvdbId').mockResolvedValue(series);
+    jest
+      .spyOn(mockedSonarrApi, 'getEpisodes')
+      .mockResolvedValue([
+        createSonarrEpisode({
+          seasonNumber: 23,
+          episodeNumber: 16,
+          tvdbId: 501,
+        }),
+      ]);
+    mediaIdFinder.findTvdbId.mockResolvedValue(1);
+
+    await sonarrActionHandler.handleAction(collection, collectionMedia);
+
+    expect(mockedSonarrApi.UnmonitorDeleteEpisodes).toHaveBeenCalledWith(
+      series.id,
+      23,
+      [16],
+      true,
+      undefined,
     );
   });
 
@@ -1495,12 +1534,11 @@ describe('SonarrActionHandler', () => {
     });
     const collectionMedia = createCollectionMediaWithMetadata(collection, {
       tmdbId: 1,
-      mediaData: { providerIds: { tvdb: ['100', 'x', '501'] } },
     });
 
     mockMediaServerMetadata(collectionMedia.mediaData);
 
-    const series = createSonarrSeries({ tvdbId: 100 });
+    const series = createSonarrSeries();
 
     const mockedSonarrApi = mockSonarrApi(servarrService, logger);
     jest.spyOn(mockedSonarrApi, 'getSeriesByTvdbId').mockResolvedValue(series);
@@ -1521,7 +1559,6 @@ describe('SonarrActionHandler', () => {
       [collectionMedia.mediaData.index],
       false,
       undefined,
-      [501],
     );
   });
 
@@ -2260,41 +2297,36 @@ describe('SonarrActionHandler', () => {
         mockMediaServerMetadata(collectionMedia.mediaData);
         const { series, mockedSonarrApi } = setupSeries();
         jest
-          .spyOn(mockedSonarrApi, 'findEpisodes')
+          .spyOn(mockedSonarrApi, 'getEpisodes')
           .mockResolvedValue(episodeIds.map((id) => ({ id })) as never);
         jest
           .spyOn(mockedSonarrApi, 'getSeriesDownloadHistory')
           .mockResolvedValue(history);
 
         await sonarrActionHandler.handleAction(collection, collectionMedia);
-        return { series, mockedSonarrApi, collectionMedia };
+        return { series, mockedSonarrApi };
       };
 
       it('removes a single-episode torrent', async () => {
-        const { series, mockedSonarrApi, collectionMedia } =
-          await runEpisodeDelete(
-            1,
-            3,
-            [33],
-            [{ hash: 'hash-e3', episodeId: 33 }],
-          );
-        const tvdbIds = collectionMedia.mediaData.providerIds.tvdb.map(Number);
+        const { series, mockedSonarrApi } = await runEpisodeDelete(
+          1,
+          3,
+          [33],
+          [{ hash: 'hash-e3', episodeId: 33 }],
+        );
 
-        // The episode(s) fed to coverage must be the one(s) actually deleted.
-        expect(mockedSonarrApi.findEpisodes).toHaveBeenCalledWith(
+        expect(mockedSonarrApi.getEpisodes).toHaveBeenCalledWith(
           series.id,
           1,
           [3],
-          undefined,
-          tvdbIds,
         );
+        // The episode(s) fed to coverage must be the one(s) actually deleted.
         expect(mockedSonarrApi.UnmonitorDeleteEpisodes).toHaveBeenCalledWith(
           series.id,
           1,
           [3],
           true,
           undefined,
-          tvdbIds,
         );
         expect(downloadClient.removeDownloads).toHaveBeenCalledWith([
           'hash-e3',
@@ -2370,7 +2402,7 @@ describe('SonarrActionHandler', () => {
           .spyOn(mockedSonarrApi, 'UnmonitorDeleteEpisodes')
           .mockResolvedValue(false);
         jest
-          .spyOn(mockedSonarrApi, 'findEpisodes')
+          .spyOn(mockedSonarrApi, 'getEpisodes')
           .mockResolvedValue([{ id: 33 }] as never);
         jest
           .spyOn(mockedSonarrApi, 'getSeriesDownloadHistory')
@@ -2411,6 +2443,29 @@ describe('SonarrActionHandler', () => {
           ],
         );
 
+        expect(downloadClient.removeDownloads).toHaveBeenCalledWith([]);
+      });
+
+      it('skips cleanup for an air-date-only episode (no episode number)', async () => {
+        const collection = createCollection({
+          arrAction: ServarrAction.DELETE,
+          sonarrSettingsId: 1,
+          type: 'episode',
+        });
+        const collectionMedia = createCollectionMediaWithMetadata(collection, {
+          tmdbId: 1,
+          mediaData: {
+            parentIndex: 1,
+            index: undefined,
+            originallyAvailableAt: new Date('2020-01-01'),
+          },
+        });
+        mockMediaServerMetadata(collectionMedia.mediaData);
+        const { mockedSonarrApi } = setupSeries();
+
+        await sonarrActionHandler.handleAction(collection, collectionMedia);
+
+        expect(mockedSonarrApi.getEpisodes).not.toHaveBeenCalled();
         expect(downloadClient.removeDownloads).toHaveBeenCalledWith([]);
       });
 

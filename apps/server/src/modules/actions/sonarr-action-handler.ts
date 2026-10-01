@@ -9,6 +9,7 @@ import { DownloadClientApiService } from '../api/download-client-api/download-cl
 import { MediaServerFactory } from '../api/media-server/media-server.factory';
 import { OmbiApiService } from '../api/ombi-api/ombi-api.service';
 import { SeerrApiService } from '../api/seerr-api/seerr-api.service';
+import { findEpisodeByTvdbId } from '../api/servarr-api/helpers/sonarr.helper';
 import {
   SonarrEpisode,
   SonarrSeries,
@@ -173,6 +174,26 @@ export class SonarrActionHandler {
       media.tmdbId ??= sonarrMedia.tmdbId;
     }
 
+    // A media server can number an episode differently from Sonarr (#3819).
+    // When its TVDB id names one Sonarr episode, everything below acts on
+    // that episode by Sonarr's numbers; otherwise by the media server's.
+    if (collection.type === 'episode' && mediaData?.index !== undefined) {
+      const episode = await this.matchEpisodeByTvdbId(
+        sonarrApiClient,
+        sonarrMedia,
+        mediaData,
+        collection.sonarrSettingsId,
+        libraryReads,
+      );
+      if (episode) {
+        mediaData = {
+          ...mediaData,
+          parentIndex: episode.seasonNumber,
+          index: episode.episodeNumber,
+        };
+      }
+    }
+
     // Capture the download ids before any delete (the history is consumed
     // afterwards). A whole-show delete removes every torrent the series
     // produced; a season/episode delete removes only the torrents fully covered
@@ -288,10 +309,7 @@ export class SonarrActionHandler {
             );
             return true;
           case 'episode': {
-            const episodeLookup = this.getEpisodeLookup(
-              mediaData,
-              sonarrMedia.tvdbId,
-            );
+            const episodeLookup = this.getEpisodeLookup(mediaData);
 
             if (!episodeLookup) {
               this.logger.warn(
@@ -307,7 +325,6 @@ export class SonarrActionHandler {
                 episodeLookup.episodeNumbers,
                 true,
                 episodeLookup.airDate,
-                episodeLookup.tvdbIds,
               ))
             ) {
               return false;
@@ -377,10 +394,7 @@ export class SonarrActionHandler {
             );
             return true;
           case 'episode': {
-            const episodeLookup = this.getEpisodeLookup(
-              mediaData,
-              sonarrMedia.tvdbId,
-            );
+            const episodeLookup = this.getEpisodeLookup(mediaData);
 
             if (!episodeLookup) {
               this.logger.warn(
@@ -396,7 +410,6 @@ export class SonarrActionHandler {
                 episodeLookup.episodeNumbers,
                 false,
                 episodeLookup.airDate,
-                episodeLookup.tvdbIds,
               ))
             ) {
               return false;
@@ -597,19 +610,17 @@ export class SonarrActionHandler {
           seasonNumber,
         );
       } else {
-        const lookup = this.getEpisodeLookup(mediaData, sonarrMedia.tvdbId);
-        if (!lookup) {
+        const lookup = this.getEpisodeLookup(mediaData);
+        if (!lookup || lookup.episodeNumbers.length === 0) {
           this.logger.debug(
-            `[Sonarr] Skipping download cleanup for '${sonarrMedia.title}': episode(s) could not be identified.`,
+            `[Sonarr] Skipping download cleanup for '${sonarrMedia.title}': episode(s) could not be identified (e.g. air-date only).`,
           );
           return [];
         }
-        deletedEpisodes = await sonarrApiClient.findEpisodes(
+        deletedEpisodes = await sonarrApiClient.getEpisodes(
           sonarrMedia.id,
           lookup.seasonNumber,
           lookup.episodeNumbers,
-          lookup.airDate,
-          lookup.tvdbIds,
         );
       }
 
@@ -780,31 +791,48 @@ export class SonarrActionHandler {
     }
   }
 
-  private getEpisodeLookup(
-    mediaData: MediaItem | undefined,
-    seriesTvdbId: number,
-  ):
+  private async matchEpisodeByTvdbId(
+    sonarrApiClient: Awaited<ReturnType<ServarrService['getSonarrApiClient']>>,
+    sonarrMedia: SonarrSeries,
+    mediaData: MediaItem,
+    settingsId: number,
+    libraryReads?: ArrLookupCache,
+  ): Promise<SonarrEpisode | undefined> {
+    if (!mediaData.providerIds?.tvdb?.length) {
+      return undefined;
+    }
+
+    const listEpisodes = () => sonarrApiClient.getEpisodes(sonarrMedia.id);
+    try {
+      const episodes = await (libraryReads
+        ? libraryReads.memoize(
+            `sonarr:${settingsId}:episodes-all:${sonarrMedia.id}`,
+            listEpisodes,
+            (episodes) => episodes === undefined,
+          )
+        : listEpisodes());
+      return findEpisodeByTvdbId(episodes ?? [], mediaData, sonarrMedia.tvdbId);
+    } catch (error) {
+      this.logger.debug(error);
+      return undefined;
+    }
+  }
+
+  private getEpisodeLookup(mediaData?: MediaItem):
     | {
         seasonNumber: number;
         episodeNumbers: number[];
         airDate?: Date;
-        tvdbIds: number[];
       }
     | undefined {
     if (mediaData?.parentIndex === undefined) {
       return undefined;
     }
 
-    // A legacy Plex agent files the series id under the episode's tvdb.
-    const tvdbIds = (mediaData.providerIds?.tvdb ?? [])
-      .map(Number)
-      .filter((id) => Number.isInteger(id) && id > 0 && id !== seriesTvdbId);
-
     if (mediaData.index !== undefined) {
       return {
         seasonNumber: mediaData.parentIndex,
         episodeNumbers: [mediaData.index],
-        tvdbIds,
       };
     }
 
@@ -813,7 +841,6 @@ export class SonarrActionHandler {
         seasonNumber: mediaData.parentIndex,
         episodeNumbers: [],
         airDate: mediaData.originallyAvailableAt,
-        tvdbIds,
       };
     }
 

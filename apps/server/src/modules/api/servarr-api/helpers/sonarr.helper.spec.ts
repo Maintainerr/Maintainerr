@@ -254,71 +254,31 @@ describe('SonarrApi', () => {
     );
   });
 
-  it.each([
-    ['the id over a number naming another episode', 3, [102], 12, 0],
-    ['the id Sonarr files in another season', 1171, [501], 2316, 1],
-    ['the number, in its season, when no episode has the id', 2, [999], 12, 1],
-  ])(
-    'acts on %s (#3819)',
-    async (_case, episodeNumber, tvdbIds, episodeId, seriesWideReads) => {
-      const series = [
-        createSonarrEpisode({
-          id: 12,
-          seasonNumber: 1,
-          episodeNumber: 2,
-          tvdbId: 102,
-        }),
-        createSonarrEpisode({
-          id: 13,
-          seasonNumber: 1,
-          episodeNumber: 3,
-          tvdbId: 103,
-        }),
-        createSonarrEpisode({
-          id: 2302,
-          seasonNumber: 23,
-          episodeNumber: 2,
-          tvdbId: 302,
-        }),
-        createSonarrEpisode({
-          id: 2316,
-          seasonNumber: 23,
-          episodeNumber: 16,
-          tvdbId: 501,
-        }),
-      ];
-      const getSpy = jest
-        .spyOn(sonarrApi, 'getEpisodes')
-        .mockImplementation(async (_seriesId, seasonNumber) =>
-          seasonNumber === undefined
-            ? series
-            : series.filter((e) => e.seasonNumber === seasonNumber),
-        );
-      const runPutSpy = jest
-        .spyOn(sonarrApi as any, 'runPut')
-        .mockResolvedValue(true);
-
-      await expect(
-        sonarrApi.UnmonitorDeleteEpisodes(
-          1,
-          1,
-          [episodeNumber],
-          false,
-          undefined,
-          tvdbIds,
-        ),
-      ).resolves.toBe(true);
-
-      expect(runPutSpy.mock.calls.map(([path]) => path)).toEqual([
-        `episode/${episodeId}`,
+  it('unmonitors every episode a deleted file holds and deletes the file once', async () => {
+    jest
+      .spyOn(sonarrApi, 'getEpisodes')
+      .mockResolvedValue([
+        createSonarrEpisode({ id: 1, episodeNumber: 1, episodeFileId: 9 }),
+        createSonarrEpisode({ id: 2, episodeNumber: 2, episodeFileId: 9 }),
+        createSonarrEpisode({ id: 3, episodeNumber: 3, episodeFileId: 10 }),
       ]);
-      expect(
-        getSpy.mock.calls.filter(
-          ([, seasonNumber]) => seasonNumber === undefined,
-        ),
-      ).toHaveLength(seriesWideReads);
-    },
-  );
+    const runPutSpy = jest
+      .spyOn(sonarrApi as any, 'runPut')
+      .mockResolvedValue(true);
+    const runDeleteSpy = jest
+      .spyOn(sonarrApi as any, 'runDelete')
+      .mockResolvedValue(true);
+
+    await expect(sonarrApi.UnmonitorDeleteEpisodes(1, 1, [1])).resolves.toBe(
+      true,
+    );
+
+    expect(runPutSpy.mock.calls.map(([path]) => path)).toEqual([
+      'episode/1',
+      'episode/2',
+    ]);
+    expect(runDeleteSpy.mock.calls).toEqual([['episodefile/9']]);
+  });
 
   it('should refuse a season scope that is not "all", "existing" or a number (#3415)', async () => {
     const axiosGetSpy = jest.spyOn((sonarrApi as any).axios, 'get');
