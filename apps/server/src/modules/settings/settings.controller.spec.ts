@@ -186,17 +186,18 @@ describe('SettingsController', () => {
   });
 
   it.each([
-    'getRadarrSettings',
-    'getSonarrSettings',
-    'getSportarrSettings',
-  ] as const)('fails %s when the list cannot be read', async (read) => {
+    ['getSettings', 'getPublicSettings'],
+    ['getRadarrSettings', 'getRadarrSettings'],
+    ['getSonarrSettings', 'getSonarrSettings'],
+    ['getSportarrSettings', 'getSportarrSettings'],
+  ] as const)('fails %s when the read fails', async (method, read) => {
     settingsOperationsService[read].mockResolvedValue({
       status: 'NOK',
       code: 0,
       message: 'SqliteError: database is locked',
     });
 
-    await expect(controller[read]()).rejects.toBeInstanceOf(
+    await expect(controller[method]()).rejects.toBeInstanceOf(
       InternalServerErrorException,
     );
   });

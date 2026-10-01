@@ -4065,6 +4065,7 @@ msgstr "La página «Registros» permanece disponible durante la configuración 
 msgid "The media server has no user named ''{username}''"
 msgstr "El servidor de medios no tiene ningún usuario llamado ''{username}''"
 
+#: src/components/Rules/RuleGroup/AddModal/ConfigureNotificationModal/index.tsx
 #: src/components/Settings/Notifications/index.tsx
 msgid "The notification agents could not be loaded."
 msgstr ""

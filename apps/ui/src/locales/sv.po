@@ -4065,6 +4065,7 @@ msgstr "Loggsidan är tillgänglig under konfigurationen om du behöver felsöka
 msgid "The media server has no user named ''{username}''"
 msgstr "Mediaservern har ingen användare med namnet ''{username}''"
 
+#: src/components/Rules/RuleGroup/AddModal/ConfigureNotificationModal/index.tsx
 #: src/components/Settings/Notifications/index.tsx
 msgid "The notification agents could not be loaded."
 msgstr ""

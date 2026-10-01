@@ -96,8 +96,14 @@ export class SettingsController {
   ) {}
 
   @Get()
-  getSettings() {
-    return this.settingsOperationsService.getPublicSettings();
+  async getSettings() {
+    const settings = await this.settingsOperationsService.getPublicSettings();
+    // Read as settings, the error object looks like an unconfigured install
+    // and sends the UI to setup.
+    if (settings && 'status' in settings) {
+      throw new InternalServerErrorException('The settings could not be read');
+    }
+    return settings;
   }
   @Get('/radarr')
   async getRadarrSettings() {

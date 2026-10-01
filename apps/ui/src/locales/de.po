@@ -4065,6 +4065,7 @@ msgstr "Die Protokollseite bleibt während der Einrichtung verfügbar, falls du 
 msgid "The media server has no user named ''{username}''"
 msgstr "Der Medienserver hat keinen Benutzer namens ''{username}''"
 
+#: src/components/Rules/RuleGroup/AddModal/ConfigureNotificationModal/index.tsx
 #: src/components/Settings/Notifications/index.tsx
 msgid "The notification agents could not be loaded."
 msgstr ""
