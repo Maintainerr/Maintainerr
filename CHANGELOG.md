@@ -1,3 +1,70 @@
+# [3.30.0](https://github.com/Maintainerr/Maintainerr/compare/v3.29.0...v3.30.0) (2026-10-01)
+
+
+### Database migrations
+
+- `1790189908091-AddOmbiSettings.ts`
+- `1790456691255-MoveExclusionTagToServers.ts`
+
+### Features
+
+- feat(ui): move service settings into a Services section (#3793)
+- feat: add Ombi as a request service alongside Seerr (#3779)
+- feat(rules): sort the rules page with the shared sort control (#3773)
+- feat: sort media by the date it was added to the media server (#3771)
+- feat(ui): show Tautulli and Tracearr watch statistics on the media modal (#3762)
+
+### Fixes
+
+- fix(streamystats): explain a rejected Jellyfin key on the connection test (#3862) (#3863)
+- fix(streamystats): explain a rejected Jellyfin key on the connection test (#3862)
+- fix(deps): patch the axios, nodemailer and brace-expansion advisories (#3860)
+- fix(sonarr): match episodes by their TVDB id in rules and actions (#3857)
+- fix(watch-stats): read the Streamystats panel past the cache (#3859)
+- fix(services): redirect hidden service pages to the services hub (#3858)
+- fix(plex): check a collection's order against Plex, not the cache (#3850)
+- fix(settings): reject Ombi in the Seerr test, check Tautulli like Seerr (#3849)
+- fix(settings): report unreadable settings and *arr lists as errors (#3847)
+- fix(logs): write and read logs under DATA_DIR (#3835)
+- fix(collections): sort a shared item by its earliest add date (#3834)
+- fix(watch-stats): confirm the Tracearr server, read fresh, cancel on close (#3833)
+- fix(notifications): fix agent switching, the webhook default and option help (#3832)
+- fix(services): survive an unreadable agent list, prefetch the right page (#3831)
+- fix(settings): check the Plex manual URL and keep typed service URLs (#3830)
+- fix(settings): log why connection tests fail, give the daily check 60 s (#3828)
+- fix(requests): match requests by media type and stop silent removal skips (#3827)
+- fix(tags): keep shared *arr labels and untag every membership change (#3826)
+- fix(deps): patch the multer, undici and nodemailer advisories (#3820)
+- fix(emby): read dates and ratings for collection grids and search results (#3812) (#3813)
+- fix(emby): read dates and ratings for collection grids and search results (#3812)
+- fix(collections): sort shared Plex collections across every linked rule group (#3811)
+- fix(servarr): match items in the *arr library when metadata providers cannot (#3801)
+- fix(overlays): skip uploading overlay artwork that is already current (#3797)
+- fix: standardize service connection tests and settings (#3795)
+- fix(ui): standard buttons and labels on the service pages (#3794)
+- fix(collections): remove the *arr membership tag when an item leaves the collection (#3781)
+- fix(ui): describe the movie action in the trigger rule action prompt (#3763)
+
+### Refactors
+
+- refactor(ui): break the router import cycle that failed hot updates (#3846)
+
+### Other
+
+- docs: test from /workspace and stop recommending migration:revert (#3836)
+- docs: clarify PR workflow and validation guidance (#3800)
+- docs: describe the devbox podman socket and refresh the environment facts (#3818)
+- docs(readme): thank backers above the backers image (#3772)
+- docs(readme): add backers, storage savings pitch and maintainer years (#3772)
+
+### Dependencies
+
+- 67 dependency updates (dompurify, turbo, @eslint-react/eslint-plugin, nestjs, @types/node, nodemailer, openpgp, sharp, moment, brace-expansion, …)
+
+
+## New Contributors
+* @mrhard9090 made their first contribution in https://github.com/Maintainerr/Maintainerr/pull/3781
+
 # [3.29.0](https://github.com/Maintainerr/Maintainerr/compare/v3.28.0...v3.29.0) (2026-09-16)
 
 
