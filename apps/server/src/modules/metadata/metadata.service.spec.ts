@@ -493,6 +493,42 @@ describe('MetadataService', () => {
     });
   });
 
+  it("never reads an episode's own TVDB id as the show's (#3819)", async () => {
+    const episodeItem = createMediaItem({
+      id: 'episode-9',
+      type: 'episode',
+      index: 9,
+      parentIndex: 1,
+      grandparentId: 'show-1',
+      providerIds: { tvdb: ['900'] },
+    });
+    const showItem = createMediaItem({
+      id: 'show-1',
+      type: 'show',
+      providerIds: { tmdb: ['100'] },
+    });
+    const mediaServer = {
+      getMetadata: jest
+        .fn()
+        .mockImplementation((id: string) =>
+          Promise.resolve(id === 'episode-9' ? episodeItem : showItem),
+        ),
+    };
+    const { service, tvdbProvider } = createService({ mediaServer });
+
+    await service.getBackdropUrl(
+      { tmdb: 100, tvdb: 900 },
+      'tv',
+      'w1280',
+      'episode-9',
+    );
+
+    expect(tvdbProvider.getDetails).not.toHaveBeenCalledWith(
+      900,
+      expect.anything(),
+    );
+  });
+
   it('falls back to original IDs when mediaServer lookup fails', async () => {
     const mediaServer = {
       getMetadata: jest.fn().mockRejectedValue(new Error('connection failed')),

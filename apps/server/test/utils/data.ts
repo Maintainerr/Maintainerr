@@ -551,6 +551,7 @@ export const createSonarrEpisode = (
 ): SonarrEpisode => ({
   id: faker.number.int(),
   seriesId: faker.number.int(),
+  tvdbId: faker.number.int(),
   seasonNumber: faker.number.int(),
   episodeNumber: faker.number.int(),
   airDate: faker.date.past().toISOString().split('T')[0],

@@ -917,8 +917,9 @@ export class MetadataService {
       }
 
       const showIds = this.extractDirectIds(show);
-      // Merge show-level IDs over the original, keeping 'type' from original
-      const merged: ProviderIds = { ...ids };
+      // The show's IDs only, keeping 'type' from original: an ID the item
+      // carries for itself, such as a TVDB episode ID, names no show (#3819).
+      const merged: ProviderIds = { type: ids.type };
       for (const [key, value] of Object.entries(showIds)) {
         if (key !== 'type' && value !== undefined) {
           merged[key] = value;

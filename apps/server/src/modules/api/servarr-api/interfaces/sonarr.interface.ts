@@ -36,6 +36,7 @@ export interface SonarrEpisode {
   airDate: string;
   airDateUtc: string;
   seriesId: number;
+  tvdbId: number;
   seasonNumber: number;
   episodeNumber: number;
   episodeFileId: number; // 0 if not downloaded

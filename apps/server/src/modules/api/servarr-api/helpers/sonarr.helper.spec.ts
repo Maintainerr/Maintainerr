@@ -254,6 +254,54 @@ describe('SonarrApi', () => {
     );
   });
 
+  it('unmonitors every episode a deleted file holds and deletes the file once', async () => {
+    jest
+      .spyOn(sonarrApi, 'getEpisodes')
+      .mockResolvedValue([
+        createSonarrEpisode({ id: 1, episodeNumber: 1, episodeFileId: 9 }),
+        createSonarrEpisode({ id: 2, episodeNumber: 2, episodeFileId: 9 }),
+        createSonarrEpisode({ id: 3, episodeNumber: 3, episodeFileId: 10 }),
+      ]);
+    const runPutSpy = jest
+      .spyOn(sonarrApi as any, 'runPut')
+      .mockResolvedValue(true);
+    const runDeleteSpy = jest
+      .spyOn(sonarrApi as any, 'runDelete')
+      .mockResolvedValue(true);
+
+    await expect(sonarrApi.UnmonitorDeleteEpisodes(1, 1, [1])).resolves.toBe(
+      true,
+    );
+
+    expect(runPutSpy.mock.calls.map(([path]) => path)).toEqual([
+      'episode/1',
+      'episode/2',
+    ]);
+    expect(runDeleteSpy.mock.calls).toEqual([['episodefile/9']]);
+  });
+
+  it('keeps a shared file while an episode on it may still be monitored', async () => {
+    jest
+      .spyOn(sonarrApi, 'getEpisodes')
+      .mockResolvedValue([
+        createSonarrEpisode({ id: 1, episodeNumber: 1, episodeFileId: 9 }),
+        createSonarrEpisode({ id: 2, episodeNumber: 2, episodeFileId: 9 }),
+      ]);
+    jest
+      .spyOn(sonarrApi as any, 'runPut')
+      .mockImplementation(async (path) => path !== 'episode/2');
+    jest
+      .spyOn(sonarrApi as any, 'getWithoutCache')
+      .mockResolvedValue(createSonarrEpisode({ id: 2, monitored: true }));
+    const runDeleteSpy = jest.spyOn(sonarrApi as any, 'runDelete');
+
+    await expect(sonarrApi.UnmonitorDeleteEpisodes(1, 1, [2])).resolves.toBe(
+      false,
+    );
+
+    expect(runDeleteSpy).not.toHaveBeenCalled();
+  });
+
   it('should refuse a season scope that is not "all", "existing" or a number (#3415)', async () => {
     const axiosGetSpy = jest.spyOn((sonarrApi as any).axios, 'get');
     const runPutSpy = jest.spyOn(sonarrApi as any, 'runPut');
