@@ -39,10 +39,6 @@ vi.mock('../api/rules', () => ({
   useRuleGroupForCollection: vi.fn(),
 }))
 
-vi.mock('../router', () => ({
-  prefetchRoute: vi.fn(),
-}))
-
 vi.mock('../utils/ClientLogger', () => ({
   logClientError: vi.fn(),
 }))

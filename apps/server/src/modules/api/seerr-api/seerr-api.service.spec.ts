@@ -23,6 +23,19 @@ describe('SeerrApiService', () => {
     settings.seerrConfigured.mockReturnValue(true);
   });
 
+  it('fails a connection test that Ombi answers', async () => {
+    settings.seerr_api_key = 'key';
+    service.api = {
+      getRawWithoutCache: jest
+        .fn()
+        .mockResolvedValue({ data: { version: '4.53.10', branch: 'master' } }),
+    } as never;
+
+    await expect(service.testConnection()).resolves.toMatchObject({
+      status: 'NOK',
+    });
+  });
+
   it('should return false when no other requested seasons remain', async () => {
     jest.spyOn(service, 'getShow').mockResolvedValue({
       id: 1,

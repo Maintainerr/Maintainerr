@@ -3,7 +3,7 @@ import {
   radarrSettingSchema,
   seerrSettingSchema,
 } from '@maintainerr/contracts';
-import { StreamableFile } from '@nestjs/common';
+import { InternalServerErrorException, StreamableFile } from '@nestjs/common';
 import { Response } from 'express';
 import { createReadStream } from 'fs';
 import { ZodValidationPipe } from 'nestjs-zod';
@@ -31,6 +31,9 @@ describe('SettingsController', () => {
     testPlexAuthToken: jest.fn(),
     removeJellyfinSettings: jest.fn(),
     getTracearrServers: jest.fn(),
+    getRadarrSettings: jest.fn(),
+    getSonarrSettings: jest.fn(),
+    getSportarrSettings: jest.fn(),
   } as unknown as jest.Mocked<SettingsOperationsService>;
 
   const settingsDataService = {
@@ -179,6 +182,23 @@ describe('SettingsController', () => {
 
         await expect(controller[method]()).resolves.toEqual(response);
       },
+    );
+  });
+
+  it.each([
+    ['getSettings', 'getPublicSettings'],
+    ['getRadarrSettings', 'getRadarrSettings'],
+    ['getSonarrSettings', 'getSonarrSettings'],
+    ['getSportarrSettings', 'getSportarrSettings'],
+  ] as const)('fails %s when the read fails', async (method, read) => {
+    settingsOperationsService[read].mockResolvedValue({
+      status: 'NOK',
+      code: 0,
+      message: 'SqliteError: database is locked',
+    });
+
+    await expect(controller[method]()).rejects.toBeInstanceOf(
+      InternalServerErrorException,
     );
   });
 

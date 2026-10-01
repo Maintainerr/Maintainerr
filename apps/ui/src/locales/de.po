@@ -4065,6 +4065,7 @@ msgstr "Die Protokollseite bleibt während der Einrichtung verfügbar, falls du 
 msgid "The media server has no user named ''{username}''"
 msgstr "Der Medienserver hat keinen Benutzer namens ''{username}''"
 
+#: src/components/Rules/RuleGroup/AddModal/ConfigureNotificationModal/index.tsx
 #: src/components/Settings/Notifications/index.tsx
 msgid "The notification agents could not be loaded."
 msgstr ""
@@ -4108,6 +4109,10 @@ msgstr "Die Auswahl enthält verschiedene Medientypen, daher können darauf nur 
 #: src/components/Common/MediaActionModal.tsx
 msgid "The selection spans more than one library, so only exclusions can be applied to it."
 msgstr "Die Auswahl umfasst mehr als eine Bibliothek, daher können darauf nur Ausschlüsse angewendet werden."
+
+#: src/components/Settings/Servarr/ServarrSettings.tsx
+msgid "The server list could not be loaded."
+msgstr ""
 
 #: src/components/Layout/index.tsx
 msgid "The server returned an unexpected response."

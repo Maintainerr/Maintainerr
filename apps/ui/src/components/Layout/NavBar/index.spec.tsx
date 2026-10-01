@@ -5,10 +5,6 @@ import { MemoryRouter } from 'react-router-dom'
 import SearchContext from '../../../contexts/search-context'
 import NavBar from './index'
 
-vi.mock('../../../router', () => ({
-  prefetchHandlers: () => ({}),
-}))
-
 vi.mock('../MediaServerSetupGuard', () => ({
   useMediaServerSetupNavigationGuard: () => ({
     isRouteBlocked: () => false,
