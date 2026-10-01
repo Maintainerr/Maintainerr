@@ -386,7 +386,7 @@ export class SettingsDataService implements SettingDto {
   }
 
   public tautulliConfigured(): boolean {
-    return this.tautulli_url !== null && this.tautulli_api_key !== null;
+    return !!this.tautulli_url && !!this.tautulli_api_key;
   }
 
   public downloadClientConfigured(): boolean {

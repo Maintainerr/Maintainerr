@@ -162,6 +162,7 @@ interface SeerrStatus {
 
 interface SeerrAbout {
   version: string;
+  totalRequests: number;
 }
 
 export interface SeerrBasicApiResponse {
@@ -764,7 +765,11 @@ export class SeerrApiService {
         connectionTestConfig(),
       );
 
-      if (!response.data?.version) {
+      // Ombi serves this path too, for any key, so check a Seerr-only field.
+      if (
+        !response.data?.version ||
+        typeof response.data.totalRequests !== 'number'
+      ) {
         throw new Error(
           'Failure, an unexpected response was returned. The URL is likely incorrect.',
         );
