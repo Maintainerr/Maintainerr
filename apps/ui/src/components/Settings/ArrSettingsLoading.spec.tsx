@@ -87,4 +87,17 @@ describe.each([
       screen.getByRole('button', { name: `Add ${label} server` }),
     ).toBeTruthy()
   })
+
+  it('says the list failed to load instead of offering only Add', async () => {
+    getApiHandler.mockRejectedValue(new Error('Request failed'))
+
+    renderWithClient(<ServarrSettings service={service} />)
+
+    expect(
+      await screen.findByText('The server list could not be loaded.'),
+    ).toBeTruthy()
+    expect(
+      screen.queryByRole('button', { name: `Add ${label} server` }),
+    ).toBeNull()
+  })
 })

@@ -4065,6 +4065,7 @@ msgstr ""
 msgid "The media server has no user named ''{username}''"
 msgstr ""
 
+#: src/components/Rules/RuleGroup/AddModal/ConfigureNotificationModal/index.tsx
 #: src/components/Settings/Notifications/index.tsx
 msgid "The notification agents could not be loaded."
 msgstr ""
@@ -4107,6 +4108,10 @@ msgstr ""
 
 #: src/components/Common/MediaActionModal.tsx
 msgid "The selection spans more than one library, so only exclusions can be applied to it."
+msgstr ""
+
+#: src/components/Settings/Servarr/ServarrSettings.tsx
+msgid "The server list could not be loaded."
 msgstr ""
 
 #: src/components/Layout/index.tsx
