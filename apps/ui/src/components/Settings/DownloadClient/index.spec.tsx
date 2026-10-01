@@ -19,12 +19,25 @@ let downloadClientData: {
   download_client_delete_data: boolean
   download_client_fallback_ratio: number
 }
+let arrServers: { id: number }[]
 
 vi.mock('..', () => ({
   useSettingsOutletContext: () => ({ settings: { id: 1 } }),
 }))
 
+vi.mock('react-router-dom', async () => {
+  const actual =
+    await vi.importActual<typeof import('react-router-dom')>('react-router-dom')
+  return {
+    ...actual,
+    Navigate: ({ to }: { to: string }) => (
+      <div data-testid="navigate" data-to={to} />
+    ),
+  }
+})
+
 vi.mock('../../../api/settings', () => ({
+  useServarrSettings: () => ({ isSuccess: true, data: arrServers }),
   useDownloadClientSettings: () => ({ data: downloadClientData }),
   useTestDownloadClient: () => ({ mutateAsync: testMock, isPending: false }),
   useSaveDownloadClientSettings: () => ({
@@ -64,6 +77,17 @@ describe('DownloadClientSettings', () => {
       download_client_delete_data: true,
       download_client_fallback_ratio: 0.5,
     }
+    arrServers = [{ id: 1 }]
+  })
+
+  it('sends the page to the services hub without a Radarr, Sonarr or Sportarr server', () => {
+    arrServers = []
+
+    render(<DownloadClientSettings />)
+
+    expect(screen.getByTestId('navigate').getAttribute('data-to')).toBe(
+      '/services',
+    )
   })
 
   it('saves the connection settings as a contract payload', async () => {
