@@ -360,15 +360,29 @@ export class SonarrApi extends ServarrApi<{
         } episode(s) from show with ID ${seriesId} from Sonarr.`,
       );
 
+      // Every episode is unmonitored before any file goes, and a file goes
+      // only once all of its episodes are confirmed: one still monitored
+      // would fetch it again (#3228).
       let success = true;
-      const deletedFileIds = new Set<number>();
+      const keptFileIds = new Set<number>();
+      const confirmedFileIds = new Set<number>();
       for (const e of targets) {
-        success =
-          (await this.unmonitorAndDeleteEpisode(
-            e,
-            deleteFiles && !deletedFileIds.has(e.episodeFileId),
-          )) && success;
-        deletedFileIds.add(e.episodeFileId);
+        const unmonitored = await this.unmonitorEpisode(e, deleteFiles);
+        if (!unmonitored) {
+          success = false;
+          keptFileIds.add(e.episodeFileId);
+        } else if (unmonitored.episodeFileId) {
+          confirmedFileIds.add(unmonitored.episodeFileId);
+        }
+      }
+
+      if (deleteFiles) {
+        for (const fileId of confirmedFileIds) {
+          if (!keptFileIds.has(fileId)) {
+            success =
+              (await this.runDelete(`episodefile/${fileId}`)) && success;
+          }
+        }
       }
 
       return success;
@@ -426,8 +440,7 @@ export class SonarrApi extends ServarrApi<{
           ) {
             for (const e of episodes) {
               if (e.seasonNumber === s.seasonNumber && e.episodeFileId) {
-                success =
-                  (await this.unmonitorAndDeleteEpisode(e, false)) && success;
+                success = !!(await this.unmonitorEpisode(e, false)) && success;
               }
             }
           } else if (typeof type === 'number') {
@@ -493,45 +506,41 @@ export class SonarrApi extends ServarrApi<{
     ).data;
   }
 
-  private async unmonitorAndDeleteEpisode(
+  /**
+   * Unmonitors the episode. Resolves to it, re-read when the PUT's outcome was
+   * unknown, or to undefined when Sonarr may still be monitoring it.
+   */
+  private async unmonitorEpisode(
     episode: SonarrEpisode,
     deleteFiles: boolean,
-  ): Promise<boolean> {
-    let episodeFileId = episode.episodeFileId;
-
+  ): Promise<SonarrEpisode | undefined> {
     if (
-      !(await this.runPut(
+      await this.runPut(
         `episode/${episode.id}`,
         JSON.stringify({ ...episode, monitored: false }),
-      ))
+      )
     ) {
-      // A slow PUT can time out client-side even though Sonarr applied it
-      // (#3228): re-read the live state before deciding. Fail closed -
-      // deleting a still-monitored episode's file would trigger a re-download.
-      const live = await this.getWithoutCache<SonarrEpisode>(
-        `/episode/${episode.id}`,
-        { timeout: SLOW_INSTANCE_TIMEOUT_MS },
+      return episode;
+    }
+
+    // A slow PUT can time out client-side even though Sonarr applied it
+    // (#3228): re-read the live state before deciding. Fail closed -
+    // deleting a still-monitored episode's file would trigger a re-download.
+    const live = await this.getWithoutCache<SonarrEpisode>(
+      `/episode/${episode.id}`,
+      { timeout: SLOW_INSTANCE_TIMEOUT_MS },
+    );
+
+    if (live?.monitored !== false) {
+      this.logger.warn(
+        `Could not confirm episode ${episode.id} was unmonitored${
+          deleteFiles ? '; leaving its file in place' : ''
+        }.`,
       );
-
-      if (live?.monitored !== false) {
-        this.logger.warn(
-          `Could not confirm episode ${episode.id} was unmonitored${
-            deleteFiles ? '; leaving its file in place' : ''
-          }.`,
-        );
-        return false;
-      }
-
-      episodeFileId = live.episodeFileId;
+      return undefined;
     }
 
-    if (deleteFiles && episodeFileId) {
-      if (!(await this.runDelete(`episodefile/${episodeFileId}`))) {
-        return false;
-      }
-    }
-
-    return true;
+    return live;
   }
 
   private normalizeAirDate(airDate?: string | Date): string | undefined {
