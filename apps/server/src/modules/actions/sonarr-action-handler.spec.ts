@@ -1403,15 +1403,13 @@ describe('SonarrActionHandler', () => {
     const series = createSonarrSeries();
     const mockedSonarrApi = mockSonarrApi(servarrService, logger);
     jest.spyOn(mockedSonarrApi, 'getSeriesByTvdbId').mockResolvedValue(series);
-    jest
-      .spyOn(mockedSonarrApi, 'getEpisodes')
-      .mockResolvedValue([
-        createSonarrEpisode({
-          seasonNumber: 23,
-          episodeNumber: 16,
-          tvdbId: 501,
-        }),
-      ]);
+    jest.spyOn(mockedSonarrApi, 'getEpisodes').mockResolvedValue([
+      createSonarrEpisode({
+        seasonNumber: 23,
+        episodeNumber: 16,
+        tvdbId: 501,
+      }),
+    ]);
     mediaIdFinder.findTvdbId.mockResolvedValue(1);
 
     await sonarrActionHandler.handleAction(collection, collectionMedia);
