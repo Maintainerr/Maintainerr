@@ -1,6 +1,6 @@
 import React, { ReactNode } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { prefetchHandlers, prefetchRoute } from '../../../router'
+import { prefetchHandlers, prefetchRoute } from '../../../utils/routePrefetch'
 import { Select } from '../../Forms/Select'
 import { showMediaServerSetupRequiredToast } from '../../Layout/MediaServerSetupGuard'
 import { Trans, useLingui } from '@lingui/react/macro'

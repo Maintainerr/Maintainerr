@@ -11,7 +11,7 @@ vi.mock('../../utils/ApiHandler', () => ({
   default: (...args: unknown[]) => getApiHandler(...args),
 }))
 
-vi.mock('../../router', () => ({
+vi.mock('../../utils/routePrefetch', () => ({
   prefetchHandlers: (...args: unknown[]) => prefetchHandlers(...args),
 }))
 
