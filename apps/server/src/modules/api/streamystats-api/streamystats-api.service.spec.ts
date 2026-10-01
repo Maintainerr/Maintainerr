@@ -1,4 +1,5 @@
 import { Mocked, TestBed } from '@suites/unit';
+import { AxiosError, AxiosResponse } from 'axios';
 import { SettingsDataService } from '../../settings/settings-data.service';
 import { StreamystatsApiService } from './streamystats-api.service';
 
@@ -290,17 +291,24 @@ describe('StreamystatsApiService', () => {
       );
     });
 
-    it('rejects a reachable service that cannot authenticate with Jellyfin', async () => {
+    it('explains a rejected Jellyfin key with the Streamystats version it needs', async () => {
       apiMock.getRawWithoutCache
         .mockResolvedValueOnce({ data: { currentVersion: '2.18.0' } })
-        .mockRejectedValueOnce(new Error('Invalid API key'));
+        .mockRejectedValueOnce(
+          new AxiosError('rejected', 'ERR_BAD_REQUEST', undefined, undefined, {
+            status: 401,
+          } as AxiosResponse),
+        );
 
       await expect(
         service.testConnection({
           url: 'http://streamystats',
-          apiKey: 'invalid-key',
+          apiKey: 'jellyfin-key',
         }),
-      ).resolves.toMatchObject({ code: 0, message: 'Invalid API key' });
+      ).resolves.toMatchObject({
+        code: 0,
+        message: expect.stringContaining('Streamystats v2.18.1 or newer'),
+      });
     });
 
     it('rejects an unexpected protected response', async () => {

@@ -6,6 +6,7 @@ import {
   streamystatsWatchlistsResponseSchema,
 } from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
+import { isAxiosError } from 'axios';
 import { assertApiKey, connectionTestConfig } from '../lib/connectionTest';
 import { SettingsDataService } from '../../../modules/settings/settings-data.service';
 import {
@@ -234,15 +235,23 @@ export class StreamystatsApiService {
         );
       }
 
-      const watchlists = await api.getRawWithoutCache<unknown>(
-        '/api/watchlists',
-        {
+      const watchlists = await api
+        .getRawWithoutCache<unknown>('/api/watchlists', {
           ...config,
           headers: {
             Authorization: this.mediaBrowserAuthHeader(params.apiKey),
           },
-        },
-      );
+        })
+        .catch((error: unknown) => {
+          // Before v2.18.1, Streamystats accepts only Jellyfin user tokens here,
+          // so a valid server API key is rejected too.
+          if (isAxiosError(error) && error.response?.status === 401) {
+            throw new Error(
+              'Streamystats rejected the Jellyfin API key. It needs Streamystats v2.18.1 or newer (images on ghcr.io), connected to this Jellyfin server.',
+            );
+          }
+          throw error;
+        });
       if (
         !streamystatsWatchlistsResponseSchema.safeParse(watchlists.data).success
       ) {
