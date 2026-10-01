@@ -1315,6 +1315,10 @@ describe('PlexAdapterService', () => {
 
       await service.reorderCollectionItems('col123', ['a', 'b', 'c']);
 
+      expect(plexApi.getCollectionChildren).toHaveBeenCalledWith(
+        'col123',
+        false,
+      );
       expect(plexApi.setCollectionCustomSort).not.toHaveBeenCalled();
       expect(plexApi.moveCollectionItem).not.toHaveBeenCalled();
     });
