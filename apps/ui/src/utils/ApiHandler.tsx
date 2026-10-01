@@ -7,6 +7,7 @@ const ApiHandler = async <Response,>(
   url: string,
   payload: any = '',
   method: 'get' | 'post' | 'delete' | 'put' | 'patch' = 'get',
+  signal?: AbortSignal,
 ): Promise<Response> => {
   const fetcher = async (
     url: string,
@@ -15,7 +16,9 @@ const ApiHandler = async <Response,>(
   ) => {
     switch (method) {
       case 'get':
-        return (await axios.get<Response>(`${API_BASE_PATH}/api${url}`)).data
+        return (
+          await axios.get<Response>(`${API_BASE_PATH}/api${url}`, { signal })
+        ).data
       case 'post':
         return (
           await axios.post<Response>(`${API_BASE_PATH}/api${url}`, payload)
@@ -40,8 +43,11 @@ const ApiHandler = async <Response,>(
   return data
 }
 
-export const GetApiHandler = async <Response = any,>(url: string) => {
-  return await ApiHandler<Response>(url)
+export const GetApiHandler = async <Response = any,>(
+  url: string,
+  signal?: AbortSignal,
+) => {
+  return await ApiHandler<Response>(url, '', 'get', signal)
 }
 
 export const PostApiHandler = async <Response = any,>(

@@ -18,8 +18,6 @@ export interface NotificationAgentSpec {
     field: string
     type: string
     required: boolean
-    // Set where the field name alone would not say what the option does.
-    label?: string
     extraInfo: string
   }>
 }
