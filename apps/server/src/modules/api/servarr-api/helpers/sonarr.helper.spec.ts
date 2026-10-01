@@ -254,6 +254,72 @@ describe('SonarrApi', () => {
     );
   });
 
+  it.each([
+    ['the id over a number naming another episode', 3, [102], 12, 0],
+    ['the id Sonarr files in another season', 1171, [501], 2316, 1],
+    ['the number, in its season, when no episode has the id', 2, [999], 12, 1],
+  ])(
+    'acts on %s (#3819)',
+    async (_case, episodeNumber, tvdbIds, episodeId, seriesWideReads) => {
+      const series = [
+        createSonarrEpisode({
+          id: 12,
+          seasonNumber: 1,
+          episodeNumber: 2,
+          tvdbId: 102,
+        }),
+        createSonarrEpisode({
+          id: 13,
+          seasonNumber: 1,
+          episodeNumber: 3,
+          tvdbId: 103,
+        }),
+        createSonarrEpisode({
+          id: 2302,
+          seasonNumber: 23,
+          episodeNumber: 2,
+          tvdbId: 302,
+        }),
+        createSonarrEpisode({
+          id: 2316,
+          seasonNumber: 23,
+          episodeNumber: 16,
+          tvdbId: 501,
+        }),
+      ];
+      const getSpy = jest
+        .spyOn(sonarrApi, 'getEpisodes')
+        .mockImplementation(async (_seriesId, seasonNumber) =>
+          seasonNumber === undefined
+            ? series
+            : series.filter((e) => e.seasonNumber === seasonNumber),
+        );
+      const runPutSpy = jest
+        .spyOn(sonarrApi as any, 'runPut')
+        .mockResolvedValue(true);
+
+      await expect(
+        sonarrApi.UnmonitorDeleteEpisodes(
+          1,
+          1,
+          [episodeNumber],
+          false,
+          undefined,
+          tvdbIds,
+        ),
+      ).resolves.toBe(true);
+
+      expect(runPutSpy.mock.calls.map(([path]) => path)).toEqual([
+        `episode/${episodeId}`,
+      ]);
+      expect(
+        getSpy.mock.calls.filter(
+          ([, seasonNumber]) => seasonNumber === undefined,
+        ),
+      ).toHaveLength(seriesWideReads);
+    },
+  );
+
   it('should refuse a season scope that is not "all", "existing" or a number (#3415)', async () => {
     const axiosGetSpy = jest.spyOn((sonarrApi as any).axios, 'get');
     const runPutSpy = jest.spyOn(sonarrApi as any, 'runPut');

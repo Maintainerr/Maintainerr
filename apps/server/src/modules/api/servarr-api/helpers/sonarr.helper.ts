@@ -281,6 +281,7 @@ export class SonarrApi extends ServarrApi<{
     episodeIds: number[],
     deleteFiles = true,
     airDate?: string | Date,
+    tvdbIds: number[] = [],
   ): Promise<boolean> {
     // Without a season number the episode read below drops its season filter,
     // so an episode number would match - and delete - that episode in every
@@ -302,19 +303,13 @@ export class SonarrApi extends ServarrApi<{
     }
 
     try {
-      const episodes = await this.getEpisodes(
+      const matchedEpisodes = await this.findEpisodes(
         seriesId,
         seasonNumber,
-        undefined,
-        {
-          fresh: true,
-        },
-      );
-
-      const matchedEpisodes = this.findEpisodesForAction(
-        episodes,
         validEpisodeIds,
         airDate,
+        tvdbIds,
+        { fresh: true },
       );
 
       if (!matchedEpisodes.length) {
@@ -344,6 +339,41 @@ export class SonarrApi extends ServarrApi<{
       this.logger.debug(error);
       return false;
     }
+  }
+
+  /**
+   * The episodes an episode action targets. A media server can number an
+   * episode differently from Sonarr (#3819), so a TVDB episode id naming one
+   * episode wins wherever Sonarr files it; numbers stay in the item's season.
+   */
+  public async findEpisodes(
+    seriesId: number,
+    seasonNumber: number,
+    episodeNumbers: number[],
+    airDate: string | Date | undefined,
+    tvdbIds: number[],
+    options?: { fresh?: boolean },
+  ): Promise<SonarrEpisode[]> {
+    const byTvdbId = (episodes: SonarrEpisode[]) => {
+      const matches = episodes.filter((e) => tvdbIds.includes(e.tvdbId));
+      return matches.length === 1 ? matches : undefined;
+    };
+    const season = await this.getEpisodes(
+      seriesId,
+      seasonNumber,
+      undefined,
+      options,
+    );
+
+    return (
+      byTvdbId(season) ??
+      (tvdbIds.length
+        ? byTvdbId(
+            await this.getEpisodes(seriesId, undefined, undefined, options),
+          )
+        : undefined) ??
+      this.findEpisodesForAction(season, episodeNumbers, airDate)
+    );
   }
 
   /**
