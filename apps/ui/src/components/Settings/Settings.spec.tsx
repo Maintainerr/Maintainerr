@@ -36,10 +36,6 @@ vi.mock('../Common/Alert', () => ({
   default: ({ title }: { title: string }) => <div>{title}</div>,
 }))
 
-vi.mock('../../router', () => ({
-  prefetchHandlers: () => ({}),
-}))
-
 vi.mock('react-toastify', () => ({
   toast: {
     error: (...args: unknown[]) => toastError(...args),

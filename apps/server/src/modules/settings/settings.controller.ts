@@ -61,6 +61,7 @@ import {
   ForbiddenException,
   Get,
   Header,
+  InternalServerErrorException,
   Param,
   ParseEnumPipe,
   ParseIntPipe,
@@ -95,21 +96,44 @@ export class SettingsController {
   ) {}
 
   @Get()
-  getSettings() {
-    return this.settingsOperationsService.getPublicSettings();
+  async getSettings() {
+    const settings = await this.settingsOperationsService.getPublicSettings();
+    // Read as settings, the error object looks like an unconfigured install
+    // and sends the UI to setup.
+    if (settings && 'status' in settings) {
+      throw new InternalServerErrorException('The settings could not be read');
+    }
+    return settings;
   }
   @Get('/radarr')
-  getRadarrSettings() {
-    return this.settingsOperationsService.getRadarrSettings();
+  async getRadarrSettings() {
+    return this.serverList(
+      await this.settingsOperationsService.getRadarrSettings(),
+    );
   }
   @Get('/sonarr')
-  getSonarrSettings() {
-    return this.settingsOperationsService.getSonarrSettings();
+  async getSonarrSettings() {
+    return this.serverList(
+      await this.settingsOperationsService.getSonarrSettings(),
+    );
   }
 
   @Get('/sportarr')
-  getSportarrSettings() {
-    return this.settingsOperationsService.getSportarrSettings();
+  async getSportarrSettings() {
+    return this.serverList(
+      await this.settingsOperationsService.getSportarrSettings(),
+    );
+  }
+
+  // A list that could not be read comes back as an error object, which a
+  // client would take for the list itself.
+  private serverList<T>(list: T[] | BasicResponseDto): T[] {
+    if (!Array.isArray(list)) {
+      throw new InternalServerErrorException(
+        'The server list could not be read',
+      );
+    }
+    return list;
   }
   @Get('/version')
   getVersion() {

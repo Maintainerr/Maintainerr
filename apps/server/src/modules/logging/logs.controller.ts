@@ -42,14 +42,12 @@ import {
   switchMap,
 } from 'rxjs';
 import { Readable } from 'stream';
+import { dataDir } from '../../app/config/dataDir';
 import { createSseStreamClient, SseStreamClient } from '../../utils/sse-stream';
 import { formatLogMessage } from './logFormatting';
 import { LogSettingsService, MaintainerrLogger } from './logs.service';
 
-const logsDirectory =
-  process.env.NODE_ENV === 'production'
-    ? '/opt/data/logs'
-    : path.join(__dirname, `../../../../../data/logs`);
+const logsDirectory = path.join(dataDir, 'logs');
 
 const safeLogFileRegex = /^maintainerr-\d{4}-\d{2}-\d{2}\.log(\.gz)?$/;
 
