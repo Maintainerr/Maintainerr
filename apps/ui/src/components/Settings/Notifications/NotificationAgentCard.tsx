@@ -1,3 +1,5 @@
+import type { MessageDescriptor } from '@lingui/core'
+import { msg } from '@lingui/core/macro'
 import { Trans, useLingui } from '@lingui/react/macro'
 import { BasicResponseDto } from '@maintainerr/contracts'
 import { useMemo, useState } from 'react'
@@ -35,6 +37,53 @@ interface AgentFormValues {
 
 // "Media About To Be Handled" is the one type that needs a lead time.
 const ABOUT_TO_BE_HANDLED = 8
+
+// What a field name alone would not say, by agent then field.
+const optionText: Record<
+  string,
+  Record<string, { label?: MessageDescriptor; help?: MessageDescriptor }>
+> = {
+  email: {
+    secure: {
+      label: msg`Use implicit TLS`,
+      help: msg`Encrypts from the first byte. Usually needed on port 465; leave off for 587 and 25.`,
+    },
+    ignoreTls: {
+      label: msg`Never use TLS`,
+      help: msg`Sends unencrypted even when the server offers STARTTLS. Only for a server whose STARTTLS fails.`,
+    },
+    requireTls: {
+      label: msg`Always use STARTTLS`,
+      help: msg`Without it, mail goes out unencrypted when the server does not offer STARTTLS. With it, the email is not sent instead.`,
+    },
+    allowSelfSigned: {
+      label: msg`Allow self-signed certificates`,
+      help: msg`Needed when your SMTP server uses a certificate it signed itself, as many home servers do.`,
+    },
+  },
+  lunasea: {
+    profileName: {
+      help: msg`Only required if not using the default profile`,
+    },
+  },
+  telegram: {
+    botUsername: {
+      help: msg`Allow users to also start a chat with your bot and configure their own notifications`,
+    },
+    chatId: {
+      help: msg`Start a chat with your bot, add ${{ bot: '@get_id_bot' }}, and issue the ${{ command: '/my_id' }} command`,
+    },
+    sendSilently: {
+      label: msg`Send silently`,
+      help: msg`Recipients get the message without a notification sound.`,
+    },
+  },
+  pushover: {
+    userToken: {
+      help: msg`Your 30-character user or group identifier`,
+    },
+  },
+}
 
 const sectionHeading = 'mb-3 text-sm font-semibold text-zinc-200'
 
@@ -84,7 +133,7 @@ const NotificationAgentCard = ({
     }),
     [config],
   )
-  const { register, control, handleSubmit, getValues, setValue } =
+  const { register, control, handleSubmit, getValues, resetField } =
     useForm<AgentFormValues>({
       defaultValues: initialValues,
       values: initialValues,
@@ -260,9 +309,15 @@ const NotificationAgentCard = ({
                 id={`${idPrefix}-agent`}
                 label={t`Agent *`}
                 {...register('agent', {
-                  onChange: () => {
-                    // Each agent has its own fields; another agent's values mean nothing.
-                    setValue('options', {})
+                  onChange: (event) => {
+                    // Each agent has its own fields. The defaults are reset
+                    // too, or a field of the same name shows the saved value.
+                    resetField('options', {
+                      defaultValue:
+                        event.target.value === config?.agent
+                          ? initialValues.options
+                          : {},
+                    })
                     setInvalidJson(false)
                     clearFeedback()
                   },
@@ -295,10 +350,13 @@ const NotificationAgentCard = ({
                     ...agent.options.filter((o) => o.type === 'checkbox'),
                   ].map((option) => {
                     const id = `${idPrefix}-${agent.name}-${option.field}`
+                    const text = optionText[agent.name]?.[option.field]
                     const label =
-                      (option.label ?? camelCaseToPrettyText(option.field)) +
+                      (text?.label
+                        ? t(text.label)
+                        : camelCaseToPrettyText(option.field)) +
                       (option.required ? ' *' : '')
-                    const helpText = option.extraInfo || undefined
+                    const helpText = text?.help ? t(text.help) : undefined
 
                     if (option.type === 'checkbox') {
                       return (
@@ -323,6 +381,8 @@ const NotificationAgentCard = ({
                           <Controller
                             name={`options.${option.field}`}
                             control={control}
+                            // Untouched, the payload is the {} the editor shows.
+                            defaultValue={{}}
                             render={({ field }) => (
                               <LazyMonacoEditor
                                 height="200px"
