@@ -47,7 +47,11 @@ import { Injectable } from '@nestjs/common';
 // while this server compiles to CommonJS and gets axios's CJS build - two
 // module instances, two error classes, so an instanceof check against the
 // imported class silently never matches an SDK failure.
-import { isAxiosError, type AxiosRequestConfig } from 'axios';
+import {
+  isAxiosError,
+  type AxiosInstance,
+  type AxiosRequestConfig,
+} from 'axios';
 import { assertApiKey, connectionTestConfig } from '../../lib/connectionTest';
 import {
   formatConnectionFailureMessage,
@@ -202,7 +206,9 @@ export class JellyfinAdapterService implements IMediaServerService {
     // client its one module-wide axios instance, so the policy goes on once
     // rather than stacking another interceptor per client.
     if (!retryingSdkInstances.has(api.axiosInstance)) {
-      applyHttpRetry(api.axiosInstance);
+      // Typed by axios's ESM declarations (see the axios import), which no
+      // longer match the CJS ones since axios 1.19 (axios/axios#11151).
+      applyHttpRetry(api.axiosInstance as AxiosInstance);
       retryingSdkInstances.add(api.axiosInstance);
     }
 
