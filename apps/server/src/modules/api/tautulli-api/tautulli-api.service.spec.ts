@@ -39,12 +39,14 @@ describe('TautulliApiService', () => {
   });
   describe('getItemStats', () => {
     const answer = (byCommand: Record<string, unknown>) => {
+      const reply = async (
+        ...[, config]: [path: string, config: { params: { cmd: string } }]
+      ) => ({
+        response: { result: 'success', data: byCommand[config.params.cmd] },
+      });
       service.api = {
-        get: jest.fn(
-          async (_path: string, config: { params: { cmd: string } }) => ({
-            response: { result: 'success', data: byCommand[config.params.cmd] },
-          }),
-        ),
+        get: jest.fn(reply),
+        getWithoutCache: jest.fn(reply),
       } as never;
     };
 
@@ -72,7 +74,10 @@ describe('TautulliApiService', () => {
           { name: 'bob', plays: 1, watchTime: 60, lastWatched: null },
         ],
       });
-      expect(service.api.get).toHaveBeenCalledWith('', {
+      expect(service.api.getWithoutCache).toHaveBeenCalledWith('', {
+        params: { cmd: 'get_item_user_stats', rating_key: '7' },
+      });
+      expect(service.api.getWithoutCache).toHaveBeenCalledWith('', {
         params: expect.objectContaining({
           cmd: 'get_history',
           grandparent_rating_key: '7',
@@ -84,7 +89,9 @@ describe('TautulliApiService', () => {
       answer({ get_item_user_stats: [] });
       await expect(service.getItemStats('7')).resolves.toBeNull();
 
-      service.api = { get: jest.fn().mockResolvedValue(undefined) } as never;
+      service.api = {
+        getWithoutCache: jest.fn().mockResolvedValue(undefined),
+      } as never;
       await expect(service.getItemStats('7')).resolves.toBeUndefined();
     });
   });
