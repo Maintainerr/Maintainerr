@@ -316,7 +316,10 @@ export class NotificationService implements OnModuleInit {
     }
   }
 
-  async getNotificationConfigurations(withRelation = false) {
+  // Undefined when the table could not be read, which is not "no agents".
+  async getNotificationConfigurations(
+    withRelation = false,
+  ): Promise<Notification[] | undefined> {
     try {
       if (withRelation) {
         const notifConfigs = await this.notificationRepo.find();
@@ -364,6 +367,7 @@ export class NotificationService implements OnModuleInit {
 
   public async registerConfiguredAgents(skiplog = false) {
     const configuredAgents = await this.getNotificationConfigurations();
+    if (!configuredAgents) return;
 
     const sameAgents = (a: Notification[], b: Notification[]) =>
       isEqual(sortBy(a, 'id'), sortBy(b, 'id'));
@@ -378,7 +382,7 @@ export class NotificationService implements OnModuleInit {
       // configuring a newer agent type) yields no agent. Drop it here rather
       // than letting an undefined entry reach the send paths.
       const agents: NotificationAgent[] = [];
-      for (const notification of configuredAgents ?? []) {
+      for (const notification of configuredAgents) {
         const agent = this.createAgent(notification);
 
         if (!agent) {
@@ -552,6 +556,7 @@ export class NotificationService implements OnModuleInit {
       .replace(/\b\w/g, (char) => char.toUpperCase());
   }
 
+  // Labels and help for these options live in the UI, where they translate.
   public getAgentSpec() {
     return [
       {
@@ -567,25 +572,19 @@ export class NotificationService implements OnModuleInit {
             field: 'secure',
             type: 'checkbox',
             required: false,
-            label: 'Use implicit TLS',
-            extraInfo:
-              'Encrypts from the first byte. Usually needed on port 465; leave off for 587 and 25.',
+            extraInfo: '',
           },
           {
             field: 'ignoreTls',
             type: 'checkbox',
             required: false,
-            label: 'Never use TLS',
-            extraInfo:
-              'Sends unencrypted even when the server offers STARTTLS. Only for a server whose STARTTLS fails.',
+            extraInfo: '',
           },
           {
             field: 'requireTls',
             type: 'checkbox',
             required: false,
-            label: 'Always use STARTTLS',
-            extraInfo:
-              'Without it, mail goes out unencrypted when the server does not offer STARTTLS. With it, the email is not sent instead.',
+            extraInfo: '',
           },
           { field: 'authUser', type: 'text', required: false, extraInfo: '' },
           {
@@ -598,9 +597,7 @@ export class NotificationService implements OnModuleInit {
             field: 'allowSelfSigned',
             type: 'checkbox',
             required: false,
-            label: 'Allow self-signed certificates',
-            extraInfo:
-              'Needed when your SMTP server uses a certificate it signed itself, as many home servers do.',
+            extraInfo: '',
           },
           { field: 'pgpKey', type: 'text', required: false, extraInfo: '' },
           {
@@ -639,7 +636,7 @@ export class NotificationService implements OnModuleInit {
             field: 'profileName',
             type: 'text',
             required: false,
-            extraInfo: 'Only required if not using the default profile',
+            extraInfo: '',
           },
         ],
       },
@@ -664,23 +661,19 @@ export class NotificationService implements OnModuleInit {
             field: 'botUsername',
             type: 'text',
             required: false,
-            extraInfo:
-              'Allow users to also start a chat with your bot and configure their own notifications',
+            extraInfo: '',
           },
           {
             field: 'chatId',
             type: 'text',
             required: true,
-            extraInfo:
-              'Start a chat with your bot, add @get_id_bot, and issue the /my_id command',
+            extraInfo: '',
           },
           {
             field: 'sendSilently',
             type: 'checkbox',
             required: false,
-            label: 'Send silently',
-            extraInfo:
-              'Recipients get the message without a notification sound.',
+            extraInfo: '',
           },
         ],
       },
@@ -701,7 +694,7 @@ export class NotificationService implements OnModuleInit {
             field: 'userToken',
             type: 'text',
             required: true,
-            extraInfo: 'Your 30-character user or group identifier',
+            extraInfo: '',
           },
           { field: 'sound', type: 'text', required: false, extraInfo: '' },
         ],

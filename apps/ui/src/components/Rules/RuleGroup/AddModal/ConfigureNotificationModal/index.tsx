@@ -4,6 +4,7 @@ import {
   type AgentConfiguration,
   useNotificationConfigurations,
 } from '../../../../../api/notifications'
+import Alert from '../../../../Common/Alert'
 import Button from '../../../../Common/Button'
 import { SmallLoadingSpinner } from '../../../../Common/LoadingSpinner'
 import Modal from '../../../../Common/Modal'
@@ -16,7 +17,11 @@ interface ConfigureNotificationModal {
 }
 const ConfigureNotificationModal = (props: ConfigureNotificationModal) => {
   const { t } = useLingui()
-  const { data: notifications, isLoading } = useNotificationConfigurations()
+  const {
+    data: notifications,
+    isLoading,
+    isError,
+  } = useNotificationConfigurations()
   const [activatedNotifications, setActivatedNotifications] = useState<
     AgentConfiguration[]
   >(props.selectedAgents ?? [])
@@ -50,6 +55,12 @@ const ConfigureNotificationModal = (props: ConfigureNotificationModal) => {
                 {/* Immediate: the delayed spinner may just have shown for
                     the chunk, and a fresh one would restart its timer. */}
                 {isLoading && <SmallLoadingSpinner className="h-6 w-6" />}
+                {isError && !notifications && (
+                  <Alert
+                    type="error"
+                    title={t`The notification agents could not be loaded.`}
+                  />
+                )}
                 {notifications?.map((n) => (
                   <ToggleItem
                     key={n.id}

@@ -86,5 +86,4 @@ const OverlaysWrapper = () => {
   )
 }
 
-export { showOverlaysDisabledToast }
 export default OverlaysWrapper

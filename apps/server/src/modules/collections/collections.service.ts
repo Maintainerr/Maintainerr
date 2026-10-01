@@ -1381,7 +1381,7 @@ export class CollectionsService {
    * pushed order follows the "Leaving in X days" overlay. Collections sharing
    * one media server collection each count their own window (#3799); an item
    * in several keeps its earliest deadline, one with no window sorts last, and
-   * with no window at all the order falls back to `addDate`.
+   * with no window at all the order falls back to its earliest `addDate`.
    */
   private buildCollectionMediaCompareOptions(
     rows: ReadonlyArray<{
@@ -1414,9 +1414,14 @@ export class CollectionsService {
     if (
       [...deadlineByMediaItemId.values()].every((deadline) => deadline === null)
     ) {
-      const addDateByMediaItemId = new Map<string, Date | string>(
-        rows.map((row) => [row.mediaServerId, row.addDate]),
-      );
+      const addDateByMediaItemId = new Map<string, Date>();
+      for (const row of rows) {
+        const addDate = new Date(row.addDate);
+        const earliest = addDateByMediaItemId.get(row.mediaServerId);
+        if (!earliest || addDate < earliest) {
+          addDateByMediaItemId.set(row.mediaServerId, addDate);
+        }
+      }
       return {
         deleteSoonestDate: (item) => addDateByMediaItemId.get(item.id),
       };
@@ -1721,11 +1726,30 @@ export class CollectionsService {
       (error) => this.logger.debug(error),
     );
 
+    const removedByCollection = new Map<number, CollectionMedia[]>();
     for (const entry of allMedia) {
       if (missing.has(entry.mediaServerId)) {
         await this.CollectionMediaRepo.delete(entry.id);
         removedCount++;
+        removedByCollection.set(entry.collectionId, [
+          ...(removedByCollection.get(entry.collectionId) ?? []),
+          entry,
+        ]);
       }
+    }
+
+    // The *arr may still track what the media server dropped.
+    const tagging = removedByCollection.size
+      ? await this.collectionRepo.find({
+          where: { id: In([...removedByCollection.keys()]), tagInArr: true },
+        })
+      : [];
+    for (const collection of tagging) {
+      await this.servarrTagService.syncMembershipTags(
+        collection,
+        [],
+        removedByCollection.get(collection.id) ?? [],
+      );
     }
 
     if (removedCount > 0) {
@@ -4067,14 +4091,22 @@ export class CollectionsService {
     await this.clearRuleRemovedMarker(collectionId, mediaServerId);
   }
 
-  async removeFromAllCollections(media: CollectionMediaChange[]) {
+  async removeFromAllCollections(
+    media: CollectionMediaChange[],
+    libraryReads?: ArrLookupCache,
+  ) {
     try {
       const collections = await this.collectionRepo.find();
       let removedEverywhere = true;
       for (const collection of collections) {
         // The helper reports its own failure by answering nothing rather than
         // throwing, so discarding the result reads a failed removal as done.
-        const removed = await this.removeFromCollection(collection.id, media);
+        const removed = await this.removeFromCollection(
+          collection.id,
+          media,
+          'all',
+          libraryReads,
+        );
         removedEverywhere = removedEverywhere && removed !== undefined;
       }
       return removedEverywhere
@@ -4382,7 +4414,13 @@ export class CollectionsService {
 
       const mediaServerCollectionRemoved = teardown.ok;
 
+      const members = collection.tagInArr
+        ? await this.CollectionMediaRepo.find({
+            where: { collectionId: collection.id },
+          })
+        : [];
       await this.CollectionMediaRepo.delete({ collectionId: collection.id });
+      await this.servarrTagService.syncMembershipTags(collection, [], members);
       // Deactivation tears down the media-server collection but keeps the
       // collection row, so the FK cascade won't fire - drop the rule-removal
       // markers here too, mirroring the collection_media wipe above.

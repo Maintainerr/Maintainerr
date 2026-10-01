@@ -7,13 +7,16 @@ import {
 } from '@maintainerr/contracts'
 import { useState } from 'react'
 import { Controller, useForm, useWatch } from 'react-hook-form'
+import { Navigate } from 'react-router-dom'
 import { useSettingsOutletContext } from '..'
 import {
   useDeleteDownloadClientSettings,
   useDownloadClientSettings,
   useSaveDownloadClientSettings,
+  useServarrSettings,
   useTestDownloadClient,
 } from '../../../api/settings'
+import { hasArrServer } from '../../Services/useServices'
 import { ServiceUrlExamples } from '../../Forms/ServiceUrlExamples'
 import { ServiceBasePathInput } from '../../Forms/ServiceBasePathInput'
 import { getApiErrorMessage } from '../../../utils/ApiError'
@@ -51,7 +54,7 @@ const emptyValues: DownloadClientFormValues = {
   download_client_fallback_ratio: FALLBACK_RATIO_DEFAULT,
 }
 
-const DownloadClientSettings = () => {
+const DownloadClientForm = () => {
   const { t } = useLingui()
   const [testResult, setTestResult] = useState<{
     status: boolean
@@ -402,13 +405,16 @@ const DownloadClientSettings = () => {
                       field.onChange(nextType)
                       // The URL is specific to the client (RPC endpoint vs WebUI
                       // address), so one client's URL is meaningless for the
-                      // other. Only the saved client gets its saved URL back.
-                      setValue(
-                        'download_client_url',
-                        nextType === formValues?.download_client_type
-                          ? formValues.download_client_url
-                          : '',
-                      )
+                      // other. Only the saved client gets its saved URL back,
+                      // and before one is saved the typed URL is left alone.
+                      if (formValues?.download_client_type) {
+                        setValue(
+                          'download_client_url',
+                          nextType === formValues.download_client_type
+                            ? formValues.download_client_url
+                            : '',
+                        )
+                      }
                     }}
                     onBlur={field.onBlur}
                     ref={field.ref}
@@ -508,6 +514,22 @@ const DownloadClientSettings = () => {
       </div>
     </>
   )
+}
+
+// The download client only cleans up after Radarr, Sonarr and Sportarr, so
+// like the services hub, this page needs one of them.
+const DownloadClientSettings = () => {
+  const lists = [
+    useServarrSettings('radarr'),
+    useServarrSettings('sonarr'),
+    useServarrSettings('sportarr'),
+  ]
+
+  if (!hasArrServer(lists)) {
+    return <Navigate to="/services" replace />
+  }
+
+  return <DownloadClientForm />
 }
 
 export default DownloadClientSettings

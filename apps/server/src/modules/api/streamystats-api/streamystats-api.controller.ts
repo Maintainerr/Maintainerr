@@ -44,7 +44,11 @@ export class StreamystatsApiController {
       throw new NotFoundException('Streamystats is not configured');
     }
 
-    const details = await this.streamystatsApiService.getItemDetails(itemId);
+    // Read past the 20-minute cache, so reopening an item shows its plays as
+    // they are now. Rule runs keep the cache, which each run starts flushed.
+    const details = await this.streamystatsApiService.getItemDetails(itemId, {
+      fresh: true,
+    });
     if (!details) {
       throw new NotFoundException(
         'No Streamystats data available for this item',

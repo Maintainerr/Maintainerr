@@ -16,11 +16,34 @@ vi.mock('../../../utils/ApiHandler', () => ({
     postApiHandler(url, payload),
 }))
 
+vi.mock('../../Common/LazyMonacoEditor', () => ({ default: () => null }))
+
 const agents = [
   {
     name: 'gotify',
     friendlyName: 'Gotify',
-    options: [{ field: 'url', type: 'text', required: true, extraInfo: '' }],
+    options: [{ field: 'url', type: 'text', required: true }],
+  },
+  {
+    name: 'ntfy',
+    friendlyName: 'Ntfy',
+    options: [
+      { field: 'url', type: 'text', required: true },
+      { field: 'topic', type: 'text', required: true },
+    ],
+  },
+  {
+    name: 'email',
+    friendlyName: 'Email',
+    options: [{ field: 'secure', type: 'checkbox', required: false }],
+  },
+  {
+    name: 'webhook',
+    friendlyName: 'Webhook',
+    options: [
+      { field: 'webhookUrl', type: 'text', required: true },
+      { field: 'jsonPayload', type: 'json', required: true },
+    ],
   },
 ]
 const types = [{ id: 1, title: 'Added' }]
@@ -70,6 +93,21 @@ describe('NotificationSettings', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Edit' }))
     expect(screen.getByDisplayValue('http://gotify.local')).toBeTruthy()
+  })
+
+  it('says the agents failed to load instead of showing an empty page', async () => {
+    getApiHandler.mockImplementation((url: string) =>
+      url === '/notifications/configurations'
+        ? Promise.reject(new Error('Request failed'))
+        : Promise.resolve(url === '/notifications/types' ? types : agents),
+    )
+
+    renderNotifications()
+
+    expect(
+      await screen.findByText('The notification agents could not be loaded.'),
+    ).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Add Agent' })).toBeNull()
   })
 
   it('waits for the agent lists before showing any card', async () => {
@@ -123,6 +161,66 @@ describe('NotificationSettings', () => {
       }),
     )
     expect(screen.getByRole('button', { name: 'Add Agent' })).toBeTruthy()
+  })
+
+  it('saves a new webhook with the payload its editor shows', async () => {
+    renderNotifications()
+    fireEvent.click(await screen.findByRole('button', { name: 'Add Agent' }))
+
+    fireEvent.change(screen.getByLabelText('Name *'), {
+      target: { value: 'Hook' },
+    })
+    fireEvent.change(screen.getByLabelText('Agent *'), {
+      target: { value: 'webhook' },
+    })
+    fireEvent.change(await screen.findByLabelText('Webhook URL *'), {
+      target: { value: 'http://hook.local' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Save Changes' }))
+
+    await waitFor(() =>
+      expect(postApiHandler).toHaveBeenCalledWith(
+        '/notifications/configuration/add',
+        expect.objectContaining({
+          options: { webhookUrl: 'http://hook.local', jsonPayload: {} },
+        }),
+      ),
+    )
+  })
+
+  it('opens another agent type empty and gives the saved one its values back', async () => {
+    renderNotifications()
+    fireEvent.click(await screen.findByRole('button', { name: 'Edit' }))
+
+    fireEvent.change(screen.getByLabelText('Agent *'), {
+      target: { value: 'ntfy' },
+    })
+    expect(await screen.findByLabelText('Topic *')).toBeTruthy()
+    expect(screen.getByLabelText('URL *')).toHaveProperty('value', '')
+
+    fireEvent.change(screen.getByLabelText('Agent *'), {
+      target: { value: 'gotify' },
+    })
+    expect(screen.getByLabelText('URL *')).toHaveProperty(
+      'value',
+      'http://gotify.local',
+    )
+  })
+
+  it('labels and explains options from the UI catalog', async () => {
+    renderNotifications()
+    fireEvent.click(await screen.findByRole('button', { name: 'Add Agent' }))
+
+    fireEvent.change(screen.getByLabelText('Agent *'), {
+      target: { value: 'email' },
+    })
+
+    expect(await screen.findByLabelText('Use implicit TLS')).toBeTruthy()
+    expect(
+      screen.getByText(
+        'Encrypts from the first byte. Usually needed on port 465; leave off for 587 and 25.',
+      ),
+    ).toBeTruthy()
   })
 
   it('deletes an agent only after confirming, and says when it could not', async () => {

@@ -66,7 +66,7 @@ describe('formatConnectionFailureMessage', () => {
       cause: new AxiosError('canceled', 'ERR_CANCELED'),
     });
     expect(formatConnectionFailureMessage(error, FALLBACK)).toContain(
-      'Connection timed out after 5 seconds',
+      'Connection timed out.',
     );
   });
 
@@ -117,13 +117,15 @@ describe('formatConnectionFailureMessage', () => {
 });
 
 describe('logConnectionTestError', () => {
-  it('keeps exception details at debug level', () => {
+  it('logs the reason the test answered with, and the error at debug level', () => {
     const logger = { error: jest.fn(), debug: jest.fn() };
     const error = new AxiosError('Sensitive upstream details', 'ENOTFOUND');
 
     logConnectionTestError(logger, 'Seerr', error);
 
-    expect(logger.error).toHaveBeenCalledWith('Seerr connection test failed');
+    expect(logger.error).toHaveBeenCalledWith(
+      'Seerr connection test failed: Unable to resolve host. Verify hostname or IP address.',
+    );
     expect(logger.debug).toHaveBeenCalledWith(error);
   });
 });

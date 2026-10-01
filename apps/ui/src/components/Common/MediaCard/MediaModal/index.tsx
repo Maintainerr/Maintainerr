@@ -22,6 +22,7 @@ import {
   buildProviderUrl,
   displayProviderId,
   mediaTypeLabel,
+  toApiMediaType,
 } from '../../../../utils/mediaTypeUtils'
 import Button from '../../Button'
 import LoadingSpinner from '../../LoadingSpinner'
@@ -305,11 +306,14 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
           : metadata?.type === 'episode'
             ? metadata.grandparentId
             : undefined
-      const tmdbId = showId
-        ? showMetadata?.id === showId
-          ? showMetadata.providerIds?.tmdb?.[0]
-          : undefined
-        : providerIds?.tmdb?.[0]
+      // Keyed on the card's type, known before the metadata arrives: until
+      // then a season or episode only has fallback ids, which are the show's.
+      const tmdbId =
+        mediaType === 'season' || mediaType === 'episode'
+          ? showId && showMetadata?.id === showId
+            ? showMetadata.providerIds?.tmdb?.[0]
+            : undefined
+          : providerIds?.tmdb?.[0]
       if (!tmdbId) {
         return ''
       }
@@ -326,14 +330,14 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
           ? `&episode=${metadata.index}`
           : ''
 
+      const type = toApiMediaType(mediaType)
       const paths: string[] = []
       if (requestServices.seerr) {
         paths.push(
-          `/seerr/requests/${tmdbId}/users${seasonParam ? `?${seasonParam}` : ''}`,
+          `/seerr/requests/${tmdbId}/users?type=${type}${seasonParam ? `&${seasonParam}` : ''}`,
         )
       }
       if (requestServices.ombi) {
-        const type = mediaType === 'movie' ? 'movie' : 'tv'
         paths.push(
           `/ombi/requests/${tmdbId}/users?type=${type}${seasonParam ? `&${seasonParam}` : ''}${episodeParam}`,
         )
@@ -378,6 +382,7 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
       tracearrStatsPath,
       !!tracearrUrl,
     )
+    const tautulliItemUrl = `${tautulliModalUrl}/info?rating_key=${id}&source=history`
     const providerLogo = useMemo(() => {
       if (!isCurrentBackdrop || !backdropResult.provider) return null
       const cfg = metadataProviderLogos[backdropResult.provider]
@@ -520,10 +525,11 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
       }
 
       let active = true
+      const controller = new AbortController()
 
       Promise.all(
         requesterPaths.split(' ').map((path) =>
-          GetApiHandler<string[]>(path)
+          GetApiHandler<string[]>(path, controller.signal)
             .then((users) => users ?? [])
             .catch(() => []),
         ),
@@ -537,6 +543,7 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
 
       return () => {
         active = false
+        controller.abort()
       }
     }, [requesterPaths])
 
@@ -818,10 +825,13 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
                       </a>
                     </div>
                   )}
+                  {/* The watch statistics badges stay off a phone's short
+                      backdrop, where they left no room for the genres. Each
+                      panel below links to the same page. */}
                   {isPlex && tautulliModalUrl && (
-                    <div>
+                    <div className="hidden sm:[@media(min-height:26rem)]:block">
                       <a
-                        href={`${tautulliModalUrl}/info?rating_key=${id}&source=history`}
+                        href={tautulliItemUrl}
                         target="_blank"
                         rel="noreferrer"
                       >
@@ -836,7 +846,7 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
                     </div>
                   )}
                   {isJellyfin && streamystatsItemUrl && (
-                    <div>
+                    <div className="hidden sm:[@media(min-height:26rem)]:block">
                       <a
                         href={streamystatsItemUrl}
                         target="_blank"
@@ -853,7 +863,7 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
                     </div>
                   )}
                   {tracearrUrl && (
-                    <div>
+                    <div className="hidden sm:[@media(min-height:26rem)]:block">
                       <a
                         href={tracearrStats?.url ?? tracearrUrl}
                         target="_blank"
@@ -922,6 +932,7 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
               <WatchStatsPanel
                 name="Tautulli"
                 path={`/tautulli/items/${id}`}
+                url={tautulliItemUrl}
                 toView={asWatchStatsView}
               />
             ) : null}
@@ -930,6 +941,7 @@ const MediaModalContent: React.FC<ModalContentProps> = memo(
               <WatchStatsPanel
                 name="Tracearr"
                 path={tracearrStatsPath}
+                url={tracearrStats?.url ?? tracearrUrl}
                 toView={asWatchStatsView}
               />
             ) : null}

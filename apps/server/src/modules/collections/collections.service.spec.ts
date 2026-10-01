@@ -4028,6 +4028,55 @@ describe('CollectionsService', () => {
     );
   });
 
+  it('orders an item held by several windowless collections by its earliest addDate', async () => {
+    const collection = createCollection({
+      id: 99,
+      mediaServerId: 'remote-99',
+      mediaServerSort: 'deleteSoonest.asc',
+      deleteAfterDays: null,
+      type: 'movie',
+    });
+    const sibling = createCollection({
+      id: 100,
+      mediaServerId: 'remote-99',
+      deleteAfterDays: null,
+    });
+    const rows = [
+      createCollectionMedia(collection, {
+        mediaServerId: 'held-by-both',
+        addDate: new Date('2024-01-01T00:00:00Z'),
+      }),
+      createCollectionMedia(collection, {
+        mediaServerId: 'added-in-between',
+        addDate: new Date('2024-02-01T00:00:00Z'),
+      }),
+      // Listed last, so a last-row-wins map would take this later date.
+      createCollectionMedia(sibling, {
+        mediaServerId: 'held-by-both',
+        addDate: new Date('2024-03-01T00:00:00Z'),
+      }),
+    ];
+
+    collectionRepo.find.mockResolvedValue([sibling]);
+    collectionMediaRepo.find.mockImplementation(async ({ where }: any) =>
+      rows.filter((row) => where.collectionId.value.includes(row.collectionId)),
+    );
+    mediaServer.supportsFeature.mockImplementation(
+      (feature) => feature === MediaServerFeature.COLLECTION_SORT,
+    );
+    mediaServer.getMetadataBatch.mockImplementation(async (ids: string[]) =>
+      ids.map((id) => createMediaItem({ id, title: id, type: 'movie' })),
+    );
+    mediaServer.reorderCollectionItems = jest.fn().mockResolvedValue(undefined);
+
+    await service.applyCollectionSort(collection as Collection);
+
+    expect(mediaServer.reorderCollectionItems).toHaveBeenCalledWith(
+      'remote-99',
+      ['held-by-both', 'added-in-between'],
+    );
+  });
+
   describe('getCollectionMediaMetadata per-item fallback', () => {
     const collection = () =>
       createCollection({
@@ -4103,6 +4152,25 @@ describe('CollectionsService', () => {
 
       expect(collectionMediaRepo.delete).toHaveBeenCalledTimes(1);
       expect(collectionMediaRepo.delete).toHaveBeenCalledWith(2);
+    });
+
+    it('untags the rows it drops from a collection that tags its content', async () => {
+      const gone = Object.assign(buildMedia(2, 'gone'), { collectionId: 5 });
+      collectionMediaRepo.find.mockResolvedValue([
+        Object.assign(buildMedia(1, 'present'), { collectionId: 5 }),
+        gone,
+      ]);
+      mediaServer.itemExists.mockImplementation(async (id) => id !== 'gone');
+      const tagging = createCollection({ id: 5, tagInArr: true });
+      collectionRepo.find.mockResolvedValue([tagging]);
+
+      await service.removeStaleCollectionMedia();
+
+      expect(servarrTagService.syncMembershipTags).toHaveBeenCalledWith(
+        tagging,
+        [],
+        [gone],
+      );
     });
 
     it('keeps the row when the existence check is inconclusive (throws)', async () => {
@@ -5296,6 +5364,32 @@ describe('CollectionsService', () => {
           isActive: false,
           mediaServerId: 'own-collection',
         }),
+      );
+    });
+
+    it('untags the members of a deactivated collection that tags its content', async () => {
+      const collection = createCollection({
+        id: 51,
+        mediaServerId: 'own-collection',
+        tagInArr: true,
+      });
+      const member = Object.assign(new CollectionMedia(), {
+        id: 1,
+        collectionId: 51,
+        mediaServerId: 'm1',
+      });
+      collectionRepo.findOne.mockResolvedValue(collection);
+      collectionRepo.count.mockResolvedValue(0);
+      collectionRepo.save.mockImplementation(async (c) => c as Collection);
+      collectionMediaRepo.find.mockResolvedValue([member]);
+      jest.spyOn(service, 'addLogRecord').mockResolvedValue(undefined);
+
+      await service.deactivateCollection(collection.id);
+
+      expect(servarrTagService.syncMembershipTags).toHaveBeenCalledWith(
+        collection,
+        [],
+        [member],
       );
     });
 

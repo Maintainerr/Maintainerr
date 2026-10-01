@@ -1,6 +1,7 @@
 {
   "$schema": "./node_modules/turbo/schema.json",
   "ui": "stream",
+  "agentGuidance": false,
   "tasks": {
     "build": {
       "dependsOn": ["^build"],

@@ -481,8 +481,20 @@ msgstr ""
 msgid "All seasons"
 msgstr ""
 
+#: src/components/Settings/Notifications/NotificationAgentCard.tsx
+msgid "Allow self-signed certificates"
+msgstr ""
+
+#: src/components/Settings/Notifications/NotificationAgentCard.tsx
+msgid "Allow users to also start a chat with your bot and configure their own notifications"
+msgstr ""
+
 #: src/components/Settings/Servarr/ServarrServerCard.tsx
 msgid "Allowed: {chars}"
+msgstr ""
+
+#: src/components/Settings/Notifications/NotificationAgentCard.tsx
+msgid "Always use STARTTLS"
 msgstr ""
 
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
@@ -1400,6 +1412,10 @@ msgstr ""
 
 #: src/components/Settings/Notifications/NotificationAgentCard.tsx
 msgid "Enabled"
+msgstr ""
+
+#: src/components/Settings/Notifications/NotificationAgentCard.tsx
+msgid "Encrypts from the first byte. Usually needed on port 465; leave off for 587 and 25."
 msgstr ""
 
 #: src/components/Settings/Plex/index.tsx
@@ -2532,8 +2548,16 @@ msgstr ""
 msgid "Needed to use Tracearr watch history in rules."
 msgstr ""
 
+#: src/components/Settings/Notifications/NotificationAgentCard.tsx
+msgid "Needed when your SMTP server uses a certificate it signed itself, as many home servers do."
+msgstr ""
+
 #: src/components/Collection/CollectionItem/index.tsx
 msgid "Never"
+msgstr ""
+
+#: src/components/Settings/Notifications/NotificationAgentCard.tsx
+msgid "Never use TLS"
 msgstr ""
 
 #: src/pages/RulesListPage.tsx
@@ -2801,6 +2825,10 @@ msgstr ""
 
 #: src/components/Common/YamlImporterModal/index.tsx
 msgid "Only {yamlExtension} or {ymlExtension} files are allowed."
+msgstr ""
+
+#: src/components/Settings/Notifications/NotificationAgentCard.tsx
+msgid "Only required if not using the default profile"
 msgstr ""
 
 #: src/components/OverlayEditor/PropertiesPanel.tsx
@@ -3091,6 +3119,10 @@ msgstr ""
 
 #: src/components/Common/MediaLibrarySortControl.tsx
 msgid "Recently Excluded"
+msgstr ""
+
+#: src/components/Settings/Notifications/NotificationAgentCard.tsx
+msgid "Recipients get the message without a notification sound."
 msgstr ""
 
 #: src/components/StorageMetrics/index.tsx
@@ -3541,6 +3573,14 @@ msgstr ""
 msgid "Send anonymous usage data"
 msgstr ""
 
+#: src/components/Settings/Notifications/NotificationAgentCard.tsx
+msgid "Send silently"
+msgstr ""
+
+#: src/components/Settings/Notifications/NotificationAgentCard.tsx
+msgid "Sends unencrypted even when the server offers STARTTLS. Only for a server whose STARTTLS fails."
+msgstr ""
+
 #: src/components/Settings/Plex/index.tsx
 msgid "Server"
 msgstr ""
@@ -3719,6 +3759,10 @@ msgstr ""
 
 #: src/utils/ApiError.ts
 msgid "SSL/TLS handshake failed. Verify the URL protocol (http vs https) and SSL configuration."
+msgstr ""
+
+#: src/components/Settings/Notifications/NotificationAgentCard.tsx
+msgid "Start a chat with your bot, add {bot}, and issue the {command} command"
 msgstr ""
 
 #: src/components/Rules/RuleGroup/index.tsx
@@ -4021,6 +4065,11 @@ msgstr ""
 msgid "The media server has no user named ''{username}''"
 msgstr ""
 
+#: src/components/Rules/RuleGroup/AddModal/ConfigureNotificationModal/index.tsx
+#: src/components/Settings/Notifications/index.tsx
+msgid "The notification agents could not be loaded."
+msgstr ""
+
 #: src/components/Settings/Telemetry/index.tsx
 msgid "The preview could not be loaded."
 msgstr ""
@@ -4059,6 +4108,10 @@ msgstr ""
 
 #: src/components/Common/MediaActionModal.tsx
 msgid "The selection spans more than one library, so only exclusions can be applied to it."
+msgstr ""
+
+#: src/components/Settings/Servarr/ServarrSettings.tsx
+msgid "The server list could not be loaded."
 msgstr ""
 
 #: src/components/Layout/index.tsx
@@ -4450,6 +4503,10 @@ msgstr ""
 msgid "Uppercase"
 msgstr ""
 
+#: src/components/Settings/Notifications/NotificationAgentCard.tsx
+msgid "Use implicit TLS"
+msgstr ""
+
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Use rules"
 msgstr ""
@@ -4577,6 +4634,10 @@ msgstr ""
 msgid "Will this rule be included in rule runs"
 msgstr ""
 
+#: src/components/Settings/Notifications/NotificationAgentCard.tsx
+msgid "Without it, mail goes out unencrypted when the server does not offer STARTTLS. With it, the email is not sent instead."
+msgstr ""
+
 #: src/components/Common/YamlImporterModal/index.tsx
 msgid "Yaml Rule Editor"
 msgstr ""
@@ -4607,6 +4668,10 @@ msgstr ""
 
 #: src/components/Settings/Telemetry/index.tsx
 msgid "Your <0>{TERM_IP} address is never read or stored</0>, so one week's report cannot be tied to the next or to any other server."
+msgstr ""
+
+#: src/components/Settings/Notifications/NotificationAgentCard.tsx
+msgid "Your 30-character user or group identifier"
 msgstr ""
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx

@@ -10,7 +10,10 @@ import {
 import { ServarrService } from '../../../modules/api/servarr-api/servarr.service';
 import { MediaServerFactory } from '../../api/media-server/media-server.factory';
 import { IMediaServerService } from '../../api/media-server/media-server.interface';
-import { SonarrApi } from '../../api/servarr-api/helpers/sonarr.helper';
+import {
+  findEpisodeByTvdbId,
+  SonarrApi,
+} from '../../api/servarr-api/helpers/sonarr.helper';
 import { MaintainerrLogger } from '../../logging/logs.service';
 import {
   findMetadataLookupMatch,
@@ -209,6 +212,46 @@ export class SonarrGetterService {
         return null;
       }
 
+      // Run-scoped cache for the full series episode list: one fetch per
+      // show per rule-run (single-`get()` memo without the cache). Evicts on
+      // transient `undefined` so one failed fetch doesn't poison the run
+      // (matches `resolveSeries` above).
+      let showEpisodesPromise: Promise<SonarrEpisode[] | undefined> | undefined;
+      const getShowEpisodes = async (): Promise<
+        SonarrEpisode[] | undefined
+      > => {
+        if (!showResponse.id) {
+          return undefined;
+        }
+
+        showEpisodesPromise ??= arrLookupCache
+          ? arrLookupCache.memoize(
+              `sonarr:${settingsId}:episodes-all:${showResponse.id}`,
+              () => sonarrApiClient.getEpisodes(showResponse.id),
+              (episodes) => episodes === undefined,
+            )
+          : sonarrApiClient.getEpisodes(showResponse.id);
+
+        return showEpisodesPromise;
+      };
+
+      // A media server can number an episode differently from Sonarr (#3819).
+      // When its TVDB id names one Sonarr episode, every value below reads
+      // that episode by Sonarr's numbers; otherwise by the media server's.
+      if (dataType === 'episode' && origLibItem.index !== undefined) {
+        const episode = origLibItem.providerIds?.tvdb?.length
+          ? findEpisodeByTvdbId(
+              (await getShowEpisodes()) ?? [],
+              origLibItem,
+              showResponse.tvdbId,
+            )
+          : undefined;
+        if (episode) {
+          seasonRatingKey = episode.seasonNumber;
+          origLibItem.index = episode.episodeNumber;
+        }
+      }
+
       // Season 0 is the specials season, so test for a number rather than
       // truthiness - `0` would otherwise read as "no season".
       const season =
@@ -294,29 +337,6 @@ export class SonarrGetterService {
         );
 
         return seasonEpisodesPromise;
-      };
-
-      // Run-scoped cache for the full series episode list: one fetch per
-      // show per rule-run (single-`get()` memo without the cache). Evicts on
-      // transient `undefined` so one failed fetch doesn't poison the run
-      // (matches `resolveSeries` above).
-      let showEpisodesPromise: Promise<SonarrEpisode[] | undefined> | undefined;
-      const getShowEpisodes = async (): Promise<
-        SonarrEpisode[] | undefined
-      > => {
-        if (!showResponse.id) {
-          return undefined;
-        }
-
-        showEpisodesPromise ??= arrLookupCache
-          ? arrLookupCache.memoize(
-              `sonarr:${settingsId}:episodes-all:${showResponse.id}`,
-              () => sonarrApiClient.getEpisodes(showResponse.id),
-              (episodes) => episodes === undefined,
-            )
-          : sonarrApiClient.getEpisodes(showResponse.id);
-
-        return showEpisodesPromise;
       };
 
       // Rank maps for episodeFileRank / seasonFileRank. Identical for every

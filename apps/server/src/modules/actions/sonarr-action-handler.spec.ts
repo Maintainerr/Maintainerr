@@ -4,6 +4,7 @@ import { TestBed } from '@suites/unit';
 import {
   createCollection,
   createCollectionMediaWithMetadata,
+  createSonarrEpisode,
   createSonarrSeries,
 } from '../../../test/utils/data';
 import {
@@ -1381,6 +1382,44 @@ describe('SonarrActionHandler', () => {
       [],
       true,
       airDate,
+    );
+  });
+
+  it("acts on the episode the item's TVDB id names, by Sonarr's numbers (#3819)", async () => {
+    const collection = createCollection({
+      arrAction: ServarrAction.DELETE,
+      sonarrSettingsId: 1,
+      type: 'episode',
+    });
+    const collectionMedia = createCollectionMediaWithMetadata(collection, {
+      tmdbId: 1,
+      mediaData: {
+        parentIndex: 1,
+        index: 1171,
+        providerIds: { tvdb: ['501'] },
+      },
+    });
+    mockMediaServerMetadata(collectionMedia.mediaData);
+    const series = createSonarrSeries();
+    const mockedSonarrApi = mockSonarrApi(servarrService, logger);
+    jest.spyOn(mockedSonarrApi, 'getSeriesByTvdbId').mockResolvedValue(series);
+    jest.spyOn(mockedSonarrApi, 'getEpisodes').mockResolvedValue([
+      createSonarrEpisode({
+        seasonNumber: 23,
+        episodeNumber: 16,
+        tvdbId: 501,
+      }),
+    ]);
+    mediaIdFinder.findTvdbId.mockResolvedValue(1);
+
+    await sonarrActionHandler.handleAction(collection, collectionMedia);
+
+    expect(mockedSonarrApi.UnmonitorDeleteEpisodes).toHaveBeenCalledWith(
+      series.id,
+      23,
+      [16],
+      true,
+      undefined,
     );
   });
 

@@ -817,9 +817,15 @@ describe('MediaModal', () => {
     )
 
     await waitFor(() =>
-      expect(getApiHandlerMock).toHaveBeenCalledWith('/tracearr/items/93'),
+      expect(getApiHandlerMock).toHaveBeenCalledWith(
+        '/tracearr/items/93',
+        expect.any(AbortSignal),
+      ),
     )
-    expect(getApiHandlerMock).not.toHaveBeenCalledWith('/tautulli/items/93')
+    expect(getApiHandlerMock).not.toHaveBeenCalledWith(
+      '/tautulli/items/93',
+      expect.any(AbortSignal),
+    )
     // The badge opens the item's own page, which it learns from the panel's
     // query rather than a request of its own.
     await waitFor(() =>
@@ -842,8 +848,42 @@ describe('MediaModal', () => {
     )
 
     await waitFor(() =>
-      expect(getApiHandlerMock).toHaveBeenCalledWith('/tautulli/items/93'),
+      expect(getApiHandlerMock).toHaveBeenCalledWith(
+        '/tautulli/items/93',
+        expect.any(AbortSignal),
+      ),
     )
+  })
+
+  it('links each watch statistics panel to its service with no plays to show', async () => {
+    useMediaServerTypeMock.mockReturnValue({
+      ...useMediaServerTypeMock(),
+      isPlex: true,
+    })
+    getApiHandlerMock.mockImplementation((path: string) =>
+      Promise.resolve(
+        path === '/settings'
+          ? { tautulli_url: 'http://tautulli.local', tracearr_url: 'http://t' }
+          : path.includes('/items/')
+            ? null
+            : {},
+      ),
+    )
+
+    render(
+      <MediaModal onClose={() => {}} id={93} mediaType="movie" title="Movie" />,
+    )
+
+    expect(
+      (
+        await screen.findByRole('link', { name: /Open on Tautulli/ })
+      ).getAttribute('href'),
+    ).toBe('http://tautulli.local/info?rating_key=93&source=history')
+    expect(
+      screen
+        .getByRole('link', { name: /Open on Tracearr/ })
+        .getAttribute('href'),
+    ).toBe('http://t')
   })
 
   it('names the season and falls back to the provider description when the media server has none', async () => {
@@ -1047,14 +1087,48 @@ describe('MediaModal', () => {
     await waitFor(() => {
       expect(getApiHandlerMock).toHaveBeenCalledWith(
         '/ombi/requests/4600/users?type=tv&season=1',
+        expect.any(AbortSignal),
       )
     })
     expect(getApiHandlerMock).toHaveBeenCalledWith(
-      '/seerr/requests/4600/users?season=1',
+      '/seerr/requests/4600/users?type=tv&season=1',
+      expect.any(AbortSignal),
     )
     expect(getApiHandlerMock).not.toHaveBeenCalledWith(
       expect.stringContaining('/requests/13993/'),
+      expect.any(AbortSignal),
     )
     expect(await screen.findByText('alice')).toBeTruthy()
+  })
+
+  it('cancels its pending reads when it closes', async () => {
+    const pending = (path: string) =>
+      path.startsWith('/seerr/') || path.startsWith('/tracearr/')
+    getApiHandlerMock.mockImplementation((path: string) =>
+      path === '/settings'
+        ? Promise.resolve({
+            seerr_url: 'http://seerr.local',
+            tracearr_url: 'http://t',
+          })
+        : pending(path)
+          ? new Promise(() => {})
+          : Promise.resolve({}),
+    )
+
+    const { unmount } = render(
+      <MediaModal
+        onClose={() => {}}
+        id={93}
+        mediaType="movie"
+        title="Movie"
+        providerIds={{ tmdb: ['500'] }}
+      />,
+    )
+    const pendingCalls = () =>
+      getApiHandlerMock.mock.calls.filter(([path]) => pending(path))
+    await waitFor(() => expect(pendingCalls()).toHaveLength(2))
+    unmount()
+
+    expect(pendingCalls().every(([, signal]) => signal?.aborted)).toBe(true)
   })
 })

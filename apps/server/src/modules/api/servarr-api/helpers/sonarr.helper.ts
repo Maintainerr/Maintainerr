@@ -1,3 +1,4 @@
+import { MediaItem } from '@maintainerr/contracts';
 import { assertApiKey, connectionTestConfig } from '../../lib/connectionTest';
 import { MaintainerrLogger } from '../../../logging/logs.service';
 import { SLOW_INSTANCE_TIMEOUT_MS } from '../../lib/httpTimeouts';
@@ -9,6 +10,24 @@ import {
   SonarrInfo,
   SonarrSeries,
 } from '../interfaces/sonarr.interface';
+
+/**
+ * The one Sonarr episode the item's TVDB episode id names. A media server can
+ * number an episode differently from Sonarr (#3819), so the id finds it
+ * wherever Sonarr files it. A legacy Plex agent files the series id under the
+ * episode, which is ignored.
+ */
+export const findEpisodeByTvdbId = (
+  episodes: SonarrEpisode[],
+  item: MediaItem,
+  seriesTvdbId: number,
+): SonarrEpisode | undefined => {
+  const ids = (item.providerIds?.tvdb ?? [])
+    .map(Number)
+    .filter((id) => id > 0 && id !== seriesTvdbId);
+  const matches = episodes.filter((episode) => ids.includes(episode.tvdbId));
+  return matches.length === 1 ? matches[0] : undefined;
+};
 
 export class SonarrApi extends ServarrApi<{
   seriesId: number;
@@ -31,9 +50,9 @@ export class SonarrApi extends ServarrApi<{
   }
 
   /**
-   * Every tracked series. Uncached: its only caller fences a filesystem delete
-   * on the other series' folders, and a series added since the last read would
-   * be missing from a cached snapshot - so the fence would not see it.
+   * Every tracked series. Uncached: the filesystem-delete fence must see a
+   * series added since the last read; the id fallback memoizes it per run
+   * or batch itself.
    */
   public async getSeries(): Promise<SonarrSeries[]> {
     try {
@@ -324,16 +343,46 @@ export class SonarrApi extends ServarrApi<{
         return false;
       }
 
+      // A file can hold several episodes. Deleting it leaves all of them
+      // without it, so each is unmonitored, or Sonarr fetches the file again.
+      const fileIds = new Set(
+        matchedEpisodes.map((e) => e.episodeFileId).filter(Boolean),
+      );
+      const targets = deleteFiles
+        ? episodes.filter(
+            (e) => matchedEpisodes.includes(e) || fileIds.has(e.episodeFileId),
+          )
+        : matchedEpisodes;
+
       this.logger.log(
         `${!deleteFiles ? 'Unmonitoring' : 'Deleting'} ${
-          matchedEpisodes.length
+          targets.length
         } episode(s) from show with ID ${seriesId} from Sonarr.`,
       );
 
+      // Every episode is unmonitored before any file goes, and a file goes
+      // only once all of its episodes are confirmed: one still monitored
+      // would fetch it again (#3228).
       let success = true;
-      for (const e of matchedEpisodes) {
-        success =
-          (await this.unmonitorAndDeleteEpisode(e, deleteFiles)) && success;
+      const keptFileIds = new Set<number>();
+      const confirmedFileIds = new Set<number>();
+      for (const e of targets) {
+        const unmonitored = await this.unmonitorEpisode(e, deleteFiles);
+        if (!unmonitored) {
+          success = false;
+          keptFileIds.add(e.episodeFileId);
+        } else if (unmonitored.episodeFileId) {
+          confirmedFileIds.add(unmonitored.episodeFileId);
+        }
+      }
+
+      if (deleteFiles) {
+        for (const fileId of confirmedFileIds) {
+          if (!keptFileIds.has(fileId)) {
+            success =
+              (await this.runDelete(`episodefile/${fileId}`)) && success;
+          }
+        }
       }
 
       return success;
@@ -391,8 +440,7 @@ export class SonarrApi extends ServarrApi<{
           ) {
             for (const e of episodes) {
               if (e.seasonNumber === s.seasonNumber && e.episodeFileId) {
-                success =
-                  (await this.unmonitorAndDeleteEpisode(e, false)) && success;
+                success = !!(await this.unmonitorEpisode(e, false)) && success;
               }
             }
           } else if (typeof type === 'number') {
@@ -458,45 +506,41 @@ export class SonarrApi extends ServarrApi<{
     ).data;
   }
 
-  private async unmonitorAndDeleteEpisode(
+  /**
+   * Unmonitors the episode. Resolves to it, re-read when the PUT's outcome was
+   * unknown, or to undefined when Sonarr may still be monitoring it.
+   */
+  private async unmonitorEpisode(
     episode: SonarrEpisode,
     deleteFiles: boolean,
-  ): Promise<boolean> {
-    let episodeFileId = episode.episodeFileId;
-
+  ): Promise<SonarrEpisode | undefined> {
     if (
-      !(await this.runPut(
+      await this.runPut(
         `episode/${episode.id}`,
         JSON.stringify({ ...episode, monitored: false }),
-      ))
+      )
     ) {
-      // A slow PUT can time out client-side even though Sonarr applied it
-      // (#3228): re-read the live state before deciding. Fail closed -
-      // deleting a still-monitored episode's file would trigger a re-download.
-      const live = await this.getWithoutCache<SonarrEpisode>(
-        `/episode/${episode.id}`,
-        { timeout: SLOW_INSTANCE_TIMEOUT_MS },
+      return episode;
+    }
+
+    // A slow PUT can time out client-side even though Sonarr applied it
+    // (#3228): re-read the live state before deciding. Fail closed -
+    // deleting a still-monitored episode's file would trigger a re-download.
+    const live = await this.getWithoutCache<SonarrEpisode>(
+      `/episode/${episode.id}`,
+      { timeout: SLOW_INSTANCE_TIMEOUT_MS },
+    );
+
+    if (live?.monitored !== false) {
+      this.logger.warn(
+        `Could not confirm episode ${episode.id} was unmonitored${
+          deleteFiles ? '; leaving its file in place' : ''
+        }.`,
       );
-
-      if (live?.monitored !== false) {
-        this.logger.warn(
-          `Could not confirm episode ${episode.id} was unmonitored${
-            deleteFiles ? '; leaving its file in place' : ''
-          }.`,
-        );
-        return false;
-      }
-
-      episodeFileId = live.episodeFileId;
+      return undefined;
     }
 
-    if (deleteFiles && episodeFileId) {
-      if (!(await this.runDelete(`episodefile/${episodeFileId}`))) {
-        return false;
-      }
-    }
-
-    return true;
+    return live;
   }
 
   private normalizeAirDate(airDate?: string | Date): string | undefined {

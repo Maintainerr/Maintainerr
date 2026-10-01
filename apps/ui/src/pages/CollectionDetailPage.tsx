@@ -10,7 +10,7 @@ import ExecuteButton from '../components/Common/ExecuteButton'
 import LazyModalBoundary from '../components/Common/LazyModalBoundary'
 import LoadingSpinner from '../components/Common/LoadingSpinner'
 import TabbedLinks, { TabbedRoute } from '../components/Common/TabbedLinks'
-import { prefetchRoute } from '../router'
+import { prefetchRoute } from '../utils/routePrefetch'
 import { logClientError } from '../utils/ClientLogger'
 
 const TestMediaItem = lazy(

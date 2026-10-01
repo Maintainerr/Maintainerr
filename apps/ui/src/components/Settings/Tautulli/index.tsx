@@ -4,7 +4,9 @@ import {
   stripTrailingSlashes,
   tautulliSettingSchema,
 } from '@maintainerr/contracts'
+import { Navigate } from 'react-router-dom'
 import { z } from 'zod'
+import { useMediaServerType } from '../../../hooks/useMediaServerType'
 import { ServiceApiKeyHelp } from '../../Forms/ServiceApiKeyHelp'
 import { ServiceUrlExamples } from '../../Forms/ServiceUrlExamples'
 import ExternalServiceSettingsPage, {
@@ -54,6 +56,16 @@ const buildFields = (): ExternalServiceFieldConfig[] => [
 
 const TautulliSettings = () => {
   const { t } = useLingui()
+  const { isPlex, isLoading } = useMediaServerType()
+
+  if (isLoading) {
+    return null
+  }
+
+  // Tautulli is Plex-only, so the services hub leaves it out anywhere else.
+  if (!isPlex) {
+    return <Navigate to="/services" replace />
+  }
 
   return (
     <ExternalServiceSettingsPage

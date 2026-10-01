@@ -105,6 +105,10 @@ export type SeerrMovieRequest = SeerrBaseRequest & {
 
 export type SeerrRequest = SeerrMovieRequest | SeerrTVRequest;
 
+// TMDB numbers movies and shows independently, so one id can name both.
+const requestIndexKey = (type: SeerrRequest['type'], tmdbId: number) =>
+  `${type}:${tmdbId}`;
+
 /**
  * Reads the name off the request rather than looking the user up on the media
  * server: media server user IDs don't match Seerr's plexId. Seerr stores the
@@ -158,6 +162,7 @@ interface SeerrStatus {
 
 interface SeerrAbout {
   version: string;
+  totalRequests: number;
 }
 
 export interface SeerrBasicApiResponse {
@@ -207,7 +212,7 @@ export class SeerrApiService {
   // Deduplicates concurrent callers (the first batch of rule-evaluation items)
   // onto a single /request sweep while the run-scoped index is being built.
   private requestIndexPromise?: Promise<
-    Map<number, SeerrRequest[]> | undefined
+    Map<string, SeerrRequest[]> | undefined
   >;
 
   constructor(
@@ -429,12 +434,13 @@ export class SeerrApiService {
    */
   public async getRequestsForMedia(
     tmdbId: number,
+    type: 'movie' | 'tv',
   ): Promise<SeerrRequest[] | undefined> {
     const index = await this.getRequestIndex();
     if (index === undefined) {
       return undefined;
     }
-    const requests = index.get(tmdbId);
+    const requests = index.get(requestIndexKey(type, tmdbId));
     // cloneDeep, not structuredClone: it never throws on an unexpected
     // non-cloneable value (which would surface as a per-item warn + skip).
     return requests ? cloneDeep(requests) : [];
@@ -450,13 +456,14 @@ export class SeerrApiService {
    */
   public async getRequestedByUsernames(
     tmdbId: number,
+    type: 'movie' | 'tv',
     season?: number,
   ): Promise<string[]> {
     if (!this.isConfigured() || !tmdbId) {
       return [];
     }
 
-    const requests = await this.getRequestsForMedia(tmdbId);
+    const requests = await this.getRequestsForMedia(tmdbId, type);
     if (!requests?.length) {
       return [];
     }
@@ -475,10 +482,10 @@ export class SeerrApiService {
   }
 
   private async getRequestIndex(): Promise<
-    Map<number, SeerrRequest[]> | undefined
+    Map<string, SeerrRequest[]> | undefined
   > {
     const cache = cacheManager.getCache(SEERR_REQUESTS_CACHE_ID)?.data;
-    const cached = cache?.get<Map<number, SeerrRequest[]>>(
+    const cached = cache?.get<Map<string, SeerrRequest[]>>(
       SEERR_REQUESTS_CACHE_KEY,
     );
     if (cached) {
@@ -493,7 +500,7 @@ export class SeerrApiService {
   }
 
   private async buildRequestIndex(): Promise<
-    Map<number, SeerrRequest[]> | undefined
+    Map<string, SeerrRequest[]> | undefined
   > {
     const requests = await this.getRequests();
     // Don't cache a failed sweep: a later batch in the same run retries, giving
@@ -513,24 +520,25 @@ export class SeerrApiService {
         a.id - b.id,
     );
 
-    // Group by media.tmdbId: Seerr keys every media row by tmdbId (non-null,
+    // Group by type and tmdbId: Seerr keys every media row by tmdbId (non-null,
     // indexed - tvdbId/imdbId are optional extras), and the metadata service
     // resolves each library item to that tmdbId via all its providers (with
     // tvdb/imdb -> tmdb bridging), so tmdbId is the canonical join key (and
     // matches the per-item getMovie/getShow path this replaces). media.requests
     // is not populated on the list endpoint (it would be circular), so each
     // title's request set is rebuilt here.
-    const index = new Map<number, SeerrRequest[]>();
+    const index = new Map<string, SeerrRequest[]>();
     for (const request of requests) {
       const tmdbId = request.media?.tmdbId;
       if (typeof tmdbId !== 'number') {
         continue;
       }
-      const existing = index.get(tmdbId);
+      const key = requestIndexKey(request.type, tmdbId);
+      const existing = index.get(key);
       if (existing) {
         existing.push(request);
       } else {
-        index.set(tmdbId, [request]);
+        index.set(key, [request]);
       }
     }
 
@@ -757,13 +765,14 @@ export class SeerrApiService {
         connectionTestConfig(),
       );
 
-      if (!response.data?.version) {
-        return {
-          status: 'NOK',
-          code: 0,
-          message:
-            'Failure, an unexpected response was returned. The URL is likely incorrect.',
-        };
+      // Ombi serves this path too, for any key, so check a Seerr-only field.
+      if (
+        !response.data?.version ||
+        typeof response.data.totalRequests !== 'number'
+      ) {
+        throw new Error(
+          'Failure, an unexpected response was returned. The URL is likely incorrect.',
+        );
       }
 
       return {

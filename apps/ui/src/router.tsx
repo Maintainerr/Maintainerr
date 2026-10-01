@@ -10,6 +10,7 @@ import Overview from './components/Overview'
 // child) on every settings navigation.
 import Overlays from './components/Overlays'
 import Settings from './components/Settings'
+import { registerPrefetch } from './utils/routePrefetch'
 
 const basePath = import.meta.env.VITE_BASE_PATH || ''
 
@@ -318,13 +319,6 @@ const appRoutes: AppRoute[] = [
         preload: settingsOmbiRoute.preload,
       },
       {
-        // Radarr, Sonarr and Sportarr share one page; it reads which from the
-        // path and sends anything else back to the hub.
-        path: ':service',
-        lazy: settingsServarrRoute.lazy,
-        preload: settingsServarrRoute.preload,
-      },
-      {
         path: 'metadata',
         lazy: settingsMetadataRoute.lazy,
         preload: settingsMetadataRoute.preload,
@@ -353,6 +347,14 @@ const appRoutes: AppRoute[] = [
         path: 'notifications',
         lazy: settingsNotificationsRoute.lazy,
         preload: settingsNotificationsRoute.preload,
+      },
+      {
+        // Radarr, Sonarr and Sportarr share one page; it reads which from the
+        // path and sends anything else back to the hub. Last, because
+        // prefetchRoute takes the first route that matches.
+        path: ':service',
+        lazy: settingsServarrRoute.lazy,
+        preload: settingsServarrRoute.preload,
       },
     ],
   },
@@ -447,7 +449,7 @@ const collectPreloaders = (
   return preloaders
 }
 
-export const prefetchRoute = (path: string) => {
+const prefetchRoute = (path: string) => {
   const normalized = normalizePrefetchPath(path)
   const segments = normalized.split('/').filter(Boolean)
   const preloaders = collectPreloaders(appRoutes, segments)
@@ -456,11 +458,7 @@ export const prefetchRoute = (path: string) => {
   return Promise.all(preloaders.map((fn) => fn())).then(() => undefined)
 }
 
-// Hover, focus and touch handlers that warm a route before it is clicked.
-export const prefetchHandlers = (path: string, enabled = true) => {
-  const prefetch = enabled ? () => void prefetchRoute(path) : undefined
-  return { onMouseEnter: prefetch, onFocus: prefetch, onTouchStart: prefetch }
-}
+registerPrefetch(prefetchRoute)
 
 export const router = createBrowserRouter(
   [

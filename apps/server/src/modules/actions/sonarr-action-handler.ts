@@ -9,6 +9,7 @@ import { DownloadClientApiService } from '../api/download-client-api/download-cl
 import { MediaServerFactory } from '../api/media-server/media-server.factory';
 import { OmbiApiService } from '../api/ombi-api/ombi-api.service';
 import { SeerrApiService } from '../api/seerr-api/seerr-api.service';
+import { findEpisodeByTvdbId } from '../api/servarr-api/helpers/sonarr.helper';
 import {
   SonarrEpisode,
   SonarrSeries,
@@ -171,6 +172,26 @@ export class SonarrActionHandler {
     // has none, which must leave the row as it is.
     if (sonarrMedia.tmdbId) {
       media.tmdbId ??= sonarrMedia.tmdbId;
+    }
+
+    // A media server can number an episode differently from Sonarr (#3819).
+    // When its TVDB id names one Sonarr episode, everything below acts on
+    // that episode by Sonarr's numbers; otherwise by the media server's.
+    if (collection.type === 'episode' && mediaData?.index !== undefined) {
+      const episode = await this.matchEpisodeByTvdbId(
+        sonarrApiClient,
+        sonarrMedia,
+        mediaData,
+        collection.sonarrSettingsId,
+        libraryReads,
+      );
+      if (episode) {
+        mediaData = {
+          ...mediaData,
+          parentIndex: episode.seasonNumber,
+          index: episode.episodeNumber,
+        };
+      }
     }
 
     // Capture the download ids before any delete (the history is consumed
@@ -767,6 +788,33 @@ export class SonarrActionHandler {
         // 'movie' is Radarr's scope and undefined means nothing is stranded;
         // neither is reachable for a Sonarr collection type.
         return;
+    }
+  }
+
+  private async matchEpisodeByTvdbId(
+    sonarrApiClient: Awaited<ReturnType<ServarrService['getSonarrApiClient']>>,
+    sonarrMedia: SonarrSeries,
+    mediaData: MediaItem,
+    settingsId: number,
+    libraryReads?: ArrLookupCache,
+  ): Promise<SonarrEpisode | undefined> {
+    if (!mediaData.providerIds?.tvdb?.length) {
+      return undefined;
+    }
+
+    const listEpisodes = () => sonarrApiClient.getEpisodes(sonarrMedia.id);
+    try {
+      const episodes = await (libraryReads
+        ? libraryReads.memoize(
+            `sonarr:${settingsId}:episodes-all:${sonarrMedia.id}`,
+            listEpisodes,
+            (episodes) => episodes === undefined,
+          )
+        : listEpisodes());
+      return findEpisodeByTvdbId(episodes ?? [], mediaData, sonarrMedia.tvdbId);
+    } catch (error) {
+      this.logger.debug(error);
+      return undefined;
     }
   }
 

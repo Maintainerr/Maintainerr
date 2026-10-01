@@ -6,6 +6,7 @@ import { RadarrApi } from '../api/servarr-api/helpers/radarr.helper';
 import { SonarrApi } from '../api/servarr-api/helpers/sonarr.helper';
 import { ServarrService } from '../api/servarr-api/servarr.service';
 import { Collection } from '../collections/entities/collection.entities';
+import { CollectionMedia } from '../collections/entities/collection_media.entities';
 import { MaintainerrLogger } from '../logging/logs.service';
 import { ArrLibrary } from '../metadata/interfaces/metadata-lookup-policy.interface';
 import {
@@ -48,8 +49,8 @@ const RESOLVE_CONCURRENCY = 5;
 // The *arr editor accepts a single batch, but cap the id list per request so a
 // huge membership change can't build an unbounded body.
 const EDITOR_BATCH_SIZE = 100;
-// Ids per exclusion lookup, under SQLite's bound-parameter cap.
-const EXCLUSION_LOOKUP_CHUNK = 500;
+// Ids per repository lookup, under SQLite's bound-parameter cap.
+const ID_LOOKUP_CHUNK = 500;
 
 /**
  * Applies/removes Radarr & Sonarr tags as a side effect of Maintainerr state -
@@ -59,7 +60,10 @@ const EXCLUSION_LOOKUP_CHUNK = 500;
  *   matching *arr entity carries a tag whose label is the collection / rule group
  *   name. Adds come from the rule executor's per-run delta; removals from
  *   `CollectionsService.removeFromCollectionInternal`, which every leave passes
- *   through (rule run, exclusion, handling action, manual and global removal).
+ *   through (rule run, exclusion, handling action, manual and global removal),
+ *   and from the paths that drop rows wholesale (deactivation, stale cleanup,
+ *   a crucial-setting reset). A save that turns tagging on or off, renames the
+ *   group or switches its *arr server moves the tag.
  * - **Exclusion (Behavior B,
  *   https://features.maintainerr.info/posts/81):** when an item is excluded, the
  *   matching *arr entity gets a protective tag (default "dnd"); removal on
@@ -75,14 +79,11 @@ const EXCLUSION_LOOKUP_CHUNK = 500;
  * v1 is gated to movie (Radarr) and show (Sonarr) - Sonarr has no per-season tag,
  * so season/episode collections are skipped with a debug log.
  *
- * Known edge cases (v1 behaviour):
- * - **Rename:** the membership tag is the *current* rule group name, so renaming a
- *   group leaves the old (renamed-from) tag orphaned on the *arr items until they
- *   churn or the user clears it; the new name is applied on the next membership
- *   change. Re-tagging the whole collection on rename is deferred.
- * - **Two groups sharing a name** share one tag (labels are case-insensitive);
- *   untagging from one can strip a tag the other still wants, but the other group
- *   re-adds it on its next run.
+ * Known edge cases:
+ * - **Manual-only members** are not tagged; only rule-held ones are.
+ * - **Two groups sharing a name** on one server share one tag (labels are
+ *   case-insensitive); a leave from one keeps it on items the other still holds
+ *   (`withoutStillHeld`).
  * - **A group named like the exclusion label** shares the protective tag; a
  *   removal keeps it on items that are still excluded (`withoutExcluded`).
  * - **Stale id in an editor batch** (an item deleted from *arr between resolve and
@@ -98,6 +99,10 @@ export class ServarrTagService {
     private readonly settings: SettingsDataService,
     @InjectRepository(Exclusion)
     private readonly exclusionRepo: Repository<Exclusion>,
+    @InjectRepository(Collection)
+    private readonly collectionRepo: Repository<Collection>,
+    @InjectRepository(CollectionMedia)
+    private readonly collectionMediaRepo: Repository<CollectionMedia>,
     private readonly logger: MaintainerrLogger,
   ) {
     logger.setContext(ServarrTagService.name);
@@ -158,11 +163,18 @@ export class ServarrTagService {
         );
         return;
       }
-      const tagId = await client.ensureTag(label);
+      // Created only when there is something to add: a removal-only sync on an
+      // instance without the label has nothing to strip.
+      const tagId =
+        added.length > 0
+          ? await client.ensureTag(label)
+          : await this.findTagId(client, label);
       if (tagId === undefined) {
-        this.logger.warn(
-          `Couldn't ensure ${service} tag '${label}'; skipping tag sync for '${collection.title}'.`,
-        );
+        if (added.length > 0) {
+          this.logger.warn(
+            `Couldn't ensure ${service} tag '${label}'; skipping tag sync for '${collection.title}'.`,
+          );
+        }
         return;
       }
 
@@ -177,7 +189,7 @@ export class ServarrTagService {
               (server) => server.id === settingsId,
             ),
             label,
-            removed,
+            await this.withoutStillHeld(collection, settingsId, label, removed),
           ),
           library,
         ),
@@ -251,8 +263,9 @@ export class ServarrTagService {
   public async applyExclusionTag(
     target: ExclusionTagTarget,
     instance?: ArrInstanceRef,
+    libraryReads?: ArrLookupCache,
   ): Promise<void> {
-    await this.tagExclusionTarget(target, instance, 'add');
+    await this.tagExclusionTarget(target, instance, 'add', libraryReads);
   }
 
   /**
@@ -265,14 +278,16 @@ export class ServarrTagService {
   public async removeExclusionTag(
     target: ExclusionTagTarget,
     instance?: ArrInstanceRef,
+    libraryReads?: ArrLookupCache,
   ): Promise<void> {
-    await this.tagExclusionTarget(target, instance, 'remove');
+    await this.tagExclusionTarget(target, instance, 'remove', libraryReads);
   }
 
   private async tagExclusionTarget(
     target: ExclusionTagTarget,
     instance: ArrInstanceRef | undefined,
     mode: 'add' | 'remove',
+    libraryReads?: ArrLookupCache,
   ): Promise<void> {
     try {
       const service = this.serviceForType(target.type);
@@ -319,7 +334,7 @@ export class ServarrTagService {
             : await this.lookupCandidates(
                 target,
                 service,
-                this.libraryOf(client, service, settings.id),
+                this.libraryOf(client, service, settings.id, libraryReads),
               );
         const arrId = await this.matchArrId(client, service, candidates);
         if (arrId == null) {
@@ -382,6 +397,58 @@ export class ServarrTagService {
   }
 
   /**
+   * Groups whose names normalize to one label share its tag on a server, so a
+   * leave from one keeps it on items another of them still holds.
+   */
+  private async withoutStillHeld(
+    collection: Collection,
+    settingsId: number,
+    label: string,
+    removed: ArrTagItem[],
+  ): Promise<ArrTagItem[]> {
+    if (removed.length === 0) {
+      return removed;
+    }
+
+    const siblingIds = (
+      await this.collectionRepo.find({
+        select: { id: true, title: true },
+        where: {
+          tagInArr: true,
+          type: collection.type,
+          ...(collection.type === 'show'
+            ? { sonarrSettingsId: settingsId }
+            : { radarrSettingsId: settingsId }),
+        },
+      })
+    )
+      .filter(
+        (other) =>
+          other.id !== collection.id &&
+          normalizeArrTagLabel(other.title) === label,
+      )
+      .map((other) => other.id);
+    if (siblingIds.length === 0) {
+      return removed;
+    }
+
+    const held = new Set<string>();
+    for (const ids of this.chunk(
+      removed.map((item) => item.mediaServerId),
+      ID_LOOKUP_CHUNK,
+    )) {
+      const rows = await this.collectionMediaRepo.find({
+        select: { mediaServerId: true },
+        where: { collectionId: In(siblingIds), mediaServerId: In(ids) },
+      });
+      for (const row of rows) {
+        held.add(row.mediaServerId);
+      }
+    }
+    return removed.filter((item) => !held.has(item.mediaServerId));
+  }
+
+  /**
    * A group name can normalize to the exclusion label of the server it tags on.
    * An item that is still excluded needs that label as its protective tag, so a
    * removal leaves it alone. Any exclusion counts: keeping protection is the
@@ -403,7 +470,7 @@ export class ServarrTagService {
     const excluded = new Set<string>();
     for (const ids of this.chunk(
       removed.map((item) => item.mediaServerId),
-      EXCLUSION_LOOKUP_CHUNK,
+      ID_LOOKUP_CHUNK,
     )) {
       const rows = await this.exclusionRepo.find({
         select: { mediaServerId: true },

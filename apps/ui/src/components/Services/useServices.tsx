@@ -55,6 +55,11 @@ const downloadClients: Record<
   },
 }
 
+// A list still loading or that failed counts as a server, so the download
+// client stays listed until all three are known to be empty and never pops in.
+export const hasArrServer = (lists: ReturnType<typeof useServarrSettings>[]) =>
+  lists.some((list) => !list.isSuccess || list.data.length > 0)
+
 export const useServices = (enabled = true): Service[] => {
   const { t } = useLingui()
   const { data: settings } = useSettings()
@@ -105,10 +110,7 @@ export const useServices = (enabled = true): Service[] => {
     settings.download_client_url && settings.download_client_type
       ? downloadClients[settings.download_client_type]
       : undefined
-  // Listed until all three lists are known to be empty, so it never pops in.
-  const hasArr = [radarr, sonarr, sportarr].some(
-    (query) => !query.isSuccess || query.data.length > 0,
-  )
+  const hasArr = hasArrServer([radarr, sonarr, sportarr])
 
   const services: (Service | false)[] = [
     {

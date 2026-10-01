@@ -47,7 +47,7 @@ Read [ARCHITECTURE.md](../../ARCHITECTURE.md) for the system architecture overvi
    end-to-end behavior; use Playwright for the affected UI actions. Connectivity
    checks do not establish end-to-end coverage. Mocks supplement these checks,
    or provide an explicitly reported fallback when a service is unavailable.
-   Use isolated test state, restore modified fixtures, and stop temporary
+   Test in the `/workspace` app, restore modified fixtures, and stop temporary
    processes. Keep evidence under ignored `.playwright-mcp/`, without credentials.
 8. **Keep tests and comments purposeful.** Test observable behavior and meaningful
    regressions. Extend or parameterize existing tests before adding scaffolding;

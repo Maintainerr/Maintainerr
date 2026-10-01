@@ -83,6 +83,7 @@ export class StreamystatsApiService {
 
   public async getItemDetails(
     itemId: string,
+    options?: { fresh?: boolean },
   ): Promise<StreamystatsItemDetails | null> {
     // /api/get-item-details/[itemId] only accepts the internal Streamystats
     // serverId (not serverName/serverUrl). Resolve it via /api/servers once
@@ -96,12 +97,11 @@ export class StreamystatsApiService {
     }
 
     try {
-      const raw = await this.api.get<unknown>(
-        `/api/get-item-details/${itemId}`,
-        {
-          params: { serverId: String(serverId) },
-        },
-      );
+      const path = `/api/get-item-details/${itemId}`;
+      const config = { params: { serverId: String(serverId) } };
+      const raw = options?.fresh
+        ? await this.api.getWithoutCache<unknown>(path, config)
+        : await this.api.get<unknown>(path, config);
       if (raw == null) {
         return null;
       }
@@ -229,12 +229,9 @@ export class StreamystatsApiService {
 
       const version = response?.data?.currentVersion;
       if (!version) {
-        return {
-          status: 'NOK',
-          code: 0,
-          message:
-            'Unexpected response from Streamystats. Verify the URL points to a Streamystats instance.',
-        };
+        throw new Error(
+          'Unexpected response from Streamystats. Verify the URL points to a Streamystats instance.',
+        );
       }
 
       const watchlists = await api.getRawWithoutCache<unknown>(
@@ -249,7 +246,7 @@ export class StreamystatsApiService {
       if (
         !streamystatsWatchlistsResponseSchema.safeParse(watchlists.data).success
       ) {
-        return { status: 'NOK', code: 0, message: 'Unexpected response' };
+        throw new Error('Unexpected response');
       }
 
       return {
