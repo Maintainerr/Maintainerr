@@ -1381,7 +1381,7 @@ export class CollectionsService {
    * pushed order follows the "Leaving in X days" overlay. Collections sharing
    * one media server collection each count their own window (#3799); an item
    * in several keeps its earliest deadline, one with no window sorts last, and
-   * with no window at all the order falls back to `addDate`.
+   * with no window at all the order falls back to its earliest `addDate`.
    */
   private buildCollectionMediaCompareOptions(
     rows: ReadonlyArray<{
@@ -1414,9 +1414,14 @@ export class CollectionsService {
     if (
       [...deadlineByMediaItemId.values()].every((deadline) => deadline === null)
     ) {
-      const addDateByMediaItemId = new Map<string, Date | string>(
-        rows.map((row) => [row.mediaServerId, row.addDate]),
-      );
+      const addDateByMediaItemId = new Map<string, Date>();
+      for (const row of rows) {
+        const addDate = new Date(row.addDate);
+        const earliest = addDateByMediaItemId.get(row.mediaServerId);
+        if (!earliest || addDate < earliest) {
+          addDateByMediaItemId.set(row.mediaServerId, addDate);
+        }
+      }
       return {
         deleteSoonestDate: (item) => addDateByMediaItemId.get(item.id),
       };
