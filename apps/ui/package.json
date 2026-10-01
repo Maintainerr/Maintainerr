@@ -29,7 +29,7 @@
     "@tanstack/react-query": "^5.104.0",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
-    "axios": "^1.18.1",
+    "axios": "^1.20.0",
     "bowser": "^2.14.1",
     "clsx": "^2.1.1",
     "compare-versions": "^6.1.1",

@@ -105,7 +105,8 @@
     "uuid@^9.0.1": "11.1.1",
     "linkify-it": "5.0.2",
     "js-yaml@5.2.1": "5.2.3",
-    "nodemailer@npm:^7.0.12": "^9",
-    "nodemailer@npm:8.0.5": "^9"
+    "nodemailer@npm:^7.0.12": "^10",
+    "nodemailer@npm:8.0.5": "^10",
+    "nodemailer@npm:^9.0.1": "^10"
   }
 }
