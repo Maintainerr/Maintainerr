@@ -15,9 +15,11 @@ export const watchStatsKeys = {
 export const useWatchStats = <T>(path: string, enabled = true) =>
   useQuery<T | null>({
     queryKey: watchStatsKeys.item(path),
-    queryFn: async () => {
+    // The signal cancels the read when the modal closes, so a slow service
+    // does not hold one of the browser's few connections to Maintainerr.
+    queryFn: async ({ signal }) => {
       try {
-        return (await GetApiHandler<T | undefined>(path)) ?? null
+        return (await GetApiHandler<T | undefined>(path, signal)) ?? null
       } catch (error) {
         if (isAxiosError(error) && error.response?.status === 404) {
           return null
@@ -26,5 +28,8 @@ export const useWatchStats = <T>(path: string, enabled = true) =>
       }
     },
     retry: false,
+    // Each fetch re-reads the service, a show's up to 50 history pages, so an
+    // open panel is not refreshed just because the window regained focus.
+    refetchOnWindowFocus: false,
     enabled,
   })
