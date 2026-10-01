@@ -4,6 +4,16 @@ export const tracearrMediaSchema = z.object({
   id: z.uuid(),
 })
 
+// A show's seasons, read only to find one season's own id.
+export const tracearrMediaChildrenSchema = z.object({
+  data: z.array(
+    z.object({
+      id: z.uuid(),
+      season_number: z.number().int().nullable(),
+    }),
+  ),
+})
+
 // The plays of one item, read on demand for the media modal. Kept apart from
 // the swept history row so the snapshot does not retain fields only this needs.
 export const tracearrItemHistoryPageSchema = z.object({

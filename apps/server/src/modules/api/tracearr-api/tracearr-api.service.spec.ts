@@ -1011,16 +1011,35 @@ describe('TracearrApiService', () => {
       user: { id: USER_ID, username: 'alice' },
       ...overrides,
     });
+    const SEASON_MEDIA_ID = '77777777-7777-4777-8777-777777777777';
+    const confirmingItem = {
+      title: 'Confirming Title',
+      addedAt: new Date('2026-01-01T00:00:00.000Z'),
+    };
     const useItem = (item: Record<string, unknown>) =>
       mediaServerFactory.getService.mockResolvedValue({
-        getMetadata: jest.fn(async () => item),
+        getMetadata: jest.fn(async (id: string) =>
+          id.startsWith('confirm-') ? confirmingItem : item,
+        ),
       } as never);
     const answerHistory = (rows: unknown[]) =>
       apiMock.getRawWithoutCache.mockImplementation(async (path: string) =>
         path === '/history'
           ? { data: { data: rows, meta: { nextCursor: null } } }
-          : { data: { id: SHOW_MEDIA_ID } },
+          : path === `/media/${SHOW_MEDIA_ID}/children`
+            ? { data: { data: [{ id: SEASON_MEDIA_ID, season_number: 2 }] } }
+            : { data: { id: SHOW_MEDIA_ID } },
       );
+    const recentlyAddedCalls = () =>
+      apiMock.getWithoutCache.mock.calls.filter(
+        ([endpoint]) => endpoint === '/recently-added',
+      ).length;
+
+    beforeEach(() => {
+      apiMock.getWithoutCache.mockImplementation(async (endpoint: string) =>
+        endpoint === '/recently-added' ? CONFIRMING_LIBRARY : undefined,
+      );
+    });
 
     it('totals a movie from the plays carrying its rating key', async () => {
       useItem({ id: 'movie-1', type: 'movie' });
@@ -1071,6 +1090,40 @@ describe('TracearrApiService', () => {
       expect(apiMock.getRawWithoutCache).toHaveBeenCalledWith(
         '/media/show:tvdb:1234',
       );
+      expect(apiMock.getRawWithoutCache).toHaveBeenCalledWith('/history', {
+        params: {
+          media_id: SEASON_MEDIA_ID,
+          server_id: SERVER_ID,
+          pageSize: 100,
+        },
+      });
+    });
+
+    it('confirms the server once, and reads nothing from an unconfirmed one for a while', async () => {
+      useItem({ id: 'movie-1', type: 'movie' });
+      answerHistory([play()]);
+
+      await service.getItemStats('movie-1');
+      await service.getItemStats('movie-1');
+      expect(recentlyAddedCalls()).toBe(1);
+
+      service.invalidateHistory();
+      apiMock.getWithoutCache.mockClear();
+      apiMock.getWithoutCache.mockResolvedValue(undefined);
+      apiMock.getRawWithoutCache.mockClear();
+      const now = jest.spyOn(Date, 'now').mockReturnValue(1_000_000);
+      try {
+        await expect(service.getItemStats('movie-1')).resolves.toBeUndefined();
+        await expect(service.getItemStats('movie-1')).resolves.toBeUndefined();
+        expect(recentlyAddedCalls()).toBe(1);
+        expect(apiMock.getRawWithoutCache).not.toHaveBeenCalled();
+
+        now.mockReturnValue(1_000_000 + 60_000);
+        await service.getItemStats('movie-1');
+        expect(recentlyAddedCalls()).toBe(2);
+      } finally {
+        now.mockRestore();
+      }
     });
 
     it('answers null for an item nobody played and undefined when unreadable', async () => {
