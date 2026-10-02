@@ -1308,6 +1308,75 @@ describe('EmbyAdapterService', () => {
     });
   });
 
+  // A 4xx means Emby processed the write and declined it. Anything else, a 5xx
+  // or no answer at all, may still have been applied, and recording it as
+  // refused lets the next rule run adopt the item as manual (AGENTS.md guard 5).
+  describe('collection membership writes', () => {
+    const ids = Array.from({ length: 17 }, (_, i) => `item-${i}`);
+    const chunks = [ids.slice(0, 8), ids.slice(8, 16), ids.slice(16)];
+
+    it.each([
+      ['add', 'post', () => service.addBatchToCollection('box-1', ids)],
+      [
+        'remove',
+        'delete',
+        () => service.removeBatchFromCollection('box-1', ids),
+      ],
+    ] as const)(
+      '%s sends every chunk and separates refused from unanswered',
+      async (_name, method, write) => {
+        http[method]
+          .mockResolvedValueOnce({})
+          .mockRejectedValueOnce(createResponseError(400))
+          .mockRejectedValueOnce(
+            new AxiosError('socket hang up', 'ECONNRESET'),
+          );
+
+        await expect(write()).resolves.toEqual({
+          refused: chunks[1],
+          unknown: chunks[2],
+        });
+        expect(
+          http[method].mock.calls.map((call) => [call[0], call.at(-1)]),
+        ).toEqual(
+          chunks.map((chunk) => [
+            '/Collections/box-1/Items',
+            { params: { Ids: chunk.join(',') } },
+          ]),
+        );
+      },
+    );
+
+    it('reports every id as unanswered when Emby is not initialized', async () => {
+      (service as unknown as { http: undefined }).http = undefined;
+
+      await expect(
+        service.addBatchToCollection('box-1', ['item-1']),
+      ).resolves.toEqual({ refused: [], unknown: ['item-1'] });
+      await expect(
+        service.removeBatchFromCollection('box-1', ['item-1']),
+      ).resolves.toEqual({ refused: [], unknown: ['item-1'] });
+    });
+
+    it.each([
+      ['add', 'post', () => service.addToCollection('box-1', 'item-1')],
+      [
+        'remove',
+        'delete',
+        () => service.removeFromCollection('box-1', 'item-1'),
+      ],
+    ] as const)(
+      'throws from the single %s when Emby never answered',
+      async (_name, method, write) => {
+        http[method].mockRejectedValue(
+          new AxiosError('socket hang up', 'ECONNRESET'),
+        );
+
+        await expect(write()).rejects.toThrow('item-1');
+      },
+    );
+  });
+
   describe('updateCollection', () => {
     it('persists ForcedSortName when sortTitle is provided', async () => {
       http.get.mockResolvedValueOnce({
