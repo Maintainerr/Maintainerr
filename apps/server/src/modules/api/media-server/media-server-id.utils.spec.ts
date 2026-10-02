@@ -147,5 +147,14 @@ describe('media-server-id.utils', () => {
         false,
       );
     });
+
+    it.each([
+      ['2235', true],
+      ['a852a27afe324084ae66db579ee3ee18', false],
+    ])('refreshes Emby id %j: %s', (value, expected) => {
+      expect(shouldRefreshMetadataItemId(MediaServerType.EMBY, value)).toBe(
+        expected,
+      );
+    });
   });
 });
