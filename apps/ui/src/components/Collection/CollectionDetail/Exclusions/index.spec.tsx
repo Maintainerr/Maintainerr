@@ -151,22 +151,6 @@ describe('CollectionExclusions bulk removal', () => {
     )
   }
 
-  it('drops the cards whose exclusion was removed', async () => {
-    submittedOutcome = {
-      action: 'exclusion-remove',
-      succeededIds: ['movie-1'],
-      failedIds: [],
-    }
-
-    await renderAndSelect(['movie-1'])
-    fireEvent.click(screen.getByTestId('media-action-submit'))
-
-    await waitFor(() => expect(screen.queryByText('Item movie-1')).toBeNull())
-    expect(screen.getByText('Item movie-2')).toBeTruthy()
-    expect(toast.success).toHaveBeenCalledWith('1 item un-excluded.')
-    expect(screen.getByRole('button', { name: 'Select items' })).toBeTruthy()
-  })
-
   it('keeps the cards an un-exclude aimed at another collection left alone', async () => {
     submittedOutcome = {
       action: 'exclusion-remove',

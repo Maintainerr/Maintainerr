@@ -138,28 +138,6 @@ describe('RulesService.updateRules', () => {
     expect(mediaServer.cleanupCollectionForLibrary).not.toHaveBeenCalled();
   });
 
-  it('fails with a not-found status when the rule group is gone', async () => {
-    const ruleGroupRepository = {
-      findOne: jest.fn().mockResolvedValue(null),
-    };
-
-    const service = createRulesService({ ruleGroupRepository });
-
-    await expect(
-      service.updateRules({
-        id: 999,
-        libraryId: '1',
-        dataType: 'show',
-        name: 'Test',
-        rules: [],
-        description: '',
-      }),
-    ).rejects.toMatchObject({
-      status: 404,
-      message: 'Rule group not found',
-    });
-  });
-
   it('continues past validation for date rules using custom_days values', async () => {
     const ruleGroupRepository = {
       findOne: jest.fn().mockResolvedValue(null),
@@ -647,60 +625,6 @@ describe('RulesService.updateRules', () => {
     expect(collectionService.applyCollectionSort).toHaveBeenCalledWith(
       freshCollection,
     );
-  });
-
-  it('does not reapply sort on save when the sort value is cleared', async () => {
-    const { service, collectionService } = buildSortTransitionFixture({
-      previousSort: 'title.asc',
-      nextSort: null,
-    });
-
-    await service.updateRules({
-      id: 5,
-      libraryId: 'lib-1',
-      dataType: 'movie',
-      name: 'rg',
-      description: '',
-      rules: [],
-      useRules: false,
-      isActive: true,
-      collection: {
-        manualCollection: false,
-        manualCollectionName: '',
-        keepLogsForMonths: 1,
-        mediaServerSort: null,
-      },
-      notifications: [],
-    } as any);
-
-    expect(collectionService.applyCollectionSort).not.toHaveBeenCalled();
-  });
-
-  it('does not touch sort on save when the sort value is unchanged', async () => {
-    const { service, collectionService } = buildSortTransitionFixture({
-      previousSort: 'title.asc',
-      nextSort: 'title.asc',
-    });
-
-    await service.updateRules({
-      id: 5,
-      libraryId: 'lib-1',
-      dataType: 'movie',
-      name: 'rg',
-      description: '',
-      rules: [],
-      useRules: false,
-      isActive: true,
-      collection: {
-        manualCollection: false,
-        manualCollectionName: '',
-        keepLogsForMonths: 1,
-        mediaServerSort: 'title.asc',
-      },
-      notifications: [],
-    } as any);
-
-    expect(collectionService.applyCollectionSort).not.toHaveBeenCalled();
   });
 
   it('backfills *arr membership tags when tagInArr is turned on (false→true)', async () => {

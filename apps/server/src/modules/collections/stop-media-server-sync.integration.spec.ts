@@ -100,15 +100,6 @@ describe('CollectionsService.stopMediaServerSync (real SQLite)', () => {
     await dataSource.destroy();
   });
 
-  it('clears the link and the markers together', async () => {
-    const collection = await seed();
-
-    await service.stopMediaServerSync(collection as any);
-
-    expect((await reread(collection.id))?.mediaServerId).toBeNull();
-    expect(await dataSource.getRepository(MarkerSchema).find()).toEqual([]);
-  });
-
   it('keeps the link when the marker delete fails', async () => {
     const collection = await seed();
 

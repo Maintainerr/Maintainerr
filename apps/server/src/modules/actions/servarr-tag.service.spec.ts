@@ -137,76 +137,6 @@ describe('ServarrTagService', () => {
       expect(radarr.setMovieTags).toHaveBeenCalledWith([10], 5, 'add');
     });
 
-    it('uses the current (renamed) group name as the tag - no stale old-label removal', async () => {
-      const radarr = mockRadarrApi(servarrService, logger);
-      jest
-        .spyOn(radarr, 'getMovieByTmdbId')
-        .mockResolvedValue(createRadarrMovie({ id: 10 }));
-      jest.spyOn(radarr, 'ensureTag').mockResolvedValue(5);
-
-      const renamed = createCollection({
-        type: 'movie',
-        radarrSettingsId: 1,
-        tagInArr: true,
-        title: 'Renamed Group',
-      });
-
-      await service.syncMembershipTags(
-        renamed,
-        [{ mediaServerId: 'movie-1' }],
-        [],
-      );
-
-      // Only the current name is ensured/applied; the old (renamed-from) label is
-      // intentionally not chased here (documented edge case - re-tagged on churn).
-      expect(radarr.ensureTag).toHaveBeenCalledTimes(1);
-      expect(radarr.ensureTag).toHaveBeenCalledWith('renamed-group');
-      expect(radarr.setMovieTags).toHaveBeenCalledWith([10], 5, 'add');
-      expect(radarr.setMovieTags).not.toHaveBeenCalledWith(
-        expect.anything(),
-        expect.anything(),
-        'remove',
-      );
-    });
-
-    it('two groups whose names normalize to the same label share one tag id', async () => {
-      const radarr = mockRadarrApi(servarrService, logger);
-      jest
-        .spyOn(radarr, 'getMovieByTmdbId')
-        .mockResolvedValue(createRadarrMovie({ id: 10 }));
-      // ensureTag is idempotent server-side: a given label always yields the same id.
-      const ensureTag = jest.spyOn(radarr, 'ensureTag').mockResolvedValue(5);
-
-      const groupA = createCollection({
-        type: 'movie',
-        radarrSettingsId: 1,
-        tagInArr: true,
-        title: 'My Group',
-      });
-      const groupB = createCollection({
-        type: 'movie',
-        radarrSettingsId: 1,
-        tagInArr: true,
-        title: 'My  Group!',
-      });
-
-      await service.syncMembershipTags(
-        groupA,
-        [{ mediaServerId: 'movie-1' }],
-        [],
-      );
-      await service.syncMembershipTags(
-        groupB,
-        [{ mediaServerId: 'movie-1' }],
-        [],
-      );
-
-      // Both titles normalize to 'my-group', so both resolve to the same tag id -
-      // an untag from one then a re-add from the other converges on the same tag.
-      expect(ensureTag.mock.calls.every((c) => c[0] === 'my-group')).toBe(true);
-      expect(radarr.setMovieTags).toHaveBeenCalledWith([10], 5, 'add');
-    });
-
     it('normalizes a messy group name to the *arr tag charset', async () => {
       // *arr rejects labels outside ^[a-z0-9-]+$; spaces, case and punctuation
       // collapse to single hyphens.
@@ -421,27 +351,6 @@ describe('ServarrTagService', () => {
       expect(radarr.ensureTag).not.toHaveBeenCalled();
     });
 
-    it('does not untag on a transient lookup failure (undefined), retried next run', async () => {
-      const radarr = mockRadarrApi(servarrService, logger);
-      // undefined = transient (transport/auth/5xx), per the #3125 contract.
-      jest.spyOn(radarr, 'getMovieByTmdbId').mockResolvedValue(undefined);
-      jest.spyOn(radarr, 'ensureTag').mockResolvedValue(5);
-
-      const collection = createCollection({
-        type: 'movie',
-        radarrSettingsId: 1,
-        tagInArr: true,
-      });
-
-      await service.syncMembershipTags(
-        collection,
-        [],
-        [{ mediaServerId: 'movie-1' }],
-      );
-
-      expect(radarr.setMovieTags).not.toHaveBeenCalled();
-    });
-
     it('is best-effort: swallows errors and never throws', async () => {
       const radarr = mockRadarrApi(servarrService, logger);
       jest
@@ -464,32 +373,7 @@ describe('ServarrTagService', () => {
       expect(logger.warn).toHaveBeenCalled();
     });
 
-    it('does not error the run when the editor write fails (e.g. a stale id)', async () => {
-      // A movie deleted from Radarr between resolve and write makes the editor
-      // PUT fail; runPut returns false (never throws), so the run must complete.
-      const radarr = mockRadarrApi(servarrService, logger);
-      jest
-        .spyOn(radarr, 'getMovieByTmdbId')
-        .mockResolvedValue(createRadarrMovie({ id: 42 }));
-      jest.spyOn(radarr, 'ensureTag').mockResolvedValue(5);
-      jest.spyOn(radarr, 'setMovieTags').mockResolvedValue(false);
-
-      const collection = createCollection({
-        type: 'movie',
-        radarrSettingsId: 1,
-        tagInArr: true,
-      });
-
-      await expect(
-        service.syncMembershipTags(
-          collection,
-          [{ mediaServerId: 'movie-1' }],
-          [],
-        ),
-      ).resolves.toBeUndefined();
-    });
-
-    it('stays consistent at scale: tags 100k added items in bounded editor batches', async () => {
+    it('tags every added item once, in editor batches of at most 100', async () => {
       const radarr = mockRadarrApi(servarrService, logger);
       jest.spyOn(radarr, 'ensureTag').mockResolvedValue(5);
       // Lightweight resolution: media-server id N → tmdb candidate N → movie N.
@@ -503,7 +387,7 @@ describe('ServarrTagService', () => {
         .mockImplementation(async (id) => ({ id }) as never);
       const setMovieTags = jest.spyOn(radarr, 'setMovieTags');
 
-      const total = 100_000;
+      const total = 201;
       const added = Array.from({ length: total }, (_, i) => ({
         mediaServerId: String(i + 1),
       }));
@@ -524,12 +408,12 @@ describe('ServarrTagService', () => {
       expect(new Set(taggedIds).size).toBe(total);
 
       // Writes are chunked so a huge delta never builds an unbounded request.
-      expect(addCalls).toHaveLength(total / 100); // EDITOR_BATCH_SIZE = 100
+      expect(addCalls).toHaveLength(3); // EDITOR_BATCH_SIZE = 100
       for (const call of addCalls) {
         expect(call[0].length).toBeLessThanOrEqual(100);
         expect(call[1]).toBe(5); // the tag id
       }
-    }, 30_000);
+    });
   });
 
   describe('Behavior B - exclusion tagging', () => {

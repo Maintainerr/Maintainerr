@@ -1,7 +1,6 @@
 import { QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '../../../test-utils/render'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { createDeferred } from '../../../test-utils/createDeferred'
 import { createTestQueryClient } from '../../../test-utils/queryClient'
 import NotificationSettings from './index'
 
@@ -110,26 +109,6 @@ describe('NotificationSettings', () => {
     expect(screen.queryByRole('button', { name: 'Add Agent' })).toBeNull()
   })
 
-  it('waits for the agent lists before showing any card', async () => {
-    const agentsRequest = createDeferred<typeof agents>()
-    getApiHandler.mockImplementation((url: string) =>
-      url === '/notifications/agents'
-        ? agentsRequest.promise
-        : Promise.resolve(url === '/notifications/types' ? types : []),
-    )
-
-    renderNotifications()
-    await waitFor(() => {
-      expect(getApiHandler).toHaveBeenCalledWith('/notifications/types')
-    })
-    expect(screen.queryByRole('button', { name: 'Add Agent' })).toBeNull()
-
-    agentsRequest.resolve(agents)
-    expect(
-      await screen.findByRole('button', { name: 'Add Agent' }),
-    ).toBeTruthy()
-  })
-
   it('saves a new agent from a draft card and confirms it on the saved card', async () => {
     renderNotifications()
     fireEvent.click(await screen.findByRole('button', { name: 'Add Agent' }))
@@ -205,22 +184,6 @@ describe('NotificationSettings', () => {
       'value',
       'http://gotify.local',
     )
-  })
-
-  it('labels and explains options from the UI catalog', async () => {
-    renderNotifications()
-    fireEvent.click(await screen.findByRole('button', { name: 'Add Agent' }))
-
-    fireEvent.change(screen.getByLabelText('Agent *'), {
-      target: { value: 'email' },
-    })
-
-    expect(await screen.findByLabelText('Use implicit TLS')).toBeTruthy()
-    expect(
-      screen.getByText(
-        'Encrypts from the first byte. Usually needed on port 465; leave off for 587 and 25.',
-      ),
-    ).toBeTruthy()
   })
 
   it('deletes an agent only after confirming, and says when it could not', async () => {

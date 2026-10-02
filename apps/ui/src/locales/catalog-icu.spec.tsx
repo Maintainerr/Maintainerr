@@ -148,26 +148,13 @@ describe('translation catalogs', () => {
   })
 })
 
+// validate-catalogs, a required PR check, runs these two checks over every
+// real catalog. These pin the helpers it relies on.
 describe('ICU MessageFormat validity', () => {
-  const catalogs = readdirSync(localesDir).filter((name) =>
-    name.endsWith('.po'),
-  )
-
   // A message that will not compile as ICU (a renamed plural category, a
   // missing `other`, mangled syntax) keeps its argument names, so placeholder
   // parity passes - but Lingui then prints the raw source on screen. The render
   // checks above miss it: the fallback text still contains the argument name.
-  // validate-catalogs rejects it; this enforces the same on the real catalogs.
-  it.each(catalogs)('%s compiles as ICU MessageFormat', (name) => {
-    const invalid = parsePo(readFileSync(path.join(localesDir, name), 'utf8'))
-      .flatMap((entry: { msgid: string; msgstr: string }) => [
-        entry.msgid,
-        entry.msgstr,
-      ])
-      .filter((text: string) => text.length > 0 && !validateIcu(text).valid)
-    expect(invalid).toEqual([])
-  })
-
   it('flags a renamed plural category, accepts a valid one', () => {
     expect(validateIcu('{n, plural, one {# x} andra {# y}}').valid).toBe(false)
     expect(validateIcu('{n, plural, one {# x} other {# y}}').valid).toBe(true)
@@ -176,17 +163,7 @@ describe('ICU MessageFormat validity', () => {
   // Valid ICU can still change an argument's structure behind its name: a
   // plural rewritten as plain `{count}` renders the same wording at every
   // count, a dropped `one` renders "1 saker", a stripped `percent` format
-  // shows 0.42 instead of 42 %. All compile, so the checks above pass them.
-  it.each(catalogs)('%s keeps every argument structure', (name) => {
-    const locale = path.basename(name, '.po')
-    const broken = parsePo(readFileSync(path.join(localesDir, name), 'utf8'))
-      .filter((entry: { msgstr: string }) => entry.msgstr.length > 0)
-      .flatMap((entry: { msgid: string; msgstr: string }) =>
-        icuStructureProblems(entry.msgid, entry.msgstr, locale),
-      )
-    expect(broken).toEqual([])
-  })
-
+  // shows 0.42 instead of 42 %. All compile, so the check above passes them.
   it('flags a structure change, accepts a locale-shaped plural', () => {
     const plural = '{n, plural, one {# item} other {# items}}'
     expect(icuStructureProblems(plural, '{n} saker', 'sv')).not.toEqual([])

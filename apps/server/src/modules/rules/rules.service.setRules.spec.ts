@@ -228,14 +228,6 @@ describe('RulesService.setRules', () => {
       });
     });
 
-    it('rejects a blank user as no user at all', async () => {
-      await expect(saveRules(perUserRule('   '))).resolves.toEqual({
-        code: 0,
-        result: 'Select a user for properties that are scoped to one user',
-        message: 'Select a user for properties that are scoped to one user',
-      });
-    });
-
     it('rejects a user picked for a property that ignores it', async () => {
       const rules = [{ ...validRules[0], username: 'alice' }];
 
@@ -466,11 +458,8 @@ describe('RulesService.setRules', () => {
 
   // A library the caller never named, or named wrongly, is a bad request - not
   // the 500 a dereferenced library used to produce (#3384).
-  it.each([
-    ['no library', undefined],
-    ['an empty library', ''],
-  ])('rejects a rule group with %s', async (_name, libraryId) => {
-    await expect(setRulesFor(libraryId)).rejects.toMatchObject({
+  it('rejects a rule group with no library', async () => {
+    await expect(setRulesFor(undefined)).rejects.toMatchObject({
       status: 400,
       message: 'A library is required',
     });

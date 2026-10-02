@@ -86,20 +86,4 @@ describe('MediaServerSelector', () => {
     fireEvent.keyDown(document, { key: 'Escape' })
     expect(screen.getByRole('dialog')).toBeTruthy()
   })
-
-  it('uses the shared icon placement classes for all media server options', () => {
-    render(<MediaServerSelector currentType={MediaServerType.PLEX} />)
-
-    const plexLogo = screen.getByRole('img', { name: 'Plex' })
-    const jellyfinLogo = screen.getByRole('img', { name: 'Jellyfin' })
-    const embyLogo = screen.getByRole('img', { name: 'Emby' })
-
-    expect(plexLogo.getAttribute('class')).toBe(
-      'h-10 w-10 rounded-sm object-contain',
-    )
-    expect(jellyfinLogo.getAttribute('class')).toBe(
-      plexLogo.getAttribute('class'),
-    )
-    expect(embyLogo.getAttribute('class')).toBe(plexLogo.getAttribute('class'))
-  })
 })

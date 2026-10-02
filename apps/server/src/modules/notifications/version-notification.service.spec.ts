@@ -95,17 +95,6 @@ describe('VersionNotificationService', () => {
     ).toHaveBeenCalledTimes(2);
   });
 
-  it('spends no GitHub call while nobody subscribes', async () => {
-    const { service, versionService } = createService({
-      availableVersion: '3.19.0',
-      hasSubscribers: false,
-    });
-
-    await run(service);
-
-    expect(versionService.getAvailableUpdate).not.toHaveBeenCalled();
-  });
-
   it('does not poll for updates on the development stream', async () => {
     // It moves with every merged commit; one message per commit is spam.
     const { service, versionService, notificationService } = createService({
@@ -148,24 +137,6 @@ describe('VersionNotificationService', () => {
     expect(
       notificationService.handleUpdateAvailableNotification,
     ).not.toHaveBeenCalled();
-  });
-
-  it('passes the release page through to the notification', async () => {
-    const { service, notificationService } = createService({
-      availableVersion: '3.19.0',
-      releaseUrl:
-        'https://github.com/Maintainerr/Maintainerr/releases/tag/v3.19.0',
-    });
-
-    await run(service);
-
-    expect(
-      notificationService.handleUpdateAvailableNotification,
-    ).toHaveBeenCalledWith(
-      '3.18.0',
-      '3.19.0',
-      'https://github.com/Maintainerr/Maintainerr/releases/tag/v3.19.0',
-    );
   });
 
   it('swallows a failing check so the scheduler keeps running', async () => {

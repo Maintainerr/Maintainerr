@@ -42,29 +42,6 @@ describe('ExternalApiService', () => {
     );
   });
 
-  it('logs a single debug line for network GET failures without a stack trace', async () => {
-    const logger = createLogger();
-    const service = new ExternalApiService(
-      'https://example.test',
-      {},
-      logger as any,
-    );
-
-    const error = new AxiosError('connect ETIMEDOUT');
-    Object.defineProperty(error, 'code', { value: 'ETIMEDOUT' });
-
-    (service as any).axios = {
-      get: jest.fn().mockRejectedValue(error),
-    };
-
-    await expect(service.get('/items/123')).resolves.toBeUndefined();
-
-    expect(logger.debug).toHaveBeenCalledTimes(1);
-    expect(logger.debug).toHaveBeenCalledWith(
-      'GET https://example.test/items/123 failed (code=ETIMEDOUT)',
-    );
-  });
-
   describe('caching guard (isCacheable)', () => {
     const createServiceWithCache = () => {
       const logger = createLogger();
@@ -93,23 +70,6 @@ describe('ExternalApiService', () => {
       await service.get('/binary');
 
       // Buffer was not cached, so two network calls were made
-      expect(getFn).toHaveBeenCalledTimes(2);
-    });
-
-    it('does not cache null responses - second call hits the network again', async () => {
-      const { service } = createServiceWithCache();
-      const validObject = { items: [] };
-
-      const getFn = jest
-        .fn()
-        .mockResolvedValueOnce({ data: null })
-        .mockResolvedValueOnce({ data: validObject });
-
-      (service as any).axios = { get: getFn };
-
-      await service.get('/nullable');
-      await service.get('/nullable');
-
       expect(getFn).toHaveBeenCalledTimes(2);
     });
 

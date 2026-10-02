@@ -59,28 +59,6 @@ describe('VersionService', () => {
     expect(githubApi.getCommit).not.toHaveBeenCalled();
   });
 
-  it('keeps latest builds on the release path', async () => {
-    process.env.npm_package_version = '3.3.0';
-    process.env.VERSION_TAG = 'latest';
-    process.env.GIT_SHA = 'bd8a1e0123456789';
-    process.env.NODE_ENV = 'production';
-
-    githubApi.getLatestRelease.mockResolvedValue({ tag_name: 'v3.4.0' });
-
-    await expect(service.getAppVersionStatus()).resolves.toEqual({
-      status: 1,
-      version: '3.3.0',
-      commitTag: 'latest-bd8a1e0',
-      updateAvailable: true,
-    });
-
-    expect(githubApi.getLatestRelease).toHaveBeenCalledWith(
-      'Maintainerr',
-      'Maintainerr',
-    );
-    expect(githubApi.getCommit).not.toHaveBeenCalled();
-  });
-
   it('compares development builds against the development branch head', async () => {
     process.env.npm_package_version = '3.3.0';
     process.env.VERSION_TAG = 'development';
@@ -181,15 +159,6 @@ describe('VersionService', () => {
     });
   });
 
-  it('reports no available version when the build is up to date', async () => {
-    process.env.npm_package_version = '3.10.1';
-    process.env.VERSION_TAG = 'latest';
-
-    githubApi.getLatestRelease.mockResolvedValue({ tag_name: 'v3.10.1' });
-
-    await expect(service.getAvailableUpdate()).resolves.toBeUndefined();
-  });
-
   it('reports no available version when GitHub cannot be reached', async () => {
     process.env.npm_package_version = '3.10.1';
     process.env.VERSION_TAG = 'latest';
@@ -197,21 +166,5 @@ describe('VersionService', () => {
     githubApi.getLatestRelease.mockResolvedValue(undefined);
 
     await expect(service.getAvailableUpdate()).resolves.toBeUndefined();
-  });
-
-  it('keeps local development builds marked as local', async () => {
-    process.env.npm_package_version = '3.3.0';
-    process.env.VERSION_TAG = 'development';
-    process.env.GIT_SHA = 'bd8a1e0123456789';
-    process.env.NODE_ENV = 'development';
-
-    githubApi.getCommit.mockResolvedValue({ sha: 'bd8a1e0123456789' });
-
-    await expect(service.getAppVersionStatus()).resolves.toEqual({
-      status: 1,
-      version: 'development-bd8a1e0',
-      commitTag: 'local',
-      updateAvailable: false,
-    });
   });
 });

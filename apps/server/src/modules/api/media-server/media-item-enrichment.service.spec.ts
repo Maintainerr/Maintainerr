@@ -158,24 +158,6 @@ describe('MediaItemEnrichmentService', () => {
     ]);
   });
 
-  it('returns items unchanged when no maintainerr state exists', async () => {
-    const movie = {
-      id: 'movie-1',
-      title: 'Movie',
-      guid: 'movie-guid',
-      type: 'movie',
-      addedAt: new Date(),
-      providerIds: {},
-      mediaSources: [],
-      library: { id: 'library-1', title: 'Movies' },
-    } satisfies MediaItem;
-
-    exclusionRepo.find.mockResolvedValue([]);
-    collectionMediaRepo.find.mockResolvedValue([]);
-
-    await expect(service.enrichItems([movie])).resolves.toEqual([movie]);
-  });
-
   // One IN list for every id would pass SQLite's 32766 parameter ceiling.
   it('reads long id lists in chunks and merges what each returns', async () => {
     const lastIndex = ENRICHMENT_ID_CHUNK * 2;

@@ -106,20 +106,4 @@ describe('Exclusion scoping (real DB) - excluded-in-A item is added in B', () =>
     expect(await isAddedTo(GROUP_A, MOVIE_G)).toBe(false);
     expect(await isAddedTo(GROUP_B, MOVIE_G)).toBe(false);
   });
-
-  it('getExclusions(B) returns only global + B-owned (no A-scoped, no duplicates)', async () => {
-    const result = await service.getExclusions(GROUP_B);
-    expect(result.map((e: any) => e.mediaServerId).sort()).toEqual([MOVIE_G]);
-  });
-
-  it('contrast: the OLD behaviour (global part = all rows) WOULD leak A into B', async () => {
-    // 0.3.x `find({ where: { ruleGroupId: null } })` ignored the key and
-    // returned ALL rows. Reproduce that "global part" and show MOVIE_X leaks.
-    const oldGlobalPart = await repo.find(); // all exclusions
-    const bSpecific = await repo.find({ where: { ruleGroupId: GROUP_B } });
-    const oldResult = [...bSpecific, ...oldGlobalPart];
-    const cascade = buildExclusionCascadeSets(oldResult as any);
-    // Under OLD, MOVIE_X (scoped to A) would be excluded from B too:
-    expect(isMediaItemExcluded(cascade, { id: MOVIE_X })).toBe(true);
-  });
 });

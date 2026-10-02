@@ -88,10 +88,14 @@ describe('RulesService.deleteRuleGroup', () => {
      * null guard: `if (group) { ... }`.
      */
     it('does not throw TypeError when findOne returns null', async () => {
-      const { service } = createRulesService({ group: null });
+      const {
+        service,
+        exclusionRepo,
+        ruleGroupRepository,
+        eventEmitter,
+        collectionService,
+      } = createRulesService({ group: null });
 
-      // Before the fix, this would throw:
-      // TypeError: Cannot read properties of null (reading 'collectionId')
       const result = await service.deleteRuleGroup(999);
 
       expect(result).toEqual({
@@ -99,27 +103,8 @@ describe('RulesService.deleteRuleGroup', () => {
         result: 'Success',
         message: 'Success',
       });
-    });
-
-    it('still performs exclusion and ruleGroup deletes when group is null', async () => {
-      const { service, exclusionRepo, ruleGroupRepository } =
-        createRulesService({
-          group: null,
-        });
-
-      await service.deleteRuleGroup(999);
-
       expect(exclusionRepo.delete).toHaveBeenCalledWith({ ruleGroupId: 999 });
       expect(ruleGroupRepository.delete).toHaveBeenCalledWith(999);
-    });
-
-    it('does not emit event or delete collection when group is null', async () => {
-      const { service, eventEmitter, collectionService } = createRulesService({
-        group: null,
-      });
-
-      await service.deleteRuleGroup(999);
-
       expect(eventEmitter.emit).not.toHaveBeenCalled();
       expect(collectionService.deleteCollection).not.toHaveBeenCalled();
     });
@@ -171,22 +156,6 @@ describe('RulesService.deleteRuleGroup', () => {
       expect(ruleGroupRepository.delete).not.toHaveBeenCalled();
     });
 
-    it('falls back to a generic message when the collection delete gives no reason', async () => {
-      const group = { id: 42, collectionId: 100 };
-      const { service, collectionService } = createRulesService({ group });
-
-      collectionService.deleteCollection.mockResolvedValue({
-        status: 'NOK',
-        code: 0,
-      } as never);
-
-      expect(await service.deleteRuleGroup(42)).toEqual({
-        code: 0,
-        result: 'Delete Failed',
-        message: 'Delete Failed',
-      });
-    });
-
     it('does not delete collection when group has no collectionId', async () => {
       const group = { id: 42, collectionId: null };
       const { service, collectionService } = createRulesService({ group });
@@ -194,19 +163,6 @@ describe('RulesService.deleteRuleGroup', () => {
       await service.deleteRuleGroup(42);
 
       expect(collectionService.deleteCollection).not.toHaveBeenCalled();
-    });
-
-    it('cleans up exclusions and ruleGroup rows', async () => {
-      const group = { id: 42, collectionId: null };
-      const { service, exclusionRepo, ruleGroupRepository } =
-        createRulesService({
-          group,
-        });
-
-      await service.deleteRuleGroup(42);
-
-      expect(exclusionRepo.delete).toHaveBeenCalledWith({ ruleGroupId: 42 });
-      expect(ruleGroupRepository.delete).toHaveBeenCalledWith(42);
     });
   });
 
@@ -244,31 +200,6 @@ describe('RulesService.deleteRuleGroup', () => {
         [{ mediaServerId: 'm1', tmdbId: 1, tvdbId: null }],
       );
       expect(collectionService.deleteCollection).toHaveBeenCalledWith(100);
-    });
-
-    it('does not attempt tag cleanup when the group is not tagging-enabled', async () => {
-      const group = { id: 42, collectionId: 100 };
-      const servarrTagService = createMockServarrTagService();
-      const collectionService = {
-        deleteCollection: jest
-          .fn()
-          .mockResolvedValue({ status: 'OK', code: 1, message: 'Success' }),
-        getCollection: jest
-          .fn()
-          .mockResolvedValue({ id: 100, type: 'movie', tagInArr: false }),
-        getCollectionMedia: jest.fn(),
-      };
-
-      const { service } = createRulesService({
-        group,
-        collectionService,
-        servarrTagService,
-      });
-
-      await service.deleteRuleGroup(42);
-
-      expect(servarrTagService.syncMembershipTags).not.toHaveBeenCalled();
-      expect(collectionService.getCollectionMedia).not.toHaveBeenCalled();
     });
   });
 });

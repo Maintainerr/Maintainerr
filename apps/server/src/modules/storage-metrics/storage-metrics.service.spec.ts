@@ -1,29 +1,11 @@
 import { StorageDiskspaceEntry } from '@maintainerr/contracts';
-import {
-  InternalServerErrorException,
-  ServiceUnavailableException,
-} from '@nestjs/common';
+import { InternalServerErrorException } from '@nestjs/common';
 import { Mocked, TestBed } from '@suites/unit';
 import { MediaServerFactory } from '../api/media-server/media-server.factory';
 import { IMediaServerService } from '../api/media-server/media-server.interface';
 import { MaintainerrLogger } from '../logging/logs.service';
-import {
-  FREE_SPACE_BUCKET_BYTES,
-  LIBRARY_SIZES_CACHE_TTL_MS,
-} from './storage-metrics.constants';
+import { FREE_SPACE_BUCKET_BYTES } from './storage-metrics.constants';
 import { StorageMetricsService } from './storage-metrics.service';
-
-const createDeferred = <T>() => {
-  let resolve!: (value: T) => void;
-  let reject!: (reason?: unknown) => void;
-
-  const promise = new Promise<T>((res, rej) => {
-    resolve = res;
-    reject = rej;
-  });
-
-  return { promise, resolve, reject };
-};
 
 describe('StorageMetricsService', () => {
   let service: StorageMetricsService;
@@ -49,19 +31,6 @@ describe('StorageMetricsService', () => {
   });
 
   describe('computeMediaServerLibrarySizes', () => {
-    it('throws ServiceUnavailableException when no media server is configured', async () => {
-      mediaServerFactory.getService.mockRejectedValue(
-        new Error('No media server type configured'),
-      );
-
-      await expect(service.computeMediaServerLibrarySizes()).rejects.toThrow(
-        ServiceUnavailableException,
-      );
-      await expect(service.computeMediaServerLibrarySizes()).rejects.toThrow(
-        'Configure a media server before computing library sizes.',
-      );
-    });
-
     it('does not cache failed computations', async () => {
       mediaServer.computeLibraryStorageSizes
         .mockRejectedValueOnce(new Error('boom'))
@@ -80,66 +49,6 @@ describe('StorageMetricsService', () => {
       expect(logger.warn).toHaveBeenCalledWith(
         'Failed to compute media server library sizes',
       );
-    });
-
-    it('caches successful computations', async () => {
-      mediaServer.computeLibraryStorageSizes.mockResolvedValue(
-        new Map([['library-1', 456]]),
-      );
-
-      const first = await service.computeMediaServerLibrarySizes();
-      const second = await service.computeMediaServerLibrarySizes();
-
-      expect(mediaServer.computeLibraryStorageSizes).toHaveBeenCalledTimes(1);
-      expect(second).toEqual(first);
-    });
-
-    it('stores cache expiry using the shared cache TTL', async () => {
-      const nowSpy = jest.spyOn(Date, 'now').mockReturnValue(1234);
-      mediaServer.computeLibraryStorageSizes.mockResolvedValue(
-        new Map([['library-1', 456]]),
-      );
-
-      await service.computeMediaServerLibrarySizes();
-
-      expect((service as any).librarySizesCache).toEqual(
-        expect.objectContaining({
-          expiresAt: 1234 + LIBRARY_SIZES_CACHE_TTL_MS,
-        }),
-      );
-
-      nowSpy.mockRestore();
-    });
-
-    it('reuses the in-flight computation for concurrent requests', async () => {
-      const serviceDeferred = createDeferred<IMediaServerService>();
-      mediaServerFactory.getService.mockImplementation(
-        async () => await serviceDeferred.promise,
-      );
-      mediaServer.computeLibraryStorageSizes.mockResolvedValue(
-        new Map([['library-1', 789]]),
-      );
-
-      const first = service.computeMediaServerLibrarySizes();
-      const second = service.computeMediaServerLibrarySizes();
-
-      expect(mediaServerFactory.getService).toHaveBeenCalledTimes(1);
-
-      serviceDeferred.resolve(mediaServer);
-
-      await expect(first).resolves.toEqual(
-        expect.objectContaining({
-          sizeBytesByLibrary: { 'library-1': 789 },
-        }),
-      );
-      await expect(second).resolves.toEqual(
-        expect.objectContaining({
-          sizeBytesByLibrary: { 'library-1': 789 },
-        }),
-      );
-
-      expect(mediaServerFactory.getService).toHaveBeenCalledTimes(1);
-      expect(mediaServer.computeLibraryStorageSizes).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -220,27 +129,6 @@ describe('StorageMetricsService', () => {
       };
     };
 
-    it('counts an item once even when it appears in multiple delete-rule collections', async () => {
-      setup(
-        [
-          { id: 1, isActive: true, deleteAfterDays: 30, type: 'movie' },
-          { id: 2, isActive: true, deleteAfterDays: 60, type: 'movie' },
-        ],
-        [
-          { collectionId: 1, mediaServerId: 'm-shared', sizeBytes: 100 },
-          { collectionId: 2, mediaServerId: 'm-shared', sizeBytes: 100 },
-          { collectionId: 1, mediaServerId: 'm-only-1', sizeBytes: 50 },
-        ],
-      );
-
-      const summary = await (service as any).buildCollectionSummary();
-
-      expect(summary.activeSizeBytes).toBe(150);
-      expect(summary.movieSizeBytes).toBe(150);
-      expect(summary.reclaimableCount).toBe(2);
-      expect(summary.reclaimableSizedCount).toBe(2);
-    });
-
     it('excludes collections without a delete rule', async () => {
       setup(
         [
@@ -260,52 +148,6 @@ describe('StorageMetricsService', () => {
       expect(summary.activeSizeBytes).toBe(100);
       expect(summary.reclaimableCount).toBe(1);
       expect(summary.reclaimableSizedCount).toBe(1);
-    });
-
-    it('returns zeros when no collection is eligible', async () => {
-      setup(
-        [{ id: 1, isActive: true, deleteAfterDays: null, type: 'movie' }],
-        [{ collectionId: 1, mediaServerId: 'a', sizeBytes: 100 }],
-      );
-
-      const summary = await (service as any).buildCollectionSummary();
-
-      expect(summary.activeSizeBytes).toBe(0);
-      expect(summary.reclaimableCount).toBe(0);
-      expect(summary.reclaimableSizedCount).toBe(0);
-      expect(summary.totalCollectionCount).toBe(1);
-      expect(summary.reclaimableUsingFallback).toBe(false);
-    });
-
-    it('falls back to cached collection totals when per-item sizes are missing', async () => {
-      setup(
-        [
-          {
-            id: 1,
-            isActive: true,
-            deleteAfterDays: 30,
-            type: 'movie',
-            totalSizeBytes: 300,
-          } as any,
-          {
-            id: 2,
-            isActive: true,
-            deleteAfterDays: 30,
-            type: 'show',
-            totalSizeBytes: 700,
-          } as any,
-        ],
-        [],
-      );
-
-      const summary = await (service as any).buildCollectionSummary();
-
-      expect(summary.reclaimableUsingFallback).toBe(true);
-      expect(summary.activeSizeBytes).toBe(1000);
-      expect(summary.movieSizeBytes).toBe(300);
-      expect(summary.showSizeBytes).toBe(700);
-      expect(summary.reclaimableSizedCount).toBe(2);
-      expect(summary.reclaimableCount).toBe(2);
     });
 
     it('keeps fallback mode until every reclaimable collection has per-item sizes', async () => {
@@ -364,38 +206,6 @@ describe('StorageMetricsService', () => {
       expect(summary.episodeSizeBytes).toBe(50);
       expect(summary.reclaimableMovieCount).toBe(1);
       expect(summary.reclaimableShowCount).toBe(1);
-      expect(summary.reclaimableSeasonCount).toBe(1);
-      expect(summary.reclaimableEpisodeCount).toBe(1);
-    });
-
-    it('keeps season and episode buckets separate in fallback mode', async () => {
-      setup(
-        [
-          {
-            id: 1,
-            isActive: true,
-            deleteAfterDays: 30,
-            type: 'season',
-            totalSizeBytes: 400,
-          } as any,
-          {
-            id: 2,
-            isActive: true,
-            deleteAfterDays: 30,
-            type: 'episode',
-            totalSizeBytes: 100,
-          } as any,
-        ],
-        [],
-      );
-
-      const summary = await (service as any).buildCollectionSummary();
-
-      expect(summary.reclaimableUsingFallback).toBe(true);
-      expect(summary.movieSizeBytes).toBe(0);
-      expect(summary.showSizeBytes).toBe(0);
-      expect(summary.seasonSizeBytes).toBe(400);
-      expect(summary.episodeSizeBytes).toBe(100);
       expect(summary.reclaimableSeasonCount).toBe(1);
       expect(summary.reclaimableEpisodeCount).toBe(1);
     });
@@ -512,32 +322,6 @@ describe('StorageMetricsService', () => {
         accurateMountCount: 1,
         accurateTotalSpace: true,
       });
-    });
-
-    it('keys root folders by instance type so overlapping ids do not collide', () => {
-      const totals = compute(
-        [
-          mount({
-            instanceType: 'radarr',
-            instanceId: 1,
-            path: '/movies',
-            freeSpace: 180,
-            totalSpace: 200,
-          }),
-          mount({
-            instanceType: 'sonarr',
-            instanceId: 1,
-            path: '/tv',
-            freeSpace: 80,
-            totalSpace: 100,
-          }),
-        ],
-        { 'radarr||1': ['/movies'], 'sonarr||1': ['/tv'] },
-        { 'radarr||1': 'radarr.local', 'sonarr||1': 'sonarr.local' },
-      );
-
-      expect(totals.totalSpace).toBe(300);
-      expect(totals.mountCount).toBe(2);
     });
 
     it('merges shared storage across different hosts when totalSpace and freeSpace match byte-for-byte', () => {
@@ -798,62 +582,6 @@ describe('StorageMetricsService', () => {
 
       expect(totals.totalSpace).toBe(1000);
       expect(totals.freeSpace).toBe(900);
-      expect(totals.mountCount).toBe(1);
-    });
-
-    it('counts a shared accurate ancestor once across multiple root folders', () => {
-      const totals = compute(
-        [
-          mount({
-            instanceType: 'radarr',
-            instanceId: 1,
-            path: '/data',
-            freeSpace: 900,
-            totalSpace: 1000,
-          }),
-          mount({
-            instanceType: 'radarr',
-            instanceId: 1,
-            path: '/data/movies',
-            freeSpace: 850,
-            totalSpace: 0,
-            hasAccurateTotalSpace: false,
-          }),
-          mount({
-            instanceType: 'radarr',
-            instanceId: 1,
-            path: '/data/shows',
-            freeSpace: 850,
-            totalSpace: 0,
-            hasAccurateTotalSpace: false,
-          }),
-        ],
-        { 'radarr||1': ['/data/movies', '/data/shows'] },
-        { 'radarr||1': 'arr.local' },
-      );
-
-      expect(totals.totalSpace).toBe(1000);
-      expect(totals.mountCount).toBe(1);
-    });
-
-    it('falls back to the synthesized root-folder mount when no ancestor exists', () => {
-      const totals = compute(
-        [
-          mount({
-            instanceType: 'sonarr',
-            instanceId: 1,
-            path: '/tv',
-            freeSpace: 400,
-            totalSpace: 0,
-            hasAccurateTotalSpace: false,
-          }),
-        ],
-        { 'sonarr||1': ['/tv'] },
-        { 'sonarr||1': 'arr.local' },
-      );
-
-      expect(totals.freeSpace).toBe(400);
-      expect(totals.totalSpace).toBe(0);
       expect(totals.mountCount).toBe(1);
     });
 

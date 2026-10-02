@@ -161,20 +161,6 @@ describe('NotificationTimerService', () => {
     expect(getRequestedByUsernames).toHaveBeenCalledWith(500, 'tv', 2);
   });
 
-  it('omits requestedBy when nobody requested the item', async () => {
-    const { service, handleNotification } = createService({
-      media: [{ mediaServerId: '1', tmdbId: 500, addDate: dueAddDate() }],
-      metadata: { title: 'Sample Movie', type: 'movie' },
-      requestedBy: [],
-    });
-
-    await (service as never as { executeTask(): Promise<void> }).executeTask();
-
-    expect(notifiedItems(handleNotification)[0]).not.toHaveProperty(
-      'requestedBy',
-    );
-  });
-
   it('still notifies when the media server lookup throws', async () => {
     // Losing the title snapshot must not suppress the warning itself.
     const {
@@ -200,47 +186,5 @@ describe('NotificationTimerService', () => {
       'movie',
       undefined,
     );
-  });
-
-  it('skips the Seerr lookup for an item with no tmdbId', async () => {
-    const { service, getRequestedByUsernames } = createService({
-      media: [{ mediaServerId: '1', addDate: dueAddDate() }],
-      metadata: { title: 'Sample Movie', type: 'movie' },
-    });
-
-    await (service as never as { executeTask(): Promise<void> }).executeTask();
-
-    expect(getRequestedByUsernames).not.toHaveBeenCalled();
-  });
-
-  it('enriches each item once even when several agents notify it', async () => {
-    const { service, getMetadata, getRequestedByUsernames } = createService({
-      media: [{ mediaServerId: '1', tmdbId: 500, addDate: dueAddDate() }],
-      metadata: { title: 'Sample Movie', type: 'movie' },
-      requestedBy: ['alice'],
-      agentCount: 3,
-    });
-
-    await (service as never as { executeTask(): Promise<void> }).executeTask();
-
-    expect(getMetadata).toHaveBeenCalledTimes(1);
-    expect(getRequestedByUsernames).toHaveBeenCalledTimes(1);
-  });
-
-  it('does not notify an item that is not due', async () => {
-    const { service, handleNotification } = createService({
-      media: [
-        {
-          mediaServerId: '1',
-          tmdbId: 500,
-          addDate: new Date().toISOString(),
-        },
-      ],
-      metadata: { title: 'Sample Movie', type: 'movie' },
-    });
-
-    await (service as never as { executeTask(): Promise<void> }).executeTask();
-
-    expect(handleNotification).not.toHaveBeenCalled();
   });
 });

@@ -9,7 +9,7 @@ export function isBlankMediaServerId(
   return value === undefined || value === null || value.trim() === '';
 }
 
-export function isLikelyPlexId(value: string): boolean {
+function isLikelyPlexId(value: string): boolean {
   if (isBlankMediaServerId(value)) {
     return false;
   }
@@ -23,7 +23,7 @@ export function isLikelyPlexId(value: string): boolean {
   return true;
 }
 
-export function isLikelyJellyfinId(value: string): boolean {
+function isLikelyJellyfinId(value: string): boolean {
   if (isBlankMediaServerId(value)) {
     return false;
   }
@@ -45,7 +45,7 @@ export function isLikelyEmbyId(value: string): boolean {
   return isLikelyPlexId(value);
 }
 
-export function isJellyfinEmptyGuid(value: string): boolean {
+function isJellyfinEmptyGuid(value: string): boolean {
   return (
     value === JELLYFIN_EMPTY_GUID_DASHED ||
     value === JELLYFIN_EMPTY_GUID_UNDASHED

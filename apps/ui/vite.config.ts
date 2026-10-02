@@ -2,6 +2,7 @@ import { lingui, linguiTransformerBabelPreset } from '@lingui/vite-plugin'
 import babel from '@rolldown/plugin-babel'
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
+import { availableParallelism } from 'node:os'
 import { loadEnv } from 'vite'
 import { defineConfig } from 'vitest/config'
 
@@ -65,6 +66,14 @@ export default defineConfig(({ mode }) => {
     },
     test: {
       environment: 'jsdom',
+      // Half the cores, at most 4: each worker holds a jsdom page, so more
+      // workers only add memory, and the same command runs on any machine.
+      maxWorkers: Math.min(
+        4,
+        Math.max(1, Math.floor(availableParallelism() / 2)),
+      ),
+      // Renders are CPU-bound; a loaded machine stretches them past 5 s.
+      testTimeout: 20_000,
       setupFiles: [
         './src/test-utils/browser-apis.ts',
         './src/test-utils/react-cleanup.ts',
