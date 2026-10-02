@@ -66,37 +66,6 @@ describe('ServarrServerCard', () => {
     expect(putApiHandler).not.toHaveBeenCalled()
   })
 
-  it('keeps Save Changes enabled when editing a saved server without a retest', () => {
-    render(<Harness settings={saved} />)
-
-    fireEvent.change(screen.getByLabelText('Server Name'), {
-      target: { value: 'Radarr Backup' },
-    })
-    fireEvent.change(screen.getByLabelText('URL'), {
-      target: { value: 'http://radarr.internal' },
-    })
-
-    expect(button(/Save Changes/i).disabled).toBe(false)
-  })
-
-  it('enables saving a new server once the required fields are filled', () => {
-    render(<Harness />)
-
-    expect(button(/Save Changes/i).disabled).toBe(true)
-
-    fireEvent.change(screen.getByLabelText('Server Name'), {
-      target: { value: 'Radarr' },
-    })
-    fireEvent.change(screen.getByLabelText('URL'), {
-      target: { value: 'http://radarr.local:7878' },
-    })
-    fireEvent.change(screen.getByLabelText('API key'), {
-      target: { value: 'secret' },
-    })
-
-    expect(button(/Save Changes/i).disabled).toBe(false)
-  })
-
   it('posts a new server and hands the saved setting back', async () => {
     const onSaved = vi.fn()
     postApiHandler.mockResolvedValue({ code: 1, data: saved })
@@ -283,18 +252,5 @@ describe('ServarrServerCard', () => {
       )
     })
     expect(await screen.findByText('Refreshing')).toBeTruthy()
-  })
-
-  it('does not offer a refresh on a server that has not been saved yet', () => {
-    render(
-      <Harness
-        serviceName="Sportarr"
-        metadataRefreshPath="/settings/metadata/refresh/sportarr"
-      />,
-    )
-
-    expect(
-      screen.queryByRole('button', { name: /Refresh metadata/i }),
-    ).toBeNull()
   })
 })

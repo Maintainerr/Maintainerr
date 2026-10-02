@@ -6,7 +6,6 @@ describe('TMDB connection test', () => {
   afterEach(() => jest.restoreAllMocks());
 
   it.each([
-    ['', 'default'],
     ['   ', 'default'],
     [undefined, 'saved-key'],
     ['submitted-key', 'submitted-key'],

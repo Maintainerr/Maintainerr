@@ -76,16 +76,6 @@ export const rememberMaintainerrStatusDetails = (
   return normalizedDetails
 }
 
-export const hasMaintainerrStatusDetails = (
-  details?: MaintainerrMediaStatusDetails,
-) => {
-  if (!details) {
-    return false
-  }
-
-  return details.excludedFrom.length > 0 || details.manuallyAddedTo.length > 0
-}
-
 export const fetchMaintainerrStatusDetails = async ({
   id,
   getApiHandler,

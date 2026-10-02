@@ -111,7 +111,7 @@ const buildPlexServerPayload = (state: PlexServerFormState) => {
   }
 }
 
-export const hasUnsavedPlexServerChanges = (
+const hasUnsavedPlexServerChanges = (
   current: PlexServerFormState,
   saved: PlexServerFormState,
 ) => {

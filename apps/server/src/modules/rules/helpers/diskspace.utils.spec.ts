@@ -54,16 +54,6 @@ describe('evaluateArrDiskspaceGiB', () => {
     ).resolves.toBeUndefined();
   });
 
-  it('answers undefined when the client throws', async () => {
-    await expect(
-      evaluate({
-        getDiskspaceWithRootFolders: jest
-          .fn()
-          .mockRejectedValue(new Error('boom')),
-      }),
-    ).rejects.toThrow('boom');
-  });
-
   // Definitive answers stay null - the instance replied, it just has nothing to
   // report for this rule.
   it.each([

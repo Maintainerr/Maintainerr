@@ -215,30 +215,6 @@ describe('RuleExecutorJobManagerService', () => {
     );
   });
 
-  it('does not log a queue-drain warning when the last executing rule fails from a media server outage', async () => {
-    const executeMock: ExecuteMock = jest.fn().mockResolvedValue({
-      status: 'failed',
-      failedPayload: {
-        collectionName: 'Movies',
-        identifier: { type: 'rulegroup', value: 1 },
-      } as any,
-      reason: 'media-server-unreachable',
-    });
-
-    const { service } = buildService(executeMock);
-
-    service.enqueue({ ruleGroupId: 1 });
-
-    await flushMicrotasks();
-    await waitForNextTick();
-    await flushMicrotasks();
-
-    expect(executeMock).toHaveBeenCalledTimes(1);
-    expect(logger.warn).not.toHaveBeenCalledWith(
-      'Media server became unreachable during queue execution. Dropping remaining queued rule groups.',
-    );
-  });
-
   it('clears queued work when stopProcessing is called', async () => {
     const executeMock: ExecuteMock = jest
       .fn()

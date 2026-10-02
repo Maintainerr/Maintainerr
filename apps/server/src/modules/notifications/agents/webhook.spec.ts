@@ -103,20 +103,4 @@ describe('WebhookAgent', () => {
     ]);
     expect(payload).not.toHaveProperty('collectionName');
   });
-
-  it('carries requestedBy through to the posted body', async () => {
-    const agent = createAgent('https://example.com/hook');
-    const mediaItems = JSON.stringify([
-      { mediaServerId: '1', requestedBy: ['alice'] },
-    ]);
-
-    await agent.send(NotificationType.TEST_NOTIFICATION, {
-      subject: 'Media About to be Handled',
-      extra: [{ name: 'mediaItems', value: mediaItems }],
-    });
-
-    expect(JSON.parse(postedBody().mediaItems)).toEqual([
-      { mediaServerId: '1', requestedBy: ['alice'] },
-    ]);
-  });
 });

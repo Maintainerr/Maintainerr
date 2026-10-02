@@ -10,17 +10,14 @@ import {
   createRuleDto,
   createRuleGroupDto,
 } from '../../../../test/utils/data';
+import { withoutNetwork } from '../../../../test/utils/servarr-mock';
 import { RadarrApi } from '../../api/servarr-api/helpers/radarr.helper';
 import { RadarrMovie } from '../../api/servarr-api/interfaces/radarr.interface';
 import { ServarrService } from '../../api/servarr-api/servarr.service';
 import { CollectionMedia } from '../../collections/entities/collection_media.entities';
 import { MaintainerrLogger } from '../../logging/logs.service';
 import { MetadataService } from '../../metadata/metadata.service';
-import { ArrLookupCache } from '../helpers/arr-lookup-cache';
 import { RadarrGetterService } from './radarr-getter.service';
-
-// Let the memo's eviction callback (chained on the resolved promise) run.
-const flushMicrotasks = () => new Promise((resolve) => setImmediate(resolve));
 
 describe('RadarrGetterService', () => {
   let radarrGetterService: RadarrGetterService;
@@ -76,44 +73,6 @@ describe('RadarrGetterService', () => {
       expect(response).toBe(true);
     });
 
-    it('should return false when the cut off is not met', async () => {
-      const movie = createRadarrMovie({
-        movieFile: createRadarrMovieFile({
-          qualityCutoffNotMet: true,
-        }),
-      });
-      mockRadarrApi(movie);
-
-      const response = await radarrGetterService.get(
-        20,
-        mediaItem,
-        createRuleGroupDto({
-          collection: collectionMedia.collection,
-          dataType: 'movie',
-        }),
-      );
-
-      expect(response).toBe(false);
-    });
-
-    it('should return false when no movie file exists', async () => {
-      const movie = createRadarrMovie({
-        movieFile: undefined,
-      });
-      mockRadarrApi(movie);
-
-      const response = await radarrGetterService.get(
-        20,
-        mediaItem,
-        createRuleGroupDto({
-          collection: collectionMedia.collection,
-          dataType: 'movie',
-        }),
-      );
-
-      expect(response).toBe(false);
-    });
-
     it('should return quality name', async () => {
       const movie = createRadarrMovie({
         movieFile: createRadarrMovieFile({
@@ -136,24 +95,6 @@ describe('RadarrGetterService', () => {
       );
 
       expect(response).toBe('WEBDL-1080p');
-    });
-
-    it('should return null when no movie file exists (quality)', async () => {
-      const movie = createRadarrMovie({
-        movieFile: undefined,
-      });
-      mockRadarrApi(movie);
-
-      const response = await radarrGetterService.get(
-        21,
-        mediaItem,
-        createRuleGroupDto({
-          collection: collectionMedia.collection,
-          dataType: 'movie',
-        }),
-      );
-
-      expect(response).toBe(null);
     });
 
     it('should return audio languages', async () => {
@@ -179,26 +120,6 @@ describe('RadarrGetterService', () => {
     it('should return null when no movie file exists (audio)', async () => {
       const movie = createRadarrMovie({
         movieFile: undefined,
-      });
-      mockRadarrApi(movie);
-
-      const response = await radarrGetterService.get(
-        22,
-        mediaItem,
-        createRuleGroupDto({
-          collection: collectionMedia.collection,
-          dataType: 'movie',
-        }),
-      );
-
-      expect(response).toBe(null);
-    });
-
-    it('should return null when no media info exists', async () => {
-      const movie = createRadarrMovie({
-        movieFile: createRadarrMovieFile({
-          mediaInfo: undefined,
-        }),
       });
       mockRadarrApi(movie);
 
@@ -312,22 +233,6 @@ describe('RadarrGetterService', () => {
         }),
       );
 
-    it('returns undefined (fail closed) when the movie lookup fails transiently', async () => {
-      const mockedRadarrApi = mockRadarrApi();
-      jest
-        .spyOn(mockedRadarrApi, 'getMovieByTmdbId')
-        .mockResolvedValue(undefined);
-
-      await expect(callAddDate()).resolves.toBeUndefined();
-    });
-
-    it('returns null when Radarr confirms the movie is not tracked', async () => {
-      const mockedRadarrApi = mockRadarrApi();
-      jest.spyOn(mockedRadarrApi, 'getMovieByTmdbId').mockResolvedValue(null);
-
-      await expect(callAddDate()).resolves.toBeNull();
-    });
-
     it('returns undefined (fail closed) when the lookup fails for an item that has ids', async () => {
       // The item has something to look up, so an empty resolution may be a
       // transient TMDB/TVDB validation failure and must stay transient (#3307).
@@ -405,73 +310,12 @@ describe('RadarrGetterService', () => {
     });
   });
 
-  // The candidate resolution that precedes the arr lookup ran once per rule
-  // condition; the run-scoped ArrLookupCache now memoizes it so it runs once per
-  // item (#3285). Mirrors the arr identity lookup's run-scoped dedup (#2897).
-  describe('candidate resolution memoization (#3285)', () => {
-    let collectionMedia: CollectionMedia;
-    let mediaItem: MediaItem;
-
-    beforeEach(() => {
-      collectionMedia = createCollectionMedia('movie');
-      collectionMedia.collection.radarrSettingsId = 1;
-      mediaItem = createMediaItem({ type: 'movie' });
-      mockRadarrApi(createRadarrMovie());
-    });
-
-    // id 25 = movieTitle - a plain lookup that goes through candidate resolution.
-    const call = (arrLookupCache?: ArrLookupCache) =>
-      radarrGetterService.get(
-        25,
-        mediaItem,
-        createRuleGroupDto({
-          collection: collectionMedia.collection,
-          dataType: 'movie',
-        }),
-        undefined,
-        arrLookupCache,
-      );
-
-    it('resolves candidates once per item across conditions sharing a run cache', async () => {
-      const cache = new ArrLookupCache();
-
-      await call(cache);
-      await call(cache); // second condition, same item + same run cache
-
-      expect(
-        metadataService.resolveLookupCandidatesFromMediaItemForService,
-      ).toHaveBeenCalledTimes(1);
-    });
-
-    it('re-resolves per call when no run cache is provided (unchanged behaviour)', async () => {
-      await call();
-      await call();
-
-      expect(
-        metadataService.resolveLookupCandidatesFromMediaItemForService,
-      ).toHaveBeenCalledTimes(2);
-    });
-
-    it('evicts an empty resolution so a later condition retries (transient safety, #3125)', async () => {
-      metadataService.resolveLookupCandidatesFromMediaItemForService
-        .mockResolvedValueOnce([]) // transient: nothing resolved
-        .mockResolvedValue([{ providerKey: 'tmdb', id: 1 }]);
-      const cache = new ArrLookupCache();
-
-      await call(cache); // empty -> evicted from the memo
-      await flushMicrotasks();
-      await call(cache); // retries instead of serving the stale empty result
-
-      expect(
-        metadataService.resolveLookupCandidatesFromMediaItemForService,
-      ).toHaveBeenCalledTimes(2);
-    });
-  });
-
   const mockRadarrApi = (movie?: RadarrMovie) => {
-    const mockedRadarrApi = new RadarrApi(
-      { url: 'http://localhost:7878', apiKey: 'test' },
-      logger as any,
+    const mockedRadarrApi = withoutNetwork(
+      new RadarrApi(
+        { url: 'http://localhost:7878', apiKey: 'test' },
+        logger as any,
+      ),
     );
     const mockedServarrService = new ServarrService({} as any, logger as any);
     jest

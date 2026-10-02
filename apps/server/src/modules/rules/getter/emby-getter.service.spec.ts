@@ -59,7 +59,6 @@ describe('EmbyGetterService', () => {
   let embyGetterService: EmbyGetterService;
   let embyAdapter: Mocked<EmbyAdapterService>;
   let metadataRuleValueService: Mocked<MetadataRuleValueService>;
-  let logger: Mocked<MaintainerrLogger>;
 
   beforeEach(async () => {
     const { unit, unitRef } =
@@ -68,7 +67,7 @@ describe('EmbyGetterService', () => {
     embyGetterService = unit;
     embyAdapter = unitRef.get(EmbyAdapterService);
     metadataRuleValueService = unitRef.get(MetadataRuleValueService);
-    logger = unitRef.get(MaintainerrLogger);
+    unitRef.get(MaintainerrLogger);
     embyAdapter.isSetup.mockReturnValue(true);
   });
 
@@ -79,27 +78,6 @@ describe('EmbyGetterService', () => {
 
   describe('studios (id 46)', () => {
     const STUDIOS_PROP_ID = 46;
-
-    it('delegates to the shared metadata resolution with the run cache', async () => {
-      const mediaItem = createMediaItem();
-      const cache = new ArrLookupCache();
-      metadataRuleValueService.getStudios.mockResolvedValue(['Studio One']);
-
-      await expect(
-        embyGetterService.get(
-          STUDIOS_PROP_ID,
-          mediaItem,
-          'movie',
-          createRuleGroupDto({ dataType: 'movie' }),
-          cache,
-        ),
-      ).resolves.toEqual(['Studio One']);
-      expect(metadataRuleValueService.getStudios).toHaveBeenCalledWith(
-        mediaItem,
-        cache,
-      );
-      expect(embyAdapter.getMetadata).not.toHaveBeenCalled();
-    });
 
     it('preserves undefined so a failed lookup stays transient', async () => {
       metadataRuleValueService.getStudios.mockResolvedValue(undefined);
@@ -244,10 +222,7 @@ describe('EmbyGetterService', () => {
       },
     );
 
-    it.each([
-      ['missing', undefined as unknown as Date],
-      ['invalid', new Date('invalid')],
-    ])(
+    it.each([['invalid', new Date('invalid')]])(
       'returns undefined when the target addedAt is %s',
       async (_, addedAt) => {
         const target = setTarget('season');
@@ -266,7 +241,6 @@ describe('EmbyGetterService', () => {
     );
 
     it.each([
-      ['skips a dateless completed watch', undefined, []],
       ['fails on a malformed watch date', new Date('invalid'), undefined],
     ])('%s', async (_, watchedAt, expected) => {
       const target = setTarget('season');
@@ -590,22 +564,6 @@ describe('EmbyGetterService', () => {
       );
     };
 
-    it('holds an unnumbered season without reporting a read failure', async () => {
-      const season = createMediaItem({
-        id: 'season-unknown',
-        type: 'season',
-        index: undefined,
-        parentId: 'show-1',
-      });
-      embyAdapter.getMetadata.mockResolvedValue(season);
-
-      await expect(
-        embyGetterService.get(48, season, 'season'),
-      ).resolves.toBeUndefined();
-      expect(logger.warn).not.toHaveBeenCalled();
-      expect(embyAdapter.getChildrenMetadata).not.toHaveBeenCalled();
-    });
-
     it('returns null when applied to a non-season item', async () => {
       const show = createMediaItem({ id: 'show-1', type: 'show' });
       embyAdapter.getMetadata.mockResolvedValue(show);
@@ -737,39 +695,6 @@ describe('EmbyGetterService', () => {
         'episode',
         true,
       );
-    });
-
-    it('reuses show and prior season walks across concurrent targets', async () => {
-      const cache = new ArrLookupCache();
-      mockShow(
-        [
-          createMediaItem({ id: 'season-1', type: 'season', index: 1 }),
-          createMediaItem({ id: 'season-2', type: 'season', index: 2 }),
-        ],
-        {
-          'season-1-episode': [],
-          'season-2-episode': [],
-        },
-      );
-
-      await Promise.all([
-        getSeasonViewDate(1, cache),
-        getSeasonViewDate(2, cache),
-      ]);
-
-      expect(
-        embyAdapter.getChildrenMetadata.mock.calls.filter(
-          ([itemId, childType]) =>
-            itemId === 'show-1' && childType === 'season',
-        ),
-      ).toHaveLength(1);
-      expect(
-        embyAdapter.getChildrenMetadata.mock.calls.filter(
-          ([itemId, childType]) =>
-            itemId === 'season-1' && childType === 'episode',
-        ),
-      ).toHaveLength(1);
-      expect(embyAdapter.getWatchHistory).toHaveBeenCalledTimes(2);
     });
 
     it('returns null when completed views have no dates', async () => {

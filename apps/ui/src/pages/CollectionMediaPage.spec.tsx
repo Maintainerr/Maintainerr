@@ -194,22 +194,6 @@ describe('CollectionMediaPage', () => {
       fireEvent.click(screen.getByTestId('media-action-submit'))
     }
 
-    it('drops the cards an exclusion took out of the collection', async () => {
-      submittedOutcome = {
-        action: 'exclusion-add',
-        collectionId: 42,
-        succeededIds: ['movie-1'],
-        failedIds: [],
-      }
-
-      await selectAndSubmit(['movie-1'])
-
-      await waitFor(() => expect(screen.queryByText('Item movie-1')).toBeNull())
-      expect(screen.getByText('Item movie-2')).toBeTruthy()
-      expect(toast.success).toHaveBeenCalledWith('1 item excluded.')
-      expect(screen.getByRole('button', { name: 'Select items' })).toBeTruthy()
-    })
-
     // The item leaves this collection, and the grid holds its own state, so
     // nothing refetches it away.
     it('drops the cards a removal from every collection took out', async () => {

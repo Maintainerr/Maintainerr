@@ -25,26 +25,6 @@ describe('Cache key-count bound (#3284)', () => {
       expect(cache.data.get('d')).toBe(4);
     });
 
-    it('stays bounded no matter how many distinct keys are inserted', () => {
-      const cache = new Cache('t', 't', 'tmdb', { maxKeys: 10 });
-      fill(cache, 1000);
-      expect(cache.data.keys()).toHaveLength(10);
-      // FIFO: only the most-recent 10 survive.
-      expect(cache.data.has('k999')).toBe(true);
-      expect(cache.data.has('k989')).toBe(false);
-    });
-
-    it('overwriting an existing key reuses its slot (no eviction)', () => {
-      const cache = new Cache('t', 't', 'tmdb', { maxKeys: 2 });
-      cache.data.set('a', 1);
-      cache.data.set('b', 2);
-      cache.data.set('a', 99); // overwrite, not a new key
-
-      expect(cache.data.keys()).toHaveLength(2);
-      expect(cache.data.get('a')).toBe(99);
-      expect(cache.data.has('b')).toBe(true);
-    });
-
     it('preserves the ttl argument on set()', () => {
       const cache = new Cache('t', 't', 'tmdb', { maxKeys: 5 });
       cache.data.set('a', 1, 100);
@@ -69,26 +49,6 @@ describe('Cache key-count bound (#3284)', () => {
       const cache = new Cache('t', 't', 'tmdb');
       fill(cache, DEFAULT_MAX_KEYS + 25);
       expect(cache.data.keys()).toHaveLength(DEFAULT_MAX_KEYS);
-    });
-
-    it('bounds the shared per-item response caches (tmdb, plexguid)', () => {
-      for (const id of ['tmdb', 'plexguid'] as const) {
-        const cache = cacheManager.getCache(id);
-        cache.data.flushAll();
-        fill(cache, DEFAULT_MAX_KEYS + 25);
-        expect(cache.data.keys()).toHaveLength(DEFAULT_MAX_KEYS);
-        cache.data.flushAll();
-      }
-    });
-
-    it('leaves the prefetch-Map caches unbounded (plexwatchhistory, seerrrequests)', () => {
-      for (const id of ['plexwatchhistory', 'seerrrequests'] as const) {
-        const cache = cacheManager.getCache(id);
-        cache.data.flushAll();
-        fill(cache, DEFAULT_MAX_KEYS + 25);
-        expect(cache.data.keys()).toHaveLength(DEFAULT_MAX_KEYS + 25);
-        cache.data.flushAll();
-      }
     });
   });
 

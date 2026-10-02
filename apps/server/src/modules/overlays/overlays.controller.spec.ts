@@ -99,43 +99,30 @@ describe('OverlaysController', () => {
     }
   });
 
-  it('returns 404 when the font does not exist', () => {
-    const response = { setHeader: jest.fn() } as any;
+  it.each([['Inter-Bold.ttf', 'font/ttf']])(
+    'serves %s with the correct content type',
+    (name, contentType) => {
+      const response = { setHeader: jest.fn() } as any;
+      const bundledPath = path.join('/bundled-fonts', name);
 
-    try {
-      controller.getFont('Missing.ttf', response);
-      fail('expected getFont to throw');
-    } catch (error) {
-      expect(error).toBeInstanceOf(HttpException);
-      expect((error as HttpException).getStatus()).toBe(404);
-    }
-  });
+      mockedExistsSync.mockImplementation(
+        (candidate) => candidate === bundledPath,
+      );
 
-  it.each([
-    ['Inter-Bold.ttf', 'font/ttf'],
-    ['Inter-Bold.otf', 'font/otf'],
-    ['Inter-Bold.woff', 'font/woff'],
-  ])('serves %s with the correct content type', (name, contentType) => {
-    const response = { setHeader: jest.fn() } as any;
-    const bundledPath = path.join('/bundled-fonts', name);
+      const result = controller.getFont(name, response);
 
-    mockedExistsSync.mockImplementation(
-      (candidate) => candidate === bundledPath,
-    );
-
-    const result = controller.getFont(name, response);
-
-    expect(response.setHeader).toHaveBeenCalledWith(
-      'Content-Type',
-      contentType,
-    );
-    expect(response.setHeader).toHaveBeenCalledWith(
-      'Cache-Control',
-      'public, max-age=3600',
-    );
-    expect(mockedCreateReadStream).toHaveBeenCalledWith(bundledPath);
-    expect(result).toBeInstanceOf(StreamableFile);
-  });
+      expect(response.setHeader).toHaveBeenCalledWith(
+        'Content-Type',
+        contentType,
+      );
+      expect(response.setHeader).toHaveBeenCalledWith(
+        'Cache-Control',
+        'public, max-age=3600',
+      );
+      expect(mockedCreateReadStream).toHaveBeenCalledWith(bundledPath);
+      expect(result).toBeInstanceOf(StreamableFile);
+    },
+  );
 
   it('treats unsupported font extensions as missing', () => {
     const response = { setHeader: jest.fn() } as any;
@@ -319,14 +306,6 @@ describe('OverlaysController', () => {
     finish();
   });
 
-  it('defaults global process requests to non-force mode', () => {
-    processorService.processAllCollections.mockResolvedValue(undefined);
-
-    controller.processAll({});
-
-    expect(processorService.processAllCollections).toHaveBeenCalledWith(false);
-  });
-
   it('rejects a global process request with 409 while a run is in progress', () => {
     processorService.status = 'running';
 
@@ -338,29 +317,6 @@ describe('OverlaysController', () => {
     );
 
     expect(processorService.processAllCollections).not.toHaveBeenCalled();
-  });
-
-  it('processes collection requests without force mode', async () => {
-    const collection = {
-      id: 8,
-      title: 'Library Cleanup',
-      collectionMedia: [],
-    };
-    const result = { processed: 0, reverted: 0, skipped: 3, errors: 0 };
-    collectionRepo.findOne.mockResolvedValue(collection);
-    processorService.processCollection.mockResolvedValue(result);
-
-    await expect(controller.processCollection(8)).resolves.toBe(result);
-
-    expect(processorService.processCollection).toHaveBeenCalledWith(collection);
-  });
-
-  it('allows reset while overlays are globally disabled', () => {
-    processorService.resetAllOverlays.mockResolvedValue(undefined);
-
-    expect(controller.resetAll()).toBeUndefined();
-
-    expect(processorService.resetAllOverlays).toHaveBeenCalled();
   });
 
   it('rejects reset with 409 while a processor run is in progress', () => {

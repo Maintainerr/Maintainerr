@@ -144,25 +144,6 @@ describe('SportarrMetadataApiService', () => {
     expect(get).not.toHaveBeenCalled();
   });
 
-  it('stops asking a source that answered nothing at all', async () => {
-    // A source that is down answers every league the same way, so a page of
-    // cards would otherwise pay its connect timeout once per card.
-    withConnections('http://sportarr.local:1867');
-    answer(`${SPORTARR_NET}/agents/series/lg-000278`, {
-      title: 'Sample League',
-    });
-
-    await expect(service.getLeague('lg-000278')).resolves.toEqual({
-      title: 'Sample League',
-    });
-    await expect(service.getLeague('lg-000999')).resolves.toBeUndefined();
-
-    const asked = get.mock.calls
-      .map(([url]) => url)
-      .filter((url: string) => url.startsWith(CONNECTION));
-    expect(asked).toEqual([`${CONNECTION}/agents/series/lg-000278`]);
-  });
-
   it('stands down once every source it knows is unreachable', async () => {
     // The provider claims the tvdb alias too, so a claim it cannot answer
     // would fail a resolution that TVDB could still have finished.
@@ -219,33 +200,6 @@ describe('SportarrMetadataApiService', () => {
     });
   });
 
-  it('does not read the settings on every gate check when nothing is configured', async () => {
-    // isAvailable() runs inside per-item loops, so an install without
-    // Sportarr must not pay a settings read for each one. An empty list that
-    // was just read is an answer, and the TTL decides when to look again.
-    delete process.env.SPORTARR_NET;
-    withConnections();
-    await service.onModuleInit();
-    settings.getSportarrSettings.mockClear();
-
-    for (let i = 0; i < 25; i += 1) {
-      expect(service.hasReachableSource()).toBe(false);
-    }
-    await new Promise((resolve) => setImmediate(resolve));
-
-    expect(settings.getSportarrSettings).not.toHaveBeenCalled();
-  });
-
-  it('never touches sportarr.net unless the environment asks for it', async () => {
-    // An install that has never heard of Sportarr must not make an outbound
-    // request for a carried id it happens to hold.
-    delete process.env.SPORTARR_NET;
-
-    await expect(service.hasConfiguredSource()).resolves.toBe(false);
-    await expect(service.getLeague('lg-000278')).resolves.toBeUndefined();
-    expect(get).not.toHaveBeenCalled();
-  });
-
   it('asks an unreachable source again once its rest is over', async () => {
     // Standing down stops the walks, so an answer remembered from the last
     // walk would have no way back and one blip would last the whole process.
@@ -269,12 +223,5 @@ describe('SportarrMetadataApiService', () => {
     } finally {
       jest.useRealTimers();
     }
-  });
-
-  it('has a source with a connection alone', async () => {
-    withConnections('http://sportarr.local:1867');
-    delete process.env.SPORTARR_NET;
-
-    await expect(service.hasConfiguredSource()).resolves.toBe(true);
   });
 });

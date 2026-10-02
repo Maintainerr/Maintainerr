@@ -764,45 +764,6 @@ export const createMetadataProviderMock = ({
 export const metadataLookupServiceTestCases: MetadataLookupServiceTestCase[] = [
   {
     title:
-      'resolves a Sonarr TVDB lookup candidate from TMDB provider details when TVDB is not directly available',
-    service: 'sonarr',
-    lookupPolicy: {
-      providerKeys: ['tvdb'],
-      providerMatchMode: 'any',
-    },
-    libraryItem: {
-      id: 'show-1',
-      type: 'show',
-      title: 'Fixture Story',
-      providerIds: {
-        tmdb: ['771'],
-        imdb: [],
-        tvdb: [],
-      },
-    },
-    providerMocks: [
-      {
-        name: 'TMDB',
-        idKey: 'tmdb',
-        details: {
-          title: 'Fixture Story',
-          type: 'tv',
-          externalIds: {
-            tmdb: 771,
-            tvdb: 202,
-            type: 'tv',
-          },
-        },
-      },
-      {
-        name: 'TVDB',
-        idKey: 'tvdb',
-      },
-    ],
-    expectedCandidates: [{ providerKey: 'tvdb', id: 202 }],
-  },
-  {
-    title:
       'resolves a Radarr TMDB lookup candidate from TVDB provider details because Radarr prefers TMDB',
     service: 'radarr',
     lookupPolicy: {

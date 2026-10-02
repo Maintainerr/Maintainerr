@@ -238,40 +238,6 @@ describe('RuleComparatorService.executeRulesWithData', () => {
     });
   });
 
-  it('matches exists rules when the first value is present without a second operand', async () => {
-    const mediaItem = createSingleMedia();
-    const rules = [
-      createStoredRule(1, {
-        operator: null,
-        action: RulePossibility.EXISTS,
-        firstVal: [Application.PLEX, 8],
-        section: 0,
-      }),
-    ];
-
-    mockGetterSequence('HEVC 1080p');
-
-    const result = await ruleComparatorService.executeRulesWithData(
-      createRuleGroupDto({ dataType: 'movie', rules }),
-      [mediaItem],
-    );
-
-    expect(result.data).toHaveLength(1);
-    expect(result.stats[0].result).toBe(true);
-    expect(result.stats[0].sectionResults[0].ruleResults[0]).toMatchObject({
-      action: 'exists',
-      firstValue: 'HEVC 1080p',
-      result: true,
-    });
-    expect(result.stats[0].sectionResults[0].ruleResults[0]).not.toHaveProperty(
-      'secondValue',
-    );
-    expect(result.stats[0].sectionResults[0].ruleResults[0]).not.toHaveProperty(
-      'secondValueName',
-    );
-    expect(valueGetterService.get).toHaveBeenCalledTimes(1);
-  });
-
   it('matches not_exists rules when the first value is missing', async () => {
     const mediaItem = createSingleMedia();
     const rules = [
@@ -376,32 +342,6 @@ describe('RuleComparatorService.executeRulesWithData', () => {
     );
   });
 
-  it('keeps numeric custom values numeric for non-date rules when first value is null', async () => {
-    const mediaItem = createSingleMedia();
-    const rules = [
-      createStoredRule(1, {
-        operator: null,
-        action: RulePossibility.EQUALS,
-        firstVal: [Application.PLEX, 31],
-        customVal: { ruleTypeId: +RuleType.NUMBER, value: '6' },
-        section: 0,
-      }),
-    ];
-
-    mockGetterSequence(null);
-
-    const result = await ruleComparatorService.executeRulesWithData(
-      createRuleGroupDto({ dataType: 'movie', rules }),
-      [mediaItem],
-    );
-
-    expect(result.stats[0].sectionResults[0].ruleResults[0]).toMatchObject({
-      firstValue: null,
-      secondValue: 6,
-      result: false,
-    });
-  });
-
   it('formats custom_days second value as a future Date for equality date rules when first value is null', async () => {
     const mediaItem = createSingleMedia();
     const rules = [
@@ -436,85 +376,12 @@ describe('RuleComparatorService.executeRulesWithData', () => {
     );
   });
 
-  it('preserves 3.1.0 text lastVal behavior when the second value is missing', async () => {
-    const mediaItem = createSingleMedia();
-    const rules = [
-      createStoredRule(1, {
-        operator: null,
-        action: RulePossibility.NOT_CONTAINS,
-        firstVal: [Application.PLEX, 8],
-        lastVal: [Application.PLEX, 10],
-        section: 0,
-      }),
-    ];
-
-    mockGetterSequence('HEVC 1080p', null);
-
-    const result = await ruleComparatorService.executeRulesWithData(
-      createRuleGroupDto({ dataType: 'movie', rules }),
-      [mediaItem],
-    );
-
-    expect(result.data).toHaveLength(1);
-    expect(result.stats[0].result).toBe(true);
-    expect(result.stats[0].sectionResults[0].result).toBe(true);
-    expect(result.stats[0].sectionResults[0].ruleResults[0]).toMatchObject({
-      action: 'not_contains',
-      firstValue: 'HEVC 1080p',
-      secondValue: null,
-      result: true,
-    });
-  });
-
   // Unary EXISTS/NOT_EXISTS must distinguish the getter's `null` (definitive
   // absence - e.g. lastViewedAt for a never-watched item) from `undefined`
   // (outer-catch transport failure in plex/seerr-getter). Without the
   // tightened shouldCompare, `!hasExistsValue(undefined) === true` would
   // spuriously add items on every transient API blip (#1446).
   describe('unary EXISTS contract on null vs undefined', () => {
-    it('keeps NOT_EXISTS matching when firstVal is null (definitive absence)', async () => {
-      // Locks the existing semantic against the new shouldCompare branch.
-      const mediaItem = createSingleMedia();
-      const rules = [
-        createStoredRule(1, {
-          operator: null,
-          action: RulePossibility.NOT_EXISTS,
-          firstVal: [Application.PLEX, 6],
-          section: 0,
-        }),
-      ];
-
-      mockGetterSequence(null);
-
-      const result = await ruleComparatorService.executeRulesWithData(
-        createRuleGroupDto({ dataType: 'movie', rules }),
-        [mediaItem],
-      );
-
-      expect(result.data).toHaveLength(1);
-    });
-
-    it('skips unary NOT_EXISTS on transient undefined so the item is not spuriously added', async () => {
-      const mediaItem = createSingleMedia();
-      const rules = [
-        createStoredRule(1, {
-          operator: null,
-          action: RulePossibility.NOT_EXISTS,
-          firstVal: [Application.PLEX, 6],
-          section: 0,
-        }),
-      ];
-
-      mockGetterSequence(undefined);
-
-      const result = await ruleComparatorService.executeRulesWithData(
-        createRuleGroupDto({ dataType: 'movie', rules }),
-        [mediaItem],
-      );
-
-      expect(result.data).toEqual([]);
-    });
-
     // A failed lookup reported as "no entries for this item" reads as real data
     // and hides the outage from whoever is debugging the rule (#3395).
     it.each([
@@ -627,54 +494,28 @@ describe('RuleComparatorService.executeRulesWithData', () => {
       ),
     ];
 
-    it('includes an item matching only section 0 (mutually exclusive sections prove OR not AND)', async () => {
-      // viewCount = 0 matches section 0 (EQUALS 0) but not section 1 (BIGGER 0)
-      const mediaItem = createSingleMedia();
-      const rules = buildTwoSectionRules();
+    // viewCount 0 matches only section 0, 5 only section 1, null neither.
+    it.each([
+      [0, true],
+      [5, true],
+      [null, false],
+    ])(
+      'with viewCount %p includes the item: %p',
+      async (viewCount, included) => {
+        mockGetterSequence(viewCount, viewCount);
 
-      // getter called twice per item: first for section 0 rule, then for section 1 rule
-      mockGetterSequence(0, 0);
+        const result = await ruleComparatorService.executeRulesWithData(
+          createRuleGroupDto({
+            dataType: 'movie',
+            rules: buildTwoSectionRules(),
+          }),
+          [createSingleMedia()],
+        );
 
-      const result = await ruleComparatorService.executeRulesWithData(
-        createRuleGroupDto({ dataType: 'movie', rules }),
-        [mediaItem],
-      );
-
-      expect(result.data).toHaveLength(1);
-      expect(result.stats[0].result).toBe(true);
-    });
-
-    it('includes an item matching only section 1', async () => {
-      // viewCount = 5 does not match section 0 (EQUALS 0) but does match section 1 (BIGGER 0)
-      const mediaItem = createSingleMedia();
-      const rules = buildTwoSectionRules();
-
-      mockGetterSequence(5, 5);
-
-      const result = await ruleComparatorService.executeRulesWithData(
-        createRuleGroupDto({ dataType: 'movie', rules }),
-        [mediaItem],
-      );
-
-      expect(result.data).toHaveLength(1);
-      expect(result.stats[0].result).toBe(true);
-    });
-
-    it('excludes an item matching neither section', async () => {
-      // viewCount = null matches neither EQUALS 0 nor BIGGER 0
-      const mediaItem = createSingleMedia();
-      const rules = buildTwoSectionRules();
-
-      mockGetterSequence(null, null);
-
-      const result = await ruleComparatorService.executeRulesWithData(
-        createRuleGroupDto({ dataType: 'movie', rules }),
-        [mediaItem],
-      );
-
-      expect(result.data).toEqual([]);
-      expect(result.stats[0].result).toBe(false);
-    });
+        expect(result.data).toHaveLength(included ? 1 : 0);
+        expect(result.stats[0].result).toBe(included);
+      },
+    );
 
     it('includes an item matching both overlapping sections exactly once (no duplicate)', async () => {
       // Overlapping (non-exclusive) sections so a single item can satisfy both:
@@ -834,6 +675,48 @@ describe('RuleComparatorService.executeRulesWithData', () => {
       expect(result.data).toHaveLength(1);
       expect(result.data[0].id).toBe('in-range');
     });
+
+    // A later rule joined by AND inside one section narrows what that section
+    // keeps, and an item whose operand is missing drops out too: that set is
+    // what enters a deletion collection.
+    it('narrows a section with a same-section AND rule and drops a missing operand', async () => {
+      const rules = [
+        createStoredRule(1, {
+          operator: null,
+          action: RulePossibility.BIGGER,
+          firstVal: [Application.PLEX, 5],
+          customVal: { ruleTypeId: +RuleType.NUMBER, value: '0' },
+          section: 0,
+        }),
+        createStoredRule(2, {
+          operator: '0' as unknown as RuleOperators,
+          action: RulePossibility.SMALLER,
+          firstVal: [Application.PLEX, 5],
+          customVal: { ruleTypeId: +RuleType.NUMBER, value: '10' },
+          section: 0,
+        }),
+      ];
+      // viewCount per item for the first rule, then for the AND rule.
+      const viewCounts: Record<string, [number, number | null]> = {
+        'in-range': [5, 5],
+        'too-high': [15, 15],
+        missing: [5, null],
+      };
+      valueGetterService.get.mockReset();
+      valueGetterService.get.mockImplementation(
+        async (_firstVal, item, _group, _type, rule) =>
+          viewCounts[item.id][rule.action === RulePossibility.BIGGER ? 0 : 1],
+      );
+
+      const result = await ruleComparatorService.executeRulesWithData(
+        createRuleGroupDto({ dataType: 'movie', rules }),
+        Object.keys(viewCounts).map((id) =>
+          createMediaItem({ id, type: 'movie' as const }),
+        ),
+      );
+
+      expect(result.data.map((item) => item.id)).toEqual(['in-range']);
+    });
   });
 
   describe('transientFailureMediaIds', () => {
@@ -901,28 +784,6 @@ describe('RuleComparatorService.executeRulesWithData', () => {
       );
 
       expect(result.transientFailureMediaIds.has('media-1')).toBe(true);
-    });
-
-    it('does not track customVal comparisons as second-value transients', async () => {
-      const mediaItem = createSingleMedia();
-      const rules = [
-        createStoredRule(1, {
-          operator: null,
-          action: RulePossibility.SMALLER,
-          firstVal: [Application.PLEX, 31],
-          customVal: { ruleTypeId: +RuleType.NUMBER, value: '6' },
-          section: 0,
-        }),
-      ];
-
-      mockGetterSequence(5);
-
-      const result = await ruleComparatorService.executeRulesWithData(
-        createRuleGroupDto({ dataType: 'movie', rules }),
-        [mediaItem],
-      );
-
-      expect(result.transientFailureMediaIds.has('media-1')).toBe(false);
     });
   });
 

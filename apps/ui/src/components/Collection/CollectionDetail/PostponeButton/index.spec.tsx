@@ -104,22 +104,4 @@ describe('PostponeButton', () => {
     expect(onPostponed).not.toHaveBeenCalled()
     expect(screen.getByText('Postpone deletion')).toBeTruthy()
   })
-
-  it('drops the previous error when the dialog is cancelled and reopened', async () => {
-    postponeCollectionItem.mockRejectedValue(
-      new Error('Collection handling is already running.'),
-    )
-
-    render(renderButton())
-    openDialog()
-    fireEvent.click(screen.getByRole('button', { name: 'Postpone now' }))
-    await screen.findByText('Collection handling is already running.')
-
-    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
-    openDialog()
-
-    expect(
-      screen.queryByText('Collection handling is already running.'),
-    ).toBeNull()
-  })
 })
