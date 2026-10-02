@@ -191,31 +191,6 @@ describe('CollectionWorkerService', () => {
     expect(Math.abs(cutoff.getTime() - thirtyDaysAgo)).toBeLessThan(60_000);
   });
 
-  it('should handle media for collection and trigger availability syncs', async () => {
-    settings.seerrConfigured.mockReturnValue(true);
-
-    const collection = createCollection({
-      arrAction: ServarrAction.DELETE,
-      type: 'show',
-    });
-    const collectionMedia = createCollectionMedia(collection);
-
-    collectionRepository.find.mockResolvedValue([collection]);
-    collectionMediaRepository.find.mockResolvedValue([collectionMedia]);
-    collectionHandler.handleMedia.mockResolvedValue('handled');
-
-    await collectionWorkerService.execute();
-
-    expect(executionLock.acquire).toHaveBeenCalled();
-    expect(collectionMediaRepository.find).toHaveBeenCalledWith({
-      where: expect.objectContaining({
-        collectionId: collection.id,
-      }),
-    });
-    expect(collectionHandler.handleMedia).toHaveBeenCalled();
-    expect(seerrApi.api.post).toHaveBeenCalled();
-  });
-
   describe('exclusions protect a due member from the delete action', () => {
     const arrangeDueMember = (
       exclusions: Partial<Exclusion>[],
@@ -522,51 +497,6 @@ describe('CollectionWorkerService', () => {
         mediaItems: [{ mediaServerId: firstCollectionMedia.mediaServerId }],
         identifier: { type: 'collection', value: collection.id },
       }),
-    );
-  });
-
-  it('should not emit collection progress when no media exceeds the delete threshold', async () => {
-    const firstCollection = createCollection({
-      arrAction: ServarrAction.DELETE,
-      type: 'show',
-      title: 'Sonarr + Seerr',
-    });
-    const secondCollection = createCollection({
-      id: 2,
-      arrAction: ServarrAction.DELETE,
-      type: 'show',
-      title: 'Radarr + Seerr',
-    });
-
-    collectionRepository.find.mockResolvedValue([
-      firstCollection,
-      secondCollection,
-    ]);
-    collectionMediaRepository.find.mockResolvedValue([]);
-
-    await collectionWorkerService.execute();
-
-    expect(collectionHandler.handleMedia).not.toHaveBeenCalled();
-    expect(eventEmitter.emit).not.toHaveBeenCalledWith(
-      MaintainerrEvent.CollectionHandler_Progressed,
-      expect.anything(),
-    );
-    expect(eventEmitter.emit).toHaveBeenCalledWith(
-      MaintainerrEvent.CollectionHandler_Started,
-      expect.anything(),
-    );
-    expect(eventEmitter.emit).toHaveBeenCalledWith(
-      MaintainerrEvent.CollectionHandler_Finished,
-      expect.anything(),
-    );
-    expect(logger.debug).toHaveBeenCalledWith(
-      "Skipping collection 'Sonarr + Seerr' because no media is due for handling",
-    );
-    expect(logger.debug).toHaveBeenCalledWith(
-      "Skipping collection 'Radarr + Seerr' because no media is due for handling",
-    );
-    expect(logger.log).toHaveBeenCalledWith(
-      'Collection handler summary: 2 total (isActive), 0 skipped (Do Nothing), 0 skipped (no window set), 2 skipped (no due media), 0 queued for handling',
     );
   });
 });

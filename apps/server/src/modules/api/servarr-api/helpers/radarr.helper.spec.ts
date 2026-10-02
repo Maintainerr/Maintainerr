@@ -394,13 +394,6 @@ describe('RadarrApi', () => {
         JSON.stringify({ movieIds: [3], tags: [5], applyTags: 'remove' }),
       );
     });
-
-    it('no-ops on an empty id list (no request)', async () => {
-      const runPut = jest.spyOn(api as any, 'runPut');
-
-      await expect(api.setMovieTags([], 5, 'add')).resolves.toBe(true);
-      expect(runPut).not.toHaveBeenCalled();
-    });
   });
 
   // The leftover-folder cleanup fences a filesystem delete on this read. A

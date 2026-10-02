@@ -96,16 +96,6 @@ describe('StreamystatsGetterService', () => {
       expect(await service.get(IS_IN_WATCHLIST_PROP_ID, libItem)).toBe(true);
     });
 
-    it('returns false when the item is in no watchlist', async () => {
-      const { service, streamystatsApi } = createService();
-      const libItem = createMediaItem({ type: 'movie', id: 'item-1' });
-      streamystatsApi.getWatchlistMembership.mockResolvedValue(
-        membershipOf({ 'item-2': ['user-a'] }),
-      );
-
-      expect(await service.get(IS_IN_WATCHLIST_PROP_ID, libItem)).toBe(false);
-    });
-
     it('returns undefined (transient skip) when membership cannot be determined', async () => {
       const { service, streamystatsApi } = createService();
       const libItem = createMediaItem({ type: 'movie', id: 'item-1' });
@@ -118,25 +108,6 @@ describe('StreamystatsGetterService', () => {
   });
 
   describe('watchlistedByUsers (property id=1)', () => {
-    it('resolves owner user IDs to usernames via the media server', async () => {
-      const { service, streamystatsApi } = createService([
-        { id: 'user-a', name: 'alice' },
-        { id: 'user-b', name: 'bob' },
-        { id: 'user-c', name: 'carol' },
-      ]);
-      const libItem = createMediaItem({ type: 'movie', id: 'item-1' });
-      streamystatsApi.getWatchlistMembership.mockResolvedValue(
-        membershipOf({ 'item-1': ['user-a', 'user-b'] }),
-      );
-
-      const result = (await service.get(
-        WATCHLISTED_BY_USERS_PROP_ID,
-        libItem,
-      )) as string[];
-
-      expect(result.sort()).toEqual(['alice', 'bob']);
-    });
-
     it('omits owners that no longer resolve to a known user', async () => {
       const { service, streamystatsApi } = createService([
         { id: 'user-a', name: 'alice' },

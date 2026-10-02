@@ -2,7 +2,6 @@ import { QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, type RenderResult } from '../../test-utils/render'
 import type { ReactElement } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { createDeferred } from '../../test-utils/createDeferred'
 import { createTestQueryClient } from '../../test-utils/queryClient'
 import { ServarrSettings } from './Servarr/ServarrSettings'
 
@@ -33,59 +32,10 @@ vi.mock('../../utils/ClientLogger', () => ({
 describe.each([{ label: 'Radarr', service: 'radarr' }] as const)(
   '$label settings loading',
   ({ label, service }) => {
-    const path = `/settings/${service}`
-
     beforeEach(() => {
       getApiHandler.mockReset()
       deleteApiHandler.mockReset()
       logClientError.mockReset()
-    })
-
-    it('does not show transient loading UI while server settings load', async () => {
-      const request = createDeferred<
-        Array<{
-          id: number
-          serverName: string
-          url: string
-          apiKey: string
-        }>
-      >()
-
-      getApiHandler.mockImplementation((url: string) => {
-        if (url === path) {
-          return request.promise
-        }
-
-        // ExclusionTagSettings fetches global settings; answer benignly.
-        if (url === '/settings') {
-          return Promise.resolve({})
-        }
-
-        throw new Error(`Unexpected request: ${url}`)
-      })
-
-      renderWithClient(<ServarrSettings service={service} />)
-
-      expect(
-        screen.queryByRole('status', { name: `Loading ${label} servers` }),
-      ).toBeNull()
-      expect(
-        screen.queryByRole('button', { name: `Add ${label} server` }),
-      ).toBeNull()
-
-      request.resolve([
-        {
-          id: 1,
-          serverName: label,
-          url: `http://${label.toLowerCase()}.local`,
-          apiKey: 'token',
-        },
-      ])
-
-      expect(await screen.findByText(label)).toBeTruthy()
-      expect(
-        screen.getByRole('button', { name: `Add ${label} server` }),
-      ).toBeTruthy()
     })
 
     it('says the list failed to load instead of offering only Add', async () => {

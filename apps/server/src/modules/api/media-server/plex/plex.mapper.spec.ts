@@ -18,11 +18,6 @@ describe('PlexMapper', () => {
   describe('isSupportedLibrary', () => {
     it.each([
       [
-        { type: 'movie', key: '1', title: 'Movies', agent: 'movie-agent' },
-        true,
-      ],
-      [{ type: 'show', key: '2', title: 'Shows', agent: 'show-agent' }, true],
-      [
         { type: 'artist', key: '3', title: 'Music', agent: 'music-agent' },
         false,
       ],
@@ -53,8 +48,6 @@ describe('PlexMapper', () => {
   describe('extractPlexAgentId', () => {
     it.each([
       ['plex://movie/5d776830880197001ec7f3eb', '5d776830880197001ec7f3eb'],
-      ['plex://show/5d9c07f4705e7a001e6e59a2', '5d9c07f4705e7a001e6e59a2'],
-      ['plex://episode/5d9c1176e264b7001fef1d0e', '5d9c1176e264b7001fef1d0e'],
     ])('reads the agent id out of %s', (guid, expected) => {
       expect(PlexMapper.extractPlexAgentId(guid)).toBe(expected);
     });
@@ -63,8 +56,6 @@ describe('PlexMapper', () => {
     // has to come back undefined rather than a partial match.
     it.each([
       ['a legacy agent guid', 'com.plexapp.agents.imdb://tt1234567?lang=en'],
-      ['a provider guid', 'tmdb://12345'],
-      ['personal media', 'local://12345'],
       ['a guid that only looks like one', 'notplex://movie/5d7768308801'],
       ['a missing type segment', 'plex://5d776830880197001ec7f3eb'],
       ['an empty type segment', 'plex:///5d776830880197001ec7f3eb'],
@@ -233,53 +224,6 @@ describe('PlexMapper', () => {
       ).toEqual(['Studio A']);
     });
 
-    it.each([undefined, '', '   '])(
-      'leaves studios unset when Plex sends %p',
-      (studio) => {
-        expect(
-          PlexMapper.toMediaItem({ ...basePlexItem, studio }).studios,
-        ).toBeUndefined();
-      },
-    );
-
-    it('should convert media sources correctly', () => {
-      const result = PlexMapper.toMediaItem(basePlexItem);
-
-      expect(result.mediaSources).toHaveLength(1);
-      expect(result.mediaSources[0].id).toBe('1');
-      expect(result.mediaSources[0].duration).toBe(7200000);
-      expect(result.mediaSources[0].videoCodec).toBe('h264');
-    });
-
-    it('should convert library info correctly', () => {
-      const result = PlexMapper.toMediaItem(basePlexItem);
-
-      expect(result.library.id).toBe('1');
-      expect(result.library.title).toBe('Movies');
-    });
-
-    it('should convert genres correctly', () => {
-      const result = PlexMapper.toMediaItem(basePlexItem);
-
-      expect(result.genres).toHaveLength(1);
-      expect(result.genres![0].name).toBe('Action');
-    });
-
-    it('should convert actors correctly', () => {
-      const result = PlexMapper.toMediaItem(basePlexItem);
-
-      expect(result.actors).toHaveLength(1);
-      expect(result.actors![0].name).toBe('Actor Name');
-      expect(result.actors![0].role).toBe('Hero');
-    });
-
-    it('should convert collections and labels', () => {
-      const result = PlexMapper.toMediaItem(basePlexItem);
-
-      expect(result.collections).toEqual(['My Collection']);
-      expect(result.labels).toEqual(['HD']);
-    });
-
     it('should convert ratings correctly', () => {
       const result = PlexMapper.toMediaItem(basePlexItem);
 
@@ -356,19 +300,6 @@ describe('PlexMapper', () => {
       expect(result.title).toBe('Movies');
       expect(result.type).toBe('movie');
       expect(result.agent).toBe('com.plexapp.agents.themoviedb');
-    });
-
-    it('should convert show library correctly', () => {
-      const plexLibrary: PlexLibrary & { type: 'show' } = {
-        type: 'show',
-        key: '2',
-        title: 'TV Shows',
-        agent: 'com.plexapp.agents.thetvdb',
-      };
-
-      const result = PlexMapper.toMediaLibrary(plexLibrary);
-
-      expect(result.type).toBe('show');
     });
   });
 

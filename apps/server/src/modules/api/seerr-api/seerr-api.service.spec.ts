@@ -476,44 +476,6 @@ describe('SeerrApiService', () => {
       ]);
     });
 
-    it('skips requests whose media.tmdbId is not a number', async () => {
-      const noTmdb = requestWithTmdb(2, 100);
-      (noTmdb.media as { tmdbId?: number }).tmdbId = undefined;
-      const getWithoutCache = jest
-        .fn()
-        .mockResolvedValue(page([requestWithTmdb(1, 100), noTmdb], 1, 1));
-      (service as unknown as { api: unknown }).api = { getWithoutCache };
-
-      await expect(
-        service.getRequestsForMedia(100, 'movie'),
-      ).resolves.toHaveLength(1);
-    });
-
-    it('builds the index once for a concurrent first batch (in-flight dedup)', async () => {
-      let resolveSweep: (v: unknown) => void;
-      const getWithoutCache = jest.fn().mockImplementation(
-        () =>
-          new Promise((res) => {
-            resolveSweep = res;
-          }),
-      );
-      (service as unknown as { api: unknown }).api = { getWithoutCache };
-
-      const batch = Promise.all([
-        service.getRequestsForMedia(100, 'movie'),
-        service.getRequestsForMedia(200, 'movie'),
-        service.getRequestsForMedia(300, 'movie'),
-        service.getRequestsForMedia(400, 'movie'),
-      ]);
-      resolveSweep(page([requestWithTmdb(1, 100)], 1, 1));
-      const [r100, r200] = await batch;
-
-      // Eight concurrent items would otherwise trigger eight sweeps.
-      expect(getWithoutCache).toHaveBeenCalledTimes(1);
-      expect(r100).toHaveLength(1);
-      expect(r200).toEqual([]);
-    });
-
     it('returns undefined on a failed sweep and retries on the next call', async () => {
       const getWithoutCache = jest.fn().mockResolvedValueOnce(undefined);
       (service as unknown as { api: unknown }).api = { getWithoutCache };
@@ -593,16 +555,6 @@ describe('SeerrApiService', () => {
       await expect(
         service.getRequestedByUsernames(100, 'movie'),
       ).resolves.toEqual([]);
-    });
-
-    it('returns [] without calling Seerr when it is not configured', async () => {
-      settings.seerrConfigured.mockReturnValue(false);
-      const getRequestsForMedia = jest.spyOn(service, 'getRequestsForMedia');
-
-      await expect(
-        service.getRequestedByUsernames(100, 'movie'),
-      ).resolves.toEqual([]);
-      expect(getRequestsForMedia).not.toHaveBeenCalled();
     });
 
     it('skips requests with no resolvable username', async () => {

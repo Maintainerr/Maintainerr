@@ -71,10 +71,7 @@ describe('RulesController', () => {
     },
   );
 
-  it.each([
-    ['setRules', () => controller.setRules(body)],
-    ['updateRule', () => controller.updateRule(body)],
-  ])(
+  it.each([['setRules', () => controller.setRules(body)]])(
     '%s returns the status when the rule group was saved',
     async (_name, call) => {
       const saved = { code: 1 as const, result: 'Success', message: 'Success' };

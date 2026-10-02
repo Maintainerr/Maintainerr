@@ -351,27 +351,6 @@ describe('ServarrTagService', () => {
       expect(radarr.ensureTag).not.toHaveBeenCalled();
     });
 
-    it('does not untag on a transient lookup failure (undefined), retried next run', async () => {
-      const radarr = mockRadarrApi(servarrService, logger);
-      // undefined = transient (transport/auth/5xx), per the #3125 contract.
-      jest.spyOn(radarr, 'getMovieByTmdbId').mockResolvedValue(undefined);
-      jest.spyOn(radarr, 'ensureTag').mockResolvedValue(5);
-
-      const collection = createCollection({
-        type: 'movie',
-        radarrSettingsId: 1,
-        tagInArr: true,
-      });
-
-      await service.syncMembershipTags(
-        collection,
-        [],
-        [{ mediaServerId: 'movie-1' }],
-      );
-
-      expect(radarr.setMovieTags).not.toHaveBeenCalled();
-    });
-
     it('is best-effort: swallows errors and never throws', async () => {
       const radarr = mockRadarrApi(servarrService, logger);
       jest

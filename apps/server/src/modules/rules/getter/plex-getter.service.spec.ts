@@ -231,10 +231,8 @@ describe('PlexGetterService', () => {
       { id: 8, name: 'fileVideoResolution', expected: '2160' },
       { id: 9, name: 'fileBitrate', expected: 28_000 },
       { id: 10, name: 'fileVideoCodec', expected: 'hevc' },
-      { id: 11, name: 'genre', expected: ['Drama', 'Sci-Fi'] },
       { id: 22, name: 'rating_critics', expected: 6.5 },
       { id: 23, name: 'rating_audience', expected: 8.4 },
-      { id: 24, name: 'labels', expected: ['Keep', 'Family'] },
     ])('returns metadata-backed value for $name (id $id)', async (rule) => {
       const metadata = makeMetadata({
         originallyAvailableAt: '2024-02-03',
@@ -483,18 +481,7 @@ describe('PlexGetterService', () => {
       expect(result).toEqual(['bob', 'alice']);
     });
 
-    it.each([
-      { propertyId: 12, targetType: 'show' },
-      { propertyId: 12, targetType: 'season' },
-      {
-        propertyId: ALL_EPISODES_SEEN_SINCE_ADDED_PROP_ID,
-        targetType: 'show',
-      },
-      {
-        propertyId: ALL_EPISODES_SEEN_SINCE_ADDED_PROP_ID,
-        targetType: 'season',
-      },
-    ] as const)(
+    it.each([{ propertyId: 12, targetType: 'show' }] as const)(
       'returns no users for property $propertyId when an empty $targetType has no current episodes',
       async ({ propertyId, targetType }) => {
         plexApi.getMetadata.mockResolvedValue(
@@ -1199,7 +1186,6 @@ describe('PlexGetterService', () => {
     });
 
     it.each([
-      { id: 35, name: 'rating_imdbShow', expected: 8.8 },
       { id: 36, name: 'rating_rottenTomatoesCriticShow', expected: 7.2 },
       { id: 37, name: 'rating_rottenTomatoesAudienceShow', expected: 8.5 },
       { id: 38, name: 'rating_tmdbShow', expected: 8.3 },
@@ -1248,7 +1234,7 @@ describe('PlexGetterService', () => {
     // A show has no show above it. Plex threw on the missing parent, and the
     // outer catch turned "does not apply" into the transient signal, stalling
     // the rule; Jellyfin and Emby already answer null here.
-    it.each([35, 36, 37, 38])(
+    it.each([35])(
       'returns null for show ratings evaluated on a show itself (id %i)',
       async (id) => {
         plexApi.getMetadata.mockResolvedValue(

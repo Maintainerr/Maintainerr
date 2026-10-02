@@ -25,17 +25,6 @@ describe('Cache key-count bound (#3284)', () => {
       expect(cache.data.get('d')).toBe(4);
     });
 
-    it('overwriting an existing key reuses its slot (no eviction)', () => {
-      const cache = new Cache('t', 't', 'tmdb', { maxKeys: 2 });
-      cache.data.set('a', 1);
-      cache.data.set('b', 2);
-      cache.data.set('a', 99); // overwrite, not a new key
-
-      expect(cache.data.keys()).toHaveLength(2);
-      expect(cache.data.get('a')).toBe(99);
-      expect(cache.data.has('b')).toBe(true);
-    });
-
     it('preserves the ttl argument on set()', () => {
       const cache = new Cache('t', 't', 'tmdb', { maxKeys: 5 });
       cache.data.set('a', 1, 100);

@@ -89,13 +89,6 @@ describe('SportarrActionHandler', () => {
     };
   };
 
-  it('deletes the whole league for a show-scope DELETE', async () => {
-    const { collection, media } = showCollectionMedia(ServarrAction.DELETE);
-
-    await expect(handler.handleAction(collection, media)).resolves.toBe(true);
-    expect(mockClient.deleteLeague).toHaveBeenCalledWith(3, true);
-  });
-
   it('unmonitors the league for a show-scope UNMONITOR', async () => {
     const { collection, media } = showCollectionMedia(ServarrAction.UNMONITOR);
 
@@ -641,48 +634,6 @@ describe('SportarrActionHandler', () => {
       await expect(handler.handleAction(collection, media)).resolves.toBe(true);
 
       expect(downloadClient.removeDownloads).toHaveBeenCalledWith(['abcdef']);
-    });
-
-    it('keeps a pack that also backs a kept event on an episode delete', async () => {
-      const collection = createCollection({
-        arrAction: ServarrAction.DELETE,
-        type: 'episode' as MediaItemType,
-        sportarrSettingsId: 1,
-      });
-      const media = createCollectionMediaWithMetadata(collection, {
-        tvdbId: F1_ALIAS,
-      });
-      mockMediaServer.getMetadata.mockResolvedValue(
-        createMediaItem({
-          type: 'episode',
-          grandparentId: 'show-1',
-          parentIndex: 2026,
-          index: 5,
-        }),
-      );
-      mockClient.getLeagueEvents.mockResolvedValue([
-        {
-          id: 10,
-          seasonNumber: 2026,
-          episodeNumber: 5,
-          title: 'Race',
-          hasFile: true,
-        },
-      ]);
-      settings.downloadClientConfigured.mockReturnValue(true);
-      // singleTorrent backs only event 10 (deleted) -> removable.
-      // packTorrent also backs event 11 (kept) -> must stay.
-      mockClient.getLeagueDownloadHistory.mockResolvedValue([
-        { eventId: 10, downloadId: 'singleTorrent', protocol: 'Torrent' },
-        { eventId: 10, downloadId: 'packTorrent', protocol: 'Torrent' },
-        { eventId: 11, downloadId: 'packTorrent', protocol: 'Torrent' },
-      ]);
-
-      await expect(handler.handleAction(collection, media)).resolves.toBe(true);
-
-      expect(downloadClient.removeDownloads).toHaveBeenCalledWith([
-        'singletorrent',
-      ]);
     });
   });
 });

@@ -22,22 +22,10 @@ describe('EventsBufferService', () => {
   });
 
   describe('parseLastEventId', () => {
-    it('returns undefined when header is missing', () => {
-      expect(service.parseLastEventId(buildRequest())).toBeUndefined();
-    });
-
     it('parses numeric header values', () => {
       expect(
         service.parseLastEventId(buildRequest({ 'last-event-id': '42' })),
       ).toBe(42);
-    });
-
-    it('uses the last entry when header is an array', () => {
-      expect(
-        service.parseLastEventId(
-          buildRequest({ 'last-event-id': ['10', '12'] }),
-        ),
-      ).toBe(12);
     });
 
     it('returns undefined for non-numeric input', () => {

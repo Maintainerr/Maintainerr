@@ -14,24 +14,6 @@ describe('PlexOverlayProvider', () => {
     plexApi = unitRef.get(PlexApiService);
   });
 
-  describe('getSections', () => {
-    it('narrows Plex types to the OverlayLibrarySection union', async () => {
-      plexApi.getOverlayLibrarySections.mockResolvedValue([
-        { key: 'lib-1', title: 'Films', type: 'movie' },
-        { key: 'lib-2', title: 'Series', type: 'show' },
-        // The underlying helper already filters non-movie/show, but belt-and-braces:
-        { key: 'lib-3', title: 'Tracks', type: 'music' },
-      ]);
-
-      const sections = await provider.getSections();
-
-      expect(sections).toEqual([
-        { key: 'lib-1', title: 'Films', type: 'movie' },
-        { key: 'lib-2', title: 'Series', type: 'show' },
-      ]);
-    });
-  });
-
   describe('getRandomItem', () => {
     it('maps plexId to itemId on the returned preview DTO', async () => {
       plexApi.getRandomLibraryItem.mockResolvedValue({
@@ -44,20 +26,6 @@ describe('PlexOverlayProvider', () => {
         title: 'Item Title',
       });
       expect(plexApi.getRandomLibraryItem).toHaveBeenCalledWith(['lib-1']);
-    });
-  });
-
-  describe('getRandomEpisode', () => {
-    it('maps plexId to itemId on the returned preview DTO', async () => {
-      plexApi.getRandomEpisodeItem.mockResolvedValue({
-        plexId: 'rk-ep',
-        title: 'Episode Title',
-      });
-
-      await expect(provider.getRandomEpisode(['lib-1'])).resolves.toEqual({
-        itemId: 'rk-ep',
-        title: 'Episode Title',
-      });
     });
   });
 

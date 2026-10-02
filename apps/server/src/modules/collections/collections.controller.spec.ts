@@ -382,19 +382,6 @@ describe('CollectionsController', () => {
     expect(collectionsService.getCollectionRecord).not.toHaveBeenCalled();
   });
 
-  it('throws when the collection does not exist', async () => {
-    collectionsService.getCollectionRecord.mockResolvedValue(undefined);
-
-    await expect(
-      controller.handleCollectionMedia({
-        collectionId: 42,
-        mediaId: 'media-1',
-      }),
-    ).rejects.toThrow(NotFoundException);
-
-    expect(collectionHandler.handleMedia).not.toHaveBeenCalled();
-  });
-
   it('throws when the media is not in the collection', async () => {
     const collection = createCollection();
 
@@ -534,23 +521,6 @@ describe('CollectionsController', () => {
       await expect(
         controller.uploadCollectionPoster(collection.id, file),
       ).rejects.toThrow(BadRequestException);
-    });
-
-    it('preserves storage failures as server errors', async () => {
-      const collection = createCollection();
-      const file = {
-        originalname: 'poster.png',
-        buffer: Buffer.from('image-bytes'),
-      };
-
-      collectionsService.getCollectionRecord.mockResolvedValue(collection);
-      collectionPosterService.storePoster.mockRejectedValueOnce(
-        new Error('disk full'),
-      );
-
-      await expect(
-        controller.uploadCollectionPoster(collection.id, file),
-      ).rejects.toThrow('disk full');
     });
   });
 

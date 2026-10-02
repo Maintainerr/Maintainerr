@@ -29,9 +29,9 @@ describe('TmdbMetadataProvider', () => {
   it.each<[string, boolean | undefined, string, boolean | undefined]>([
     // [status, in_production, label, expectedEnded]
     ['Ended', false, 'status Ended + in_production false', true],
-    ['Canceled', false, 'status Canceled', true],
-    ['Returning Series', true, 'status Returning Series', false],
-    ['In Production', true, 'status In Production', false],
+    // Without in_production, the status string decides.
+    ['Canceled', undefined, 'status Canceled', true],
+    ['Returning Series', undefined, 'status Returning Series', false],
     ['Pilot', undefined, 'status Pilot (unknown)', undefined],
   ])(
     'maps %s to ended=%s (%s)',

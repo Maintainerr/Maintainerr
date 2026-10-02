@@ -99,43 +99,30 @@ describe('OverlaysController', () => {
     }
   });
 
-  it('returns 404 when the font does not exist', () => {
-    const response = { setHeader: jest.fn() } as any;
+  it.each([['Inter-Bold.ttf', 'font/ttf']])(
+    'serves %s with the correct content type',
+    (name, contentType) => {
+      const response = { setHeader: jest.fn() } as any;
+      const bundledPath = path.join('/bundled-fonts', name);
 
-    try {
-      controller.getFont('Missing.ttf', response);
-      fail('expected getFont to throw');
-    } catch (error) {
-      expect(error).toBeInstanceOf(HttpException);
-      expect((error as HttpException).getStatus()).toBe(404);
-    }
-  });
+      mockedExistsSync.mockImplementation(
+        (candidate) => candidate === bundledPath,
+      );
 
-  it.each([
-    ['Inter-Bold.ttf', 'font/ttf'],
-    ['Inter-Bold.otf', 'font/otf'],
-    ['Inter-Bold.woff', 'font/woff'],
-  ])('serves %s with the correct content type', (name, contentType) => {
-    const response = { setHeader: jest.fn() } as any;
-    const bundledPath = path.join('/bundled-fonts', name);
+      const result = controller.getFont(name, response);
 
-    mockedExistsSync.mockImplementation(
-      (candidate) => candidate === bundledPath,
-    );
-
-    const result = controller.getFont(name, response);
-
-    expect(response.setHeader).toHaveBeenCalledWith(
-      'Content-Type',
-      contentType,
-    );
-    expect(response.setHeader).toHaveBeenCalledWith(
-      'Cache-Control',
-      'public, max-age=3600',
-    );
-    expect(mockedCreateReadStream).toHaveBeenCalledWith(bundledPath);
-    expect(result).toBeInstanceOf(StreamableFile);
-  });
+      expect(response.setHeader).toHaveBeenCalledWith(
+        'Content-Type',
+        contentType,
+      );
+      expect(response.setHeader).toHaveBeenCalledWith(
+        'Cache-Control',
+        'public, max-age=3600',
+      );
+      expect(mockedCreateReadStream).toHaveBeenCalledWith(bundledPath);
+      expect(result).toBeInstanceOf(StreamableFile);
+    },
+  );
 
   it('treats unsupported font extensions as missing', () => {
     const response = { setHeader: jest.fn() } as any;

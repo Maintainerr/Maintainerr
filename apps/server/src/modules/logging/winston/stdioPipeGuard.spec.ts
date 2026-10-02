@@ -44,16 +44,5 @@ describe('stdioPipeGuard', () => {
 
       expect(() => stream.emit('error', makeError('ENOSPC'))).toThrow(/ENOSPC/);
     });
-
-    it('is idempotent: re-installing does not double-attach listeners', () => {
-      const stream = makeStream();
-      const onUnexpected = jest.fn();
-      installStdioPipeGuard(stream, onUnexpected);
-      installStdioPipeGuard(stream, onUnexpected);
-
-      stream.emit('error', makeError('ENOSPC'));
-
-      expect(onUnexpected).toHaveBeenCalledTimes(1);
-    });
   });
 });

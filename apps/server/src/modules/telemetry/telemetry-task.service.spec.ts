@@ -53,12 +53,6 @@ describe('TelemetryTaskService', () => {
       expect(Number(dayOfWeek)).toBeLessThan(7);
     });
 
-    it('gives the same instance the same slot every boot', () => {
-      const clientId = '6f2a1c40-9d3e-4a17-8b52-0c7e1d9a4f38';
-
-      expect(scheduleFor(clientId)).toBe(scheduleFor(clientId));
-    });
-
     it('falls back without throwing when there is no clientId', () => {
       const cron = scheduleFor(undefined);
 

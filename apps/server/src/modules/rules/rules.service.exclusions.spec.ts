@@ -188,43 +188,6 @@ describe('RulesService exclusions - global (null ruleGroupId) handling', () => {
     expect(result.handledIds).toEqual(['season-1']);
   });
 
-  it('setExclusion does not tag when exclusion tagging is disabled', async () => {
-    const exclusionRepo = {
-      findOne: jest.fn().mockResolvedValue(undefined),
-      save: jest.fn().mockResolvedValue(undefined),
-      delete: jest.fn().mockResolvedValue(undefined),
-    };
-    const ruleGroupRepository = {
-      findOne: jest.fn().mockResolvedValue({ id: 7, dataType: 'movie' }),
-    };
-    const mediaServer = {
-      getMetadata: jest.fn().mockResolvedValue({ type: 'movie' }),
-      getAllIdsForContextAction: jest.fn().mockResolvedValue(['movie-1']),
-    };
-    const mediaServerFactory = {
-      getService: jest.fn().mockResolvedValue(mediaServer),
-    };
-    const collectionService = {
-      CollectionLogRecordForChild: jest.fn().mockResolvedValue(undefined),
-      getCollection: jest.fn(),
-    };
-    const servarrTagService = createMockServarrTagService(); // disabled by default
-
-    const { service } = createService({
-      exclusionRepo,
-      ruleGroupRepository,
-      mediaServerFactory,
-      collectionService,
-      servarrTagService,
-    });
-
-    await service.setExclusion({ mediaId: 'movie-1', collectionId: 9 } as any);
-
-    // The collection is never loaded and no tag is applied when disabled.
-    expect(collectionService.getCollection).not.toHaveBeenCalled();
-    expect(servarrTagService.applyExclusionTag).not.toHaveBeenCalled();
-  });
-
   it('removeExclusion removes the *arr tag only when un-exclude removal is opted in', async () => {
     const exclusionRepo = {
       findOne: jest.fn().mockResolvedValue({

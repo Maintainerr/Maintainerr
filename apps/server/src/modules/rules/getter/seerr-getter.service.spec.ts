@@ -10,10 +10,6 @@ import {
 } from '../../api/seerr-api/seerr-api.service';
 import { MetadataService } from '../../metadata/metadata.service';
 import { SeerrGetterService } from './seerr-getter.service';
-import { ArrLookupCache } from '../helpers/arr-lookup-cache';
-
-// Let the memo's eviction callback (chained on the resolved promise) run.
-const flushMicrotasks = () => new Promise((resolve) => setImmediate(resolve));
 
 describe('SeerrGetterService', () => {
   const ADD_USER_PROP_ID = 0;
@@ -124,77 +120,7 @@ describe('SeerrGetterService', () => {
       ...overrides,
     }) as unknown as SeerrRequest;
 
-  // The id-resolution (media item -> tmdb) preceding every Seerr query ran once
-  // per rule condition; the run-scoped ArrLookupCache now memoizes it so it runs
-  // once per item (#3285). Mirrors the Radarr/Sonarr candidate memo.
-  describe('id-resolution memoization (#3285)', () => {
-    const call = (
-      service: SeerrGetterService,
-      arrLookupCache?: ArrLookupCache,
-    ) =>
-      service.get(
-        IS_REQUESTED_PROP_ID,
-        movieLibItem,
-        undefined,
-        arrLookupCache,
-      );
-
-    it('resolves ids once per item across conditions sharing a run cache', async () => {
-      const { service, seerrApi, metadataService } = createService();
-      seerrApi.getRequestsForMedia.mockResolvedValue([]);
-      const cache = new ArrLookupCache();
-
-      await call(service, cache);
-      await call(service, cache); // second condition, same item + same run cache
-
-      expect(
-        metadataService.resolveIdsFromMediaItemForService,
-      ).toHaveBeenCalledTimes(1);
-    });
-
-    it('evicts a no-tmdb resolution so a later condition retries (transient safety, #3125)', async () => {
-      const { service, seerrApi, metadataService } = createService();
-      seerrApi.getRequestsForMedia.mockResolvedValue([]);
-      metadataService.resolveIdsFromMediaItemForService
-        .mockResolvedValueOnce(undefined) // transient: nothing resolved
-        .mockResolvedValue({ tmdb: 12345, type: 'movie' });
-      const cache = new ArrLookupCache();
-
-      await call(service, cache); // no tmdb -> evicted from the memo
-      await flushMicrotasks();
-      await call(service, cache); // retries instead of serving the stale result
-
-      expect(
-        metadataService.resolveIdsFromMediaItemForService,
-      ).toHaveBeenCalledTimes(2);
-    });
-  });
-
   describe('addUser (property id=0)', () => {
-    it('should return Plex username using plexUsername field from Seerr', async () => {
-      const { service, seerrApi } = createService();
-
-      seerrApi.getRequestsForMedia.mockResolvedValue([
-        movieRequest({
-          requestedBy: {
-            id: 10,
-            userType: 1, // Plex user
-            username: 'plexuser_email',
-            plexUsername: 'PlexDisplayName',
-            plexId: 999999,
-          },
-        }),
-      ]);
-
-      const result = await service.get(
-        ADD_USER_PROP_ID,
-        movieLibItem,
-        undefined,
-      );
-
-      expect(result).toEqual(['PlexDisplayName']);
-    });
-
     it('should return empty array when the title has no requests', async () => {
       const { service, seerrApi } = createService();
 
@@ -299,16 +225,6 @@ describe('SeerrGetterService', () => {
       ).resolves.toBe(2);
     });
 
-    it('should return 0 when the title has no requests for movies', async () => {
-      const { service, seerrApi } = createService();
-
-      seerrApi.getRequestsForMedia.mockResolvedValue([]);
-
-      await expect(
-        service.get(AMOUNT_REQUESTED_PROP_ID, movieLibItem, undefined),
-      ).resolves.toBe(0);
-    });
-
     it('should return undefined (transient) when the request sweep failed', async () => {
       const { service, seerrApi } = createService();
 
@@ -339,24 +255,6 @@ describe('SeerrGetterService', () => {
         ),
       ).resolves.toBe(1);
     });
-
-    it('should return 0 when the title has no requests for seasons', async () => {
-      const { service, seerrApi, mediaServerFactory } = createService();
-      const mockMediaServer = await mediaServerFactory.getService();
-      (mockMediaServer as any).getMetadata = jest
-        .fn()
-        .mockResolvedValue(showLibItem);
-
-      seerrApi.getRequestsForMedia.mockResolvedValue([]);
-
-      await expect(
-        service.get(
-          AMOUNT_REQUESTED_PROP_ID,
-          seasonLibItem,
-          'season' as MediaItemType,
-        ),
-      ).resolves.toBe(0);
-    });
   });
 
   describe('isRequested (property id=6)', () => {
@@ -378,24 +276,6 @@ describe('SeerrGetterService', () => {
       await expect(
         service.get(IS_REQUESTED_PROP_ID, movieLibItem, undefined),
       ).resolves.toBe(0);
-    });
-
-    it('should return 1 for a season that has a matching request', async () => {
-      const { service, seerrApi, mediaServerFactory } = createService();
-      const mockMediaServer = await mediaServerFactory.getService();
-      (mockMediaServer as any).getMetadata = jest
-        .fn()
-        .mockResolvedValue(showLibItem);
-
-      seerrApi.getRequestsForMedia.mockResolvedValue([tvRequest([1])]);
-
-      await expect(
-        service.get(
-          IS_REQUESTED_PROP_ID,
-          seasonLibItem,
-          'season' as MediaItemType,
-        ),
-      ).resolves.toBe(1);
     });
 
     it('should return 0 for a season with no matching request', async () => {

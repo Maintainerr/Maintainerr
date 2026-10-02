@@ -943,21 +943,6 @@ describe('TracearrApiService', () => {
     });
   });
 
-  it('accepts the stable release after 2.0.0-beta.1', async () => {
-    apiMock.getRawWithoutCache.mockResolvedValue({
-      data: {
-        openapi: '3.1.0',
-        info: { title: 'Tracearr Public API', version: '2.0.0' },
-      },
-    });
-
-    await expect(
-      service.testConnection({
-        url: 'http://tracearr.local',
-        apiKey: 'trr_pub_token',
-      }),
-    ).resolves.toEqual({ status: 'OK', code: 1, message: '2.0.0' });
-  });
   describe('getItemStats', () => {
     const MEDIA_ID = '55555555-5555-4555-8555-555555555555';
     const SHOW_MEDIA_ID = '66666666-6666-4666-8666-666666666666';

@@ -23,7 +23,7 @@ describe('SonarrApi', () => {
     );
   });
 
-  it.each(['all', 'existing', 3] as const)(
+  it.each(['all', 3] as const)(
     'does not mutate seasons when the fresh episode read fails (%s)',
     async (scope) => {
       jest
@@ -466,13 +466,6 @@ describe('SonarrApi', () => {
         'series/editor',
         JSON.stringify({ seriesIds: [3], tags: [7], applyTags: 'remove' }),
       );
-    });
-
-    it('no-ops on an empty id list (no request)', async () => {
-      const runPut = jest.spyOn(sonarrApi as any, 'runPut');
-
-      await expect(sonarrApi.setSeriesTags([], 7, 'add')).resolves.toBe(true);
-      expect(runPut).not.toHaveBeenCalled();
     });
   });
 

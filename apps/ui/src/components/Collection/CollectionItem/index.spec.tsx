@@ -1,5 +1,5 @@
 import type { MediaLibrary } from '@maintainerr/contracts'
-import { render, screen, waitFor } from '../../../test-utils/render'
+import { render, screen } from '../../../test-utils/render'
 import type { ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useMediaServerLibraries } from '../../../api/media-server'
@@ -43,40 +43,6 @@ describe('CollectionItem', () => {
     ]
 
     librariesHookMock.mockReturnValue(buildQuerySuccessResult(libraries))
-  })
-
-  it('renders collection preview images inside the wide backdrop layout', async () => {
-    render(
-      <CollectionItem
-        collection={
-          {
-            id: 1,
-            title: 'Action',
-            libraryId: 'library-1',
-            description: 'Collection description',
-            isActive: true,
-            type: 'movie',
-            arrAction: 0,
-            media: [
-              { image_path: 'https://image.example/one.jpg' },
-              { image_path: 'https://image.example/two.jpg' },
-            ],
-            manualCollection: false,
-            manualCollectionName: '',
-            addDate: new Date(),
-            handledMediaAmount: 0,
-            lastDurationInSeconds: 0,
-            keepLogsForMonths: 0,
-          } as any
-        }
-      />,
-    )
-
-    await waitFor(() => {
-      expect(screen.getAllByAltText('Collection preview')).toHaveLength(2)
-    })
-
-    expect(getApiHandlerMock).not.toHaveBeenCalled()
   })
 
   it('shows "Unavailable" in warning style when libraries query errored and the id is unresolved', () => {

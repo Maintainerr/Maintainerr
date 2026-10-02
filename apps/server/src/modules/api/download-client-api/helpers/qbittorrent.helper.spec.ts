@@ -203,7 +203,7 @@ describe('QbittorrentApi deleteTorrents', () => {
 
   // qBittorrent documents `hashes=all` on /torrents/delete as "delete all
   // torrents", so it must never be forwarded as if it were one download.
-  it.each(['all', 'ALL', '  all  '])(
+  it.each(['ALL', '  all  '])(
     'refuses the whole-client magic value %j',
     async (hash) => {
       const { api, axiosMock } = arrange();

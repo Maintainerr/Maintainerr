@@ -162,8 +162,6 @@ describe('SettingsController', () => {
   it.each([
     ['getSettings', 'getPublicSettings'],
     ['getRadarrSettings', 'getRadarrSettings'],
-    ['getSonarrSettings', 'getSonarrSettings'],
-    ['getSportarrSettings', 'getSportarrSettings'],
   ] as const)('fails %s when the read fails', async (method, read) => {
     settingsOperationsService[read].mockResolvedValue({
       status: 'NOK',

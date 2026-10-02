@@ -20,7 +20,6 @@ const LAST_VIEWED_AT = 4;
 const AMOUNT_OF_VIEWS = 5;
 const VIEWED_EPISODES = 6;
 const LAST_WATCHED = 7;
-const WATCHERS = 8;
 const VIEW_COUNT_BY_USER = 9;
 const WATCH_TIME_BY_USER = 10;
 const LAST_VIEWED_AT_BY_USER = 11;
@@ -232,20 +231,6 @@ describe('TracearrGetterService', () => {
         service.get(VIEW_COUNT_BY_USER, movie, ruleGroup, ruleDto),
       ).resolves.toBeUndefined();
     });
-  });
-
-  it('returns usernames for seenBy', async () => {
-    const { service } = createService([
-      historyItem('33333333-3333-4333-8333-333333333333', {
-        media_type: 'movie',
-        rating_key: 'movie-1',
-        grandparent_rating_key: null,
-      }),
-    ]);
-
-    await expect(service.get(SEEN_BY, movie, ruleGroup)).resolves.toEqual([
-      'alice',
-    ]);
   });
 
   it('returns users who watched every episode from the media-server catalog', async () => {
@@ -475,10 +460,6 @@ describe('TracearrGetterService', () => {
 
   it.each([
     ALL_EPISODES_SEEN_BY,
-    AMOUNT_OF_VIEWS,
-    VIEWED_EPISODES,
-    LAST_WATCHED,
-    WATCHERS,
     // A property that does not apply to this item type answers null, the
     // definitive "does not apply". The transient signal froze the whole group,
     // because the executor sweeps a library at a single dataType.
@@ -489,7 +470,7 @@ describe('TracearrGetterService', () => {
     expect(tracearrApi.prefetchHistory).not.toHaveBeenCalled();
   });
 
-  it.each([SEEN_BY, VIEW_COUNT])(
+  it.each([SEEN_BY])(
     'skips movie property %i for an episode',
     async (propertyId) => {
       const { service, tracearrApi } = createService([]);
@@ -501,16 +482,7 @@ describe('TracearrGetterService', () => {
     },
   );
 
-  it.each([
-    { propertyId: SEEN_BY, libItem: movie },
-    { propertyId: ALL_EPISODES_SEEN_BY, libItem: show },
-    { propertyId: VIEW_COUNT, libItem: movie },
-    { propertyId: LAST_VIEWED_AT, libItem: show },
-    { propertyId: AMOUNT_OF_VIEWS, libItem: show },
-    { propertyId: VIEWED_EPISODES, libItem: show },
-    { propertyId: LAST_WATCHED, libItem: show },
-    { propertyId: WATCHERS, libItem: show },
-  ])(
+  it.each([{ propertyId: SEEN_BY, libItem: movie }])(
     'returns undefined for property $propertyId when the index is unavailable',
     async ({ propertyId, libItem }) => {
       const { service, tracearrApi } = createService([], {

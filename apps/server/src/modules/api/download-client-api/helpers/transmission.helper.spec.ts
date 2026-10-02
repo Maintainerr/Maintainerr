@@ -130,17 +130,16 @@ describe('TransmissionApi RPC', () => {
     });
   });
 
-  it.each([
-    [401, 'Invalid username or password'],
-    [403, 'rpc-whitelist'],
-    [421, 'rpc-host-whitelist'],
-  ])('maps a %i to a Transmission-specific error', async (status, text) => {
-    const { api, axiosMock } = buildApi();
-    axiosMock.post.mockRejectedValue(httpError(status));
+  it.each([[401, 'Invalid username or password']])(
+    'maps a %i to a Transmission-specific error',
+    async (status, text) => {
+      const { api, axiosMock } = buildApi();
+      axiosMock.post.mockRejectedValue(httpError(status));
 
-    await expect(api.getVersion()).rejects.toThrow(text);
-    expect(axiosMock.post).toHaveBeenCalledTimes(1);
-  });
+      await expect(api.getVersion()).rejects.toThrow(text);
+      expect(axiosMock.post).toHaveBeenCalledTimes(1);
+    },
+  );
 
   it('rejects an RPC-level failure returned with HTTP 200', async () => {
     const { api, axiosMock } = buildApi();

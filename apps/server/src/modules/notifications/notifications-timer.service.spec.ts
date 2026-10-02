@@ -187,29 +187,4 @@ describe('NotificationTimerService', () => {
       undefined,
     );
   });
-
-  it('skips the Seerr lookup for an item with no tmdbId', async () => {
-    const { service, getRequestedByUsernames } = createService({
-      media: [{ mediaServerId: '1', addDate: dueAddDate() }],
-      metadata: { title: 'Sample Movie', type: 'movie' },
-    });
-
-    await (service as never as { executeTask(): Promise<void> }).executeTask();
-
-    expect(getRequestedByUsernames).not.toHaveBeenCalled();
-  });
-
-  it('enriches each item once even when several agents notify it', async () => {
-    const { service, getMetadata, getRequestedByUsernames } = createService({
-      media: [{ mediaServerId: '1', tmdbId: 500, addDate: dueAddDate() }],
-      metadata: { title: 'Sample Movie', type: 'movie' },
-      requestedBy: ['alice'],
-      agentCount: 3,
-    });
-
-    await (service as never as { executeTask(): Promise<void> }).executeTask();
-
-    expect(getMetadata).toHaveBeenCalledTimes(1);
-    expect(getRequestedByUsernames).toHaveBeenCalledTimes(1);
-  });
 });

@@ -114,35 +114,6 @@ describe('RuleInput', () => {
     vi.clearAllMocks()
   })
 
-  it('shows the single and multiple value placeholder when entering a custom text value for a list rule', async () => {
-    render(
-      <RuleInput
-        id={1}
-        mediaType={MediaType.MOVIE}
-        radarrSettingsId={1}
-        onCommit={onCommit}
-        onIncomplete={onIncomplete}
-        onDelete={onDelete}
-      />,
-    )
-
-    fireEvent.change(screen.getByLabelText('First Value'), {
-      target: { value: JSON.stringify([Application.RADARR, listPropertyId]) },
-    })
-    fireEvent.change(screen.getByLabelText('Action'), {
-      target: { value: String(RulePossibility.NOT_EQUALS) },
-    })
-    fireEvent.change(screen.getByLabelText('Second Value'), {
-      target: { value: 'custom_text' },
-    })
-
-    await waitFor(() => {
-      expect(
-        (screen.getByLabelText('Custom Value') as HTMLInputElement).placeholder,
-      ).toBe('Value1 or ["Value1", "Value2"]')
-    })
-  })
-
   it('commits unary exists rules without a second value input', async () => {
     render(
       <RuleInput

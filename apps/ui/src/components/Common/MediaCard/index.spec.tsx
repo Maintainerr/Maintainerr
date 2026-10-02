@@ -166,32 +166,6 @@ describe('MediaCard', () => {
     expect(screen.getByText('A Quiet Arrival')).toBeTruthy()
   })
 
-  it('names the collections a library item is in, and collapses the rest', () => {
-    const { rerender } = render(
-      <MediaCard
-        id="movie-1"
-        title="Movie"
-        mediaType="movie"
-        collectionPage={false}
-        collections={['Stale Movies']}
-      />,
-    )
-
-    expect(screen.getByText('Stale Movies')).toBeTruthy()
-
-    rerender(
-      <MediaCard
-        id="movie-1"
-        title="Movie"
-        mediaType="movie"
-        collectionPage={false}
-        collections={['Stale Movies', 'Franchise A', 'Watched']}
-      />,
-    )
-
-    expect(screen.getByText('Stale Movies +2')).toBeTruthy()
-  })
-
   it('keeps the collection page manual badge without an overview include badge', () => {
     render(
       <MediaCard

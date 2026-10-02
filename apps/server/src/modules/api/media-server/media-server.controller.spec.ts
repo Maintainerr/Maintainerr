@@ -89,16 +89,6 @@ describe('MediaServerController', () => {
       );
     });
 
-    it('should calculate offset correctly for page 5 with limit 10', async () => {
-      await controller.getLibraryContent('lib1', 5, 10);
-
-      // offset = (page - 1) * limit = (5 - 1) * 10 = 40
-      expect(mockMediaServerService.getLibraryContents).toHaveBeenCalledWith(
-        'lib1',
-        { offset: 40, limit: 10, type: undefined },
-      );
-    });
-
     it('passes studio sorting to a supporting media server', async () => {
       mockMediaServerService.supportsFeature.mockReturnValue(true);
 
@@ -536,26 +526,6 @@ describe('MediaServerController', () => {
       ]);
       expect(mockMediaServerService.getMetadata).toHaveBeenCalledWith('show-1');
       expect(result).toEqual([{ ...episode, parentItem: show }]);
-    });
-
-    it('should leave movie results unchanged', async () => {
-      const movie = {
-        id: 'movie-1',
-        title: 'Movie',
-        guid: 'guid-movie',
-        type: 'movie',
-        addedAt: new Date(),
-        providerIds: { tmdb: ['456'] },
-        mediaSources: [],
-        library: { id: 'library-1', title: 'Library' },
-      } satisfies MediaItem;
-
-      mockMediaServerService.searchContent.mockResolvedValue([movie]);
-
-      const result = await controller.searchContent('test');
-
-      expect(mockMediaServerService.getMetadata).not.toHaveBeenCalled();
-      expect(result).toEqual([movie]);
     });
   });
 });

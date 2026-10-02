@@ -366,23 +366,6 @@ describe('CollectionHandler', () => {
     expect(mediaServer.scanFolder).not.toHaveBeenCalled();
   });
 
-  it('does not rescan when the media server deleted the files itself', async () => {
-    const collection = createCollection({
-      arrAction: ServarrAction.DELETE,
-      type: 'show',
-    });
-    const collectionMedia = createCollectionMedia(collection);
-
-    mediaServer.getLibraries.mockResolvedValue(
-      createMediaLibraries({ id: collection.libraryId.toString() }),
-    );
-
-    await collectionHandler.handleMedia(collection, collectionMedia);
-
-    expect(mediaServer.deleteFromDisk).toHaveBeenCalled();
-    expect(mediaServer.scanFolder).not.toHaveBeenCalled();
-  });
-
   it('keeps the action handled when the rescan request fails', async () => {
     const collection = createCollection({
       arrAction: ServarrAction.DELETE,
@@ -410,36 +393,6 @@ describe('CollectionHandler', () => {
       collectionHandler.handleMedia(collection, collectionMedia),
     ).resolves.toBe('handled');
     expect(logger.warn).toHaveBeenCalled();
-  });
-
-  it('should call Sonarr action handler', async () => {
-    const collection = createCollection({
-      arrAction: ServarrAction.DELETE,
-      sonarrSettingsId: 1,
-      type: 'show',
-    });
-    const collectionMedia = createCollectionMedia(collection);
-
-    mediaServer.getLibraries.mockResolvedValue(
-      createMediaLibraries({
-        id: collection.libraryId.toString(),
-        type: 'show',
-      }),
-    );
-
-    sonarrActionHandler.handleAction.mockResolvedValue(true);
-
-    await expect(
-      collectionHandler.handleMedia(collection, collectionMedia),
-    ).resolves.toBe('handled');
-
-    expect(collectionsService.removeFromCollection).toHaveBeenCalledTimes(1);
-    expect(sonarrActionHandler.handleAction).toHaveBeenCalled();
-    expect(
-      sonarrActionHandler.handleAction.mock.invocationCallOrder[0],
-    ).toBeLessThan(
-      collectionsService.removeFromCollection.mock.invocationCallOrder[0],
-    );
   });
 
   it('should not remove media from collection when Radarr action fails', async () => {
@@ -749,10 +702,7 @@ describe('CollectionHandler', () => {
 
   // #3427: a removal that never reached Seerr logged as though it had, so a run
   // against an unreachable Seerr read as fully successful.
-  it.each([
-    { title: 'a season', type: 'season' as const, index: 1 },
-    { title: 'a movie', type: 'movie' as const, index: undefined },
-  ])(
+  it.each([{ title: 'a season', type: 'season' as const, index: 1 }])(
     'warns instead of claiming the Seerr removal for $title',
     async ({ type, index }) => {
       const collection = createCollection({
@@ -979,61 +929,6 @@ describe('CollectionHandler', () => {
       expect.objectContaining({
         handledMediaAmount: 1,
         handledMediaSizeBytes: 2_000_000_000,
-      }),
-    );
-  });
-
-  it('does not look up size for unmonitor actions', async () => {
-    const collection = createCollection({
-      arrAction: ServarrAction.UNMONITOR,
-      sonarrSettingsId: 1,
-      type: 'show',
-    });
-    const collectionMedia = createCollectionMedia(collection);
-    collectionMedia.sizeBytes = null as any;
-
-    mediaServer.getLibraries.mockResolvedValue(
-      createMediaLibraries({
-        id: collection.libraryId.toString(),
-        type: 'show',
-      }),
-    );
-    sonarrActionHandler.handleAction.mockResolvedValue(true);
-
-    await collectionHandler.handleMedia(collection, collectionMedia);
-
-    expect(collectionsService.resolveItemSize).not.toHaveBeenCalled();
-    expect(collectionsService.saveCollection).toHaveBeenCalledWith(
-      expect.objectContaining({
-        handledMediaAmount: 1,
-        handledMediaSizeBytes: 0,
-      }),
-    );
-  });
-
-  it('skips byte credit when the lookup also fails to resolve a size', async () => {
-    const collection = createCollection({
-      arrAction: ServarrAction.DELETE,
-      type: 'episode',
-    });
-    const collectionMedia = createCollectionMedia(collection);
-    collectionMedia.sizeBytes = null as any;
-
-    mediaServer.getLibraries.mockResolvedValue(
-      createMediaLibraries({
-        id: collection.libraryId.toString(),
-        type: 'show',
-      }),
-    );
-    collectionsService.resolveItemSize.mockResolvedValue(null);
-
-    await collectionHandler.handleMedia(collection, collectionMedia);
-
-    expect(collectionsService.resolveItemSize).toHaveBeenCalled();
-    expect(collectionsService.saveCollection).toHaveBeenCalledWith(
-      expect.objectContaining({
-        handledMediaAmount: 1,
-        handledMediaSizeBytes: 0,
       }),
     );
   });

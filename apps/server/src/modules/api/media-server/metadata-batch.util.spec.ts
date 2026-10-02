@@ -37,20 +37,6 @@ describe('batchIdsByRequestCost', () => {
 });
 
 describe('readMetadataInBatches', () => {
-  it('reads a short list in one request', async () => {
-    const readBatch = jest.fn(async (batch: string[]) => batch.map(item));
-
-    const items = await readMetadataInBatches({
-      itemIds: ['a', 'b'],
-      perIdCost: 1,
-      readBatch,
-    });
-
-    expect(readBatch).toHaveBeenCalledTimes(1);
-    expect(readBatch).toHaveBeenCalledWith(['a', 'b']);
-    expect(items.map((entry) => entry.id)).toEqual(['a', 'b']);
-  });
-
   it('asks for an id once even when a caller repeats it', async () => {
     const readBatch = jest.fn(async (batch: string[]) => batch.map(item));
 

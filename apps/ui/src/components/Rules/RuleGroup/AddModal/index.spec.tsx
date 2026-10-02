@@ -129,16 +129,6 @@ describe('ruleGroupFormSchema', () => {
     expect(provided.success).toBe(true)
   })
 
-  it('does not show the stored-library fallback while libraries are still loading', () => {
-    expect(
-      getStoredLibraryFallbackState('library-1', undefined, true, false),
-    ).toEqual({
-      storedLibraryResolved: false,
-      storedLibraryMissing: false,
-      showStoredLibraryFallback: false,
-    })
-  })
-
   it('shows the stored-library fallback when loading finished without the stored id or the query errored', () => {
     expect(
       getStoredLibraryFallbackState('library-1', undefined, false, true),

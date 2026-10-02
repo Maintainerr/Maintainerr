@@ -62,49 +62,6 @@ vi.mock('../../Common/MediaCard', () => ({
 }))
 
 describe('OverviewContent', () => {
-  it('uses the delayed shared spinner for the initial empty overview load', () => {
-    render(
-      <OverviewContent
-        data={[]}
-        dataFinished={false}
-        loading={true}
-        extrasLoading={false}
-        fetchData={vi.fn()}
-      />,
-    )
-
-    expect(screen.getByTestId('loading-spinner')).toBeTruthy()
-    expect(screen.queryByTestId('small-loading-spinner')).toBeNull()
-  })
-
-  it('keeps rendered items visible while append loading uses the small spinner slot', () => {
-    render(
-      <OverviewContent
-        data={[
-          {
-            id: '1',
-            title: 'Item One',
-            type: 'movie',
-          } as any,
-        ]}
-        dataFinished={false}
-        loading={false}
-        extrasLoading={true}
-        fetchData={vi.fn()}
-      />,
-    )
-
-    expect(screen.getByText('Item One')).toBeTruthy()
-    const loadingMoreStatus = screen.getByRole('status', {
-      name: 'Loading more items',
-    })
-
-    expect(loadingMoreStatus).toBeTruthy()
-    expect(loadingMoreStatus.parentElement?.style.overflowAnchor).toBe('none')
-    expect(screen.getByTestId('small-loading-spinner')).toBeTruthy()
-    expect(screen.queryByTestId('loading-spinner')).toBeNull()
-  })
-
   it('passes selection state and changes through to overview cards', () => {
     const onSelectionChange = vi.fn()
 

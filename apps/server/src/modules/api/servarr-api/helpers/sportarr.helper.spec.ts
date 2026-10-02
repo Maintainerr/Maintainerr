@@ -24,13 +24,6 @@ describe('SportarrApi', () => {
   // = the lookup itself failed (callers fail closed), null = Sportarr is
   // reachable but tracks no league with that external id.
   describe('getLeagueByExternalId', () => {
-    it('returns null without calling Sportarr when the id is blank', async () => {
-      const getSpy = jest.spyOn(sportarrApi as any, 'getWithoutCache');
-
-      await expect(sportarrApi.getLeagueByExternalId('  ')).resolves.toBeNull();
-      expect(getSpy).not.toHaveBeenCalled();
-    });
-
     it('returns undefined when the league list lookup fails transiently', async () => {
       jest
         .spyOn(sportarrApi as any, 'getWithoutCache')

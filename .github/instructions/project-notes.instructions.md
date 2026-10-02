@@ -408,14 +408,23 @@ must stay transport-only.
 
 ### Writing tests
 
-The suite once passed 3,600 tests and a server run needed over 4 GB. These
-rules keep it small, honest and the same on every machine.
+A test records behaviour we approved: what the app deletes or keeps, what a
+rule matches, what it writes to a media server, an \*arr or the database, what
+the API returns and what a user can do. If that behaviour changes, a test has to
+fail, so the change is noticed and approved again by updating the test on
+purpose. Tests check outcomes at the boundary, the way an end-to-end check
+would, not how the code gets there.
+
+Keep it strict: add a test only when changing the behaviour it pins would break
+something in the app, and no other test already catches that change. The suite
+once passed 3,600 tests and a server run needed over 4 GB; about 2,500 is the
+size to hold.
 
 **What earns a test**
 
-- An observable behaviour or a fixed bug (name the issue in a comment).
-  Data-safety guards, fail-closed paths and mapping tables that feed rule values
-  are the core of the suite.
+- A data-safety guard (deletions, collection membership, manual-member
+  adoption, \*arr file deletes, fail-closed reads), a rule-value mapping, a
+  security contract, or a fixed bug (name the issue in a comment).
 - One test per behaviour. Another input on the same branch is an `it.each` row,
   and only when it can fail differently. A negated action is one test over the
   positive table (see the `NOT_*` test in

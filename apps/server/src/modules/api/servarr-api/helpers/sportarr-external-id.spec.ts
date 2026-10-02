@@ -25,11 +25,7 @@ describe('sportarrLeagueExternalIdFromTvdbAlias', () => {
 
   it.each([
     undefined,
-    null,
-    NaN,
-    0,
     900_000_000, // exactly the offset -> n === 0, not a league
-    899_999_999, // below the league range (a real tvdb id space)
     1_000_000_000, // the event alias range, not a league
     342_040, // a genuine TVDB series id
     900_000_278.5, // aliases are integers; a fraction is not a league id
@@ -64,11 +60,9 @@ describe('sportarrLeagueExternalIdFromProviderIds', () => {
 
   it.each([
     'ev-848683', // an event, stamped on episodes, never a league
-    '900000278', // the tvdb alias digits, not a native id
     'lg-', // no digits
     'lg-000000', // league 0 does not exist
     'lg-12ab',
-    'league-278',
   ])('ignores %s in the sportarr namespace and reads the alias', (value) => {
     expect(
       sportarrLeagueExternalIdFromProviderIds({

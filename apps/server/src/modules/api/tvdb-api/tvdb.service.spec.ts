@@ -73,14 +73,11 @@ describe('TVDB connection test', () => {
     });
   });
 
-  it.each(['', '   '])(
-    'rejects an empty key without using the saved key: %j',
-    async (key) => {
-      settings.tvdb_api_key = 'saved-key';
-      await expect(service.testConnection(key)).resolves.toMatchObject({
-        code: 0,
-      });
-      expect(retryingHttp.post).not.toHaveBeenCalled();
-    },
-  );
+  it('rejects a blank key without using the saved key', async () => {
+    settings.tvdb_api_key = 'saved-key';
+    await expect(service.testConnection('   ')).resolves.toMatchObject({
+      code: 0,
+    });
+    expect(retryingHttp.post).not.toHaveBeenCalled();
+  });
 });

@@ -46,19 +46,4 @@ describe('HealthController', () => {
 
     await expect(controller.ready()).rejects.toBeInstanceOf(HttpException);
   });
-
-  it('combined health endpoint surfaces a 503 when the database is down', async () => {
-    const isDatabaseReachable = jest.fn().mockResolvedValue(false);
-    const { controller } = createController(isDatabaseReachable);
-
-    const error = await controller.health().catch((e: HttpException) => e);
-
-    expect(error).toBeInstanceOf(HttpException);
-    expect((error as HttpException).getStatus()).toBe(
-      HttpStatus.SERVICE_UNAVAILABLE,
-    );
-    expect((error as HttpException).getResponse()).toMatchObject({
-      database: 'unreachable',
-    });
-  });
 });

@@ -27,12 +27,8 @@ describe('PlexAdapterService', () => {
 
   describe('feature detection', () => {
     it.each([
-      [MediaServerFeature.LABELS, true],
-      [MediaServerFeature.PLAYLISTS, true],
       [MediaServerFeature.COLLECTION_VISIBILITY, true],
-      [MediaServerFeature.WATCHLIST, true],
       [MediaServerFeature.CENTRAL_WATCH_HISTORY, true],
-      [MediaServerFeature.LIBRARY_STUDIO_SORT, true],
     ])('supportsFeature(%s) is %s', (feature, expected) => {
       expect(service.supportsFeature(feature)).toBe(expected);
     });
@@ -412,24 +408,6 @@ describe('PlexAdapterService', () => {
     });
   });
 
-  describe('getMetadataBatch', () => {
-    it('reads a whole id list in one request', async () => {
-      plexApi.getMetadataBatch.mockResolvedValue([
-        createPlexMetadata({ ratingKey: 'movie-1', type: 'movie' }),
-        createPlexMetadata({ ratingKey: 'movie-2', type: 'movie' }),
-      ]);
-
-      const items = await service.getMetadataBatch(['movie-1', 'movie-2']);
-
-      expect(plexApi.getMetadataBatch).toHaveBeenCalledTimes(1);
-      expect(plexApi.getMetadataBatch).toHaveBeenCalledWith([
-        'movie-1',
-        'movie-2',
-      ]);
-      expect(items.map((item) => item.id)).toEqual(['movie-1', 'movie-2']);
-    });
-  });
-
   describe('getCollectionChildren', () => {
     it('reads no metadata at all when the listing carries provider ids', async () => {
       plexApi.getCollectionChildren.mockResolvedValue([
@@ -542,14 +520,6 @@ describe('PlexAdapterService', () => {
       await expect(service.getCollectionChildren('col123')).rejects.toThrow(
         'boom',
       );
-    });
-  });
-
-  describe('searchContent', () => {
-    it('should return empty array when PlexApiService returns undefined', async () => {
-      plexApi.searchContent.mockResolvedValue(undefined);
-      const results = await service.searchContent('test');
-      expect(results).toEqual([]);
     });
   });
 
@@ -684,22 +654,6 @@ describe('PlexAdapterService', () => {
       ).resolves.toBeUndefined();
     });
 
-    it('should add a batch of items in a single Plex request when possible', async () => {
-      plexApi.addChildrenToCollection.mockResolvedValue({
-        status: 'OK',
-      } as any);
-
-      await expect(
-        service.addBatchToCollection('col123', ['good', 'good-2']),
-      ).resolves.toEqual({ refused: [], unknown: [] });
-
-      expect(plexApi.addChildrenToCollection).toHaveBeenCalledWith('col123', [
-        'good',
-        'good-2',
-      ]);
-      expect(plexApi.addChildToCollection).not.toHaveBeenCalled();
-    });
-
     it('should fall back to per-item adds when a Plex batch add fails', async () => {
       plexApi.addChildrenToCollection.mockResolvedValue({
         status: 'NOK',
@@ -766,18 +720,6 @@ describe('PlexAdapterService', () => {
       expect(plexApi.addChildToCollection).not.toHaveBeenCalled();
     });
 
-    it('reports an unanswered removal as unconfirmed', async () => {
-      plexApi.deleteChildFromCollection.mockResolvedValue({
-        status: 'NOK',
-        code: 0,
-        message: 'timeout of 30000ms exceeded',
-      } as any);
-
-      await expect(
-        service.removeBatchFromCollection('col123', ['good']),
-      ).resolves.toEqual({ refused: [], unknown: ['good'] });
-    });
-
     it('should treat 404 removes as successful in batch remove', async () => {
       plexApi.deleteChildFromCollection.mockImplementation(
         async (collectionId, itemId) => {
@@ -841,23 +783,6 @@ describe('PlexAdapterService', () => {
         'a',
         undefined,
       );
-    });
-
-    it('should short-circuit without writing when current order already matches', async () => {
-      plexApi.getCollectionChildren.mockResolvedValue([
-        createPlexLibraryItem('movie', { ratingKey: 'a' }),
-        createPlexLibraryItem('movie', { ratingKey: 'b' }),
-        createPlexLibraryItem('movie', { ratingKey: 'c' }),
-      ]);
-
-      await service.reorderCollectionItems('col123', ['a', 'b', 'c']);
-
-      expect(plexApi.getCollectionChildren).toHaveBeenCalledWith(
-        'col123',
-        false,
-      );
-      expect(plexApi.setCollectionCustomSort).not.toHaveBeenCalled();
-      expect(plexApi.moveCollectionItem).not.toHaveBeenCalled();
     });
 
     it('should continue past per-item move failures and log a summary', async () => {

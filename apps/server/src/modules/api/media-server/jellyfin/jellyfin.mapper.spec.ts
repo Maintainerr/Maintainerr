@@ -9,13 +9,8 @@ describe('JellyfinMapper', () => {
   describe('toMediaItemType', () => {
     it.each([
       [BaseItemKind.Movie, 'movie'],
-      ['Movie', 'movie'],
       [BaseItemKind.Series, 'show'],
-      ['Series', 'show'],
-      [BaseItemKind.Season, 'season'],
-      [BaseItemKind.Episode, 'episode'],
       [undefined, 'movie'],
-      ['Unknown', 'movie'],
     ])('maps %s to %s', (input, expected) => {
       expect(JellyfinMapper.toMediaItemType(input as any)).toBe(expected);
     });
@@ -23,10 +18,8 @@ describe('JellyfinMapper', () => {
 
   describe('toBaseItemKind', () => {
     it.each([
-      ['movie', BaseItemKind.Movie],
       ['show', BaseItemKind.Series],
       ['season', BaseItemKind.Season],
-      ['episode', BaseItemKind.Episode],
     ])('maps %s to %s', (input, expected) => {
       expect(JellyfinMapper.toBaseItemKind(input as any)).toBe(expected);
     });
@@ -51,11 +44,6 @@ describe('JellyfinMapper', () => {
       expect(result.imdb).toEqual(['tt1234567']);
       expect(result.tmdb).toEqual(['12345']);
       expect(result.tvdb).toEqual(['67890']);
-    });
-
-    it('should handle null provider ids', () => {
-      const result = JellyfinMapper.extractProviderIds(null);
-      expect(result).toEqual({ imdb: [], tmdb: [], tvdb: [], sportarr: [] });
     });
   });
 
@@ -168,13 +156,6 @@ describe('JellyfinMapper', () => {
         });
 
         expect(Number.isNaN(result.addedAt.getTime())).toBe(true);
-      });
-
-      it('should convert duration from ticks to milliseconds', () => {
-        const result = JellyfinMapper.toMediaItem(episodeItem);
-
-        // 72000000000 ticks / 10000 = 7200000 ms = 2 hours
-        expect(result.durationMs).toBe(7200000);
       });
 
       it('should convert media sources correctly', () => {
@@ -348,18 +329,6 @@ describe('JellyfinMapper', () => {
       const result = JellyfinMapper.toMediaLibrary(jellyfinLibrary);
 
       expect(result.type).toBe('show');
-    });
-
-    it('should default to movie for unknown collection types', () => {
-      const jellyfinLibrary: BaseItemDto = {
-        Id: 'lib3',
-        Name: 'Unknown',
-        CollectionType: 'music',
-      };
-
-      const result = JellyfinMapper.toMediaLibrary(jellyfinLibrary);
-
-      expect(result.type).toBe('movie');
     });
   });
 

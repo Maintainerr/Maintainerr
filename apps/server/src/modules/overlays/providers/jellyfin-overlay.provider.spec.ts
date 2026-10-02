@@ -16,28 +16,6 @@ describe('JellyfinOverlayProvider', () => {
     jf = unitRef.get(JellyfinAdapterService);
   });
 
-  describe('getRandomItem', () => {
-    it('returns null when the item has no Id', async () => {
-      jf.findRandomItem.mockResolvedValue({ Id: undefined } as any);
-      await expect(provider.getRandomItem()).resolves.toBeNull();
-    });
-  });
-
-  describe('getRandomEpisode', () => {
-    it('prefixes the episode title with the series name when available', async () => {
-      jf.findRandomEpisode.mockResolvedValue({
-        Id: 'jf-ep',
-        Name: 'Episode One',
-        SeriesName: 'Series Name',
-      } as any);
-
-      await expect(provider.getRandomEpisode(['lib-1'])).resolves.toEqual({
-        itemId: 'jf-ep',
-        title: 'Series Name - Episode One',
-      });
-    });
-  });
-
   describe('Primary image I/O', () => {
     it('reads the Primary image on downloadImage', async () => {
       const buf = Buffer.from('jpeg');

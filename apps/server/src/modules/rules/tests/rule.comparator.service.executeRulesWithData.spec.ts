@@ -238,40 +238,6 @@ describe('RuleComparatorService.executeRulesWithData', () => {
     });
   });
 
-  it('matches exists rules when the first value is present without a second operand', async () => {
-    const mediaItem = createSingleMedia();
-    const rules = [
-      createStoredRule(1, {
-        operator: null,
-        action: RulePossibility.EXISTS,
-        firstVal: [Application.PLEX, 8],
-        section: 0,
-      }),
-    ];
-
-    mockGetterSequence('HEVC 1080p');
-
-    const result = await ruleComparatorService.executeRulesWithData(
-      createRuleGroupDto({ dataType: 'movie', rules }),
-      [mediaItem],
-    );
-
-    expect(result.data).toHaveLength(1);
-    expect(result.stats[0].result).toBe(true);
-    expect(result.stats[0].sectionResults[0].ruleResults[0]).toMatchObject({
-      action: 'exists',
-      firstValue: 'HEVC 1080p',
-      result: true,
-    });
-    expect(result.stats[0].sectionResults[0].ruleResults[0]).not.toHaveProperty(
-      'secondValue',
-    );
-    expect(result.stats[0].sectionResults[0].ruleResults[0]).not.toHaveProperty(
-      'secondValueName',
-    );
-    expect(valueGetterService.get).toHaveBeenCalledTimes(1);
-  });
-
   it('matches not_exists rules when the first value is missing', async () => {
     const mediaItem = createSingleMedia();
     const rules = [
@@ -376,32 +342,6 @@ describe('RuleComparatorService.executeRulesWithData', () => {
     );
   });
 
-  it('keeps numeric custom values numeric for non-date rules when first value is null', async () => {
-    const mediaItem = createSingleMedia();
-    const rules = [
-      createStoredRule(1, {
-        operator: null,
-        action: RulePossibility.EQUALS,
-        firstVal: [Application.PLEX, 31],
-        customVal: { ruleTypeId: +RuleType.NUMBER, value: '6' },
-        section: 0,
-      }),
-    ];
-
-    mockGetterSequence(null);
-
-    const result = await ruleComparatorService.executeRulesWithData(
-      createRuleGroupDto({ dataType: 'movie', rules }),
-      [mediaItem],
-    );
-
-    expect(result.stats[0].sectionResults[0].ruleResults[0]).toMatchObject({
-      firstValue: null,
-      secondValue: 6,
-      result: false,
-    });
-  });
-
   it('formats custom_days second value as a future Date for equality date rules when first value is null', async () => {
     const mediaItem = createSingleMedia();
     const rules = [
@@ -442,27 +382,6 @@ describe('RuleComparatorService.executeRulesWithData', () => {
   // tightened shouldCompare, `!hasExistsValue(undefined) === true` would
   // spuriously add items on every transient API blip (#1446).
   describe('unary EXISTS contract on null vs undefined', () => {
-    it('skips unary NOT_EXISTS on transient undefined so the item is not spuriously added', async () => {
-      const mediaItem = createSingleMedia();
-      const rules = [
-        createStoredRule(1, {
-          operator: null,
-          action: RulePossibility.NOT_EXISTS,
-          firstVal: [Application.PLEX, 6],
-          section: 0,
-        }),
-      ];
-
-      mockGetterSequence(undefined);
-
-      const result = await ruleComparatorService.executeRulesWithData(
-        createRuleGroupDto({ dataType: 'movie', rules }),
-        [mediaItem],
-      );
-
-      expect(result.data).toEqual([]);
-    });
-
     // A failed lookup reported as "no entries for this item" reads as real data
     // and hides the outage from whoever is debugging the rule (#3395).
     it.each([

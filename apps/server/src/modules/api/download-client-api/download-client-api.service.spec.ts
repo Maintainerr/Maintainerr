@@ -91,17 +91,6 @@ describe('DownloadClientApiService', () => {
 
       expect(result.status).toBe('NOK');
     });
-
-    it('returns NOK when no version is reported', async () => {
-      apiMock.getVersion.mockResolvedValue('');
-
-      const result = await service.testConnection({
-        type: DownloadClientType.QBITTORRENT,
-        url: 'http://localhost:8080',
-      });
-
-      expect(result.status).toBe('NOK');
-    });
   });
 
   describe('removeDownloads', () => {
@@ -115,15 +104,6 @@ describe('DownloadClientApiService', () => {
         download_client_fallback_ratio: 0.5,
       });
       service.init();
-    });
-
-    it('is a no-op when no download client is configured', async () => {
-      Object.assign(settings, { download_client_url: undefined });
-      service.init();
-
-      await service.removeDownloads(['abc']);
-
-      expect(apiMock.getTorrentByHash).not.toHaveBeenCalled();
     });
 
     it('removes when the client reports its seeding goal is met (regardless of the fallback)', async () => {

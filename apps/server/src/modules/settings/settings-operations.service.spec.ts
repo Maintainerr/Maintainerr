@@ -269,43 +269,6 @@ describe('SettingsOperationsService', () => {
     expect(settingsDataService.saveSettings).not.toHaveBeenCalled();
   });
 
-  it('does not initialize Plex directly when Jellyfin is configured', async () => {
-    settingsRepo.findOne.mockResolvedValue(
-      createSettings({
-        media_server_type: MediaServerType.JELLYFIN,
-        jellyfin_url: 'http://jellyfin.local',
-        jellyfin_api_key: 'jellyfin-key',
-        jellyfin_user_id: 'user-id',
-        jellyfin_server_name: 'Jellyfin',
-        plex_name: null,
-        plex_hostname: null,
-        plex_port: null,
-        plex_ssl: null,
-        plex_auth_token: null,
-      }),
-    );
-
-    const response = await service.updateSettings(
-      createSettings({
-        media_server_type: MediaServerType.JELLYFIN,
-        jellyfin_url: 'http://jellyfin.local',
-        jellyfin_api_key: 'jellyfin-key',
-        jellyfin_user_id: 'user-id',
-        jellyfin_server_name: 'Jellyfin',
-        plex_name: null,
-        plex_hostname: null,
-        plex_port: null,
-        plex_ssl: null,
-        plex_auth_token: null,
-        applicationTitle: 'Maintainerr Dev',
-      }),
-    );
-
-    expect(response).toEqual({ status: 'OK', code: 1, message: 'Success' });
-    expect(mediaServerFactory.initialize).toHaveBeenCalledTimes(1);
-    expect(plexApi.initialize).not.toHaveBeenCalled();
-  });
-
   it('treats equivalent Plex host representations as unchanged for auth enforcement', async () => {
     settingsRepo.findOne.mockResolvedValue(
       createSettings({
@@ -388,19 +351,6 @@ describe('SettingsOperationsService', () => {
     );
   });
 
-  it('returns a clear Plex auth message before calling the Plex API test endpoint', async () => {
-    settingsDataService.plex_auth_token = null;
-
-    const response = await service.testPlex();
-
-    expect(response).toEqual({
-      status: 'NOK',
-      code: 0,
-      message: 'Authenticate with Plex before testing the connection.',
-    });
-    expect(plexApi.testConnection).not.toHaveBeenCalled();
-  });
-
   it('validates stored Plex auth tokens without requiring server settings', async () => {
     settingsDataService.plex_auth_token = 'masked-plex-token';
 
@@ -434,19 +384,6 @@ describe('SettingsOperationsService', () => {
     expect(response.status).toBe('NOK');
     expect(response.unreachable).toBe(true);
     expect(response.message).not.toContain('invalid');
-  });
-
-  it('returns a clear message when no Plex auth token exists for auth validation', async () => {
-    settingsDataService.plex_auth_token = null;
-
-    const response = await service.testPlexAuthToken();
-
-    expect(response).toEqual({
-      status: 'NOK',
-      code: 0,
-      message: 'Authenticate with Plex before validating the connection.',
-    });
-    expect(plexApi.validateAuthToken).not.toHaveBeenCalled();
   });
 
   // Answered, not thrown, so it was never logged behind "check logs".

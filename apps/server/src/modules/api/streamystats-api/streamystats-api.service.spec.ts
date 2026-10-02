@@ -33,17 +33,6 @@ describe('StreamystatsApiService', () => {
   });
 
   describe('init', () => {
-    it('is a no-op when Jellyfin API key is missing', () => {
-      Object.assign(settings, {
-        streamystats_url: 'http://streamystats',
-        jellyfin_api_key: undefined,
-      });
-
-      service.init();
-
-      expect(service.api).toBeUndefined();
-    });
-
     it('clears the cached client and serverId when settings are removed', async () => {
       Object.assign(settings, {
         streamystats_url: 'http://streamystats',
@@ -283,7 +272,7 @@ describe('StreamystatsApiService', () => {
       ).resolves.toMatchObject({ code: 0 });
     });
 
-    it.each([undefined, '', '   '])(
+    it.each([undefined, '   '])(
       'rejects a missing Jellyfin key: %j',
       async (apiKey) => {
         await expect(

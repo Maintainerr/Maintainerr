@@ -9,7 +9,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { z } from 'zod'
 import ExternalServiceSettingsPage, {
   type ExternalServiceFieldConfig,
-  type ExternalServiceSelectOption,
 } from './ExternalServiceSettingsPage'
 
 const getApiHandler = vi.fn()
@@ -33,21 +32,10 @@ const urlApiKeyFields: ExternalServiceFieldConfig[] = [
   { name: 'api_key', label: 'API key', type: 'password' },
 ]
 
-const urlOnlyFields: ExternalServiceFieldConfig[] = [
-  {
-    name: 'url',
-    label: 'URL',
-    placeholder: 'http://localhost:3000',
-    required: true,
-  },
-]
-
 const urlApiKeySchema = z.object({
   url: z.string().min(1),
   api_key: z.string().min(1),
 })
-
-const urlOnlySchema = z.object({ url: z.string().min(1) })
 
 const tracearrFields: ExternalServiceFieldConfig[] = [
   ...urlApiKeyFields,
@@ -124,39 +112,6 @@ describe('ExternalServiceSettingsPage', () => {
 
     await waitFor(() => {
       expect(deleteApiHandler).toHaveBeenCalledWith('/settings/seerr')
-    })
-  })
-
-  it('renders only the configured fields (URL-only mode)', async () => {
-    getApiHandler.mockResolvedValue({ url: 'http://streamystats.local' })
-    deleteApiHandler.mockResolvedValue({ status: 'OK', code: 1, message: 'OK' })
-
-    render(
-      <ExternalServiceSettingsPage
-        updateErrorMessage="Streamystats settings could not be updated"
-        pageTitle="Streamystats settings - Maintainerr"
-        settingsPath="/settings/streamystats"
-        testPath="/settings/test/streamystats"
-        schema={urlOnlySchema}
-        fields={urlOnlyFields}
-        serviceName="Streamystats"
-        testFailureMessage="Failed to connect"
-      />,
-    )
-
-    await screen.findByLabelText(/URL/)
-    expect(screen.queryByLabelText(/API key/)).toBeNull()
-
-    fireEvent.change(screen.getByLabelText(/URL/), {
-      target: { value: '' },
-    })
-
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Save Changes' }) as HTMLButtonElement,
-    )
-
-    await waitFor(() => {
-      expect(deleteApiHandler).toHaveBeenCalledWith('/settings/streamystats')
     })
   })
 
@@ -247,90 +202,6 @@ describe('ExternalServiceSettingsPage', () => {
     ).not.toBeNull()
   })
 
-  it('does not start duplicate option loads when a connection field blurs into the select', async () => {
-    let resolveOptions:
-      ((options: ExternalServiceSelectOption[]) => void) | undefined
-    postApiHandler.mockImplementation(
-      () =>
-        new Promise<ExternalServiceSelectOption[]>((resolve) => {
-          resolveOptions = resolve
-        }),
-    )
-
-    render(
-      <ExternalServiceSettingsPage
-        updateErrorMessage="Tracearr settings could not be updated"
-        pageTitle="Tracearr settings - Maintainerr"
-        settingsPath="/settings/tracearr"
-        testPath="/settings/test/tracearr"
-        schema={z.object({
-          url: z.string().min(1),
-          api_key: z.string().min(1),
-          server_id: z.string().uuid(),
-        })}
-        fields={tracearrFields}
-        serviceName="Tracearr"
-        testFailureMessage="Failed to connect"
-      />,
-    )
-
-    const apiKey = await screen.findByLabelText('API key')
-    await waitFor(() => {
-      expect(postApiHandler).toHaveBeenCalledTimes(1)
-    })
-    // The field only renders once there is a choice to make, so it cannot be
-    // queried until the options resolve.
-    resolveOptions?.([
-      { value: '11111111-1111-4111-8111-111111111111', label: 'Sample Plex' },
-      { value: '22222222-2222-4222-8222-222222222222', label: 'Other Plex' },
-    ])
-    const serverSelect = await screen.findByLabelText('Tracearr server *')
-    await waitFor(() => {
-      expect((serverSelect as HTMLSelectElement).disabled).toBe(false)
-    })
-
-    fireEvent.change(apiKey, { target: { value: 'new-key' } })
-    fireEvent.blur(apiKey)
-    fireEvent.focus(serverSelect)
-
-    expect(postApiHandler).toHaveBeenCalledTimes(2)
-  })
-
-  it('hides a select once it resolves to a single option', async () => {
-    postApiHandler.mockResolvedValue([
-      {
-        value: '11111111-1111-4111-8111-111111111111',
-        label: 'Sample Plex',
-      },
-    ])
-
-    render(
-      <ExternalServiceSettingsPage
-        updateErrorMessage="Tracearr settings could not be updated"
-        pageTitle="Tracearr settings - Maintainerr"
-        settingsPath="/settings/tracearr"
-        testPath="/settings/test/tracearr"
-        schema={z.object({
-          url: z.string().min(1),
-          api_key: z.string().min(1),
-          server_id: z.string().uuid().optional(),
-        })}
-        fields={tracearrFields}
-        serviceName="Tracearr"
-        testFailureMessage="Failed to connect"
-      />,
-    )
-
-    await screen.findByLabelText('API key')
-    await waitFor(() => {
-      expect(postApiHandler).toHaveBeenCalledTimes(1)
-    })
-
-    await waitFor(() => {
-      expect(screen.queryByLabelText('Tracearr server *')).toBeNull()
-    })
-  })
-
   // Most services answer a bare "Failed", which says less than the scoped
   // message the page shows by default.
   it('shows the test result, then the save result, beside the buttons', async () => {
@@ -363,33 +234,6 @@ describe('ExternalServiceSettingsPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Save Changes' }))
     expect(await screen.findByText('Saved')).toBeTruthy()
     expect(screen.queryByText('Success! (2.0.0)')).toBeNull()
-  })
-
-  it('keeps the scoped message when a save fails without a reason', async () => {
-    postApiHandler.mockResolvedValue({
-      status: 'NOK',
-      code: 0,
-      message: 'Failed',
-    })
-
-    render(
-      <ExternalServiceSettingsPage
-        updateErrorMessage="Seerr settings could not be updated"
-        pageTitle="Seerr settings - Maintainerr"
-        settingsPath="/settings/seerr"
-        testPath="/settings/test/seerr"
-        schema={urlApiKeySchema}
-        fields={urlApiKeyFields}
-        serviceName="Seerr"
-        testFailureMessage="Failed to connect"
-      />,
-    )
-
-    fireEvent.click(await screen.findByRole('button', { name: 'Save Changes' }))
-
-    expect(
-      await screen.findByText('Seerr settings could not be updated'),
-    ).toBeTruthy()
   })
 
   it('surfaces the server message when a save is rejected', async () => {

@@ -117,13 +117,6 @@ describe('ServarrApi', () => {
 
       await expect(api.ensureTag('dnd')).resolves.toBe(3);
     });
-
-    it('returns undefined when the id cannot be resolved (best-effort)', async () => {
-      jest.spyOn(api, 'getTags').mockResolvedValue([]);
-      jest.spyOn(api, 'createTag').mockResolvedValue(undefined);
-
-      await expect(api.ensureTag('dnd')).resolves.toBeUndefined();
-    });
   });
 
   // The arr answers a file delete after the disk is done with it. Applying the

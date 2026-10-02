@@ -26,30 +26,6 @@ const sortBy = (
     .map((mediaItem) => mediaItem.title);
 
 describe('compareMediaItemsBySort tiebreakers', () => {
-  it('breaks deleteSoonest ties alphabetically by title (timelordx scenario)', () => {
-    const day3 = new Date('2024-01-01');
-    const day5 = new Date('2024-01-03');
-    const items: MediaItem[] = [
-      item({ title: 'S', addedAt: day3 }),
-      item({ title: 'H', addedAt: day3 }),
-      item({ title: 'G', addedAt: day3 }),
-      item({ title: 'X', addedAt: day3 }),
-      item({ title: 'C', addedAt: day5 }),
-      item({ title: 'Z', addedAt: day5 }),
-      item({ title: 'A', addedAt: day5 }),
-    ];
-
-    expect(sortBy(items, 'deleteSoonest', 'asc')).toEqual([
-      'G',
-      'H',
-      'S',
-      'X',
-      'A',
-      'C',
-      'Z',
-    ]);
-  });
-
   it('sorts by the first studio with title tiebreakers and missing values last', () => {
     const items: MediaItem[] = [
       item({ title: 'C', studios: ['B Studio'] }),

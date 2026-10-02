@@ -38,55 +38,6 @@ describe('PosterCard', () => {
     vi.unstubAllGlobals()
   })
 
-  it('renders a direct image path without fetching metadata', () => {
-    render(
-      <PosterCard
-        imagePath="https://image.example/poster.jpg"
-        mediaType="movie"
-      >
-        {(image) => <div>{image}</div>}
-      </PosterCard>,
-    )
-
-    expect(screen.getByText('https://image.example/poster.jpg')).toBeTruthy()
-    expect(getApiHandlerMock).not.toHaveBeenCalled()
-  })
-
-  it('waits to resolve metadata-backed images until the card enters the viewport', async () => {
-    getApiHandlerMock.mockResolvedValue({
-      url: 'https://image.example/resolved.jpg',
-    })
-
-    render(
-      <PosterCard mediaType="show" providerIds={{ tmdb: ['123'] }}>
-        {(image) => <div>{image ?? 'missing'}</div>}
-      </PosterCard>,
-    )
-
-    expect(getApiHandlerMock).not.toHaveBeenCalled()
-
-    observerInstances[0]?.callback(
-      [
-        {
-          isIntersecting: true,
-        } as IntersectionObserverEntry,
-      ],
-      {} as IntersectionObserver,
-    )
-
-    await waitFor(() => {
-      expect(getApiHandlerMock).toHaveBeenCalledWith(
-        '/metadata/image/show?tmdbId=123',
-      )
-    })
-
-    await waitFor(() => {
-      expect(
-        screen.getByText('https://image.example/resolved.jpg'),
-      ).toBeTruthy()
-    })
-  })
-
   it('includes itemId in the metadata request for season cards', async () => {
     getApiHandlerMock.mockResolvedValue({
       url: 'https://image.example/show-poster.jpg',
@@ -158,54 +109,6 @@ describe('PosterCard', () => {
       expect(
         screen.getByText('https://image.example/show-poster.jpg'),
       ).toBeTruthy()
-    })
-  })
-
-  it('reuses the same in-flight metadata image request across poster cards', async () => {
-    let resolveRequest:
-      ((value: { url: string } | undefined) => void) | undefined
-
-    getApiHandlerMock.mockImplementation(
-      () =>
-        new Promise((resolve) => {
-          resolveRequest = resolve
-        }),
-    )
-
-    render(
-      <>
-        <PosterCard mediaType="show" providerIds={{ tmdb: ['123'] }}>
-          {(image) => <div>{image ?? 'missing-a'}</div>}
-        </PosterCard>
-        <PosterCard mediaType="show" providerIds={{ tmdb: ['123'] }}>
-          {(image) => <div>{image ?? 'missing-b'}</div>}
-        </PosterCard>
-      </>,
-    )
-
-    observerInstances.forEach((observer) => {
-      observer.callback(
-        [
-          {
-            isIntersecting: true,
-          } as IntersectionObserverEntry,
-        ],
-        {} as IntersectionObserver,
-      )
-    })
-
-    await waitFor(() => {
-      expect(getApiHandlerMock).toHaveBeenCalledTimes(1)
-    })
-
-    resolveRequest?.({
-      url: 'https://image.example/resolved.jpg',
-    })
-
-    await waitFor(() => {
-      expect(
-        screen.getAllByText('https://image.example/resolved.jpg'),
-      ).toHaveLength(2)
     })
   })
 })

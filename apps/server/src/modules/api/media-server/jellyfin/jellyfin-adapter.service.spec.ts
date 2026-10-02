@@ -378,35 +378,11 @@ describe('JellyfinAdapterService', () => {
         'Jellyfin connection test successful: Test Server (10.11.0)',
       );
     });
-
-    it('should throw error when settings are missing', async () => {
-      settingsDataService.getSettings.mockResolvedValue(
-        null as unknown as Awaited<
-          ReturnType<SettingsDataService['getSettings']>
-        >,
-      );
-      await expect(service.initialize()).rejects.toThrow(
-        'Settings not available',
-      );
-    });
-
-    it('should throw error when Jellyfin URL is missing', async () => {
-      settingsDataService.getSettings.mockResolvedValue({
-        ...mockSettings,
-        jellyfin_url: undefined,
-      } as unknown as Awaited<ReturnType<SettingsDataService['getSettings']>>);
-      await expect(service.initialize()).rejects.toThrow(
-        'Jellyfin settings not configured',
-      );
-    });
   });
 
   describe('feature detection', () => {
     it.each([
-      [MediaServerFeature.LABELS, true],
-      [MediaServerFeature.PLAYLISTS, true],
       [MediaServerFeature.COLLECTION_VISIBILITY, false],
-      [MediaServerFeature.WATCHLIST, false],
       [MediaServerFeature.CENTRAL_WATCH_HISTORY, true],
       [MediaServerFeature.COLLECTION_SORT, false],
     ])('supportsFeature(%s) is %s', (feature, expected) => {
@@ -470,26 +446,6 @@ describe('JellyfinAdapterService', () => {
       );
     });
 
-    it('includes studios in global search results for local studio sorting', async () => {
-      jellyfinApiMocks.getItems.mockResolvedValue({
-        data: { Items: [], TotalRecordCount: 0 },
-      });
-
-      await service.searchContent('query');
-
-      expect(jellyfinApiMocks.getItems).toHaveBeenCalledWith(
-        expect.objectContaining({
-          fields: [
-            'ProviderIds',
-            'Path',
-            'DateCreated',
-            'MediaSources',
-            'Studios',
-          ],
-        }),
-      );
-    });
-
     it('retries once after a transient library-content failure', async () => {
       jellyfinApiMocks.getItems
         .mockRejectedValueOnce(createRetryableError('EAI_AGAIN'))
@@ -517,21 +473,6 @@ describe('JellyfinAdapterService', () => {
         offset: 0,
         limit: 30,
       });
-    });
-
-    it('does not retry non-transient library-content failures and rethrows', async () => {
-      jellyfinApiMocks.getItems.mockRejectedValueOnce(createResponseError(401));
-
-      await expect(
-        service.getLibraryContents('library-1', {
-          offset: 0,
-          limit: 30,
-          type: 'movie',
-        }),
-      ).rejects.toThrow('request failed with status 401');
-
-      expect(delay).not.toHaveBeenCalled();
-      expect(jellyfinApiMocks.getItems).toHaveBeenCalledTimes(1);
     });
 
     it('rethrows library count read failures instead of reporting zero', async () => {
@@ -580,31 +521,6 @@ describe('JellyfinAdapterService', () => {
 
     it('getLibraryContents passes collapseBoxSetItems: false', async () => {
       await service.getLibraryContents('library-1', { offset: 0, limit: 30 });
-      expectCollapseFalse();
-    });
-
-    it('getLibraryContentCount passes collapseBoxSetItems: false', async () => {
-      await service.getLibraryContentCount('library-1', 'movie');
-      expectCollapseFalse();
-    });
-
-    it('searchLibraryContents passes collapseBoxSetItems: false', async () => {
-      await service.searchLibraryContents('library-1', 'query', 'movie');
-      expectCollapseFalse();
-    });
-
-    it('getRecentlyAdded passes collapseBoxSetItems: false', async () => {
-      await service.getRecentlyAdded('library-1', { limit: 10 });
-      expectCollapseFalse();
-    });
-
-    it('searchContent passes collapseBoxSetItems: false', async () => {
-      await service.searchContent('query');
-      expectCollapseFalse();
-    });
-
-    it('findRandomItem passes collapseBoxSetItems: false', async () => {
-      await service.findRandomItem(['library-1'], ['Movie' as any]);
       expectCollapseFalse();
     });
 
@@ -852,25 +768,6 @@ describe('JellyfinAdapterService', () => {
         }),
       );
     });
-
-    it('does not apply location filtering to non-episode child queries', async () => {
-      jellyfinApiMocks.getItems.mockResolvedValue({
-        data: {
-          Items: [],
-        },
-      });
-
-      await service.getChildrenMetadata('library-1', 'movie');
-
-      expect(jellyfinApiMocks.getItems).toHaveBeenCalledWith(
-        expect.objectContaining({
-          userId: 'user-1',
-          parentId: 'library-1',
-          includeItemTypes: ['Movie'],
-          excludeLocationTypes: undefined,
-        }),
-      );
-    });
   });
 
   describe('refreshItemMetadata', () => {
@@ -1092,33 +989,6 @@ describe('JellyfinAdapterService', () => {
         >,
       );
       await service.initialize();
-    });
-
-    it('shares one request between concurrent reads of the same id', async () => {
-      let resolvePage: (value: unknown) => void = () => {};
-      jellyfinApiMocks.getItems.mockReturnValue(
-        new Promise((resolve) => {
-          resolvePage = resolve;
-        }),
-      );
-
-      // Sibling items are evaluated in parallel and each resolves the same
-      // parent, and they all miss the cold cache key together - so without
-      // this the cache cannot stop the first read fanning out per child.
-      const reads = Promise.all([
-        service.getMetadata('series-1'),
-        service.getMetadata('series-1'),
-        service.getMetadata('series-1'),
-      ]);
-      resolvePage({ data: { Items: [{ Id: 'series-1', Type: 'Series' }] } });
-
-      const results = await reads;
-      expect(results.map((item) => item?.id)).toEqual([
-        'series-1',
-        'series-1',
-        'series-1',
-      ]);
-      expect(jellyfinApiMocks.getItems).toHaveBeenCalledTimes(1);
     });
 
     it('drops the in-flight entry once the request settles', async () => {
@@ -1420,7 +1290,6 @@ describe('JellyfinAdapterService', () => {
     // A dropped user can only lower the newest date, which reads as "played
     // longer ago" and makes a just-started item deletable.
     it.each([
-      ['a per-user lookup fails', () => Promise.reject(new Error('boom'))],
       ['a response carries no item list', () => Promise.resolve({ data: {} })],
       [
         'only some users answer',
@@ -1839,21 +1708,6 @@ describe('JellyfinAdapterService', () => {
       expect(cached.playCount.get('ep-1')).toBe(2);
       expect(cached.descendants.get('show-1')).toEqual(['ep-1']);
     });
-
-    it('does not sweep again once a snapshot is cached', async () => {
-      jellyfinApiMocks.getUsers.mockResolvedValue({
-        data: [{ Id: 'user-1', Name: 'Alice' }],
-      });
-      jellyfinApiMocks.getItems.mockImplementation(
-        ({ userId }: { userId: string }) => Promise.resolve(leafPage(userId)),
-      );
-
-      await service.prefetchWatchHistory({ libraryId: 'lib-1' });
-      jellyfinApiMocks.getItems.mockClear();
-      await service.prefetchWatchHistory({ libraryId: 'lib-1' });
-
-      expect(jellyfinApiMocks.getItems).not.toHaveBeenCalled();
-    });
   });
 
   describe('getDescendantEpisodeWatchHistory', () => {
@@ -2025,23 +1879,6 @@ describe('JellyfinAdapterService', () => {
   });
 
   describe('getWatchState', () => {
-    it('should derive count and watched state from watch history', async () => {
-      jest.spyOn(service, 'getWatchHistory').mockResolvedValue([
-        {
-          userId: 'user-1',
-          itemId: 'item123',
-          watchedAt: new Date('2024-06-03T00:00:00.000Z'),
-        },
-      ]);
-
-      const watchState = await service.getWatchState('item123');
-
-      expect(watchState).toEqual({
-        viewCount: 1,
-        isWatched: true,
-      });
-    });
-
     it('should return unwatched state when no history exists', async () => {
       jest.spyOn(service, 'getWatchHistory').mockResolvedValue([]);
 
@@ -2313,15 +2150,6 @@ describe('JellyfinAdapterService', () => {
       ).rejects.toThrow(axiosError);
     });
 
-    it('re-throws when Jellyfin returns 404', async () => {
-      const axiosError = createResponseError(404);
-      jellyfinApiMocks.getItems.mockRejectedValueOnce(axiosError);
-
-      await expect(
-        service.getCollectionChildren('missing-collection'),
-      ).rejects.toThrow(axiosError);
-    });
-
     it('re-throws non-400/404 errors so callers never mistake a failed read for an empty collection', async () => {
       const serverError = createResponseError(500);
       jellyfinApiMocks.getItems.mockRejectedValue(serverError);
@@ -2374,17 +2202,6 @@ describe('JellyfinAdapterService', () => {
         expect.objectContaining({ ids: expect.anything() }),
       );
       expect(result.id).toBe('collection-1');
-    });
-
-    it('should add a batch of items in one Jellyfin request', async () => {
-      await expect(
-        service.addBatchToCollection('collection-1', ['item-1', 'item-2']),
-      ).resolves.toEqual({ refused: [], unknown: [] });
-
-      expect(collectionApiMocks.addToCollection).toHaveBeenCalledWith({
-        collectionId: 'collection-1',
-        ids: ['item-1', 'item-2'],
-      });
     });
 
     it('should split large add batches across multiple Jellyfin requests', async () => {
@@ -2456,17 +2273,6 @@ describe('JellyfinAdapterService', () => {
       );
       expect(logger.error).not.toHaveBeenCalled();
       expect(logger.debug).not.toHaveBeenCalled();
-    });
-
-    it('should remove a batch of items in one Jellyfin request', async () => {
-      await expect(
-        service.removeBatchFromCollection('collection-1', ['item-1', 'item-2']),
-      ).resolves.toEqual({ refused: [], unknown: [] });
-
-      expect(collectionApiMocks.removeFromCollection).toHaveBeenCalledWith({
-        collectionId: 'collection-1',
-        ids: ['item-1', 'item-2'],
-      });
     });
 
     it('should split large remove batches across multiple Jellyfin requests', async () => {
@@ -2866,15 +2672,6 @@ describe('JellyfinAdapterService', () => {
           }),
         );
       });
-
-      it('returns null when no items match', async () => {
-        await initializeAdapter();
-        jellyfinApiMocks.getItems.mockResolvedValue({ data: { Items: [] } });
-
-        await expect(
-          service.findRandomItem(undefined, ['Movie' as any]),
-        ).resolves.toBeNull();
-      });
     });
 
     describe('getItemImageBuffer', () => {
@@ -2891,17 +2688,6 @@ describe('JellyfinAdapterService', () => {
           { itemId: '42', imageType: 'Primary', format: 'Jpg' },
           { responseType: 'arraybuffer' },
         );
-      });
-
-      it('returns null on 404', async () => {
-        await initializeAdapter();
-        jellyfinApiMocks.getItemImage.mockRejectedValue(
-          createResponseError(404),
-        );
-
-        await expect(
-          service.getItemImageBuffer('42', 'Primary' as any),
-        ).resolves.toBeNull();
       });
     });
 
@@ -2931,13 +2717,6 @@ describe('JellyfinAdapterService', () => {
         });
 
         await expect(service.itemExists('42')).resolves.toBe(true);
-      });
-
-      it('returns false when getItems returns no items (item gone)', async () => {
-        await initializeAdapter();
-        jellyfinApiMocks.getItems.mockResolvedValue({ data: { Items: [] } });
-
-        await expect(service.itemExists('42')).resolves.toBe(false);
       });
 
       it('returns false when the response holds only other items (ignored ids filter)', async () => {

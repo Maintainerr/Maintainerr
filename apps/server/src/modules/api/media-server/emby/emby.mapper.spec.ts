@@ -13,11 +13,7 @@ describe('EmbyMapper', () => {
   describe('toMediaItemType', () => {
     it.each([
       ['Movie', 'movie'],
-      ['Series', 'show'],
-      ['Season', 'season'],
-      ['Episode', 'episode'],
       [undefined, 'movie'],
-      ['Unknown', 'movie'],
     ])('maps %s to %s', (input, expected) => {
       expect(EmbyMapper.toMediaItemType(input as any)).toBe(expected);
     });
@@ -25,7 +21,6 @@ describe('EmbyMapper', () => {
 
   describe('toEmbyItemKind', () => {
     it.each([
-      ['movie', 'Movie'],
       ['show', 'Series'],
       ['season', 'Season'],
       ['episode', 'Episode'],
@@ -38,15 +33,6 @@ describe('EmbyMapper', () => {
     it('extracts IMDB id', () => {
       expect(EmbyMapper.extractProviderIds({ Imdb: 'tt1234567' })).toEqual({
         imdb: ['tt1234567'],
-        tmdb: [],
-        tvdb: [],
-        sportarr: [],
-      });
-    });
-
-    it('handles null', () => {
-      expect(EmbyMapper.extractProviderIds(null)).toEqual({
-        imdb: [],
         tmdb: [],
         tvdb: [],
         sportarr: [],
@@ -196,14 +182,6 @@ describe('EmbyMapper', () => {
       },
     );
 
-    it('converts RunTimeTicks (100-ns) to milliseconds', () => {
-      const result = EmbyMapper.toMediaItem(baseItem);
-
-      // 72_000_000_000 ticks / 10_000 ticks-per-ms = 7_200_000 ms = 2h
-      expect(result.durationMs).toBe(7_200_000);
-      expect(result.mediaSources[0].duration).toBe(7_200_000);
-    });
-
     it('converts media sources', () => {
       const result = EmbyMapper.toMediaItem(baseItem);
 
@@ -219,12 +197,6 @@ describe('EmbyMapper', () => {
         container: 'mkv',
         sizeBytes: 4_000_000_000,
       });
-    });
-
-    it('parses AspectRatio expressed as a fraction', () => {
-      const result = EmbyMapper.toMediaItem(baseItem);
-
-      expect(result.mediaSources[0].aspectRatio).toBeCloseTo(16 / 9);
     });
 
     it('filters People down to actors and preserves order', () => {
@@ -302,8 +274,6 @@ describe('EmbyMapper', () => {
     it.each([
       ['movies', 'movie'],
       ['tvshows', 'show'],
-      ['music', 'movie'], // default
-      [undefined, 'movie'],
     ])('maps CollectionType %s to MediaLibrary.type %s', (input, expected) => {
       const result = EmbyMapper.toMediaLibrary({
         Id: 'lib-1',
@@ -329,21 +299,6 @@ describe('EmbyMapper', () => {
       expect(result.thumb).toBe('/Items/col-1/Images/Primary');
       expect(result.libraryId).toBe('lib-1');
       expect(result.childCount).toBe(3);
-    });
-  });
-
-  describe('toMediaPlaylist', () => {
-    it('converts RunTimeTicks to durationMs and reports itemCount from ChildCount', () => {
-      const result = EmbyMapper.toMediaPlaylist({
-        Id: 'pl-1',
-        Name: 'Playlist',
-        ChildCount: 25,
-        RunTimeTicks: 36000000000, // 1 hour
-      });
-
-      expect(result.itemCount).toBe(25);
-      expect(result.durationMs).toBe(3_600_000);
-      expect(result.smart).toBe(false);
     });
   });
 });

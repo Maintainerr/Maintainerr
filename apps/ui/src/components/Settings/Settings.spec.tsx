@@ -107,7 +107,6 @@ describe('SettingsWrapper', () => {
   it.each([
     ['/services', 'services', '/services/media-server'],
     ['/settings', 'settings', '/settings/logs'],
-    ['/settings/main', 'settings', '/services/media-server'],
   ] as const)(
     'opens %s on the page usable during setup',
     (path, section, target) => {

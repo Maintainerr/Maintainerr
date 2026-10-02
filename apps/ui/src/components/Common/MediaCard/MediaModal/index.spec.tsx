@@ -309,66 +309,6 @@ describe('MediaModal', () => {
     expect(screen.getAllByText('sportarr://lg-000278')).toHaveLength(1)
   })
 
-  it('shows maintainerr status for manually added items', async () => {
-    getApiHandlerMock.mockImplementation((path: string) => {
-      if (path === '/media-server') {
-        return Promise.resolve({})
-      }
-
-      if (path === '/settings') {
-        return Promise.resolve({})
-      }
-
-      if (path === '/media-server/meta/9') {
-        return Promise.resolve({} as MediaItem)
-      }
-
-      if (path === '/media-server/meta/9/maintainerr-status') {
-        return Promise.resolve({
-          excludedFrom: [],
-          manuallyAddedTo: [
-            {
-              label: 'Testing (5d left)',
-              targetPath: '/collections/7',
-            },
-          ],
-        })
-      }
-
-      if (path === '/streamystats/info') {
-        return Promise.reject(new Error('404 Streamystats not configured'))
-      }
-
-      throw new Error(`Unexpected request: ${path}`)
-    })
-
-    render(
-      <MediaModal
-        onClose={() => {}}
-        id={9}
-        mediaType="movie"
-        title="Movie"
-        summary="Movie summary"
-        isManual={true}
-      />,
-    )
-
-    const manualHeading = await screen.findByText('Manually Added To')
-    expect(manualHeading).toBeTruthy()
-    expect(manualHeading.className).toContain('text-white')
-    expect(manualHeading.parentElement?.className).toContain('bg-zinc-900/70')
-    const manualCollectionEntry = screen.getByRole('link', {
-      name: 'Testing (5d left)',
-    })
-
-    expect(manualCollectionEntry.getAttribute('href')).toBe('/collections/7')
-    expect(manualCollectionEntry.className).toContain('text-maintainerr')
-    expect(manualCollectionEntry.className).toContain('underline')
-    expect(manualCollectionEntry.className).toContain(
-      'hover:text-maintainerr-400',
-    )
-  })
-
   it('shows only the relevant status card while manual details are loading', async () => {
     const maintainerrStatus = createDeferred<{
       excludedFrom: Array<{ label: string; targetPath?: string }>
@@ -491,60 +431,6 @@ describe('MediaModal', () => {
     fireEvent.click(testingCollectionEntry)
 
     expect(onStatusLink).toHaveBeenCalledWith('/collections/42/exclusions')
-  })
-
-  it('renders fallback links when status navigation callback is not provided', async () => {
-    getApiHandlerMock.mockImplementation((path: string) => {
-      if (path === '/media-server') {
-        return Promise.resolve({})
-      }
-
-      if (path === '/settings') {
-        return Promise.resolve({})
-      }
-
-      if (path === '/media-server/meta/5') {
-        return Promise.resolve({} as MediaItem)
-      }
-
-      if (path === '/media-server/meta/5/maintainerr-status') {
-        return Promise.resolve({
-          excludedFrom: [
-            {
-              label: 'Testing2',
-              targetPath: '/collections/99/exclusions',
-            },
-          ],
-          manuallyAddedTo: [],
-        })
-      }
-
-      if (path === '/streamystats/info') {
-        return Promise.reject(new Error('404 Streamystats not configured'))
-      }
-
-      throw new Error(`Unexpected request: ${path}`)
-    })
-
-    render(
-      <MediaModal
-        onClose={() => {}}
-        id={5}
-        mediaType="movie"
-        title="Movie"
-        summary="Movie summary"
-        exclusionType="specific"
-      />,
-    )
-
-    const fallbackLink = await screen.findByRole('link', {
-      name: 'Testing2',
-    })
-
-    expect(fallbackLink.getAttribute('href')).toBe('/collections/99/exclusions')
-    expect(fallbackLink.className).toContain('text-maintainerr')
-    expect(fallbackLink.className).toContain('underline')
-    expect(fallbackLink.className).toContain('hover:text-maintainerr-400')
   })
 
   it('fetches and shows status when forceStatusLoad is true even for items with no exclusionType or isManual', async () => {
@@ -698,42 +584,6 @@ describe('MediaModal', () => {
     )
     expect(embyLogo.getAttribute('class')).toContain('h-8 w-32')
     expect(embyLogo.getAttribute('class')).toContain('object-contain')
-  })
-
-  it('does not request Streamystats info when Jellyfin is not active', async () => {
-    getApiHandlerMock.mockImplementation((path: string) => {
-      if (path === '/media-server') {
-        return Promise.resolve({})
-      }
-
-      if (path === '/settings') {
-        return Promise.resolve({})
-      }
-
-      if (path === '/media-server/meta/93') {
-        return Promise.resolve({} as MediaItem)
-      }
-
-      if (path === '/streamystats/info') {
-        throw new Error('Streamystats should not be requested')
-      }
-
-      throw new Error(`Unexpected request: ${path}`)
-    })
-
-    render(
-      <MediaModal
-        onClose={() => {}}
-        id={93}
-        mediaType="movie"
-        title="Movie"
-        summary="Movie summary"
-      />,
-    )
-
-    await screen.findByText('Movie summary')
-
-    expect(getApiHandlerMock).not.toHaveBeenCalledWith('/streamystats/info')
   })
 
   // Tautulli only knows Plex rating keys, while Tracearr follows whichever

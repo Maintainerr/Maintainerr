@@ -252,10 +252,6 @@ describe('EmbyAdapterService', () => {
         call: (adapter: EmbyAdapterService) =>
           adapter.getCollectionChildren('box-1'),
       },
-      {
-        read: 'searchContent',
-        call: (adapter: EmbyAdapterService) => adapter.searchContent('one'),
-      },
     ])(
       '$read names the fields its Maintainerr-side sorts read',
       async ({ call }) => {
@@ -433,27 +429,6 @@ describe('EmbyAdapterService', () => {
   });
 
   describe('getMetadata in-flight dedupe (#3356)', () => {
-    it('shares one request between concurrent reads of the same id', async () => {
-      let resolveItem: (value: unknown) => void = () => {};
-      http.get.mockReturnValue(
-        new Promise((resolve) => {
-          resolveItem = resolve;
-        }),
-      );
-
-      // Concurrently evaluated siblings all miss the cold cache key together,
-      // so the cache alone cannot stop the first read fanning out.
-      const reads = Promise.all([
-        service.getMetadata('series-1'),
-        service.getMetadata('series-1'),
-      ]);
-      resolveItem({ data: { Id: 'series-1', Type: 'Series' } });
-
-      const results = await reads;
-      expect(results.map((item) => item?.id)).toEqual(['series-1', 'series-1']);
-      expect(http.get).toHaveBeenCalledTimes(1);
-    });
-
     it('drops the in-flight entry once the request settles', async () => {
       http.get.mockResolvedValue({ data: { Id: 'series-1', Type: 'Series' } });
 
@@ -568,40 +543,6 @@ describe('EmbyAdapterService', () => {
   // manual-collection lookup stays cheap on repeated rule runs, while
   // create/rename/delete stay immediately visible.
   describe('collection caching', () => {
-    it('caches non-empty getCollections results and serves them on the next call', async () => {
-      http.get.mockResolvedValueOnce({
-        data: { Items: [{ Id: 'box-1', Name: 'Shared', ChildCount: 2 }] },
-      });
-
-      await service.getCollections('library-1');
-
-      // A configured Emby user means the user-scoped read: literal /Items path
-      // with UserId in the query param (no user value in the request path).
-      expect(http.get).toHaveBeenCalledWith(
-        '/Items',
-        expect.objectContaining({
-          params: expect.objectContaining({
-            UserId: 'user-1',
-            ParentId: 'library-1',
-            IncludeItemTypes: 'BoxSet',
-          }),
-        }),
-      );
-      expect(embyCacheMocks.data.set).toHaveBeenCalledWith(
-        'emby:collections:library-1',
-        expect.arrayContaining([expect.objectContaining({ id: 'box-1' })]),
-        EMBY_CACHE_TTL.COLLECTIONS,
-      );
-
-      const cached = [{ id: 'cached', title: 'Cached' }];
-      embyCacheMocks.data.get.mockReturnValueOnce(cached);
-
-      const second = await service.getCollections('library-1');
-      expect(second).toBe(cached);
-      // Only the first call hit the API.
-      expect(http.get).toHaveBeenCalledTimes(1);
-    });
-
     it('does not cache an empty getCollections result', async () => {
       http.get.mockResolvedValueOnce({ data: { Items: [] } });
 
@@ -842,26 +783,6 @@ describe('EmbyAdapterService', () => {
       [
         'getLibraryContents',
         () => service.getLibraryContents('library-1', { offset: 0, limit: 30 }),
-      ],
-      [
-        'getLibraryContentCount',
-        () => service.getLibraryContentCount('library-1', 'movie'),
-      ],
-      [
-        'searchLibraryContents',
-        () => service.searchLibraryContents('library-1', 'query', 'movie'),
-      ],
-      ['searchContent', () => service.searchContent('query')],
-      [
-        'findRandomItem',
-        () => service.findRandomItem(['library-1'], ['Movie']),
-      ],
-      [
-        'getRecentlyAdded',
-        () => {
-          http.get.mockResolvedValue({ data: [] });
-          return service.getRecentlyAdded('library-1', { limit: 10 });
-        },
       ],
     ])('%s opts out', async (_method, read) => {
       await read();
@@ -1401,24 +1322,6 @@ describe('EmbyAdapterService', () => {
       { Id: 'user-1', Name: 'Alice' },
       { Id: 'user-2', Name: 'Bob' },
     ];
-
-    it('includes partial playback when Played is false', async () => {
-      http.get.mockImplementation(async (path: string) => {
-        if (path === '/Users/Query') return { data: [users[0]] };
-        return {
-          data: {
-            UserData: {
-              Played: false,
-              LastPlayedDate: '2024-06-01T00:00:00.000Z',
-            },
-          },
-        };
-      });
-
-      await expect(service.getLastPlayedAt('item-1')).resolves.toEqual(
-        new Date('2024-06-01T00:00:00.000Z'),
-      );
-    });
 
     it('returns the newest playback timestamp across multiple users', async () => {
       http.get.mockImplementation(async (path: string) => {

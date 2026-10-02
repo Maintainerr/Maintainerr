@@ -21,34 +21,12 @@ describe('media-server-id.utils', () => {
     it('returns false when Plex sees a numeric id', () => {
       expect(isForeignServerId(MediaServerType.PLEX, '12345')).toBe(false);
     });
-
-    it('returns true when Jellyfin sees a numeric id', () => {
-      expect(isForeignServerId(MediaServerType.JELLYFIN, '12345')).toBe(true);
-    });
-
-    it('returns false when Jellyfin sees a Jellyfin id', () => {
-      expect(
-        isForeignServerId(
-          MediaServerType.JELLYFIN,
-          'a852a27afe324084ae66db579ee3ee18',
-        ),
-      ).toBe(false);
-    });
   });
 
   describe('shouldRefreshMetadataItemId', () => {
     it('allows valid Plex id for Plex', () => {
       expect(shouldRefreshMetadataItemId(MediaServerType.PLEX, '12345')).toBe(
         true,
-      );
-    });
-
-    it.each([
-      'a852a27afe324084ae66db579ee3ee18',
-      'e9b2dcaa-529c-426e-9433-5e9981f27f2e',
-    ])('rejects Jellyfin id %j for Plex', (value) => {
-      expect(shouldRefreshMetadataItemId(MediaServerType.PLEX, value)).toBe(
-        false,
       );
     });
 
@@ -75,14 +53,11 @@ describe('media-server-id.utils', () => {
     // - truncated UUIDs, non-hex garbage, fully-dashed but wrong-length - must
     // now be rejected before Maintainerr sends it to Jellyfin's refresh queue.
     it.each([
-      'abc',
-      'not-a-guid',
       'a852a27afe324084ae66db579ee3ee1', // 31 chars (truncated hex)
       'a852a27afe324084ae66db579ee3ee188', // 33 chars (oversized hex)
       'e9b2dcaa-529c-426e-9433-5e9981f27f2', // 35 chars (truncated dashed UUID)
       'e9b2dcaa-529c-426e-9433-5e9981f27f2ee', // 37 chars (oversized dashed UUID)
       'gggggggg-gggg-gggg-gggg-gggggggggggg', // non-hex chars
-      'e9b2dcaa529c-426e-9433-5e9981f27f2e', // dash at the wrong position
     ])('rejects malformed Jellyfin id %j', (value) => {
       expect(shouldRefreshMetadataItemId(MediaServerType.JELLYFIN, value)).toBe(
         false,

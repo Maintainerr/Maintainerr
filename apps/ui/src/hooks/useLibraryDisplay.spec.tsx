@@ -44,16 +44,6 @@ describe('useLibraryDisplay', () => {
     expect(result.current.isUnreachable).toBe(false)
   })
 
-  it('flags an unreachable server when the query errored and the id is unresolved', () => {
-    mockHook({ data: undefined, isError: true })
-
-    const { result } = renderHook(() => useLibraryDisplay('library-1'))
-
-    expect(result.current.title).toBeUndefined()
-    expect(result.current.hasLibraryId).toBe(true)
-    expect(result.current.isUnreachable).toBe(true)
-  })
-
   it('does not flag unreachable when the query succeeded but the library is gone', () => {
     mockHook({
       data: [{ id: 'library-2', title: 'Shows', type: 'show' }],

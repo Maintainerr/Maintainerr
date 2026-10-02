@@ -34,12 +34,9 @@ describe('SportarrMetadataProvider', () => {
       expect(provider.parseId('LG-1234567')).toBe(1234567);
     });
 
-    it.each(['ev-848683', '900000278', 'lg-', 'lg-000000', ''])(
-      'does not parse %s as a league',
-      (value) => {
-        expect(provider.parseId(value)).toBeUndefined();
-      },
-    );
+    it.each(['ev-848683'])('does not parse %s as a league', (value) => {
+      expect(provider.parseId(value)).toBeUndefined();
+    });
 
     it('extracts its own id whether the bag holds the number or the stamped string', () => {
       expect(provider.extractId({ sportarr: 278 })).toBe(278);

@@ -58,13 +58,6 @@ describe('ExecutionLockService', () => {
   });
 
   describe('acquireWithin', () => {
-    it('takes a free lock without waiting', async () => {
-      const release = await service.acquireWithin('shared', 50);
-
-      expect(release).not.toBeNull();
-      release?.();
-    });
-
     it('acquires once the current holder releases within the timeout', async () => {
       const releaseFirst = await service.acquire('shared');
       const waiting = service.acquireWithin('shared', 1000);

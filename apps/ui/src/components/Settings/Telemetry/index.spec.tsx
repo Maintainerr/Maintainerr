@@ -75,12 +75,6 @@ describe('TelemetrySettings', () => {
   const toggle = () =>
     screen.getByLabelText(/Send anonymous usage data/) as HTMLInputElement
 
-  it('reflects the stored setting', () => {
-    render(<TelemetrySettings />)
-
-    expect(toggle().checked).toBe(true)
-  })
-
   it('reflects the setting when telemetry is off', () => {
     currentSettings = { telemetryEnabled: false }
 

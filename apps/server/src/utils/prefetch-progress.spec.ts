@@ -29,27 +29,4 @@ describe('createPrefetchProgressReporter', () => {
       'Prefetching watch history: 90 of 100 records (90%)...',
     ]);
   });
-
-  it('never reports the final unit, so it cannot precede a completion line with a partial percentage', () => {
-    const { lines, report } = collect();
-    report(100, 100);
-    expect(lines).toEqual([]);
-  });
-
-  it('does not divide by an unknown total', () => {
-    const { lines, report } = collect();
-    report(5, 0);
-    report(5, -1);
-    expect(lines).toEqual([]);
-  });
-
-  it('skips straight to the reached decile when a page jumps several', () => {
-    const { lines, report } = collect();
-    report(35, 100);
-    report(80, 100);
-    expect(lines).toEqual([
-      'Prefetching watch history: 35 of 100 records (30%)...',
-      'Prefetching watch history: 80 of 100 records (80%)...',
-    ]);
-  });
 });

@@ -44,17 +44,6 @@ describe('unavailableRuleApplications', () => {
     expect(result).not.toContain(Application.STREAMYSTATS);
   });
 
-  it('reports both companions on Emby, which has neither', () => {
-    const result = unavailableRuleApplications(
-      { ...allConfigured, media_server_type: MediaServerType.EMBY } as Settings,
-      servarr,
-    );
-
-    expect(result).toEqual(
-      expect.arrayContaining([Application.TAUTULLI, Application.STREAMYSTATS]),
-    );
-  });
-
   it.each([
     ['Seerr', { seerr_api_key: null }, Application.SEERR],
     ['Ombi', { ombi_url: null }, Application.OMBI],

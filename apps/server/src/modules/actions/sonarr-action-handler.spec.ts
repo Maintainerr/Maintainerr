@@ -510,17 +510,7 @@ describe('SonarrActionHandler', () => {
     {
       type: 'show',
       title: 'SHOWS',
-      action: ServarrAction.DELETE,
-    },
-    {
-      type: 'show',
-      title: 'SHOWS',
       action: ServarrAction.UNMONITOR_DELETE_ALL,
-    },
-    {
-      type: 'show',
-      title: 'SHOWS',
-      action: ServarrAction.UNMONITOR_DELETE_EXISTING,
     },
     {
       type: 'episode',
@@ -1170,40 +1160,6 @@ describe('SonarrActionHandler', () => {
     expect(mockedSonarrApi.UnmonitorDeleteEpisodes).not.toHaveBeenCalled();
     expect(logger.warn).toHaveBeenCalledWith(
       `[Sonarr] Couldn't identify episode '${collectionMedia.mediaData.title}' for show '${series.title}'. No delete action was taken.`,
-    );
-  });
-
-  it('should delete show when type SHOWS and action DELETE', async () => {
-    const collection = createCollection({
-      arrAction: ServarrAction.DELETE,
-      sonarrSettingsId: 1,
-      type: 'show',
-    });
-    const collectionMedia = createCollectionMediaWithMetadata(collection, {
-      tmdbId: 1,
-    });
-
-    mockMediaServerMetadata(collectionMedia.mediaData);
-
-    const series = createSonarrSeries();
-
-    const mockedSonarrApi = mockSonarrApi(servarrService, logger);
-    jest.spyOn(mockedSonarrApi, 'getSeriesByTvdbId').mockResolvedValue(series);
-
-    mediaIdFinder.findTvdbId.mockResolvedValue(1);
-
-    await sonarrActionHandler.handleAction(collection, collectionMedia);
-
-    expect(mediaIdFinder.findTvdbId).toHaveBeenCalled();
-    expect(mockedSonarrApi.getSeriesByTvdbId).toHaveBeenCalled();
-    expect(mediaServer.deleteFromDisk).not.toHaveBeenCalled();
-    expect(mockedSonarrApi.unmonitorSeasons).not.toHaveBeenCalled();
-    expect(mockedSonarrApi.UnmonitorDeleteEpisodes).not.toHaveBeenCalled();
-    expect(mockedSonarrApi.delete).not.toHaveBeenCalled();
-    expect(mockedSonarrApi.deleteShow).toHaveBeenCalledWith(
-      series.id,
-      true,
-      collection.listExclusions,
     );
   });
 
@@ -1932,7 +1888,6 @@ describe('SonarrActionHandler', () => {
   describe('season action without a resolvable season number (#3415)', () => {
     const seasonActions = [
       { name: 'DELETE', arrAction: ServarrAction.DELETE },
-      { name: 'UNMONITOR', arrAction: ServarrAction.UNMONITOR },
       {
         name: 'UNMONITOR_DELETE_EXISTING',
         arrAction: ServarrAction.UNMONITOR_DELETE_EXISTING,
@@ -1940,10 +1895,6 @@ describe('SonarrActionHandler', () => {
       {
         name: 'DELETE_SHOW_IF_EMPTY',
         arrAction: ServarrAction.DELETE_SHOW_IF_EMPTY,
-      },
-      {
-        name: 'UNMONITOR_SHOW_IF_EMPTY',
-        arrAction: ServarrAction.UNMONITOR_SHOW_IF_EMPTY,
       },
     ];
 

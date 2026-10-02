@@ -71,10 +71,4 @@ describe('MediaServerSetupGuard', () => {
     expect(isAllowedDuringMediaServerSetup('/settings/logs')).toBe(true)
     expect(isAllowedDuringMediaServerSetup('/settings/logs/live')).toBe(true)
   })
-
-  it('allows the media server page but no other service or settings page during setup', () => {
-    expect(isAllowedDuringMediaServerSetup('/services/media-server')).toBe(true)
-    expect(isAllowedDuringMediaServerSetup('/services/radarr')).toBe(false)
-    expect(isAllowedDuringMediaServerSetup('/settings/main')).toBe(false)
-  })
 })

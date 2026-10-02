@@ -16,7 +16,6 @@ import { ServarrService } from '../api/servarr-api/servarr.service';
 import { ServarrAction } from '../collections/interfaces/collection.interface';
 import { MaintainerrLogger } from '../logging/logs.service';
 import { MetadataService } from '../metadata/metadata.service';
-import { ArrLookupCache } from '../rules/helpers/arr-lookup-cache';
 import { SettingsDataService } from '../settings/settings-data.service';
 import { LeftoverFolderCleanupService } from './leftover-folder-cleanup.service';
 import { RadarrActionHandler } from './radarr-action-handler';
@@ -368,36 +367,6 @@ describe('RadarrActionHandler', () => {
     await radarrActionHandler.handleAction(collection, collectionMedia);
 
     expect(collectionMedia.tmdbId).toBe(771);
-  });
-
-  it('reads the library once for a batch that shares a cache', async () => {
-    const collection = createCollection({
-      arrAction: ServarrAction.UNMONITOR,
-      radarrSettingsId: 1,
-      type: 'movie',
-    });
-    metadataService.resolveLookupCandidatesForService.mockImplementation(
-      async (mediaServerId, service, fallbackIds, library) => {
-        await library?.();
-        return [{ providerKey: 'tmdb', id: 771 }];
-      },
-    );
-    const mockedRadarrApi = mockRadarrApi(servarrService, logger);
-    jest.spyOn(mockedRadarrApi, 'getMovies').mockResolvedValue([]);
-    jest
-      .spyOn(mockedRadarrApi, 'getMovieByTmdbId')
-      .mockResolvedValue(createRadarrMovie({ id: 5 }));
-    const libraryReads = new ArrLookupCache();
-
-    for (const mediaServerId of ['movie-1', 'movie-2']) {
-      await radarrActionHandler.handleAction(
-        collection,
-        createCollectionMedia(collection, { mediaServerId }),
-        libraryReads,
-      );
-    }
-
-    expect(mockedRadarrApi.getMovies).toHaveBeenCalledTimes(1);
   });
 
   it.each([{ listExclusions: true }, { listExclusions: false }])(

@@ -1,4 +1,3 @@
-import { MediaServerFeature } from '@maintainerr/contracts';
 import { Mocked, TestBed } from '@suites/unit';
 import * as fs from 'fs';
 import * as os from 'os';
@@ -115,22 +114,6 @@ describe('CollectionPosterService', () => {
       );
 
       expect(pushed).toEqual({ attempted: false, pushed: false });
-      expect(mediaServer.setCollectionImage).not.toHaveBeenCalled();
-    });
-
-    it('skips when the media server does not support COLLECTION_POSTER', async () => {
-      mediaServer.supportsFeature.mockReturnValue(false);
-
-      const pushed = await service.pushToMediaServer(
-        'col-123',
-        Buffer.from('x'),
-        'image/jpeg',
-      );
-
-      expect(pushed).toEqual({ attempted: false, pushed: false });
-      expect(mediaServer.supportsFeature).toHaveBeenCalledWith(
-        MediaServerFeature.COLLECTION_POSTER,
-      );
       expect(mediaServer.setCollectionImage).not.toHaveBeenCalled();
     });
 

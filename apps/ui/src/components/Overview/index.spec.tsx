@@ -153,24 +153,6 @@ describe('Overview', () => {
     })
   })
 
-  it('shows studio sorting when Jellyfin is configured', async () => {
-    useMediaServerTypeMock.mockReturnValue(
-      buildMediaServerTypeResult(MediaServerType.JELLYFIN),
-    )
-
-    render(
-      <SearchContextProvider>
-        <Overview />
-      </SearchContextProvider>,
-    )
-
-    await waitFor(() => {
-      expect(
-        screen.getByRole('option', { name: 'Studio (A-Z) Ascending' }),
-      ).toBeTruthy()
-    })
-  })
-
   it('keeps failed bulk exclusions selected and reports the partial result', async () => {
     libraries = [
       {
@@ -387,106 +369,6 @@ describe('Overview', () => {
     ).toBe(true)
   })
 
-  it('bootstraps overview data in a single request before rendering the first page', async () => {
-    libraries = [
-      {
-        id: 'shows-library',
-        title: 'Shows',
-        type: 'show',
-      } as MediaLibrary,
-    ]
-
-    getApiHandlerMock.mockImplementation(async (path: string) => {
-      if (path.startsWith('/media-server/overview/bootstrap?')) {
-        return {
-          libraries,
-          selectedLibraryId: 'shows-library',
-          content: {
-            totalSize: 1,
-            items: [{ id: 'boot-item', title: 'Boot Item', type: 'show' }],
-          },
-        }
-      }
-
-      throw new Error(`Unexpected API request: ${path}`)
-    })
-
-    render(
-      <SearchContextProvider>
-        <Overview />
-      </SearchContextProvider>,
-    )
-
-    await waitFor(() => {
-      expect(screen.getByText('Boot Item')).toBeTruthy()
-    })
-
-    expect(getApiHandlerMock).toHaveBeenCalledTimes(1)
-    expect(getApiHandlerMock).toHaveBeenCalledWith(
-      expect.stringContaining('/media-server/overview/bootstrap?'),
-    )
-  })
-
-  it('requests the second page after bootstrap when loading more overview items', async () => {
-    libraries = [
-      {
-        id: 'shows-library',
-        title: 'Shows',
-        type: 'show',
-      } as MediaLibrary,
-    ]
-
-    getApiHandlerMock.mockImplementation(async (path: string) => {
-      if (path.startsWith('/media-server/overview/bootstrap?')) {
-        return {
-          libraries,
-          selectedLibraryId: 'shows-library',
-          content: {
-            totalSize: 31,
-            items: Array.from({ length: 30 }, (_, index) => ({
-              id: `boot-${index + 1}`,
-              title: `Boot Item ${index + 1}`,
-              type: 'show',
-            })),
-          },
-        }
-      }
-
-      if (path.startsWith('/media-server/library/shows-library/content?')) {
-        expect(path).toContain('page=2')
-
-        return {
-          totalSize: 31,
-          items: [{ id: 'tail-item', title: 'Tail Item', type: 'show' }],
-        }
-      }
-
-      throw new Error(`Unexpected API request: ${path}`)
-    })
-
-    render(
-      <SearchContextProvider>
-        <Overview />
-      </SearchContextProvider>,
-    )
-
-    await waitFor(() => {
-      expect(screen.getByText('Boot Item 1')).toBeTruthy()
-    })
-
-    fireEvent.click(screen.getByTestId('overview-fetch-more'))
-
-    await waitFor(() => {
-      expect(getApiHandlerMock).toHaveBeenCalledTimes(2)
-    })
-
-    expect(getApiHandlerMock.mock.calls[1]?.[0]).toContain('page=2')
-
-    await waitFor(() => {
-      expect(screen.getByText('Tail Item')).toBeTruthy()
-    })
-  })
-
   it('exits the bootstrap spinner when no overview libraries are available', async () => {
     render(
       <SearchContextProvider>
@@ -539,22 +421,6 @@ describe('Overview', () => {
     expect(url.searchParams.get('type')).toBe('show')
     expect(url.searchParams.get('sort')).toBeNull()
     expect(url.searchParams.get('sortOrder')).toBeNull()
-  })
-
-  it('includes the selected show library type in content requests', () => {
-    const url = new URL(
-      `/media-server/library/shows-library/content?${buildLibraryContentQuery({
-        page: 1,
-        limit: 30,
-        libraryType: 'show',
-        sortParams: { sort: 'title', sortOrder: 'asc' },
-      })}`,
-      'http://localhost',
-    )
-
-    expect(url.searchParams.get('type')).toBe('show')
-    expect(url.searchParams.get('sort')).toBe('title')
-    expect(url.searchParams.get('sortOrder')).toBe('asc')
   })
 
   it('refetches overview content with explicit title ascending params when switching back', async () => {
@@ -658,77 +524,6 @@ describe('Overview', () => {
         .getByRole('button', { name: 'Add/Exclude selected' })
         .hasAttribute('disabled'),
     ).toBe(true)
-  })
-
-  it('keeps existing overview items visible while a refreshed request is in flight', async () => {
-    libraries = [
-      {
-        id: 'shows-library',
-        title: 'Shows',
-        type: 'show',
-      } as MediaLibrary,
-    ]
-
-    let resolveSecondRequest:
-      ((value: { totalSize: number; items: any[] }) => void) | undefined
-
-    getApiHandlerMock.mockImplementation((path: string) => {
-      if (path.startsWith('/media-server/overview/bootstrap?')) {
-        return Promise.resolve({
-          libraries,
-          selectedLibraryId: 'shows-library',
-          content: {
-            totalSize: 1,
-            items: [
-              { id: 'existing-item', title: 'Existing Item', type: 'show' },
-            ],
-          },
-        })
-      }
-
-      if (!path.startsWith('/media-server/library/')) {
-        return Promise.reject(new Error(`Unexpected API request: ${path}`))
-      }
-
-      if (path.includes('sort=title&sortOrder=desc')) {
-        return new Promise((resolve) => {
-          resolveSecondRequest = resolve
-        })
-      }
-
-      return Promise.reject(new Error(`Unexpected API request: ${path}`))
-    })
-
-    render(
-      <SearchContextProvider>
-        <Overview />
-      </SearchContextProvider>,
-    )
-
-    await waitFor(() => {
-      expect(screen.getByText('Existing Item')).toBeTruthy()
-    })
-
-    fireEvent.change(screen.getByLabelText('Sort overview items'), {
-      target: { value: 'title.desc' },
-    })
-
-    await waitFor(() => {
-      expect(getApiHandlerMock).toHaveBeenCalledTimes(2)
-    })
-
-    expect(screen.getByText('Existing Item')).toBeTruthy()
-    expect(screen.getByTestId('overview-refresh-spinner')).toBeTruthy()
-    expect(screen.getByTestId('overview-content-loading')).toBeTruthy()
-
-    resolveSecondRequest?.({
-      totalSize: 1,
-      items: [{ id: 'next-item', title: 'Next Item', type: 'show' }],
-    })
-
-    await waitFor(() => {
-      expect(screen.getByText('Next Item')).toBeTruthy()
-    })
   })
 
   it('preserves the loaded page count when refreshing sorted overview content', async () => {

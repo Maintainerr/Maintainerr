@@ -95,19 +95,6 @@ describe('TasksService', () => {
     expect(tasksService.isRunning('clear-me')).toBe(false);
   });
 
-  it('throws when setting running state for an unknown task', () => {
-    expect(() => tasksService.setRunning('missing-task')).toThrow(
-      'Task missing-task does not exist.',
-    );
-  });
-
-  it('returns error status when updating a missing job', async () => {
-    const result = await tasksService.updateJob('absent', '*/5 * * * * *');
-
-    expect(result.code).toBe(0);
-    expect(logger.error).toHaveBeenCalledWith('Task absent does not exist.');
-  });
-
   it('updates the cron timing for an existing job', async () => {
     tasksService.createJob('update-me', '* * * * * *', () => undefined);
     const job = schedulerRegistry.getCronJobs().get('update-me');

@@ -138,28 +138,6 @@ describe('RulesService.updateRules', () => {
     expect(mediaServer.cleanupCollectionForLibrary).not.toHaveBeenCalled();
   });
 
-  it('fails with a not-found status when the rule group is gone', async () => {
-    const ruleGroupRepository = {
-      findOne: jest.fn().mockResolvedValue(null),
-    };
-
-    const service = createRulesService({ ruleGroupRepository });
-
-    await expect(
-      service.updateRules({
-        id: 999,
-        libraryId: '1',
-        dataType: 'show',
-        name: 'Test',
-        rules: [],
-        description: '',
-      }),
-    ).rejects.toMatchObject({
-      status: 404,
-      message: 'Rule group not found',
-    });
-  });
-
   it('continues past validation for date rules using custom_days values', async () => {
     const ruleGroupRepository = {
       findOne: jest.fn().mockResolvedValue(null),

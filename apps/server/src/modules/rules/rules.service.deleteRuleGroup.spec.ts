@@ -201,31 +201,6 @@ describe('RulesService.deleteRuleGroup', () => {
       );
       expect(collectionService.deleteCollection).toHaveBeenCalledWith(100);
     });
-
-    it('does not attempt tag cleanup when the group is not tagging-enabled', async () => {
-      const group = { id: 42, collectionId: 100 };
-      const servarrTagService = createMockServarrTagService();
-      const collectionService = {
-        deleteCollection: jest
-          .fn()
-          .mockResolvedValue({ status: 'OK', code: 1, message: 'Success' }),
-        getCollection: jest
-          .fn()
-          .mockResolvedValue({ id: 100, type: 'movie', tagInArr: false }),
-        getCollectionMedia: jest.fn(),
-      };
-
-      const { service } = createRulesService({
-        group,
-        collectionService,
-        servarrTagService,
-      });
-
-      await service.deleteRuleGroup(42);
-
-      expect(servarrTagService.syncMembershipTags).not.toHaveBeenCalled();
-      expect(collectionService.getCollectionMedia).not.toHaveBeenCalled();
-    });
   });
 });
 

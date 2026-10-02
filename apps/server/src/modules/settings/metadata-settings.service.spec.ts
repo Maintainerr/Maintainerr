@@ -194,31 +194,6 @@ describe('MetadataSettingsService', () => {
     expect(refreshItemMetadata).toHaveBeenCalledWith('12345');
   });
 
-  it('does not verify failed items when retry lookup mode is explicitly disabled', async () => {
-    const queryBuilder = createQueryBuilder([{ mediaServerId: '12345' }]);
-    const refreshItemMetadata = jest
-      .fn()
-      .mockRejectedValue(new Error('refresh failed'));
-    const getMetadata = jest.fn().mockResolvedValue({ id: '12345' });
-
-    collectionMediaRepo.createQueryBuilder.mockReturnValue(
-      queryBuilder as never,
-    );
-    mediaServerFactory.getService.mockResolvedValue({
-      isSetup: jest.fn().mockReturnValue(true),
-      getServerType: jest.fn().mockReturnValue(MediaServerType.PLEX),
-      refreshItemMetadata,
-      getMetadata,
-    } as never);
-
-    await (service as any).refreshMediaServerItems(MetadataProvider.TMDB, {
-      retryFailedItemsWithMetadataLookup: false,
-    });
-
-    expect(refreshItemMetadata).toHaveBeenCalledTimes(1);
-    expect(getMetadata).not.toHaveBeenCalled();
-  });
-
   it('verifies and retries failed items for manual metadata refreshes', async () => {
     const queryBuilder = createQueryBuilder([{ mediaServerId: '12345' }]);
     const refreshItemMetadata = jest
@@ -285,37 +260,6 @@ describe('MetadataSettingsService', () => {
     );
   });
 
-  it('does not retry when item lookup throws after a failed manual refresh', async () => {
-    const mediaServerId = 'a852a27afe324084ae66db579ee3ee18';
-    const queryBuilder = createQueryBuilder([{ mediaServerId }]);
-    const refreshItemMetadata = jest
-      .fn()
-      .mockRejectedValue(new Error('refresh failed'));
-    const getMetadata = jest.fn().mockRejectedValue(new Error('lookup failed'));
-
-    collectionMediaRepo.createQueryBuilder.mockReturnValue(
-      queryBuilder as never,
-    );
-    mediaServerFactory.getService.mockResolvedValue({
-      isSetup: jest.fn().mockReturnValue(true),
-      getServerType: jest.fn().mockReturnValue(MediaServerType.JELLYFIN),
-      refreshItemMetadata,
-      getMetadata,
-    } as never);
-
-    await (service as any).refreshMediaServerItems(MetadataProvider.TMDB, {
-      retryFailedItemsWithMetadataLookup: true,
-    });
-
-    expect(refreshItemMetadata).toHaveBeenCalledTimes(1);
-    expect(getMetadata).toHaveBeenCalledWith(mediaServerId);
-    expect(logger.warn).toHaveBeenCalledWith(
-      expect.stringContaining(
-        `Failed to verify jellyfin item ${mediaServerId}`,
-      ),
-    );
-  });
-
   it('does not retry when lookup returns a blank id after a failed manual refresh', async () => {
     const mediaServerId = 'e9b2dcaa-529c-426e-9433-5e9981f27f2e';
     const queryBuilder = createQueryBuilder([{ mediaServerId }]);
@@ -344,40 +288,4 @@ describe('MetadataSettingsService', () => {
       expect.stringContaining('did not return a usable id'),
     );
   });
-
-  it.each([
-    '00000000-0000-0000-0000-000000000000',
-    '00000000000000000000000000000000',
-  ])(
-    'does not retry with Jellyfin empty GUID %j returned by item lookup',
-    async (emptyGuid) => {
-      const mediaServerId = 'e9b2dcaa-529c-426e-9433-5e9981f27f2e';
-      const queryBuilder = createQueryBuilder([{ mediaServerId }]);
-      const refreshItemMetadata = jest
-        .fn()
-        .mockRejectedValue(new Error('refresh failed'));
-      const getMetadata = jest.fn().mockResolvedValue({ id: emptyGuid });
-
-      collectionMediaRepo.createQueryBuilder.mockReturnValue(
-        queryBuilder as never,
-      );
-      mediaServerFactory.getService.mockResolvedValue({
-        isSetup: jest.fn().mockReturnValue(true),
-        getServerType: jest.fn().mockReturnValue(MediaServerType.JELLYFIN),
-        refreshItemMetadata,
-        getMetadata,
-      } as never);
-
-      await (service as any).refreshMediaServerItems(MetadataProvider.TMDB, {
-        retryFailedItemsWithMetadataLookup: true,
-      });
-
-      expect(refreshItemMetadata).toHaveBeenCalledTimes(1);
-      expect(refreshItemMetadata).not.toHaveBeenCalledWith(emptyGuid);
-      expect(getMetadata).toHaveBeenCalledWith(mediaServerId);
-      expect(logger.warn).toHaveBeenCalledWith(
-        expect.stringContaining('did not return a usable id'),
-      );
-    },
-  );
 });

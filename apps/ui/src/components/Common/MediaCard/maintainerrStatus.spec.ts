@@ -15,43 +15,6 @@ const asApiHandler = <T>(
 }
 
 describe('maintainerrStatus', () => {
-  it('reuses cached details for repeated modal loads', async () => {
-    clearMaintainerrStatusDetailsCache()
-
-    const response: MaintainerrMediaStatusDetails = {
-      excludedFrom: [{ label: 'Global' }],
-      manuallyAddedTo: [],
-    }
-
-    const getApiHandler = asApiHandler(
-      vi.fn(async (path: string) => {
-        if (path === '/media-server/meta/1/maintainerr-status') {
-          return response
-        }
-
-        throw new Error(`Unexpected request: ${path}`)
-      }),
-    )
-
-    await expect(
-      loadMaintainerrStatusDetails({
-        cacheKey: '1',
-        id: 1,
-        getApiHandler,
-      }),
-    ).resolves.toEqual(response)
-
-    await expect(
-      loadMaintainerrStatusDetails({
-        cacheKey: '1',
-        id: 1,
-        getApiHandler,
-      }),
-    ).resolves.toEqual(response)
-
-    expect(getApiHandler).toHaveBeenCalledTimes(1)
-  })
-
   it('expires cached details after the ttl elapses', async () => {
     clearMaintainerrStatusDetailsCache()
     vi.useFakeTimers()

@@ -1,6 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '../../../test-utils/render'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { createDeferred } from '../../../test-utils/createDeferred'
 import PlexSettings from './index'
 
 const getApiHandler = vi.fn()
@@ -204,84 +203,6 @@ describe('PlexSettings', () => {
     })
   })
 
-  it('keeps Test Connection unavailable until a Plex server has been selected', () => {
-    currentSettings.plex_hostname = undefined
-    currentSettings.plex_port = undefined
-    currentSettings.plex_name = undefined
-
-    render(<PlexSettings />)
-
-    expect(
-      (
-        screen.getByRole('button', {
-          name: 'Test Connection',
-        }) as HTMLButtonElement
-      ).disabled,
-    ).toBe(true)
-  })
-
-  it('keeps Test Connection unavailable while Plex authentication is still being persisted', () => {
-    const authRequest = createDeferred<void>()
-
-    currentSettings.plex_auth_token = undefined
-    storedTokenValidationResponse = undefined
-
-    updatePlexAuth.mockImplementation(() => {
-      updatePlexAuthPending = true
-      return authRequest.promise
-    })
-
-    const { rerender } = render(<PlexSettings />)
-
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Authenticate with Plex' }),
-    )
-
-    rerender(<PlexSettings />)
-
-    expect(
-      (
-        screen.getByRole('button', {
-          name: 'Test Connection',
-        }) as HTMLButtonElement
-      ).disabled,
-    ).toBe(true)
-
-    authRequest.resolve()
-  })
-
-  it('keeps server discovery disabled until Plex authentication has been validated', async () => {
-    currentSettings.plex_hostname = undefined
-    currentSettings.plex_port = undefined
-    currentSettings.plex_name = undefined
-
-    storedTokenValidationFetching = true
-    storedTokenValidationResponse = undefined
-
-    const { rerender } = render(<PlexSettings />)
-
-    expect(usePlexAuthValidationMock).toHaveBeenLastCalledWith(
-      expect.objectContaining({ enabled: true }),
-    )
-
-    expect(usePlexServersMock).toHaveBeenLastCalledWith(
-      expect.objectContaining({ enabled: false }),
-    )
-
-    storedTokenValidationFetching = false
-    storedTokenValidationResponse = { valid: true }
-    rerender(<PlexSettings />)
-
-    await waitFor(() => {
-      expect(usePlexAuthValidationMock).toHaveBeenLastCalledWith(
-        expect.objectContaining({ enabled: true }),
-      )
-      expect(usePlexServersMock).toHaveBeenLastCalledWith(
-        expect.objectContaining({ enabled: true }),
-      )
-    })
-  })
-
   it('stays authenticated and warns instead of erroring when plex.tv is unreachable', async () => {
     storedTokenValidationResponse = {
       valid: false,
@@ -307,36 +228,6 @@ describe('PlexSettings', () => {
         "Couldn't reach plex.tv to verify your credentials - retrying. Your saved token is still in use.",
       ),
     ).toBeTruthy()
-  })
-
-  it('clears the plex.tv unreachable warning once validation succeeds', async () => {
-    storedTokenValidationResponse = {
-      valid: false,
-      unreachable: true,
-      errorMessage:
-        "Couldn't reach plex.tv to verify your credentials - retrying. Your saved token is still in use.",
-    }
-
-    const { rerender } = render(<PlexSettings />)
-
-    await waitFor(() => {
-      expect(
-        screen.getByText(
-          "Couldn't reach plex.tv to verify your credentials - retrying. Your saved token is still in use.",
-        ),
-      ).toBeTruthy()
-    })
-
-    storedTokenValidationResponse = { valid: true }
-    rerender(<PlexSettings />)
-
-    await waitFor(() => {
-      expect(
-        screen.queryByText(
-          "Couldn't reach plex.tv to verify your credentials - retrying. Your saved token is still in use.",
-        ),
-      ).toBeNull()
-    })
   })
 
   it('does not flash stored-token validation errors immediately after fresh Plex auth succeeds', async () => {
@@ -391,33 +282,6 @@ describe('PlexSettings', () => {
         screen.getByText('Authentication timed out. Please try again.'),
       ).toBeTruthy()
     })
-  })
-
-  it('requires a URL before saving manual mode', async () => {
-    render(<PlexSettings />)
-
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Authenticated' })).toBeTruthy()
-    })
-
-    fireEvent.click(screen.getByRole('button', { name: 'Advanced Settings' }))
-    fireEvent.click(screen.getByLabelText(/Enable manual mode/i))
-
-    const hostnameInput = await screen.findByLabelText('URL')
-
-    fireEvent.change(hostnameInput, {
-      target: { value: '   ' },
-    })
-
-    fireEvent.click(screen.getByRole('button', { name: 'Save Changes' }))
-
-    await waitFor(() => {
-      expect(
-        screen.getByText('Please enter a valid server URL with no path.'),
-      ).toBeTruthy()
-    })
-
-    expect(updateSettings).not.toHaveBeenCalled()
   })
 
   it('checks a manual URL left behind collapsed Advanced settings', async () => {

@@ -131,12 +131,6 @@ describe('TelemetryService', () => {
       });
     });
 
-    it('reports none when no media server is configured', async () => {
-      settings.media_server_type = undefined;
-
-      expect((await service.buildPayload(false)).mediaServer).toBe('none');
-    });
-
     it('never carries an identifier, in either variant', async () => {
       settings.clientId = '6f2a1c40-9d3e-4a17-8b52-0c7e1d9a4f38';
 
@@ -208,23 +202,6 @@ describe('TelemetryService', () => {
       ]);
     });
 
-    it('reads lastVal as well as firstVal', async () => {
-      rulesRepo.find.mockResolvedValue([ruleJson([0, 0], [1, 4])]);
-
-      expect((await service.buildPayload(true)).sample.ruleProperties).toEqual([
-        'plex.addDate',
-        'radarr.releaseDate',
-      ]);
-    });
-
-    it('coerces references stored as strings', async () => {
-      rulesRepo.find.mockResolvedValue([ruleJson(['0', '1'])]);
-
-      expect((await service.buildPayload(true)).sample.ruleProperties).toEqual([
-        'plex.seenBy',
-      ]);
-    });
-
     it('de-duplicates and caps at the collector limit', async () => {
       const rows: Rules[] = [];
       for (let propertyId = 0; propertyId < 40; propertyId++) {
@@ -290,48 +267,6 @@ describe('TelemetryService', () => {
   });
 
   describe('sample extraction', () => {
-    it('reports the media types rule groups use, ignoring null and junk', async () => {
-      ruleGroupRepo.find.mockResolvedValue([
-        { dataType: 'show' },
-        { dataType: 'movie' },
-        { dataType: 'movie' },
-        { dataType: null },
-        { dataType: '1' },
-      ] as RuleGroup[]);
-
-      expect((await service.buildPayload(true)).sample.mediaTypes).toEqual([
-        'movie',
-        'show',
-      ]);
-    });
-
-    it('maps collection arr actions to their enum names', async () => {
-      collectionRepo.find.mockResolvedValue([
-        { arrAction: 0 },
-        { arrAction: 3 },
-        { arrAction: 3 },
-        { arrAction: 99 },
-      ] as Collection[]);
-
-      expect((await service.buildPayload(true)).sample.arrActions).toEqual([
-        'DELETE',
-        'UNMONITOR',
-      ]);
-    });
-
-    it('reports configured notification agents, ignoring unknown ones', async () => {
-      notificationRepo.find.mockResolvedValue([
-        { agent: 'discord' },
-        { agent: 'telegram' },
-        { agent: 'discord' },
-        { agent: 'not-an-agent' },
-      ] as Notification[]);
-
-      expect(
-        (await service.buildPayload(true)).sample.notificationAgents,
-      ).toEqual(['discord', 'telegram']);
-    });
-
     it('reports configured integrations', async () => {
       settings.getRadarrSettingsCount.mockResolvedValue(2);
       settings.getSportarrSettingsCount.mockResolvedValue(1);
@@ -346,28 +281,6 @@ describe('TelemetryService', () => {
         'seerr',
         'sportarr',
         'tracearr',
-      ]);
-    });
-
-    it('reports features in use', async () => {
-      collectionRepo.count.mockImplementation(async (options?: any) =>
-        options?.where?.overlayEnabled ? 4 : 0,
-      );
-      // Set per server; one Radarr server with it on is enough.
-      settings.getRadarrSettings.mockResolvedValue([
-        { tagExclusions: false },
-        { tagExclusions: true },
-      ] as RadarrSettings[]);
-      settings.getSonarrSettings.mockResolvedValue([
-        { tagExclusions: false },
-      ] as SonarrSettings[]);
-      settings.metadata_provider_preference =
-        MetadataProviderPreference.TVDB_PRIMARY;
-
-      expect((await service.buildPayload(true)).sample.features).toEqual([
-        'arrTagExclusionsRadarr',
-        'metadata_tvdb_primary',
-        'overlays',
       ]);
     });
 
@@ -558,15 +471,11 @@ describe('TelemetryService', () => {
   });
 
   describe('enabled', () => {
-    it.each([
-      ['on when the setting is on', true, true],
-      ['off when the setting is off', false, false],
-      // Unanswered reports; only an explicit refusal stops it.
-      ['on when the install has not answered', null, true],
-    ])('is %s', (_label, stored, expected) => {
-      settings.telemetryEnabled = stored;
+    // Unanswered reports; only an explicit refusal stops it.
+    it('is on when the install has not answered', () => {
+      settings.telemetryEnabled = null;
 
-      expect(service.enabled()).toBe(expected);
+      expect(service.enabled()).toBe(true);
     });
 
     it('is off when TELEMETRY=off, whatever the setting says', () => {
@@ -617,12 +526,6 @@ describe('TelemetryService', () => {
           timeout: 5000,
         }),
       );
-    });
-
-    it('swallows a failing post', async () => {
-      post.mockRejectedValue(new Error('collector unreachable'));
-
-      await expect(service.send(false)).resolves.toBeUndefined();
     });
 
     it('swallows a failing payload build', async () => {

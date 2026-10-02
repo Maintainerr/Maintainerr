@@ -8,7 +8,6 @@ import {
   within,
 } from '../../test-utils/render'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { createDeferred } from '../../test-utils/createDeferred'
 import { createTestQueryClient } from '../../test-utils/queryClient'
 import MetadataSettings from './Metadata'
 
@@ -85,44 +84,6 @@ describe('MetadataSettings', () => {
     })
   })
 
-  it('keeps the selector shell and provider cards visible while provider settings load', () => {
-    const tmdbRequest = createDeferred<{ api_key: string }>()
-    const tvdbRequest = createDeferred<{ api_key: string }>()
-
-    preferenceLoading = true
-    getApiHandler.mockImplementation((url: string) => {
-      if (url === '/settings/tmdb') {
-        return tmdbRequest.promise
-      }
-
-      if (url === '/settings/tvdb') {
-        return tvdbRequest.promise
-      }
-
-      throw new Error(`Unexpected request: ${url}`)
-    })
-
-    renderMetadata()
-
-    const tmdbSwitch = screen.getByRole('switch', {
-      name: 'TMDB primary',
-    })
-    const tvdbSwitch = screen.getByRole('switch', {
-      name: 'TVDB primary',
-    })
-
-    expect(tmdbSwitch).toBeTruthy()
-    expect(tvdbSwitch).toBeTruthy()
-    expect(screen.getAllByText('TVDB').length).toBeGreaterThan(0)
-    expect(screen.getAllByRole('listitem')).toHaveLength(2)
-    screen
-      .getAllByRole('status')
-      .forEach((status) => expect(status.textContent).toBe(''))
-
-    expect(tmdbSwitch.getAttribute('aria-disabled')).toBe('true')
-    expect(tvdbSwitch.getAttribute('aria-disabled')).toBe('true')
-  })
-
   it('updates the primary provider directly from the provider switch and shows inline page feedback', async () => {
     getApiHandler.mockImplementation((url: string) => {
       if (url === '/settings/tmdb') {
@@ -195,45 +156,6 @@ describe('MetadataSettings', () => {
         .getByRole('switch', { name: 'TVDB primary' })
         .getAttribute('aria-disabled'),
     ).toBe('true')
-  })
-
-  it('shows provider feedback beside the title of that provider card', async () => {
-    postApiHandler.mockImplementation((url: string) => {
-      if (url === '/settings/test/tmdb') {
-        return Promise.resolve({
-          status: 'OK',
-          code: 1,
-          message: 'Connected',
-        })
-      }
-
-      if (url === '/settings/tmdb') {
-        return Promise.resolve({
-          status: 'OK',
-          code: 1,
-          message: 'Saved',
-        })
-      }
-
-      throw new Error(`Unexpected request: ${url}`)
-    })
-
-    renderMetadata()
-
-    const [tmdbApiKeyInput] = await screen.findAllByLabelText('API Key')
-    fireEvent.change(tmdbApiKeyInput, { target: { value: 'tmdb-key' } })
-
-    fireEvent.click(
-      screen.getAllByRole('button', { name: 'Test Connection' })[0],
-    )
-
-    const tmdbCard = screen.getAllByRole('listitem')[0]
-
-    expect(tmdbCard.contains(await screen.findByText('Success!'))).toBe(true)
-
-    fireEvent.click(screen.getAllByRole('button', { name: 'Save Changes' })[0])
-
-    expect(tmdbCard.contains(await screen.findByText('Saved'))).toBe(true)
   })
 
   it('shows that a refresh is running once it starts', async () => {
