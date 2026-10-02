@@ -11,6 +11,7 @@ import { CollectionMedia } from '../collections/entities/collection_media.entiti
 import { MediaServerSwitchState } from '../api/media-server/media-server-switch-state.service';
 import { MaintainerrLogger } from '../logging/logs.service';
 import { Exclusion } from '../rules/entities/exclusion.entities';
+import { RuleGroup } from '../rules/entities/rule-group.entities';
 import { MediaServerSwitchService } from './media-server-switch.service';
 import { RuleMigrationService } from './rule-migration.service';
 import { TracearrApiService } from '../api/tracearr-api/tracearr-api.service';
@@ -201,6 +202,23 @@ describe('MediaServerSwitchService', () => {
         true,
         queryRunner.manager,
       );
+      // The rules survive, but no group may run against the old server's
+      // library ids and no collection may keep the old server's collection id.
+      const qb = queryRunner.manager.createQueryBuilder();
+      expect(qb.update.mock.calls.map(([target]) => target)).toEqual([
+        RuleGroup,
+        Collection,
+      ]);
+      expect(qb.set.mock.calls.map(([values]) => values)).toEqual([
+        { libraryId: '', isActive: false },
+        {
+          mediaServerId: null,
+          mediaServerType: MediaServerType.JELLYFIN,
+          libraryId: '',
+        },
+      ]);
+      expect(queryRunner.manager.clear).not.toHaveBeenCalledWith(RuleGroup);
+      expect(queryRunner.manager.clear).not.toHaveBeenCalledWith(Collection);
 
       expect(settingsDataService.init).toHaveBeenCalled();
       expect(
