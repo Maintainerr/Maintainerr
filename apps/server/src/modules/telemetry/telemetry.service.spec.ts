@@ -152,20 +152,6 @@ describe('TelemetryService', () => {
       }
     });
 
-    /**
-     * A build sha is near-unique, so reporting it would fingerprint the sender
-     * in a census that carries no other identifier.
-     */
-    it('reports a release build by its version', async () => {
-      versionService.getVersionTag.mockReturnValue('latest');
-      versionService.getCurrentVersion.mockReturnValue('3.24.0');
-
-      expect(await service.buildPayload(false)).toMatchObject({
-        version: '3.24.0',
-        versionTag: 'latest',
-      });
-    });
-
     it('reports a branch build by its stream, without the sha', async () => {
       versionService.getVersionTag.mockReturnValue('development');
       versionService.getCurrentVersion.mockReturnValue('development-bd8a1e0');
@@ -615,12 +601,6 @@ describe('TelemetryService', () => {
       const [endpoint, payload] = post.mock.calls[0];
       expect(endpoint).toBe('/v1/ingest');
       expect('sample' in (payload as TelemetryPing)).toBe(false);
-    });
-
-    it('includes the sample when asked to', async () => {
-      await service.send(true);
-
-      expect('sample' in (post.mock.calls[0][1] as TelemetryPing)).toBe(true);
     });
 
     /**

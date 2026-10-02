@@ -295,7 +295,7 @@ the rule can never remove it, yet it still ages into that collection's
 `deleteAfterDays` and is deleted from disk. Treat it as one bug class, not a
 dozen incidents.
 
-The class regenerates because the adoption decision *defaults to adopting* and
+The class regenerates because the adoption decision _defaults to adopting_ and
 subtracts known-innocent cases, and every subtraction is computed from
 `collection_media` rows. Any bug whose symptom is a **missing** row is therefore
 invisible to guards of that shape. Adding a sixth guard of the same kind is not a
@@ -306,7 +306,7 @@ all five guards standing:
 
 1. Rule-removed stays removed (`collection_media_rule_removal` markers).
 2. Items a sibling rule group holds are never adopted. Siblings are matched on
-   *shared `mediaServerId`*, so dropping a link silently revokes this guard, and
+   _shared `mediaServerId`_, so dropping a link silently revokes this guard, and
    whatever that collection left on the media server is then adopted by the rule
    group still pointing at it.
 3. The run that first links a collection must not import its existing children.
@@ -431,7 +431,10 @@ weekly so the list stays verified. References that have no fetchable spec live i
 ## Testing Guidelines
 
 Follow the shared [PR workflow](.github/instructions/implementation.instructions.md#pr-workflow)
-for real-stack coverage, behavioral tests, and final validation timing.
+for real-stack coverage, behavioral tests, and final validation timing. Before
+adding or changing a test, read [Writing tests](.github/instructions/project-notes.instructions.md#writing-tests):
+what earns a test, how to keep guard tests honest, and why `yarn test` needs no
+per-machine flags.
 
 ### Backend Testing
 

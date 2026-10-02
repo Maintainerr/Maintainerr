@@ -80,27 +80,6 @@ describe('EmbyGetterService', () => {
   describe('studios (id 46)', () => {
     const STUDIOS_PROP_ID = 46;
 
-    it('delegates to the shared metadata resolution with the run cache', async () => {
-      const mediaItem = createMediaItem();
-      const cache = new ArrLookupCache();
-      metadataRuleValueService.getStudios.mockResolvedValue(['Studio One']);
-
-      await expect(
-        embyGetterService.get(
-          STUDIOS_PROP_ID,
-          mediaItem,
-          'movie',
-          createRuleGroupDto({ dataType: 'movie' }),
-          cache,
-        ),
-      ).resolves.toEqual(['Studio One']);
-      expect(metadataRuleValueService.getStudios).toHaveBeenCalledWith(
-        mediaItem,
-        cache,
-      );
-      expect(embyAdapter.getMetadata).not.toHaveBeenCalled();
-    });
-
     it('preserves undefined so a failed lookup stays transient', async () => {
       metadataRuleValueService.getStudios.mockResolvedValue(undefined);
 

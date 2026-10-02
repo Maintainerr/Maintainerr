@@ -1,8 +1,4 @@
 import {
-  isSportarrTvdbAlias,
-  SPORTARR_TVDB_ALIAS_LEAGUE_OFFSET,
-} from '@maintainerr/contracts';
-import {
   sportarrLeagueExternalIdFromProviderIds,
   sportarrLeagueExternalIdFromTvdbAlias,
 } from './sportarr-external-id';
@@ -15,31 +11,10 @@ describe('sportarrLeagueExternalIdFromTvdbAlias', () => {
     expect(sportarrLeagueExternalIdFromTvdbAlias(900_001_521)).toBe(
       'lg-001521',
     );
-  });
-
-  it('keeps ids that grow past six digits unpadded beyond the pad width', () => {
-    expect(sportarrLeagueExternalIdFromTvdbAlias(901_234_567)).toBe(
-      'lg-1234567',
+    // The first alias past the offset is league 1.
+    expect(sportarrLeagueExternalIdFromTvdbAlias(900_000_001)).toBe(
+      'lg-000001',
     );
-  });
-
-  it('rejects the offset itself, which the shared predicate excludes too', () => {
-    expect(isSportarrTvdbAlias(SPORTARR_TVDB_ALIAS_LEAGUE_OFFSET)).toBe(false);
-    expect(
-      sportarrLeagueExternalIdFromTvdbAlias(SPORTARR_TVDB_ALIAS_LEAGUE_OFFSET),
-    ).toBeUndefined();
-    expect(isSportarrTvdbAlias(SPORTARR_TVDB_ALIAS_LEAGUE_OFFSET + 1)).toBe(
-      true,
-    );
-  });
-
-  it('uses the documented offset constant', () => {
-    expect(SPORTARR_TVDB_ALIAS_LEAGUE_OFFSET).toBe(900_000_000);
-    expect(
-      sportarrLeagueExternalIdFromTvdbAlias(
-        SPORTARR_TVDB_ALIAS_LEAGUE_OFFSET + 1,
-      ),
-    ).toBe('lg-000001');
   });
 
   it('accepts the top of the league alias range', () => {

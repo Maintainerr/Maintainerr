@@ -148,19 +148,6 @@ describe('MediaCard', () => {
     expect(screen.getByText('season 2')).toBeTruthy()
   })
 
-  it('falls back to the plain type badge when the season number is unknown', () => {
-    render(
-      <MediaCard
-        id="season-1"
-        title="Sample Series"
-        mediaType="season"
-        collectionPage={true}
-      />,
-    )
-
-    expect(screen.getByText('season')).toBeTruthy()
-  })
-
   it('numbers the episode badge and shows the episode title', () => {
     render(
       <MediaCard

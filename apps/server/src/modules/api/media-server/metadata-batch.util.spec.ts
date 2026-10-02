@@ -29,22 +29,10 @@ describe('batchIdsByRequestCost', () => {
     expect(batches.map((batch) => batch.length)).toEqual([108, 1]);
   });
 
-  // Longer ids mean fewer per request without anyone choosing a number.
-  it('reads fewer per request when the ids are longer', () => {
-    const short = batchIdsByRequestCost(ids(500, 4), 1);
-    const long = batchIdsByRequestCost(ids(500, 40), 1);
-
-    expect(short[0].length).toBeGreaterThan(long[0].length);
-  });
-
   it('still asks for an id that is over budget on its own', () => {
     expect(batchIdsByRequestCost(['x'.repeat(9000)], 1)).toEqual([
       ['x'.repeat(9000)],
     ]);
-  });
-
-  it('has nothing to read for no ids', () => {
-    expect(batchIdsByRequestCost([], 1)).toEqual([]);
   });
 });
 
@@ -102,19 +90,6 @@ describe('readMetadataInBatches', () => {
     expect(items.map((entry) => entry.id).sort()).toEqual(['a', 'b']);
     expect(set).toHaveBeenCalledWith(expect.objectContaining({ id: 'b' }));
     expect(set).not.toHaveBeenCalledWith(expect.objectContaining({ id: 'a' }));
-  });
-
-  it('makes no request when every id is cached', async () => {
-    const readBatch = jest.fn();
-
-    await readMetadataInBatches({
-      itemIds: ['a'],
-      perIdCost: 1,
-      readBatch,
-      cache: { get: () => item('a'), set: jest.fn() },
-    });
-
-    expect(readBatch).not.toHaveBeenCalled();
   });
 
   // A failed read leaves its ids out rather than reporting them as missing, and

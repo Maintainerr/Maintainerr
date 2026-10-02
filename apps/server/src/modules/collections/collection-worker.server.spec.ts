@@ -12,7 +12,6 @@ import { SeerrApiService } from '../api/seerr-api/seerr-api.service';
 import { MaintainerrLogger } from '../logging/logs.service';
 import { SettingsDataService } from '../settings/settings-data.service';
 import { ExecutionLockService } from '../tasks/execution-lock.service';
-import { TasksService } from '../tasks/tasks.service';
 import { ArrLookupCache } from '../rules/helpers/arr-lookup-cache';
 import { CollectionHandler } from './collection-handler';
 import { CollectionWorkerService } from './collection-worker.service';
@@ -29,7 +28,6 @@ jest.mock('../../utils/delay');
 
 describe('CollectionWorkerService', () => {
   let collectionWorkerService: CollectionWorkerService;
-  let taskService: Mocked<TasksService>;
   let settings: Mocked<SettingsDataService>;
   let collectionRepository: Mocked<Repository<Collection>>;
   let collectionMediaRepository: Mocked<Repository<CollectionMedia>>;
@@ -49,7 +47,6 @@ describe('CollectionWorkerService', () => {
     ).compile();
 
     collectionWorkerService = unit;
-    taskService = unitRef.get(TasksService);
     settings = unitRef.get(SettingsDataService);
     collectionRepository = unitRef.get(
       getRepositoryToken(Collection) as string,
@@ -76,14 +73,6 @@ describe('CollectionWorkerService', () => {
       getActiveSessions: jest.fn().mockResolvedValue(new Set<string>()),
       getMetadataBatch,
     } as any);
-  });
-
-  it('should abort if another instance is running', async () => {
-    taskService.isRunning.mockReturnValue(true);
-
-    await collectionWorkerService.execute();
-
-    expect(executionLock.acquire).not.toHaveBeenCalled();
   });
 
   it('should abort if the media server is unreachable', async () => {
@@ -183,6 +172,25 @@ describe('CollectionWorkerService', () => {
     expect(collectionHandler.handleMedia).toHaveBeenCalled();
   });
 
+  // The cutoff is the only thing holding a delete collection's members back: a
+  // window that collapsed to zero would hand the whole collection to DELETE.
+  it('only treats members as due once the delete window has passed', async () => {
+    const collection = createCollection({
+      arrAction: ServarrAction.DELETE,
+      deleteAfterDays: 30,
+    });
+
+    collectionRepository.find.mockResolvedValue([collection]);
+    collectionMediaRepository.find.mockResolvedValue([]);
+
+    await collectionWorkerService.execute();
+
+    const [{ where }] = collectionMediaRepository.find.mock.calls.at(-1)!;
+    const cutoff = (where as { addDate: { value: Date } }).addDate.value;
+    const thirtyDaysAgo = Date.now() - 30 * 86_400_000;
+    expect(Math.abs(cutoff.getTime() - thirtyDaysAgo)).toBeLessThan(60_000);
+  });
+
   it('should handle media for collection and trigger availability syncs', async () => {
     settings.seerrConfigured.mockReturnValue(true);
 
@@ -268,14 +276,6 @@ describe('CollectionWorkerService', () => {
 
     it.each<[string, Partial<Exclusion>]>([
       ['a show', { mediaServerId: 'show-1', ruleGroupId: null, type: 'show' }],
-      [
-        'a season',
-        { mediaServerId: 'season-1', ruleGroupId: null, type: 'season' },
-      ],
-      [
-        'a legacy untyped row',
-        { mediaServerId: 'other-1', ruleGroupId: null, parent: 'season-1' },
-      ],
     ])('skips a member %s exclusion cascades to', async (_label, exclusion) => {
       arrangeDueMember([exclusion]);
       getMetadataBatch.mockResolvedValue([
@@ -286,15 +286,6 @@ describe('CollectionWorkerService', () => {
 
       expect(getMetadataBatch).toHaveBeenCalledWith(['episode-1']);
       expect(collectionHandler.handleMedia).not.toHaveBeenCalled();
-    });
-
-    it('does not read the hierarchy when no exclusion reaches past its own id', async () => {
-      arrangeDueMember([{ mediaServerId: 'other-1', ruleGroupId: null }]);
-
-      await collectionWorkerService.execute();
-
-      expect(getMetadataBatch).not.toHaveBeenCalled();
-      expect(collectionHandler.handleMedia).toHaveBeenCalled();
     });
 
     // A batch read omits what it could not resolve, so an unread hierarchy

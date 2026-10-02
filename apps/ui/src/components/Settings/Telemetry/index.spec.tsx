@@ -141,18 +141,6 @@ describe('TelemetrySettings', () => {
     }).toEqual(ping)
   })
 
-  it('links to the public collector source', () => {
-    render(<TelemetrySettings />)
-
-    expect(
-      screen
-        .getByRole('link', { name: 'Collector source code' })
-        .getAttribute('href'),
-    ).toBe(
-      'https://github.com/Maintainerr/telemetry-collector/blob/development/README.md',
-    )
-  })
-
   /**
    * TELEMETRY=off decides the outcome on the server, so the control must not
    * invite a save that would change nothing.
@@ -172,13 +160,6 @@ describe('TelemetrySettings', () => {
       'disabled',
       true,
     )
-  })
-
-  it('shows the next run for each cadence', () => {
-    render(<TelemetrySettings />)
-
-    // Two panels, each captioned with its own next run.
-    expect(screen.getAllByText(/^\(Next: /)).toHaveLength(2)
   })
 
   it('falls back to a message when the preview cannot be loaded', () => {

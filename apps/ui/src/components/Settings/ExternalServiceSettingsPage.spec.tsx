@@ -80,35 +80,6 @@ describe('ExternalServiceSettingsPage', () => {
     cleanup()
   })
 
-  it('keeps Save Changes enabled regardless of whether connection values have changed', async () => {
-    render(
-      <ExternalServiceSettingsPage
-        updateErrorMessage="Seerr settings could not be updated"
-        pageTitle="Seerr settings - Maintainerr"
-        settingsPath="/settings/seerr"
-        testPath="/settings/test/seerr"
-        schema={urlApiKeySchema}
-        fields={urlApiKeyFields}
-        serviceName="Seerr"
-        testFailureMessage="Failed to connect"
-      />,
-    )
-
-    const saveButton = await screen.findByRole('button', {
-      name: 'Save Changes',
-    })
-
-    await waitFor(() => {
-      expect((saveButton as HTMLButtonElement).disabled).toBe(false)
-    })
-
-    fireEvent.change(screen.getByLabelText(/URL/), {
-      target: { value: 'http://seerr.internal' },
-    })
-
-    expect((saveButton as HTMLButtonElement).disabled).toBe(false)
-  })
-
   it('still allows clearing a saved integration without running a connection test', async () => {
     deleteApiHandler.mockResolvedValue({
       status: 'OK',

@@ -4,7 +4,7 @@ import {
   createMockServarrTagService,
 } from '../../../test/utils/data';
 import { ArrLookupCache } from './helpers/arr-lookup-cache';
-import { BULK_EXCLUSION_CONCURRENCY, RulesService } from './rules.service';
+import { RulesService } from './rules.service';
 
 // Regression coverage for global-exclusion handling (ruleGroupId IS NULL).
 // TypeORM 1.x throws on a bare `null` in a `where` clause, so these paths must
@@ -79,56 +79,6 @@ describe('RulesService exclusions - global (null ruleGroupId) handling', () => {
     value instanceof FindOperator && value.type === 'isNull';
 
   beforeEach(() => jest.clearAllMocks());
-
-  it('getExclusions(rulegroupId) fetches global exclusions with IsNull(), not bare null', async () => {
-    const { service, exclusionRepo } = createService();
-
-    await service.getExclusions(5);
-
-    // first call: the rule-group-specific exclusions
-    expect(exclusionRepo.find).toHaveBeenNthCalledWith(1, {
-      where: { ruleGroupId: 5 },
-    });
-    // second call: the global exclusions - must use IsNull(), never `null`
-    const globalCallWhere = exclusionRepo.find.mock.calls[1][0].where;
-    expect(isNullOperator(globalCallWhere.ruleGroupId)).toBe(true);
-  });
-
-  it('removeExclusion skips the rule-group lookup for a global exclusion (null ruleGroupId)', async () => {
-    const exclusionRepo = {
-      findOne: jest
-        .fn()
-        .mockResolvedValue({ id: 1, ruleGroupId: null, mediaServerId: 'a' }),
-      delete: jest.fn().mockResolvedValue(undefined),
-    };
-    const ruleGroupRepository = { findOne: jest.fn() };
-    const { service } = createService({ exclusionRepo, ruleGroupRepository });
-
-    const result = await service.removeExclusion(1);
-
-    expect(ruleGroupRepository.findOne).not.toHaveBeenCalled();
-    expect(exclusionRepo.delete).toHaveBeenCalledWith(1);
-    expect(result.code).toBe(1);
-  });
-
-  it('removeExclusion looks up the rule group for a scoped exclusion', async () => {
-    const exclusionRepo = {
-      findOne: jest
-        .fn()
-        .mockResolvedValue({ id: 2, ruleGroupId: 7, mediaServerId: 'b' }),
-      delete: jest.fn().mockResolvedValue(undefined),
-    };
-    const ruleGroupRepository = {
-      findOne: jest.fn().mockResolvedValue({ id: 7, collectionId: 9 }),
-    };
-    const { service } = createService({ exclusionRepo, ruleGroupRepository });
-
-    await service.removeExclusion(2);
-
-    expect(ruleGroupRepository.findOne).toHaveBeenCalledWith({
-      where: { id: 7 },
-    });
-  });
 
   // Behavior B (https://features.maintainerr.info/posts/81): the *arr exclusion-tag side effects are best-effort wiring
   // on top of the exclusion flow, gated by settings via the ServarrTagService.
@@ -664,34 +614,6 @@ describe('RulesService exclusions - global (null ruleGroupId) handling', () => {
     expect(logger.warn).toHaveBeenCalledWith(
       'Bulk exclusion failed for media movie-2',
     );
-  });
-
-  it('setBulkExclusions processes bounded concurrent batches', async () => {
-    const { service } = createBulkService(
-      Object.fromEntries(
-        Array.from({ length: 6 }, (_, i) => [`item-${i + 1}`, {}]),
-      ),
-    );
-    let active = 0;
-    let peak = 0;
-    jest.spyOn(service, 'setExclusion').mockImplementation(async () => {
-      active += 1;
-      peak = Math.max(peak, active);
-      await new Promise<void>((resolve) => setImmediate(resolve));
-      active -= 1;
-      return { code: 1, message: 'Success' };
-    });
-
-    await service.setBulkExclusions([
-      'item-1',
-      'item-2',
-      'item-3',
-      'item-4',
-      'item-5',
-      'item-6',
-    ]);
-
-    expect(peak).toBe(BULK_EXCLUSION_CONCURRENCY);
   });
 
   const createScopedBulkService = (

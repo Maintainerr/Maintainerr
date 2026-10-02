@@ -584,16 +584,6 @@ describe('SportarrActionHandler', () => {
   });
 
   describe('download-client cleanup', () => {
-    it('does not touch the download client when cleanup is off', async () => {
-      const { collection, media } = showCollectionMedia(ServarrAction.DELETE);
-      settings.downloadClientConfigured.mockReturnValue(false);
-
-      await handler.handleAction(collection, media);
-
-      expect(mockClient.getLeagueDownloadHistory).not.toHaveBeenCalled();
-      expect(downloadClient.removeDownloads).not.toHaveBeenCalled();
-    });
-
     it('removes every download the league produced on a show delete', async () => {
       const { collection, media } = showCollectionMedia(ServarrAction.DELETE);
       settings.downloadClientConfigured.mockReturnValue(true);

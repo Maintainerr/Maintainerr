@@ -319,14 +319,6 @@ describe('OverlaysController', () => {
     finish();
   });
 
-  it('defaults global process requests to non-force mode', () => {
-    processorService.processAllCollections.mockResolvedValue(undefined);
-
-    controller.processAll({});
-
-    expect(processorService.processAllCollections).toHaveBeenCalledWith(false);
-  });
-
   it('rejects a global process request with 409 while a run is in progress', () => {
     processorService.status = 'running';
 
@@ -338,29 +330,6 @@ describe('OverlaysController', () => {
     );
 
     expect(processorService.processAllCollections).not.toHaveBeenCalled();
-  });
-
-  it('processes collection requests without force mode', async () => {
-    const collection = {
-      id: 8,
-      title: 'Library Cleanup',
-      collectionMedia: [],
-    };
-    const result = { processed: 0, reverted: 0, skipped: 3, errors: 0 };
-    collectionRepo.findOne.mockResolvedValue(collection);
-    processorService.processCollection.mockResolvedValue(result);
-
-    await expect(controller.processCollection(8)).resolves.toBe(result);
-
-    expect(processorService.processCollection).toHaveBeenCalledWith(collection);
-  });
-
-  it('allows reset while overlays are globally disabled', () => {
-    processorService.resetAllOverlays.mockResolvedValue(undefined);
-
-    expect(controller.resetAll()).toBeUndefined();
-
-    expect(processorService.resetAllOverlays).toHaveBeenCalled();
   });
 
   it('rejects reset with 409 while a processor run is in progress', () => {

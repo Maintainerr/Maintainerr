@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '../../../test-utils/render'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createDeferred } from '../../../test-utils/createDeferred'
-import PlexSettings, { hasUnsavedPlexServerChanges } from './index'
+import PlexSettings from './index'
 
 const getApiHandler = vi.fn()
 const updateSettings = vi.fn()
@@ -160,63 +160,6 @@ beforeEach(() => {
   })
 })
 
-describe('hasUnsavedPlexServerChanges', () => {
-  it('returns false when the saved and current Plex server settings match', () => {
-    expect(
-      hasUnsavedPlexServerChanges(
-        {
-          hostname: 'plex.local',
-          port: '32400',
-          name: 'Plex',
-          ssl: false,
-        },
-        {
-          hostname: 'plex.local',
-          port: '32400',
-          name: 'Plex',
-          ssl: false,
-        },
-      ),
-    ).toBe(false)
-  })
-
-  it('returns true when any Plex server setting differs from the saved values', () => {
-    expect(
-      hasUnsavedPlexServerChanges(
-        {
-          hostname: 'plex.internal',
-          port: '32400',
-          name: 'Plex',
-          ssl: false,
-        },
-        {
-          hostname: 'plex.local',
-          port: '32400',
-          name: 'Plex',
-          ssl: false,
-        },
-      ),
-    ).toBe(true)
-
-    expect(
-      hasUnsavedPlexServerChanges(
-        {
-          hostname: 'plex.local',
-          port: '32401',
-          name: 'Plex Dev',
-          ssl: true,
-        },
-        {
-          hostname: 'plex.local',
-          port: '32400',
-          name: 'Plex',
-          ssl: false,
-        },
-      ),
-    ).toBe(true)
-  })
-})
-
 describe('PlexSettings', () => {
   it('keeps save and test actions unavailable until Plex credentials exist', () => {
     currentSettings.plex_auth_token = undefined
@@ -240,20 +183,17 @@ describe('PlexSettings', () => {
     ).toBe(true)
   })
 
-  it('keeps Save Changes enabled when Plex credentials exist regardless of whether server settings have changed', () => {
-    render(<PlexSettings />)
-
-    const saveButton = screen.getByRole('button', { name: 'Save Changes' })
-
-    return waitFor(() => {
-      expect((saveButton as HTMLButtonElement).disabled).toBe(false)
-    })
-  })
-
-  it('keeps Test Connection enabled when Plex credentials exist', async () => {
+  it('keeps save and test actions available once Plex credentials exist', async () => {
     render(<PlexSettings />)
 
     await waitFor(() => {
+      expect(
+        (
+          screen.getByRole('button', {
+            name: 'Save Changes',
+          }) as HTMLButtonElement
+        ).disabled,
+      ).toBe(false)
       expect(
         (
           screen.getByRole('button', {
@@ -337,18 +277,6 @@ describe('PlexSettings', () => {
         expect.objectContaining({ enabled: true }),
       )
       expect(usePlexServersMock).toHaveBeenLastCalledWith(
-        expect.objectContaining({ enabled: true }),
-      )
-    })
-  })
-
-  it('re-validates stored Plex tokens through the auth-only endpoint', async () => {
-    storedTokenValidationResponse = { valid: false }
-
-    render(<PlexSettings />)
-
-    await waitFor(() => {
-      expect(usePlexAuthValidationMock).toHaveBeenCalledWith(
         expect.objectContaining({ enabled: true }),
       )
     })

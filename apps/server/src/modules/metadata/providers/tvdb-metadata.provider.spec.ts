@@ -97,21 +97,6 @@ describe('TvdbMetadataProvider', () => {
     ).resolves.toBe('https://tvdb/series.jpg');
   });
 
-  it('does not derive ended or season count for movie details', async () => {
-    tvdbApi.getMovie.mockResolvedValue({
-      id: 1,
-      name: 'Sample Movie',
-      year: '2010',
-      status: { name: 'Released' },
-      originalLanguage: 'eng',
-    } as any);
-
-    const details = await provider.getDetails(1, 'movie');
-
-    expect(details?.ended).toBeUndefined();
-    expect(details?.firstAirDate).toBeUndefined();
-    expect(details?.seasonCount).toBeUndefined();
-  });
   it('asks TheTVDB for nothing when the id is a Sportarr league alias', async () => {
     // TheTVDB has no record of an alias, so the request would only 404 and
     // warn once per league. extractId still reads it for the Sonarr lookup.

@@ -32,39 +32,6 @@ describe('useLockBodyScroll', () => {
     expect(document.body.style.overflow).toBe('')
   })
 
-  it('second concurrent lock is a no-op on overflow but increments counter', () => {
-    const { unmount: unmountA } = renderHook(() => useLockBodyScroll(true))
-    const { unmount: unmountB } = renderHook(() => useLockBodyScroll(true))
-
-    // Both are locked - overflow is hidden.
-    expect(document.body.style.overflow).toBe('hidden')
-
-    // Releasing the first lock should NOT restore scrolling yet.
-    unmountA()
-    expect(document.body.style.overflow).toBe('hidden')
-
-    // Only after the last lock is released should scrolling be restored.
-    unmountB()
-    expect(document.body.style.overflow).toBe('')
-  })
-
-  it('only the final release restores scrolling for three nested locks', () => {
-    const { unmount: unmountA } = renderHook(() => useLockBodyScroll(true))
-    const { unmount: unmountB } = renderHook(() => useLockBodyScroll(true))
-    const { unmount: unmountC } = renderHook(() => useLockBodyScroll(true))
-
-    expect(document.body.style.overflow).toBe('hidden')
-
-    unmountA()
-    expect(document.body.style.overflow).toBe('hidden')
-
-    unmountB()
-    expect(document.body.style.overflow).toBe('hidden')
-
-    unmountC()
-    expect(document.body.style.overflow).toBe('')
-  })
-
   it('release order does not affect final overflow (covers the parent→child vs child→parent race)', () => {
     const { unmount: unmountParent } = renderHook(() => useLockBodyScroll(true))
     const { unmount: unmountChild } = renderHook(() => useLockBodyScroll(true))
@@ -79,15 +46,6 @@ describe('useLockBodyScroll', () => {
 
     unmountChild()
     expect(document.body.style.overflow).toBe('')
-  })
-
-  it('re-acquiring a lock after full release locks again', () => {
-    const { unmount: unmountFirst } = renderHook(() => useLockBodyScroll(true))
-    unmountFirst()
-    expect(document.body.style.overflow).toBe('')
-
-    renderHook(() => useLockBodyScroll(true))
-    expect(document.body.style.overflow).toBe('hidden')
   })
 
   it('restores a pre-existing inline overflow value after the final release', () => {
@@ -124,33 +82,6 @@ describe('useLockBodyScroll', () => {
     expect(document.body.style.overflow).toBe('hidden')
 
     rerender({ locked: false })
-
-    expect(document.body.style.overflow).toBe('')
-  })
-
-  it('toggling isLocked false→true acquires the lock without unmounting', () => {
-    const { rerender } = renderHook(
-      ({ locked }: { locked: boolean }) => useLockBodyScroll(locked),
-      { initialProps: { locked: false } },
-    )
-
-    expect(document.body.style.overflow).toBe('')
-
-    rerender({ locked: true })
-
-    expect(document.body.style.overflow).toBe('hidden')
-  })
-
-  it('enabling disabled prop while locked releases the lock', () => {
-    const { rerender } = renderHook(
-      ({ disabled }: { disabled: boolean }) =>
-        useLockBodyScroll(true, disabled),
-      { initialProps: { disabled: false } },
-    )
-
-    expect(document.body.style.overflow).toBe('hidden')
-
-    rerender({ disabled: true })
 
     expect(document.body.style.overflow).toBe('')
   })

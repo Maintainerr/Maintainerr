@@ -40,18 +40,6 @@ describe('RuleComparatorService', () => {
       },
     );
 
-    it.each(existsData)(
-      'should return %s when val1 is %o with action NOT_EXISTS',
-      (expected, val1) => {
-        const result = ruleComparatorService['doRuleAction'](
-          val1,
-          null,
-          RulePossibility.NOT_EXISTS,
-        );
-        expect(result).toBe(!expected);
-      },
-    );
-
     it('returns false for NOT_CONTAINS when searched tag exists in list (reported keep-tag scenario)', () => {
       const result = ruleComparatorService['doRuleAction'](
         ['9-simon', 'anime', 'huntarr-upgrade', 'keep'],
@@ -60,16 +48,6 @@ describe('RuleComparatorService', () => {
       );
 
       expect(result).toBe(false);
-    });
-
-    it('returns true for NOT_CONTAINS when searched tag does not exist in list', () => {
-      const result = ruleComparatorService['doRuleAction'](
-        ['9-simon', 'anime', 'huntarr-upgrade'],
-        'keep',
-        RulePossibility.NOT_CONTAINS,
-      );
-
-      expect(result).toBe(true);
     });
 
     const equalsData = [
@@ -81,6 +59,9 @@ describe('RuleComparatorService', () => {
       [true, ['abc'], 'ABC'],
       [true, new Date('2022-01-01'), new Date('2022-01-01')],
       [true, 5, 5],
+      // A BOOL rule compares the getter's boolean with the numeric custom value.
+      [true, true, 1],
+      [true, false, 0],
       [true, [], []],
       [false, 'abc', ''],
       [false, 'abc', undefined],
@@ -90,6 +71,7 @@ describe('RuleComparatorService', () => {
       [false, ['abc', 'def'], ['abc', 'cde']],
       [false, new Date('2022-01-01'), new Date('2022-01-02')],
       [false, 5, 4],
+      [false, false, 1],
     ] as [boolean, any, any][];
 
     it.each(equalsData)(
@@ -102,19 +84,6 @@ describe('RuleComparatorService', () => {
           action,
         );
         expect(result).toBe(expected);
-      },
-    );
-
-    it.each(equalsData)(
-      'should return %s when val1 is %o and val2 is %o with action NOT_EQUALS',
-      (expected, val1, val2) => {
-        const action = RulePossibility.NOT_EQUALS;
-        const result = ruleComparatorService['doRuleAction'](
-          val1,
-          val2,
-          action,
-        );
-        expect(result).toBe(!expected);
       },
     );
 
@@ -146,19 +115,6 @@ describe('RuleComparatorService', () => {
       },
     );
 
-    it.each(containsData)(
-      'should return %s when val1 is %o and val2 is %o with action NOT_CONTAINS',
-      (expected, val1, val2) => {
-        const action = RulePossibility.NOT_CONTAINS;
-        const result = ruleComparatorService['doRuleAction'](
-          val1,
-          val2,
-          action,
-        );
-        expect(result).toBe(!expected);
-      },
-    );
-
     const containsPartialData = [
       [true, 'abc', 'ab'],
       [true, ['abc', 'def'], ['abc']],
@@ -182,19 +138,6 @@ describe('RuleComparatorService', () => {
           action,
         );
         expect(result).toBe(expected);
-      },
-    );
-
-    it.each(containsPartialData)(
-      'should return %s when val1 is %o and val2 is %o with action NOT_CONTAINS_PARTIAL',
-      (expected, val1, val2) => {
-        const action = RulePossibility.NOT_CONTAINS_PARTIAL;
-        const result = ruleComparatorService['doRuleAction'](
-          val1,
-          val2,
-          action,
-        );
-        expect(result).toBe(!expected);
       },
     );
 
@@ -230,16 +173,30 @@ describe('RuleComparatorService', () => {
       },
     );
 
-    it.each(containsAllData)(
-      'should return %s when val1 is %o and val2 is %o with action NOT_CONTAINS_ALL',
-      (expected, val1, val2) => {
-        const action = RulePossibility.NOT_CONTAINS_ALL;
-        const result = ruleComparatorService['doRuleAction'](
-          val1,
-          val2,
-          action,
-        );
-        expect(result).toBe(!expected);
+    // Each NOT_* action is the negation of its positive action, so one pass
+    // over the positive table pins every row of it.
+    it.each([
+      [
+        'NOT_EXISTS',
+        RulePossibility.NOT_EXISTS,
+        existsData.map(([expected, val1]) => [expected, val1, null]),
+      ],
+      ['NOT_EQUALS', RulePossibility.NOT_EQUALS, equalsData],
+      ['NOT_CONTAINS', RulePossibility.NOT_CONTAINS, containsData],
+      [
+        'NOT_CONTAINS_PARTIAL',
+        RulePossibility.NOT_CONTAINS_PARTIAL,
+        containsPartialData,
+      ],
+      ['NOT_CONTAINS_ALL', RulePossibility.NOT_CONTAINS_ALL, containsAllData],
+    ] as [string, RulePossibility, [boolean, any, any][]][])(
+      '%s negates every row of its positive table',
+      (_name, action, rows) => {
+        for (const [expected, val1, val2] of rows) {
+          expect(
+            ruleComparatorService['doRuleAction'](val1, val2, action),
+          ).toBe(!expected);
+        }
       },
     );
 

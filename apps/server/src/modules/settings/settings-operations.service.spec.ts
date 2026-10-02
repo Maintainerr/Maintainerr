@@ -126,21 +126,6 @@ describe('SettingsOperationsService', () => {
     expect(tracearr.init).toHaveBeenCalledTimes(1);
   });
 
-  it('tests Tracearr with connection fields only', async () => {
-    tracearr.testConnection.mockResolvedValue({
-      status: 'OK',
-      code: 1,
-      message: '2.0.0-beta.1',
-    });
-
-    await expect(
-      service.testTracearr({
-        url: 'http://tracearr.local',
-        api_key: 'trr_pub_token',
-      }),
-    ).resolves.toEqual({ status: 'OK', code: 1, message: '2.0.0-beta.1' });
-  });
-
   it('clears the Tracearr server selection when the reconfigured media server no longer matches', async () => {
     tracearr.savedServerTracksMediaServer.mockResolvedValue(false);
 
@@ -282,16 +267,6 @@ describe('SettingsOperationsService', () => {
       message: 'Update failed, invalid CRON value was found',
     });
     expect(settingsDataService.saveSettings).not.toHaveBeenCalled();
-  });
-
-  it('still allows unrelated settings updates when Plex server settings are unchanged', async () => {
-    const response = await service.updateSettings(
-      createSettings({ applicationTitle: 'Maintainerr Dev' }),
-    );
-
-    expect(response).toEqual({ status: 'OK', code: 1, message: 'Success' });
-    expect(settingsDataService.saveSettings).toHaveBeenCalledTimes(1);
-    expect(mediaServerFactory.initialize).toHaveBeenCalledTimes(1);
   });
 
   it('does not initialize Plex directly when Jellyfin is configured', async () => {

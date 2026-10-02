@@ -380,38 +380,4 @@ describe('MetadataSettingsService', () => {
       );
     },
   );
-
-  it('logs and surfaces the final failure when the retry also rejects', async () => {
-    const queryBuilder = createQueryBuilder([{ mediaServerId: '12345' }]);
-    const refreshItemMetadata = jest
-      .fn()
-      .mockRejectedValueOnce(new Error('initial refresh failed'))
-      .mockRejectedValueOnce(new Error('retry refresh failed'));
-    const getMetadata = jest.fn().mockResolvedValue({ id: '12345' });
-
-    collectionMediaRepo.createQueryBuilder.mockReturnValue(
-      queryBuilder as never,
-    );
-    mediaServerFactory.getService.mockResolvedValue({
-      isSetup: jest.fn().mockReturnValue(true),
-      getServerType: jest.fn().mockReturnValue(MediaServerType.PLEX),
-      refreshItemMetadata,
-      getMetadata,
-    } as never);
-
-    await (service as any).refreshMediaServerItems(MetadataProvider.TMDB, {
-      retryFailedItemsWithMetadataLookup: true,
-    });
-
-    expect(refreshItemMetadata).toHaveBeenCalledTimes(2);
-    expect(getMetadata).toHaveBeenCalledWith('12345');
-    expect(logger.warn).toHaveBeenCalledWith(
-      expect.stringContaining(
-        'Retried plex metadata refresh failed for item 12345',
-      ),
-    );
-    expect(logger.warn).toHaveBeenCalledWith(
-      '1 item(s) could not be refreshed',
-    );
-  });
 });

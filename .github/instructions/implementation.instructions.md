@@ -51,8 +51,11 @@ Read [ARCHITECTURE.md](../../ARCHITECTURE.md) for the system architecture overvi
    processes. Keep evidence under ignored `.playwright-mcp/`, without credentials.
 8. **Keep tests and comments purposeful.** Test observable behavior and meaningful
    regressions. Extend or parameterize existing tests before adding scaffolding;
-   avoid tests that merely mirror implementation. Keep comments that explain
-   non-obvious decisions and remove temporary debugging code from the diff.
+   avoid tests that merely mirror implementation. Follow
+   [Writing tests](project-notes.instructions.md#writing-tests): one test per
+   behavior, a guard test must fail without its guard, and no real network,
+   timers or data-folder writes. Keep comments that explain non-obvious
+   decisions and remove temporary debugging code from the diff.
 9. **Validate the final diff.** Run focused tests and relevant type, lint,
    format, and build checks during development. Reserve the heavy full workspace
    suite for final PR preparation, rather than running it throughout development.

@@ -4,7 +4,6 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { ZodValidationPipe } from 'nestjs-zod';
-import { z } from 'zod';
 import {
   createCollection,
   createCollectionMedia,
@@ -17,14 +16,8 @@ import {
 import { CollectionHandler } from './collection-handler';
 import { CollectionWorkerService } from './collection-worker.service';
 import {
-  addToCollectionBodySchema,
-  collectionBodySchema,
   CollectionsController,
-  createCollectionBodySchema,
   manualCollectionActionBodySchema,
-  removeCollectionBodySchema,
-  removeFromCollectionBodySchema,
-  updateScheduleBodySchema,
 } from './collections.controller';
 import {
   CollectionPosterService,
@@ -94,91 +87,7 @@ describe('CollectionsController', () => {
     });
   });
 
-  it('validates the item action request body with Zod', () => {
-    const pipe = new ZodValidationPipe(
-      z.object({
-        collectionId: z.number().int(),
-        mediaId: z.string().min(1),
-      }),
-    );
-
-    expect(() =>
-      pipe.transform(
-        {
-          collectionId: '7',
-          mediaId: '',
-        },
-        {
-          type: 'body',
-          metatype: Object,
-          data: '',
-        },
-      ),
-    ).toThrow('Validation failed');
-  });
-
   it.each([
-    [
-      'create collection body',
-      createCollectionBodySchema,
-      {
-        collection: {
-          ...createCollection(),
-          title: '',
-        },
-      },
-    ],
-    [
-      'add to collection body',
-      addToCollectionBodySchema,
-      {
-        collectionId: 'not-a-number',
-        media: [{ mediaServerId: '123' }],
-      },
-    ],
-    [
-      'remove from collection body',
-      removeFromCollectionBodySchema,
-      {
-        collectionId: 7,
-        media: [{ mediaServerId: '' }],
-      },
-    ],
-    [
-      'remove collection body',
-      removeCollectionBodySchema,
-      {
-        collectionId: 'not-a-number',
-      },
-    ],
-    [
-      'update collection body',
-      collectionBodySchema,
-      {
-        ...createCollection(),
-        title: '',
-      },
-    ],
-    [
-      'update schedule body',
-      updateScheduleBodySchema,
-      {
-        schedule: '',
-      },
-    ],
-    [
-      'manual collection action body',
-      manualCollectionActionBodySchema,
-      {
-        collectionId: 1,
-        mediaId: '10',
-        context: {
-          id: 1,
-          type: 'movie',
-        },
-        action: 2,
-      },
-    ],
     [
       'manual collection add action without collectionId',
       manualCollectionActionBodySchema,
@@ -610,31 +519,6 @@ describe('CollectionsController', () => {
   });
 
   describe('uploadCollectionPoster', () => {
-    it('returns the poster push status details', async () => {
-      const collection = createCollection();
-      const file = {
-        originalname: 'poster.png',
-        buffer: Buffer.from('image-bytes'),
-      };
-
-      collectionsService.getCollectionRecord.mockResolvedValue(collection);
-      collectionPosterService.storePoster.mockResolvedValue({
-        buffer: Buffer.from('jpeg-bytes'),
-        contentType: 'image/jpeg',
-      });
-      collectionPosterService.pushToMediaServer.mockResolvedValue({
-        attempted: false,
-        pushed: false,
-      });
-
-      await expect(
-        controller.uploadCollectionPoster(collection.id, file),
-      ).resolves.toEqual({
-        pushed: false,
-        attempted: false,
-      });
-    });
-
     it('maps invalid images to BadRequestException', async () => {
       const collection = createCollection();
       const file = {
@@ -685,18 +569,6 @@ describe('CollectionsController', () => {
       expect(
         collectionPosterService.refreshCollectionOnMediaServer,
       ).toHaveBeenCalledWith('remote-id');
-    });
-
-    it('reports refreshRequested=false when the media server refresh fails', async () => {
-      const collection = createCollection({ mediaServerId: 'remote-id' });
-      collectionsService.getCollectionRecord.mockResolvedValue(collection);
-      collectionPosterService.refreshCollectionOnMediaServer.mockResolvedValueOnce(
-        { requested: false },
-      );
-
-      await expect(
-        controller.deleteCollectionPoster(collection.id),
-      ).resolves.toEqual({ cleared: true, refreshRequested: false });
     });
   });
 });

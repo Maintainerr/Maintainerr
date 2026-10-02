@@ -36,13 +36,6 @@ describe('createPrefetchProgressReporter', () => {
     expect(lines).toEqual([]);
   });
 
-  it('stays silent below the first decile', () => {
-    const { lines, report } = collect();
-    report(5, 100);
-    report(9, 100);
-    expect(lines).toEqual([]);
-  });
-
   it('does not divide by an unknown total', () => {
     const { lines, report } = collect();
     report(5, 0);

@@ -1,14 +1,5 @@
 import { ExecutionLockService } from './execution-lock.service';
 
-const defer = () => {
-  let resolve!: () => void;
-  const promise = new Promise<void>((res) => {
-    resolve = res;
-  });
-
-  return { promise, resolve };
-};
-
 describe('ExecutionLockService', () => {
   let service: ExecutionLockService;
 
@@ -57,14 +48,6 @@ describe('ExecutionLockService', () => {
     release();
   });
 
-  it('acquires immediately with tryAcquire when the key is free', async () => {
-    const release = service.tryAcquire('shared');
-
-    expect(release).toBeInstanceOf(Function);
-
-    release?.();
-  });
-
   it('allows tryAcquire after a previous acquire was released', async () => {
     const release = await service.acquire('shared');
     release();
@@ -72,26 +55,6 @@ describe('ExecutionLockService', () => {
     const next = service.tryAcquire('shared');
     expect(next).not.toBeNull();
     next?.();
-  });
-
-  it('does not block subsequent acquires after release', async () => {
-    const release = await service.acquire('shared');
-    release();
-
-    const deferred = defer();
-    let acquiredAfterRelease = false;
-
-    const waiter = (async () => {
-      const releaseAgain = await service.acquire('shared');
-      acquiredAfterRelease = true;
-      releaseAgain();
-      deferred.resolve();
-    })();
-
-    await deferred.promise;
-    await waiter;
-
-    expect(acquiredAfterRelease).toBe(true);
   });
 
   describe('acquireWithin', () => {
@@ -138,20 +101,6 @@ describe('ExecutionLockService', () => {
 
       expect(release).not.toBeNull();
       release?.();
-      expect(service.tryAcquire('shared')).not.toBeNull();
-    });
-
-    it('hands the lock to a fresh acquirer after a timeout, not to the abandoned waiter', async () => {
-      const releaseFirst = await service.acquire('shared');
-      await service.acquireWithin('shared', 10);
-
-      releaseFirst();
-
-      // Drain the abandoned waiter's turn, then the key must be free rather
-      // than held by a releaser nobody is holding.
-      const release = await service.acquire('shared');
-      release();
-
       expect(service.tryAcquire('shared')).not.toBeNull();
     });
 

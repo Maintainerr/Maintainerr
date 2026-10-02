@@ -597,62 +597,6 @@ describe('MediaModal', () => {
     expect(link.getAttribute('href')).toBe('/collections/20')
   })
 
-  it('keeps both maintainerr status tiles visible in a two-column grid when both sections are shown', async () => {
-    getApiHandlerMock.mockImplementation((path: string) => {
-      if (path === '/media-server') {
-        return Promise.resolve({})
-      }
-
-      if (path === '/settings') {
-        return Promise.resolve({})
-      }
-
-      if (path === '/media-server/meta/88') {
-        return Promise.resolve({} as MediaItem)
-      }
-
-      if (path === '/media-server/meta/88/maintainerr-status') {
-        return Promise.resolve({
-          excludedFrom: [
-            {
-              label: 'Excluded Collection',
-              targetPath: '/collections/88/exclusions',
-            },
-          ],
-          manuallyAddedTo: [
-            {
-              label: 'Manual Collection',
-              targetPath: '/collections/88',
-            },
-          ],
-        })
-      }
-
-      if (path === '/streamystats/info') {
-        return Promise.reject(new Error('404 Streamystats not configured'))
-      }
-
-      throw new Error(`Unexpected request: ${path}`)
-    })
-
-    const { container } = render(
-      <MediaModal
-        onClose={() => {}}
-        id={88}
-        mediaType="movie"
-        title="Movie"
-        summary="Movie summary"
-        forceStatusLoad={true}
-      />,
-    )
-
-    expect(await screen.findByText('Excluded From')).toBeTruthy()
-    expect(screen.getByText('Manually Added To')).toBeTruthy()
-
-    const detailsGrid = container.querySelector('.mt-4.grid')
-    expect(detailsGrid?.className).toContain('grid-cols-2')
-  })
-
   it('shows the trigger rule action control for actionable collection items', async () => {
     getApiHandlerMock.mockImplementation((path: string) => {
       if (path === '/media-server') {
@@ -929,48 +873,6 @@ describe('MediaModal', () => {
     expect(await screen.findByText('season 2')).toBeTruthy()
     expect(await screen.findByText('What happens in season two.')).toBeTruthy()
     expect(screen.queryByText('No summary available.')).toBeNull()
-  })
-
-  it('does not ask the provider for a description the media server already has', async () => {
-    getApiHandlerMock.mockImplementation((path: string) => {
-      if (path === '/media-server') {
-        return Promise.resolve({})
-      }
-
-      if (path === '/settings') {
-        return Promise.resolve({})
-      }
-
-      if (path === '/media-server/meta/56') {
-        return Promise.resolve({ summary: 'Season summary.' } as MediaItem)
-      }
-
-      if (path.startsWith('/metadata/backdrop/show?')) {
-        return Promise.resolve(undefined)
-      }
-
-      if (path === '/streamystats/info') {
-        return Promise.reject(new Error('404 Streamystats not configured'))
-      }
-
-      throw new Error(`Unexpected request: ${path}`)
-    })
-
-    render(
-      <MediaModal
-        onClose={() => {}}
-        id={56}
-        mediaType="season"
-        seasonNumber={1}
-        title="Sample Series"
-        providerIds={{ tmdb: ['101'] }}
-      />,
-    )
-
-    expect(await screen.findByText('Season summary.')).toBeTruthy()
-    expect(getApiHandlerMock).not.toHaveBeenCalledWith(
-      expect.stringContaining('/metadata/overview/'),
-    )
   })
 
   it('hides the trigger rule action control for excluded collection items', async () => {

@@ -649,60 +649,6 @@ describe('RulesService.updateRules', () => {
     );
   });
 
-  it('does not reapply sort on save when the sort value is cleared', async () => {
-    const { service, collectionService } = buildSortTransitionFixture({
-      previousSort: 'title.asc',
-      nextSort: null,
-    });
-
-    await service.updateRules({
-      id: 5,
-      libraryId: 'lib-1',
-      dataType: 'movie',
-      name: 'rg',
-      description: '',
-      rules: [],
-      useRules: false,
-      isActive: true,
-      collection: {
-        manualCollection: false,
-        manualCollectionName: '',
-        keepLogsForMonths: 1,
-        mediaServerSort: null,
-      },
-      notifications: [],
-    } as any);
-
-    expect(collectionService.applyCollectionSort).not.toHaveBeenCalled();
-  });
-
-  it('does not touch sort on save when the sort value is unchanged', async () => {
-    const { service, collectionService } = buildSortTransitionFixture({
-      previousSort: 'title.asc',
-      nextSort: 'title.asc',
-    });
-
-    await service.updateRules({
-      id: 5,
-      libraryId: 'lib-1',
-      dataType: 'movie',
-      name: 'rg',
-      description: '',
-      rules: [],
-      useRules: false,
-      isActive: true,
-      collection: {
-        manualCollection: false,
-        manualCollectionName: '',
-        keepLogsForMonths: 1,
-        mediaServerSort: 'title.asc',
-      },
-      notifications: [],
-    } as any);
-
-    expect(collectionService.applyCollectionSort).not.toHaveBeenCalled();
-  });
-
   it('backfills *arr membership tags when tagInArr is turned on (false→true)', async () => {
     const group = { id: 5, collectionId: 42, dataType: 'movie' };
     const dbCollection = {

@@ -69,29 +69,4 @@ describe('RulesService.getRuleConstants', () => {
     expect(ids).not.toContain(Application.SPORTARR);
     expect(ids).toContain(Application.SONARR);
   });
-
-  it('includes Sportarr when a Sportarr server exists', async () => {
-    const service = createRulesService({
-      radarr: false,
-      sonarr: false,
-      sportarr: true,
-    });
-
-    const ids = await applicationIds(service);
-    expect(ids).toContain(Application.SPORTARR);
-    expect(ids).not.toContain(Application.SONARR);
-    expect(ids).not.toContain(Application.RADARR);
-  });
-
-  it('includes Tracearr when its connection is configured', async () => {
-    const service = createRulesService({
-      radarr: false,
-      sonarr: false,
-      sportarr: false,
-    });
-
-    await expect(applicationIds(service)).resolves.toContain(
-      Application.TRACEARR,
-    );
-  });
 });

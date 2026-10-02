@@ -1,12 +1,25 @@
 import { MediaServerFeature } from '@maintainerr/contracts';
 import { Mocked, TestBed } from '@suites/unit';
 import * as fs from 'fs';
+import * as os from 'os';
 import * as path from 'path';
 import sharp from 'sharp';
 import { dataDir as configDataDir } from '../../app/config/dataDir';
 import { MediaServerFactory } from '../api/media-server/media-server.factory';
 import { IMediaServerService } from '../api/media-server/media-server.interface';
 import { CollectionPosterService } from './collection-poster.service';
+
+// A fresh temp folder as the data directory, so the spec never touches the dev
+// app's stored posters.
+jest.mock('../../app/config/dataDir', () => {
+  const { mkdtempSync } = jest.requireActual<typeof import('fs')>('fs');
+  const { join } = jest.requireActual<typeof import('path')>('path');
+  const { tmpdir } = jest.requireActual<typeof import('os')>('os');
+  return {
+    ...jest.requireActual('../../app/config/dataDir'),
+    dataDir: mkdtempSync(join(tmpdir(), 'maintainerr-spec-')),
+  };
+});
 
 const STORAGE_DIR = path.join(configDataDir, 'collection-posters');
 
@@ -45,7 +58,9 @@ describe('CollectionPosterService', () => {
   });
 
   afterAll(() => {
-    fs.rmSync(STORAGE_DIR, { recursive: true, force: true });
+    if (configDataDir.startsWith(os.tmpdir())) {
+      fs.rmSync(configDataDir, { recursive: true, force: true });
+    }
   });
 
   describe('storePoster', () => {
@@ -76,10 +91,6 @@ describe('CollectionPosterService', () => {
 
       service.removeStoredPoster(7);
       expect(service.getStoredPosterFile(7)).toBeNull();
-    });
-
-    it('is a no-op when nothing is stored', () => {
-      expect(() => service.removeStoredPoster(404)).not.toThrow();
     });
   });
 

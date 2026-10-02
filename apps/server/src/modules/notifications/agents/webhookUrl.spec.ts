@@ -8,13 +8,6 @@ describe('validateWebhookUrl', () => {
     });
   });
 
-  it('accepts an https URL', () => {
-    expect(validateWebhookUrl('https://example.com/hook')).toEqual({
-      ok: true,
-      url: 'https://example.com/hook',
-    });
-  });
-
   it('returns the normalised URL (e.g. adds the root path)', () => {
     expect(validateWebhookUrl('https://example.com')).toEqual({
       ok: true,

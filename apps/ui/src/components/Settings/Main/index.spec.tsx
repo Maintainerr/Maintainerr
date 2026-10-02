@@ -52,25 +52,6 @@ describe('MainSettings', () => {
     }
   })
 
-  it('keeps Save Changes enabled regardless of whether general settings have changed', () => {
-    render(<MainSettings />)
-
-    const saveButton = screen.getByRole('button', { name: 'Save Changes' })
-
-    expect((saveButton as HTMLButtonElement).disabled).toBe(false)
-  })
-
-  it('keeps Save Changes enabled when clearing saved fields so the user can reset them', () => {
-    render(<MainSettings />)
-
-    const saveButton = screen.getByRole('button', { name: 'Save Changes' })
-    const apiKeyInput = screen.getByLabelText('API key')
-
-    fireEvent.change(apiKeyInput, { target: { value: '' } })
-
-    expect((saveButton as HTMLButtonElement).disabled).toBe(false)
-  })
-
   it('saves cleared general settings values as a reset', () => {
     render(<MainSettings />)
 

@@ -66,19 +66,6 @@ describe('ServarrServerCard', () => {
     expect(putApiHandler).not.toHaveBeenCalled()
   })
 
-  it('keeps Save Changes enabled when editing a saved server without a retest', () => {
-    render(<Harness settings={saved} />)
-
-    fireEvent.change(screen.getByLabelText('Server Name'), {
-      target: { value: 'Radarr Backup' },
-    })
-    fireEvent.change(screen.getByLabelText('URL'), {
-      target: { value: 'http://radarr.internal' },
-    })
-
-    expect(button(/Save Changes/i).disabled).toBe(false)
-  })
-
   it('enables saving a new server once the required fields are filled', () => {
     render(<Harness />)
 

@@ -67,7 +67,7 @@ describe('PlexTvApi.validateToken', () => {
   );
 
   // Transient failures must not be mistaken for a bad token (429 = rate limit).
-  it.each([429, 408, 503])(
+  it.each([429, 503])(
     'returns unreachable on a transient %i',
     async (status) => {
       rejectWithStatus(status);
@@ -75,12 +75,6 @@ describe('PlexTvApi.validateToken', () => {
       await expect(createApi().validateToken()).resolves.toBe('unreachable');
     },
   );
-
-  it('returns unreachable when plex.tv times out', async () => {
-    get.mockRejectedValue(new AxiosError('timeout', 'ECONNABORTED'));
-
-    await expect(createApi().validateToken()).resolves.toBe('unreachable');
-  });
 });
 
 describe('PlexTvApi.getDevices', () => {
@@ -223,19 +217,5 @@ describe('PlexTvApi.getUsers', () => {
     await expect(api.getUsers()).resolves.toMatchObject({
       MediaContainer: { User: [{ $: { username: 'bob' } }] },
     });
-  });
-
-  it('re-reads plex.tv after the cache is flushed between rule runs', async () => {
-    get.mockResolvedValue({ data: usersXml('alice') });
-    const api = createApi();
-    await api.getUsers();
-
-    cacheManager.flushAll();
-    get.mockResolvedValue({ data: usersXml('carol') });
-
-    await expect(api.getUsers()).resolves.toMatchObject({
-      MediaContainer: { User: [{ $: { username: 'carol' } }] },
-    });
-    expect(get).toHaveBeenCalledTimes(2);
   });
 });

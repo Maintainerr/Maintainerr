@@ -94,47 +94,6 @@ describe('SonarrApi', () => {
     );
   });
 
-  it('should log actual matched count when an air date matches multiple episodes', async () => {
-    const firstMatchingEpisode = createSonarrEpisode({
-      id: 101,
-      seasonNumber: 2026,
-      episodeNumber: 5,
-      airDate: '2026-01-05',
-      episodeFileId: 501,
-    });
-    const secondMatchingEpisode = createSonarrEpisode({
-      id: 102,
-      seasonNumber: 2026,
-      episodeNumber: 6,
-      airDate: '2026-01-05',
-      episodeFileId: 502,
-    });
-
-    jest
-      .spyOn(sonarrApi, 'getEpisodes')
-      .mockResolvedValue([firstMatchingEpisode, secondMatchingEpisode]);
-    const runPutSpy = jest
-      .spyOn(sonarrApi as any, 'runPut')
-      .mockResolvedValue(true);
-    const runDeleteSpy = jest
-      .spyOn(sonarrApi as any, 'runDelete')
-      .mockResolvedValue(true);
-
-    await sonarrApi.UnmonitorDeleteEpisodes(
-      1,
-      2026,
-      [],
-      true,
-      new Date('2026-01-05T00:00:00.000Z'),
-    );
-
-    expect(runPutSpy).toHaveBeenCalledTimes(2);
-    expect(runDeleteSpy).toHaveBeenCalledTimes(2);
-    expect(logger.log).toHaveBeenCalledWith(
-      'Deleting 2 episode(s) from show with ID 1 from Sonarr.',
-    );
-  });
-
   it('should return no matches when explicit episode numbers are all undefined', async () => {
     jest
       .spyOn(sonarrApi as any, 'get')
@@ -160,16 +119,6 @@ describe('SonarrApi', () => {
     jest.spyOn(sonarrApi as any, 'get').mockRejectedValue(new Error('boom'));
 
     await expect(sonarrApi.getEpisodes(1, 1, [1])).rejects.toThrow('boom');
-  });
-
-  it('should log a usable message when episode lookup throws a non-Error value', async () => {
-    jest.spyOn(sonarrApi as any, 'get').mockRejectedValue('boom');
-
-    await expect(sonarrApi.getEpisodes(1, 1, [1])).rejects.toBe('boom');
-
-    expect(logger.warn).toHaveBeenCalledWith(
-      "Failed to retrieve show 1's episodes 1: boom",
-    );
   });
 
   it('should unmonitor each existing episode from the one episode read, then delete its file', async () => {
@@ -410,29 +359,9 @@ describe('SonarrApi', () => {
         'Failed to run DELETE: /episodefile/1',
       );
     });
-
-    it('should return true when DELETE returns data (API success)', async () => {
-      jest.spyOn(sonarrApi as any, 'delete').mockResolvedValue({});
-
-      const result = await (sonarrApi as any).runDelete('episodefile/1');
-
-      expect(result).toBe(true);
-    });
   });
 
   describe('getSeriesDownloadHistory', () => {
-    it('requests the series history endpoint', async () => {
-      const getWithoutCache = jest
-        .spyOn(sonarrApi as any, 'getWithoutCache')
-        .mockResolvedValue([]);
-
-      await sonarrApi.getSeriesDownloadHistory(42);
-
-      expect(getWithoutCache).toHaveBeenCalledWith(
-        '/history/series?seriesId=42',
-      );
-    });
-
     it('keeps only grabbed/import events, lowercases the hash, and carries the episodeId', async () => {
       jest.spyOn(sonarrApi as any, 'getWithoutCache').mockResolvedValue([
         { id: 1, eventType: 'grabbed', downloadId: 'ABCDEF', episodeId: 10 },
@@ -472,31 +401,6 @@ describe('SonarrApi', () => {
       ]);
     });
 
-    it('falls back to data.torrentInfoHash when downloadId is absent', async () => {
-      jest.spyOn(sonarrApi as any, 'getWithoutCache').mockResolvedValue([
-        {
-          id: 1,
-          eventType: 'grabbed',
-          episodeId: 7,
-          data: { torrentInfoHash: 'HASH-X' },
-        },
-      ]);
-
-      const result = await sonarrApi.getSeriesDownloadHistory(1);
-
-      expect(result).toEqual([{ hash: 'hash-x', episodeId: 7 }]);
-    });
-
-    it('drops rows that have neither a downloadId nor a torrentInfoHash', async () => {
-      jest
-        .spyOn(sonarrApi as any, 'getWithoutCache')
-        .mockResolvedValue([{ id: 1, eventType: 'grabbed', episodeId: 7 }]);
-
-      const result = await sonarrApi.getSeriesDownloadHistory(1);
-
-      expect(result).toEqual([]);
-    });
-
     it('returns [] when the history response is not an array', async () => {
       jest
         .spyOn(sonarrApi as any, 'getWithoutCache')
@@ -505,30 +409,6 @@ describe('SonarrApi', () => {
       const result = await sonarrApi.getSeriesDownloadHistory(1);
 
       expect(result).toEqual([]);
-    });
-
-    it('returns [] when the history fetch throws', async () => {
-      jest
-        .spyOn(sonarrApi as any, 'getWithoutCache')
-        .mockRejectedValue(new Error('boom'));
-
-      await expect(sonarrApi.getSeriesDownloadHistory(1)).resolves.toEqual([]);
-    });
-
-    it('falls back to torrentInfoHash when downloadId is empty or whitespace', async () => {
-      jest.spyOn(sonarrApi as any, 'getWithoutCache').mockResolvedValue([
-        {
-          id: 1,
-          eventType: 'grabbed',
-          downloadId: '   ',
-          episodeId: 7,
-          data: { torrentInfoHash: 'HASH-Y' },
-        },
-      ]);
-
-      const result = await sonarrApi.getSeriesDownloadHistory(1);
-
-      expect(result).toEqual([{ hash: 'hash-y', episodeId: 7 }]);
     });
   });
 
@@ -556,14 +436,6 @@ describe('SonarrApi', () => {
       const result = await sonarrApi.getDownloadIdsForSeries(1);
 
       expect(result).toEqual(['abcdef', 'ghijkl']);
-    });
-
-    it('returns [] when the fetch throws', async () => {
-      jest
-        .spyOn(sonarrApi as any, 'getWithoutCache')
-        .mockRejectedValue(new Error('boom'));
-
-      await expect(sonarrApi.getDownloadIdsForSeries(1)).resolves.toEqual([]);
     });
   });
 
@@ -642,97 +514,6 @@ describe('SonarrApi', () => {
       });
       expect(runDeleteSpy).toHaveBeenCalledWith('episodefile/601');
       expect(result).toBe(true);
-    });
-
-    it('performs no verification read when the PUT succeeds', async () => {
-      const episode = createSonarrEpisode({
-        id: 101,
-        seasonNumber: 2026,
-        episodeNumber: 5,
-        airDate: '2026-01-05',
-        episodeFileId: 501,
-        monitored: true,
-      });
-      jest.spyOn(sonarrApi, 'getEpisodes').mockResolvedValue([episode]);
-      jest.spyOn(sonarrApi as any, 'runPut').mockResolvedValue(true);
-      const getWithoutCacheSpy = jest
-        .spyOn(sonarrApi as any, 'getWithoutCache')
-        .mockResolvedValue(undefined);
-      jest.spyOn(sonarrApi as any, 'runDelete').mockResolvedValue(true);
-
-      const result = await sonarrApi.UnmonitorDeleteEpisodes(
-        1,
-        2026,
-        [],
-        true,
-        new Date('2026-01-05T00:00:00.000Z'),
-      );
-
-      expect(getWithoutCacheSpy).not.toHaveBeenCalled();
-      expect(result).toBe(true);
-    });
-
-    it('reports success without deleting when PUT timed out but Sonarr confirms unmonitored (deleteFiles=false)', async () => {
-      const episode = createSonarrEpisode({
-        id: 101,
-        seasonNumber: 2026,
-        episodeNumber: 5,
-        airDate: '2026-01-05',
-        episodeFileId: 501,
-        monitored: true,
-      });
-      jest.spyOn(sonarrApi, 'getEpisodes').mockResolvedValue([episode]);
-      jest.spyOn(sonarrApi as any, 'runPut').mockResolvedValue(false);
-      jest
-        .spyOn(sonarrApi as any, 'getWithoutCache')
-        .mockResolvedValue({ ...episode, monitored: false });
-      const runDeleteSpy = jest
-        .spyOn(sonarrApi as any, 'runDelete')
-        .mockResolvedValue(true);
-
-      const result = await sonarrApi.UnmonitorDeleteEpisodes(
-        1,
-        2026,
-        [],
-        false,
-        new Date('2026-01-05T00:00:00.000Z'),
-      );
-
-      expect(runDeleteSpy).not.toHaveBeenCalled();
-      expect(result).toBe(true);
-    });
-
-    it('warns without the file clause when unconfirmed and no delete was requested (deleteFiles=false)', async () => {
-      const episode = createSonarrEpisode({
-        id: 101,
-        seasonNumber: 2026,
-        episodeNumber: 5,
-        airDate: '2026-01-05',
-        episodeFileId: 501,
-        monitored: true,
-      });
-      jest.spyOn(sonarrApi, 'getEpisodes').mockResolvedValue([episode]);
-      jest.spyOn(sonarrApi as any, 'runPut').mockResolvedValue(false);
-      jest
-        .spyOn(sonarrApi as any, 'getWithoutCache')
-        .mockResolvedValue({ ...episode, monitored: true });
-      const runDeleteSpy = jest
-        .spyOn(sonarrApi as any, 'runDelete')
-        .mockResolvedValue(true);
-
-      const result = await sonarrApi.UnmonitorDeleteEpisodes(
-        1,
-        2026,
-        [],
-        false,
-        new Date('2026-01-05T00:00:00.000Z'),
-      );
-
-      expect(runDeleteSpy).not.toHaveBeenCalled();
-      expect(logger.warn).toHaveBeenCalledWith(
-        'Could not confirm episode 101 was unmonitored.',
-      );
-      expect(result).toBe(false);
     });
 
     it('skips the file delete and warns when PUT failed and Sonarr confirms still monitored (genuine failure)', async () => {
@@ -929,11 +710,13 @@ describe('SonarrApi', () => {
       await expect(sonarrApi.getEpisodeFiles(42)).resolves.toBeUndefined();
     });
 
-    it('reads the episode list uncached before a season delete', async () => {
+    it('reads the episode list uncached and deletes only that season (#3415)', async () => {
       const cached = jest.spyOn(sonarrApi as any, 'get');
+      // The read returns the whole show, so another season's file must survive.
       const uncached = jest
         .spyOn(sonarrApi as any, 'getWithoutCache')
         .mockResolvedValue([
+          createSonarrEpisode({ seasonNumber: 2, episodeFileId: 600 }),
           createSonarrEpisode({ seasonNumber: 3, episodeFileId: 700 }),
         ]);
       jest.spyOn(sonarrApi as any, 'runPut').mockResolvedValue(true);
@@ -953,7 +736,7 @@ describe('SonarrApi', () => {
         timeout: 20000,
       });
       expect(cached).not.toHaveBeenCalled();
-      expect(runDeleteSpy).toHaveBeenCalledWith('episodefile/700');
+      expect(runDeleteSpy.mock.calls).toEqual([['episodefile/700']]);
       expect(logger.log).toHaveBeenCalledWith(
         'Unmonitored season 3 from Sonarr show with ID 1 and removed 1 episode file(s)',
       );

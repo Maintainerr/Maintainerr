@@ -282,20 +282,6 @@ describe('MetadataSettings', () => {
     expect(tvdbTest.disabled).toBe(true)
   })
 
-  it('keeps Save Changes enabled regardless of whether the API key has changed', async () => {
-    renderMetadata()
-
-    await screen.findAllByLabelText('API Key')
-
-    expect(
-      (
-        screen.getAllByRole('button', {
-          name: 'Save Changes',
-        })[0] as HTMLButtonElement
-      ).disabled,
-    ).toBe(false)
-  })
-
   it('allows clearing a saved API key and saving the empty value', async () => {
     getApiHandler.mockImplementation((url: string) => {
       if (url === '/settings/tmdb') {

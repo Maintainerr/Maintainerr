@@ -1,25 +1,12 @@
 import { addProviderId, emptyProviderIds } from './media-provider-ids.utils';
 
 describe('media provider ids', () => {
-  it('starts every provider off with an empty list', () => {
-    expect(emptyProviderIds()).toEqual({
-      imdb: [],
-      tmdb: [],
-      tvdb: [],
-      sportarr: [],
-    });
-  });
-
   it.each([
-    ['imdb', 'imdb'],
     ['Imdb', 'imdb'],
-    ['tmdb', 'tmdb'],
     ['Tmdb', 'tmdb'],
     ['themoviedb', 'tmdb'],
-    ['tvdb', 'tvdb'],
     ['Tvdb', 'tvdb'],
     ['thetvdb', 'tvdb'],
-    ['sportarr', 'sportarr'],
     ['Sportarr', 'sportarr'],
   ])('files %s under %s', (name, provider) => {
     const providerIds = emptyProviderIds();

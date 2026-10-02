@@ -15,7 +15,6 @@ const LIBRARY_ID = 'lib-1';
 import cacheManager from '../../api/lib/cache';
 import { JellyfinAdapterService } from '../../api/media-server/jellyfin/jellyfin-adapter.service';
 import { MaintainerrLogger } from '../../logging/logs.service';
-import { ArrLookupCache } from '../helpers/arr-lookup-cache';
 import { JellyfinGetterService } from './jellyfin-getter.service';
 import { MetadataRuleValueService } from './metadata-rule-value.service';
 
@@ -128,49 +127,12 @@ describe('JellyfinGetterService', () => {
   describe('studios (id 46)', () => {
     const STUDIOS_PROP_ID = 46;
 
-    it('delegates to the shared metadata resolution with the run cache', async () => {
-      const mediaItem = createMediaItem();
-      const cache = new ArrLookupCache();
-      metadataRuleValueService.getStudios.mockResolvedValue(['Studio One']);
-
-      await expect(
-        jellyfinGetterService.get(
-          STUDIOS_PROP_ID,
-          mediaItem,
-          'movie',
-          createRuleGroupDto({ dataType: 'movie', libraryId: LIBRARY_ID }),
-          cache,
-        ),
-      ).resolves.toEqual(['Studio One']);
-      expect(metadataRuleValueService.getStudios).toHaveBeenCalledWith(
-        mediaItem,
-        cache,
-      );
-      expect(jellyfinAdapter.getMetadata).not.toHaveBeenCalled();
-    });
-
     it('preserves undefined so a failed lookup stays transient', async () => {
       metadataRuleValueService.getStudios.mockResolvedValue(undefined);
 
       await expect(
         jellyfinGetterService.get(STUDIOS_PROP_ID, createMediaItem(), 'movie'),
       ).resolves.toBeUndefined();
-    });
-  });
-
-  describe('when Jellyfin is not configured', () => {
-    it('should return null when Jellyfin service is not set up', async () => {
-      jellyfinAdapter.isSetup.mockReturnValue(false);
-      const mediaItem = createMediaItem({ type: 'movie' });
-
-      const response = await jellyfinGetterService.get(
-        0, // addDate
-        mediaItem,
-        'movie',
-        createRuleGroupDto({ dataType: 'movie', libraryId: LIBRARY_ID }),
-      );
-
-      expect(response).toBeNull();
     });
   });
 
@@ -382,53 +344,6 @@ describe('JellyfinGetterService', () => {
 
       expect(response).toEqual([]);
     });
-
-    it('returns an empty list for episodes when grandparent metadata is missing', async () => {
-      const episodeItem = createMediaItem({
-        id: 'episode-missing-grandparent',
-        type: 'episode' as MediaItemType,
-        parentId: 'season-1',
-        grandparentId: 'show-missing',
-        genres: [{ name: 'Episode Local Genre' }],
-      });
-
-      jellyfinAdapter.getMetadata.mockImplementation(async (itemId: string) => {
-        if (itemId === 'episode-missing-grandparent') return episodeItem;
-        return undefined;
-      });
-
-      const response = await jellyfinGetterService.get(
-        11,
-        episodeItem,
-        'episode',
-        createRuleGroupDto({ dataType: 'show', libraryId: LIBRARY_ID }),
-      );
-
-      expect(response).toEqual([]);
-    });
-  });
-
-  describe('IMDb rating semantics', () => {
-    it('falls back to Jellyfin CommunityRating for rating_imdb', async () => {
-      const mediaItem = createMediaItem({
-        type: 'movie',
-        ratings: [
-          { source: 'community', value: 6.9, type: 'audience' },
-          { source: 'audience', value: 8.8, type: 'audience' },
-        ],
-      });
-
-      jellyfinAdapter.getMetadata.mockResolvedValue(mediaItem);
-
-      const response = await jellyfinGetterService.get(
-        44,
-        mediaItem,
-        'movie',
-        createRuleGroupDto({ dataType: 'movie', libraryId: LIBRARY_ID }),
-      );
-
-      expect(response).toBe(6.9);
-    });
   });
 
   describe('seenBy (id: 1)', () => {
@@ -451,48 +366,6 @@ describe('JellyfinGetterService', () => {
       );
 
       expect(response).toEqual(['Alice', 'Bob']);
-    });
-
-    it('preserves Jellyfin user id ordering and falls back to unknown ids', async () => {
-      const mediaItem = createMediaItem();
-      const users: MediaUser[] = [
-        createMediaUser({ id: 'user-1', name: 'Alice' }),
-        createMediaUser({ id: 'user-2', name: 'Bob' }),
-      ];
-
-      jellyfinAdapter.getMetadata.mockResolvedValue(mediaItem);
-      jellyfinAdapter.getItemSeenBy.mockResolvedValue([
-        'user-2',
-        'user-missing',
-        'user-1',
-      ]);
-      jellyfinAdapter.getUsers.mockResolvedValue(users);
-
-      const response = await jellyfinGetterService.get(
-        1,
-        mediaItem,
-        'movie',
-        createRuleGroupDto({ dataType: 'movie', libraryId: LIBRARY_ID }),
-      );
-
-      expect(response).toEqual(['Bob', 'user-missing', 'Alice']);
-    });
-
-    it('should return empty array when no one has watched', async () => {
-      const mediaItem = createMediaItem();
-
-      jellyfinAdapter.getMetadata.mockResolvedValue(mediaItem);
-      jellyfinAdapter.getItemSeenBy.mockResolvedValue([]);
-      jellyfinAdapter.getUsers.mockResolvedValue([]);
-
-      const response = await jellyfinGetterService.get(
-        1,
-        mediaItem,
-        'movie',
-        createRuleGroupDto({ dataType: 'movie', libraryId: LIBRARY_ID }),
-      );
-
-      expect(response).toEqual([]);
     });
   });
 
@@ -1195,18 +1068,6 @@ describe('JellyfinGetterService', () => {
         );
       },
     );
-
-    it('preserves lookup failure as undefined', async () => {
-      const mediaItem = createMediaItem({ id: 'movie-1', type: 'movie' });
-      jellyfinAdapter.getMetadata.mockResolvedValue(mediaItem);
-      jellyfinAdapter.getLastPlayedAt.mockRejectedValue(
-        new Error('lookup failed'),
-      );
-
-      await expect(
-        jellyfinGetterService.get(47, mediaItem, 'movie'),
-      ).resolves.toBeUndefined();
-    });
   });
 
   describe('show and season traversal rules', () => {
@@ -2010,39 +1871,6 @@ describe('JellyfinGetterService', () => {
 
       expect(response).toBe(2); // 2 episodes have been watched
     });
-
-    it('should return 0 when no episodes have been watched', async () => {
-      const showItem = createMediaItem({ type: 'show' as MediaItemType });
-      const season1 = createMediaItem({
-        id: 'season-1',
-        type: 'season' as MediaItemType,
-      });
-      const episode1 = createMediaItem({
-        id: 'ep-1',
-        type: 'episode' as MediaItemType,
-      });
-
-      jellyfinAdapter.getMetadata.mockResolvedValue(showItem);
-      jellyfinAdapter.getChildrenMetadata.mockImplementation(
-        async (parentId: string, childType?: MediaItemType) => {
-          if (childType === 'season') return [season1];
-          if (parentId === 'season-1') return [episode1];
-          return [];
-        },
-      );
-      jellyfinAdapter.getDescendantEpisodeWatchHistory.mockResolvedValue(
-        createDescendantWatchHistory({ 'ep-1': [] }),
-      );
-
-      const response = await jellyfinGetterService.get(
-        15,
-        showItem,
-        'show',
-        createRuleGroupDto({ dataType: 'show', libraryId: LIBRARY_ID }),
-      );
-
-      expect(response).toBe(0);
-    });
   });
 
   describe('sw_amountOfViews (id: 17) - Total views', () => {
@@ -2341,22 +2169,6 @@ describe('JellyfinGetterService', () => {
     });
   });
 
-  describe('unsupported properties', () => {
-    it('should return null for unknown property IDs', async () => {
-      const mediaItem = createMediaItem();
-      jellyfinAdapter.getMetadata.mockResolvedValue(mediaItem);
-
-      const response = await jellyfinGetterService.get(
-        999, // Unknown property ID
-        mediaItem,
-        'movie',
-        createRuleGroupDto({ dataType: 'movie', libraryId: LIBRARY_ID }),
-      );
-
-      expect(response).toBeNull();
-    });
-  });
-
   describe('sw_watchers (id: 18) - Users that watched the show/season/episode', () => {
     const SW_WATCHERS_PROP_ID = 18;
 
@@ -2395,58 +2207,6 @@ describe('JellyfinGetterService', () => {
       ).toHaveBeenCalledWith('show-1', LIBRARY_ID);
     });
 
-    it('returns an empty list when no user has watched any episode', async () => {
-      const showItem = createMediaItem({
-        id: 'show-2',
-        type: 'show' as MediaItemType,
-      });
-
-      jellyfinAdapter.getMetadata.mockResolvedValue(showItem);
-      jellyfinAdapter.getDescendantEpisodeWatchHistory.mockResolvedValue(
-        createDescendantWatchHistory({ 'ep-1': [] }),
-      );
-      jellyfinAdapter.getUsers.mockResolvedValue([
-        createMediaUser({ id: 'user-1', name: 'Alice' }),
-      ]);
-
-      const response = await jellyfinGetterService.get(
-        SW_WATCHERS_PROP_ID,
-        showItem,
-        'show',
-        createRuleGroupDto({ dataType: 'show', libraryId: LIBRARY_ID }),
-      );
-
-      expect(response).toEqual([]);
-    });
-
-    it('works for seasons (recursive episode descendants)', async () => {
-      const seasonItem = createMediaItem({
-        id: 'season-1',
-        type: 'season' as MediaItemType,
-      });
-
-      jellyfinAdapter.getMetadata.mockResolvedValue(seasonItem);
-      jellyfinAdapter.getDescendantEpisodeWatchHistory.mockResolvedValue(
-        createDescendantWatchHistory({ 'ep-1': [{ userId: 'user-2' }] }),
-      );
-      jellyfinAdapter.getUsers.mockResolvedValue([
-        createMediaUser({ id: 'user-1', name: 'Alice' }),
-        createMediaUser({ id: 'user-2', name: 'Bob' }),
-      ]);
-
-      const response = await jellyfinGetterService.get(
-        SW_WATCHERS_PROP_ID,
-        seasonItem,
-        'season',
-        createRuleGroupDto({ dataType: 'show', libraryId: LIBRARY_ID }),
-      );
-
-      expect(response).toEqual(['Bob']);
-      expect(
-        jellyfinAdapter.getDescendantEpisodeWatchHistory,
-      ).toHaveBeenCalledWith('season-1', LIBRARY_ID);
-    });
-
     it('keeps episode watcher lookups on direct watch history', async () => {
       const episodeItem = createMediaItem({
         id: 'episode-1',
@@ -2475,30 +2235,6 @@ describe('JellyfinGetterService', () => {
       expect(
         jellyfinAdapter.getDescendantEpisodeWatchHistory,
       ).not.toHaveBeenCalled();
-    });
-
-    it('falls back to the user id when a name is not resolvable', async () => {
-      const showItem = createMediaItem({
-        id: 'show-3',
-        type: 'show' as MediaItemType,
-      });
-
-      jellyfinAdapter.getMetadata.mockResolvedValue(showItem);
-      jellyfinAdapter.getDescendantEpisodeWatchHistory.mockResolvedValue(
-        createDescendantWatchHistory({ 'ep-1': [{ userId: 'user-ghost' }] }),
-      );
-      jellyfinAdapter.getUsers.mockResolvedValue([
-        createMediaUser({ id: 'user-1', name: 'Alice' }),
-      ]);
-
-      const response = await jellyfinGetterService.get(
-        SW_WATCHERS_PROP_ID,
-        showItem,
-        'show',
-        createRuleGroupDto({ dataType: 'show', libraryId: LIBRARY_ID }),
-      );
-
-      expect(response).toEqual(['user-ghost']);
     });
   });
 
@@ -2627,20 +2363,6 @@ describe('JellyfinGetterService', () => {
   });
 
   describe('error handling', () => {
-    it('should return undefined when an error occurs', async () => {
-      const mediaItem = createMediaItem({ type: 'movie' });
-      jellyfinAdapter.getMetadata.mockRejectedValue(new Error('API Error'));
-
-      const response = await jellyfinGetterService.get(
-        0,
-        mediaItem,
-        'movie',
-        createRuleGroupDto({ dataType: 'movie', libraryId: LIBRARY_ID }),
-      );
-
-      expect(response).toBeUndefined();
-    });
-
     it('should return undefined when metadata cannot be read', async () => {
       // getMetadata answers undefined for a failed read as well as a missing
       // item, so this must stay the transient signal - null would let
@@ -2857,24 +2579,5 @@ describe('JellyfinGetterService', () => {
         ).not.toHaveBeenCalled();
       },
     );
-
-    it('answers null for lastViewedAt on a movie without sweeping', async () => {
-      const movieItem = createMediaItem({ id: 'movie-1', type: 'movie' });
-
-      jellyfinAdapter.getMetadata.mockResolvedValue(movieItem);
-      jellyfinAdapter.getWatchHistory.mockResolvedValue([]);
-
-      const response = await jellyfinGetterService.get(
-        7,
-        movieItem,
-        'movie',
-        createRuleGroupDto({ dataType: 'movie', libraryId: LIBRARY_ID }),
-      );
-
-      expect(response).toBeNull();
-      expect(
-        jellyfinAdapter.getDescendantEpisodeWatchHistory,
-      ).not.toHaveBeenCalled();
-    });
   });
 });

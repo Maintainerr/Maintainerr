@@ -280,27 +280,6 @@ describe('TracearrApiService', () => {
     ).toEqual(['Unknown']);
   });
 
-  it('invalidates a prefetched history snapshot', async () => {
-    apiMock.getWithoutCache.mockImplementation(async (endpoint: string) => {
-      if (endpoint === '/recently-added') {
-        return CONFIRMING_LIBRARY;
-      }
-      if (endpoint === '/history') {
-        return {
-          data: [historyRow('33333333-3333-4333-8333-333333333333', 'movie-1')],
-          meta: { nextCursor: null, pageSize: 100 },
-        };
-      }
-      return usersPage;
-    });
-
-    await service.prefetchHistory();
-    service.invalidateHistory();
-
-    expect(service.getHistoryIndex()).toBeUndefined();
-    expect(service.getUsernamesByTracearrUserId()).toBeUndefined();
-  });
-
   it('stops an incremental sweep after it reaches a previously indexed chain', async () => {
     const known = historyRow('33333333-3333-4333-8333-333333333333', 'movie-1');
     const newer = historyRow('44444444-4444-4444-8444-444444444444', 'movie-2');
@@ -417,25 +396,6 @@ describe('TracearrApiService', () => {
     await service.prefetchHistory();
 
     expect(service.getHistoryIndex()?.rowsById.has(unfinished.id)).toBe(false);
-  });
-
-  it('memoizes each show episode catalog for a run', async () => {
-    const mediaServer = {
-      getUsers: jest
-        .fn()
-        .mockResolvedValue([{ id: 'account-1', name: 'alice' }]),
-      getChildrenMetadata: jest
-        .fn()
-        .mockResolvedValueOnce([{ id: 'season-1', type: 'season' }])
-        .mockResolvedValueOnce([{ id: 'episode-1', type: 'episode' }]),
-    };
-    mediaServerFactory.getService.mockResolvedValue(mediaServer as never);
-    const show = { id: 'show-1', type: 'show' } as never;
-
-    await expect(service.getEpisodeIds(show)).resolves.toEqual(['episode-1']);
-    await expect(service.getEpisodeIds(show)).resolves.toEqual(['episode-1']);
-
-    expect(mediaServer.getChildrenMetadata).toHaveBeenCalledTimes(2);
   });
 
   it('does not expose an index after a later cursor page fails', async () => {

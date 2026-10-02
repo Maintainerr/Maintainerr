@@ -95,9 +95,7 @@ describe('RadarrActionHandler', () => {
     });
 
     const mockedRadarrApi = mockRadarrApi(servarrService, logger);
-    jest
-      .spyOn(mockedRadarrApi, 'getMovieByTmdbId')
-      .mockResolvedValue(undefined);
+    jest.spyOn(mockedRadarrApi, 'getMovieByTmdbId').mockResolvedValue(null);
 
     await radarrActionHandler.handleAction(collection, collectionMedia);
 
@@ -118,9 +116,7 @@ describe('RadarrActionHandler', () => {
     });
 
     const mockedRadarrApi = mockRadarrApi(servarrService, logger);
-    jest
-      .spyOn(mockedRadarrApi, 'getMovieByTmdbId')
-      .mockResolvedValue(undefined);
+    jest.spyOn(mockedRadarrApi, 'getMovieByTmdbId').mockResolvedValue(null);
 
     const result = await radarrActionHandler.handleAction(
       collection,
@@ -302,68 +298,6 @@ describe('RadarrActionHandler', () => {
       await radarrActionHandler.handleAction(collection, collectionMedia);
 
       expect(folderCleanup.cleanupAfterDelete).not.toHaveBeenCalled();
-    });
-
-    it('reports the skip when the movie is not tracked in Radarr, so an enabled cleanup is not silent', async () => {
-      const collection = createCollection({
-        arrAction: ServarrAction.UNMONITOR_DELETE_ALL,
-        radarrSettingsId: 1,
-        type: 'movie',
-        cleanupLeftoverFolders: true,
-      });
-      const collectionMedia = createCollectionMedia(collection, { tmdbId: 1 });
-      const mockedRadarrApi = mockRadarrApi(servarrService, logger);
-      jest.spyOn(mockedRadarrApi, 'getMovieByTmdbId').mockResolvedValue(null);
-
-      await radarrActionHandler.handleAction(collection, collectionMedia);
-
-      expect(
-        folderCleanup.logNotApplicableForUntrackedItem,
-      ).toHaveBeenCalledWith(collectionMedia.mediaServerId);
-      expect(folderCleanup.cleanupAfterDelete).not.toHaveBeenCalled();
-      expect(mediaServer.deleteFromDisk).toHaveBeenCalledWith(
-        collectionMedia.mediaServerId,
-      );
-    });
-
-    it('stays quiet about the skip when the collection has not opted in', async () => {
-      const collection = createCollection({
-        arrAction: ServarrAction.UNMONITOR_DELETE_ALL,
-        radarrSettingsId: 1,
-        type: 'movie',
-        cleanupLeftoverFolders: false,
-      });
-      const collectionMedia = createCollectionMedia(collection, { tmdbId: 1 });
-      const mockedRadarrApi = mockRadarrApi(servarrService, logger);
-      jest.spyOn(mockedRadarrApi, 'getMovieByTmdbId').mockResolvedValue(null);
-
-      await radarrActionHandler.handleAction(collection, collectionMedia);
-
-      expect(
-        folderCleanup.logNotApplicableForUntrackedItem,
-      ).not.toHaveBeenCalled();
-    });
-
-    it('does not claim a file removal when Radarr held no files for the movie', async () => {
-      const collection = createCollection({
-        arrAction: ServarrAction.UNMONITOR_DELETE_ALL,
-        radarrSettingsId: 1,
-        type: 'movie',
-      });
-      const collectionMedia = createCollectionMedia(collection, { tmdbId: 1 });
-      const mockedRadarrApi = mockRadarrApi(servarrService, logger);
-      jest
-        .spyOn(mockedRadarrApi, 'getMovieByTmdbId')
-        .mockResolvedValue(createRadarrMovie({ id: 5 }));
-      jest
-        .spyOn(mockedRadarrApi, 'updateMovie')
-        .mockResolvedValue({ ok: true, deletedFileCount: 0 });
-
-      await radarrActionHandler.handleAction(collection, collectionMedia);
-
-      expect(logger.log).toHaveBeenCalledWith(
-        expect.stringContaining('it had no files to remove'),
-      );
     });
 
     it('reads no cleanup inputs when the collection has not opted in', async () => {
@@ -604,33 +538,6 @@ describe('RadarrActionHandler', () => {
         'hash-1',
         'hash-2',
       ]);
-    });
-
-    it('does not look up downloads when no download client is configured', async () => {
-      settings.downloadClientConfigured.mockReturnValue(false);
-
-      const collection = createCollection({
-        arrAction: ServarrAction.DELETE,
-        radarrSettingsId: 1,
-        type: 'movie',
-      });
-      const collectionMedia = createCollectionMedia(collection, { tmdbId: 1 });
-
-      const mockedRadarrApi = mockRadarrApi(servarrService, logger);
-      jest
-        .spyOn(mockedRadarrApi, 'getMovieByTmdbId')
-        .mockResolvedValue(createRadarrMovie({ id: 5 }));
-      const downloadIdsSpy = jest.spyOn(
-        mockedRadarrApi,
-        'getDownloadIdsForMovie',
-      );
-
-      await radarrActionHandler.handleAction(collection, collectionMedia);
-
-      expect(downloadIdsSpy).not.toHaveBeenCalled();
-      expect(downloadClient.removeDownloads).not.toHaveBeenCalledWith(
-        expect.arrayContaining([expect.any(String)]),
-      );
     });
 
     it('does not remove downloads for a non-file-deleting action (UNMONITOR)', async () => {

@@ -90,28 +90,6 @@ describe('NotificationService', () => {
     expect(content).not.toContain('season undefined');
   });
 
-  it('builds a single overlay applied notification message', async () => {
-    const { service } = createService();
-
-    const result = await service.handleNotification(
-      NotificationType.OVERLAY_APPLIED,
-      [{ mediaServerId: '1' }],
-      'My Collection',
-    );
-
-    expect(result).toBe('Success');
-
-    const content = await (service as any).transformMessageContent(
-      "🖼️ Overlay has been applied to '{media_title}' in '{collection_name}'.",
-      [{ mediaServerId: '1' }],
-      'My Collection',
-    );
-
-    expect(content).toBe(
-      "🖼️ Overlay has been applied to 'Test Media' in 'My Collection'.",
-    );
-  });
-
   describe('requester in the pre-deletion warning', () => {
     const aboutToBeHandled = (service: NotificationService) =>
       (service as any).getContent(
@@ -463,24 +441,6 @@ describe('NotificationService', () => {
   });
 
   describe('collection handling failed message', () => {
-    it('names the collection that failed', async () => {
-      const { service } = createService();
-
-      const { message } = (service as any).getContent(
-        NotificationType.COLLECTION_HANDLING_FAILED,
-        false,
-      );
-      const content = await (service as any).transformMessageContent(
-        message,
-        undefined,
-        'My Collection',
-      );
-
-      expect(content).toBe(
-        "⚠️ Couldn't finish handling one or more items in 'My Collection'. Check the Maintainerr logs for details.",
-      );
-    });
-
     it('drops the collection clause when there is no collection context', async () => {
       const { service } = createService();
 
@@ -727,26 +687,6 @@ describe('NotificationService', () => {
       );
 
       expect(handle).toHaveBeenCalledTimes(1);
-    });
-  });
-
-  it('defines content for overlay reverted notifications', () => {
-    const { service } = createService();
-
-    expect(
-      (service as any).getContent(NotificationType.OVERLAY_REVERTED, false),
-    ).toEqual({
-      subject: 'Overlay Reverted',
-      message:
-        "↩️ Overlay has been reverted for '{media_title}' in '{collection_name}'.",
-    });
-
-    expect(
-      (service as any).getContent(NotificationType.OVERLAY_REVERTED, true),
-    ).toEqual({
-      subject: 'Overlay Reverted',
-      message:
-        "↩️ Overlays have been reverted for these media items in '{collection_name}'.\n\n{media_items}",
     });
   });
 

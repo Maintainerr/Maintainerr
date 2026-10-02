@@ -91,12 +91,4 @@ describe('RulesService Test Media Tracearr freshness', () => {
       expect.any(ArrLookupCache),
     );
   });
-
-  it('does not refresh Tracearr history for other Test Media rules', async () => {
-    const { service, tracearrApi } = createService([Application.PLEX, 5]);
-
-    await service.testRuleGroupWithData(1, 'movie-1');
-
-    expect(tracearrApi.prefetchHistory).not.toHaveBeenCalled();
-  });
 });

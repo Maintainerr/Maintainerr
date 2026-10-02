@@ -29,75 +29,76 @@ vi.mock('../../utils/ClientLogger', () => ({
   logClientError: (...args: unknown[]) => logClientError(...args),
 }))
 
-describe.each([
-  { label: 'Radarr', service: 'radarr' },
-  { label: 'Sonarr', service: 'sonarr' },
-] as const)('$label settings loading', ({ label, service }) => {
-  const path = `/settings/${service}`
+// ServarrSettings is one component for every *arr, so one service covers it.
+describe.each([{ label: 'Radarr', service: 'radarr' }] as const)(
+  '$label settings loading',
+  ({ label, service }) => {
+    const path = `/settings/${service}`
 
-  beforeEach(() => {
-    getApiHandler.mockReset()
-    deleteApiHandler.mockReset()
-    logClientError.mockReset()
-  })
-
-  it('does not show transient loading UI while server settings load', async () => {
-    const request = createDeferred<
-      Array<{
-        id: number
-        serverName: string
-        url: string
-        apiKey: string
-      }>
-    >()
-
-    getApiHandler.mockImplementation((url: string) => {
-      if (url === path) {
-        return request.promise
-      }
-
-      // ExclusionTagSettings fetches global settings; answer benignly.
-      if (url === '/settings') {
-        return Promise.resolve({})
-      }
-
-      throw new Error(`Unexpected request: ${url}`)
+    beforeEach(() => {
+      getApiHandler.mockReset()
+      deleteApiHandler.mockReset()
+      logClientError.mockReset()
     })
 
-    renderWithClient(<ServarrSettings service={service} />)
+    it('does not show transient loading UI while server settings load', async () => {
+      const request = createDeferred<
+        Array<{
+          id: number
+          serverName: string
+          url: string
+          apiKey: string
+        }>
+      >()
 
-    expect(
-      screen.queryByRole('status', { name: `Loading ${label} servers` }),
-    ).toBeNull()
-    expect(
-      screen.queryByRole('button', { name: `Add ${label} server` }),
-    ).toBeNull()
+      getApiHandler.mockImplementation((url: string) => {
+        if (url === path) {
+          return request.promise
+        }
 
-    request.resolve([
-      {
-        id: 1,
-        serverName: label,
-        url: `http://${label.toLowerCase()}.local`,
-        apiKey: 'token',
-      },
-    ])
+        // ExclusionTagSettings fetches global settings; answer benignly.
+        if (url === '/settings') {
+          return Promise.resolve({})
+        }
 
-    expect(await screen.findByText(label)).toBeTruthy()
-    expect(
-      screen.getByRole('button', { name: `Add ${label} server` }),
-    ).toBeTruthy()
-  })
+        throw new Error(`Unexpected request: ${url}`)
+      })
 
-  it('says the list failed to load instead of offering only Add', async () => {
-    getApiHandler.mockRejectedValue(new Error('Request failed'))
+      renderWithClient(<ServarrSettings service={service} />)
 
-    renderWithClient(<ServarrSettings service={service} />)
+      expect(
+        screen.queryByRole('status', { name: `Loading ${label} servers` }),
+      ).toBeNull()
+      expect(
+        screen.queryByRole('button', { name: `Add ${label} server` }),
+      ).toBeNull()
 
-    expect(
-      await screen.findByText('The server list could not be loaded.'),
-    ).toBeTruthy()
-    expect(
-      screen.queryByRole('button', { name: `Add ${label} server` }),
-    ).toBeNull()
-  })
-})
+      request.resolve([
+        {
+          id: 1,
+          serverName: label,
+          url: `http://${label.toLowerCase()}.local`,
+          apiKey: 'token',
+        },
+      ])
+
+      expect(await screen.findByText(label)).toBeTruthy()
+      expect(
+        screen.getByRole('button', { name: `Add ${label} server` }),
+      ).toBeTruthy()
+    })
+
+    it('says the list failed to load instead of offering only Add', async () => {
+      getApiHandler.mockRejectedValue(new Error('Request failed'))
+
+      renderWithClient(<ServarrSettings service={service} />)
+
+      expect(
+        await screen.findByText('The server list could not be loaded.'),
+      ).toBeTruthy()
+      expect(
+        screen.queryByRole('button', { name: `Add ${label} server` }),
+      ).toBeNull()
+    })
+  },
+)

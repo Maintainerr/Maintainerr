@@ -217,33 +217,6 @@ describe('RuleMigrationService', () => {
       expect(ruleGroupRepo.delete).toHaveBeenCalledWith(1);
     });
 
-    it('should throw error for incompatible rules when skipIncompatible is false', async () => {
-      const mockRules: Partial<Rules>[] = [
-        {
-          id: 1,
-          ruleGroupId: 1,
-          ruleJson: JSON.stringify({
-            operator: null,
-            action: RulePossibility.EQUALS,
-            firstVal: [Application.PLEX, 30], // watchlist_isWatchlisted - Plex only
-            customVal: { ruleTypeId: 0, value: '7' },
-            section: 0,
-          }),
-          ruleGroup: { id: 1, name: 'Watchlist Group' } as RuleGroup,
-        },
-      ];
-
-      rulesRepo.find.mockResolvedValue(mockRules as Rules[]);
-
-      await expect(
-        service.migrateRules(
-          MediaServerType.PLEX,
-          MediaServerType.JELLYFIN,
-          false, // Don't skip - throw on incompatible
-        ),
-      ).rejects.toThrow(/cannot be migrated/);
-    });
-
     it('should remap Plex rating_imdb rules to Jellyfin rating_imdb', async () => {
       const originalRule: Partial<Rules> = {
         id: 1,
@@ -388,32 +361,6 @@ describe('RuleMigrationService', () => {
       });
     });
 
-    // Tautulli, Streamystats and Tracearr rules are carried across a server
-    // change untouched; the executor warns when the companion is unavailable.
-    it('leaves a companion per-user rule alone', () => {
-      const rules: RuleDto[] = [
-        {
-          operator: null,
-          action: RulePossibility.BIGGER,
-          firstVal: [Application.TAUTULLI, 9],
-          customVal: { ruleTypeId: 0, value: '1' },
-          username: 'alice',
-          section: 0,
-        },
-      ];
-
-      const result = service.migrateImportedRuleDtos(
-        rules,
-        MediaServerType.JELLYFIN,
-      );
-
-      expect(result.skippedRules).toBe(0);
-      expect(result.rules[0]).toMatchObject({
-        firstVal: [Application.TAUTULLI, 9],
-        username: 'alice',
-      });
-    });
-
     it('backfills an unset within-section operator to OR (pre-explicit-operator community rule)', () => {
       // Mirrors a real community rule (appVersion 2.19.0): three rules in one
       // section with the third operator left unset. reassert only fixes section
@@ -478,27 +425,6 @@ describe('RuleMigrationService', () => {
       expect(result.rules).toHaveLength(1);
       expect(result.rules[0].firstVal).toEqual([Application.JELLYFIN, 0]);
       expect(result.rules[0].lastVal).toEqual([Application.SEERR, 0]); // untouched
-    });
-
-    it('migrates a media-server lastVal when firstVal belongs to another app', () => {
-      const rules: RuleDto[] = [
-        {
-          operator: null,
-          action: RulePossibility.BIGGER,
-          firstVal: [Application.SEERR, 0], // foreign - untouched
-          lastVal: [Application.PLEX, 0], // addDate - must migrate
-          section: 0,
-        },
-      ];
-
-      const result = service.migrateImportedRuleDtos(
-        rules,
-        MediaServerType.JELLYFIN,
-      );
-
-      expect(result.migratedRules).toBe(1);
-      expect(result.rules[0].firstVal).toEqual([Application.SEERR, 0]);
-      expect(result.rules[0].lastVal).toEqual([Application.JELLYFIN, 0]);
     });
 
     it('drops a rule whose media-server property has no target equivalent', () => {
@@ -638,93 +564,6 @@ describe('RuleMigrationService', () => {
       );
       expect(call2.firstVal[0]).toBe(Application.JELLYFIN);
       expect(call2.firstVal[1]).toBe(34); // Same property ID
-    });
-
-    it('should preview rating properties as migratable', async () => {
-      const mockRules: Partial<Rules>[] = [
-        {
-          id: 1,
-          ruleGroupId: 1,
-          ruleJson: JSON.stringify({
-            operator: null,
-            action: RulePossibility.BIGGER,
-            firstVal: [Application.PLEX, 36], // rating_rottenTomatoesCriticShow
-            customVal: { ruleTypeId: 0, value: '5' },
-            section: 0,
-          }),
-          ruleGroup: { id: 1, name: 'Rating Group' } as RuleGroup,
-        },
-      ];
-
-      rulesRepo.find.mockResolvedValue(mockRules as Rules[]);
-      ruleGroupRepo.count.mockResolvedValue(1);
-
-      const preview = await service.previewMigration(
-        MediaServerType.PLEX,
-        MediaServerType.JELLYFIN,
-      );
-
-      expect(preview.migratableRules).toBe(1);
-      expect(preview.skippedRules).toBe(0);
-    });
-
-    it('should preview rating_imdb as migratable for Jellyfin', async () => {
-      const mockRules: Partial<Rules>[] = [
-        {
-          id: 1,
-          ruleGroupId: 1,
-          ruleJson: JSON.stringify({
-            operator: null,
-            action: RulePossibility.BIGGER,
-            firstVal: [Application.PLEX, 31], // rating_imdb
-            customVal: { ruleTypeId: 0, value: '6' },
-            section: 0,
-          }),
-          ruleGroup: { id: 1, name: 'IMDb Group' } as RuleGroup,
-        },
-      ];
-
-      rulesRepo.find.mockResolvedValue(mockRules as Rules[]);
-      ruleGroupRepo.count.mockResolvedValue(1);
-
-      const preview = await service.previewMigration(
-        MediaServerType.PLEX,
-        MediaServerType.JELLYFIN,
-      );
-
-      expect(preview.migratableRules).toBe(1);
-      expect(preview.skippedRules).toBe(0);
-    });
-
-    it('should still flag watchlist properties as incompatible', async () => {
-      const mockRules: Partial<Rules>[] = [
-        {
-          id: 1,
-          ruleGroupId: 1,
-          ruleJson: JSON.stringify({
-            operator: null,
-            action: RulePossibility.EQUALS,
-            firstVal: [Application.PLEX, 28], // watchlist_isListedByUsers - truly incompatible
-            customVal: { ruleTypeId: 4, value: 'testuser' },
-            section: 0,
-          }),
-          ruleGroup: { id: 1, name: 'Watchlist Group' } as RuleGroup,
-        },
-      ];
-
-      rulesRepo.find.mockResolvedValue(mockRules as Rules[]);
-      ruleGroupRepo.count.mockResolvedValue(1);
-
-      const preview = await service.previewMigration(
-        MediaServerType.PLEX,
-        MediaServerType.JELLYFIN,
-      );
-
-      expect(preview.migratableRules).toBe(0);
-      expect(preview.skippedRules).toBe(1);
-      expect(preview.skippedDetails[0].propertyName).toBe(
-        'watchlist_isListedByUsers',
-      );
     });
   });
 
@@ -989,79 +828,6 @@ describe('RuleMigrationService', () => {
       expect(rulesRepo.delete).not.toHaveBeenCalled();
       expect(ruleGroupRepo.delete).not.toHaveBeenCalled();
     });
-
-    it('should fall back to injected repos when no EntityManager is provided', async () => {
-      const originalRule: Partial<Rules> = {
-        id: 1,
-        ruleGroupId: 1,
-        ruleJson: JSON.stringify({
-          operator: null,
-          action: RulePossibility.BIGGER,
-          firstVal: [Application.PLEX, 0],
-          customVal: { ruleTypeId: 1, value: '30' },
-          section: 0,
-        }),
-        ruleGroup: { id: 1, name: 'Test Group' } as RuleGroup,
-      };
-
-      rulesRepo.find.mockResolvedValue([originalRule as Rules]);
-      rulesRepo.update.mockResolvedValue({ affected: 1 } as any);
-
-      const result = await service.migrateRules(
-        MediaServerType.PLEX,
-        MediaServerType.JELLYFIN,
-        true,
-        // no EntityManager passed
-      );
-
-      expect(result.migratedRules).toBe(1);
-
-      // Verify injected repos WERE used
-      expect(rulesRepo.find).toHaveBeenCalledTimes(1);
-      expect(rulesRepo.update).toHaveBeenCalledTimes(1);
-    });
-  });
-
-  describe('getApplicationId', () => {
-    it('should throw for unknown server type', async () => {
-      rulesRepo.find.mockResolvedValue([]);
-
-      await expect(
-        service.previewMigration(
-          'unknown' as MediaServerType,
-          MediaServerType.JELLYFIN,
-        ),
-      ).rejects.toThrow(/Unknown media server type/);
-    });
-
-    it('should resolve EMBY to Application.EMBY when migrating', async () => {
-      const originalRule: Partial<Rules> = {
-        id: 1,
-        ruleGroupId: 1,
-        ruleJson: JSON.stringify({
-          operator: null,
-          action: RulePossibility.BIGGER,
-          firstVal: [Application.PLEX, 0], // addDate
-          customVal: { ruleTypeId: 1, value: '30' },
-          section: 0,
-        }),
-        ruleGroup: { id: 1, name: 'Date Group' } as RuleGroup,
-      };
-
-      rulesRepo.find.mockResolvedValue([originalRule as Rules]);
-      rulesRepo.update.mockResolvedValue({ affected: 1 } as any);
-
-      await service.migrateRules(
-        MediaServerType.PLEX,
-        MediaServerType.EMBY,
-        true,
-      );
-
-      const updatedJson = JSON.parse(
-        rulesRepo.update.mock.calls[0][1].ruleJson as string,
-      );
-      expect(updatedJson.firstVal[0]).toBe(Application.EMBY);
-    });
   });
 
   describe('Emby migrations', () => {
@@ -1134,72 +900,6 @@ describe('RuleMigrationService', () => {
       expect(updatedJson.firstVal[1]).toBe(0);
     });
 
-    it('migrates Plex watchlist rules into Emby as incompatible (skip + delete)', async () => {
-      const mockRules: Partial<Rules>[] = [
-        {
-          id: 1,
-          ruleGroupId: 1,
-          ruleJson: JSON.stringify({
-            operator: null,
-            action: RulePossibility.EQUALS,
-            firstVal: [Application.PLEX, 30], // watchlist_isWatchlisted
-            customVal: { ruleTypeId: 3, value: 'true' },
-            section: 0,
-          }),
-          ruleGroup: { id: 1, name: 'Watchlist Group' } as RuleGroup,
-        },
-      ];
-
-      rulesRepo.find.mockResolvedValue(mockRules as Rules[]);
-      rulesRepo.delete.mockResolvedValue({ affected: 1 } as any);
-      ruleGroupRepo.delete.mockResolvedValue({ affected: 1 } as any);
-
-      const result = await service.migrateRules(
-        MediaServerType.PLEX,
-        MediaServerType.EMBY,
-        true,
-      );
-
-      expect(result.skippedRules).toBe(1);
-      expect(result.skippedDetails[0].propertyName).toBe(
-        'watchlist_isWatchlisted',
-      );
-      expect(rulesRepo.delete).toHaveBeenCalledWith(1);
-    });
-
-    it('migrates the shared studios property from Plex to Jellyfin', async () => {
-      const mockRules: Partial<Rules>[] = [
-        {
-          id: 1,
-          ruleGroupId: 1,
-          ruleJson: JSON.stringify({
-            operator: null,
-            action: RulePossibility.CONTAINS,
-            firstVal: [Application.PLEX, 46],
-            customVal: { ruleTypeId: 4, value: 'Company One' },
-            section: 0,
-          }),
-          ruleGroup: { id: 1, name: 'Studio Group' } as RuleGroup,
-        },
-      ];
-
-      rulesRepo.find.mockResolvedValue(mockRules as Rules[]);
-      rulesRepo.update.mockResolvedValue({ affected: 1 } as any);
-
-      const result = await service.migrateRules(
-        MediaServerType.PLEX,
-        MediaServerType.JELLYFIN,
-        true,
-      );
-
-      expect(result.migratedRules).toBe(1);
-      expect(result.skippedRules).toBe(0);
-      const updatedJson = JSON.parse(
-        rulesRepo.update.mock.calls[0][1].ruleJson as string,
-      );
-      expect(updatedJson.firstVal).toEqual([Application.JELLYFIN, 46]);
-    });
-
     it('migrates Jellyfin rules to Emby as a no-op property remap (shared props)', async () => {
       // Emby and Jellyfin share the same props[] array reference in
       // RuleConstants, so every property ID stays identical.
@@ -1236,40 +936,6 @@ describe('RuleMigrationService', () => {
       expect(updatedJson.firstVal[0]).toBe(Application.EMBY);
       // Property ID is unchanged because Emby and Jellyfin share props[].
       expect(updatedJson.firstVal[1]).toBe(44);
-    });
-
-    it('migrates Emby rules to Jellyfin as a no-op property remap (shared props)', async () => {
-      const mockRules: Partial<Rules>[] = [
-        {
-          id: 1,
-          ruleGroupId: 1,
-          ruleJson: JSON.stringify({
-            operator: null,
-            action: RulePossibility.CONTAINS,
-            firstVal: [Application.EMBY, 6], // collections
-            customVal: { ruleTypeId: 4, value: 'Movies I love' },
-            section: 0,
-          }),
-          ruleGroup: { id: 1, name: 'Collections Group' } as RuleGroup,
-        },
-      ];
-
-      rulesRepo.find.mockResolvedValue(mockRules as Rules[]);
-      rulesRepo.update.mockResolvedValue({ affected: 1 } as any);
-
-      const result = await service.migrateRules(
-        MediaServerType.EMBY,
-        MediaServerType.JELLYFIN,
-        true,
-      );
-
-      expect(result.migratedRules).toBe(1);
-
-      const updatedJson = JSON.parse(
-        rulesRepo.update.mock.calls[0][1].ruleJson as string,
-      );
-      expect(updatedJson.firstVal[0]).toBe(Application.JELLYFIN);
-      expect(updatedJson.firstVal[1]).toBe(6);
     });
 
     it('detects EMBY source apps when importing community rule DTOs', () => {

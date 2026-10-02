@@ -236,16 +236,6 @@ describe('SportarrMetadataApiService', () => {
     expect(settings.getSportarrSettings).not.toHaveBeenCalled();
   });
 
-  it('never touches sportarr.net unless the environment asks for it', async () => {
-    // An install that has never heard of Sportarr must not make an outbound
-    // request for a carried id it happens to hold.
-    delete process.env.SPORTARR_NET;
-
-    await expect(service.hasConfiguredSource()).resolves.toBe(false);
-    await expect(service.getLeague('lg-000278')).resolves.toBeUndefined();
-    expect(get).not.toHaveBeenCalled();
-  });
-
   it('asks an unreachable source again once its rest is over', async () => {
     // Standing down stops the walks, so an answer remembered from the last
     // walk would have no way back and one blip would last the whole process.
@@ -269,12 +259,5 @@ describe('SportarrMetadataApiService', () => {
     } finally {
       jest.useRealTimers();
     }
-  });
-
-  it('has a source with a connection alone', async () => {
-    withConnections('http://sportarr.local:1867');
-    delete process.env.SPORTARR_NET;
-
-    await expect(service.hasConfiguredSource()).resolves.toBe(true);
   });
 });

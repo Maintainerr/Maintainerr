@@ -38,38 +38,9 @@ describe('JellyfinMapper', () => {
       expect(result).toContain(BaseItemKind.Movie);
       expect(result).toContain(BaseItemKind.Series);
     });
-
-    it('should return Movie and Series for undefined', () => {
-      const result = JellyfinMapper.toBaseItemKinds(undefined);
-      expect(result).toContain(BaseItemKind.Movie);
-      expect(result).toContain(BaseItemKind.Series);
-    });
-
-    it('should map multiple types correctly', () => {
-      const result = JellyfinMapper.toBaseItemKinds(['movie', 'show']);
-      expect(result).toEqual([BaseItemKind.Movie, BaseItemKind.Series]);
-    });
   });
 
   describe('extractProviderIds', () => {
-    it('should extract IMDB id correctly', () => {
-      const providerIds = { Imdb: 'tt1234567' };
-      const result = JellyfinMapper.extractProviderIds(providerIds);
-      expect(result.imdb).toEqual(['tt1234567']);
-    });
-
-    it('should extract TMDB id correctly', () => {
-      const providerIds = { Tmdb: '12345' };
-      const result = JellyfinMapper.extractProviderIds(providerIds);
-      expect(result.tmdb).toEqual(['12345']);
-    });
-
-    it('should extract TVDB id correctly', () => {
-      const providerIds = { Tvdb: '67890' };
-      const result = JellyfinMapper.extractProviderIds(providerIds);
-      expect(result.tvdb).toEqual(['67890']);
-    });
-
     it('should extract multiple provider ids', () => {
       const providerIds = {
         Imdb: 'tt1234567',
@@ -82,18 +53,8 @@ describe('JellyfinMapper', () => {
       expect(result.tvdb).toEqual(['67890']);
     });
 
-    it('should handle undefined provider ids', () => {
-      const result = JellyfinMapper.extractProviderIds(undefined);
-      expect(result).toEqual({ imdb: [], tmdb: [], tvdb: [], sportarr: [] });
-    });
-
     it('should handle null provider ids', () => {
       const result = JellyfinMapper.extractProviderIds(null);
-      expect(result).toEqual({ imdb: [], tmdb: [], tvdb: [], sportarr: [] });
-    });
-
-    it('should handle empty provider ids', () => {
-      const result = JellyfinMapper.extractProviderIds({});
       expect(result).toEqual({ imdb: [], tmdb: [], tvdb: [], sportarr: [] });
     });
   });
@@ -209,13 +170,6 @@ describe('JellyfinMapper', () => {
         expect(Number.isNaN(result.addedAt.getTime())).toBe(true);
       });
 
-      it('should extract provider IDs correctly', () => {
-        const result = JellyfinMapper.toMediaItem(episodeItem);
-
-        expect(result.providerIds.imdb).toEqual(['tt1234567']);
-        expect(result.providerIds.tmdb).toEqual(['12345']);
-      });
-
       it('should convert duration from ticks to milliseconds', () => {
         const result = JellyfinMapper.toMediaItem(episodeItem);
 
@@ -311,33 +265,6 @@ describe('JellyfinMapper', () => {
         expect(result.parentTitle).toBe('Test Series');
         expect(result.type).toBe('season');
         expect(result.index).toBe(1);
-      });
-    });
-
-    describe('Show/Series', () => {
-      it('should convert show with library as parent', () => {
-        const showItem: BaseItemDto = {
-          Id: 'series123',
-          ParentId: 'library123',
-          Name: 'Test Series',
-          Type: BaseItemKind.Series,
-          DateCreated: '2021-01-01T00:00:00.000Z',
-          Overview: 'A test series',
-          ProviderIds: {
-            Tvdb: '12345',
-          },
-        };
-
-        const result = JellyfinMapper.toMediaItem(showItem);
-
-        expect(result.id).toBe('series123');
-        // Show: parentId = library
-        expect(result.parentId).toBe('library123');
-        // Show: no grandparent
-        expect(result.grandparentId).toBeUndefined();
-        expect(result.title).toBe('Test Series');
-        expect(result.type).toBe('show');
-        expect(result.summary).toBe('A test series');
       });
     });
 
@@ -457,42 +384,6 @@ describe('JellyfinMapper', () => {
       expect(result.name).toBe('Test User');
       expect(result.thumb).toBe('/Users/user123/Images/Primary');
     });
-
-    it('should handle user without image', () => {
-      const jellyfinUser: UserDto = {
-        Id: 'user456',
-        Name: 'No Image User',
-      };
-
-      const result = JellyfinMapper.toMediaUser(jellyfinUser);
-
-      expect(result.thumb).toBeUndefined();
-    });
-  });
-
-  describe('toWatchRecord', () => {
-    it('should create watch record correctly', () => {
-      const result = JellyfinMapper.toWatchRecord(
-        'user123',
-        'item456',
-        new Date('2021-01-01T00:00:00.000Z'),
-      );
-
-      expect(result.userId).toBe('user123');
-      expect(result.itemId).toBe('item456');
-      expect(result.watchedAt).toEqual(new Date('2021-01-01T00:00:00.000Z'));
-      expect(result.progress).toBe(100);
-    });
-
-    it('should leave watchedAt undefined if no lastPlayedDate', () => {
-      const result = JellyfinMapper.toWatchRecord(
-        'user123',
-        'item456',
-        undefined,
-      );
-
-      expect(result.watchedAt).toBeUndefined();
-    });
   });
 
   describe('toMediaCollection', () => {
@@ -539,34 +430,6 @@ describe('JellyfinMapper', () => {
       expect(result.itemCount).toBe(25);
       expect(result.durationMs).toBe(3600000); // 1 hour in ms
       expect(result.smart).toBe(false);
-    });
-  });
-
-  describe('toMediaServerStatus', () => {
-    it('should convert server status correctly', () => {
-      const result = JellyfinMapper.toMediaServerStatus(
-        'server123',
-        '10.11.0',
-        'My Jellyfin Server',
-        'Linux',
-      );
-
-      expect(result.machineId).toBe('server123');
-      expect(result.version).toBe('10.11.0');
-      expect(result.name).toBe('My Jellyfin Server');
-      expect(result.platform).toBe('Linux');
-    });
-
-    it('should handle null optional fields', () => {
-      const result = JellyfinMapper.toMediaServerStatus(
-        'server123',
-        '10.11.0',
-        null,
-        null,
-      );
-
-      expect(result.name).toBeUndefined();
-      expect(result.platform).toBeUndefined();
     });
   });
 });

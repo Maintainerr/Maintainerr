@@ -91,52 +91,22 @@ describe('RulesService.resetCacheIfGroupUsesRuleThatRequiresIt', () => {
     jest.restoreAllMocks();
   });
 
-  it('flushes the Emby cache when the configured server type is Emby', async () => {
-    const flush = spyOnCache('emby');
-    const factory: FactoryStub = {
-      getConfiguredServerType: jest
-        .fn()
-        .mockResolvedValue(MediaServerType.EMBY),
-    };
-    const service = createRulesService(factory);
+  it.each([
+    [MediaServerType.EMBY, ['emby']],
+    [MediaServerType.JELLYFIN, ['jellyfin']],
+    [MediaServerType.PLEX, ['plextv', 'plexguid']],
+  ] as const)('on %s flushes %j', async (serverType, cacheIds) => {
+    const flushes = cacheIds.map(spyOnCache);
+    const service = createRulesService({
+      getConfiguredServerType: jest.fn().mockResolvedValue(serverType),
+    });
     stubGetRuleConstants(service);
 
-    const result =
-      await service.resetCacheIfGroupUsesRuleThatRequiresIt(ruleGroup);
-
-    expect(result).toBe(true);
-    expect(flush).toHaveBeenCalledTimes(1);
-  });
-
-  it('flushes the Jellyfin cache when the configured server type is Jellyfin', async () => {
-    const flush = spyOnCache('jellyfin');
-    const factory: FactoryStub = {
-      getConfiguredServerType: jest
-        .fn()
-        .mockResolvedValue(MediaServerType.JELLYFIN),
-    };
-    const service = createRulesService(factory);
-    stubGetRuleConstants(service);
-
-    await service.resetCacheIfGroupUsesRuleThatRequiresIt(ruleGroup);
-
-    expect(flush).toHaveBeenCalledTimes(1);
-  });
-
-  it('flushes both Plex caches when the configured server type is Plex', async () => {
-    const flushTv = spyOnCache('plextv');
-    const flushGuid = spyOnCache('plexguid');
-    const factory: FactoryStub = {
-      getConfiguredServerType: jest
-        .fn()
-        .mockResolvedValue(MediaServerType.PLEX),
-    };
-    const service = createRulesService(factory);
-    stubGetRuleConstants(service);
-
-    await service.resetCacheIfGroupUsesRuleThatRequiresIt(ruleGroup);
-
-    expect(flushTv).toHaveBeenCalledTimes(1);
-    expect(flushGuid).toHaveBeenCalledTimes(1);
+    await expect(
+      service.resetCacheIfGroupUsesRuleThatRequiresIt(ruleGroup),
+    ).resolves.toBe(true);
+    for (const flush of flushes) {
+      expect(flush).toHaveBeenCalledTimes(1);
+    }
   });
 });

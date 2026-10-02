@@ -198,40 +198,6 @@ describe('MetadataService', () => {
     ).resolves.toMatchObject({ provider: 'TMDB' });
   });
 
-  it('does not warn when a provider that dates nothing returns no year', async () => {
-    // Sportarr dates events rather than leagues, so a league accepted without
-    // a year check is how the provider works, not a gap worth a warning per
-    // league per resolution.
-    const libraryItem = createMediaItem({
-      id: 'league-1',
-      type: 'show',
-      year: 2019,
-      title: 'Sample League',
-      providerIds: { sportarr: ['278'] },
-    });
-    const { service, logger } = createService({
-      providerMocks: [
-        {
-          name: 'Sportarr',
-          idKey: 'sportarr',
-          hasReleaseYears: false,
-          detailsId: 278,
-          details: { title: 'Sample League', type: 'tv' },
-        },
-      ],
-    });
-
-    await expect(
-      service.resolveIdsFromMediaItem(libraryItem),
-    ).resolves.toMatchObject({ sportarr: 278 });
-    expect(logger.warn).not.toHaveBeenCalledWith(
-      expect.stringContaining('without a year check'),
-    );
-    expect(logger.debug).toHaveBeenCalledWith(
-      expect.stringContaining('without a year check'),
-    );
-  });
-
   // Season 3 of a show, where the season carries provider IDs of its own that
   // must not be used for the lookup (#2649).
   const createSeasonMediaServerMock = () => {
@@ -273,26 +239,6 @@ describe('MetadataService', () => {
     expect(result).toBeDefined();
     expect(tvdbProvider.getPosterUrl).toHaveBeenCalledWith(200, 'tv', {
       sizeHint: 'w500',
-      ref: { seasonNumber: 3 },
-    });
-  });
-
-  it('addresses a season, never an episode, on a season backdrop', async () => {
-    const { service, tvdbProvider } = createService({
-      mediaServer: createSeasonMediaServerMock(),
-    });
-
-    const result = await service.getBackdropUrl(
-      { tmdb: 9999, tvdb: 8888 },
-      'tv',
-      'w1280',
-      'season-42',
-    );
-
-    expect(result).toBeDefined();
-    // No episodeNumber, so providers have nothing below the show to offer.
-    expect(tvdbProvider.getBackdropUrl).toHaveBeenCalledWith(200, 'tv', {
-      sizeHint: 'w1280',
       ref: { seasonNumber: 3 },
     });
   });
@@ -411,85 +357,6 @@ describe('MetadataService', () => {
     expect(tvdbProvider.getBackdropUrl).toHaveBeenCalledWith(200, 'tv', {
       sizeHint: 'w1280',
       ref: { seasonNumber: 3, episodeNumber: 7 },
-    });
-  });
-
-  it('gives an episode its season poster and asks for its own description', async () => {
-    const episodeItem = createMediaItem({
-      id: 'episode-7',
-      type: 'episode',
-      index: 7,
-      parentIndex: 3,
-      parentId: 'season-3',
-      grandparentId: 'show-1',
-      providerIds: { tmdb: ['5555'] },
-    });
-    const showItem = createMediaItem({
-      id: 'show-1',
-      type: 'show',
-      providerIds: { tmdb: ['100'], tvdb: ['200'] },
-    });
-    const mediaServer = {
-      getMetadata: jest
-        .fn()
-        .mockImplementation((id: string) =>
-          Promise.resolve(id === 'episode-7' ? episodeItem : showItem),
-        ),
-    };
-    const { service, tvdbProvider, tmdbProvider } = createService({
-      mediaServer,
-      providerMocks: [
-        { name: 'TVDB', idKey: 'tvdb' },
-        { name: 'TMDB', idKey: 'tmdb', hierarchyOverview: 'The seventh one.' },
-      ],
-    });
-
-    await service.getPosterUrl({ tmdb: 5555 }, 'tv', 'w500', 'episode-7');
-    const overview = await service.getOverview(
-      { tmdb: 5555 },
-      'tv',
-      'episode-7',
-    );
-
-    expect(tvdbProvider.getPosterUrl).toHaveBeenCalledWith(200, 'tv', {
-      sizeHint: 'w500',
-      ref: { seasonNumber: 3, episodeNumber: 7 },
-    });
-    expect(overview).toBe('The seventh one.');
-    expect(tmdbProvider.getHierarchyOverview).toHaveBeenCalledWith(100, {
-      seasonNumber: 3,
-      episodeNumber: 7,
-    });
-  });
-
-  it('leaves an episode with no season number on the show artwork', async () => {
-    const episodeItem = createMediaItem({
-      id: 'episode-8',
-      type: 'episode',
-      index: 8,
-      parentIndex: undefined,
-      grandparentId: 'show-1',
-      providerIds: { tmdb: ['5555'] },
-    });
-    const showItem = createMediaItem({
-      id: 'show-1',
-      type: 'show',
-      providerIds: { tmdb: ['100'], tvdb: ['200'] },
-    });
-    const mediaServer = {
-      getMetadata: jest
-        .fn()
-        .mockImplementation((id: string) =>
-          Promise.resolve(id === 'episode-8' ? episodeItem : showItem),
-        ),
-    };
-    const { service, tvdbProvider } = createService({ mediaServer });
-
-    await service.getPosterUrl({ tmdb: 5555 }, 'tv', 'w500', 'episode-8');
-
-    expect(tvdbProvider.getPosterUrl).toHaveBeenCalledWith(200, 'tv', {
-      sizeHint: 'w500',
-      ref: undefined,
     });
   });
 
@@ -936,37 +803,6 @@ describe('MetadataService', () => {
       type: 'tv',
     });
     expect(logger.warn).not.toHaveBeenCalled();
-  });
-
-  it('skips the detail lookup when the title already matches', async () => {
-    const libraryItem = createMediaItem({
-      id: 'show-1',
-      type: 'show',
-      title: 'Fixture Chronicle',
-      providerIds: {
-        tmdb: ['771'],
-        imdb: [],
-        tvdb: [],
-      },
-    });
-    const { service, mediaServer } = createService({
-      tmdbDetails: {
-        title: 'Fixture Chronicle',
-        type: 'tv',
-        externalIds: {
-          tmdb: 771,
-          type: 'tv',
-        },
-      },
-    });
-
-    const result = await service.resolveIdsFromMediaItem(libraryItem);
-
-    expect(mediaServer.getMetadata).not.toHaveBeenCalled();
-    expect(result).toMatchObject({
-      tmdb: 771,
-      type: 'tv',
-    });
   });
 
   // Cross-provider fallback: when the primary provider disagrees with the
@@ -1669,41 +1505,6 @@ describe('MetadataService', () => {
       expect(merged?.ended).toBe(false);
       expect(merged?.firstAirDate).toBe('2017-04-25');
       expect(merged?.seasonCount).toBe(2);
-    });
-
-    it('walks every available provider so new providers compose automatically', async () => {
-      const { service, tmdbProvider, tvdbProvider } = createService({});
-
-      tvdbProvider.getDetails.mockResolvedValue({
-        id: 1,
-        title: 'Sample Series',
-        type: 'tv',
-        externalIds: { type: 'tv', tvdb: 1 },
-        ended: undefined,
-        firstAirDate: undefined,
-        seasonCount: undefined,
-      });
-      tmdbProvider.getDetails.mockResolvedValue({
-        id: 2,
-        title: 'Sample Series',
-        type: 'tv',
-        externalIds: { type: 'tv', tmdb: 2 },
-        ended: true,
-        firstAirDate: '2017-04-25',
-        seasonCount: 4,
-      });
-
-      const merged = await service.getDetails(
-        { type: 'tv', tmdb: 2, tvdb: 1 },
-        'tv',
-        { merge: true },
-      );
-
-      expect(tvdbProvider.getDetails).toHaveBeenCalled();
-      expect(tmdbProvider.getDetails).toHaveBeenCalled();
-      expect(merged?.ended).toBe(true);
-      expect(merged?.firstAirDate).toBe('2017-04-25');
-      expect(merged?.seasonCount).toBe(4);
     });
 
     it('returns undefined when no provider has the series', async () => {

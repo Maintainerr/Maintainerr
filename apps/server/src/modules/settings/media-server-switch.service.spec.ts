@@ -1,6 +1,7 @@
 import { MediaServerType } from '@maintainerr/contracts';
 import { TestBed, type Mocked } from '@suites/unit';
 import * as fs from 'fs';
+import * as os from 'os';
 import * as path from 'path';
 import { DataSource, Repository } from 'typeorm';
 import { dataDir as configDataDir } from '../../app/config/dataDir';
@@ -15,9 +16,27 @@ import { RuleMigrationService } from './rule-migration.service';
 import { TracearrApiService } from '../api/tracearr-api/tracearr-api.service';
 import { SettingsDataService } from './settings-data.service';
 
+// A fresh temp folder as the data directory, so the spec never touches the dev
+// app's stored posters.
+jest.mock('../../app/config/dataDir', () => {
+  const { mkdtempSync } = jest.requireActual<typeof import('fs')>('fs');
+  const { join } = jest.requireActual<typeof import('path')>('path');
+  const { tmpdir } = jest.requireActual<typeof import('os')>('os');
+  return {
+    ...jest.requireActual('../../app/config/dataDir'),
+    dataDir: mkdtempSync(join(tmpdir(), 'maintainerr-spec-')),
+  };
+});
+
 const STORAGE_DIR = path.join(configDataDir, 'collection-posters');
 
 describe('MediaServerSwitchService', () => {
+  afterAll(() => {
+    if (configDataDir.startsWith(os.tmpdir())) {
+      fs.rmSync(configDataDir, { recursive: true, force: true });
+    }
+  });
+
   let service: MediaServerSwitchService;
   let settingsDataService: Mocked<SettingsDataService>;
   let tracearrApi: Mocked<TracearrApiService>;

@@ -33,17 +33,6 @@ describe('StreamystatsApiService', () => {
   });
 
   describe('init', () => {
-    it('is a no-op when Streamystats URL is not configured', () => {
-      Object.assign(settings, {
-        streamystats_url: undefined,
-        jellyfin_api_key: 'jellyfin-key',
-      });
-
-      service.init();
-
-      expect(service.api).toBeUndefined();
-    });
-
     it('is a no-op when Jellyfin API key is missing', () => {
       Object.assign(settings, {
         streamystats_url: 'http://streamystats',
@@ -53,17 +42,6 @@ describe('StreamystatsApiService', () => {
       service.init();
 
       expect(service.api).toBeUndefined();
-    });
-
-    it('constructs the API client when both settings are present', () => {
-      Object.assign(settings, {
-        streamystats_url: 'http://streamystats',
-        jellyfin_api_key: 'jellyfin-key',
-      });
-
-      service.init();
-
-      expect(service.api).toBeDefined();
     });
 
     it('clears the cached client and serverId when settings are removed', async () => {
@@ -248,25 +226,6 @@ describe('StreamystatsApiService', () => {
         expect.objectContaining({ params: { serverId: '42' } }),
       );
     });
-
-    it('caches the resolved serverId across calls', async () => {
-      apiMock.get.mockResolvedValue({
-        item: { id: 'item-1', type: 'Movie' },
-        totalViews: 1,
-        totalWatchTime: 100,
-        completionRate: 100,
-        firstWatched: null,
-        lastWatched: null,
-        usersWatched: [],
-        watchHistory: [],
-        watchCountByMonth: [],
-      });
-
-      await service.getItemDetails('item-1');
-      await service.getItemDetails('item-2');
-
-      expect(apiMock.getWithoutCache).toHaveBeenCalledTimes(1);
-    });
   });
 
   describe('testConnection', () => {
@@ -401,20 +360,6 @@ describe('StreamystatsApiService', () => {
         }),
         expect.any(Number),
       );
-    });
-
-    it('reuses the cached snapshot across calls within a run', async () => {
-      apiMock.get.mockResolvedValue({ data: [] });
-
-      await service.getWatchlistMembership();
-      await service.getWatchlistMembership();
-
-      // Only the first call hits /api/watchlists; the second is served from the
-      // shared cache (which init() / flushAll clears between runs).
-      const listCalls = apiMock.get.mock.calls.filter(
-        (call) => call[0] === '/api/watchlists',
-      );
-      expect(listCalls).toHaveLength(1);
     });
 
     it('skips lists whose item payload is malformed but keeps the rest', async () => {

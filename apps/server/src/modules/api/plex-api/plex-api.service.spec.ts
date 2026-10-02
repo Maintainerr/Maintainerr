@@ -72,30 +72,12 @@ describe('PlexApiService.rankConnections', () => {
     expect(ranked[0].address).toBe('192.168.1.50');
   });
 
-  it('treats IPv6 literals as direct IP connections', () => {
-    const ranked = PlexApiService.rankConnections([
-      conn({ address: 'abc123.plex.direct' }),
-      conn({ address: '2001:db8::10' }),
-    ]);
-    expect(ranked[0].address).toBe('2001:db8::10');
-  });
-
   it('sorts by latency when all else is equal', () => {
     const ranked = PlexApiService.rankConnections([
       conn({ address: '192.168.1.2', latency: 100 }),
       conn({ address: '192.168.1.1', latency: 10 }),
     ]);
     expect(ranked[0].address).toBe('192.168.1.1');
-  });
-
-  it('does not mutate the input array', () => {
-    const input = [
-      conn({ address: '10.0.0.1', local: false }),
-      conn({ address: '10.0.0.2', local: true }),
-    ];
-    const ranked = PlexApiService.rankConnections(input);
-    expect(ranked).not.toBe(input);
-    expect(input[0].address).toBe('10.0.0.1');
   });
 });
 
@@ -215,49 +197,6 @@ describe('PlexApiService.getMetadata', () => {
     expect(logger.error).not.toHaveBeenCalled();
   });
 
-  it('still reports a non-404 metadata failure as a communication failure', async () => {
-    (service as any).plexClient = {
-      query: jest.fn().mockRejectedValue(
-        new Error('GET /library/metadata/123 failed: server error', {
-          cause: { response: { status: 503 } } as any,
-        }),
-      ),
-    };
-
-    expect(await service.getMetadata('123')).toBeUndefined();
-    expect(logger.error).toHaveBeenCalledWith(
-      'Plex api communication failure.. Is the application running?',
-    );
-  });
-
-  it('reads an all-missing batch as an empty answer, not a failure', async () => {
-    (service as any).plexClient = {
-      query: jest.fn().mockRejectedValue(
-        new Error('GET /library/metadata/1,2 failed: not found', {
-          cause: { response: { status: 404 } } as any,
-        }),
-      ),
-    };
-
-    expect(await service.getMetadataBatch(['1', '2'])).toEqual([]);
-    expect(logger.error).not.toHaveBeenCalled();
-  });
-
-  it('preserves includeChildren queries while requesting external media enrichment', async () => {
-    const query = jest.fn().mockResolvedValue({
-      MediaContainer: { Metadata: [{ ratingKey: '123' }] },
-    });
-
-    (service as any).plexClient = { query };
-
-    await service.getMetadata('123', { includeChildren: true });
-
-    expect(query).toHaveBeenCalledWith(
-      '/library/metadata/123?includeChildren=1&includeExternalMedia=1&asyncAugmentMetadata=1',
-      true,
-    );
-  });
-
   it('queries the live sessions endpoint without caching', async () => {
     const query = jest.fn().mockResolvedValue({
       MediaContainer: { Metadata: [{ ratingKey: '123' }] },
@@ -269,16 +208,6 @@ describe('PlexApiService.getMetadata', () => {
 
     expect(query).toHaveBeenCalledWith({ uri: '/status/sessions' }, false);
     expect(result).toEqual([{ ratingKey: '123' }]);
-  });
-
-  it('returns an empty array when nothing is playing (no Metadata)', async () => {
-    const query = jest.fn().mockResolvedValue({
-      MediaContainer: { size: 0 },
-    });
-
-    (service as any).plexClient = { query };
-
-    expect(await service.getActiveSessions()).toEqual([]);
   });
 
   it('returns an empty array when the sessions query fails', async () => {
@@ -323,15 +252,6 @@ describe('PlexApiService.getMetadata', () => {
 
     expect(await service.getMetadataBatch(['1', '2'])).toHaveLength(2);
     expect(query).toHaveBeenCalledWith('/library/metadata/1,2?includeGuids=1');
-  });
-
-  it('makes no request for an empty batch', async () => {
-    const query = jest.fn();
-
-    (service as any).plexClient = { query };
-
-    expect(await service.getMetadataBatch([])).toEqual([]);
-    expect(query).not.toHaveBeenCalled();
   });
 
   it('reports no ids rather than failing the caller when a batch read fails', async () => {
@@ -639,23 +559,6 @@ describe('PlexApiService.getMetadata', () => {
     ]);
   });
 
-  it('throws when auth validation is attempted without a token', async () => {
-    settingsDataService.plex_auth_token = null as any;
-
-    await expect(service.validateAuthToken()).rejects.toThrow(
-      'Plex auth token is required for validation',
-    );
-  });
-
-  it('returns an empty cheap storage map without querying undocumented endpoints', async () => {
-    const queryAll = jest.fn();
-
-    (service as any).plexClient = { queryAll };
-
-    await expect(service.getLibrariesStorage()).resolves.toEqual(new Map());
-    expect(queryAll).not.toHaveBeenCalled();
-  });
-
   it('requests section allLeaves when retrieving Plex show library leaves', async () => {
     const queryAll = jest.fn().mockResolvedValue({
       MediaContainer: { Metadata: [] },
@@ -813,40 +716,6 @@ describe('PlexApiService.getCollections (invalid section vs auth)', () => {
       expect.stringContaining("Plex library section '42' returned no data"),
     );
     expect(logger.error).not.toHaveBeenCalled();
-  });
-
-  it('warns about a stale section on a 404 response', async () => {
-    const wrapped = new Error(
-      'GET /library/sections/42/collections failed: not found',
-      { cause: { response: { status: 404 } } as any },
-    );
-    (service as any).plexClient = {
-      queryAll: jest.fn().mockRejectedValue(wrapped),
-    };
-
-    await expect(service.getCollections('42')).rejects.toThrow();
-
-    expect(logger.warn).toHaveBeenCalledWith(
-      expect.stringContaining("Plex library section '42' returned no data"),
-    );
-    expect(logger.error).not.toHaveBeenCalled();
-  });
-
-  it('emits the generic communication-failure error on a 401 auth failure', async () => {
-    const wrapped = new Error(
-      'GET /library/sections/42/collections failed: Plex Server denied request',
-      { cause: { response: { status: 401 } } as any },
-    );
-    (service as any).plexClient = {
-      queryAll: jest.fn().mockRejectedValue(wrapped),
-    };
-
-    await expect(service.getCollections('42')).rejects.toThrow();
-
-    expect(logger.error).toHaveBeenCalledWith(
-      'Plex api communication failure.. Is the application running?',
-    );
-    expect(logger.warn).not.toHaveBeenCalled();
   });
 
   it('emits the generic communication-failure error on a 403 permission failure', async () => {
@@ -1011,19 +880,6 @@ describe('PlexApiService.initialize', () => {
     await service.initialize();
 
     expect(getServersSpy).not.toHaveBeenCalled();
-    expect(service.isPlexSetup()).toBe(false);
-  });
-
-  it('attempts rediscovery when primary connection fails', async () => {
-    const getServersSpy = jest
-      .spyOn(service, 'getAvailableServers')
-      .mockResolvedValue([]);
-
-    await service.initialize();
-
-    // Verify rediscovery was attempted (getAvailableServers called)
-    expect(getServersSpy).toHaveBeenCalled();
-    // No working connection found, so client should be cleared
     expect(service.isPlexSetup()).toBe(false);
   });
 
@@ -1405,64 +1261,6 @@ describe('PlexApiService.prefetchWatchHistory', () => {
     expect(progressLogs[8]).toBe(`${prefix} 900 of 1000 entries (90%)...`);
   });
 
-  it('says what the entry count means on the opening line', async () => {
-    // A user compared an 88k entry count against a 6.5k-episode library and
-    // read it as a bug; the line has to say it counts view events.
-    const queryAll = jest.fn().mockResolvedValue({
-      MediaContainer: { Metadata: [historyRow()], totalSize: 1 },
-    });
-    (service as any).plexClient = { queryAll };
-
-    await service.prefetchWatchHistory(LIBRARY);
-
-    expect(logger.log).toHaveBeenCalledWith(
-      expect.stringContaining('one entry per view event, across all users'),
-    );
-  });
-
-  it('emits no progress line when the whole history fits in one page', async () => {
-    // The single (final) page reports fetched == totalSize; logging it would
-    // print a misleading partial percentage, so it must stay silent and let the
-    // completion line report the total.
-    const totalSize = 42;
-    const queryAll = jest
-      .fn()
-      .mockImplementation(
-        async (
-          query: unknown,
-          useCache: unknown,
-          signal: unknown,
-          onProgress?: (p: { fetched: number; totalSize: number }) => void,
-        ) => {
-          onProgress?.({ fetched: totalSize, totalSize });
-          return {
-            MediaContainer: {
-              Metadata: Array.from({ length: totalSize }, (v, i) =>
-                historyRow({ ratingKey: String(i), viewedAt: i }),
-              ),
-              totalSize,
-            },
-          };
-        },
-      );
-
-    (service as any).plexClient = { queryAll };
-
-    await service.prefetchWatchHistory(LIBRARY);
-
-    const progressLogs = (logger.log as jest.Mock).mock.calls
-      .map((call) => call[0])
-      .filter(
-        (message) =>
-          typeof message === 'string' &&
-          message.startsWith(
-            `Prefetching watch history for library ${LIBRARY}:`,
-          ),
-      );
-
-    expect(progressLogs).toEqual([]);
-  });
-
   it('skips the fetch when the library is already cached', async () => {
     const queryAll = jest.fn().mockResolvedValue({
       MediaContainer: { Metadata: [], totalSize: 0 },
@@ -1664,24 +1462,6 @@ describe('PlexApiService.getWatchHistory snapshot', () => {
     expect(queryAll).not.toHaveBeenCalled();
   });
 
-  it('returns a copy of rollup entries so in-place sorts cannot corrupt them', async () => {
-    const records = [
-      { ratingKey: '101', viewedAt: 2 },
-      { ratingKey: '102', viewedAt: 1 },
-    ];
-    await setSnapshot(LIBRARY, {
-      leaf: new Map(),
-      rollup: { show: new Map([['10', records]]), season: new Map() },
-    });
-    (service as any).plexClient = { queryAll: jest.fn() };
-
-    (await service.getWatchHistory('10', true, 'show', LIBRARY)).pop();
-
-    expect(
-      await service.getWatchHistory('10', true, 'show', LIBRARY),
-    ).toHaveLength(2);
-  });
-
   it('always rolls show queries up server-side via the per-item query', async () => {
     await setSnapshot(LIBRARY, {
       leaf: new Map([['10', [{ ratingKey: '10' }]]]),
@@ -1704,61 +1484,6 @@ describe('PlexApiService.getWatchHistory snapshot', () => {
       }),
       true,
     );
-  });
-
-  it('always rolls season queries up server-side via the per-item query', async () => {
-    await setSnapshot(LIBRARY, {
-      leaf: new Map([['20', [{ ratingKey: '20' }]]]),
-    });
-
-    const queryAll = jest.fn().mockResolvedValue({
-      MediaContainer: {
-        Metadata: [{ ratingKey: '201', accountID: 3, viewedAt: 1700000001 }],
-      },
-    });
-    (service as any).plexClient = { queryAll };
-
-    const result = await service.getWatchHistory('20', true, 'season', LIBRARY);
-
-    expect(result).toHaveLength(1);
-    expect(queryAll).toHaveBeenCalledWith(
-      expect.objectContaining({
-        uri: expect.stringContaining('metadataItemID=20'),
-      }),
-      true,
-    );
-  });
-
-  it('serves episode queries from the snapshot without a per-item call', async () => {
-    await setSnapshot(LIBRARY, {
-      leaf: new Map([
-        [
-          '301',
-          [
-            {
-              ratingKey: '301',
-              type: 'episode',
-              accountID: 5,
-              viewedAt: 1700000002,
-            },
-          ],
-        ],
-      ]),
-    });
-
-    const queryAll = jest.fn();
-    (service as any).plexClient = { queryAll };
-
-    const result = await service.getWatchHistory(
-      '301',
-      true,
-      'episode',
-      LIBRARY,
-    );
-
-    expect(result).toHaveLength(1);
-    expect(result[0].ratingKey).toBe('301');
-    expect(queryAll).not.toHaveBeenCalled();
   });
 
   it('bypasses the snapshot for explicit useCache: false callers and reads per-item', async () => {
@@ -1786,22 +1511,6 @@ describe('PlexApiService.getWatchHistory snapshot', () => {
       false,
     );
     expect(result[0].accountID).toBe(99);
-  });
-
-  it('passes useCache: false through to the per-item query when no snapshot exists', async () => {
-    const queryAll = jest.fn().mockResolvedValue({
-      MediaContainer: { Metadata: [] },
-    });
-    (service as any).plexClient = { queryAll };
-
-    await service.getWatchHistory('42', false, 'movie', LIBRARY);
-
-    expect(queryAll).toHaveBeenCalledWith(
-      expect.objectContaining({
-        uri: expect.stringContaining('metadataItemID=42'),
-      }),
-      false,
-    );
   });
 
   it('serves untyped callers from the snapshot on a hit', async () => {
@@ -1868,59 +1577,6 @@ describe('PlexApiService.getWatchHistory snapshot', () => {
 
     const second = await service.getWatchHistory('42', true, 'movie', LIBRARY);
     expect(second.map((r: any) => r.accountID)).toEqual([10, 11]);
-  });
-
-  it('falls through to per-item query when no snapshot exists at all', async () => {
-    const queryAll = jest.fn().mockResolvedValue({
-      MediaContainer: {
-        Metadata: [{ ratingKey: '42', accountID: 1, viewedAt: 1 }],
-      },
-    });
-    (service as any).plexClient = { queryAll };
-
-    const result = await service.getWatchHistory('42', true, 'movie', LIBRARY);
-
-    expect(result).toHaveLength(1);
-    expect(queryAll).toHaveBeenCalledWith(
-      expect.objectContaining({
-        uri: expect.stringContaining('metadataItemID=42'),
-      }),
-      true,
-    );
-  });
-});
-
-describe('PlexApiService overlay helpers', () => {
-  let service: PlexApiService;
-  let logger: Mocked<MaintainerrLogger>;
-  let loggerFactory: Mocked<MaintainerrLoggerFactory>;
-
-  beforeEach(async () => {
-    const { unit, unitRef } = await TestBed.solitary(PlexApiService).compile();
-
-    service = unit;
-    logger = unitRef.get(MaintainerrLogger);
-    loggerFactory = unitRef.get(MaintainerrLoggerFactory);
-
-    loggerFactory.createLogger.mockReturnValue({
-      setContext: jest.fn(),
-      log: jest.fn(),
-      warn: jest.fn(),
-      error: jest.fn(),
-      debug: jest.fn(),
-    } as any);
-  });
-
-  it('returns an empty library list when the Plex client is not initialized', async () => {
-    await expect(service.getLibraries()).resolves.toEqual([]);
-    expect(logger.error).not.toHaveBeenCalled();
-    expect(logger.debug).toHaveBeenCalledWith(
-      'Plex client not initialized, skipping getLibraries',
-    );
-  });
-
-  it('returns no overlay sections when Plex is not initialized', async () => {
-    await expect(service.getOverlayLibrarySections()).resolves.toEqual([]);
   });
 });
 

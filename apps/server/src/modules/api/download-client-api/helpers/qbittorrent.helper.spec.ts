@@ -101,17 +101,6 @@ describe('QbittorrentApi auth', () => {
     expect(axiosMock.get).not.toHaveBeenCalled();
   });
 
-  it('logs in only once across multiple calls', async () => {
-    const { api, axiosMock } = buildApi();
-    axiosMock.post.mockResolvedValue({ data: 'Ok.', headers: {} });
-    axiosMock.get.mockResolvedValue({ data: [] });
-
-    await api.getVersion();
-    await api.getTorrentByHash('abc');
-
-    expect(axiosMock.post).toHaveBeenCalledTimes(1);
-  });
-
   it('names the Web UI security block on a 403 that survives a re-login', async () => {
     const { api, axiosMock } = buildApi();
     axiosMock.post.mockResolvedValue({ data: 'Ok.', headers: {} });

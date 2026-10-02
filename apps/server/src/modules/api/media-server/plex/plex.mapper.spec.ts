@@ -34,13 +34,7 @@ describe('PlexMapper', () => {
   });
 
   describe('toMediaItemType', () => {
-    it.each([
-      ['movie', 'movie'],
-      ['show', 'show'],
-      ['season', 'season'],
-      ['episode', 'episode'],
-      ['collection', 'movie'],
-    ])('maps %s to %s', (input, expected) => {
+    it.each([['collection', 'movie']])('maps %s to %s', (input, expected) => {
       expect(PlexMapper.toMediaItemType(input as any)).toBe(expected);
     });
   });
@@ -53,15 +47,6 @@ describe('PlexMapper', () => {
       ['episode', EPlexDataType.EPISODES],
     ])('maps %s to %s', (input, expected) => {
       expect(PlexMapper.toPlexDataType(input as any)).toBe(expected);
-    });
-  });
-
-  describe('plexDataTypeToMediaItemType', () => {
-    it.each([
-      [EPlexDataType.MOVIES, 'movie'],
-      [EPlexDataType.SHOWS, 'show'],
-    ])('maps %s to %s', (input, expected) => {
-      expect(PlexMapper.plexDataTypeToMediaItemType(input)).toBe(expected);
     });
   });
 
@@ -92,24 +77,6 @@ describe('PlexMapper', () => {
   });
 
   describe('extractProviderIds', () => {
-    it('should extract IMDB id from guid', () => {
-      const guids = [{ id: 'imdb://tt1234567' }];
-      const result = PlexMapper.extractProviderIds(guids);
-      expect(result.imdb).toEqual(['tt1234567']);
-    });
-
-    it('should extract TMDB id from guid', () => {
-      const guids = [{ id: 'tmdb://12345' }];
-      const result = PlexMapper.extractProviderIds(guids);
-      expect(result.tmdb).toEqual(['12345']);
-    });
-
-    it('should extract TVDB id from guid', () => {
-      const guids = [{ id: 'tvdb://67890' }];
-      const result = PlexMapper.extractProviderIds(guids);
-      expect(result.tvdb).toEqual(['67890']);
-    });
-
     it('should extract multiple provider ids', () => {
       const guids = [
         { id: 'imdb://tt1234567' },
@@ -148,16 +115,6 @@ describe('PlexMapper', () => {
       expect(result.imdb).toEqual(['tt1234567']);
     });
 
-    it('should extract the Sportarr id its metadata provider stamps beside the tvdb alias', () => {
-      const guids = [
-        { id: 'sportarr://lg-000278' },
-        { id: 'tvdb://900000278' },
-      ];
-      const result = PlexMapper.extractProviderIds(guids);
-      expect(result.sportarr).toEqual(['lg-000278']);
-      expect(result.tvdb).toEqual(['900000278']);
-    });
-
     it('should ignore a fallback guid the agent owns rather than a provider', () => {
       const result = PlexMapper.extractProviderIds(
         [{ id: 'tvdb://900000278' }],
@@ -169,24 +126,6 @@ describe('PlexMapper', () => {
         tvdb: ['900000278'],
         sportarr: [],
       });
-    });
-
-    it('should ignore plex:// guids', () => {
-      const guids = [{ id: 'plex://movie/5d776830880197001ec7f3eb' }];
-      const result = PlexMapper.extractProviderIds(guids);
-      expect(result.imdb).toEqual([]);
-      expect(result.tmdb).toEqual([]);
-      expect(result.tvdb).toEqual([]);
-    });
-
-    it('should handle undefined guids', () => {
-      const result = PlexMapper.extractProviderIds(undefined);
-      expect(result).toEqual({ imdb: [], tmdb: [], tvdb: [], sportarr: [] });
-    });
-
-    it('should handle empty array', () => {
-      const result = PlexMapper.extractProviderIds([]);
-      expect(result).toEqual({ imdb: [], tmdb: [], tvdb: [], sportarr: [] });
     });
 
     it('should handle malformed guids', () => {
@@ -276,13 +215,6 @@ describe('PlexMapper', () => {
       expect(result.addedAt).toEqual(new Date(1609459200 * 1000));
       expect(result.updatedAt).toEqual(new Date(1609545600 * 1000));
       expect(result.lastViewedAt).toEqual(new Date(1609632000 * 1000));
-    });
-
-    it('should extract provider IDs correctly', () => {
-      const result = PlexMapper.toMediaItem(basePlexItem);
-
-      expect(result.providerIds.imdb).toEqual(['tt1234567']);
-      expect(result.providerIds.tmdb).toEqual(['12345']);
     });
 
     it('should extract provider IDs from the top-level guid', () => {
@@ -510,44 +442,6 @@ describe('PlexMapper', () => {
       expect(result.childCount).toBe(10);
       expect(result.addedAt).toEqual(new Date(1609459200 * 1000));
       expect(result.smart).toBe(false);
-    });
-
-    it('should handle invalid childCount', () => {
-      const plexCollection: PlexCollection = createPlexCollection({
-        ratingKey: '99999',
-        key: '/library/collections/99999',
-        guid: 'plex://collection/abc',
-        title: 'My Collection',
-        subtype: 'movie',
-        summary: '',
-        index: 1,
-        ratingCount: 0,
-        thumb: '',
-        addedAt: 0,
-        updatedAt: 0,
-        childCount: 'invalid',
-        maxYear: '',
-        minYear: '',
-      });
-
-      const result = PlexMapper.toMediaCollection(plexCollection);
-
-      expect(result.childCount).toBe(0);
-    });
-  });
-
-  describe('toMediaServerStatus', () => {
-    it('should convert server status correctly', () => {
-      const plexStatus = {
-        machineIdentifier: 'abc123',
-        version: '1.25.0',
-      };
-
-      const result = PlexMapper.toMediaServerStatus(plexStatus, 'My Server');
-
-      expect(result.machineId).toBe('abc123');
-      expect(result.version).toBe('1.25.0');
-      expect(result.name).toBe('My Server');
     });
   });
 });

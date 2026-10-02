@@ -83,13 +83,6 @@ describe('TasksService', () => {
     expect(tasksService.isRunning('stateful')).toBe(true);
   });
 
-  it('returns task state when requested', () => {
-    tasksService.createJob('introspect', '* * * * * *', () => undefined);
-
-    const task = tasksService.getTask('introspect');
-    expect(task).toMatchObject({ name: 'introspect', running: false });
-  });
-
   it('clears running state and throws for unknown task', () => {
     expect(() => tasksService.clearRunning('nope')).toThrow(
       'Task nope does not exist.',

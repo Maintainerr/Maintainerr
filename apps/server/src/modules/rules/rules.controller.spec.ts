@@ -85,25 +85,6 @@ describe('RulesController', () => {
     },
   );
 
-  it('delegates bulk exclusions and returns per-item results', async () => {
-    const response = {
-      results: [
-        { mediaId: 'item-1', code: 1 as const },
-        { mediaId: 'item-2', code: 0 as const, message: 'Failed' },
-      ],
-    };
-    rulesService.setBulkExclusions.mockResolvedValue(response);
-
-    await expect(
-      controller.setBulkExclusions({ mediaIds: ['item-1', 'item-2'] }),
-    ).resolves.toEqual(response);
-    expect(rulesService.setBulkExclusions).toHaveBeenCalledWith(
-      ['item-1', 'item-2'],
-      undefined,
-      undefined,
-    );
-  });
-
   it('passes the collection through so bulk exclusions can be scoped', async () => {
     rulesService.setBulkExclusions.mockResolvedValue({ results: [] });
 

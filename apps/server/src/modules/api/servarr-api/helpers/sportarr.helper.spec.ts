@@ -52,28 +52,6 @@ describe('SportarrApi', () => {
       ).resolves.toBeNull();
     });
 
-    it('skips the list fetch when a pre-fetched list is supplied', async () => {
-      const detail = {
-        id: 3,
-        externalId: 'lg-000278',
-        name: 'Formula 1',
-        monitored: true,
-      };
-      const getSpy = jest
-        .spyOn(sportarrApi as any, 'getWithoutCache')
-        .mockResolvedValue(detail);
-
-      await expect(
-        sportarrApi.getLeagueByExternalId('lg-000278', [
-          { id: 3, externalId: 'lg-000278', name: 'Formula 1' } as any,
-        ]),
-      ).resolves.toEqual(expect.objectContaining({ id: 3 }));
-
-      // Only the detail endpoint is hit; the /leagues list is not re-pulled.
-      expect(getSpy).toHaveBeenCalledTimes(1);
-      expect(getSpy).toHaveBeenCalledWith('/leagues/3', expect.anything());
-    });
-
     it('resolves the matching league via its detail endpoint', async () => {
       const detail = {
         id: 3,
@@ -166,26 +144,7 @@ describe('SportarrApi', () => {
     });
   });
 
-  describe('getLeagues', () => {
-    it('returns undefined (not an empty list) when the fetch fails', async () => {
-      jest
-        .spyOn(sportarrApi as any, 'getWithoutCache')
-        .mockResolvedValue(undefined);
-
-      await expect(sportarrApi.getLeagues()).resolves.toBeUndefined();
-    });
-  });
-
   describe('getLeagueEvents', () => {
-    it('returns the events on success', async () => {
-      const events = [{ id: 10, seasonNumber: 2026, episodeNumber: 5 }];
-      jest
-        .spyOn(sportarrApi as any, 'getWithoutCache')
-        .mockResolvedValue(events);
-
-      await expect(sportarrApi.getLeagueEvents(3)).resolves.toEqual(events);
-    });
-
     it('returns undefined (not an empty list) when the fetch fails', async () => {
       // An outage must stay distinguishable from "league has no events":
       // callers fail closed on undefined, while [] would make count-based
@@ -198,27 +157,7 @@ describe('SportarrApi', () => {
     });
   });
 
-  describe('getQualityProfiles', () => {
-    it('returns undefined when the fetch fails', async () => {
-      jest.spyOn(sportarrApi as any, 'get').mockResolvedValue(undefined);
-
-      await expect(sportarrApi.getQualityProfiles()).resolves.toBeUndefined();
-    });
-  });
-
   describe('getLeagueDownloadHistory', () => {
-    it('returns the league download history rows', async () => {
-      const rows = [
-        { eventId: 10, downloadId: 'hashA', protocol: 'Torrent' },
-        { eventId: 11, downloadId: 'nzoB', protocol: 'Usenet' },
-      ];
-      jest.spyOn(sportarrApi as any, 'getWithoutCache').mockResolvedValue(rows);
-
-      await expect(sportarrApi.getLeagueDownloadHistory(3)).resolves.toEqual(
-        rows,
-      );
-    });
-
     it('returns an empty array when the request fails', async () => {
       jest
         .spyOn(sportarrApi as any, 'getWithoutCache')

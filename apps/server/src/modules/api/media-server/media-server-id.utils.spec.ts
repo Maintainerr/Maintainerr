@@ -1,58 +1,10 @@
 import { MediaServerType } from '@maintainerr/contracts';
 import {
   isForeignServerId,
-  isJellyfinEmptyGuid,
-  isLikelyJellyfinId,
-  isLikelyPlexId,
   shouldRefreshMetadataItemId,
 } from './media-server-id.utils';
 
 describe('media-server-id.utils', () => {
-  describe('isLikelyPlexId', () => {
-    it('returns true for a numeric id', () => {
-      expect(isLikelyPlexId('12345')).toBe(true);
-    });
-
-    it.each([
-      ['blank', ''],
-      ['Jellyfin id', 'a852a27afe324084ae66db579ee3ee18'],
-    ])('returns false for %s', (label, value) => {
-      expect(isLikelyPlexId(value)).toBe(false);
-    });
-  });
-
-  describe('isLikelyJellyfinId', () => {
-    it.each([
-      'a852a27afe324084ae66db579ee3ee18',
-      'e9b2dcaa-529c-426e-9433-5e9981f27f2e',
-    ])('returns true for %j', (value) => {
-      expect(isLikelyJellyfinId(value)).toBe(true);
-    });
-
-    it.each([
-      ['blank', ''],
-      ['wrong length', 'a852a27afe324084ae66db579ee3ee1'],
-      ['dash at wrong position', 'e9b2dcaa529c-426e-9433-5e9981f27f2e'],
-    ])('returns false for %s', (label, value) => {
-      expect(isLikelyJellyfinId(value)).toBe(false);
-    });
-  });
-
-  describe('isJellyfinEmptyGuid', () => {
-    it.each([
-      '00000000-0000-0000-0000-000000000000',
-      '00000000000000000000000000000000',
-    ])('returns true for %j', (value) => {
-      expect(isJellyfinEmptyGuid(value)).toBe(true);
-    });
-
-    it('returns false for a non-empty id', () => {
-      expect(isJellyfinEmptyGuid('a852a27afe324084ae66db579ee3ee18')).toBe(
-        false,
-      );
-    });
-  });
-
   describe('isForeignServerId', () => {
     it('returns true for blank on both server types', () => {
       expect(isForeignServerId(MediaServerType.PLEX, '')).toBe(true);
@@ -85,12 +37,6 @@ describe('media-server-id.utils', () => {
   });
 
   describe('shouldRefreshMetadataItemId', () => {
-    it('rejects blank', () => {
-      expect(shouldRefreshMetadataItemId(MediaServerType.JELLYFIN, '')).toBe(
-        false,
-      );
-    });
-
     it('allows valid Plex id for Plex', () => {
       expect(shouldRefreshMetadataItemId(MediaServerType.PLEX, '12345')).toBe(
         true,
@@ -124,12 +70,6 @@ describe('media-server-id.utils', () => {
       );
     });
 
-    it('rejects Plex numeric id for Jellyfin', () => {
-      expect(
-        shouldRefreshMetadataItemId(MediaServerType.JELLYFIN, '12345'),
-      ).toBe(false);
-    });
-
     // #2853: malformed strings used to slip through because the filter only
     // rejected the all-zero Guid and Plex-shaped numeric IDs. Anything else
     // - truncated UUIDs, non-hex garbage, fully-dashed but wrong-length - must
@@ -142,6 +82,7 @@ describe('media-server-id.utils', () => {
       'e9b2dcaa-529c-426e-9433-5e9981f27f2', // 35 chars (truncated dashed UUID)
       'e9b2dcaa-529c-426e-9433-5e9981f27f2ee', // 37 chars (oversized dashed UUID)
       'gggggggg-gggg-gggg-gggg-gggggggggggg', // non-hex chars
+      'e9b2dcaa529c-426e-9433-5e9981f27f2e', // dash at the wrong position
     ])('rejects malformed Jellyfin id %j', (value) => {
       expect(shouldRefreshMetadataItemId(MediaServerType.JELLYFIN, value)).toBe(
         false,

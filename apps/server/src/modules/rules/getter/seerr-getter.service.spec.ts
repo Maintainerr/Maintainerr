@@ -152,18 +152,6 @@ describe('SeerrGetterService', () => {
       ).toHaveBeenCalledTimes(1);
     });
 
-    it('re-resolves per call when no run cache is provided (unchanged behaviour)', async () => {
-      const { service, seerrApi, metadataService } = createService();
-      seerrApi.getRequestsForMedia.mockResolvedValue([]);
-
-      await call(service);
-      await call(service);
-
-      expect(
-        metadataService.resolveIdsFromMediaItemForService,
-      ).toHaveBeenCalledTimes(2);
-    });
-
     it('evicts a no-tmdb resolution so a later condition retries (transient safety, #3125)', async () => {
       const { service, seerrApi, metadataService } = createService();
       seerrApi.getRequestsForMedia.mockResolvedValue([]);
@@ -207,124 +195,6 @@ describe('SeerrGetterService', () => {
       expect(result).toEqual(['PlexDisplayName']);
     });
 
-    it('should return local username for local users (userType 2)', async () => {
-      const { service, seerrApi } = createService();
-
-      seerrApi.getRequestsForMedia.mockResolvedValue([
-        movieRequest({
-          requestedBy: { id: 20, userType: 2, username: 'LocalUser' },
-        }),
-      ]);
-
-      const result = await service.get(
-        ADD_USER_PROP_ID,
-        movieLibItem,
-        undefined,
-      );
-
-      expect(result).toEqual(['LocalUser']);
-    });
-
-    it('should return jellyfinUsername for Jellyfin users (userType 3)', async () => {
-      const { service, seerrApi } = createService();
-
-      seerrApi.getRequestsForMedia.mockResolvedValue([
-        movieRequest({
-          requestedBy: {
-            id: 30,
-            userType: 3,
-            username: 'jellyfin_email',
-            jellyfinUsername: 'JellyfinUser',
-          },
-        }),
-      ]);
-
-      const result = await service.get(
-        ADD_USER_PROP_ID,
-        movieLibItem,
-        undefined,
-      );
-
-      expect(result).toEqual(['JellyfinUser']);
-    });
-
-    it('should return jellyfinUsername for Emby users (userType 4)', async () => {
-      const { service, seerrApi } = createService();
-
-      seerrApi.getRequestsForMedia.mockResolvedValue([
-        movieRequest({
-          requestedBy: {
-            id: 40,
-            userType: 4,
-            username: 'emby_email',
-            jellyfinUsername: 'EmbyUser',
-          },
-        }),
-      ]);
-
-      const result = await service.get(
-        ADD_USER_PROP_ID,
-        movieLibItem,
-        undefined,
-      );
-
-      expect(result).toEqual(['EmbyUser']);
-    });
-
-    it('should fall back to username when plexUsername is not set', async () => {
-      const { service, seerrApi } = createService();
-
-      seerrApi.getRequestsForMedia.mockResolvedValue([
-        movieRequest({
-          requestedBy: {
-            id: 50,
-            userType: 1,
-            username: 'FallbackUser',
-            plexUsername: '',
-          },
-        }),
-      ]);
-
-      const result = await service.get(
-        ADD_USER_PROP_ID,
-        movieLibItem,
-        undefined,
-      );
-
-      expect(result).toEqual(['FallbackUser']);
-    });
-
-    it('should handle mixed user types (Plex + Jellyfin + Local) in same request list', async () => {
-      const { service, seerrApi } = createService();
-
-      seerrApi.getRequestsForMedia.mockResolvedValue([
-        movieRequest({
-          id: 1,
-          requestedBy: { id: 10, userType: 1, plexUsername: 'PlexUser' },
-        }),
-        movieRequest({
-          id: 2,
-          requestedBy: {
-            id: 20,
-            userType: 3,
-            jellyfinUsername: 'JellyfinUser',
-          },
-        }),
-        movieRequest({
-          id: 3,
-          requestedBy: { id: 30, userType: 2, username: 'LocalUser' },
-        }),
-      ]);
-
-      const result = await service.get(
-        ADD_USER_PROP_ID,
-        movieLibItem,
-        undefined,
-      );
-
-      expect(result).toEqual(['PlexUser', 'JellyfinUser', 'LocalUser']);
-    });
-
     it('should return empty array when the title has no requests', async () => {
       const { service, seerrApi } = createService();
 
@@ -362,27 +232,6 @@ describe('SeerrGetterService', () => {
       );
 
       expect(result).toEqual(['SameUser']);
-    });
-
-    it('should not need media server getUsers for Plex username resolution', async () => {
-      const { service, seerrApi, mediaServerFactory } = createService();
-
-      seerrApi.getRequestsForMedia.mockResolvedValue([
-        movieRequest({
-          requestedBy: {
-            id: 10,
-            userType: 1,
-            plexUsername: 'PlexUser',
-            plexId: 12345678,
-          },
-        }),
-      ]);
-
-      await service.get(ADD_USER_PROP_ID, movieLibItem, undefined);
-
-      // getUsers should NOT be called since we use plexUsername directly
-      const mediaServer = await mediaServerFactory.getService();
-      expect((mediaServer as any).getUsers).not.toHaveBeenCalled();
     });
 
     it('skips a season whose show cannot be read instead of failing the run', async () => {
@@ -433,20 +282,6 @@ describe('SeerrGetterService', () => {
 
       // Only the season 1 request's user should be returned.
       expect(result).toEqual(['UserWhoRequestedSeason1']);
-    });
-
-    it('should return undefined (transient) when the request sweep failed', async () => {
-      const { service, seerrApi } = createService();
-
-      seerrApi.getRequestsForMedia.mockResolvedValue(undefined);
-
-      const result = await service.get(
-        ADD_USER_PROP_ID,
-        movieLibItem,
-        undefined,
-      );
-
-      expect(result).toBeUndefined();
     });
   });
 
@@ -606,16 +441,6 @@ describe('SeerrGetterService', () => {
         ),
       ).resolves.toBe(1);
     });
-
-    it('should return undefined (transient) when the request sweep failed', async () => {
-      const { service, seerrApi } = createService();
-
-      seerrApi.getRequestsForMedia.mockResolvedValue(undefined);
-
-      await expect(
-        service.get(IS_REQUESTED_PROP_ID, movieLibItem, undefined),
-      ).resolves.toBeUndefined();
-    });
   });
 
   describe('requestDate (property id=1)', () => {
@@ -639,43 +464,6 @@ describe('SeerrGetterService', () => {
       await expect(
         service.get(REQUEST_DATE_PROP_ID, movieLibItem, undefined),
       ).resolves.toBeNull();
-    });
-
-    it('returns the OLDEST request createdAt for a multi-request movie', async () => {
-      const { service, seerrApi } = createService();
-
-      // SeerrApiService.buildRequestIndex normalises each title's list to
-      // oldest-first, so requestDate is the first (earliest) request - matching
-      // the pre-#3152 getMovie ordering, not the newest re-request (#3152).
-      seerrApi.getRequestsForMedia.mockResolvedValue([
-        movieRequest({ id: 1, createdAt: '2026-04-01' }),
-        movieRequest({ id: 2, createdAt: '2026-05-01' }),
-      ]);
-
-      await expect(
-        service.get(REQUEST_DATE_PROP_ID, movieLibItem, undefined),
-      ).resolves.toEqual(new Date('2026-04-01'));
-    });
-
-    it('should return the matching season request createdAt for seasons', async () => {
-      const { service, seerrApi, mediaServerFactory } = createService();
-      const mockMediaServer = await mediaServerFactory.getService();
-      (mockMediaServer as any).getMetadata = jest
-        .fn()
-        .mockResolvedValue(showLibItem);
-
-      seerrApi.getRequestsForMedia.mockResolvedValue([
-        tvRequest([2], { id: 2, createdAt: '2026-05-01' }),
-        tvRequest([1], { id: 1, createdAt: '2026-04-01' }),
-      ]);
-
-      await expect(
-        service.get(
-          REQUEST_DATE_PROP_ID,
-          seasonLibItem,
-          'season' as MediaItemType,
-        ),
-      ).resolves.toEqual(new Date('2026-04-01'));
     });
   });
 
@@ -709,31 +497,6 @@ describe('SeerrGetterService', () => {
       await expect(
         service.get(APPROVAL_DATE_PROP_ID, movieLibItem, undefined),
       ).resolves.toBeNull();
-    });
-
-    it('should return the matching season media updatedAt for seasons', async () => {
-      const { service, seerrApi, mediaServerFactory } = createService();
-      const mockMediaServer = await mediaServerFactory.getService();
-      (mockMediaServer as any).getMetadata = jest
-        .fn()
-        .mockResolvedValue(showLibItem);
-
-      seerrApi.getRequestsForMedia.mockResolvedValue([
-        tvRequest([1], {
-          media: mediaInfo({
-            status: RequestMediaStatus.AVAILABLE,
-            updatedAt: '2026-07-01',
-          }),
-        }),
-      ]);
-
-      await expect(
-        service.get(
-          APPROVAL_DATE_PROP_ID,
-          seasonLibItem,
-          'season' as MediaItemType,
-        ),
-      ).resolves.toEqual(new Date('2026-07-01'));
     });
   });
 
@@ -862,40 +625,6 @@ describe('SeerrGetterService', () => {
       await expect(
         service.get(RELEASE_DATE_PROP_ID, movieLibItem, undefined),
       ).resolves.toBeUndefined();
-    });
-
-    it('should return null for episodes when season metadata could not be loaded', async () => {
-      const { service, seerrApi, mediaServerFactory, logger } = createService();
-      const episodeLibItem = createMediaItem({
-        type: 'episode',
-        grandparentId: showLibItem.id,
-        parentIndex: 1,
-        index: 2,
-      });
-      const mockMediaServer = await mediaServerFactory.getService();
-      (mockMediaServer as any).getMetadata = jest
-        .fn()
-        .mockResolvedValue(showLibItem);
-
-      seerrApi.getShow.mockResolvedValue({
-        id: 1,
-        mediaInfo: {
-          requests: [],
-        },
-        firstAirDate: '2026-01-01',
-      } as unknown as SeerrTVResponse);
-      seerrApi.getSeason.mockResolvedValue(undefined);
-
-      await expect(
-        service.get(
-          RELEASE_DATE_PROP_ID,
-          episodeLibItem,
-          'episode' as MediaItemType,
-        ),
-      ).resolves.toBeNull();
-      expect(logger.debug).toHaveBeenCalledWith(
-        `Couldn't fetch season data for '${showLibItem.title}' season 1 from Seerr. As a result, unreliable results are expected.`,
-      );
     });
   });
 

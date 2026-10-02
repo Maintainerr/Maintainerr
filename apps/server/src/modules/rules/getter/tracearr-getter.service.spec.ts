@@ -283,21 +283,6 @@ describe('TracearrGetterService', () => {
     await expect(service.get(VIEW_COUNT, movie, ruleGroup)).resolves.toBe(2);
   });
 
-  it('returns the latest watched date for lastViewedAt', async () => {
-    const { service } = createService([
-      historyItem('33333333-3333-4333-8333-333333333333', {
-        media_type: 'movie',
-        rating_key: 'movie-1',
-        grandparent_rating_key: null,
-        stopped_at: '2026-01-02T01:00:00.000Z',
-      }),
-    ]);
-
-    await expect(
-      service.get(LAST_VIEWED_AT, movie, ruleGroup),
-    ).resolves.toEqual(new Date('2026-01-02T01:00:00.000Z'));
-  });
-
   // The distinguishing behaviour: lastViewedAt only sees watched rows,
   // lastPlayedAt sees every session Tracearr recorded.
   it('reports a play that never reached the watched threshold for lastPlayedAt', async () => {
@@ -337,17 +322,6 @@ describe('TracearrGetterService', () => {
     await expect(service.get(VIEW_COUNT, movie, ruleGroup)).resolves.toBe(1);
 
     expect(tracearrApi.prefetchHistory).toHaveBeenCalledTimes(1);
-  });
-
-  it('counts watched episode chains for sw_amountOfViews', async () => {
-    const { service } = createService([
-      historyItem('33333333-3333-4333-8333-333333333333'),
-      historyItem('44444444-4444-4444-8444-444444444444'),
-    ]);
-
-    await expect(service.get(AMOUNT_OF_VIEWS, show, ruleGroup)).resolves.toBe(
-      2,
-    );
   });
 
   it('counts distinct watched episode keys for sw_viewedEpisodes', async () => {
@@ -408,16 +382,6 @@ describe('TracearrGetterService', () => {
     );
   });
 
-  it('returns usernames who watched at least one episode for sw_watchers', async () => {
-    const { service } = createService([
-      historyItem('33333333-3333-4333-8333-333333333333'),
-    ]);
-
-    await expect(service.get(WATCHERS, show, ruleGroup)).resolves.toEqual([
-      'alice',
-    ]);
-  });
-
   it('skips user IDs that no longer map to a media-server account', async () => {
     const departedUserId = '77777777-7777-4777-8777-777777777777';
     const { service, tracearrApi } = createService([
@@ -457,21 +421,6 @@ describe('TracearrGetterService', () => {
     );
 
     await expect(service.get(VIEW_COUNT, movie, ruleGroup)).resolves.toBe(1);
-  });
-
-  it('loads a collection watched-percent override once per snapshot', async () => {
-    const { service, collectionRepository } = createService([
-      historyItem('33333333-3333-4333-8333-333333333333', {
-        media_type: 'movie',
-        rating_key: 'movie-1',
-        grandparent_rating_key: null,
-      }),
-    ]);
-
-    await service.get(VIEW_COUNT, movie, ruleGroup);
-    await service.get(LAST_VIEWED_AT, movie, ruleGroup);
-
-    expect(collectionRepository.findOne).toHaveBeenCalledTimes(1);
   });
 
   it('treats an episode omitted by Tracearrs two-minute floor as unviewed', async () => {

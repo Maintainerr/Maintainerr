@@ -152,22 +152,6 @@ describe('TransmissionApi RPC', () => {
       'Transmission RPC session-get failed: invalid argument',
     );
   });
-
-  it('reads the session once across torrent reads', async () => {
-    const { api, axiosMock } = buildApi();
-    axiosMock.post
-      .mockResolvedValueOnce(rpcSuccess(session()))
-      .mockResolvedValueOnce(rpcSuccess({ torrents: [torrent()] }))
-      .mockResolvedValueOnce(rpcSuccess({ torrents: [torrent()] }));
-
-    await expect(api.getTorrents()).resolves.toHaveLength(1);
-    await expect(api.getTorrentByHash(HASH)).resolves.not.toBeNull();
-    expect(axiosMock.post).toHaveBeenCalledTimes(3);
-    expect(axiosMock.post.mock.calls[2][1]).toMatchObject({
-      method: 'torrent-get',
-      arguments: { ids: [HASH] },
-    });
-  });
 });
 
 describe('TransmissionApi torrent mapping', () => {

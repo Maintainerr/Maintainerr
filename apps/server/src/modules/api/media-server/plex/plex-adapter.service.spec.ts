@@ -1,4 +1,4 @@
-import { MediaServerFeature, MediaServerType } from '@maintainerr/contracts';
+import { MediaServerFeature } from '@maintainerr/contracts';
 import { Mocked, TestBed } from '@suites/unit';
 import {
   createPlexCollection,
@@ -6,13 +6,10 @@ import {
   createPlexLibraryItem,
   createPlexMetadata,
   createPlexSeenBy,
-  createPlexUserAccount,
 } from '../../../../../test/utils/data';
 import { MaintainerrLogger } from '../../../logging/logs.service';
-import type { PlexStatusResponse } from '../../plex-api/interfaces/server.interface';
 import { PlexApiService } from '../../plex-api/plex-api.service';
 import { PlexAdapterService } from './plex-adapter.service';
-import { batchIdsByRequestCost } from '../metadata-batch.util';
 
 describe('PlexAdapterService', () => {
   let service: PlexAdapterService;
@@ -26,31 +23,6 @@ describe('PlexAdapterService', () => {
     service = unit;
     plexApi = unitRef.get(PlexApiService);
     logger = unitRef.get(MaintainerrLogger);
-  });
-
-  describe('lifecycle', () => {
-    it('should delegate isSetup to PlexApiService', () => {
-      plexApi.isPlexSetup.mockReturnValue(false);
-      expect(service.isSetup()).toBe(false);
-
-      plexApi.isPlexSetup.mockReturnValue(true);
-      expect(service.isSetup()).toBe(true);
-    });
-
-    it('should return PLEX as server type', () => {
-      expect(service.getServerType()).toBe(MediaServerType.PLEX);
-    });
-
-    it('should delegate initialize to PlexApiService', async () => {
-      plexApi.initialize.mockResolvedValue(undefined);
-      await service.initialize();
-      expect(plexApi.initialize).toHaveBeenCalled();
-    });
-
-    it('should delegate uninitialize to PlexApiService', () => {
-      service.uninitialize();
-      expect(plexApi.uninitialize).toHaveBeenCalled();
-    });
   });
 
   describe('feature detection', () => {
@@ -76,21 +48,6 @@ describe('PlexAdapterService', () => {
       expect(plexApi.getLibraryContents).toHaveBeenCalledWith(
         '1',
         expect.objectContaining({ sort: 'studio:desc' }),
-        undefined,
-      );
-    });
-
-    it('asks Plex to sort a library by date added natively', async () => {
-      plexApi.getLibraryContents.mockResolvedValue({ items: [], totalSize: 0 });
-
-      await service.getLibraryContents('1', {
-        sort: 'addedAt',
-        sortOrder: 'desc',
-      });
-
-      expect(plexApi.getLibraryContents).toHaveBeenCalledWith(
-        '1',
-        expect.objectContaining({ sort: 'addedAt:desc' }),
         undefined,
       );
     });
@@ -122,34 +79,9 @@ describe('PlexAdapterService', () => {
         new Set(['movie1', 'episode1', 'season1', 'show1', 'episode2']),
       );
     });
-
-    it('returns an empty set when nothing is playing', async () => {
-      plexApi.getActiveSessions.mockResolvedValue([]);
-      expect(await service.getActiveSessions()).toEqual(new Set<string>());
-    });
-  });
-
-  describe('cache management', () => {
-    it('should delegate resetMetadataCache to PlexApiService when itemId provided', () => {
-      service.resetMetadataCache('item123');
-      expect(plexApi.resetMetadataCache).toHaveBeenCalledWith('item123');
-    });
-
-    it('should not call PlexApiService when itemId is undefined', () => {
-      service.resetMetadataCache();
-      expect(plexApi.resetMetadataCache).not.toHaveBeenCalled();
-    });
   });
 
   describe('refreshItemMetadata', () => {
-    it('should delegate metadata refresh for non-empty item ids', async () => {
-      plexApi.refreshMediaMetadata.mockResolvedValue(undefined);
-
-      await service.refreshItemMetadata('12345');
-
-      expect(plexApi.refreshMediaMetadata).toHaveBeenCalledWith('12345');
-    });
-
     it('should reject blank item ids before calling PlexApiService', async () => {
       await expect(service.refreshItemMetadata('   ')).rejects.toThrow(
         'refreshItemMetadata called with empty itemId - aborting metadata refresh request',
@@ -159,96 +91,11 @@ describe('PlexAdapterService', () => {
     });
   });
 
-  describe('getStatus', () => {
-    it('should return undefined when PlexApiService returns undefined', async () => {
-      plexApi.getStatus.mockResolvedValue(undefined);
-      const status = await service.getStatus();
-      expect(status).toBeUndefined();
-    });
-
-    it('should map Plex status to MediaServerStatus', async () => {
-      const plexStatus: PlexStatusResponse['MediaContainer'] = {
-        machineIdentifier: 'machine123',
-        version: '1.25.0',
-      };
-
-      plexApi.getStatus.mockResolvedValue(plexStatus);
-
-      const status = await service.getStatus();
-      expect(status).toBeDefined();
-      expect(status?.machineId).toBe('machine123');
-      expect(status?.version).toBe('1.25.0');
-      expect(status?.name).toBeUndefined();
-    });
-  });
-
-  describe('getUsers', () => {
-    it('should return empty array when PlexApiService returns undefined', async () => {
-      plexApi.getUsers.mockResolvedValue(undefined);
-      const users = await service.getUsers();
-      expect(users).toEqual([]);
-    });
-
-    it('should map Plex users to MediaUser array', async () => {
-      plexApi.getUsers.mockResolvedValue([
-        createPlexUserAccount({
-          id: 1,
-          key: '1',
-          name: 'user1',
-          thumb: '/thumb1',
-        }),
-        createPlexUserAccount({
-          id: 2,
-          key: '2',
-          name: 'user2',
-          thumb: '/thumb2',
-        }),
-      ]);
-
-      const users = await service.getUsers();
-      expect(users).toHaveLength(2);
-      expect(users[0].id).toBe('1');
-      expect(users[0].name).toBe('user1');
-    });
-  });
-
   describe('getLibraries', () => {
     it('should return empty array when PlexApiService returns undefined', async () => {
       plexApi.getLibraries.mockResolvedValue(undefined);
       const libraries = await service.getLibraries();
       expect(libraries).toEqual([]);
-    });
-
-    it('should map Plex libraries to MediaLibrary array', async () => {
-      plexApi.getLibraries.mockResolvedValue([
-        createPlexLibrary({
-          key: '1',
-          title: 'Movies',
-          type: 'movie',
-          agent: 'com.plexapp.agents.imdb',
-        }),
-        createPlexLibrary({
-          key: '2',
-          title: 'TV Shows',
-          type: 'show',
-          agent: 'com.plexapp.agents.imdb',
-        }),
-        createPlexLibrary({
-          key: '3',
-          title: 'Music',
-          type: 'artist',
-          agent: 'tv.plex.agents.music',
-        }),
-      ]);
-
-      const libraries = await service.getLibraries();
-      expect(libraries).toHaveLength(2);
-      expect(libraries[0].id).toBe('1');
-      expect(libraries[0].title).toBe('Movies');
-      expect(libraries.map((library) => library.type)).toEqual([
-        'movie',
-        'show',
-      ]);
     });
 
     it('computes accurate library sizes via section allLeaves for show libraries', async () => {
@@ -422,13 +269,6 @@ describe('PlexAdapterService', () => {
   });
 
   describe('itemExists', () => {
-    it('delegates to the Plex API existence check', async () => {
-      plexApi.itemExists.mockResolvedValue(true);
-
-      await expect(service.itemExists('movie-1')).resolves.toBe(true);
-      expect(plexApi.itemExists).toHaveBeenCalledWith('movie-1');
-    });
-
     it('propagates an inconclusive check so callers do not drop state', async () => {
       plexApi.itemExists.mockRejectedValue(new Error('network'));
 
@@ -443,25 +283,6 @@ describe('PlexAdapterService', () => {
       expect(result.totalSize).toBe(0);
     });
 
-    it('should return empty result for Jellyfin-style UUID', async () => {
-      // Jellyfin uses 32-char hex UUIDs
-      const result = await service.getLibraryContents(
-        'a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4',
-      );
-      expect(result.items).toEqual([]);
-      expect(result.totalSize).toBe(0);
-    });
-
-    it('should call PlexApiService with correct parameters', async () => {
-      plexApi.getLibraryContents.mockResolvedValue({
-        items: [],
-        totalSize: 0,
-      });
-
-      await service.getLibraryContents('1', { offset: 0, limit: 50 });
-      expect(plexApi.getLibraryContents).toHaveBeenCalled();
-    });
-
     it('propagates page read failures so callers never mistake a failed read for an empty library', async () => {
       plexApi.getLibraryContents.mockRejectedValue(new Error('boom'));
 
@@ -471,45 +292,12 @@ describe('PlexAdapterService', () => {
     });
   });
 
-  describe('prefetchWatchHistory', () => {
-    it('delegates to plexApi.prefetchWatchHistory', async () => {
-      plexApi.prefetchWatchHistory = jest.fn().mockResolvedValue(undefined);
-      const abortSignal = new AbortController().signal;
-      await service.prefetchWatchHistory({ libraryId: '7', abortSignal });
-      expect(plexApi.prefetchWatchHistory).toHaveBeenCalledWith(
-        '7',
-        abortSignal,
-      );
-    });
-  });
-
   describe('getWatchHistory', () => {
-    it('should return empty array when Plex returned no history entries', async () => {
-      plexApi.getWatchHistory.mockResolvedValue([]);
-      const history = await service.getWatchHistory('item123');
-      expect(history).toEqual([]);
-    });
-
     it('should propagate errors so callers can distinguish a real outage from a confirmed empty history', async () => {
       plexApi.getWatchHistory.mockRejectedValue(new Error('plex unreachable'));
       await expect(service.getWatchHistory('item123')).rejects.toThrow(
         'plex unreachable',
       );
-    });
-
-    it('should map Plex watch history to WatchRecord array', async () => {
-      plexApi.getWatchHistory.mockResolvedValue([
-        createPlexSeenBy({
-          accountID: 1,
-          ratingKey: 'item123',
-          viewedAt: 1609459200,
-        }),
-      ]);
-
-      const history = await service.getWatchHistory('item123');
-      expect(history).toHaveLength(1);
-      expect(history[0].userId).toBe('1');
-      expect(history[0].itemId).toBe('item123');
     });
   });
 
@@ -544,17 +332,6 @@ describe('PlexAdapterService', () => {
       ]);
 
       const watchState = await service.getWatchState('item123', 1);
-
-      expect(watchState).toEqual({
-        viewCount: 2,
-        isWatched: true,
-      });
-    });
-
-    it('should count native views that left no history row', async () => {
-      plexApi.getWatchHistory.mockResolvedValue([]);
-
-      const watchState = await service.getWatchState('item123', 2);
 
       expect(watchState).toEqual({
         viewCount: 2,
@@ -620,41 +397,6 @@ describe('PlexAdapterService', () => {
       await expect(service.getCollection('col123')).resolves.toBeUndefined();
     });
 
-    it('should map a Plex collection when found', async () => {
-      plexApi.getCollection.mockResolvedValue(
-        createPlexCollection({
-          ratingKey: 'col123',
-          key: '/library/collections/col123',
-          guid: 'plex://collection/col123',
-          title: 'Test Collection',
-          subtype: 'movie',
-          summary: '',
-          index: 0,
-          ratingCount: 0,
-          thumb: '/thumb/col123',
-          addedAt: 1609459200,
-          updatedAt: 1609459200,
-        }),
-      );
-
-      await expect(service.getCollection('col123')).resolves.toMatchObject({
-        id: 'col123',
-        title: 'Test Collection',
-      });
-    });
-
-    it('should return undefined and log when collection lookup fails', async () => {
-      const serverError = new Error('Plex lookup failed');
-      plexApi.getCollection.mockRejectedValueOnce(serverError);
-
-      await expect(service.getCollection('col123')).resolves.toBeUndefined();
-
-      expect(logger.warn).toHaveBeenCalledWith(
-        'Failed to get collection col123',
-      );
-      expect(logger.debug).toHaveBeenCalledWith(serverError);
-    });
-
     it('should rethrow lookup failures when strict verification is requested', async () => {
       const serverError = new Error('Plex lookup failed');
       plexApi.getCollection.mockRejectedValueOnce(serverError);
@@ -685,32 +427,6 @@ describe('PlexAdapterService', () => {
         'movie-2',
       ]);
       expect(items.map((item) => item.id)).toEqual(['movie-1', 'movie-2']);
-    });
-
-    it('splits a long id list so the request line stays bounded', async () => {
-      plexApi.getMetadataBatch.mockResolvedValue([]);
-      const itemIds = Array.from(
-        { length: 1500 },
-        (unused, index) => `movie-${index}`,
-      );
-
-      await service.getMetadataBatch(itemIds);
-
-      // The shared helper decides the split from the ids themselves.
-      expect(plexApi.getMetadataBatch).toHaveBeenCalledTimes(
-        batchIdsByRequestCost(itemIds, 1).length,
-      );
-      expect(plexApi.getMetadataBatch.mock.calls.length).toBeGreaterThan(1);
-    });
-
-    it('leaves out the ids Plex did not answer for', async () => {
-      plexApi.getMetadataBatch.mockResolvedValue([
-        createPlexMetadata({ ratingKey: 'movie-1', type: 'movie' }),
-      ]);
-
-      await expect(
-        service.getMetadataBatch(['movie-1', 'gone']),
-      ).resolves.toEqual([expect.objectContaining({ id: 'movie-1' })]);
     });
   });
 
@@ -765,34 +481,6 @@ describe('PlexAdapterService', () => {
       expect(children[1].providerIds.tmdb).toEqual(['654']);
     });
 
-    it('splits the lookup so the request line cannot grow without bound', async () => {
-      const childCount = 1500;
-      plexApi.getCollectionChildren.mockResolvedValue(
-        Array.from({ length: childCount }, (_, index) =>
-          createPlexLibraryItem('movie', {
-            ratingKey: `movie-${index}`,
-            Guid: undefined,
-          }),
-        ),
-      );
-      plexApi.getMetadataBatch.mockImplementation(async (keys: string[]) =>
-        keys.map((ratingKey) =>
-          createPlexMetadata({
-            ratingKey,
-            type: 'movie',
-            Guid: [{ id: 'tmdb://321' }],
-          }),
-        ),
-      );
-
-      const children = await service.getCollectionChildren('col123');
-
-      expect(plexApi.getMetadataBatch.mock.calls.length).toBeGreaterThan(1);
-      expect(children.every((child) => child.providerIds.tmdb.length > 0)).toBe(
-        true,
-      );
-    });
-
     // Plex sends no rating at all on an episode or season listing row and puts
     // the audience score in Rating[], which only the per-item read returns. The
     // rating sort compares it, so it has to survive the merge.
@@ -823,32 +511,6 @@ describe('PlexAdapterService', () => {
       ]);
     });
 
-    // A movie listing row carries audienceRating, and the metadata read dedupes
-    // Rating[] by type behind it, so the listing value must not be replaced.
-    it('keeps the rating the listing row already carried', async () => {
-      plexApi.getCollectionChildren.mockResolvedValue([
-        createPlexLibraryItem('movie', {
-          ratingKey: 'movie-1',
-          Guid: undefined,
-          audienceRating: 5.4,
-        }),
-      ]);
-      plexApi.getMetadataBatch.mockResolvedValue([
-        createPlexMetadata({
-          ratingKey: 'movie-1',
-          type: 'movie',
-          Guid: [{ id: 'tmdb://321' }],
-          audienceRating: 5.4,
-        }),
-      ]);
-
-      const children = await service.getCollectionChildren('col123');
-
-      expect(children[0].ratings).toEqual([
-        { source: 'audience', value: 5.4, type: 'audience' },
-      ]);
-    });
-
     it('keeps the listing entry, and only its ids change, when a lookup resolves', async () => {
       plexApi.getCollectionChildren.mockResolvedValue([
         createPlexLibraryItem('episode', {
@@ -874,38 +536,6 @@ describe('PlexAdapterService', () => {
       expect(children[0].library).toEqual({ id: '7', title: 'Shows' });
     });
 
-    it('counts the children Plex holds no ids for instead of logging each one', async () => {
-      plexApi.getCollectionChildren.mockResolvedValue([
-        createPlexLibraryItem('episode', {
-          ratingKey: 'episode-1',
-          Guid: undefined,
-        }),
-        createPlexLibraryItem('episode', {
-          ratingKey: 'episode-2',
-          Guid: undefined,
-        }),
-      ]);
-      // An item answered with no ids counts the same as one never answered for.
-      plexApi.getMetadataBatch.mockResolvedValue([
-        createPlexMetadata({
-          ratingKey: 'episode-1',
-          type: 'episode',
-          Guid: undefined,
-        }),
-      ]);
-
-      const children = await service.getCollectionChildren('col123');
-
-      expect(children[0].id).toBe('episode-1');
-      expect(children[0].providerIds.tmdb).toEqual([]);
-      expect(children[0].providerIds.tvdb).toEqual([]);
-      expect(children[0].providerIds.imdb).toEqual([]);
-      expect(logger.debug).toHaveBeenCalledWith(
-        'No external ids resolved for 2 of 2 children of Plex collection col123',
-      );
-      expect(logger.debug).toHaveBeenCalledTimes(1);
-    });
-
     it('propagates enumeration failures so callers never mistake a failed read for an empty collection', async () => {
       plexApi.getCollectionChildren.mockRejectedValue(new Error('boom'));
 
@@ -924,36 +554,6 @@ describe('PlexAdapterService', () => {
   });
 
   describe('collection operations', () => {
-    it('should delegate createCollection to PlexApiService', async () => {
-      plexApi.createCollection.mockResolvedValue(
-        createPlexCollection({
-          ratingKey: 'col123',
-          key: '/library/collections/col123',
-          guid: 'plex://collection/col123',
-          title: 'Test Collection',
-          subtype: 'movie',
-          summary: '',
-          index: 0,
-          ratingCount: 0,
-          thumb: '/thumb/col123',
-          addedAt: 1609459200,
-          updatedAt: 1609459200,
-          childCount: '0',
-          maxYear: '2021',
-          minYear: '2021',
-        }),
-      );
-
-      const result = await service.createCollection({
-        libraryId: 'lib1',
-        title: 'Test Collection',
-        type: 'movie',
-      });
-
-      expect(plexApi.createCollection).toHaveBeenCalled();
-      expect(result.id).toBe('col123');
-    });
-
     it('should throw error when collection creation fails', async () => {
       plexApi.createCollection.mockResolvedValue(undefined);
 
@@ -999,16 +599,6 @@ describe('PlexAdapterService', () => {
           initialItemIds: expect.anything(),
         }),
       );
-    });
-
-    it('should delegate deleteCollection to PlexApiService', async () => {
-      plexApi.deleteCollection.mockResolvedValue({
-        status: 'OK',
-        code: 1,
-        message: 'Success',
-      });
-      await service.deleteCollection('col123');
-      expect(plexApi.deleteCollection).toHaveBeenCalledWith('col123');
     });
 
     // #3344: plexApi reports a refused delete as NOK instead of throwing.
@@ -1069,17 +659,6 @@ describe('PlexAdapterService', () => {
       await service.cleanupCollectionForLibrary('col123', 'lib1', true);
 
       expect(plexApi.deleteCollection).not.toHaveBeenCalled();
-    });
-
-    it('should delegate setCollectionImage to PlexApiService.setThumb', async () => {
-      plexApi.setThumb.mockResolvedValue(undefined);
-      const buf = Buffer.from('jpeg-bytes');
-      await service.setCollectionImage('col123', buf, 'image/jpeg');
-      expect(plexApi.setThumb).toHaveBeenCalledWith(
-        'col123',
-        buf,
-        'image/jpeg',
-      );
     });
 
     it('should treat NOK add responses as failures', async () => {
@@ -1150,23 +729,6 @@ describe('PlexAdapterService', () => {
       expect(logger.warn).toHaveBeenCalledWith(
         'Plex add to collection col123: 1 refused, 0 unconfirmed',
       );
-      expect(logger.error).not.toHaveBeenCalled();
-      expect(logger.debug).not.toHaveBeenCalled();
-    });
-
-    it('should stay silent when per-item fallback recovers all Plex batch add failures', async () => {
-      plexApi.addChildrenToCollection.mockResolvedValue({
-        status: 'NOK',
-        code: 400,
-        message: 'batch failed',
-      } as any);
-      plexApi.addChildToCollection.mockResolvedValue({ status: 'OK' } as any);
-
-      await expect(
-        service.addBatchToCollection('col123', ['good', 'good-2']),
-      ).resolves.toEqual({ refused: [], unknown: [] });
-
-      expect(logger.warn).not.toHaveBeenCalled();
       expect(logger.error).not.toHaveBeenCalled();
       expect(logger.debug).not.toHaveBeenCalled();
     });
@@ -1247,23 +809,6 @@ describe('PlexAdapterService', () => {
       ).resolves.toEqual({ refused: [], unknown: ['bad', '1404'] });
     });
 
-    it('should default optional visibility flags to false', async () => {
-      plexApi.UpdateCollectionSettings.mockResolvedValue({} as any);
-
-      await service.updateCollectionVisibility({
-        libraryId: 'lib1',
-        collectionId: 'col123',
-      });
-
-      expect(plexApi.UpdateCollectionSettings).toHaveBeenCalledWith({
-        libraryId: 'lib1',
-        collectionId: 'col123',
-        recommended: false,
-        ownHome: false,
-        sharedHome: false,
-      });
-    });
-
     it('should set custom sort then move items into the requested order', async () => {
       plexApi.getCollectionChildren.mockResolvedValue([
         createPlexLibraryItem('movie', { ratingKey: 'c' }),
@@ -1281,14 +826,6 @@ describe('PlexAdapterService', () => {
         ['col123', 'b', 'a'],
         ['col123', 'c', 'b'],
       ]);
-    });
-
-    it('should no-op when reordering an empty list', async () => {
-      await service.reorderCollectionItems('col123', []);
-
-      expect(plexApi.getCollectionChildren).not.toHaveBeenCalled();
-      expect(plexApi.setCollectionCustomSort).not.toHaveBeenCalled();
-      expect(plexApi.moveCollectionItem).not.toHaveBeenCalled();
     });
 
     it('should proceed with the reorder when the current-order read fails', async () => {

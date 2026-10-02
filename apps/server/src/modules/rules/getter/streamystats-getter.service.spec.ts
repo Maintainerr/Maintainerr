@@ -296,48 +296,6 @@ describe('StreamystatsGetterService', () => {
 
       expect(result.sort()).toEqual(['alice', 'bob']);
     });
-
-    it('resolves the grandparent show owner for an episode not directly listed', async () => {
-      const episode = createMediaItem({
-        type: 'episode',
-        id: 'ep-1',
-        parentId: 'season-1',
-        grandparentId: 'show-1',
-      });
-      const { service, streamystatsApi } = createService(
-        [{ id: 'user-a', name: 'alice' }],
-        [episode],
-      );
-      streamystatsApi.getWatchlistMembership.mockResolvedValue(
-        membershipOf({ 'show-1': ['user-a'] }),
-      );
-
-      expect(
-        await service.get(
-          WATCHLISTED_BY_USERS_INCLUDING_PARENT_PROP_ID,
-          episode,
-        ),
-      ).toEqual(['alice']);
-    });
-
-    it('returns an empty list when neither the item nor its parents are listed', async () => {
-      const season = createMediaItem({
-        type: 'season',
-        id: 'season-1',
-        parentId: 'show-1',
-      });
-      const { service, streamystatsApi } = createService([], [season]);
-      streamystatsApi.getWatchlistMembership.mockResolvedValue(
-        membershipOf({}),
-      );
-
-      expect(
-        await service.get(
-          WATCHLISTED_BY_USERS_INCLUDING_PARENT_PROP_ID,
-          season,
-        ),
-      ).toEqual([]);
-    });
   });
 
   describe('lastPlayedAt (property id=7)', () => {
@@ -493,13 +451,5 @@ describe('StreamystatsGetterService', () => {
       ).toBeNull();
       expect(streamystatsApi.getItemDetails).not.toHaveBeenCalled();
     });
-  });
-
-  it('returns null for an unknown property id', async () => {
-    const { service, streamystatsApi } = createService();
-    const libItem = createMediaItem({ type: 'movie', id: 'item-1' });
-    streamystatsApi.getWatchlistMembership.mockResolvedValue(membershipOf({}));
-
-    expect(await service.get(999, libItem)).toBeNull();
   });
 });

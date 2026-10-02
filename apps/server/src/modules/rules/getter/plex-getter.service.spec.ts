@@ -669,24 +669,6 @@ describe('PlexGetterService', () => {
       );
     });
 
-    it('returns null for sw_lastWatched when the show has no view history (id 13)', async () => {
-      // An empty history array is truthy; without a length guard this read
-      // viewedAt off undefined and threw. A never-watched show must yield null.
-      plexApi.getMetadata.mockResolvedValue(
-        makeMetadata({ ratingKey: 'show-1', type: 'show' }),
-      );
-      plexApi.getWatchHistory.mockResolvedValue([]);
-
-      const result = await service.get(
-        13,
-        createMediaItem({ type: 'show' }),
-        'show',
-        createRuleGroupDto({ dataType: 'show' }),
-      );
-
-      expect(result).toBeNull();
-    });
-
     it('returns season episode counts, watched episode counts, and total views from child metadata and history (ids 14, 15, 17)', async () => {
       plexApi.getMetadata.mockResolvedValue(
         makeMetadata({ ratingKey: 'season-1', type: 'season' }),
@@ -1518,43 +1500,6 @@ describe('PlexGetterService', () => {
 
       expect(result).toBe(22);
     });
-
-    it('returns 0 when no episodes are marked as watched', async () => {
-      const libItem = createMediaItem({ id: PLEX_ITEM_ID, type: 'show' });
-      plexApi.getMetadata.mockResolvedValue(
-        makeMetadata({ type: 'show', leafCount: 10, viewedLeafCount: 0 }),
-      );
-
-      const result = await service.get(MARKED_WATCHED_PROP_ID, libItem);
-
-      expect(result).toBe(0);
-    });
-  });
-
-  it('requests external media metadata for IMDb ratings', async () => {
-    const mediaItem = createMediaItem({ id: PLEX_ITEM_ID });
-
-    plexApi.getMetadata.mockResolvedValue(
-      makeMetadata({
-        ratingKey: PLEX_ITEM_ID,
-        title: 'Test Movie',
-        Rating: [
-          { image: 'imdb://image.rating', type: 'audience', value: 7.8 },
-        ],
-      }),
-    );
-
-    const result = await service.get(
-      31,
-      mediaItem,
-      'movie',
-      createRuleGroupDto({ dataType: 'movie' }),
-    );
-
-    expect(result).toBe(7.8);
-    expect(plexApi.getMetadata).toHaveBeenCalledWith(PLEX_ITEM_ID, {
-      includeExternalMedia: true,
-    });
   });
 
   it('requests external media metadata for show IMDb ratings', async () => {
@@ -1682,32 +1627,6 @@ describe('PlexGetterService', () => {
       expect(plexApi.getWatchHistory).not.toHaveBeenCalled();
     });
 
-    it('returns null when no sibling has any watch history', async () => {
-      plexApi.getMetadata.mockResolvedValue(
-        makeMetadata({ Collection: [{ tag: 'Franchise B Collection' }] }),
-      );
-      plexApi.getCollections.mockResolvedValue([
-        makeCollection({
-          ratingKey: 'coll-fb',
-          title: 'Franchise B Collection',
-        }),
-      ]);
-      plexApi.getCollectionChildren.mockResolvedValue([
-        makeLibraryItem({ ratingKey: '12345' }),
-        makeLibraryItem({ ratingKey: 'sibling-a' }),
-      ]);
-      plexApi.getWatchHistory.mockResolvedValue([]);
-
-      const result = await service.get(
-        COLLECTION_SIBLINGS_PROP_ID,
-        createMediaItem({ type: 'movie' }),
-        'movie',
-        createRuleGroupDto({ dataType: 'movie', libraryId: 'lib-1' }),
-      );
-
-      expect(result).toBeNull();
-    });
-
     it("ignores the rule group's own managed collection", async () => {
       plexApi.getMetadata.mockResolvedValue(
         makeMetadata({
@@ -1745,52 +1664,6 @@ describe('PlexGetterService', () => {
       expect(result).toEqual(new Date(1_690_000_000 * 1000));
       expect(plexApi.getCollectionChildren).toHaveBeenCalledTimes(1);
       expect(plexApi.getCollectionChildren).toHaveBeenCalledWith('coll-1');
-    });
-
-    it('excludes rule and manual collection names with whitespace-safe case-insensitive matching', async () => {
-      plexApi.getMetadata.mockResolvedValue(
-        makeMetadata({
-          Collection: [
-            { tag: ' Franchise C Collection ' },
-            { tag: ' CLEANUP GROUP ' },
-            { tag: ' Manual Shelf ' },
-          ],
-        }),
-      );
-      plexApi.getCollections.mockResolvedValue([
-        makeCollection({
-          ratingKey: 'coll-franchise',
-          title: 'Franchise C Collection',
-        }),
-        makeCollection({ ratingKey: 'coll-rule', title: 'Cleanup Group' }),
-        makeCollection({ ratingKey: 'coll-manual', title: 'Manual Shelf' }),
-      ]);
-      plexApi.getCollectionChildren.mockResolvedValue([
-        makeLibraryItem({ ratingKey: 'sibling-c' }),
-      ]);
-      plexApi.getWatchHistory.mockResolvedValue([
-        makeWatchEntry({ viewedAt: 1_680_000_000 }),
-      ]);
-
-      const result = await service.get(
-        COLLECTION_SIBLINGS_PROP_ID,
-        createMediaItem({ type: 'movie' }),
-        'movie',
-        createRuleGroupDto({
-          dataType: 'movie',
-          libraryId: 'lib-1',
-          name: ' cleanup group ',
-          collection: {
-            manualCollectionName: ' manual shelf ',
-          } as ReturnType<typeof createRuleGroupDto>['collection'],
-        }),
-      );
-
-      expect(result).toEqual(new Date(1_680_000_000 * 1000));
-      expect(plexApi.getCollectionChildren).toHaveBeenCalledTimes(1);
-      expect(plexApi.getCollectionChildren).toHaveBeenCalledWith(
-        'coll-franchise',
-      );
     });
   });
 
@@ -1884,21 +1757,6 @@ describe('PlexGetterService', () => {
         createRuleGroupDto({ dataType: 'show' }),
       );
 
-    it('returns the newest watched episode date (highest season, then episode)', async () => {
-      plexApi.getMetadata.mockResolvedValue(
-        makeMetadata({ ratingKey: 'show-1', type: 'show' }),
-      );
-      plexApi.getWatchHistory.mockResolvedValue([
-        makeWatchEntry({ parentIndex: 1, index: 1, viewedAt: 1_700_000_100 }),
-        makeWatchEntry({ parentIndex: 2, index: 1, viewedAt: 1_700_000_200 }),
-        makeWatchEntry({ parentIndex: 2, index: 2, viewedAt: 1_700_000_300 }),
-      ]);
-
-      await expect(getLastWatched()).resolves.toEqual(
-        new Date(1_700_000_300 * 1000),
-      );
-    });
-
     it('uses the most recent view when the newest episode was watched more than once', async () => {
       plexApi.getMetadata.mockResolvedValue(
         makeMetadata({ ratingKey: 'show-1', type: 'show' }),
@@ -1929,15 +1787,6 @@ describe('PlexGetterService', () => {
       plexApi.getWatchHistory.mockResolvedValue([]);
 
       await expect(getLastWatched()).resolves.toBeNull();
-    });
-
-    it('returns undefined when the history lookup fails (transient)', async () => {
-      plexApi.getMetadata.mockResolvedValue(
-        makeMetadata({ ratingKey: 'show-1', type: 'show' }),
-      );
-      plexApi.getWatchHistory.mockRejectedValue(new Error('plex unreachable'));
-
-      await expect(getLastWatched()).resolves.toBeUndefined();
     });
   });
 

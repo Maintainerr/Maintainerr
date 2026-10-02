@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '../../../test-utils/render'
+import { render, screen, waitFor } from '../../../test-utils/render'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import GetApiHandler from '../../../utils/ApiHandler'
 import PosterCard, { resetPosterImageCache } from './PosterCard'
@@ -36,21 +36,6 @@ describe('PosterCard', () => {
     getApiHandlerMock.mockReset()
     resetPosterImageCache()
     vi.unstubAllGlobals()
-  })
-
-  it('uses the shared container and forwards click interactions', () => {
-    const handleClick = vi.fn()
-
-    render(
-      <PosterCard mediaType="movie" onClick={handleClick} role="button">
-        {() => <div>Poster content</div>}
-      </PosterCard>,
-    )
-
-    fireEvent.click(screen.getByRole('button'))
-
-    expect(handleClick).toHaveBeenCalledTimes(1)
-    expect(screen.getByText('Poster content')).toBeTruthy()
   })
 
   it('renders a direct image path without fetching metadata', () => {

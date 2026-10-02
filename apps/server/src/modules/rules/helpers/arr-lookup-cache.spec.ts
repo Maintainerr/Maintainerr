@@ -35,16 +35,6 @@ describe('ArrLookupCache', () => {
     expect(fetch).toHaveBeenCalledTimes(1);
   });
 
-  it('keeps separate entries per key', async () => {
-    const cache = new ArrLookupCache();
-    const fetch = jest.fn((key: string) => Promise.resolve(key));
-
-    await cache.memoize('a', () => fetch('a'));
-    await cache.memoize('b', () => fetch('b'));
-
-    expect(fetch).toHaveBeenCalledTimes(2);
-  });
-
   it('evicts a failed lookup so the next caller retries', async () => {
     const cache = new ArrLookupCache();
     const fetch = jest

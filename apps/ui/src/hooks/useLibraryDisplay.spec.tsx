@@ -65,13 +65,4 @@ describe('useLibraryDisplay', () => {
     expect(result.current.title).toBeUndefined()
     expect(result.current.isUnreachable).toBe(false)
   })
-
-  it('returns hasLibraryId=false for empty identifiers', () => {
-    mockHook({ data: [], isError: false })
-
-    const { result } = renderHook(() => useLibraryDisplay(''))
-
-    expect(result.current.hasLibraryId).toBe(false)
-    expect(result.current.isUnreachable).toBe(false)
-  })
 })

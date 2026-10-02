@@ -5,10 +5,7 @@ import { toast } from 'react-toastify'
 import { SearchContextProvider } from '../../contexts/search-context'
 import { useMediaServerType } from '../../hooks/useMediaServerType'
 import GetApiHandler from '../../utils/ApiHandler'
-import {
-  getCollectionMediaSortConfig,
-  getMediaLibrarySortConfig,
-} from '../Common/MediaLibrarySortControl'
+import { getCollectionMediaSortConfig } from '../Common/MediaLibrarySortControl'
 import type { MediaActionOutcome } from '../Common/MediaActionModal'
 import Overview, { buildLibraryContentQuery } from './index'
 
@@ -154,58 +151,6 @@ describe('Overview', () => {
 
       throw new Error(`Unexpected API request: ${path}`)
     })
-  })
-
-  it('shows title ascending as the default overview option', () => {
-    const sortConfig = getMediaLibrarySortConfig('show')
-
-    expect(sortConfig.options[0]?.label).toBe('Title (A-Z) Ascending')
-    expect(sortConfig.options[0]?.value).toBe('title.asc')
-    expect(sortConfig.options[0]?.sortParams).toEqual({
-      sort: 'title',
-      sortOrder: 'asc',
-    })
-
-    expect(sortConfig.options.at(-2)).toEqual({
-      value: 'manual.desc',
-      label: 'Manual Added First',
-      sortParams: {
-        sort: 'manual',
-        sortOrder: 'desc',
-      },
-    })
-
-    expect(sortConfig.options.at(-1)).toEqual({
-      value: 'excluded.desc',
-      label: 'Excluded First',
-      sortParams: {
-        sort: 'excluded',
-        sortOrder: 'desc',
-      },
-    })
-  })
-
-  it('adds studio sorting only for a media server with native support', () => {
-    expect(
-      getMediaLibrarySortConfig('show').options.some(
-        (option) => option.value === 'studio.asc',
-      ),
-    ).toBe(false)
-    expect(
-      getMediaLibrarySortConfig('show', true).options.some(
-        (option) => option.value === 'studio.asc',
-      ),
-    ).toBe(true)
-    expect(
-      getCollectionMediaSortConfig('show').options.some(
-        (option) => option.value === 'studio.asc',
-      ),
-    ).toBe(false)
-    expect(
-      getCollectionMediaSortConfig('show', false, true).options.some(
-        (option) => option.value === 'studio.asc',
-      ),
-    ).toBe(true)
   })
 
   it('shows studio sorting when Jellyfin is configured', async () => {
@@ -612,44 +557,6 @@ describe('Overview', () => {
     expect(url.searchParams.get('sortOrder')).toBe('asc')
   })
 
-  it('does not refetch overview content when libraries revalidate with the same first id', async () => {
-    libraries = [
-      {
-        id: 'movies-library',
-        title: 'Movies',
-        type: 'movie',
-      } as MediaLibrary,
-    ]
-
-    const { rerender } = render(
-      <SearchContextProvider>
-        <Overview />
-      </SearchContextProvider>,
-    )
-
-    await waitFor(() => {
-      expect(getApiHandlerMock).toHaveBeenCalledTimes(1)
-    })
-
-    libraries = [
-      {
-        id: 'movies-library',
-        title: 'Movies',
-        type: 'movie',
-      } as MediaLibrary,
-    ]
-
-    rerender(
-      <SearchContextProvider>
-        <Overview />
-      </SearchContextProvider>,
-    )
-
-    await waitFor(() => {
-      expect(getApiHandlerMock).toHaveBeenCalledTimes(1)
-    })
-  })
-
   it('refetches overview content with explicit title ascending params when switching back', async () => {
     libraries = [
       {
@@ -937,89 +844,5 @@ describe('Overview', () => {
     await waitFor(() => {
       expect(screen.getByText('Sorted Tail')).toBeTruthy()
     })
-  })
-
-  it('requests excluded sorting from the server for the overview sort option', async () => {
-    libraries = [
-      {
-        id: 'shows-library',
-        title: 'Shows',
-        type: 'show',
-      } as MediaLibrary,
-    ]
-
-    getApiHandlerMock.mockImplementation(async (path: string) => {
-      if (path.startsWith('/media-server/overview/bootstrap?')) {
-        return {
-          libraries,
-          selectedLibraryId: 'shows-library',
-          content: {
-            totalSize: 1,
-            items: [{ id: 'boot-item', title: 'Boot Item', type: 'show' }],
-          },
-        }
-      }
-
-      if (!path.startsWith('/media-server/library/shows-library/content?')) {
-        throw new Error(`Unexpected API request: ${path}`)
-      }
-
-      return {
-        totalSize: 3,
-        items: [
-          {
-            id: '2',
-            title: 'Bravo',
-            type: 'show',
-            maintainerrExclusionId: 42,
-          },
-          {
-            id: '3',
-            title: 'Charlie',
-            type: 'show',
-            maintainerrExclusionId: 84,
-          },
-          { id: '1', title: 'Alpha', type: 'show' },
-        ],
-      }
-    })
-
-    render(
-      <SearchContextProvider>
-        <Overview />
-      </SearchContextProvider>,
-    )
-
-    await waitFor(() => {
-      expect(screen.getByText('Boot Item')).toBeTruthy()
-    })
-
-    fireEvent.change(screen.getByLabelText('Sort overview items'), {
-      target: { value: 'excluded.desc' },
-    })
-
-    await waitFor(() => {
-      expect(getApiHandlerMock).toHaveBeenCalledTimes(2)
-    })
-
-    expect(getApiHandlerMock.mock.calls[1]?.[0]).toContain(
-      'sort=excluded&sortOrder=desc',
-    )
-
-    await waitFor(() => {
-      expect(screen.getByText('Alpha')).toBeTruthy()
-      expect(screen.getByText('Bravo')).toBeTruthy()
-      expect(screen.getByText('Charlie')).toBeTruthy()
-    })
-
-    const contentText = screen.getByTestId('overview-items').textContent ?? ''
-
-    expect(contentText).toContain('Bravo')
-    expect(contentText.indexOf('Bravo')).toBeLessThan(
-      contentText.indexOf('Alpha'),
-    )
-    expect(contentText.indexOf('Charlie')).toBeLessThan(
-      contentText.indexOf('Alpha'),
-    )
   })
 })

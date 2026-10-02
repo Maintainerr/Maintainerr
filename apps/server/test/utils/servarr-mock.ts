@@ -1,8 +1,20 @@
 import { Mocked } from '@suites/doubles.jest';
+import type { AxiosInstance } from 'axios';
 import { RadarrApi } from '../../src/modules/api/servarr-api/helpers/radarr.helper';
 import { SonarrApi } from '../../src/modules/api/servarr-api/helpers/sonarr.helper';
 import { ServarrService } from '../../src/modules/api/servarr-api/servarr.service';
 import { MaintainerrLogger } from '../../src/modules/logging/logs.service';
+
+/**
+ * Fail a real *arr client at the transport, so a method a test did not stub
+ * errors at once instead of calling (and retrying) whatever listens on the
+ * default localhost port.
+ */
+export const withoutNetwork = <T extends object>(api: T): T => {
+  (api as unknown as { axios: AxiosInstance }).axios.defaults.adapter = () =>
+    Promise.reject(new Error('Unstubbed *arr request in a unit test'));
+  return api;
+};
 
 /**
  * Create a mocked RadarrApi instance and wire it to the given ServarrService mock.
@@ -12,9 +24,11 @@ export const mockRadarrApi = (
   servarrService: Mocked<ServarrService>,
   logger: Mocked<MaintainerrLogger>,
 ): RadarrApi => {
-  const api = new RadarrApi(
-    { url: 'http://localhost:7878', apiKey: 'test' },
-    logger as any,
+  const api = withoutNetwork(
+    new RadarrApi(
+      { url: 'http://localhost:7878', apiKey: 'test' },
+      logger as any,
+    ),
   );
 
   jest.spyOn(api, 'getMovieByTmdbId').mockResolvedValue(undefined);
@@ -44,9 +58,11 @@ export const mockSonarrApi = (
   servarrService: Mocked<ServarrService>,
   logger: Mocked<MaintainerrLogger>,
 ): SonarrApi => {
-  const api = new SonarrApi(
-    { url: 'http://localhost:8989', apiKey: 'test' },
-    logger as any,
+  const api = withoutNetwork(
+    new SonarrApi(
+      { url: 'http://localhost:8989', apiKey: 'test' },
+      logger as any,
+    ),
   );
 
   jest.spyOn(api, 'getSeriesByTvdbId').mockResolvedValue(undefined);

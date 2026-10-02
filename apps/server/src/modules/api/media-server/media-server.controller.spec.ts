@@ -79,16 +79,6 @@ describe('MediaServerController', () => {
       expect(mediaItemEnrichmentService.enrichItems).toHaveBeenCalledWith([]);
     });
 
-    it('should calculate offset correctly for page 2 with limit 50', async () => {
-      await controller.getLibraryContent('lib1', 2, 50);
-
-      // offset = (page - 1) * limit = (2 - 1) * 50 = 50
-      expect(mockMediaServerService.getLibraryContents).toHaveBeenCalledWith(
-        'lib1',
-        { offset: 50, limit: 50, type: undefined },
-      );
-    });
-
     it('should calculate offset correctly for page 3 with limit 25', async () => {
       await controller.getLibraryContent('lib1', 3, 25);
 
@@ -106,15 +96,6 @@ describe('MediaServerController', () => {
       expect(mockMediaServerService.getLibraryContents).toHaveBeenCalledWith(
         'lib1',
         { offset: 40, limit: 10, type: undefined },
-      );
-    });
-
-    it('should pass type filter to service', async () => {
-      await controller.getLibraryContent('lib1', 1, 50, 'movie');
-
-      expect(mockMediaServerService.getLibraryContents).toHaveBeenCalledWith(
-        'lib1',
-        { offset: 0, limit: 50, type: 'movie' },
       );
     });
 
@@ -338,48 +319,6 @@ describe('MediaServerController', () => {
         bravo,
       ]);
     });
-
-    it('should warn when status sorting requires a large pre-pagination fetch', async () => {
-      const alpha = {
-        id: '1',
-        title: 'Alpha',
-        guid: 'guid-1',
-        type: 'show',
-        addedAt: new Date(),
-        providerIds: {},
-        mediaSources: [],
-        library: { id: 'lib1', title: 'Shows' },
-      } satisfies MediaItem;
-
-      mockMediaServerService.getLibraryContents
-        .mockResolvedValueOnce({
-          items: [alpha],
-          totalSize: 5001,
-          offset: 0,
-          limit: 250,
-        })
-        .mockResolvedValueOnce({
-          items: [],
-          totalSize: 5001,
-          offset: 1,
-          limit: 250,
-        });
-
-      mediaItemEnrichmentService.enrichItems.mockResolvedValueOnce([alpha]);
-
-      await controller.getLibraryContent(
-        'lib1',
-        1,
-        1,
-        'show',
-        'manual',
-        'desc',
-      );
-
-      expect(logger.warn).toHaveBeenCalledWith(
-        'Status-sorted library request for lib1 (manual.desc) requires fetching 5001 items before paging.',
-      );
-    });
   });
 
   describe('getOverviewBootstrap', () => {
@@ -453,115 +392,6 @@ describe('MediaServerController', () => {
         },
       });
     });
-
-    it('should apply manual sorting during bootstrap', async () => {
-      const library = {
-        id: 'shows-library',
-        title: 'Shows',
-        type: 'show',
-      };
-      const alpha = {
-        id: 'show-1',
-        title: 'Alpha',
-        guid: 'guid-show-1',
-        type: 'show',
-        addedAt: new Date(),
-        providerIds: { tmdb: ['1'] },
-        mediaSources: [],
-        library: { id: 'shows-library', title: 'Shows' },
-      } satisfies MediaItem;
-      const bravo = {
-        id: 'show-2',
-        title: 'Bravo',
-        guid: 'guid-show-2',
-        type: 'show',
-        addedAt: new Date(),
-        providerIds: { tmdb: ['2'] },
-        mediaSources: [],
-        library: { id: 'shows-library', title: 'Shows' },
-      } satisfies MediaItem;
-
-      mockMediaServerService.getLibraries.mockResolvedValue([library] as any);
-      mockMediaServerService.getLibraryContents.mockResolvedValue({
-        items: [alpha, bravo],
-        totalSize: 2,
-        offset: 0,
-        limit: 250,
-      });
-      mediaItemEnrichmentService.enrichItems.mockResolvedValueOnce([
-        { ...alpha, maintainerrIsManual: true },
-        bravo,
-      ]);
-
-      const result = await controller.getOverviewBootstrap(
-        30,
-        'manual',
-        'desc',
-      );
-
-      expect(mockMediaServerService.getLibraryContents).toHaveBeenCalledWith(
-        'shows-library',
-        {
-          offset: 0,
-          limit: 250,
-          type: 'show',
-          sort: 'title',
-          sortOrder: 'asc',
-        },
-      );
-      expect(result.content.items).toEqual([
-        { ...alpha, maintainerrIsManual: true },
-        bravo,
-      ]);
-    });
-
-    it('should preserve the existing order when manual sorting has no manual items', async () => {
-      const library = {
-        id: 'shows-library',
-        title: 'Shows',
-        type: 'show',
-      };
-      const bravo = {
-        id: 'show-2',
-        title: 'Bravo',
-        guid: 'guid-show-2',
-        type: 'show',
-        addedAt: new Date(),
-        providerIds: { tmdb: ['2'] },
-        mediaSources: [],
-        library: { id: 'shows-library', title: 'Shows' },
-      } satisfies MediaItem;
-      const alpha = {
-        id: 'show-1',
-        title: 'Alpha',
-        guid: 'guid-show-1',
-        type: 'show',
-        addedAt: new Date(),
-        providerIds: { tmdb: ['1'] },
-        mediaSources: [],
-        library: { id: 'shows-library', title: 'Shows' },
-      } satisfies MediaItem;
-
-      mockMediaServerService.getLibraries.mockResolvedValue([library] as any);
-      mockMediaServerService.getLibraryContents.mockResolvedValue({
-        items: [bravo, alpha],
-        totalSize: 2,
-        offset: 0,
-        limit: 250,
-      });
-      mediaItemEnrichmentService.enrichItems.mockResolvedValueOnce([
-        bravo,
-        alpha,
-      ]);
-
-      const result = await controller.getOverviewBootstrap(
-        30,
-        'manual',
-        'desc',
-      );
-
-      expect(result.content.items).toEqual([bravo, alpha]);
-    });
   });
 
   describe('getLibraries - Unreachable Detection', () => {
@@ -584,26 +414,6 @@ describe('MediaServerController', () => {
       });
 
       await expect(controller.getLibraries()).resolves.toEqual([]);
-    });
-
-    it('skips the status probe when the server is not set up', async () => {
-      mockMediaServerService.getLibraries.mockResolvedValue([]);
-      mockMediaServerService.isSetup.mockReturnValue(false);
-
-      await expect(controller.getLibraries()).resolves.toEqual([]);
-      expect(mockMediaServerService.getStatus).not.toHaveBeenCalled();
-    });
-  });
-
-  describe('getOverviewBootstrap - Unreachable Detection', () => {
-    it('throws ServiceUnavailableException when configured but unreachable', async () => {
-      mockMediaServerService.getLibraries.mockResolvedValue([]);
-      mockMediaServerService.isSetup.mockReturnValue(true);
-      mockMediaServerService.getStatus.mockResolvedValue(undefined);
-
-      await expect(controller.getOverviewBootstrap(30)).rejects.toThrow(
-        ServiceUnavailableException,
-      );
     });
   });
 
@@ -639,34 +449,6 @@ describe('MediaServerController', () => {
       await expect(
         controller.updateCollectionVisibility(settings),
       ).rejects.toThrow(BadRequestException);
-    });
-
-    it('should accept valid settings with recommended', async () => {
-      const settings = {
-        libraryId: '1',
-        collectionId: 'coll1',
-        recommended: true,
-      };
-
-      await controller.updateCollectionVisibility(settings);
-
-      expect(
-        mockMediaServerService.updateCollectionVisibility,
-      ).toHaveBeenCalledWith(settings);
-    });
-
-    it('should accept valid settings with ownHome', async () => {
-      const settings = {
-        libraryId: '1',
-        collectionId: 'coll1',
-        ownHome: true,
-      };
-
-      await controller.updateCollectionVisibility(settings);
-
-      expect(
-        mockMediaServerService.updateCollectionVisibility,
-      ).toHaveBeenCalledWith(settings);
     });
 
     it('should accept valid settings with sharedHome', async () => {

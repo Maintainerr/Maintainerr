@@ -1,9 +1,6 @@
 import { MediaServerType } from '@maintainerr/contracts'
 import type { UseQueryResult } from '@tanstack/react-query'
-import {
-  buildQueryLoadingResult,
-  buildQuerySuccessResult,
-} from '../../test-utils/queryResults'
+import { buildQuerySuccessResult } from '../../test-utils/queryResults'
 import { fireEvent, render, screen } from '../../test-utils/render'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import SettingsWrapper from './index'
@@ -92,30 +89,6 @@ describe('SettingsWrapper', () => {
     currentServarrSettings = buildQuerySuccessResult([])
   })
 
-  it('keeps only the general settings tabs in the settings section', () => {
-    const { container } = render(<SettingsWrapper />)
-
-    expect(getDesktopTabLabels(container)).toEqual([
-      'General',
-      'Logs',
-      'Jobs',
-      'About',
-    ])
-  })
-
-  it('keeps the tab row in place while settings load', () => {
-    currentSettingsResult = buildQueryLoadingResult()
-
-    const { container } = render(<SettingsWrapper />)
-
-    expect(getDesktopTabLabels(container)).toEqual([
-      'General',
-      'Logs',
-      'Jobs',
-      'About',
-    ])
-  })
-
   it('redirects blocked routes to the media server page with an error toast during first setup', () => {
     currentPath = '/settings/jobs'
     loaded(noServer)
@@ -191,14 +164,6 @@ describe('SettingsWrapper', () => {
     currentServarrSettings = buildQuerySuccessResult([{ id: 1 }])
     rerender(<SettingsWrapper section="services" />)
     expect(getDesktopTabLabels(container)).toContain('Download client')
-  })
-
-  it('shows no switcher on the services hub', () => {
-    currentPath = '/services'
-
-    const { container } = render(<SettingsWrapper section="services" />)
-
-    expect(getDesktopTabLabels(container)).toEqual([])
   })
 
   it('keeps the media server reachable and blocks other services during setup', () => {

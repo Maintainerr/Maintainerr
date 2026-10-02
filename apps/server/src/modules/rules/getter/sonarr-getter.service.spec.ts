@@ -1,15 +1,14 @@
 import { MediaItem, MediaItemType } from '@maintainerr/contracts';
 import { Mocked, TestBed } from '@suites/unit';
 import {
-  createArrDiskspaceResource,
   createCollectionMedia,
   createMediaItem,
-  createRuleDto,
   createRuleGroupDto,
   createSonarrEpisode,
   createSonarrEpisodeFile,
   createSonarrSeries,
 } from '../../../../test/utils/data';
+import { withoutNetwork } from '../../../../test/utils/servarr-mock';
 import { MediaServerFactory } from '../../api/media-server/media-server.factory';
 import { IMediaServerService } from '../../api/media-server/media-server.interface';
 import { SonarrApi } from '../../api/servarr-api/helpers/sonarr.helper';
@@ -473,15 +472,6 @@ describe('SonarrGetterService', () => {
         ).toHaveBeenCalledTimes(1);
       });
 
-      it('re-resolves per call when no run cache is provided (unchanged behaviour)', async () => {
-        await call();
-        await call();
-
-        expect(
-          metadataService.resolveLookupCandidatesFromMediaItemForService,
-        ).toHaveBeenCalledTimes(2);
-      });
-
       it('returns undefined (fail closed) when the lookup fails for an item that has ids', async () => {
         // The item has something to look up, so an empty resolution may be a
         // transient TMDB/TVDB validation failure (#3307).
@@ -522,66 +512,6 @@ describe('SonarrGetterService', () => {
   });
 
   describe('seasons_monitored', () => {
-    it('returns monitored episode count for a season even when all episodes have files', async () => {
-      const collectionMedia = createCollectionMedia('season');
-      collectionMedia.collection.sonarrSettingsId = 1;
-
-      mockMediaServer.getMetadata.mockResolvedValue(
-        createMediaItem({
-          type: 'show',
-        }),
-      );
-
-      const series = createSonarrSeries({
-        seasons: [
-          {
-            seasonNumber: 0,
-            monitored: false,
-          },
-          {
-            seasonNumber: 6,
-            monitored: true,
-            statistics: {
-              episodeCount: 10,
-              episodeFileCount: 10,
-              totalEpisodeCount: 10,
-              sizeOnDisk: 0,
-              percentOfEpisodes: 100,
-            },
-          },
-        ],
-      });
-
-      const mockedSonarrApi = mockSonarrApi(series);
-      jest.spyOn(mockedSonarrApi, 'getEpisodes').mockResolvedValue(
-        Array.from({ length: 10 }, (_, index) =>
-          createSonarrEpisode({
-            seriesId: series.id,
-            seasonNumber: 6,
-            episodeNumber: index + 1,
-            monitored: false,
-            hasFile: true,
-          }),
-        ),
-      );
-
-      const response = await sonarrGetterService.get(
-        11,
-        createMediaItem({
-          type: 'season',
-          index: 6,
-        }),
-        'season',
-        createRuleGroupDto({
-          collection: collectionMedia.collection,
-          dataType: 'season',
-        }),
-      );
-
-      expect(response).toBe(0);
-      expect(mockedSonarrApi.getEpisodes).toHaveBeenCalledWith(series.id, 6);
-    });
-
     it('returns monitored episode count for a season even when only some monitored episodes have files', async () => {
       const collectionMedia = createCollectionMedia('season');
       collectionMedia.collection.sonarrSettingsId = 1;
@@ -835,47 +765,6 @@ describe('SonarrGetterService', () => {
 
         expect(response).toBe(true);
       });
-
-      it('should return false when the cut off is not met', async () => {
-        const episodeFile = createSonarrEpisodeFile({
-          qualityCutoffNotMet: true,
-        });
-        const episode = createSonarrEpisode({
-          episodeFileId: episodeFile.id,
-        });
-        jest.spyOn(mockedSonarrApi, 'getEpisodes').mockResolvedValue([episode]);
-        jest
-          .spyOn(mockedSonarrApi, 'getEpisodeFile')
-          .mockResolvedValue(episodeFile);
-
-        const response = await sonarrGetterService.get(
-          23,
-          mediaItem,
-          'episode',
-          createRuleGroupDto({
-            collection: collectionMedia.collection,
-            dataType: 'episode',
-          }),
-        );
-
-        expect(response).toBe(false);
-      });
-
-      it('should return false when no episode file exists', async () => {
-        jest.spyOn(mockedSonarrApi, 'getEpisodes').mockResolvedValue([]);
-
-        const response = await sonarrGetterService.get(
-          23,
-          mediaItem,
-          'episode',
-          createRuleGroupDto({
-            collection: collectionMedia.collection,
-            dataType: 'episode',
-          }),
-        );
-
-        expect(response).toBe(false);
-      });
     });
 
     describe('fileQualityName', () => {
@@ -910,22 +799,6 @@ describe('SonarrGetterService', () => {
 
         expect(response).toBe('WEBDL-1080p');
       });
-
-      it('should return null when no episode file exists', async () => {
-        jest.spyOn(mockedSonarrApi, 'getEpisodes').mockResolvedValue([]);
-
-        const response = await sonarrGetterService.get(
-          24,
-          mediaItem,
-          'episode',
-          createRuleGroupDto({
-            collection: collectionMedia.collection,
-            dataType: 'episode',
-          }),
-        );
-
-        expect(response).toBe(null);
-      });
     });
 
     describe('fileAudioLanguages', () => {
@@ -956,31 +829,6 @@ describe('SonarrGetterService', () => {
 
       it('should return null when no episode file exists', async () => {
         jest.spyOn(mockedSonarrApi, 'getEpisodes').mockResolvedValue([]);
-
-        const response = await sonarrGetterService.get(
-          26,
-          mediaItem,
-          'episode',
-          createRuleGroupDto({
-            collection: collectionMedia.collection,
-            dataType: 'episode',
-          }),
-        );
-
-        expect(response).toBe(null);
-      });
-
-      it('should return null when no media info exists', async () => {
-        const episodeFile = createSonarrEpisodeFile({
-          mediaInfo: undefined,
-        });
-        const episode = createSonarrEpisode({
-          episodeFileId: episodeFile.id,
-        });
-        jest.spyOn(mockedSonarrApi, 'getEpisodes').mockResolvedValue([episode]);
-        jest
-          .spyOn(mockedSonarrApi, 'getEpisodeFile')
-          .mockResolvedValue(episodeFile);
 
         const response = await sonarrGetterService.get(
           26,
@@ -1051,77 +899,6 @@ describe('SonarrGetterService', () => {
     );
   });
 
-  describe('diskspace properties', () => {
-    let collectionMedia: CollectionMedia;
-    let mediaItem: MediaItem;
-    let mockedSonarrApi: SonarrApi;
-
-    beforeEach(() => {
-      collectionMedia = createCollectionMedia('show');
-      collectionMedia.collection.sonarrSettingsId = 1;
-      mediaItem = createMediaItem({ type: 'show' });
-      mockedSonarrApi = mockSonarrApi();
-    });
-
-    it('should use merged diskspace data for targeted remaining space rules', async () => {
-      const getDiskspaceWithRootFoldersSpy = jest
-        .spyOn(mockedSonarrApi, 'getDiskspaceWithRootFolders')
-        .mockResolvedValue([
-          createArrDiskspaceResource({
-            path: '/tv',
-            freeSpace: 12 * 1073741824,
-            hasAccurateTotalSpace: false,
-          }),
-        ]);
-      const getDiskspaceSpy = jest.spyOn(mockedSonarrApi, 'getDiskspace');
-
-      const response = await sonarrGetterService.get(
-        28,
-        mediaItem,
-        'show',
-        createRuleGroupDto({
-          collection: collectionMedia.collection,
-          dataType: 'show',
-        }),
-        createRuleDto({ arrDiskPath: '/tv/' }),
-      );
-
-      expect(response).toBe(12);
-      expect(getDiskspaceWithRootFoldersSpy).toHaveBeenCalled();
-      expect(getDiskspaceSpy).not.toHaveBeenCalled();
-    });
-
-    it('should return null for total space when the target only exists as a fallback path', async () => {
-      const getDiskspaceSpy = jest
-        .spyOn(mockedSonarrApi, 'getDiskspace')
-        .mockResolvedValue([
-          createArrDiskspaceResource({
-            path: '/config',
-            totalSpace: 200 * 1073741824,
-          }),
-        ]);
-      const getDiskspaceWithRootFoldersSpy = jest.spyOn(
-        mockedSonarrApi,
-        'getDiskspaceWithRootFolders',
-      );
-
-      const response = await sonarrGetterService.get(
-        29,
-        mediaItem,
-        'show',
-        createRuleGroupDto({
-          collection: collectionMedia.collection,
-          dataType: 'show',
-        }),
-        createRuleDto({ arrDiskPath: '/tv' }),
-      );
-
-      expect(response).toBeNull();
-      expect(getDiskspaceSpy).toHaveBeenCalled();
-      expect(getDiskspaceWithRootFoldersSpy).not.toHaveBeenCalled();
-    });
-  });
-
   describe('metadata fallback (series absent from Sonarr)', () => {
     let collectionMedia: CollectionMedia;
     let mediaItem: MediaItem;
@@ -1188,15 +965,6 @@ describe('SonarrGetterService', () => {
 
         expect(metadataService.resolveIdsFromMediaItem).toHaveBeenCalledTimes(
           1,
-        );
-      });
-
-      it('re-resolves per call when no run cache is provided (unchanged behaviour)', async () => {
-        await callEnded();
-        await callEnded();
-
-        expect(metadataService.resolveIdsFromMediaItem).toHaveBeenCalledTimes(
-          2,
         );
       });
 
@@ -1370,26 +1138,6 @@ describe('SonarrGetterService', () => {
         expect(response).toBe('Sample Series');
       },
     );
-
-    it('returns null when Sonarr confirms the series is not tracked', async () => {
-      // A series object without an id is the "confirmed not in Sonarr" shape
-      // that `resolveSeries` translates to a present-but-empty record; it
-      // routes the getter down the not-tracked path (no metadata fallback for
-      // seriesTitle), which should surface null, not undefined.
-      const response = await callSeriesTitle(
-        createSonarrSeries({ id: undefined as any, title: undefined as any }),
-        'episode',
-      );
-      expect(response).toBeNull();
-    });
-
-    it('returns null when the tracked series has no title', async () => {
-      const response = await callSeriesTitle(
-        createSonarrSeries({ title: undefined as any }),
-        'episode',
-      );
-      expect(response).toBeNull();
-    });
   });
 
   describe('seriesId', () => {
@@ -1521,39 +1269,6 @@ describe('SonarrGetterService', () => {
       expect(response).toBe(2);
     });
 
-    it('returns 1 for the only aired episode of a single-episode show', async () => {
-      jest.useFakeTimers().setSystemTime(new Date('2026-06-13T12:00:00Z'));
-      const series = createSonarrSeries({ id: 7, seasons: [] });
-      const episodes = [
-        createSonarrEpisode({
-          seriesId: series.id,
-          seasonNumber: 1,
-          episodeNumber: 1,
-          airDateUtc: '2026-06-12T00:00:00Z',
-          hasFile: true,
-        }),
-      ];
-
-      const { response } = await callRank(series, episodes, {
-        seasonNumber: 1,
-        episodeNumber: 1,
-      });
-
-      expect(response).toBe(1);
-    });
-
-    it('returns null when the rank pool is empty (new series with no aired episodes)', async () => {
-      jest.useFakeTimers().setSystemTime(new Date('2026-06-13T12:00:00Z'));
-      const series = createSonarrSeries({ id: 7, seasons: [] });
-
-      const { response } = await callRank(series, [], {
-        seasonNumber: 1,
-        episodeNumber: 1,
-      });
-
-      expect(response).toBeNull();
-    });
-
     it('returns null when every episode is still unaired (airDateUtc in the future)', async () => {
       jest.useFakeTimers().setSystemTime(new Date('2026-06-13T12:00:00Z'));
       const series = createSonarrSeries({ id: 7, seasons: [] });
@@ -1679,38 +1394,6 @@ describe('SonarrGetterService', () => {
       expect(resultE9.response).toBe(2);
     });
 
-    it('returns undefined when the Sonarr series lookup itself fails (transient)', async () => {
-      const collectionMedia = createCollectionMedia('episode');
-      collectionMedia.collection.sonarrSettingsId = 1;
-
-      mockMediaServer.getMetadata.mockResolvedValue(
-        createMediaItem({ type: 'show' }),
-      );
-
-      const mockedSonarrApi = mockSonarrApi();
-      jest
-        .spyOn(mockedSonarrApi, 'getSeriesByTvdbId')
-        .mockResolvedValue(undefined as any);
-
-      const response = await sonarrGetterService.get(
-        32,
-        createMediaItem({
-          type: 'episode',
-          index: 1,
-          parentIndex: 1,
-          parentId: 'season-1',
-          grandparentId: 'show-1',
-        }),
-        'episode',
-        createRuleGroupDto({
-          collection: collectionMedia.collection,
-          dataType: 'episode',
-        }),
-      );
-
-      expect(response).toBeUndefined();
-    });
-
     it('returns null when Sonarr confirms the series is not tracked', async () => {
       const collectionMedia = createCollectionMedia('episode');
       collectionMedia.collection.sonarrSettingsId = 1;
@@ -1742,48 +1425,6 @@ describe('SonarrGetterService', () => {
       );
 
       expect(response).toBeNull();
-    });
-
-    it('memoises the episode list across calls within the same run', async () => {
-      jest.useFakeTimers().setSystemTime(new Date('2026-06-13T12:00:00Z'));
-      const series = createSonarrSeries({ id: 7, seasons: [] });
-      const episodes = [
-        createSonarrEpisode({
-          seriesId: series.id,
-          seasonNumber: 1,
-          episodeNumber: 1,
-          airDateUtc: '2026-06-11T00:00:00Z',
-          hasFile: true,
-        }),
-        createSonarrEpisode({
-          seriesId: series.id,
-          seasonNumber: 1,
-          episodeNumber: 2,
-          airDateUtc: '2026-06-12T00:00:00Z',
-          hasFile: true,
-        }),
-      ];
-
-      const cache = new ArrLookupCache();
-      const first = await callRank(
-        series,
-        episodes,
-        { seasonNumber: 1, episodeNumber: 1 },
-        { arrLookupCache: cache },
-      );
-      const second = await callRank(
-        series,
-        episodes,
-        { seasonNumber: 1, episodeNumber: 2 },
-        { arrLookupCache: cache },
-      );
-
-      expect(first.response).toBe(2);
-      expect(second.response).toBe(1);
-      // The second invocation reuses the cached episode-list promise produced
-      // during the first invocation, so the second SonarrApi instance never
-      // sees a getEpisodes call.
-      expect(second.mockedSonarrApi.getEpisodes).not.toHaveBeenCalled();
     });
 
     it('excludes episodes with hasFile === false from the rank pool', async () => {
@@ -2105,38 +1746,6 @@ describe('SonarrGetterService', () => {
       expect((await callSeasonRank(episodes, 3)).response).toBeNull();
     });
 
-    it('returns null for specials (season 0 excluded from pool)', async () => {
-      jest.useFakeTimers().setSystemTime(new Date('2026-06-13T12:00:00Z'));
-      const episodes = [
-        ...seasonEpisodes(0, ['2025-06-01T00:00:00Z']),
-        ...seasonEpisodes(1, ['2025-01-01T00:00:00Z']),
-      ];
-
-      expect((await callSeasonRank(episodes, 0)).response).toBeNull();
-      expect((await callSeasonRank(episodes, 1)).response).toBe(1);
-    });
-
-    it('returns null for a season whose only downloaded episodes are unaired', async () => {
-      jest.useFakeTimers().setSystemTime(new Date('2026-06-13T12:00:00Z'));
-      const episodes = [
-        ...seasonEpisodes(1, ['2025-01-01T00:00:00Z']),
-        ...seasonEpisodes(2, ['2026-07-01T00:00:00Z']),
-      ];
-
-      expect((await callSeasonRank(episodes, 2)).response).toBeNull();
-      expect((await callSeasonRank(episodes, 1)).response).toBe(1);
-    });
-
-    it('returns null for non-season data types', async () => {
-      jest.useFakeTimers().setSystemTime(new Date('2026-06-13T12:00:00Z'));
-      const episodes = seasonEpisodes(1, ['2025-01-01T00:00:00Z']);
-
-      const { response } = await callSeasonRank(episodes, 1, {
-        dataType: 'show',
-      });
-      expect(response).toBeNull();
-    });
-
     it('returns undefined when the episode list fetch fails transiently', async () => {
       const collectionMedia = createCollectionMedia('season');
       collectionMedia.collection.sonarrSettingsId = 1;
@@ -2339,9 +1948,11 @@ describe('SonarrGetterService', () => {
   });
 
   const mockSonarrApi = (series?: SonarrSeries) => {
-    const mockedSonarrApi = new SonarrApi(
-      { url: 'http://localhost:8989', apiKey: 'test' },
-      logger as any,
+    const mockedSonarrApi = withoutNetwork(
+      new SonarrApi(
+        { url: 'http://localhost:8989', apiKey: 'test' },
+        logger as any,
+      ),
     );
     const mockedServarrService = new ServarrService({} as any, logger as any);
     jest

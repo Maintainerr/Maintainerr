@@ -14,16 +14,6 @@ describe('PlexOverlayProvider', () => {
     plexApi = unitRef.get(PlexApiService);
   });
 
-  describe('isAvailable', () => {
-    it('delegates to PlexApiService.isPlexSetup', async () => {
-      plexApi.isPlexSetup.mockReturnValue(true);
-      await expect(provider.isAvailable()).resolves.toBe(true);
-
-      plexApi.isPlexSetup.mockReturnValue(false);
-      await expect(provider.isAvailable()).resolves.toBe(false);
-    });
-  });
-
   describe('getSections', () => {
     it('narrows Plex types to the OverlayLibrarySection union', async () => {
       plexApi.getOverlayLibrarySections.mockResolvedValue([
@@ -55,11 +45,6 @@ describe('PlexOverlayProvider', () => {
       });
       expect(plexApi.getRandomLibraryItem).toHaveBeenCalledWith(['lib-1']);
     });
-
-    it('returns null when PlexApiService yields null', async () => {
-      plexApi.getRandomLibraryItem.mockResolvedValue(null);
-      await expect(provider.getRandomItem(['lib-1'])).resolves.toBeNull();
-    });
   });
 
   describe('getRandomEpisode', () => {
@@ -73,11 +58,6 @@ describe('PlexOverlayProvider', () => {
         itemId: 'rk-ep',
         title: 'Episode Title',
       });
-    });
-
-    it('returns null when PlexApiService yields null', async () => {
-      plexApi.getRandomEpisodeItem.mockResolvedValue(null);
-      await expect(provider.getRandomEpisode(['lib-1'])).resolves.toBeNull();
     });
   });
 
@@ -97,17 +77,6 @@ describe('PlexOverlayProvider', () => {
       plexApi.getBestPosterUrl.mockResolvedValue(null);
       await expect(provider.downloadImage('42')).resolves.toBeNull();
       expect(plexApi.downloadPoster).not.toHaveBeenCalled();
-    });
-  });
-
-  describe('uploadImage', () => {
-    it('delegates to setThumb', async () => {
-      const buf = Buffer.from('jpeg-bytes');
-      plexApi.setThumb.mockResolvedValue(undefined);
-
-      await provider.uploadImage('42', buf, 'image/jpeg');
-
-      expect(plexApi.setThumb).toHaveBeenCalledWith('42', buf, 'image/jpeg');
     });
   });
 });

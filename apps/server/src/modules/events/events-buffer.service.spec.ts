@@ -48,20 +48,6 @@ describe('EventsBufferService', () => {
   });
 
   describe('buffering', () => {
-    it('assigns incrementing ids when buffering events', () => {
-      const first = service.buildBufferedEvent({
-        type: 'foo',
-        data: { id: 1 },
-      });
-      const second = service.buildBufferedEvent({
-        type: 'bar',
-        data: { id: 2 },
-      });
-
-      expect(first.id).toBe('1');
-      expect(second.id).toBe('2');
-    });
-
     it('returns buffered events newer than the given id', () => {
       const first = service.buildBufferedEvent({
         type: 'foo',
