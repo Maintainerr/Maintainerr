@@ -215,9 +215,39 @@ export class RuleMigrationService {
       );
     }
 
+    // In id order: rules evaluate in that order, so it decides which rule
+    // opens each section.
     const allRules = await rulesRepo.find({
       relations: { ruleGroup: true },
+      order: { id: 'ASC' },
     });
+
+    // A section's first rule carries how the section joins the one before it.
+    // Capture that before incompatible rules are deleted, so the next survivor
+    // cannot silently flip the section AND<->OR (the import path does the same).
+    const sectionCombineOps = new Map<
+      number,
+      Map<number, RuleDto['operator']>
+    >();
+    for (const rule of allRules) {
+      try {
+        const { section, operator } = JSON.parse(rule.ruleJson) as RuleDto;
+        const ops = sectionCombineOps.get(rule.ruleGroupId) ?? new Map();
+        // An unset section operator evaluates as OR (#2971), so it must stay
+        // OR, written the way stored operators are: as a string.
+        if (!ops.has(section)) {
+          ops.set(
+            section,
+            operator ?? (String(RuleOperators.OR) as unknown as RuleOperators),
+          );
+        }
+        sectionCombineOps.set(rule.ruleGroupId, ops);
+      } catch {
+        // Unparseable rules are deleted below and carry no operator.
+      }
+    }
+    const survivors = new Map<number, { id: number; ruleJson: string }[]>();
+    const groupsWithDeletes = new Set<number>();
 
     const result: RuleMigrationResult = {
       totalRules: allRules.length,
@@ -271,8 +301,12 @@ export class RuleMigrationService {
           `Deleting incompatible rule ${rule.id}: ${analysis.reason}${analysis.propertyName ? ` (property: ${analysis.propertyName})` : ''}`,
         );
         await rulesRepo.delete(rule.id);
+        groupsWithDeletes.add(groupId);
         continue;
       }
+
+      const kept = survivors.get(groupId) ?? [];
+      survivors.set(groupId, kept);
 
       // Migrate the rule
       try {
@@ -283,6 +317,7 @@ export class RuleMigrationService {
           compat.remapping,
         );
         await rulesRepo.update(rule.id, { ruleJson: migratedJson });
+        kept.push({ id: rule.id, ruleJson: migratedJson });
         result.migratedRules++;
         groupStatus.migrated++;
 
@@ -292,6 +327,7 @@ export class RuleMigrationService {
           error instanceof Error ? error.message : String(error);
         this.logger.error(`Failed to migrate rule ${rule.id}`);
         this.logger.debug(error);
+        kept.push({ id: rule.id, ruleJson: rule.ruleJson });
         result.skippedRules++;
         groupStatus.skipped++;
         result.skippedDetails.push({
@@ -300,6 +336,23 @@ export class RuleMigrationService {
           ruleId: rule.id,
           reason: `Migration error: ${errorMessage}`,
         });
+      }
+    }
+
+    for (const groupId of groupsWithDeletes) {
+      const kept = survivors.get(groupId) ?? [];
+      const rules = kept.map(({ ruleJson }) => JSON.parse(ruleJson) as RuleDto);
+      const before = [...rules];
+      reassertSectionBoundaryOperators(
+        rules,
+        sectionCombineOps.get(groupId) ?? new Map(),
+      );
+      for (let i = 0; i < rules.length; i++) {
+        if (rules[i] !== before[i]) {
+          await rulesRepo.update(kept[i].id, {
+            ruleJson: JSON.stringify(rules[i]),
+          });
+        }
       }
     }
 

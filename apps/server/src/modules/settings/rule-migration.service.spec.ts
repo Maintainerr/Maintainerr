@@ -159,6 +159,59 @@ describe('RuleMigrationService', () => {
       expect(ruleGroupRepo.delete).toHaveBeenCalledWith(1);
     });
 
+    // Rule 2 opens section 1 and is deleted (watchlist is Plex only); rule 3
+    // then opens the section and must carry its join, not its own operator.
+    it.each([
+      ['AND', RuleOperators.AND, RuleOperators.OR, RuleOperators.AND],
+      ['OR', RuleOperators.OR, RuleOperators.AND, RuleOperators.OR],
+      ['unset (OR)', null, RuleOperators.AND, RuleOperators.OR],
+    ])(
+      "keeps a section's %s join when its first rule is deleted as incompatible",
+      async (label, sectionOperator, ownOperator, expected) => {
+        const rule = (id: number, dto: Partial<RuleDto>) =>
+          ({
+            id,
+            ruleGroupId: 1,
+            ruleJson: JSON.stringify(dto),
+            ruleGroup: { id: 1, name: 'Mixed Group' },
+          }) as Rules;
+        rulesRepo.find.mockResolvedValue([
+          rule(1, {
+            operator: null,
+            action: RulePossibility.BEFORE,
+            firstVal: [Application.PLEX, 0],
+            section: 0,
+          }),
+          rule(2, {
+            operator: sectionOperator,
+            action: RulePossibility.EQUALS,
+            firstVal: [Application.PLEX, 30],
+            section: 1,
+          }),
+          rule(3, {
+            operator: ownOperator,
+            action: RulePossibility.NOT_EXISTS,
+            firstVal: [Application.PLEX, 1],
+            section: 1,
+          }),
+        ]);
+        rulesRepo.update.mockResolvedValue({ affected: 1 } as any);
+        rulesRepo.delete.mockResolvedValue({ affected: 1 } as any);
+
+        await service.migrateRules(
+          MediaServerType.PLEX,
+          MediaServerType.JELLYFIN,
+          true,
+        );
+
+        expect(rulesRepo.delete).toHaveBeenCalledWith(2);
+        const lastWrite = rulesRepo.update.mock.calls
+          .filter(([id]) => id === 3)
+          .at(-1)?.[1] as { ruleJson: string };
+        expect(+JSON.parse(lastWrite.ruleJson).operator).toBe(expected);
+      },
+    );
+
     it('should remap Plex rating_imdb rules to Jellyfin rating_imdb', async () => {
       const originalRule: Partial<Rules> = {
         id: 1,
