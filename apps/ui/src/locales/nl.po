@@ -8,7 +8,7 @@ msgstr ""
 "Language: nl\n"
 "Project-Id-Version: \n"
 "Report-Msgid-Bugs-To: \n"
-"PO-Revision-Date: 2026-09-22 16:26+0000\n"
+"PO-Revision-Date: 2026-10-02 19:31+0000\n"
 "Last-Translator: COTMO <moermantom1@gmail.com>\n"
 "Language-Team: Dutch <https://hosted.weblate.org/projects/maintainerr/app/nl/>\n"
 "Plural-Forms: nplurals=2; plural=n != 1;\n"
@@ -168,7 +168,7 @@ msgstr "{elementCount, plural, one {# element} other {# elementen}}"
 
 #: src/components/Services/useServices.tsx
 msgid "{enabledAgentCount, plural, one {# agent enabled} other {# agents enabled}}"
-msgstr ""
+msgstr "{enabledAgentCount, plural, one {# agent ingeschakeld} other {# agenten ingeschakeld}}"
 
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "{formatList} - up to {imageUploadMaxLabel}."
@@ -233,7 +233,7 @@ msgstr "{path} (bewaarde selectie)"
 
 #: src/components/Services/useServices.tsx
 msgid "{provider} primary"
-msgstr ""
+msgstr "{provider} primair"
 
 #: src/components/Settings/Metadata/index.tsx
 msgid "{providerTitle} primary"
@@ -249,7 +249,7 @@ msgstr "{secondsAgo, plural, one {# seconde geleden} other {# seconden geleden}}
 
 #: src/components/Services/useServices.tsx
 msgid "{serverCount, plural, one {# server} other {# servers}}"
-msgstr ""
+msgstr "{serverCount, plural, one {# server} other {# servers}}"
 
 #: src/components/Rules/RuleGroup/AddModal/QualityProfileSelector.tsx
 msgid "{serviceName} quality profile *"
@@ -329,7 +329,7 @@ msgstr "+{hiddenCount} meer..."
 
 #: src/components/Forms/ServiceBasePathInput.tsx
 msgid "<0>Optional</0> path configured on the service."
-msgstr ""
+msgstr "<0>Optioneel</0> pad geconfigureerd op de dienst."
 
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "1 day text"
@@ -365,7 +365,7 @@ msgstr "Actief"
 
 #: src/components/Rules/ruleGroupSort.ts
 msgid "Active First"
-msgstr ""
+msgstr "Actief Eerst"
 
 #: src/components/Common/MediaActionModal.tsx
 msgid "Add / Remove Media"
@@ -381,7 +381,7 @@ msgstr "Een nieuwe sectie toevoegen"
 
 #: src/components/Settings/Metadata/index.tsx
 msgid "Add a TVDB key first"
-msgstr ""
+msgstr "Voeg eerst een TVDB-sleutel toe"
 
 #: src/components/Settings/Notifications/index.tsx
 #: src/components/Settings/Notifications/NotificationAgentCard.tsx
@@ -398,7 +398,7 @@ msgstr "Importlijstuitsluitingen toevoegen"
 
 #: src/components/Settings/Servarr/ServarrSettings.tsx
 msgid "Add Radarr server"
-msgstr ""
+msgstr "Radarr-server toevoegen"
 
 #: src/components/Rules/Rule/RuleCreator/index.tsx
 msgid "Add Rule"
@@ -406,11 +406,11 @@ msgstr "Regel toevoegen"
 
 #: src/components/Settings/Servarr/ServarrSettings.tsx
 msgid "Add Sonarr server"
-msgstr ""
+msgstr "Sonarr-server toevoegen"
 
 #: src/components/Settings/Servarr/ServarrSettings.tsx
 msgid "Add Sportarr server"
-msgstr ""
+msgstr "Sportarr-server toevoegen"
 
 #: src/components/Common/MediaActionModal.tsx
 msgid "Add to collection"
@@ -483,19 +483,19 @@ msgstr "Alle seizoenen"
 
 #: src/components/Settings/Notifications/NotificationAgentCard.tsx
 msgid "Allow self-signed certificates"
-msgstr ""
+msgstr "Zelfondertekende certificaten toestaan"
 
 #: src/components/Settings/Notifications/NotificationAgentCard.tsx
 msgid "Allow users to also start a chat with your bot and configure their own notifications"
-msgstr ""
+msgstr "Sta gebruikers toe een chat te starten met je bot en hun eigen meldingen in te stellen"
 
 #: src/components/Settings/Servarr/ServarrServerCard.tsx
 msgid "Allowed: {chars}"
-msgstr ""
+msgstr "Toegestaan: {chars}"
 
 #: src/components/Settings/Notifications/NotificationAgentCard.tsx
 msgid "Always use STARTTLS"
-msgstr ""
+msgstr "Altijd STARTTLS gebruiken"
 
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "Amount of days"
@@ -588,7 +588,7 @@ msgstr "Authenticatie-PIN is verlopen. Probeer het opnieuw."
 
 #: src/components/Services/useServices.tsx
 msgid "Authentication reuses the configured Jellyfin API key."
-msgstr ""
+msgstr "Authenticatie hergebruikt de geconfigureerde Jellyfin-API-sleutel."
 
 #: src/utils/PlexAuth.ts
 msgid "Authentication timed out. Please try again."
@@ -621,7 +621,7 @@ msgstr "Database back-uppen"
 
 #: src/components/Forms/ServiceBasePathInput.tsx
 msgid "Base Path"
-msgstr ""
+msgstr "Basispad"
 
 #: src/components/StorageMetrics/index.tsx
 msgid "Based on cached collection sizes, deduplicated across collections. Run collection processing jobs to refresh size data."
@@ -727,7 +727,7 @@ msgstr "Kies de bestandsnaam voor je database-back-up."
 
 #: src/components/Services/useServices.tsx
 msgid "Choose the primary source for posters, backdrops and metadata. A TVDB API key is highly recommended: when the primary provider cannot match a movie or show, Maintainerr falls back to TVDB for its IDs and details."
-msgstr ""
+msgstr "Kies de primaire bron voor posters, achtergronden en metadata. Een TVDB-API-sleutel wordt sterk aanbevolen: wanneer de primaire aanbieder geen overeenkomstige film of serie kan vinden, valt Maintainerr terug op TVDB voor de ID's en gegevens."
 
 #: src/components/Settings/index.tsx
 msgid "Choose your media server, confirm the connection, and then you can continue configuring the rest of Maintainerr."
@@ -879,7 +879,7 @@ msgstr "Configureer de verbinding met uw Emby-server. Voer de server-URL en een 
 
 #: src/components/Services/useServices.tsx
 msgid "Configured"
-msgstr ""
+msgstr "Geconfigureerd"
 
 #: src/components/Common/MediaActionModal.tsx
 msgid "Confirm Global Exclusion"
@@ -895,11 +895,11 @@ msgstr "Bevestig het verwijderen van elke uitsluiting"
 
 #: src/components/StorageMetrics/index.tsx
 msgid "Connect a Plex or Jellyfin server in Services to see library item counts here."
-msgstr ""
+msgstr "Verbind een Plex- of Jellyfin-server in Services om hier het aantal bibliotheekitems te zien."
 
 #: src/components/Services/ServicesHub.tsx
 msgid "Connect Maintainerr to your media server and the apps it works with."
-msgstr ""
+msgstr "Verbind Maintainerr met je mediaserver en de ondersteunde apps."
 
 #: src/components/Settings/index.tsx
 msgid "Connect your media server to finish setup."
@@ -968,7 +968,7 @@ msgstr "Kon bibliotheken niet ophalen"
 
 #: src/components/Services/useServices.tsx
 msgid "Could not load"
-msgstr ""
+msgstr "Kon niet worden geladen"
 
 #: src/pages/OverlayTemplateEditorPage.tsx
 msgid "Could not load font list. Text elements will fall back to the default font."
@@ -1089,11 +1089,11 @@ msgstr "Datum toegevoegd"
 
 #: src/components/Common/MediaLibrarySortControl.tsx
 msgid "Date Added Ascending"
-msgstr ""
+msgstr "Datum toegevoegd oplopend"
 
 #: src/components/Common/MediaLibrarySortControl.tsx
 msgid "Date Added Descending"
-msgstr ""
+msgstr "Datum toegevoegd aflopend"
 
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "Date Format"
@@ -1302,7 +1302,7 @@ msgstr "Download logboekbestanden"
 
 #: src/components/Services/ServicesHub.tsx
 msgid "Downloads"
-msgstr ""
+msgstr "Downloads"
 
 #: src/components/Rules/Rule/RuleCreator/index.tsx
 msgid "Drag handle for rule {tagId} in section {sectionNumber}"
@@ -1416,7 +1416,7 @@ msgstr "Ingeschakeld"
 
 #: src/components/Settings/Notifications/NotificationAgentCard.tsx
 msgid "Encrypts from the first byte. Usually needed on port 465; leave off for 587 and 25."
-msgstr ""
+msgstr "Versleutelt vanaf de eerste byte. Meestal nodig op poort 465; uitgeschakeld laten voor 587 en 25."
 
 #: src/components/Settings/Plex/index.tsx
 msgid "Ensure DNS is properly configured since Plex depends on working DNS resolution"
@@ -1473,7 +1473,7 @@ msgstr "Fout"
 
 #: src/components/Settings/ServiceCard.tsx
 msgid "Error (check logs)"
-msgstr ""
+msgstr "Fout (controleer logboeken)"
 
 #: src/pages/RuleFormPage.tsx
 msgid "Error loading rule data"
@@ -1574,7 +1574,7 @@ msgstr "Kan geen verbinding maken met Jellyfin. Controleer de URL en API-sleutel
 
 #: src/components/Settings/Ombi/index.tsx
 msgid "Failed to connect to Ombi. Verify URL and API key."
-msgstr ""
+msgstr "Kan geen verbinding maken met Ombi. Controleer de URL en API-sleutel."
 
 #: src/components/Settings/Plex/index.tsx
 msgid "Failed to connect to Plex. Verify your Plex configuration."
@@ -1627,7 +1627,7 @@ msgstr "Maken van sjabloon mislukt"
 
 #: src/components/Settings/Notifications/NotificationAgentCard.tsx
 msgid "Failed to delete notification agent."
-msgstr ""
+msgstr "Mislukt om meldingagent te verwijderen."
 
 #: src/components/Rules/RuleGroup/index.tsx
 msgid "Failed to delete rule group."
@@ -1803,33 +1803,33 @@ msgstr "Vulling & contour"
 
 #: src/components/Settings/Metadata/index.tsx
 msgid "Find it here: Dashboard → Account → API Keys"
-msgstr ""
+msgstr "Hier te vinden: Dashboard → Account → API-sleutels"
 
 #: src/components/Settings/Emby/index.tsx
 #: src/components/Settings/Jellyfin/index.tsx
 msgid "Find it here: Dashboard → API Keys"
-msgstr ""
+msgstr "Hier te vinden: Dashboard → API-sleutels"
 
 #: src/components/Settings/Metadata/index.tsx
 msgid "Find it here: Settings → API"
-msgstr ""
+msgstr "Hier te vinden: Instellingen → API"
 
 #: src/components/Settings/Tracearr/index.tsx
 msgid "Find it here: Settings → API → API Key"
-msgstr ""
+msgstr "Hier te vinden: Instellingen → API → API-sleutel"
 
 #: src/components/Settings/Seerr/index.tsx
 #: src/components/Settings/Servarr/ServarrServerCard.tsx
 msgid "Find it here: Settings → General → API Key"
-msgstr ""
+msgstr "Hier te vinden: Instellingen → Algemeen → API-sleutel"
 
 #: src/components/Settings/Ombi/index.tsx
 msgid "Find it here: Settings → Ombi → API Key"
-msgstr ""
+msgstr "Hier te vinden: Instellingen → Ombi → API-sleutel"
 
 #: src/components/Settings/Tautulli/index.tsx
 msgid "Find it here: Settings → Web Interface"
-msgstr ""
+msgstr "Hier te vinden: Instellingen → Webinterface"
 
 #: src/components/Common/MediaLibrarySortControl.tsx
 msgid "First Air Date Ascending"
@@ -1853,7 +1853,7 @@ msgstr "Lettertype \"{fontName}\" geüpload"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Force delete Ombi request"
-msgstr ""
+msgstr "Ombi-verzoek geforceerd verwijderen"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Force delete Seerr request"
@@ -2186,11 +2186,11 @@ msgstr "Bibliotheek"
 
 #: src/components/Rules/ruleGroupSort.ts
 msgid "Library (A-Z) Ascending"
-msgstr ""
+msgstr "Bibliotheek (A-Z) oplopend"
 
 #: src/components/Rules/ruleGroupSort.ts
 msgid "Library (Z-A) Descending"
-msgstr ""
+msgstr "Bibliotheek (Z-A) aflopend"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Library *"
@@ -2202,7 +2202,7 @@ msgstr "Bibliotheek is verplicht"
 
 #: src/components/Services/ServicesHub.tsx
 msgid "Library managers"
-msgstr ""
+msgstr "Bibliotheekbeheerders"
 
 #: src/pages/OverlayTemplateEditorPage.tsx
 msgid "Load different poster"
@@ -2393,7 +2393,7 @@ msgstr "Mediaserver"
 
 #: src/components/StorageMetrics/index.tsx
 msgid "Media server is not reachable. Check it in Services."
-msgstr ""
+msgstr "Mediaserver is niet bereikbaar. Controleer dit bij Diensten."
 
 #: src/components/Collection/CollectionItem/index.tsx
 #: src/components/Rules/RuleGroup/index.tsx
@@ -2402,7 +2402,7 @@ msgstr "Mediaserver is onbereikbaar. De opgeslagen bibliotheekselectie is behoud
 
 #: src/components/Settings/MediaServer/MediaServerSettings.tsx
 msgid "Media server settings - Maintainerr"
-msgstr ""
+msgstr "Mediaserver-instellingen - Maintainerr"
 
 #: src/components/Settings/MediaServerSelector/index.tsx
 msgid "Media server switch could not be completed: {switchError}"
@@ -2497,11 +2497,11 @@ msgstr "Naam"
 
 #: src/components/Rules/ruleGroupSort.ts
 msgid "Name (A-Z) Ascending"
-msgstr ""
+msgstr "Naam (A-Z) oplopend"
 
 #: src/components/Rules/ruleGroupSort.ts
 msgid "Name (Z-A) Descending"
-msgstr ""
+msgstr "Naam (Z-A) aflopend"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 #: src/components/Settings/Notifications/NotificationAgentCard.tsx
@@ -2518,39 +2518,39 @@ msgstr "Standaard kleurenkiezer"
 
 #: src/components/Services/useServices.tsx
 msgid "Needed to use Ombi in rules and remove Ombi requests."
-msgstr ""
+msgstr "Vereist om Ombi in regels te gebruiken en Ombi-verzoeken te verwijderen."
 
 #: src/components/Services/useServices.tsx
 msgid "Needed to use Radarr in rules and to remove or unmonitor movies."
-msgstr ""
+msgstr "Vereist om Radarr in regels te gebruiken en films te verwijderen of de status op niet-bewaken te zetten."
 
 #: src/components/Services/useServices.tsx
 msgid "Needed to use Seerr in rules, remove Seerr requests, and show requesters in pre-deletion notifications."
-msgstr ""
+msgstr "Vereist om Seerr in regels te gebruiken, Seerr-verzoeken te verwijderen en aanvragers te tonen in meldingen voorafgaand aan verwijdering."
 
 #: src/components/Services/useServices.tsx
 msgid "Needed to use Sonarr in rules and to remove or unmonitor shows."
-msgstr ""
+msgstr "Vereist om Sonarr in regels te gebruiken en serie-inhoud te verwijderen of de status op niet-bewaken te zetten."
 
 #: src/components/Services/useServices.tsx
 msgid "Needed to use Sportarr in rules and to manage sports leagues, seasons and events."
-msgstr ""
+msgstr "Vereist om Sportarr in regels te gebruiken en sportcompetities, seizoenen en evenementen te beheren."
 
 #: src/components/Services/useServices.tsx
 msgid "Needed to use Streamystats watchlists in rules."
-msgstr ""
+msgstr "Vereist om Streamystats-kijklijsten in regels te gebruiken."
 
 #: src/components/Services/useServices.tsx
 msgid "Needed to use Tautulli watch history in rules."
-msgstr ""
+msgstr "Vereist om Tautulli-kijkhistorie in regels te gebruiken."
 
 #: src/components/Services/useServices.tsx
 msgid "Needed to use Tracearr watch history in rules."
-msgstr ""
+msgstr "Vereist om Tracearr-kijkhistorie in regels te gebruiken."
 
 #: src/components/Settings/Notifications/NotificationAgentCard.tsx
 msgid "Needed when your SMTP server uses a certificate it signed itself, as many home servers do."
-msgstr ""
+msgstr "Vereist wanneer je SMTP-server een zelfondertekend certificaat gebruikt, zoals bij veel thuisservers het geval is."
 
 #: src/components/Collection/CollectionItem/index.tsx
 msgid "Never"
@@ -2558,7 +2558,7 @@ msgstr "Nooit"
 
 #: src/components/Settings/Notifications/NotificationAgentCard.tsx
 msgid "Never use TLS"
-msgstr ""
+msgstr "TLS nooit gebruiken"
 
 #: src/pages/RulesListPage.tsx
 msgid "New Rule"
@@ -2583,7 +2583,7 @@ msgstr "Nieuw sjabloon - Overlay editor - Maintainerr"
 
 #: src/components/Rules/ruleGroupSort.ts
 msgid "Newest First"
-msgstr ""
+msgstr "Nieuwste eerst"
 
 #: src/components/Calendar/index.tsx
 #: src/components/Common/Pagination/index.tsx
@@ -2682,7 +2682,7 @@ msgstr "Geen meldingsdiensten geconfigureerd."
 
 #: src/components/StorageMetrics/index.tsx
 msgid "No Radarr or Sonarr instances are configured yet. Add one in Services to see disk usage here."
-msgstr ""
+msgstr "Er zijn nog geen Radarr- of Sonarr-instanties geconfigureerd. Voeg er een toe bij Diensten om hier het schijfgebruik te zien."
 
 #: src/components/Common/SearchMediaITem/index.tsx
 msgid "No results"
@@ -2758,7 +2758,7 @@ msgstr "Niet ingesteld"
 
 #: src/components/Services/useServices.tsx
 msgid "Not set up"
-msgstr ""
+msgstr "Niet geconfigureerd"
 
 #: src/components/Settings/Telemetry/index.tsx
 msgid "Nothing extra is configured to send."
@@ -2766,7 +2766,7 @@ msgstr "Er is niets extra's geconfigureerd om te verzenden."
 
 #: src/components/Settings/Notifications/NotificationAgentCard.tsx
 msgid "Nothing is sent while this is off."
-msgstr ""
+msgstr "Er wordt niets verzonden zolang dit is uitgeschakeld."
 
 #: src/components/Rules/RuleGroup/AddModal/ConfigureNotificationModal/index.tsx
 msgid "Notification Agents"
@@ -2805,15 +2805,15 @@ msgstr "OK"
 
 #: src/components/Rules/ruleGroupSort.ts
 msgid "Oldest First"
-msgstr ""
+msgstr "Oudste eerst"
 
 #: src/components/Settings/Ombi/index.tsx
 msgid "Ombi settings - Maintainerr"
-msgstr ""
+msgstr "Ombi-instellingen - Maintainerr"
 
 #: src/components/Settings/Ombi/index.tsx
 msgid "Ombi settings could not be updated"
-msgstr ""
+msgstr "Ombi-instellingen konden niet worden bijgewerkt"
 
 #: src/components/Layout/TelemetryConsentModal.tsx
 msgid "Once a week we log which version and platform people actually run. The payload below is the whole of it. It carries no server identifier, no {TERM_IP}, no hostname, no {TERM_MAC} address and no account id: nothing that can be traced back to you, your network or your machine."
@@ -2821,7 +2821,7 @@ msgstr "Eenmaal per week verzamelen we gegevens over de gebruikte versie en het 
 
 #: src/components/Settings/index.tsx
 msgid "Once connected, adding a TVDB API key under Services, Metadata is highly recommended. When the primary provider cannot match a movie or show, Maintainerr falls back to TVDB for its IDs and details."
-msgstr ""
+msgstr "Zodra de verbinding is gemaakt, wordt het sterk aanbevolen om een TVDB-API-sleutel toe te voegen onder Diensten > Metadata. Wanneer de primaire provider een film of serie niet kan matchen, valt Maintainerr terug op TVDB voor de ID's en details."
 
 #: src/components/Common/YamlImporterModal/index.tsx
 msgid "Only {yamlExtension} or {ymlExtension} files are allowed."
@@ -2829,7 +2829,7 @@ msgstr "Alleen {yamlExtension}- of {ymlExtension}-bestanden zijn toegestaan."
 
 #: src/components/Settings/Notifications/NotificationAgentCard.tsx
 msgid "Only required if not using the default profile"
-msgstr ""
+msgstr "Alleen vereist bij het gebruik van een afwijkend profiel"
 
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "Opacity"
@@ -2944,11 +2944,11 @@ msgstr "Gelieve deze regel te bewerken en een bibliotheek te selecteren"
 
 #: src/components/Settings/Plex/index.tsx
 msgid "Please enter a valid server URL with no path."
-msgstr ""
+msgstr "Voer een geldige server-URL in zonder pad."
 
 #: src/components/Settings/Servarr/ServarrServerCard.tsx
 msgid "Please enter a valid URL."
-msgstr ""
+msgstr "Voer een geldige URL in."
 
 #: src/components/Settings/Jobs/index.tsx
 msgid "Please make sure all values are valid"
@@ -3123,7 +3123,7 @@ msgstr "Recent uitgesloten"
 
 #: src/components/Settings/Notifications/NotificationAgentCard.tsx
 msgid "Recipients get the message without a notification sound."
-msgstr ""
+msgstr "Ontvangers ontvangen het bericht zonder meldingstoon."
 
 #: src/components/StorageMetrics/index.tsx
 msgid "Reclaimable from collections"
@@ -3142,12 +3142,12 @@ msgstr "Metadata vernieuwen"
 
 #: src/components/Settings/Plex/index.tsx
 msgid "Refresh servers"
-msgstr ""
+msgstr "Servers vernieuwen"
 
 #: src/components/Settings/Metadata/index.tsx
 #: src/components/Settings/Servarr/ServarrServerCard.tsx
 msgid "Refreshing"
-msgstr ""
+msgstr "Vernieuwen"
 
 #: src/components/Settings/Metadata/index.tsx
 msgid "Refreshing..."
@@ -3209,11 +3209,11 @@ msgstr "Verwijderen?"
 
 #: src/components/Settings/Servarr/ServarrServerCard.tsx
 msgid "Removes only this tag when the item is un-excluded."
-msgstr ""
+msgstr "Verwijdert alleen deze tag wanneer het item niet langer is uitgesloten."
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Removes the related Ombi request immediately. Otherwise, Ombi keeps listing the request as available."
-msgstr ""
+msgstr "Verwijdert de gerelateerde Ombi-aanvraag onmiddellijk. Anders blijft Ombi de aanvraag vermelden als beschikbaar."
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Removes the related Seerr request immediately. Otherwise, Maintainerr waits for Seerr availability sync."
@@ -3249,7 +3249,7 @@ msgstr "Aangevraagd om regeluitvoering te stoppen."
 
 #: src/components/Services/ServicesHub.tsx
 msgid "Requests"
-msgstr ""
+msgstr "Aanvragen"
 
 #: src/components/StorageMetrics/index.tsx
 msgid "Requires total-space reporting"
@@ -3381,7 +3381,7 @@ msgstr "Sla uw instellingen op voordat u test."
 #: src/components/Settings/Plex/index.tsx
 #: src/components/Settings/Servarr/ServarrServerCard.tsx
 msgid "Saved"
-msgstr ""
+msgstr "Opgeslagen"
 
 #: src/components/Settings/Emby/index.tsx
 #: src/components/Settings/Jellyfin/index.tsx
@@ -3567,7 +3567,7 @@ msgstr "Geselecteerd: {maskedUserId}"
 
 #: src/components/Services/useServices.tsx
 msgid "Send alerts about collections, rules, overlays and updates to email, chat and push services."
-msgstr ""
+msgstr "Stuur meldingen over collecties, regels, overlays en updates naar e-mail-, chat- en pushdiensten."
 
 #: src/components/Settings/Telemetry/index.tsx
 msgid "Send anonymous usage data"
@@ -3575,11 +3575,11 @@ msgstr "Anonieme gebruiksgegevens verzenden"
 
 #: src/components/Settings/Notifications/NotificationAgentCard.tsx
 msgid "Send silently"
-msgstr ""
+msgstr "Stil verzenden"
 
 #: src/components/Settings/Notifications/NotificationAgentCard.tsx
 msgid "Sends unencrypted even when the server offers STARTTLS. Only for a server whose STARTTLS fails."
-msgstr ""
+msgstr "Verstuurt onversleuteld, zelfs als de server STARTTLS ondersteunt. Alleen te gebruiken bij servers waar STARTTLS mislukt."
 
 #: src/components/Settings/Plex/index.tsx
 msgid "Server"
@@ -3600,11 +3600,11 @@ msgstr "server reageerde met {status}"
 #: src/components/Layout/NavBar/index.tsx
 #: src/components/Services/ServicesHub.tsx
 msgid "Services"
-msgstr ""
+msgstr "Diensten"
 
 #: src/components/Services/ServicesHub.tsx
 msgid "Services - Maintainerr"
-msgstr ""
+msgstr "Diensten - Maintainerr"
 
 #: src/components/Settings/About/index.tsx
 msgid "Services Status"
@@ -3739,7 +3739,7 @@ msgstr "Sorteer overzichtitems"
 
 #: src/pages/RulesListPage.tsx
 msgid "Sort rules"
-msgstr ""
+msgstr "Regels sorteren"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Sort title"
@@ -3763,7 +3763,7 @@ msgstr "SSL/TLS-handshake mislukt. Verifieer het URL-protocol (http vs. https) e
 
 #: src/components/Settings/Notifications/NotificationAgentCard.tsx
 msgid "Start a chat with your bot, add {bot}, and issue the {command} command"
-msgstr ""
+msgstr "Start een chat met je bot, voeg {bot} toe en voer het commando {command} uit"
 
 #: src/components/Rules/RuleGroup/index.tsx
 msgid "Start execution"
@@ -3850,7 +3850,7 @@ msgstr "Gelukt"
 #: src/components/Settings/Metadata/index.tsx
 #: src/components/Settings/Notifications/NotificationAgentCard.tsx
 msgid "Success!"
-msgstr ""
+msgstr "Gelukt!"
 
 #: src/components/Settings/DownloadClient/index.tsx
 #: src/components/Settings/Emby/index.tsx
@@ -3859,7 +3859,7 @@ msgstr ""
 #: src/components/Settings/Plex/index.tsx
 #: src/components/Settings/Servarr/ServarrServerCard.tsx
 msgid "Success! ({version})"
-msgstr ""
+msgstr "Gelukt! ({version})"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Successfully imported rules from Yaml."
@@ -3907,7 +3907,7 @@ msgstr "Tag deze inhoud in {tagArrName}"
 
 #: src/components/Settings/Servarr/ServarrServerCard.tsx
 msgid "Tags the item in {name} when it is excluded."
-msgstr ""
+msgstr "Voorziet het item van een tag in {name} wanneer het wordt uitgesloten."
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Take action after days is required for this action"
@@ -4055,7 +4055,7 @@ msgstr "De volgende gegevens worden definitief gewist:"
 
 #: src/components/Settings/Notifications/NotificationAgentCard.tsx
 msgid "The JSON payload is not valid."
-msgstr ""
+msgstr "De JSON-payload is niet geldig."
 
 #: src/components/Settings/index.tsx
 msgid "The Logs page stays available during setup if you need to troubleshoot your connection."
@@ -4068,7 +4068,7 @@ msgstr "De mediaserver heeft geen gebruiker met de naam ''{username}''"
 #: src/components/Rules/RuleGroup/AddModal/ConfigureNotificationModal/index.tsx
 #: src/components/Settings/Notifications/index.tsx
 msgid "The notification agents could not be loaded."
-msgstr ""
+msgstr "De meldingsagenten konden niet worden geladen."
 
 #: src/components/Settings/Telemetry/index.tsx
 msgid "The preview could not be loaded."
@@ -4112,7 +4112,7 @@ msgstr "De selectie beslaat meer dan één bibliotheek, dus hierop kunnen alleen
 
 #: src/components/Settings/Servarr/ServarrSettings.tsx
 msgid "The server list could not be loaded."
-msgstr ""
+msgstr "De serverlijst kon niet worden geladen."
 
 #: src/components/Layout/index.tsx
 msgid "The server returned an unexpected response."
@@ -4272,7 +4272,7 @@ msgstr "Schakel dit uit in de instellingen"
 
 #: src/components/Settings/DownloadClient/index.tsx
 msgid "Turn off if you cross-seed."
-msgstr ""
+msgstr "Uitschakelen bij gebruik van cross-seeden."
 
 #: src/components/Calendar/index.tsx
 #: src/components/StorageMetrics/index.tsx
@@ -4505,7 +4505,7 @@ msgstr "Hoofdletters"
 
 #: src/components/Settings/Notifications/NotificationAgentCard.tsx
 msgid "Use implicit TLS"
-msgstr ""
+msgstr "Expliciete TLS gebruiken"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Use rules"
@@ -4517,7 +4517,7 @@ msgstr "Gebruikt"
 
 #: src/components/Settings/DownloadClient/index.tsx
 msgid "Used only when the client sets no ratio or idle limit. Minimum 0.5."
-msgstr ""
+msgstr "Wordt alleen gebruikt wanneer de client geen ratio- of inactiviteitslimiet instelt. Minimaal 0,5."
 
 #: src/components/Settings/About/index.tsx
 msgid "Useful Links"
@@ -4588,7 +4588,7 @@ msgstr "Waarschuwing"
 
 #: src/components/Services/ServicesHub.tsx
 msgid "Watch statistics"
-msgstr ""
+msgstr "Bekijk statistieken"
 
 #: src/components/Common/MediaCard/MediaModal/WatchStatsPanel/index.tsx
 msgid "Watch time"
@@ -4636,7 +4636,7 @@ msgstr "Wordt deze regel meegenomen bij regeluitvoeringen"
 
 #: src/components/Settings/Notifications/NotificationAgentCard.tsx
 msgid "Without it, mail goes out unencrypted when the server does not offer STARTTLS. With it, the email is not sent instead."
-msgstr ""
+msgstr "Zonder dit wordt e-mail onversleuteld verzonden als de server geen STARTTLS ondersteunt. Met dit ingeschakeld wordt de e-mail in dat geval niet verzonden."
 
 #: src/components/Common/YamlImporterModal/index.tsx
 msgid "Yaml Rule Editor"
@@ -4672,7 +4672,7 @@ msgstr "Met je-vorm: Je <0>{TERM_IP}-adres wordt nooit gelezen of opgeslagen</0>
 
 #: src/components/Settings/Notifications/NotificationAgentCard.tsx
 msgid "Your 30-character user or group identifier"
-msgstr ""
+msgstr "Je 30-tekens lange gebruiker- of groepsidentificatie"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "your media server"
