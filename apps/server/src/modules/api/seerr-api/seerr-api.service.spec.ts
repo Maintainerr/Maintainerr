@@ -1,3 +1,4 @@
+import { RequestMediaStatus } from '@maintainerr/contracts';
 import { Mocked, TestBed } from '@suites/unit';
 import { MaintainerrLoggerFactory } from '../../logging/logs.service';
 import { SettingsDataService } from '../../settings/settings-data.service';
@@ -325,6 +326,39 @@ describe('SeerrApiService', () => {
       expect(del).toHaveBeenCalledWith('/media/7', undefined, {
         rethrow: true,
       });
+    });
+
+    // #3879: Seerr cannot drop one season from a request, so deleting it would
+    // take the requester of the seasons still there.
+    it('keeps a shared request until none of its seasons is left', async () => {
+      const del = arrange([tvRequest(10, [1, 2, 3])]);
+      // Seerr's availability sync already marked season 1 deleted.
+      (await service.getShow(100)).mediaInfo.seasons = [
+        {
+          seasonNumber: 1,
+          status: RequestMediaStatus.DELETED,
+          status4k: RequestMediaStatus.UNKNOWN,
+        },
+      ];
+
+      await expect(service.removeSeasonRequest(100, 2)).resolves.toBe(false);
+      expect(del).not.toHaveBeenCalled();
+
+      await expect(service.removeSeasonRequest(100, 3)).resolves.toBe(true);
+      expect(del).toHaveBeenCalledWith('/request/10', undefined, {
+        rethrow: true,
+      });
+    });
+
+    // Delete show if empty checks this before the last season's request goes,
+    // and Seerr leaves a partly available season's request approved.
+    it('does not count a season removed under a kept request as still requested', async () => {
+      arrange([tvRequest(10, [1, 2])]);
+
+      await expect(service.removeSeasonRequest(100, 2)).resolves.toBe(false);
+      await expect(service.hasRemainingSeasonRequests(100, 1)).resolves.toBe(
+        false,
+      );
     });
   });
 

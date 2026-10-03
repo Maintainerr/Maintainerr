@@ -1,4 +1,8 @@
-import { BasicResponseDto, stripTrailingSlashes } from '@maintainerr/contracts';
+import {
+  BasicResponseDto,
+  RequestMediaStatus,
+  stripTrailingSlashes,
+} from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
 import { cloneDeep } from 'lodash';
 import { assertApiKey, connectionTestConfig } from '../lib/connectionTest';
@@ -52,7 +56,13 @@ export interface SeerrTVResponse {
 interface SeerrTVInfo extends SeerrMediaInfo {
   mediaType: 'tv';
   requests?: SeerrTVRequest[];
-  seasons?: SeerrSeasonResponse[];
+  seasons?: SeerrMediaSeason[];
+}
+
+interface SeerrMediaSeason {
+  seasonNumber: number;
+  status: RequestMediaStatus;
+  status4k: RequestMediaStatus;
 }
 
 export interface SeerrSeasonResponse {
@@ -86,7 +96,7 @@ export type SeerrBaseRequest = {
   updatedAt: string;
   requestedBy: SeerrUser;
   modifiedBy: SeerrUser;
-  is4k: false;
+  is4k: boolean;
   serverId: number;
   profileId: number;
   rootFolder: string;
@@ -214,6 +224,10 @@ export class SeerrApiService {
   private requestIndexPromise?: Promise<
     Map<string, SeerrRequest[]> | undefined
   >;
+
+  // Seasons removed while the request covering them was kept for its others,
+  // by request id: Seerr marks them deleted only at its next availability sync.
+  private readonly removedSeasons = new Map<number, Set<number>>();
 
   constructor(
     private readonly settings: SettingsDataService,
@@ -575,6 +589,9 @@ export class SeerrApiService {
    * a caller never reports a removal that did not happen. The writes rethrow
    * rather than answering their body: a 204 carries an empty one, so success
    * and failure are both falsy.
+   *
+   * Seerr cannot drop one season from a request, so a request that also covers
+   * a season still there is kept, and goes with the last of them (#3879).
    */
   public async removeSeasonRequest(
     tmdbid: string | number,
@@ -598,11 +615,37 @@ export class SeerrApiService {
         el.seasons.find((s) => s.seasonNumber === season),
       );
       if (requests.length > 0) {
-        for (const el of requests) {
+        const seasons = media.mediaInfo.seasons ?? [];
+        const shared = requests.filter((el) =>
+          el.seasons.some(
+            ({ seasonNumber }) =>
+              seasonNumber !== season &&
+              !this.removedSeasons.get(el.id)?.has(seasonNumber) &&
+              seasons.find((s) => s.seasonNumber === seasonNumber)?.[
+                el.is4k ? 'status4k' : 'status'
+              ] !== RequestMediaStatus.DELETED,
+          ),
+        );
+        if (shared.length > 0) {
+          this.logger.log(
+            `Kept ${shared.length} Seerr request(s) covering season ${season} of show with TMDB ID '${tmdbid}': they also cover other seasons`,
+          );
+        }
+        for (const el of shared) {
+          this.removedSeasons.set(
+            el.id,
+            (this.removedSeasons.get(el.id) ?? new Set()).add(season),
+          );
+        }
+
+        const own = requests.filter((el) => !shared.includes(el));
+        for (const el of own) {
           await this.api.delete(`/request/${el.id}`, undefined, {
             rethrow: true,
           });
+          this.removedSeasons.delete(el.id);
         }
+        return own.length > 0;
       } else if (allRequests.length > 0) {
         // Other seasons are still requested. Deleting the media record cascades
         // into their requests, so leave it alone and report nothing removed.
@@ -663,7 +706,9 @@ export class SeerrApiService {
           request.seasons.some(
             (season) =>
               season.seasonNumber !== removedSeasonNumber &&
-              season.status !== SeerrRequestStatus.COMPLETED,
+              season.status !== SeerrRequestStatus.COMPLETED &&
+              // Removed earlier while this request was kept, not still coming.
+              !this.removedSeasons.get(request.id)?.has(season.seasonNumber),
           ),
         );
     } catch (error) {
