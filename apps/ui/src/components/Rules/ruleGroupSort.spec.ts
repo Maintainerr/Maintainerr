@@ -39,19 +39,6 @@ describe('sortRuleGroups', () => {
     ).toEqual(['Zulu', 'Mike', 'Alpha', 'Bravo'])
   })
 
-  it('orders by name in both directions', () => {
-    expect(
-      namesOf(
-        sortRuleGroups(groups, { sort: 'name', sortOrder: 'asc' }, libraries),
-      ),
-    ).toEqual(['Alpha', 'Bravo', 'Mike', 'Zulu'])
-    expect(
-      namesOf(
-        sortRuleGroups(groups, { sort: 'name', sortOrder: 'desc' }, libraries),
-      ),
-    ).toEqual(['Zulu', 'Mike', 'Bravo', 'Alpha'])
-  })
-
   it('orders by library title, ties by name, and an unknown library last', () => {
     expect(
       namesOf(

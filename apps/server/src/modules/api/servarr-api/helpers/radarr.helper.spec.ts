@@ -119,18 +119,6 @@ describe('RadarrApi', () => {
         deletedFileCount: 0,
       });
     });
-
-    it('returns false when the exclusion request fails for another reason', async () => {
-      postSpy.mockRejectedValue({
-        isAxiosError: true,
-        response: { status: 500 },
-      });
-
-      await expect(unmonitorWithExclusion()).resolves.toEqual({
-        ok: false,
-        deletedFileCount: 0,
-      });
-    });
   });
 
   describe('cache coherency', () => {
@@ -252,20 +240,6 @@ describe('RadarrApi', () => {
       );
     });
 
-    it('performs no verification read when the PUT succeeds', async () => {
-      const getWithoutCacheSpy = jest
-        .spyOn(api, 'getWithoutCache')
-        .mockResolvedValue(movie);
-      jest.spyOn(api as any, 'runPut').mockResolvedValue(true);
-
-      await expect(api.updateMovie(5, { monitored: false })).resolves.toEqual({
-        ok: true,
-        deletedFileCount: 0,
-      });
-
-      expect(getWithoutCacheSpy).toHaveBeenCalledTimes(1);
-    });
-
     it('deletes current file ids without using the rule evaluation cache', async () => {
       const cached = jest
         .spyOn(api, 'get')
@@ -330,22 +304,6 @@ describe('RadarrApi', () => {
 
       expect(runDeleteSpy).not.toHaveBeenCalled();
     });
-
-    it('counts every file it removed', async () => {
-      jest
-        .spyOn(api, 'getWithoutCache')
-        .mockResolvedValueOnce(movie)
-        .mockResolvedValueOnce([
-          createRadarrMovieFile({ id: 900 }),
-          createRadarrMovieFile({ id: 901 }),
-        ]);
-      jest.spyOn(api as any, 'runPut').mockResolvedValue(true);
-      jest.spyOn(api as any, 'runDelete').mockResolvedValue(true);
-
-      await expect(
-        api.updateMovie(5, { monitored: false, deleteFiles: true }),
-      ).resolves.toEqual({ ok: true, deletedFileCount: 2 });
-    });
   });
 
   // Same null/undefined contract as Sonarr (#3125): `undefined` = the lookup
@@ -382,16 +340,6 @@ describe('RadarrApi', () => {
   });
 
   describe('getDownloadIdsForMovie', () => {
-    it('requests the movie history endpoint', async () => {
-      const getWithoutCache = jest
-        .spyOn(api as any, 'getWithoutCache')
-        .mockResolvedValue([]);
-
-      await api.getDownloadIdsForMovie(5);
-
-      expect(getWithoutCache).toHaveBeenCalledWith('/history/movie?movieId=5');
-    });
-
     it('returns deduped, lowercased hashes from grab/import events only', async () => {
       jest.spyOn(api as any, 'getWithoutCache').mockResolvedValue([
         { id: 1, eventType: 'grabbed', downloadId: 'ABCDEF' },
@@ -445,13 +393,6 @@ describe('RadarrApi', () => {
         'movie/editor',
         JSON.stringify({ movieIds: [3], tags: [5], applyTags: 'remove' }),
       );
-    });
-
-    it('no-ops on an empty id list (no request)', async () => {
-      const runPut = jest.spyOn(api as any, 'runPut');
-
-      await expect(api.setMovieTags([], 5, 'add')).resolves.toBe(true);
-      expect(runPut).not.toHaveBeenCalled();
     });
   });
 

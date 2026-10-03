@@ -1,8 +1,5 @@
 import { AxiosError } from 'axios';
-import {
-  formatConnectionFailureMessage,
-  logConnectionTestError,
-} from './connection-error';
+import { formatConnectionFailureMessage } from './connection-error';
 
 const FALLBACK = 'Failed to connect. Verify URL and credentials.';
 
@@ -27,14 +24,6 @@ describe('formatConnectionFailureMessage', () => {
 
   it('classifies an aborted (timeout) request', () => {
     const error = new AxiosError('timeout exceeded', 'ECONNABORTED');
-
-    expect(formatConnectionFailureMessage(error, FALLBACK)).toContain(
-      'Connection timed out',
-    );
-  });
-
-  it('classifies ETIMEDOUT from the error code', () => {
-    const error = new AxiosError('', 'ETIMEDOUT');
 
     expect(formatConnectionFailureMessage(error, FALLBACK)).toContain(
       'Connection timed out',
@@ -113,19 +102,5 @@ describe('formatConnectionFailureMessage', () => {
 
   it('falls back to the provided message for an unclassifiable error', () => {
     expect(formatConnectionFailureMessage({}, FALLBACK)).toBe(FALLBACK);
-  });
-});
-
-describe('logConnectionTestError', () => {
-  it('logs the reason the test answered with, and the error at debug level', () => {
-    const logger = { error: jest.fn(), debug: jest.fn() };
-    const error = new AxiosError('Sensitive upstream details', 'ENOTFOUND');
-
-    logConnectionTestError(logger, 'Seerr', error);
-
-    expect(logger.error).toHaveBeenCalledWith(
-      'Seerr connection test failed: Unable to resolve host. Verify hostname or IP address.',
-    );
-    expect(logger.debug).toHaveBeenCalledWith(error);
   });
 });

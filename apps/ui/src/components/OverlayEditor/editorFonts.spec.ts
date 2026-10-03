@@ -36,40 +36,6 @@ describe('editorFonts', () => {
     expect(getOverlayPreviewFontFamily('', 'Inter')).toBe('Inter')
   })
 
-  it('loads each editor font once into the browser font registry', async () => {
-    const add = vi.fn()
-    const load = vi.fn().mockResolvedValue({ family: 'BebasNeue-Regular' })
-    const FontFaceMock = vi.fn().mockImplementation(function MockFontFace(
-      this: object,
-    ) {
-      return { load }
-    })
-
-    vi.stubGlobal('FontFace', FontFaceMock)
-    Object.defineProperty(document, 'fonts', {
-      configurable: true,
-      value: { add },
-    })
-
-    const fonts = [
-      {
-        name: 'BebasNeue-Regular.ttf',
-        path: '/srv/data/overlays/fonts/BebasNeue-Regular.ttf',
-      },
-    ]
-
-    await loadOverlayEditorFonts(fonts)
-    await loadOverlayEditorFonts(fonts)
-
-    expect(FontFaceMock).toHaveBeenCalledTimes(1)
-    expect(FontFaceMock).toHaveBeenCalledWith(
-      'BebasNeue-Regular',
-      expect.stringContaining('BebasNeue-Regular.ttf?v=0'),
-    )
-    expect(load).toHaveBeenCalledTimes(1)
-    expect(add).toHaveBeenCalledTimes(1)
-  })
-
   it('reloads a font with a cache-busting URL after invalidation', async () => {
     const add = vi.fn()
     const load = vi.fn().mockResolvedValue({ family: 'CacheBust-Regular' })

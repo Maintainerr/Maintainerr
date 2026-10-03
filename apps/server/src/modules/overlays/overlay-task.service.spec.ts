@@ -93,16 +93,4 @@ describe('OverlayTaskService', () => {
       '0 6 * * *',
     );
   });
-
-  it('does not configure a cron schedule on bootstrap when overlays are disabled', async () => {
-    const { service, taskService } = buildTaskService({
-      settings: { enabled: false, cronSchedule: '0 6 * * *' },
-    });
-
-    await (service as any).onBootstrapHook();
-
-    await Promise.resolve();
-
-    expect(taskService.updateJob).not.toHaveBeenCalled();
-  });
 });

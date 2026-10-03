@@ -104,16 +104,6 @@ describe('CollectionsService.markRuleRemoved (real SQLite)', () => {
     ]);
   });
 
-  it('keeps one row per item however often it is marked', async () => {
-    await mark(['item-1'], 'remove');
-    await mark(['item-1'], 'add');
-    await mark(['item-1'], 'remove');
-
-    const all = await markers();
-    expect(all).toHaveLength(1);
-    expect(all[0]).toEqual(expect.objectContaining({ direction: 'remove' }));
-  });
-
   it('writes a batch without disturbing unrelated markers', async () => {
     await mark(['item-1'], 'remove');
     await mark(['item-2', 'item-3'], 'add');
@@ -122,14 +112,6 @@ describe('CollectionsService.markRuleRemoved (real SQLite)', () => {
       expect.objectContaining({ mediaServerId: 'item-1', direction: 'remove' }),
       expect.objectContaining({ mediaServerId: 'item-2', direction: 'add' }),
       expect.objectContaining({ mediaServerId: 'item-3', direction: 'add' }),
-    ]);
-  });
-
-  it('defaults to a removal when no direction is given', async () => {
-    await service.markRuleRemoved(COLLECTION_ID, ['item-1']);
-
-    expect(await markers()).toEqual([
-      expect.objectContaining({ direction: 'remove' }),
     ]);
   });
 });

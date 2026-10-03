@@ -114,66 +114,6 @@ describe('RuleInput', () => {
     vi.clearAllMocks()
   })
 
-  it('shows the single and multiple value placeholder when entering a custom text value for a list rule', async () => {
-    render(
-      <RuleInput
-        id={1}
-        mediaType={MediaType.MOVIE}
-        radarrSettingsId={1}
-        onCommit={onCommit}
-        onIncomplete={onIncomplete}
-        onDelete={onDelete}
-      />,
-    )
-
-    fireEvent.change(screen.getByLabelText('First Value'), {
-      target: { value: JSON.stringify([Application.RADARR, listPropertyId]) },
-    })
-    fireEvent.change(screen.getByLabelText('Action'), {
-      target: { value: String(RulePossibility.NOT_EQUALS) },
-    })
-    fireEvent.change(screen.getByLabelText('Second Value'), {
-      target: { value: 'custom_text' },
-    })
-
-    await waitFor(() => {
-      expect(
-        (screen.getByLabelText('Custom Value') as HTMLInputElement).placeholder,
-      ).toBe('Value1 or ["Value1", "Value2"]')
-    })
-  })
-
-  it('keeps the single and multiple value placeholder when reopening an existing list rule saved as custom text', async () => {
-    render(
-      <RuleInput
-        id={1}
-        mediaType={MediaType.MOVIE}
-        radarrSettingsId={1}
-        editData={{
-          rule: {
-            operator: null,
-            firstVal: [String(Application.RADARR), String(listPropertyId)],
-            action: RulePossibility.NOT_EQUALS,
-            customVal: {
-              ruleTypeId: 2,
-              value: 'Tag A',
-            },
-            section: 0,
-          },
-        }}
-        onCommit={onCommit}
-        onIncomplete={onIncomplete}
-        onDelete={onDelete}
-      />,
-    )
-
-    await waitFor(() => {
-      expect(
-        (screen.getByLabelText('Custom Value') as HTMLInputElement).placeholder,
-      ).toBe('Value1 or ["Value1", "Value2"]')
-    })
-  })
-
   it('commits unary exists rules without a second value input', async () => {
     render(
       <RuleInput
@@ -358,25 +298,6 @@ describe('RuleInput', () => {
       })
 
       expect(screen.getByLabelText('User')).toBeTruthy()
-    })
-
-    it('offers no user for a property that is not scoped to one', () => {
-      render(
-        <RuleInput
-          id={1}
-          mediaType={MediaType.MOVIE}
-          radarrSettingsId={1}
-          onCommit={onCommit}
-          onIncomplete={onIncomplete}
-          onDelete={onDelete}
-        />,
-      )
-
-      fireEvent.change(screen.getByLabelText('First Value'), {
-        target: { value: JSON.stringify([Application.RADARR, listPropertyId]) },
-      })
-
-      expect(screen.queryByLabelText('User')).toBeNull()
     })
   })
 

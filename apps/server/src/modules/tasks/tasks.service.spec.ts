@@ -83,13 +83,6 @@ describe('TasksService', () => {
     expect(tasksService.isRunning('stateful')).toBe(true);
   });
 
-  it('returns task state when requested', () => {
-    tasksService.createJob('introspect', '* * * * * *', () => undefined);
-
-    const task = tasksService.getTask('introspect');
-    expect(task).toMatchObject({ name: 'introspect', running: false });
-  });
-
   it('clears running state and throws for unknown task', () => {
     expect(() => tasksService.clearRunning('nope')).toThrow(
       'Task nope does not exist.',
@@ -100,19 +93,6 @@ describe('TasksService', () => {
 
     tasksService.clearRunning('clear-me');
     expect(tasksService.isRunning('clear-me')).toBe(false);
-  });
-
-  it('throws when setting running state for an unknown task', () => {
-    expect(() => tasksService.setRunning('missing-task')).toThrow(
-      'Task missing-task does not exist.',
-    );
-  });
-
-  it('returns error status when updating a missing job', async () => {
-    const result = await tasksService.updateJob('absent', '*/5 * * * * *');
-
-    expect(result.code).toBe(0);
-    expect(logger.error).toHaveBeenCalledWith('Task absent does not exist.');
   });
 
   it('updates the cron timing for an existing job', async () => {

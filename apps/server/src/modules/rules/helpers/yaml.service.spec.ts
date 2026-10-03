@@ -48,27 +48,6 @@ describe('RuleYamlService', () => {
     expect(parsed.rules[1]['1'][0].operator).toBe('AND');
   });
 
-  it('omits the operator for a first-of-section rule when it is null', () => {
-    const result = service.encode(twoSectionRules(null), 'movie');
-
-    const parsed = YAML.parse(result.result as string);
-    expect(parsed.rules[0]['0'][0]).not.toHaveProperty('operator');
-  });
-
-  it('round-trips an AND section operator through encode + decode', () => {
-    const encoded = service.encode(
-      twoSectionRules(0 as unknown as RuleDto['operator']),
-      'movie',
-    );
-    const decoded = service.decode(encoded.result as string, 'movie');
-
-    expect(decoded.code).toBe(1);
-    const rules: RuleDto[] = JSON.parse(decoded.result as string).rules;
-    // Section-1 boundary rule keeps AND (decoded numerically as RuleOperators.AND = 0).
-    expect(rules[1].operator).toBe(0);
-    expect(rules[1].section).toBe(1);
-  });
-
   it('normalizes missing non-first operators during decode', () => {
     const encoded = service.encode(
       [

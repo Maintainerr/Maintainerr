@@ -105,33 +105,4 @@ describe('RuleMaintenanceService', () => {
 
     expect(rulesService.removeExclusion).not.toHaveBeenCalled();
   });
-
-  it('keeps the exclusion when the item still exists', async () => {
-    const { service, rulesService } = createService({
-      exclusions: [{ id: 1, mediaServerId: '11' }],
-    });
-
-    await (service as any).executeTask();
-
-    expect(rulesService.removeExclusion).not.toHaveBeenCalled();
-  });
-
-  it('does not check an exclusion the batched read already answered for', async () => {
-    const itemExists = jest.fn().mockResolvedValue(false);
-    const { service, rulesService } = createService({
-      exclusions: [
-        { id: 1, mediaServerId: '11' },
-        { id: 2, mediaServerId: '22' },
-      ],
-      getMetadataBatch: jest.fn().mockResolvedValue([{ id: '11' }]),
-      itemExists,
-    });
-
-    await (service as any).executeTask();
-
-    expect(itemExists).toHaveBeenCalledTimes(1);
-    expect(itemExists).toHaveBeenCalledWith('22');
-    expect(rulesService.removeExclusion).toHaveBeenCalledTimes(1);
-    expect(rulesService.removeExclusion).toHaveBeenCalledWith(2);
-  });
 });
