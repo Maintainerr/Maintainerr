@@ -1,13 +1,21 @@
 import { createMockLogger } from '../../../../test/utils/data';
 import { RuleMaintenanceService } from './rule-maintenance.service';
 
-describe('RuleMaintenanceService - removeLeftoverExclusions', () => {
+describe('RuleMaintenanceService', () => {
   const createService = (options?: {
     exclusions?: any[];
     itemExists?: jest.Mock;
     getMetadataBatch?: jest.Mock;
+    reachable?: boolean;
+    collections?: { id: number }[];
+    ruleGroups?: { collection?: { id: number } }[];
   }) => {
-    const { exclusions = [] } = options ?? {};
+    const {
+      exclusions = [],
+      reachable = true,
+      collections = [],
+      ruleGroups = [],
+    } = options ?? {};
 
     const mediaServer = {
       getMetadataBatch:
@@ -17,24 +25,62 @@ describe('RuleMaintenanceService - removeLeftoverExclusions', () => {
 
     const rulesService = {
       getAllExclusions: jest.fn().mockResolvedValue(exclusions),
-      getRuleGroups: jest.fn().mockResolvedValue([]),
+      getRuleGroups: jest.fn().mockResolvedValue(ruleGroups),
       removeExclusion: jest.fn(),
     };
+
+    const collectionRepo = {
+      find: jest.fn().mockResolvedValue(collections),
+      delete: jest.fn(),
+    };
+    const collectionsService = { removeStaleCollectionMedia: jest.fn() };
 
     const service = new RuleMaintenanceService(
       { createJob: jest.fn(), updateJob: jest.fn() } as any,
       createMockLogger() as any,
       {
-        testMediaServerConnection: jest.fn().mockResolvedValue(true),
+        testMediaServerConnection: jest.fn().mockResolvedValue(reachable),
       } as any,
       rulesService as any,
-      { find: jest.fn().mockResolvedValue([]) } as any,
+      collectionRepo as any,
       { getService: jest.fn().mockResolvedValue(mediaServer) } as any,
-      { removeStaleCollectionMedia: jest.fn() } as any,
+      collectionsService as any,
     );
 
-    return { service, rulesService, mediaServer };
+    return {
+      service,
+      rulesService,
+      mediaServer,
+      collectionRepo,
+      collectionsService,
+    };
   };
+
+  // Both prunes drop rows without asking the media server, so during an outage
+  // they would strand a collection whose delete had just failed. The gate was
+  // lost once already, when the task moved to the media-server abstraction.
+  it.each([
+    [true, [{ id: 2 }]],
+    [false, []],
+  ])(
+    'prunes collections no rule group owns only while the media server is reachable (%s)',
+    async (reachable, pruned) => {
+      const { service, collectionRepo, collectionsService } = createService({
+        reachable,
+        collections: [{ id: 1 }, { id: 2 }],
+        ruleGroups: [{ collection: { id: 1 } }],
+      });
+
+      await (service as any).executeTask();
+
+      expect(collectionRepo.delete.mock.calls.map(([where]) => where)).toEqual(
+        pruned,
+      );
+      expect(
+        collectionsService.removeStaleCollectionMedia,
+      ).toHaveBeenCalledTimes(reachable ? 1 : 0);
+    },
+  );
 
   it('removes an exclusion only when the media server confirms the item is gone', async () => {
     const { service, rulesService } = createService({
