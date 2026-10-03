@@ -31,5 +31,3 @@ export const installStdioPipeGuards = (
   installStdioPipeGuard(process.stdout as StdioStream, onUnexpectedError);
   installStdioPipeGuard(process.stderr as StdioStream, onUnexpectedError);
 };
-
-export const __testing = { isBrokenPipeError };

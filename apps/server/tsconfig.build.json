@@ -9,5 +9,12 @@
     // between the type-check invocation and the emit invocation.
     "tsBuildInfoFile": "./dist/tsconfig.build.tsbuildinfo"
   },
-  "exclude": ["node_modules", "test", "dist", "**/*spec.ts", "**/__mocks__/*"]
+  "exclude": [
+    "node_modules",
+    "test",
+    "dist",
+    "**/*spec.ts",
+    "**/__mocks__/*",
+    "jest.config.ts"
+  ]
 }

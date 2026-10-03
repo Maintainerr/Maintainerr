@@ -11,7 +11,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "check-types": "tsc --noEmit -p tsconfig.json",
-    "test": "yarn test:runtime:jellyfin-sdk && jest --shard=1/3 && jest --shard=2/3 && jest --shard=3/3",
+    "test": "yarn test:runtime:jellyfin-sdk && jest",
     "test:runtime:jellyfin-sdk": "node ./test/jellyfin-sdk-runtime-smoke.cjs",
     "test:clear": "jest --clearCache",
     "test:watch": "jest --watch",
@@ -77,7 +77,7 @@
     "@suites/di.nestjs": "^3.1.0",
     "@suites/doubles.jest": "^3.1.0",
     "@suites/unit": "^3.1.1",
-    "@swc/core": "^1.16.2",
+    "@swc/core": "^1.16.12",
     "@swc/jest": "^0.2.39",
     "@types/email-templates": "^10.0.4",
     "@types/jest": "^30.0.0",
@@ -85,8 +85,8 @@
     "@types/mime-types": "^3",
     "@types/node": "^26",
     "@types/xml2js": "^0.4.14",
-    "@typescript-eslint/eslint-plugin": "^8.70.1",
-    "@typescript-eslint/parser": "^8.70.1",
+    "@typescript-eslint/eslint-plugin": "^8.71.0",
+    "@typescript-eslint/parser": "^8.71.0",
     "eslint": "^10.11.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-jest": "^29.16.6",
@@ -94,48 +94,5 @@
     "prettier": "^3.9.9",
     "ts-node": "^10.9.2",
     "typescript": "^6.0.3"
-  },
-  "jest": {
-    "moduleFileExtensions": [
-      "js",
-      "json",
-      "ts"
-    ],
-    "rootDir": "src",
-    "testRegex": ".*\\.spec\\.ts$",
-    "transform": {
-      "^.+\\.(t|j)s$": [
-        "@swc/jest",
-        {
-          "jsc": {
-            "target": "es2022",
-            "parser": {
-              "syntax": "typescript",
-              "decorators": true
-            },
-            "transform": {
-              "legacyDecorator": true,
-              "decoratorMetadata": true
-            },
-            "keepClassNames": true
-          },
-          "module": {
-            "type": "commonjs"
-          }
-        }
-      ]
-    },
-    "transformIgnorePatterns": [
-      "node_modules/(?!(@nestjs|@octokit|octokit|bottleneck|@jellyfin/sdk|@faker-js/faker)/)",
-      "/packages/contracts/dist/"
-    ],
-    "collectCoverageFrom": [
-      "**/*.ts"
-    ],
-    "coverageDirectory": "./coverage",
-    "testEnvironment": "node",
-    "setupFilesAfterEnv": [
-      "<rootDir>/../test/jest.setup.ts"
-    ]
   }
 }

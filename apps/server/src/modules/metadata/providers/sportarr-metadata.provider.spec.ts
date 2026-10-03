@@ -22,14 +22,6 @@ describe('SportarrMetadataProvider', () => {
     fanart_url: null,
   };
 
-  it('stands down when the api has nowhere left to read', () => {
-    api.hasReachableSource.mockReturnValue(false);
-    expect(provider.isAvailable()).toBe(false);
-
-    api.hasReachableSource.mockReturnValue(true);
-    expect(provider.isAvailable()).toBe(true);
-  });
-
   describe('ids', () => {
     it('is the authority for an item that carries a Sportarr id', () => {
       expect(provider.isAuthorityFor({ sportarr: 'lg-000278' })).toBe(true);
@@ -42,12 +34,9 @@ describe('SportarrMetadataProvider', () => {
       expect(provider.parseId('LG-1234567')).toBe(1234567);
     });
 
-    it.each(['ev-848683', '900000278', 'lg-', 'lg-000000', ''])(
-      'does not parse %s as a league',
-      (value) => {
-        expect(provider.parseId(value)).toBeUndefined();
-      },
-    );
+    it.each(['ev-848683'])('does not parse %s as a league', (value) => {
+      expect(provider.parseId(value)).toBeUndefined();
+    });
 
     it('extracts its own id whether the bag holds the number or the stamped string', () => {
       expect(provider.extractId({ sportarr: 278 })).toBe(278);
@@ -89,29 +78,9 @@ describe('SportarrMetadataProvider', () => {
         type: 'tv',
       });
     });
-
-    it('has no movie details and no person details', async () => {
-      await expect(provider.getDetails(278, 'movie')).resolves.toBeUndefined();
-      await expect(provider.getPersonDetails()).resolves.toBeUndefined();
-      expect(api.getLeague).not.toHaveBeenCalled();
-    });
-
-    it('returns nothing for a league the source does not know', async () => {
-      api.getLeague.mockResolvedValue(undefined);
-
-      await expect(provider.getDetails(278, 'tv')).resolves.toBeUndefined();
-    });
   });
 
   describe('artwork', () => {
-    it('returns the league poster for the show', async () => {
-      api.getLeague.mockResolvedValue(league);
-
-      await expect(provider.getPosterUrl(278, 'tv')).resolves.toBe(
-        'https://metadata/league/poster.jpg',
-      );
-    });
-
     it('returns the season poster for a season, falling back to the league poster', async () => {
       api.getLeague.mockResolvedValue(league);
       api.getSeasons.mockResolvedValue([

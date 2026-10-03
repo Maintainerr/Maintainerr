@@ -220,6 +220,48 @@ describe('LeftoverFolderCleanupService', () => {
     expect(await exists(folder)).toBe(true);
   });
 
+  // A second library mounted inside an item folder shares nothing with that
+  // item, but removing the folder would take the whole library with it.
+  it('refuses a folder that contains another root folder', async () => {
+    const root = join(tmp, 'movies');
+    const { folder, deletedFilePaths } = await makeItemFolder(
+      root,
+      'Sample Movie',
+      ['poster.jpg'],
+    );
+    const nestedRoot = join(folder, 'library');
+    await mkdir(nestedRoot, { recursive: true });
+
+    await service.cleanupAfterDelete({
+      folderPath: folder,
+      rootFolderPaths: [root, nestedRoot],
+      deletedFilePaths,
+      scope: 'movie',
+    });
+
+    expect(await exists(nestedRoot)).toBe(true);
+  });
+
+  // The path comes from the *arr, and a '..' segment can lead to another
+  // item's folder that still resolves inside the root.
+  it("refuses a folder path with a '..' segment", async () => {
+    const root = join(tmp, 'movies');
+    await makeItemFolder(root, 'Sample Movie', ['poster.jpg']);
+    const { folder: otherItem } = await makeItemFolder(root, 'Other Movie', [
+      'poster.jpg',
+    ]);
+    const escaping = `${join(root, 'Sample Movie')}${sep}..${sep}Other Movie`;
+
+    await service.cleanupAfterDelete({
+      folderPath: escaping,
+      rootFolderPaths: [root],
+      deletedFilePaths: [`${escaping}${sep}deleted.mkv`],
+      scope: 'movie',
+    });
+
+    expect(await exists(otherItem)).toBe(true);
+  });
+
   it('refuses a folder that holds another tracked item', async () => {
     const root = join(tmp, 'movies');
     await mkdir(root, { recursive: true });

@@ -1,0 +1,77 @@
+name: "Image vulnerabilities"
+
+# Daily Docker Scout scan of the published images, the same analysis Docker Hub
+# shows. Dependabot reads manifests and base image tags, never image contents.
+#
+# Every finding lands in code scanning (Security tab), which sends no
+# notification, so a fixable one also turns the run red. CVEs excepted in
+# Docker Scout are left out of both.
+
+on:
+  schedule:
+    - cron: "17 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  DOCKERHUB_SLUG: maintainerr/maintainerr
+
+jobs:
+  guard_manual_run:
+    uses: ./.github/workflows/guard-manual.yml
+    permissions:
+      contents: read
+    with:
+      enabled: ${{ github.event_name == 'workflow_dispatch' }}
+      actor: ${{ github.actor }}
+      source: image vulnerability scan
+
+  scan:
+    needs: guard_manual_run
+    name: Scan ${{ matrix.tag }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    strategy:
+      fail-fast: false
+      matrix:
+        # development becomes the next release; latest is what users run.
+        tag: [development, latest]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: List vulnerabilities
+        uses: docker/scout-action@v1
+        with:
+          command: cves
+          image: registry://${{ env.DOCKERHUB_SLUG }}:${{ matrix.tag }}
+          organization: maintainerr
+          ignore-suppressed: true
+          sarif-file: scout.sarif
+
+      - name: Upload to code scanning
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: scout.sarif
+          category: docker-scout-${{ matrix.tag }}
+
+      - name: Fail on fixable vulnerabilities
+        uses: docker/scout-action@v1
+        with:
+          command: cves
+          image: registry://${{ env.DOCKERHUB_SLUG }}:${{ matrix.tag }}
+          organization: maintainerr
+          ignore-suppressed: true
+          only-fixed: true
+          exit-code: true
+          summary: false

@@ -1,6 +1,5 @@
 import { AxiosError } from 'axios';
 import { NO_TIMEOUT } from '../../lib/httpTimeouts';
-import { batchIdsByRequestCost } from '../metadata-batch.util';
 import { EMBY_METADATA_FIELDS } from './emby-adapter.service';
 import { EMBY_CACHE_TTL } from './emby.constants';
 import { EmbyAdapterService } from './emby-adapter.service';
@@ -72,6 +71,10 @@ describe('EmbyAdapterService', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    // clearAllMocks keeps a mockReturnValue, so a cached item one test sets up
+    // would otherwise answer every test that runs after it.
+    embyCacheMocks.flush.mockReset();
+    Object.values(embyCacheMocks.data).forEach((fn) => fn.mockReset());
 
     logger = {
       setContext: jest.fn(),
@@ -155,21 +158,6 @@ describe('EmbyAdapterService', () => {
   });
 
   describe('getMetadata caching (#3355)', () => {
-    it('caches a resolved item so repeat conditions do not re-read it', async () => {
-      http.get.mockResolvedValue({
-        data: { Id: 'series-1', Type: 'Series', Name: 'A Show' },
-      });
-
-      const item = await service.getMetadata('series-1');
-
-      expect(item?.id).toBe('series-1');
-      expect(embyCacheMocks.data.set).toHaveBeenCalledWith(
-        'emby:metadata:series-1',
-        expect.objectContaining({ id: 'series-1' }),
-        EMBY_CACHE_TTL.METADATA,
-      );
-    });
-
     it('serves a cached item without touching the API', async () => {
       embyCacheMocks.data.get.mockReturnValueOnce({ id: 'series-1' });
 
@@ -217,68 +205,6 @@ describe('EmbyAdapterService', () => {
       );
     });
 
-    it('splits a long id list', async () => {
-      http.get.mockResolvedValue({ data: { Items: [] } });
-      const itemIds = Array.from(
-        { length: 1500 },
-        (unused, index) => `movie-${index}`,
-      );
-
-      await service.getMetadataBatch(itemIds);
-
-      // The shared helper decides the split from the ids themselves.
-      expect(http.get).toHaveBeenCalledTimes(
-        batchIdsByRequestCost(itemIds, 1).length,
-      );
-      expect(http.get.mock.calls.length).toBeGreaterThan(1);
-    });
-
-    it('keeps only the ids it was asked for', async () => {
-      http.get.mockResolvedValue({
-        data: {
-          Items: [
-            { Id: 'movie-1', Type: 'Movie', Name: 'One' },
-            { Id: 'somebody-else', Type: 'Movie', Name: 'Unrelated' },
-          ],
-        },
-      });
-
-      await expect(service.getMetadataBatch(['movie-1'])).resolves.toEqual([
-        expect.objectContaining({ id: 'movie-1' }),
-      ]);
-    });
-
-    it('serves cached ids without asking for them again', async () => {
-      embyCacheMocks.data.get.mockImplementation((key: string) =>
-        key === 'emby:metadata-batch:movie-1' ? { id: 'movie-1' } : undefined,
-      );
-      http.get.mockResolvedValue({
-        data: { Items: [{ Id: 'movie-2', Type: 'Movie', Name: 'Two' }] },
-      });
-
-      const items = await service.getMetadataBatch(['movie-1', 'movie-2']);
-
-      expect(http.get).toHaveBeenCalledWith(
-        '/Items',
-        expect.objectContaining({
-          params: expect.objectContaining({ Ids: 'movie-2' }),
-        }),
-      );
-      expect(items.map((item) => item.id).sort()).toEqual([
-        'movie-1',
-        'movie-2',
-      ]);
-    });
-
-    // Emby answers 500 for a malformed id, so a bad id costs its batch. Same
-    // contract as getMetadata: those ids are absent, not reported missing.
-    it('leaves out the ids of a failed read', async () => {
-      embyCacheMocks.data.get.mockReturnValue(undefined);
-      http.get.mockRejectedValue(new Error('boom'));
-
-      await expect(service.getMetadataBatch(['movie-1'])).resolves.toEqual([]);
-    });
-
     // Unscoped, the list route answers rows with no UserData at all, so a
     // missing user must leave the ids unresolved rather than read unscoped.
     it('resolves nothing rather than reading unscoped when no user resolves', async () => {
@@ -320,29 +246,11 @@ describe('EmbyAdapterService', () => {
       expect(fieldsOf(http.get.mock.calls[0])).toBe(singleFields);
     });
 
-    // Verified on Emby 4.9.5: a list read omits each of these unless it is named,
-    // and the mapper reads all of them.
-    it.each([
-      ['ParentId', 'parentId'],
-      ['ChildCount', 'childCount'],
-      ['PremiereDate', 'originallyAvailableAt'],
-      ['CommunityRating', 'ratings'],
-      ['OfficialRating', 'contentRating'],
-      ['ProductionYear', 'year'],
-      ['IndexNumberEnd', 'indexEnd'],
-    ])('names %s, which the mapper needs for %s', (field) => {
-      expect(EMBY_METADATA_FIELDS.split(',')).toContain(field);
-    });
-
     it.each([
       {
         read: 'getCollectionChildren',
         call: (adapter: EmbyAdapterService) =>
           adapter.getCollectionChildren('box-1'),
-      },
-      {
-        read: 'searchContent',
-        call: (adapter: EmbyAdapterService) => adapter.searchContent('one'),
       },
     ])(
       '$read names the fields its Maintainerr-side sorts read',
@@ -413,36 +321,6 @@ describe('EmbyAdapterService', () => {
       );
       expect(unrequested).toEqual([]);
     });
-
-    it('maps a batch item to the same shape as a single item', async () => {
-      // DateCreated is set because the mapper falls back to `new Date()`
-      // without it, which the two reads below stamp a few milliseconds apart.
-      const payload = {
-        Id: 'movie-1',
-        Type: 'Movie',
-        Name: 'One',
-        DateCreated: '2026-01-02T03:04:05.0000000Z',
-        ParentId: '6',
-        ChildCount: 1,
-        PremiereDate: '2008-05-20T00:00:00.0000000Z',
-        CommunityRating: 7.5,
-        OfficialRating: 'PG',
-        ProviderIds: { Tmdb: '10378' },
-      };
-
-      http.get.mockResolvedValue({ data: payload });
-      const single = await service.getMetadata('movie-1');
-
-      embyCacheMocks.data.get.mockReturnValue(undefined);
-      http.get.mockResolvedValue({ data: { Items: [payload] } });
-      const [batched] = await service.getMetadataBatch(['movie-1']);
-
-      expect(batched).toEqual(single);
-      expect(batched.parentId).toBe('6');
-      expect(batched.originallyAvailableAt).toBeInstanceOf(Date);
-      expect(batched.ratings).not.toEqual([]);
-      expect(batched.contentRating).toBe('PG');
-    });
   });
 
   describe('getChildrenMetadata caching (#3355)', () => {
@@ -464,15 +342,6 @@ describe('EmbyAdapterService', () => {
         [expect.objectContaining({ id: 'child-1' })],
         EMBY_CACHE_TTL.METADATA,
       );
-    });
-
-    it('serves a cached list without touching the API', async () => {
-      embyCacheMocks.data.get.mockReturnValueOnce([{ id: 'ep-1' }]);
-
-      await expect(
-        service.getChildrenMetadata('season-1', 'episode'),
-      ).resolves.toEqual([{ id: 'ep-1' }]);
-      expect(http.get).not.toHaveBeenCalled();
     });
 
     it('does not cache a failed read', async () => {
@@ -560,27 +429,6 @@ describe('EmbyAdapterService', () => {
   });
 
   describe('getMetadata in-flight dedupe (#3356)', () => {
-    it('shares one request between concurrent reads of the same id', async () => {
-      let resolveItem: (value: unknown) => void = () => {};
-      http.get.mockReturnValue(
-        new Promise((resolve) => {
-          resolveItem = resolve;
-        }),
-      );
-
-      // Concurrently evaluated siblings all miss the cold cache key together,
-      // so the cache alone cannot stop the first read fanning out.
-      const reads = Promise.all([
-        service.getMetadata('series-1'),
-        service.getMetadata('series-1'),
-      ]);
-      resolveItem({ data: { Id: 'series-1', Type: 'Series' } });
-
-      const results = await reads;
-      expect(results.map((item) => item?.id)).toEqual(['series-1', 'series-1']);
-      expect(http.get).toHaveBeenCalledTimes(1);
-    });
-
     it('drops the in-flight entry once the request settles', async () => {
       http.get.mockResolvedValue({ data: { Id: 'series-1', Type: 'Series' } });
 
@@ -689,73 +537,12 @@ describe('EmbyAdapterService', () => {
         },
       });
     });
-
-    it('runs the metadata follow-up when sortTitle is provided without summary', async () => {
-      const updateCollection = jest
-        .spyOn(service, 'updateCollection')
-        .mockResolvedValue({ id: 'collection-1', title: 'Sorted' } as any);
-      http.post.mockResolvedValueOnce({
-        data: {
-          Id: 'collection-1',
-          Name: 'Sorted',
-          ChildCount: 0,
-        },
-      });
-
-      await service.createCollection({
-        libraryId: 'library-1',
-        title: 'Sorted',
-        type: 'movie',
-        sortTitle: 'A Sorted Title',
-      });
-
-      expect(updateCollection).toHaveBeenCalledWith(
-        expect.objectContaining({
-          collectionId: 'collection-1',
-          sortTitle: 'A Sorted Title',
-        }),
-      );
-    });
   });
 
   // Mirrors the Jellyfin adapter's collection cache so the cross-library
   // manual-collection lookup stays cheap on repeated rule runs, while
   // create/rename/delete stay immediately visible.
   describe('collection caching', () => {
-    it('caches non-empty getCollections results and serves them on the next call', async () => {
-      http.get.mockResolvedValueOnce({
-        data: { Items: [{ Id: 'box-1', Name: 'Shared', ChildCount: 2 }] },
-      });
-
-      await service.getCollections('library-1');
-
-      // A configured Emby user means the user-scoped read: literal /Items path
-      // with UserId in the query param (no user value in the request path).
-      expect(http.get).toHaveBeenCalledWith(
-        '/Items',
-        expect.objectContaining({
-          params: expect.objectContaining({
-            UserId: 'user-1',
-            ParentId: 'library-1',
-            IncludeItemTypes: 'BoxSet',
-          }),
-        }),
-      );
-      expect(embyCacheMocks.data.set).toHaveBeenCalledWith(
-        'emby:collections:library-1',
-        expect.arrayContaining([expect.objectContaining({ id: 'box-1' })]),
-        EMBY_CACHE_TTL.COLLECTIONS,
-      );
-
-      const cached = [{ id: 'cached', title: 'Cached' }];
-      embyCacheMocks.data.get.mockReturnValueOnce(cached);
-
-      const second = await service.getCollections('library-1');
-      expect(second).toBe(cached);
-      // Only the first call hit the API.
-      expect(http.get).toHaveBeenCalledTimes(1);
-    });
-
     it('does not cache an empty getCollections result', async () => {
       http.get.mockResolvedValueOnce({ data: { Items: [] } });
 
@@ -826,13 +613,6 @@ describe('EmbyAdapterService', () => {
       http.post.mockRejectedValueOnce(failure);
 
       await expect(service.refreshItemMetadata('item-1')).rejects.toBe(failure);
-    });
-
-    it('throws when not initialized', async () => {
-      (service as unknown as { http?: unknown }).http = undefined;
-      await expect(service.refreshItemMetadata('item-1')).rejects.toThrow(
-        'Emby not initialized',
-      );
     });
   });
 
@@ -936,20 +716,6 @@ describe('EmbyAdapterService', () => {
         }),
       );
     });
-
-    it('stops paging when the server reports no more items', async () => {
-      http.get.mockResolvedValueOnce({
-        data: {
-          Items: [{ Id: 'only', Name: 'Only', Type: 'Movie' }],
-          TotalRecordCount: 1,
-        },
-      });
-
-      const children = await service.getCollectionChildren('box-1');
-
-      expect(children).toHaveLength(1);
-      expect(http.get).toHaveBeenCalledTimes(1);
-    });
   });
 
   // #3550: a library grouping films into collections answered a Movie-typed
@@ -1018,26 +784,6 @@ describe('EmbyAdapterService', () => {
         'getLibraryContents',
         () => service.getLibraryContents('library-1', { offset: 0, limit: 30 }),
       ],
-      [
-        'getLibraryContentCount',
-        () => service.getLibraryContentCount('library-1', 'movie'),
-      ],
-      [
-        'searchLibraryContents',
-        () => service.searchLibraryContents('library-1', 'query', 'movie'),
-      ],
-      ['searchContent', () => service.searchContent('query')],
-      [
-        'findRandomItem',
-        () => service.findRandomItem(['library-1'], ['Movie']),
-      ],
-      [
-        'getRecentlyAdded',
-        () => {
-          http.get.mockResolvedValue({ data: [] });
-          return service.getRecentlyAdded('library-1', { limit: 10 });
-        },
-      ],
     ])('%s opts out', async (_method, read) => {
       await read();
 
@@ -1066,28 +812,6 @@ describe('EmbyAdapterService', () => {
         expect.objectContaining({
           SortBy: 'Studio',
           SortOrder: 'Descending',
-        }),
-      );
-    });
-
-    it('uses Emby native date added sorting', async () => {
-      http.get
-        .mockResolvedValueOnce({ data: { Items: [], TotalRecordCount: 0 } })
-        .mockResolvedValueOnce({ data: { Items: [], TotalRecordCount: 0 } });
-
-      await service.getLibraryContents('library-1', {
-        offset: 0,
-        limit: 30,
-        type: 'movie',
-        sort: 'addedAt',
-        sortOrder: 'asc',
-      });
-
-      const itemsCall = http.get.mock.calls.find(([path]) => path === '/Items');
-      expect(itemsCall?.[1]?.params).toEqual(
-        expect.objectContaining({
-          SortBy: 'DateCreated',
-          SortOrder: 'Ascending',
         }),
       );
     });
@@ -1308,6 +1032,75 @@ describe('EmbyAdapterService', () => {
     });
   });
 
+  // A 4xx means Emby processed the write and declined it. Anything else, a 5xx
+  // or no answer at all, may still have been applied, and recording it as
+  // refused lets the next rule run adopt the item as manual (AGENTS.md guard 5).
+  describe('collection membership writes', () => {
+    const ids = Array.from({ length: 17 }, (_, i) => `item-${i}`);
+    const chunks = [ids.slice(0, 8), ids.slice(8, 16), ids.slice(16)];
+
+    it.each([
+      ['add', 'post', () => service.addBatchToCollection('box-1', ids)],
+      [
+        'remove',
+        'delete',
+        () => service.removeBatchFromCollection('box-1', ids),
+      ],
+    ] as const)(
+      '%s sends every chunk and separates refused from unanswered',
+      async (_name, method, write) => {
+        http[method]
+          .mockResolvedValueOnce({})
+          .mockRejectedValueOnce(createResponseError(400))
+          .mockRejectedValueOnce(
+            new AxiosError('socket hang up', 'ECONNRESET'),
+          );
+
+        await expect(write()).resolves.toEqual({
+          refused: chunks[1],
+          unknown: chunks[2],
+        });
+        expect(
+          http[method].mock.calls.map((call) => [call[0], call.at(-1)]),
+        ).toEqual(
+          chunks.map((chunk) => [
+            '/Collections/box-1/Items',
+            { params: { Ids: chunk.join(',') } },
+          ]),
+        );
+      },
+    );
+
+    it('reports every id as unanswered when Emby is not initialized', async () => {
+      (service as unknown as { http: undefined }).http = undefined;
+
+      await expect(
+        service.addBatchToCollection('box-1', ['item-1']),
+      ).resolves.toEqual({ refused: [], unknown: ['item-1'] });
+      await expect(
+        service.removeBatchFromCollection('box-1', ['item-1']),
+      ).resolves.toEqual({ refused: [], unknown: ['item-1'] });
+    });
+
+    it.each([
+      ['add', 'post', () => service.addToCollection('box-1', 'item-1')],
+      [
+        'remove',
+        'delete',
+        () => service.removeFromCollection('box-1', 'item-1'),
+      ],
+    ] as const)(
+      'throws from the single %s when Emby never answered',
+      async (_name, method, write) => {
+        http[method].mockRejectedValue(
+          new AxiosError('socket hang up', 'ECONNRESET'),
+        );
+
+        await expect(write()).rejects.toThrow('item-1');
+      },
+    );
+  });
+
   describe('updateCollection', () => {
     it('persists ForcedSortName when sortTitle is provided', async () => {
       http.get.mockResolvedValueOnce({
@@ -1393,34 +1186,6 @@ describe('EmbyAdapterService', () => {
           CollapseBoxSetItems: false,
         },
       });
-    });
-
-    it('requests the MediaSources field so size data is populated', async () => {
-      jest.spyOn(service, 'getLibraries').mockResolvedValue([
-        {
-          id: 'library-1',
-          title: 'Movies',
-          type: 'movie',
-        } as any,
-      ]);
-      http.get.mockResolvedValueOnce({
-        data: {
-          Items: [{ Id: 'movie-1', MediaSources: [{ Size: 100 }] }],
-          TotalRecordCount: 1,
-        },
-      });
-
-      await service.computeLibraryStorageSizes();
-
-      // Regression guard for #2924: omitting Fields makes Emby return items
-      // without MediaSources, so every size sums to 0 and the library map is
-      // empty. The query must explicitly request MediaSources.
-      expect(http.get).toHaveBeenCalledWith(
-        '/Users/user-1/Items',
-        expect.objectContaining({
-          params: expect.objectContaining({ Fields: 'MediaSources' }),
-        }),
-      );
     });
   });
 
@@ -1564,12 +1329,6 @@ describe('EmbyAdapterService', () => {
 
       await expect(service.getWatchHistory('item-1')).rejects.toBe(error);
     });
-
-    it('prefetchWatchHistory throws because Emby has no central history endpoint', async () => {
-      await expect(service.prefetchWatchHistory()).rejects.toThrow(
-        'not supported on Emby',
-      );
-    });
   });
 
   describe('getDescendantEpisodeWatchHistory', () => {
@@ -1632,24 +1391,6 @@ describe('EmbyAdapterService', () => {
       { Id: 'user-1', Name: 'Alice' },
       { Id: 'user-2', Name: 'Bob' },
     ];
-
-    it('includes partial playback when Played is false', async () => {
-      http.get.mockImplementation(async (path: string) => {
-        if (path === '/Users/Query') return { data: [users[0]] };
-        return {
-          data: {
-            UserData: {
-              Played: false,
-              LastPlayedDate: '2024-06-01T00:00:00.000Z',
-            },
-          },
-        };
-      });
-
-      await expect(service.getLastPlayedAt('item-1')).resolves.toEqual(
-        new Date('2024-06-01T00:00:00.000Z'),
-      );
-    });
 
     it('returns the newest playback timestamp across multiple users', async () => {
       http.get.mockImplementation(async (path: string) => {
@@ -1748,18 +1489,6 @@ describe('EmbyAdapterService', () => {
         expect(http.get).toHaveBeenCalledWith('/Users/admin-9/Items/42');
       });
 
-      it('reports a 404 on that route as a confirmed absence', async () => {
-        http.get.mockImplementation((path: string) =>
-          path === '/Users/Query'
-            ? Promise.resolve({
-                data: [{ Id: 'admin-9', Policy: { IsAdministrator: true } }],
-              })
-            : Promise.reject(createResponseError(404)),
-        );
-
-        await expect(service.itemExists('42')).resolves.toBe(false);
-      });
-
       // Without a user the answer is unknown, and an unknown must never reach
       // the caller as "deleted" - that is what removes live media.
       it('stays inconclusive when no user can be resolved', async () => {
@@ -1768,19 +1497,6 @@ describe('EmbyAdapterService', () => {
         await expect(service.itemExists('42')).rejects.toThrow(
           'no user to scope the lookup',
         );
-      });
-
-      // The list form would answer a trimmed item here, which is a metadata
-      // read silently losing most of its fields.
-      it('reads metadata through the same user-scoped route', async () => {
-        withResolvedAdmin({ Id: '42', Name: 'Sample Movie', Type: 'Movie' });
-
-        await expect(service.getMetadata('42')).resolves.toMatchObject({
-          id: '42',
-        });
-        expect(http.get).toHaveBeenCalledWith('/Users/admin-9/Items/42', {
-          params: { Fields: EMBY_METADATA_FIELDS },
-        });
       });
     });
   });

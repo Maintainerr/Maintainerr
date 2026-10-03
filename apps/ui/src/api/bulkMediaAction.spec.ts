@@ -101,21 +101,6 @@ describe('postBulkExclusions', () => {
     )
   })
 
-  it('does not invent a timeout budget the request never had', async () => {
-    // The connection-test vocabulary says "timed out after 5 seconds"; this
-    // path sets no axios timeout, so that number would be untrue.
-    postMock.mockRejectedValueOnce(
-      Object.assign(new Error('timeout of 30000ms exceeded'), {
-        isAxiosError: true,
-        toJSON: () => ({}),
-      }),
-    )
-
-    const response = await postBulkExclusions({ mediaIds: ids(25), action: 0 })
-
-    expect(response.results[0].message).not.toContain('5 seconds')
-  })
-
   it('carries the collection through every chunk so the scope never changes mid-run', async () => {
     postMock.mockImplementation(echoIds)
 

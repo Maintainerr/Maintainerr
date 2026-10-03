@@ -31,7 +31,7 @@ const resolveTestingIcon = (feedbackStatus?: boolean | null) => {
   return <BeakerIcon />
 }
 
-export const getTestingButtonType = (
+const getTestingButtonType = (
   baseButtonType: ButtonType = 'success',
   feedbackStatus?: boolean | null,
   isPending = false,

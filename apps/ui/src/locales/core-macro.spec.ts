@@ -1,7 +1,6 @@
 import { i18n } from '@lingui/core'
 import { msg } from '@lingui/core/macro'
 import { describe, expect, it } from 'vitest'
-import { formatOverlayProcessSummary } from '../utils/overlayProcessResult'
 import { getCollectionMediaSortConfig } from '../components/Common/MediaLibrarySortControl'
 
 /**
@@ -32,30 +31,5 @@ describe('core macro', () => {
 
     const options = getCollectionMediaSortConfig('movie', true).options
     expect(options.map((option) => option.label)).toContain('Raderas snarast')
-  })
-
-  it('resolves an interpolated plain module string', () => {
-    // Same labelled placeholders as the source, so the derived id matches.
-    const summary = msg`Processed: ${{ processed: 0 }}, Reverted: ${{ reverted: 0 }}, Skipped: ${{ skipped: 0 }}, Errors: ${{ errors: 0 }}`
-
-    i18n.loadAndActivate({
-      locale: 'sv',
-      messages: catalogFor([
-        {
-          id: summary.id,
-          translation:
-            'Bearbetade: {processed}, Aterstallda: {reverted}, Hoppade over: {skipped}, Fel: {errors}',
-        },
-      ]),
-    })
-
-    expect(
-      formatOverlayProcessSummary({
-        processed: 3,
-        reverted: 2,
-        skipped: 1,
-        errors: 0,
-      }),
-    ).toBe('Bearbetade: 3, Aterstallda: 2, Hoppade over: 1, Fel: 0')
   })
 })

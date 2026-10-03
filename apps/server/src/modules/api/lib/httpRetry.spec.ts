@@ -37,6 +37,11 @@ describe('rate-limit retry policy', () => {
 });
 
 describe('applyHttpRetry', () => {
+  // Fake timers also fake Date.now, so elapsedMs is the exact wait axios-retry
+  // scheduled - a 15 minute wait would show as 900000 - and no test sleeps.
+  beforeEach(() => jest.useFakeTimers());
+  afterEach(() => jest.useRealTimers());
+
   // Through a real instance rather than the predicate alone, so the attempt
   // count axios-retry keeps is the one the policy reads.
   const failEveryAttempt = async (
@@ -60,7 +65,10 @@ describe('applyHttpRetry', () => {
     applyHttpRetry(instance);
 
     const startedAt = Date.now();
-    await expect(instance.get('/anything')).rejects.toThrow();
+    // Advance the faked retry waits while the request is still pending.
+    const failure = instance.get('/anything').catch((error: unknown) => error);
+    await jest.runAllTimersAsync();
+    expect(await failure).toBeInstanceOf(AxiosError);
     return { attempts, elapsedMs: Date.now() - startedAt };
   };
 
@@ -70,7 +78,7 @@ describe('applyHttpRetry', () => {
     });
 
     expect(attempts).toBe(2);
-    expect(elapsedMs).toBeGreaterThanOrEqual(150);
+    expect(elapsedMs).toBe(200);
   });
 
   it('gives up on a 429 that will not release inside the cap', async () => {

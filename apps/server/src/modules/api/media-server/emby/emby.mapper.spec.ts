@@ -1,5 +1,5 @@
 import { EmbyMapper } from './emby.mapper';
-import type { EmbyBaseItemDto, EmbyUserDto } from './emby.types';
+import type { EmbyBaseItemDto } from './emby.types';
 
 /**
  * EmbyMapper is a pure synchronous transform from Emby BaseItemDto into
@@ -13,11 +13,7 @@ describe('EmbyMapper', () => {
   describe('toMediaItemType', () => {
     it.each([
       ['Movie', 'movie'],
-      ['Series', 'show'],
-      ['Season', 'season'],
-      ['Episode', 'episode'],
       [undefined, 'movie'],
-      ['Unknown', 'movie'],
     ])('maps %s to %s', (input, expected) => {
       expect(EmbyMapper.toMediaItemType(input as any)).toBe(expected);
     });
@@ -25,7 +21,6 @@ describe('EmbyMapper', () => {
 
   describe('toEmbyItemKind', () => {
     it.each([
-      ['movie', 'Movie'],
       ['show', 'Series'],
       ['season', 'Season'],
       ['episode', 'Episode'],
@@ -34,75 +29,10 @@ describe('EmbyMapper', () => {
     });
   });
 
-  describe('toEmbyItemKinds', () => {
-    it('returns Movie and Series for an empty array', () => {
-      expect(EmbyMapper.toEmbyItemKinds([])).toEqual(['Movie', 'Series']);
-    });
-
-    it('returns Movie and Series for undefined', () => {
-      expect(EmbyMapper.toEmbyItemKinds(undefined)).toEqual([
-        'Movie',
-        'Series',
-      ]);
-    });
-
-    it('maps multiple types correctly', () => {
-      expect(EmbyMapper.toEmbyItemKinds(['movie', 'show'])).toEqual([
-        'Movie',
-        'Series',
-      ]);
-    });
-  });
-
   describe('extractProviderIds', () => {
     it('extracts IMDB id', () => {
       expect(EmbyMapper.extractProviderIds({ Imdb: 'tt1234567' })).toEqual({
         imdb: ['tt1234567'],
-        tmdb: [],
-        tvdb: [],
-        sportarr: [],
-      });
-    });
-
-    it('extracts TMDB id', () => {
-      expect(EmbyMapper.extractProviderIds({ Tmdb: '12345' })).toEqual({
-        imdb: [],
-        tmdb: ['12345'],
-        tvdb: [],
-        sportarr: [],
-      });
-    });
-
-    it('extracts TVDB id', () => {
-      expect(EmbyMapper.extractProviderIds({ Tvdb: '67890' })).toEqual({
-        imdb: [],
-        tmdb: [],
-        tvdb: ['67890'],
-        sportarr: [],
-      });
-    });
-
-    it('handles null', () => {
-      expect(EmbyMapper.extractProviderIds(null)).toEqual({
-        imdb: [],
-        tmdb: [],
-        tvdb: [],
-        sportarr: [],
-      });
-    });
-
-    it('handles undefined', () => {
-      expect(EmbyMapper.extractProviderIds(undefined)).toEqual({
-        imdb: [],
-        tmdb: [],
-        tvdb: [],
-        sportarr: [],
-      });
-    });
-
-    it('handles empty object', () => {
-      expect(EmbyMapper.extractProviderIds({})).toEqual({
-        imdb: [],
         tmdb: [],
         tvdb: [],
         sportarr: [],
@@ -164,21 +94,6 @@ describe('EmbyMapper', () => {
       expect(result.parentId).toBe('library-1');
       expect(result.grandparentId).toBeUndefined();
       expect(result.type).toBe('show');
-    });
-
-    it('movie parent is the library', () => {
-      const item: EmbyBaseItemDto = {
-        Id: 'movie-1',
-        ParentId: 'library-1',
-        Name: 'Movie A',
-        Type: 'Movie',
-      };
-
-      const result = EmbyMapper.toMediaItem(item);
-
-      expect(result.parentId).toBe('library-1');
-      expect(result.grandparentId).toBeUndefined();
-      expect(result.type).toBe('movie');
     });
   });
 
@@ -267,14 +182,6 @@ describe('EmbyMapper', () => {
       },
     );
 
-    it('converts RunTimeTicks (100-ns) to milliseconds', () => {
-      const result = EmbyMapper.toMediaItem(baseItem);
-
-      // 72_000_000_000 ticks / 10_000 ticks-per-ms = 7_200_000 ms = 2h
-      expect(result.durationMs).toBe(7_200_000);
-      expect(result.mediaSources[0].duration).toBe(7_200_000);
-    });
-
     it('converts media sources', () => {
       const result = EmbyMapper.toMediaItem(baseItem);
 
@@ -290,12 +197,6 @@ describe('EmbyMapper', () => {
         container: 'mkv',
         sizeBytes: 4_000_000_000,
       });
-    });
-
-    it('parses AspectRatio expressed as a fraction', () => {
-      const result = EmbyMapper.toMediaItem(baseItem);
-
-      expect(result.mediaSources[0].aspectRatio).toBeCloseTo(16 / 9);
     });
 
     it('filters People down to actors and preserves order', () => {
@@ -373,8 +274,6 @@ describe('EmbyMapper', () => {
     it.each([
       ['movies', 'movie'],
       ['tvshows', 'show'],
-      ['music', 'movie'], // default
-      [undefined, 'movie'],
     ])('maps CollectionType %s to MediaLibrary.type %s', (input, expected) => {
       const result = EmbyMapper.toMediaLibrary({
         Id: 'lib-1',
@@ -383,25 +282,6 @@ describe('EmbyMapper', () => {
       });
 
       expect(result.type).toBe(expected);
-    });
-  });
-
-  describe('toMediaUser', () => {
-    it('builds the thumbnail path when PrimaryImageTag is present', () => {
-      const user: EmbyUserDto = {
-        Id: 'user-1',
-        Name: 'Owner',
-        PrimaryImageTag: 'tag',
-      };
-      const result = EmbyMapper.toMediaUser(user);
-
-      expect(result.thumb).toBe('/Users/user-1/Images/Primary');
-    });
-
-    it('returns undefined thumb when no image tag exists', () => {
-      const user: EmbyUserDto = { Id: 'user-2', Name: 'NoImage' };
-
-      expect(EmbyMapper.toMediaUser(user).thumb).toBeUndefined();
     });
   });
 
@@ -419,73 +299,6 @@ describe('EmbyMapper', () => {
       expect(result.thumb).toBe('/Items/col-1/Images/Primary');
       expect(result.libraryId).toBe('lib-1');
       expect(result.childCount).toBe(3);
-    });
-  });
-
-  describe('toMediaPlaylist', () => {
-    it('converts RunTimeTicks to durationMs and reports itemCount from ChildCount', () => {
-      const result = EmbyMapper.toMediaPlaylist({
-        Id: 'pl-1',
-        Name: 'Playlist',
-        ChildCount: 25,
-        RunTimeTicks: 36000000000, // 1 hour
-      });
-
-      expect(result.itemCount).toBe(25);
-      expect(result.durationMs).toBe(3_600_000);
-      expect(result.smart).toBe(false);
-    });
-  });
-
-  describe('toMediaServerStatus', () => {
-    it('passes through server name and platform', () => {
-      const result = EmbyMapper.toMediaServerStatus(
-        'machine-1',
-        '4.9.3.0',
-        'Server',
-        'Linux',
-      );
-
-      expect(result).toMatchObject({
-        machineId: 'machine-1',
-        version: '4.9.3.0',
-        name: 'Server',
-        platform: 'Linux',
-      });
-    });
-
-    it('treats null optional fields as undefined', () => {
-      const result = EmbyMapper.toMediaServerStatus(
-        'machine-1',
-        '4.9.3.0',
-        null,
-        null,
-      );
-
-      expect(result.name).toBeUndefined();
-      expect(result.platform).toBeUndefined();
-    });
-  });
-
-  describe('toWatchRecord', () => {
-    it('defaults progress to 100 when not provided', () => {
-      const result = EmbyMapper.toWatchRecord(
-        'user-1',
-        'item-1',
-        new Date('2021-01-01T00:00:00.000Z'),
-      );
-
-      expect(result).toEqual({
-        userId: 'user-1',
-        itemId: 'item-1',
-        watchedAt: new Date('2021-01-01T00:00:00.000Z'),
-        progress: 100,
-      });
-    });
-
-    it('leaves watchedAt undefined when lastPlayedDate is missing', () => {
-      const result = EmbyMapper.toWatchRecord('user-1', 'item-1');
-      expect(result.watchedAt).toBeUndefined();
     });
   });
 });

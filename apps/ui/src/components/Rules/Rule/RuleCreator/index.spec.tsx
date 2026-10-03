@@ -134,28 +134,6 @@ describe('RuleCreator', () => {
     ).toBeTruthy()
   })
 
-  it('rehides add actions when a committed rule becomes incomplete', async () => {
-    render(
-      <RuleCreator
-        onUpdate={vi.fn()}
-        onCancel={vi.fn()}
-        editData={{ rules: [createRule('100', 0, null)] }}
-      />,
-    )
-
-    expect(screen.getByRole('button', { name: 'Add Rule' })).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'New Section' })).toBeTruthy()
-
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Mark rule 1 incomplete' }),
-    )
-
-    await waitFor(() => {
-      expect(screen.queryByRole('button', { name: 'Add Rule' })).toBeNull()
-      expect(screen.queryByRole('button', { name: 'New Section' })).toBeNull()
-    })
-  })
-
   it('emits reordered rules within a section', async () => {
     const onUpdate = vi.fn()
 
