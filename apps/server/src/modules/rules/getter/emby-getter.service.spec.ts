@@ -130,6 +130,64 @@ describe('EmbyGetterService', () => {
 
       expect(response).toBeUndefined();
     });
+
+    // A season or episode reads these from its show or season. One that cannot
+    // be read is a failed read: answering a value would drop the item from its
+    // collection on a blip.
+    it.each([
+      ['genre', 11, 'season'],
+      ['rating_imdbShow', 35, 'episode'],
+      ['sw_seasonLastEpisodeAiredAt', 29, 'episode'],
+    ] as const)(
+      'answers undefined for %s when the parent cannot be read',
+      async (name, id, type) => {
+        const item = createMediaItem({
+          id: 'item-1',
+          type,
+          parentId: 'parent-1',
+          grandparentId: 'show-1',
+        });
+        embyAdapter.getMetadata.mockImplementation(async (itemId) =>
+          itemId === 'item-1' ? item : undefined,
+        );
+
+        await expect(
+          embyGetterService.get(
+            id,
+            item,
+            type,
+            createRuleGroupDto({ dataType: type }),
+          ),
+        ).resolves.toBeUndefined();
+      },
+    );
+
+    it("counts the parents' favorites even when they cannot be read (id 41)", async () => {
+      const episode = createMediaItem({
+        id: 'ep-1',
+        type: 'episode',
+        parentId: 'season-1',
+        grandparentId: 'show-1',
+      });
+      embyAdapter.getMetadata.mockImplementation(async (itemId) =>
+        itemId === 'ep-1' ? episode : undefined,
+      );
+      embyAdapter.getItemFavoritedBy.mockImplementation(async (itemId) =>
+        itemId === 'show-1' ? ['user-1'] : [],
+      );
+      embyAdapter.getUsers.mockResolvedValue([
+        createMediaUser({ id: 'user-1', name: 'Alice' }),
+      ]);
+
+      await expect(
+        embyGetterService.get(
+          41,
+          episode,
+          'episode',
+          createRuleGroupDto({ dataType: 'episode' }),
+        ),
+      ).resolves.toEqual(['Alice']);
+    });
   });
 
   describe('since-added watcher rules (ids 49 and 50)', () => {
@@ -327,6 +385,35 @@ describe('EmbyGetterService', () => {
       expect(names).toEqual(['Existing Collection', 'Saga', 'saga']);
       expect(count).toBe(3);
       expect(embyAdapter.getCollections).toHaveBeenCalledTimes(1);
+    });
+
+    // Emby only lists a collection under the library holding its content, and
+    // a season's own library id is its show.
+    it("counts a season's show collection from the rule group's library (id 25)", async () => {
+      const season = createMediaItem({
+        id: 'season-1',
+        type: 'season',
+        parentId: 'show-1',
+        library: { id: 'show-1', title: '' },
+      });
+      embyAdapter.getMetadata.mockResolvedValue(season);
+      embyAdapter.getCollections.mockImplementation(async (libraryId) =>
+        libraryId === 'lib-series'
+          ? [createMediaCollection({ id: 'keep', title: 'Keep' })]
+          : [],
+      );
+      embyAdapter.getCollectionChildren.mockResolvedValue([
+        createMediaItem({ id: 'show-1', type: 'show' }),
+      ]);
+
+      await expect(
+        embyGetterService.get(
+          25,
+          season,
+          'season',
+          createRuleGroupDto({ dataType: 'season', libraryId: 'lib-series' }),
+        ),
+      ).resolves.toBe(1);
     });
 
     it('dedupes parent-backed collection names case-sensitively after trimming', async () => {

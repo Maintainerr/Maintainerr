@@ -26,6 +26,7 @@ import {
   filterRuleCollectionNames,
   getParentBackedRuleItem,
   mapMatchingRuleUsersToNames,
+  requireRuleParent,
   trimRulePropertyNames,
   uniqueTrimmedRulePropertyNames,
 } from '../helpers/rule-property.helper';
@@ -79,24 +80,27 @@ export class PlexGetterService {
       );
 
       // Parent/grandparent metadata is only needed for some properties.
-      // Lazy-load and memoize so we don't fetch unless a case uses it.
+      // Lazy-load and memoize so we don't fetch unless a case uses it. Only a
+      // season or episode has a parent key, so one that cannot be read is a
+      // failed read (#3877).
       let parentPromise: Promise<PlexMetadata> | undefined;
       const getParent = async (): Promise<PlexMetadata | undefined> => {
         if (!metadata?.parentRatingKey) return undefined;
-        parentPromise ??= this.plexApi.getMetadata(
-          metadata.parentRatingKey,
-          this.metadataRequestOptions,
-        );
+        parentPromise ??= this.plexApi
+          .getMetadata(metadata.parentRatingKey, this.metadataRequestOptions)
+          .then(requireRuleParent);
         return parentPromise;
       };
 
       let grandparentPromise: Promise<PlexMetadata> | undefined;
       const getGrandparent = async (): Promise<PlexMetadata | undefined> => {
         if (!metadata?.grandparentRatingKey) return undefined;
-        grandparentPromise ??= this.plexApi.getMetadata(
-          metadata.grandparentRatingKey,
-          this.metadataRequestOptions,
-        );
+        grandparentPromise ??= this.plexApi
+          .getMetadata(
+            metadata.grandparentRatingKey,
+            this.metadataRequestOptions,
+          )
+          .then(requireRuleParent);
         return grandparentPromise;
       };
 

@@ -320,29 +320,6 @@ describe('JellyfinGetterService', () => {
       expect(jellyfinAdapter.getMetadata).toHaveBeenCalledWith('show-1');
       expect(jellyfinAdapter.getMetadata).not.toHaveBeenCalledWith('season-1');
     });
-
-    it('returns an empty list for seasons when parent metadata is missing', async () => {
-      const seasonItem = createMediaItem({
-        id: 'season-missing-parent',
-        type: 'season' as MediaItemType,
-        parentId: 'show-missing',
-        genres: [{ name: 'Season Local Genre' }],
-      });
-
-      jellyfinAdapter.getMetadata.mockImplementation(async (itemId: string) => {
-        if (itemId === 'season-missing-parent') return seasonItem;
-        return undefined;
-      });
-
-      const response = await jellyfinGetterService.get(
-        11,
-        seasonItem,
-        'season',
-        createRuleGroupDto({ dataType: 'show', libraryId: LIBRARY_ID }),
-      );
-
-      expect(response).toEqual([]);
-    });
   });
 
   describe('seenBy (id: 1)', () => {
@@ -435,21 +412,12 @@ describe('JellyfinGetterService', () => {
       );
     });
 
-    it('sw_favoritedBy_including_parent (id: 41) should include favorites from item, parent and grandparent', async () => {
+    it("sw_favoritedBy_including_parent (id: 41) includes the parents' favorites even when they cannot be read", async () => {
       const episodeItem = createMediaItem({
         id: 'ep-1',
         type: 'episode' as MediaItemType,
         parentId: 'season-1',
         grandparentId: 'show-1',
-      });
-      const seasonItem = createMediaItem({
-        id: 'season-1',
-        type: 'season' as MediaItemType,
-        parentId: 'show-1',
-      });
-      const showItem = createMediaItem({
-        id: 'show-1',
-        type: 'show' as MediaItemType,
       });
       const users: MediaUser[] = [
         createMediaUser({ id: 'user-1', name: 'Alice' }),
@@ -458,12 +426,9 @@ describe('JellyfinGetterService', () => {
         createMediaUser({ id: 'user-4', name: 'Dave' }),
       ];
 
-      jellyfinAdapter.getMetadata.mockImplementation(async (itemId: string) => {
-        if (itemId === 'ep-1') return episodeItem;
-        if (itemId === 'season-1') return seasonItem;
-        if (itemId === 'show-1') return showItem;
-        return undefined;
-      });
+      jellyfinAdapter.getMetadata.mockImplementation(async (itemId: string) =>
+        itemId === 'ep-1' ? episodeItem : undefined,
+      );
       jellyfinAdapter.getItemFavoritedBy.mockImplementation(
         async (itemId: string) => {
           if (itemId === 'ep-1') return ['user-1', 'user-2'];
@@ -2225,6 +2190,37 @@ describe('JellyfinGetterService', () => {
 
       expect(response).toBeUndefined();
     });
+
+    // A season or episode reads these from its show or season. One that cannot
+    // be read is a failed read: answering a value would drop the item from its
+    // collection on a blip.
+    it.each([
+      ['genre', 11, 'season'],
+      ['rating_imdbShow', 35, 'episode'],
+      ['sw_seasonLastEpisodeAiredAt', 29, 'episode'],
+    ] as const)(
+      'answers undefined for %s when the parent cannot be read',
+      async (name, id, type) => {
+        const item = createMediaItem({
+          id: 'item-1',
+          type,
+          parentId: 'parent-1',
+          grandparentId: 'show-1',
+        });
+        jellyfinAdapter.getMetadata.mockImplementation(async (itemId) =>
+          itemId === 'item-1' ? item : undefined,
+        );
+
+        await expect(
+          jellyfinGetterService.get(
+            id,
+            item,
+            type,
+            createRuleGroupDto({ dataType: type, libraryId: LIBRARY_ID }),
+          ),
+        ).resolves.toBeUndefined();
+      },
+    );
   });
 
   describe('collection_siblings_lastViewedAt (id 45)', () => {
