@@ -89,6 +89,16 @@ export function mapMatchingRuleUsersToNames<TUser, TId extends RuleUserId>(
     .map((user) => getUserName(user));
 }
 
+// A season or episode reads some values from its show or season. One that
+// cannot be read is a failed read, not an item without values: it throws, so
+// the getter answers the transient `undefined` instead of dropping the item.
+export function requireRuleParent<TItem>(parent: TItem | undefined): TItem {
+  if (parent == null) {
+    throw new Error('Parent metadata could not be read');
+  }
+  return parent;
+}
+
 export async function getParentBackedRuleItem<TItem>(
   mediaType: MediaItemType | string,
   item: TItem,
@@ -96,11 +106,11 @@ export async function getParentBackedRuleItem<TItem>(
   getGrandparent: () => Promise<TItem | undefined>,
 ): Promise<TItem> {
   if (mediaType === 'episode') {
-    return (await getGrandparent()) ?? item;
+    return requireRuleParent(await getGrandparent());
   }
 
   if (mediaType === 'season') {
-    return (await getParent()) ?? item;
+    return requireRuleParent(await getParent());
   }
 
   return item;

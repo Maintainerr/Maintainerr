@@ -443,6 +443,47 @@ describe('PlexGetterService', () => {
       ).resolves.toEqual(['Shared Show Label']);
     });
 
+    // A season or episode reads these from its show or season. One that cannot
+    // be read is a failed read: answering a value would drop the item from its
+    // collection on a blip.
+    it.each([
+      ['genre', 11, 'season', 'show-1'],
+      ['rating_imdbShow', 35, 'episode', 'show-1'],
+      ['sw_seasonLastEpisodeAiredAt', 29, 'episode', 'season-1'],
+      ['sw_collections_including_parent', 25, 'season', 'show-1'],
+      ['sw_collections_including_parent', 25, 'episode', 'show-1'],
+    ] as const)(
+      'answers undefined for %s (id %i) on a %s when %s cannot be read',
+      async (name, id, type, unreadable) => {
+        const item = makeMetadata(
+          type === 'season'
+            ? { ratingKey: 'item-1', type, parentRatingKey: 'show-1' }
+            : {
+                ratingKey: 'item-1',
+                type,
+                parentRatingKey: 'season-1',
+                grandparentRatingKey: 'show-1',
+              },
+        );
+        plexApi.getMetadata.mockImplementation(async (ratingKey) =>
+          ratingKey === 'item-1'
+            ? item
+            : ratingKey === unreadable
+              ? undefined
+              : makeMetadata({ ratingKey }),
+        );
+
+        await expect(
+          service.get(
+            id,
+            createMediaItem({ id: 'item-1', type }),
+            type,
+            createRuleGroupDto({ dataType: type }),
+          ),
+        ).resolves.toBeUndefined();
+      },
+    );
+
     it('returns all Plex users that watched every episode in corrected user order (id 12)', async () => {
       plexApi.getMetadata.mockResolvedValue(
         makeMetadata({ ratingKey: 'season-1', type: 'season' }),
