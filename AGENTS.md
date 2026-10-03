@@ -220,7 +220,8 @@ yarn turbo test
 ```
 
 The development Docker workflow builds the multi-stage `Dockerfile` for
-`linux/amd64` and `linux/arm64`.
+`linux/amd64` and `linux/arm64`. The `Image vulnerabilities` workflow scans
+the published `development` and `latest` images with Docker Scout every day.
 
 The built Docker image includes `/opt/app/healthcheck.sh` as its
 `HEALTHCHECK`. It probes `/api/health/ready` on `UI_PORT` and preserves
