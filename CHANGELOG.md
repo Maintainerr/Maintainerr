@@ -1,3 +1,24 @@
+# [3.30.1](https://github.com/Maintainerr/Maintainerr/compare/v3.30.0...v3.30.1) (2026-10-03)
+
+
+## Highlights
+- Fix Emby metadata refresh for items with numeric IDs (#3878).
+- Prevent Seerr requests from being deleted if they cover seasons still present on disk (#3881).
+- Ensure unreadable shows or seasons retain existing properties during rule runs instead of resetting (#3877).
+
+## Fixes
+- Update Docker base image and remove unused packages to reduce vulnerability surface (#3882).
+- Maintain correct join operators in rule groups when a media-server switch invalidates the first rule (#3875).
+
+## Internal
+- Enable daily vulnerability scanning for published images (#3883).
+- Add test coverage for leftover-folder path guards and maintenance prunes (#3873, #3872).
+- Add test coverage for Emby collection writes and media-server switch resets (#3871, #3874).
+- Optimize test suite execution to reduce resource usage and runtime (#3870).
+
+## Dependencies
+- 5 dependency bumps: typescript-eslint, @typescript-eslint/parser, @eslint-react/eslint-plugin, @swc/core, @typescript-eslint/eslint-plugin.
+
 # [3.30.0](https://github.com/Maintainerr/Maintainerr/compare/v3.29.0...v3.30.0) (2026-10-01)
 
 
