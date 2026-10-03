@@ -234,6 +234,11 @@ review for everything that entered the release range that way.
    skim the auto-merged bumps in the range
    (`git log <lastTag>..HEAD --oneline | grep "build(deps"`) for
    anything unexpected.
+6. Check the image, not just the lockfile: the latest
+   `Image vulnerabilities` run for `development` must be green, and
+   every open code scanning alert in the `docker-scout-development`
+   category needs a reason it ships (no fix released, or excepted in
+   Docker Scout as a false positive).
 
 ### 6. Write the report
 
