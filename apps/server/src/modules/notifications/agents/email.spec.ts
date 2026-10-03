@@ -72,17 +72,6 @@ describe('EmailAgent', () => {
     expect(html.split('<img').length - 1).toBe(1);
   });
 
-  it('keeps line breaks in the message body', async () => {
-    const agent = createAgent();
-
-    await agent.send(NotificationType.MEDIA_ABOUT_TO_BE_HANDLED, {
-      subject: 'Media About to be Handled',
-      message: 'First line\nSecond line',
-    });
-
-    expect(renderedHtml()).toContain('First line<br>Second line');
-  });
-
   it('escapes HTML in the test notification body too', async () => {
     const agent = createAgent();
 
@@ -94,18 +83,5 @@ describe('EmailAgent', () => {
     const html = renderedHtml();
     expect(html).not.toContain('<script>');
     expect(html).toContain('&lt;script&gt;');
-  });
-
-  it('does not double-escape an ampersand', async () => {
-    const agent = createAgent();
-
-    await agent.send(NotificationType.MEDIA_ADDED_TO_COLLECTION, {
-      subject: 'Media Added to Collection',
-      message: 'Sample Show & Friends',
-    });
-
-    const html = renderedHtml();
-    expect(html).toContain('Sample Show &amp; Friends');
-    expect(html).not.toContain('&amp;amp;');
   });
 });

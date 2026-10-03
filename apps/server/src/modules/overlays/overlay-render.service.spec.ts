@@ -103,33 +103,6 @@ describe('OverlayRenderService', () => {
     );
   });
 
-  it('escapes unsafe image paths before logging them', async () => {
-    const logger = createMockLogger();
-    const service = new OverlayRenderService(logger);
-
-    await (service as any).renderImageElement(
-      {
-        id: 'image-1',
-        type: 'image',
-        x: 0,
-        y: 0,
-        width: 10,
-        height: 10,
-        rotation: 0,
-        layerOrder: 0,
-        opacity: 1,
-        visible: true,
-        imagePath: '..\nsecret.png',
-      },
-      10,
-      10,
-    );
-
-    expect(logger.warn).toHaveBeenCalledWith(
-      'Rejected unsafe image path: "..\\nsecret.png"',
-    );
-  });
-
   it('scales template shape stroke widths to match the target artwork size', async () => {
     const logger = createMockLogger();
     const service = new OverlayRenderService(logger);

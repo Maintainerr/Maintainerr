@@ -70,7 +70,7 @@ Kept for continuity; the next maintainer may adjust these.
 - **Updating a PR branch:** rebase onto latest origin first (PR branches drift -
   one was 20 commits behind by the time edits finished), fold into one clean
   commit (`git reset --soft` then a single commit), run the **full** repo suite
-  (`yarn turbo test`, not just affected specs), then push. Verify
+  (`yarn test`, not just affected specs), then push. Verify
   `git rev-list --left-right --count origin/<branch>...HEAD` is `0 N` (clean
   fast-forward, no force-push). Keep diffs minimal - don't rename existing
   variables without cause.
@@ -405,6 +405,83 @@ must stay transport-only.
 ---
 
 ## Build, test & migrations
+
+### Writing tests
+
+A test records behaviour we approved: what the app deletes or keeps, what a
+rule matches, what it writes to a media server, an \*arr or the database, what
+the API returns and what a user can do. If that behaviour changes, a test has to
+fail, so the change is noticed and approved again by updating the test on
+purpose. Tests check outcomes at the boundary, the way an end-to-end check
+would, not how the code gets there.
+
+Keep it strict: add a test only when changing the behaviour it pins would break
+something in the app, and no other test already catches that change. The suite
+once passed 3,600 tests and a server run needed over 4 GB; about 2,500 is the
+size to hold.
+
+**What earns a test**
+
+- A data-safety guard (deletions, collection membership, manual-member
+  adoption, \*arr file deletes, fail-closed reads), a rule-value mapping, a
+  security contract, or a fixed bug (name the issue in a comment).
+- One test per behaviour. Another input on the same branch is an `it.each` row,
+  and only when it can fail differently. A negated action is one test over the
+  positive table (see the `NOT_*` test in
+  `rule.comparator.service.doRuleAction.spec.ts`).
+- Not worth a test: constants and static labels, log text and log levels, class
+  names and layout, argument or prop pass-through, which repository instance was
+  called, call counts that only measure performance, a library's own behaviour
+  (Zod schema shape, `Map`/`Set` semantics), and anything a required CI check
+  already runs (`validate-catalogs` over the translation catalogs).
+- Do not export a helper only to test it; test it through the unit that uses it.
+
+**Keep it honest**
+
+- A guard test must fail without its guard. Delete the guard once and watch the
+  test go red before trusting it. A "not called" assertion on a method the code
+  no longer uses passes forever.
+- Assert a rejection with `await expect(...).rejects`, never only inside `.catch`.
+- Tests must pass in any order (`jest --randomize`, `vitest run --sequence.shuffle`).
+  `jest.clearAllMocks()` keeps a `mockReturnValue`, so reset module-level mock
+  functions in `beforeEach` or one test's setup answers the next.
+
+**Keep it cheap**
+
+- No real network. The shared \*arr test clients in
+  `apps/server/test/utils/servarr-mock.ts` reject at the transport; stub what
+  the test needs.
+- No real time. Use fake timers for retries, backoff and debounce. Start the
+  call, advance the timers, then assert:
+  `const failure = call().catch((error) => error)`, then
+  `await jest.runAllTimersAsync()`, then `expect(await failure)...`. A deferred
+  `expect(call()).rejects` gets an `await` added by the server's
+  `eslint --fix` (`jest/valid-expect`), which then waits on timers nothing
+  advances.
+- No writes outside a temp folder: `mkdtempSync` under `os.tmpdir()`, removed in
+  `afterAll`, and mock `app/config/dataDir` when the code writes there. Do not
+  read host files such as `/etc/hosts`.
+- Use the smallest fixture that crosses the boundary: mock a ceiling such as
+  `MAX_RECORDS` down instead of building 500,000 rows.
+
+**One command everywhere**
+
+- `yarn test` from the root runs the packages one at a time, and each runner
+  uses half the cores, at most 4 workers. Do not add shards, `--runInBand`
+  chains or machine-specific flags.
+- Server: `apps/server/jest.config.ts` restarts a worker whose heap passes
+  256 MB after a spec file, and `apps/server/test/jest.setup.ts` closes the
+  module-level `cacheManager` caches, whose node-cache timers otherwise keep
+  every spec file's module graph in memory. Keep both.
+- `jest.config.ts` is excluded in `tsconfig.build.json` because `rootDir` is
+  `src`. Any new `.ts` file at the app root needs the same exclusion, or
+  `nest build` and the dev watcher fail.
+- UI: `findBy`/`waitFor` get 5 s and each test 20 s
+  (`apps/ui/src/test-utils/react-cleanup.ts`, `apps/ui/vite.config.ts`), because
+  heavy renders under parallel load pass the defaults. Fix a slow test rather
+  than raising its budget.
+- The UI reports unused imports through `tsc` (`yarn check-types`), not ESLint.
+  Run it after removing tests.
 
 ### Jest transform & circular imports
 

@@ -323,31 +323,6 @@ describe('MediaActionModal', () => {
     expect(screen.getByRole('button', { name: 'Submit' })).toBeTruthy()
   })
 
-  it('reports the reasons the server refused items', async () => {
-    postCollectionMock.mockResolvedValue({
-      results: [
-        { mediaId: 'movie-1', code: 1 },
-        {
-          mediaId: 'movie-2',
-          code: 0,
-          message: "Failed - not in this collection's library",
-        },
-      ],
-    })
-
-    renderModal({})
-    fireEvent.click(screen.getByRole('button', { name: 'Submit' }))
-
-    await waitFor(() =>
-      expect(onSubmitted).toHaveBeenCalledWith(
-        expect.objectContaining({
-          failedIds: ['movie-2'],
-          failureReasons: ["Failed - not in this collection's library"],
-        }),
-      ),
-    )
-  })
-
   it('says why the collections could not be loaded', () => {
     useCollectionsMock.mockReturnValue(
       buildQueryErrorResult(

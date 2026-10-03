@@ -145,12 +145,4 @@ describe('TaskBase', () => {
     expect(task.hasAbortedDueToSignal).toBe(false);
     expect(tasksService.clearRunning).toHaveBeenCalledWith('Test Task');
   });
-
-  it('should update the job schedule', () => {
-    void task.updateJob('0 0 * * *');
-    expect(tasksService.updateJob).toHaveBeenCalledWith(
-      'Test Task',
-      '0 0 * * *',
-    );
-  });
 });

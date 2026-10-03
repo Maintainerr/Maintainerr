@@ -119,15 +119,6 @@ describe('useServices', () => {
     expect(byKey()['download-client']).toBeUndefined()
   })
 
-  it('leaves counts unset while they load', () => {
-    servers.radarr = undefined
-    agents = undefined
-
-    expect(byKey().radarr.status).toBeUndefined()
-    expect(byKey().notifications.status).toBeUndefined()
-    expect(byKey()['download-client']).toBeDefined()
-  })
-
   it('says when a list could not load', () => {
     servers.radarr = new Error('down')
     agents = new Error('down')

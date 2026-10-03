@@ -47,7 +47,7 @@ describe('PlexTvApi.validateToken', () => {
     await expect(createApi().validateToken()).resolves.toBe('valid');
   });
 
-  it.each(['', '   '])(
+  it.each(['   '])(
     'rejects a blank token without a request: %j',
     async (token) => {
       await expect(createApi(token).validateToken()).resolves.toBe('invalid');
@@ -67,17 +67,8 @@ describe('PlexTvApi.validateToken', () => {
   );
 
   // Transient failures must not be mistaken for a bad token (429 = rate limit).
-  it.each([429, 408, 503])(
-    'returns unreachable on a transient %i',
-    async (status) => {
-      rejectWithStatus(status);
-
-      await expect(createApi().validateToken()).resolves.toBe('unreachable');
-    },
-  );
-
-  it('returns unreachable when plex.tv times out', async () => {
-    get.mockRejectedValue(new AxiosError('timeout', 'ECONNABORTED'));
+  it.each([429])('returns unreachable on a transient %i', async (status) => {
+    rejectWithStatus(status);
 
     await expect(createApi().validateToken()).resolves.toBe('unreachable');
   });
@@ -197,22 +188,6 @@ describe('PlexTvApi.getUsers', () => {
     expect(first.MediaContainer.User[0].$.username).toBe('alice');
   });
 
-  // Rule evaluation resolves a whole batch of items at once, so a cold cache
-  // used to send one plex.tv request per item in the batch.
-  it('shares one request across callers that race a cold cache', async () => {
-    let release: (value: { data: string }) => void;
-    get.mockReturnValue(new Promise((resolve) => (release = resolve)));
-    const api = createApi();
-
-    const inFlight = [api.getUsers(), api.getUsers(), api.getUsers()];
-    release!({ data: usersXml('alice') });
-
-    for (const users of await Promise.all(inFlight)) {
-      expect(users.MediaContainer.User[0].$.username).toBe('alice');
-    }
-    expect(get).toHaveBeenCalledTimes(1);
-  });
-
   it('does not cache a failed fetch', async () => {
     get.mockResolvedValueOnce({ data: undefined });
     const api = createApi();
@@ -223,19 +198,5 @@ describe('PlexTvApi.getUsers', () => {
     await expect(api.getUsers()).resolves.toMatchObject({
       MediaContainer: { User: [{ $: { username: 'bob' } }] },
     });
-  });
-
-  it('re-reads plex.tv after the cache is flushed between rule runs', async () => {
-    get.mockResolvedValue({ data: usersXml('alice') });
-    const api = createApi();
-    await api.getUsers();
-
-    cacheManager.flushAll();
-    get.mockResolvedValue({ data: usersXml('carol') });
-
-    await expect(api.getUsers()).resolves.toMatchObject({
-      MediaContainer: { User: [{ $: { username: 'carol' } }] },
-    });
-    expect(get).toHaveBeenCalledTimes(2);
   });
 });

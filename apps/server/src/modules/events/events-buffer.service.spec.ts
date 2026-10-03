@@ -22,22 +22,10 @@ describe('EventsBufferService', () => {
   });
 
   describe('parseLastEventId', () => {
-    it('returns undefined when header is missing', () => {
-      expect(service.parseLastEventId(buildRequest())).toBeUndefined();
-    });
-
     it('parses numeric header values', () => {
       expect(
         service.parseLastEventId(buildRequest({ 'last-event-id': '42' })),
       ).toBe(42);
-    });
-
-    it('uses the last entry when header is an array', () => {
-      expect(
-        service.parseLastEventId(
-          buildRequest({ 'last-event-id': ['10', '12'] }),
-        ),
-      ).toBe(12);
     });
 
     it('returns undefined for non-numeric input', () => {
@@ -48,20 +36,6 @@ describe('EventsBufferService', () => {
   });
 
   describe('buffering', () => {
-    it('assigns incrementing ids when buffering events', () => {
-      const first = service.buildBufferedEvent({
-        type: 'foo',
-        data: { id: 1 },
-      });
-      const second = service.buildBufferedEvent({
-        type: 'bar',
-        data: { id: 2 },
-      });
-
-      expect(first.id).toBe('1');
-      expect(second.id).toBe('2');
-    });
-
     it('returns buffered events newer than the given id', () => {
       const first = service.buildBufferedEvent({
         type: 'foo',

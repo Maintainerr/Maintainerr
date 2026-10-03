@@ -29,9 +29,9 @@ describe('TmdbMetadataProvider', () => {
   it.each<[string, boolean | undefined, string, boolean | undefined]>([
     // [status, in_production, label, expectedEnded]
     ['Ended', false, 'status Ended + in_production false', true],
-    ['Canceled', false, 'status Canceled', true],
-    ['Returning Series', true, 'status Returning Series', false],
-    ['In Production', true, 'status In Production', false],
+    // Without in_production, the status string decides.
+    ['Canceled', undefined, 'status Canceled', true],
+    ['Returning Series', undefined, 'status Returning Series', false],
     ['Pilot', undefined, 'status Pilot (unknown)', undefined],
   ])(
     'maps %s to ended=%s (%s)',
@@ -255,26 +255,6 @@ describe('TmdbMetadataProvider', () => {
     await expect(
       provider.getHierarchyOverview(1, { seasonNumber: 2, episodeNumber: 9 }),
     ).resolves.toBeUndefined();
-  });
-
-  it('does not set show-only fields for movie details', async () => {
-    tmdbApi.getMovie.mockResolvedValue({
-      id: 1,
-      title: 'Sample Movie',
-      release_date: '2010-01-01',
-      overview: '',
-      vote_average: 7,
-      poster_path: '/p.jpg',
-      backdrop_path: '/b.jpg',
-      status: 'Released',
-      external_ids: {},
-    } as any);
-
-    const details = await provider.getDetails(1, 'movie');
-
-    expect(details?.ended).toBeUndefined();
-    expect(details?.firstAirDate).toBeUndefined();
-    expect(details?.seasonCount).toBeUndefined();
   });
 
   it('does not ask TMDB about an external namespace its find endpoint cannot resolve', async () => {

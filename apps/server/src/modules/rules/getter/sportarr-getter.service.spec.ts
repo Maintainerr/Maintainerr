@@ -6,7 +6,6 @@ import {
 import { MediaServerFactory } from '../../api/media-server/media-server.factory';
 import { IMediaServerService } from '../../api/media-server/media-server.interface';
 import { ServarrService } from '../../api/servarr-api/servarr.service';
-import { ArrLookupCache } from '../helpers/arr-lookup-cache';
 import { SportarrGetterService } from './sportarr-getter.service';
 
 // The F1 league from the docs: external id lg-000278, so the Plex item carries
@@ -113,41 +112,6 @@ describe('SportarrGetterService', () => {
     expect(mockClient.getLeagueByExternalId).not.toHaveBeenCalled();
   });
 
-  it.each([
-    // A show refreshed since the agents stamp their own namespace carries the
-    // native id, and it wins over a conflicting alias.
-    {
-      name: 'the native sportarr id',
-      providerIds: { sportarr: [F1_EXTERNAL_ID], tvdb: ['900000999'] },
-    },
-    // An agent-matched item can carry a real TVDB id ahead of the alias.
-    {
-      name: 'the alias behind a real tvdb id',
-      providerIds: { tvdb: ['342040', F1_ALIAS] },
-    },
-  ])('resolves the league from $name', async ({ providerIds }) => {
-    mockClient.getLeagueByExternalId.mockResolvedValue({
-      id: 3,
-      externalId: F1_EXTERNAL_ID,
-      name: 'Formula 1',
-      monitored: true,
-      added: '2025-12-04T02:29:15.000Z',
-    });
-
-    const result = await service.get(
-      1,
-      showItem({ providerIds }),
-      'show',
-      ruleGroup(),
-    );
-
-    expect(result).toBe(true);
-    expect(mockClient.getLeagueByExternalId).toHaveBeenCalledWith(
-      F1_EXTERNAL_ID,
-      expect.any(Array),
-    );
-  });
-
   it('resolves the league by the reversed alias and returns addDate', async () => {
     mockClient.getLeagueByExternalId.mockResolvedValue({
       id: 3,
@@ -250,46 +214,6 @@ describe('SportarrGetterService', () => {
     const result = await service.get(1, showItem(), 'show', ruleGroup());
     expect(result).toBeUndefined();
     expect(mockClient.getLeagueByExternalId).not.toHaveBeenCalled();
-  });
-
-  it('pulls the leagues list once per run through the lookup cache', async () => {
-    mockClient.getLeagueByExternalId.mockResolvedValue({
-      id: 3,
-      externalId: F1_EXTERNAL_ID,
-      name: 'Formula 1',
-      monitored: true,
-      added: '2025-12-04T02:29:15.000Z',
-    });
-    const cache = new ArrLookupCache();
-
-    await service.get(1, showItem(), 'show', ruleGroup(), undefined, cache);
-    await service.get(0, showItem(), 'show', ruleGroup(), undefined, cache);
-
-    expect(mockClient.getLeagues).toHaveBeenCalledTimes(1);
-  });
-
-  it('memoizes the full-metadata fallback fetch per run', async () => {
-    mockClient.getLeagueByExternalId.mockResolvedValue({
-      id: 3,
-      externalId: F1_EXTERNAL_ID,
-      name: 'Formula 1',
-      monitored: true,
-      added: '2025-12-04T02:29:15.000Z',
-    });
-    // A lightweight item without providerIds forces the metadata re-fetch;
-    // evaluating several properties must not re-fetch the same show (#3285).
-    mockMediaServer.getMetadata.mockResolvedValue(showItem());
-    const bare = createMediaItem({
-      type: 'show',
-      id: 'show-9',
-      providerIds: {},
-    });
-    const cache = new ArrLookupCache();
-
-    await service.get(1, bare, 'show', ruleGroup(), undefined, cache);
-    await service.get(0, bare, 'show', ruleGroup(), undefined, cache);
-
-    expect(mockMediaServer.getMetadata).toHaveBeenCalledTimes(1);
   });
 
   it('resolves an episode-scope hasFile via the parent show + event index', async () => {

@@ -56,7 +56,10 @@
   "search.exclude": {
     "**/.yarn": true
   },
-  "jest.jestCommandLine": "yarn test",
+  // Plain jest, run from the Testing view only: watch mode re-ran the server
+  // suite on every editor start and file save.
+  "jest.jestCommandLine": "yarn jest",
+  "jest.runMode": "on-demand",
   "jest.virtualFolders": [
     {
       "name": "server",

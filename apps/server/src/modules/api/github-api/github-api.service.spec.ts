@@ -1,5 +1,4 @@
 import { existsSync, readFileSync, renameSync } from 'fs';
-import { writeFile } from 'fs/promises';
 import { join } from 'path';
 import { GitHubApiService } from './github-api.service';
 
@@ -129,35 +128,6 @@ describe('GitHubApiService', () => {
     expect(renameSync).toHaveBeenCalledWith(
       join('/tmp/maintainerr', 'github-cache.json'),
       join('/tmp/maintainerr', 'github-cache.json.corrupt-1234567'),
-    );
-  });
-
-  it('persists cache entries without re-reading the persistence file after startup', async () => {
-    (existsSync as jest.Mock).mockReturnValue(false);
-    cacheGet.mockReturnValue(undefined);
-    getLatestRelease.mockResolvedValue({
-      data: {
-        tag_name: 'v1.0.0',
-        name: 'v1.0.0',
-        body: '',
-        html_url:
-          'https://github.com/Maintainerr/Maintainerr/releases/tag/v1.0.0',
-        created_at: '2026-04-02T00:00:00.000Z',
-        published_at: '2026-04-02T00:00:00.000Z',
-      },
-    });
-
-    const service = new GitHubApiService(logger as never);
-
-    await service.getLatestRelease('Maintainerr', 'Maintainerr');
-    await Promise.resolve();
-    await Promise.resolve();
-
-    expect(readFileSync).not.toHaveBeenCalled();
-    expect(writeFile).toHaveBeenCalledWith(
-      join('/tmp/maintainerr', 'github-cache.json'),
-      expect.any(String),
-      'utf8',
     );
   });
 });

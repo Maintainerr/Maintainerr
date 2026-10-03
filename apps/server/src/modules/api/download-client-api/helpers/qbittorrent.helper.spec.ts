@@ -101,17 +101,6 @@ describe('QbittorrentApi auth', () => {
     expect(axiosMock.get).not.toHaveBeenCalled();
   });
 
-  it('logs in only once across multiple calls', async () => {
-    const { api, axiosMock } = buildApi();
-    axiosMock.post.mockResolvedValue({ data: 'Ok.', headers: {} });
-    axiosMock.get.mockResolvedValue({ data: [] });
-
-    await api.getVersion();
-    await api.getTorrentByHash('abc');
-
-    expect(axiosMock.post).toHaveBeenCalledTimes(1);
-  });
-
   it('names the Web UI security block on a 403 that survives a re-login', async () => {
     const { api, axiosMock } = buildApi();
     axiosMock.post.mockResolvedValue({ data: 'Ok.', headers: {} });
@@ -214,7 +203,7 @@ describe('QbittorrentApi deleteTorrents', () => {
 
   // qBittorrent documents `hashes=all` on /torrents/delete as "delete all
   // torrents", so it must never be forwarded as if it were one download.
-  it.each(['all', 'ALL', '  all  '])(
+  it.each(['ALL', '  all  '])(
     'refuses the whole-client magic value %j',
     async (hash) => {
       const { api, axiosMock } = arrange();

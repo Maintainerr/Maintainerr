@@ -1,4 +1,5 @@
 import * as fs from 'fs';
+import * as os from 'os';
 import * as path from 'path';
 import { DataSource, MigrationInterface } from 'typeorm';
 
@@ -6,7 +7,10 @@ import { DataSource, MigrationInterface } from 'typeorm';
 // upgrading from 1.x has these 6 recorded; everything after must apply on top.
 const V171_BOUNDARY = 1702366607151;
 const MIGRATIONS_DIR = path.join(__dirname, '..', 'migrations');
-const DB = path.join(__dirname, 'upgrade-sim.sqlite');
+// On disk because the DB is reopened between phases; a temp folder keeps it
+// out of the source tree and apart from any other run.
+const DB_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'maintainerr-upgrade-'));
+const DB = path.join(DB_DIR, 'upgrade-sim.sqlite');
 
 type MigrationCtor = new () => MigrationInterface;
 
@@ -34,11 +38,6 @@ const makeDS = (migrations: MigrationCtor[]) =>
     migrations,
   });
 
-const rm = () =>
-  ['', '-wal', '-shm'].forEach((s) => {
-    if (fs.existsSync(DB + s)) fs.unlinkSync(DB + s);
-  });
-
 const ruleJson = (operator: unknown, section: number) =>
   JSON.stringify({
     operator,
@@ -50,8 +49,7 @@ const ruleJson = (operator: unknown, section: number) =>
   });
 
 describe('upgrade from v1.7.1 to current', () => {
-  beforeAll(rm);
-  afterAll(rm);
+  afterAll(() => fs.rmSync(DB_DIR, { recursive: true, force: true }));
 
   it('applies every post-1.7.1 migration on a seeded 1.7.1 DB and backfills rule operators', async () => {
     const all = loadMigrations();
@@ -87,10 +85,6 @@ describe('upgrade from v1.7.1 to current', () => {
     ds = makeDS(all.map((m) => m.cls));
     await ds.initialize();
     const phase3 = await ds.runMigrations();
-    console.log(
-      `Upgrade applied ${phase3.length} migrations:`,
-      phase3.map((m) => m.name),
-    );
     expect(phase3).toHaveLength(all.length - 6);
 
     // Every migration is now recorded exactly once.

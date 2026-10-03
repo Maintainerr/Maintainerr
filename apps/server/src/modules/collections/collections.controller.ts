@@ -190,7 +190,7 @@ const collectionBaseShape = {
   overlayTemplateId: z.coerce.number().int().optional().nullable(),
 };
 
-export const collectionBodySchema = z.object({
+const collectionBodySchema = z.object({
   ...collectionBaseShape,
   id: z.coerce.number().int(),
 });
@@ -198,23 +198,23 @@ const newCollectionBodySchema = z.object({
   ...collectionBaseShape,
   id: z.coerce.number().int().optional(),
 });
-export const createCollectionBodySchema = z.object({
+const createCollectionBodySchema = z.object({
   collection: newCollectionBodySchema,
   media: z.array(collectionMediaChangeSchema).optional(),
 });
-export const addToCollectionBodySchema = z.object({
+const addToCollectionBodySchema = z.object({
   collectionId: z.coerce.number().int(),
   media: z.array(collectionMediaChangeSchema),
   manual: z.boolean().optional(),
 });
-export const removeFromCollectionBodySchema = z.object({
+const removeFromCollectionBodySchema = z.object({
   collectionId: z.coerce.number().int(),
   media: z.array(collectionMediaChangeSchema),
 });
-export const removeCollectionBodySchema = z.object({
+const removeCollectionBodySchema = z.object({
   collectionId: z.coerce.number().int(),
 });
-export const updateScheduleBodySchema = z.object({
+const updateScheduleBodySchema = z.object({
   schedule: z
     .string()
     .min(1)

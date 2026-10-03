@@ -1,6 +1,7 @@
 import { MediaServerType } from '@maintainerr/contracts';
 import { TestBed, type Mocked } from '@suites/unit';
 import * as fs from 'fs';
+import * as os from 'os';
 import * as path from 'path';
 import { DataSource, Repository } from 'typeorm';
 import { dataDir as configDataDir } from '../../app/config/dataDir';
@@ -10,14 +11,33 @@ import { CollectionMedia } from '../collections/entities/collection_media.entiti
 import { MediaServerSwitchState } from '../api/media-server/media-server-switch-state.service';
 import { MaintainerrLogger } from '../logging/logs.service';
 import { Exclusion } from '../rules/entities/exclusion.entities';
+import { RuleGroup } from '../rules/entities/rule-group.entities';
 import { MediaServerSwitchService } from './media-server-switch.service';
 import { RuleMigrationService } from './rule-migration.service';
 import { TracearrApiService } from '../api/tracearr-api/tracearr-api.service';
 import { SettingsDataService } from './settings-data.service';
 
+// A fresh temp folder as the data directory, so the spec never touches the dev
+// app's stored posters.
+jest.mock('../../app/config/dataDir', () => {
+  const { mkdtempSync } = jest.requireActual<typeof import('fs')>('fs');
+  const { join } = jest.requireActual<typeof import('path')>('path');
+  const { tmpdir } = jest.requireActual<typeof import('os')>('os');
+  return {
+    ...jest.requireActual('../../app/config/dataDir'),
+    dataDir: mkdtempSync(join(tmpdir(), 'maintainerr-spec-')),
+  };
+});
+
 const STORAGE_DIR = path.join(configDataDir, 'collection-posters');
 
 describe('MediaServerSwitchService', () => {
+  afterAll(() => {
+    if (configDataDir.startsWith(os.tmpdir())) {
+      fs.rmSync(configDataDir, { recursive: true, force: true });
+    }
+  });
+
   let service: MediaServerSwitchService;
   let settingsDataService: Mocked<SettingsDataService>;
   let tracearrApi: Mocked<TracearrApiService>;
@@ -182,6 +202,23 @@ describe('MediaServerSwitchService', () => {
         true,
         queryRunner.manager,
       );
+      // The rules survive, but no group may run against the old server's
+      // library ids and no collection may keep the old server's collection id.
+      const qb = queryRunner.manager.createQueryBuilder();
+      expect(qb.update.mock.calls.map(([target]) => target)).toEqual([
+        RuleGroup,
+        Collection,
+      ]);
+      expect(qb.set.mock.calls.map(([values]) => values)).toEqual([
+        { libraryId: '', isActive: false },
+        {
+          mediaServerId: null,
+          mediaServerType: MediaServerType.JELLYFIN,
+          libraryId: '',
+        },
+      ]);
+      expect(queryRunner.manager.clear).not.toHaveBeenCalledWith(RuleGroup);
+      expect(queryRunner.manager.clear).not.toHaveBeenCalledWith(Collection);
 
       expect(settingsDataService.init).toHaveBeenCalled();
       expect(
@@ -410,64 +447,6 @@ describe('MediaServerSwitchService', () => {
           emby_api_key: null,
           emby_user_id: null,
           emby_server_name: null,
-        },
-      },
-      {
-        from: MediaServerType.EMBY,
-        to: MediaServerType.JELLYFIN,
-        existingSettings: {
-          media_server_type: MediaServerType.EMBY,
-          emby_url: 'http://emby.local:8096',
-          emby_api_key: 'emby-key',
-          emby_user_id: 'emby-user',
-          emby_server_name: 'Emby',
-        },
-        clearedFields: {
-          media_server_type: MediaServerType.JELLYFIN,
-          emby_url: null,
-          emby_api_key: null,
-          emby_user_id: null,
-          emby_server_name: null,
-        },
-      },
-      {
-        from: MediaServerType.PLEX,
-        to: MediaServerType.EMBY,
-        existingSettings: {
-          media_server_type: MediaServerType.PLEX,
-          plex_name: 'My Plex',
-          plex_hostname: 'plex.local',
-          plex_port: 32400,
-          plex_ssl: 1,
-          plex_auth_token: 'plex-token',
-        },
-        clearedFields: {
-          media_server_type: MediaServerType.EMBY,
-          plex_name: null,
-          plex_hostname: null,
-          plex_port: null,
-          plex_ssl: null,
-          plex_auth_token: null,
-        },
-      },
-      {
-        from: MediaServerType.JELLYFIN,
-        to: MediaServerType.EMBY,
-        existingSettings: {
-          media_server_type: MediaServerType.JELLYFIN,
-          jellyfin_url: 'http://jf.local:8096',
-          jellyfin_api_key: 'jf-key',
-          jellyfin_user_id: 'jf-user',
-          jellyfin_server_name: 'Jellyfin',
-          streamystats_url: 'http://streamystats.local:3000',
-        },
-        clearedFields: {
-          media_server_type: MediaServerType.EMBY,
-          jellyfin_url: null,
-          jellyfin_api_key: null,
-          jellyfin_user_id: null,
-          jellyfin_server_name: null,
-          streamystats_url: null,
         },
       },
     ])(

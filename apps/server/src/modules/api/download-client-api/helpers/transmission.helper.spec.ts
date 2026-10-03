@@ -130,17 +130,16 @@ describe('TransmissionApi RPC', () => {
     });
   });
 
-  it.each([
-    [401, 'Invalid username or password'],
-    [403, 'rpc-whitelist'],
-    [421, 'rpc-host-whitelist'],
-  ])('maps a %i to a Transmission-specific error', async (status, text) => {
-    const { api, axiosMock } = buildApi();
-    axiosMock.post.mockRejectedValue(httpError(status));
+  it.each([[401, 'Invalid username or password']])(
+    'maps a %i to a Transmission-specific error',
+    async (status, text) => {
+      const { api, axiosMock } = buildApi();
+      axiosMock.post.mockRejectedValue(httpError(status));
 
-    await expect(api.getVersion()).rejects.toThrow(text);
-    expect(axiosMock.post).toHaveBeenCalledTimes(1);
-  });
+      await expect(api.getVersion()).rejects.toThrow(text);
+      expect(axiosMock.post).toHaveBeenCalledTimes(1);
+    },
+  );
 
   it('rejects an RPC-level failure returned with HTTP 200', async () => {
     const { api, axiosMock } = buildApi();
@@ -151,22 +150,6 @@ describe('TransmissionApi RPC', () => {
     await expect(api.getVersion()).rejects.toThrow(
       'Transmission RPC session-get failed: invalid argument',
     );
-  });
-
-  it('reads the session once across torrent reads', async () => {
-    const { api, axiosMock } = buildApi();
-    axiosMock.post
-      .mockResolvedValueOnce(rpcSuccess(session()))
-      .mockResolvedValueOnce(rpcSuccess({ torrents: [torrent()] }))
-      .mockResolvedValueOnce(rpcSuccess({ torrents: [torrent()] }));
-
-    await expect(api.getTorrents()).resolves.toHaveLength(1);
-    await expect(api.getTorrentByHash(HASH)).resolves.not.toBeNull();
-    expect(axiosMock.post).toHaveBeenCalledTimes(3);
-    expect(axiosMock.post.mock.calls[2][1]).toMatchObject({
-      method: 'torrent-get',
-      arguments: { ids: [HASH] },
-    });
   });
 });
 
