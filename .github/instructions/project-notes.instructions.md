@@ -466,9 +466,9 @@ size to hold.
 
 **One command everywhere**
 
-- `yarn test` from the root runs the packages one at a time, and each runner
-  uses half the cores, at most 4 workers. Do not add shards, `--runInBand`
-  chains or machine-specific flags.
+- `yarn test` from the root runs the server and UI suites at the same time,
+  and each runner uses half the cores, at most 4 workers. Do not add shards,
+  `--runInBand` chains or machine-specific flags.
 - Server: `apps/server/jest.config.ts` restarts a worker whose heap passes
   256 MB after a spec file, and `apps/server/test/jest.setup.ts` closes the
   module-level `cacheManager` caches, whose node-cache timers otherwise keep
