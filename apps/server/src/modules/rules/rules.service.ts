@@ -79,7 +79,7 @@ export interface ReturnStatus {
 // Each excluded item fans out server-side (child cascade + a live metadata
 // read per traversed id), so this stays below RULE_EVALUATION_CONCURRENCY to
 // avoid over-driving constrained media servers during a bulk run.
-export const BULK_EXCLUSION_CONCURRENCY = 5;
+const BULK_EXCLUSION_CONCURRENCY = 5;
 
 @Injectable()
 export class RulesService {

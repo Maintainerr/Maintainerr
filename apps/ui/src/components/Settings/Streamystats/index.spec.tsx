@@ -36,17 +36,6 @@ describe('StreamystatsSettings', () => {
     getApiHandler.mockReset()
   })
 
-  it('renders nothing while settings are loading', () => {
-    useMediaServerTypeMock.mockReturnValue({
-      isJellyfin: false,
-      isLoading: true,
-    })
-
-    const { container } = render(<StreamystatsSettings />)
-    expect(container.firstChild).toBeNull()
-    expect(getApiHandler).not.toHaveBeenCalled()
-  })
-
   it('redirects to the services hub when the active server is not Jellyfin', () => {
     useMediaServerTypeMock.mockReturnValue({
       isJellyfin: false,

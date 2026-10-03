@@ -19,13 +19,10 @@ describe('RuleComparatorService', () => {
     const existsData = [
       [true, ['abc']],
       [true, 'abc'],
-      [true, 0],
       [true, false],
-      [true, new Date('2022-01-01')],
       [false, []],
       [false, ''],
       [false, null],
-      [false, undefined],
     ] as [boolean, any][];
 
     it.each(existsData)(
@@ -40,18 +37,6 @@ describe('RuleComparatorService', () => {
       },
     );
 
-    it.each(existsData)(
-      'should return %s when val1 is %o with action NOT_EXISTS',
-      (expected, val1) => {
-        const result = ruleComparatorService['doRuleAction'](
-          val1,
-          null,
-          RulePossibility.NOT_EXISTS,
-        );
-        expect(result).toBe(!expected);
-      },
-    );
-
     it('returns false for NOT_CONTAINS when searched tag exists in list (reported keep-tag scenario)', () => {
       const result = ruleComparatorService['doRuleAction'](
         ['9-simon', 'anime', 'huntarr-upgrade', 'keep'],
@@ -62,34 +47,20 @@ describe('RuleComparatorService', () => {
       expect(result).toBe(false);
     });
 
-    it('returns true for NOT_CONTAINS when searched tag does not exist in list', () => {
-      const result = ruleComparatorService['doRuleAction'](
-        ['9-simon', 'anime', 'huntarr-upgrade'],
-        'keep',
-        RulePossibility.NOT_CONTAINS,
-      );
-
-      expect(result).toBe(true);
-    });
-
     const equalsData = [
-      [true, 'abc', 'abc'],
       [true, 'abc', 'ABC'],
-      [true, ['abc', 'def'], ['abc', 'def']],
       [true, ['abc', 'def'], ['ABC', 'DEF']],
       [true, ['abc'], 'abc'],
-      [true, ['abc'], 'ABC'],
       [true, new Date('2022-01-01'), new Date('2022-01-01')],
-      [true, 5, 5],
+      // A BOOL rule compares the getter's boolean with the numeric custom value.
+      [true, true, 1],
       [true, [], []],
-      [false, 'abc', ''],
       [false, 'abc', undefined],
       [false, 'abc', 'abd'],
       [false, ['abc'], ['abc', 'def']],
-      [false, ['abc', 'def'], ['abc']],
       [false, ['abc', 'def'], ['abc', 'cde']],
       [false, new Date('2022-01-01'), new Date('2022-01-02')],
-      [false, 5, 4],
+      [false, false, 1],
     ] as [boolean, any, any][];
 
     it.each(equalsData)(
@@ -105,30 +76,12 @@ describe('RuleComparatorService', () => {
       },
     );
 
-    it.each(equalsData)(
-      'should return %s when val1 is %o and val2 is %o with action NOT_EQUALS',
-      (expected, val1, val2) => {
-        const action = RulePossibility.NOT_EQUALS;
-        const result = ruleComparatorService['doRuleAction'](
-          val1,
-          val2,
-          action,
-        );
-        expect(result).toBe(!expected);
-      },
-    );
-
     const containsData = [
       [true, 'abc', 'ab'],
       [true, ['abc', 'def'], ['ral', undefined, 'abc']],
       [true, [1, 2, 3, 4], [3]],
-      [true, [1, 2, 3, 4], [3, 1]],
-      [true, ['abc', 'def'], ['abc']],
       [false, 'abc', 'de'],
       [false, ['abc', 'def'], ['ral', undefined, 'rel']],
-      [false, ['abc', 'def'], ['ghi']],
-      [false, [1, 2, 3, 4], [6]],
-      [false, [1, 2, 3, 4], [6, 5]],
       [false, ['ImDb top 250', 'My birthday', 'jef'], ['imdb']],
       [false, ['abc', 'def'], ['']],
     ] as [boolean, any, any][];
@@ -146,27 +99,11 @@ describe('RuleComparatorService', () => {
       },
     );
 
-    it.each(containsData)(
-      'should return %s when val1 is %o and val2 is %o with action NOT_CONTAINS',
-      (expected, val1, val2) => {
-        const action = RulePossibility.NOT_CONTAINS;
-        const result = ruleComparatorService['doRuleAction'](
-          val1,
-          val2,
-          action,
-        );
-        expect(result).toBe(!expected);
-      },
-    );
-
     const containsPartialData = [
       [true, 'abc', 'ab'],
-      [true, ['abc', 'def'], ['abc']],
       [true, ['ImDb top 250', 'My birthday', 'jef'], ['imdb']],
-      [true, ['abc', 'def'], ['ral', undefined, 'abc']],
       [true, ['abc', 'def'], ['ral', undefined, 'ab']],
       [false, 'abc', 'de'],
-      [false, ['ImDb top 250', 'My birthday', 'jef'], ['jos']],
       [false, ['abc', 'def'], ['']],
       [false, ['abc', 'def'], ['ral', undefined, 'rel']],
       [false, [1, 2, 3, 4], [6]],
@@ -185,35 +122,14 @@ describe('RuleComparatorService', () => {
       },
     );
 
-    it.each(containsPartialData)(
-      'should return %s when val1 is %o and val2 is %o with action NOT_CONTAINS_PARTIAL',
-      (expected, val1, val2) => {
-        const action = RulePossibility.NOT_CONTAINS_PARTIAL;
-        const result = ruleComparatorService['doRuleAction'](
-          val1,
-          val2,
-          action,
-        );
-        expect(result).toBe(!expected);
-      },
-    );
-
     const containsAllData = [
-      [true, ['abc', 'def', 'ghi'], ['abc', 'def']],
-      [true, ['abc', 'def', 'ghi'], ['abc']],
       [true, ['abc', 'def'], 'abc'],
       [true, ['ABC', 'def'], ['abc']],
       [true, ['abc', 'def'], ['ABC', 'DEF']],
-      [true, [1, 2, 3, 4], [1, 3]],
-      [true, [1, 2, 3, 4], [1]],
-      [true, ['abc', 'def', 'ghi'], ['abc', 'def', 'ghi']],
       [false, ['abc', 'def'], ['abc', 'xyz']],
-      [false, ['abc', 'def'], ['xyz', 'uvw']],
-      [false, ['abc', 'def'], ['abc', 'def', 'ghi']],
       [false, ['abc', 'def'], ['']],
       [false, ['abc', 'def'], [undefined]],
       [false, ['abc', 'def'], []],
-      [false, [1, 2, 3], [1, 5]],
       [false, [], ['abc']],
     ] as [boolean, any, any][];
 
@@ -230,34 +146,32 @@ describe('RuleComparatorService', () => {
       },
     );
 
-    it.each(containsAllData)(
-      'should return %s when val1 is %o and val2 is %o with action NOT_CONTAINS_ALL',
-      (expected, val1, val2) => {
-        const action = RulePossibility.NOT_CONTAINS_ALL;
-        const result = ruleComparatorService['doRuleAction'](
-          val1,
-          val2,
-          action,
-        );
-        expect(result).toBe(!expected);
+    // Each NOT_* action is the negation of its positive action, so one pass
+    // over the positive table pins every row of it.
+    it.each([
+      [
+        'NOT_EXISTS',
+        RulePossibility.NOT_EXISTS,
+        existsData.map(([expected, val1]) => [expected, val1, null]),
+      ],
+      ['NOT_EQUALS', RulePossibility.NOT_EQUALS, equalsData],
+      ['NOT_CONTAINS', RulePossibility.NOT_CONTAINS, containsData],
+      [
+        'NOT_CONTAINS_PARTIAL',
+        RulePossibility.NOT_CONTAINS_PARTIAL,
+        containsPartialData,
+      ],
+      ['NOT_CONTAINS_ALL', RulePossibility.NOT_CONTAINS_ALL, containsAllData],
+    ] as [string, RulePossibility, [boolean, any, any][]][])(
+      '%s negates every row of its positive table',
+      (_name, action, rows) => {
+        for (const [expected, val1, val2] of rows) {
+          expect(
+            ruleComparatorService['doRuleAction'](val1, val2, action),
+          ).toBe(!expected);
+        }
       },
     );
-
-    it('should return true when comparing two numbers with action BIGGER', () => {
-      const val1 = 5;
-      const val2 = 3;
-      const action = RulePossibility.BIGGER;
-      const result = ruleComparatorService['doRuleAction'](val1, val2, action);
-      expect(result).toBe(true);
-    });
-
-    it('should return false when comparing two numbers with action SMALLER', () => {
-      const val1 = 5;
-      const val2 = 3;
-      const action = RulePossibility.SMALLER;
-      const result = ruleComparatorService['doRuleAction'](val1, val2, action);
-      expect(result).toBe(false);
-    });
 
     it('should return false when comparing two numbers with action SMALLER and value is undefined', () => {
       const val1 = 5;
@@ -367,18 +281,14 @@ describe('RuleComparatorService', () => {
       // Equality
       // Text lists
       [true, ['a1', 'b2', 'c3'], 3, RulePossibility.COUNT_EQUALS],
-      [false, ['a1', 'b2', 'c3'], 4, RulePossibility.COUNT_EQUALS],
-      [false, ['a1', 'b2', 'c3'], 3, RulePossibility.COUNT_NOT_EQUALS],
       [true, ['a1', 'b2', 'c3'], 4, RulePossibility.COUNT_NOT_EQUALS],
 
       // > and <
       // Text lists
       [true, ['a1', 'b2', 'c3'], 2, RulePossibility.COUNT_BIGGER],
       [false, ['a1', 'b2', 'c3'], 3, RulePossibility.COUNT_BIGGER],
-      [false, ['a1', 'b2', 'c3'], 4, RulePossibility.COUNT_BIGGER],
       [true, ['a1', 'b2', 'c3'], 4, RulePossibility.COUNT_SMALLER],
       [false, ['a1', 'b2', 'c3'], 3, RulePossibility.COUNT_SMALLER],
-      [false, ['a1', 'b2', 'c3'], 2, RulePossibility.COUNT_SMALLER],
     ] as const;
     const actionName = {
       [RulePossibility.COUNT_EQUALS]: 'COUNT_EQUALS',

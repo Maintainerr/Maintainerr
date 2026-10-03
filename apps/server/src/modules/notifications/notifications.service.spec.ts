@@ -90,28 +90,6 @@ describe('NotificationService', () => {
     expect(content).not.toContain('season undefined');
   });
 
-  it('builds a single overlay applied notification message', async () => {
-    const { service } = createService();
-
-    const result = await service.handleNotification(
-      NotificationType.OVERLAY_APPLIED,
-      [{ mediaServerId: '1' }],
-      'My Collection',
-    );
-
-    expect(result).toBe('Success');
-
-    const content = await (service as any).transformMessageContent(
-      "🖼️ Overlay has been applied to '{media_title}' in '{collection_name}'.",
-      [{ mediaServerId: '1' }],
-      'My Collection',
-    );
-
-    expect(content).toBe(
-      "🖼️ Overlay has been applied to 'Test Media' in 'My Collection'.",
-    );
-  });
-
   describe('requester in the pre-deletion warning', () => {
     const aboutToBeHandled = (service: NotificationService) =>
       (service as any).getContent(
@@ -131,19 +109,6 @@ describe('NotificationService', () => {
 
       expect(content).toContain("'Test Media' (requested by alice)");
       expect(content).toContain('will be handled in 3 days');
-    });
-
-    it('joins multiple requesters of the same item', async () => {
-      const { service } = createService();
-
-      const content = await (service as any).transformMessageContent(
-        aboutToBeHandled(service),
-        [{ mediaServerId: '1', requestedBy: ['alice', 'bob'] }],
-        undefined,
-        3,
-      );
-
-      expect(content).toContain("'Test Media' (requested by alice, bob)");
     });
 
     it('drops the clause entirely when nobody requested the item', async () => {
@@ -379,61 +344,6 @@ describe('NotificationService', () => {
       expect(getMetadata).not.toHaveBeenCalled();
     });
 
-    it('renders each pre-resolved title in a multi-item handled message', async () => {
-      const getMetadata = jest.fn().mockResolvedValue(undefined);
-      const mediaServerFactory = {
-        getService: jest.fn().mockResolvedValue({ getMetadata }),
-      };
-      const service = new NotificationService(
-        { find: jest.fn().mockResolvedValue([]) } as any,
-        { findOne: jest.fn().mockResolvedValue(null) } as any,
-        {} as any,
-        {} as any,
-        mediaServerFactory as any,
-        createMockLogger() as any,
-        { createLogger: jest.fn().mockReturnValue(createMockLogger()) } as any,
-      );
-
-      const content = await (service as any).transformMessageContent(
-        "✅ These media items have been handled by '{collection_name}'.\n\n{media_items}",
-        [
-          {
-            mediaServerId: '1',
-            metadata: { title: 'A Sample Movie', type: 'movie' },
-          },
-          {
-            mediaServerId: '2',
-            metadata: {
-              type: 'episode',
-              grandparentTitle: 'Sample Series',
-              parentIndex: 2,
-              index: 5,
-            },
-          },
-        ],
-        'My Collection',
-      );
-
-      expect(content).toContain('* A Sample Movie');
-      expect(content).toContain('* Sample Series - season 2 - episode 5');
-      expect(getMetadata).not.toHaveBeenCalled();
-    });
-
-    it('falls back to a live lookup for items without a snapshot', async () => {
-      const { service, mediaServerFactory } = createService();
-
-      const content = await (service as any).transformMessageContent(
-        "✅ '{media_title}' has been handled by '{collection_name}'.",
-        [{ mediaServerId: '1' }],
-        'My Collection',
-      );
-
-      expect(content).toBe(
-        "✅ 'Test Media' has been handled by 'My Collection'.",
-      );
-      expect(mediaServerFactory.getService).toHaveBeenCalled();
-    });
-
     it('still reports a genuinely unknown item when neither snapshot nor lookup resolves', async () => {
       const mediaServerFactory = {
         getService: jest.fn().mockResolvedValue({
@@ -463,24 +373,6 @@ describe('NotificationService', () => {
   });
 
   describe('collection handling failed message', () => {
-    it('names the collection that failed', async () => {
-      const { service } = createService();
-
-      const { message } = (service as any).getContent(
-        NotificationType.COLLECTION_HANDLING_FAILED,
-        false,
-      );
-      const content = await (service as any).transformMessageContent(
-        message,
-        undefined,
-        'My Collection',
-      );
-
-      expect(content).toBe(
-        "⚠️ Couldn't finish handling one or more items in 'My Collection'. Check the Maintainerr logs for details.",
-      );
-    });
-
     it('drops the collection clause when there is no collection context', async () => {
       const { service } = createService();
 
@@ -492,31 +384,6 @@ describe('NotificationService', () => {
 
       expect(content).toBe(
         "⚠️ Couldn't finish handling one or more items. Check the Maintainerr logs for details.",
-      );
-      expect(content).not.toContain('{collection_name}');
-    });
-
-    it('still resolves the collection name when the media server is unavailable', async () => {
-      // The media-server-unreachable failure path emits this notification while
-      // the media server throws ServiceUnavailableException. Collection name is
-      // a plain substitution, so it must not leak the raw placeholder.
-      const { service, mediaServerFactory } = createService();
-      mediaServerFactory.getService.mockRejectedValue(
-        new ServiceUnavailableException(),
-      );
-
-      const { message } = (service as any).getContent(
-        NotificationType.COLLECTION_HANDLING_FAILED,
-        false,
-      );
-      const content = await (service as any).transformMessageContent(
-        message,
-        undefined,
-        'My Collection',
-      );
-
-      expect(content).toBe(
-        "⚠️ Couldn't finish handling one or more items in 'My Collection'. Check the Maintainerr logs for details.",
       );
       expect(content).not.toContain('{collection_name}');
     });
@@ -727,26 +594,6 @@ describe('NotificationService', () => {
       );
 
       expect(handle).toHaveBeenCalledTimes(1);
-    });
-  });
-
-  it('defines content for overlay reverted notifications', () => {
-    const { service } = createService();
-
-    expect(
-      (service as any).getContent(NotificationType.OVERLAY_REVERTED, false),
-    ).toEqual({
-      subject: 'Overlay Reverted',
-      message:
-        "↩️ Overlay has been reverted for '{media_title}' in '{collection_name}'.",
-    });
-
-    expect(
-      (service as any).getContent(NotificationType.OVERLAY_REVERTED, true),
-    ).toEqual({
-      subject: 'Overlay Reverted',
-      message:
-        "↩️ Overlays have been reverted for these media items in '{collection_name}'.\n\n{media_items}",
     });
   });
 

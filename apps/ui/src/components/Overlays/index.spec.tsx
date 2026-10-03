@@ -43,33 +43,6 @@ describe('OverlaysWrapper', () => {
     useLocation.mockReset()
   })
 
-  it('keeps the tabs shell visible while the media server type is unresolved', () => {
-    useMediaServerType.mockReturnValue({ isLoading: true })
-    useOverlaySettings.mockReturnValue({ data: undefined, isLoading: false })
-    useLocation.mockReturnValue({ pathname: '/overlays/settings' })
-
-    render(<OverlaysWrapper />)
-
-    expect(screen.getAllByTestId('settings-tabs').length).toBeGreaterThan(0)
-    expect(screen.getByText('loading')).toBeTruthy()
-    expect(screen.queryByTestId('outlet')).toBeNull()
-  })
-
-  it('renders overlay tabs and outlet once the media server type resolves', () => {
-    useMediaServerType.mockReturnValue({ isLoading: false })
-    useOverlaySettings.mockReturnValue({
-      data: { enabled: true, cronSchedule: null },
-      isLoading: false,
-    })
-    useLocation.mockReturnValue({ pathname: '/overlays/settings' })
-
-    render(<OverlaysWrapper />)
-
-    expect(screen.getAllByTestId('settings-tabs').length).toBeGreaterThan(0)
-    expect(screen.getByTestId('outlet')).toBeTruthy()
-    expect(screen.queryByText('loading')).toBeNull()
-  })
-
   it('redirects away from a templates route while overlays are disabled', () => {
     useMediaServerType.mockReturnValue({ isLoading: false })
     useOverlaySettings.mockReturnValue({

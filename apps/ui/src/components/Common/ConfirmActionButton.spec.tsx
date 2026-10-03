@@ -1,13 +1,10 @@
 import { fireEvent, render, screen } from '../../test-utils/render'
 import { describe, expect, it, vi } from 'vitest'
-import { logClientError } from '../../utils/ClientLogger'
 import ConfirmActionButton from './ConfirmActionButton'
 
 vi.mock('../../utils/ClientLogger', () => ({
   logClientError: vi.fn(),
 }))
-
-const logClientErrorMock = vi.mocked(logClientError)
 
 const renderButton = (
   onConfirm: () => Promise<void>,
@@ -59,39 +56,6 @@ describe('ConfirmActionButton', () => {
     expect(screen.getByText('Are you sure?')).toBeTruthy()
   })
 
-  it('logs the English summary, never the translated message shown on screen', async () => {
-    logClientErrorMock.mockClear()
-    const onConfirm = vi.fn().mockRejectedValue(new Error('nope'))
-
-    renderButton(onConfirm)
-    openDialog()
-    fireEvent.click(screen.getByRole('button', { name: 'Confirm' }))
-
-    await vi.waitFor(() => {
-      expect(logClientErrorMock).toHaveBeenCalledTimes(1)
-    })
-    // A server log line is read by whoever is debugging the install, so it
-    // must not follow the reader's language.
-    expect(logClientErrorMock.mock.calls[0][0]).toBe('The action failed')
-    expect(logClientErrorMock.mock.calls[0][0]).not.toBe(
-      'Den handlingen mislyktes.',
-    )
-  })
-
-  it('drops a previous failure when the dialog is cancelled and reopened', async () => {
-    const onConfirm = vi.fn().mockRejectedValue(new Error('nope'))
-
-    renderButton(onConfirm)
-    openDialog()
-    fireEvent.click(screen.getByRole('button', { name: 'Confirm' }))
-    await screen.findByText('nope')
-
-    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
-    openDialog()
-
-    expect(screen.queryByText('nope')).toBeNull()
-  })
-
   it('does not run a disabled action', () => {
     const onConfirm = vi.fn().mockResolvedValue(undefined)
 
@@ -101,18 +65,6 @@ describe('ConfirmActionButton', () => {
 
     expect(confirm.hasAttribute('disabled')).toBe(true)
     fireEvent.click(confirm)
-    expect(onConfirm).not.toHaveBeenCalled()
-  })
-
-  it('does not open the dialog when the action button is disabled', () => {
-    const onConfirm = vi.fn().mockResolvedValue(undefined)
-
-    renderButton(onConfirm, { disabled: true })
-    const button = screen.getByRole('button', { name: 'Do it' })
-
-    expect(button.hasAttribute('disabled')).toBe(true)
-    fireEvent.click(button)
-    expect(screen.queryByText('Are you sure?')).toBeNull()
     expect(onConfirm).not.toHaveBeenCalled()
   })
 

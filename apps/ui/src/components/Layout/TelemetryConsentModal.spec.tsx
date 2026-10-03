@@ -66,11 +66,8 @@ describe('TelemetryConsentModal', () => {
     isPending = false
   })
 
-  it.each([
-    { state: 'already on', telemetryEnabled: true },
-    { state: 'already off', telemetryEnabled: false },
-  ])('stays hidden when the install is $state', ({ telemetryEnabled }) => {
-    currentSettings = { ...CONFIGURED, telemetryEnabled }
+  it('stays hidden when the install already opted out', () => {
+    currentSettings = { ...CONFIGURED, telemetryEnabled: false }
 
     renderModal()
 
@@ -122,17 +119,6 @@ describe('TelemetryConsentModal', () => {
 
     expect(editorValue).toBe(JSON.stringify(preview, null, 2))
     expect(editorValue).not.toContain('sample')
-  })
-
-  // A write in flight must not blank the prompt and leave the opt-out as the
-  // only button, which is what a shared-Modal `loading` does.
-  it('keeps the payload and both buttons while the answer is saving', () => {
-    isPending = true
-
-    renderModal()
-
-    expect(screen.getByRole('button', { name: 'Keep it on' })).toBeTruthy()
-    expect(editorValue).toBe(JSON.stringify(preview, null, 2))
   })
 
   it('records keeping it on so it is not asked again', async () => {

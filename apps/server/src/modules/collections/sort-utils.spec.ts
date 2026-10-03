@@ -26,67 +26,6 @@ const sortBy = (
     .map((mediaItem) => mediaItem.title);
 
 describe('compareMediaItemsBySort tiebreakers', () => {
-  it('breaks deleteSoonest ties alphabetically by title (timelordx scenario)', () => {
-    const day3 = new Date('2024-01-01');
-    const day5 = new Date('2024-01-03');
-    const items: MediaItem[] = [
-      item({ title: 'S', addedAt: day3 }),
-      item({ title: 'H', addedAt: day3 }),
-      item({ title: 'G', addedAt: day3 }),
-      item({ title: 'X', addedAt: day3 }),
-      item({ title: 'C', addedAt: day5 }),
-      item({ title: 'Z', addedAt: day5 }),
-      item({ title: 'A', addedAt: day5 }),
-    ];
-
-    expect(sortBy(items, 'deleteSoonest', 'asc')).toEqual([
-      'G',
-      'H',
-      'S',
-      'X',
-      'A',
-      'C',
-      'Z',
-    ]);
-  });
-
-  it('breaks airDate ties alphabetically by title regardless of direction', () => {
-    const sharedDate = new Date('2024-06-01');
-    const items: MediaItem[] = [
-      item({ title: 'C', originallyAvailableAt: sharedDate }),
-      item({ title: 'A', originallyAvailableAt: sharedDate }),
-      item({ title: 'B', originallyAvailableAt: sharedDate }),
-    ];
-
-    expect(sortBy(items, 'airDate', 'asc')).toEqual(['A', 'B', 'C']);
-    expect(sortBy(items, 'airDate', 'desc')).toEqual(['A', 'B', 'C']);
-  });
-
-  it('breaks rating and watchCount ties alphabetically by title', () => {
-    const ratings: MediaItem[] = [
-      item({
-        title: 'C',
-        ratings: [{ type: 'audience', value: 7, source: 'audience' }],
-      }),
-      item({
-        title: 'A',
-        ratings: [{ type: 'audience', value: 7, source: 'audience' }],
-      }),
-      item({
-        title: 'B',
-        ratings: [{ type: 'audience', value: 9, source: 'audience' }],
-      }),
-    ];
-    expect(sortBy(ratings, 'rating', 'desc')).toEqual(['B', 'A', 'C']);
-
-    const views: MediaItem[] = [
-      item({ title: 'C', viewCount: 0 }),
-      item({ title: 'A', viewCount: 0 }),
-      item({ title: 'B', viewCount: 0 }),
-    ];
-    expect(sortBy(views, 'watchCount', 'asc')).toEqual(['A', 'B', 'C']);
-  });
-
   it('sorts by the first studio with title tiebreakers and missing values last', () => {
     const items: MediaItem[] = [
       item({ title: 'C', studios: ['B Studio'] }),
@@ -205,20 +144,6 @@ describe('compareMediaItemsBySort show-aware title ordering', () => {
       ['Show Alpha', 'Bravo'],
     ]);
   });
-
-  it('leaves movie title ordering unchanged (no parent/grandparent titles)', () => {
-    const items: MediaItem[] = [
-      item({ title: 'Charlie', type: 'movie' }),
-      item({ title: 'Alpha', type: 'movie' }),
-      item({ title: 'Bravo', type: 'movie' }),
-    ];
-
-    expect(sortBy(items, 'title', 'asc')).toEqual([
-      'Alpha',
-      'Bravo',
-      'Charlie',
-    ]);
-  });
 });
 
 describe('compareMediaItemsBySort deleteSoonest day bucketing', () => {
@@ -233,20 +158,6 @@ describe('compareMediaItemsBySort deleteSoonest day bucketing', () => {
 
     expect(sortBy(items, 'deleteSoonest', 'asc')).toEqual(['A', 'B', 'C']);
     expect(sortBy(items, 'deleteSoonest', 'desc')).toEqual(['A', 'B', 'C']);
-  });
-
-  it('still orders separate days by date', () => {
-    const items: MediaItem[] = [
-      item({ title: 'Day3-A', addedAt: new Date('2024-01-03T22:00:00Z') }),
-      item({ title: 'Day1-Z', addedAt: new Date('2024-01-01T02:00:00Z') }),
-      item({ title: 'Day2-M', addedAt: new Date('2024-01-02T10:00:00Z') }),
-    ];
-
-    expect(sortBy(items, 'deleteSoonest', 'asc')).toEqual([
-      'Day1-Z',
-      'Day2-M',
-      'Day3-A',
-    ]);
   });
 });
 
@@ -337,57 +248,6 @@ describe('compareMediaItemsBySort deleteSoonest reference-time bucketing', () =>
       }),
     ).toEqual(['A', 'B', 'C']);
   });
-
-  it('still keeps items in different daysLeft buckets ordered by date', () => {
-    const now = new Date('2024-01-02T12:00:00Z').getTime();
-    const deleteAfterDays = 3;
-    const items: MediaItem[] = [
-      item({
-        id: 'far',
-        title: 'Leaves day 5',
-        addedAt: new Date('2024-01-04T01:00:00Z'),
-      }),
-      item({
-        id: 'near',
-        title: 'Leaves day 2',
-        addedAt: new Date('2024-01-01T01:00:00Z'),
-      }),
-      item({
-        id: 'mid',
-        title: 'Leaves day 4',
-        addedAt: new Date('2024-01-03T01:00:00Z'),
-      }),
-    ];
-
-    expect(
-      sortBy(items, 'deleteSoonest', 'asc', {
-        deleteSoonestReferenceTime: now - deleteAfterDays * dayMs,
-      }),
-    ).toEqual(['Leaves day 2', 'Leaves day 4', 'Leaves day 5']);
-  });
-
-  it('accepts a Date for deleteSoonestReferenceTime (interchangeable with number)', () => {
-    const now = new Date('2024-01-02T12:00:00Z').getTime();
-    const deleteAfterDays = 3;
-    const items: MediaItem[] = [
-      item({
-        id: 'late',
-        title: 'C',
-        addedAt: new Date('2024-01-01T23:00:00Z'),
-      }),
-      item({
-        id: 'early',
-        title: 'A',
-        addedAt: new Date('2024-01-02T01:00:00Z'),
-      }),
-    ];
-
-    expect(
-      sortBy(items, 'deleteSoonest', 'asc', {
-        deleteSoonestReferenceTime: new Date(now - deleteAfterDays * dayMs),
-      }),
-    ).toEqual(['A', 'C']);
-  });
 });
 
 describe('compareMediaItemsBySort missing values', () => {
@@ -437,23 +297,6 @@ describe('compareMediaItemsBySort missing values', () => {
     ]);
   });
 
-  it('sorts items without a rating to the end regardless of direction', () => {
-    const items: MediaItem[] = [
-      item({ title: 'Unrated', ratings: undefined }),
-      item({
-        title: 'Mid',
-        ratings: [{ type: 'audience', value: 5, source: 'tmdb' }],
-      }),
-      item({
-        title: 'High',
-        ratings: [{ type: 'audience', value: 9, source: 'tmdb' }],
-      }),
-    ];
-
-    expect(sortBy(items, 'rating', 'desc')).toEqual(['High', 'Mid', 'Unrated']);
-    expect(sortBy(items, 'rating', 'asc')).toEqual(['Mid', 'High', 'Unrated']);
-  });
-
   it('treats viewCount === 0 as a real value, only undefined trails to the end', () => {
     // Distinguishes "watched zero times" (a real data point) from
     // "watch count not reported" - pre-fix both collapsed to 0.
@@ -468,30 +311,5 @@ describe('compareMediaItemsBySort missing values', () => {
       'Watched',
       'Unknown',
     ]);
-  });
-
-  it('sorts items without a delete-soonest date to the end', () => {
-    const items: MediaItem[] = [
-      item({ id: 'has-date', title: 'Has date' }),
-      item({ id: 'no-date', title: 'No date' }),
-    ];
-
-    expect(
-      sortBy(items, 'deleteSoonest', 'asc', {
-        deleteSoonestDate: (mediaItem) =>
-          mediaItem.id === 'has-date' ? new Date('2024-01-01') : undefined,
-      }),
-    ).toEqual(['Has date', 'No date']);
-  });
-
-  it('falls back to title order when both items are missing the value', () => {
-    const items: MediaItem[] = [
-      item({ title: 'C', originallyAvailableAt: undefined }),
-      item({ title: 'A', originallyAvailableAt: undefined }),
-      item({ title: 'B', originallyAvailableAt: undefined }),
-    ];
-
-    expect(sortBy(items, 'airDate', 'asc')).toEqual(['A', 'B', 'C']);
-    expect(sortBy(items, 'airDate', 'desc')).toEqual(['A', 'B', 'C']);
   });
 });

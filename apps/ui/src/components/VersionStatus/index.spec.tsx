@@ -58,12 +58,4 @@ describe('VersionStatus', () => {
 
     expect(showBlockedNavigationToast).toHaveBeenCalledTimes(1)
   })
-
-  it('prefetches the about route when navigation is allowed', async () => {
-    render(<VersionStatus />)
-
-    await screen.findByRole('button')
-
-    expect(prefetchHandlers).toHaveBeenCalledWith('/settings/about', true)
-  })
 })

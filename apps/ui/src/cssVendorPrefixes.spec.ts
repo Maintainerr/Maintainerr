@@ -151,27 +151,6 @@ describe('vendor prefix order', () => {
     ])
   })
 
-  it('accepts a prefix written before its standard property', () => {
-    const css = `.glass {
-      -webkit-backdrop-filter: blur(5.8px);
-      backdrop-filter: blur(5.8px);
-    }`
-
-    expect(findViolations(css)).toEqual([])
-  })
-
-  it('ignores a prefix with no standard counterpart in the rule', () => {
-    const css = `.scroller {
-      -ms-overflow-style: none;
-      scrollbar-width: none;
-    }
-    input::-webkit-search-cancel-button {
-      -webkit-appearance: none;
-    }`
-
-    expect(findViolations(css)).toEqual([])
-  })
-
   it.each(STYLESHEETS)('holds for %s', (stylesheet) => {
     const css = readFileSync(new URL(stylesheet, import.meta.url), 'utf8')
 

@@ -31,7 +31,7 @@ import {
 } from './useSettingsFeedback'
 import { releaseVersion } from '../../utils/version'
 
-export interface ExternalServiceSelectOption {
+interface ExternalServiceSelectOption {
   value: string
   label: string
 }

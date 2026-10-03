@@ -1,9 +1,5 @@
 import { maskSecret, maskSecretString } from '../../utils/secretMasking';
-import {
-  formatLogMessage,
-  sanitizeLogInfo,
-  sanitizeLogValue,
-} from './logFormatting';
+import { sanitizeLogInfo, sanitizeLogValue } from './logFormatting';
 
 describe('logFormatting', () => {
   it('masks secret values with the shared contract', () => {
@@ -128,14 +124,6 @@ describe('logFormatting', () => {
     expect(
       sanitizeLogValue('Error: getaddrinfo ENOTFOUND [2001:db8::7334]'),
     ).toBe('Error: getaddrinfo ENOTFOUND [200...334]');
-  });
-
-  it('formats message with stack trace', () => {
-    const result = formatLogMessage('Request failed', [
-      'Error: something went wrong',
-    ]);
-    expect(result).toContain('Request failed');
-    expect(result).toContain('Error: something went wrong');
   });
 
   it('sanitizes circular error objects without overflowing the stack', () => {

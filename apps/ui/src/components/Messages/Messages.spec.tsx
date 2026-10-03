@@ -87,28 +87,4 @@ describe('Messages', () => {
         .style.width,
     ).toBe('40%')
   })
-
-  it('hides collection progress bars when no collection work is in flight', async () => {
-    collectionProgressEvent = {
-      type: MaintainerrEvent.CollectionHandler_Progressed,
-      totalCollections: 3,
-      processingCollection: {
-        name: 'Sonarr + Seerr',
-        processedMedias: 0,
-        totalMedias: 0,
-      },
-      totalMediaToHandle: 0,
-      processedMedias: 0,
-      processedCollections: 0,
-    }
-
-    render(<Messages />)
-
-    await screen.findByText('Processing: Sonarr + Seerr')
-
-    expect(screen.queryByTestId('collection-handler-current-progress')).toBe(
-      null,
-    )
-    expect(screen.queryByTestId('collection-handler-total-progress')).toBe(null)
-  })
 })

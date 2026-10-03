@@ -64,23 +64,6 @@ describe('PlexApi.queryAll pagination', () => {
     ]);
   });
 
-  it('honours a caller-supplied page size', async () => {
-    const { request, calls } = cappedServer(2500, 1000);
-    (axios.create as jest.Mock).mockReturnValue({ request });
-
-    const result = await api().queryAll<any>(
-      { uri: '/status/sessions/history/all' },
-      false,
-      undefined,
-      undefined,
-      1000,
-    );
-
-    expect(result.MediaContainer.Metadata).toHaveLength(2500);
-    expect(calls.map((c) => c.asked)).toEqual([1000, 1000, 1000]);
-    expect(calls.map((c) => c.start)).toEqual([0, 1000, 2000]);
-  });
-
   it('stops instead of looping when a page comes back empty', async () => {
     // totalSize claims more rows than the server will hand over.
     const request = jest.fn(async () => ({

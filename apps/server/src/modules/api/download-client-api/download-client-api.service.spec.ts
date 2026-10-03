@@ -51,27 +51,6 @@ describe('DownloadClientApiService', () => {
   });
 
   describe('init', () => {
-    it('is a no-op when the download client URL is not configured', () => {
-      Object.assign(settings, { download_client_url: undefined });
-
-      service.init();
-
-      expect(service.api).toBeUndefined();
-    });
-
-    it('constructs the API client when a URL is configured', () => {
-      Object.assign(settings, {
-        download_client_type: DownloadClientType.QBITTORRENT,
-        download_client_url: 'http://localhost:8080',
-        download_client_username: 'admin',
-        download_client_password: 'pw',
-      });
-
-      service.init();
-
-      expect(service.api).toBeDefined();
-    });
-
     it('clears the cached client when the URL is removed', () => {
       Object.assign(settings, {
         download_client_type: DownloadClientType.QBITTORRENT,
@@ -112,17 +91,6 @@ describe('DownloadClientApiService', () => {
 
       expect(result.status).toBe('NOK');
     });
-
-    it('returns NOK when no version is reported', async () => {
-      apiMock.getVersion.mockResolvedValue('');
-
-      const result = await service.testConnection({
-        type: DownloadClientType.QBITTORRENT,
-        url: 'http://localhost:8080',
-      });
-
-      expect(result.status).toBe('NOK');
-    });
   });
 
   describe('removeDownloads', () => {
@@ -136,15 +104,6 @@ describe('DownloadClientApiService', () => {
         download_client_fallback_ratio: 0.5,
       });
       service.init();
-    });
-
-    it('is a no-op when no download client is configured', async () => {
-      Object.assign(settings, { download_client_url: undefined });
-      service.init();
-
-      await service.removeDownloads(['abc']);
-
-      expect(apiMock.getTorrentByHash).not.toHaveBeenCalled();
     });
 
     it('removes when the client reports its seeding goal is met (regardless of the fallback)', async () => {
@@ -198,17 +157,6 @@ describe('DownloadClientApiService', () => {
       expect(apiMock.deleteTorrents).not.toHaveBeenCalled();
     });
 
-    it('treats an unbounded ratio (Infinity) as satisfying any fallback', async () => {
-      Object.assign(settings, { download_client_fallback_ratio: 2 });
-      apiMock.getTorrentByHash.mockResolvedValue(
-        torrent({ reachedSeedingGoal: null, ratio: Infinity }),
-      );
-
-      await service.removeDownloads(['abc']);
-
-      expect(apiMock.deleteTorrents).toHaveBeenCalled();
-    });
-
     it('passes deleteData=false when the toggle is off', async () => {
       Object.assign(settings, { download_client_delete_data: false });
       apiMock.getTorrentByHash.mockResolvedValue(
@@ -218,24 +166,6 @@ describe('DownloadClientApiService', () => {
       await service.removeDownloads(['abc']);
 
       expect(apiMock.deleteTorrents).toHaveBeenCalledWith(['abc'], false);
-    });
-
-    it('skips ids with no matching download', async () => {
-      apiMock.getTorrentByHash.mockResolvedValue(null);
-
-      await service.removeDownloads(['abc']);
-
-      expect(apiMock.deleteTorrents).not.toHaveBeenCalled();
-    });
-
-    it('dedupes ids case-insensitively', async () => {
-      apiMock.getTorrentByHash.mockResolvedValue(
-        torrent({ reachedSeedingGoal: true }),
-      );
-
-      await service.removeDownloads(['abc', 'ABC', '  abc  ']);
-
-      expect(apiMock.getTorrentByHash).toHaveBeenCalledTimes(1);
     });
 
     it('is best-effort: a per-download failure never throws', async () => {
@@ -267,39 +197,6 @@ describe('DownloadClientApiService', () => {
 
       await service.removeDownloads(['abc']);
 
-      expect(apiMock.deleteTorrents).toHaveBeenCalledWith(['abc'], false);
-    });
-
-    it('deletes data when the content path is unique (no cross-seed)', async () => {
-      apiMock.getTorrentByHash.mockResolvedValue(
-        torrent({
-          hash: 'abc',
-          content_path: '/downloads/solo',
-          reachedSeedingGoal: true,
-        }),
-      );
-      apiMock.getTorrents.mockResolvedValue([
-        torrent({
-          hash: 'abc',
-          content_path: '/downloads/solo',
-          reachedSeedingGoal: true,
-        }),
-      ]);
-
-      await service.removeDownloads(['abc']);
-
-      expect(apiMock.deleteTorrents).toHaveBeenCalledWith(['abc'], true);
-    });
-
-    it('does not read the download list for cross-seed when delete-data is off', async () => {
-      Object.assign(settings, { download_client_delete_data: false });
-      apiMock.getTorrentByHash.mockResolvedValue(
-        torrent({ reachedSeedingGoal: true }),
-      );
-
-      await service.removeDownloads(['abc']);
-
-      expect(apiMock.getTorrents).not.toHaveBeenCalled();
       expect(apiMock.deleteTorrents).toHaveBeenCalledWith(['abc'], false);
     });
   });

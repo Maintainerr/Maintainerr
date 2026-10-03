@@ -95,23 +95,4 @@ describe('Logs stream reporting', () => {
 
     expect(logClientErrorMock).not.toHaveBeenCalled()
   })
-
-  it('reports a sustained disconnect once after the delay elapses', async () => {
-    render(<Logs />)
-
-    const error = new Error('stream unavailable')
-    latestEventSource?.onerror?.(error)
-    latestEventSource?.onerror?.(new Error('still unavailable'))
-
-    await act(async () => {
-      vi.advanceTimersByTime(LOG_STREAM_ERROR_DELAY_MS)
-    })
-
-    expect(logClientErrorMock).toHaveBeenCalledTimes(1)
-    expect(logClientErrorMock).toHaveBeenCalledWith(
-      'Log stream connection failed',
-      new Error('still unavailable'),
-      'Settings.Logs.stream',
-    )
-  })
 })

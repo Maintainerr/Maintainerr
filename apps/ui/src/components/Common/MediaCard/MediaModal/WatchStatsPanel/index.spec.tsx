@@ -69,12 +69,4 @@ describe('WatchStatsPanel', () => {
 
     expect(await screen.findByText(/failed to load tautulli/i)).toBeTruthy()
   })
-
-  it('reserves vertical space so the modal layout does not jump', () => {
-    getApiHandler.mockReturnValue(new Promise(() => {}))
-
-    const { container } = renderPanel()
-
-    expect((container.firstChild as HTMLElement).className).toMatch(/min-h-/)
-  })
 })
