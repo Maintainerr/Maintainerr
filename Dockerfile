@@ -1,21 +1,21 @@
-FROM node:26.3.0-alpine3.22@sha256:c7932b9e5e337b0e733d6e16abc1b0e104759e8b05e59ed56586cce967d26dfe AS base
+# Plain -alpine, not -alpine3.x: Dependabot only offers tags with the same
+# suffix, and a versioned one stops once the Node images drop that Alpine.
+FROM node:26.10.0-alpine@sha256:0b36e8c136b94cd4fcf02188228e76c31ad5872eef3fec8cbd2eee500cfd9e80 AS base
 LABEL Description="Contains the Maintainerr Docker image"
 
 FROM base AS builder
 
 WORKDIR /app
 
-# Native dependencies for node-canvas (cairo) and sharp (vips)
+# Build dependencies for node-canvas. It only draws text and shapes (sharp
+# decodes the posters), so it is built without its jpeg, gif and svg loaders.
 RUN apk add --no-cache \
     build-base \
     python3 \
     pkgconfig \
     cairo-dev \
     pango-dev \
-    jpeg-dev \
-    giflib-dev \
-    pixman-dev \
-    librsvg-dev
+    pixman-dev
 
 RUN npm install -g corepack@latest && corepack enable
 
@@ -86,15 +86,14 @@ RUN mkdir -m 777 /opt/data && \
     mkdir -m 777 /opt/data/logs && \
     chown -R node:node /opt/data
 
-# Runtime dependencies for node-canvas (cairo) and sharp (vips)
+# Runtime libraries for node-canvas, and curl for the health check. npm is
+# never run here, so it and the packages it bundles are removed.
 RUN apk --update --no-cache add \
     curl \
     cairo \
     pango \
-    jpeg \
-    giflib \
-    pixman \
-    librsvg
+    pixman && \
+    rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
 
 ARG NODE_ENV=production
 ENV NODE_ENV=${NODE_ENV}
