@@ -2755,8 +2755,8 @@ __metadata:
   resolution: "@maintainerr/contracts@workspace:packages/contracts"
   dependencies:
     "@eslint/js": "npm:^10.0.1"
-    "@nestjs/common": "npm:^12.1.1"
-    "@nestjs/core": "npm:^12.1.1"
+    "@nestjs/common": "npm:^12.1.2"
+    "@nestjs/core": "npm:^12.1.2"
     "@nestjs/swagger": "npm:^12.0.2"
     class-transformer: "npm:^0.5.1"
     class-validator: "npm:^0.15.1"
@@ -2783,15 +2783,15 @@ __metadata:
     "@jellyfin/sdk": "npm:^1.0.0"
     "@maintainerr/contracts": "workspace:^"
     "@nestjs/cli": "npm:^12.0.8"
-    "@nestjs/common": "npm:^12.1.1"
-    "@nestjs/core": "npm:^12.1.1"
+    "@nestjs/common": "npm:^12.1.2"
+    "@nestjs/core": "npm:^12.1.2"
     "@nestjs/event-emitter": "npm:^12.0.1"
-    "@nestjs/platform-express": "npm:^12.1.1"
+    "@nestjs/platform-express": "npm:^12.1.2"
     "@nestjs/schedule": "npm:^12.0.2"
     "@nestjs/schematics": "npm:^12.0.6"
     "@nestjs/serve-static": "npm:^12.0.0"
     "@nestjs/swagger": "npm:^12.0.2"
-    "@nestjs/testing": "npm:^12.1.1"
+    "@nestjs/testing": "npm:^12.1.2"
     "@nestjs/typeorm": "npm:^12.0.2"
     "@octokit/core": "npm:^5.2.0"
     "@octokit/plugin-throttling": "npm:^8.2.0"
@@ -3055,9 +3055,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@nestjs/common@npm:^12.1.1":
-  version: 12.1.1
-  resolution: "@nestjs/common@npm:12.1.1"
+"@nestjs/common@npm:^12.1.2":
+  version: 12.1.2
+  resolution: "@nestjs/common@npm:12.1.2"
   dependencies:
     "@standard-schema/spec": "npm:1.1.0"
     file-type: "npm:22.1.1"
@@ -3075,13 +3075,13 @@ __metadata:
       optional: true
     class-validator:
       optional: true
-  checksum: 10c0/4d143c6adfff29b2fd54ed9ffc11da596091ec3f03bdacf666355650e6086322194b3efa2be314c912d487c7f85736416a9cb96e86cd3dbf94b8abc9c98d49e7
+  checksum: 10c0/94675f98943b2414a2cffee5efc909280e57a36163ea54c037052345f4d0fb6d66c354074f2cd2e3cb8edfe0dc537e3bca994bd2a27804a8c62ff23a5411ace3
   languageName: node
   linkType: hard
 
-"@nestjs/core@npm:^12.1.1":
-  version: 12.1.1
-  resolution: "@nestjs/core@npm:12.1.1"
+"@nestjs/core@npm:^12.1.2":
+  version: 12.1.2
+  resolution: "@nestjs/core@npm:12.1.2"
   dependencies:
     fast-safe-stringify: "npm:2.1.1"
     iterare: "npm:1.2.1"
@@ -3102,7 +3102,7 @@ __metadata:
       optional: true
     "@nestjs/websockets":
       optional: true
-  checksum: 10c0/8a821a01d651d77319e7586bb4a7c8bd16b337a5ed3c22dfe724f97a98e24e967c098ff0ac31b0baa7d9e4a4707b51b5ed4b4b282046c2eac67c849cfd6d42fd
+  checksum: 10c0/09bc525c18d8416010f3a879df63392172dab76d87d4e2f0d95b3e0a2e074b82e34c8f6b22b83388409e0e650c07ba232459ecf1dc4d0b17060a7d0d13efe423
   languageName: node
   linkType: hard
 
@@ -3135,9 +3135,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@nestjs/platform-express@npm:^12.1.1":
-  version: 12.1.1
-  resolution: "@nestjs/platform-express@npm:12.1.1"
+"@nestjs/platform-express@npm:^12.1.2":
+  version: 12.1.2
+  resolution: "@nestjs/platform-express@npm:12.1.2"
   dependencies:
     cors: "npm:2.8.6"
     express: "npm:5.2.1"
@@ -3147,7 +3147,7 @@ __metadata:
   peerDependencies:
     "@nestjs/common": ^12.0.0
     "@nestjs/core": ^12.0.0
-  checksum: 10c0/e41cb40a703dd18329cc3f3cf1c9279da9be7bc0103d1426671fb25d3f436820c5c03b5fe9ecdf1602dc598b49e988d27fd63107dbb165808fd4e89eadb0ab77
+  checksum: 10c0/5cb7ef6b48b510de4cc19c06acfb34b527c05cf0c361d60da0929834410f128d5641c5ef3cb0eb00786e1014386aedebfbfdbbb733a4bd5076a5803501dc5606
   languageName: node
   linkType: hard
 
@@ -3236,9 +3236,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@nestjs/testing@npm:^12.1.1":
-  version: 12.1.1
-  resolution: "@nestjs/testing@npm:12.1.1"
+"@nestjs/testing@npm:^12.1.2":
+  version: 12.1.2
+  resolution: "@nestjs/testing@npm:12.1.2"
   dependencies:
     tslib: "npm:2.8.1"
   peerDependencies:
@@ -3251,7 +3251,7 @@ __metadata:
       optional: true
     "@nestjs/platform-express":
       optional: true
-  checksum: 10c0/6ecb9dd44839242d492f23cd1e12f0be127ecdf495d90b8df08fe5c794c253a7ea576d736cf29ecc5e113a21204a2b03a085d070013a7b462cc22522dbc7b84a
+  checksum: 10c0/5791e42e6087c5b460c5de6b911ca858cb67b7c8f7a8f7e8f235d34ec0982de921259999d68f494e3eff94a23e48ded5278b1ea242aaddbeadb3529b338eeb9a
   languageName: node
   linkType: hard
 
