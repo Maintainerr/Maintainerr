@@ -2588,45 +2588,46 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@lingui/babel-plugin-extract-messages@npm:6.8.0":
-  version: 6.8.0
-  resolution: "@lingui/babel-plugin-extract-messages@npm:6.8.0"
+"@lingui/babel-plugin-extract-messages@npm:6.9.0":
+  version: 6.9.0
+  resolution: "@lingui/babel-plugin-extract-messages@npm:6.9.0"
   dependencies:
-    "@lingui/conf": "npm:6.8.0"
-  checksum: 10c0/6f32a51eda1369c01dd229e5ffb7461f421479f111ba307782abb988ee3ea1ca42da4b64e9ff1377e2969369a32e44edceda355da06297123f2c64b89b124e6d
+    "@lingui/conf": "npm:6.9.0"
+  checksum: 10c0/b57e2e7cddc8064b3cd3805bd5c1063f12b640b8ab3cd6902d5174966f14639d31fcddc14b97829c2b8d5536b26f366a302929356a26a813a514e33484fb8202
   languageName: node
   linkType: hard
 
-"@lingui/babel-plugin-lingui-macro@npm:6.8.0, @lingui/babel-plugin-lingui-macro@npm:^6.8.0":
-  version: 6.8.0
-  resolution: "@lingui/babel-plugin-lingui-macro@npm:6.8.0"
+"@lingui/babel-plugin-lingui-macro@npm:6.9.0, @lingui/babel-plugin-lingui-macro@npm:^6.9.0":
+  version: 6.9.0
+  resolution: "@lingui/babel-plugin-lingui-macro@npm:6.9.0"
   dependencies:
     "@babel/types": "npm:^7.20.7"
-    "@lingui/conf": "npm:6.8.0"
-    "@lingui/message-utils": "npm:6.8.0"
+    "@lingui/conf": "npm:6.9.0"
+    "@lingui/message-utils": "npm:6.9.0"
   peerDependencies:
     "@babel/core": ^7.20.12 || ^8.0.0
   peerDependenciesMeta:
     "@babel/core":
       optional: true
-  checksum: 10c0/00867e5de78a60523f339666d19d78eeeb8ebe4e705f0aaaad0878f867b93c51533a3483a295bab9a57db4b256864d4a72d2b80480fd314c3ee487bf1d291507
+  checksum: 10c0/1dd078ec2408cbb021f60cfd639b1f9f3e269cb3f8fe528146f6843ccc2dc802f16b3398fdd3eedb7db257f1bbbbac972eb014333814cae8737546c09e26aabc
   languageName: node
   linkType: hard
 
-"@lingui/cli@npm:6.8.0, @lingui/cli@npm:^6.8.0":
-  version: 6.8.0
-  resolution: "@lingui/cli@npm:6.8.0"
+"@lingui/cli@npm:6.9.0, @lingui/cli@npm:^6.9.0":
+  version: 6.9.0
+  resolution: "@lingui/cli@npm:6.9.0"
   dependencies:
     "@babel/core": "npm:^7.21.0"
     "@babel/generator": "npm:^7.28.5"
     "@babel/parser": "npm:^7.22.0"
     "@babel/types": "npm:^7.21.2"
-    "@lingui/babel-plugin-extract-messages": "npm:6.8.0"
-    "@lingui/babel-plugin-lingui-macro": "npm:6.8.0"
-    "@lingui/conf": "npm:6.8.0"
-    "@lingui/core": "npm:6.8.0"
-    "@lingui/format-po": "npm:6.8.0"
-    "@lingui/message-utils": "npm:6.8.0"
+    "@lingui/babel-plugin-extract-messages": "npm:6.9.0"
+    "@lingui/babel-plugin-lingui-macro": "npm:6.9.0"
+    "@lingui/conf": "npm:6.9.0"
+    "@lingui/core": "npm:6.9.0"
+    "@lingui/format-po": "npm:6.9.0"
+    "@lingui/message-utils": "npm:6.9.0"
+    "@lingui/native-tools": "npm:^0.1.5"
     chokidar: "npm:5.0.0"
     cli-table3: "npm:^0.6.5"
     commander: "npm:^14.0.2"
@@ -2648,65 +2649,167 @@ __metadata:
       optional: true
   bin:
     lingui: dist/lingui.js
-  checksum: 10c0/780b710d065b9366180b65650a9d6a1c4d991643ad5f133bb6fec668f43a2d3057979a75ccca744338bf75c594387dd8f768574cb65ce486e7950f56e48eb1c3
+  checksum: 10c0/34e251b61d2263ca292b48a6b95b9c300e32be683dacfbfd870776c68f6556a7cea7d464b092aaa31b666ece492014e41c539ea78f4dfa8566ad5f3ceae101c1
   languageName: node
   linkType: hard
 
-"@lingui/conf@npm:6.8.0":
-  version: 6.8.0
-  resolution: "@lingui/conf@npm:6.8.0"
+"@lingui/conf@npm:6.9.0":
+  version: 6.9.0
+  resolution: "@lingui/conf@npm:6.9.0"
   dependencies:
     jest-validate: "npm:^29.4.3"
     jiti: "npm:^2.5.1"
     lilconfig: "npm:^3.1.3"
     normalize-path: "npm:^3.0.0"
-  checksum: 10c0/588aa651c6704b23cfeeee61625faab298d65914d4b780f96b2c059d3c7d5069da3c920bb04ef3c8bd320827d8309b1d483f1861f2b7f0fcaa50376bd08f9e52
+  checksum: 10c0/32b7bc60a5fa9b3bf2eee0c5d5352ff697ca11436f73d52a36a977d2a08108f9b4cdb38d964a17ec398c2e9a047193d21ad58f762749466c0d77c8458ed0fb21
   languageName: node
   linkType: hard
 
-"@lingui/core@npm:6.8.0, @lingui/core@npm:^6.8.0":
-  version: 6.8.0
-  resolution: "@lingui/core@npm:6.8.0"
+"@lingui/core@npm:6.9.0, @lingui/core@npm:^6.9.0":
+  version: 6.9.0
+  resolution: "@lingui/core@npm:6.9.0"
   dependencies:
-    "@lingui/babel-plugin-lingui-macro": "npm:6.8.0"
-    "@lingui/message-utils": "npm:6.8.0"
+    "@lingui/babel-plugin-lingui-macro": "npm:6.9.0"
+    "@lingui/message-utils": "npm:6.9.0"
   peerDependencies:
     babel-plugin-macros: 2 || 3
   peerDependenciesMeta:
     babel-plugin-macros:
       optional: true
-  checksum: 10c0/f5a990066d3e97f0a1893ba35be838f66b44f258bb3dab271396adb1381a670bf5046a5c461dd8e2207bac8260a3644a22ea052de27120b936d2cc80a4270e99
+  checksum: 10c0/41f1d4e9f42b5e2d05c58ae16415164a4aeb12b8f471c1553f14ac7c6384466f5da09c5f1e60185f164653b5e6af04048283d3786b5a70d3715698e4b2658668
   languageName: node
   linkType: hard
 
-"@lingui/format-po@npm:6.8.0, @lingui/format-po@npm:^6.8.0":
-  version: 6.8.0
-  resolution: "@lingui/format-po@npm:6.8.0"
+"@lingui/format-po@npm:6.9.0, @lingui/format-po@npm:^6.9.0":
+  version: 6.9.0
+  resolution: "@lingui/format-po@npm:6.9.0"
   dependencies:
-    "@lingui/conf": "npm:6.8.0"
-    "@lingui/message-utils": "npm:6.8.0"
+    "@lingui/conf": "npm:6.9.0"
+    "@lingui/message-utils": "npm:6.9.0"
     pofile-ts: "npm:^4.0.3"
-  checksum: 10c0/42d784cbc952d3cd4bc2fa03bfc0ad6815eccd60b2469f46e1ee293e77d88a0fd5c09ad37b5a67afa354941059375655b2669479c89033a8ddc4637e0b5e5ae6
+  checksum: 10c0/5aaa721d94f4bf6b5c761a5cd623d75635d451d16d66980308d34cd85b0d34e980d2f55b2884f45196e807ebf66f650404514753dcdfd9128e680e24fe43d844
   languageName: node
   linkType: hard
 
-"@lingui/message-utils@npm:6.8.0":
-  version: 6.8.0
-  resolution: "@lingui/message-utils@npm:6.8.0"
+"@lingui/message-utils@npm:6.9.0":
+  version: 6.9.0
+  resolution: "@lingui/message-utils@npm:6.9.0"
   dependencies:
     "@messageformat/date-skeleton": "npm:^1.1.0"
     "@messageformat/parser": "npm:^5.0.0"
     js-sha256: "npm:^0.10.1"
-  checksum: 10c0/513e9c2b2eb06dd7e1aabcf00c7886ff1d2fe97e189f3cd0faa92e7886bdc3d9ac737bf171d4b20bfe4c9b348833618bf6afd20b9158951b75b2229b07bc9754
+  checksum: 10c0/ccf1a7a070cbc538d6c4017bce07f0cc4ee59e98e9045465a12b71588d1938c07612f734b7262ce022b83a314739bbcbd503205a4baccae1ef5a4bb96b065748
   languageName: node
   linkType: hard
 
-"@lingui/react@npm:^6.8.0":
-  version: 6.8.0
-  resolution: "@lingui/react@npm:6.8.0"
+"@lingui/native-tools-android-arm64@npm:0.1.5":
+  version: 0.1.5
+  resolution: "@lingui/native-tools-android-arm64@npm:0.1.5"
+  conditions: os=android & cpu=arm64
+  languageName: node
+  linkType: hard
+
+"@lingui/native-tools-darwin-arm64@npm:0.1.5":
+  version: 0.1.5
+  resolution: "@lingui/native-tools-darwin-arm64@npm:0.1.5"
+  conditions: os=darwin & cpu=arm64
+  languageName: node
+  linkType: hard
+
+"@lingui/native-tools-darwin-x64@npm:0.1.5":
+  version: 0.1.5
+  resolution: "@lingui/native-tools-darwin-x64@npm:0.1.5"
+  conditions: os=darwin & cpu=x64
+  languageName: node
+  linkType: hard
+
+"@lingui/native-tools-linux-arm64-gnu@npm:0.1.5":
+  version: 0.1.5
+  resolution: "@lingui/native-tools-linux-arm64-gnu@npm:0.1.5"
+  conditions: os=linux & cpu=arm64 & libc=glibc
+  languageName: node
+  linkType: hard
+
+"@lingui/native-tools-linux-arm64-musl@npm:0.1.5":
+  version: 0.1.5
+  resolution: "@lingui/native-tools-linux-arm64-musl@npm:0.1.5"
+  conditions: os=linux & cpu=arm64 & libc=musl
+  languageName: node
+  linkType: hard
+
+"@lingui/native-tools-linux-x64-gnu@npm:0.1.5":
+  version: 0.1.5
+  resolution: "@lingui/native-tools-linux-x64-gnu@npm:0.1.5"
+  conditions: os=linux & cpu=x64 & libc=glibc
+  languageName: node
+  linkType: hard
+
+"@lingui/native-tools-linux-x64-musl@npm:0.1.5":
+  version: 0.1.5
+  resolution: "@lingui/native-tools-linux-x64-musl@npm:0.1.5"
+  conditions: os=linux & cpu=x64 & libc=musl
+  languageName: node
+  linkType: hard
+
+"@lingui/native-tools-win32-arm64-msvc@npm:0.1.5":
+  version: 0.1.5
+  resolution: "@lingui/native-tools-win32-arm64-msvc@npm:0.1.5"
+  conditions: os=win32 & cpu=arm64
+  languageName: node
+  linkType: hard
+
+"@lingui/native-tools-win32-x64-msvc@npm:0.1.5":
+  version: 0.1.5
+  resolution: "@lingui/native-tools-win32-x64-msvc@npm:0.1.5"
+  conditions: os=win32 & cpu=x64
+  languageName: node
+  linkType: hard
+
+"@lingui/native-tools@npm:^0.1.5":
+  version: 0.1.5
+  resolution: "@lingui/native-tools@npm:0.1.5"
   dependencies:
-    "@lingui/babel-plugin-lingui-macro": "npm:6.8.0"
-    "@lingui/core": "npm:6.8.0"
+    "@lingui/native-tools-android-arm64": "npm:0.1.5"
+    "@lingui/native-tools-darwin-arm64": "npm:0.1.5"
+    "@lingui/native-tools-darwin-x64": "npm:0.1.5"
+    "@lingui/native-tools-linux-arm64-gnu": "npm:0.1.5"
+    "@lingui/native-tools-linux-arm64-musl": "npm:0.1.5"
+    "@lingui/native-tools-linux-x64-gnu": "npm:0.1.5"
+    "@lingui/native-tools-linux-x64-musl": "npm:0.1.5"
+    "@lingui/native-tools-win32-arm64-msvc": "npm:0.1.5"
+    "@lingui/native-tools-win32-x64-msvc": "npm:0.1.5"
+    "@swc/types": "npm:^0.1.25"
+  peerDependencies:
+    "@lingui/conf": ^6.0.1
+  dependenciesMeta:
+    "@lingui/native-tools-android-arm64":
+      optional: true
+    "@lingui/native-tools-darwin-arm64":
+      optional: true
+    "@lingui/native-tools-darwin-x64":
+      optional: true
+    "@lingui/native-tools-linux-arm64-gnu":
+      optional: true
+    "@lingui/native-tools-linux-arm64-musl":
+      optional: true
+    "@lingui/native-tools-linux-x64-gnu":
+      optional: true
+    "@lingui/native-tools-linux-x64-musl":
+      optional: true
+    "@lingui/native-tools-win32-arm64-msvc":
+      optional: true
+    "@lingui/native-tools-win32-x64-msvc":
+      optional: true
+  checksum: 10c0/621816266cc23d50204ff7da477697404459f0e7c7372a20623f4885ba4ab13a1431a18e578e4ea274b9afc6864781bc77095cf07c3baed30195d7a62958524a
+  languageName: node
+  linkType: hard
+
+"@lingui/react@npm:^6.9.0":
+  version: 6.9.0
+  resolution: "@lingui/react@npm:6.9.0"
+  dependencies:
+    "@lingui/babel-plugin-lingui-macro": "npm:6.9.0"
+    "@lingui/core": "npm:6.9.0"
     use-sync-external-store: "npm:^1.6.0"
   peerDependencies:
     babel-plugin-macros: 2 || 3
@@ -2714,16 +2817,17 @@ __metadata:
   peerDependenciesMeta:
     babel-plugin-macros:
       optional: true
-  checksum: 10c0/e44190eff782b09cd8c2c4e1abeab8dbea2f236a81966975e3376aca404e34206340f47af9943422c91cce8fc1e656fdee66bc61551c2fbffa958a3dcd625dba
+  checksum: 10c0/51d1f9437f9cc68abd05ce8edeb0283041e6931d77d1a10d39b45202dd55f3b678066efcf338fd3393392759dd04a0aaf65c93621a0282df98a2210972e3c257
   languageName: node
   linkType: hard
 
-"@lingui/vite-plugin@npm:^6.8.0":
-  version: 6.8.0
-  resolution: "@lingui/vite-plugin@npm:6.8.0"
+"@lingui/vite-plugin@npm:^6.9.0":
+  version: 6.9.0
+  resolution: "@lingui/vite-plugin@npm:6.9.0"
   dependencies:
-    "@lingui/cli": "npm:6.8.0"
-    "@lingui/conf": "npm:6.8.0"
+    "@lingui/cli": "npm:6.9.0"
+    "@lingui/conf": "npm:6.9.0"
+    "@lingui/native-tools": "npm:^0.1.5"
   peerDependencies:
     "@babel/core": ^7.29.0 || ^8.0.0
     "@lingui/babel-plugin-lingui-macro": ^5 || ^6
@@ -2739,7 +2843,7 @@ __metadata:
       optional: true
     rolldown:
       optional: true
-  checksum: 10c0/79169cf7fb5dd27f82ce0bd3659f5f0c592201b04b209cb301efb9b893cf62ee9f9615e7c3c56e08354d048dcc79aa429fcb2cd6ff76e14abaae108a28e08136
+  checksum: 10c0/c7734d0bca33910738b3eddf52cdbf8ff9b1849f1211c58a3707a695167704d42f513af89bebb115644dfaab4b8842f0cf1d7979f604aea2fb4d27d9aacd6e9e
   languageName: node
   linkType: hard
 
@@ -2857,12 +2961,12 @@ __metadata:
     "@headlessui/react": "npm:^2.2.10"
     "@heroicons/react": "npm:^1.0.6"
     "@hookform/resolvers": "npm:^5.9.1"
-    "@lingui/babel-plugin-lingui-macro": "npm:^6.8.0"
-    "@lingui/cli": "npm:^6.8.0"
-    "@lingui/core": "npm:^6.8.0"
-    "@lingui/format-po": "npm:^6.8.0"
-    "@lingui/react": "npm:^6.8.0"
-    "@lingui/vite-plugin": "npm:^6.8.0"
+    "@lingui/babel-plugin-lingui-macro": "npm:^6.9.0"
+    "@lingui/cli": "npm:^6.9.0"
+    "@lingui/core": "npm:^6.9.0"
+    "@lingui/format-po": "npm:^6.9.0"
+    "@lingui/react": "npm:^6.9.0"
+    "@lingui/vite-plugin": "npm:^6.9.0"
     "@maintainerr/contracts": "workspace:^"
     "@monaco-editor/react": "npm:^4.7.0"
     "@rolldown/plugin-babel": "npm:^0.2.4"
@@ -5153,7 +5257,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@swc/types@npm:^0.1.28":
+"@swc/types@npm:^0.1.25, @swc/types@npm:^0.1.28":
   version: 0.1.28
   resolution: "@swc/types@npm:0.1.28"
   dependencies:
