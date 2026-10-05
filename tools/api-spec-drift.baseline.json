@@ -1772,6 +1772,7 @@
     "POST /issue/{issueId}/{status}",
     "POST /media/{mediaId}/{status}",
     "POST /overrideRule",
+    "POST /overrideRule/advancedRequest",
     "POST /request",
     "POST /request/{requestId}/retry",
     "POST /request/{requestId}/{status}",
