@@ -11,7 +11,8 @@ import { ServarrService } from '../../../modules/api/servarr-api/servarr.service
 import { MediaServerFactory } from '../../api/media-server/media-server.factory';
 import { IMediaServerService } from '../../api/media-server/media-server.interface';
 import {
-  findEpisodeByTvdbId,
+  findEpisodeForMediaItem,
+  hasSonarrEpisodeIdentity,
   SonarrApi,
 } from '../../api/servarr-api/helpers/sonarr.helper';
 import { MaintainerrLogger } from '../../logging/logs.service';
@@ -235,17 +236,44 @@ export class SonarrGetterService {
         return showEpisodesPromise;
       };
 
-      // A media server can number an episode differently from Sonarr (#3819).
-      // When its TVDB id names one Sonarr episode, every value below reads
-      // that episode by Sonarr's numbers; otherwise by the media server's.
-      if (dataType === 'episode' && origLibItem.index !== undefined) {
-        const episode = origLibItem.providerIds?.tvdb?.length
-          ? findEpisodeByTvdbId(
-              (await getShowEpisodes()) ?? [],
-              origLibItem,
-              showResponse.tvdbId,
+      // The series' episode files, memoized and evicted like the episode
+      // list above.
+      const getShowEpisodeFiles = async (): Promise<
+        SonarrEpisodeFile[] | undefined
+      > => {
+        if (!showResponse.id) {
+          return undefined;
+        }
+
+        return arrLookupCache
+          ? arrLookupCache.memoize(
+              `sonarr:${settingsId}:episode-files:${showResponse.id}`,
+              () => sonarrApiClient.getEpisodeFiles(showResponse.id),
+              (files) => files === undefined,
             )
-          : undefined;
+          : sonarrApiClient.getEpisodeFiles(showResponse.id);
+      };
+
+      // A media server can number an episode differently from Sonarr (#3819,
+      // #3896). When its file or TVDB id names one Sonarr episode, every value
+      // below reads that episode by Sonarr's numbers; otherwise by the media
+      // server's. When Sonarr can't be read, every property fails closed, as
+      // it does when the series lookup fails: the numbers could name the
+      // wrong episode.
+      if (dataType === 'episode' && hasSonarrEpisodeIdentity(origLibItem)) {
+        const episodes = await getShowEpisodes();
+        const episodeFiles = origLibItem.path
+          ? await getShowEpisodeFiles()
+          : [];
+        if (episodes === undefined || episodeFiles === undefined) {
+          return undefined;
+        }
+        const episode = findEpisodeForMediaItem(
+          episodes,
+          episodeFiles,
+          origLibItem,
+          showResponse.tvdbId,
+        );
         if (episode) {
           seasonRatingKey = episode.seasonNumber;
           origLibItem.index = episode.episodeNumber;

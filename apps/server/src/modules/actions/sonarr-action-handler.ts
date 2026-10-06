@@ -9,7 +9,10 @@ import { DownloadClientApiService } from '../api/download-client-api/download-cl
 import { MediaServerFactory } from '../api/media-server/media-server.factory';
 import { OmbiApiService } from '../api/ombi-api/ombi-api.service';
 import { SeerrApiService } from '../api/seerr-api/seerr-api.service';
-import { findEpisodeByTvdbId } from '../api/servarr-api/helpers/sonarr.helper';
+import {
+  findEpisodeForMediaItem,
+  hasSonarrEpisodeIdentity,
+} from '../api/servarr-api/helpers/sonarr.helper';
 import {
   SonarrEpisode,
   SonarrSeries,
@@ -174,17 +177,28 @@ export class SonarrActionHandler {
       media.tmdbId ??= sonarrMedia.tmdbId;
     }
 
-    // A media server can number an episode differently from Sonarr (#3819).
-    // When its TVDB id names one Sonarr episode, everything below acts on
-    // that episode by Sonarr's numbers; otherwise by the media server's.
-    if (collection.type === 'episode' && mediaData?.index !== undefined) {
-      const episode = await this.matchEpisodeByTvdbId(
+    // A media server can number an episode differently from Sonarr (#3819,
+    // #3896). When its file or TVDB id names one Sonarr episode, everything
+    // below acts on that episode by Sonarr's numbers; otherwise by the media
+    // server's.
+    if (
+      collection.type === 'episode' &&
+      mediaData &&
+      hasSonarrEpisodeIdentity(mediaData)
+    ) {
+      const episode = await this.matchSonarrEpisode(
         sonarrApiClient,
         sonarrMedia,
         mediaData,
         collection.sonarrSettingsId,
         libraryReads,
       );
+      if (episode === undefined) {
+        this.logger.warn(
+          `[Sonarr] Couldn't read the episodes of show '${sonarrMedia.title}' to identify '${mediaData.title ?? media.mediaServerId}'. No action was taken.`,
+        );
+        return false;
+      }
       if (episode) {
         mediaData = {
           ...mediaData,
@@ -791,17 +805,16 @@ export class SonarrActionHandler {
     }
   }
 
-  private async matchEpisodeByTvdbId(
+  private async matchSonarrEpisode(
     sonarrApiClient: Awaited<ReturnType<ServarrService['getSonarrApiClient']>>,
     sonarrMedia: SonarrSeries,
     mediaData: MediaItem,
     settingsId: number,
     libraryReads?: ArrLookupCache,
-  ): Promise<SonarrEpisode | undefined> {
-    if (!mediaData.providerIds?.tvdb?.length) {
-      return undefined;
-    }
-
+  ): Promise<SonarrEpisode | null | undefined> {
+    // `undefined` when Sonarr couldn't be read, so the caller acts on no
+    // episode rather than on the one the media server's numbers name, which
+    // could be the wrong one. `null` when nothing matched.
     const listEpisodes = () => sonarrApiClient.getEpisodes(sonarrMedia.id);
     try {
       const episodes = await (libraryReads
@@ -811,7 +824,22 @@ export class SonarrActionHandler {
             (episodes) => episodes === undefined,
           )
         : listEpisodes());
-      return findEpisodeByTvdbId(episodes ?? [], mediaData, sonarrMedia.tvdbId);
+      // Read fresh: lookups that identify an item stay uncached while
+      // handling. Only the episode list is read once per batch (#3857).
+      const episodeFiles = mediaData.path
+        ? await sonarrApiClient.getEpisodeFiles(sonarrMedia.id)
+        : [];
+      if (episodes === undefined || episodeFiles === undefined) {
+        return undefined;
+      }
+      return (
+        findEpisodeForMediaItem(
+          episodes,
+          episodeFiles,
+          mediaData,
+          sonarrMedia.tvdbId,
+        ) ?? null
+      );
     } catch (error) {
       this.logger.debug(error);
       return undefined;

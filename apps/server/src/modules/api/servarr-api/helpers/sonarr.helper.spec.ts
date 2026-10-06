@@ -1,9 +1,11 @@
 import {
+  createMediaItem,
   createSonarrEpisode,
+  createSonarrEpisodeFile,
   createSonarrSeries,
 } from '../../../../../test/utils/data';
 import { MaintainerrLogger } from '../../../logging/logs.service';
-import { SonarrApi } from './sonarr.helper';
+import { findEpisodeForMediaItem, SonarrApi } from './sonarr.helper';
 
 describe('SonarrApi', () => {
   let sonarrApi: SonarrApi;
@@ -782,6 +784,74 @@ describe('SonarrApi', () => {
       );
       expect(cached).not.toHaveBeenCalled();
       expect(runDeleteSpy).toHaveBeenCalledWith('episodefile/700');
+    });
+  });
+
+  // #3896: the media server and Sonarr mount the library at different roots,
+  // so the item's path is matched on the end Sonarr's relative path covers.
+  describe('findEpisodeForMediaItem', () => {
+    const matchByFile = (itemPath: string, relativePath: string) =>
+      findEpisodeForMediaItem(
+        [createSonarrEpisode({ episodeNumber: 5, episodeFileId: 9 })],
+        [createSonarrEpisodeFile({ id: 9, relativePath })],
+        createMediaItem({
+          type: 'episode',
+          index: undefined,
+          providerIds: {},
+          path: itemPath,
+        }),
+        1,
+      )?.episodeNumber;
+
+    it.each([
+      [
+        'a Windows path',
+        'D:\\TV\\Sample Series\\Season 1\\Sample Series - S01E05.mkv',
+        'Season 1/Sample Series - S01E05.mkv',
+      ],
+      [
+        'a decomposed Unicode file name',
+        '/media/tv/Sample Series/Season 1/Sample Series - Cafe\u0301.mkv',
+        'Season 1/Sample Series - Caf\u00e9.mkv',
+      ],
+    ])('matches the file from %s', (_name, itemPath, relativePath) => {
+      expect(matchByFile(itemPath, relativePath)).toBe(5);
+    });
+
+    it("matches no file whose folder only ends the item's folder name", () => {
+      expect(
+        matchByFile(
+          '/media/tv/Sample Series/Extras Season 1/Sample Series - S01E05.mkv',
+          'Season 1/Sample Series - S01E05.mkv',
+        ),
+      ).toBeUndefined();
+    });
+
+    it('matches no episode by a file several episodes share', () => {
+      const episodes = [
+        createSonarrEpisode({ episodeNumber: 1, episodeFileId: 9 }),
+        createSonarrEpisode({ episodeNumber: 2, episodeFileId: 9 }),
+      ];
+      const item = createMediaItem({
+        type: 'episode',
+        index: undefined,
+        providerIds: {},
+        path: '/media/tv/Sample Series/Season 1/Sample Series - S01E01-E02.mkv',
+      });
+
+      expect(
+        findEpisodeForMediaItem(
+          episodes,
+          [
+            createSonarrEpisodeFile({
+              id: 9,
+              relativePath: 'Season 1/Sample Series - S01E01-E02.mkv',
+            }),
+          ],
+          item,
+          1,
+        ),
+      ).toBeUndefined();
     });
   });
 });
