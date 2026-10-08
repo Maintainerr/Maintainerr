@@ -8,7 +8,7 @@ msgstr ""
 "Language: nl\n"
 "Project-Id-Version: \n"
 "Report-Msgid-Bugs-To: \n"
-"PO-Revision-Date: 2026-10-02 19:31+0000\n"
+"PO-Revision-Date: 2026-10-05 20:51+0000\n"
 "Last-Translator: COTMO <moermantom1@gmail.com>\n"
 "Language-Team: Dutch <https://hosted.weblate.org/projects/maintainerr/app/nl/>\n"
 "Plural-Forms: nplurals=2; plural=n != 1;\n"
@@ -1109,7 +1109,7 @@ msgstr "Dagen uitstellen"
 
 #: src/components/Settings/Logs/index.tsx
 msgid "Debug"
-msgstr "Debug"
+msgstr "Foutopsporing"
 
 #: src/pages/OverlayTemplateListPage.tsx
 msgid "Default"
@@ -1779,7 +1779,7 @@ msgstr "Onwaar"
 
 #: src/components/Settings/Logs/index.tsx
 msgid "Fatal"
-msgstr "Fatal"
+msgstr "Fataal"
 
 #: src/components/Settings/About/index.tsx
 msgid "Feature Requests"
@@ -4580,7 +4580,7 @@ msgstr "Wacht tot de Plex-authenticatie is voltooid voordat u test."
 
 #: src/components/Settings/Logs/index.tsx
 msgid "Warn"
-msgstr "Warn"
+msgstr "Waarschuwen"
 
 #: src/components/Collection/CollectionDetail/RemoveFromCollectionButton/index.tsx
 msgid "Warning"
