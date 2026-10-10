@@ -79,7 +79,8 @@ export interface MediaItem {
   /**
    * Where the item lives on the server's own filesystem: the media file for
    * movies and episodes, the folder for shows and seasons. Only single-item
-   * reads carry it, and a Plex season has none.
+   * reads carry it, except Plex library listings, which carry the media file
+   * for movies and episodes. A Plex season has none.
    */
   path?: string
   library: {

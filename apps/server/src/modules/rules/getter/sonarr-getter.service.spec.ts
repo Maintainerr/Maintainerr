@@ -12,7 +12,11 @@ import { withoutNetwork } from '../../../../test/utils/servarr-mock';
 import { MediaServerFactory } from '../../api/media-server/media-server.factory';
 import { IMediaServerService } from '../../api/media-server/media-server.interface';
 import { SonarrApi } from '../../api/servarr-api/helpers/sonarr.helper';
-import { SonarrSeries } from '../../api/servarr-api/interfaces/sonarr.interface';
+import {
+  SonarrEpisode,
+  SonarrEpisodeFile,
+  SonarrSeries,
+} from '../../api/servarr-api/interfaces/sonarr.interface';
 import { ServarrService } from '../../api/servarr-api/servarr.service';
 import { CollectionMedia } from '../../collections/entities/collection_media.entities';
 import { MaintainerrLogger } from '../../logging/logs.service';
@@ -1544,6 +1548,159 @@ describe('SonarrGetterService', () => {
       expect(response).toBe(expected);
     },
   );
+
+  // #3896: a daily series the media server numbered 1, 2, 3 in its own order,
+  // with a TVDB id that names an older Sonarr episode no longer on disk.
+  describe('episode matched by its file', () => {
+    const dailyEpisodeFiles = [
+      createSonarrEpisodeFile({
+        id: 8,
+        relativePath: 'Season 2026/Sample Series - 2026-06-10.mkv',
+      }),
+      createSonarrEpisodeFile({
+        id: 9,
+        relativePath: 'Season 2026/Sample Series - 2026-06-11.mkv',
+      }),
+    ];
+
+    // A key set to `undefined` stands for a Sonarr read that failed. A
+    // failed `episodes` read fails the series list only; reads of a single
+    // episode by its numbers still answer.
+    const callDailyRankByFile = async (
+      reads: {
+        episodeFiles?: SonarrEpisodeFile[] | undefined;
+        episodes?: SonarrEpisode[] | undefined;
+        item?: Partial<MediaItem>;
+        propertyId?: number;
+      } = {},
+    ) => {
+      jest.useFakeTimers().setSystemTime(new Date('2026-06-13T12:00:00Z'));
+      const collectionMedia = createCollectionMedia('episode');
+      collectionMedia.collection.sonarrSettingsId = 1;
+      mockMediaServer.getMetadata.mockResolvedValue(
+        createMediaItem({ type: 'show' }),
+      );
+      const series = createSonarrSeries({ id: 7, seasons: [] });
+      const sonarrApi = mockSonarrApi(series);
+      const dailyEpisodes = [
+        createSonarrEpisode({
+          seasonNumber: 2026,
+          episodeNumber: 1,
+          tvdbId: 501,
+          airDateUtc: '2026-01-01T18:30:00Z',
+          airDate: '2026-01-01',
+          hasFile: false,
+          episodeFileId: 0,
+        }),
+        createSonarrEpisode({
+          seasonNumber: 2026,
+          episodeNumber: 101,
+          airDateUtc: '2026-06-10T18:30:00Z',
+          airDate: '2026-06-10',
+          hasFile: true,
+          episodeFileId: 8,
+        }),
+        createSonarrEpisode({
+          seasonNumber: 2026,
+          episodeNumber: 102,
+          airDateUtc: '2026-06-11T18:30:00Z',
+          airDate: '2026-06-11',
+          hasFile: true,
+          episodeFileId: 9,
+        }),
+      ];
+      jest
+        .spyOn(sonarrApi, 'getEpisodes')
+        .mockImplementation(async (_seriesId, seasonNumber, episodeNumbers) =>
+          episodeNumbers
+            ? dailyEpisodes.filter(
+                (episode) =>
+                  episode.seasonNumber === seasonNumber &&
+                  episodeNumbers.includes(episode.episodeNumber),
+              )
+            : 'episodes' in reads
+              ? reads.episodes
+              : dailyEpisodes,
+        );
+      jest
+        .spyOn(sonarrApi, 'getEpisodeFiles')
+        .mockResolvedValue(
+          'episodeFiles' in reads ? reads.episodeFiles : dailyEpisodeFiles,
+        );
+
+      return sonarrGetterService.get(
+        reads.propertyId ?? 32,
+        createMediaItem({
+          type: 'episode',
+          parentIndex: 2026,
+          index: 1,
+          grandparentId: 'show-1',
+          providerIds: { tvdb: ['501'] },
+          path: '/media/tv/Sample Series/Season 2026/Sample Series - 2026-06-10.mkv',
+          ...reads.item,
+        }),
+        'episode',
+        createRuleGroupDto({
+          collection: collectionMedia.collection,
+          dataType: 'episode',
+        }),
+      );
+    };
+
+    it('ranks the episode its file holds over the one its numbers or TVDB id name', async () => {
+      await expect(callDailyRankByFile()).resolves.toBe(2);
+    });
+
+    it('ranks an item with no episode number by its file, not its air date', async () => {
+      await expect(
+        callDailyRankByFile({
+          item: {
+            index: undefined,
+            providerIds: {},
+            originallyAvailableAt: new Date('2026-06-11T00:00:00Z'),
+          },
+        }),
+      ).resolves.toBe(2);
+    });
+
+    it('falls back to the TVDB id when the file holds several episodes', async () => {
+      await expect(
+        callDailyRankByFile({
+          episodes: [
+            createSonarrEpisode({
+              seasonNumber: 2026,
+              episodeNumber: 101,
+              airDateUtc: '2026-06-10T18:30:00Z',
+              hasFile: true,
+              episodeFileId: 8,
+            }),
+            createSonarrEpisode({
+              seasonNumber: 2026,
+              episodeNumber: 102,
+              tvdbId: 602,
+              airDateUtc: '2026-06-11T18:30:00Z',
+              hasFile: true,
+              episodeFileId: 8,
+            }),
+          ],
+          item: { providerIds: { tvdb: ['602'] } },
+        }),
+      ).resolves.toBe(1);
+    });
+
+    // `undefined`, not `null`: a rank of null would drop the item from a
+    // collection it already belongs to on a transient Sonarr error.
+    // Episode number (22) reads one episode by its numbers, which would name
+    // the wrong one here.
+    it.each([
+      ['the episode files', { episodeFiles: undefined }],
+      ['the episodes', { episodes: undefined }],
+    ])('fails closed when %s cannot be read', async (_name, reads) => {
+      await expect(
+        callDailyRankByFile({ ...reads, propertyId: 22 }),
+      ).resolves.toBeUndefined();
+    });
+  });
 
   describe('specials season', () => {
     it('resolves season 0 rather than reading it as no season', async () => {

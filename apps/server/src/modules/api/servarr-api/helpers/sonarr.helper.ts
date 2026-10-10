@@ -17,7 +17,7 @@ import {
  * wherever Sonarr files it. A legacy Plex agent files the series id under the
  * episode, which is ignored.
  */
-export const findEpisodeByTvdbId = (
+const findEpisodeByTvdbId = (
   episodes: SonarrEpisode[],
   item: MediaItem,
   seriesTvdbId: number,
@@ -28,6 +28,70 @@ export const findEpisodeByTvdbId = (
   const matches = episodes.filter((episode) => ids.includes(episode.tvdbId));
   return matches.length === 1 ? matches[0] : undefined;
 };
+
+// Forward slashes and composed Unicode on both sides: a Windows server reports
+// backslashes, and macOS can hand one side a decomposed file name.
+const toComparablePath = (path: string): string =>
+  path.split('\\').join('/').normalize('NFC');
+
+/**
+ * The one Sonarr episode whose file the item plays. A daily series can carry
+ * media server numbers and provider ids that name a different episode than
+ * the file on disk, so the file is the stronger identity. The media server
+ * and Sonarr mount the library at different roots, so the item's path is
+ * matched on the end that Sonarr's series-relative path covers. A file
+ * holding several episodes names no single one and is ignored.
+ */
+const findEpisodeByFilePath = (
+  episodes: SonarrEpisode[],
+  episodeFiles: SonarrEpisodeFile[],
+  item: MediaItem,
+): SonarrEpisode | undefined => {
+  if (!item.path) {
+    return undefined;
+  }
+
+  const itemPath = toComparablePath(item.path);
+  const files = episodeFiles.filter(
+    (file) =>
+      file.relativePath &&
+      itemPath.endsWith(`/${toComparablePath(file.relativePath)}`),
+  );
+  if (files.length !== 1) {
+    return undefined;
+  }
+
+  const matches = episodes.filter(
+    (episode) => episode.episodeFileId === files[0].id,
+  );
+  return matches.length === 1 ? matches[0] : undefined;
+};
+
+// An item without an episode number takes the air-date fallback instead.
+const hasTvdbEpisodeIdentity = (item: MediaItem): boolean =>
+  item.index !== undefined && Boolean(item.providerIds?.tvdb?.length);
+
+/**
+ * Whether the item carries anything `findEpisodeForMediaItem` can match on,
+ * so a caller can skip the Sonarr reads when it does not.
+ */
+export const hasSonarrEpisodeIdentity = (item: MediaItem): boolean =>
+  Boolean(item.path) || hasTvdbEpisodeIdentity(item);
+
+/**
+ * The Sonarr episode a media server item stands for: the one its file holds,
+ * otherwise, for a numbered item, the one its TVDB episode id names.
+ */
+export const findEpisodeForMediaItem = (
+  episodes: SonarrEpisode[],
+  episodeFiles: SonarrEpisodeFile[],
+  item: MediaItem,
+  seriesTvdbId: number,
+): SonarrEpisode | undefined =>
+  findEpisodeByFilePath(episodes, episodeFiles, item) ??
+  (hasTvdbEpisodeIdentity(item)
+    ? findEpisodeByTvdbId(episodes, item, seriesTvdbId)
+    : undefined);
 
 export class SonarrApi extends ServarrApi<{
   seriesId: number;
