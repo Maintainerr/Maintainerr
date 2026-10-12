@@ -1772,6 +1772,7 @@
     "POST /issue/{issueId}/{status}",
     "POST /media/{mediaId}/{status}",
     "POST /overrideRule",
+    "POST /overrideRule/advancedRequest",
     "POST /request",
     "POST /request/{requestId}/retry",
     "POST /request/{requestId}/{status}",
@@ -2081,6 +2082,7 @@
   ],
   "tracearr": [
     "GET /api/v2/public/docs",
+    "GET /api/v2/public/events",
     "GET /api/v2/public/history",
     "GET /api/v2/public/libraries",
     "GET /api/v2/public/media/{ref}",
@@ -2089,11 +2091,14 @@
     "GET /api/v2/public/media/{ref}/stats",
     "GET /api/v2/public/media/{ref}/watchers",
     "GET /api/v2/public/recently-added",
+    "GET /api/v2/public/servers",
     "GET /api/v2/public/streams",
     "GET /api/v2/public/users",
     "GET /api/v2/public/users/{id}",
     "GET /api/v2/public/users/{id}/history",
     "GET /api/v2/public/users/{id}/stats",
+    "GET /api/v2/public/violations",
+    "GET /api/v2/public/violations/{id}",
     "GET /api/v2/public/watched-media"
   ],
   "tvdb": [
