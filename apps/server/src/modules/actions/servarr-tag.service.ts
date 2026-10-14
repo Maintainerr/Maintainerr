@@ -391,7 +391,7 @@ export class ServarrTagService {
     label: string,
   ): Promise<number | undefined> {
     const target = label.toLowerCase();
-    return (await client.getTags()).find(
+    return (await client.getTags())?.find(
       (tag) => tag.label?.toLowerCase() === target,
     )?.id;
   }

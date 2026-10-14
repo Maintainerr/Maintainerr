@@ -19,6 +19,12 @@ import { isSharpAvailable, SHARP_UNAVAILABLE_MESSAGE } from './utils/sharp';
 // defence-in-depth.
 installStdioPipeGuards();
 
+// An empty TZ (e.g. `TZ=${TZ}` with nothing set) resolves to "Etc/Unknown",
+// which cron cannot schedule in, so startup fails (#3925). libc reads it as UTC.
+if (Intl.DateTimeFormat().resolvedOptions().timeZone === 'Etc/Unknown') {
+  process.env.TZ = 'UTC';
+}
+
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
     bufferLogs: true,

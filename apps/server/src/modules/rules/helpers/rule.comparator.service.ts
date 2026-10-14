@@ -302,10 +302,13 @@ export class RuleComparatorService {
       // (outer catch in plex/seerr-getter); `null` is definitive absence.
       // Skip unary EXISTS/NOT_EXISTS on transient `undefined` so it never
       // resolves to `!hasExistsValue(undefined) === true` and spuriously
-      // adds the item (#1446).
+      // adds the item (#1446). A second value that could not be read is
+      // skipped the same way, or a negated action matches it (#3886).
       const shouldCompare = this.isUnaryRuleAction(rule.action)
         ? !firstValTransient
-        : firstVal != null && (secondVal != null || rule.lastVal != null);
+        : firstVal != null &&
+          !secondValTransient &&
+          (secondVal != null || rule.lastVal != null);
 
       if (shouldCompare) {
         // do action

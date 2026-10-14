@@ -238,6 +238,28 @@ describe('RuleComparatorService.executeRulesWithData', () => {
     });
   });
 
+  it('fails closed when a second value could not be read (#3886)', async () => {
+    const mediaItem = createSingleMedia();
+    const rules = [
+      createStoredRule(1, {
+        operator: null,
+        action: RulePossibility.NOT_EQUALS,
+        firstVal: [Application.PLEX, 5],
+        lastVal: [Application.PLEX, 6],
+        section: 0,
+      }),
+    ];
+
+    mockGetterSequence([], undefined);
+
+    const result = await ruleComparatorService.executeRulesWithData(
+      createRuleGroupDto({ dataType: 'movie', rules }),
+      [mediaItem],
+    );
+
+    expect(result.data).toEqual([]);
+  });
+
   it('matches not_exists rules when the first value is missing', async () => {
     const mediaItem = createSingleMedia();
     const rules = [

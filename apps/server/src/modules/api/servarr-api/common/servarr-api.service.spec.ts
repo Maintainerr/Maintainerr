@@ -90,6 +90,14 @@ describe('ServarrApi', () => {
     });
   });
 
+  it('reports an unreadable tag list as unknown, not as no tags (#3886)', async () => {
+    jest
+      .spyOn((api as any).axios, 'get')
+      .mockRejectedValue(new Error('timeout of 10000ms exceeded'));
+
+    await expect(api.getTags()).resolves.toBeUndefined();
+  });
+
   describe('ensureTag', () => {
     it('returns an existing tag id without creating (case-insensitive match)', async () => {
       jest.spyOn(api, 'getTags').mockResolvedValue([{ id: 7, label: 'DND' }]);
