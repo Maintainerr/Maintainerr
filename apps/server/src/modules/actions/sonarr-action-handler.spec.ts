@@ -1204,10 +1204,16 @@ describe('SonarrActionHandler', () => {
         (api: SonarrApi) =>
           jest.spyOn(api, 'getEpisodeFiles').mockResolvedValue(undefined),
       ],
+      // A path that matches no file and no TVDB id leave nothing to match
+      // on, so only the guard stops the numbers from naming the episode.
       [
         'the episodes cannot be read',
-        (api: SonarrApi) =>
-          jest.spyOn(api, 'getEpisodes').mockResolvedValue(undefined),
+        (api: SonarrApi, mediaData: MediaItem) => {
+          mediaData.providerIds = {};
+          mediaData.path =
+            '/media/tv/Sample Series/Season 2026/Sample Series - 2026-06-12.mkv';
+          jest.spyOn(api, 'getEpisodes').mockResolvedValue(undefined);
+        },
       ],
       [
         'reading the episodes fails',
@@ -1218,7 +1224,7 @@ describe('SonarrActionHandler', () => {
       ],
     ])('takes no action when %s', async (_name, breakRead) => {
       const { collection, collectionMedia, mockedSonarrApi } = setUpFileMatch();
-      breakRead(mockedSonarrApi);
+      breakRead(mockedSonarrApi, collectionMedia.mediaData);
 
       await sonarrActionHandler.handleAction(collection, collectionMedia);
 
@@ -1900,16 +1906,17 @@ describe('SonarrActionHandler', () => {
           sonarrSettingsId: 1,
           type: 'episode',
         });
-        // No file or TVDB id to identify the episode by, so only the
-        // coverage lookup reads the episodes.
         const collectionMedia = createCollectionMediaWithMetadata(collection, {
           tmdbId: 1,
-          mediaData: { parentIndex: 1, index: 3, providerIds: {} },
+          mediaData: { parentIndex: 1, index: 3 },
         });
         mockMediaServerMetadata(collectionMedia.mediaData);
         const { mockedSonarrApi } = setupSeries();
+        // The read that identifies the episode answers with no match, so the
+        // delete goes ahead by the numbers; only the coverage lookup throws.
         jest
           .spyOn(mockedSonarrApi, 'getEpisodes')
+          .mockResolvedValueOnce([])
           .mockRejectedValue(new Error('boom'));
         jest
           .spyOn(mockedSonarrApi, 'getSeriesDownloadHistory')

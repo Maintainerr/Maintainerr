@@ -420,7 +420,7 @@ describe('JellyfinAdapterService', () => {
           recursive: true,
           startIndex: 0,
           limit: 30,
-          fields: ['ProviderIds', 'DateCreated', 'Overview'],
+          fields: ['ProviderIds', 'DateCreated', 'Overview', 'Path'],
         }),
       );
     });

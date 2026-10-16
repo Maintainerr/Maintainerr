@@ -1663,9 +1663,12 @@ describe('SonarrGetterService', () => {
       ).resolves.toBe(2);
     });
 
-    it('falls back to the TVDB id when the file holds several episodes', async () => {
-      await expect(
-        callDailyRankByFile({
+    // The TVDB id names episode 102 (rank 1); taking the first file instead
+    // would name episode 101 (rank 2).
+    it.each([
+      [
+        'the file holds several episodes',
+        {
           episodes: [
             createSonarrEpisode({
               seasonNumber: 2026,
@@ -1683,6 +1686,45 @@ describe('SonarrGetterService', () => {
               episodeFileId: 8,
             }),
           ],
+        },
+      ],
+      // A series that gained season folders partway through can hold both.
+      [
+        'several files match the path',
+        {
+          episodes: [
+            createSonarrEpisode({
+              seasonNumber: 2026,
+              episodeNumber: 101,
+              airDateUtc: '2026-06-10T18:30:00Z',
+              hasFile: true,
+              episodeFileId: 8,
+            }),
+            createSonarrEpisode({
+              seasonNumber: 2026,
+              episodeNumber: 102,
+              tvdbId: 602,
+              airDateUtc: '2026-06-11T18:30:00Z',
+              hasFile: true,
+              episodeFileId: 9,
+            }),
+          ],
+          episodeFiles: [
+            createSonarrEpisodeFile({
+              id: 8,
+              relativePath: 'Sample Series - 2026-06-10.mkv',
+            }),
+            createSonarrEpisodeFile({
+              id: 9,
+              relativePath: 'Season 2026/Sample Series - 2026-06-10.mkv',
+            }),
+          ],
+        },
+      ],
+    ])('falls back to the TVDB id when %s', async (_name, reads) => {
+      await expect(
+        callDailyRankByFile({
+          ...reads,
           item: { providerIds: { tvdb: ['602'] } },
         }),
       ).resolves.toBe(1);
@@ -1691,14 +1733,33 @@ describe('SonarrGetterService', () => {
     // `undefined`, not `null`: a rank of null would drop the item from a
     // collection it already belongs to on a transient Sonarr error.
     // Episode number (22) reads one episode by its numbers, which would name
-    // the wrong one here.
+    // the wrong one here. With the episodes unreadable, a path that matches
+    // no file and no TVDB id leave nothing to match on, so only the guard
+    // stops the numbers from answering.
     it.each([
       ['the episode files', { episodeFiles: undefined }],
-      ['the episodes', { episodes: undefined }],
+      [
+        'the episodes',
+        {
+          episodes: undefined,
+          item: {
+            providerIds: {},
+            path: '/media/tv/Sample Series/Season 2026/Sample Series - 2026-06-12.mkv',
+          },
+        },
+      ],
     ])('fails closed when %s cannot be read', async (_name, reads) => {
       await expect(
         callDailyRankByFile({ ...reads, propertyId: 22 }),
       ).resolves.toBeUndefined();
+    });
+
+    // Series ID (34) doesn't depend on the episode, so a failed episode read
+    // must not hide it.
+    it('reads a series-level property when the episodes cannot be read', async () => {
+      await expect(
+        callDailyRankByFile({ episodes: undefined, propertyId: 34 }),
+      ).resolves.toBe(7);
     });
   });
 

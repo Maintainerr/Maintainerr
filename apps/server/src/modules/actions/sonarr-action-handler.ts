@@ -815,7 +815,11 @@ export class SonarrActionHandler {
     // `undefined` when Sonarr couldn't be read, so the caller acts on no
     // episode rather than on the one the media server's numbers name, which
     // could be the wrong one. `null` when nothing matched.
+    // Both lists are read once per batch (#3857). A file deleted earlier in
+    // the batch can't match a later item's path, so a stale list is safe.
     const listEpisodes = () => sonarrApiClient.getEpisodes(sonarrMedia.id);
+    const listEpisodeFiles = () =>
+      sonarrApiClient.getEpisodeFiles(sonarrMedia.id);
     try {
       const episodes = await (libraryReads
         ? libraryReads.memoize(
@@ -824,11 +828,15 @@ export class SonarrActionHandler {
             (episodes) => episodes === undefined,
           )
         : listEpisodes());
-      // Read fresh: lookups that identify an item stay uncached while
-      // handling. Only the episode list is read once per batch (#3857).
-      const episodeFiles = mediaData.path
-        ? await sonarrApiClient.getEpisodeFiles(sonarrMedia.id)
-        : [];
+      const episodeFiles = !mediaData.path
+        ? []
+        : await (libraryReads
+            ? libraryReads.memoize(
+                `sonarr:${settingsId}:episode-files:${sonarrMedia.id}`,
+                listEpisodeFiles,
+                (files) => files === undefined,
+              )
+            : listEpisodeFiles());
       if (episodes === undefined || episodeFiles === undefined) {
         return undefined;
       }

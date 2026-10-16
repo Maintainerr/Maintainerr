@@ -257,10 +257,15 @@ export class SonarrGetterService {
       // A media server can number an episode differently from Sonarr (#3819,
       // #3896). When its file or TVDB id names one Sonarr episode, every value
       // below reads that episode by Sonarr's numbers; otherwise by the media
-      // server's. When Sonarr can't be read, every property fails closed, as
-      // it does when the series lookup fails: the numbers could name the
-      // wrong episode.
-      if (dataType === 'episode' && hasSonarrEpisodeIdentity(origLibItem)) {
+      // server's. When Sonarr can't be read, a property that reads the
+      // episode fails closed, as it does when the series lookup fails: the
+      // numbers could name the wrong episode. A series-level property doesn't
+      // depend on the episode, so it skips the match.
+      if (
+        dataType === 'episode' &&
+        !SonarrGetterService.SERIES_LEVEL_PROPERTIES.has(prop.name) &&
+        hasSonarrEpisodeIdentity(origLibItem)
+      ) {
         const episodes = await getShowEpisodes();
         const episodeFiles = origLibItem.path
           ? await getShowEpisodeFiles()
@@ -850,6 +855,28 @@ export class SonarrGetterService {
         )
       : resolve();
   }
+
+  // Properties an episode rule reads from the series alone, never from the
+  // episode or its season. Anything else counts as reading the episode, so
+  // leaving a property out is the safe mistake: it fails closed when the
+  // episode can't be identified, rather than reading the wrong one.
+  private static readonly SERIES_LEVEL_PROPERTIES = new Set([
+    'addDate',
+    'filePath',
+    'tags',
+    'seriesTitle',
+    'seriesId',
+    'status',
+    'ended',
+    'unaired_episodes',
+    'originalLanguage',
+    'seriesFinale',
+    'rating',
+    'ratingVotes',
+    'qualityProfileName',
+    'seriesType',
+    'missing_episodes_show',
+  ]);
 
   // Sonarr properties whose semantics match cleanly across Sonarr / TMDB /
   // TVDB. Deliberately excluded even though providers expose something
