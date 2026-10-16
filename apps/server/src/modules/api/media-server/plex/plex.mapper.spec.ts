@@ -200,6 +200,22 @@ describe('PlexMapper', () => {
       expect(result.type).toBe('movie');
     });
 
+    // #3896: rule runs read episodes from listings, so the Sonarr file match
+    // needs the path here.
+    it('carries the file path from a library listing', () => {
+      const result = PlexMapper.toMediaItem({
+        ...basePlexItem,
+        Media: [
+          {
+            ...basePlexItem.Media[0],
+            Part: [{ file: '/media/movies/Movie A (2021)/Movie A.mkv' }],
+          },
+        ] as unknown as PlexLibraryItem['Media'],
+      });
+
+      expect(result.path).toBe('/media/movies/Movie A (2021)/Movie A.mkv');
+    });
+
     it('should convert timestamps to Date objects', () => {
       const result = PlexMapper.toMediaItem(basePlexItem);
 

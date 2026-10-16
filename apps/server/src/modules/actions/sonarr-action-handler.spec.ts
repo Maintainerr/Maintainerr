@@ -5,6 +5,7 @@ import {
   createCollection,
   createCollectionMediaWithMetadata,
   createSonarrEpisode,
+  createSonarrEpisodeFile,
   createSonarrSeries,
 } from '../../../test/utils/data';
 import {
@@ -16,6 +17,7 @@ import { IMediaServerService } from '../api/media-server/media-server.interface'
 import { DownloadClientApiService } from '../api/download-client-api/download-client-api.service';
 import { OmbiApiService } from '../api/ombi-api/ombi-api.service';
 import { SeerrApiService } from '../api/seerr-api/seerr-api.service';
+import { SonarrApi } from '../api/servarr-api/helpers/sonarr.helper';
 import { ServarrService } from '../api/servarr-api/servarr.service';
 import { ServarrAction } from '../collections/interfaces/collection.interface';
 import { MaintainerrLogger } from '../logging/logs.service';
@@ -1131,6 +1133,105 @@ describe('SonarrActionHandler', () => {
     );
   });
 
+  // #3896: a daily series the media server numbers in its own order, with a
+  // TVDB id that names an older Sonarr episode no longer on disk.
+  describe('episode matched by its file', () => {
+    const setUpFileMatch = () => {
+      const collection = createCollection({
+        arrAction: ServarrAction.DELETE,
+        sonarrSettingsId: 1,
+        type: 'episode',
+      });
+      const collectionMedia = createCollectionMediaWithMetadata(collection, {
+        tmdbId: 1,
+        mediaData: {
+          parentIndex: 2026,
+          index: 1,
+          providerIds: { tvdb: ['501'] },
+          path: '/media/tv/Sample Series/Season 2026/Sample Series - 2026-06-10.mkv',
+        },
+      });
+      mockMediaServerMetadata(collectionMedia.mediaData);
+      const series = createSonarrSeries();
+      const mockedSonarrApi = mockSonarrApi(servarrService, logger);
+      jest
+        .spyOn(mockedSonarrApi, 'getSeriesByTvdbId')
+        .mockResolvedValue(series);
+      jest.spyOn(mockedSonarrApi, 'getEpisodes').mockResolvedValue([
+        createSonarrEpisode({
+          seasonNumber: 2026,
+          episodeNumber: 1,
+          tvdbId: 501,
+          episodeFileId: 0,
+        }),
+        createSonarrEpisode({
+          seasonNumber: 2026,
+          episodeNumber: 101,
+          episodeFileId: 8,
+        }),
+      ]);
+      jest.spyOn(mockedSonarrApi, 'getEpisodeFiles').mockResolvedValue([
+        createSonarrEpisodeFile({
+          id: 8,
+          relativePath: 'Season 2026/Sample Series - 2026-06-10.mkv',
+        }),
+      ]);
+      mediaIdFinder.findTvdbId.mockResolvedValue(1);
+
+      return { collection, collectionMedia, series, mockedSonarrApi };
+    };
+
+    it("acts on the episode the item's file holds, over its numbers and TVDB id", async () => {
+      const { collection, collectionMedia, series, mockedSonarrApi } =
+        setUpFileMatch();
+
+      await sonarrActionHandler.handleAction(collection, collectionMedia);
+
+      expect(mockedSonarrApi.UnmonitorDeleteEpisodes).toHaveBeenCalledWith(
+        series.id,
+        2026,
+        [101],
+        true,
+        undefined,
+      );
+    });
+
+    // Acting on the media server's numbers instead could delete the wrong
+    // episode, or one without a file.
+    it.each([
+      [
+        'the episode files cannot be read',
+        (api: SonarrApi) =>
+          jest.spyOn(api, 'getEpisodeFiles').mockResolvedValue(undefined),
+      ],
+      // A path that matches no file and no TVDB id leave nothing to match
+      // on, so only the guard stops the numbers from naming the episode.
+      [
+        'the episodes cannot be read',
+        (api: SonarrApi, mediaData: MediaItem) => {
+          mediaData.providerIds = {};
+          mediaData.path =
+            '/media/tv/Sample Series/Season 2026/Sample Series - 2026-06-12.mkv';
+          jest.spyOn(api, 'getEpisodes').mockResolvedValue(undefined);
+        },
+      ],
+      [
+        'reading the episodes fails',
+        (api: SonarrApi) =>
+          jest
+            .spyOn(api, 'getEpisodes')
+            .mockRejectedValue(new Error('Sonarr unavailable')),
+      ],
+    ])('takes no action when %s', async (_name, breakRead) => {
+      const { collection, collectionMedia, mockedSonarrApi } = setUpFileMatch();
+      breakRead(mockedSonarrApi, collectionMedia.mediaData);
+
+      await sonarrActionHandler.handleAction(collection, collectionMedia);
+
+      expect(mockedSonarrApi.UnmonitorDeleteEpisodes).not.toHaveBeenCalled();
+    });
+  });
+
   it('should skip episode action when no season, episode number, or air date is available', async () => {
     const collection = createCollection({
       arrAction: ServarrAction.DELETE,
@@ -1811,8 +1912,11 @@ describe('SonarrActionHandler', () => {
         });
         mockMediaServerMetadata(collectionMedia.mediaData);
         const { mockedSonarrApi } = setupSeries();
+        // The read that identifies the episode answers with no match, so the
+        // delete goes ahead by the numbers; only the coverage lookup throws.
         jest
           .spyOn(mockedSonarrApi, 'getEpisodes')
+          .mockResolvedValueOnce([])
           .mockRejectedValue(new Error('boom'));
         jest
           .spyOn(mockedSonarrApi, 'getSeriesDownloadHistory')

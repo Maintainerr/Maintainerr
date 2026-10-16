@@ -121,10 +121,13 @@ const toJellyfinSortBy = (sort?: MediaLibrarySortField): ItemSortBy => {
 // If cards ever start rendering richer metadata such as genres, actors,
 // ratings, media sources, or tags directly in the list view, either add the
 // required fields here or fetch that detail lazily per item via /meta/:id.
+// Path lets a rule run identify an episode by its file in Sonarr, as the
+// action does from a single read (#3896).
 const JELLYFIN_LIBRARY_LIST_FIELDS = [
   ItemFields.ProviderIds,
   ItemFields.DateCreated,
   ItemFields.Overview,
+  ItemFields.Path,
 ] as const;
 
 /**

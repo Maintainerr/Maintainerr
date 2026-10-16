@@ -375,7 +375,9 @@ export class EmbyAdapterService implements IMediaServerService {
           ParentId: libraryId,
           Recursive: true,
           IncludeItemTypes: includeItemTypes,
-          Fields: 'ProviderIds,DateCreated,Overview,Tags',
+          // Path lets a rule run identify an episode by its file in Sonarr,
+          // as the action does from a single read (#3896).
+          Fields: 'ProviderIds,DateCreated,Overview,Tags,Path',
           SortBy: this.toEmbySortBy(options?.sort),
           SortOrder: options?.sortOrder === 'desc' ? 'Descending' : 'Ascending',
           StartIndex: offset,
