@@ -466,6 +466,75 @@ describe('JellyfinGetterService', () => {
     });
   });
 
+  describe('KefinTweaks watchlist rules', () => {
+    const episodeItem = createMediaItem({
+      id: 'ep-1',
+      type: 'episode' as MediaItemType,
+      parentId: 'season-1',
+      grandparentId: 'show-1',
+    });
+
+    beforeEach(() => {
+      jellyfinAdapter.getMetadata.mockResolvedValue(episodeItem);
+      jellyfinAdapter.getUsers.mockResolvedValue([
+        createMediaUser({ id: 'user-1', name: 'Alice' }),
+        createMediaUser({ id: 'user-2', name: 'Bob' }),
+        createMediaUser({ id: 'user-3', name: 'Carol' }),
+      ]);
+    });
+
+    // Only the incl. parents variant reads past the item itself.
+    it.each([
+      [52, ['Bob']],
+      [53, ['Bob', 'Carol']],
+      [54, true],
+    ])('%i reads the users with Likes set', async (id, expected) => {
+      jellyfinAdapter.getItemLikedBy.mockImplementation(
+        async (itemId: string) => {
+          if (itemId === 'ep-1') return ['user-2'];
+          if (itemId === 'show-1') return ['user-3'];
+          return [];
+        },
+      );
+
+      const response = await jellyfinGetterService.get(
+        id,
+        episodeItem,
+        'episode',
+        createRuleGroupDto({ dataType: 'episode', libraryId: LIBRARY_ID }),
+      );
+
+      expect(response).toEqual(expected);
+    });
+
+    // The watchlist protects items, so a failed read must skip the item
+    // rather than answer "nobody watchlisted it".
+    it.each([
+      [52, 'ep-1'],
+      [53, 'show-1'],
+      [54, 'ep-1'],
+    ])(
+      '%i answers undefined when the Likes of %s cannot be read',
+      async (id, failingItemId) => {
+        jellyfinAdapter.getItemLikedBy.mockImplementation(
+          async (itemId: string) => {
+            if (itemId === failingItemId) throw new Error('timeout');
+            return ['user-1'];
+          },
+        );
+
+        const response = await jellyfinGetterService.get(
+          id,
+          episodeItem,
+          'episode',
+          createRuleGroupDto({ dataType: 'episode', libraryId: LIBRARY_ID }),
+        );
+
+        expect(response).toBeUndefined();
+      },
+    );
+  });
+
   describe('viewCount (id: 5)', () => {
     it('should return total view count from shared watch state', async () => {
       const mediaItem = createMediaItem();

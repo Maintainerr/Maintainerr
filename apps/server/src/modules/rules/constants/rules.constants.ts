@@ -134,6 +134,15 @@ export interface ApplicationProperties {
   mediaType: MediaType;
   props: Property[];
 }
+
+// Jellyfin properties Emby does not get in its mirrored list.
+const JELLYFIN_ONLY_PROPERTY_NAMES = new Set([
+  'kefinWatchlistedBy',
+  'sw_kefinWatchlistedBy',
+  'sw_kefinWatchlistedBy_including_parent',
+  'isKefinWatchlisted',
+]);
+
 export class RuleConstants {
   applications: ApplicationProperties[] = [
     {
@@ -1843,6 +1852,43 @@ export class RuleConstants {
           type: RuleType.TEXT_LIST,
           showType: ['show', 'season'],
         },
+        // KefinTweaks (a Jellyfin web plugin) keeps its watchlist in each
+        // user's UserData.Likes flag. Jellyfin-only, so the Emby mirror below
+        // leaves these out and a server switch reports them as incompatible.
+        // The names differ from Plex's watchlist_* on purpose: sharing them
+        // would migrate a Plex watchlist rule onto a list most servers never
+        // fill.
+        {
+          id: 51,
+          name: 'kefinWatchlistedBy',
+          humanName: '[list] KefinTweaks watchlisted by (username)',
+          mediaType: MediaType.MOVIE,
+          type: RuleType.TEXT_LIST,
+        },
+        {
+          id: 52,
+          name: 'sw_kefinWatchlistedBy',
+          humanName: '[list] KefinTweaks watchlisted by (username)',
+          mediaType: MediaType.SHOW,
+          type: RuleType.TEXT_LIST,
+          showType: ['show', 'season', 'episode'],
+        },
+        {
+          id: 53,
+          name: 'sw_kefinWatchlistedBy_including_parent',
+          humanName:
+            '[list] KefinTweaks watchlisted by (username) (incl. parents)',
+          mediaType: MediaType.SHOW,
+          type: RuleType.TEXT_LIST,
+          showType: ['season', 'episode'],
+        },
+        {
+          id: 54,
+          name: 'isKefinWatchlisted',
+          humanName: 'Is KefinTweaks watchlisted',
+          mediaType: MediaType.BOTH,
+          type: RuleType.BOOL,
+        },
       ],
     },
     {
@@ -1947,7 +1993,9 @@ export class RuleConstants {
         id: Application.EMBY,
         name: 'Emby',
         mediaType: MediaType.BOTH,
-        props: jellyfinApp.props,
+        props: jellyfinApp.props.filter(
+          (prop) => !JELLYFIN_ONLY_PROPERTY_NAMES.has(prop.name),
+        ),
       });
     }
   }

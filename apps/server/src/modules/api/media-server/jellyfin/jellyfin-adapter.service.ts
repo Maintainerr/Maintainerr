@@ -1362,6 +1362,7 @@ export class JellyfinAdapterService implements IMediaServerService {
       const watchHistory = new Map<string, WatchRecord[]>();
       const descendants = new Map<string, string[]>();
       const favoritedBy = new Map<string, string[]>();
+      const likedBy = new Map<string, string[]>();
       const playCount = new Map<string, number>();
       const lastPlayedAt = new Map<string, number>();
       let records = 0;
@@ -1421,6 +1422,12 @@ export class JellyfinAdapterService implements IMediaServerService {
               const fans = favoritedBy.get(item.Id);
               if (fans) fans.push(user.id);
               else favoritedBy.set(item.Id, [user.id]);
+            }
+            // Likes is tri-state: false is a dislike, not an absence.
+            if (userData?.Likes === true) {
+              const likers = likedBy.get(item.Id);
+              if (likers) likers.push(user.id);
+              else likedBy.set(item.Id, [user.id]);
             }
             if (userData?.PlayCount) {
               playCount.set(
@@ -1488,6 +1495,7 @@ export class JellyfinAdapterService implements IMediaServerService {
           watchHistory,
           descendants,
           favoritedBy,
+          likedBy,
           playCount,
           lastPlayedAt,
           playedCompletionThreshold,
@@ -1934,6 +1942,52 @@ export class JellyfinAdapterService implements IMediaServerService {
   }
 
   /**
+   * User IDs of every user with UserData.Likes set on an item - the store
+   * behind the KefinTweaks watchlist.
+   *
+   * Unlike getItemFavoritedBy this throws rather than answering a partial
+   * list: the watchlist is read as protection, so a user whose read failed
+   * must not look like a user who never watchlisted the item.
+   */
+  async getItemLikedBy(itemId: string, libraryId?: string): Promise<string[]> {
+    if (!this.api) throw new Error('Jellyfin is not configured');
+
+    const snapshot = this.getWatchSnapshot(
+      libraryId,
+      await this.getPlayedCompletionThreshold(),
+    );
+    if (snapshot?.watchHistory.has(itemId)) {
+      return [...(snapshot.likedBy.get(itemId) ?? [])];
+    }
+
+    const cacheKey = `${JELLYFIN_CACHE_KEYS.LIKED_BY}:${itemId}`;
+    if (this.cache.data.has(cacheKey)) {
+      return [...(this.cache.data.get<string[]>(cacheKey) ?? [])];
+    }
+
+    const users = await this.getUsers(true);
+    const entries = await this.mapUsersBatched(
+      async (user) => ({
+        userId: user.id,
+        userData: await this.getItemUserData(itemId, user.id, true),
+      }),
+      true,
+    );
+    if (entries.length !== users.length) {
+      throw new Error(
+        `Read Likes for ${entries.length} of ${users.length} Jellyfin users on item ${itemId}`,
+      );
+    }
+
+    const likedBy = entries
+      .filter(({ userData }) => userData?.Likes === true)
+      .map(({ userId }) => userId);
+    this.cache.data.set(cacheKey, likedBy, JELLYFIN_CACHE_TTL.USER_DATA);
+
+    return likedBy;
+  }
+
+  /**
    * Get total play count for an item across all users.
    * This includes partial/unfinished plays (PlayCount > 0 but Played = false).
    * Only meaningful for Movies and Episodes (Series/Seasons always return 0).
@@ -2026,11 +2080,13 @@ export class JellyfinAdapterService implements IMediaServerService {
   }
 
   /**
-   * Get user data for a specific item.
+   * Get user data for a specific item. Without throwOnError a failed read
+   * answers undefined, the same as no user data.
    */
   private async getItemUserData(
     itemId: string,
     userId: string,
+    throwOnError = false,
   ): Promise<UserItemDataDto | undefined> {
     if (!this.api) return undefined;
 
@@ -2050,6 +2106,11 @@ export class JellyfinAdapterService implements IMediaServerService {
         `Failed to get Jellyfin user data for item ${itemId} and user ${userId}`,
       );
       this.logger.debug(error);
+
+      if (throwOnError) {
+        throw error;
+      }
+
       return undefined;
     }
   }
@@ -2789,6 +2850,7 @@ export class JellyfinAdapterService implements IMediaServerService {
             key.startsWith(`${JELLYFIN_CACHE_KEYS.WATCH_HISTORY}:`) ||
             key.startsWith(`${JELLYFIN_CACHE_KEYS.CHILDREN}:`) ||
             key === `${JELLYFIN_CACHE_KEYS.FAVORITED_BY}:${itemId}` ||
+            key === `${JELLYFIN_CACHE_KEYS.LIKED_BY}:${itemId}` ||
             key === `${JELLYFIN_CACHE_KEYS.TOTAL_PLAY_COUNT}:${itemId}` ||
             key === `${JELLYFIN_CACHE_KEYS.METADATA}:${itemId}`,
         )

@@ -73,6 +73,7 @@ export const JELLYFIN_CACHE_KEYS = {
   METADATA: 'jellyfin:metadata',
   CHILDREN: 'jellyfin:children',
   FAVORITED_BY: 'jellyfin:favorited-by',
+  LIKED_BY: 'jellyfin:liked-by',
   TOTAL_PLAY_COUNT: 'jellyfin:total-play-count',
   PLAYED_THRESHOLD: 'jellyfin:played-threshold',
   USERS: 'jellyfin:users',

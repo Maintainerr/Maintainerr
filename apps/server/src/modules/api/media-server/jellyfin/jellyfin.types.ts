@@ -26,6 +26,8 @@ export interface JellyfinWatchSnapshot {
   descendants: Map<string, string[]>;
   /** Item id -> ids of the users who favourited it. */
   favoritedBy: Map<string, string[]>;
+  /** Item id -> ids of the users who KefinTweaks-watchlisted it (Likes). */
+  likedBy: Map<string, string[]>;
   /** Item id -> PlayCount summed across users (includes partial plays). */
   playCount: Map<string, number>;
   /**

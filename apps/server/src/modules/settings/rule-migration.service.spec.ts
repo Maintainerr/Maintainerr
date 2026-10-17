@@ -422,26 +422,31 @@ describe('RuleMigrationService', () => {
       expect(result.rules[0].lastVal).toEqual([Application.SEERR, 0]); // untouched
     });
 
-    it('drops a rule whose media-server property has no target equivalent', () => {
-      const rules: RuleDto[] = [
-        {
-          operator: null,
-          action: RulePossibility.EQUALS,
-          firstVal: [Application.PLEX, 30], // watchlist_isWatchlisted - Plex only
-          customVal: { ruleTypeId: 3, value: '1' },
-          section: 0,
-        },
-      ];
+    it.each([
+      // watchlist_isWatchlisted - Plex only
+      [Application.PLEX, 30, MediaServerType.JELLYFIN],
+      // isKefinWatchlisted - Jellyfin only, left out of Emby's mirror
+      [Application.JELLYFIN, 54, MediaServerType.EMBY],
+    ])(
+      'drops a rule whose media-server property has no target equivalent (app %i, prop %i)',
+      (application, propertyId, target) => {
+        const rules: RuleDto[] = [
+          {
+            operator: null,
+            action: RulePossibility.EQUALS,
+            firstVal: [application, propertyId],
+            customVal: { ruleTypeId: 3, value: '1' },
+            section: 0,
+          },
+        ];
 
-      const result = service.migrateImportedRuleDtos(
-        rules,
-        MediaServerType.JELLYFIN,
-      );
+        const result = service.migrateImportedRuleDtos(rules, target);
 
-      expect(result.skippedRules).toBe(1);
-      expect(result.migratedRules).toBe(0);
-      expect(result.rules).toHaveLength(0);
-    });
+        expect(result.skippedRules).toBe(1);
+        expect(result.migratedRules).toBe(0);
+        expect(result.rules).toHaveLength(0);
+      },
+    );
 
     it('leaves non-media-server rules (Radarr/Sonarr/Seerr) unchanged', () => {
       const rules: RuleDto[] = [

@@ -1433,12 +1433,21 @@ describe('JellyfinAdapterService', () => {
             Id: 'season-1',
             Type: 'Season',
             SeriesId: 'show-1',
-            UserData: { Played: false, IsFavorite: userId === 'user-2' },
+            UserData: {
+              Played: false,
+              IsFavorite: userId === 'user-2',
+              // A dislike, which is not a watchlist entry.
+              Likes: userId === 'user-1' ? false : undefined,
+            },
           },
           {
             Id: 'show-1',
             Type: 'Series',
-            UserData: { Played: false, IsFavorite: userId === 'user-1' },
+            UserData: {
+              Played: false,
+              IsFavorite: userId === 'user-1',
+              Likes: userId === 'user-2',
+            },
           },
         ],
         TotalRecordCount: 5,
@@ -1504,6 +1513,28 @@ describe('JellyfinAdapterService', () => {
       // A swept container nobody favourited is a confirmed empty list.
       await expect(
         service.getItemFavoritedBy('movie-1', 'lib-1'),
+      ).resolves.toEqual([]);
+      expect(jellyfinApiMocks.getItems).not.toHaveBeenCalled();
+    });
+
+    it('answers KefinTweaks watchlists (Likes === true) from the snapshot', async () => {
+      jellyfinApiMocks.getUsers.mockResolvedValue({
+        data: [
+          { Id: 'user-1', Name: 'Alice' },
+          { Id: 'user-2', Name: 'Bob' },
+        ],
+      });
+      jellyfinApiMocks.getItems.mockImplementation(
+        ({ userId }: { userId: string }) => Promise.resolve(leafPage(userId)),
+      );
+      await service.prefetchWatchHistory({ libraryId: 'lib-1' });
+      jellyfinApiMocks.getItems.mockClear();
+
+      await expect(service.getItemLikedBy('show-1', 'lib-1')).resolves.toEqual([
+        'user-2',
+      ]);
+      await expect(
+        service.getItemLikedBy('season-1', 'lib-1'),
       ).resolves.toEqual([]);
       expect(jellyfinApiMocks.getItems).not.toHaveBeenCalled();
     });
@@ -1942,6 +1973,60 @@ describe('JellyfinAdapterService', () => {
         ids: ['item123'],
         enableUserData: true,
       });
+    });
+  });
+
+  describe('getItemLikedBy', () => {
+    beforeEach(async () => {
+      settingsDataService.getSettings.mockResolvedValue(
+        mockSettings as unknown as Awaited<
+          ReturnType<SettingsDataService['getSettings']>
+        >,
+      );
+      await service.initialize();
+      jellyfinApiMocks.getUsers.mockResolvedValue({
+        data: [
+          { Id: 'user-1', Name: 'Alice' },
+          { Id: 'user-2', Name: 'Bob' },
+        ],
+      });
+    });
+
+    it('returns only the users whose Likes is true', async () => {
+      jellyfinApiMocks.getItems.mockImplementation(
+        ({ userId }: { userId: string }) =>
+          Promise.resolve({
+            data: {
+              Items: [
+                { Id: 'item123', UserData: { Likes: userId === 'user-1' } },
+              ],
+            },
+          }),
+      );
+
+      await expect(service.getItemLikedBy('item123')).resolves.toEqual([
+        'user-1',
+      ]);
+    });
+
+    // Fail-closed guard: a user whose read failed must not read as a user
+    // who never watchlisted the item, and the partial answer is not cached.
+    it('rejects without caching when one user cannot be read', async () => {
+      jellyfinApiMocks.getItems.mockImplementation(
+        ({ userId }: { userId: string }) =>
+          userId === 'user-2'
+            ? Promise.reject(new Error('timeout'))
+            : Promise.resolve({
+                data: { Items: [{ Id: 'item123', UserData: {} }] },
+              }),
+      );
+
+      await expect(service.getItemLikedBy('item123')).rejects.toThrow();
+      expect(jellyfinCacheMocks.data.set).not.toHaveBeenCalledWith(
+        'jellyfin:liked-by:item123',
+        expect.anything(),
+        expect.anything(),
+      );
     });
   });
 

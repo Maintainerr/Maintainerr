@@ -169,6 +169,49 @@ export class JellyfinGetterService {
           );
         }
 
+        // KefinTweaks watchlist (UserData.Likes). getItemLikedBy throws on an
+        // inconclusive read and so does getUsers(true): a name that cannot be
+        // resolved would otherwise stop matching a protection rule.
+        case 'kefinWatchlistedBy':
+        case 'sw_kefinWatchlistedBy': {
+          const likedByUserIds = await this.jellyfinAdapter.getItemLikedBy(
+            metadata.id,
+            libraryId,
+          );
+          const users = await this.jellyfinAdapter.getUsers(true);
+          return mapRuleUserIdsToNames(
+            likedByUserIds,
+            users,
+            (user) => user.id,
+            (user) => user.name,
+          );
+        }
+
+        case 'sw_kefinWatchlistedBy_including_parent': {
+          const likedByUserIds = await this.getUserIdsIncludingParent(
+            (id, library) => this.jellyfinAdapter.getItemLikedBy(id, library),
+            metadata.id,
+            metadata.parentId,
+            metadata.grandparentId,
+            libraryId,
+          );
+          const users = await this.jellyfinAdapter.getUsers(true);
+          return mapRuleUserIdsToNames(
+            likedByUserIds,
+            users,
+            (user) => user.id,
+            (user) => user.name,
+          );
+        }
+
+        case 'isKefinWatchlisted': {
+          const likedByUserIds = await this.jellyfinAdapter.getItemLikedBy(
+            metadata.id,
+            libraryId,
+          );
+          return likedByUserIds.length > 0;
+        }
+
         case 'releaseDate': {
           return metadata.originallyAvailableAt
             ? new Date(metadata.originallyAvailableAt)
@@ -436,7 +479,9 @@ export class JellyfinGetterService {
         case 'sw_favoritedBy_including_parent': {
           // The item carries its parents' ids; reading them would only add a
           // way to fail and drop their favourites or collections (#3877).
-          const favoritedByUserIds = await this.getFavoritedByIncludingParent(
+          const favoritedByUserIds = await this.getUserIdsIncludingParent(
+            (id, library) =>
+              this.jellyfinAdapter.getItemFavoritedBy(id, library),
             metadata.id,
             metadata.parentId,
             metadata.grandparentId,
@@ -1023,7 +1068,9 @@ export class JellyfinGetterService {
     return filterRuleCollectionNames(allCollectionNames, ruleGroup);
   }
 
-  private async getFavoritedByIncludingParent(
+  /** Union of `lookup` over the item and its parents. */
+  private async getUserIdsIncludingParent(
+    lookup: (id: string, libraryId: string | undefined) => Promise<string[]>,
     itemId: string,
     parentId: string | undefined,
     grandparentId: string | undefined,
@@ -1033,16 +1080,13 @@ export class JellyfinGetterService {
       (id): id is string => id !== undefined,
     );
 
-    const favoritedByUserIds = new Set<string>();
+    const userIds = new Set<string>();
     for (const id of idsToCheck) {
-      const users = await this.jellyfinAdapter.getItemFavoritedBy(
-        id,
-        libraryId,
-      );
-      users.forEach((userId) => favoritedByUserIds.add(userId));
+      const users = await lookup(id, libraryId);
+      users.forEach((userId) => userIds.add(userId));
     }
 
-    return Array.from(favoritedByUserIds);
+    return Array.from(userIds);
   }
 
   private async getPlaylistCount(
