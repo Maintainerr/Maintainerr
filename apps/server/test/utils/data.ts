@@ -97,6 +97,7 @@ export const createCollection = (
     totalSizeBytes: null,
     handledMediaSizeBytes: 0,
     overlayTemplateId: null,
+    overlayScope: 'all',
     overlayTemplate: null,
     mediaServerSort: null,
     ...properties,

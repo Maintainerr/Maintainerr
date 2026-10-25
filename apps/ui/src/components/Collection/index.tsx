@@ -2,6 +2,7 @@ import {
   type MediaItem,
   type MediaItemType,
   type MediaServerCollectionSort,
+  type OverlayScope,
 } from '@maintainerr/contracts'
 
 export interface ICollection {
@@ -15,6 +16,7 @@ export interface ICollection {
   visibleOnHome?: boolean
   overlayEnabled?: boolean
   overlayTemplateId?: number | null
+  overlayScope?: OverlayScope
   deleteAfterDays?: number
   listExclusions?: boolean
   cleanupLeftoverFolders?: boolean
