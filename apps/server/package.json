@@ -25,7 +25,7 @@
     "migration:show": "yarn exec typeorm-ts-node-commonjs migration:show --dataSource ./src/datasource-config.ts"
   },
   "dependencies": {
-    "@jellyfin/sdk": "^1.0.1",
+    "@jellyfin/sdk": "^1.0.2",
     "@maintainerr/contracts": "workspace:^",
     "@nestjs/common": "^12.2.0",
     "@nestjs/core": "^12.2.0",

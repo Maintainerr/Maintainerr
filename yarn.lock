@@ -2249,12 +2249,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@jellyfin/sdk@npm:^1.0.1":
-  version: 1.0.1
-  resolution: "@jellyfin/sdk@npm:1.0.1"
+"@jellyfin/sdk@npm:^1.0.2":
+  version: 1.0.2
+  resolution: "@jellyfin/sdk@npm:1.0.2"
   peerDependencies:
     axios: ^1.12.0
-  checksum: 10c0/efb5ae19cf5c9fc3b91c798098faa26e4991e9069f8457ab31979ebc14d0d98c16e3075c3c970e6b2edefe9d2d9ebe216486bb22f69c77f60013adcd04ebcd42
+  checksum: 10c0/797ab7e8a259b6d30d51855f700e5edf7179be7bcabfe0df2025766aa6e79c8eeddacd52a3878d940e46602408bb63f31289a908cae02136cee1c5991355ff53
   languageName: node
   linkType: hard
 
@@ -3169,7 +3169,7 @@ __metadata:
     "@eslint/eslintrc": "npm:^3.3.7"
     "@eslint/js": "npm:^10.0.1"
     "@faker-js/faker": "npm:^10.6.0"
-    "@jellyfin/sdk": "npm:^1.0.1"
+    "@jellyfin/sdk": "npm:^1.0.2"
     "@maintainerr/contracts": "workspace:^"
     "@nestjs/cli": "npm:^12.0.10"
     "@nestjs/common": "npm:^12.2.0"
