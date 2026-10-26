@@ -3146,7 +3146,7 @@ __metadata:
     "@eslint/js": "npm:^10.0.1"
     "@nestjs/common": "npm:^12.2.0"
     "@nestjs/core": "npm:^12.2.0"
-    "@nestjs/swagger": "npm:^12.0.2"
+    "@nestjs/swagger": "npm:^12.0.3"
     class-transformer: "npm:^0.5.1"
     class-validator: "npm:^0.15.1"
     eslint: "npm:^10.13.0"
@@ -3171,15 +3171,15 @@ __metadata:
     "@faker-js/faker": "npm:^10.6.0"
     "@jellyfin/sdk": "npm:^1.0.1"
     "@maintainerr/contracts": "workspace:^"
-    "@nestjs/cli": "npm:^12.0.9"
+    "@nestjs/cli": "npm:^12.0.10"
     "@nestjs/common": "npm:^12.2.0"
     "@nestjs/core": "npm:^12.2.0"
     "@nestjs/event-emitter": "npm:^12.0.1"
     "@nestjs/platform-express": "npm:^12.2.0"
     "@nestjs/schedule": "npm:^12.0.2"
-    "@nestjs/schematics": "npm:^12.0.9"
+    "@nestjs/schematics": "npm:^12.0.10"
     "@nestjs/serve-static": "npm:^12.0.0"
-    "@nestjs/swagger": "npm:^12.0.2"
+    "@nestjs/swagger": "npm:^12.0.3"
     "@nestjs/testing": "npm:^12.2.0"
     "@nestjs/typeorm": "npm:^12.0.2"
     "@suites/di.nestjs": "npm:^3.1.0"
@@ -3349,10 +3349,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@microsoft/tsdoc@npm:0.17.0":
-  version: 0.17.0
-  resolution: "@microsoft/tsdoc@npm:0.17.0"
-  checksum: 10c0/e616a6fbe50ccb17afaaa7c566af6089fc77f580d3d96f2744f432de17a524bd5bb685fc7ac248b09c5c19af823cc360fe477cabb4739fbdc7a8734c144de7e8
+"@microsoft/tsdoc@npm:0.17.1":
+  version: 0.17.1
+  resolution: "@microsoft/tsdoc@npm:0.17.1"
+  checksum: 10c0/a8d5dd60edc60a8f4de7b1b260cd0633205457a630316b75fd2afe0a633d3acd3389b4e483c047d681981da89cd6448e8f6e0387dc32533ecd63fbce3a580a92
   languageName: node
   linkType: hard
 
@@ -3390,9 +3390,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@nestjs/cli@npm:^12.0.9":
-  version: 12.0.9
-  resolution: "@nestjs/cli@npm:12.0.9"
+"@nestjs/cli@npm:^12.0.10":
+  version: 12.0.10
+  resolution: "@nestjs/cli@npm:12.0.10"
   dependencies:
     "@angular-devkit/core": "npm:22.2.3"
     "@angular-devkit/schematics": "npm:22.2.3"
@@ -3437,7 +3437,7 @@ __metadata:
       optional: true
   bin:
     nest: bin/nest.js
-  checksum: 10c0/4900a12510eef5d547158bb15b9f2e8f85411fa26e33cd0bae885e15af7c551edb87cf69f3f1142f09b5b45a5d4c1ccffeeffc9850f2288330fa2926e08ba692
+  checksum: 10c0/f26ad1820a2793ce27b200ecb4c554204f86a7fdd194d820f77a620e647705850cb50eab4bf1e5e1b2b63e011887d5ed9195822f37c340a0c0542a810a2b257c
   languageName: node
   linkType: hard
 
@@ -3568,9 +3568,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@nestjs/schematics@npm:^12.0.9":
-  version: 12.0.9
-  resolution: "@nestjs/schematics@npm:12.0.9"
+"@nestjs/schematics@npm:^12.0.10":
+  version: 12.0.10
+  resolution: "@nestjs/schematics@npm:12.0.10"
   dependencies:
     "@angular-devkit/core": "npm:22.2.3"
     "@angular-devkit/schematics": "npm:22.2.3"
@@ -3583,7 +3583,7 @@ __metadata:
   peerDependenciesMeta:
     prettier:
       optional: true
-  checksum: 10c0/0d4ad799f330fc92945861cf2a89e883ec1e2978a424d071c38c7ea4d681c8d35b337c5d6d2797bdae416fc805eb9b0c57a06657a19043d0f28d6b5701c4b4e3
+  checksum: 10c0/ebcc5089d89430a03520d5704b179361afb039a79e2ab705763a86826d6d984a3ac95a343f2a71fa0d090346b8af2259c395add32357a4d7cd1fb84e858cb8ed
   languageName: node
   linkType: hard
 
@@ -3609,17 +3609,17 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@nestjs/swagger@npm:^12.0.2":
-  version: 12.0.2
-  resolution: "@nestjs/swagger@npm:12.0.2"
+"@nestjs/swagger@npm:^12.0.3":
+  version: 12.0.3
+  resolution: "@nestjs/swagger@npm:12.0.3"
   dependencies:
-    "@microsoft/tsdoc": "npm:0.17.0"
+    "@microsoft/tsdoc": "npm:0.17.1"
     "@nestjs/mapped-types": "npm:12.0.0"
     "@standard-schema/spec": "npm:1.1.0"
     es-toolkit: "npm:1.52.0"
-    js-yaml: "npm:5.4.2"
+    js-yaml: "npm:5.5.0"
     path-to-regexp: "npm:8.4.2"
-    swagger-ui-dist: "npm:5.33.0"
+    swagger-ui-dist: "npm:5.34.0"
   peerDependencies:
     "@fastify/static": ^8.0.0 || ^9.0.0 || ^10.0.0
     "@nestjs/common": ^12.0.0
@@ -3637,7 +3637,7 @@ __metadata:
       optional: true
     typescript:
       optional: true
-  checksum: 10c0/96f2d4488283ccb096780bb63baf8bd994d49cbe37fca12b39b08f95ed8fedc79bb61a34e1c864731300a128b38093d13f1430940786a1a99c08f8f1cd0428ed
+  checksum: 10c0/191ad918374f5576520c34328bf1f15b599999417652a6a79f2964b39f5f3aec48c74252f17a897c927d3f3ee0cacc006956f0bbe68d633fba6c26758b77ec08
   languageName: node
   linkType: hard
 
@@ -7056,6 +7056,13 @@ __metadata:
   version: 2.0.1
   resolution: "argparse@npm:2.0.1"
   checksum: 10c0/c5640c2d89045371c7cedd6a70212a04e360fd34d6edeae32f6952c63949e3525ea77dbec0289d8213a99bbaeab5abfa860b5c12cf88a2e6cf8106e90dd27a7e
+  languageName: node
+  linkType: hard
+
+"argparse@npm:^3.0.3":
+  version: 3.0.3
+  resolution: "argparse@npm:3.0.3"
+  checksum: 10c0/8d715f1c4bb0aa14a8b8ee749d6ab6f12d380caba33139d527cac79988af152cfd160f152c3964c76c7ea473f1899bd0989bd1e9cfdba22e68f50b6a4b5c9d0d
   languageName: node
   linkType: hard
 
@@ -11614,14 +11621,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"js-yaml@npm:5.4.2":
-  version: 5.4.2
-  resolution: "js-yaml@npm:5.4.2"
+"js-yaml@npm:5.5.0":
+  version: 5.5.0
+  resolution: "js-yaml@npm:5.5.0"
   dependencies:
-    argparse: "npm:^2.0.1"
+    argparse: "npm:^3.0.3"
   bin:
     js-yaml: bin/js-yaml.mjs
-  checksum: 10c0/ba7e0f72c93c7a84eca2c3de45d2a9188b16a20e83f036df723a3ac29e841496382d0b0849592f63028d1c640bcc5b65f88800da342f47469b5b99bda5c75bfc
+  checksum: 10c0/311619f44dd788657e9b81d4b5c60ff367441f364045e3796bc604a41f25819852748fb173ae82f2553d53cb609d7fdb79e0a74148892cb2c085eebe91839b53
   languageName: node
   linkType: hard
 
@@ -16620,12 +16627,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"swagger-ui-dist@npm:5.33.0":
-  version: 5.33.0
-  resolution: "swagger-ui-dist@npm:5.33.0"
+"swagger-ui-dist@npm:5.34.0":
+  version: 5.34.0
+  resolution: "swagger-ui-dist@npm:5.34.0"
   dependencies:
     "@scarf/scarf": "npm:=1.4.0"
-  checksum: 10c0/792fd658c50e66c03d657c9e3d22de97ca20e81ac94568984b806bff0933f5bdabf1cc568ed7cfd6d27d573819dcd599af4136d1410852acd299761f655e69bf
+  checksum: 10c0/1ee0a79e863c9abd0bc516875cf04945308dbee9a9394a115fd70a10dd3f022131da0a656ab851985152885d6de78912233124599fd65b57bd53f50cdb63903e
   languageName: node
   linkType: hard
 
