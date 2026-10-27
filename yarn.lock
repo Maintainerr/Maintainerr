@@ -3146,7 +3146,7 @@ __metadata:
     "@eslint/js": "npm:^10.0.1"
     "@nestjs/common": "npm:^12.2.0"
     "@nestjs/core": "npm:^12.2.0"
-    "@nestjs/swagger": "npm:^12.0.3"
+    "@nestjs/swagger": "npm:^12.0.4"
     class-transformer: "npm:^0.5.1"
     class-validator: "npm:^0.15.1"
     eslint: "npm:^10.13.0"
@@ -3179,7 +3179,7 @@ __metadata:
     "@nestjs/schedule": "npm:^12.0.2"
     "@nestjs/schematics": "npm:^12.0.10"
     "@nestjs/serve-static": "npm:^12.0.0"
-    "@nestjs/swagger": "npm:^12.0.3"
+    "@nestjs/swagger": "npm:^12.0.4"
     "@nestjs/testing": "npm:^12.2.0"
     "@nestjs/typeorm": "npm:^12.0.2"
     "@suites/di.nestjs": "npm:^3.1.0"
@@ -3609,9 +3609,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@nestjs/swagger@npm:^12.0.3":
-  version: 12.0.3
-  resolution: "@nestjs/swagger@npm:12.0.3"
+"@nestjs/swagger@npm:^12.0.4":
+  version: 12.0.4
+  resolution: "@nestjs/swagger@npm:12.0.4"
   dependencies:
     "@microsoft/tsdoc": "npm:0.17.1"
     "@nestjs/mapped-types": "npm:12.0.0"
@@ -3637,7 +3637,7 @@ __metadata:
       optional: true
     typescript:
       optional: true
-  checksum: 10c0/191ad918374f5576520c34328bf1f15b599999417652a6a79f2964b39f5f3aec48c74252f17a897c927d3f3ee0cacc006956f0bbe68d633fba6c26758b77ec08
+  checksum: 10c0/3221afea9c66b048951b856b9e8b28cb41ccbaffb83bb663874487dbb5092a2283d4e5306f24152168413ba0466ef0c5e5440b7e7db58794e228b59644fefdd0
   languageName: node
   linkType: hard
 
