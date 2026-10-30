@@ -1382,15 +1382,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@hookform/resolvers@npm:^6.0.0":
-  version: 6.0.0
-  resolution: "@hookform/resolvers@npm:6.0.0"
+"@hookform/resolvers@npm:^6.0.1":
+  version: 6.0.1
+  resolution: "@hookform/resolvers@npm:6.0.1"
   dependencies:
     "@standard-schema/utils": "npm:^0.3.0"
   peerDependencies:
     "@sinclair/typebox": ">=0.25.24"
     "@standard-schema/spec": ^1.0.0
-    "@typeschema/main": ">=0.13.7"
     "@vinejs/vine": ^2.0.0 || ^3.0.0 || ^4.0.0
     ajv: ^8.12.0
     ajv-errors: ^3.0.0
@@ -1417,8 +1416,6 @@ __metadata:
     "@sinclair/typebox":
       optional: true
     "@standard-schema/spec":
-      optional: true
-    "@typeschema/main":
       optional: true
     "@vinejs/vine":
       optional: true
@@ -1462,7 +1459,7 @@ __metadata:
       optional: true
     zod:
       optional: true
-  checksum: 10c0/97ca7f437ae6ab810f9fa5189de3291a1a9542e5be5d89731a95db0a26a98554857f892c450065cbc033ee0b9327da61a044343dad9f135c405dbbd6e50b6543
+  checksum: 10c0/e62a84113e1c97bd1eae2942c1fc73e6610e906e4ff5692ba905e00c9a5b6c995eb2804e6565aadb89678e56fa55196e359b31a288841687e2de137b6f2fc705
   languageName: node
   linkType: hard
 
@@ -3270,7 +3267,7 @@ __metadata:
     "@eslint/js": "npm:^10.0.1"
     "@headlessui/react": "npm:^2.2.10"
     "@heroicons/react": "npm:^1.0.6"
-    "@hookform/resolvers": "npm:^6.0.0"
+    "@hookform/resolvers": "npm:^6.0.1"
     "@lingui/babel-plugin-lingui-macro": "npm:^6.10.1"
     "@lingui/cli": "npm:^6.10.1"
     "@lingui/core": "npm:^6.10.1"
