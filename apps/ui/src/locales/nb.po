@@ -8,55 +8,55 @@ msgstr ""
 "Language: nb\n"
 "Project-Id-Version: \n"
 "Report-Msgid-Bugs-To: \n"
-"PO-Revision-Date: 2026-09-11 18:19+0000\n"
-"Last-Translator: Anonymous <noreply@weblate.org>\n"
-"Language-Team: Norwegian Bokmål <https://hosted.weblate.org/projects/maintainerr/app/nb_NO/>\n"
+"PO-Revision-Date: 2026-10-30 15:00+0000\n"
+"Last-Translator: BJORLIN Manfred <manfred-bjorlin_ssgia@users.noreply.hosted.weblate.org>\n"
+"Language-Team: Norwegian Bokmål <https://hosted.weblate.org/projects/maintainerr/app/nb/>\n"
 "Plural-Forms: nplurals=2; plural=n != 1;\n"
 
 #: src/components/Settings/MediaServerSelector/index.tsx
 msgid "- uses {propertyName}"
-msgstr ""
+msgstr "- benytter {propertyName}"
 
 #: src/components/Settings/Servarr/ServarrServerCard.tsx
 msgid "\"{label}\" is not a valid {name} tag. Lowercase letters, numbers and hyphens only ({chars}), with no leading, trailing, or repeated hyphens."
-msgstr ""
+msgstr "\"{label} er ikke en gyldig {name} tagg. Kun små bokstaver, tall og bindestrek ({chars}), og kan ikke starte eller slutte med, eller ha repeterende bindestrek."
 
 #: src/pages/OverlayTemplateListPage.tsx
 msgid "\"{templateName}\" set as the default poster template"
-msgstr ""
+msgstr "\"{templateName}\" er satt som standard plakat-mal"
 
 #: src/pages/OverlayTemplateListPage.tsx
 msgid "\"{templateName}\" set as the default title card template"
-msgstr ""
+msgstr "\"{templateName}\" er satt som standard tittelkort-mal"
 
 #: src/components/Collection/CollectionDetail/CollectionInfo/CollectionLogsTable.tsx
 msgid "(manual)"
-msgstr ""
+msgstr "(manuell)"
 
 #. placeholder {0}: formatWhen(nextAt, locale)
 #: src/components/Settings/Telemetry/index.tsx
 msgid "(Next: {0})"
-msgstr ""
+msgstr "(Neste: {0})"
 
 #: src/components/OverlayEditor/OverlayCanvas.tsx
 msgid "[Image]"
-msgstr ""
+msgstr "[Bilde]"
 
 #: src/components/StorageMetrics/index.tsx
 msgid "{accurateMountCount} of {mountCount} mounts report total capacity"
-msgstr ""
+msgstr "{accurateMountCount} av {mountCount} monterte filsystemer rapporterer total kapasistet"
 
 #: src/components/Rules/RuleGroup/AddModal/ArrAction/index.tsx
 msgid "{actionOwnerName} action"
-msgstr ""
+msgstr "{actionOwnerName} handling"
 
 #: src/components/Rules/RuleGroup/AddModal/ConfigureNotificationModal/index.tsx
 msgid "{agentName} - {agentType} (disabled)"
-msgstr ""
+msgstr "{agentName} - {agentType} (deaktivert)"
 
 #: src/components/Settings/MediaServerSelector/index.tsx
 msgid "{clearedCollectionLogs, plural, one {# log entry} other {# log entries}}"
-msgstr ""
+msgstr "{clearedCollectionLogs, plural, one {# loggføring} other {# loggføringer}}"
 
 #: src/components/Settings/MediaServerSelector/index.tsx
 msgid "{clearedCollectionMedia, plural, one {# collection media item} other {# collection media items}}"
@@ -68,132 +68,132 @@ msgstr ""
 
 #: src/components/Settings/MediaServerSelector/index.tsx
 msgid "{clearedCollections, plural, one {# collection} other {# collections}}"
-msgstr ""
+msgstr "{clearedCollections, plural, one {# samling} other {# samlinger}}"
 
 #: src/components/Settings/MediaServerSelector/index.tsx
 msgid "{clearedExclusions, plural, one {# exclusion} other {# exclusions}}"
-msgstr ""
+msgstr "{clearedExclusions, plural, one {# unntak} other {# unntak}}"
 
 #: src/components/StorageMetrics/index.tsx
 msgid "{collectionCount, plural, one {# collection} other {# collections}}"
-msgstr ""
+msgstr "{collectionCount, plural, one {# samling} other {# samlinger}}"
 
 #: src/components/Collection/CollectionItem/index.tsx
 msgid "{collectionName} (custom)"
-msgstr ""
+msgstr "{collectionName} (tilpasset)"
 
 #: src/pages/CollectionDetailPage.tsx
 msgid "{collectionTitle} - Maintainerr"
-msgstr ""
+msgstr "{collectionTitle} - Maintainerr"
 
 #: src/components/Collection/CollectionDetail/CollectionInfo/index.tsx
 msgid "{count, plural, one {# day} other {# days}}"
-msgstr ""
+msgstr "{count, plural, one {# dag} other {# dager}}"
 
 #: src/components/Collection/CollectionDetail/CollectionInfo/index.tsx
 msgid "{count, plural, one {# hour} other {# hours}}"
-msgstr ""
+msgstr "{count, plural, one {# time} other {# timer}}"
 
 #: src/utils/bulkOutcome.ts
 msgid "{count, plural, one {# item added.} other {# items added.}}"
-msgstr ""
+msgstr "{count, plural, one {# element lagt til.} other {# elementer lagt til.}}"
 
 #: src/utils/bulkOutcome.ts
 msgid "{count, plural, one {# item could not be added{why}; the failed items stay selected.} other {# items could not be added{why}; the failed items stay selected.}}"
-msgstr ""
+msgstr "{count, plural, one {# element kunne ikke bli lagt til{why}; de feilede elementene forblir valgt.} other {# elementer kunne ikke bli lagt til{why}; de feilede elementene forblir valgt.}}"
 
 #: src/utils/bulkOutcome.ts
 msgid "{count, plural, one {# item could not be excluded everywhere{why}; the failed items stay selected.} other {# items could not be excluded everywhere{why}; the failed items stay selected.}}"
-msgstr ""
+msgstr "{count, plural, one {# elementet kunne ikke ekskluderes overalt{why}; de feilede elementene forblir valgt.} other {# elementene kunne ikke ekskluderes overalt{why}; de feilede elementene forblir valgt. }}"
 
 #: src/utils/bulkOutcome.ts
 msgid "{count, plural, one {# item could not be excluded{why}; the failed items stay selected.} other {# items could not be excluded{why}; the failed items stay selected.}}"
-msgstr ""
+msgstr "{count, plural, one {# elementet kunne ikke ekskluderes{why}; de feilede elementene forblir valgt.} other {# elementene kunne ikke ekskluderes{why}; de feilede elementene forblir valgt. }}"
 
 #: src/utils/bulkOutcome.ts
 msgid "{count, plural, one {# item could not be removed from every collection{why}; the failed items stay selected.} other {# items could not be removed from every collection{why}; the failed items stay selected.}}"
-msgstr ""
+msgstr "{count, plural, one {# elementet kunne ikke fjernes fra alle samlinger{why}; de feilede elementene forblir valgt.} other {# elementene kunne ikke fjernes fra alle samlinger{why}; de feilede elementene forblir valgt. }}"
 
 #: src/utils/bulkOutcome.ts
 msgid "{count, plural, one {# item could not be removed{why}; the failed items stay selected.} other {# items could not be removed{why}; the failed items stay selected.}}"
-msgstr ""
+msgstr "{count, plural, one {# elementet kunne ikke fjernes{why}; de feilede elementene forblir valgt.} other {# elementene kunne ikke fjernes{why}; de feilede elementene forblir valgt. }}"
 
 #: src/utils/bulkOutcome.ts
 msgid "{count, plural, one {# item could not be un-excluded{why}; the failed items stay selected.} other {# items could not be un-excluded{why}; the failed items stay selected.}}"
-msgstr ""
+msgstr "{count, plural, one {# elementet kunne ikke av-ekskluderes{why}; de feilede elementene forblir valgt.} other {# elementene kunne ikke av-ekskluderes {why}; de feilede elementene forblir valgt. }}"
 
 #: src/utils/bulkOutcome.ts
 msgid "{count, plural, one {# item excluded everywhere.} other {# items excluded everywhere.}}"
-msgstr ""
+msgstr "{count, plural, one {# elementet er ekskludert overalt.} other {# elementene er ekskludert overalt.}}"
 
 #: src/utils/bulkOutcome.ts
 msgid "{count, plural, one {# item excluded.} other {# items excluded.}}"
-msgstr ""
+msgstr "{count, plural, one {# elementet er ekskludert.} other {# elementene er ekskludert.}}"
 
 #: src/utils/bulkOutcome.ts
 msgid "{count, plural, one {# item removed from every collection.} other {# items removed from every collection.}}"
-msgstr ""
+msgstr "{count, plural, one {# elementet er fjernet fra alle samlinger.} other {# elementene er fjernet fra alle samlinger.}}"
 
 #: src/utils/bulkOutcome.ts
 msgid "{count, plural, one {# item removed.} other {# items removed.}}"
-msgstr ""
+msgstr "{count, plural, one {# elementet er fjernet.} other {# elementene er fjernet.}}"
 
 #: src/utils/bulkOutcome.ts
 msgid "{count, plural, one {# item un-excluded.} other {# items un-excluded.}}"
-msgstr ""
+msgstr "{count, plural, one {# elementet er av-ekskludert.} other {# elementene er av-ekskludert.}}"
 
 #: src/components/Collection/CollectionDetail/CollectionInfo/index.tsx
 msgid "{count, plural, one {# minute} other {# minutes}}"
-msgstr ""
+msgstr "{count, plural, one {# minutt} other {# minutter}}"
 
 #: src/components/Collection/CollectionDetail/CollectionInfo/index.tsx
 msgid "{count, plural, one {# month} other {# months}}"
-msgstr ""
+msgstr "{count, plural, one {# måned} other {# måneder}}"
 
 #: src/components/Collection/CollectionDetail/CollectionInfo/index.tsx
 msgid "{count, plural, one {# second} other {# seconds}}"
-msgstr ""
+msgstr "{count, plural, one {# sekund} other {# sekunder}}"
 
 #: src/components/Collection/CollectionDetail/CollectionInfo/index.tsx
 msgid "{count, plural, one {# year} other {# years}}"
-msgstr ""
+msgstr "{count, plural, one {# år} other {# år}}"
 
 #: src/components/Settings/About/Releases/index.tsx
 msgid "{daysAgo, plural, one {# day ago} other {# days ago}}"
-msgstr ""
+msgstr "{daysAgo, plural, one {# dag siden} other {# dager siden}}"
 
 #: src/pages/OverlayTemplateListPage.tsx
 msgid "{elementCount, plural, one {# element} other {# elements}}"
-msgstr ""
+msgstr "{elementCount, plural, one {# element} other {# elementer}}"
 
 #: src/components/Services/useServices.tsx
 msgid "{enabledAgentCount, plural, one {# agent enabled} other {# agents enabled}}"
-msgstr ""
+msgstr "{enabledAgentCount, plural, one {# agent aktivert} other {# agenter aktivert}}"
 
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "{formatList} - up to {imageUploadMaxLabel}."
-msgstr ""
+msgstr "{formatList} - opp til {imageUploadMaxLabel}."
 
 #: src/components/StorageMetrics/StorageUsageBar.tsx
 msgid "{freeSize} free"
-msgstr ""
+msgstr "{freeSize} ledig"
 
 #: src/components/Settings/MediaServerSelector/index.tsx
 msgid "{furtherSkippedRules, plural, one {...and # more} other {...and # more}}"
-msgstr ""
+msgstr "{furtherSkippedRules, plural, one {...og # til} other {...og # til}}"
 
 #: src/components/Settings/About/Releases/index.tsx
 msgid "{hoursAgo, plural, one {# hour ago} other {# hours ago}}"
-msgstr ""
+msgstr "{hoursAgo, plural, one {# time siden} other {# timer siden}}"
 
 #: src/api/calendar.ts
 #: src/components/StorageMetrics/index.tsx
 msgid "{itemCount, plural, one {# item} other {# items}}"
-msgstr ""
+msgstr "{itemCount, plural, one {# element} other {# elementer}}"
 
 #: src/components/Common/MediaActionModal.tsx
 msgid "{itemCount, plural, one {Add exclusion applies to # item across every collection. For shows and seasons this covers everything they contain.} other {Add exclusion applies to # items across every collection. For shows and seasons this covers everything they contain.}}"
-msgstr ""
+msgstr "{itemCount, plural, one {Legg til ekskludering gjelder # element på tvers av alle samlinger. For serier og sesonger gjelder dette alt de inneholder.} other {Legg til ekskludering gjelder # elementer på tvers av alle samlinger. For serier og sesonger gjelder dette alt de inneholder.}}"
 
 #: src/components/Common/MediaActionModal.tsx
 msgid "{itemCount, plural, one {Applies to # item.} other {Applies to # items.}}"
