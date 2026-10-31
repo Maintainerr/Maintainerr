@@ -433,6 +433,26 @@ export class PlexApiService {
     return plexTvClient.validateToken();
   }
 
+  /**
+   * Revokes a token on its way out of the settings. A failure is only logged:
+   * plex.tv refuses a token already revoked and can be out of reach, as on a
+   * LAN-only install, and neither may stop the token being forgotten.
+   */
+  public async revokeAuthToken(token: string): Promise<void> {
+    const plexTvClient = new PlexTvApi(
+      token,
+      this.loggerFactory.createLogger(),
+    );
+
+    try {
+      await plexTvClient.revokeToken(this.settings.clientId);
+    } catch (error) {
+      this.logger.warn(
+        `plex.tv did not revoke the Plex auth token, so it may still work: ${getErrorMessage(error, 'unknown error')}`,
+      );
+    }
+  }
+
   public async searchContent(input: string) {
     try {
       const response: PlexMetadataResponse = await this.plexClient.query(
