@@ -200,3 +200,47 @@ describe('PlexTvApi.getUsers', () => {
     });
   });
 });
+
+describe('PlexTvApi.revokeToken', () => {
+  const del = jest.fn();
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    axios.create.mockReturnValue({ delete: del });
+    (axiosRetry as unknown as jest.Mock).mockImplementation(() => undefined);
+  });
+
+  const revoke = () =>
+    new PlexTvApi(
+      'a-token',
+      createMockLogger() as unknown as MaintainerrLogger,
+    ).revokeToken('client-id');
+
+  // The token must only ever reach plex.tv, whatever server URL is configured.
+  it('signs the token out at plex.tv itself', async () => {
+    del.mockResolvedValue({ data: undefined });
+
+    await revoke();
+
+    expect(axios.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        baseURL: 'https://plex.tv',
+        headers: expect.objectContaining({ 'X-Plex-Token': 'a-token' }),
+      }),
+    );
+    expect(del).toHaveBeenCalledWith(
+      '/api/v2/users/signout',
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          'X-Plex-Client-Identifier': 'client-id',
+        }),
+      }),
+    );
+  });
+
+  it('tells the caller when plex.tv did not revoke it', async () => {
+    del.mockRejectedValue(new Error('unreachable'));
+
+    await expect(revoke()).rejects.toThrow('unreachable');
+  });
+});

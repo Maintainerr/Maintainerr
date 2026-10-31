@@ -174,6 +174,24 @@ export class PlexTvApi extends ExternalApiService {
     }
   }
 
+  /**
+   * Has plex.tv revoke this token. Only this sign-in ends: the account's other
+   * tokens keep working. It goes to plex.tv itself, whatever server URL is set.
+   */
+  public async revokeToken(clientIdentifier: string): Promise<void> {
+    await this.delete(
+      '/api/v2/users/signout',
+      {
+        ...connectionTestConfig(),
+        headers: {
+          'X-Plex-Client-Identifier': clientIdentifier,
+          'X-Plex-Product': 'Maintainerr',
+        },
+      },
+      { rethrow: true },
+    );
+  }
+
   public async getUsers(): Promise<UsersResponse> {
     const cached = cacheManager
       .getCache('plextv')

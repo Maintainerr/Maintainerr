@@ -14,6 +14,7 @@ import {
 import { PlexConnection } from './interfaces/server.interface';
 import { NO_TIMEOUT } from '../lib/httpTimeouts';
 import { PlexApiService } from './plex-api.service';
+import { PlexTvApi } from '../lib/plextvApi';
 
 const createDeferred = () => {
   let resolve: () => void;
@@ -70,6 +71,27 @@ describe('PlexApiService.rankConnections', () => {
       conn({ address: '192.168.1.50' }),
     ]);
     expect(ranked[0].address).toBe('192.168.1.50');
+  });
+});
+
+describe('PlexApiService.revokeAuthToken', () => {
+  // Clearing the token must work on a LAN-only install, and with a dead token.
+  it('does not fail when plex.tv does not revoke the token', async () => {
+    const { unit: service, unitRef } =
+      await TestBed.solitary(PlexApiService).compile();
+    unitRef.get(MaintainerrLoggerFactory).createLogger.mockReturnValue({
+      setContext: jest.fn(),
+    } as any);
+    const revokeToken = jest
+      .spyOn(PlexTvApi.prototype, 'revokeToken')
+      .mockRejectedValue(new Error('unreachable'));
+
+    await expect(service.revokeAuthToken('token')).resolves.toBeUndefined();
+
+    expect(revokeToken).toHaveBeenCalled();
+    expect(unitRef.get(MaintainerrLogger).warn).toHaveBeenCalledWith(
+      expect.stringContaining('unreachable'),
+    );
   });
 });
 
