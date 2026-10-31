@@ -1,7 +1,9 @@
 import {
+  DEFAULT_OVERLAY_SCOPE,
   MediaItemType,
   MediaServerCollectionSort,
   MediaServerType,
+  type OverlayScope,
 } from '@maintainerr/contracts';
 import {
   Column,
@@ -151,6 +153,13 @@ export class Collection {
   })
   @JoinColumn({ name: 'overlayTemplateId' })
   overlayTemplate: Relation<OverlayTemplateEntity> | null;
+
+  // How far below a show its countdown reaches: the show alone, its seasons
+  // too, or every episode as well. Only a show collection offers the choice
+  // (resolveOverlayScope in @maintainerr/contracts). Defaults to every level,
+  // so existing collections keep drawing what they drew before.
+  @Column({ type: 'varchar', nullable: false, default: DEFAULT_OVERLAY_SCOPE })
+  overlayScope: OverlayScope;
 
   @Column({ nullable: true })
   radarrQualityProfileId: number;

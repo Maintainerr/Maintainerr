@@ -21,6 +21,7 @@ import {
   collectionMediaSortFields,
   mediaLibrarySortFields,
   mediaSortOrders,
+  overlayScopeValues,
 } from '@maintainerr/contracts';
 import {
   BadGatewayException,
@@ -188,6 +189,7 @@ const collectionBaseShape = {
   mediaServerSort: collectionMediaSortKeySchema.optional().nullable(),
   overlayEnabled: z.boolean().optional(),
   overlayTemplateId: z.coerce.number().int().optional().nullable(),
+  overlayScope: z.enum(overlayScopeValues).optional(),
 };
 
 const collectionBodySchema = z.object({

@@ -13,6 +13,7 @@ import {
 import { zodResolver } from '@hookform/resolvers/zod'
 import {
   Application,
+  DEFAULT_OVERLAY_SCOPE,
   DELETE_AFTER_MAX_DAYS,
   isValidMediaItemType,
   leftoverCleanupScope,
@@ -20,6 +21,8 @@ import {
   MediaLibrary,
   MediaServerFeature,
   overlayModeForType,
+  type OverlayScope,
+  overlayScopeValues,
   OverlayTemplate,
   parseCollectionSortKey,
   ServarrAction,
@@ -401,6 +404,7 @@ export const ruleGroupFormSchema = z
     showHome: z.boolean(),
     overlayEnabled: z.boolean(),
     overlayTemplateId: z.number().int().nullable().optional(),
+    overlayScope: z.enum(overlayScopeValues),
     listExclusions: z.boolean(),
     cleanupLeftoverFolders: z.boolean(),
     forceSeerr: z.boolean(),
@@ -502,6 +506,7 @@ const buildFormDefaults = (editData?: IRuleGroup): RuleGroupFormValues => ({
   showHome: editData?.collection?.visibleOnHome ?? true,
   overlayEnabled: editData?.collection?.overlayEnabled ?? false,
   overlayTemplateId: editData?.collection?.overlayTemplateId ?? null,
+  overlayScope: editData?.collection?.overlayScope ?? DEFAULT_OVERLAY_SCOPE,
   listExclusions: editData?.collection?.listExclusions ?? true,
   cleanupLeftoverFolders: editData?.collection?.cleanupLeftoverFolders ?? false,
   forceSeerr: editData?.collection?.forceSeerr ?? false,
@@ -711,6 +716,11 @@ const AddModal = (props: AddModal) => {
   const availableOverlayTemplates = overlayTemplates.filter(
     (template) => template.mode === overlayTemplateMode,
   )
+  const overlayScopeLabels: Record<OverlayScope, string> = {
+    show_only: t`Show only`,
+    show_seasons: t`Show + seasons`,
+    all: t`Show + seasons + episodes`,
+  }
 
   const {
     data: libraries,
@@ -1076,6 +1086,7 @@ const AddModal = (props: AddModal) => {
         visibleOnHome: data.showHome,
         overlayEnabled: data.overlayEnabled,
         overlayTemplateId: data.overlayTemplateId ?? null,
+        overlayScope: data.overlayScope,
         deleteAfterDays:
           data.arrAction === undefined ||
           data.arrAction === ServarrAction.DO_NOTHING ||
@@ -1623,6 +1634,34 @@ const AddModal = (props: AddModal) => {
                         </div>
                       </div>
                     </div>
+
+                    {overlayEnabled && selectedType === 'show' && (
+                      <div className="form-row items-center">
+                        <label htmlFor="overlay_scope" className="text-label">
+                          <Trans>Overlay scope</Trans>
+                          <p className="text-xs font-normal">
+                            <Trans>
+                              Artwork left out is restored on the next overlay
+                              run
+                            </Trans>
+                          </p>
+                        </label>
+                        <div className="form-input">
+                          <div className="form-input-field">
+                            <Select
+                              id="overlay_scope"
+                              {...register('overlayScope')}
+                            >
+                              {overlayScopeValues.map((scope) => (
+                                <option key={scope} value={scope}>
+                                  {overlayScopeLabels[scope]}
+                                </option>
+                              ))}
+                            </Select>
+                          </div>
+                        </div>
+                      </div>
+                    )}
 
                     {overlayEnabled && (
                       <div className="form-row items-center">

@@ -2,6 +2,7 @@ import {
   MediaItemType,
   MediaServerCollectionSort,
   MediaServerType,
+  type OverlayScope,
   ServarrAction,
 } from '@maintainerr/contracts';
 import { CollectionMedia } from '../entities/collection_media.entities';
@@ -42,4 +43,5 @@ export interface ICollection {
   mediaServerSort?: MediaServerCollectionSort | null;
   overlayEnabled?: boolean;
   overlayTemplateId?: number | null;
+  overlayScope?: OverlayScope;
 }
