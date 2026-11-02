@@ -1,4 +1,5 @@
 import {
+  ARR_DISKSPACE_PROPERTIES,
   type BulkMediaItemResult,
   type BulkMediaResponse,
   DELETE_AFTER_MAX_DAYS,
@@ -2129,8 +2130,7 @@ export class RulesService {
     const isArrDiskspaceRule =
       (firstValApp?.id === Application.RADARR ||
         firstValApp?.id === Application.SONARR) &&
-      (firstValProperty?.name === 'diskspace_remaining_gb' ||
-        firstValProperty?.name === 'diskspace_total_gb');
+      ARR_DISKSPACE_PROPERTIES.includes(firstValProperty?.name);
 
     if (!isArrDiskspaceRule) {
       return this.createReturnStatus(
