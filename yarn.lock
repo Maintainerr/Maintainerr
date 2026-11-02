@@ -3345,7 +3345,7 @@ __metadata:
     react-movable: "npm:^3.4.1"
     react-router-dom: "npm:^7.18.4"
     react-select: "npm:^5.10.2"
-    react-toastify: "npm:^11.1.0"
+    react-toastify: "npm:^11.2.0"
     reconnecting-eventsource: "npm:^1.6.5"
     rolldown: "npm:^1.2.16"
     tailwindcss: "npm:^4.3.0"
@@ -15512,15 +15512,15 @@ __metadata:
   languageName: node
   linkType: hard
 
-"react-toastify@npm:^11.1.0":
-  version: 11.1.0
-  resolution: "react-toastify@npm:11.1.0"
+"react-toastify@npm:^11.2.0":
+  version: 11.2.0
+  resolution: "react-toastify@npm:11.2.0"
   dependencies:
     clsx: "npm:^2.1.1"
   peerDependencies:
     react: ^18 || ^19
     react-dom: ^18 || ^19
-  checksum: 10c0/b621b8272bb9287ec19914b773d91c2f7741eedba253f2986150716d30c82ff069ba9780a7ab4cbb511175b3aeb6e35f003aef3f04742d77df79fb8f4c1c3c98
+  checksum: 10c0/83dc0c4c546d475b6fde93d19ec58526bdd4c7d5e9838fc84fe4e60cf4eb4e2b5c5737eed4c7c4df544d66c60eb5355251e82a9e08330d3fbc792d308618ec6b
   languageName: node
   linkType: hard
 
