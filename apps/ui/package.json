@@ -21,7 +21,7 @@
   "dependencies": {
     "@headlessui/react": "^2.2.10",
     "@heroicons/react": "^1.0.6",
-    "@hookform/resolvers": "^6.0.1",
+    "@hookform/resolvers": "^6.0.2",
     "@lingui/core": "^6.11.0",
     "@lingui/react": "^6.11.0",
     "@maintainerr/contracts": "workspace:^",
