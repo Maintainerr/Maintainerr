@@ -3234,7 +3234,7 @@ __metadata:
     "@nestjs/event-emitter": "npm:^12.0.1"
     "@nestjs/platform-express": "npm:^12.3.2"
     "@nestjs/schedule": "npm:^12.0.2"
-    "@nestjs/schematics": "npm:^12.0.11"
+    "@nestjs/schematics": "npm:^12.0.12"
     "@nestjs/serve-static": "npm:^12.1.1"
     "@nestjs/swagger": "npm:^12.0.5"
     "@nestjs/testing": "npm:^12.3.2"
@@ -3625,9 +3625,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@nestjs/schematics@npm:^12.0.11":
-  version: 12.0.11
-  resolution: "@nestjs/schematics@npm:12.0.11"
+"@nestjs/schematics@npm:^12.0.12":
+  version: 12.0.12
+  resolution: "@nestjs/schematics@npm:12.0.12"
   dependencies:
     "@angular-devkit/core": "npm:22.2.4"
     "@angular-devkit/schematics": "npm:22.2.4"
@@ -3640,7 +3640,7 @@ __metadata:
   peerDependenciesMeta:
     prettier:
       optional: true
-  checksum: 10c0/8b5014c9fc999780b1b5a8020e33fdfd1f3ad8dbbdc1934dfa636678fa78419f5e9a1b7ba4835bcd714172401f3f6600ddc71b1f2209acb637d85745d3041f71
+  checksum: 10c0/e21ee8b079b04d8fe8101898c6402e7cbac38c8f244d64ae6e6ded76d3f73bdc7f83b2d3c8d478b00c76b93d2807b3bc89aab3f2ab7c206716ef202952a9de32
   languageName: node
   linkType: hard
 
