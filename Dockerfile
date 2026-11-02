@@ -1,6 +1,6 @@
 # Plain -alpine, not -alpine3.x: Dependabot only offers tags with the same
 # suffix, and a versioned one stops once the Node images drop that Alpine.
-FROM node:26.12.1-alpine@sha256:40cd011b55415bc894e45b02fdd5a5dfde056921b7d23a64c74f80497af48797 AS base
+FROM node:26.13.0-alpine@sha256:c6ad9e9c1d80f6eb607c26b4b0a132ff7a2344fad1c78ea3baa2a7d4c8de6d94 AS base
 LABEL Description="Contains the Maintainerr Docker image"
 
 FROM base AS builder
