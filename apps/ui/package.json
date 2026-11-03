@@ -30,7 +30,7 @@
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "axios": "^1.21.0",
-    "bowser": "^2.14.1",
+    "bowser": "^2.15.0",
     "clsx": "^2.1.1",
     "compare-versions": "^6.1.1",
     "cron-validator": "^1.4.0",
