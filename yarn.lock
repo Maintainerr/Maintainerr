@@ -1414,13 +1414,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@hookform/resolvers@npm:^6.0.2":
-  version: 6.0.2
-  resolution: "@hookform/resolvers@npm:6.0.2"
+"@hookform/resolvers@npm:^7.0.0":
+  version: 7.0.0
+  resolution: "@hookform/resolvers@npm:7.0.0"
   dependencies:
     "@standard-schema/utils": "npm:^0.3.0"
   peerDependencies:
-    "@sinclair/typebox": ">=0.25.24"
     "@standard-schema/spec": ^1.0.0
     "@vinejs/vine": ^2.0.0 || ^3.0.0 || ^4.0.0
     ajv: ^8.12.0
@@ -1440,13 +1439,12 @@ __metadata:
     react-hook-form: ^7.55.0
     superstruct: ">=0.12.0"
     typanion: ^3.3.2
+    typebox: ^1.0.0
     valibot: ">=0.31.0 || ^1.0.0-beta.4 || ^1.0.0-rc"
     vest: ">=6.0.0"
     yup: ^1.0.0
     zod: ^3.25.0 || ^4.0.0
   peerDependenciesMeta:
-    "@sinclair/typebox":
-      optional: true
     "@standard-schema/spec":
       optional: true
     "@vinejs/vine":
@@ -1483,6 +1481,8 @@ __metadata:
       optional: true
     typanion:
       optional: true
+    typebox:
+      optional: true
     valibot:
       optional: true
     vest:
@@ -1491,7 +1491,7 @@ __metadata:
       optional: true
     zod:
       optional: true
-  checksum: 10c0/64fa9666b2137cc9e3b5730c77642f4a385e79bcedfbcf6cef64611608da0380204fe26627ffa62c583395f4f9dbe12aced06ae67057845e35d6d3276631416f
+  checksum: 10c0/9ee4ce5f8f08dc73268ddad451b21f38d3367f61b3ec75b54dc77691650af336514dd948d09a36cb4caab730c2901bbaa07428239f187e335a9ca2f97a2b69fd
   languageName: node
   linkType: hard
 
@@ -3299,7 +3299,7 @@ __metadata:
     "@eslint/js": "npm:^10.0.1"
     "@headlessui/react": "npm:^2.2.10"
     "@heroicons/react": "npm:^1.0.6"
-    "@hookform/resolvers": "npm:^6.0.2"
+    "@hookform/resolvers": "npm:^7.0.0"
     "@lingui/babel-plugin-lingui-macro": "npm:^6.11.0"
     "@lingui/cli": "npm:^6.11.0"
     "@lingui/core": "npm:^6.11.0"
