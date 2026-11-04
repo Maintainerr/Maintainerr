@@ -127,13 +127,8 @@ export class MediaServerSwitchService {
 
     // Initialize the now-active media server adapter once the switch lock is
     // released - getService() refuses while a switch is in progress, so this
-    // can't run inside executeSwitchInternal. When the target's credentials
-    // carried over (e.g. switching back to a still-configured server), this
-    // brings the adapter up immediately so its connection test reflects reality
-    // instead of reporting a false failure until the first operation lazily
-    // initializes it. No-ops gracefully when credentials aren't set yet (the
-    // switch-then-save flow), mirroring how updateSettings re-initializes after
-    // a settings save.
+    // can't run inside executeSwitchInternal. No-ops gracefully when
+    // credentials aren't set yet (the switch-then-save flow).
     if (response.status === 'OK') {
       await this.mediaServerFactory.initialize();
     }
