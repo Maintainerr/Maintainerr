@@ -406,6 +406,7 @@ describe('RulesService.updateRules', () => {
       visibleOnHome: true,
       visibleOnRecommended: true,
       deleteAfterDays: 30,
+      overlayScope: 'show_only',
     };
 
     const collectionMediaRepository = { delete: jest.fn() };
@@ -464,6 +465,8 @@ describe('RulesService.updateRules', () => {
         // The field that decides whether files get deleted: clearing it made
         // the whole collection due at once.
         deleteAfterDays: 30,
+        // Widening a narrowed overlay scope would redraw every episode.
+        overlayScope: 'show_only',
       }),
     );
     expect(result).toEqual({

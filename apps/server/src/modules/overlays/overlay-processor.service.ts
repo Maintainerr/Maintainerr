@@ -8,6 +8,7 @@ import {
   overlayModeForType,
   OverlayTemplate,
   OverlayTemplateMode,
+  resolveOverlayScope,
   ServarrAction,
 } from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
@@ -203,12 +204,20 @@ export class OverlayProcessorService {
    *
    * `complete` is false when part of the hierarchy could not be read, so the
    * caller can keep what it drew instead of reverting on a transient failure.
+   *
+   * A show collection's overlay scope trims how far down this reaches, by not
+   * reading the levels it leaves out. What a wider scope drew before is no
+   * longer a target, so the run's revert pass restores it.
    */
   private async collectInheritedTargets(
     collection: Collection & { collectionMedia: CollectionMedia[] },
   ): Promise<{ targets: OverlayTarget[]; complete: boolean }> {
     // Callers only reach this for a collection that deletes on a schedule.
     if (collection.type === 'movie') return { targets: [], complete: true };
+
+    // "Show only" inherits nothing, so nothing below the shows is read.
+    const scope = resolveOverlayScope(collection.type, collection.overlayScope);
+    if (scope === 'show_only') return { targets: [], complete: true };
 
     const memberDates = new Map<string, Date>();
     for (const member of this.getMemberTargets(collection)) {
@@ -247,7 +256,8 @@ export class OverlayProcessorService {
       });
     };
 
-    // Down: the deletion takes everything under the member with it.
+    // Down: the deletion takes everything under the member with it. "Show +
+    // seasons" stops at the seasons, so no episode list is read.
     for (const member of presence.found.values()) {
       const deleteDate = memberDates.get(member.id);
       if (!deleteDate) continue;
@@ -255,6 +265,7 @@ export class OverlayProcessorService {
       const descendants = await resolveDescendants(
         member,
         async (parentId, childType) => {
+          if (childType === 'episode' && scope === 'show_seasons') return [];
           const children = await this.readChildren(
             mediaServer,
             parentId,
@@ -751,6 +762,11 @@ export class OverlayProcessorService {
     return result;
   }
 
+  /**
+   * Applies one collection's overlays and restores nothing: only the global run
+   * knows what every collection claims, and an item this collection no longer
+   * reaches may be one another collection still draws.
+   */
   async processCollection(
     collection: Collection & { collectionMedia: CollectionMedia[] },
     force = false,
@@ -829,6 +845,9 @@ export class OverlayProcessorService {
       }
 
       const inheritedByCollection = new Map<number, OverlayTarget[]>();
+      // A target is claimed by one collection only, so one that could not read
+      // its hierarchy may still want what another drew: revert nothing then.
+      const unreadable: string[] = [];
       for (const coll of collections) {
         const inherited = await this.collectInheritedTargets(coll);
         // An item in an overlay collection keeps its own countdown.
@@ -840,17 +859,18 @@ export class OverlayProcessorService {
           allCurrentItemIds.add(target.itemId);
         }
 
-        // Hierarchy unresolved: hold what it drew instead of reverting it.
-        if (!inherited.complete) {
-          const states = await this.stateService.getCollectionStates(coll.id);
-          for (const state of states) {
-            allCurrentItemIds.add(state.mediaServerId);
-          }
-        }
+        if (!inherited.complete) unreadable.push(coll.title);
+      }
+
+      if (unreadable.length > 0) {
+        this.logger.warn(
+          `Could not read everything that leaves with "${unreadable.join('", "')}"; reverting no overlay until a run can`,
+        );
       }
 
       // Revert items no longer in any overlay-enabled collection
-      const allStates = await this.stateService.getAllStates();
+      const allStates =
+        unreadable.length > 0 ? [] : await this.stateService.getAllStates();
       for (const state of allStates) {
         if (!allCurrentItemIds.has(state.mediaServerId)) {
           this.logger.log(

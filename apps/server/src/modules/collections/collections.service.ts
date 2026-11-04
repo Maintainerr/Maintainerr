@@ -6,6 +6,7 @@ import {
   CollectionMediaSortField,
   compareMediaItemsBySort,
   type CompareMediaItemsOptions,
+  DEFAULT_OVERLAY_SCOPE,
   ECollectionLogType,
   getCollectionDeleteDate,
   isMediaType,
@@ -4821,6 +4822,7 @@ export class CollectionsService {
             mediaServerSort: collection.mediaServerSort ?? null,
             overlayEnabled: collection.overlayEnabled ?? false,
             overlayTemplateId: collection.overlayTemplateId ?? null,
+            overlayScope: collection.overlayScope ?? DEFAULT_OVERLAY_SCOPE,
           },
         ])
         .execute();

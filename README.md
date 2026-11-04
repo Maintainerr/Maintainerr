@@ -228,6 +228,7 @@ spec:
 - Manage collection membership from within your media server - Maintainerr syncs manual changes back.
 - On handling: delete files from disk, unmonitor or delete in Radarr/Sonarr/Sportarr, change quality profile, and clear requests in Seerr or Ombi.
 - Render configurable overlays (text, countdown, shapes, images) onto posters and title cards on your media server(s).
+- Choose per show collection how far its overlay reaches: the show poster only, its seasons too, or every episode title card as well. Narrowing it restores the original season and episode artwork on the next overlay run.
 - Set a custom collection poster that survives recreation.
 - Send notifications via Discord, Slack, Telegram, Pushover, Gotify, ntfy, Pushbullet, LunaSea, email or webhook, including when a newer Maintainerr version is available.
 - Share rules through YAML import/export, the community rule library, and cross-server migration.

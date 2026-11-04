@@ -545,6 +545,10 @@ msgstr "Apply date overlays to posters in this collection"
 msgid "Are you sure?"
 msgstr "Are you sure?"
 
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Artwork left out is restored on the next overlay run"
+msgstr "Artwork left out is restored on the next overlay run"
+
 #: src/components/Collection/CollectionDetail/CollectionInfo/index.tsx
 msgid "Ascending"
 msgstr "Ascending"
@@ -2869,6 +2873,10 @@ msgstr "Output"
 msgid "Overlay Handler"
 msgstr "Overlay Handler"
 
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Overlay scope"
+msgstr "Overlay scope"
+
 #: src/components/Settings/Overlays/index.tsx
 msgid "Overlay Settings"
 msgstr "Overlay Settings"
@@ -3648,6 +3656,14 @@ msgctxt "Toggle layer visibility"
 msgid "Show"
 msgstr "Show"
 
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Show + seasons"
+msgstr "Show + seasons"
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Show + seasons + episodes"
+msgstr "Show + seasons + episodes"
+
 #: src/components/Settings/MediaServerSelector/index.tsx
 msgid "Show incompatible rules ({skippedRules})"
 msgstr "Show incompatible rules ({skippedRules})"
@@ -3663,6 +3679,10 @@ msgstr "Show on {mediaServerName} home"
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Show on {mediaServerName} library recommended"
 msgstr "Show on {mediaServerName} library recommended"
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Show only"
+msgstr "Show only"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Show the collection on the {mediaServerName} home screen"

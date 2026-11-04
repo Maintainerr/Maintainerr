@@ -2,6 +2,7 @@ import { t } from '@lingui/core/macro'
 import type {
   ArrDiskspaceResource,
   MediaServerCollectionSort,
+  OverlayScope,
 } from '@maintainerr/contracts'
 import {
   BasicResponseDto,
@@ -75,6 +76,7 @@ export interface RuleGroupCollectionPayload {
   visibleOnHome: boolean
   overlayEnabled?: boolean
   overlayTemplateId?: number | null
+  overlayScope?: OverlayScope
   deleteAfterDays?: number
   manualCollection?: boolean
   manualCollectionName?: string
