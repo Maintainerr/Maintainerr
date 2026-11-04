@@ -397,6 +397,7 @@ export class PlexApiService {
       return response.MediaContainer;
     } catch (error) {
       this.logger.debug('Plex status probe failed');
+      this.logger.debug(error);
       return undefined;
     }
   }
@@ -404,14 +405,19 @@ export class PlexApiService {
   public async testConnection(
     timeoutMs?: number,
   ): Promise<PlexStatusResponse['MediaContainer'] | undefined> {
-    assertApiKey(this.settings.plex_auth_token);
-    if (!this.isPlexSetup()) {
-      throw new Error('Plex client is not initialized');
-    }
+    const settings = this.getDbSettings();
+    assertApiKey(settings.auth_token);
+    // Test the saved settings; a failed startup leaves no running client.
+    const client = new PlexApi({
+      hostname: settings.ip,
+      port: settings.port,
+      https: settings.useSsl,
+      token: settings.auth_token,
+    });
     const config = connectionTestConfig(timeoutMs);
     // /identity is public; verify library access with the same deadline.
-    await this.plexClient.query({ uri: '/library/sections', ...config }, false);
-    const response = await this.plexClient.query<PlexStatusResponse>(
+    await client.query({ uri: '/library/sections', ...config }, false);
+    const response = await client.query<PlexStatusResponse>(
       { uri: '/identity', ...config },
       false,
     );
@@ -431,6 +437,35 @@ export class PlexApiService {
     );
 
     return plexTvClient.validateToken();
+  }
+
+  /**
+   * Revokes a token on its way out of the settings. A failure is only logged:
+   * plex.tv refuses a token already revoked and can be out of reach, as on a
+   * LAN-only install, and neither may stop the token being forgotten.
+   */
+  public async revokeAuthToken(token: string): Promise<void> {
+    const plexTvClient = new PlexTvApi(
+      token,
+      this.loggerFactory.createLogger(),
+    );
+
+    try {
+      await plexTvClient.revokeToken(this.settings.clientId);
+    } catch (error) {
+      const status = axios.isAxiosError(error)
+        ? error.response?.status
+        : undefined;
+      // Same split as validateToken: plex.tv already refuses a dead token.
+      if (status === 401 || status === 403 || status === 422) {
+        this.logger.debug('plex.tv already refuses the Plex auth token');
+      } else {
+        this.logger.warn(
+          'plex.tv did not revoke the Plex auth token, so it may still work',
+        );
+      }
+      this.logger.debug(error);
+    }
   }
 
   public async searchContent(input: string) {
