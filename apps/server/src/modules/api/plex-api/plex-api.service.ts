@@ -397,6 +397,7 @@ export class PlexApiService {
       return response.MediaContainer;
     } catch (error) {
       this.logger.debug('Plex status probe failed');
+      this.logger.debug(error);
       return undefined;
     }
   }
@@ -404,14 +405,19 @@ export class PlexApiService {
   public async testConnection(
     timeoutMs?: number,
   ): Promise<PlexStatusResponse['MediaContainer'] | undefined> {
-    assertApiKey(this.settings.plex_auth_token);
-    if (!this.isPlexSetup()) {
-      throw new Error('Plex client is not initialized');
-    }
+    const settings = this.getDbSettings();
+    assertApiKey(settings.auth_token);
+    // Test the saved settings; a failed startup leaves no running client.
+    const client = new PlexApi({
+      hostname: settings.ip,
+      port: settings.port,
+      https: settings.useSsl,
+      token: settings.auth_token,
+    });
     const config = connectionTestConfig(timeoutMs);
     // /identity is public; verify library access with the same deadline.
-    await this.plexClient.query({ uri: '/library/sections', ...config }, false);
-    const response = await this.plexClient.query<PlexStatusResponse>(
+    await client.query({ uri: '/library/sections', ...config }, false);
+    const response = await client.query<PlexStatusResponse>(
       { uri: '/identity', ...config },
       false,
     );

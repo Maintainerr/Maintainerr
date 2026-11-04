@@ -47,6 +47,22 @@ describe('RuleUsersService', () => {
     await expect(service.getUsernames()).resolves.toEqual(['alice']);
   });
 
+  it('brings up a Plex client dropped by a settings save (#4024)', async () => {
+    let clientReady = false;
+    mediaServerFactory.getConfiguredServerType.mockResolvedValue(
+      MediaServerType.PLEX,
+    );
+    mediaServerFactory.getService.mockImplementation(async () => {
+      clientReady = true;
+      return {} as never;
+    });
+    plexApi.getCorrectedUsers.mockImplementation(async () =>
+      clientReady ? [{ plexId: 1, username: 'alice' }] : [],
+    );
+
+    await expect(service.getUsernames()).resolves.toEqual(['alice']);
+  });
+
   it('offers no user at all when plex.tv cannot be reached', async () => {
     withServer(MediaServerType.PLEX, [{ id: '1', name: 'local-name' }]);
     plexApi.getCorrectedUsers.mockRejectedValue(
