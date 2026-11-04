@@ -155,9 +155,8 @@ export class Collection {
   overlayTemplate: Relation<OverlayTemplateEntity> | null;
 
   // How far below a show its countdown reaches: the show alone, its seasons
-  // too, or every episode as well. Only a show collection offers the choice
-  // (resolveOverlayScope in @maintainerr/contracts). Defaults to every level,
-  // so existing collections keep drawing what they drew before.
+  // too, or every episode as well. Only a show collection reads it. Defaults
+  // to every level, so existing collections keep drawing what they drew before.
   @Column({ type: 'varchar', nullable: false, default: DEFAULT_OVERLAY_SCOPE })
   overlayScope: OverlayScope;
 

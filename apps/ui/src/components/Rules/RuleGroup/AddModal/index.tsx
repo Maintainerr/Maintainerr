@@ -404,7 +404,7 @@ export const ruleGroupFormSchema = z
     showHome: z.boolean(),
     overlayEnabled: z.boolean(),
     overlayTemplateId: z.number().int().nullable().optional(),
-    overlayScope: z.enum(overlayScopeValues),
+    overlayScope: z.enum(overlayScopeValues).optional(),
     listExclusions: z.boolean(),
     cleanupLeftoverFolders: z.boolean(),
     forceSeerr: z.boolean(),

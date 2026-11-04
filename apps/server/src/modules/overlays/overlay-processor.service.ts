@@ -1,4 +1,5 @@
 import {
+  DEFAULT_OVERLAY_SCOPE,
   getCollectionDeleteDate,
   MaintainerrEvent,
   MediaItem,
@@ -8,7 +9,6 @@ import {
   overlayModeForType,
   OverlayTemplate,
   OverlayTemplateMode,
-  resolveOverlayScope,
   ServarrAction,
 } from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
@@ -215,8 +215,13 @@ export class OverlayProcessorService {
     // Callers only reach this for a collection that deletes on a schedule.
     if (collection.type === 'movie') return { targets: [], complete: true };
 
-    // "Show only" inherits nothing, so nothing below the shows is read.
-    const scope = resolveOverlayScope(collection.type, collection.overlayScope);
+    // Only a show collection has a scope: a season or episode collection's
+    // own members already sit below the show. "Show only" inherits nothing, so
+    // nothing below the shows is read; any other value draws every level.
+    const scope =
+      collection.type === 'show'
+        ? collection.overlayScope
+        : DEFAULT_OVERLAY_SCOPE;
     if (scope === 'show_only') return { targets: [], complete: true };
 
     const memberDates = new Map<string, Date>();
@@ -762,11 +767,6 @@ export class OverlayProcessorService {
     return result;
   }
 
-  /**
-   * Applies one collection's overlays and restores nothing: only the global run
-   * knows what every collection claims, and an item this collection no longer
-   * reaches may be one another collection still draws.
-   */
   async processCollection(
     collection: Collection & { collectionMedia: CollectionMedia[] },
     force = false,
@@ -845,9 +845,6 @@ export class OverlayProcessorService {
       }
 
       const inheritedByCollection = new Map<number, OverlayTarget[]>();
-      // A target is claimed by one collection only, so one that could not read
-      // its hierarchy may still want what another drew: revert nothing then.
-      const unreadable: string[] = [];
       for (const coll of collections) {
         const inherited = await this.collectInheritedTargets(coll);
         // An item in an overlay collection keeps its own countdown.
@@ -859,18 +856,17 @@ export class OverlayProcessorService {
           allCurrentItemIds.add(target.itemId);
         }
 
-        if (!inherited.complete) unreadable.push(coll.title);
-      }
-
-      if (unreadable.length > 0) {
-        this.logger.warn(
-          `Could not read everything that leaves with "${unreadable.join('", "')}"; reverting no overlay until a run can`,
-        );
+        // Hierarchy unresolved: hold what it drew instead of reverting it.
+        if (!inherited.complete) {
+          const states = await this.stateService.getCollectionStates(coll.id);
+          for (const state of states) {
+            allCurrentItemIds.add(state.mediaServerId);
+          }
+        }
       }
 
       // Revert items no longer in any overlay-enabled collection
-      const allStates =
-        unreadable.length > 0 ? [] : await this.stateService.getAllStates();
+      const allStates = await this.stateService.getAllStates();
       for (const state of allStates) {
         if (!allCurrentItemIds.has(state.mediaServerId)) {
           this.logger.log(

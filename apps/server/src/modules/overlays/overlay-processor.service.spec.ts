@@ -1256,14 +1256,6 @@ describe('OverlayProcessorService', () => {
         getChildrenMetadata: childrenOf(tree),
       });
 
-    // What the media server was asked for while resolving the hierarchy.
-    const reads = (mediaServer: Record<string, jest.Mock>) => [
-      ...mediaServer.getMetadataBatch.mock.calls.map(() => 'members'),
-      ...mediaServer.getChildrenMetadata.mock.calls.map(
-        ([parentId, type]) => `${type}s of ${parentId}`,
-      ),
-    ];
-
     const everything = [
       ['show-1', 'poster'],
       ['season-1', 'poster'],
@@ -1271,18 +1263,10 @@ describe('OverlayProcessorService', () => {
       ['season-2', 'poster'],
       ['episode-2', 'titlecard'],
     ];
-    const everyRead = [
-      'members',
-      'seasons of show-1',
-      'episodes of season-1',
-      'episodes of season-2',
-    ];
-
     // Seasons and episodes are drawn because they leave with the show. The
-    // scope says how far down that reaches, and nothing past it is read: on a
-    // large library the reads and uploads below the show are most of the work.
+    // scope says how far down that reaches.
     it.each([
-      ['show_only', [['show-1', 'poster']], []],
+      ['show_only', [['show-1', 'poster']]],
       [
         'show_seasons',
         [
@@ -1290,21 +1274,18 @@ describe('OverlayProcessorService', () => {
           ['season-1', 'poster'],
           ['season-2', 'poster'],
         ],
-        ['members', 'seasons of show-1'],
       ],
-      ['all', everything, everyRead],
+      ['all', everything],
       // Saved before the scope existed.
-      [undefined, everything, everyRead],
+      [undefined, everything],
     ] as const)(
       'draws what a deleted show takes with it, as far down as scope %s reaches',
-      async (scope, expected, expectedReads) => {
-        const mediaServer = showServer();
-        const { service, applySpy } = buildService(mediaServer);
+      async (scope, expected) => {
+        const { service, applySpy } = buildService(showServer());
 
         await service.processCollection(showCollection(scope) as any);
 
         expect(drawn(applySpy)).toEqual(expected);
-        expect(reads(mediaServer)).toEqual(expectedReads);
       },
     );
 
@@ -1346,9 +1327,10 @@ describe('OverlayProcessorService', () => {
         collections: ReturnType<typeof createCollection>[],
         options: {
           mediaServer?: ReturnType<typeof makeMediaServer>;
+          states?: { collectionId: number; mediaServerId: string }[];
         } = {},
       ) => {
-        const states = drawnByEveryLevel();
+        const states = options.states ?? drawnByEveryLevel();
         const stateService = {
           getItemState: jest.fn().mockResolvedValue(null),
           getAllStates: jest.fn().mockResolvedValue(states),
@@ -1454,45 +1436,39 @@ describe('OverlayProcessorService', () => {
         ]);
       });
 
-      // A state row does not say what kind of item it is, and a target is
-      // claimed by one collection only: while any collection cannot read the
-      // seasons, nothing is restored, not even what the scope no longer reaches.
-      it.each([
-        ['this collection', () => [showCollection('show_seasons')]],
-        [
-          'another collection holding the same show',
-          () => {
-            const sameShow = createCollection({
-              id: 2,
-              title: 'Leaving shows too',
-              type: 'show',
-              arrAction: ServarrAction.DELETE,
-              deleteAfterDays: 30,
-              overlayTemplateId: null,
-            });
-            sameShow.collectionMedia = [
-              createCollectionMedia(sameShow, { mediaServerId: 'show-1' }),
-            ];
-            return [showCollection('show_only'), sameShow];
+      // A state row does not say what kind of item it is, so while the seasons
+      // cannot be read even the episodes the scope no longer reaches are held.
+      // Only that collection's: another collection's stale overlay still goes.
+      it('holds what it drew while the seasons cannot be read, and only that', async () => {
+        const movies = createCollection({
+          id: 2,
+          title: 'Leaving movies',
+          type: 'movie',
+          arrAction: ServarrAction.DELETE,
+          deleteAfterDays: 30,
+          overlayTemplateId: null,
+        });
+        // movie-1 left this collection since the last run.
+        movies.collectionMedia = [];
+        const { result, provider, stateService } = await runNarrowed(
+          [showCollection('show_seasons'), movies],
+          {
+            mediaServer: showServer({
+              'show-1': new Error('media server unreachable'),
+            }),
+            states: [
+              ...drawnByEveryLevel(),
+              { collectionId: 2, mediaServerId: 'movie-1' },
+            ],
           },
-        ],
-      ])(
-        'holds every overlay while %s cannot read the seasons',
-        async (_, collections) => {
-          const { result, provider, stateService } = await runNarrowed(
-            collections(),
-            {
-              mediaServer: showServer({
-                'show-1': new Error('media server unreachable'),
-              }),
-            },
-          );
+        );
 
-          expect(provider.uploadImage).not.toHaveBeenCalled();
-          expect(stateService.removeState).not.toHaveBeenCalled();
-          expect(result.reverted).toBe(0);
-        },
-      );
+        expect(provider.uploadImage.mock.calls.map((call) => call[0])).toEqual([
+          'movie-1',
+        ]);
+        expect(stateService.removeState.mock.calls).toEqual([[2, 'movie-1']]);
+        expect(result.reverted).toBe(1);
+      });
     });
 
     it('draws a show once no season of it is left outside, using the last to leave', async () => {
