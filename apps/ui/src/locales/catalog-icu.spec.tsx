@@ -33,7 +33,7 @@ import { render } from '../test-utils/render'
  */
 const localesDir = path.dirname(new URL(import.meta.url).pathname)
 
-// One count per CLDR plural category across the 13 locales: a quoting bug
+// One count per CLDR plural category across the locales: a quoting bug
 // lives in a single branch, so rendering only `other` would miss it. 0/1/2
 // cover zero/one/two, 3 and 7 split few/many in Polish and Czech, 11 and 100
 // catch the Welsh-style outliers other locales may add later.

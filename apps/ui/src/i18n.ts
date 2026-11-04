@@ -18,6 +18,8 @@ export const SUPPORTED_LOCALES: Record<string, string> = {
   pt: 'Português',
   fi: 'Suomi',
   sv: 'Svenska',
+  ru: 'Русский',
+  'zh-Hant': '繁體中文',
 }
 
 const STORAGE_KEY = 'maintainerr.locale'
