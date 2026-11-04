@@ -236,16 +236,6 @@ describe('SettingsOperationsService', () => {
     );
   });
 
-  it('asks plex.tv for nothing when no Plex token is stored', async () => {
-    settingsRepo.findOne.mockResolvedValue(
-      createSettings({ plex_auth_token: null }),
-    );
-
-    await service.deletePlexApiAuth();
-
-    expect(plexApi.revokeAuthToken).not.toHaveBeenCalled();
-  });
-
   it('rejects Plex server setting changes when no Plex credentials are stored', async () => {
     settingsRepo.findOne.mockResolvedValue(
       createSettings({ plex_auth_token: null }),

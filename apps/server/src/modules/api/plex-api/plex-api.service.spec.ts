@@ -89,9 +89,7 @@ describe('PlexApiService.revokeAuthToken', () => {
     await expect(service.revokeAuthToken('token')).resolves.toBeUndefined();
 
     expect(revokeToken).toHaveBeenCalled();
-    expect(unitRef.get(MaintainerrLogger).warn).toHaveBeenCalledWith(
-      expect.stringContaining('unreachable'),
-    );
+    expect(unitRef.get(MaintainerrLogger).warn).toHaveBeenCalled();
   });
 });
 

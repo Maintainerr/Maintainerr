@@ -447,9 +447,18 @@ export class PlexApiService {
     try {
       await plexTvClient.revokeToken(this.settings.clientId);
     } catch (error) {
-      this.logger.warn(
-        `plex.tv did not revoke the Plex auth token, so it may still work: ${getErrorMessage(error, 'unknown error')}`,
-      );
+      const status = axios.isAxiosError(error)
+        ? error.response?.status
+        : undefined;
+      // Same split as validateToken: plex.tv already refuses a dead token.
+      if (status === 401 || status === 403 || status === 422) {
+        this.logger.debug('plex.tv already refuses the Plex auth token');
+      } else {
+        this.logger.warn(
+          'plex.tv did not revoke the Plex auth token, so it may still work',
+        );
+      }
+      this.logger.debug(error);
     }
   }
 
