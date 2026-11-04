@@ -157,6 +157,24 @@ describe('DownloadClientApiService', () => {
       expect(apiMock.deleteTorrents).not.toHaveBeenCalled();
     });
 
+    it.each([
+      [14 * 86400 - 1, false],
+      [14 * 86400, true],
+    ])(
+      'removes at any ratio once there is no client limit and it has seeded 14 days (%i s: %s)',
+      async (seedingTime, removed) => {
+        apiMock.getTorrentByHash.mockResolvedValue(
+          torrent({ reachedSeedingGoal: null, ratio: 0, seedingTime }),
+        );
+
+        await service.removeDownloads(['abc']);
+
+        expect(apiMock.deleteTorrents.mock.calls).toEqual(
+          removed ? [[['abc'], true]] : [],
+        );
+      },
+    );
+
     it('passes deleteData=false when the toggle is off', async () => {
       Object.assign(settings, { download_client_delete_data: false });
       apiMock.getTorrentByHash.mockResolvedValue(

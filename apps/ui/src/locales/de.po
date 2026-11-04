@@ -8,8 +8,8 @@ msgstr ""
 "Language: de\n"
 "Project-Id-Version: \n"
 "Report-Msgid-Bugs-To: \n"
-"PO-Revision-Date: 2026-09-28 22:11+0000\n"
-"Last-Translator: Elster <admin@myclnet.de>\n"
+"PO-Revision-Date: 2026-10-28 13:51+0000\n"
+"Last-Translator: Growlgrowl <growl@users.noreply.hosted.weblate.org>\n"
 "Language-Team: German <https://hosted.weblate.org/projects/maintainerr/app/de/>\n"
 "Plural-Forms: nplurals=2; plural=n != 1;\n"
 
@@ -483,11 +483,11 @@ msgstr "Alle Staffeln"
 
 #: src/components/Settings/Notifications/NotificationAgentCard.tsx
 msgid "Allow self-signed certificates"
-msgstr ""
+msgstr "Selbstsignierte Zertifikate erlauben"
 
 #: src/components/Settings/Notifications/NotificationAgentCard.tsx
 msgid "Allow users to also start a chat with your bot and configure their own notifications"
-msgstr ""
+msgstr "Ermöglichen Sie es den Nutzern, auch einen Chat mit Ihrem Bot zu starten und ihre eigenen Benachrichtigungen zu konfigurieren"
 
 #: src/components/Settings/Servarr/ServarrServerCard.tsx
 msgid "Allowed: {chars}"
@@ -2550,7 +2550,7 @@ msgstr "Erforderlich, um den Tracearr-Wiedergabeverlauf in Regeln zu verwenden."
 
 #: src/components/Settings/Notifications/NotificationAgentCard.tsx
 msgid "Needed when your SMTP server uses a certificate it signed itself, as many home servers do."
-msgstr ""
+msgstr "Dies ist erforderlich, wenn Ihr SMTP-Server ein selbstsigniertes Zertifikat verwendet, wie es bei vielen Heimservern der Fall ist."
 
 #: src/components/Collection/CollectionItem/index.tsx
 msgid "Never"
@@ -2558,7 +2558,7 @@ msgstr "Nie"
 
 #: src/components/Settings/Notifications/NotificationAgentCard.tsx
 msgid "Never use TLS"
-msgstr ""
+msgstr "Niemals TLS verwenden"
 
 #: src/pages/RulesListPage.tsx
 msgid "New Rule"
@@ -2829,7 +2829,7 @@ msgstr "Es sind nur Dateien mit der Endung {yamlExtension} oder {ymlExtension} z
 
 #: src/components/Settings/Notifications/NotificationAgentCard.tsx
 msgid "Only required if not using the default profile"
-msgstr ""
+msgstr "Nur erforderlich, wenn das Standardprofil nicht verwendet wird"
 
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "Opacity"
@@ -3123,7 +3123,7 @@ msgstr "Kürzlich ausgeschlossen"
 
 #: src/components/Settings/Notifications/NotificationAgentCard.tsx
 msgid "Recipients get the message without a notification sound."
-msgstr ""
+msgstr "Die Empfänger erhalten die Nachricht ohne Benachrichtigungston."
 
 #: src/components/StorageMetrics/index.tsx
 msgid "Reclaimable from collections"
@@ -3575,11 +3575,11 @@ msgstr "Anonyme Nutzungsdaten senden"
 
 #: src/components/Settings/Notifications/NotificationAgentCard.tsx
 msgid "Send silently"
-msgstr ""
+msgstr "Lautlos senden"
 
 #: src/components/Settings/Notifications/NotificationAgentCard.tsx
 msgid "Sends unencrypted even when the server offers STARTTLS. Only for a server whose STARTTLS fails."
-msgstr ""
+msgstr "Sendet unverschlüsselt, selbst wenn der Server STARTTLS anbietet. Gilt nur für Server, bei denen STARTTLS fehlschlägt."
 
 #: src/components/Settings/Plex/index.tsx
 msgid "Server"
@@ -3763,7 +3763,7 @@ msgstr "SSL/TLS-Handshake fehlgeschlagen. Überprüfe das URL-Protokoll (http od
 
 #: src/components/Settings/Notifications/NotificationAgentCard.tsx
 msgid "Start a chat with your bot, add {bot}, and issue the {command} command"
-msgstr ""
+msgstr "Starte einen Chat mit deinem Bot, füge {bot} hinzu und gib den Befehl {command} ein"
 
 #: src/components/Rules/RuleGroup/index.tsx
 msgid "Start execution"
@@ -4068,7 +4068,7 @@ msgstr "Der Medienserver hat keinen Benutzer namens ''{username}''"
 #: src/components/Rules/RuleGroup/AddModal/ConfigureNotificationModal/index.tsx
 #: src/components/Settings/Notifications/index.tsx
 msgid "The notification agents could not be loaded."
-msgstr ""
+msgstr "Die Benachrichtigungsagenten konnten nicht geladen werden."
 
 #: src/components/Settings/Telemetry/index.tsx
 msgid "The preview could not be loaded."
@@ -4112,7 +4112,7 @@ msgstr "Die Auswahl umfasst mehr als eine Bibliothek, daher können darauf nur A
 
 #: src/components/Settings/Servarr/ServarrSettings.tsx
 msgid "The server list could not be loaded."
-msgstr ""
+msgstr "Die Serverliste konnte nicht geladen werden."
 
 #: src/components/Layout/index.tsx
 msgid "The server returned an unexpected response."
@@ -4636,7 +4636,7 @@ msgstr "Soll diese Regel in Regeldurchläufe einbezogen werden"
 
 #: src/components/Settings/Notifications/NotificationAgentCard.tsx
 msgid "Without it, mail goes out unencrypted when the server does not offer STARTTLS. With it, the email is not sent instead."
-msgstr ""
+msgstr "Ohne diese Option werden E-Mails unverschlüsselt versendet, wenn der Server STARTTLS nicht unterstützt. Mit dieser Option wird die E-Mail stattdessen gar nicht versendet."
 
 #: src/components/Common/YamlImporterModal/index.tsx
 msgid "Yaml Rule Editor"
@@ -4672,7 +4672,7 @@ msgstr "Deine <0>{TERM_IP}-Adresse wird niemals gelesen oder gespeichert</0>, so
 
 #: src/components/Settings/Notifications/NotificationAgentCard.tsx
 msgid "Your 30-character user or group identifier"
-msgstr ""
+msgstr "Ihre 30 Zeichen lange Benutzer- oder Gruppen-ID"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "your media server"
