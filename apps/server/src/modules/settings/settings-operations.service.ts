@@ -1188,6 +1188,10 @@ export class SettingsOperationsService {
     try {
       const settingsDb = await this.settingsRepo.findOne({ where: {} });
 
+      if (settingsDb.plex_auth_token) {
+        await this.plexApi.revokeAuthToken(settingsDb.plex_auth_token);
+      }
+
       await this.settingsRepo.update(
         {
           id: settingsDb.id,
