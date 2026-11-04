@@ -1,0 +1,33 @@
+{
+  "@context": "https://openvex.dev/ns/v0.2.0",
+  "@id": "https://github.com/Maintainerr/Maintainerr/blob/development/.github/maintainerr.vex.json",
+  "author": "Maintainerr",
+  "timestamp": "2026-11-04T00:00:00Z",
+  "version": 1,
+  "statements": [
+    {
+      "vulnerability": { "name": "CVE-2026-107891" },
+      "products": [
+        {
+          "@id": "pkg:docker/maintainerr/maintainerr",
+          "subcomponents": [{ "@id": "pkg:apk/alpine/musl@1.2.6-r3" }]
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "Alpine 3.24 ships the fix in musl 1.2.6-r3. Scout applies the 1.2.6-r6 fix from Alpine edge."
+    },
+    {
+      "vulnerability": { "name": "CVE-2026-93753" },
+      "products": [
+        {
+          "@id": "pkg:docker/maintainerr/maintainerr",
+          "subcomponents": [{ "@id": "pkg:npm/deepmerge@4.3.1" }]
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_cannot_be_controlled_by_adversary",
+      "impact_statement": "nestjs-zod and html-to-text only merge OpenAPI schemas and options the server builds itself. No request data reaches deepmerge."
+    }
+  ]
+}
