@@ -11864,9 +11864,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"knip@npm:^6.43.0":
-  version: 6.43.0
-  resolution: "knip@npm:6.43.0"
+"knip@npm:^6.44.1":
+  version: 6.44.1
+  resolution: "knip@npm:6.44.1"
   dependencies:
     formatly: "npm:^0.11.4"
     get-tsconfig: "npm:4.14.3"
@@ -11883,7 +11883,7 @@ __metadata:
   bin:
     knip: bin/knip.js
     knip-bun: bin/knip-bun.js
-  checksum: 10c0/f9a9935af721f4f2af13a0a7b7c24f9f10ba8f6365a302aa6074458fa7c592442cd85cda3dd626abed40b67adc3a27150add26754122074ff1f95f3e95cbed2f
+  checksum: 10c0/587b7f5c5278d06eb1b908c8df6e1dc375e32abaaaab6d5be8ab0e86acf2910c9be1f7c8157b0ae51328c95029f08b7acd27353205aa240a26c5872297da2b68
   languageName: node
   linkType: hard
 
@@ -12597,7 +12597,7 @@ __metadata:
     "@semantic-release/exec": "npm:^7.1.0"
     "@semantic-release/git": "npm:^11.0.1"
     "@types/node": "npm:^26.6.6"
-    knip: "npm:^6.43.0"
+    knip: "npm:^6.44.1"
     pofile-ts: "npm:^4.0.3"
     semantic-release: "npm:^25.0.9"
     turbo: "npm:^2.11.10"
