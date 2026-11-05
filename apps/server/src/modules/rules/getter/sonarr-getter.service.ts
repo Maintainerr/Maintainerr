@@ -1,4 +1,8 @@
-import { MediaItem, MediaItemType } from '@maintainerr/contracts';
+import {
+  ARR_DISKSPACE_PROPERTIES,
+  MediaItem,
+  MediaItemType,
+} from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
 import { cloneDeep } from 'lodash';
 import {
@@ -73,10 +77,7 @@ export class SonarrGetterService {
       const prop = this.plexProperties.find((el) => el.id === id);
 
       // ARR diskspace check doesn't require a show lookup - handle early
-      if (
-        prop?.name === 'diskspace_remaining_gb' ||
-        prop?.name === 'diskspace_total_gb'
-      ) {
+      if (ARR_DISKSPACE_PROPERTIES.includes(prop?.name)) {
         const sonarrApiClient = await this.servarrService.getSonarrApiClient(
           ruleGroup.collection.sonarrSettingsId,
         );
