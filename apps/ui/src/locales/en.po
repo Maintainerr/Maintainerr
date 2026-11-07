@@ -3705,6 +3705,14 @@ msgstr "Signing in…"
 msgid "Size"
 msgstr "Size"
 
+#: src/components/Common/MediaLibrarySortControl.tsx
+msgid "Size on Disk (Largest First)"
+msgstr "Size on Disk (Largest First)"
+
+#: src/components/Common/MediaLibrarySortControl.tsx
+msgid "Size on Disk (Smallest First)"
+msgstr "Size on Disk (Smallest First)"
+
 #: src/components/StorageMetrics/index.tsx
 msgid "Size on disk reported by the media server"
 msgstr "Size on disk reported by the media server"
@@ -4677,3 +4685,7 @@ msgstr "Your 30-character user or group identifier"
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "your media server"
 msgstr "your media server"
+
+#: src/components/Overview/index.tsx
+msgid "Unable to sort this library by size. It may exceed the safe scan limit."
+msgstr "Unable to sort this library by size. It may exceed the safe scan limit."

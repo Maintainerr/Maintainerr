@@ -2,6 +2,7 @@ import { t as globalT } from '@lingui/core/macro'
 import { useLingui } from '@lingui/react/macro'
 import {
   compareMediaItemsBySort,
+  type CollectionMediaSortField,
   type CollectionMediaSortParams,
   type MediaItem,
   type MediaLibrary,
@@ -160,6 +161,14 @@ export const getMediaLibrarySortConfig = (
         includeTitleAscending: false,
         includeStudioSort,
       }),
+      createMediaLibrarySortOption(
+        'size.desc',
+        globalT`Size on Disk (Largest First)`,
+      ),
+      createMediaLibrarySortOption(
+        'size.asc',
+        globalT`Size on Disk (Smallest First)`,
+      ),
       createMediaLibrarySortOption('manual.desc', globalT`Manual Added First`),
       createMediaLibrarySortOption('excluded.desc', globalT`Excluded First`),
     ],
@@ -202,12 +211,13 @@ export const getCollectionMediaSortConfig = (
     globalT`Recently Added`,
     includeStudioSort,
   )
-    .options.map((option) => ({
+    .options.filter((option) => option.sortParams?.sort !== 'size')
+    .map((option) => ({
       value: option.value,
       label: option.label,
       sortParams: option.sortParams
         ? {
-            sort: option.sortParams.sort,
+            sort: option.sortParams.sort as CollectionMediaSortField,
             sortOrder: option.sortParams.sortOrder,
           }
         : undefined,
@@ -237,11 +247,11 @@ export const getCollectionMediaSortConfig = (
     options: includeStatusSorts
       ? [
           ...resolvedOptions,
-          createMediaLibrarySortOption(
+          createSortOption<CollectionMediaSortField>(
             'manual.desc',
             globalT`Manual Added First`,
           ),
-          createMediaLibrarySortOption(
+          createSortOption<CollectionMediaSortField>(
             'excluded.desc',
             globalT`Excluded First`,
           ),

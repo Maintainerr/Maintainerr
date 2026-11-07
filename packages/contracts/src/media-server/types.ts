@@ -76,6 +76,8 @@ export interface MediaItem {
   updatedAt?: Date
   providerIds: MediaProviderIds
   mediaSources: MediaSource[]
+  /** Total disk usage in bytes for aggregated items such as television shows. */
+  sizeBytes?: number
   /**
    * Where the item lives on the server's own filesystem: the media file for
    * movies and episodes, the folder for shows and seasons. Single-item reads

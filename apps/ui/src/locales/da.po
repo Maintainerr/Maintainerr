@@ -3705,6 +3705,14 @@ msgstr ""
 msgid "Size"
 msgstr ""
 
+#: src/components/Common/MediaLibrarySortControl.tsx
+msgid "Size on Disk (Largest First)"
+msgstr ""
+
+#: src/components/Common/MediaLibrarySortControl.tsx
+msgid "Size on Disk (Smallest First)"
+msgstr ""
+
 #: src/components/StorageMetrics/index.tsx
 msgid "Size on disk reported by the media server"
 msgstr ""
@@ -4676,4 +4684,8 @@ msgstr ""
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "your media server"
+msgstr ""
+
+#: src/components/Overview/index.tsx
+msgid "Unable to sort this library by size. It may exceed the safe scan limit."
 msgstr ""

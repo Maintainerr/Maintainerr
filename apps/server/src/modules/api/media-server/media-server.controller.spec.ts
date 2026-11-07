@@ -311,6 +311,292 @@ describe('MediaServerController', () => {
     });
   });
 
+  describe('size-on-disk library sorting', () => {
+    const mediaItem = (
+      id: string,
+      title: string,
+      type: MediaItem['type'],
+      sizeBytes?: number,
+      grandparentId?: string,
+    ): MediaItem => ({
+      id,
+      title,
+      type,
+      guid: id,
+      addedAt: new Date('2024-01-01'),
+      providerIds: {},
+      mediaSources:
+        sizeBytes === undefined ? [] : [{ id, duration: 0, sizeBytes }],
+      ...(grandparentId ? { grandparentId } : {}),
+      library: { id: 'lib1', title: 'Library' },
+    });
+
+    it('sorts movie file sizes before paging, not just within the requested page', async () => {
+      const movies = [
+        mediaItem('a', 'Alpha', 'movie', 20),
+        mediaItem('b', 'Bravo', 'movie', 100),
+        mediaItem('c', 'Charlie', 'movie'),
+      ];
+      mockMediaServerService.getLibraryContents.mockResolvedValue({
+        items: movies,
+        totalSize: 3,
+        offset: 0,
+        limit: 250,
+      });
+
+      const largest = await controller.getLibraryContent(
+        'lib1',
+        1,
+        2,
+        'movie',
+        'size',
+        'desc',
+      );
+      const smallest = await controller.getLibraryContent(
+        'lib1',
+        1,
+        2,
+        'movie',
+        'size',
+        'asc',
+      );
+      const last = await controller.getLibraryContent(
+        'lib1',
+        2,
+        2,
+        'movie',
+        'size',
+        'desc',
+      );
+
+      expect(largest.items.map(({ id }) => id)).toEqual(['b', 'a']);
+      expect(smallest.items.map(({ id }) => id)).toEqual(['a', 'b']);
+      expect(last.items.map(({ id }) => id)).toEqual(['c']);
+      expect(largest.totalSize).toBe(3);
+      expect(mockMediaServerService.getLibraryContents).toHaveBeenCalledWith(
+        'lib1',
+        {
+          offset: 0,
+          limit: 250,
+          type: 'movie',
+          sort: 'size',
+          sortOrder: 'asc',
+        },
+      );
+    });
+
+    it('aggregates all episode file sizes for shows on any media-server adapter', async () => {
+      const shows = [
+        mediaItem('small', 'Small Show', 'show'),
+        mediaItem('large', 'Large Show', 'show'),
+        mediaItem('empty', 'Unknown Show', 'show'),
+      ];
+      const episodes = [
+        mediaItem('1', 'Pilot', 'episode', 20, 'small'),
+        mediaItem('2', 'Pilot', 'episode', 90, 'large'),
+        mediaItem('3', 'Finale', 'episode', 30, 'large'),
+        mediaItem('4', 'Unknown', 'episode', undefined, 'empty'),
+      ];
+      mockMediaServerService.getLibraryContents.mockImplementation(
+        async (_id, options) => ({
+          items: options?.type === 'episode' ? episodes : shows,
+          totalSize: options?.type === 'episode' ? 4 : 3,
+          offset: options?.offset ?? 0,
+          limit: options?.limit ?? 250,
+        }),
+      );
+
+      const result = await controller.getLibraryContent(
+        'lib1',
+        1,
+        2,
+        'show',
+        'size',
+        'desc',
+      );
+      expect(result.items.map(({ id }) => id)).toEqual(['large', 'small']);
+      expect(result.items.map(({ sizeBytes }) => sizeBytes)).toEqual([120, 20]);
+      expect(result.totalSize).toBe(3);
+      expect(mockMediaServerService.getLibraryContents).toHaveBeenCalledWith(
+        'lib1',
+        {
+          offset: 0,
+          limit: 250,
+          type: 'episode',
+          sort: 'size',
+          sortOrder: 'asc',
+        },
+      );
+    });
+  });
+
+  describe('size-sort request limits and caching', () => {
+    const item = (
+      id: string,
+      type: MediaItem['type'],
+      sizeBytes?: number,
+      grandparentId?: string,
+    ): MediaItem => ({
+      id,
+      title: id,
+      type,
+      guid: id,
+      addedAt: new Date('2024-01-01'),
+      providerIds: {},
+      mediaSources: sizeBytes ? [{ id, duration: 0, sizeBytes }] : [],
+      ...(grandparentId ? { grandparentId } : {}),
+      library: { id: 'lib1', title: 'Test' },
+    });
+
+    it('reuses the show and episode scans for pagination and reversed ordering', async () => {
+      mockMediaServerService.getLibraryContents.mockImplementation(
+        async (_id, options) => ({
+          items:
+            options?.type === 'episode'
+              ? [
+                  item('episode1', 'episode', 50, 'show1'),
+                  item('episode2', 'episode', 100, 'show2'),
+                ]
+              : [item('show1', 'show'), item('show2', 'show')],
+          totalSize: 2,
+          offset: options?.offset ?? 0,
+          limit: options?.limit ?? 250,
+        }),
+      );
+
+      const first = await controller.getLibraryContent(
+        'lib1',
+        1,
+        1,
+        'show',
+        'size',
+        'desc',
+      );
+      const second = await controller.getLibraryContent(
+        'lib1',
+        2,
+        1,
+        'show',
+        'size',
+        'desc',
+      );
+      const reverse = await controller.getLibraryContent(
+        'lib1',
+        1,
+        1,
+        'show',
+        'size',
+        'asc',
+      );
+
+      expect(first.items.map(({ id }) => id)).toEqual(['show2']);
+      expect(second.items.map(({ id }) => id)).toEqual(['show1']);
+      expect(reverse.items.map(({ id }) => id)).toEqual(['show1']);
+      expect(mockMediaServerService.getLibraryContents).toHaveBeenCalledTimes(
+        2,
+      );
+      expect(mediaItemEnrichmentService.enrichItems).toHaveBeenCalledTimes(3);
+    });
+
+    it('refreshes cached sizes after the 60-second TTL', async () => {
+      const now = jest.spyOn(Date, 'now').mockReturnValue(1000);
+      try {
+        mockMediaServerService.getLibraryContents.mockResolvedValue({
+          items: [item('movie1', 'movie', 100)],
+          totalSize: 1,
+          offset: 0,
+          limit: 250,
+        });
+        await controller.getLibraryContent('lib1', 1, 1, 'movie', 'size');
+        now.mockReturnValue(2000);
+        await controller.getLibraryContent('lib1', 1, 1, 'movie', 'size');
+        now.mockReturnValue(62000);
+        await controller.getLibraryContent('lib1', 1, 1, 'movie', 'size');
+        expect(mockMediaServerService.getLibraryContents).toHaveBeenCalledTimes(
+          2,
+        );
+      } finally {
+        now.mockRestore();
+      }
+    });
+
+    it('deduplicates concurrent scans for the same library', async () => {
+      mockMediaServerService.getLibraryContents.mockResolvedValue({
+        items: [item('movie1', 'movie', 100)],
+        totalSize: 1,
+        offset: 0,
+        limit: 250,
+      });
+      await Promise.all([
+        controller.getLibraryContent('lib1', 1, 1, 'movie', 'size', 'desc'),
+        controller.getLibraryContent('lib1', 1, 1, 'movie', 'size', 'asc'),
+      ]);
+      expect(mockMediaServerService.getLibraryContents).toHaveBeenCalledTimes(
+        1,
+      );
+    });
+
+    it('rejects oversized movie scans instead of returning incorrectly ranked partial pages', async () => {
+      mockMediaServerService.getLibraryContents.mockResolvedValue({
+        items: [item('movie1', 'movie', 100)],
+        totalSize: 15001,
+        offset: 0,
+        limit: 250,
+      });
+      await expect(
+        controller.getLibraryContent('lib1', 1, 1, 'movie', 'size', 'desc'),
+      ).rejects.toThrow('Size sorting supports up to 15000 library items');
+      expect(mockMediaServerService.getLibraryContents).toHaveBeenCalledTimes(
+        1,
+      );
+    });
+
+    it('rejects oversized episode scans before reading the entire TV library', async () => {
+      mockMediaServerService.getLibraryContents.mockImplementation(
+        async (_id, options) => ({
+          items:
+            options?.type === 'episode'
+              ? [item('ep1', 'episode', 100, 'show1')]
+              : [item('show1', 'show')],
+          totalSize: options?.type === 'episode' ? 15001 : 1,
+          offset: options?.offset ?? 0,
+          limit: options?.limit ?? 250,
+        }),
+      );
+      await expect(
+        controller.getLibraryContent('lib1', 1, 1, 'show', 'size', 'desc'),
+      ).rejects.toThrow('Size sorting TV shows supports up to 15000 episodes');
+      expect(mockMediaServerService.getLibraryContents).toHaveBeenCalledTimes(
+        2,
+      );
+    });
+
+    it('does not cache failed scans', async () => {
+      mockMediaServerService.getLibraryContents
+        .mockRejectedValueOnce(new Error('Server temporarily unavailable'))
+        .mockResolvedValueOnce({
+          items: [item('movie1', 'movie', 100)],
+          totalSize: 1,
+          offset: 0,
+          limit: 250,
+        });
+      await expect(
+        controller.getLibraryContent('lib1', 1, 1, 'movie', 'size'),
+      ).rejects.toThrow('Server temporarily unavailable');
+      const retry = await controller.getLibraryContent(
+        'lib1',
+        1,
+        1,
+        'movie',
+        'size',
+      );
+      expect(retry.items.map(({ id }) => id)).toEqual(['movie1']);
+      expect(mockMediaServerService.getLibraryContents).toHaveBeenCalledTimes(
+        2,
+      );
+    });
+  });
+
   describe('getOverviewBootstrap', () => {
     it('should return libraries with the first library content in one response', async () => {
       const library = {

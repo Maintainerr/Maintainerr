@@ -425,6 +425,29 @@ describe('JellyfinAdapterService', () => {
       );
     });
 
+    it('requests MediaSources only when sorting by size on disk', async () => {
+      jellyfinApiMocks.getItems.mockResolvedValue({
+        data: { Items: [], TotalRecordCount: 0 },
+      });
+
+      await service.getLibraryContents('library-1', {
+        type: 'movie',
+        sort: 'size',
+      });
+
+      expect(jellyfinApiMocks.getItems).toHaveBeenCalledWith(
+        expect.objectContaining({
+          fields: [
+            'ProviderIds',
+            'DateCreated',
+            'Overview',
+            'Path',
+            'MediaSources',
+          ],
+        }),
+      );
+    });
+
     it('uses Jellyfin native studio sorting', async () => {
       jellyfinApiMocks.getItems.mockResolvedValue({
         data: { Items: [], TotalRecordCount: 0 },

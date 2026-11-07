@@ -38,6 +38,24 @@ const getAddedAtMs = (item: MediaItem): number | undefined => toMs(item.addedAt)
 
 const getWatchCount = (item: MediaItem): number | undefined => item.viewCount
 
+/** Sum the actual files/versions, not their stream bitrates or running times. */
+export const getMediaItemSizeBytes = (item: MediaItem): number | undefined => {
+  if (item.sizeBytes !== undefined) {
+    return Number.isFinite(item.sizeBytes) && item.sizeBytes > 0
+      ? item.sizeBytes
+      : undefined
+  }
+
+  const sizes = item.mediaSources
+    .map((source) => source.sizeBytes)
+    .filter(
+      (size): size is number =>
+        size !== undefined && Number.isFinite(size) && size > 0,
+    )
+
+  return sizes.length ? sizes.reduce((sum, size) => sum + size, 0) : undefined
+}
+
 const getStudio = (item: MediaItem): string | undefined => {
   const studio = item.studios?.find((value) => value.trim().length > 0)
   return studio?.trim()
@@ -167,7 +185,7 @@ const compareMaintainerrState = (
 export const compareMediaItemsBySort = (
   leftItem: MediaItem,
   rightItem: MediaItem,
-  sort?: CollectionMediaSortField,
+  sort?: CollectionMediaSortField | MediaLibrarySortField,
   sortOrder: MediaSortOrder = 'asc',
   options?: CompareMediaItemsOptions,
 ): number => {
@@ -204,6 +222,13 @@ export const compareMediaItemsBySort = (
         leftItem,
         rightItem,
         getWatchCount,
+        direction,
+      )
+    case 'size':
+      return compareNumericWithTitleFallback(
+        leftItem,
+        rightItem,
+        getMediaItemSizeBytes,
         direction,
       )
     case 'studio':
