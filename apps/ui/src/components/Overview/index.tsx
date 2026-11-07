@@ -1,4 +1,5 @@
 import { useLingui } from '@lingui/react/macro'
+import { toast } from 'react-toastify'
 import type {
   MediaItem,
   MediaLibrary,
@@ -21,6 +22,7 @@ import { useMediaServerType } from '../../hooks/useMediaServerType'
 import { useRequestGeneration } from '../../hooks/useRequestGeneration'
 import { reportBulkOutcome } from '../../utils/bulkOutcome'
 import GetApiHandler from '../../utils/ApiHandler'
+import { getApiErrorMessage } from '../../utils/ApiError'
 import LibrarySwitcher from '../Common/LibrarySwitcher'
 import LoadingSpinner from '../Common/LoadingSpinner'
 import MediaSelectionActions from '../Common/MediaSelectionActions'
@@ -278,13 +280,22 @@ const Overview = () => {
           setLoading(false)
           setFetching(false)
         }
-      } catch {
+      } catch (error) {
+        if (requestSortParams?.sort === 'size') {
+          toast.error(
+            getApiErrorMessage(
+              error,
+              t`Unable to sort this library by size. It may exceed the safe scan limit.`,
+            ),
+          )
+        }
         setLoadingExtra(false)
         setLoading(false)
         setFetching(false)
       }
     },
     [
+      t,
       SearchCtx.search.text,
       clearSelection,
       effectiveSelectedLibraryId,

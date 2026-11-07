@@ -804,6 +804,22 @@ describe('EmbyAdapterService', () => {
   });
 
   describe('getLibraryContents', () => {
+    it('requests MediaSources when sorting by size on disk', async () => {
+      http.get.mockResolvedValue({ data: { Items: [], TotalRecordCount: 0 } });
+
+      await service.getLibraryContents('library-1', {
+        sort: 'size',
+        type: 'movie',
+      });
+
+      const itemsCall = http.get.mock.calls.find(([path]) => path === '/Items');
+      expect(
+        (itemsCall?.[1] as { params: { Fields: string } }).params.Fields.split(
+          ',',
+        ),
+      ).toContain('MediaSources');
+    });
+
     it('uses Emby native studio sorting', async () => {
       http.get
         .mockResolvedValueOnce({ data: { Items: [], TotalRecordCount: 0 } })

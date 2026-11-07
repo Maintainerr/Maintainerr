@@ -1,6 +1,7 @@
 import {
   CollectionVisibilitySettings,
   compareMediaItemsBySort,
+  getMediaItemSizeBytes,
   CreateCollectionParams,
   MaintainerrMediaStatusDetails,
   MediaCollection,
@@ -33,6 +34,7 @@ import {
   Put,
   Query,
   ServiceUnavailableException,
+  UnprocessableEntityException,
   UseGuards,
 } from '@nestjs/common';
 import { ZodValidationPipe } from 'nestjs-zod';
@@ -49,6 +51,14 @@ const maintainerrServerSortBatchSize = 250;
 const maintainerrServerSortWarnThreshold = 5000;
 // ~2KB per MediaItem in V8 heap. 15,000 items ≈ 60MB with sort copy overhead.
 const maintainerrServerSortHardCap = 15000;
+// Short cache avoids rescanning every episode on each page turn.
+const sizeSortCacheTtlMs = 60_000;
+const sizeSortCacheMaxLibraries = 3;
+
+interface SizeSortCacheEntry {
+  promise: Promise<MediaItem[]>;
+  expiresAt: number;
+}
 
 interface OverviewBootstrapResult {
   libraries: MediaLibrary[];
@@ -73,6 +83,142 @@ export class MediaServerController {
     private readonly mediaItemEnrichmentService: MediaItemEnrichmentService,
   ) {
     this.logger.setContext(MediaServerController.name);
+  }
+
+  // Scope entries to the actual media-server adapter, not a server URL or
+  // host-local path. Changing adapters never reuses old metadata.
+  private readonly sizeSortCache = new WeakMap<
+    IMediaServerService,
+    Map<string, SizeSortCacheEntry>
+  >();
+
+  private async getSizeSortItems(
+    mediaServer: IMediaServerService,
+    libraryId: string,
+    type?: MediaItemType,
+  ): Promise<MediaItem[]> {
+    let cache = this.sizeSortCache.get(mediaServer);
+    if (!cache) {
+      cache = new Map();
+      this.sizeSortCache.set(mediaServer, cache);
+    }
+
+    const key = JSON.stringify([libraryId, type ?? null]);
+    const now = Date.now();
+    const cached = cache.get(key);
+    if (cached && cached.expiresAt > now) {
+      // Refresh LRU position without extending the TTL.
+      cache.delete(key);
+      cache.set(key, cached);
+      return cached.promise;
+    }
+
+    const entry: SizeSortCacheEntry = {
+      expiresAt: Infinity, // Keep concurrent requests deduplicated while scanning.
+      promise: Promise.resolve([]),
+    };
+    entry.promise = this.loadSizeSortItems(mediaServer, libraryId, type).then(
+      (items) => {
+        entry.expiresAt = Date.now() + sizeSortCacheTtlMs;
+        return items;
+      },
+      (error: unknown) => {
+        // A failed scan must not poison future requests.
+        if (cache.get(key) === entry) cache.delete(key);
+        throw error;
+      },
+    );
+    cache.delete(key);
+    cache.set(key, entry);
+    while (cache.size > sizeSortCacheMaxLibraries) {
+      const oldest = cache.keys().next().value;
+      if (oldest !== undefined) cache.delete(oldest);
+    }
+    return entry.promise;
+  }
+
+  private async loadSizeSortItems(
+    mediaServer: IMediaServerService,
+    libraryId: string,
+    type?: MediaItemType,
+  ): Promise<MediaItem[]> {
+    const allItems: MediaItem[] = [];
+    const seenIds = new Set<string>();
+    let nextOffset = 0;
+    let totalSize = 0;
+
+    // Never return a falsely ranked partial list. Fail before a potentially
+    // expensive scan if the upstream library is larger than our safe budget.
+    do {
+      const result = await mediaServer.getLibraryContents(libraryId, {
+        offset: nextOffset,
+        limit: maintainerrServerSortBatchSize,
+        type,
+        sort: 'size',
+        sortOrder: 'asc',
+      });
+      totalSize = result.totalSize;
+      if (totalSize > maintainerrServerSortHardCap) {
+        throw new UnprocessableEntityException(
+          `Size sorting supports up to ${maintainerrServerSortHardCap} library items; this library reports ${totalSize}.`,
+        );
+      }
+      if (nextOffset === 0 && totalSize > maintainerrServerSortWarnThreshold) {
+        this.logger.warn(
+          `Size sorting library ${libraryId} requires scanning ${totalSize} items.`,
+        );
+      }
+      for (const item of result.items) {
+        if (!seenIds.has(item.id)) {
+          seenIds.add(item.id);
+          allItems.push(item);
+        }
+      }
+      // Some adapters filter out entries after pagination. Advance by the
+      // requested window when empty, otherwise advance by returned rows.
+      nextOffset += result.items.length || maintainerrServerSortBatchSize;
+    } while (nextOffset < totalSize);
+
+    if (type !== 'show') return allItems;
+
+    const sizesByShow = new Map<string, number>();
+    const seenEpisodeIds = new Set<string>();
+    let episodeOffset = 0;
+    let episodeTotal = 0;
+    do {
+      const page = await mediaServer.getLibraryContents(libraryId, {
+        offset: episodeOffset,
+        limit: maintainerrServerSortBatchSize,
+        type: 'episode',
+        sort: 'size',
+        sortOrder: 'asc',
+      });
+      episodeTotal = page.totalSize;
+      if (episodeTotal > maintainerrServerSortHardCap) {
+        throw new UnprocessableEntityException(
+          `Size sorting TV shows supports up to ${maintainerrServerSortHardCap} episodes; this library reports ${episodeTotal}.`,
+        );
+      }
+      for (const episode of page.items) {
+        if (seenEpisodeIds.has(episode.id)) continue;
+        seenEpisodeIds.add(episode.id);
+        const sizeBytes = getMediaItemSizeBytes(episode);
+        if (episode.grandparentId && sizeBytes !== undefined) {
+          sizesByShow.set(
+            episode.grandparentId,
+            (sizesByShow.get(episode.grandparentId) ?? 0) + sizeBytes,
+          );
+        }
+      }
+      episodeOffset += maintainerrServerSortBatchSize;
+    } while (episodeOffset < episodeTotal);
+
+    // Do not mutate cached adapter objects; create show summaries for this
+    // specific library. Missing sizes stay unknown and sort last.
+    return allItems.map((show) => {
+      const size = sizesByShow.get(show.id);
+      return size === undefined ? show : { ...show, sizeBytes: size };
+    });
   }
 
   private async attachParentMetadata(
@@ -154,6 +300,27 @@ export class MediaServerController {
   ): Promise<PagedResult<MediaItem>> {
     this.assertLibrarySortSupported(mediaServer, sort);
 
+    if (sort === 'size') {
+      const allItems = await this.getSizeSortItems(
+        mediaServer,
+        libraryId,
+        type,
+      );
+      // Size sorting never uses Maintainerr status. Enrich only the displayed
+      // page instead of hitting the database for thousands of off-screen rows.
+      const sortedItems = [...allItems].sort((leftItem, rightItem) =>
+        compareMediaItemsBySort(leftItem, rightItem, sort, sortOrder),
+      );
+      return {
+        items: await this.enrichItems(
+          sortedItems.slice(offset, offset + limit),
+        ),
+        totalSize: sortedItems.length,
+        offset,
+        limit,
+      };
+    }
+
     if (!this.isStatusLibrarySort(sort)) {
       const result = await mediaServer.getLibraryContents(libraryId, {
         offset,
@@ -187,7 +354,7 @@ export class MediaServerController {
 
       if (nextOffset === 0 && totalSize > maintainerrServerSortWarnThreshold) {
         this.logger.warn(
-          `Status-sorted library request for ${libraryId} (${sort}.${sortOrder ?? 'asc'}) requires fetching ${totalSize} items before paging.`,
+          `Server-sorted library request for ${libraryId} (${sort}.${sortOrder ?? 'asc'}) requires fetching ${totalSize} items before paging.`,
         );
       }
 
@@ -216,7 +383,7 @@ export class MediaServerController {
 
       if (allItems.length >= maintainerrServerSortHardCap) {
         this.logger.warn(
-          `Status-sorted library request for ${libraryId} hit the ${maintainerrServerSortHardCap} item cap (library has ${totalSize} items). Results will be partial.`,
+          `Server-sorted library request for ${libraryId} hit the ${maintainerrServerSortHardCap} item cap (library has ${totalSize} items). Results will be partial.`,
         );
         break;
       }

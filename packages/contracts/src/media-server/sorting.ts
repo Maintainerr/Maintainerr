@@ -4,6 +4,7 @@ export const mediaLibrarySortFields = [
   'addedAt',
   'rating',
   'watchCount',
+  'size',
   'manual',
   'excluded',
   'studio',
@@ -21,7 +22,7 @@ export const mediaSortOrders = ['asc', 'desc'] as const
 export type MediaSortOrder = (typeof mediaSortOrders)[number]
 
 export const collectionMediaSortFields = [
-  ...mediaLibrarySortFields,
+  ...mediaLibrarySortFields.filter((field) => field !== 'size'),
   'deleteSoonest',
 ] as const
 

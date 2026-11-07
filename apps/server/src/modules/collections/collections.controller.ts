@@ -81,7 +81,10 @@ const POSTER_UPLOAD_LIMITS = {
 const collectionMediaSortQuerySchema = z
   .enum(collectionMediaSortFields)
   .optional();
-const mediaLibrarySortQuerySchema = z.enum(mediaLibrarySortFields).optional();
+// Exclusions share library sort fields but cannot compute an Overview-only size scan.
+const mediaLibrarySortQuerySchema = z
+  .enum(mediaLibrarySortFields.filter((field) => field !== 'size'))
+  .optional();
 const mediaSortOrderQuerySchema = z.enum(mediaSortOrders).optional();
 const collectionMediaSortKeySchema = z.union(
   collectionMediaSortFields.flatMap((field) =>

@@ -153,6 +153,46 @@ describe('Overview', () => {
     })
   })
 
+  it('shows a useful error when size sorting exceeds the scan limit', async () => {
+    libraries = [
+      { id: 'movies-library', title: 'Movies', type: 'movie' } as MediaLibrary,
+    ]
+    getApiHandlerMock.mockImplementation(async (path: string) => {
+      if (path.startsWith('/media-server/overview/bootstrap?')) {
+        return {
+          libraries,
+          selectedLibraryId: 'movies-library',
+          content: {
+            totalSize: 1,
+            items: [{ id: 'a', title: 'A', type: 'movie' }],
+          },
+        }
+      }
+      if (path.includes('sort=size')) {
+        throw new Error('Size sorting supports up to 15000 library items')
+      }
+      return { totalSize: 1, items: [{ id: 'a', title: 'A', type: 'movie' }] }
+    })
+
+    render(
+      <SearchContextProvider>
+        <Overview />
+      </SearchContextProvider>,
+    )
+    await waitFor(() => expect(screen.getByText('A')).toBeTruthy())
+    fireEvent.change(
+      screen.getByRole('combobox', { name: 'Sort overview items' }),
+      {
+        target: { value: 'size.desc' },
+      },
+    )
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith(
+        'Size sorting supports up to 15000 library items',
+      )
+    })
+  })
+
   it('keeps failed bulk exclusions selected and reports the partial result', async () => {
     libraries = [
       {

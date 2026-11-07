@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   getCollectionMediaSortConfig,
+  getMediaLibrarySortConfig,
   getCollectionSortConfig,
 } from './MediaLibrarySortControl'
 
@@ -45,5 +46,16 @@ describe('getCollectionMediaSortConfig', () => {
         getCollectionMediaSortConfig('movie', true, false, true).options,
       ),
     ).not.toContain('studio.asc')
+  })
+})
+
+describe('Overview size sort', () => {
+  it('offers both size directions only on Overview, not the collection or rule selectors', () => {
+    const overview = valuesOf(getMediaLibrarySortConfig('movie').options)
+    const collection = valuesOf(getCollectionMediaSortConfig('movie').options)
+    const sizeOptions = ['size.desc', 'size.asc']
+
+    expect(overview).toEqual(expect.arrayContaining(sizeOptions))
+    sizeOptions.forEach((value) => expect(collection).not.toContain(value))
   })
 })

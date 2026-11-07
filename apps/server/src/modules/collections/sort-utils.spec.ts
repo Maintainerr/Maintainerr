@@ -1,5 +1,6 @@
 import {
   compareMediaItemsBySort,
+  parseCollectionSortKey,
   type CompareMediaItemsOptions,
   type MediaItem,
 } from '@maintainerr/contracts';
@@ -311,5 +312,62 @@ describe('compareMediaItemsBySort missing values', () => {
       'Watched',
       'Unknown',
     ]);
+  });
+});
+
+describe('size-on-disk comparison', () => {
+  it('adds multiple file versions and places unknown sizes last in both directions', () => {
+    const media: MediaItem[] = [
+      item({
+        title: 'A',
+        mediaSources: [{ id: 'a', duration: 0, sizeBytes: 100 }],
+      }),
+      item({
+        title: 'B',
+        mediaSources: [
+          { id: 'b1', duration: 0, sizeBytes: 60 },
+          { id: 'b2', duration: 0, sizeBytes: 80 },
+        ],
+      }),
+      item({ title: 'C', mediaSources: [] }),
+      item({ title: 'D', mediaSources: [{ id: 'd', duration: 0 }] }),
+    ];
+
+    expect(sortBy(media, 'size', 'desc')).toEqual(['B', 'A', 'C', 'D']);
+    expect(sortBy(media, 'size', 'asc')).toEqual(['A', 'B', 'C', 'D']);
+  });
+
+  it('treats zero-byte values as unknown consistently', () => {
+    const media: MediaItem[] = [
+      item({
+        title: 'Zero source',
+        mediaSources: [{ id: 'z', duration: 0, sizeBytes: 0 }],
+      }),
+      item({ title: 'Zero aggregate', sizeBytes: 0 }),
+      item({ title: 'Valid', sizeBytes: 10 }),
+    ];
+    expect(sortBy(media, 'size', 'asc')).toEqual([
+      'Valid',
+      'Zero aggregate',
+      'Zero source',
+    ]);
+  });
+
+  it('compares aggregated show sizes and breaks equal-sized ties by title', () => {
+    const media: MediaItem[] = [
+      item({ title: 'Zed', type: 'show', sizeBytes: 300 }),
+      item({ title: 'Alpha', type: 'show', sizeBytes: 300 }),
+      item({ title: 'Small', type: 'show', sizeBytes: 50 }),
+    ];
+
+    expect(sortBy(media, 'size', 'desc')).toEqual(['Alpha', 'Zed', 'Small']);
+  });
+});
+
+describe('collection sort validation', () => {
+  it('rejects overview-only size sorting in rule groups and collection APIs', () => {
+    expect(parseCollectionSortKey('size.asc')).toBeUndefined();
+    expect(parseCollectionSortKey('size.desc')).toBeUndefined();
+    expect(parseCollectionSortKey('title.asc')?.sort).toBe('title');
   });
 });

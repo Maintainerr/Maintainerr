@@ -831,7 +831,12 @@ export class JellyfinAdapterService implements IMediaServerService {
             startIndex: options?.offset || 0,
             limit: options?.limit || JELLYFIN_BATCH_SIZE.DEFAULT_PAGE_SIZE,
             // Keep library listings lean. Full metadata is fetched lazily via /meta/:id.
-            fields: [...JELLYFIN_LIBRARY_LIST_FIELDS],
+            fields: [
+              ...JELLYFIN_LIBRARY_LIST_FIELDS,
+              // File sizes are only needed for a size-sorted Overview. Avoid
+              // bloating every other library-listing request.
+              ...(options?.sort === 'size' ? [ItemFields.MediaSources] : []),
+            ],
             includeItemTypes,
             enableUserData: true,
             sortBy: [toJellyfinSortBy(options?.sort)],
