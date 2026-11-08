@@ -6,506 +6,510 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "X-Generator: @lingui/cli\n"
 "Language: zh-Hant\n"
+"PO-Revision-Date: 2026-11-06 08:51+0000\n"
+"Last-Translator: ezn24 <ezn24@users.noreply.hosted.weblate.org>\n"
+"Language-Team: Chinese (Traditional Han script) <https://hosted.weblate.org/projects/maintainerr/app/zh_Hant/>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
 
 #: src/components/Settings/MediaServerSelector/index.tsx
 msgid "- uses {propertyName}"
-msgstr ""
+msgstr "－使用 {propertyName}"
 
 #: src/components/Settings/Servarr/ServarrServerCard.tsx
 msgid "\"{label}\" is not a valid {name} tag. Lowercase letters, numbers and hyphens only ({chars}), with no leading, trailing, or repeated hyphens."
-msgstr ""
+msgstr "「{label}」不是有效的 {name} 標籤。只能使用小寫英文字母、數字和連字號（{chars}），且不得以連字號開頭、結尾或連續使用。"
 
 #: src/pages/OverlayTemplateListPage.tsx
 msgid "\"{templateName}\" set as the default poster template"
-msgstr ""
+msgstr "已將「{templateName}」設為預設海報範本"
 
 #: src/pages/OverlayTemplateListPage.tsx
 msgid "\"{templateName}\" set as the default title card template"
-msgstr ""
+msgstr "已將「{templateName}」設為預設標題卡範本"
 
 #: src/components/Collection/CollectionDetail/CollectionInfo/CollectionLogsTable.tsx
 msgid "(manual)"
-msgstr ""
+msgstr "（手動）"
 
 #. placeholder {0}: formatWhen(nextAt, locale)
 #: src/components/Settings/Telemetry/index.tsx
 msgid "(Next: {0})"
-msgstr ""
+msgstr "（下次：{0}）"
 
 #: src/components/OverlayEditor/OverlayCanvas.tsx
 msgid "[Image]"
-msgstr ""
+msgstr "[圖片]"
 
 #: src/components/StorageMetrics/index.tsx
 msgid "{accurateMountCount} of {mountCount} mounts report total capacity"
-msgstr ""
+msgstr "{mountCount} 個掛載點中，有 {accurateMountCount} 個回報總容量"
 
 #: src/components/Rules/RuleGroup/AddModal/ArrAction/index.tsx
 msgid "{actionOwnerName} action"
-msgstr ""
+msgstr "{actionOwnerName} 動作"
 
 #: src/components/Rules/RuleGroup/AddModal/ConfigureNotificationModal/index.tsx
 msgid "{agentName} - {agentType} (disabled)"
-msgstr ""
+msgstr "{agentName} - {agentType}（已停用）"
 
 #: src/components/Settings/MediaServerSelector/index.tsx
 msgid "{clearedCollectionLogs, plural, one {# log entry} other {# log entries}}"
-msgstr ""
+msgstr "{clearedCollectionLogs, plural, other {# 筆紀錄}}"
 
 #: src/components/Settings/MediaServerSelector/index.tsx
 msgid "{clearedCollectionMedia, plural, one {# collection media item} other {# collection media items}}"
-msgstr ""
+msgstr "{clearedCollectionMedia, plural, other {# 個收藏集媒體項目}}"
 
 #: src/components/Settings/MediaServerSelector/index.tsx
 msgid "{clearedCollections, plural, one {# collection will be preserved (media server references reset)} other {# collections will be preserved (media server references reset)}}"
-msgstr ""
+msgstr "{clearedCollections, plural, other {將保留 # 個收藏集（重設媒體伺服器參照）}}"
 
 #: src/components/Settings/MediaServerSelector/index.tsx
 msgid "{clearedCollections, plural, one {# collection} other {# collections}}"
-msgstr ""
+msgstr "{clearedCollections, plural, other {# 個收藏集}}"
 
 #: src/components/Settings/MediaServerSelector/index.tsx
 msgid "{clearedExclusions, plural, one {# exclusion} other {# exclusions}}"
-msgstr ""
+msgstr "{clearedExclusions, plural, other {# 個排除項目}}"
 
 #: src/components/StorageMetrics/index.tsx
 msgid "{collectionCount, plural, one {# collection} other {# collections}}"
-msgstr ""
+msgstr "{collectionCount, plural, other {# 個收藏集}}"
 
 #: src/components/Collection/CollectionItem/index.tsx
 msgid "{collectionName} (custom)"
-msgstr ""
+msgstr "{collectionName}（自訂）"
 
 #: src/pages/CollectionDetailPage.tsx
 msgid "{collectionTitle} - Maintainerr"
-msgstr ""
+msgstr "{collectionTitle} - Maintainerr"
 
 #: src/components/Collection/CollectionDetail/CollectionInfo/index.tsx
 msgid "{count, plural, one {# day} other {# days}}"
-msgstr ""
+msgstr "{count, plural, other {# 天}}"
 
 #: src/components/Collection/CollectionDetail/CollectionInfo/index.tsx
 msgid "{count, plural, one {# hour} other {# hours}}"
-msgstr ""
+msgstr "{count, plural, other {# 小時}}"
 
 #: src/utils/bulkOutcome.ts
 msgid "{count, plural, one {# item added.} other {# items added.}}"
-msgstr ""
+msgstr "{count, plural, other {已新增 # 個項目。}}"
 
 #: src/utils/bulkOutcome.ts
 msgid "{count, plural, one {# item could not be added{why}; the failed items stay selected.} other {# items could not be added{why}; the failed items stay selected.}}"
-msgstr ""
+msgstr "{count, plural, other {有 # 個項目無法新增{why}；失敗的項目會維持選取。}}"
 
 #: src/utils/bulkOutcome.ts
 msgid "{count, plural, one {# item could not be excluded everywhere{why}; the failed items stay selected.} other {# items could not be excluded everywhere{why}; the failed items stay selected.}}"
-msgstr ""
+msgstr "{count, plural, other {有 # 個項目無法從所有收藏集中排除{why}；失敗的項目會維持選取。}}"
 
 #: src/utils/bulkOutcome.ts
 msgid "{count, plural, one {# item could not be excluded{why}; the failed items stay selected.} other {# items could not be excluded{why}; the failed items stay selected.}}"
-msgstr ""
+msgstr "{count, plural, other {有 # 個項目無法排除{why}；失敗的項目會維持選取。}}"
 
 #: src/utils/bulkOutcome.ts
 msgid "{count, plural, one {# item could not be removed from every collection{why}; the failed items stay selected.} other {# items could not be removed from every collection{why}; the failed items stay selected.}}"
-msgstr ""
+msgstr "{count, plural, other {有 # 個項目無法從所有收藏集中移除{why}；失敗的項目會維持選取。}}"
 
 #: src/utils/bulkOutcome.ts
 msgid "{count, plural, one {# item could not be removed{why}; the failed items stay selected.} other {# items could not be removed{why}; the failed items stay selected.}}"
-msgstr ""
+msgstr "{count, plural, other {有 # 個項目無法移除{why}；失敗的項目會維持選取。}}"
 
 #: src/utils/bulkOutcome.ts
 msgid "{count, plural, one {# item could not be un-excluded{why}; the failed items stay selected.} other {# items could not be un-excluded{why}; the failed items stay selected.}}"
-msgstr ""
+msgstr "{count, plural, other {有 # 個項目無法取消排除{why}；失敗的項目會維持選取。}}"
 
 #: src/utils/bulkOutcome.ts
 msgid "{count, plural, one {# item excluded everywhere.} other {# items excluded everywhere.}}"
-msgstr ""
+msgstr "{count, plural, other {已從所有收藏集中排除 # 個項目。}}"
 
 #: src/utils/bulkOutcome.ts
 msgid "{count, plural, one {# item excluded.} other {# items excluded.}}"
-msgstr ""
+msgstr "{count, plural, other {已排除 # 個項目。}}"
 
 #: src/utils/bulkOutcome.ts
 msgid "{count, plural, one {# item removed from every collection.} other {# items removed from every collection.}}"
-msgstr ""
+msgstr "{count, plural, other {已從所有收藏集中移除 # 個項目。}}"
 
 #: src/utils/bulkOutcome.ts
 msgid "{count, plural, one {# item removed.} other {# items removed.}}"
-msgstr ""
+msgstr "{count, plural, other {已移除 # 個項目。}}"
 
 #: src/utils/bulkOutcome.ts
 msgid "{count, plural, one {# item un-excluded.} other {# items un-excluded.}}"
-msgstr ""
+msgstr "{count, plural, other {已取消排除 # 個項目。}}"
 
 #: src/components/Collection/CollectionDetail/CollectionInfo/index.tsx
 msgid "{count, plural, one {# minute} other {# minutes}}"
-msgstr ""
+msgstr "{count, plural, other {# 分鐘}}"
 
 #: src/components/Collection/CollectionDetail/CollectionInfo/index.tsx
 msgid "{count, plural, one {# month} other {# months}}"
-msgstr ""
+msgstr "{count, plural, other {# 個月}}"
 
 #: src/components/Collection/CollectionDetail/CollectionInfo/index.tsx
 msgid "{count, plural, one {# second} other {# seconds}}"
-msgstr ""
+msgstr "{count, plural, other {# 秒}}"
 
 #: src/components/Collection/CollectionDetail/CollectionInfo/index.tsx
 msgid "{count, plural, one {# year} other {# years}}"
-msgstr ""
+msgstr "{count, plural, other {# 年}}"
 
 #: src/components/Settings/About/Releases/index.tsx
 msgid "{daysAgo, plural, one {# day ago} other {# days ago}}"
-msgstr ""
+msgstr "{daysAgo, plural, other {# 天前}}"
 
 #: src/pages/OverlayTemplateListPage.tsx
 msgid "{elementCount, plural, one {# element} other {# elements}}"
-msgstr ""
+msgstr "{elementCount, plural, other {# 個元素}}"
 
 #: src/components/Services/useServices.tsx
 msgid "{enabledAgentCount, plural, one {# agent enabled} other {# agents enabled}}"
-msgstr ""
+msgstr "{enabledAgentCount, plural, other {已啟用 # 個通知代理程式}}"
 
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "{formatList} - up to {imageUploadMaxLabel}."
-msgstr ""
+msgstr "{formatList}，上限為 {imageUploadMaxLabel}。"
 
 #: src/components/StorageMetrics/StorageUsageBar.tsx
 msgid "{freeSize} free"
-msgstr ""
+msgstr "可用空間 {freeSize}"
 
 #: src/components/Settings/MediaServerSelector/index.tsx
 msgid "{furtherSkippedRules, plural, one {...and # more} other {...and # more}}"
-msgstr ""
+msgstr "{furtherSkippedRules, plural, other {……還有 # 個}}"
 
 #: src/components/Settings/About/Releases/index.tsx
 msgid "{hoursAgo, plural, one {# hour ago} other {# hours ago}}"
-msgstr ""
+msgstr "{hoursAgo, plural, other {# 小時前}}"
 
 #: src/api/calendar.ts
 #: src/components/StorageMetrics/index.tsx
 msgid "{itemCount, plural, one {# item} other {# items}}"
-msgstr ""
+msgstr "{itemCount, plural, other {# 個項目}}"
 
 #: src/components/Common/MediaActionModal.tsx
 msgid "{itemCount, plural, one {Add exclusion applies to # item across every collection. For shows and seasons this covers everything they contain.} other {Add exclusion applies to # items across every collection. For shows and seasons this covers everything they contain.}}"
-msgstr ""
+msgstr "{itemCount, plural, other {新增排除項目會套用至所有收藏集中的 # 個項目。影集和季度也包含其中的所有內容。}}"
 
 #: src/components/Common/MediaActionModal.tsx
 msgid "{itemCount, plural, one {Applies to # item.} other {Applies to # items.}}"
-msgstr ""
+msgstr "{itemCount, plural, other {套用至 # 個項目。}}"
 
 #: src/components/Common/MediaActionModal.tsx
 msgid "{itemCount, plural, one {Remove exclusion applies to # item across every collection. For shows and seasons this covers everything they contain.} other {Remove exclusion applies to # items across every collection. For shows and seasons this covers everything they contain.}}"
-msgstr ""
+msgstr "{itemCount, plural, other {取消排除會套用至所有收藏集中的 # 個項目。影集和季度也包含其中的所有內容。}}"
 
 #: src/components/Common/MediaActionModal.tsx
 msgid "{itemCount, plural, one {Remove from collection applies to # item across every collection. For shows and seasons this covers everything they contain.} other {Remove from collection applies to # items across every collection. For shows and seasons this covers everything they contain.}}"
-msgstr ""
+msgstr "{itemCount, plural, other {從收藏集移除會套用至所有收藏集中的 # 個項目。影集和季度也包含其中的所有內容。}}"
 
 #: src/components/Settings/MediaServerSelector/index.tsx
 msgid "{migratableRules} of {totalRules} rules can be migrated."
-msgstr ""
+msgstr "{totalRules} 條規則中有 {migratableRules} 條可遷移。"
 
 #: src/components/Settings/About/Releases/index.tsx
 msgid "{minutesAgo, plural, one {# minute ago} other {# minutes ago}}"
-msgstr ""
+msgstr "{minutesAgo, plural, other {# 分鐘前}}"
 
 #: src/components/StorageMetrics/index.tsx
 msgid "{mountCount, plural, one {# mount} other {# mounts}}"
-msgstr ""
+msgstr "{mountCount, plural, other {# 個掛載點}}"
 
 #: src/components/StorageMetrics/index.tsx
 msgid "{mountCount, plural, one {Aggregated across # mount} other {Aggregated across # mounts}}"
-msgstr ""
+msgstr "{mountCount, plural, other {彙總 # 個掛載點}}"
 
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "{path} (saved selection; total space unavailable)"
-msgstr ""
+msgstr "{path}（已儲存的選項；無法取得總空間）"
 
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "{path} (saved selection)"
-msgstr ""
+msgstr "{path}（已儲存的選項）"
 
 #: src/components/Services/useServices.tsx
 msgid "{provider} primary"
-msgstr ""
+msgstr "{provider} 為主要來源"
 
 #: src/components/Settings/Metadata/index.tsx
 msgid "{providerTitle} primary"
-msgstr ""
+msgstr "{providerTitle} 為主要來源"
 
 #: src/components/Settings/Metadata/index.tsx
 msgid "{providerTitle} settings could not be updated"
-msgstr ""
+msgstr "無法更新 {providerTitle} 設定"
 
 #: src/components/Settings/About/Releases/index.tsx
 msgid "{secondsAgo, plural, one {# second ago} other {# seconds ago}}"
-msgstr ""
+msgstr "{secondsAgo, plural, other {# 秒前}}"
 
 #: src/components/Services/useServices.tsx
 msgid "{serverCount, plural, one {# server} other {# servers}}"
-msgstr ""
+msgstr "{serverCount, plural, other {# 台伺服器}}"
 
 #: src/components/Rules/RuleGroup/AddModal/QualityProfileSelector.tsx
 msgid "{serviceName} quality profile *"
-msgstr ""
+msgstr "{serviceName} 畫質設定檔 *"
 
 #: src/components/StorageMetrics/index.tsx
 msgid "{size} reclaimed"
-msgstr ""
+msgstr "已回收 {size}"
 
 #: src/components/StorageMetrics/index.tsx
 msgid "{size} reclaimed total"
-msgstr ""
+msgstr "累計回收 {size}"
 
 #: src/components/StorageMetrics/index.tsx
 msgid "{sizedCount} of {reclaimableCount} reclaimable collections sized - duplicates counted once"
-msgstr ""
+msgstr "{reclaimableCount} 個可回收收藏集中，已有 {sizedCount} 個完成容量計算；重複項目僅計算一次"
 
 #: src/components/StorageMetrics/index.tsx
 msgid "{sizedCount} of {reclaimableCount} reclaimable collections sized - duplicates not yet deduplicated, refreshes after next collection run"
-msgstr ""
+msgstr "{reclaimableCount} 個可回收收藏集中，已有 {sizedCount} 個完成容量計算；重複項目尚未去重，下次執行收藏集作業後更新"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "{skipped, plural, one {# rule was skipped - it uses a property that isn't available.} other {# rules were skipped - they use properties that aren't available.}}"
-msgstr ""
+msgstr "{skipped, plural, other {已略過 # 條規則，因為使用了無法取得的屬性。}}"
 
 #: src/components/Settings/MediaServerSelector/index.tsx
 msgid "{skippedRuleCount, plural, one {# rule uses properties not available in {pendingName}.} other {# rules use properties not available in {pendingName}.}}"
-msgstr ""
+msgstr "{skippedRuleCount, plural, other {有 # 條規則使用了 {pendingName} 不支援的屬性。}}"
 
 #: src/pages/OverlayTemplateEditorPage.tsx
 msgid "{templateName} - Overlay Editor - Maintainerr"
-msgstr ""
+msgstr "{templateName} - 覆蓋圖層編輯器 - Maintainerr"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "{templateName} (default)"
-msgstr ""
+msgstr "{templateName}（預設）"
 
 #: src/components/Calendar/index.tsx
 msgid "{totalScheduledCount, plural, one {# scheduled} other {# scheduled}}"
-msgstr ""
+msgstr "{totalScheduledCount, plural, other {已排程 # 個}}"
 
 #: src/components/Rules/RuleGroup/AddModal/ArrAction/index.tsx
 msgid "{type} server *"
-msgstr ""
+msgstr "{type} 伺服器 *"
 
 #: src/components/StorageMetrics/StorageUsageBar.tsx
 msgid "{usedSize} used"
-msgstr ""
+msgstr "已使用 {usedSize}"
 
 #: src/components/StorageMetrics/StorageUsageBar.tsx
 msgid "{usedSize} used of {totalSize}"
-msgstr ""
+msgstr "總共 {totalSize}，已使用 {usedSize}"
 
 #: src/components/Settings/About/Releases/index.tsx
 msgid "{version} Changelog"
-msgstr ""
+msgstr "{version} 更新紀錄"
 
 #: src/components/Common/MediaCard/MediaModal/StreamystatsStatsPanel/index.tsx
 msgid "{watchedEpisodes}/{totalEpisodes} episodes watched"
-msgstr ""
+msgstr "已觀看 {watchedEpisodes}/{totalEpisodes} 集"
 
 #: src/components/Common/MediaCard/MediaModal/StreamystatsStatsPanel/index.tsx
 msgid "{watchedSeasons}/{totalSeasons} seasons complete"
-msgstr ""
+msgstr "已看完 {watchedSeasons}/{totalSeasons} 季"
 
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "+ Text"
-msgstr ""
+msgstr "+ 文字"
 
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "+ Variable"
-msgstr ""
+msgstr "+ 變數"
 
 #: src/components/Calendar/index.tsx
 msgid "+{hiddenCount} more..."
-msgstr ""
+msgstr "另外還有 {hiddenCount} 個……"
 
 #: src/components/Forms/ServiceBasePathInput.tsx
 msgid "<0>Optional</0> path configured on the service."
-msgstr ""
+msgstr "服務上設定的<0>選用</0>路徑。"
 
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "1 day text"
-msgstr ""
+msgstr "單日文字"
 
 #: src/components/Settings/Servarr/ServarrServerCard.tsx
 msgid "A tag label is required when exclusion tagging is enabled. Lowercase letters, numbers and hyphens only ({chars})."
-msgstr ""
+msgstr "啟用排除標籤時，必須提供標籤名稱。只能使用小寫英文字母、數字與連字號（{chars}）。"
 
 #: src/components/Settings/index.tsx
 msgid "About"
-msgstr ""
+msgstr "關於"
 
 #: src/components/Settings/About/index.tsx
 msgid "About - Maintainerr"
-msgstr ""
+msgstr "關於 - Maintainerr"
 
 #: src/components/Settings/About/index.tsx
 msgid "About Maintainerr"
-msgstr ""
+msgstr "關於 Maintainerr"
 
 #: src/components/Common/MediaActionModal.tsx
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "Action"
-msgstr ""
+msgstr "動作"
 
 #: src/components/Collection/CollectionItem/index.tsx
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 #: src/components/Rules/RuleGroup/index.tsx
 #: src/components/StorageMetrics/index.tsx
 msgid "Active"
-msgstr ""
+msgstr "啟用中"
 
 #: src/components/Rules/ruleGroupSort.ts
 msgid "Active First"
-msgstr ""
+msgstr "啟用中的項目優先"
 
 #: src/components/Common/MediaActionModal.tsx
 msgid "Add / Remove Media"
-msgstr ""
+msgstr "新增／移除媒體"
 
 #: src/components/Rules/Rule/RuleCreator/index.tsx
 msgid "Add a new rule to Section {sectionNumber}"
-msgstr ""
+msgstr "在區段 {sectionNumber} 新增規則"
 
 #: src/components/Rules/Rule/RuleCreator/index.tsx
 msgid "Add a new section"
-msgstr ""
+msgstr "新增區段"
 
 #: src/components/Settings/Metadata/index.tsx
 msgid "Add a TVDB key first"
-msgstr ""
+msgstr "請先新增 TVDB 金鑰"
 
 #: src/components/Settings/Notifications/index.tsx
 #: src/components/Settings/Notifications/NotificationAgentCard.tsx
 msgid "Add Agent"
-msgstr ""
+msgstr "新增通知代理程式"
 
 #: src/components/Common/MediaActionModal.tsx
 msgid "Add exclusion"
-msgstr ""
+msgstr "新增排除項目"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Add import list exclusions"
-msgstr ""
+msgstr "新增匯入清單排除項目"
 
 #: src/components/Settings/Servarr/ServarrSettings.tsx
 msgid "Add Radarr server"
-msgstr ""
+msgstr "新增 Radarr 伺服器"
 
 #: src/components/Rules/Rule/RuleCreator/index.tsx
 msgid "Add Rule"
-msgstr ""
+msgstr "新增規則"
 
 #: src/components/Settings/Servarr/ServarrSettings.tsx
 msgid "Add Sonarr server"
-msgstr ""
+msgstr "新增 Sonarr 伺服器"
 
 #: src/components/Settings/Servarr/ServarrSettings.tsx
 msgid "Add Sportarr server"
-msgstr ""
+msgstr "新增 Sportarr 伺服器"
 
 #: src/components/Common/MediaActionModal.tsx
 msgid "Add to collection"
-msgstr ""
+msgstr "新增至收藏集"
 
 #: src/components/Common/MediaSelectionActions.tsx
 msgid "Add/Exclude <0>selected</0>"
-msgstr ""
+msgstr "新增／排除<0>選取的項目</0>"
 
 #: src/components/Calendar/index.tsx
 msgid "Added On"
-msgstr ""
+msgstr "新增日期"
 
 #: src/components/Settings/Emby/index.tsx
 #: src/components/Settings/Jellyfin/index.tsx
 msgid "Admin User"
-msgstr ""
+msgstr "管理員使用者"
 
 #: src/components/Settings/Plex/index.tsx
 msgid "Advanced Settings"
-msgstr ""
+msgstr "進階設定"
 
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "After"
-msgstr ""
+msgstr "之後"
 
 #: src/components/Collection/CollectionItem/index.tsx
 msgid "After {dayCount}"
-msgstr ""
+msgstr "{dayCount} 天後"
 
 #: src/components/Settings/MediaServerSelector/index.tsx
 msgid "After migration, you must manually assign a library to each rule group before rules can run."
-msgstr ""
+msgstr "遷移後，必須手動為每個規則群組指定媒體庫，規則才能執行。"
 
 #: src/components/Settings/Notifications/NotificationAgentCard.tsx
 msgid "Agent *"
-msgstr ""
+msgstr "通知代理程式 *"
 
 #: src/components/Rules/RuleGroup/AddModal/ConfigureNotificationModal/index.tsx
 msgid "Agents"
-msgstr ""
+msgstr "通知代理程式"
 
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "Aggregate (all paths)"
-msgstr ""
+msgstr "彙總（所有路徑）"
 
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "Align"
-msgstr ""
+msgstr "對齊"
 
 #: src/components/Common/LibrarySwitcher/index.tsx
 msgid "All"
-msgstr ""
+msgstr "全部"
 
 #: src/components/Common/MediaActionModal.tsx
 msgid "All collections"
-msgstr ""
+msgstr "所有收藏集"
 
 #: src/components/Common/MediaActionModal.tsx
 msgid "All episodes"
-msgstr ""
+msgstr "所有集數"
 
 #: src/components/Settings/Overlays/index.tsx
 msgid "All overlays have been reset"
-msgstr ""
+msgstr "已重設所有覆蓋圖層"
 
 #: src/components/Common/MediaActionModal.tsx
 msgid "All seasons"
-msgstr ""
+msgstr "所有季度"
 
 #: src/components/Settings/Notifications/NotificationAgentCard.tsx
 msgid "Allow self-signed certificates"
-msgstr ""
+msgstr "允許自我簽署憑證"
 
 #: src/components/Settings/Notifications/NotificationAgentCard.tsx
 msgid "Allow users to also start a chat with your bot and configure their own notifications"
-msgstr ""
+msgstr "允許使用者主動與機器人對話，並設定自己的通知"
 
 #: src/components/Settings/Servarr/ServarrServerCard.tsx
 msgid "Allowed: {chars}"
-msgstr ""
+msgstr "允許的字元：{chars}"
 
 #: src/components/Settings/Notifications/NotificationAgentCard.tsx
 msgid "Always use STARTTLS"
-msgstr ""
+msgstr "一律使用 STARTTLS"
 
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "Amount of days"
-msgstr ""
+msgstr "天數"
 
 #: src/components/Common/CommunityRuleModal/index.tsx
 msgid "An error occurred fetching community rules. Please try again later."
-msgstr ""
+msgstr "擷取社群規則時發生錯誤，請稍後再試。"
 
 #: src/components/Common/MediaActionModal.tsx
 msgid "An item excluded globally is un-excluded everywhere, not just here."
-msgstr ""
+msgstr "取消全域排除會影響所有收藏集，而不只此處。"
 
 #: src/components/Layout/index.tsx
 msgid "An unexpected error occurred."
-msgstr ""
+msgstr "發生未預期的錯誤。"
 
 #: src/components/Settings/Main/index.tsx
 #: src/components/Settings/Ombi/index.tsx
@@ -514,30 +518,30 @@ msgstr ""
 #: src/components/Settings/Tautulli/index.tsx
 #: src/components/Settings/Tracearr/index.tsx
 msgid "API key"
-msgstr ""
+msgstr "API 金鑰"
 
 #: src/components/Settings/Emby/index.tsx
 #: src/components/Settings/Jellyfin/index.tsx
 #: src/components/Settings/Metadata/index.tsx
 msgid "API Key"
-msgstr ""
+msgstr "API 金鑰"
 
 #: src/components/Settings/Metadata/index.tsx
 msgid "API key configured."
-msgstr ""
+msgstr "已設定 API 金鑰。"
 
 #: src/components/Settings/Metadata/index.tsx
 msgid "API key not configured."
-msgstr ""
+msgstr "尚未設定 API 金鑰。"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Apply date overlays to posters in this collection"
-msgstr ""
+msgstr "將日期覆蓋圖層套用至此收藏集的海報"
 
 #: src/components/Rules/RuleGroup/index.tsx
 #: src/components/Settings/ServiceCard.tsx
 msgid "Are you sure?"
-msgstr ""
+msgstr "確定嗎？"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Artwork left out is restored on the next overlay run"
@@ -545,125 +549,125 @@ msgstr ""
 
 #: src/components/Collection/CollectionDetail/CollectionInfo/index.tsx
 msgid "Ascending"
-msgstr ""
+msgstr "遞增"
 
 #: src/components/Login/Plex/index.tsx
 msgid "Authenticate with Plex"
-msgstr ""
+msgstr "使用 Plex 驗證身分"
 
 #: src/components/Settings/Plex/index.tsx
 msgid "Authenticate with Plex before saving server settings."
-msgstr ""
+msgstr "儲存伺服器設定前，請先完成 Plex 身分驗證。"
 
 #: src/components/Settings/Plex/index.tsx
 msgid "Authenticate with Plex before testing the connection."
-msgstr ""
+msgstr "測試連線前，請先完成 Plex 身分驗證。"
 
 #: src/components/Settings/Emby/index.tsx
 #: src/components/Settings/Plex/index.tsx
 msgid "Authenticated"
-msgstr ""
+msgstr "已驗證"
 
 #: src/components/Login/Emby/EmbyLoginButton.tsx
 msgid "Authenticates against <0>{embyUrl}</0> with an admin username and password. The resulting access token is stored as the API key."
-msgstr ""
+msgstr "使用管理員帳號與密碼向 <0>{embyUrl}</0> 驗證身分，取得的存取權杖會儲存為 API 金鑰。"
 
 #: src/components/Login/Plex/index.tsx
 msgid "Authenticating…"
-msgstr ""
+msgstr "正在驗證身分…"
 
 #: src/components/Settings/Plex/index.tsx
 msgid "Authentication"
-msgstr ""
+msgstr "身分驗證"
 
 #: src/components/Login/Emby/EmbyLoginButton.tsx
 msgid "Authentication failed"
-msgstr ""
+msgstr "身分驗證失敗"
 
 #: src/utils/PlexAuth.ts
 msgid "Authentication PIN expired. Please try again."
-msgstr ""
+msgstr "驗證 PIN 碼已過期，請重試。"
 
 #: src/components/Services/useServices.tsx
 msgid "Authentication reuses the configured Jellyfin API key."
-msgstr ""
+msgstr "身分驗證會重複使用已設定的 Jellyfin API 金鑰。"
 
 #: src/utils/PlexAuth.ts
 msgid "Authentication timed out. Please try again."
-msgstr ""
+msgstr "身分驗證逾時，請重試。"
 
 #: src/components/Settings/Plex/index.tsx
 msgid "Authentication with the server's admin account is required to access the Plex API"
-msgstr ""
+msgstr "存取 Plex API 必須使用伺服器管理員帳號進行身分驗證"
 
 #: src/components/Collection/CollectionOverview/index.tsx
 msgid "Automatic collections"
-msgstr ""
+msgstr "自動收藏集"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Automatically sort items inside the collection on {mediaServerName}. Disabling later does not restore the default order - change it in {mediaServerName} if needed."
-msgstr ""
+msgstr "自動排序 {mediaServerName} 中收藏集的項目。日後停用不會還原預設順序，如有需要，請在 {mediaServerName} 中調整。"
 
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "Background"
-msgstr ""
+msgstr "背景"
 
 #: src/components/Settings/Main/DatabaseBackupModal.tsx
 msgid "Backup"
-msgstr ""
+msgstr "備份"
 
 #: src/components/Settings/Main/DatabaseBackupModal.tsx
 #: src/components/Settings/Main/index.tsx
 msgid "Backup Database"
-msgstr ""
+msgstr "備份資料庫"
 
 #: src/components/Forms/ServiceBasePathInput.tsx
 msgid "Base Path"
-msgstr ""
+msgstr "基本路徑"
 
 #: src/components/StorageMetrics/index.tsx
 msgid "Based on cached collection sizes, deduplicated across collections. Run collection processing jobs to refresh size data."
-msgstr ""
+msgstr "依據快取的收藏集大小計算，並在各收藏集之間排除重複項目。請執行收藏集處理作業以更新容量資料。"
 
 #: src/components/StorageMetrics/index.tsx
 msgid "Based on cached collection totals while per-item sizes are still backfilling. Duplicates across collections are resolved after the next collection size refresh."
-msgstr ""
+msgstr "目前依據快取的收藏集總量計算，個別項目的大小仍在補齊。下次重新整理收藏集容量後，會處理跨收藏集的重複項目。"
 
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "Before"
-msgstr ""
+msgstr "之前"
 
 #: src/components/Collection/CollectionDetail/CollectionInfo/index.tsx
 msgid "Below are the rule evaluation results that triggered this action. The output follows the same format as Test Media. Refer to the documentation for guidance on interpreting this output."
-msgstr ""
+msgstr "以下是觸發此動作的規則評估結果。輸出格式與「測試媒體」相同，請參閱文件了解如何解讀。"
 
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "Bigger"
-msgstr ""
+msgstr "大於"
 
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "bold"
-msgstr ""
+msgstr "粗體"
 
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "Boolean"
-msgstr ""
+msgstr "布林值"
 
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "bottom"
-msgstr ""
+msgstr "底部"
 
 #: src/components/Layout/NavBar/index.tsx
 msgid "Calendar"
-msgstr ""
+msgstr "行事曆"
 
 #: src/pages/CalendarPage.tsx
 msgid "Calendar - Maintainerr"
-msgstr ""
+msgstr "行事曆 - Maintainerr"
 
 #: src/components/Settings/Jobs/index.tsx
 msgid "Can be overridden by individual rule groups."
-msgstr ""
+msgstr "可由個別規則群組覆寫。"
 
 #: src/components/Common/ColorPickerModal/index.tsx
 #: src/components/Common/Modal/index.tsx
@@ -673,91 +677,91 @@ msgstr ""
 #: src/components/Settings/ServiceCard.tsx
 #: src/components/StorageMetrics/index.tsx
 msgid "Cancel"
-msgstr ""
+msgstr "取消"
 
 #: src/pages/OverlayTemplateListPage.tsx
 msgid "Cannot delete preset templates"
-msgstr ""
+msgstr "無法刪除預設範本"
 
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "center"
-msgstr ""
+msgstr "置中"
 
 #: src/components/Settings/Plex/index.tsx
 msgid "Change"
-msgstr ""
+msgstr "變更"
 
 #: src/api/calendar.ts
 msgid "Change Quality"
-msgstr ""
+msgstr "變更畫質"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Change quality profile"
-msgstr ""
+msgstr "變更畫質設定檔"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Change quality profile and search"
-msgstr ""
+msgstr "變更畫質設定檔並搜尋"
 
 #: src/components/Collection/CollectionDetail/TriggerRuleActionButton/index.tsx
 msgid "Change the quality profile"
-msgstr ""
+msgstr "變更畫質設定檔"
 
 #: src/components/Collection/CollectionDetail/TriggerRuleActionButton/index.tsx
 msgid "Change the quality profile and trigger a search"
-msgstr ""
+msgstr "變更畫質設定檔並觸發搜尋"
 
 #: src/components/Settings/Plex/index.tsx
 msgid "Checking authentication..."
-msgstr ""
+msgstr "正在檢查身分驗證……"
 
 #: src/components/Common/ColorPickerModal/index.tsx
 msgid "Choose a color"
-msgstr ""
+msgstr "選擇顏色"
 
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "Choose a color for {fieldLabel}"
-msgstr ""
+msgstr "選擇 {fieldLabel} 的顏色"
 
 #: src/components/Settings/Main/DatabaseBackupModal.tsx
 msgid "Choose the filename for your database backup."
-msgstr ""
+msgstr "選擇資料庫備份檔案名稱。"
 
 #: src/components/Services/useServices.tsx
 msgid "Choose the primary source for posters, backdrops and metadata. A TVDB API key is highly recommended: when the primary provider cannot match a movie or show, Maintainerr falls back to TVDB for its IDs and details."
-msgstr ""
+msgstr "選擇海報、背景圖片及中繼資料的主要來源。強烈建議設定 TVDB API 金鑰：當主要供應商無法比對電影或影集時，Maintainerr 會改用 TVDB 取得 ID 與詳細資料。"
 
 #: src/components/Settings/index.tsx
 msgid "Choose your media server, confirm the connection, and then you can continue configuring the rest of Maintainerr."
-msgstr ""
+msgstr "選擇媒體伺服器並確認連線後，即可繼續設定 Maintainerr 的其他功能。"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Clean up leftover folders"
-msgstr ""
+msgstr "清理殘留資料夾"
 
 #: src/components/StorageMetrics/index.tsx
 msgid "Cleanup totals"
-msgstr ""
+msgstr "清理總計"
 
 #: src/components/Rules/RuleGroup/AddModal/CollectionPosterPicker.tsx
 msgid "Clear"
-msgstr ""
+msgstr "清除"
 
 #: src/components/Settings/Plex/index.tsx
 msgid "Clear credentials?"
-msgstr ""
+msgstr "要清除認證資訊嗎？"
 
 #: src/components/Settings/DownloadClient/index.tsx
 msgid "Client"
-msgstr ""
+msgstr "用戶端"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Clone"
-msgstr ""
+msgstr "複製"
 
 #: src/pages/RuleFormPage.tsx
 msgid "Clone rule - Maintainerr"
-msgstr ""
+msgstr "複製規則 - Maintainerr"
 
 #: src/components/Calendar/index.tsx
 #: src/components/Collection/CollectionDetail/CollectionInfo/index.tsx
@@ -769,361 +773,361 @@ msgstr ""
 #: src/components/Settings/About/Releases/index.tsx
 #: src/components/Settings/Notifications/NotificationAgentCard.tsx
 msgid "Close"
-msgstr ""
+msgstr "關閉"
 
 #: src/components/Layout/NavBar/index.tsx
 msgid "Close sidebar"
-msgstr ""
+msgstr "關閉側邊欄"
 
 #: src/components/Settings/MediaServerSelector/index.tsx
 msgid "Close this dialog and try again."
-msgstr ""
+msgstr "請關閉此對話方塊並重試。"
 
 #: src/components/Calendar/index.tsx
 #: src/components/Collection/CollectionDetail/CollectionInfo/collectionLogLabels.ts
 #: src/components/Common/MediaActionModal.tsx
 #: src/components/StorageMetrics/index.tsx
 msgid "Collection"
-msgstr ""
+msgstr "收藏集"
 
 #: src/pages/CollectionDetailPage.tsx
 msgid "Collection - Maintainerr"
-msgstr ""
+msgstr "收藏集 - Maintainerr"
 
 #: src/api/calendar.ts
 msgid "Collection {collectionId}"
-msgstr ""
+msgstr "收藏集 {collectionId}"
 
 #: src/components/Settings/Jobs/index.tsx
 msgid "Collection Handler"
-msgstr ""
+msgstr "收藏集處理程式"
 
 #: src/pages/CollectionsListPage.tsx
 msgid "Collection handling is already running."
-msgstr ""
+msgstr "收藏集處理作業已在執行中。"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Collection items sort"
-msgstr ""
+msgstr "收藏集項目排序"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Collection must exist in {mediaServerName}"
-msgstr ""
+msgstr "收藏集必須已存在於 {mediaServerName}"
 
 #: src/components/StorageMetrics/index.tsx
 msgid "Collection sizes have not been computed yet. They are calculated as part of the regular collection processing job."
-msgstr ""
+msgstr "尚未計算收藏集大小。系統會在定期執行的收藏集處理作業中計算。"
 
 #: src/components/Layout/NavBar/index.tsx
 msgid "Collections"
-msgstr ""
+msgstr "收藏集"
 
 #: src/pages/CollectionsListPage.tsx
 msgid "Collections - Maintainerr"
-msgstr ""
+msgstr "收藏集 - Maintainerr"
 
 #: src/components/Settings/Telemetry/index.tsx
 msgid "Collector source code"
-msgstr ""
+msgstr "資料收集器原始碼"
 
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "Color"
-msgstr ""
+msgstr "顏色"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Community"
-msgstr ""
+msgstr "社群"
 
 #: src/components/Common/CommunityRuleModal/index.tsx
 msgid "Community Rule Description"
-msgstr ""
+msgstr "社群規則說明"
 
 #: src/components/Common/CommunityRuleModal/index.tsx
 #: src/components/Settings/About/index.tsx
 msgid "Community Rules"
-msgstr ""
+msgstr "社群規則"
 
 #: src/components/Rules/Rule/RuleCreator/CommunityRuleUpload/index.tsx
 msgid "Community Short Name *"
-msgstr ""
+msgstr "社群簡稱 *"
 
 #: src/components/Common/MediaCard/MediaModal/WatchStatsPanel/index.tsx
 msgid "Completion"
-msgstr ""
+msgstr "完成進度"
 
 #: src/components/StorageMetrics/index.tsx
 msgid "Compute library sizes"
-msgstr ""
+msgstr "計算媒體庫大小"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Configure"
-msgstr ""
+msgstr "設定"
 
 #: src/components/Settings/Overlays/index.tsx
 msgid "Configure automatic poster and title card overlays for collections"
-msgstr ""
+msgstr "設定收藏集的自動海報與標題卡覆蓋圖層"
 
 #: src/components/Settings/Main/index.tsx
 msgid "Configure global settings"
-msgstr ""
+msgstr "設定全域選項"
 
 #: src/components/Settings/Metadata/index.tsx
 msgid "Configure to refresh"
-msgstr ""
+msgstr "設定後重新整理"
 
 #: src/components/Services/useServices.tsx
 msgid "Configure your Emby server connection. Enter the server URL plus an API key, or sign in with admin credentials to obtain one."
-msgstr ""
+msgstr "設定 Emby 伺服器連線。輸入伺服器 URL 和 API 金鑰，或使用管理員帳號登入以取得金鑰。"
 
 #: src/components/Services/useServices.tsx
 msgid "Configured"
-msgstr ""
+msgstr "已設定"
 
 #: src/components/Common/MediaActionModal.tsx
 msgid "Confirm Global Exclusion"
-msgstr ""
+msgstr "確認全域排除"
 
 #: src/components/Common/MediaActionModal.tsx
 msgid "Confirm Removal From Every Collection"
-msgstr ""
+msgstr "確認從所有收藏集移除"
 
 #: src/components/Common/MediaActionModal.tsx
 msgid "Confirm Removing Every Exclusion"
-msgstr ""
+msgstr "確認取消所有排除項目"
 
 #: src/components/StorageMetrics/index.tsx
 msgid "Connect a Plex or Jellyfin server in Services to see library item counts here."
-msgstr ""
+msgstr "在「服務」中連接 Plex 或 Jellyfin 伺服器，即可在此查看媒體庫項目數量。"
 
 #: src/components/Services/ServicesHub.tsx
 msgid "Connect Maintainerr to your media server and the apps it works with."
-msgstr ""
+msgstr "將 Maintainerr 連接至媒體伺服器及相關應用程式。"
 
 #: src/components/Settings/index.tsx
 msgid "Connect your media server to finish setup."
-msgstr ""
+msgstr "連接媒體伺服器以完成設定。"
 
 #: src/utils/ApiError.ts
 msgid "Connection refused. Verify host, port, and that the service is running."
-msgstr ""
+msgstr "連線遭拒。請確認主機、連接埠，以及服務是否正在執行。"
 
 #: src/utils/ApiError.ts
 msgid "Connection test failed. Verify URL and credentials."
-msgstr ""
+msgstr "連線測試失敗。請確認 URL 和認證資訊。"
 
 #: src/utils/ApiError.ts
 msgid "Connection timed out after 5 seconds. Verify URL and network reachability."
-msgstr ""
+msgstr "連線在 5 秒後逾時。請確認 URL 和網路連通性。"
 
 #: src/components/Settings/About/index.tsx
 msgid "Container Config Path"
-msgstr ""
+msgstr "容器設定路徑"
 
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "Contains (All items)"
-msgstr ""
+msgstr "包含（所有項目）"
 
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "Contains (Exact list match)"
-msgstr ""
+msgstr "包含（清單完全相符）"
 
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "Contains (Partial list match)"
-msgstr ""
+msgstr "包含（清單部分相符）"
 
 #: src/components/Collection/CollectionDetail/TestMediaItem/index.tsx
 #: src/components/Common/YamlImporterModal/index.tsx
 msgid "Copied to clipboard"
-msgstr ""
+msgstr "已複製到剪貼簿"
 
 #: src/components/Collection/CollectionDetail/TestMediaItem/index.tsx
 msgid "Copy to clipboard"
-msgstr ""
+msgstr "複製到剪貼簿"
 
 #: src/components/Common/YamlImporterModal/index.tsx
 msgid "Copy YAML"
-msgstr ""
+msgstr "複製 YAML"
 
 #: src/pages/OverlayTemplateEditorPage.tsx
 msgid "Copying..."
-msgstr ""
+msgstr "正在複製……"
 
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "Corner Radius"
-msgstr ""
+msgstr "圓角半徑"
 
 #: src/components/Settings/Main/DatabaseBackupModal.tsx
 msgid "Could not backup the database"
-msgstr ""
+msgstr "無法備份資料庫"
 
 #: src/components/Rules/RuleGroup/AddModal/CollectionPosterPicker.tsx
 msgid "Could not clear the stored poster"
-msgstr ""
+msgstr "無法清除已儲存的海報"
 
 #: src/components/Common/LibrarySwitcher/index.tsx
 msgid "Could not fetch libraries"
-msgstr ""
+msgstr "無法取得媒體庫"
 
 #: src/components/Services/useServices.tsx
 msgid "Could not load"
-msgstr ""
+msgstr "無法載入"
 
 #: src/pages/OverlayTemplateEditorPage.tsx
 msgid "Could not load font list. Text elements will fall back to the default font."
-msgstr ""
+msgstr "無法載入字型清單，文字元素將改用預設字型。"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Could not load libraries from {mediaServerName}. The saved library selection is preserved - cancel editing to avoid losing rules."
-msgstr ""
+msgstr "無法從 {mediaServerName} 載入媒體庫。已保留儲存的媒體庫選項，請取消編輯以免遺失規則。"
 
 #: src/pages/OverlayTemplateEditorPage.tsx
 msgid "Could not load library sections. The preview background picker will be empty."
-msgstr ""
+msgstr "無法載入媒體庫區段，預覽背景選擇器將為空白。"
 
 #: src/pages/OverlayTemplateEditorPage.tsx
 msgid "Could not load overlay image list. Image elements will only render if the filename exists on disk."
-msgstr ""
+msgstr "無法載入覆蓋圖層圖片清單。僅當檔案存在於磁碟上時，圖片元素才會顯示。"
 
 #: src/components/Common/MediaActionModal.tsx
 msgid "Could not load the collections"
-msgstr ""
+msgstr "無法載入收藏集"
 
 #: src/components/Common/MediaActionModal.tsx
 msgid "Could not load the episodes"
-msgstr ""
+msgstr "無法載入集數"
 
 #: src/components/Common/MediaActionModal.tsx
 msgid "Could not load the seasons"
-msgstr ""
+msgstr "無法載入季度"
 
 #: src/components/Rules/RuleGroup/AddModal/CollectionPosterPicker.tsx
 msgid "Could not upload poster - check that the file is a valid image"
-msgstr ""
+msgstr "無法上傳海報 - 請確認檔案為有效圖片"
 
 #: src/components/Settings/Plex/index.tsx
 msgid "Couldn't reach {plexTv} to verify your credentials - retrying. Your saved token is still in use."
-msgstr ""
+msgstr "無法連接 {plexTv} 以驗證您的認證資訊，正在重試。仍會繼續使用已儲存的權杖。"
 
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "Count (number)"
-msgstr ""
+msgstr "計數（數字）"
 
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "Count Does Not Equal"
-msgstr ""
+msgstr "計數不等於"
 
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "Count Equals"
-msgstr ""
+msgstr "計數等於"
 
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "Count Is Bigger Than"
-msgstr ""
+msgstr "計數大於"
 
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "Count Is Smaller Than"
-msgstr ""
+msgstr "計數小於"
 
 #: src/components/StorageMetrics/index.tsx
 msgid "Cumulative count of media items Maintainerr has handled across all collections, with the on-disk space reclaimed by delete-style actions. Unmonitor and quality-change actions do not contribute to bytes reclaimed."
-msgstr ""
+msgstr "Maintainerr 在所有收藏集中已處理的媒體項目累計數量，以及透過刪除類型動作回收的磁碟空間。取消監控或變更畫質不會計入回收容量。"
 
 #: src/components/Settings/About/Releases/index.tsx
 msgid "Current"
-msgstr ""
+msgstr "目前版本"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Custom collection"
-msgstr ""
+msgstr "自訂收藏集"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Custom collection name"
-msgstr ""
+msgstr "自訂收藏集名稱"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Custom collection name is required"
-msgstr ""
+msgstr "必須填寫自訂收藏集名稱"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Custom collection poster"
-msgstr ""
+msgstr "自訂收藏集海報"
 
 #: src/components/Rules/RuleGroup/AddModal/CollectionPosterPicker.tsx
 msgid "Custom poster cleared. {mediaServerName} metadata refresh requested - artwork may update depending on {mediaServerName} behavior and configured agents."
-msgstr ""
+msgstr "已清除自訂海報，並要求 {mediaServerName} 重新整理中繼資料。圖片是否更新取決於 {mediaServerName} 的行為及設定的代理程式。"
 
 #: src/components/Rules/RuleGroup/AddModal/CollectionPosterPicker.tsx
 msgid "Custom poster cleared. The artwork on {mediaServerName} is unchanged - refresh metadata there if you want the original back."
-msgstr ""
+msgstr "已清除自訂海報。{mediaServerName} 上的圖片維持不變，如需恢復原圖，請在該服務重新整理中繼資料。"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Custom sort title for the collection in {mediaServerName}"
-msgstr ""
+msgstr "{mediaServerName} 中此收藏集的自訂排序標題"
 
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "Custom Value"
-msgstr ""
+msgstr "自訂值"
 
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "Custom values"
-msgstr ""
+msgstr "自訂值"
 
 #: src/components/Settings/Main/index.tsx
 msgid "Database backup downloaded"
-msgstr ""
+msgstr "已下載資料庫備份"
 
 #: src/components/Collection/CollectionDetail/CollectionInfo/CollectionLogsTable.tsx
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "Date"
-msgstr ""
+msgstr "日期"
 
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "Date / Days Config"
-msgstr ""
+msgstr "日期／天數設定"
 
 #: src/components/Collection/CollectionDetail/CollectionInfo/index.tsx
 msgid "Date Added"
-msgstr ""
+msgstr "新增日期"
 
 #: src/components/Common/MediaLibrarySortControl.tsx
 msgid "Date Added Ascending"
-msgstr ""
+msgstr "依新增日期遞增排序"
 
 #: src/components/Common/MediaLibrarySortControl.tsx
 msgid "Date Added Descending"
-msgstr ""
+msgstr "依新增日期遞減排序"
 
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "Date Format"
-msgstr ""
+msgstr "日期格式"
 
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "Day Suffix"
-msgstr ""
+msgstr "日期後綴"
 
 #: src/components/Collection/CollectionDetail/PostponeButton/index.tsx
 msgid "Days to postpone"
-msgstr ""
+msgstr "延後天數"
 
 #: src/components/Settings/Logs/index.tsx
 msgid "Debug"
-msgstr ""
+msgstr "偵錯"
 
 #: src/pages/OverlayTemplateListPage.tsx
 msgid "Default"
-msgstr ""
+msgstr "預設"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Default (no custom sort)"
-msgstr ""
+msgstr "預設（不自訂排序）"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Default poster template"
-msgstr ""
+msgstr "預設海報範本"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Default title card template"
-msgstr ""
+msgstr "預設標題卡範本"
 
 #: src/api/calendar.ts
 #: src/components/Collection/CollectionItem/index.tsx
@@ -1135,1737 +1139,1737 @@ msgstr ""
 #: src/components/Settings/ServiceCard.tsx
 #: src/pages/OverlayTemplateListPage.tsx
 msgid "Delete"
-msgstr ""
+msgstr "刪除"
 
 #: src/components/Settings/DownloadClient/index.tsx
 msgid "Delete downloaded data"
-msgstr ""
+msgstr "刪除已下載資料"
 
 #: src/api/calendar.ts
 msgid "Delete Empty Show"
-msgstr ""
+msgstr "刪除空白影集"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Delete entire league"
-msgstr ""
+msgstr "刪除整個聯賽"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Delete entire show"
-msgstr ""
+msgstr "刪除整部影集"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Delete event file"
-msgstr ""
+msgstr "刪除賽事檔案"
 
 #: src/components/Common/MediaLibrarySortControl.tsx
 msgid "Delete Latest"
-msgstr ""
+msgstr "最晚刪除的優先"
 
 #: src/components/Common/MediaLibrarySortControl.tsx
 msgid "Delete Soonest"
-msgstr ""
+msgstr "最早刪除的優先"
 
 #: src/pages/OverlayTemplateListPage.tsx
 msgid "Delete template <0>“{templateName}”</0>? This action cannot be undone."
-msgstr ""
+msgstr "要刪除範本 <0>「{templateName}」</0>嗎？此操作無法復原。"
 
 #: src/pages/OverlayTemplateListPage.tsx
 msgid "Delete template?"
-msgstr ""
+msgstr "要刪除範本嗎？"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Delete the folder {cleanupArrName} leaves behind and its sidecars (subtitles, .nfo, artwork). Requires the library mounted at the same path {cleanupArrName} uses"
-msgstr ""
+msgstr "刪除 {cleanupArrName} 遺留的資料夾與附屬檔案（字幕、.nfo、圖片）。媒體庫必須掛載在與 {cleanupArrName} 相同的路徑"
 
 #: src/components/Collection/CollectionDetail/TriggerRuleActionButton/index.tsx
 msgid "Delete this item"
-msgstr ""
+msgstr "刪除此項目"
 
 #: src/components/Collection/CollectionDetail/TriggerRuleActionButton/index.tsx
 msgid "Delete this league"
-msgstr ""
+msgstr "刪除此聯賽"
 
 #: src/components/Collection/CollectionDetail/TriggerRuleActionButton/index.tsx
 msgid "Delete this movie"
-msgstr ""
+msgstr "刪除此電影"
 
 #: src/components/Collection/CollectionDetail/TriggerRuleActionButton/index.tsx
 msgid "Delete this season and remove the show if it becomes empty"
-msgstr ""
+msgstr "刪除此季度，若影集變為空白則一併移除影集"
 
 #: src/components/Collection/CollectionDetail/TriggerRuleActionButton/index.tsx
 msgid "Delete this show"
-msgstr ""
+msgstr "刪除此影集"
 
 #: src/components/Collection/CollectionDetail/CollectionInfo/index.tsx
 msgid "Descending"
-msgstr ""
+msgstr "遞減"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Description"
-msgstr ""
+msgstr "說明"
 
 #: src/pages/OverlayTemplateEditorPage.tsx
 msgid "Design overlay elements on the canvas. Enter a valid template name in the Template Name field before saving your changes."
-msgstr ""
+msgstr "在畫布上設計覆蓋圖層元素。儲存前，請在「範本名稱」欄位輸入有效名稱。"
 
 #: src/components/Services/useServices.tsx
 #: src/components/Settings/Notifications/NotificationAgentCard.tsx
 msgid "Disabled"
-msgstr ""
+msgstr "已停用"
 
 #: src/components/Settings/Telemetry/index.tsx
 msgid "Disabled by {DISABLE_ENV} in the environment, which overrides this setting."
-msgstr ""
+msgstr "此功能已被環境變數 {DISABLE_ENV} 停用，優先於此設定。"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Disabling this rule group"
-msgstr ""
+msgstr "停用此規則群組"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Disabling won't remove items already tracked by this rule group. The linked collection will keep them until this rule group is re-enabled or deleted."
-msgstr ""
+msgstr "停用不會移除該規則群組已追蹤的項目。相關收藏集會保留這些項目，直到重新啟用或刪除此規則群組。"
 
 #: src/components/StorageMetrics/index.tsx
 msgid "Disk space reported by each configured Radarr or Sonarr instance. Headline totals count only root-folder-backed mounts and merge shared filesystems per host."
-msgstr ""
+msgstr "顯示各 Radarr 或 Sonarr 執行個體回報的磁碟空間。摘要總量只計入根目錄對應的掛載點，並合併同一主機上的共用檔案系統。"
 
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "Disk Target"
-msgstr ""
+msgstr "目標磁碟"
 
 #: src/components/StorageMetrics/index.tsx
 msgid "Disk usage across your Radarr and Sonarr instances, plus how much space Maintainerr can reclaim from collections with a delete rule. Items appearing in multiple collections are counted once."
-msgstr ""
+msgstr "顯示 Radarr 與 Sonarr 執行個體的磁碟使用情況，以及 Maintainerr 可透過刪除規則從收藏集回收多少空間。跨收藏集的重複項目只計算一次。"
 
 #: src/components/Settings/Main/LanguageSelector.tsx
 msgid "Display language"
-msgstr ""
+msgstr "顯示語言"
 
 #: src/api/calendar.ts
 #: src/components/Rules/RuleGroup/AddModal/ArrAction/index.tsx
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Do nothing"
-msgstr ""
+msgstr "不執行任何動作"
 
 #: src/components/Common/DocsButton/index.tsx
 msgid "Docs"
-msgstr ""
+msgstr "文件"
 
 #: src/components/Settings/About/index.tsx
 msgid "Documentation"
-msgstr ""
+msgstr "說明文件"
 
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "Does Not Exist"
-msgstr ""
+msgstr "不存在"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Don't create this collection in {mediaServerName}. Rules, actions, overlays and tags keep working."
-msgstr ""
+msgstr "不要在 {mediaServerName} 建立此收藏集。規則、動作、覆蓋圖層與標籤仍會正常運作。"
 
 #: src/components/Settings/About/index.tsx
 msgid "Donations Welcome"
-msgstr ""
+msgstr "歡迎贊助"
 
 #: src/components/Settings/MediaServerSelector/index.tsx
 msgid "Done"
-msgstr ""
+msgstr "完成"
 
 #: src/components/Common/MediaSelectionActions.tsx
 msgid "Done <0>selecting</0>"
-msgstr ""
+msgstr "完成<0>選取</0>"
 
 #: src/components/Common/YamlImporterModal/index.tsx
 msgid "Download"
-msgstr ""
+msgstr "下載"
 
 #: src/components/Services/useServices.tsx
 #: src/components/Settings/DownloadClient/index.tsx
 msgid "Download client"
-msgstr ""
+msgstr "下載用戶端"
 
 #: src/components/Settings/DownloadClient/index.tsx
 msgid "Download client settings - Maintainerr"
-msgstr ""
+msgstr "下載用戶端設定 - Maintainerr"
 
 #: src/api/settings.ts
 #: src/components/Settings/DownloadClient/index.tsx
 msgid "Download client settings could not be updated"
-msgstr ""
+msgstr "無法更新下載用戶端設定"
 
 #: src/components/Settings/Logs/index.tsx
 msgid "Download log files"
-msgstr ""
+msgstr "下載日誌檔案"
 
 #: src/components/Services/ServicesHub.tsx
 msgid "Downloads"
-msgstr ""
+msgstr "下載"
 
 #: src/components/Rules/Rule/RuleCreator/index.tsx
 msgid "Drag handle for rule {tagId} in section {sectionNumber}"
-msgstr ""
+msgstr "區段 {sectionNumber} 中規則 {tagId} 的拖曳控點"
 
 #: src/components/Rules/Rule/RuleCreator/index.tsx
 msgid "Drag handle for section {sectionNumber}"
-msgstr ""
+msgstr "區段 {sectionNumber} 的拖曳控點"
 
 #: src/components/Rules/Rule/RuleCreator/index.tsx
 msgid "Drag to reorder rule"
-msgstr ""
+msgstr "拖曳以重新排序規則"
 
 #: src/components/Rules/Rule/RuleCreator/index.tsx
 msgid "Drag to reorder section"
-msgstr ""
+msgstr "拖曳以重新排序區段"
 
 #: src/pages/OverlayTemplateListPage.tsx
 msgid "Drawn on episodes."
-msgstr ""
+msgstr "繪製於各集海報上。"
 
 #: src/pages/OverlayTemplateListPage.tsx
 msgid "Drawn on movies, shows and seasons."
-msgstr ""
+msgstr "繪製於電影、影集與季度海報上。"
 
 #: src/pages/OverlayTemplateListPage.tsx
 msgid "Duplicate"
-msgstr ""
+msgstr "建立副本"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Duration for which collection logs should be retained, measured in months (0 = forever)"
-msgstr ""
+msgstr "收藏集日誌保留期間，以月為單位（0 = 永久保留）"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Duration of days media remains in the collection before deletion/unmonitor"
-msgstr ""
+msgstr "媒體保留在收藏集至刪除／取消監控前的天數"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "e.g., {sortPrefixExample} My Collection"
-msgstr ""
+msgstr "例如：{sortPrefixExample} 我的收藏集"
 
 #: src/components/Rules/RuleGroup/index.tsx
 #: src/components/Settings/Notifications/NotificationAgentCard.tsx
 #: src/pages/OverlayTemplateListPage.tsx
 msgid "Edit"
-msgstr ""
+msgstr "編輯"
 
 #: src/pages/RuleFormPage.tsx
 msgid "Edit rule - Maintainerr"
-msgstr ""
+msgstr "編輯規則 - Maintainerr"
 
 #: src/pages/OverlayTemplateEditorPage.tsx
 msgid "Edit Template"
-msgstr ""
+msgstr "編輯範本"
 
 #: src/pages/OverlayTemplateListPage.tsx
 msgid "Editing a preset will save a copy"
-msgstr ""
+msgstr "編輯預設範本會另存副本"
 
 #: src/components/OverlayEditor/LayerPanel.tsx
 msgid "Element"
-msgstr ""
+msgstr "元素"
 
 #: src/components/OverlayEditor/ElementToolbox.tsx
 msgid "Elements"
-msgstr ""
+msgstr "元素"
 
 #: src/components/OverlayEditor/ElementToolbox.tsx
 #: src/components/OverlayEditor/LayerPanel.tsx
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "Ellipse"
-msgstr ""
+msgstr "橢圓"
 
 #: src/components/Services/mediaServerOptions.ts
 msgid "Emby Media Server"
-msgstr ""
+msgstr "Emby 媒體伺服器"
 
 #: src/components/Settings/Emby/index.tsx
 msgid "Emby settings - Maintainerr"
-msgstr ""
+msgstr "Emby 設定 - Maintainerr"
 
 #: src/api/settings.ts
 #: src/components/Settings/Emby/index.tsx
 msgid "Emby settings could not be updated"
-msgstr ""
+msgstr "無法更新 Emby 設定"
 
 #: src/components/Settings/Emby/index.tsx
 msgid "Emby URL"
-msgstr ""
+msgstr "Emby URL"
 
 #: src/components/Settings/Plex/index.tsx
 msgid "Enable manual mode"
-msgstr ""
+msgstr "啟用手動模式"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 #: src/components/Settings/Overlays/index.tsx
 msgid "Enable overlays"
-msgstr ""
+msgstr "啟用覆蓋圖層"
 
 #: src/components/Settings/Overlays/index.tsx
 msgid "Enable overlays and save to run manually"
-msgstr ""
+msgstr "啟用覆蓋圖層並儲存，以便手動執行"
 
 #: src/components/Overlays/index.tsx
 msgid "Enable overlays in Settings to manage templates."
-msgstr ""
+msgstr "請在「設定」中啟用覆蓋圖層，以管理範本。"
 
 #: src/components/Settings/Notifications/NotificationAgentCard.tsx
 msgid "Enabled"
-msgstr ""
+msgstr "已啟用"
 
 #: src/components/Settings/Notifications/NotificationAgentCard.tsx
 msgid "Encrypts from the first byte. Usually needed on port 465; leave off for 587 and 25."
-msgstr ""
+msgstr "從連線一開始就加密，通常用於連接埠 465；連接埠 587 和 25 請關閉此選項。"
 
 #: src/components/Settings/Plex/index.tsx
 msgid "Ensure DNS is properly configured since Plex depends on working DNS resolution"
-msgstr ""
+msgstr "請確保 DNS 設定正確，因為 Plex 必須能正常解析 DNS"
 
 #: src/components/Settings/DownloadClient/index.tsx
 msgid "Enter a ratio of 0.5 or higher"
-msgstr ""
+msgstr "請輸入 0.5 或更高的比率"
 
 #: src/components/Collection/CollectionDetail/PostponeButton/index.tsx
 msgid "Enter a whole number between {POSTPONE_MIN_DAYS} and {POSTPONE_MAX_DAYS}."
-msgstr ""
+msgstr "請輸入介於 {POSTPONE_MIN_DAYS} 與 {POSTPONE_MAX_DAYS} 之間的整數。"
 
 #: src/components/Login/Emby/EmbyLoginButton.tsx
 msgid "Enter your Emby server URL first."
-msgstr ""
+msgstr "請先輸入 Emby 伺服器 URL。"
 
 #: src/utils/mediaTypeUtils.ts
 msgid "episode"
-msgstr ""
+msgstr "集"
 
 #: src/components/Calendar/index.tsx
 #: src/components/Collection/CollectionDetail/TestMediaItem/index.tsx
 msgid "Episode"
-msgstr ""
+msgstr "集"
 
 #: src/components/Collection/CollectionDetail/TestMediaItem/index.tsx
 #: src/components/Common/MediaActionModal.tsx
 msgid "Episode {index}"
-msgstr ""
+msgstr "第 {index} 集"
 
 #: src/utils/mediaTypeUtils.ts
 msgid "episode {itemNumber}"
-msgstr ""
+msgstr "第 {itemNumber} 集"
 
 #: src/components/Collection/CollectionItem/index.tsx
 #: src/components/Common/MediaActionModal.tsx
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 #: src/components/StorageMetrics/index.tsx
 msgid "Episodes"
-msgstr ""
+msgstr "集數"
 
 #: src/components/StorageMetrics/index.tsx
 msgid "Episodes handled"
-msgstr ""
+msgstr "已處理集數"
 
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "Equals"
-msgstr ""
+msgstr "等於"
 
 #: src/components/Settings/Logs/index.tsx
 msgid "Error"
-msgstr ""
+msgstr "錯誤"
 
 #: src/components/Settings/ServiceCard.tsx
 msgid "Error (check logs)"
-msgstr ""
+msgstr "錯誤（請查看日誌）"
 
 #: src/pages/RuleFormPage.tsx
 msgid "Error loading rule data"
-msgstr ""
+msgstr "載入規則資料時發生錯誤"
 
 #: src/components/Rules/Rule/RuleCreator/CommunityRuleUpload/index.tsx
 msgid "Error: {reason}"
-msgstr ""
+msgstr "錯誤：{reason}"
 
 #: src/components/Collection/CollectionDetail/CollectionInfo/CollectionLogsTable.tsx
 msgid "Event"
-msgstr ""
+msgstr "賽事"
 
 #: src/components/Settings/Telemetry/index.tsx
 msgid "Every ~{SAMPLE_MONTHS} months"
-msgstr ""
+msgstr "約每 {SAMPLE_MONTHS} 個月"
 
 #: src/components/Rules/Rule/RuleCreator/CommunityRuleUpload/index.tsx
 msgid "Every attempt should be made to only upload working rules. Rules with less than -100 karma and uploads with no rules, are removed nightly."
-msgstr ""
+msgstr "請盡量只上傳正常運作的規則。Karma 低於 -100 的規則，以及未包含任何規則的上傳內容，會在每天夜間移除。"
 
 #: src/components/Forms/ServiceUrlExamples.tsx
 msgid "Example URL formats:"
-msgstr ""
+msgstr "URL 格式範例："
 
 #: src/components/Settings/Overlays/index.tsx
 msgid "Example: <0>{cronExample}</0> (4:45 AM every day)."
-msgstr ""
+msgstr "範例：<0>{cronExample}</0>（每天上午 4:45）。"
 
 #: src/components/Collection/CollectionDetail/RemoveFromCollectionButton/index.tsx
 msgid "Exclude"
-msgstr ""
+msgstr "排除"
 
 #: src/components/Collection/CollectionDetail/RemoveFromCollectionButton/index.tsx
 msgid "Exclude from collection"
-msgstr ""
+msgstr "從收藏集中排除"
 
 #: src/components/Collection/CollectionDetail/RemoveFromCollectionButton/index.tsx
 msgid "Exclude?"
-msgstr ""
+msgstr "要排除嗎？"
 
 #: src/components/Common/MediaLibrarySortControl.tsx
 msgid "Excluded First"
-msgstr ""
+msgstr "已排除項目優先"
 
 #: src/components/Common/MediaCard/MediaModal/index.tsx
 msgid "Excluded From"
-msgstr ""
+msgstr "排除於"
 
 #: src/components/Collection/CollectionDetail/RemoveFromCollectionButton/index.tsx
 msgid "Excluding..."
-msgstr ""
+msgstr "正在排除……"
 
 #: src/pages/CollectionDetailPage.tsx
 msgid "Exclusions"
-msgstr ""
+msgstr "排除項目"
 
 #: src/components/Collection/CollectionOverview/index.tsx
 msgid "Executes each collection's configured action (Delete / Unmonitor / Do Nothing). Does not remove items from collections."
-msgstr ""
+msgstr "執行各收藏集設定的動作（刪除／取消監控／不執行任何動作），不會從收藏集中移除項目。"
 
 #: src/components/Overlays/index.tsx
 msgid "Existing Templates"
-msgstr ""
+msgstr "現有範本"
 
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "Exists"
-msgstr ""
+msgstr "存在"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 #: src/pages/OverlayTemplateListPage.tsx
 msgid "Export"
-msgstr ""
+msgstr "匯出"
 
 #: src/components/Common/YamlImporterModal/index.tsx
 msgid "Export your rules to a YAML document"
-msgstr ""
+msgstr "將規則匯出為 YAML 文件"
 
 #: src/components/Rules/Rule/RuleCreator/CommunityRuleUpload/index.tsx
 msgid "Extended Description *"
-msgstr ""
+msgstr "詳細說明 *"
 
 #: src/components/StorageMetrics/index.tsx
 msgid "Failed to compute library sizes. Check that Maintainerr can reach your media server."
-msgstr ""
+msgstr "無法計算媒體庫大小。請確認 Maintainerr 能連接媒體伺服器。"
 
 #: src/components/Settings/Servarr/ServarrServerCard.tsx
 msgid "Failed to connect to {serviceName}. Verify URL and API key."
-msgstr ""
+msgstr "無法連接 {serviceName}，請確認 URL 與 API 金鑰。"
 
 #: src/components/Settings/Emby/index.tsx
 msgid "Failed to connect to Emby. Verify URL and API key."
-msgstr ""
+msgstr "無法連接 Emby，請確認 URL 與 API 金鑰。"
 
 #: src/components/Settings/Jellyfin/index.tsx
 msgid "Failed to connect to Jellyfin. Verify URL and API key."
-msgstr ""
+msgstr "無法連接 Jellyfin，請確認 URL 與 API 金鑰。"
 
 #: src/components/Settings/Ombi/index.tsx
 msgid "Failed to connect to Ombi. Verify URL and API key."
-msgstr ""
+msgstr "無法連接 Ombi，請確認 URL 與 API 金鑰。"
 
 #: src/components/Settings/Plex/index.tsx
 msgid "Failed to connect to Plex. Verify your Plex configuration."
-msgstr ""
+msgstr "無法連接 Plex，請確認 Plex 設定。"
 
 #: src/components/Settings/Seerr/index.tsx
 msgid "Failed to connect to Seerr. Verify URL and API key."
-msgstr ""
+msgstr "無法連接 Seerr，請確認 URL 與 API 金鑰。"
 
 #: src/components/Settings/Streamystats/index.tsx
 msgid "Failed to connect to Streamystats. Verify URL and that the service is running."
-msgstr ""
+msgstr "無法連接 Streamystats，請確認 URL 及服務是否正在執行。"
 
 #: src/components/Settings/Tautulli/index.tsx
 msgid "Failed to connect to Tautulli. Verify URL and API key."
-msgstr ""
+msgstr "無法連接 Tautulli，請確認 URL 與 API 金鑰。"
 
 #: src/components/Settings/DownloadClient/index.tsx
 msgid "Failed to connect to the download client. Verify URL and credentials."
-msgstr ""
+msgstr "無法連接下載用戶端，請確認 URL 與認證資訊。"
 
 #: src/components/Rules/Rule/RuleCreator/CommunityRuleUpload/index.tsx
 msgid "Failed to connect to the server. Please try again later."
-msgstr ""
+msgstr "無法連接伺服器，請稍後再試。"
 
 #: src/components/Settings/Metadata/index.tsx
 msgid "Failed to connect to TMDB. Verify the API key."
-msgstr ""
+msgstr "無法連接 TMDB，請確認 API 金鑰。"
 
 #: src/components/Settings/Tracearr/index.tsx
 msgid "Failed to connect to Tracearr. Verify the URL and API key."
-msgstr ""
+msgstr "無法連接 Tracearr，請確認 URL 與 API 金鑰。"
 
 #: src/components/Settings/Metadata/index.tsx
 msgid "Failed to connect to TVDB. Verify the API key."
-msgstr ""
+msgstr "無法連接 TVDB，請確認 API 金鑰。"
 
 #: src/components/Collection/CollectionDetail/TestMediaItem/index.tsx
 #: src/components/Common/YamlImporterModal/index.tsx
 msgid "Failed to copy to clipboard"
-msgstr ""
+msgstr "複製到剪貼簿失敗"
 
 #: src/api/rules.ts
 msgid "Failed to create rule group"
-msgstr ""
+msgstr "建立規則群組失敗"
 
 #: src/pages/OverlayTemplateEditorPage.tsx
 msgid "Failed to create template"
-msgstr ""
+msgstr "建立範本失敗"
 
 #: src/components/Settings/Notifications/NotificationAgentCard.tsx
 msgid "Failed to delete notification agent."
-msgstr ""
+msgstr "刪除通知代理程式失敗。"
 
 #: src/components/Rules/RuleGroup/index.tsx
 msgid "Failed to delete rule group."
-msgstr ""
+msgstr "刪除規則群組失敗。"
 
 #: src/components/Rules/RuleGroup/index.tsx
 msgid "Failed to delete rule group. Check logs for details."
-msgstr ""
+msgstr "刪除規則群組失敗，請查看日誌了解詳細資訊。"
 
 #: src/pages/OverlayTemplateListPage.tsx
 msgid "Failed to duplicate template"
-msgstr ""
+msgstr "複製範本失敗"
 
 #: src/components/Settings/About/Releases/index.tsx
 msgid "Failed to fetch releases"
-msgstr ""
+msgstr "取得發行版本資料失敗"
 
 #: src/components/Settings/Notifications/NotificationAgentCard.tsx
 msgid "Failed to fire the notification."
-msgstr ""
+msgstr "發送通知失敗。"
 
 #: src/pages/OverlayTemplateListPage.tsx
 msgid "Failed to import template"
-msgstr ""
+msgstr "匯入範本失敗"
 
 #: src/pages/CollectionsListPage.tsx
 msgid "Failed to initiate collection handling."
-msgstr ""
+msgstr "無法啟動收藏集處理作業。"
 
 #: src/pages/RulesListPage.tsx
 msgid "Failed to initiate rule execution."
-msgstr ""
+msgstr "無法啟動規則執行作業。"
 
 #: src/components/Common/MediaCard/MediaModal/WatchStatsPanel/index.tsx
 msgid "Failed to load {name} data"
-msgstr ""
+msgstr "載入 {name} 資料失敗"
 
 #: src/components/Settings/Metadata/index.tsx
 msgid "Failed to load {providerTitle} settings"
-msgstr ""
+msgstr "載入 {providerTitle} 設定失敗"
 
 #: src/pages/CollectionDetailPage.tsx
 msgid "Failed to load collection. Check logs for details."
-msgstr ""
+msgstr "載入收藏集失敗，請查看日誌了解詳細資訊。"
 
 #: src/components/Settings/ExternalServiceSettingsPage.tsx
 msgid "Failed to load options."
-msgstr ""
+msgstr "載入選項失敗。"
 
 #: src/pages/OverlayTemplateListPage.tsx
 msgid "Failed to load overlay templates"
-msgstr ""
+msgstr "載入覆蓋圖層範本失敗"
 
 #: src/components/Settings/Plex/index.tsx
 msgid "Failed to load servers - press refresh to retry"
-msgstr ""
+msgstr "載入伺服器失敗，請按重新整理重試"
 
 #: src/components/Collection/CollectionDetail/PostponeButton/index.tsx
 msgid "Failed to postpone the deletion for this item."
-msgstr ""
+msgstr "延後此項目的刪除時間失敗。"
 
 #: src/components/Settings/MediaServerSelector/index.tsx
 msgid "Failed to preview switch"
-msgstr ""
+msgstr "預覽切換結果失敗"
 
 #: src/components/Settings/Overlays/index.tsx
 msgid "Failed to process overlays"
-msgstr ""
+msgstr "處理覆蓋圖層失敗"
 
 #: src/components/Settings/Metadata/index.tsx
 msgid "Failed to refresh {providerTitle} metadata"
-msgstr ""
+msgstr "重新整理 {providerTitle} 中繼資料失敗"
 
 #: src/components/Settings/Servarr/ServarrServerCard.tsx
 msgid "Failed to refresh {serviceName} metadata"
-msgstr ""
+msgstr "重新整理 {serviceName} 中繼資料失敗"
 
 #: src/components/Settings/Servarr/ServarrServerCard.tsx
 msgid "Failed to remove {serviceName} settings."
-msgstr ""
+msgstr "移除 {serviceName} 設定失敗。"
 
 #: src/pages/RulesListPage.tsx
 msgid "Failed to request stop of all rule executions."
-msgstr ""
+msgstr "無法要求停止執行所有規則。"
 
 #: src/components/Rules/RuleGroup/index.tsx
 msgid "Failed to request stop of rule execution."
-msgstr ""
+msgstr "無法要求停止執行規則。"
 
 #: src/components/Settings/Overlays/index.tsx
 msgid "Failed to reset overlays"
-msgstr ""
+msgstr "重設覆蓋圖層失敗"
 
 #: src/components/Settings/Notifications/NotificationAgentCard.tsx
 msgid "Failed to save notification agent"
-msgstr ""
+msgstr "儲存通知代理程式失敗"
 
 #: src/pages/OverlayTemplateEditorPage.tsx
 msgid "Failed to save template"
-msgstr ""
+msgstr "儲存範本失敗"
 
 #: src/pages/OverlayTemplateListPage.tsx
 msgid "Failed to set default template"
-msgstr ""
+msgstr "設定預設範本失敗"
 
 #: src/components/Settings/MediaServerSelector/index.tsx
 msgid "Failed to set media server. Check logs for details."
-msgstr ""
+msgstr "設定媒體伺服器失敗，請查看日誌了解詳細資訊。"
 
 #: src/components/Rules/RuleGroup/index.tsx
 msgid "Failed to start rule execution."
-msgstr ""
+msgstr "啟動規則執行失敗。"
 
 #: src/components/Settings/MediaServerSelector/index.tsx
 msgid "Failed to switch media server"
-msgstr ""
+msgstr "切換媒體伺服器失敗"
 
 #: src/components/Collection/CollectionDetail/TestMediaItem/index.tsx
 msgid "Failed to test media"
-msgstr ""
+msgstr "測試媒體失敗"
 
 #: src/components/Collection/CollectionDetail/TriggerRuleActionButton/index.tsx
 msgid "Failed to trigger the collection action for this item."
-msgstr ""
+msgstr "觸發此項目的收藏集動作失敗。"
 
 #: src/components/Settings/Servarr/ServarrServerCard.tsx
 msgid "Failed to update {serviceName} settings."
-msgstr ""
+msgstr "更新 {serviceName} 設定失敗。"
 
 #: src/api/rules.ts
 msgid "Failed to update rule group"
-msgstr ""
+msgstr "更新規則群組失敗"
 
 #: src/pages/OverlayTemplateEditorPage.tsx
 msgid "Failed to upload font"
-msgstr ""
+msgstr "上傳字型失敗"
 
 #: src/pages/OverlayTemplateEditorPage.tsx
 msgid "Failed to upload image"
-msgstr ""
+msgstr "上傳圖片失敗"
 
 #: src/components/Settings/DownloadClient/index.tsx
 msgid "Fallback seeding ratio"
-msgstr ""
+msgstr "備用做種比率"
 
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "False"
-msgstr ""
+msgstr "假"
 
 #: src/components/Settings/Logs/index.tsx
 msgid "Fatal"
-msgstr ""
+msgstr "嚴重錯誤"
 
 #: src/components/Settings/About/index.tsx
 msgid "Feature Requests"
-msgstr ""
+msgstr "功能建議"
 
 #: src/components/Rules/RuleGroup/AddModal/CollectionPosterPicker.tsx
 msgid "File is larger than {maxSize}"
-msgstr ""
+msgstr "檔案大小超過 {maxSize}"
 
 #: src/components/Settings/Main/DatabaseBackupModal.tsx
 msgid "File name"
-msgstr ""
+msgstr "檔案名稱"
 
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "Fill"
-msgstr ""
+msgstr "填滿"
 
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "Fill & Stroke"
-msgstr ""
+msgstr "填滿與描邊"
 
 #: src/components/Settings/Metadata/index.tsx
 msgid "Find it here: Dashboard → Account → API Keys"
-msgstr ""
+msgstr "可在此找到：控制台 → 帳號 → API 金鑰"
 
 #: src/components/Settings/Emby/index.tsx
 #: src/components/Settings/Jellyfin/index.tsx
 msgid "Find it here: Dashboard → API Keys"
-msgstr ""
+msgstr "可在此找到：控制台 → API 金鑰"
 
 #: src/components/Settings/Metadata/index.tsx
 msgid "Find it here: Settings → API"
-msgstr ""
+msgstr "可在此找到：設定 → API"
 
 #: src/components/Settings/Tracearr/index.tsx
 msgid "Find it here: Settings → API → API Key"
-msgstr ""
+msgstr "可在此找到：設定 → API → API 金鑰"
 
 #: src/components/Settings/Seerr/index.tsx
 #: src/components/Settings/Servarr/ServarrServerCard.tsx
 msgid "Find it here: Settings → General → API Key"
-msgstr ""
+msgstr "可在此找到：設定 → 一般 → API 金鑰"
 
 #: src/components/Settings/Ombi/index.tsx
 msgid "Find it here: Settings → Ombi → API Key"
-msgstr ""
+msgstr "可在此找到：設定 → Ombi → API 金鑰"
 
 #: src/components/Settings/Tautulli/index.tsx
 msgid "Find it here: Settings → Web Interface"
-msgstr ""
+msgstr "可在此找到：設定 → 網頁介面"
 
 #: src/components/Common/MediaLibrarySortControl.tsx
 msgid "First Air Date Ascending"
-msgstr ""
+msgstr "依首播日期遞增排序"
 
 #: src/components/Common/MediaLibrarySortControl.tsx
 msgid "First Air Date Descending"
-msgstr ""
+msgstr "依首播日期遞減排序"
 
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "First Value"
-msgstr ""
+msgstr "第一個值"
 
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "Font"
-msgstr ""
+msgstr "字型"
 
 #: src/pages/OverlayTemplateEditorPage.tsx
 msgid "Font \"{fontName}\" uploaded"
-msgstr ""
+msgstr "已上傳字型「{fontName}」"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Force delete Ombi request"
-msgstr ""
+msgstr "強制刪除 Ombi 請求"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Force delete Seerr request"
-msgstr ""
+msgstr "強制刪除 Seerr 請求"
 
 #: src/components/StorageMetrics/index.tsx
 msgid "Free"
-msgstr ""
+msgstr "可用空間"
 
 #: src/components/StorageMetrics/index.tsx
 msgid "Free space only - Sonarr/Radarr do not report total size for NFS/CIFS mounts"
-msgstr ""
+msgstr "僅顯示可用空間，Sonarr／Radarr 不會回報 NFS／CIFS 掛載點的總容量"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 #: src/components/Settings/index.tsx
 #: src/components/Settings/Notifications/NotificationAgentCard.tsx
 msgid "General"
-msgstr ""
+msgstr "一般"
 
 #: src/components/Settings/Main/index.tsx
 msgid "General Settings"
-msgstr ""
+msgstr "一般設定"
 
 #: src/components/Settings/Main/index.tsx
 msgid "General settings - Maintainerr"
-msgstr ""
+msgstr "一般設定 - Maintainerr"
 
 #: src/components/Settings/Main/index.tsx
 msgid "General settings could not be updated"
-msgstr ""
+msgstr "無法更新一般設定"
 
 #: src/components/Settings/Main/index.tsx
 msgid "General settings updated"
-msgstr ""
+msgstr "已更新一般設定"
 
 #: src/components/StorageMetrics/index.tsx
 msgid "Generated at {generatedAt}"
-msgstr ""
+msgstr "產生時間：{generatedAt}"
 
 #: src/components/Layout/index.tsx
 msgid "Go Back"
-msgstr ""
+msgstr "返回"
 
 #: src/components/Layout/index.tsx
 msgid "Go To Overview"
-msgstr ""
+msgstr "前往總覽"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 #: src/components/Settings/Overlays/index.tsx
 msgid "Got it"
-msgstr ""
+msgstr "知道了"
 
 #: src/components/Collection/CollectionOverview/index.tsx
 msgid "Handle Collections"
-msgstr ""
+msgstr "處理收藏集"
 
 #: src/components/Collection/CollectionItem/index.tsx
 msgid "Handled by rule: ''{ruleName}''"
-msgstr ""
+msgstr "由規則：''{ruleName}'' 處理"
 
 #: src/components/Collection/CollectionDetail/CollectionInfo/index.tsx
 msgid "Handled media items"
-msgstr ""
+msgstr "已處理的媒體項目"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Help"
-msgstr ""
+msgstr "說明"
 
 #: src/components/Layout/TelemetryConsentModal.tsx
 msgid "Help shape Maintainerr?"
-msgstr ""
+msgstr "協助改善 Maintainerr？"
 
 #: src/components/Settings/Telemetry/index.tsx
 msgid "Help us help you"
-msgstr ""
+msgstr "協助我們提供更好的服務"
 
 #: src/components/Settings/About/index.tsx
 msgid "Help us improve it"
-msgstr ""
+msgstr "協助我們改進"
 
 #: src/components/OverlayEditor/LayerPanel.tsx
 msgctxt "Toggle layer visibility"
 msgid "Hide"
-msgstr ""
+msgstr "隱藏"
 
 #: src/components/Settings/Main/index.tsx
 msgid "Hostname"
-msgstr ""
+msgstr "主機名稱"
 
 #: src/components/Collection/CollectionDetail/TriggerRuleActionButton/index.tsx
 msgid "If the action succeeds, the item will be removed from the collection right away instead of waiting for the normal schedule."
-msgstr ""
+msgstr "如果動作成功，此項目將立即從收藏集中移除，不必等待正常排程。"
 
 #: src/components/Settings/Overlays/index.tsx
 msgid "If you do not set a schedule, you will need to use Run Now in Overlay Settings each time."
-msgstr ""
+msgstr "如果未設定排程，每次都必須在「覆蓋圖層設定」中按下「立即執行」。"
 
 #: src/components/Settings/About/index.tsx
 msgid "If you find any broken features and/or are experiencing instability, please report it on GitHub!"
-msgstr ""
+msgstr "如果發現功能異常或程式不穩定，請到 GitHub 回報！"
 
 #: src/components/OverlayEditor/ElementToolbox.tsx
 #: src/components/OverlayEditor/LayerPanel.tsx
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "Image"
-msgstr ""
+msgstr "圖片"
 
 #: src/pages/OverlayTemplateEditorPage.tsx
 msgid "Image \"{imageName}\" uploaded"
-msgstr ""
+msgstr "已上傳圖片「{imageName}」"
 
 #: src/components/Common/CommunityRuleModal/index.tsx
 #: src/components/Common/YamlImporterModal/index.tsx
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 #: src/pages/OverlayTemplateListPage.tsx
 msgid "Import"
-msgstr ""
+msgstr "匯入"
 
 #: src/components/Common/YamlImporterModal/index.tsx
 msgid "Import rules from a YAML document. This will override your current rules"
-msgstr ""
+msgstr "從 YAML 文件匯入規則，這會覆寫目前的規則"
 
 #: src/components/Common/CommunityRuleModal/index.tsx
 msgid "Import rules made by the community. This will override your current rules."
-msgstr ""
+msgstr "匯入社群建立的規則，這會覆寫目前的規則。"
 
 #: src/components/Settings/MediaServerSelector/index.tsx
 msgid "Important:"
-msgstr ""
+msgstr "重要："
 
 #: src/pages/OverlayTemplateListPage.tsx
 msgid "Imported template \"{templateName}\""
-msgstr ""
+msgstr "已匯入範本「{templateName}」"
 
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "In Last"
-msgstr ""
+msgstr "過去期間內"
 
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "In Next"
-msgstr ""
+msgstr "未來期間內"
 
 #: src/components/Collection/CollectionItem/index.tsx
 #: src/components/Rules/RuleGroup/index.tsx
 #: src/components/StorageMetrics/index.tsx
 msgid "Inactive"
-msgstr ""
+msgstr "未啟用"
 
 #: src/components/Common/CommunityRuleModal/index.tsx
 #: src/components/Settings/Logs/index.tsx
 #: src/pages/CollectionDetailPage.tsx
 msgid "Info"
-msgstr ""
+msgstr "資訊"
 
 #: src/pages/CollectionsListPage.tsx
 msgid "Initiated collection handling in the background."
-msgstr ""
+msgstr "已在背景啟動收藏集處理作業。"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Invalid action"
-msgstr ""
+msgstr "無效的動作"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Invalid cron schedule"
-msgstr ""
+msgstr "無效的 cron 排程"
 
 #: src/pages/OverlayTemplateListPage.tsx
 msgid "Invalid template file"
-msgstr ""
+msgstr "無效的範本檔案"
 
 #: src/utils/ApiError.ts
 msgid "Invalid value"
-msgstr ""
+msgstr "無效的值"
 
 #: src/components/Collection/CollectionItem/index.tsx
 #: src/components/StorageMetrics/index.tsx
 msgid "Items"
-msgstr ""
+msgstr "項目"
 
 #: src/components/StorageMetrics/index.tsx
 msgid "Items handled"
-msgstr ""
+msgstr "已處理項目"
 
 #: src/components/Services/mediaServerOptions.ts
 msgid "Jellyfin Media Server"
-msgstr ""
+msgstr "Jellyfin 媒體伺服器"
 
 #: src/components/Settings/Jellyfin/index.tsx
 msgid "Jellyfin settings - Maintainerr"
-msgstr ""
+msgstr "Jellyfin 設定 - Maintainerr"
 
 #: src/api/settings.ts
 #: src/components/Settings/Jellyfin/index.tsx
 msgid "Jellyfin settings could not be updated"
-msgstr ""
+msgstr "無法更新 Jellyfin 設定"
 
 #: src/components/Settings/Jellyfin/index.tsx
 msgid "Jellyfin URL"
-msgstr ""
+msgstr "Jellyfin URL"
 
 #: src/components/Settings/Jobs/index.tsx
 msgid "Job configuration. All schedules support standard <0>cron</0> patterns."
-msgstr ""
+msgstr "作業設定。所有排程都支援標準 <0>cron</0> 語法。"
 
 #: src/components/Settings/Jobs/index.tsx
 msgid "Job Settings"
-msgstr ""
+msgstr "作業設定"
 
 #: src/components/Settings/Jobs/index.tsx
 msgid "Job settings - Maintainerr"
-msgstr ""
+msgstr "作業設定 - Maintainerr"
 
 #: src/components/Settings/Jobs/index.tsx
 msgid "Job settings could not be updated"
-msgstr ""
+msgstr "無法更新作業設定"
 
 #: src/components/Settings/Jobs/index.tsx
 msgid "Job settings updated"
-msgstr ""
+msgstr "已更新作業設定"
 
 #: src/components/Settings/index.tsx
 msgid "Jobs"
-msgstr ""
+msgstr "作業"
 
 #: src/components/Common/CommunityRuleModal/index.tsx
 msgid "Karma"
-msgstr ""
+msgstr "Karma 評分"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Keep in Maintainerr only"
-msgstr ""
+msgstr "僅保留於 Maintainerr"
 
 #: src/components/Layout/TelemetryConsentModal.tsx
 msgid "Keep it on"
-msgstr ""
+msgstr "保持啟用"
 
 #: src/components/Layout/TelemetryConsentModal.tsx
 msgid "Keep it on and we will not ask again. The settings page shows the same report, the occasional extra detail, and the off switch."
-msgstr ""
+msgstr "保持啟用，之後便不再詢問。設定頁面會顯示相同的報告、偶爾新增的詳細資料，以及停用開關。"
 
 #: src/components/VersionStatus/index.tsx
 msgid "Keep it up! 👍"
-msgstr ""
+msgstr "繼續保持！👍"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Keep logs for months must be 0 or greater"
-msgstr ""
+msgstr "日誌保留月數必須大於或等於 0"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Keep logs for months must be a whole number"
-msgstr ""
+msgstr "日誌保留月數必須為整數"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Keep logs for months*"
-msgstr ""
+msgstr "日誌保留月數 *"
 
 #: src/components/Collection/CollectionDetail/CollectionInfo/CollectionLogsTable.tsx
 msgid "Label"
-msgstr ""
+msgstr "標籤"
 
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "Language"
-msgstr ""
+msgstr "語言"
 
 #: src/components/StorageMetrics/index.tsx
 msgid "Largest collections"
-msgstr ""
+msgstr "最大的收藏集"
 
 #: src/components/Collection/CollectionDetail/CollectionInfo/index.tsx
 msgid "Last duration"
-msgstr ""
+msgstr "上次執行時間"
 
 #: src/components/Common/MediaCard/MediaModal/WatchStatsPanel/index.tsx
 msgid "Last watched"
-msgstr ""
+msgstr "上次觀看時間"
 
 #: src/components/Settings/About/Releases/index.tsx
 msgid "Latest"
-msgstr ""
+msgstr "最新版本"
 
 #: src/components/OverlayEditor/LayerPanel.tsx
 #: src/pages/OverlayTemplateEditorPage.tsx
 msgid "Layers"
-msgstr ""
+msgstr "圖層"
 
 #: src/components/Common/MediaLibrarySortControl.tsx
 msgid "Least Watched"
-msgstr ""
+msgstr "觀看次數最少"
 
 #: src/components/Settings/DownloadClient/index.tsx
 msgid "Leave blank if the client allows unauthenticated access."
-msgstr ""
+msgstr "如果下載用戶端允許免驗證存取，請留空。"
 
 #: src/components/Settings/Jobs/index.tsx
 msgid "Leave empty to disable scheduled overlay runs."
-msgstr ""
+msgstr "留空可停用覆蓋圖層的排程執行。"
 
 #: src/components/Settings/Metadata/index.tsx
 msgid "Leave empty to use the built-in shared key."
-msgstr ""
+msgstr "留空以使用內建的共用金鑰。"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Leave unset to use the default poster template"
-msgstr ""
+msgstr "不設定則使用預設海報範本"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Leave unset to use the default title card template"
-msgstr ""
+msgstr "不設定則使用預設標題卡範本"
 
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "left"
-msgstr ""
+msgstr "靠左"
 
 #: src/components/Settings/index.tsx
 msgid "Let's get started"
-msgstr ""
+msgstr "開始設定"
 
 #: src/components/Settings/Logs/index.tsx
 msgid "Level"
-msgstr ""
+msgstr "等級"
 
 #: src/components/StorageMetrics/index.tsx
 msgid "Libraries reported by {typeLabel}. Counts reflect what Maintainerr sees through the server API."
-msgstr ""
+msgstr "{typeLabel} 回報的媒體庫。數量反映 Maintainerr 透過伺服器 API 取得的資料。"
 
 #: src/components/Collection/CollectionItem/index.tsx
 #: src/components/Rules/RuleGroup/index.tsx
 msgid "Library"
-msgstr ""
+msgstr "媒體庫"
 
 #: src/components/Rules/ruleGroupSort.ts
 msgid "Library (A-Z) Ascending"
-msgstr ""
+msgstr "媒體庫名稱（A-Z）遞增排序"
 
 #: src/components/Rules/ruleGroupSort.ts
 msgid "Library (Z-A) Descending"
-msgstr ""
+msgstr "媒體庫名稱（Z-A）遞減排序"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Library *"
-msgstr ""
+msgstr "媒體庫 *"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Library is required"
-msgstr ""
+msgstr "必須選擇媒體庫"
 
 #: src/components/Services/ServicesHub.tsx
 msgid "Library managers"
-msgstr ""
+msgstr "媒體庫管理工具"
 
 #: src/pages/OverlayTemplateEditorPage.tsx
 msgid "Load different poster"
-msgstr ""
+msgstr "載入其他海報"
 
 #: src/components/Settings/Jobs/index.tsx
 msgid "Loading current overlay schedule..."
-msgstr ""
+msgstr "正在載入目前的覆蓋圖層排程……"
 
 #: src/components/Common/MediaCard/MediaModal/index.tsx
 msgid "Loading exclusion details..."
-msgstr ""
+msgstr "正在載入排除項目詳細資料……"
 
 #: src/components/Common/LibrarySwitcher/index.tsx
 msgid "Loading libraries..."
-msgstr ""
+msgstr "正在載入媒體庫……"
 
 #: src/components/Common/MediaCard/MediaModal/index.tsx
 msgid "Loading manual collection details..."
-msgstr ""
+msgstr "正在載入手動收藏集詳細資料……"
 
 #: src/components/Overview/Content/index.tsx
 msgid "Loading more items"
-msgstr ""
+msgstr "正在載入更多項目"
 
 #: src/components/Rules/RuleGroup/AddModal/QualityProfileSelector.tsx
 msgid "Loading profiles..."
-msgstr ""
+msgstr "正在載入設定檔……"
 
 #: src/components/Calendar/index.tsx
 msgid "Loading scheduled items..."
-msgstr ""
+msgstr "正在載入排程項目……"
 
 #: src/components/Rules/RuleGroup/AddModal/ArrAction/index.tsx
 #: src/components/Settings/Plex/index.tsx
 msgid "Loading servers..."
-msgstr ""
+msgstr "正在載入伺服器……"
 
 #: src/components/Common/MediaLibrarySortControl.tsx
 msgid "Loading sorted items"
-msgstr ""
+msgstr "正在載入排序後的項目"
 
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "Loading users..."
-msgstr ""
+msgstr "正在載入使用者……"
 
 #: src/components/Calendar/index.tsx
 #: src/components/Common/SearchMediaITem/index.tsx
 #: src/components/Settings/ExternalServiceSettingsPage.tsx
 msgid "Loading..."
-msgstr ""
+msgstr "正在載入……"
 
 #: src/components/Login/Plex/index.tsx
 #: src/components/OverlayEditor/OverlayCanvas.tsx
 msgid "Loading…"
-msgstr ""
+msgstr "正在載入…"
 
 #: src/components/Settings/Plex/index.tsx
 msgid "local"
-msgstr ""
+msgstr "本機"
 
 #: src/components/Settings/Plex/index.tsx
 msgid "Local"
-msgstr ""
+msgstr "本機"
 
 #: src/components/Settings/Logs/index.tsx
 msgid "Log configuration"
-msgstr ""
+msgstr "日誌組態"
 
 #: src/components/Settings/Logs/index.tsx
 msgid "Log file"
-msgstr ""
+msgstr "日誌檔案"
 
 #: src/components/Settings/Logs/index.tsx
 msgid "Log Files"
-msgstr ""
+msgstr "日誌檔案"
 
 #: src/components/Settings/Logs/index.tsx
 msgid "Log filter"
-msgstr ""
+msgstr "日誌篩選"
 
 #: src/components/Settings/Logs/index.tsx
 msgid "Log Settings"
-msgstr ""
+msgstr "日誌設定"
 
 #: src/components/Settings/Logs/index.tsx
 msgid "Log settings could not be updated"
-msgstr ""
+msgstr "無法更新日誌設定"
 
 #: src/components/Settings/Logs/index.tsx
 msgid "Log settings updated"
-msgstr ""
+msgstr "已更新日誌設定"
 
 #: src/components/Collection/CollectionDetail/CollectionInfo/index.tsx
 #: src/components/Settings/index.tsx
 #: src/components/Settings/Logs/index.tsx
 msgid "Logs"
-msgstr ""
+msgstr "日誌"
 
 #: src/components/Settings/Logs/index.tsx
 msgid "Logs - Maintainerr"
-msgstr ""
+msgstr "日誌 - Maintainerr"
 
 #: src/components/Settings/About/index.tsx
 msgid "Loving Maintainerr?"
-msgstr ""
+msgstr "喜歡 Maintainerr 嗎？"
 
 #: src/components/Common/CommunityRuleModal/index.tsx
 msgid "Made with Version"
-msgstr ""
+msgstr "建立時使用的版本"
 
 #: src/components/Layout/NavBar/index.tsx
 msgid "Maintainerr logo"
-msgstr ""
+msgstr "Maintainerr 標誌"
 
 #: src/components/Services/useServices.tsx
 msgid "Maintainerr picks the Tracearr media server backend automatically: the one tracking the media server configured in Maintainerr."
-msgstr ""
+msgstr "Maintainerr 會自動選擇 Tracearr 中追蹤目前 Maintainerr 媒體伺服器的後端。"
 
 #: src/components/VersionStatus/index.tsx
 msgid "Maintainerr Pre-Release"
-msgstr ""
+msgstr "Maintainerr 預覽版本"
 
 #: src/components/Settings/Telemetry/index.tsx
 msgid "Maintainerr reports anonymous usage once a week. It is the only signal we have about which versions, media servers and features are actually in use, and it decides what gets built, fixed and kept."
-msgstr ""
+msgstr "Maintainerr 每週回報一次匿名使用統計。這是我們了解實際使用版本、媒體伺服器和功能的唯一依據，也有助於決定後續開發、修正及保留的功能。"
 
 #: src/components/StorageMetrics/index.tsx
 msgid "Maintainerr will iterate every movie and episode in your {typeLabel} libraries to estimate size on disk. This can take a while on large libraries."
-msgstr ""
+msgstr "Maintainerr 會逐一檢查 {typeLabel} 媒體庫中的每部電影及每一集，以估算磁碟使用空間。大型媒體庫可能需要較長時間。"
 
 #: src/components/Common/MediaActionModal.tsx
 msgid "Making this a global exclusion removes the following rule-group exclusions, and they will not return if you later remove the global exclusion:"
-msgstr ""
+msgstr "設定為全域排除會移除下列規則群組的排除項目。即使日後取消全域排除，也不會恢復這些項目："
 
 #: src/pages/OverlayTemplateListPage.tsx
 msgid "Manage the templates used by overlay-enabled collections. Each mode keeps its own default."
-msgstr ""
+msgstr "管理已啟用覆蓋圖層的收藏集所使用的範本。每種模式都有各自的預設範本。"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Managed by"
-msgstr ""
+msgstr "管理者"
 
 #: src/components/Settings/Plex/index.tsx
 msgid "Manual"
-msgstr ""
+msgstr "手動"
 
 #: src/components/Common/MediaLibrarySortControl.tsx
 msgid "Manual Added First"
-msgstr ""
+msgstr "手動新增的項目優先"
 
 #: src/components/Common/MediaCard/MediaModal/index.tsx
 msgid "Manually Added To"
-msgstr ""
+msgstr "手動新增至"
 
 #: src/components/Settings/Overlays/index.tsx
 msgid "Master switch for overlay processing"
-msgstr ""
+msgstr "覆蓋圖層處理總開關"
 
 #: src/components/Rules/Rule/RuleCreator/CommunityRuleUpload/index.tsx
 msgid "Max 20 characters"
-msgstr ""
+msgstr "最多 20 個字元"
 
 #: src/components/Settings/Logs/index.tsx
 msgid "Max Backups"
-msgstr ""
+msgstr "備份數量上限"
 
 #: src/components/Settings/Logs/index.tsx
 msgid "Max Size"
-msgstr ""
+msgstr "大小上限"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Maximum is 100"
-msgstr ""
+msgstr "最大值為 100"
 
 #: src/components/Calendar/index.tsx
 #: src/components/Collection/CollectionDetail/CollectionInfo/collectionLogLabels.ts
 #: src/components/Collection/CollectionDetail/TestMediaItem/index.tsx
 #: src/pages/CollectionDetailPage.tsx
 msgid "Media"
-msgstr ""
+msgstr "媒體"
 
 #: src/components/Services/ServicesHub.tsx
 #: src/components/Services/useServices.tsx
 #: src/components/StorageMetrics/index.tsx
 msgid "Media server"
-msgstr ""
+msgstr "媒體伺服器"
 
 #: src/components/StorageMetrics/index.tsx
 msgid "Media server is not reachable. Check it in Services."
-msgstr ""
+msgstr "無法連接媒體伺服器，請在「服務」中檢查。"
 
 #: src/components/Collection/CollectionItem/index.tsx
 #: src/components/Rules/RuleGroup/index.tsx
 msgid "Media server is unreachable. The stored library selection is preserved."
-msgstr ""
+msgstr "無法連接媒體伺服器，已保留儲存的媒體庫選項。"
 
 #: src/components/Settings/MediaServer/MediaServerSettings.tsx
 msgid "Media server settings - Maintainerr"
-msgstr ""
+msgstr "媒體伺服器設定 - Maintainerr"
 
 #: src/components/Settings/MediaServerSelector/index.tsx
 msgid "Media server switch could not be completed: {switchError}"
-msgstr ""
+msgstr "無法完成媒體伺服器切換：{switchError}"
 
 #: src/components/Collection/CollectionItem/index.tsx
 msgid "Media Type"
-msgstr ""
+msgstr "媒體類型"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Media type is required"
-msgstr ""
+msgstr "必須選擇媒體類型"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Media type*"
-msgstr ""
+msgstr "媒體類型 *"
 
 #: src/components/Collection/CollectionDetail/CollectionInfo/index.tsx
 #: src/components/Services/ServicesHub.tsx
 #: src/components/Services/useServices.tsx
 msgid "Metadata"
-msgstr ""
+msgstr "中繼資料"
 
 #: src/components/Settings/Metadata/index.tsx
 msgid "Metadata provider preference could not be updated"
-msgstr ""
+msgstr "無法更新中繼資料供應商偏好設定"
 
 #: src/components/Settings/Metadata/index.tsx
 msgid "Metadata settings - Maintainerr"
-msgstr ""
+msgstr "中繼資料設定 - Maintainerr"
 
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "middle"
-msgstr ""
+msgstr "垂直置中"
 
 #: src/components/Settings/MediaServerSelector/index.tsx
 msgid "Migrate rules to {pendingName}"
-msgstr ""
+msgstr "將規則遷移至 {pendingName}"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Minimum is 0"
-msgstr ""
+msgstr "最小值為 0"
 
 #: src/utils/PlexAuth.ts
 msgid "Missing Plex client identifier. Refresh the page and try again."
-msgstr ""
+msgstr "缺少 Plex 用戶端識別碼，請重新整理頁面後重試。"
 
 #: src/components/Calendar/index.tsx
 msgid "Month"
-msgstr ""
+msgstr "月"
 
 #: src/components/Common/MediaLibrarySortControl.tsx
 msgid "Most Watched"
-msgstr ""
+msgstr "觀看次數最多"
 
 #: src/components/StorageMetrics/index.tsx
 msgid "Mounts by instance"
-msgstr ""
+msgstr "各執行個體的掛載點"
 
 #: src/components/OverlayEditor/LayerPanel.tsx
 msgid "Move down"
-msgstr ""
+msgstr "向下移動"
 
 #: src/components/OverlayEditor/LayerPanel.tsx
 msgid "Move up"
-msgstr ""
+msgstr "向上移動"
 
 #: src/utils/mediaTypeUtils.ts
 msgid "movie"
-msgstr ""
+msgstr "電影"
 
 #: src/components/Calendar/index.tsx
 msgid "Movie"
-msgstr ""
+msgstr "電影"
 
 #: src/components/Collection/CollectionItem/index.tsx
 #: src/components/StorageMetrics/index.tsx
 msgid "Movies"
-msgstr ""
+msgstr "電影"
 
 #: src/components/StorageMetrics/index.tsx
 msgid "Movies handled"
-msgstr ""
+msgstr "已處理電影數"
 
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "N days text"
-msgstr ""
+msgstr "多日文字"
 
 #: src/components/Common/CommunityRuleModal/index.tsx
 msgid "Name"
-msgstr ""
+msgstr "名稱"
 
 #: src/components/Rules/ruleGroupSort.ts
 msgid "Name (A-Z) Ascending"
-msgstr ""
+msgstr "名稱（A-Z）遞增排序"
 
 #: src/components/Rules/ruleGroupSort.ts
 msgid "Name (Z-A) Descending"
-msgstr ""
+msgstr "名稱（Z-A）遞減排序"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 #: src/components/Settings/Notifications/NotificationAgentCard.tsx
 msgid "Name *"
-msgstr ""
+msgstr "名稱 *"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Name is required"
-msgstr ""
+msgstr "必須填寫名稱"
 
 #: src/components/Common/ColorPickerModal/index.tsx
 msgid "Native color picker"
-msgstr ""
+msgstr "系統原生色彩選擇器"
 
 #: src/components/Services/useServices.tsx
 msgid "Needed to use Ombi in rules and remove Ombi requests."
-msgstr ""
+msgstr "使用 Ombi 規則及移除 Ombi 請求時必須設定。"
 
 #: src/components/Services/useServices.tsx
 msgid "Needed to use Radarr in rules and to remove or unmonitor movies."
-msgstr ""
+msgstr "使用 Radarr 規則，以及移除電影或取消監控時必須設定。"
 
 #: src/components/Services/useServices.tsx
 msgid "Needed to use Seerr in rules, remove Seerr requests, and show requesters in pre-deletion notifications."
-msgstr ""
+msgstr "使用 Seerr 規則、移除 Seerr 請求，以及在刪除前通知中顯示請求者時必須設定。"
 
 #: src/components/Services/useServices.tsx
 msgid "Needed to use Sonarr in rules and to remove or unmonitor shows."
-msgstr ""
+msgstr "使用 Sonarr 規則，以及移除影集或取消監控時必須設定。"
 
 #: src/components/Services/useServices.tsx
 msgid "Needed to use Sportarr in rules and to manage sports leagues, seasons and events."
-msgstr ""
+msgstr "使用 Sportarr 規則及管理運動聯賽、季度與賽事時必須設定。"
 
 #: src/components/Services/useServices.tsx
 msgid "Needed to use Streamystats watchlists in rules."
-msgstr ""
+msgstr "在規則中使用 Streamystats 觀看清單時必須設定。"
 
 #: src/components/Services/useServices.tsx
 msgid "Needed to use Tautulli watch history in rules."
-msgstr ""
+msgstr "在規則中使用 Tautulli 觀看紀錄時必須設定。"
 
 #: src/components/Services/useServices.tsx
 msgid "Needed to use Tracearr watch history in rules."
-msgstr ""
+msgstr "在規則中使用 Tracearr 觀看紀錄時必須設定。"
 
 #: src/components/Settings/Notifications/NotificationAgentCard.tsx
 msgid "Needed when your SMTP server uses a certificate it signed itself, as many home servers do."
-msgstr ""
+msgstr "當 SMTP 伺服器使用自我簽署憑證時需要啟用，許多家用伺服器都使用這類憑證。"
 
 #: src/components/Collection/CollectionItem/index.tsx
 msgid "Never"
-msgstr ""
+msgstr "永不"
 
 #: src/components/Settings/Notifications/NotificationAgentCard.tsx
 msgid "Never use TLS"
-msgstr ""
+msgstr "永不使用 TLS"
 
 #: src/pages/RulesListPage.tsx
 msgid "New Rule"
-msgstr ""
+msgstr "新增規則"
 
 #: src/pages/RuleFormPage.tsx
 msgid "New rule - Maintainerr"
-msgstr ""
+msgstr "新增規則 - Maintainerr"
 
 #: src/components/Rules/Rule/RuleCreator/index.tsx
 msgid "New Section"
-msgstr ""
+msgstr "新增區段"
 
 #: src/components/Overlays/index.tsx
 #: src/pages/OverlayTemplateEditorPage.tsx
 msgid "New Template"
-msgstr ""
+msgstr "新增範本"
 
 #: src/pages/OverlayTemplateEditorPage.tsx
 msgid "New Template - Overlay Editor - Maintainerr"
-msgstr ""
+msgstr "新增範本 - 覆蓋圖層編輯器 - Maintainerr"
 
 #: src/components/Rules/ruleGroupSort.ts
 msgid "Newest First"
-msgstr ""
+msgstr "最新的優先"
 
 #: src/components/Calendar/index.tsx
 #: src/components/Common/Pagination/index.tsx
 #: src/components/Settings/Logs/index.tsx
 #: src/pages/OverlayTemplateEditorPage.tsx
 msgid "Next"
-msgstr ""
+msgstr "下一個"
 
 #: src/components/Settings/Telemetry/index.tsx
 msgid "No account, no id, no hostname, no {TERM_URL}, no {TERM_API} key, and nothing from your library."
-msgstr ""
+msgstr "不包含帳號、ID、主機名稱、{TERM_URL}、{TERM_API} 金鑰，也不包含媒體庫中的任何資料。"
 
 #: src/pages/OverlayTemplateEditorPage.tsx
 msgid "No background"
-msgstr ""
+msgstr "無背景"
 
 #: src/components/Common/MediaActionModal.tsx
 msgid "No collection can take this selection. Create one from a rule first."
-msgstr ""
+msgstr "目前沒有任何收藏集可接收這些選取項目。請先透過規則建立收藏集。"
 
 #: src/components/Collection/CollectionOverview/index.tsx
 msgid "No collections found for this library."
-msgstr ""
+msgstr "此媒體庫中找不到收藏集。"
 
 #: src/components/StorageMetrics/index.tsx
 msgid "No collections yet. Create a rule to build your first collection."
-msgstr ""
+msgstr "尚無收藏集，請建立規則來產生第一個收藏集。"
 
 #: src/components/Common/CommunityRuleModal/index.tsx
 msgid "No community rules found for this search."
-msgstr ""
+msgstr "找不到符合此搜尋的社群規則。"
 
 #: src/components/Common/CommunityRuleModal/index.tsx
 msgid "No community rules found for this type & Maintainerr version."
-msgstr ""
+msgstr "找不到符合此類型和 Maintainerr 版本的社群規則。"
 
 #: src/components/Rules/RuleGroup/AddModal/CollectionPosterPicker.tsx
 msgid "No custom poster"
-msgstr ""
+msgstr "沒有自訂海報"
 
 #: src/components/Settings/MediaServerSelector/index.tsx
 msgid "No data will be deleted (no collections exist)."
-msgstr ""
+msgstr "不會刪除任何資料（目前沒有收藏集）。"
 
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "No disk paths reported by ARR"
-msgstr ""
+msgstr "ARR 未回報磁碟路徑"
 
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "No disk paths with total space reported by ARR"
-msgstr ""
+msgstr "ARR 未回報含總容量資訊的磁碟路徑"
 
 #: src/components/OverlayEditor/LayerPanel.tsx
 msgid "No elements yet"
-msgstr ""
+msgstr "尚無元素"
 
 #: src/components/Collection/CollectionDetail/CollectionInfo/index.tsx
 msgid "No filter"
-msgstr ""
+msgstr "不篩選"
 
 #: src/components/StorageMetrics/index.tsx
 msgid "No instance reports total capacity"
-msgstr ""
+msgstr "沒有執行個體回報總容量"
 
 #: src/components/Overview/Content/index.tsx
 msgid "No items found."
-msgstr ""
+msgstr "找不到項目。"
 
 #: src/components/StorageMetrics/index.tsx
 msgid "No items processed yet"
-msgstr ""
+msgstr "尚未處理任何項目"
 
 #: src/components/StorageMetrics/index.tsx
 msgid "No libraries reported. Add libraries in your media server, then refresh."
-msgstr ""
+msgstr "沒有回報任何媒體庫。請先在媒體伺服器新增媒體庫，再重新整理。"
 
 #: src/components/Settings/Logs/index.tsx
 msgid "No log files found"
-msgstr ""
+msgstr "找不到日誌檔案"
 
 #: src/components/Calendar/index.tsx
 msgid "No media items found for this scheduled action."
-msgstr ""
+msgstr "找不到此排程動作的媒體項目。"
 
 #: src/components/StorageMetrics/index.tsx
 msgid "No mount data returned. Check that each instance has a root folder configured."
-msgstr ""
+msgstr "未取得掛載點資料，請確認每個執行個體都已設定根目錄。"
 
 #: src/components/StorageMetrics/index.tsx
 msgid "No mounts reported for this instance."
-msgstr ""
+msgstr "此執行個體未回報掛載點。"
 
 #: src/components/Rules/RuleGroup/AddModal/ConfigureNotificationModal/index.tsx
 msgid "No notification agents configured."
-msgstr ""
+msgstr "尚未設定通知代理程式。"
 
 #: src/components/StorageMetrics/index.tsx
 msgid "No Radarr or Sonarr instances are configured yet. Add one in Services to see disk usage here."
-msgstr ""
+msgstr "尚未設定 Radarr 或 Sonarr 執行個體。請在「服務」新增一個，以在此查看磁碟使用情況。"
 
 #: src/components/Common/SearchMediaITem/index.tsx
 msgid "No results"
-msgstr ""
+msgstr "沒有結果"
 
 #: src/components/Calendar/index.tsx
 msgid "No scheduled actions"
-msgstr ""
+msgstr "沒有排程動作"
 
 #: src/components/Common/MediaCard/MediaModal/index.tsx
 msgid "No summary available."
-msgstr ""
+msgstr "沒有可用的摘要。"
 
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "No users reported by the media server"
-msgstr ""
+msgstr "媒體伺服器未回報任何使用者"
 
 #: src/components/Common/MediaCard/MediaModal/WatchStatsPanel/index.tsx
 msgid "No watch history recorded yet."
-msgstr ""
+msgstr "尚無觀看紀錄。"
 
 #: src/components/Rules/RuleGroup/AddModal/ArrAction/index.tsx
 msgid "None"
-msgstr ""
+msgstr "無"
 
 #: src/components/Settings/Telemetry/index.tsx
 msgid "None of the data sent can be tied to your server."
-msgstr ""
+msgstr "傳送的資料均無法與您的伺服器建立關聯。"
 
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "normal"
-msgstr ""
+msgstr "一般"
 
 #: src/components/Settings/Notifications/NotificationAgentCard.tsx
 msgid "Not all fields contain values"
-msgstr ""
+msgstr "並非所有欄位都有填入數值"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Not all required (*) fields contain values and at least 1 valid rule is required"
-msgstr ""
+msgstr "尚未填妥所有必填（*）欄位，且至少需要一條有效規則"
 
 #: src/api/bulkMediaAction.ts
 msgid "not attempted"
-msgstr ""
+msgstr "尚未嘗試"
 
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "Not Contains (All items)"
-msgstr ""
+msgstr "不包含（所有項目）"
 
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "Not Contains (Exact list match)"
-msgstr ""
+msgstr "不包含（清單完全相符）"
 
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "Not Contains (Partial list match)"
-msgstr ""
+msgstr "不包含（清單部分相符）"
 
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "Not Equals"
-msgstr ""
+msgstr "不等於"
 
 #: src/components/Common/MediaCard/MediaModal/index.tsx
 msgid "Not excluded from any collection."
-msgstr ""
+msgstr "未被任何收藏集排除。"
 
 #: src/components/Common/MediaCard/MediaModal/index.tsx
 msgid "Not manually added to any collection."
-msgstr ""
+msgstr "未手動新增至任何收藏集。"
 
 #: src/components/Rules/RuleGroup/index.tsx
 msgid "Not set"
-msgstr ""
+msgstr "未設定"
 
 #: src/components/Services/useServices.tsx
 msgid "Not set up"
-msgstr ""
+msgstr "尚未設定"
 
 #: src/components/Settings/Telemetry/index.tsx
 msgid "Nothing extra is configured to send."
-msgstr ""
+msgstr "沒有設定要傳送的額外資料。"
 
 #: src/components/Settings/Notifications/NotificationAgentCard.tsx
 msgid "Nothing is sent while this is off."
-msgstr ""
+msgstr "停用時不會傳送任何內容。"
 
 #: src/components/Rules/RuleGroup/AddModal/ConfigureNotificationModal/index.tsx
 msgid "Notification Agents"
-msgstr ""
+msgstr "通知代理程式"
 
 #: src/components/Settings/Notifications/index.tsx
 msgid "Notification settings - Maintainerr"
-msgstr ""
+msgstr "通知設定 - Maintainerr"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 #: src/components/Services/ServicesHub.tsx
 #: src/components/Services/useServices.tsx
 msgid "Notifications"
-msgstr ""
+msgstr "通知"
 
 #: src/components/Settings/Notifications/NotificationAgentCard.tsx
 msgid "Notify x days before removal"
-msgstr ""
+msgstr "移除前 x 天通知"
 
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "Number"
-msgstr ""
+msgstr "數字"
 
 #: src/components/Settings/About/index.tsx
 msgid "Number Of Rules"
-msgstr ""
+msgstr "規則數量"
 
 #: src/components/Collection/CollectionDetail/RemoveFromCollectionButton/index.tsx
 #: src/components/Settings/Servarr/ServerInUseModal.tsx
 msgid "Ok"
-msgstr ""
+msgstr "確定"
 
 #: src/components/Rules/RuleGroup/AddModal/ConfigureNotificationModal/index.tsx
 msgid "OK"
-msgstr ""
+msgstr "確定"
 
 #: src/components/Rules/ruleGroupSort.ts
 msgid "Oldest First"
-msgstr ""
+msgstr "最舊的優先"
 
 #: src/components/Settings/Ombi/index.tsx
 msgid "Ombi settings - Maintainerr"
-msgstr ""
+msgstr "Ombi 設定 - Maintainerr"
 
 #: src/components/Settings/Ombi/index.tsx
 msgid "Ombi settings could not be updated"
-msgstr ""
+msgstr "無法更新 Ombi 設定"
 
 #: src/components/Layout/TelemetryConsentModal.tsx
 msgid "Once a week we log which version and platform people actually run. The payload below is the whole of it. It carries no server identifier, no {TERM_IP}, no hostname, no {TERM_MAC} address and no account id: nothing that can be traced back to you, your network or your machine."
-msgstr ""
+msgstr "我們每週記錄一次實際使用的版本和平台。以下就是傳送的完整資料，不包含伺服器識別碼、{TERM_IP}、主機名稱、{TERM_MAC} 位址或帳號 ID；沒有任何資料能追溯至您、您的網路或裝置。"
 
 #: src/components/Settings/index.tsx
 msgid "Once connected, adding a TVDB API key under Services, Metadata is highly recommended. When the primary provider cannot match a movie or show, Maintainerr falls back to TVDB for its IDs and details."
-msgstr ""
+msgstr "連線後，強烈建議在「服務」→「中繼資料」中新增 TVDB API 金鑰。當主要供應商無法比對電影或影集時，Maintainerr 會改用 TVDB 取得 ID 與詳細資料。"
 
 #: src/components/Common/YamlImporterModal/index.tsx
 msgid "Only {yamlExtension} or {ymlExtension} files are allowed."
-msgstr ""
+msgstr "只允許 {yamlExtension} 或 {ymlExtension} 檔案。"
 
 #: src/components/Settings/Notifications/NotificationAgentCard.tsx
 msgid "Only required if not using the default profile"
-msgstr ""
+msgstr "只有未使用預設設定檔時才需要"
 
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "Opacity"
-msgstr ""
+msgstr "不透明度"
 
 #: src/components/Settings/Overlays/index.tsx
 msgid "Open Job Settings"
-msgstr ""
+msgstr "開啟作業設定"
 
 #: src/components/Common/MediaCard/MediaModal/index.tsx
 #: src/components/Common/MediaCard/MediaModal/WatchStatsPanel/index.tsx
 msgid "Open on {provider}"
-msgstr ""
+msgstr "在 {provider} 上開啟"
 
 #: src/components/Layout/index.tsx
 msgid "Open sidebar"
-msgstr ""
+msgstr "開啟側邊欄"
 
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "Operator"
-msgstr ""
+msgstr "運算子"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Options"
-msgstr ""
+msgstr "選項"
 
 #: src/components/VersionStatus/index.tsx
 msgid "Out of Date"
-msgstr ""
+msgstr "版本過舊"
 
 #: src/components/Collection/CollectionDetail/CollectionInfo/index.tsx
 #: src/components/Collection/CollectionDetail/TestMediaItem/index.tsx
 msgid "Output"
-msgstr ""
+msgstr "輸出"
 
 #: src/components/Settings/Jobs/index.tsx
 msgid "Overlay Handler"
-msgstr ""
+msgstr "覆蓋圖層處理程式"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Overlay scope"
@@ -2873,437 +2877,437 @@ msgstr ""
 
 #: src/components/Settings/Overlays/index.tsx
 msgid "Overlay Settings"
-msgstr ""
+msgstr "覆蓋圖層設定"
 
 #: src/components/Settings/Overlays/index.tsx
 msgid "Overlay settings - Maintainerr"
-msgstr ""
+msgstr "覆蓋圖層設定 - Maintainerr"
 
 #: src/components/Settings/Overlays/index.tsx
 msgid "Overlay settings could not be updated"
-msgstr ""
+msgstr "無法更新覆蓋圖層設定"
 
 #: src/components/Settings/Overlays/index.tsx
 msgid "Overlay settings updated"
-msgstr ""
+msgstr "已更新覆蓋圖層設定"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Overlay template"
-msgstr ""
+msgstr "覆蓋圖層範本"
 
 #: src/pages/OverlayTemplateListPage.tsx
 msgid "Overlay Templates"
-msgstr ""
+msgstr "覆蓋圖層範本"
 
 #: src/pages/OverlayTemplateListPage.tsx
 msgid "Overlay Templates - Maintainerr"
-msgstr ""
+msgstr "覆蓋圖層範本 - Maintainerr"
 
 #: src/components/Layout/NavBar/index.tsx
 msgid "Overlays"
-msgstr ""
+msgstr "Overlays"
 
 #: src/components/Settings/Overlays/index.tsx
 msgid "Overlays are now enabled"
-msgstr ""
+msgstr "現已啟用覆蓋圖層"
 
 #: src/components/Settings/Plex/index.tsx
 msgid "Override the connection discovered by Plex.<0/>Disables automatic reconnection - you manage the connection."
-msgstr ""
+msgstr "覆寫 Plex 自動偵測的連線。<0/>停用自動重新連線，改由您自行管理連線。"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Overrides the configured Watched Percent in Tautulli, which is used to determine when media is counted as watched"
-msgstr ""
+msgstr "覆寫 Tautulli 中設定的「已觀看百分比」，此值用於判斷媒體何時視為已觀看"
 
 #: src/components/Layout/NavBar/index.tsx
 msgid "Overview"
-msgstr ""
+msgstr "總覽"
 
 #: src/components/Overview/index.tsx
 msgid "Overview - Maintainerr"
-msgstr ""
+msgstr "總覽 - Maintainerr"
 
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "Padding"
-msgstr ""
+msgstr "內距"
 
 #: src/components/Login/Emby/EmbyLoginButton.tsx
 #: src/components/Settings/DownloadClient/index.tsx
 msgid "Password"
-msgstr ""
+msgstr "密碼"
 
 #: src/components/Common/MediaCard/MediaModal/WatchStatsPanel/index.tsx
 msgid "Plays"
-msgstr ""
+msgstr "播放次數"
 
 #: src/components/Settings/Plex/index.tsx
 msgid "Please complete server setup by selecting a server from the dropdown."
-msgstr ""
+msgstr "請從下拉式選單中選擇伺服器，以完成伺服器設定。"
 
 #: src/components/Rules/RuleGroup/index.tsx
 msgid "Please edit this rule and select a library"
-msgstr ""
+msgstr "請編輯此規則並選擇媒體庫"
 
 #: src/components/Settings/Plex/index.tsx
 msgid "Please enter a valid server URL with no path."
-msgstr ""
+msgstr "請輸入不含路徑的有效伺服器 URL。"
 
 #: src/components/Settings/Servarr/ServarrServerCard.tsx
 msgid "Please enter a valid URL."
-msgstr ""
+msgstr "請輸入有效的 URL。"
 
 #: src/components/Settings/Jobs/index.tsx
 msgid "Please make sure all values are valid"
-msgstr ""
+msgstr "請確認所有數值均有效"
 
 #: src/components/Settings/Main/DatabaseBackupModal.tsx
 msgid "Please provide a valid file name"
-msgstr ""
+msgstr "請提供有效的檔案名稱"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Please select a library first."
-msgstr ""
+msgstr "請先選擇媒體庫。"
 
 #: src/components/Settings/Plex/index.tsx
 msgid "Plex authentication could not be verified. Please try again."
-msgstr ""
+msgstr "無法驗證 Plex 身分，請重試。"
 
 #: src/components/Settings/Plex/index.tsx
 msgid "Plex configuration is required. Authenticate with Plex to get started."
-msgstr ""
+msgstr "必須先設定 Plex。請透過 Plex 身分驗證開始設定。"
 
 #: src/components/Login/Plex/index.tsx
 msgid "Plex login popup was blocked. Please allow popups for this site."
-msgstr ""
+msgstr "Plex 登入彈出視窗遭封鎖，請允許此網站開啟彈出式視窗。"
 
 #: src/components/Services/mediaServerOptions.ts
 msgid "Plex Media Server"
-msgstr ""
+msgstr "Plex 媒體伺服器"
 
 #: src/components/Settings/Plex/index.tsx
 msgid "Plex settings - Maintainerr"
-msgstr ""
+msgstr "Plex 設定 - Maintainerr"
 
 #: src/components/Settings/Plex/index.tsx
 msgid "Plex settings could not be updated"
-msgstr ""
+msgstr "無法更新 Plex 設定"
 
 #: src/utils/PlexAuth.ts
 msgid "Popup closed without completing login"
-msgstr ""
+msgstr "登入尚未完成，彈出視窗就已關閉"
 
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "Position"
-msgstr ""
+msgstr "位置"
 
 #: src/pages/OverlayTemplateEditorPage.tsx
 msgid "Poster"
-msgstr ""
+msgstr "海報"
 
 #: src/components/Rules/RuleGroup/AddModal/CollectionPosterPicker.tsx
 msgid "Poster saved and pushed to {mediaServerName}"
-msgstr ""
+msgstr "海報已儲存並傳送至 {mediaServerName}"
 
 #: src/components/Rules/RuleGroup/AddModal/CollectionPosterPicker.tsx
 msgid "Poster saved locally. Maintainerr could not apply it to {mediaServerName} yet."
-msgstr ""
+msgstr "海報已儲存於本機，但 Maintainerr 尚無法將其套用至 {mediaServerName}。"
 
 #: src/pages/OverlayTemplateListPage.tsx
 msgid "Poster Templates"
-msgstr ""
+msgstr "海報範本"
 
 #: src/components/Collection/CollectionDetail/PostponeButton/index.tsx
 msgid "Postpone"
-msgstr ""
+msgstr "延後"
 
 #: src/components/Collection/CollectionDetail/PostponeButton/index.tsx
 msgid "Postpone deletion"
-msgstr ""
+msgstr "延後刪除"
 
 #: src/components/Collection/CollectionDetail/PostponeButton/index.tsx
 msgid "Postpone now"
-msgstr ""
+msgstr "立即延後"
 
 #: src/components/Collection/CollectionDetail/PostponeButton/index.tsx
 msgid "Postponing..."
-msgstr ""
+msgstr "正在延後……"
 
 #: src/components/StorageMetrics/index.tsx
 msgid "Potential reclaim by type"
-msgstr ""
+msgstr "各類型的潛在可回收空間"
 
 #: src/pages/OverlayTemplateListPage.tsx
 msgid "Preset"
-msgstr ""
+msgstr "預設範本"
 
 #: src/components/Common/ColorPickerModal/index.tsx
 msgid "Presets"
-msgstr ""
+msgstr "預設組合"
 
 #: src/pages/OverlayTemplateEditorPage.tsx
 msgid "Presets can’t be modified. Enter a name for your copy - it will start from the current canvas and become editable."
-msgstr ""
+msgstr "無法修改預設範本。請輸入副本名稱，副本會以目前畫布內容建立，之後即可編輯。"
 
 #: src/components/Calendar/index.tsx
 #: src/components/Common/Pagination/index.tsx
 #: src/pages/OverlayTemplateEditorPage.tsx
 msgid "Prev"
-msgstr ""
+msgstr "上一個"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Prevents {listExclusionArrName} import lists re-adding removed movie"
-msgstr ""
+msgstr "避免 {listExclusionArrName} 匯入清單重新加入已移除的電影"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Prevents {listExclusionArrName} import lists re-adding removed show"
-msgstr ""
+msgstr "避免 {listExclusionArrName} 匯入清單重新加入已移除的影集"
 
 #: src/components/Settings/Logs/index.tsx
 msgid "Previous"
-msgstr ""
+msgstr "上一個"
 
 #: src/components/Settings/Metadata/index.tsx
 msgid "Primary"
-msgstr ""
+msgstr "主要"
 
 #: src/components/Common/MediaActionModal.tsx
 msgid "Proceed"
-msgstr ""
+msgstr "繼續"
 
 #: src/utils/overlayProcessResult.ts
 msgid "Processed: {processed}, Reverted: {reverted}, Skipped: {skipped}, Errors: {errors}"
-msgstr ""
+msgstr "已處理：{processed}；已還原：{reverted}；已略過：{skipped}；錯誤：{errors}"
 
 #: src/components/Messages/Messages.tsx
 msgid "Processing: {collectionName}"
-msgstr ""
+msgstr "正在處理：{collectionName}"
 
 #: src/components/Messages/Messages.tsx
 msgid "Processing: {ruleGroupName}"
-msgstr ""
+msgstr "正在處理：{ruleGroupName}"
 
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 #: src/pages/OverlayTemplateEditorPage.tsx
 msgid "Properties"
-msgstr ""
+msgstr "屬性"
 
 #: src/components/Collection/CollectionDetail/PostponeButton/index.tsx
 msgid "Push this item's deletion further out by the number of days below. An item already past its deletion date is counted from today."
-msgstr ""
+msgstr "依下方指定的天數延後此項目的刪除日期。如果原刪除日期已過，將從今天開始計算。"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Quality profile is required for this action"
-msgstr ""
+msgstr "此動作必須指定畫質設定檔"
 
 #: src/components/Settings/Servarr/ServarrSettings.tsx
 msgid "Radarr settings - Maintainerr"
-msgstr ""
+msgstr "Radarr 設定 - Maintainerr"
 
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "Radius"
-msgstr ""
+msgstr "半徑"
 
 #: src/components/Common/MediaCard/MediaModal/index.tsx
 msgid "Rated: {contentRating}"
-msgstr ""
+msgstr "內容分級：{contentRating}"
 
 #: src/components/Common/MediaLibrarySortControl.tsx
 msgid "Rating Ascending"
-msgstr ""
+msgstr "依評分遞增排序"
 
 #: src/components/Common/MediaLibrarySortControl.tsx
 msgid "Rating Descending"
-msgstr ""
+msgstr "依評分遞減排序"
 
 #: src/components/Common/MediaLibrarySortControl.tsx
 msgid "Recently Added"
-msgstr ""
+msgstr "最近新增"
 
 #: src/components/Common/MediaLibrarySortControl.tsx
 msgid "Recently Excluded"
-msgstr ""
+msgstr "最近排除"
 
 #: src/components/Settings/Notifications/NotificationAgentCard.tsx
 msgid "Recipients get the message without a notification sound."
-msgstr ""
+msgstr "收件者會收到沒有通知音效的訊息。"
 
 #: src/components/StorageMetrics/index.tsx
 msgid "Reclaimable from collections"
-msgstr ""
+msgstr "可從收藏集回收的空間"
 
 #: src/components/OverlayEditor/ElementToolbox.tsx
 #: src/components/OverlayEditor/LayerPanel.tsx
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "Rectangle"
-msgstr ""
+msgstr "矩形"
 
 #: src/components/Settings/Metadata/index.tsx
 #: src/components/Settings/Servarr/ServarrServerCard.tsx
 msgid "Refresh metadata"
-msgstr ""
+msgstr "重新整理中繼資料"
 
 #: src/components/Settings/Plex/index.tsx
 msgid "Refresh servers"
-msgstr ""
+msgstr "重新整理伺服器清單"
 
 #: src/components/Settings/Metadata/index.tsx
 #: src/components/Settings/Servarr/ServarrServerCard.tsx
 msgid "Refreshing"
-msgstr ""
+msgstr "正在重新整理"
 
 #: src/components/Settings/Metadata/index.tsx
 msgid "Refreshing..."
-msgstr ""
+msgstr "正在重新整理……"
 
 #: src/components/Settings/Main/index.tsx
 msgid "Regenerate API key"
-msgstr ""
+msgstr "重新產生 API 金鑰"
 
 #: src/components/Settings/About/Releases/index.tsx
 msgid "Release data is currently unavailable."
-msgstr ""
+msgstr "目前無法取得版本發布資料。"
 
 #: src/components/Common/MediaLibrarySortControl.tsx
 msgid "Release Date Ascending"
-msgstr ""
+msgstr "依發行日期遞增排序"
 
 #: src/components/Common/MediaLibrarySortControl.tsx
 msgid "Release Date Descending"
-msgstr ""
+msgstr "依發行日期遞減排序"
 
 #: src/components/Settings/About/Releases/index.tsx
 msgid "Releases"
-msgstr ""
+msgstr "發行版本"
 
 #: src/components/Settings/Plex/index.tsx
 msgid "remote"
-msgstr ""
+msgstr "遠端"
 
 #: src/components/Settings/Plex/index.tsx
 msgid "Remote"
-msgstr ""
+msgstr "遠端"
 
 #: src/components/Collection/CollectionDetail/RemoveFromCollectionButton/index.tsx
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "Remove"
-msgstr ""
+msgstr "移除"
 
 #: src/components/Collection/CollectionDetail/RemoveFromCollectionButton/index.tsx
 #: src/components/Common/MediaActionModal.tsx
 msgid "Remove exclusion"
-msgstr ""
+msgstr "取消排除"
 
 #: src/components/Common/MediaActionModal.tsx
 msgid "Remove from collection"
-msgstr ""
+msgstr "從收藏集中移除"
 
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "Remove rule {ruleNumber}, section {sectionNumber}"
-msgstr ""
+msgstr "移除區段 {sectionNumber} 的規則 {ruleNumber}"
 
 #: src/components/Settings/Servarr/ServarrServerCard.tsx
 msgid "Remove tag on un-exclude"
-msgstr ""
+msgstr "取消排除時移除標籤"
 
 #: src/components/Collection/CollectionDetail/RemoveFromCollectionButton/index.tsx
 msgid "Remove?"
-msgstr ""
+msgstr "要移除嗎？"
 
 #: src/components/Settings/Servarr/ServarrServerCard.tsx
 msgid "Removes only this tag when the item is un-excluded."
-msgstr ""
+msgstr "取消排除項目時，只移除這個標籤。"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Removes the related Ombi request immediately. Otherwise, Ombi keeps listing the request as available."
-msgstr ""
+msgstr "立即移除對應的 Ombi 請求，否則 Ombi 仍會將該請求列為可用。"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Removes the related Seerr request immediately. Otherwise, Maintainerr waits for Seerr availability sync."
-msgstr ""
+msgstr "立即移除對應的 Seerr 請求，否則 Maintainerr 會等待 Seerr 同步可用狀態。"
 
 #: src/components/Collection/CollectionDetail/RemoveFromCollectionButton/index.tsx
 msgid "Removing..."
-msgstr ""
+msgstr "正在移除……"
 
 #: src/components/Rules/RuleGroup/AddModal/CollectionPosterPicker.tsx
 msgid "Replace poster"
-msgstr ""
+msgstr "更換海報"
 
 #: src/api/bulkMediaAction.ts
 msgid "request error"
-msgstr ""
+msgstr "請求錯誤"
 
 #: src/components/Rules/RuleGroup/index.tsx
 msgid "Request stop execution"
-msgstr ""
+msgstr "要求停止執行"
 
 #: src/components/Common/MediaCard/MediaModal/index.tsx
 msgid "Requested by <0>{requesters}</0>"
-msgstr ""
+msgstr "由 <0>{requesters}</0> 請求"
 
 #: src/pages/RulesListPage.tsx
 msgid "Requested to stop all rule executions."
-msgstr ""
+msgstr "已要求停止執行所有規則。"
 
 #: src/components/Rules/RuleGroup/index.tsx
 msgid "Requested to stop rule execution."
-msgstr ""
+msgstr "已要求停止執行規則。"
 
 #: src/components/Services/ServicesHub.tsx
 msgid "Requests"
-msgstr ""
+msgstr "請求"
 
 #: src/components/StorageMetrics/index.tsx
 msgid "Requires total-space reporting"
-msgstr ""
+msgstr "需要回報磁碟總空間"
 
 #: src/components/Settings/Overlays/index.tsx
 msgid "Reset"
-msgstr ""
+msgstr "重設"
 
 #: src/components/Settings/Overlays/index.tsx
 msgid "Reset All Overlays"
-msgstr ""
+msgstr "重設所有覆蓋圖層"
 
 #: src/components/Settings/Overlays/index.tsx
 msgid "Resetting..."
-msgstr ""
+msgstr "正在重設……"
 
 #: src/components/Settings/Overlays/index.tsx
 msgid "Restore original artwork for all collections?"
-msgstr ""
+msgstr "要還原所有收藏集的原始圖片嗎？"
 
 #: src/components/Settings/Plex/index.tsx
 msgid "Retrieving servers..."
-msgstr ""
+msgstr "正在取得伺服器清單……"
 
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "right"
-msgstr ""
+msgstr "靠右"
 
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "Rotation"
-msgstr ""
+msgstr "旋轉"
 
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "Rule #{ruleNumber}"
-msgstr ""
+msgstr "規則 #{ruleNumber}"
 
 #: src/pages/RulesListPage.tsx
 msgid "Rule execution started."
-msgstr ""
+msgstr "已開始執行規則。"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Rule Group Settings"
-msgstr ""
+msgstr "規則群組設定"
 
 #: src/components/Settings/Jobs/index.tsx
 msgid "Rule Handler"
-msgstr ""
+msgstr "規則處理程式"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Rule handler schedule override"
-msgstr ""
+msgstr "覆寫規則處理程式排程"
 
 #: src/components/Collection/CollectionDetail/CollectionInfo/collectionLogLabels.ts
 #: src/components/Layout/NavBar/index.tsx
@@ -3311,68 +3315,68 @@ msgstr ""
 #: src/components/Rules/RuleGroup/index.tsx
 #: src/pages/RulesListPage.tsx
 msgid "Rules"
-msgstr ""
+msgstr "規則"
 
 #: src/pages/RulesListPage.tsx
 msgid "Rules - Maintainerr"
-msgstr ""
+msgstr "規則 - Maintainerr"
 
 #: src/components/Common/YamlImporterModal/index.tsx
 msgid "Rules YAML"
-msgstr ""
+msgstr "規則 YAML"
 
 #: src/components/Settings/Overlays/index.tsx
 msgid "Run Now"
-msgstr ""
+msgstr "立即執行"
 
 #: src/pages/RulesListPage.tsx
 msgid "Run Rules"
-msgstr ""
+msgstr "執行規則"
 
 #: src/components/StorageMetrics/index.tsx
 msgid "Run scan"
-msgstr ""
+msgstr "執行掃描"
 
 #: src/components/Collection/CollectionDetail/TriggerRuleActionButton/index.tsx
 msgid "Run the collection action"
-msgstr ""
+msgstr "執行收藏集動作"
 
 #: src/components/Settings/Overlays/index.tsx
 msgid "Running"
-msgstr ""
+msgstr "執行中"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Save"
-msgstr ""
+msgstr "儲存"
 
 #: src/pages/OverlayTemplateEditorPage.tsx
 msgid "Save as copy"
-msgstr ""
+msgstr "另存為副本"
 
 #: src/components/Common/SaveButton.tsx
 #: src/pages/OverlayTemplateEditorPage.tsx
 msgid "Save Changes"
-msgstr ""
+msgstr "儲存變更"
 
 #: src/pages/OverlayTemplateEditorPage.tsx
 msgid "Save copy"
-msgstr ""
+msgstr "儲存副本"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Save first to enable poster upload."
-msgstr ""
+msgstr "請先儲存才能上傳海報。"
 
 #: src/pages/OverlayTemplateEditorPage.tsx
 msgid "Save preset as a copy"
-msgstr ""
+msgstr "將預設範本另存為副本"
 
 #: src/components/Settings/Metadata/index.tsx
 msgid "Save to refresh"
-msgstr ""
+msgstr "儲存後重新整理"
 
 #: src/components/Settings/Plex/index.tsx
 msgid "Save your settings before testing."
-msgstr ""
+msgstr "請先儲存設定再進行測試。"
 
 #: src/components/Settings/DownloadClient/index.tsx
 #: src/components/Settings/Emby/index.tsx
@@ -3383,272 +3387,272 @@ msgstr ""
 #: src/components/Settings/Plex/index.tsx
 #: src/components/Settings/Servarr/ServarrServerCard.tsx
 msgid "Saved"
-msgstr ""
+msgstr "已儲存"
 
 #: src/components/Settings/Emby/index.tsx
 #: src/components/Settings/Jellyfin/index.tsx
 msgid "Saved admin user. Test connection to change."
-msgstr ""
+msgstr "已儲存管理員使用者。如需變更，請測試連線。"
 
 #: src/components/Settings/Main/LanguageSelector.tsx
 msgid "Saved in this browser. <0>Untranslated text</0> falls back to English."
-msgstr ""
+msgstr "已儲存於此瀏覽器。<0>未翻譯的文字</0>會以英文顯示。"
 
 #: src/components/Rules/RuleGroup/AddModal/CollectionPosterPicker.tsx
 msgid "Saved locally. Maintainerr couldn't push to {mediaServerName} right now; it'll re-apply automatically next time the collection is recreated there."
-msgstr ""
+msgstr "已儲存於本機。Maintainerr 目前無法傳送至 {mediaServerName}；下次在該伺服器重建收藏集時會自動重新套用。"
 
 #: src/components/Common/SaveButton.tsx
 #: src/pages/OverlayTemplateEditorPage.tsx
 msgid "Saving..."
-msgstr ""
+msgstr "正在儲存……"
 
 #: src/api/calendar.ts
 msgid "Scheduled Action"
-msgstr ""
+msgstr "排程動作"
 
 #: src/components/Settings/Logs/index.tsx
 msgid "Scroll to bottom on new message"
-msgstr ""
+msgstr "收到新訊息時捲動至底部"
 
 #: src/components/Common/SearchBar/index.tsx
 msgid "Search"
-msgstr ""
+msgstr "搜尋"
 
 #: src/components/Collection/CollectionDetail/TestMediaItem/index.tsx
 msgid "Search for media items and validate them against the specified rule. The result will be a YAML document containing the validated steps."
-msgstr ""
+msgstr "搜尋媒體項目並依指定規則驗證。結果會產生包含驗證步驟的 YAML 文件。"
 
 #: src/utils/mediaTypeUtils.ts
 msgid "season"
-msgstr ""
+msgstr "季"
 
 #: src/components/Calendar/index.tsx
 #: src/components/Collection/CollectionDetail/TestMediaItem/index.tsx
 msgid "Season"
-msgstr ""
+msgstr "季"
 
 #: src/utils/mediaTypeUtils.ts
 msgid "season {itemNumber}"
-msgstr ""
+msgstr "第 {itemNumber} 季"
 
 #: src/components/Collection/CollectionItem/index.tsx
 #: src/components/Common/MediaActionModal.tsx
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 #: src/components/StorageMetrics/index.tsx
 msgid "Seasons"
-msgstr ""
+msgstr "季度"
 
 #: src/components/StorageMetrics/index.tsx
 msgid "Seasons handled"
-msgstr ""
+msgstr "已處理季度數"
 
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "Second Value"
-msgstr ""
+msgstr "第二個值"
 
 #: src/components/Rules/Rule/RuleCreator/index.tsx
 msgid "Section #{sectionNumber}"
-msgstr ""
+msgstr "區段 #{sectionNumber}"
 
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "Section Operator"
-msgstr ""
+msgstr "區段運算子"
 
 #: src/components/Settings/Plex/index.tsx
 msgid "secure"
-msgstr ""
+msgstr "安全"
 
 #: src/components/Settings/Seerr/index.tsx
 msgid "Seerr settings - Maintainerr"
-msgstr ""
+msgstr "Seerr 設定 - Maintainerr"
 
 #: src/components/Settings/Seerr/index.tsx
 msgid "Seerr settings could not be updated"
-msgstr ""
+msgstr "無法更新 Seerr 設定"
 
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "Segments"
-msgstr ""
+msgstr "區段數"
 
 #: src/components/Common/ColorPickerModal/index.tsx
 msgid "Select {preset}"
-msgstr ""
+msgstr "選擇 {preset}"
 
 #: src/components/Common/MediaCard/index.tsx
 msgid "Select {title}"
-msgstr ""
+msgstr "選擇 {title}"
 
 #: src/components/Common/MediaSelectionActions.tsx
 msgid "Select <0>items</0>"
-msgstr ""
+msgstr "選取<0>項目</0>"
 
 #: src/components/Settings/DownloadClient/index.tsx
 msgid "Select a client first"
-msgstr ""
+msgstr "請先選擇用戶端"
 
 #: src/components/Settings/Plex/index.tsx
 msgid "Select a Plex server before testing."
-msgstr ""
+msgstr "測試前請先選擇 Plex 伺服器。"
 
 #: src/components/Rules/RuleGroup/AddModal/QualityProfileSelector.tsx
 msgid "Select a quality profile"
-msgstr ""
+msgstr "選擇畫質設定檔"
 
 #: src/components/Settings/Plex/index.tsx
 msgid "Select a server..."
-msgstr ""
+msgstr "選擇伺服器……"
 
 #: src/components/Settings/Tabs/index.tsx
 msgid "Select a Tab"
-msgstr ""
+msgstr "選擇分頁"
 
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "Select a user"
-msgstr ""
+msgstr "選擇使用者"
 
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "Select Action..."
-msgstr ""
+msgstr "選擇動作……"
 
 #: src/pages/OverlayTemplateEditorPage.tsx
 msgid "Select an element to edit its properties"
-msgstr ""
+msgstr "選擇元素以編輯其屬性"
 
 #: src/components/Settings/DownloadClient/index.tsx
 #: src/components/Settings/ExternalServiceSettingsPage.tsx
 #: src/components/Settings/Notifications/NotificationAgentCard.tsx
 msgid "Select an option"
-msgstr ""
+msgstr "選擇選項"
 
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "Select First Value..."
-msgstr ""
+msgstr "選擇第一個值……"
 
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "Select font..."
-msgstr ""
+msgstr "選擇字型……"
 
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "Select image..."
-msgstr ""
+msgstr "選擇圖片……"
 
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "Select Second Value..."
-msgstr ""
+msgstr "選擇第二個值……"
 
 #: src/components/Settings/Emby/index.tsx
 #: src/components/Settings/Jellyfin/index.tsx
 msgid "Select the admin user for Maintainerr operations."
-msgstr ""
+msgstr "選擇 Maintainerr 操作用的管理員使用者。"
 
 #: src/components/Services/useServices.tsx
 msgid "Select your media server to get started with Maintainerr."
-msgstr ""
+msgstr "選擇媒體伺服器以開始使用 Maintainerr。"
 
 #: src/components/Services/useServices.tsx
 msgid "Select your media server type. Switching will reset media server-specific data."
-msgstr ""
+msgstr "選擇媒體伺服器類型。切換後會重設該媒體伺服器專屬的資料。"
 
 #: src/components/OverlayEditor/ResourceField.tsx
 msgid "Select..."
-msgstr ""
+msgstr "選擇……"
 
 #: src/components/Settings/MediaServerSelector/index.tsx
 msgid "Selected {serverName} as your media server"
-msgstr ""
+msgstr "已將 {serverName} 設為您的媒體伺服器"
 
 #: src/components/Settings/Tabs/index.tsx
 msgid "Selected Tab"
-msgstr ""
+msgstr "已選取的分頁"
 
 #: src/components/Settings/Emby/index.tsx
 #: src/components/Settings/Jellyfin/index.tsx
 msgid "Selected: {maskedUserId}"
-msgstr ""
+msgstr "已選取：{maskedUserId}"
 
 #: src/components/Services/useServices.tsx
 msgid "Send alerts about collections, rules, overlays and updates to email, chat and push services."
-msgstr ""
+msgstr "透過電子郵件、聊天及推播服務，傳送收藏集、規則、覆蓋圖層與更新的提醒。"
 
 #: src/components/Settings/Telemetry/index.tsx
 msgid "Send anonymous usage data"
-msgstr ""
+msgstr "傳送匿名使用統計資料"
 
 #: src/components/Settings/Notifications/NotificationAgentCard.tsx
 msgid "Send silently"
-msgstr ""
+msgstr "靜音傳送"
 
 #: src/components/Settings/Notifications/NotificationAgentCard.tsx
 msgid "Sends unencrypted even when the server offers STARTTLS. Only for a server whose STARTTLS fails."
-msgstr ""
+msgstr "即使伺服器支援 STARTTLS 仍以未加密方式傳送。僅限 STARTTLS 無法正常運作的伺服器使用。"
 
 #: src/components/Settings/Plex/index.tsx
 msgid "Server"
-msgstr ""
+msgstr "伺服器"
 
 #: src/components/Settings/Servarr/ServerInUseModal.tsx
 msgid "Server in-use"
-msgstr ""
+msgstr "伺服器使用中"
 
 #: src/components/Settings/Servarr/ServarrServerCard.tsx
 msgid "Server Name"
-msgstr ""
+msgstr "伺服器名稱"
 
 #: src/api/bulkMediaAction.ts
 msgid "server responded {status}"
-msgstr ""
+msgstr "伺服器回應狀態 {status}"
 
 #: src/components/Layout/NavBar/index.tsx
 #: src/components/Services/ServicesHub.tsx
 msgid "Services"
-msgstr ""
+msgstr "服務"
 
 #: src/components/Services/ServicesHub.tsx
 msgid "Services - Maintainerr"
-msgstr ""
+msgstr "服務 - Maintainerr"
 
 #: src/components/Settings/About/index.tsx
 msgid "Services Status"
-msgstr ""
+msgstr "服務狀態"
 
 #: src/pages/OverlayTemplateListPage.tsx
 msgid "Set as default"
-msgstr ""
+msgstr "設為預設"
 
 #: src/components/Layout/NavBar/index.tsx
 #: src/components/Overlays/index.tsx
 msgid "Settings"
-msgstr ""
+msgstr "設定"
 
 #: src/components/Settings/useSettingsFeedback.tsx
 msgid "Settings could not be updated"
-msgstr ""
+msgstr "無法更新設定"
 
 #: src/components/Settings/useSettingsFeedback.tsx
 msgid "Settings updated"
-msgstr ""
+msgstr "已更新設定"
 
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "Shadow"
-msgstr ""
+msgstr "陰影"
 
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "Shape"
-msgstr ""
+msgstr "形狀"
 
 #: src/utils/mediaTypeUtils.ts
 msgid "show"
-msgstr ""
+msgstr "影集"
 
 #: src/components/Calendar/index.tsx
 msgid "Show"
-msgstr ""
+msgstr "影集"
 
 #: src/components/OverlayEditor/LayerPanel.tsx
 msgctxt "Toggle layer visibility"
 msgid "Show"
-msgstr ""
+msgstr "顯示"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Show + seasons"
@@ -3660,19 +3664,19 @@ msgstr ""
 
 #: src/components/Settings/MediaServerSelector/index.tsx
 msgid "Show incompatible rules ({skippedRules})"
-msgstr ""
+msgstr "顯示不相容規則（{skippedRules}）"
 
 #: src/components/Calendar/index.tsx
 msgid "Show less"
-msgstr ""
+msgstr "顯示較少"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Show on {mediaServerName} home"
-msgstr ""
+msgstr "顯示於 {mediaServerName} 首頁"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Show on {mediaServerName} library recommended"
-msgstr ""
+msgstr "顯示於 {mediaServerName} 媒體庫推薦區"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Show only"
@@ -3680,183 +3684,183 @@ msgstr ""
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Show the collection on the {mediaServerName} home screen"
-msgstr ""
+msgstr "在 {mediaServerName} 首頁顯示此收藏集"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Show the collection on the {mediaServerName} library recommended screen"
-msgstr ""
+msgstr "在 {mediaServerName} 媒體庫推薦頁面顯示此收藏集"
 
 #: src/components/Common/Pagination/index.tsx
 msgid "Showing <0>{firstItem}</0> to <1>{lastItem}</1> of <2>{totalItems}</2> Rules"
-msgstr ""
+msgstr "顯示第 <0>{firstItem}</0> 至 <1>{lastItem}</1> 筆規則，共 <2>{totalItems}</2> 筆"
 
 #: src/components/Collection/CollectionItem/index.tsx
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 #: src/components/StorageMetrics/index.tsx
 msgid "Shows"
-msgstr ""
+msgstr "影集"
 
 #: src/components/StorageMetrics/index.tsx
 msgid "Shows handled"
-msgstr ""
+msgstr "已處理影集數"
 
 #: src/components/Login/Emby/EmbyLoginButton.tsx
 msgid "Sign in"
-msgstr ""
+msgstr "登入"
 
 #: src/components/Login/Emby/EmbyLoginButton.tsx
 msgid "Sign in with Emby"
-msgstr ""
+msgstr "使用 Emby 登入"
 
 #: src/components/Login/Emby/EmbyLoginButton.tsx
 msgid "Signing in…"
-msgstr ""
+msgstr "正在登入…"
 
 #: src/components/Collection/CollectionItem/index.tsx
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 #: src/components/Settings/Logs/index.tsx
 #: src/components/StorageMetrics/index.tsx
 msgid "Size"
-msgstr ""
+msgstr "大小"
 
 #: src/components/StorageMetrics/index.tsx
 msgid "Size on disk reported by the media server"
-msgstr ""
+msgstr "媒體伺服器回報的磁碟使用空間"
 
 #: src/components/StorageMetrics/index.tsx
 msgid "Sizes approximate on-disk bytes and may not fully reflect hardlinks, sparse files, or filesystem snapshots."
-msgstr ""
+msgstr "容量是磁碟上位元組數的估計值，可能無法完整反映硬連結、稀疏檔案或檔案系統快照。"
 
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "Smaller"
-msgstr ""
+msgstr "小於"
 
 #: src/components/Rules/Rule/RuleCreator/index.tsx
 msgid "Some incomplete rules won't be saved"
-msgstr ""
+msgstr "部分未完成的規則將不會儲存"
 
 #: src/components/Settings/Servarr/ServarrSettings.tsx
 msgid "Sonarr settings - Maintainerr"
-msgstr ""
+msgstr "Sonarr 設定 - Maintainerr"
 
 #: src/components/Collection/CollectionDetail/Exclusions/index.tsx
 msgid "Sort collection exclusions"
-msgstr ""
+msgstr "排序收藏集排除項目"
 
 #: src/pages/CollectionMediaPage.tsx
 msgid "Sort collection items"
-msgstr ""
+msgstr "排序收藏集項目"
 
 #: src/components/Overview/index.tsx
 msgid "Sort overview items"
-msgstr ""
+msgstr "排序總覽項目"
 
 #: src/pages/RulesListPage.tsx
 msgid "Sort rules"
-msgstr ""
+msgstr "排序規則"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Sort title"
-msgstr ""
+msgstr "排序標題"
 
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "Specific date"
-msgstr ""
+msgstr "指定日期"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Specify the rules this group needs to enforce"
-msgstr ""
+msgstr "指定此群組需要執行的規則"
 
 #: src/components/Settings/Servarr/ServarrSettings.tsx
 msgid "Sportarr settings - Maintainerr"
-msgstr ""
+msgstr "Sportarr 設定 - Maintainerr"
 
 #: src/utils/ApiError.ts
 msgid "SSL/TLS handshake failed. Verify the URL protocol (http vs https) and SSL configuration."
-msgstr ""
+msgstr "SSL/TLS 交握失敗，請確認 URL 通訊協定（http 或 https）及 SSL 設定。"
 
 #: src/components/Settings/Notifications/NotificationAgentCard.tsx
 msgid "Start a chat with your bot, add {bot}, and issue the {command} command"
-msgstr ""
+msgstr "開始與機器人對話，加入 {bot}，再執行 {command} 指令"
 
 #: src/components/Rules/RuleGroup/index.tsx
 msgid "Start execution"
-msgstr ""
+msgstr "開始執行"
 
 #: src/components/Common/SearchMediaITem/index.tsx
 msgid "Start typing..."
-msgstr ""
+msgstr "開始輸入……"
 
 #: src/components/Collection/CollectionItem/index.tsx
 #: src/components/Rules/RuleGroup/index.tsx
 #: src/components/StorageMetrics/index.tsx
 msgid "Status"
-msgstr ""
+msgstr "狀態"
 
 #: src/pages/RulesListPage.tsx
 msgid "Stop Rules"
-msgstr ""
+msgstr "停止規則"
 
 #: src/components/Layout/NavBar/index.tsx
 msgid "Storage"
-msgstr ""
+msgstr "儲存空間"
 
 #: src/components/StorageMetrics/index.tsx
 msgid "Storage Metrics"
-msgstr ""
+msgstr "儲存空間統計"
 
 #: src/components/StorageMetrics/index.tsx
 msgid "Storage Metrics - Maintainerr"
-msgstr ""
+msgstr "儲存空間統計 - Maintainerr"
 
 #: src/components/StorageMetrics/index.tsx
 msgid "Storage metrics are unavailable."
-msgstr ""
+msgstr "無法取得儲存空間統計資料。"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Stored library (unavailable)"
-msgstr ""
+msgstr "已儲存的媒體庫（無法使用）"
 
 #: src/api/settings.ts
 #: src/components/Settings/Plex/index.tsx
 msgid "Stored Plex credentials are invalid. Re-authenticate with Plex."
-msgstr ""
+msgstr "已儲存的 Plex 認證資訊無效，請重新透過 Plex 驗證身分。"
 
 #: src/components/Settings/Streamystats/index.tsx
 msgid "Streamystats settings - Maintainerr"
-msgstr ""
+msgstr "Streamystats 設定 - Maintainerr"
 
 #: src/components/Settings/Streamystats/index.tsx
 msgid "Streamystats settings could not be updated"
-msgstr ""
+msgstr "無法更新 Streamystats 設定"
 
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "Stroke"
-msgstr ""
+msgstr "描邊"
 
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "Stroke Width"
-msgstr ""
+msgstr "描邊寬度"
 
 #: src/components/Common/MediaLibrarySortControl.tsx
 msgid "Studio (A-Z) Ascending"
-msgstr ""
+msgstr "製作公司（A-Z）遞增排序"
 
 #: src/components/Common/MediaLibrarySortControl.tsx
 msgid "Studio (Z-A) Descending"
-msgstr ""
+msgstr "製作公司（Z-A）遞減排序"
 
 #: src/components/Common/MediaActionModal.tsx
 msgid "Submit"
-msgstr ""
+msgstr "送出"
 
 #: src/components/Common/MediaActionModal.tsx
 msgid "Submitting..."
-msgstr ""
+msgstr "正在送出……"
 
 #: src/components/Settings/MediaServerSelector/index.tsx
 msgid "Success"
-msgstr ""
+msgstr "成功"
 
 #: src/components/Settings/DownloadClient/index.tsx
 #: src/components/Settings/Emby/index.tsx
@@ -3864,7 +3868,7 @@ msgstr ""
 #: src/components/Settings/Metadata/index.tsx
 #: src/components/Settings/Notifications/NotificationAgentCard.tsx
 msgid "Success!"
-msgstr ""
+msgstr "成功！"
 
 #: src/components/Settings/DownloadClient/index.tsx
 #: src/components/Settings/Emby/index.tsx
@@ -3873,821 +3877,821 @@ msgstr ""
 #: src/components/Settings/Plex/index.tsx
 #: src/components/Settings/Servarr/ServarrServerCard.tsx
 msgid "Success! ({version})"
-msgstr ""
+msgstr "成功！（{version}）"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Successfully imported rules from Yaml."
-msgstr ""
+msgstr "已成功從 YAML 匯入規則。"
 
 #: src/components/Settings/MediaServerSelector/index.tsx
 msgid "Successfully switched to <0>{pendingName}</0>!"
-msgstr ""
+msgstr "已成功切換至 <0>{pendingName}</0>！"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Supports all standard <0>cron</0> patterns"
-msgstr ""
+msgstr "支援所有標準 <0>cron</0> 語法"
 
 #: src/components/Settings/MediaServerSelector/index.tsx
 msgid "Switch"
-msgstr ""
+msgstr "切換"
 
 #: src/components/Settings/MediaServerSelector/index.tsx
 msgid "Switching..."
-msgstr ""
+msgstr "正在切換……"
 
 #: src/components/Settings/Tabs/index.tsx
 msgid "Tabs"
-msgstr ""
+msgstr "分頁"
 
 #: src/components/Settings/Servarr/ServarrServerCard.tsx
 msgid "Tag excluded content"
-msgstr ""
+msgstr "為排除的內容加上標籤"
 
 #: src/components/Settings/Servarr/ServarrServerCard.tsx
 msgid "Tag label"
-msgstr ""
+msgstr "標籤名稱"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Tag matching movies in {tagArrName} with a tag based on this rule group's name while they're in the collection, removed when they leave"
-msgstr ""
+msgstr "當符合規則的電影位於收藏集時，在 {tagArrName} 中加上以此規則群組名稱產生的標籤；離開收藏集時移除標籤"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Tag matching shows in {tagArrName} with a tag based on this rule group's name while they're in the collection, removed when they leave"
-msgstr ""
+msgstr "當符合規則的影集位於收藏集時，在 {tagArrName} 中加上以此規則群組名稱產生的標籤；離開收藏集時移除標籤"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Tag this content in {tagArrName}"
-msgstr ""
+msgstr "在 {tagArrName} 中為此內容加上標籤"
 
 #: src/components/Settings/Servarr/ServarrServerCard.tsx
 msgid "Tags the item in {name} when it is excluded."
-msgstr ""
+msgstr "項目被排除時，在 {name} 中加上標籤。"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Take action after days is required for this action"
-msgstr ""
+msgstr "此動作必須指定執行前等待天數"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Take action after days must be {max} or less"
-msgstr ""
+msgstr "執行前等待天數不得超過 {max}"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Take action after days must be 0 or greater"
-msgstr ""
+msgstr "執行前等待天數必須大於或等於 0"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Take action after days must be a whole number"
-msgstr ""
+msgstr "執行前等待天數必須為整數"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Take action after days*"
-msgstr ""
+msgstr "執行前等待天數 *"
 
 #: src/components/Rules/RuleGroup/AddModal/QualityProfileSelector.tsx
 msgid "Target quality profile to change to"
-msgstr ""
+msgstr "要切換至的目標畫質設定檔"
 
 #: src/components/Settings/Tautulli/index.tsx
 msgid "Tautulli settings - Maintainerr"
-msgstr ""
+msgstr "Tautulli 設定 - Maintainerr"
 
 #: src/components/Settings/Tautulli/index.tsx
 msgid "Tautulli settings could not be updated"
-msgstr ""
+msgstr "無法更新 Tautulli 設定"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Tautulli watched percent override"
-msgstr ""
+msgstr "覆寫 Tautulli 已觀看百分比"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Tautulli watched percent override must be a whole number"
-msgstr ""
+msgstr "覆寫的 Tautulli 已觀看百分比必須為整數"
 
 #: src/components/Settings/About/index.tsx
 #: src/components/Settings/Telemetry/index.tsx
 msgid "Telemetry"
-msgstr ""
+msgstr "遙測資料"
 
 #: src/components/Settings/Telemetry/index.tsx
 msgid "Telemetry settings - Maintainerr"
-msgstr ""
+msgstr "遙測資料設定 - Maintainerr"
 
 #: src/components/Settings/Telemetry/index.tsx
 msgid "Telemetry settings could not be updated"
-msgstr ""
+msgstr "無法更新遙測資料設定"
 
 #: src/components/Settings/Telemetry/index.tsx
 msgid "Telemetry settings updated"
-msgstr ""
+msgstr "已更新遙測資料設定"
 
 #: src/pages/OverlayTemplateListPage.tsx
 msgid "Template deleted"
-msgstr ""
+msgstr "已刪除範本"
 
 #: src/pages/OverlayTemplateListPage.tsx
 msgid "Template duplicated"
-msgstr ""
+msgstr "已複製範本"
 
 #: src/pages/OverlayTemplateEditorPage.tsx
 msgid "Template Name"
-msgstr ""
+msgstr "範本名稱"
 
 #: src/pages/OverlayTemplateEditorPage.tsx
 msgid "Template name is required"
-msgstr ""
+msgstr "必須填寫範本名稱"
 
 #: src/pages/OverlayTemplateEditorPage.tsx
 msgid "Template not found"
-msgstr ""
+msgstr "找不到範本"
 
 #: src/pages/OverlayTemplateEditorPage.tsx
 msgid "Template saved"
-msgstr ""
+msgstr "已儲存範本"
 
 #: src/components/Collection/CollectionDetail/TestMediaItem/index.tsx
 msgid "Test"
-msgstr ""
+msgstr "測試"
 
 #: src/components/Common/TestingButton.tsx
 #: src/components/Settings/Metadata/index.tsx
 #: src/components/Settings/Servarr/ServarrServerCard.tsx
 msgid "Test Connection"
-msgstr ""
+msgstr "測試連線"
 
 #: src/components/Settings/Emby/index.tsx
 #: src/components/Settings/Jellyfin/index.tsx
 msgid "Test connection to load available admin users."
-msgstr ""
+msgstr "測試連線以載入可用的管理員使用者。"
 
 #: src/components/Settings/Emby/index.tsx
 msgid "Test connection to load Emby admin users"
-msgstr ""
+msgstr "測試連線以載入 Emby 管理員使用者"
 
 #: src/components/Settings/Jellyfin/index.tsx
 msgid "Test connection to load Jellyfin admin users"
-msgstr ""
+msgstr "測試連線以載入 Jellyfin 管理員使用者"
 
 #: src/components/Collection/CollectionDetail/TestMediaItem/index.tsx
 #: src/pages/CollectionDetailPage.tsx
 msgid "Test Media"
-msgstr ""
+msgstr "測試媒體"
 
 #: src/components/Collection/CollectionDetail/TestMediaItem/index.tsx
 msgid "Testing..."
-msgstr ""
+msgstr "正在測試……"
 
 #: src/components/OverlayEditor/ElementToolbox.tsx
 #: src/components/OverlayEditor/LayerPanel.tsx
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "Text"
-msgstr ""
+msgstr "文字"
 
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "Text (legacy list option)"
-msgstr ""
+msgstr "文字（舊版清單選項）"
 
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "Text..."
-msgstr ""
+msgstr "文字……"
 
 #: src/components/Rules/Rule/RuleCreator/CommunityRuleUpload/index.tsx
 msgid "Thank you for contributing."
-msgstr ""
+msgstr "感謝您的貢獻。"
 
 #: src/components/Settings/Servarr/ServarrServerCard.tsx
 msgid "The {name} tag to apply, created if missing."
-msgstr ""
+msgstr "要套用的 {name} 標籤，若不存在會自動建立。"
 
 #: src/components/Settings/MediaServerSelector/index.tsx
 msgid "The following data will be cleared or reset:"
-msgstr ""
+msgstr "以下資料將被清除或重設："
 
 #: src/components/Settings/MediaServerSelector/index.tsx
 msgid "The following data will be permanently deleted:"
-msgstr ""
+msgstr "以下資料將被永久刪除："
 
 #: src/components/Settings/Notifications/NotificationAgentCard.tsx
 msgid "The JSON payload is not valid."
-msgstr ""
+msgstr "JSON 資料內容無效。"
 
 #: src/components/Settings/index.tsx
 msgid "The Logs page stays available during setup if you need to troubleshoot your connection."
-msgstr ""
+msgstr "設定期間仍可使用日誌頁面，以協助排除連線問題。"
 
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "The media server has no user named ''{username}''"
-msgstr ""
+msgstr "媒體伺服器中沒有名為 ''{username}'' 的使用者"
 
 #: src/components/Rules/RuleGroup/AddModal/ConfigureNotificationModal/index.tsx
 #: src/components/Settings/Notifications/index.tsx
 msgid "The notification agents could not be loaded."
-msgstr ""
+msgstr "無法載入通知代理程式。"
 
 #: src/components/Settings/Telemetry/index.tsx
 msgid "The preview could not be loaded."
-msgstr ""
+msgstr "無法載入預覽。"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "The rule group could not be saved"
-msgstr ""
+msgstr "無法儲存規則群組"
 
 #: src/components/Collection/CollectionDetail/TestMediaItem/index.tsx
 msgid "The rule group is of type episodes, as a result only media of type series will be displayed in the search bar."
-msgstr ""
+msgstr "此規則群組的類型為「集」，因此搜尋列只會顯示影集類型的媒體。"
 
 #: src/components/Collection/CollectionDetail/TestMediaItem/index.tsx
 msgid "The rule group is of type movies, as a result only media of type movies will be displayed in the search bar."
-msgstr ""
+msgstr "此規則群組的類型為「電影」，因此搜尋列只會顯示電影類型的媒體。"
 
 #: src/components/Collection/CollectionDetail/TestMediaItem/index.tsx
 msgid "The rule group is of type seasons, as a result only media of type series will be displayed in the search bar."
-msgstr ""
+msgstr "此規則群組的類型為「季」，因此搜尋列只會顯示影集類型的媒體。"
 
 #: src/components/Collection/CollectionDetail/TestMediaItem/index.tsx
 msgid "The rule group is of type series, as a result only media of type series will be displayed in the search bar."
-msgstr ""
+msgstr "此規則群組的類型為「影集」，因此搜尋列只會顯示影集類型的媒體。"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "The saved library could not be found in the current library list. Re-select it once your media server is reachable."
-msgstr ""
+msgstr "目前媒體庫清單中找不到已儲存的媒體庫。請在媒體伺服器恢復連線後重新選擇。"
 
 #: src/components/Common/MediaActionModal.tsx
 msgid "The selected items could not be updated"
-msgstr ""
+msgstr "無法更新選取的項目"
 
 #: src/components/Common/MediaActionModal.tsx
 msgid "The selection mixes media types, so only exclusions can be applied to it."
-msgstr ""
+msgstr "選取項目包含不同媒體類型，因此只能套用排除設定。"
 
 #: src/components/Common/MediaActionModal.tsx
 msgid "The selection spans more than one library, so only exclusions can be applied to it."
-msgstr ""
+msgstr "選取項目跨越多個媒體庫，因此只能套用排除設定。"
 
 #: src/components/Settings/Servarr/ServarrSettings.tsx
 msgid "The server list could not be loaded."
-msgstr ""
+msgstr "無法載入伺服器清單。"
 
 #: src/components/Layout/index.tsx
 msgid "The server returned an unexpected response."
-msgstr ""
+msgstr "伺服器回傳未預期的回應。"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "The type of TV media rules should apply to"
-msgstr ""
+msgstr "電視媒體規則要套用的類型"
 
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "The user list could not be loaded"
-msgstr ""
+msgstr "無法載入使用者清單"
 
 #: src/components/Settings/index.tsx
 msgid "There was a problem loading settings."
-msgstr ""
+msgstr "載入設定時發生問題。"
 
 #: src/components/Settings/Plex/index.tsx
 msgid "There was an error clearing Plex authentication."
-msgstr ""
+msgstr "清除 Plex 身分驗證時發生錯誤。"
 
 #: src/components/Settings/Plex/index.tsx
 msgid "There was an error updating Plex authentication."
-msgstr ""
+msgstr "更新 Plex 身分驗證時發生錯誤。"
 
 #: src/components/Common/MediaActionModal.tsx
 msgid "They are removed from every collection they are currently in as well."
-msgstr ""
+msgstr "這些項目也會從目前所屬的所有收藏集中移除。"
 
 #: src/components/Settings/Telemetry/index.tsx
 msgid "This is the exact report your server would send, stored only as anonymous counters."
-msgstr ""
+msgstr "這是您的伺服器實際會傳送的完整報告，且只會以匿名計數資料儲存。"
 
 #: src/components/Collection/CollectionDetail/RemoveFromCollectionButton/index.tsx
 msgid "This item is excluded <0>globally</0>. Removing this exclusion will apply the change to all collections"
-msgstr ""
+msgstr "此項目已被<0>全域</0>排除，取消排除將影響所有收藏集"
 
 #: src/components/Settings/Servarr/ServerInUseModal.tsx
 msgid "This server is currently being used by the following rules:"
-msgstr ""
+msgstr "此伺服器目前正由下列規則使用："
 
 #: src/components/Collection/CollectionDetail/TriggerRuleActionButton/index.tsx
 msgid "This will immediately run the collection action for this item:<0> {actionSummary}</0>."
-msgstr ""
+msgstr "這將立即執行此項目的收藏集動作：<0> {actionSummary}</0>。"
 
 #: src/components/Settings/Overlays/index.tsx
 msgid "This will revert every applied overlay and restore the original posters for all collections."
-msgstr ""
+msgstr "這將還原所有已套用的覆蓋圖層，並恢復所有收藏集的原始海報。"
 
 #: src/components/Settings/About/index.tsx
 msgid "Time Zone"
-msgstr ""
+msgstr "時區"
 
 #: src/components/Common/MediaLibrarySortControl.tsx
 msgid "Title (A-Z) Ascending"
-msgstr ""
+msgstr "標題（A-Z）遞增排序"
 
 #: src/components/Common/MediaLibrarySortControl.tsx
 msgid "Title (Z-A) Descending"
-msgstr ""
+msgstr "標題（Z-A）遞減排序"
 
 #: src/pages/OverlayTemplateEditorPage.tsx
 msgid "Title Card"
-msgstr ""
+msgstr "標題卡"
 
 #: src/pages/OverlayTemplateListPage.tsx
 msgid "Title Card Templates"
-msgstr ""
+msgstr "標題卡範本"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "To clear them first, edit the rule's criteria so it matches nothing, run the rule, and then disable it."
-msgstr ""
+msgstr "若要先清除這些項目，請修改規則條件使其不符合任何項目，執行規則後再停用。"
 
 #: src/components/Settings/Overlays/index.tsx
 msgid "To run them automatically, set a schedule in Job Settings."
-msgstr ""
+msgstr "如需自動執行，請在「作業設定」中設定排程。"
 
 #: src/components/Calendar/index.tsx
 msgid "Today"
-msgstr ""
+msgstr "今天"
 
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "Today text"
-msgstr ""
+msgstr "今日文字"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Toggle internal collection system"
-msgstr ""
+msgstr "切換內部收藏集系統"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Toggle the rule system"
-msgstr ""
+msgstr "切換規則系統"
 
 #: src/pages/OverlayTemplateEditorPage.tsx
 msgid "Tools"
-msgstr ""
+msgstr "工具"
 
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "top"
-msgstr ""
+msgstr "頂部"
 
 #: src/components/StorageMetrics/index.tsx
 msgid "Top ten collections by cached total file size."
-msgstr ""
+msgstr "依快取的檔案總大小排名前十的收藏集。"
 
 #: src/components/StorageMetrics/index.tsx
 msgid "Total capacity"
-msgstr ""
+msgstr "總容量"
 
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "Total disk space only works for paths reported by ARR disk space. Root-folder fallback paths can still be used for remaining space, but they do not expose a reliable total size."
-msgstr ""
+msgstr "只有 ARR 磁碟空間資料回報的路徑才能取得總容量。根目錄備用路徑仍可查詢剩餘空間，但無法提供可靠的總容量。"
 
 #: src/components/Settings/About/index.tsx
 msgid "Total Media in Collections"
-msgstr ""
+msgstr "收藏集媒體總數"
 
 #: src/components/StorageMetrics/StorageUsageBar.tsx
 msgid "Total size not reported by this instance - only free space is accurate."
-msgstr ""
+msgstr "此執行個體未回報總容量，只有可用空間數值可靠。"
 
 #: src/components/Settings/Tracearr/index.tsx
 msgid "Tracearr server"
-msgstr ""
+msgstr "Tracearr 伺服器"
 
 #: src/components/Settings/Tracearr/index.tsx
 msgid "Tracearr settings - Maintainerr"
-msgstr ""
+msgstr "Tracearr 設定 - Maintainerr"
 
 #: src/components/Settings/Tracearr/index.tsx
 msgid "Tracearr settings could not be updated"
-msgstr ""
+msgstr "無法更新 Tracearr 設定"
 
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "Transform"
-msgstr ""
+msgstr "變形"
 
 #: src/components/Collection/CollectionDetail/TriggerRuleActionButton/index.tsx
 msgid "Trigger now"
-msgstr ""
+msgstr "立即觸發"
 
 #: src/components/Collection/CollectionDetail/TriggerRuleActionButton/index.tsx
 msgid "Trigger Rule Action"
-msgstr ""
+msgstr "觸發規則動作"
 
 #: src/components/Collection/CollectionDetail/TriggerRuleActionButton/index.tsx
 msgid "Triggering..."
-msgstr ""
+msgstr "正在觸發……"
 
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "True"
-msgstr ""
+msgstr "真"
 
 #: src/components/Layout/TelemetryConsentModal.tsx
 msgid "Turn it off in settings"
-msgstr ""
+msgstr "在設定中將其關閉"
 
 #: src/components/Settings/DownloadClient/index.tsx
 msgid "Turn off if you cross-seed."
-msgstr ""
+msgstr "如果使用交叉做種（cross-seed），請關閉此選項。"
 
 #: src/components/Calendar/index.tsx
 #: src/components/StorageMetrics/index.tsx
 msgid "Type"
-msgstr ""
+msgstr "類型"
 
 #: src/components/Settings/Notifications/NotificationAgentCard.tsx
 msgid "Types *"
-msgstr ""
+msgstr "類型 *"
 
 #: src/components/StorageMetrics/index.tsx
 msgid "Unable to load storage metrics. Check that Maintainerr can reach your Radarr and Sonarr instances."
-msgstr ""
+msgstr "無法載入儲存空間統計，請確認 Maintainerr 能連接 Radarr 與 Sonarr 執行個體。"
 
 #: src/utils/ApiError.ts
 msgid "Unable to resolve host. Verify hostname or IP address."
-msgstr ""
+msgstr "無法解析主機名稱，請確認主機名稱或 IP 位址。"
 
 #: src/components/Settings/Plex/index.tsx
 msgid "unavailable"
-msgstr ""
+msgstr "無法使用"
 
 #: src/components/Collection/CollectionItem/index.tsx
 #: src/components/Rules/RuleGroup/index.tsx
 #: src/components/StorageMetrics/index.tsx
 msgid "Unavailable"
-msgstr ""
+msgstr "無法使用"
 
 #: src/components/Layout/index.tsx
 msgid "Unexpected error"
-msgstr ""
+msgstr "未預期的錯誤"
 
 #: src/components/Calendar/index.tsx
 msgid "Unknown"
-msgstr ""
+msgstr "未知"
 
 #: src/components/Layout/index.tsx
 #: src/components/Login/Plex/index.tsx
 msgid "Unknown error"
-msgstr ""
+msgstr "未知錯誤"
 
 #: src/components/StorageMetrics/index.tsx
 msgid "Unknown error fetching disk space."
-msgstr ""
+msgstr "擷取磁碟空間時發生未知錯誤。"
 
 #: src/components/StorageMetrics/index.tsx
 msgid "Unknown path"
-msgstr ""
+msgstr "未知路徑"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Unmonitor and delete episode"
-msgstr ""
+msgstr "取消監控並刪除此集"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Unmonitor and delete existing episodes"
-msgstr ""
+msgstr "取消監控並刪除現有集數"
 
 #: src/components/Collection/CollectionDetail/TriggerRuleActionButton/index.tsx
 msgid "Unmonitor and delete existing files"
-msgstr ""
+msgstr "取消監控並刪除現有檔案"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Unmonitor and delete files"
-msgstr ""
+msgstr "取消監控並刪除檔案"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Unmonitor and delete season"
-msgstr ""
+msgstr "取消監控並刪除此季"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Unmonitor and delete season + delete show if empty"
-msgstr ""
+msgstr "取消監控並刪除季度，若影集為空則一併刪除"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Unmonitor and keep file"
-msgstr ""
+msgstr "取消監控並保留檔案"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Unmonitor and keep files"
-msgstr ""
+msgstr "取消監控並保留檔案"
 
 #: src/api/calendar.ts
 msgid "Unmonitor Empty Show"
-msgstr ""
+msgstr "取消監控空白影集"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Unmonitor event, keep file"
-msgstr ""
+msgstr "取消監控賽事並保留檔案"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Unmonitor league, keep files"
-msgstr ""
+msgstr "取消監控聯賽並保留檔案"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Unmonitor season + unmonitor show if empty"
-msgstr ""
+msgstr "取消監控季度，若影集為空則一併取消監控"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Unmonitor season and keep files"
-msgstr ""
+msgstr "取消監控季度並保留檔案"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Unmonitor season, delete event files"
-msgstr ""
+msgstr "取消監控季度並刪除賽事檔案"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Unmonitor season, keep files"
-msgstr ""
+msgstr "取消監控季度並保留檔案"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Unmonitor show + seasons, delete all episodes"
-msgstr ""
+msgstr "取消監控影集及季度，並刪除所有集數"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Unmonitor show + seasons, keep files"
-msgstr ""
+msgstr "取消監控影集及季度，並保留檔案"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Unmonitor show, delete existing episodes"
-msgstr ""
+msgstr "取消監控影集並刪除現有集數"
 
 #: src/components/Collection/CollectionDetail/TriggerRuleActionButton/index.tsx
 msgid "Unmonitor the show and delete all existing episodes"
-msgstr ""
+msgstr "取消監控此影集並刪除所有現有集數"
 
 #: src/components/Collection/CollectionDetail/TriggerRuleActionButton/index.tsx
 msgid "Unmonitor this episode"
-msgstr ""
+msgstr "取消監控此集"
 
 #: src/components/Collection/CollectionDetail/TriggerRuleActionButton/index.tsx
 msgid "Unmonitor this league"
-msgstr ""
+msgstr "取消監控此聯賽"
 
 #: src/components/Collection/CollectionDetail/TriggerRuleActionButton/index.tsx
 msgid "Unmonitor this movie"
-msgstr ""
+msgstr "取消監控此電影"
 
 #: src/components/Collection/CollectionDetail/TriggerRuleActionButton/index.tsx
 msgid "Unmonitor this movie and delete its files"
-msgstr ""
+msgstr "取消監控此電影並刪除檔案"
 
 #: src/components/Collection/CollectionDetail/TriggerRuleActionButton/index.tsx
 msgid "Unmonitor this season"
-msgstr ""
+msgstr "取消監控此季"
 
 #: src/components/Collection/CollectionDetail/TriggerRuleActionButton/index.tsx
 msgid "Unmonitor this season and unmonitor the show if it becomes empty"
-msgstr ""
+msgstr "取消監控此季，若影集變為空白則一併取消監控"
 
 #: src/components/Collection/CollectionDetail/TriggerRuleActionButton/index.tsx
 msgid "Unmonitor this show"
-msgstr ""
+msgstr "取消監控此影集"
 
 #: src/api/calendar.ts
 msgid "Unmonitor/Delete"
-msgstr ""
+msgstr "取消監控／刪除"
 
 #: src/api/calendar.ts
 msgid "Unmonitor/Delete + Delete Empty Show"
-msgstr ""
+msgstr "取消監控／刪除，並刪除空白影集"
 
 #: src/api/calendar.ts
 msgid "Unmonitor/Delete Existing"
-msgstr ""
+msgstr "取消監控／刪除現有項目"
 
 #: src/api/calendar.ts
 msgid "Unmonitor/Keep"
-msgstr ""
+msgstr "取消監控／保留"
 
 #: src/api/calendar.ts
 msgid "Unmonitor/Keep + Unmonitor Empty Show"
-msgstr ""
+msgstr "取消監控／保留，並取消監控空白影集"
 
 #: src/components/OverlayEditor/ResourceField.tsx
 #: src/components/Rules/Rule/RuleCreator/CommunityRuleUpload/index.tsx
 msgid "Upload"
-msgstr ""
+msgstr "上傳"
 
 #: src/components/Rules/RuleGroup/AddModal/CollectionPosterPicker.tsx
 msgid "Upload a JPEG, PNG, or WebP up to {maxPosterSize}. The image is re-encoded to JPEG and stored locally; Maintainerr pushes it to {mediaServerName} as a one-shot write. Other tools that manage {lowerMediaServerName} collection artwork (e.g. Kometa, Posterizarr) may overwrite it."
-msgstr ""
+msgstr "上傳大小不超過 {maxPosterSize} 的 JPEG、PNG 或 WebP 圖片。圖片會重新編碼為 JPEG 並儲存於本機；Maintainerr 會一次性傳送至 {mediaServerName}。其他管理 {lowerMediaServerName} 收藏集圖片的工具（例如 Kometa、Posterizarr）可能覆寫此圖片。"
 
 #: src/components/Rules/Rule/RuleCreator/CommunityRuleUpload/index.tsx
 msgid "Upload Community Rule"
-msgstr ""
+msgstr "上傳社群規則"
 
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "Upload font ({fontExtensions})"
-msgstr ""
+msgstr "上傳字型（{fontExtensions}）"
 
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "Upload image ({formatList} - up to {maxSize})"
-msgstr ""
+msgstr "上傳圖片（{formatList}，上限 {maxSize}）"
 
 #: src/components/Common/CommunityRuleModal/index.tsx
 msgid "Upload my rules"
-msgstr ""
+msgstr "上傳我的規則"
 
 #: src/components/Rules/RuleGroup/AddModal/CollectionPosterPicker.tsx
 msgid "Upload poster"
-msgstr ""
+msgstr "上傳海報"
 
 #: src/components/Rules/Rule/RuleCreator/CommunityRuleUpload/index.tsx
 msgid "Upload Successful"
-msgstr ""
+msgstr "上傳成功"
 
 #: src/components/Common/YamlImporterModal/index.tsx
 msgid "Upload YAML"
-msgstr ""
+msgstr "上傳 YAML"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Upload your own cover art for the collection on {mediaServerName}"
-msgstr ""
+msgstr "為 {mediaServerName} 上的收藏集上傳自訂封面圖片"
 
 #: src/components/Common/CommunityRuleModal/index.tsx
 msgid "Uploaded By"
-msgstr ""
+msgstr "上傳者"
 
 #: src/components/Rules/Rule/RuleCreator/CommunityRuleUpload/index.tsx
 msgid "Uploaded by (optional)"
-msgstr ""
+msgstr "上傳者（選填）"
 
 #: src/components/Common/YamlImporterModal/index.tsx
 msgid "Uploaded YAML file is empty."
-msgstr ""
+msgstr "上傳的 YAML 檔案是空的。"
 
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "Uppercase"
-msgstr ""
+msgstr "大寫"
 
 #: src/components/Settings/Notifications/NotificationAgentCard.tsx
 msgid "Use implicit TLS"
-msgstr ""
+msgstr "使用隱含式 TLS"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Use rules"
-msgstr ""
+msgstr "使用規則"
 
 #: src/components/StorageMetrics/index.tsx
 msgid "Used"
-msgstr ""
+msgstr "已使用"
 
 #: src/components/Settings/DownloadClient/index.tsx
 msgid "Used only when the client sets no ratio or idle limit. Minimum 0.5."
-msgstr ""
+msgstr "僅當下載用戶端未設定做種比率或閒置時間限制時使用，最小值為 0.5。"
 
 #: src/components/Settings/About/index.tsx
 msgid "Useful Links"
-msgstr ""
+msgstr "實用連結"
 
 #: src/components/Common/MediaCard/MediaModal/WatchStatsPanel/index.tsx
 #: src/components/Rules/Rule/RuleCreator/RuleInput/index.tsx
 msgid "User"
-msgstr ""
+msgstr "使用者"
 
 #: src/components/Login/Emby/EmbyLoginButton.tsx
 #: src/components/Settings/DownloadClient/index.tsx
 msgid "Username"
-msgstr ""
+msgstr "使用者名稱"
 
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "V-Align"
-msgstr ""
+msgstr "垂直對齊"
 
 #: src/utils/ApiError.ts
 msgid "Validation failed: {validationMessage}"
-msgstr ""
+msgstr "驗證失敗：{validationMessage}"
 
 #: src/components/OverlayEditor/ElementToolbox.tsx
 #: src/components/OverlayEditor/LayerPanel.tsx
 msgid "Variable"
-msgstr ""
+msgstr "變數"
 
 #: src/components/Settings/Logs/index.tsx
 msgid "Verbose"
-msgstr ""
+msgstr "詳細"
 
 #: src/components/Settings/About/index.tsx
 msgid "Version"
-msgstr ""
+msgstr "版本"
 
 #: src/components/VersionStatus/index.tsx
 msgid "Version unavailable"
-msgstr ""
+msgstr "無法取得版本資訊"
 
 #: src/components/Settings/About/Releases/index.tsx
 msgid "View Changelog"
-msgstr ""
+msgstr "查看更新紀錄"
 
 #: src/components/Collection/CollectionDetail/CollectionInfo/CollectionLogsTable.tsx
 msgid "View Metadata"
-msgstr ""
+msgstr "查看中繼資料"
 
 #: src/components/Settings/About/Releases/index.tsx
 msgid "View on GitHub"
-msgstr ""
+msgstr "在 GitHub 上查看"
 
 #: src/components/Settings/Plex/index.tsx
 msgid "Wait for Plex authentication to finish before saving."
-msgstr ""
+msgstr "請等待 Plex 身分驗證完成後再儲存。"
 
 #: src/components/Settings/Plex/index.tsx
 msgid "Wait for Plex authentication to finish before testing."
-msgstr ""
+msgstr "請等待 Plex 身分驗證完成後再測試。"
 
 #: src/components/Settings/Logs/index.tsx
 msgid "Warn"
-msgstr ""
+msgstr "警告"
 
 #: src/components/Collection/CollectionDetail/RemoveFromCollectionButton/index.tsx
 msgid "Warning"
-msgstr ""
+msgstr "警告"
 
 #: src/components/Services/ServicesHub.tsx
 msgid "Watch statistics"
-msgstr ""
+msgstr "觀看統計"
 
 #: src/components/Common/MediaCard/MediaModal/WatchStatsPanel/index.tsx
 msgid "Watch time"
-msgstr ""
+msgstr "觀看時間"
 
 #: src/components/Layout/TelemetryConsentModal.tsx
 msgid "We build Maintainerr in our spare time, and leaving this on is a free way to help shape what comes next."
-msgstr ""
+msgstr "我們利用閒暇時間開發 Maintainerr，保持此功能啟用，就是免費協助決定後續開發方向的一種方式。"
 
 #: src/components/Settings/MediaServerSelector/index.tsx
 msgid "We will now switch from <0>{currentName}</0> to <1>{pendingName}</1>."
-msgstr ""
+msgstr "即將從 <0>{currentName}</0> 切換至 <1>{pendingName}</1>。"
 
 #: src/components/Calendar/index.tsx
 msgid "Week"
-msgstr ""
+msgstr "週"
 
 #: src/components/Settings/Telemetry/index.tsx
 msgid "Weekly"
-msgstr ""
+msgstr "每週"
 
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "Weight"
-msgstr ""
+msgstr "字重"
 
 #: src/components/Settings/index.tsx
 msgid "Welcome to Maintainerr!"
-msgstr ""
+msgstr "歡迎使用 Maintainerr！"
 
 #: src/components/Settings/Telemetry/index.tsx
 msgid "What we send"
-msgstr ""
+msgstr "我們傳送的內容"
 
 #: src/components/Services/useServices.tsx
 msgid "When media is removed through Radarr, Sonarr or Sportarr, Maintainerr can remove the completed download (and optionally its data) from your download client. The download is matched via that service's download history, so media removed without one of them is left untouched."
-msgstr ""
+msgstr "透過 Radarr、Sonarr 或 Sportarr 移除媒體時，Maintainerr 可以從下載用戶端移除已完成的下載項目（也可選擇刪除相關資料）。系統會根據該服務的下載歷史紀錄進行比對，因此未透過這些服務移除的媒體不受影響。"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Will also be the name of the collection in {mediaServerName}."
-msgstr ""
+msgstr "這也會成為 {mediaServerName} 中的收藏集名稱。"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Will this rule be included in rule runs"
-msgstr ""
+msgstr "是否在規則執行時包含此規則"
 
 #: src/components/Settings/Notifications/NotificationAgentCard.tsx
 msgid "Without it, mail goes out unencrypted when the server does not offer STARTTLS. With it, the email is not sent instead."
-msgstr ""
+msgstr "若未啟用此選項，當伺服器不提供 STARTTLS 時，郵件仍會以未加密方式傳送；啟用後，則會停止傳送郵件。"
 
 #: src/components/Common/YamlImporterModal/index.tsx
 msgid "Yaml Rule Editor"
-msgstr ""
+msgstr "YAML 規則編輯器"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "You are cloning the rule group ''{clonedRuleGroupName}''."
-msgstr ""
+msgstr "您正在複製規則群組 ''{clonedRuleGroupName}''。"
 
 #: src/components/Layout/index.tsx
 msgid "You can try going back or reloading the page. If the problem persists, please check the browser console for more details."
-msgstr ""
+msgstr "您可以嘗試返回或重新載入頁面。如果問題持續發生，請查看瀏覽器主控台取得更多資訊。"
 
 #: src/components/Common/CommunityRowTableRow/index.tsx
 msgid "You have already submitted karma for this rule."
-msgstr ""
+msgstr "您已為此規則提交過 Karma 評分。"
 
 #: src/components/Settings/Servarr/ServerInUseModal.tsx
 msgid "You must re-assign these rules to a different server before deleting."
-msgstr ""
+msgstr "刪除前必須先將這些規則重新指派至其他伺服器。"
 
 #: src/components/Layout/MediaServerSetupGuard.tsx
 msgid "You need to set up the media server first."
-msgstr ""
+msgstr "必須先設定媒體伺服器。"
 
 #: src/pages/OverlayTemplateEditorPage.tsx
 msgid "You’re editing a preset. Saving will create your own copy - the original preset is left unchanged."
-msgstr ""
+msgstr "您正在編輯預設範本。儲存後會建立個人副本，原始預設範本不會變更。"
 
 #: src/components/Settings/Telemetry/index.tsx
 msgid "Your <0>{TERM_IP} address is never read or stored</0>, so one week's report cannot be tied to the next or to any other server."
-msgstr ""
+msgstr "您的 <0>{TERM_IP} 位址從不會被讀取或儲存</0>，因此每週的報告無法與下一週或其他伺服器建立關聯。"
 
 #: src/components/Settings/Notifications/NotificationAgentCard.tsx
 msgid "Your 30-character user or group identifier"
-msgstr ""
+msgstr "您的 30 字元使用者或群組識別碼"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "your media server"
-msgstr ""
+msgstr "您的媒體伺服器"
