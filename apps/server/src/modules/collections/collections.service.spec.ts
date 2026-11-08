@@ -414,17 +414,22 @@ describe('CollectionsService', () => {
 
     await service.createCollection(
       createCollection({
+        type: 'show',
         overlayEnabled: true,
         overlayTemplateId: 7,
+        overlayScope: 'show_only',
         mediaServerId: null,
       }),
     );
 
+    // The insert names its columns, so one left out falls back to the
+    // column default without an error.
     expect(queryBuilder.values).toHaveBeenCalledWith(
       expect.arrayContaining([
         expect.objectContaining({
           overlayEnabled: true,
           overlayTemplateId: 7,
+          overlayScope: 'show_only',
         }),
       ]),
     );

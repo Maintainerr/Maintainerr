@@ -545,6 +545,10 @@ msgstr "Aplicar superposiciones de fechas a los carteles de esta colección."
 msgid "Are you sure?"
 msgstr "¿Está seguro?"
 
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Artwork left out is restored on the next overlay run"
+msgstr ""
+
 #: src/components/Collection/CollectionDetail/CollectionInfo/index.tsx
 msgid "Ascending"
 msgstr "Ascendente"
@@ -2869,6 +2873,10 @@ msgstr "Resultado"
 msgid "Overlay Handler"
 msgstr "Controlador de superposición"
 
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Overlay scope"
+msgstr ""
+
 #: src/components/Settings/Overlays/index.tsx
 msgid "Overlay Settings"
 msgstr "Configuración de superposición"
@@ -3648,6 +3656,14 @@ msgctxt "Toggle layer visibility"
 msgid "Show"
 msgstr "Mostrar"
 
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Show + seasons"
+msgstr ""
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Show + seasons + episodes"
+msgstr ""
+
 #: src/components/Settings/MediaServerSelector/index.tsx
 msgid "Show incompatible rules ({skippedRules})"
 msgstr "Mostrar reglas incompatibles ({skippedRules})"
@@ -3663,6 +3679,10 @@ msgstr "Mostrar en la pantalla de inicio de {mediaServerName}"
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Show on {mediaServerName} library recommended"
 msgstr "Mostrar en los recomendados de la biblioteca de {mediaServerName}"
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Show only"
+msgstr ""
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Show the collection on the {mediaServerName} home screen"

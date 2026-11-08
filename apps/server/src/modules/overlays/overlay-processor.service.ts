@@ -1,4 +1,5 @@
 import {
+  DEFAULT_OVERLAY_SCOPE,
   getCollectionDeleteDate,
   MaintainerrEvent,
   MediaItem,
@@ -203,12 +204,25 @@ export class OverlayProcessorService {
    *
    * `complete` is false when part of the hierarchy could not be read, so the
    * caller can keep what it drew instead of reverting on a transient failure.
+   *
+   * A show collection's overlay scope trims how far down this reaches, by not
+   * reading the levels it leaves out. What a wider scope drew before is no
+   * longer a target, so the run's revert pass restores it.
    */
   private async collectInheritedTargets(
     collection: Collection & { collectionMedia: CollectionMedia[] },
   ): Promise<{ targets: OverlayTarget[]; complete: boolean }> {
     // Callers only reach this for a collection that deletes on a schedule.
     if (collection.type === 'movie') return { targets: [], complete: true };
+
+    // Only a show collection has a scope: a season or episode collection's
+    // own members already sit below the show. "Show only" inherits nothing, so
+    // nothing below the shows is read; any other value draws every level.
+    const scope =
+      collection.type === 'show'
+        ? collection.overlayScope
+        : DEFAULT_OVERLAY_SCOPE;
+    if (scope === 'show_only') return { targets: [], complete: true };
 
     const memberDates = new Map<string, Date>();
     for (const member of this.getMemberTargets(collection)) {
@@ -247,7 +261,8 @@ export class OverlayProcessorService {
       });
     };
 
-    // Down: the deletion takes everything under the member with it.
+    // Down: the deletion takes everything under the member with it. "Show +
+    // seasons" stops at the seasons, so no episode list is read.
     for (const member of presence.found.values()) {
       const deleteDate = memberDates.get(member.id);
       if (!deleteDate) continue;
@@ -255,6 +270,7 @@ export class OverlayProcessorService {
       const descendants = await resolveDescendants(
         member,
         async (parentId, childType) => {
+          if (childType === 'episode' && scope === 'show_seasons') return [];
           const children = await this.readChildren(
             mediaServer,
             parentId,
