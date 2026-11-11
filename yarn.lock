@@ -2295,7 +2295,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@jest/globals@npm:30.5.2":
+"@jest/globals@npm:30.5.2, @jest/globals@npm:^30.5.2":
   version: 30.5.2
   resolution: "@jest/globals@npm:30.5.2"
   dependencies:
@@ -3084,6 +3084,7 @@ __metadata:
     "@eslint/js": "npm:^10.0.1"
     "@faker-js/faker": "npm:^10.6.0"
     "@jellyfin/sdk": "npm:^1.0.2"
+    "@jest/globals": "npm:^30.5.2"
     "@maintainerr/contracts": "workspace:^"
     "@nestjs/cli": "npm:^12.0.12"
     "@nestjs/common": "npm:^12.4.0"
