@@ -72,7 +72,7 @@
     "@nestjs/schematics": "^12.0.13",
     "@nestjs/testing": "^12.4.0",
     "@suites/di.nestjs": "^4.0.3",
-    "@suites/doubles.jest": "^3.1.0",
+    "@suites/doubles.jest": "^4.1.2",
     "@suites/unit": "^3.1.1",
     "@swc/core": "^1.16.21",
     "@swc/jest": "^0.2.39",
