@@ -13,6 +13,7 @@ import { SportarrMetadataApiService } from '../../api/sportarr-metadata-api/spor
 import { IMetadataProvider } from '../interfaces/metadata-provider.interface';
 import {
   ExternalIdSearchResult,
+  FranchiseDetails,
   MetadataDetails,
   MetadataImageOptions,
   PersonDetails,
@@ -135,6 +136,11 @@ export class SportarrMetadataProvider implements IMetadataProvider {
     }
     const season = await this.findSeason(leagueId, ref);
     return season?.summary || undefined;
+  }
+
+  // Leagues have no film series.
+  async getFranchise(): Promise<FranchiseDetails | undefined> {
+    return undefined;
   }
 
   async getPersonDetails(): Promise<PersonDetails | undefined> {

@@ -137,6 +137,21 @@ export interface TmdbMovieDetails {
   };
 }
 
+/**
+ * GET /collection/{id}. TMDB calls a film series a "collection". `parts`
+ * lists every film in it, including announced ones whose `release_date` is
+ * still an empty string.
+ */
+export interface TmdbCollectionDetails {
+  id: number;
+  name: string;
+  parts?: {
+    id: number;
+    title?: string;
+    release_date?: string;
+  }[];
+}
+
 export interface TmdbVideo {
   id: string;
   key: string;

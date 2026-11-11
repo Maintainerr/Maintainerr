@@ -754,6 +754,7 @@ export const createMetadataProviderMock = ({
       .mockResolvedValue(backdropUrl ?? `https://${idKey}/backdrop.jpg`),
     getHierarchyOverview: jest.fn().mockResolvedValue(hierarchyOverview),
     getPersonDetails: jest.fn(),
+    getFranchise: jest.fn(),
     parseId: jest.fn(parseId ?? ((value: string) => Number(value))),
     isAuthorityFor: jest.fn(isAuthorityFor ?? (() => false)),
     findByExternalId: jest

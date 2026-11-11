@@ -1,5 +1,6 @@
 import {
   ExternalIdSearchResult,
+  FranchiseDetails,
   MetadataDetails,
   MetadataImageOptions,
   PersonDetails,
@@ -76,6 +77,13 @@ export interface IMetadataProvider {
   ): Promise<string | undefined>;
 
   getPersonDetails(id: number): Promise<PersonDetails | undefined>;
+
+  /**
+   * The franchise of the movie with this provider id. Null when the provider
+   * confirms the movie is in none; undefined when the read failed or the
+   * provider has no franchise data, so the next provider can answer.
+   */
+  getFranchise(movieId: number): Promise<FranchiseDetails | null | undefined>;
 
   findByExternalId(
     externalId: string | number,

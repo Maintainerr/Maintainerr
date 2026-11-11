@@ -1,5 +1,6 @@
 import {
   Application,
+  ApplicationNames,
   MediaServerType,
   MediaType,
 } from '@maintainerr/contracts';
@@ -135,21 +136,34 @@ describe('RuleConstanstService', () => {
 });
 
 describe('RuleConstanstService with the real rule constants', () => {
-  // Uses the constructor-built RuleConstants so these round-trips break if the
-  // shared studios property (id 46) is removed or renamed on any server.
+  // Uses the constructor-built RuleConstants so these round-trips break if a
+  // shared metadata-backed property (studios, franchise) is removed or renamed
+  // on any server. Saved rules store the id.
   const service = new RuleConstanstService();
 
-  it.each([
-    [Application.PLEX, 'Plex.studios'],
-    [Application.JELLYFIN, 'Jellyfin.studios'],
-    [Application.EMBY, 'Emby.studios'],
-  ])(
-    'round-trips the studios identifier for application %i',
-    (application, identifier) => {
-      expect(service.getValueIdentifier([application, 46])).toBe(identifier);
+  it.each(
+    [Application.PLEX, Application.JELLYFIN, Application.EMBY].flatMap(
+      (application) =>
+        [
+          [46, 'studios'],
+          [52, 'franchise_name'],
+          [54, 'franchise_nextReleaseDate'],
+        ].map(
+          ([id, name]) =>
+            [application, id, `${ApplicationNames[application]}.${name}`] as [
+              Application,
+              number,
+              string,
+            ],
+        ),
+    ),
+  )(
+    'round-trips application %i property %i as %s',
+    (application, id, identifier) => {
+      expect(service.getValueIdentifier([application, id])).toBe(identifier);
       expect(service.getValueFromIdentifier(identifier)).toEqual([
         application,
-        46,
+        id,
       ]);
     },
   );

@@ -30,7 +30,10 @@ import {
   trimRulePropertyNames,
   uniqueTrimmedRulePropertyNames,
 } from '../helpers/rule-property.helper';
-import { MetadataRuleValueService } from './metadata-rule-value.service';
+import {
+  isFranchiseProperty,
+  MetadataRuleValueService,
+} from './metadata-rule-value.service';
 
 @Injectable()
 export class PlexGetterService {
@@ -61,6 +64,14 @@ export class PlexGetterService {
 
       if (prop?.name === 'studios') {
         return await this.metadataRuleValueService.getStudios(
+          libItem,
+          arrLookupCache,
+        );
+      }
+
+      if (isFranchiseProperty(prop?.name)) {
+        return await this.metadataRuleValueService.getFranchiseValue(
+          prop.name,
           libItem,
           arrLookupCache,
         );
