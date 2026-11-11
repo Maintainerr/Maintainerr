@@ -3097,7 +3097,7 @@ __metadata:
     "@nestjs/testing": "npm:^12.4.0"
     "@nestjs/typeorm": "npm:^12.0.3"
     "@suites/di.nestjs": "npm:^4.0.3"
-    "@suites/doubles.jest": "npm:^3.1.0"
+    "@suites/doubles.jest": "npm:^4.1.2"
     "@suites/unit": "npm:^3.1.1"
     "@swc/core": "npm:^1.16.21"
     "@swc/jest": "npm:^0.2.39"
@@ -5014,6 +5014,17 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@suites/core.unit@npm:^4.1.2":
+  version: 4.1.2
+  resolution: "@suites/core.unit@npm:4.1.2"
+  dependencies:
+    "@suites/types.common": "npm:^4.0.2"
+    "@suites/types.di": "npm:^4.1.2"
+    "@suites/types.doubles": "npm:^4.0.2"
+  checksum: 10c0/d79853c0e33c25f0512ed00809ecbebf508790ae4fb3e69a847b61cf5b9b8ec3e3a8251a18cc52313983626dfed3774eb056dc41c26b90701f921d1c98c9c4d4
+  languageName: node
+  linkType: hard
+
 "@suites/di.nestjs@npm:^4.0.3":
   version: 4.0.3
   resolution: "@suites/di.nestjs@npm:4.0.3"
@@ -5027,17 +5038,18 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@suites/doubles.jest@npm:^3.1.0":
-  version: 3.1.0
-  resolution: "@suites/doubles.jest@npm:3.1.0"
+"@suites/doubles.jest@npm:^4.1.2":
+  version: 4.1.2
+  resolution: "@suites/doubles.jest@npm:4.1.2"
   dependencies:
-    "@suites/core.unit": "npm:^3.1.0"
-    "@suites/types.common": "npm:^3.1.0"
-    "@suites/types.di": "npm:^3.1.0"
-    "@suites/types.doubles": "npm:^3.1.0"
+    "@suites/core.unit": "npm:^4.1.2"
+    "@suites/types.common": "npm:^4.0.2"
+    "@suites/types.di": "npm:^4.1.2"
+    "@suites/types.doubles": "npm:^4.0.2"
   peerDependencies:
-    jest: "> 26.0"
-  checksum: 10c0/258535f8ab76fd046fd04f82d91519555308a3a958eec04729992e60d83bd687ffa9e2c29108562cef949b0795bcd8bdfeb7baad4a04a890260823a0384042ef
+    "@jest/globals": ^30.5.2
+    jest: ^30.5.2
+  checksum: 10c0/bd401b2f88671d300f3bedcd3c27db180bbbd0b05230b4aeac97fdc58e67e506e36198c9c66a0b4a6804ceab946f7150549a38a90a11fe4ad9f6acd46b02eccf
   languageName: node
   linkType: hard
 
@@ -5079,6 +5091,15 @@ __metadata:
   dependencies:
     "@suites/types.common": "npm:^3.1.0"
   checksum: 10c0/2210a6f2d14ff758a106ce694f53361be2049d61628093433f418a713a672fc5d3b2e5bb84eba7b86c4bbf42dab522ed396bf05afa8540e03b5e713f58d4b6f6
+  languageName: node
+  linkType: hard
+
+"@suites/types.doubles@npm:^4.0.2":
+  version: 4.0.2
+  resolution: "@suites/types.doubles@npm:4.0.2"
+  dependencies:
+    "@suites/types.common": "npm:^4.0.2"
+  checksum: 10c0/27a5799c6f8aa7f69116dc7012ad44b11c5f0b4cc9fb71c1dfb492ac433bf08d974b9f27c0d20e6b5bcb5f2bc64f7bf46caa8c879cc26509c8de45416b7399a4
   languageName: node
   linkType: hard
 
