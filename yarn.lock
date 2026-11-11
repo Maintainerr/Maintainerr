@@ -3096,7 +3096,7 @@ __metadata:
     "@nestjs/swagger": "npm:^12.1.1"
     "@nestjs/testing": "npm:^12.4.0"
     "@nestjs/typeorm": "npm:^12.0.3"
-    "@suites/di.nestjs": "npm:^3.1.0"
+    "@suites/di.nestjs": "npm:^4.0.3"
     "@suites/doubles.jest": "npm:^3.1.0"
     "@suites/unit": "npm:^3.1.1"
     "@swc/core": "npm:^1.16.21"
@@ -5014,16 +5014,16 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@suites/di.nestjs@npm:^3.1.0":
-  version: 3.1.0
-  resolution: "@suites/di.nestjs@npm:3.1.0"
+"@suites/di.nestjs@npm:^4.0.3":
+  version: 4.0.3
+  resolution: "@suites/di.nestjs@npm:4.0.3"
   dependencies:
-    "@suites/types.common": "npm:^3.1.0"
-    "@suites/types.di": "npm:^3.1.0"
+    "@suites/types.common": "npm:^4.0.2"
+    "@suites/types.di": "npm:^4.1.2"
   peerDependencies:
-    "@nestjs/common": ">= 8.0"
+    "@nestjs/common": ^10.0.0 || ^11.0.0 || ^12.0.1
     reflect-metadata: <1.0.0
-  checksum: 10c0/e65ad5f1d8c229ba4972ffd2fa1cb7a8649f1e70b3f65340fab03ca16cee8e77e4520280de8b549f52ac64824670ae72806b0333a9748e082e6cd87f8e132272
+  checksum: 10c0/6987d3469a6f4bccb0b1917f5be642e3ff038002ce17deb8d59897f2322f8f85ba3083add21832fe9543048ea2d75dbd74a39b86203deffb855822a3fdce7780
   languageName: node
   linkType: hard
 
@@ -5048,12 +5048,28 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@suites/types.common@npm:^4.0.2":
+  version: 4.0.2
+  resolution: "@suites/types.common@npm:4.0.2"
+  checksum: 10c0/5be94f193a11a882bee19e44ad655834115958161c018271515a37eca7cfd69af1ca9065acb1e3eedb489ea9cd1dbe80194e33f609f4b4352a4b590fcbaead15
+  languageName: node
+  linkType: hard
+
 "@suites/types.di@npm:^3.1.0":
   version: 3.1.0
   resolution: "@suites/types.di@npm:3.1.0"
   dependencies:
     "@suites/types.common": "npm:^3.1.0"
   checksum: 10c0/e105a96765c6a1b6dbec78c26ab0bfec0a0d118b1aa356db99ad8afc04af6eda85e926abad0083cbfcd630b338d3b60a3bd57763818d9321d8fb6ede6aaa766b
+  languageName: node
+  linkType: hard
+
+"@suites/types.di@npm:^4.1.2":
+  version: 4.1.2
+  resolution: "@suites/types.di@npm:4.1.2"
+  dependencies:
+    "@suites/types.common": "npm:^4.0.2"
+  checksum: 10c0/09d24c988f84d86249652e039afb075354dfce3524a732fe68c9ac97e1bdf974a6d44e9f6995ac73f2574bc3f62fd8ce553ede5bc7e193ed7bf9acfdb3d9296f
   languageName: node
   linkType: hard
 
