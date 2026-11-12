@@ -3094,7 +3094,7 @@ __metadata:
     eslint: "npm:^10.14.0"
     eslint-config-prettier: "npm:^10.1.8"
     globals: "npm:^17.14.0"
-    nestjs-zod: "npm:^5.5.0"
+    nestjs-zod: "npm:^5.6.0"
     prettier: "npm:^3.9.10"
     reflect-metadata: "npm:^0.2.2"
     rxjs: "npm:^7.8.2"
@@ -3156,7 +3156,7 @@ __metadata:
     jest: "npm:^30.5.2"
     lodash: "npm:^4.18.1"
     mime-types: "npm:^3.0.2"
-    nestjs-zod: "npm:^5.5.0"
+    nestjs-zod: "npm:^5.6.0"
     node-cache: "npm:^5.1.2"
     nodemailer: "npm:10.4.0"
     openpgp: "npm:^6.3.2"
@@ -13291,11 +13291,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"nestjs-zod@npm:^5.5.0":
-  version: 5.5.0
-  resolution: "nestjs-zod@npm:5.5.0"
-  dependencies:
-    deepmerge: "npm:^4.3.1"
+"nestjs-zod@npm:^5.6.0":
+  version: 5.6.0
+  resolution: "nestjs-zod@npm:5.6.0"
   peerDependencies:
     "@nestjs/common": ^10.0.0 || ^11.0.0
     "@nestjs/swagger": ^7.4.2 || ^8.0.0 || ^11.0.0
@@ -13304,7 +13302,7 @@ __metadata:
   peerDependenciesMeta:
     "@nestjs/swagger":
       optional: true
-  checksum: 10c0/210b76bc6eafa7eb3463971b07954a37db9a63a9787d9bdd5a3efce11d4c771966b939276a90aa1a0d73391f612968af4d19a7e9424d98382a50bf518286544e
+  checksum: 10c0/16a6fc3cec95c0436b9d2bae383368f13790bd4ada339f3605f5b3c29ffb5181938acca8bfb764337a20e83e004dab4e6942958870aa00ae9a21caff77abe64a
   languageName: node
   linkType: hard
 
