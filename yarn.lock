@@ -3170,7 +3170,7 @@ __metadata:
     "@tailwindcss/forms": "npm:^0.5.11"
     "@tailwindcss/typography": "npm:^0.5.20"
     "@tailwindcss/vite": "npm:^4.3.4"
-    "@tanstack/eslint-plugin-query": "npm:^5.105.3"
+    "@tanstack/eslint-plugin-query": "npm:^5.107.1"
     "@tanstack/react-query": "npm:^5.107.1"
     "@testing-library/dom": "npm:^10.4.2"
     "@testing-library/react": "npm:^16.3.3"
@@ -5440,9 +5440,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@tanstack/eslint-plugin-query@npm:^5.105.3":
-  version: 5.105.3
-  resolution: "@tanstack/eslint-plugin-query@npm:5.105.3"
+"@tanstack/eslint-plugin-query@npm:^5.107.1":
+  version: 5.107.1
+  resolution: "@tanstack/eslint-plugin-query@npm:5.107.1"
   dependencies:
     "@typescript-eslint/utils": "npm:^8.71.0"
   peerDependencies:
@@ -5451,7 +5451,7 @@ __metadata:
   peerDependenciesMeta:
     typescript:
       optional: true
-  checksum: 10c0/1c1257e72e68724e6d20e14db59ad9bb353ca937f0ee3440a3514593bdb4d7cabb3ef102946a7988fe3b40f286546a938e663e5124794ac290323f67a9d02bb1
+  checksum: 10c0/54d90037555923b08e6c6ca4ea517c1c34a705cc5164a8f881590ef70b5347a2d17daa305e782159004c13bb644b1fbe64d04bc8930b3bc12fb61c6ad90ef982
   languageName: node
   linkType: hard
 
