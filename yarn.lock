@@ -3086,8 +3086,8 @@ __metadata:
   resolution: "@maintainerr/contracts@workspace:packages/contracts"
   dependencies:
     "@eslint/js": "npm:^10.0.1"
-    "@nestjs/common": "npm:^12.4.0"
-    "@nestjs/core": "npm:^12.4.0"
+    "@nestjs/common": "npm:^12.4.2"
+    "@nestjs/core": "npm:^12.4.2"
     "@nestjs/swagger": "npm:^12.1.1"
     class-transformer: "npm:^0.5.1"
     class-validator: "npm:^0.15.1"
@@ -3115,15 +3115,15 @@ __metadata:
     "@jest/globals": "npm:^30.5.2"
     "@maintainerr/contracts": "workspace:^"
     "@nestjs/cli": "npm:^12.0.12"
-    "@nestjs/common": "npm:^12.4.0"
-    "@nestjs/core": "npm:^12.4.0"
+    "@nestjs/common": "npm:^12.4.2"
+    "@nestjs/core": "npm:^12.4.2"
     "@nestjs/event-emitter": "npm:^12.0.2"
-    "@nestjs/platform-express": "npm:^12.4.0"
+    "@nestjs/platform-express": "npm:^12.4.2"
     "@nestjs/schedule": "npm:^12.0.3"
     "@nestjs/schematics": "npm:^12.0.13"
     "@nestjs/serve-static": "npm:^12.1.1"
     "@nestjs/swagger": "npm:^12.1.1"
-    "@nestjs/testing": "npm:^12.4.0"
+    "@nestjs/testing": "npm:^12.4.2"
     "@nestjs/typeorm": "npm:^12.0.3"
     "@suites/di.nestjs": "npm:^4.0.3"
     "@suites/doubles.jest": "npm:^4.1.2"
@@ -3408,9 +3408,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@nestjs/common@npm:^12.4.0":
-  version: 12.4.0
-  resolution: "@nestjs/common@npm:12.4.0"
+"@nestjs/common@npm:^12.4.2":
+  version: 12.4.2
+  resolution: "@nestjs/common@npm:12.4.2"
   dependencies:
     "@standard-schema/spec": "npm:1.1.0"
     file-type: "npm:22.3.0"
@@ -3428,13 +3428,13 @@ __metadata:
       optional: true
     class-validator:
       optional: true
-  checksum: 10c0/7e4e44962ff00b625ae8d586f2fcfe54b1687d2307cc7fb904c68881bd56e7593646ee5c0769b074d04950062477e01a890e08b10d2277ee96e218382335b8b7
+  checksum: 10c0/c3d65e333ec79e7cb60f2ed6347c7ddd20506bfc4dc807f8d3982f30ea22e8c10b19b48a95ad400e9f111189f5d6467fed6a1c49ad466bfc363aca3b9bc48994
   languageName: node
   linkType: hard
 
-"@nestjs/core@npm:^12.4.0":
-  version: 12.4.0
-  resolution: "@nestjs/core@npm:12.4.0"
+"@nestjs/core@npm:^12.4.2":
+  version: 12.4.2
+  resolution: "@nestjs/core@npm:12.4.2"
   dependencies:
     fast-safe-stringify: "npm:2.1.1"
     iterare: "npm:1.2.1"
@@ -3455,7 +3455,7 @@ __metadata:
       optional: true
     "@nestjs/websockets":
       optional: true
-  checksum: 10c0/a5561cf2bd93bf15775060109605b89bff5daa25cc61a60dc28d3ed99ed2c6727430583d991ac1ba91bf68465d999767f9499a9512f7ec77cda580ee5153e39b
+  checksum: 10c0/987228cd97e93061df447d5747a4982719964020f17f6697e90567a1e9718551027673b4a59fbc1124532226c9865ff40f33e244daee74613b05a3dbfcc41bae
   languageName: node
   linkType: hard
 
@@ -3488,9 +3488,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@nestjs/platform-express@npm:^12.4.0":
-  version: 12.4.0
-  resolution: "@nestjs/platform-express@npm:12.4.0"
+"@nestjs/platform-express@npm:^12.4.2":
+  version: 12.4.2
+  resolution: "@nestjs/platform-express@npm:12.4.2"
   dependencies:
     cors: "npm:2.8.6"
     express: "npm:5.3.0"
@@ -3501,7 +3501,7 @@ __metadata:
     "@nestjs/common": ^12.0.0
     "@nestjs/core": ^12.0.0
     rxjs: ^7.1.0
-  checksum: 10c0/4f70ab2a114bdfdced060515bbcfd2fcef53c5285fae7f304db3f8ba61d0cb62911e220115605e624cbb88b165875a3d97186780a17f7cc0985df8a9ba2ff1c7
+  checksum: 10c0/85363a0e0c2599371652125d35525176cd7d457aa16f7dd3e89987d5229785ebc8699e3195e7c2610cbfbafeb20192dfd6cd43c4db6b71c86da8264b1c2a0095
   languageName: node
   linkType: hard
 
@@ -3593,9 +3593,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@nestjs/testing@npm:^12.4.0":
-  version: 12.4.0
-  resolution: "@nestjs/testing@npm:12.4.0"
+"@nestjs/testing@npm:^12.4.2":
+  version: 12.4.2
+  resolution: "@nestjs/testing@npm:12.4.2"
   dependencies:
     tslib: "npm:2.9.1"
   peerDependencies:
@@ -3608,7 +3608,7 @@ __metadata:
       optional: true
     "@nestjs/platform-express":
       optional: true
-  checksum: 10c0/9582aac12ac6f7712c241c7dc926704f045f2ac90c294213d959d5867d10f73a4d2330917f7f0cd9ff430cbe93f825998307bde10ad75ff009cf307b967e6a23
+  checksum: 10c0/2253d0a2319d7e359d63d0420d2dbf674fa835e9dd815d86614289e185ed5104aeb7a3e43b2e7663dea3f428fa202f91b6e7a86464edae6afba27bdfcac4ca0a
   languageName: node
   linkType: hard
 
