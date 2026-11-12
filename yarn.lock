@@ -3194,7 +3194,7 @@ __metadata:
     "@lingui/vite-plugin": "npm:^6.12.0"
     "@maintainerr/contracts": "workspace:^"
     "@monaco-editor/react": "npm:^4.7.0"
-    "@rolldown/plugin-babel": "npm:^0.3.0"
+    "@rolldown/plugin-babel": "npm:^0.3.1"
     "@tailwindcss/forms": "npm:^0.5.11"
     "@tailwindcss/typography": "npm:^0.5.20"
     "@tailwindcss/vite": "npm:^4.3.5"
@@ -4722,9 +4722,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@rolldown/plugin-babel@npm:^0.3.0":
-  version: 0.3.0
-  resolution: "@rolldown/plugin-babel@npm:0.3.0"
+"@rolldown/plugin-babel@npm:^0.3.1":
+  version: 0.3.1
+  resolution: "@rolldown/plugin-babel@npm:0.3.1"
   dependencies:
     artichokie: "npm:^0.4.5"
     picomatch: "npm:^4.0.7"
@@ -4741,7 +4741,7 @@ __metadata:
       optional: true
     vite:
       optional: true
-  checksum: 10c0/b9663f1c397fedfa3d49393936f91a1df2f87a81d9ade99daacc5645f10eb8bfc65cb55a45406aeecea5e58943e5915e679b6bf872a93e7f3c6be45ac8d8df38
+  checksum: 10c0/ff4d1caf77e85d1337517cda0a7469b2d6f7f13c710a7723d960a4e07e7c8a6ab39e6a9726887b7089d8f32b84c717ab60f7cd52e1fe13e9278264269d82c645
   languageName: node
   linkType: hard
 
