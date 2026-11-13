@@ -3,6 +3,18 @@ import { Injectable } from '@nestjs/common';
 import { MetadataService } from '../../metadata/metadata.service';
 import { ArrLookupCache } from '../helpers/arr-lookup-cache';
 
+const FRANCHISE_PROPERTIES = [
+  'franchise_name',
+  'franchise_nextReleaseDate',
+] as const;
+
+export type FranchiseProperty = (typeof FRANCHISE_PROPERTIES)[number];
+
+export const isFranchiseProperty = (
+  name: string | undefined,
+): name is FranchiseProperty =>
+  FRANCHISE_PROPERTIES.includes(name as FranchiseProperty);
+
 /**
  * Shared resolution for rule properties sourced from the metadata layer rather
  * than the configured media server. Studios deliberately reads the metadata
@@ -44,6 +56,55 @@ export class MetadataRuleValueService {
           (studios) => studios === undefined,
         )
       : resolve();
+  }
+
+  /**
+   * Franchise properties (movies). Only a part with a release date counts as
+   * upcoming: TMDB keeps announced films without a date for years, and
+   * counting them would protect a movie indefinitely.
+   *
+   * Contract as above: undefined = a lookup failed (the comparator skips the
+   * item); null = confirmed absent (not in a franchise, or no dated upcoming
+   * part).
+   */
+  async getFranchiseValue(
+    property: FranchiseProperty,
+    item: MediaItem,
+    arrLookupCache?: ArrLookupCache,
+  ): Promise<string | Date | null | undefined> {
+    const resolve = async () => {
+      const ids =
+        await this.metadataService.resolveIdsFromHierarchyMediaItem(item);
+      if (!ids || ids.type !== 'movie') {
+        return undefined;
+      }
+
+      return this.metadataService.getFranchise(ids);
+    };
+
+    const franchise = arrLookupCache
+      ? await arrLookupCache.memoize(
+          `metadata:franchise:${item.id}`,
+          resolve,
+          (value) => value === undefined,
+        )
+      : await resolve();
+    if (franchise === undefined) {
+      return undefined;
+    }
+
+    if (property === 'franchise_name') {
+      return franchise?.name ?? null;
+    }
+
+    const now = Date.now();
+    const next = (franchise?.otherPartReleaseDates ?? [])
+      .filter((releaseDate) => releaseDate !== undefined)
+      .map((releaseDate) => new Date(releaseDate))
+      .filter((date) => date.getTime() > now)
+      .sort((a, b) => a.getTime() - b.getTime())[0];
+
+    return next ?? null;
   }
 
   private getCacheItemId(item: MediaItem): string {

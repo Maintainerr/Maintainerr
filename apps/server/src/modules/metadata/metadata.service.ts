@@ -18,6 +18,7 @@ import {
   MetadataProviders,
 } from './interfaces/metadata-provider.interface';
 import {
+  FranchiseDetails,
   MetadataDetails,
   PersonDetails,
   ProviderIds,
@@ -803,6 +804,18 @@ export class MetadataService {
   async getPersonDetails(ids: ProviderIds): Promise<PersonDetails | undefined> {
     return this.withProviderFallback(ids, (provider, id) =>
       provider.getPersonDetails(id),
+    );
+  }
+
+  /**
+   * Null is a confirmed answer (the movie is in no franchise) and stops the
+   * fallback; undefined means no provider could answer.
+   */
+  async getFranchise(
+    ids: ProviderIds,
+  ): Promise<FranchiseDetails | null | undefined> {
+    return this.withProviderFallback(ids, (provider, id) =>
+      provider.getFranchise(id),
     );
   }
 

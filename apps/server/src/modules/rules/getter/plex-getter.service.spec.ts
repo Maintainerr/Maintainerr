@@ -19,6 +19,7 @@ import {
   PlexMetadata,
 } from '../../api/plex-api/interfaces/media.interface';
 import { PlexApiService } from '../../api/plex-api/plex-api.service';
+import { MetadataRuleValueService } from './metadata-rule-value.service';
 import { PlexGetterService } from './plex-getter.service';
 
 const SEEN_BY_PROP_ID = 1;
@@ -151,6 +152,7 @@ describe('PlexGetterService', () => {
   let service: PlexGetterService;
   let plexApi: Mocked<PlexApiService>;
   let plexAdapter: Mocked<PlexAdapterService>;
+  let metadataRuleValueService: Mocked<MetadataRuleValueService>;
 
   beforeEach(async () => {
     const { unit, unitRef } =
@@ -159,6 +161,7 @@ describe('PlexGetterService', () => {
     service = unit;
     plexApi = unitRef.get(PlexApiService);
     plexAdapter = unitRef.get(PlexAdapterService);
+    metadataRuleValueService = unitRef.get(MetadataRuleValueService);
   });
 
   afterEach(() => {
@@ -1512,6 +1515,21 @@ describe('PlexGetterService', () => {
         'Cleanup Group',
       ]);
     });
+  });
+
+  describe('metadata-backed properties', () => {
+    // studios (46), franchise_name (52), franchise_nextReleaseDate (54)
+    it.each([46, 52, 54])(
+      'preserves undefined for property %i so a failed lookup stays transient',
+      async (propId) => {
+        metadataRuleValueService.getStudios.mockResolvedValue(undefined);
+        metadataRuleValueService.getFranchiseValue.mockResolvedValue(undefined);
+
+        await expect(
+          service.get(propId, createMediaItem({ type: 'movie' })),
+        ).resolves.toBeUndefined();
+      },
+    );
   });
 
   describe('sw_markedWatchedEpisodes (id 45)', () => {
