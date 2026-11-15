@@ -332,7 +332,7 @@ Start with [CONTRIBUTING.md](CONTRIBUTING.md), then dive into the [issues](https
 
 Maintainerr uses [Weblate](https://hosted.weblate.org/engage/maintainerr/) for translations. Pick your language, edit in the browser, and your work reaches everyone in the next release - no git, no pull request, no build tooling.
 
-Missing a language? Request it on Weblate and start it yourself.
+Missing a language? Request it on Weblate and we will add it.
 
 # Support us
 
