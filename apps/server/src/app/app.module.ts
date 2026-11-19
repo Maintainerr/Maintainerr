@@ -78,11 +78,15 @@ import { resolveUiRootPath } from './config/uiPath';
           return [];
         }
 
+        const basePath = process.env.BASE_PATH || '';
+
         return [
           {
             rootPath: resolveUiRootPath(join(__dirname, '..', 'ui')),
-            serveRoot: process.env.BASE_PATH || undefined,
-            exclude: ['/api/{*path}'],
+            serveRoot: basePath || undefined,
+            // Matched against the full request URL, so it carries the base
+            // path; without it an unknown API URL got the UI page, not a 404.
+            exclude: [`${basePath}/api/{*path}`],
           },
         ];
       },
