@@ -21,6 +21,7 @@ export default defineConfig({
     'nl',
     'pl',
     'pt',
+    'ro',
     'ru',
     'sv',
     'zh-Hant',
