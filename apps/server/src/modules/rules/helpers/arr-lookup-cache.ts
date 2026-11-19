@@ -23,8 +23,8 @@
  * The Plex / Jellyfin / Emby getters use it for the metadata-backed studios
  * and franchise properties (via MetadataRuleValueService). Emby also memoizes
  * the season walks used by its season-prefix view-date rule. The Tautulli
- * getter does not use it at all. (Seerr's own request lookups are API-cached too - only the
- * id-resolution that feeds them is deduped here.)
+ * getter does not use it at all. (Seerr's own request lookups are API-cached
+ * too - only the id-resolution that feeds them is deduped here.)
  */
 export class ArrLookupCache {
   private readonly entries = new Map<string, Promise<unknown>>();

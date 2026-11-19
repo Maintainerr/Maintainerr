@@ -1,5 +1,9 @@
 import { MediaItem } from '@maintainerr/contracts';
 import { Mocked, TestBed } from '@suites/unit';
+import {
+  createMetadataProviderMock,
+  createMockLogger,
+} from '../../../../test/utils/data';
 import { MetadataService } from '../../metadata/metadata.service';
 import { ArrLookupCache } from '../helpers/arr-lookup-cache';
 import { MetadataRuleValueService } from './metadata-rule-value.service';
@@ -138,6 +142,23 @@ describe('MetadataRuleValueService', () => {
       },
     );
 
+    // #3402: a property that does not apply answers null, not undefined, or
+    // the executor holds every item of a show group.
+    it.each(['show', 'season', 'episode'] as const)(
+      'resolves to null for a %s without a lookup',
+      async (type) => {
+        await expect(
+          service.getFranchiseValue(
+            'franchise_name',
+            createMediaItem({ type }),
+          ),
+        ).resolves.toBeNull();
+        expect(
+          metadataService.resolveIdsFromHierarchyMediaItem,
+        ).not.toHaveBeenCalled();
+      },
+    );
+
     // A tv id must never be read as a movie id.
     it.each([
       ['no id can be resolved', undefined],
@@ -149,6 +170,48 @@ describe('MetadataRuleValueService', () => {
         service.getFranchiseValue('franchise_name', createMediaItem()),
       ).resolves.toBeUndefined();
       expect(metadataService.getFranchise).not.toHaveBeenCalled();
+    });
+
+    // Only TMDB knows franchises, so a movie the server knows by TVDB and IMDb
+    // ids alone has to reach TMDB through the IMDb id.
+    it('finds the TMDB id of a movie the server knows by other ids', async () => {
+      const tmdb = createMetadataProviderMock({
+        name: 'TMDB',
+        idKey: 'tmdb',
+        findByExternalId: async (id, type) =>
+          type === 'imdb' && id === 'tt0000001'
+            ? [{ movieId: 101 }]
+            : undefined,
+      });
+      tmdb.getFranchise.mockResolvedValue({
+        name: 'Franchise A Collection',
+        otherPartReleaseDates: [],
+      });
+      const tvdb = createMetadataProviderMock({
+        name: 'TVDB',
+        idKey: 'tvdb',
+        detailsId: 202,
+        details: {
+          externalIds: { type: 'movie', tvdb: 202, imdb: 'tt0000001' },
+        },
+      });
+      const metadata = new MetadataService(
+        [tmdb, tvdb],
+        { getService: jest.fn() } as never,
+        {} as never,
+        createMockLogger(),
+      );
+      metadata.onApplicationBootstrap();
+      const item = createMediaItem({
+        providerIds: { tvdb: ['202'], imdb: ['tt0000001'] },
+      });
+
+      await expect(
+        new MetadataRuleValueService(metadata).getFranchiseValue(
+          'franchise_name',
+          item,
+        ),
+      ).resolves.toBe('Franchise A Collection');
     });
 
     it('retries a failed lookup within a run instead of caching it', async () => {

@@ -558,8 +558,7 @@ export class RuleConstants {
           type: RuleType.TEXT,
         },
         {
-          // Only parts with a release date count; announced parts without one
-          // are ignored. EXISTS answers "has an upcoming release".
+          // EXISTS answers "has an upcoming release".
           id: 54,
           name: 'franchise_nextReleaseDate',
           humanName: 'Next franchise release date',

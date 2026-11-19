@@ -63,18 +63,24 @@ export class MetadataRuleValueService {
    * upcoming: TMDB keeps announced films without a date for years, and
    * counting them would protect a movie indefinitely.
    *
-   * Contract as above: undefined = a lookup failed (the comparator skips the
-   * item); null = confirmed absent (not in a franchise, or no dated upcoming
-   * part).
+   * null = does not apply (not a movie, in no franchise, no dated upcoming
+   * part); undefined = a lookup failed (the comparator skips the item).
    */
   async getFranchiseValue(
     property: FranchiseProperty,
     item: MediaItem,
     arrLookupCache?: ArrLookupCache,
   ): Promise<string | Date | null | undefined> {
+    if (item.type !== 'movie') {
+      return null;
+    }
+
     const resolve = async () => {
-      const ids =
-        await this.metadataService.resolveIdsFromHierarchyMediaItem(item);
+      // Only TMDB answers, so a TVDB-only match must still find the TMDB id.
+      const ids = await this.metadataService.resolveIdsFromHierarchyMediaItem(
+        item,
+        'tmdb',
+      );
       if (!ids || ids.type !== 'movie') {
         return undefined;
       }
@@ -99,7 +105,6 @@ export class MetadataRuleValueService {
 
     const now = Date.now();
     const next = (franchise?.otherPartReleaseDates ?? [])
-      .filter((releaseDate) => releaseDate !== undefined)
       .map((releaseDate) => new Date(releaseDate))
       .filter((date) => date.getTime() > now)
       .sort((a, b) => a.getTime() - b.getTime())[0];

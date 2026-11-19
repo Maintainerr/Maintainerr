@@ -807,10 +807,6 @@ export class MetadataService {
     );
   }
 
-  /**
-   * Null is a confirmed answer (the movie is in no franchise) and stops the
-   * fallback; undefined means no provider could answer.
-   */
   async getFranchise(
     ids: ProviderIds,
   ): Promise<FranchiseDetails | null | undefined> {

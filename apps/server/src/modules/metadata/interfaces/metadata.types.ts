@@ -33,17 +33,10 @@ export interface PersonDetails {
   imdbId?: string;
 }
 
-/**
- * The film series a movie belongs to. TMDB calls it a collection; the rules
- * say franchise because a collection in Maintainerr is the media server
- * collection a rule group fills.
- */
+/** The film series a movie belongs to. */
 export interface FranchiseDetails {
   name: string;
-  /**
-   * One entry per other part of the series. Undefined for a part that is
-   * announced without a release date yet.
-   */
+  /** One entry per other part of the series. */
   otherPartReleaseDates: (string | undefined)[];
 }
 
