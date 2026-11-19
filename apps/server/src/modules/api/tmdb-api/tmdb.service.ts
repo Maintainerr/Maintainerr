@@ -11,6 +11,7 @@ import {
 import { ExternalApiService } from '../external-api/external-api.service';
 import cacheManager from '../lib/cache';
 import {
+  TmdbCollectionDetails,
   TmdbExternalIdResponse,
   TmdbMovieDetails,
   TmdbPersonDetail,
@@ -143,6 +144,27 @@ export class TmdbApiService extends ExternalApiService {
       return data;
     } catch (error) {
       this.logger.warn('Failed to fetch movie details');
+      this.logger.debug(error);
+    }
+  };
+
+  public getCollection = async ({
+    collectionId,
+    language = 'en',
+  }: {
+    collectionId: number;
+    language?: string;
+  }): Promise<TmdbCollectionDetails> => {
+    try {
+      const data = await this.get<TmdbCollectionDetails>(
+        `/collection/${collectionId}`,
+        { params: { language } },
+        43200,
+      );
+
+      return data;
+    } catch (error) {
+      this.logger.warn('Failed to fetch collection details');
       this.logger.debug(error);
     }
   };
