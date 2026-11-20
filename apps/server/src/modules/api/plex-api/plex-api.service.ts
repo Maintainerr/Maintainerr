@@ -1203,7 +1203,7 @@ export class PlexApiService {
    * `/status/sessions` returns only the `MediaContainer` (no `Metadata`) when
    * nothing is playing, so an empty array is the normal "idle" result. Never
    * cached - sessions are live state. Best-effort: the plexClient retries
-   * transient failures (axios-retry, exponential backoff), and a persistent
+   * transient failures (exponential backoff), and a persistent
    * failure returns [] so a session outage degrades to normal handling rather
    * than blocking the run.
    */

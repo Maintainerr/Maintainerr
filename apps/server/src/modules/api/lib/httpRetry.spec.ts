@@ -1,4 +1,8 @@
-import axios, { AxiosError, type AxiosResponse } from 'axios';
+import axios, {
+  AxiosError,
+  type AxiosRequestConfig,
+  type AxiosResponse,
+} from 'axios';
 import {
   applyHttpRetry,
   isRetryableRateLimit,
@@ -37,36 +41,49 @@ describe('rate-limit retry policy', () => {
 });
 
 describe('applyHttpRetry', () => {
-  // Fake timers also fake Date.now, so elapsedMs is the exact wait axios-retry
+  // Fake timers also fake Date.now, so elapsedMs is the exact wait the retry
   // scheduled - a 15 minute wait would show as 900000 - and no test sleeps.
   beforeEach(() => jest.useFakeTimers());
   afterEach(() => jest.useRealTimers());
 
   // Through a real instance rather than the predicate alone, so the attempt
-  // count axios-retry keeps is the one the policy reads.
+  // count the interceptor keeps is the one the policy reads. No status means
+  // no response arrived, and `code` says why.
   const failEveryAttempt = async (
-    status: number,
+    status: number | undefined,
     headers: Record<string, string> = {},
+    request: AxiosRequestConfig = {},
+    code = 'ERR_BAD_RESPONSE',
   ) => {
     const instance = axios.create();
     let attempts = 0;
     instance.defaults.adapter = (config) => {
       attempts += 1;
       return Promise.reject(
-        new AxiosError('failed', 'ERR_BAD_RESPONSE', config, undefined, {
-          status,
-          headers,
-          data: {},
-          statusText: '',
+        new AxiosError(
+          'failed',
+          code,
           config,
-        } as AxiosResponse),
+          undefined,
+          status === undefined
+            ? undefined
+            : ({
+                status,
+                headers,
+                data: {},
+                statusText: '',
+                config,
+              } as AxiosResponse),
+        ),
       );
     };
     applyHttpRetry(instance);
 
     const startedAt = Date.now();
     // Advance the faked retry waits while the request is still pending.
-    const failure = instance.get('/anything').catch((error: unknown) => error);
+    const failure = instance
+      .request({ url: '/anything', ...request })
+      .catch((error: unknown) => error);
     await jest.runAllTimersAsync();
     expect(await failure).toBeInstanceOf(AxiosError);
     return { attempts, elapsedMs: Date.now() - startedAt };
@@ -88,12 +105,73 @@ describe('applyHttpRetry', () => {
   });
 
   it('keeps the backoff curve for a 5xx that carries Retry-After', async () => {
-    // Left to itself axios-retry would wait out the 15 minutes this names.
+    // Honouring the header would wait out the 15 minutes it names.
     const { attempts, elapsedMs } = await failEveryAttempt(503, {
       'retry-after': '900',
     });
 
     expect(attempts).toBe(4);
     expect(elapsedMs).toBeLessThan(3000);
+  });
+
+  // A write the server answered is never sent twice, and a timeout is never
+  // repeated. Telemetry opts out per request to stay at-most-once.
+  it.each([
+    {
+      name: 'a write the server answered',
+      method: 'post',
+      status: 503,
+      attempts: 1,
+    },
+    {
+      name: 'a write that never connected',
+      method: 'post',
+      code: 'ECONNREFUSED',
+      attempts: 4,
+    },
+    {
+      name: 'a write to a host that does not resolve',
+      method: 'post',
+      code: 'ENOTFOUND',
+      attempts: 1,
+    },
+    { name: 'a read that timed out', code: 'ECONNABORTED', attempts: 1 },
+    {
+      name: 'a read that opted out',
+      status: 503,
+      request: { httpRetry: { retries: 0 } },
+      attempts: 1,
+    },
+    {
+      name: 'a 429 whose wait outlasts the timeout',
+      status: 429,
+      headers: { 'retry-after': '20' },
+      request: { timeout: 10000 },
+      attempts: 1,
+    },
+  ])(
+    '$name: $attempts attempt(s)',
+    async ({ method, status, code, headers, request, attempts }) => {
+      expect(
+        (await failEveryAttempt(status, headers, { method, ...request }, code))
+          .attempts,
+      ).toBe(attempts);
+    },
+  );
+
+  // A connection test's deadline aborts the request: the 30s wait must not
+  // outlive it.
+  it('stops waiting to retry once the request is aborted', async () => {
+    const controller = new AbortController();
+    setTimeout(() => controller.abort(), 100);
+
+    const { attempts, elapsedMs } = await failEveryAttempt(
+      429,
+      { 'retry-after': '30' },
+      { signal: controller.signal },
+    );
+
+    expect(attempts).toBe(1);
+    expect(elapsedMs).toBe(100);
   });
 });
