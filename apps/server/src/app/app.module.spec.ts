@@ -18,15 +18,18 @@ jest.mock('./config/dataDir', () => {
   };
 });
 
-describe('AppModule UI serving under BASE_PATH', () => {
+// The forms an operator may type for the same subfolder.
+const FORMS = ['/maint', '/maint/', 'maint'];
+
+describe.each(FORMS)('AppModule UI serving under BASE_PATH %s', (form) => {
   const { NODE_ENV, BASE_PATH } = process.env;
   let app: INestApplication;
   let baseUrl: string;
 
   beforeAll(async () => {
     process.env.NODE_ENV = 'production';
-    process.env.BASE_PATH = '/maint';
-    mkdirSync(path.join(dataDir, 'ui'));
+    process.env.BASE_PATH = form;
+    mkdirSync(path.join(dataDir, 'ui'), { recursive: true });
     writeFileSync(path.join(dataDir, 'ui', 'index.html'), '<!doctype html>');
 
     // The ServeStaticModule entry AppModule itself imports, booted alone.
