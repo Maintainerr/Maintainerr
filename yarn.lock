@@ -5112,18 +5112,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@suites/core.unit@npm:^4.1.2":
-  version: 4.1.2
-  resolution: "@suites/core.unit@npm:4.1.2"
-  dependencies:
-    "@suites/types.common": "npm:^4.0.2"
-    "@suites/types.di": "npm:^4.1.2"
-    "@suites/types.doubles": "npm:^4.0.2"
-  checksum: 10c0/d79853c0e33c25f0512ed00809ecbebf508790ae4fb3e69a847b61cf5b9b8ec3e3a8251a18cc52313983626dfed3774eb056dc41c26b90701f921d1c98c9c4d4
-  languageName: node
-  linkType: hard
-
-"@suites/core.unit@npm:^4.1.3":
+"@suites/core.unit@npm:^4.1.2, @suites/core.unit@npm:^4.1.3":
   version: 4.1.3
   resolution: "@suites/core.unit@npm:4.1.3"
   dependencies:
