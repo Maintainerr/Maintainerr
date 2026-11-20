@@ -24,15 +24,15 @@ export class RuleUsersService {
     try {
       const serverType =
         await this.mediaServerFactory.getConfiguredServerType();
+      // Also brings up the Plex client a settings save drops.
+      const mediaServer = await this.mediaServerFactory.getService();
 
       const usernames =
         serverType === MediaServerType.PLEX
           ? (await this.plexApi.getCorrectedUsers()).map(
               (user) => user.username,
             )
-          : (await (await this.mediaServerFactory.getService()).getUsers()).map(
-              (user) => user.name,
-            );
+          : (await mediaServer.getUsers()).map((user) => user.name);
 
       return [...new Set(usernames.filter(Boolean))].sort((left, right) =>
         left.localeCompare(right),

@@ -298,13 +298,24 @@ export class StorageMetricsService {
     let freeSpace = 0;
     let totalSpace = 0;
     let accurateMountCount = 0;
+    // Datasets of one ZFS pool each report the pool's free space beside their
+    // own total, so a byte-identical freeSpace is one pool's: count it once
+    // and add only each further mount's used space (#3996).
+    const pooledFreeSpace = new Set<number>();
 
     for (const mount of merged.values()) {
-      freeSpace += mount.freeSpace;
-      if (mount.hasAccurateTotalSpace) {
-        totalSpace += mount.totalSpace;
-        accurateMountCount += 1;
+      if (!mount.hasAccurateTotalSpace) {
+        freeSpace += mount.freeSpace;
+        continue;
       }
+      accurateMountCount += 1;
+      if (pooledFreeSpace.has(mount.freeSpace)) {
+        totalSpace += mount.totalSpace - mount.freeSpace;
+        continue;
+      }
+      pooledFreeSpace.add(mount.freeSpace);
+      freeSpace += mount.freeSpace;
+      totalSpace += mount.totalSpace;
     }
 
     return {

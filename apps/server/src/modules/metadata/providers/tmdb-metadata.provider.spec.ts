@@ -263,4 +263,49 @@ describe('TmdbMetadataProvider', () => {
     expect(result).toBeUndefined();
     expect(tmdbApi.getByExternalId).not.toHaveBeenCalled();
   });
+  describe('getFranchise', () => {
+    const inCollection = {
+      id: 1,
+      belongs_to_collection: { id: 100, name: 'Franchise A Collection' },
+    };
+
+    it("lists the other parts' release dates, with no date for an announced part", async () => {
+      tmdbApi.getMovie.mockResolvedValue(inCollection as any);
+      tmdbApi.getCollection.mockResolvedValue({
+        id: 100,
+        name: 'Franchise A Collection',
+        parts: [
+          { id: 1, release_date: '2026-12-01' },
+          { id: 2, release_date: '2020-05-01' },
+          { id: 3, release_date: '' },
+          { id: 4 },
+        ],
+      });
+
+      await expect(provider.getFranchise(1)).resolves.toEqual({
+        name: 'Franchise A Collection',
+        otherPartReleaseDates: ['2020-05-01', undefined, undefined],
+      });
+    });
+
+    it('confirms a movie in no franchise with null', async () => {
+      tmdbApi.getMovie.mockResolvedValue({ id: 1 } as any);
+
+      await expect(provider.getFranchise(1)).resolves.toBeNull();
+      expect(tmdbApi.getCollection).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      ['the movie', undefined, undefined],
+      ['the collection', inCollection, undefined],
+    ])(
+      'returns undefined when %s cannot be read',
+      async (_case, movie, collection) => {
+        tmdbApi.getMovie.mockResolvedValue(movie as any);
+        tmdbApi.getCollection.mockResolvedValue(collection);
+
+        await expect(provider.getFranchise(1)).resolves.toBeUndefined();
+      },
+    );
+  });
 });

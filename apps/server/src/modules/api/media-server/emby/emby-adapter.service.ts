@@ -633,7 +633,8 @@ export class EmbyAdapterService implements IMediaServerService {
             // Skip virtual (unaired) episodes the same way the Jellyfin adapter does.
             ExcludeLocationTypes:
               childType === 'episode' ? 'Virtual' : undefined,
-            Fields: 'ProviderIds,DateCreated,Overview,Tags',
+            // A show's or season's size is summed from its episodes' files.
+            Fields: 'ProviderIds,DateCreated,Overview,Tags,MediaSources',
             EnableUserData: true,
             Limit: EMBY_BATCH_SIZE.MAX_PAGE_SIZE,
             StartIndex: paginated ? offset : undefined,

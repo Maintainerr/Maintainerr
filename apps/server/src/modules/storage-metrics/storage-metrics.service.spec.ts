@@ -610,5 +610,37 @@ describe('StorageMetricsService', () => {
       expect(totals.mountCount).toBe(2);
       expect(totals.totalSpace).toBe(300);
     });
+
+    it('counts the free space of ZFS datasets on one pool once (#3996)', () => {
+      const totals = compute(
+        [
+          mount({
+            instanceType: 'radarr',
+            instanceId: 1,
+            path: '/data/films',
+            freeSpace: 300,
+            totalSpace: 700,
+          }),
+          mount({
+            instanceType: 'sonarr',
+            instanceId: 1,
+            path: '/data/tv',
+            freeSpace: 300,
+            totalSpace: 600,
+          }),
+        ],
+        { 'radarr||1': ['/data/films'], 'sonarr||1': ['/data/tv'] },
+        { 'radarr||1': 'arr.local', 'sonarr||1': 'arr.local' },
+      );
+
+      expect(totals).toEqual({
+        freeSpace: 300,
+        totalSpace: 1000,
+        usedSpace: 700,
+        mountCount: 2,
+        accurateMountCount: 2,
+        accurateTotalSpace: true,
+      });
+    });
   });
 });

@@ -87,7 +87,6 @@ describe('SettingsOperationsService', () => {
     );
     // SettingsOperationsService delegates field reads to the store snapshot.
     settingsDataService.plex_auth_token = 'plex-token';
-    mediaServerFactory.initialize.mockResolvedValue(undefined);
     plexApi.initialize.mockResolvedValue(undefined);
     plexApi.validateAuthToken.mockResolvedValue('valid');
     plexApi.testConnection.mockResolvedValue({
@@ -223,6 +222,19 @@ describe('SettingsOperationsService', () => {
     );
   });
 
+  it('revokes the stored Plex token and keeps the server settings when clearing it', async () => {
+    settingsRepo.findOne.mockResolvedValue(createSettings());
+
+    const response = await service.deletePlexApiAuth();
+
+    expect(response.status).toBe('OK');
+    expect(plexApi.revokeAuthToken).toHaveBeenCalledWith('plex-token');
+    expect(settingsRepo.update).toHaveBeenCalledWith(
+      { id: 1 },
+      { plex_auth_token: null },
+    );
+  });
+
   it('rejects Plex server setting changes when no Plex credentials are stored', async () => {
     settingsRepo.findOne.mockResolvedValue(
       createSettings({ plex_auth_token: null }),
@@ -350,6 +362,24 @@ describe('SettingsOperationsService', () => {
       expect.objectContaining({ plex_ssl: 0 }),
     );
   });
+
+  it.each([
+    {
+      change: 'connection',
+      save: () =>
+        service.updateSettings(createSettings({ plex_hostname: 'plex.other' })),
+    },
+    { change: 'token', save: () => service.savePlexApiAuthToken('new-token') },
+  ])(
+    'drops the running Plex client when its $change is saved (#4024)',
+    async ({ save }) => {
+      await save();
+
+      expect(mediaServerFactory.uninitializeServer).toHaveBeenCalledWith(
+        MediaServerType.PLEX,
+      );
+    },
+  );
 
   it('validates stored Plex auth tokens without requiring server settings', async () => {
     settingsDataService.plex_auth_token = 'masked-plex-token';

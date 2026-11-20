@@ -1,8 +1,8 @@
 import { AxiosError, AxiosResponse } from 'axios';
-import axiosRetry from 'axios-retry';
 import { MaintainerrLogger } from '../../logging/logs.service';
 import { createMockLogger } from '../../../../test/utils/data';
 import cacheManager from './cache';
+import { applyHttpRetry } from './httpRetry';
 import { PlexTvApi } from './plextvApi';
 
 jest.mock('axios', () => {
@@ -14,11 +14,7 @@ jest.mock('axios', () => {
   };
 });
 
-jest.mock('axios-retry', () => ({
-  __esModule: true,
-  default: jest.fn(),
-  exponentialDelay: jest.fn(),
-}));
+jest.mock('./httpRetry', () => ({ applyHttpRetry: jest.fn() }));
 
 const axios = jest.requireMock('axios').default as { create: jest.Mock };
 
@@ -38,7 +34,9 @@ describe('PlexTvApi.validateToken', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     axios.create.mockReturnValue({ get });
-    (axiosRetry as unknown as jest.Mock).mockImplementation(() => undefined);
+    (applyHttpRetry as unknown as jest.Mock).mockImplementation(
+      () => undefined,
+    );
   });
 
   it('returns valid when plex.tv returns an account', async () => {
@@ -88,7 +86,9 @@ describe('PlexTvApi.getDevices', () => {
     // Responses are cached by endpoint; flush so cases don't leak into each other.
     cacheManager.getCache('plextv').data.flushAll();
     axios.create.mockReturnValue({ get });
-    (axiosRetry as unknown as jest.Mock).mockImplementation(() => undefined);
+    (applyHttpRetry as unknown as jest.Mock).mockImplementation(
+      () => undefined,
+    );
   });
 
   it('queries v2 with the client identifier and maps owned servers v1 omits', async () => {
@@ -170,7 +170,9 @@ describe('PlexTvApi.getUsers', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     axios.create.mockReturnValue({ get });
-    (axiosRetry as unknown as jest.Mock).mockImplementation(() => undefined);
+    (applyHttpRetry as unknown as jest.Mock).mockImplementation(
+      () => undefined,
+    );
     cacheManager.getCache('plextv').data.flushAll();
   });
 
@@ -198,5 +200,51 @@ describe('PlexTvApi.getUsers', () => {
     await expect(api.getUsers()).resolves.toMatchObject({
       MediaContainer: { User: [{ $: { username: 'bob' } }] },
     });
+  });
+});
+
+describe('PlexTvApi.revokeToken', () => {
+  const del = jest.fn();
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    axios.create.mockReturnValue({ delete: del });
+    (applyHttpRetry as unknown as jest.Mock).mockImplementation(
+      () => undefined,
+    );
+  });
+
+  const revoke = () =>
+    new PlexTvApi(
+      'a-token',
+      createMockLogger() as unknown as MaintainerrLogger,
+    ).revokeToken('client-id');
+
+  // The token must only ever reach plex.tv, whatever server URL is configured.
+  it('signs the token out at plex.tv itself', async () => {
+    del.mockResolvedValue({ data: undefined });
+
+    await revoke();
+
+    expect(axios.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        baseURL: 'https://plex.tv',
+        headers: expect.objectContaining({ 'X-Plex-Token': 'a-token' }),
+      }),
+    );
+    expect(del).toHaveBeenCalledWith(
+      '/api/v2/users/signout',
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          'X-Plex-Client-Identifier': 'client-id',
+        }),
+      }),
+    );
+  });
+
+  it('tells the caller when plex.tv did not revoke it', async () => {
+    del.mockRejectedValue(new Error('unreachable'));
+
+    await expect(revoke()).rejects.toThrow('unreachable');
   });
 });

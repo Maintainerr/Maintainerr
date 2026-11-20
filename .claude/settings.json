@@ -2,6 +2,7 @@
   "attribution": {
     "commit": ""
   },
+  "effortLevel": "max",
   "enabledMcpjsonServers": ["github", "playwright"],
   "hooks": {
     "SessionStart": [

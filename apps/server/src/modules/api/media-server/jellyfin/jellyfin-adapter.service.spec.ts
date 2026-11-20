@@ -54,8 +54,8 @@ const jellyfinCacheMocks = {
 };
 
 // Like the real SDK, every client shares one module-wide axios instance.
-// axios-retry attaches interceptors to it during createApiClient; stub them so
-// the real attach call is a no-op in tests.
+// The retry policy attaches interceptors to it during createApiClient; stub
+// them so the real attach call is a no-op in tests.
 const createMockSdkAxiosInstance = () => ({
   interceptors: {
     request: { use: jest.fn() },

@@ -16,8 +16,11 @@ export const SUPPORTED_LOCALES: Record<string, string> = {
   nb: 'Norsk bokmål',
   pl: 'Polski',
   pt: 'Português',
+  ro: 'Română',
   fi: 'Suomi',
   sv: 'Svenska',
+  ru: 'Русский',
+  'zh-Hant': '繁體中文',
 }
 
 const STORAGE_KEY = 'maintainerr.locale'

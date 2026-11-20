@@ -525,6 +525,7 @@ export class RulesService {
           mediaServerSort: params.collection?.mediaServerSort ?? null,
           overlayEnabled: params.collection?.overlayEnabled,
           overlayTemplateId: params.collection?.overlayTemplateId ?? null,
+          overlayScope: params.collection?.overlayScope,
         })
       )?.dbCollection;
 
@@ -773,6 +774,9 @@ export class RulesService {
           mediaServerSort: params.collection?.mediaServerSort ?? null,
           overlayEnabled: params.collection?.overlayEnabled,
           overlayTemplateId: params.collection?.overlayTemplateId ?? null,
+          // A client that predates the scope leaves it out; keep the saved one.
+          overlayScope:
+            params.collection?.overlayScope ?? dbCollection?.overlayScope,
         };
 
         // If there's no existing collection (e.g., after rule migration), create a new one

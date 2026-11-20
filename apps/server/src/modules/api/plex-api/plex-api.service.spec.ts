@@ -13,7 +13,9 @@ import {
 } from './plex-api.constants';
 import { PlexConnection } from './interfaces/server.interface';
 import { NO_TIMEOUT } from '../lib/httpTimeouts';
+import PlexApi from '../lib/plexApi';
 import { PlexApiService } from './plex-api.service';
+import { PlexTvApi } from '../lib/plextvApi';
 
 const createDeferred = () => {
   let resolve: () => void;
@@ -70,6 +72,25 @@ describe('PlexApiService.rankConnections', () => {
       conn({ address: '192.168.1.50' }),
     ]);
     expect(ranked[0].address).toBe('192.168.1.50');
+  });
+});
+
+describe('PlexApiService.revokeAuthToken', () => {
+  // Clearing the token must work on a LAN-only install, and with a dead token.
+  it('does not fail when plex.tv does not revoke the token', async () => {
+    const { unit: service, unitRef } =
+      await TestBed.solitary(PlexApiService).compile();
+    unitRef.get(MaintainerrLoggerFactory).createLogger.mockReturnValue({
+      setContext: jest.fn(),
+    } as any);
+    const revokeToken = jest
+      .spyOn(PlexTvApi.prototype, 'revokeToken')
+      .mockRejectedValue(new Error('unreachable'));
+
+    await expect(service.revokeAuthToken('token')).resolves.toBeUndefined();
+
+    expect(revokeToken).toHaveBeenCalled();
+    expect(unitRef.get(MaintainerrLogger).warn).toHaveBeenCalled();
   });
 });
 
@@ -777,6 +798,8 @@ describe('PlexApiService.initialize', () => {
     jest.spyOn(service, 'getStatus').mockResolvedValue(undefined);
   });
 
+  afterEach(() => jest.restoreAllMocks());
+
   it('flushes the watch-history snapshot on uninitialize (server/token switch)', async () => {
     const cacheManager = (await import('../lib/cache')).default;
     const bulkCache = cacheManager.getCache('plexwatchhistory').data;
@@ -826,7 +849,7 @@ describe('PlexApiService.initialize', () => {
 
   it('requires protected library access before reporting a successful connection', async () => {
     const query = jest.fn().mockRejectedValue(new Error('Unauthorized'));
-    Object.assign(service, { plexClient: { query } });
+    jest.spyOn(PlexApi.prototype, 'query').mockImplementation(query);
 
     await expect(service.testConnection()).rejects.toThrow('Unauthorized');
     expect(query).toHaveBeenCalledTimes(1);
@@ -841,7 +864,7 @@ describe('PlexApiService.initialize', () => {
       .fn()
       .mockResolvedValueOnce({ MediaContainer: {} })
       .mockResolvedValueOnce({ MediaContainer: { version: '1.43.2' } });
-    Object.assign(service, { plexClient: { query } });
+    jest.spyOn(PlexApi.prototype, 'query').mockImplementation(query);
 
     await expect(service.testConnection()).resolves.toEqual({
       version: '1.43.2',

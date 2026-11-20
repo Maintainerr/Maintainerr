@@ -76,16 +76,22 @@ describe('EmbyGetterService', () => {
     jest.clearAllMocks();
   });
 
-  describe('studios (id 46)', () => {
-    const STUDIOS_PROP_ID = 46;
+  describe('metadata-backed properties', () => {
+    // studios (46), franchise_name (52), franchise_nextReleaseDate (54).
+    // The item's own metadata resolves, so a property that misses its route
+    // reaches the unhandled-property default (null) and fails the test.
+    it.each([46, 52, 54])(
+      'preserves undefined for property %i so a failed lookup stays transient',
+      async (propId) => {
+        embyAdapter.getMetadata.mockResolvedValue(createMediaItem());
+        metadataRuleValueService.getStudios.mockResolvedValue(undefined);
+        metadataRuleValueService.getFranchiseValue.mockResolvedValue(undefined);
 
-    it('preserves undefined so a failed lookup stays transient', async () => {
-      metadataRuleValueService.getStudios.mockResolvedValue(undefined);
-
-      await expect(
-        embyGetterService.get(STUDIOS_PROP_ID, createMediaItem(), 'movie'),
-      ).resolves.toBeUndefined();
-    });
+        await expect(
+          embyGetterService.get(propId, createMediaItem(), 'movie'),
+        ).resolves.toBeUndefined();
+      },
+    );
   });
 
   describe('user-backed rules', () => {

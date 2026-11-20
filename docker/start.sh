@@ -1,6 +1,17 @@
 #!/bin/sh
 
+# The subfolder as /name, or nothing: slashes trimmed at both ends, as
+# healthcheck.sh and the server's own prefix trim them.
 BASE_PATH_REPLACE="${BASE_PATH:-}"
+while [ "${BASE_PATH_REPLACE#/}" != "$BASE_PATH_REPLACE" ]; do
+	BASE_PATH_REPLACE="${BASE_PATH_REPLACE#/}"
+done
+while [ "${BASE_PATH_REPLACE%/}" != "$BASE_PATH_REPLACE" ]; do
+	BASE_PATH_REPLACE="${BASE_PATH_REPLACE%/}"
+done
+if [ -n "$BASE_PATH_REPLACE" ]; then
+	BASE_PATH_REPLACE="/$BASE_PATH_REPLACE"
+fi
 BUNDLED_UI_DIR="/opt/app/apps/server/dist/ui"
 SERVED_UI_DIR="${DATA_DIR:-/opt/data}/ui"
 

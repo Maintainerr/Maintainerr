@@ -237,8 +237,8 @@ review for everything that entered the release range that way.
 6. Check the image, not just the lockfile: the latest
    `Image vulnerabilities` run for `development` must be green, and
    every open code scanning alert in the `docker-scout-development`
-   category needs a reason it ships (no fix released, or excepted in
-   Docker Scout as a false positive).
+   category needs a reason it ships (no fix released, or a not affected
+   statement in `.github/maintainerr.vex.json`).
 
 ### 6. Write the report
 

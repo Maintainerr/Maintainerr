@@ -21,7 +21,10 @@ export default defineConfig({
     'nl',
     'pl',
     'pt',
+    'ro',
+    'ru',
     'sv',
+    'zh-Hant',
   ],
   catalogs: [
     {
@@ -32,7 +35,7 @@ export default defineConfig({
   ],
   compileNamespace: 'es',
   // File references without line numbers. With them, editing anything above a
-  // translatable string rewrites that reference in all 13 catalogs, so
+  // translatable string rewrites that reference in every catalog, so
   // unrelated PRs churn the whole catalog set and collide with Weblate's own
   // commits. Translators still get the file path, which is the useful half.
   format: formatter({ lineNumbers: false }),

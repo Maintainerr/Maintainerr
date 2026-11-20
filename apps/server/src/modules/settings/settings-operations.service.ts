@@ -1188,6 +1188,10 @@ export class SettingsOperationsService {
     try {
       const settingsDb = await this.settingsRepo.findOne({ where: {} });
 
+      if (settingsDb.plex_auth_token) {
+        await this.plexApi.revokeAuthToken(settingsDb.plex_auth_token);
+      }
+
       await this.settingsRepo.update(
         {
           id: settingsDb.id,
@@ -1226,6 +1230,7 @@ export class SettingsOperationsService {
       );
 
       await this.settingsDataService.init();
+      this.mediaServerFactory.uninitializeServer(MediaServerType.PLEX);
 
       return { status: 'OK', code: 1, message: 'Success' };
     } catch (error) {
@@ -1388,8 +1393,11 @@ export class SettingsOperationsService {
       await this.settingsDataService.saveSettings(merged);
 
       await this.settingsDataService.init();
+      // After init: Plex re-initializes from these in-memory settings.
+      if (mediaServerConnectionChanged) {
+        this.mediaServerFactory.uninitializeServer(MediaServerType.PLEX);
+      }
       this.logger.log('Settings updated');
-      await this.mediaServerFactory.initialize();
       this.seerr.init();
       this.ombi.init();
       this.tautulli.init();

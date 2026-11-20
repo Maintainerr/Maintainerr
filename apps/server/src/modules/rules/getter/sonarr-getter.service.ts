@@ -206,9 +206,13 @@ export class SonarrGetterService {
         }
 
         const attemptedIds = formatMetadataLookupCandidates(lookupCandidates);
+        // A Plex show listing carries no path; a single read does.
+        const path =
+          libItem.path ??
+          (await (await this.getMediaServer()).getMetadata(libItem.id))?.path;
 
         this.logger.warn(
-          `None of the resolved external IDs [${attemptedIds}] for '${libItem.title}' matched a series in Sonarr. Is the series tracked in Sonarr?`,
+          `None of the resolved external IDs [${attemptedIds}] for '${libItem.title}' (media server ID '${libItem.id}'${path ? `, path '${path}'` : ''}) matched a series in Sonarr. Is the series tracked in Sonarr?`,
         );
         return null;
       }

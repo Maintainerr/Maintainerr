@@ -273,6 +273,16 @@ describe('EmbyAdapterService', () => {
       },
     );
 
+    it('getChildrenMetadata names the file sizes show and season sizes sum (#3997)', async () => {
+      http.get.mockResolvedValue({ data: { Items: [] } });
+
+      await service.getChildrenMetadata('show-1');
+
+      expect(fieldsOf(http.get.mock.calls[0]).split(',')).toContain(
+        'MediaSources',
+      );
+    });
+
     // The keys the list route answers without being asked, verified on 4.9.5
     // for a movie and an episode. Everything else the mapper consumes must be
     // named in EMBY_METADATA_FIELDS or the batched row silently loses it.
