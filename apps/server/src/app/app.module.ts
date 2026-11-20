@@ -40,6 +40,7 @@ import { VersionModule } from '../modules/version/version.module';
 import { AppController } from './app.controller';
 import { HealthController } from './health.controller';
 import { HealthService } from './health.service';
+import { normalizedBasePath } from './config/basePath';
 import ormConfig from './config/typeOrmConfig';
 import { resolveUiRootPath } from './config/uiPath';
 
@@ -78,7 +79,7 @@ import { resolveUiRootPath } from './config/uiPath';
           return [];
         }
 
-        const basePath = process.env.BASE_PATH || '';
+        const basePath = normalizedBasePath();
 
         return [
           {

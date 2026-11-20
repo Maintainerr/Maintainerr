@@ -7,6 +7,7 @@ import * as fs from 'fs';
 import { cleanupOpenApiDoc } from 'nestjs-zod';
 import path from 'path';
 import { AppModule } from './app/app.module';
+import { normalizedBasePath } from './app/config/basePath';
 import { resolveCorsOptions } from './app/config/cors';
 import { dataDir } from './app/config/dataDir';
 import { MaintainerrLogger } from './modules/logging/logs.service';
@@ -38,21 +39,9 @@ async function bootstrap() {
   // are unaffected: they send Cache-Control: no-transform, which this skips.
   app.use(compression());
 
-  const basePathEnv = process.env.BASE_PATH?.trim();
-  if (basePathEnv && basePathEnv !== '/') {
-    let bpStart = 0;
-    while (bpStart < basePathEnv.length && basePathEnv[bpStart] === '/') {
-      bpStart += 1;
-    }
-    let bpEnd = basePathEnv.length;
-    while (bpEnd > bpStart && basePathEnv[bpEnd - 1] === '/') {
-      bpEnd -= 1;
-    }
-    const normalizedBasePath = basePathEnv.slice(bpStart, bpEnd);
-
-    if (normalizedBasePath.length > 0) {
-      app.setGlobalPrefix(normalizedBasePath);
-    }
+  const basePath = normalizedBasePath();
+  if (basePath) {
+    app.setGlobalPrefix(basePath);
   }
 
   const config = new DocumentBuilder().setTitle('Maintainerr').build();
