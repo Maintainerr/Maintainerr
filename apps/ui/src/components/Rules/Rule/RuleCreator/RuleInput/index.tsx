@@ -4,8 +4,9 @@ import { Trans, useLingui } from '@lingui/react/macro'
 import { TrashIcon } from '@heroicons/react/solid'
 import {
   Application,
+  ARR_DISKSPACE_PROPERTIES,
   type ArrDiskspaceResource,
-  DISKSPACE_REMAINING_PROPERTY,
+  DISKSPACE_REMAINING_PERCENT_PROPERTY,
   DISKSPACE_TOTAL_PROPERTY,
   isPerUserProperty,
   type MediaItemType,
@@ -155,10 +156,7 @@ const shouldFilterApplication = (
 }
 
 const isArrDiskspaceProperty = (prop?: IProperty): boolean => {
-  return (
-    prop?.name === DISKSPACE_REMAINING_PROPERTY ||
-    prop?.name === DISKSPACE_TOTAL_PROPERTY
-  )
+  return !!prop && ARR_DISKSPACE_PROPERTIES.includes(prop.name)
 }
 
 const isUnaryRuleAction = (action: RulePossibility | undefined): boolean => {
@@ -458,8 +456,10 @@ const RuleInput = (props: IRuleInput) => {
         selectedFirstValueAppId === Application.SONARR,
     })
 
+  // Total space and the remaining percentage both need a reliable total size.
   const isSelectedArrTotalDiskspaceRule =
-    selectedFirstValueProp?.name === DISKSPACE_TOTAL_PROPERTY
+    selectedFirstValueProp?.name === DISKSPACE_TOTAL_PROPERTY ||
+    selectedFirstValueProp?.name === DISKSPACE_REMAINING_PERCENT_PROPERTY
 
   const arrDiskspaceOptions = useMemo(() => {
     if (selectedFirstValueAppId === Application.RADARR) {
@@ -994,7 +994,7 @@ const RuleInput = (props: IRuleInput) => {
                 </option>
               ) : null}
             </Select>
-            {isSelectedArrTotalDiskspaceRule ? (
+            {selectedFirstValueProp?.name === DISKSPACE_TOTAL_PROPERTY ? (
               <p className="mt-1 text-xs text-zinc-400">
                 <Trans>
                   Total disk space only works for paths reported by ARR disk

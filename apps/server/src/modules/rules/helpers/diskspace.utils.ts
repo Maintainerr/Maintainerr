@@ -1,6 +1,8 @@
 import {
   ArrDiskspaceResource,
+  DISKSPACE_REMAINING_PERCENT_PROPERTY,
   DISKSPACE_REMAINING_PROPERTY,
+  DISKSPACE_TOTAL_PROPERTY,
   normalizeDiskPath,
 } from '@maintainerr/contracts';
 import { RuleDto } from '../dtos/rule.dto';
@@ -34,7 +36,8 @@ export function filterDiskspaceByTargetPath(
 }
 
 /**
- * Computes remaining or total disk space in GiB from an array of disk space entries.
+ * Computes remaining or total disk space in GiB, or the remaining share of the
+ * total as a percentage, from an array of disk space entries.
  */
 export function computeDiskspaceGiB(
   diskspace: ArrDiskspaceResource[],
@@ -52,6 +55,15 @@ export function computeDiskspaceGiB(
   }
 
   const totalSpace = diskspace.reduce((acc, d) => acc + (d.totalSpace ?? 0), 0);
+
+  if (propertyName === DISKSPACE_REMAINING_PERCENT_PROPERTY) {
+    if (totalSpace <= 0) {
+      return null;
+    }
+    const totalFree = diskspace.reduce((acc, d) => acc + (d.freeSpace ?? 0), 0);
+    return parseFloat(((totalFree / totalSpace) * 100).toFixed(1));
+  }
+
   return parseFloat((totalSpace / GiB).toFixed(1));
 }
 
@@ -68,10 +80,14 @@ export async function evaluateArrDiskspaceGiB(
   providerName: string,
   warn: (message: string) => void,
 ): Promise<number | null | undefined> {
+  // Total space reads raw /diskspace. Remaining space and the remaining
+  // percentage also take root-folder entries, which cover network mounts
+  // Sonarr's /diskspace leaves out; a root folder without a reported total is
+  // flagged and rejected by the percentage calculation.
   const allDiskspace =
-    propertyName === DISKSPACE_REMAINING_PROPERTY
-      ? await client.getDiskspaceWithRootFolders()
-      : await client.getDiskspace();
+    propertyName === DISKSPACE_TOTAL_PROPERTY
+      ? await client.getDiskspace()
+      : await client.getDiskspaceWithRootFolders();
   if (!allDiskspace) {
     warn(`[Diskspace] Could not read disk space from ${providerName}.`);
     return undefined;

@@ -1,15 +1,23 @@
-import { DISKSPACE_REMAINING_PROPERTY } from '@maintainerr/contracts';
+import {
+  DISKSPACE_REMAINING_PERCENT_PROPERTY,
+  DISKSPACE_REMAINING_PROPERTY,
+} from '@maintainerr/contracts';
 import { evaluateArrDiskspaceGiB } from './diskspace.utils';
 
 const GiB = 1073741824;
 
-const mount = (path: string, freeSpace: number) => ({
+const mount = (
+  path: string,
+  freeSpace: number,
+  totalSpace = freeSpace * 2,
+  hasAccurateTotalSpace = true,
+) => ({
   id: 1,
   path,
   label: null,
   freeSpace,
-  totalSpace: freeSpace * 2,
-  hasAccurateTotalSpace: true,
+  totalSpace,
+  hasAccurateTotalSpace,
 });
 
 const evaluate = (
@@ -41,6 +49,47 @@ describe('evaluateArrDiskspaceGiB', () => {
     });
 
     expect(result).toBe(5);
+  });
+
+  it.each([
+    ['across all mounts', undefined, 40],
+    ['for the configured path', { arrDiskPath: '/movies' }, 25],
+  ])(
+    'reports remaining space as a percentage of the total %s',
+    async (label, rule, expected) => {
+      const result = await evaluate(
+        {
+          getDiskspaceWithRootFolders: jest
+            .fn()
+            .mockResolvedValue([
+              mount('/movies', 1 * GiB, 4 * GiB),
+              mount('/tv', 1 * GiB, 1 * GiB),
+            ]),
+        },
+        DISKSPACE_REMAINING_PERCENT_PROPERTY,
+        rule,
+      );
+
+      expect(result).toBe(expected);
+    },
+  );
+
+  // A root-folder fallback carries no reliable total, so a percentage over it
+  // would be measured against a guess.
+  it('answers null for a percentage when a mount has no reliable total', async () => {
+    await expect(
+      evaluate(
+        {
+          getDiskspaceWithRootFolders: jest
+            .fn()
+            .mockResolvedValue([
+              mount('/movies', 1 * GiB, 4 * GiB),
+              mount('/nfs', 1 * GiB, 0, false),
+            ]),
+        },
+        DISKSPACE_REMAINING_PERCENT_PROPERTY,
+      ),
+    ).resolves.toBeNull();
   });
 
   // A failed arr call read as a confirmed figure is the #3307 failure mode: the

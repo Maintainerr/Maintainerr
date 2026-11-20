@@ -755,6 +755,13 @@ export class RuleConstants {
           mediaType: MediaType.MOVIE,
           type: RuleType.NUMBER,
         },
+        {
+          id: 27,
+          name: 'diskspace_remaining_percent',
+          humanName: 'Remaining disk space (%)',
+          mediaType: MediaType.MOVIE,
+          type: RuleType.NUMBER,
+        },
       ],
     },
     {
@@ -1036,6 +1043,13 @@ export class RuleConstants {
           mediaType: MediaType.SHOW,
           type: RuleType.NUMBER,
           showType: ['season'],
+        },
+        {
+          id: 36,
+          name: 'diskspace_remaining_percent',
+          humanName: 'Remaining disk space (%)',
+          mediaType: MediaType.SHOW,
+          type: RuleType.NUMBER,
         },
       ],
     },
