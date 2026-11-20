@@ -10567,6 +10567,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"husky@npm:9.1.7":
+  version: 9.1.7
+  resolution: "husky@npm:9.1.7"
+  bin:
+    husky: bin.js
+  checksum: 10c0/35bb110a71086c48906aa7cd3ed4913fb913823715359d65e32e0b964cb1e255593b0ae8014a5005c66a68e6fa66c38dcfa8056dbbdfb8b0187c0ffe7ee3a58f
+  languageName: node
+  linkType: hard
+
 "i18n-locales@npm:^0.0.5":
   version: 0.0.5
   resolution: "i18n-locales@npm:0.0.5"
@@ -12421,6 +12430,7 @@ __metadata:
     "@semantic-release/exec": "npm:^7.1.0"
     "@semantic-release/git": "npm:^11.0.1"
     "@types/node": "npm:^26.6.6"
+    husky: "npm:9.1.7"
     knip: "npm:^6.45.0"
     pofile-ts: "npm:^4.0.3"
     semantic-release: "npm:^25.0.9"

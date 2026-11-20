@@ -23,7 +23,8 @@
     "check-types": "turbo check-types",
     "check-node-version": "node tools/check-node-version.mjs",
     "test": "turbo test --",
-    "test:watch": "turbo test:watch"
+    "test:watch": "turbo test:watch",
+    "prepare": "husky"
   },
   "workspaces": [
     "apps/ui",
@@ -39,6 +40,7 @@
     "@semantic-release/exec": "^7.1.0",
     "@semantic-release/git": "^11.0.1",
     "@types/node": "^26.6.6",
+    "husky": "9.1.7",
     "knip": "^6.45.0",
     "pofile-ts": "^4.0.3",
     "semantic-release": "^25.0.9",

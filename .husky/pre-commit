@@ -1,0 +1,2 @@
+# gglint: no secrets in agent config files
+npx --yes @gglint/cli@0.5.1 secrets --staged
