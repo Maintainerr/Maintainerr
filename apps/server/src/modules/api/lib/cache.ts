@@ -16,6 +16,7 @@ type AvailableCacheIds =
   | 'github'
   | 'jellyfin'
   | 'jellyfinwatchhistory'
+  | 'jellyfinplaylists'
   | 'emby'
   | 'sportarrmetadata';
 
@@ -222,6 +223,24 @@ class CacheManager {
         persistent: true,
         useClones: false,
         // One prefetched snapshot, not one entry per item - exempt from the
+        // key-count bound so it is never evicted mid-run.
+        maxKeys: 0,
+      },
+    ),
+    // Holds the run-scoped playlist index built by
+    // JellyfinAdapterService.getPlaylistSnapshot: every user's playlists and
+    // their items. Configured like seerrrequests: not persistent, so
+    // flushAll() at each rule-group start rebuilds it; useClones off because
+    // the value is a Map - reads hand out copies of the arrays instead; long
+    // TTL so a single long run can't expire it mid-sweep.
+    jellyfinplaylists: new Cache(
+      'jellyfinplaylists',
+      'Jellyfin playlists',
+      'jellyfinplaylists',
+      {
+        stdTtl: 3600, // 1 hour
+        useClones: false,
+        // One index per library id, not one entry per item - exempt from the
         // key-count bound so it is never evicted mid-run.
         maxKeys: 0,
       },
