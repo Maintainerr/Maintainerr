@@ -6,11 +6,7 @@ jest.mock('axios', () => ({
   default: { create: jest.fn() },
 }));
 
-jest.mock('axios-retry', () => ({
-  __esModule: true,
-  default: jest.fn(),
-  exponentialDelay: jest.fn(),
-}));
+jest.mock('./httpRetry', () => ({ applyHttpRetry: jest.fn() }));
 
 // A Plex that never returns more than `serverCap` rows per page, whatever
 // X-Plex-Container-Size asks for.

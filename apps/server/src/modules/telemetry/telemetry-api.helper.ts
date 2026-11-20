@@ -11,7 +11,7 @@ export class TelemetryApi extends ExternalApiService {
   }
 
   /**
-   * ExternalApiService installs axios-retry globally; disabling it per request
+   * ExternalApiService retries failed requests; turning that off per request
    * is what keeps delivery at-most-once. A retry after a lost response would
    * count the same server twice and the census has no identifier to
    * de-duplicate on.
@@ -19,7 +19,7 @@ export class TelemetryApi extends ExternalApiService {
   public sendPing(ping: TelemetryPing) {
     return this.post('/v1/ingest', ping, {
       timeout: REQUEST_TIMEOUT_MS,
-      'axios-retry': { retries: 0 },
+      httpRetry: { retries: 0 },
     });
   }
 }

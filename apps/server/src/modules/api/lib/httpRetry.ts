@@ -1,13 +1,71 @@
-import axios, { type AxiosError, type AxiosInstance } from 'axios';
-import axiosRetry, { type IAxiosRetryConfig } from 'axios-retry';
+import axios, {
+  type AxiosError,
+  type AxiosInstance,
+  type GenericAbortSignal,
+} from 'axios';
+
+/** Per-request state; `httpRetry: { retries: 0 }` turns retrying off. */
+interface HttpRetryState {
+  retries?: number;
+  retryCount?: number;
+  lastRequestTime?: number;
+}
+
+declare module 'axios' {
+  interface AxiosRequestConfig {
+    httpRetry?: HttpRetryState;
+  }
+}
+
+interface HttpRetryPolicy {
+  retryCondition: (error: AxiosError) => boolean;
+  retryDelay: (retryCount: number, error: AxiosError) => number;
+}
 
 // Past this the request would be held open too long, and on Discord count
 // against its invalid-request ban threshold, so give up instead. It bounds one
-// wait, not the request: axios-retry charges the delay against `timeout`, so a
+// wait, not the request: a retry charges its delay against `timeout`, so a
 // client that sets one drops the retry outright when the declared wait will not
 // fit in what is left. Only the timeout-less clients below reach this cap.
 const MAX_RATE_LIMIT_WAIT_MS = 60000;
 const RETRY_PADDING_MS = 250;
+const RETRIES = 3;
+
+// DNS and TLS failures a reconnect cannot fix: the list axios-retry 4.5.0 took
+// from is-retry-allowed, so the same requests retry as before.
+const NOT_RETRYABLE_CODES = new Set([
+  'ENOTFOUND',
+  'ENETUNREACH',
+  'UNABLE_TO_GET_ISSUER_CERT',
+  'UNABLE_TO_GET_CRL',
+  'UNABLE_TO_DECRYPT_CERT_SIGNATURE',
+  'UNABLE_TO_DECRYPT_CRL_SIGNATURE',
+  'UNABLE_TO_DECODE_ISSUER_PUBLIC_KEY',
+  'CERT_SIGNATURE_FAILURE',
+  'CRL_SIGNATURE_FAILURE',
+  'CERT_NOT_YET_VALID',
+  'CERT_HAS_EXPIRED',
+  'CRL_NOT_YET_VALID',
+  'CRL_HAS_EXPIRED',
+  'ERROR_IN_CERT_NOT_BEFORE_FIELD',
+  'ERROR_IN_CERT_NOT_AFTER_FIELD',
+  'ERROR_IN_CRL_LAST_UPDATE_FIELD',
+  'ERROR_IN_CRL_NEXT_UPDATE_FIELD',
+  'OUT_OF_MEM',
+  'DEPTH_ZERO_SELF_SIGNED_CERT',
+  'SELF_SIGNED_CERT_IN_CHAIN',
+  'UNABLE_TO_GET_ISSUER_CERT_LOCALLY',
+  'UNABLE_TO_VERIFY_LEAF_SIGNATURE',
+  'CERT_CHAIN_TOO_LONG',
+  'CERT_REVOKED',
+  'INVALID_CA',
+  'PATH_LENGTH_EXCEEDED',
+  'INVALID_PURPOSE',
+  'CERT_UNTRUSTED',
+  'CERT_REJECTED',
+  'HOSTNAME_MISMATCH',
+]);
+const IDEMPOTENT_METHODS = ['get', 'head', 'options', 'put', 'delete'];
 
 const toMs = (seconds: unknown): number | undefined => {
   const value = Number(seconds);
@@ -26,9 +84,9 @@ const untilMs = (httpDate: unknown): number | undefined => {
  * `Retry-After` is the last resort on purpose: Discord's live webhook 429s send
  * one that is neither seconds nor a countdown (~1700 while the body says 0.3 and
  * `x-ratelimit-reset-after` says 2, and it grows while idle). Reading it as
- * seconds, which is what axios-retry's own `retryAfter` does, turns a sub-second
- * wait into 28 minutes. Take the longest of the fields that agree, since
- * retrying inside a window that is still open only earns another 429.
+ * seconds turns a sub-second wait into 28 minutes. Take the longest of the
+ * fields that agree, since retrying inside a window that is still open only
+ * earns another 429.
  */
 export const rateLimitWaitMs = (error: AxiosError): number => {
   const body =
@@ -58,28 +116,67 @@ export const isRetryableRateLimit = (error: AxiosError): boolean =>
   rateLimitWaitMs(error) <= MAX_RATE_LIMIT_WAIT_MS;
 
 const retryCountOf = (error: AxiosError): number =>
-  (error.config as { 'axios-retry'?: { retryCount?: number } } | undefined)?.[
-    'axios-retry'
-  ]?.retryCount ?? 0;
+  error.config?.httpRetry?.retryCount ?? 0;
+
+// No response at all, or an idempotent request the server failed with a 5xx or
+// 429. Never a timeout (ECONNABORTED), and never a write the server answered.
+const isNetworkOrIdempotentRequestError = (error: AxiosError): boolean => {
+  const { code, config, response } = error;
+  if (code === 'ECONNABORTED') return false;
+  if (
+    !response &&
+    code &&
+    code !== 'ERR_CANCELED' &&
+    !NOT_RETRYABLE_CODES.has(code)
+  ) {
+    return true;
+  }
+  return (
+    IDEMPOTENT_METHODS.includes(config?.method ?? '') &&
+    (!response ||
+      response.status === 429 ||
+      (response.status >= 500 && response.status <= 599))
+  );
+};
 
 /**
- * A 429 is the server naming a wait, not a blip to back off from. axios-retry's
- * own default treats it as one: three attempts on the backoff curve, stretched
- * to whatever a raw Retry-After says with nothing capping it. Take it on its own
- * terms instead - wait what the limiter actually declared, once - and give up
- * rather than hold a request open past the cap.
+ * A 429 is the server naming a wait, not a blip to back off from: wait what the
+ * limiter actually declared, once, and give up rather than hold a request open
+ * past the cap.
  */
 const transientOrRateLimited = (error: AxiosError): boolean =>
   error.response?.status === 429
     ? isRetryableRateLimit(error) && retryCountOf(error) === 0
-    : axiosRetry.isNetworkOrIdempotentRequestError(error);
+    : isNetworkOrIdempotentRequestError(error);
 
-// exponentialDelay is deliberately called without the error: it quietly takes
-// Math.max with a raw Retry-After, so a 5xx carrying one would hold the request
-// open for however long that header says, with nothing to cap it.
+// 200, 400 and 800 ms, each plus up to 20%. It never reads Retry-After, so a
+// 5xx carrying one cannot hold the request open for however long it says.
+const exponentialDelay = (retryCount: number): number => {
+  const delay = 2 ** retryCount * 100;
+  return delay + delay * 0.2 * Math.random();
+};
+
 const declaredWaitOrBackoff = (retryCount: number, error: AxiosError): number =>
   (error.response?.status === 429 ? rateLimitWaitMs(error) : 0) ||
-  axiosRetry.exponentialDelay(retryCount);
+  exponentialDelay(retryCount);
+
+// An aborted request stops waiting, so its retry fails at once with the abort.
+const waitUnlessAborted = (
+  ms: number,
+  signal?: GenericAbortSignal,
+): Promise<void> =>
+  new Promise((resolve) => {
+    if (signal?.aborted) return resolve();
+    const timer = setTimeout(() => {
+      signal?.removeEventListener?.('abort', onAbort);
+      resolve();
+    }, ms);
+    const onAbort = () => {
+      clearTimeout(timer);
+      resolve();
+    };
+    signal?.addEventListener?.('abort', onAbort, { once: true });
+  });
 
 /**
  * Apply Maintainerr's standard transient-failure retry policy - 3 attempts with
@@ -89,13 +186,44 @@ const declaredWaitOrBackoff = (retryCount: number, error: AxiosError): number =>
  */
 export function applyHttpRetry(
   instance: AxiosInstance,
-  overrides?: Pick<IAxiosRetryConfig, 'retryCondition' | 'retryDelay'>,
+  {
+    retryCondition = transientOrRateLimited,
+    retryDelay = declaredWaitOrBackoff,
+  }: Partial<HttpRetryPolicy> = {},
 ): void {
-  axiosRetry(instance, {
-    retries: 3,
-    retryCondition: transientOrRateLimited,
-    retryDelay: declaredWaitOrBackoff,
-    ...overrides,
+  instance.interceptors.request.use((config) => {
+    config.httpRetry = { ...config.httpRetry, lastRequestTime: Date.now() };
+    return config;
+  });
+
+  instance.interceptors.response.use(undefined, async (error: AxiosError) => {
+    const { config } = error;
+    const {
+      retries = RETRIES,
+      retryCount = 0,
+      lastRequestTime,
+    } = config?.httpRetry ?? {};
+    if (!config || retryCount >= retries || !retryCondition(error)) {
+      throw error;
+    }
+
+    const delay = retryDelay(retryCount + 1, error);
+    // The attempts share one timeout: a retry gets what the last attempt and
+    // the wait left of it, and is dropped when nothing is left.
+    if (config.timeout) {
+      const timeout =
+        config.timeout -
+        (lastRequestTime ? Date.now() - lastRequestTime : 0) -
+        delay;
+      if (timeout <= 0) throw error;
+      config.timeout = timeout;
+    }
+    config.httpRetry = { ...config.httpRetry, retryCount: retryCount + 1 };
+    // The first attempt already serialized the body.
+    config.transformRequest = [(data: unknown) => data];
+
+    await waitUnlessAborted(delay, config.signal);
+    return instance(config);
   });
 }
 
@@ -124,5 +252,5 @@ applyHttpRetry(rateLimitAwareHttp, {
   retryCondition: (error) =>
     isRetryableRateLimit(error) && retryCountOf(error) === 0,
   retryDelay: (retryCount, error) =>
-    (error ? rateLimitWaitMs(error) : 0) + RETRY_PADDING_MS * retryCount,
+    rateLimitWaitMs(error) + RETRY_PADDING_MS * retryCount,
 });
