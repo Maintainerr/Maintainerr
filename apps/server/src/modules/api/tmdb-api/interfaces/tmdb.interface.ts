@@ -137,6 +137,17 @@ export interface TmdbMovieDetails {
   };
 }
 
+/** GET /collection/{id}: a film series and every film in it. */
+export interface TmdbCollectionDetails {
+  id: number;
+  name: string;
+  parts?: {
+    id: number;
+    title?: string;
+    release_date?: string;
+  }[];
+}
+
 export interface TmdbVideo {
   id: string;
   key: string;

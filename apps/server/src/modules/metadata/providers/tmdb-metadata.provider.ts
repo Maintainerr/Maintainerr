@@ -9,6 +9,7 @@ import { TmdbApiService } from '../../api/tmdb-api/tmdb.service';
 import { IMetadataProvider } from '../interfaces/metadata-provider.interface';
 import {
   ExternalIdSearchResult,
+  FranchiseDetails,
   MetadataDetails,
   MetadataImageOptions,
   PersonDetails,
@@ -269,6 +270,39 @@ export class TmdbMetadataProvider implements IMetadataProvider {
       knownForDepartment: person.known_for_department || undefined,
       profileUrl: this.buildImageUrl(person.profile_path, 'w500'),
       imdbId: person.imdb_id,
+    };
+  }
+
+  /**
+   * The movie record is the one `getDetails` reads, so it is normally a cache
+   * hit; the parts come from `/collection/{id}`. TMDB lists an announced part
+   * with an empty `release_date`, which becomes no date here.
+   */
+  async getFranchise(
+    tmdbId: number,
+  ): Promise<FranchiseDetails | null | undefined> {
+    const movie = await this.tmdbApi.getMovie({ movieId: tmdbId });
+    if (!movie || typeof movie !== 'object') {
+      return undefined;
+    }
+
+    const collection = movie.belongs_to_collection;
+    if (!collection?.id) {
+      return null;
+    }
+
+    const details = await this.tmdbApi.getCollection({
+      collectionId: collection.id,
+    });
+    if (!Array.isArray(details?.parts)) {
+      return undefined;
+    }
+
+    return {
+      name: collection.name,
+      otherPartReleaseDates: details.parts
+        .filter((part) => part.id !== tmdbId)
+        .map((part) => part.release_date || undefined),
     };
   }
 

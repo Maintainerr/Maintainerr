@@ -408,7 +408,7 @@ The application integrates with several external services:
 When working with these integrations:
 
 - Retry through `applyHttpRetry` (`modules/api/lib/httpRetry.ts`), never a
-  per-client axios-retry config: it already answers a 429 with the wait the
+  per-client retry interceptor: it already answers a 429 with the wait the
   server declared, capped, so hand-rolled rate-limit handling only drifts
 - New service connection tests must use `connectionTestConfig` and, for API-key
   authentication, `assertApiKey` from `modules/api/lib/connectionTest.ts`. Reuse

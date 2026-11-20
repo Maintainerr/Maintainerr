@@ -7,6 +7,6 @@
     "declarationMap": false,
     "incremental": false
   },
-  "include": ["./rules-test-matrix.e2e.ts", "./utils/**/*.ts"],
+  "include": ["./rules-test-matrix.e2e.ts", "./utils/**/*.ts", "./suites.d.ts"],
   "exclude": ["../node_modules", "../dist", "../dist-test"]
 }

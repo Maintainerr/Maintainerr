@@ -2101,6 +2101,7 @@
     "GET /api/v2/public/recently-added",
     "GET /api/v2/public/servers",
     "GET /api/v2/public/streams",
+    "GET /api/v2/public/top-media",
     "GET /api/v2/public/users",
     "GET /api/v2/public/users/{id}",
     "GET /api/v2/public/users/{id}/history",
