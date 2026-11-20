@@ -201,20 +201,24 @@ jest.mock('./jellyfin.constants', () => ({
   JELLYFIN_WATCH_SNAPSHOT_MAX_RECORDS: 100,
 }));
 
-// The watch snapshot is a real store: the prefetch writes a value and later
-// reads it back, which a bare jest.fn() cannot model. The playlist index gets
-// an always-miss stub of its own, so its flushes stay out of the Jellyfin cache
-// call counts. Every other cache keeps the assertable mock.
+// The watch snapshot and the playlist index are real stores: they write a
+// value and later read it back, which a bare jest.fn() cannot model. The
+// playlist index has its own store, so its flushes stay out of the Jellyfin
+// cache call counts. Every other cache keeps the assertable mock.
 const mockSnapshotStore = new Map<string, unknown>();
+const mockPlaylistStore = new Map<string, unknown>();
 const mockPlaylistCache = {
-  flush: () => undefined,
+  flush: () => mockPlaylistStore.clear(),
   data: {
-    has: () => false,
-    get: () => undefined,
-    set: () => true,
-    del: () => 0,
-    flushAll: () => undefined,
-    keys: () => [],
+    has: (key: string) => mockPlaylistStore.has(key),
+    get: (key: string) => mockPlaylistStore.get(key),
+    set: (key: string, value: unknown) => {
+      mockPlaylistStore.set(key, value);
+      return true;
+    },
+    del: (key: string) => mockPlaylistStore.delete(key),
+    flushAll: () => mockPlaylistStore.clear(),
+    keys: () => [...mockPlaylistStore.keys()],
   },
 };
 
@@ -274,6 +278,7 @@ describe('JellyfinAdapterService', () => {
 
   beforeEach(async () => {
     jest.clearAllMocks();
+    mockPlaylistStore.clear();
 
     jellyfinApiMocks.getPublicSystemInfo.mockResolvedValue({
       data: {
@@ -2033,7 +2038,7 @@ describe('JellyfinAdapterService', () => {
           jellyfinApiMocks.getItems.mockImplementation(
             (args: { userId: string }) =>
               args.userId === 'user-2'
-                ? Promise.resolve({ data: {} })
+                ? Promise.resolve({ data: { Items: 'not a list' } })
                 : listPlaylists(args),
           ),
       },
@@ -2043,7 +2048,7 @@ describe('JellyfinAdapterService', () => {
           jellyfinApiMocks.getPlaylistItems.mockImplementation(
             (args: { userId: string; playlistId: string }) =>
               args.playlistId === 'playlist-other'
-                ? Promise.resolve({ data: {} })
+                ? Promise.resolve({ data: { Items: 'not a list' } })
                 : readPlaylist(args),
           ),
       },
@@ -2065,6 +2070,41 @@ describe('JellyfinAdapterService', () => {
         await expect(service.getPlaylists('')).rejects.toThrow();
       },
     );
+
+    it('keeps a failed read for the rest of the run instead of sweeping again', async () => {
+      jellyfinApiMocks.getPlaylistItems.mockImplementation(
+        (args: { userId: string; playlistId: string }) =>
+          args.playlistId === 'playlist-other'
+            ? Promise.reject(createRetryableError('ECONNRESET'))
+            : readPlaylist(args),
+      );
+
+      await expect(service.getPlaylists('')).rejects.toThrow();
+
+      // Even once Jellyfin answers again, the rest of the run skips.
+      jellyfinApiMocks.getPlaylistItems.mockImplementation(readPlaylist);
+      await expect(
+        service.getPlaylistItems('playlist-shared'),
+      ).rejects.toThrow();
+    });
+
+    // Test Media resets the caches, so it must read playlists fresh, including
+    // after a failed read earlier in the run.
+    it('reads playlists again after resetMetadataCache', async () => {
+      jellyfinApiMocks.getPlaylistItems.mockImplementation(
+        (args: { userId: string; playlistId: string }) =>
+          args.playlistId === 'playlist-other'
+            ? Promise.reject(createRetryableError('ECONNRESET'))
+            : readPlaylist(args),
+      );
+      await expect(service.getPlaylists('')).rejects.toThrow();
+
+      jellyfinApiMocks.getPlaylistItems.mockImplementation(readPlaylist);
+      service.resetMetadataCache();
+
+      const items = await service.getPlaylistItems('playlist-other');
+      expect(items.map(({ id }) => id)).toEqual(['movie-3']);
+    });
   });
 
   describe('getItemFavoritedBy', () => {

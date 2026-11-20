@@ -46,13 +46,10 @@ export interface JellyfinWatchSnapshot {
   playedCompletionThreshold: number | undefined;
 }
 
-/**
- * Every user's playlists with their items, keyed by playlist id. Built once per
- * rule-group run by JellyfinAdapterService.getPlaylistSnapshot.
- */
+/** Every user's playlists by id, each with its items by id. */
 export type JellyfinPlaylistSnapshot = Map<
   string,
-  { playlist: MediaPlaylist; items: MediaItem[] }
+  { playlist: MediaPlaylist; items: Map<string, MediaItem> }
 >;
 
 export type JellyfinMediaItem = BaseItemDto;
