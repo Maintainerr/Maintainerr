@@ -57,6 +57,7 @@ import {
   ExecutionLockService,
   RULES_COLLECTIONS_EXECUTION_LOCK_KEY,
 } from '../tasks/execution-lock.service';
+import { assertSupportedArrAction } from './arr-action-support';
 import { CollectionHandler } from './collection-handler';
 import {
   CollectionPosterService,
@@ -299,6 +300,7 @@ export class CollectionsController {
     @Body(new ZodValidationPipe(createCollectionBodySchema))
     request: CreateCollectionBody,
   ) {
+    assertSupportedArrAction(request.collection);
     await this.collectionService.createCollectionWithChildren(
       request.collection,
       request.media,
@@ -334,10 +336,15 @@ export class CollectionsController {
   }
 
   @Put()
-  updateCollection(
+  async updateCollection(
     @Body(new ZodValidationPipe(collectionBodySchema))
     request: UpdateCollectionBody,
   ) {
+    // An *arr server left out of the body keeps its stored value.
+    assertSupportedArrAction({
+      ...(await this.collectionService.getCollectionRecord(request.id)),
+      ...request,
+    });
     return this.collectionService.updateCollection(request);
   }
 

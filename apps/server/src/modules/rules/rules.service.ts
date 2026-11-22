@@ -10,6 +10,7 @@ import {
   MediaLibrary,
   MediaServerType,
   normalizeArrTagLabel,
+  ServarrAction,
 } from '@maintainerr/contracts';
 import {
   BadGatewayException,
@@ -30,6 +31,7 @@ import cacheManager from '../api/lib/cache';
 import { MediaServerFactory } from '../api/media-server/media-server.factory';
 import { IMediaServerService } from '../api/media-server/media-server.interface';
 import { TracearrApiService } from '../api/tracearr-api/tracearr-api.service';
+import { assertSupportedArrAction } from '../collections/arr-action-support';
 import { CollectionsService } from '../collections/collections.service';
 import { Collection } from '../collections/entities/collection.entities';
 import {
@@ -474,6 +476,11 @@ export class RulesService {
 
       const lib = await this.resolveLibraryOrFail(params.libraryId);
       const collectionType = this.resolveCollectionType(lib.type, params);
+      assertSupportedArrAction({
+        ...params,
+        type: collectionType,
+        arrAction: params.arrAction ?? ServarrAction.DELETE,
+      });
       const collection = (
         await this.collectionService.createCollection({
           libraryId: params.libraryId,
@@ -633,9 +640,15 @@ export class RulesService {
         }
 
         // Resolved before the crucial-setting wipe below, not after it: a
-        // library we cannot accept must not cost the collection its members
-        // on the way to being rejected.
+        // library or an action we cannot accept must not cost the collection
+        // its members on the way to being rejected.
         const lib = await this.resolveLibraryOrFail(params.libraryId);
+        const collectionType = this.resolveCollectionType(lib.type, params);
+        assertSupportedArrAction({
+          ...params,
+          type: collectionType,
+          arrAction: params.arrAction ?? ServarrAction.DELETE,
+        });
 
         const dbCollection = group.collectionId
           ? await this.collectionService.getCollection(group.collectionId)
@@ -707,7 +720,6 @@ export class RulesService {
         }
 
         // update or create the collection
-        const collectionType = this.resolveCollectionType(lib.type, params);
         const collectionData = {
           libraryId: params.libraryId,
           type: collectionType,
