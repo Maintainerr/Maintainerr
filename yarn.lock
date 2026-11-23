@@ -3260,7 +3260,7 @@ __metadata:
     eslint-config-prettier: "npm:^10.1.8"
     eslint-plugin-react-hooks: "npm:^7.1.1"
     jsdom: "npm:^31.0.1"
-    konva: "npm:^10.9.1"
+    konva: "npm:^10.10.0"
     lodash-es: "npm:^4.18.1"
     monaco-editor: "npm:0.57.0"
     prettier: "npm:^3.10.1"
@@ -11966,18 +11966,21 @@ __metadata:
   languageName: node
   linkType: hard
 
-"konva@npm:^10.9.1":
-  version: 10.9.1
-  resolution: "konva@npm:10.9.1"
+"konva@npm:^10.10.0":
+  version: 10.10.0
+  resolution: "konva@npm:10.10.0"
   peerDependencies:
+    "@napi-rs/canvas": ^1.1.0
     canvas: ^3.0.0
-    skia-canvas: ^3.0.0
+    skia-canvas: ^3.0.0 || ^4.0.0
   peerDependenciesMeta:
+    "@napi-rs/canvas":
+      optional: true
     canvas:
       optional: true
     skia-canvas:
       optional: true
-  checksum: 10c0/497e89546a59c92abab6b485f72fa8582dcf72eae3d485ff6e39d9bcce76af47997f9ecf9dee2c38e0b7de9ca61f9969718640b0e1251e28a36cf84819881d50
+  checksum: 10c0/0045548f9a5f843721a4ee74664799b76071e2b1920246c3dd0b3fcfea1f57555fb4d0272afd1b69b24d216202ee2fd5093600919caf8db939b33b66730b529d
   languageName: node
   linkType: hard
 
