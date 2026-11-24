@@ -1,3 +1,4 @@
+import { ServarrAction } from '@maintainerr/contracts';
 import {
   BadRequestException,
   ConflictException,
@@ -28,7 +29,17 @@ import { CollectionsService } from './collections.service';
 describe('CollectionsController', () => {
   let controller: CollectionsController;
 
+  const episodeCollection = {
+    type: 'episode' as const,
+    libraryId: '2',
+    title: 'Episodes',
+    isActive: true,
+    arrAction: ServarrAction.UNMONITOR_DELETE_EXISTING,
+  };
+
   const collectionsService = {
+    createCollectionWithChildren: jest.fn(),
+    updateCollection: jest.fn(),
     getCollectionRecord: jest.fn(),
     getCollectionMediaRecord: jest.fn(),
     MediaCollectionActionWithContext: jest.fn(),
@@ -124,6 +135,38 @@ describe('CollectionsController', () => {
       }),
     ).toThrow('Validation failed');
   });
+
+  // Refused on create and update (#4137). The PUT leaves the Sonarr server
+  // out, so the stored one decides.
+  it.each([
+    {
+      route: 'POST',
+      save: () =>
+        controller.createCollection({
+          collection: { ...episodeCollection, sonarrSettingsId: 1 },
+        }),
+      write: 'createCollectionWithChildren' as const,
+    },
+    {
+      route: 'PUT',
+      save: () => controller.updateCollection({ ...episodeCollection, id: 42 }),
+      write: 'updateCollection' as const,
+    },
+  ])(
+    '$route rejects an action Sonarr cannot take on episodes',
+    async ({ save, write }) => {
+      collectionsService.getCollectionRecord.mockResolvedValue(
+        createCollection({ id: 42, type: 'episode', sonarrSettingsId: 1 }),
+      );
+
+      await expect(save()).rejects.toMatchObject({
+        status: 400,
+        message:
+          'UNMONITOR_DELETE_EXISTING is not supported for episode collections managed by Sonarr. Supported: DELETE, UNMONITOR, DO_NOTHING',
+      });
+      expect(collectionsService[write]).not.toHaveBeenCalled();
+    },
+  );
 
   it('allows manual removal actions without a collection id', async () => {
     collectionsService.MediaCollectionActionWithContext.mockResolvedValue({
