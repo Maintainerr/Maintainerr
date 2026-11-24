@@ -88,6 +88,12 @@ import type {
 export const EMBY_METADATA_FIELDS =
   'ProviderIds,DateCreated,Overview,Tags,MediaSources,Path,Genres,People,Studios,ParentId,ChildCount,PremiereDate,CommunityRating,OfficialRating,ProductionYear,IndexNumberEnd,CriticRating,DateLastSaved';
 
+/** Every playlist by id, with its items. Read once per rule run. */
+type EmbyPlaylistSnapshot = Map<
+  string,
+  { playlist: MediaPlaylist; items: MediaItem[] }
+>;
+
 @Injectable()
 export class EmbyAdapterService implements IMediaServerService {
   private http: AxiosInstance | undefined;
@@ -163,6 +169,7 @@ export class EmbyAdapterService implements IMediaServerService {
     this.embyApiKey = undefined;
     this.embyUserId = undefined;
     this.cache.flush();
+    cacheManager.getCache('embyplaylists').data.flushAll();
   }
 
   isSetup(): boolean {
@@ -831,23 +838,13 @@ export class EmbyAdapterService implements IMediaServerService {
     return [...watchers];
   }
 
-  /**
-   * Items inside a playlist, as the configured Emby user sees them.
-   */
+  /** Items of any user's playlist. Throws like getPlaylists. */
   async getPlaylistItems(playlistId: string): Promise<MediaItem[]> {
     if (!this.http) return [];
-    try {
-      const { data } = await this.http.get<EmbyItemsQueryResponse>(
-        `/Playlists/${playlistId}/Items`,
-        { params: { UserId: this.embyUserId } },
-      );
-      return (data.Items ?? []).map(EmbyMapper.toMediaItem);
-    } catch (error) {
-      this.logger.debug(
-        `Emby getPlaylistItems(${playlistId}) failed: ${formatConnectionFailureMessage(error, 'Connection failed')}`,
-      );
-      return [];
-    }
+
+    // Library id '' is the unfiltered listing, so every playlist is in it.
+    const snapshot = await this.getPlaylistSnapshot('');
+    return [...(snapshot.get(playlistId)?.items ?? [])];
   }
 
   async getRecentlyAdded(
@@ -1709,24 +1706,85 @@ export class EmbyAdapterService implements IMediaServerService {
   // Playlists
   // ============================================================================
 
+  /**
+   * Every user's playlists: Emby lists them all to an unscoped read. Throws
+   * when a read fails, so it never counts as "in no playlist".
+   */
   async getPlaylists(libraryId: string): Promise<MediaPlaylist[]> {
     if (!this.http) return [];
+
+    const snapshot = await this.getPlaylistSnapshot(libraryId);
+    return [...snapshot.values()].map(({ playlist }) => playlist);
+  }
+
+  /**
+   * One read per rule run, shared by concurrent callers and kept if it fails.
+   * The pending read itself is cached, so the flush at a run's start also drops
+   * a read that began before the run.
+   */
+  private getPlaylistSnapshot(
+    libraryId: string,
+  ): Promise<EmbyPlaylistSnapshot> {
+    const cache = cacheManager.getCache('embyplaylists').data;
+    let snapshot = cache.get<Promise<EmbyPlaylistSnapshot>>(libraryId);
+    if (snapshot === undefined) {
+      snapshot = this.fetchPlaylistSnapshot(libraryId);
+      cache.set(libraryId, snapshot);
+    }
+    return snapshot;
+  }
+
+  private async fetchPlaylistSnapshot(
+    libraryId: string,
+  ): Promise<EmbyPlaylistSnapshot> {
     try {
-      const { data } = await this.http.get<EmbyItemsQueryResponse>('/Items', {
-        params: {
-          ParentId: libraryId,
-          IncludeItemTypes: 'Playlist',
-          Recursive: true,
-          Fields: 'DateCreated,Overview,ChildCount',
-          Limit: EMBY_BATCH_SIZE.MAX_PAGE_SIZE,
-        },
-      });
-      return (data.Items ?? []).map(EmbyMapper.toMediaPlaylist);
+      // A truncated page is an HTTP 200, so every page is read.
+      const playlists: EmbyBaseItemDto[] = [];
+      let offset = 0;
+      let hasMore = true;
+      while (hasMore) {
+        const { data } = await this.http.get<EmbyItemsQueryResponse>('/Items', {
+          params: {
+            ParentId: libraryId,
+            IncludeItemTypes: 'Playlist',
+            Recursive: true,
+            Fields: 'DateCreated,Overview,ChildCount',
+            Limit: EMBY_BATCH_SIZE.MAX_PAGE_SIZE,
+            StartIndex: offset,
+            EnableTotalRecordCount: true,
+          },
+        });
+
+        playlists.push(...data.Items);
+        offset += data.Items.length;
+        hasMore =
+          data.Items.length > 0 && offset < (data.TotalRecordCount ?? offset);
+      }
+
+      const snapshot: EmbyPlaylistSnapshot = new Map();
+      for (const playlist of playlists) {
+        const { data } = await this.http.get<EmbyItemsQueryResponse>(
+          `/Playlists/${playlist.Id}/Items`,
+          {
+            params: {
+              UserId: this.embyUserId,
+              EnableImages: false,
+              EnableUserData: false,
+            },
+          },
+        );
+        snapshot.set(playlist.Id, {
+          playlist: EmbyMapper.toMediaPlaylist(playlist),
+          items: data.Items.map(EmbyMapper.toMediaItem),
+        });
+      }
+      return snapshot;
     } catch (error) {
-      this.logger.debug(
-        `Emby getPlaylists(${libraryId}) failed: ${formatConnectionFailureMessage(error, 'Connection failed')}`,
+      this.logger.warn(
+        "Couldn't read Emby's playlists; playlist rules skip items for the rest of this run",
       );
-      return [];
+      this.logger.debug(error);
+      throw error;
     }
   }
 
@@ -1784,6 +1842,8 @@ export class EmbyAdapterService implements IMediaServerService {
   // the simplest correct reset.
   resetMetadataCache(): void {
     this.cache.flush();
+    // Test Media resets through here, so it reads playlists fresh.
+    cacheManager.getCache('embyplaylists').data.flushAll();
   }
 
   // ============================================================================
