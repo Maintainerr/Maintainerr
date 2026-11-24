@@ -16,6 +16,7 @@ type AvailableCacheIds =
   | 'github'
   | 'jellyfin'
   | 'jellyfinwatchhistory'
+  | 'jellyfinplaylists'
   | 'emby'
   | 'sportarrmetadata';
 
@@ -224,6 +225,18 @@ class CacheManager {
         // One prefetched snapshot, not one entry per item - exempt from the
         // key-count bound so it is never evicted mid-run.
         maxKeys: 0,
+      },
+    ),
+    // JellyfinAdapterService.getPlaylistSnapshot, rebuilt each rule-group run
+    // (not persistent). useClones is off because it holds the read's Promise.
+    jellyfinplaylists: new Cache(
+      'jellyfinplaylists',
+      'Jellyfin playlists',
+      'jellyfinplaylists',
+      {
+        stdTtl: 3600, // 1 hour, so a long run can't expire it mid-sweep
+        useClones: false,
+        maxKeys: 0, // one key per library, never evicted mid-run
       },
     ),
     emby: new Cache('emby', 'Emby API', 'emby'),

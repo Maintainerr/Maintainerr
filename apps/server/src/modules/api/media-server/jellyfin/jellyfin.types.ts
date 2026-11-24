@@ -3,7 +3,11 @@
  * These types supplement the @jellyfin/sdk types with Maintainerr-specific needs.
  */
 
-import type { WatchRecord } from '@maintainerr/contracts';
+import type {
+  MediaItem,
+  MediaPlaylist,
+  WatchRecord,
+} from '@maintainerr/contracts';
 import type {
   BaseItemDto,
   UserDto,
@@ -41,6 +45,12 @@ export interface JellyfinWatchSnapshot {
    */
   playedCompletionThreshold: number | undefined;
 }
+
+/** Every user's playlists by id, each with its items by id. */
+export type JellyfinPlaylistSnapshot = Map<
+  string,
+  { playlist: MediaPlaylist; items: Map<string, MediaItem> }
+>;
 
 export type JellyfinMediaItem = BaseItemDto;
 

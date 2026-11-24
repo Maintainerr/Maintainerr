@@ -95,7 +95,10 @@ import {
 } from './jellyfin.constants';
 import { readMetadataInBatches } from '../metadata-batch.util';
 import { JellyfinMapper } from './jellyfin.mapper';
-import type { JellyfinWatchSnapshot } from './jellyfin.types';
+import type {
+  JellyfinPlaylistSnapshot,
+  JellyfinWatchSnapshot,
+} from './jellyfin.types';
 
 const retryingSdkInstances = new WeakSet<object>();
 
@@ -299,6 +302,7 @@ export class JellyfinAdapterService implements IMediaServerService {
     // Clear the cache when uninitializing
     this.cache.flush();
     cacheManager.getCache('jellyfinwatchhistory').data.flushAll();
+    cacheManager.getCache('jellyfinplaylists').data.flushAll();
   }
 
   isSetup(): boolean {
@@ -2681,49 +2685,136 @@ export class JellyfinAdapterService implements IMediaServerService {
   // getWatchlistForUser is not implemented for Jellyfin
   // as it doesn't have a watchlist API
 
+  /**
+   * Every user's playlists, because Jellyfin lists only the playlists the
+   * reader can see. Throws when a read fails, so it never counts as "in no
+   * playlist".
+   */
   async getPlaylists(libraryId: string): Promise<MediaPlaylist[]> {
     if (!this.api) return [];
 
-    try {
-      const userId = await this.getUserId();
-
-      // Jellyfin playlists are not library-specific, but we filter by parentId
-      // to maintain consistency with the interface contract
-      const response = await getLibraryApi(this.api).getItems({
-        userId,
-        parentId: libraryId,
-        includeItemTypes: [BaseItemKind.Playlist],
-        recursive: true,
-        fields: [ItemFields.Overview, ItemFields.DateCreated],
-      });
-
-      return (response.data.Items || []).map(JellyfinMapper.toMediaPlaylist);
-    } catch (error) {
-      this.logger.error(
-        `Failed to get Jellyfin playlists for library ${libraryId}`,
-        error,
-      );
-      return [];
-    }
+    const snapshot = await this.getPlaylistSnapshot(libraryId);
+    return [...snapshot.values()].map(({ playlist }) => playlist);
   }
 
+  /** Items of any user's playlist. Throws like getPlaylists. */
   async getPlaylistItems(playlistId: string): Promise<MediaItem[]> {
     if (!this.api) return [];
 
+    // Library id '' is the unfiltered listing, so every playlist is in it.
+    const snapshot = await this.getPlaylistSnapshot('');
+    return [...(snapshot.get(playlistId)?.items.values() ?? [])];
+  }
+
+  /**
+   * One read per rule run, shared by concurrent callers and kept if it fails.
+   * The pending read itself is cached, so the flush at a run's start also drops
+   * a read that began before the run.
+   */
+  private getPlaylistSnapshot(
+    libraryId: string,
+  ): Promise<JellyfinPlaylistSnapshot> {
+    const cache = cacheManager.getCache('jellyfinplaylists').data;
+    let snapshot = cache.get<Promise<JellyfinPlaylistSnapshot>>(libraryId);
+    if (snapshot === undefined) {
+      snapshot = this.fetchPlaylistSnapshot(libraryId);
+      cache.set(libraryId, snapshot);
+    }
+    return snapshot;
+  }
+
+  private async fetchPlaylistSnapshot(
+    libraryId: string,
+  ): Promise<JellyfinPlaylistSnapshot> {
+    const snapshot: JellyfinPlaylistSnapshot = new Map();
+
     try {
-      const userId = await this.getUserId();
+      const users = await this.getUsers(true);
+      const readUsers = await this.mapUsersBatched(async (user) => {
+        // Jellyfin playlists are not library-specific, but we filter by
+        // parentId to maintain consistency with the interface contract
+        const response = await getLibraryApi(this.api).getItems({
+          userId: user.id,
+          parentId: libraryId,
+          includeItemTypes: [BaseItemKind.Playlist],
+          recursive: true,
+          fields: [ItemFields.Overview, ItemFields.DateCreated],
+        });
+
+        const playlists = response.data.Items;
+        if (!Array.isArray(playlists)) {
+          throw new Error(`Jellyfin returned no playlist list for ${user.id}`);
+        }
+
+        for (const playlist of playlists) {
+          if (!playlist.Id) continue;
+          const items = await this.getUserPlaylistItems(playlist.Id, user.id);
+
+          // Jellyfin filters items by the reader's access, so merge every
+          // user's view, one entry per item.
+          let entry = snapshot.get(playlist.Id);
+          if (entry === undefined) {
+            entry = {
+              playlist: JellyfinMapper.toMediaPlaylist(playlist),
+              items: new Map(),
+            };
+            snapshot.set(playlist.Id, entry);
+          }
+          for (const item of items) {
+            if (!item.Id || entry.items.has(item.Id)) continue;
+            entry.items.set(item.Id, JellyfinMapper.toMediaItem(item));
+          }
+        }
+        return user.id;
+      }, true);
+
+      // mapUsersBatched drops failed users; their playlists would look empty.
+      if (readUsers.length !== users.length) {
+        throw new Error(
+          `Jellyfin playlists read for ${readUsers.length} of ${users.length} users`,
+        );
+      }
+
+      return snapshot;
+    } catch (error) {
+      this.logger.warn(
+        "Couldn't read every Jellyfin user's playlists; playlist rules skip items for the rest of this run",
+      );
+      this.logger.debug(error);
+      throw error;
+    }
+  }
+
+  /**
+   * A playlist's items as one user sees them. Jellyfin answers 403 for a
+   * playlist a user can list but not open (a playlist file inside a library),
+   * so a 403 counts as no items, not as a failed read.
+   */
+  private async getUserPlaylistItems(
+    playlistId: string,
+    userId: string,
+  ): Promise<BaseItemDto[]> {
+    try {
       const response = await getPlaylistApi(this.api).getPlaylistItems({
         userId,
         playlistId,
+        enableImages: false,
+        enableUserData: false,
       });
 
-      return (response.data.Items || []).map(JellyfinMapper.toMediaItem);
+      const items = response.data.Items;
+      if (!Array.isArray(items)) {
+        throw new Error(`Jellyfin returned no item list for ${playlistId}`);
+      }
+      return items;
     } catch (error) {
-      this.logger.error(
-        `Failed to get Jellyfin playlist items for ${playlistId}`,
-        error,
-      );
-      return [];
+      if (isAxiosError(error) && error.response?.status === 403) {
+        this.logger.debug(
+          `Jellyfin refused playlist ${playlistId} to user ${userId}; counted as empty`,
+        );
+        return [];
+      }
+      throw error;
     }
   }
 
@@ -2772,6 +2863,8 @@ export class JellyfinAdapterService implements IMediaServerService {
     // state, so it has to go too - otherwise a manual mark-watched would stay
     // invisible for the rest of the batch, which is exactly #3274.
     cacheManager.getCache('jellyfinwatchhistory').data.flushAll();
+    // Test Media resets through here, so it reads playlists fresh.
+    cacheManager.getCache('jellyfinplaylists').data.flushAll();
 
     if (itemId) {
       // Watch-history entries are keyed per item. Season/show getters
