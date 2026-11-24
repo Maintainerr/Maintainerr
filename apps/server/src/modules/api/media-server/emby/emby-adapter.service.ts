@@ -832,7 +832,7 @@ export class EmbyAdapterService implements IMediaServerService {
   }
 
   /**
-   * Items inside a playlist. Mirrors `JellyfinAdapterService.getPlaylistItems`.
+   * Items inside a playlist, as the configured Emby user sees them.
    */
   async getPlaylistItems(playlistId: string): Promise<MediaItem[]> {
     if (!this.http) return [];
