@@ -725,6 +725,10 @@ msgstr "Choose a color"
 msgid "Choose a color for {fieldLabel}"
 msgstr "Choose a color for {fieldLabel}"
 
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Choose a supported action"
+msgstr "Choose a supported action"
+
 #: src/components/Settings/Main/DatabaseBackupModal.tsx
 msgid "Choose the filename for your database backup."
 msgstr "Choose the filename for your database backup."
@@ -3818,6 +3822,10 @@ msgstr "Storage Metrics - Maintainerr"
 #: src/components/StorageMetrics/index.tsx
 msgid "Storage metrics are unavailable."
 msgstr "Storage metrics are unavailable."
+
+#: src/components/Rules/RuleGroup/AddModal/ArrAction/index.tsx
+msgid "Stored action (unsupported)"
+msgstr "Stored action (unsupported)"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Stored library (unavailable)"

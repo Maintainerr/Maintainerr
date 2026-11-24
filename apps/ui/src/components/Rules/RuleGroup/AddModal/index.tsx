@@ -25,7 +25,10 @@ import {
   overlayScopeValues,
   OverlayTemplate,
   parseCollectionSortKey,
+  SERVARR_ACTIONS,
   ServarrAction,
+  servarrActionManager,
+  supportedServarrActions,
   supportsFeature,
 } from '@maintainerr/contracts'
 import { isValidCron } from 'cron-validator'
@@ -61,7 +64,7 @@ import { Input } from '../../../Forms/Input'
 import { Select } from '../../../Forms/Select'
 import type { AgentConfiguration } from '../../../../api/notifications'
 import RuleCreator, { IRule } from '../../Rule/RuleCreator'
-import ArrAction from './ArrAction'
+import ArrAction, { toActionOptions } from './ArrAction'
 import CollectionPosterPicker from './CollectionPosterPicker'
 import QualityProfileSelector from './QualityProfileSelector'
 
@@ -185,153 +188,85 @@ const sortActionOptions = <T extends { name: string }>(options: T[]): T[] => {
   )
 }
 
+// The actions come from SERVARR_ACTIONS, the list the server enforces on save;
+// the builders below only name them.
+const buildActionOptions = <A extends ServarrAction>(
+  actions: readonly A[],
+  labels: Record<NoInfer<A>, string>,
+) => sortActionOptions(toActionOptions(actions, labels))
+
 const buildRadarrActionOptions = () =>
-  sortActionOptions([
-    {
-      id: ServarrAction.DELETE,
-      name: globalT`Delete`,
-    },
-    {
-      id: ServarrAction.UNMONITOR_DELETE_ALL,
-      name: globalT`Unmonitor and delete files`,
-    },
-    {
-      id: ServarrAction.UNMONITOR,
-      name: globalT`Unmonitor and keep files`,
-    },
-    {
-      id: ServarrAction.DO_NOTHING,
-      name: globalT`Do nothing`,
-    },
-    {
-      id: ServarrAction.CHANGE_QUALITY_PROFILE,
-      name: globalT`Change quality profile and search`,
-    },
-  ])
+  buildActionOptions(SERVARR_ACTIONS.radarr.movie, {
+    [ServarrAction.DELETE]: globalT`Delete`,
+    [ServarrAction.UNMONITOR_DELETE_ALL]: globalT`Unmonitor and delete files`,
+    [ServarrAction.UNMONITOR]: globalT`Unmonitor and keep files`,
+    [ServarrAction.DO_NOTHING]: globalT`Do nothing`,
+    [ServarrAction.CHANGE_QUALITY_PROFILE]: globalT`Change quality profile and search`,
+  })
 
 const buildSonarrShowActionOptions = () =>
-  sortActionOptions([
-    {
-      id: ServarrAction.DELETE,
-      name: globalT`Delete entire show`,
-    },
-    {
-      id: ServarrAction.UNMONITOR_DELETE_ALL,
-      name: globalT`Unmonitor show + seasons, delete all episodes`,
-    },
-    {
-      id: ServarrAction.UNMONITOR_DELETE_EXISTING,
-      name: globalT`Unmonitor show, delete existing episodes`,
-    },
-    {
-      id: ServarrAction.UNMONITOR,
-      name: globalT`Unmonitor show + seasons, keep files`,
-    },
-    {
-      id: ServarrAction.DO_NOTHING,
-      name: globalT`Do nothing`,
-    },
-    {
-      id: ServarrAction.CHANGE_QUALITY_PROFILE,
-      name: globalT`Change quality profile and search`,
-    },
-  ])
+  buildActionOptions(SERVARR_ACTIONS.sonarr.show, {
+    [ServarrAction.DELETE]: globalT`Delete entire show`,
+    [ServarrAction.UNMONITOR_DELETE_ALL]: globalT`Unmonitor show + seasons, delete all episodes`,
+    [ServarrAction.UNMONITOR_DELETE_EXISTING]: globalT`Unmonitor show, delete existing episodes`,
+    [ServarrAction.UNMONITOR]: globalT`Unmonitor show + seasons, keep files`,
+    [ServarrAction.DO_NOTHING]: globalT`Do nothing`,
+    [ServarrAction.CHANGE_QUALITY_PROFILE]: globalT`Change quality profile and search`,
+  })
 
 const buildSonarrSeasonActionOptions = () =>
-  sortActionOptions([
-    {
-      id: ServarrAction.DELETE,
-      name: globalT`Unmonitor and delete season`,
-    },
-    {
-      id: ServarrAction.DELETE_SHOW_IF_EMPTY,
-      name: globalT`Unmonitor and delete season + delete show if empty`,
-    },
-    {
-      id: ServarrAction.UNMONITOR_DELETE_EXISTING,
-      name: globalT`Unmonitor and delete existing episodes`,
-    },
-    {
-      id: ServarrAction.UNMONITOR,
-      name: globalT`Unmonitor season and keep files`,
-    },
-    {
-      id: ServarrAction.UNMONITOR_SHOW_IF_EMPTY,
-      name: globalT`Unmonitor season + unmonitor show if empty`,
-    },
-    {
-      id: ServarrAction.DO_NOTHING,
-      name: globalT`Do nothing`,
-    },
-  ])
+  buildActionOptions(SERVARR_ACTIONS.sonarr.season, {
+    [ServarrAction.DELETE]: globalT`Unmonitor and delete season`,
+    [ServarrAction.DELETE_SHOW_IF_EMPTY]: globalT`Unmonitor and delete season + delete show if empty`,
+    [ServarrAction.UNMONITOR_DELETE_EXISTING]: globalT`Unmonitor and delete existing episodes`,
+    [ServarrAction.UNMONITOR]: globalT`Unmonitor season and keep files`,
+    [ServarrAction.UNMONITOR_SHOW_IF_EMPTY]: globalT`Unmonitor season + unmonitor show if empty`,
+    [ServarrAction.DO_NOTHING]: globalT`Do nothing`,
+  })
 
 const buildSonarrEpisodeActionOptions = () =>
-  sortActionOptions([
-    {
-      id: ServarrAction.DELETE,
-      name: globalT`Unmonitor and delete episode`,
-    },
-    {
-      id: ServarrAction.UNMONITOR,
-      name: globalT`Unmonitor and keep file`,
-    },
-    {
-      id: ServarrAction.DO_NOTHING,
-      name: globalT`Do nothing`,
-    },
-  ])
+  buildActionOptions(SERVARR_ACTIONS.sonarr.episode, {
+    [ServarrAction.DELETE]: globalT`Unmonitor and delete episode`,
+    [ServarrAction.UNMONITOR]: globalT`Unmonitor and keep file`,
+    [ServarrAction.DO_NOTHING]: globalT`Do nothing`,
+  })
 
 const buildSportarrShowActionOptions = () =>
-  sortActionOptions([
-    {
-      id: ServarrAction.DELETE,
-      name: globalT`Delete entire league`,
-    },
-    {
-      id: ServarrAction.UNMONITOR,
-      name: globalT`Unmonitor league, keep files`,
-    },
-    {
-      id: ServarrAction.DO_NOTHING,
-      name: globalT`Do nothing`,
-    },
-    {
-      id: ServarrAction.CHANGE_QUALITY_PROFILE,
-      name: globalT`Change quality profile`,
-    },
-  ])
+  buildActionOptions(SERVARR_ACTIONS.sportarr.show, {
+    [ServarrAction.DELETE]: globalT`Delete entire league`,
+    [ServarrAction.UNMONITOR]: globalT`Unmonitor league, keep files`,
+    [ServarrAction.DO_NOTHING]: globalT`Do nothing`,
+    [ServarrAction.CHANGE_QUALITY_PROFILE]: globalT`Change quality profile`,
+  })
 
 const buildSportarrSeasonActionOptions = () =>
-  sortActionOptions([
-    {
-      id: ServarrAction.DELETE,
-      name: globalT`Unmonitor season, delete event files`,
-    },
-    {
-      id: ServarrAction.UNMONITOR,
-      name: globalT`Unmonitor season, keep files`,
-    },
-    {
-      id: ServarrAction.DO_NOTHING,
-      name: globalT`Do nothing`,
-    },
-  ])
+  buildActionOptions(SERVARR_ACTIONS.sportarr.season, {
+    [ServarrAction.DELETE]: globalT`Unmonitor season, delete event files`,
+    [ServarrAction.UNMONITOR]: globalT`Unmonitor season, keep files`,
+    [ServarrAction.DO_NOTHING]: globalT`Do nothing`,
+  })
 
 const buildSportarrEpisodeActionOptions = () =>
-  sortActionOptions([
-    {
-      id: ServarrAction.DELETE,
-      name: globalT`Delete event file`,
-    },
-    {
-      id: ServarrAction.UNMONITOR,
-      name: globalT`Unmonitor event, keep file`,
-    },
-    {
-      id: ServarrAction.DO_NOTHING,
-      name: globalT`Do nothing`,
-    },
-  ])
+  buildActionOptions(SERVARR_ACTIONS.sportarr.episode, {
+    [ServarrAction.DELETE]: globalT`Delete event file`,
+    [ServarrAction.UNMONITOR]: globalT`Unmonitor event, keep file`,
+    [ServarrAction.DO_NOTHING]: globalT`Do nothing`,
+  })
+
+// The editor flags, and Save refuses, what the server refuses on save (#4137).
+const isSupportedArrAction = (data: {
+  dataType: string
+  arrAction?: number
+  radarrSettingsId?: number | null
+  sonarrSettingsId?: number | null
+  sportarrSettingsId?: number | null
+}) =>
+  data.arrAction === undefined ||
+  !isValidMediaItemType(data.dataType) ||
+  supportedServarrActions(
+    data.dataType,
+    servarrActionManager(data.dataType, data),
+  ).includes(data.arrAction)
 
 export const ruleGroupFormSchema = z
   .object({
@@ -455,6 +390,10 @@ export const ruleGroupFormSchema = z
       error: () => globalT`Take action after days is required for this action`,
     },
   )
+  .refine(isSupportedArrAction, {
+    path: ['arrAction'],
+    error: () => globalT`Choose a supported action`,
+  })
   .superRefine((data, ctx) => {
     if (data.arrAction === ServarrAction.CHANGE_QUALITY_PROFILE) {
       const isMovie = data.dataType === 'movie'
@@ -588,6 +527,7 @@ const AddModal = (props: AddModal) => {
     control,
     setValue,
     getValues,
+    clearErrors,
     formState: { errors },
   } = useForm<RuleGroupFormInput, any, RuleGroupFormOutput>({
     resolver: zodResolver(ruleGroupFormSchema),
@@ -654,6 +594,13 @@ const AddModal = (props: AddModal) => {
     control,
     name: 'sportarrQualityProfileId',
   }) as number | null | undefined
+  const arrActionUnsupported = !isSupportedArrAction({
+    dataType: selectedType,
+    arrAction: arrActionValue,
+    radarrSettingsId,
+    sonarrSettingsId,
+    sportarrSettingsId,
+  })
   const hasSelectedRadarrServer = radarrSettingsId != null
   const hasSelectedSonarrServer = sonarrSettingsId != null
   // Which folder the chosen action strands, or undefined when it strands none.
@@ -860,6 +807,7 @@ const AddModal = (props: AddModal) => {
 
   function updateArrOption(value: number | undefined) {
     setValue('arrAction', value)
+    clearErrors('arrAction')
 
     if (
       value === undefined ||
@@ -1298,6 +1246,7 @@ const AddModal = (props: AddModal) => {
                       type="Radarr"
                       mediaServerName={mediaServerName}
                       accActionError={errors.arrAction?.message}
+                      actionUnsupported={arrActionUnsupported}
                       arrAction={arrActionValue}
                       settingIdError={errors.radarrSettingsId?.message}
                       settingId={radarrSettingsId}
@@ -1398,6 +1347,8 @@ const AddModal = (props: AddModal) => {
                           <ArrAction
                             type="Sonarr"
                             mediaServerName={mediaServerName}
+                            accActionError={errors.arrAction?.message}
+                            actionUnsupported={arrActionUnsupported}
                             arrAction={arrActionValue}
                             settingId={sonarrSettingsId}
                             onUpdate={(
@@ -1446,6 +1397,8 @@ const AddModal = (props: AddModal) => {
                             <ArrAction
                               type="Sportarr"
                               mediaServerName={mediaServerName}
+                              accActionError={errors.arrAction?.message}
+                              actionUnsupported={arrActionUnsupported}
                               arrAction={arrActionValue}
                               settingId={sportarrSettingsId}
                               onUpdate={(
