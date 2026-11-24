@@ -18,6 +18,7 @@ type AvailableCacheIds =
   | 'jellyfinwatchhistory'
   | 'jellyfinplaylists'
   | 'emby'
+  | 'embyplaylists'
   | 'sportarrmetadata';
 
 type CacheType = AvailableCacheIds | 'radarr' | 'sonarr' | 'sportarr';
@@ -240,6 +241,17 @@ class CacheManager {
       },
     ),
     emby: new Cache('emby', 'Emby API', 'emby'),
+    // EmbyAdapterService.getPlaylistSnapshot, configured like jellyfinplaylists.
+    embyplaylists: new Cache(
+      'embyplaylists',
+      'Emby playlists',
+      'embyplaylists',
+      {
+        stdTtl: 3600, // 1 hour, so a long run can't expire it mid-sweep
+        useClones: false,
+        maxKeys: 0, // one key per library, never evicted mid-run
+      },
+    ),
     // Artwork and descriptions for Sportarr leagues. Long-lived like the tmdb
     // and tvdb caches: a league's poster changes rarely and every card asks
     // for it. The Sportarr card on the metadata settings page clears it.

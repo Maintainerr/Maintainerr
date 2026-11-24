@@ -4,6 +4,7 @@ import { EMBY_METADATA_FIELDS } from './emby-adapter.service';
 import { EMBY_CACHE_TTL } from './emby.constants';
 import { EmbyAdapterService } from './emby-adapter.service';
 import { EmbyMapper } from './emby.mapper';
+import type { EmbyItemsQueryResponse } from './emby.types';
 
 const embyCacheMocks = {
   flush: jest.fn(),
@@ -1524,6 +1525,179 @@ describe('EmbyAdapterService', () => {
           'no user to scope the lookup',
         );
       });
+    });
+  });
+
+  describe('playlists', () => {
+    // A playlist read is cached for the rule run, so the cache mock gets a real
+    // store here. Only the playlist cache is flushed with data.flushAll.
+    const store = new Map<string, unknown>();
+    const playlistItems: Record<string, string[]> = {
+      'playlist-1': ['movie-1'],
+      'playlist-2': ['movie-2'],
+    };
+    const readEmby = (url: string): Promise<{ data: EmbyItemsQueryResponse }> =>
+      Promise.resolve(
+        url === '/Items'
+          ? {
+              data: {
+                Items: Object.keys(playlistItems).map((Id) => ({
+                  Id,
+                  Name: 'Sample Playlist',
+                })),
+                TotalRecordCount: Object.keys(playlistItems).length,
+              },
+            }
+          : {
+              data: {
+                Items: playlistItems[url.split('/')[2]].map((Id) => ({
+                  Id,
+                  Type: 'Movie',
+                })),
+              },
+            },
+      );
+    const itemIds = async (playlistId: string) =>
+      (await service.getPlaylistItems(playlistId)).map(({ id }) => id);
+
+    beforeEach(() => {
+      store.clear();
+      embyCacheMocks.data.get.mockImplementation((key: string) =>
+        store.get(key),
+      );
+      embyCacheMocks.data.set.mockImplementation(
+        (key: string, value: unknown) => store.set(key, value),
+      );
+      embyCacheMocks.data.del.mockImplementation((key: string) =>
+        store.delete(key),
+      );
+      embyCacheMocks.data.flushAll.mockImplementation(() => store.clear());
+      http.get.mockImplementation(readEmby);
+    });
+
+    // Emby answers 500 items per page, and a truncated page is still a 200.
+    it('reads every page of the playlist listing', async () => {
+      http.get.mockImplementation(
+        (url: string, config: { params: { StartIndex: number } }) =>
+          url === '/Items'
+            ? Promise.resolve({
+                data: {
+                  Items: [
+                    {
+                      Id: config.params.StartIndex
+                        ? 'playlist-2'
+                        : 'playlist-1',
+                    },
+                  ],
+                  TotalRecordCount: 2,
+                },
+              })
+            : readEmby(url),
+      );
+
+      const playlists = await service.getPlaylists('');
+
+      expect(playlists.map(({ id }) => id)).toEqual([
+        'playlist-1',
+        'playlist-2',
+      ]);
+      expect(await itemIds('playlist-2')).toEqual(['movie-2']);
+    });
+
+    // A partial read would let a "not in any playlist" rule match an item that
+    // is in one, so a failed read must not look empty.
+    it.each([
+      {
+        failure: 'the listing fails',
+        get: (url: string) =>
+          url === '/Items'
+            ? Promise.reject(createResponseError(502))
+            : readEmby(url),
+      },
+      {
+        failure: 'the listing is not a list',
+        get: (url: string) =>
+          url === '/Items'
+            ? Promise.resolve({ data: '<html>' })
+            : readEmby(url),
+      },
+      {
+        failure: "a playlist's items fail",
+        get: (url: string) =>
+          url.includes('playlist-2')
+            ? Promise.reject(createResponseError(502))
+            : readEmby(url),
+      },
+      {
+        failure: "a playlist's items are not a list",
+        get: (url: string) =>
+          url.includes('playlist-2')
+            ? Promise.resolve({ data: '<html>' })
+            : readEmby(url),
+      },
+    ])(
+      'rejects instead of answering a partial list when $failure',
+      async ({ get }) => {
+        http.get.mockImplementation(get);
+
+        await expect(service.getPlaylists('')).rejects.toThrow();
+      },
+    );
+
+    it('keeps a failed read for the rest of the run instead of reading again', async () => {
+      http.get.mockRejectedValue(createResponseError(502));
+      await expect(service.getPlaylists('')).rejects.toThrow();
+
+      http.get.mockImplementation(readEmby);
+      await expect(service.getPlaylistItems('playlist-1')).rejects.toThrow();
+    });
+
+    // Test Media resets the caches, so it must read playlists fresh, including
+    // after a failed read earlier in the run.
+    it('reads playlists again after resetMetadataCache', async () => {
+      http.get.mockRejectedValue(createResponseError(502));
+      await expect(service.getPlaylists('')).rejects.toThrow();
+
+      http.get.mockImplementation(readEmby);
+      service.resetMetadataCache();
+
+      expect(await itemIds('playlist-1')).toEqual(['movie-1']);
+    });
+
+    // A rule run flushes the caches when it starts, and a read still pending
+    // then (from a Test Media click) shows playlists from before the run.
+    it('reads again after a flush instead of using a read still pending', async () => {
+      let edited = false;
+      let markHeld: () => void;
+      const held = new Promise<void>((resolve) => {
+        markHeld = resolve;
+      });
+      let release: () => void;
+      const released = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      http.get.mockImplementation(async (url: string) => {
+        const response = await readEmby(url);
+        if (url.includes('playlist-1')) {
+          if (edited) {
+            response.data.Items.push({ Id: 'movie-4', Type: 'Movie' });
+          } else {
+            markHeld!();
+            await released;
+          }
+        }
+        return response;
+      });
+
+      const before = service.getPlaylistItems('playlist-1');
+      await held;
+      embyCacheMocks.data.flushAll();
+      edited = true;
+      const after = service.getPlaylistItems('playlist-1');
+      release!();
+
+      const [, items] = await Promise.all([before, after]);
+      expect(items.map(({ id }) => id)).toContain('movie-4');
     });
   });
 });
