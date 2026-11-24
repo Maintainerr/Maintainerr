@@ -22,8 +22,10 @@
     "knip": "knip",
     "check-types": "turbo check-types",
     "check-node-version": "node tools/check-node-version.mjs",
+    "check-agent-secrets": "gglint secrets",
     "test": "turbo test --",
-    "test:watch": "turbo test:watch"
+    "test:watch": "turbo test:watch",
+    "postinstall": "husky || true"
   },
   "workspaces": [
     "apps/ui",
@@ -34,11 +36,13 @@
     "node": ">=26.0.0"
   },
   "devDependencies": {
+    "@gglint/cli": "0.5.0",
     "@semantic-release/changelog": "^7.0.0",
     "@semantic-release/commit-analyzer": "^13.0.1",
     "@semantic-release/exec": "^7.1.0",
     "@semantic-release/git": "^11.0.1",
     "@types/node": "^26.6.6",
+    "husky": "9.1.7",
     "knip": "^6.45.0",
     "pofile-ts": "^4.0.3",
     "semantic-release": "^26.0.1",
