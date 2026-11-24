@@ -174,12 +174,6 @@ export class JellyfinAdapterService implements IMediaServerService {
     string,
     Promise<MediaItem | undefined>
   >();
-  // Shared in-flight playlist snapshot reads, keyed by library id. See
-  // getPlaylistSnapshot.
-  private readonly playlistRequests = new Map<
-    string,
-    Promise<JellyfinPlaylistSnapshot>
-  >();
 
   constructor(
     private readonly settingsDataService: SettingsDataService,
@@ -2692,8 +2686,9 @@ export class JellyfinAdapterService implements IMediaServerService {
   // as it doesn't have a watchlist API
 
   /**
-   * Every user's playlists, because Jellyfin lists only the reader's own.
-   * Throws when a read fails, so it never counts as "in no playlist".
+   * Every user's playlists, because Jellyfin lists only the playlists the
+   * reader can see. Throws when a read fails, so it never counts as "in no
+   * playlist".
    */
   async getPlaylists(libraryId: string): Promise<MediaPlaylist[]> {
     if (!this.api) return [];
@@ -2711,37 +2706,21 @@ export class JellyfinAdapterService implements IMediaServerService {
     return [...(snapshot.get(playlistId)?.items.values() ?? [])];
   }
 
-  /** Built once per run; a failure is kept too, so items skip without a resweep. */
-  private async getPlaylistSnapshot(
+  /**
+   * One read per rule run, shared by concurrent callers and kept if it fails.
+   * The pending read itself is cached, so the flush at a run's start also drops
+   * a read that began before the run.
+   */
+  private getPlaylistSnapshot(
     libraryId: string,
   ): Promise<JellyfinPlaylistSnapshot> {
     const cache = cacheManager.getCache('jellyfinplaylists').data;
-    const cached = cache.get<JellyfinPlaylistSnapshot | { failure: unknown }>(
-      libraryId,
-    );
-    if (cached instanceof Map) return cached;
-    if (cached !== undefined) throw cached.failure;
-
-    const inFlight = this.playlistRequests.get(libraryId);
-    if (inFlight !== undefined) return inFlight;
-
-    const pending = this.fetchPlaylistSnapshot(libraryId)
-      .then(
-        (snapshot) => {
-          cache.set(libraryId, snapshot);
-          return snapshot;
-        },
-        (error: unknown) => {
-          cache.set(libraryId, { failure: error });
-          throw error;
-        },
-      )
-      .finally(() => {
-        this.playlistRequests.delete(libraryId);
-      });
-    this.playlistRequests.set(libraryId, pending);
-
-    return pending;
+    let snapshot = cache.get<Promise<JellyfinPlaylistSnapshot>>(libraryId);
+    if (snapshot === undefined) {
+      snapshot = this.fetchPlaylistSnapshot(libraryId);
+      cache.set(libraryId, snapshot);
+    }
+    return snapshot;
   }
 
   private async fetchPlaylistSnapshot(
@@ -2807,9 +2786,9 @@ export class JellyfinAdapterService implements IMediaServerService {
   }
 
   /**
-   * A playlist's items as one user sees them. A 403 is Jellyfin's answer for a
-   * playlist it serves to nobody (a playlist file inside a library), not a
-   * failed read, so it counts as no items.
+   * A playlist's items as one user sees them. Jellyfin answers 403 for a
+   * playlist a user can list but not open (a playlist file inside a library),
+   * so a 403 counts as no items, not as a failed read.
    */
   private async getUserPlaylistItems(
     playlistId: string,

@@ -228,7 +228,7 @@ class CacheManager {
       },
     ),
     // JellyfinAdapterService.getPlaylistSnapshot, rebuilt each rule-group run
-    // (not persistent). useClones is off because it holds a Map or a failure.
+    // (not persistent). useClones is off because it holds the read's Promise.
     jellyfinplaylists: new Cache(
       'jellyfinplaylists',
       'Jellyfin playlists',

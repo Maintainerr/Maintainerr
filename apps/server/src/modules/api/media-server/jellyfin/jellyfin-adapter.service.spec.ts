@@ -2105,6 +2105,47 @@ describe('JellyfinAdapterService', () => {
       const items = await service.getPlaylistItems('playlist-other');
       expect(items.map(({ id }) => id)).toEqual(['movie-3']);
     });
+
+    // A rule run flushes the caches when it starts, and a read still pending
+    // then (from a Test Media click) shows playlists from before the run.
+    it('reads again after a flush instead of using a read still pending', async () => {
+      let edited = false;
+      let markHeld: () => void;
+      const held = new Promise<void>((resolve) => {
+        markHeld = resolve;
+      });
+      let release: () => void;
+      const released = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      jellyfinApiMocks.getPlaylistItems.mockImplementation(
+        async (args: { userId: string; playlistId: string }) => {
+          const response = await readPlaylist(args);
+          if (
+            args.userId === 'user-1' &&
+            args.playlistId === 'playlist-shared'
+          ) {
+            if (edited) {
+              response.data.Items.push({ Id: 'movie-4', Type: 'Movie' });
+            } else {
+              markHeld!();
+              await released;
+            }
+          }
+          return response;
+        },
+      );
+
+      const before = service.getPlaylistItems('playlist-shared');
+      await held;
+      mockPlaylistCache.data.flushAll();
+      edited = true;
+      const after = service.getPlaylistItems('playlist-shared');
+      release!();
+
+      const [, items] = await Promise.all([before, after]);
+      expect(items.map(({ id }) => id)).toContain('movie-4');
+    });
   });
 
   describe('getItemFavoritedBy', () => {
