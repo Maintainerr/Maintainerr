@@ -19,7 +19,3 @@ jellyfin-dev-documents/
 
 # Playwright MCP scratch artifacts (snapshots, screenshots)
 .playwright-mcp/
-
-# Claude Code files meant for one person's machine
-.claude/settings.local.json
-CLAUDE.local.md
