@@ -5,6 +5,7 @@ type AvailableCacheIds =
   | 'tvdb'
   | 'plexguid'
   | 'plexwatchhistory'
+  | 'plexplaylists'
   | 'plextv'
   | 'seerr'
   | 'seerrrequests'
@@ -159,6 +160,17 @@ class CacheManager {
         // One entry per library swept, not one per item - exempt from the
         // key-count bound so a snapshot is never evicted mid-run.
         maxKeys: 0,
+      },
+    ),
+    // PlexApiService.getPlaylistSnapshot, configured like jellyfinplaylists.
+    plexplaylists: new Cache(
+      'plexplaylists',
+      'Plex playlists',
+      'plexplaylists',
+      {
+        stdTtl: 3600, // 1 hour, so a long run can't expire it mid-sweep
+        useClones: false,
+        maxKeys: 0, // one snapshot, never evicted mid-run
       },
     ),
     plextv: new Cache('plextv', 'Plex.tv', 'plextv'),
