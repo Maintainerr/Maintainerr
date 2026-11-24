@@ -1591,3 +1591,136 @@ describe('PlexApiService.getWatchlistIdsForUser', () => {
     ).resolves.toBeUndefined();
   });
 });
+
+describe('PlexApiService.getPlaylists', () => {
+  let service: PlexApiService;
+  let playlistsCache: { flushAll: () => void };
+  let query: jest.Mock;
+  let queryAll: jest.Mock;
+
+  const playlistItems: Record<string, string[]> = {
+    '/playlists/101/items': ['1', '1'],
+    '/playlists/102/items': ['1', '2'],
+  };
+  const readItems = ({ uri }: { uri: string }) =>
+    Promise.resolve({
+      MediaContainer: {
+        Metadata: playlistItems[uri].map((ratingKey) => ({ ratingKey })),
+      },
+    });
+  const titles = async (ratingKey: string) =>
+    (await service.getPlaylists(ratingKey)).map(({ title }) => title);
+
+  beforeEach(async () => {
+    const { unit } = await TestBed.solitary(PlexApiService).compile();
+    service = unit;
+
+    const cacheManager = (await import('../lib/cache')).default;
+    playlistsCache = cacheManager.getCache('plexplaylists').data;
+    playlistsCache.flushAll();
+
+    queryAll = jest.fn().mockResolvedValue({
+      MediaContainer: {
+        Metadata: [
+          { key: '/playlists/101/items', title: 'Sample Playlist A' },
+          { key: '/playlists/102/items', title: 'Sample Playlist B' },
+        ],
+      },
+    });
+    query = jest.fn().mockImplementation(readItems);
+    (service as any).plexClient = { query, queryAll };
+  });
+
+  it('answers the playlists that hold an item, each once', async () => {
+    expect(await titles('1')).toEqual([
+      'Sample Playlist A',
+      'Sample Playlist B',
+    ]);
+    expect(await titles('2')).toEqual(['Sample Playlist B']);
+    expect(await titles('3')).toEqual([]);
+  });
+
+  // A partial read would let a "not in any playlist" rule match an item that
+  // is in one, so a failed read must not look empty.
+  it.each([
+    {
+      failure: 'the listing fails',
+      arrange: () => queryAll.mockRejectedValue(new Error('unreachable')),
+    },
+    {
+      failure: 'the listing has no MediaContainer',
+      arrange: () => queryAll.mockResolvedValue({}),
+    },
+    {
+      failure: "a playlist's items fail",
+      arrange: () =>
+        query.mockImplementation(({ uri }: { uri: string }) =>
+          uri.includes('102')
+            ? Promise.reject(new Error('unreachable'))
+            : readItems({ uri }),
+        ),
+    },
+    {
+      failure: "a playlist's items have no MediaContainer",
+      arrange: () =>
+        query.mockImplementation(({ uri }: { uri: string }) =>
+          uri.includes('102') ? Promise.resolve({}) : readItems({ uri }),
+        ),
+    },
+  ])(
+    'rejects instead of answering a partial list when $failure',
+    async ({ arrange }) => {
+      arrange();
+
+      await expect(service.getPlaylists('1')).rejects.toThrow();
+    },
+  );
+
+  it('keeps a failed read for the rest of the run instead of reading again', async () => {
+    queryAll.mockRejectedValueOnce(new Error('unreachable'));
+    await expect(service.getPlaylists('1')).rejects.toThrow();
+
+    await expect(service.getPlaylists('1')).rejects.toThrow();
+  });
+
+  // Test Media resets the caches, so it must read playlists fresh, including
+  // after a failed read earlier in the run.
+  it('reads playlists again after resetMetadataCache', async () => {
+    queryAll.mockRejectedValueOnce(new Error('unreachable'));
+    await expect(service.getPlaylists('1')).rejects.toThrow();
+
+    service.resetMetadataCache('1');
+
+    expect(await titles('2')).toEqual(['Sample Playlist B']);
+  });
+
+  // A rule run flushes the caches when it starts, and a read still pending
+  // then (from a Test Media click) shows playlists from before the run.
+  it('reads again after a flush instead of using a read still pending', async () => {
+    const held = createDeferred();
+    const release = createDeferred();
+    let edited = false;
+    query.mockImplementation(async ({ uri }: { uri: string }) => {
+      const response = await readItems({ uri });
+      if (uri.includes('101')) {
+        if (edited) {
+          response.MediaContainer.Metadata.push({ ratingKey: '3' });
+        } else {
+          held.resolve();
+          await release.promise;
+        }
+      }
+      return response;
+    });
+
+    const before = service.getPlaylists('3');
+    await held.promise;
+    playlistsCache.flushAll();
+    edited = true;
+    const after = service.getPlaylists('3');
+    release.resolve();
+
+    const [, playlists] = await Promise.all([before, after]);
+    expect(playlists.map(({ title }) => title)).toEqual(['Sample Playlist A']);
+  });
+});

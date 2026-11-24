@@ -97,6 +97,12 @@ const historyFingerprint = (records: PlexSeenBy[]): string =>
     .sort()
     .join('|');
 
+const VIDEO_PLAYLISTS_URI =
+  '/playlists?playlistType=video&includeCollections=1&includeExternalMedia=1&includeAdvanced=1&includeMeta=1';
+
+/** The owner's video playlists, by the ratingKey of each item they hold. */
+type PlexPlaylistSnapshot = Map<string, PlexPlaylist[]>;
+
 @Injectable()
 export class PlexApiService {
   private plexClient: PlexApi;
@@ -236,6 +242,7 @@ export class PlexApiService {
     cacheManager.getCache('plextv').data.flushAll();
     cacheManager.getCache('plexcommunity').data.flushAll();
     cacheManager.getCache('plexwatchhistory').data.flushAll();
+    cacheManager.getCache('plexplaylists').data.flushAll();
   }
 
   public async initialize() {
@@ -795,6 +802,8 @@ export class PlexApiService {
     // state, so a just-watched change would stay invisible to a rules test
     // for up to its TTL.
     cacheManager.getCache('plexwatchhistory').data.flushAll();
+    // Test Media resets through here, so it reads playlists fresh.
+    cacheManager.getCache('plexplaylists').data.flushAll();
   }
 
   public async getUserDataFromPlexTv(): Promise<PlexTvUser[] | undefined> {
@@ -1265,43 +1274,62 @@ export class PlexApiService {
   }
 
   /**
-   * Retrieves all playlists from the Plex API the given ratingKey is part of.
-   *
-   * @return {Promise<PlexPlaylist[]>} A promise that resolves to an array of Plex playlists.
+   * The owner's video playlists that hold the item. Throws when they can't be
+   * read, so a failed read never counts as "in no playlist".
    */
-  public async getPlaylists(libraryId: string): Promise<PlexPlaylist[]> {
+  public async getPlaylists(ratingKey: string): Promise<PlexPlaylist[]> {
+    const snapshot = await this.getPlaylistSnapshot();
+    return [...(snapshot.get(ratingKey) ?? [])];
+  }
+
+  /**
+   * One read per rule run, shared by concurrent callers and kept if it fails.
+   * The pending read itself is cached, so the flush at a run's start also drops
+   * a read that began before the run.
+   */
+  private getPlaylistSnapshot(): Promise<PlexPlaylistSnapshot> {
+    const cache = cacheManager.getCache('plexplaylists').data;
+    let snapshot =
+      cache.get<Promise<PlexPlaylistSnapshot>>(VIDEO_PLAYLISTS_URI);
+    if (snapshot === undefined) {
+      snapshot = this.fetchPlaylistSnapshot();
+      cache.set(VIDEO_PLAYLISTS_URI, snapshot);
+    }
+    return snapshot;
+  }
+
+  private async fetchPlaylistSnapshot(): Promise<PlexPlaylistSnapshot> {
     try {
-      const filteredItems: PlexPlaylist[] = [];
+      // Past the request cache, which Test Media does not reset.
+      const listing = await this.plexClient.queryAll<PlexLibraryResponse>(
+        { uri: VIDEO_PLAYLISTS_URI },
+        false,
+      );
 
-      const response = await this.plexClient.queryAll<PlexLibraryResponse>({
-        uri: `/playlists?playlistType=video&includeCollections=1&includeExternalMedia=1&includeAdvanced=1&includeMeta=1`,
-      });
-
-      const items = response.MediaContainer.Metadata
-        ? (response.MediaContainer.Metadata as PlexPlaylist[])
-        : [];
-
-      for (const item of items) {
-        const itemResp = await this.plexClient.query<PlexLibraryResponse>({
-          uri: item.key,
-        });
-
-        const filteredForRatingKey = (
-          itemResp?.MediaContainer?.Metadata as PlexLibraryItem[]
-        )?.filter((i) => i.ratingKey === libraryId);
-
-        if (filteredForRatingKey && filteredForRatingKey.length > 0) {
-          filteredItems.push(item);
+      const snapshot: PlexPlaylistSnapshot = new Map();
+      for (const playlist of (listing.MediaContainer.Metadata ??
+        []) as PlexPlaylist[]) {
+        const items = await this.plexClient.query<PlexLibraryResponse>(
+          { uri: playlist.key },
+          false,
+        );
+        for (const item of (items.MediaContainer.Metadata ??
+          []) as PlexLibraryItem[]) {
+          const playlists = snapshot.get(item.ratingKey) ?? [];
+          // A playlist can hold an item twice, and still counts once.
+          if (playlists.at(-1) !== playlist) {
+            playlists.push(playlist);
+            snapshot.set(item.ratingKey, playlists);
+          }
         }
       }
-
-      return filteredItems;
+      return snapshot;
     } catch (error) {
-      this.logger.error(
-        'Plex api communication failure.. Is the application running?',
+      this.logger.warn(
+        "Couldn't read Plex's playlists; playlist rules skip items for the rest of this run",
       );
       this.logger.debug(error);
-      return undefined;
+      throw error;
     }
   }
 
