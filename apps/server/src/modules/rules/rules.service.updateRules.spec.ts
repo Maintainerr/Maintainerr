@@ -138,6 +138,52 @@ describe('RulesService.updateRules', () => {
     expect(mediaServer.cleanupCollectionForLibrary).not.toHaveBeenCalled();
   });
 
+  // An action the handler refuses on every run (#4137) is rejected before a
+  // type change wipes the collection's members.
+  it('rejects an action Sonarr cannot take on episodes without wiping the collection first', async () => {
+    const collectionMediaRepository = { delete: jest.fn() };
+    const service = createRulesService({
+      ruleGroupRepository: {
+        findOne: jest
+          .fn()
+          .mockResolvedValue({ id: 5, collectionId: 42, dataType: 'season' }),
+      },
+      collectionMediaRepository,
+      exclusionRepo: { delete: jest.fn() },
+      collectionService: {
+        getCollection: jest.fn().mockResolvedValue({ id: 42, libraryId: '2' }),
+        releaseMediaServerCollectionForReset: jest.fn().mockResolvedValue(true),
+        saveCollection: jest.fn(),
+        addLogRecord: jest.fn(),
+      },
+      mediaServerFactory: {
+        getService: jest.fn().mockReturnValue({
+          getLibraries: jest
+            .fn()
+            .mockResolvedValue([{ id: '2', title: 'TV Shows', type: 'show' }]),
+        }),
+      },
+    });
+
+    await expect(
+      service.updateRules({
+        id: 5,
+        libraryId: '2',
+        dataType: 'episode',
+        name: 'Episodes',
+        description: '',
+        rules: [],
+        arrAction: ServarrAction.UNMONITOR_DELETE_EXISTING,
+        sonarrSettingsId: 1,
+      } as any),
+    ).rejects.toMatchObject({
+      status: 400,
+      message:
+        'UNMONITOR_DELETE_EXISTING is not supported for episode collections managed by Sonarr. Supported: DELETE, UNMONITOR, DO_NOTHING',
+    });
+    expect(collectionMediaRepository.delete).not.toHaveBeenCalled();
+  });
+
   it('continues past validation for date rules using custom_days values', async () => {
     const ruleGroupRepository = {
       findOne: jest.fn().mockResolvedValue(null),
@@ -406,6 +452,7 @@ describe('RulesService.updateRules', () => {
       visibleOnHome: true,
       visibleOnRecommended: true,
       deleteAfterDays: 30,
+      overlayScope: 'show_only',
     };
 
     const collectionMediaRepository = { delete: jest.fn() };
@@ -464,6 +511,8 @@ describe('RulesService.updateRules', () => {
         // The field that decides whether files get deleted: clearing it made
         // the whole collection due at once.
         deleteAfterDays: 30,
+        // Widening a narrowed overlay scope would redraw every episode.
+        overlayScope: 'show_only',
       }),
     );
     expect(result).toEqual({
@@ -521,6 +570,7 @@ describe('RulesService.updateRules', () => {
         useRules: true,
         isActive: true,
         arrAction,
+        radarrSettingsId: 1,
         cleanupLeftoverFolders: true,
       } as any);
 

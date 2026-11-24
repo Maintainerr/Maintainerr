@@ -32,6 +32,7 @@ const jellyfinApiMocks = {
   setItemImage: jest.fn(),
   getSessions: jest.fn(),
   getSeasons: jest.fn(),
+  getPlaylistItems: jest.fn(),
 };
 
 const collectionApiMocks = {
@@ -53,8 +54,8 @@ const jellyfinCacheMocks = {
 };
 
 // Like the real SDK, every client shares one module-wide axios instance.
-// axios-retry attaches interceptors to it during createApiClient; stub them so
-// the real attach call is a no-op in tests.
+// The retry policy attaches interceptors to it during createApiClient; stub
+// them so the real attach call is a no-op in tests.
 const createMockSdkAxiosInstance = () => ({
   interceptors: {
     request: { use: jest.fn() },
@@ -183,7 +184,10 @@ jest.mock('@jellyfin/sdk/lib/utils/api/index.js', () => ({
   getSessionApi: jest.fn().mockImplementation(() => ({
     getSessions: (...args: unknown[]) => jellyfinApiMocks.getSessions(...args),
   })),
-  getPlaylistApi: jest.fn(),
+  getPlaylistApi: jest.fn().mockImplementation(() => ({
+    getPlaylistItems: (...args: unknown[]) =>
+      jellyfinApiMocks.getPlaylistItems(...args),
+  })),
 }));
 
 jest.mock('../../../../utils/delay', () => ({
@@ -197,10 +201,26 @@ jest.mock('./jellyfin.constants', () => ({
   JELLYFIN_WATCH_SNAPSHOT_MAX_RECORDS: 100,
 }));
 
-// The watch snapshot is a real store: the prefetch writes a value and later
-// reads it back, which a bare jest.fn() cannot model. Every other cache keeps
-// the assertable mock.
+// The watch snapshot and the playlist index are real stores: they write a
+// value and later read it back, which a bare jest.fn() cannot model. The
+// playlist index has its own store, so its flushes stay out of the Jellyfin
+// cache call counts. Every other cache keeps the assertable mock.
 const mockSnapshotStore = new Map<string, unknown>();
+const mockPlaylistStore = new Map<string, unknown>();
+const mockPlaylistCache = {
+  flush: () => mockPlaylistStore.clear(),
+  data: {
+    has: (key: string) => mockPlaylistStore.has(key),
+    get: (key: string) => mockPlaylistStore.get(key),
+    set: (key: string, value: unknown) => {
+      mockPlaylistStore.set(key, value);
+      return true;
+    },
+    del: (key: string) => mockPlaylistStore.delete(key),
+    flushAll: () => mockPlaylistStore.clear(),
+    keys: () => [...mockPlaylistStore.keys()],
+  },
+};
 
 // Mock the cacheManager module
 jest.mock('../../lib/cache', () => ({
@@ -222,19 +242,25 @@ jest.mock('../../lib/cache', () => ({
               keys: () => [...mockSnapshotStore.keys()],
             },
           }
-        : {
-            flush: (...args: unknown[]) => jellyfinCacheMocks.flush(...args),
-            data: {
-              has: (...args: unknown[]) => jellyfinCacheMocks.data.has(...args),
-              get: (...args: unknown[]) => jellyfinCacheMocks.data.get(...args),
-              set: (...args: unknown[]) => jellyfinCacheMocks.data.set(...args),
-              del: (...args: unknown[]) => jellyfinCacheMocks.data.del(...args),
-              flushAll: (...args: unknown[]) =>
-                jellyfinCacheMocks.data.flushAll(...args),
-              keys: (...args: unknown[]) =>
-                jellyfinCacheMocks.data.keys(...args),
+        : id === 'jellyfinplaylists'
+          ? mockPlaylistCache
+          : {
+              flush: (...args: unknown[]) => jellyfinCacheMocks.flush(...args),
+              data: {
+                has: (...args: unknown[]) =>
+                  jellyfinCacheMocks.data.has(...args),
+                get: (...args: unknown[]) =>
+                  jellyfinCacheMocks.data.get(...args),
+                set: (...args: unknown[]) =>
+                  jellyfinCacheMocks.data.set(...args),
+                del: (...args: unknown[]) =>
+                  jellyfinCacheMocks.data.del(...args),
+                flushAll: (...args: unknown[]) =>
+                  jellyfinCacheMocks.data.flushAll(...args),
+                keys: (...args: unknown[]) =>
+                  jellyfinCacheMocks.data.keys(...args),
+              },
             },
-          },
     ),
   },
 }));
@@ -252,6 +278,7 @@ describe('JellyfinAdapterService', () => {
 
   beforeEach(async () => {
     jest.clearAllMocks();
+    mockPlaylistStore.clear();
 
     jellyfinApiMocks.getPublicSystemInfo.mockResolvedValue({
       data: {
@@ -274,6 +301,9 @@ describe('JellyfinAdapterService', () => {
     });
     jellyfinApiMocks.getItems.mockResolvedValue({ data: { Items: [] } });
     jellyfinApiMocks.getItem.mockResolvedValue({ data: undefined });
+    jellyfinApiMocks.getPlaylistItems.mockResolvedValue({
+      data: { Items: [] },
+    });
     jellyfinApiMocks.updateItem.mockResolvedValue(undefined);
     jellyfinApiMocks.refreshItem.mockResolvedValue(undefined);
     collectionApiMocks.createCollection.mockResolvedValue({
@@ -1888,6 +1918,233 @@ describe('JellyfinAdapterService', () => {
         viewCount: 0,
         isWatched: false,
       });
+    });
+  });
+
+  describe('playlists', () => {
+    // user-1 is the configured user. Jellyfin lists a playlist to the users who
+    // can see it, serves its items only to them (404 for anyone else) and
+    // filters the items by the reader's own access: each user sees only part
+    // of the shared playlist.
+    const visibleItems: Record<string, Record<string, string[]>> = {
+      'user-1': { 'playlist-shared': ['movie-1'] },
+      'user-2': {
+        'playlist-shared': ['movie-2'],
+        'playlist-other': ['movie-3'],
+      },
+    };
+    const listPlaylists = ({ userId }: { userId: string }) =>
+      Promise.resolve({
+        data: {
+          Items: Object.keys(visibleItems[userId] ?? {}).map((Id) => ({
+            Id,
+            Name: 'Sample Playlist',
+          })),
+        },
+      });
+    const readPlaylist = ({
+      userId,
+      playlistId,
+    }: {
+      userId: string;
+      playlistId: string;
+    }) => {
+      const ids = visibleItems[userId]?.[playlistId];
+      return ids
+        ? Promise.resolve({
+            data: { Items: ids.map((Id) => ({ Id, Type: 'Movie' })) },
+          })
+        : Promise.reject(createResponseError(404));
+    };
+
+    beforeEach(async () => {
+      settingsDataService.getSettings.mockResolvedValue({
+        ...mockSettings,
+        jellyfin_user_id: 'user-1',
+      } as unknown as Awaited<ReturnType<SettingsDataService['getSettings']>>);
+      await service.initialize();
+
+      jellyfinApiMocks.getUsers.mockResolvedValue({
+        data: [
+          { Id: 'user-1', Name: 'Alice' },
+          { Id: 'user-2', Name: 'Bob' },
+        ],
+      });
+      jellyfinApiMocks.getItems.mockImplementation(listPlaylists);
+      jellyfinApiMocks.getPlaylistItems.mockImplementation(readPlaylist);
+    });
+
+    it("lists every user's playlists, not only the configured user's", async () => {
+      const playlists = await service.getPlaylists('');
+
+      expect(playlists.map(({ id }) => id)).toEqual([
+        'playlist-shared',
+        'playlist-other',
+      ]);
+    });
+
+    it("reads another user's playlist as a user who can see it", async () => {
+      const items = await service.getPlaylistItems('playlist-other');
+
+      expect(items.map(({ id }) => id)).toEqual(['movie-3']);
+    });
+
+    it("merges a shared playlist's items across the users who can see it", async () => {
+      const items = await service.getPlaylistItems('playlist-shared');
+
+      expect(items.map(({ id }) => id)).toEqual(['movie-1', 'movie-2']);
+    });
+
+    // A playlist file inside a library is listed through library access, but
+    // the playlist API serves it to nobody. Failing on it would stop every
+    // playlist rule for good, so it counts as empty, as it did before.
+    it('reads a playlist the playlist API serves to nobody as empty', async () => {
+      jellyfinApiMocks.getItems.mockImplementation(
+        async ({ userId }: { userId: string }) => {
+          const response = await listPlaylists({ userId });
+          response.data.Items.push({ Id: 'playlist-file', Name: 'Sample' });
+          return response;
+        },
+      );
+      jellyfinApiMocks.getPlaylistItems.mockImplementation(
+        (args: { userId: string; playlistId: string }) =>
+          args.playlistId === 'playlist-file'
+            ? Promise.reject(createResponseError(403))
+            : readPlaylist(args),
+      );
+
+      expect(await service.getPlaylistItems('playlist-file')).toEqual([]);
+      expect(
+        (await service.getPlaylistItems('playlist-other')).map(({ id }) => id),
+      ).toEqual(['movie-3']);
+    });
+
+    // A partial list would let a "not in any playlist" rule match an item
+    // another user keeps in a playlist, so a failed read must not look empty.
+    it.each([
+      {
+        failure: "one user's playlists can't be listed",
+        arrange: () =>
+          jellyfinApiMocks.getItems.mockImplementation(
+            (args: { userId: string }) =>
+              args.userId === 'user-2'
+                ? Promise.reject(createRetryableError('ECONNRESET'))
+                : listPlaylists(args),
+          ),
+      },
+      {
+        failure: "one user's listing comes back without an item list",
+        arrange: () =>
+          jellyfinApiMocks.getItems.mockImplementation(
+            (args: { userId: string }) =>
+              args.userId === 'user-2'
+                ? Promise.resolve({ data: { Items: 'not a list' } })
+                : listPlaylists(args),
+          ),
+      },
+      {
+        failure: "one playlist's items come back without an item list",
+        arrange: () =>
+          jellyfinApiMocks.getPlaylistItems.mockImplementation(
+            (args: { userId: string; playlistId: string }) =>
+              args.playlistId === 'playlist-other'
+                ? Promise.resolve({ data: { Items: 'not a list' } })
+                : readPlaylist(args),
+          ),
+      },
+      {
+        failure: "one playlist's items can't be read",
+        arrange: () =>
+          jellyfinApiMocks.getPlaylistItems.mockImplementation(
+            (args: { userId: string; playlistId: string }) =>
+              args.playlistId === 'playlist-other'
+                ? Promise.reject(createRetryableError('ECONNRESET'))
+                : readPlaylist(args),
+          ),
+      },
+    ])(
+      'rejects instead of answering a partial list when $failure',
+      async ({ arrange }) => {
+        arrange();
+
+        await expect(service.getPlaylists('')).rejects.toThrow();
+      },
+    );
+
+    it('keeps a failed read for the rest of the run instead of sweeping again', async () => {
+      jellyfinApiMocks.getPlaylistItems.mockImplementation(
+        (args: { userId: string; playlistId: string }) =>
+          args.playlistId === 'playlist-other'
+            ? Promise.reject(createRetryableError('ECONNRESET'))
+            : readPlaylist(args),
+      );
+
+      await expect(service.getPlaylists('')).rejects.toThrow();
+
+      // Even once Jellyfin answers again, the rest of the run skips.
+      jellyfinApiMocks.getPlaylistItems.mockImplementation(readPlaylist);
+      await expect(
+        service.getPlaylistItems('playlist-shared'),
+      ).rejects.toThrow();
+    });
+
+    // Test Media resets the caches, so it must read playlists fresh, including
+    // after a failed read earlier in the run.
+    it('reads playlists again after resetMetadataCache', async () => {
+      jellyfinApiMocks.getPlaylistItems.mockImplementation(
+        (args: { userId: string; playlistId: string }) =>
+          args.playlistId === 'playlist-other'
+            ? Promise.reject(createRetryableError('ECONNRESET'))
+            : readPlaylist(args),
+      );
+      await expect(service.getPlaylists('')).rejects.toThrow();
+
+      jellyfinApiMocks.getPlaylistItems.mockImplementation(readPlaylist);
+      service.resetMetadataCache();
+
+      const items = await service.getPlaylistItems('playlist-other');
+      expect(items.map(({ id }) => id)).toEqual(['movie-3']);
+    });
+
+    // A rule run flushes the caches when it starts, and a read still pending
+    // then (from a Test Media click) shows playlists from before the run.
+    it('reads again after a flush instead of using a read still pending', async () => {
+      let edited = false;
+      let markHeld: () => void;
+      const held = new Promise<void>((resolve) => {
+        markHeld = resolve;
+      });
+      let release: () => void;
+      const released = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      jellyfinApiMocks.getPlaylistItems.mockImplementation(
+        async (args: { userId: string; playlistId: string }) => {
+          const response = await readPlaylist(args);
+          if (
+            args.userId === 'user-1' &&
+            args.playlistId === 'playlist-shared'
+          ) {
+            if (edited) {
+              response.data.Items.push({ Id: 'movie-4', Type: 'Movie' });
+            } else {
+              markHeld!();
+              await released;
+            }
+          }
+          return response;
+        },
+      );
+
+      const before = service.getPlaylistItems('playlist-shared');
+      await held;
+      mockPlaylistCache.data.flushAll();
+      edited = true;
+      const after = service.getPlaylistItems('playlist-shared');
+      release!();
+
+      const [, items] = await Promise.all([before, after]);
+      expect(items.map(({ id }) => id)).toContain('movie-4');
     });
   });
 

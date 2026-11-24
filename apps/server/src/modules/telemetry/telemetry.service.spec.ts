@@ -514,7 +514,7 @@ describe('TelemetryService', () => {
 
     /**
      * Census accuracy depends on at-most-once delivery: ExternalApiService
-     * installs axios-retry globally, and a retry after a lost response would
+     * retries failed requests, and a retry after a lost response would
      * count the same server twice with no identifier to de-duplicate on.
      */
     it('disables retries on the telemetry post', async () => {
@@ -522,7 +522,7 @@ describe('TelemetryService', () => {
 
       expect(post.mock.calls[0][2]).toEqual(
         expect.objectContaining({
-          'axios-retry': { retries: 0 },
+          httpRetry: { retries: 0 },
           timeout: 5000,
         }),
       );

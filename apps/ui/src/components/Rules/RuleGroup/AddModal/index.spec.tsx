@@ -129,6 +129,37 @@ describe('ruleGroupFormSchema', () => {
     expect(provided.success).toBe(true)
   })
 
+  it('rejects an action the chosen *arr cannot take for the media type', () => {
+    const result = ruleGroupFormSchema.safeParse({
+      name: 'Rule group',
+      description: '',
+      libraryId: '2',
+      dataType: 'episode',
+      arrAction: ServarrAction.UNMONITOR_DELETE_EXISTING,
+      deleteAfterDays: 30,
+      keepLogsForMonths: 6,
+      showRecommended: true,
+      showHome: true,
+      overlayEnabled: false,
+      overlayTemplateId: null,
+      listExclusions: false,
+      cleanupLeftoverFolders: false,
+      forceSeerr: false,
+      forceOmbi: false,
+      manualCollection: false,
+      manualCollectionName: '',
+      sortTitle: '',
+      active: true,
+      useRules: true,
+      sonarrSettingsId: 1,
+      ruleHandlerCronSchedule: null,
+    })
+
+    expect(
+      result.success ? undefined : result.error.flatten().fieldErrors.arrAction,
+    ).toEqual(['Choose a supported action'])
+  })
+
   it('shows the stored-library fallback when loading finished without the stored id or the query errored', () => {
     expect(
       getStoredLibraryFallbackState('library-1', undefined, false, true),

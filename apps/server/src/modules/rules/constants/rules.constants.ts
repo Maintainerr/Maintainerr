@@ -544,6 +544,27 @@ export class RuleConstants {
           showType: ['season'],
           type: RuleType.DATE,
         },
+        {
+          // TMDB (and Radarr) call a film series a "collection". The label
+          // says franchise because a collection in Maintainerr is the media
+          // server collection a rule group fills. Resolved through the
+          // metadata layer by MetadataRuleValueService, so Radarr is not
+          // required. Empty when the movie is in no franchise, so EXISTS
+          // answers "part of a franchise".
+          id: 52,
+          name: 'franchise_name',
+          humanName: 'Franchise name',
+          mediaType: MediaType.MOVIE,
+          type: RuleType.TEXT,
+        },
+        {
+          // EXISTS answers "has an upcoming release".
+          id: 54,
+          name: 'franchise_nextReleaseDate',
+          humanName: 'Next franchise release date',
+          mediaType: MediaType.MOVIE,
+          type: RuleType.DATE,
+        },
       ],
     },
     {
@@ -1872,6 +1893,21 @@ export class RuleConstants {
           mediaType: MediaType.SHOW,
           type: RuleType.TEXT_LIST,
           showType: ['show', 'season'],
+        },
+        {
+          // Franchise properties: see the Plex entries.
+          id: 52,
+          name: 'franchise_name',
+          humanName: 'Franchise name',
+          mediaType: MediaType.MOVIE,
+          type: RuleType.TEXT,
+        },
+        {
+          id: 54,
+          name: 'franchise_nextReleaseDate',
+          humanName: 'Next franchise release date',
+          mediaType: MediaType.MOVIE,
+          type: RuleType.DATE,
         },
       ],
     },

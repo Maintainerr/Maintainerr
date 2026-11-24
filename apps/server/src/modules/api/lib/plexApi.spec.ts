@@ -1,5 +1,5 @@
 import axios from 'axios';
-import axiosRetry from 'axios-retry';
+import { applyHttpRetry } from './httpRetry';
 import { NO_TIMEOUT } from './httpTimeouts';
 import PlexApi from './plexApi';
 
@@ -10,11 +10,7 @@ jest.mock('axios', () => ({
   },
 }));
 
-jest.mock('axios-retry', () => ({
-  __esModule: true,
-  default: jest.fn(),
-  exponentialDelay: jest.fn(),
-}));
+jest.mock('./httpRetry', () => ({ applyHttpRetry: jest.fn() }));
 
 describe('PlexApi', () => {
   beforeEach(() => {
@@ -45,7 +41,7 @@ describe('PlexApi', () => {
     expect(headers['X-Plex-Product']).toBeUndefined();
     expect(headers['X-Plex-Version']).toBeUndefined();
     expect(headers['X-Plex-Client-Identifier']).toBeUndefined();
-    expect(axiosRetry).toHaveBeenCalledTimes(1);
+    expect(applyHttpRetry).toHaveBeenCalledTimes(1);
   });
 
   it('forwards the configured timeout to axios so wedged Plex sockets cannot stall callers indefinitely', () => {

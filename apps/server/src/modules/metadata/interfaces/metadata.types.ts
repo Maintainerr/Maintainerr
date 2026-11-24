@@ -33,6 +33,13 @@ export interface PersonDetails {
   imdbId?: string;
 }
 
+/** The film series a movie belongs to. */
+export interface FranchiseDetails {
+  name: string;
+  /** One entry per other part of the series. */
+  otherPartReleaseDates: (string | undefined)[];
+}
+
 export interface MetadataDetails {
   id: number;
   title: string;

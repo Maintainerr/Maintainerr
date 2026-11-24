@@ -153,4 +153,102 @@ describe('ArrAction', () => {
 
     expect(actionOptions).toContain('Change quality profile and search')
   })
+
+  // The browser would show the first option for it, and Save kept it (#4137).
+  it('shows a stored action the server cannot take as unsupported', () => {
+    useServarrSettingsMock.mockReturnValue(
+      buildQuerySuccessResult<IServarrSetting[]>([
+        {
+          id: 12,
+          serverName: 'Primary Sonarr',
+          url: 'http://sonarr.example',
+          apiKey: 'test-api-key',
+        },
+      ]),
+    )
+
+    render(
+      <ArrAction
+        type="Sonarr"
+        mediaServerName="Plex"
+        arrAction={ServarrAction.UNMONITOR_DELETE_EXISTING}
+        settingId={12}
+        onUpdate={vi.fn()}
+        options={[
+          { id: ServarrAction.DO_NOTHING, name: 'Do nothing' },
+          { id: ServarrAction.DELETE, name: 'Unmonitor and delete episode' },
+          { id: ServarrAction.UNMONITOR, name: 'Unmonitor and keep file' },
+        ]}
+      />,
+    )
+
+    const actionSelect = screen.getByLabelText(
+      'Sonarr action',
+    ) as HTMLSelectElement
+
+    expect(actionSelect.selectedOptions[0].text).toBe(
+      'Stored action (unsupported)',
+    )
+  })
+
+  // A Radarr server on a show collection supports no action, not even Delete.
+  it('shows an action the caller flags as unsupported, even one of its options', () => {
+    render(
+      <ArrAction
+        type="Sonarr"
+        mediaServerName="Plex"
+        arrAction={ServarrAction.DELETE}
+        settingId={undefined}
+        onUpdate={vi.fn()}
+        options={[]}
+        actionUnsupported
+      />,
+    )
+
+    expect(
+      (screen.getByLabelText('Plex action') as HTMLSelectElement)
+        .selectedOptions[0].text,
+    ).toBe('Stored action (unsupported)')
+  })
+
+  // A cached list may predate the saved server, and a failed refresh keeps it:
+  // resetting on it chose Delete, and the select showed None while Save kept it.
+  it('keeps the saved server, shown as loading, until a refresh lists it', () => {
+    const onUpdate = vi.fn()
+    const cached = buildQuerySuccessResult<IServarrSetting[]>([], {
+      isFetching: true,
+    })
+    // A new element each time, or React skips the rerender.
+    const arrAction = () => (
+      <ArrAction
+        type="Sonarr"
+        mediaServerName="Plex"
+        arrAction={ServarrAction.DELETE}
+        settingId={12}
+        onUpdate={onUpdate}
+        options={[{ id: ServarrAction.DELETE, name: 'Delete' }]}
+      />
+    )
+    const serverShown = () =>
+      (screen.getByLabelText('Sonarr server *') as HTMLSelectElement)
+        .selectedOptions[0].text
+
+    useServarrSettingsMock.mockReturnValue(cached)
+    const { rerender } = render(arrAction())
+    expect(serverShown()).toBe('Loading servers...')
+
+    useServarrSettingsMock.mockReturnValue({
+      ...cached,
+      isFetching: false,
+      error: new Error('refresh failed'),
+      isError: true,
+      isRefetchError: true,
+      isSuccess: false,
+      status: 'error',
+    })
+    rerender(arrAction())
+    expect(serverShown()).toBe('Loading servers...')
+
+    expect(onUpdate).not.toHaveBeenCalled()
+  })
 })

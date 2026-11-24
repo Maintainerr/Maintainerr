@@ -1,3 +1,57 @@
+# [3.33.0](https://github.com/Maintainerr/Maintainerr/compare/v3.32.0...v3.33.0) (2026-11-20)
+
+
+## Highlights
+- Add configurable overlay scope for TV show collections to reduce processing overhead (#3990).
+- Add TMDB franchise properties for movies to rule groups (#4096).
+
+## Features
+- Add Romanian language support (#4115).
+
+## Fixes
+- Ensure UI loads correctly and return 404 for unknown API routes when using `BASE_PATH` (#4134, #4123).
+
+## Performance
+- Replace deprecated `axios-retry` with internal retry logic for outbound requests (#4133).
+
+## Database migrations
+- Add `overlayScope` column to the `collection` table.
+
+## Internal
+- Update rules regression matrix to support Suites 4 types (#4103).
+
+## Dependencies
+- Update 50 dependencies including NestJS, Vite, Axios, and ESLint.
+
+## New Contributors
+* @buzera made their first contribution in https://github.com/Maintainerr/Maintainerr/pull/3990
+* @luuvasara made their first contribution in https://github.com/Maintainerr/Maintainerr/pull/4096
+
+# [3.32.0](https://github.com/Maintainerr/Maintainerr/compare/v3.31.0...v3.32.0) (2026-11-05)
+
+
+## Highlights
+- Remove downloads that have seeded for 14 days regardless of ratio when no client limit is set (#4066).
+- Apply Plex connection settings immediately without requiring a restart (#4069).
+
+## Features
+- Include media server ID and path in *arr not-tracked warnings to assist with identification (#4065).
+- Add support for Russian and Traditional Chinese languages (#4064).
+
+## Fixes
+- Revoke Plex tokens at plex.tv when clearing credentials instead of only removing them locally (#4038).
+- Display correct sizes for Emby show and season collections (#4067).
+- Correct ZFS pool free space calculation when multiple datasets are present (#4068).
+
+## Internal
+- Patch vulnerable dependencies and repair the image scan (#4071, #4072).
+
+## Dependencies
+- Update 56 dependencies including @tanstack/react-query, axios, nestjs, and typescript-eslint.
+
+## New Contributors
+* @deduparr-dev made their first contribution in https://github.com/Maintainerr/Maintainerr/pull/4038
+
 # [3.31.0](https://github.com/Maintainerr/Maintainerr/compare/v3.30.2...v3.31.0) (2026-10-21)
 
 

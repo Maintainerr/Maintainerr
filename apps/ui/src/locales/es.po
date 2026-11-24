@@ -545,6 +545,10 @@ msgstr "Aplicar superposiciones de fechas a los carteles de esta colección."
 msgid "Are you sure?"
 msgstr "¿Está seguro?"
 
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Artwork left out is restored on the next overlay run"
+msgstr ""
+
 #: src/components/Collection/CollectionDetail/CollectionInfo/index.tsx
 msgid "Ascending"
 msgstr "Ascendente"
@@ -720,6 +724,10 @@ msgstr "Elige un color"
 #: src/components/OverlayEditor/PropertiesPanel.tsx
 msgid "Choose a color for {fieldLabel}"
 msgstr "Elige un color para {fieldLabel}"
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Choose a supported action"
+msgstr ""
 
 #: src/components/Settings/Main/DatabaseBackupModal.tsx
 msgid "Choose the filename for your database backup."
@@ -2869,6 +2877,10 @@ msgstr "Resultado"
 msgid "Overlay Handler"
 msgstr "Controlador de superposición"
 
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Overlay scope"
+msgstr ""
+
 #: src/components/Settings/Overlays/index.tsx
 msgid "Overlay Settings"
 msgstr "Configuración de superposición"
@@ -3648,6 +3660,14 @@ msgctxt "Toggle layer visibility"
 msgid "Show"
 msgstr "Mostrar"
 
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Show + seasons"
+msgstr ""
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Show + seasons + episodes"
+msgstr ""
+
 #: src/components/Settings/MediaServerSelector/index.tsx
 msgid "Show incompatible rules ({skippedRules})"
 msgstr "Mostrar reglas incompatibles ({skippedRules})"
@@ -3663,6 +3683,10 @@ msgstr "Mostrar en la pantalla de inicio de {mediaServerName}"
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Show on {mediaServerName} library recommended"
 msgstr "Mostrar en los recomendados de la biblioteca de {mediaServerName}"
+
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Show only"
+msgstr ""
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Show the collection on the {mediaServerName} home screen"
@@ -3798,6 +3822,10 @@ msgstr "Métricas de almacenamiento - Maintainerr"
 #: src/components/StorageMetrics/index.tsx
 msgid "Storage metrics are unavailable."
 msgstr "Las métricas de almacenamiento no están disponibles."
+
+#: src/components/Rules/RuleGroup/AddModal/ArrAction/index.tsx
+msgid "Stored action (unsupported)"
+msgstr ""
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Stored library (unavailable)"

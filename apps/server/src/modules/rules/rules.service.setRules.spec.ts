@@ -323,6 +323,7 @@ describe('RulesService.setRules', () => {
       isActive: true,
       rules: validRules,
       arrAction: ServarrAction.UNMONITOR_DELETE_ALL,
+      radarrSettingsId: 1,
       cleanupLeftoverFolders: true,
     } as any);
 
@@ -387,6 +388,63 @@ describe('RulesService.setRules', () => {
 
     expect(result.code).toBe(0);
     expect(result.result).toContain('either Sonarr or Sportarr');
+    expect(createCollection).not.toHaveBeenCalled();
+  });
+
+  // Saved, it is refused on every run (#4137).
+  it('rejects an action Sonarr cannot take on episodes', async () => {
+    const createCollection = jest.fn();
+    const service = createRulesService({
+      collectionService: { createCollection },
+      mediaServerFactory: createMediaServerFactory([
+        { id: '2', title: 'TV Shows', type: 'show' },
+      ]),
+    });
+
+    await expect(
+      service.setRules({
+        libraryId: '2',
+        dataType: 'episode',
+        name: 'Episodes',
+        description: '',
+        useRules: true,
+        isActive: true,
+        rules: validRules,
+        arrAction: ServarrAction.UNMONITOR_DELETE_EXISTING,
+        sonarrSettingsId: 1,
+      } as any),
+    ).rejects.toMatchObject({
+      status: 400,
+      message:
+        'UNMONITOR_DELETE_EXISTING is not supported for episode collections managed by Sonarr. Supported: DELETE, UNMONITOR, DO_NOTHING',
+    });
+    expect(createCollection).not.toHaveBeenCalled();
+  });
+
+  // The handler cannot hand a movie to Sonarr, so no action can run.
+  it('rejects a Sonarr server on a movie library', async () => {
+    const createCollection = jest.fn();
+    const service = createRulesService({
+      collectionService: { createCollection },
+      mediaServerFactory: createMediaServerFactory(),
+    });
+
+    await expect(
+      service.setRules({
+        libraryId: '1',
+        name: 'Movies',
+        description: '',
+        useRules: true,
+        isActive: true,
+        rules: validRules,
+        arrAction: ServarrAction.DELETE,
+        sonarrSettingsId: 1,
+      } as any),
+    ).rejects.toMatchObject({
+      status: 400,
+      message:
+        'DELETE is not supported for movie collections managed by Sonarr. Supported: none',
+    });
     expect(createCollection).not.toHaveBeenCalled();
   });
 

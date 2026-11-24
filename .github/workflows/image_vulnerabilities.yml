@@ -5,7 +5,8 @@ name: "Image vulnerabilities"
 #
 # Every finding lands in code scanning (Security tab), which sends no
 # notification, so a fixable one also turns the run red. CVEs excepted in
-# Docker Scout are left out of both.
+# Docker Scout, or marked not affected in maintainerr.vex.json, are left out
+# of both.
 
 on:
   schedule:
@@ -17,6 +18,9 @@ permissions:
 
 env:
   DOCKERHUB_SLUG: maintainerr/maintainerr
+  # Scout ignores VEX statements from authors it is not told to accept.
+  VEX_AUTHOR: Maintainerr
+  VEX_LOCATION: .github/maintainerr.vex.json
 
 jobs:
   guard_manual_run:
@@ -57,6 +61,8 @@ jobs:
           image: registry://${{ env.DOCKERHUB_SLUG }}:${{ matrix.tag }}
           organization: maintainerr
           ignore-suppressed: true
+          vex-author: ${{ env.VEX_AUTHOR }}
+          vex-location: ${{ env.VEX_LOCATION }}
           sarif-file: scout.sarif
 
       - name: Upload to code scanning
@@ -72,6 +78,8 @@ jobs:
           image: registry://${{ env.DOCKERHUB_SLUG }}:${{ matrix.tag }}
           organization: maintainerr
           ignore-suppressed: true
+          vex-author: ${{ env.VEX_AUTHOR }}
+          vex-location: ${{ env.VEX_LOCATION }}
           only-fixed: true
           exit-code: true
           summary: false

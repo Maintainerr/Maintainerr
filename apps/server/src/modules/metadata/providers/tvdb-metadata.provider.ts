@@ -8,6 +8,7 @@ import { TvdbApiService } from '../../api/tvdb-api/tvdb.service';
 import { IMetadataProvider } from '../interfaces/metadata-provider.interface';
 import {
   ExternalIdSearchResult,
+  FranchiseDetails,
   MetadataDetails,
   MetadataImageOptions,
   PersonDetails,
@@ -182,6 +183,11 @@ export class TvdbMetadataProvider implements IMetadataProvider {
   ): Promise<string | undefined> {
     const record = await this.getRecord(tvdbId, type);
     return this.tvdbApi.getBackdropUrl(record, type);
+  }
+
+  // Franchises are only mapped from TMDB; undefined hands the read on.
+  async getFranchise(): Promise<FranchiseDetails | undefined> {
+    return undefined;
   }
 
   async getPersonDetails(
