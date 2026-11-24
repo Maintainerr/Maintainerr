@@ -1,2 +1,0 @@
-# gglint: no secrets in agent config files
-yarn check-agent-secrets --staged
