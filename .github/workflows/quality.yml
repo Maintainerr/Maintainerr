@@ -103,6 +103,8 @@ jobs:
         run: yarn lint
       - name: Check Node version consistency
         run: yarn check-node-version
+      - name: Check agent config files for secrets
+        run: yarn check-agent-secrets
 
   type-checking:
     name: Type checking
