@@ -725,6 +725,10 @@ msgstr "Välj en färg"
 msgid "Choose a color for {fieldLabel}"
 msgstr "Välj en färg för {fieldLabel}"
 
+#: src/components/Rules/RuleGroup/AddModal/index.tsx
+msgid "Choose a supported action"
+msgstr ""
+
 #: src/components/Settings/Main/DatabaseBackupModal.tsx
 msgid "Choose the filename for your database backup."
 msgstr "Välj filnamn för din databassäkerhetskopia."
@@ -3818,6 +3822,10 @@ msgstr "Lagringsstatistik - Maintainerr"
 #: src/components/StorageMetrics/index.tsx
 msgid "Storage metrics are unavailable."
 msgstr "Lagringsstatistiken är inte tillgänglig."
+
+#: src/components/Rules/RuleGroup/AddModal/ArrAction/index.tsx
+msgid "Stored action (unsupported)"
+msgstr ""
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Stored library (unavailable)"
