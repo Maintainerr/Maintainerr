@@ -3174,7 +3174,7 @@ __metadata:
     nestjs-zod: "npm:^5.6.0"
     node-cache: "npm:^5.1.2"
     nodemailer: "npm:10.6.1"
-    openpgp: "npm:^6.3.2"
+    openpgp: "npm:^6.3.3"
     prettier: "npm:^3.10.1"
     read-last-lines: "npm:^1.10.0"
     reflect-metadata: "npm:^0.2.2"
@@ -8944,6 +8944,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"eckey-utils@npm:^0.7.14":
+  version: 0.7.14
+  resolution: "eckey-utils@npm:0.7.14"
+  checksum: 10c0/edd493f47cb7a453bd338f08137e84ba34bea349f51d5701b7dcdba64b490010df5dc9bcec2871f5e40412caa42d357976820a470e0f3048098c0b55a2525518
+  languageName: node
+  linkType: hard
+
 "ee-first@npm:1.1.1":
   version: 1.1.1
   resolution: "ee-first@npm:1.1.1"
@@ -13926,15 +13933,17 @@ __metadata:
   languageName: node
   linkType: hard
 
-"openpgp@npm:^6.3.2":
-  version: 6.3.2
-  resolution: "openpgp@npm:6.3.2"
+"openpgp@npm:^6.3.3":
+  version: 6.3.3
+  resolution: "openpgp@npm:6.3.3"
+  dependencies:
+    eckey-utils: "npm:^0.7.14"
   peerDependencies:
     "@openpgp/web-stream-tools": ~0.3.0
   peerDependenciesMeta:
     "@openpgp/web-stream-tools":
       optional: true
-  checksum: 10c0/f4c4da52b272af5a9d2435143a909f304146a085db5d468affc61c02e954060790a93d17fc9dfce17b59ee3a00fe64340002292259f5b1dcfd94b5bae9e2a0e3
+  checksum: 10c0/b36f1b2540ab9a432594c930816aab1eeaebd200ef85a948cb4e20b73d21d3e8f17132e72a062240cb8f61a0d2b57567990a7b98fd0e7696ecbb0e4babb037d3
   languageName: node
   linkType: hard
 
