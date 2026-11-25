@@ -80,6 +80,15 @@ export enum RequestMediaStatus {
 
 export const DISKSPACE_REMAINING_PROPERTY = 'diskspace_remaining_gb'
 export const DISKSPACE_TOTAL_PROPERTY = 'diskspace_total_gb'
+export const DISKSPACE_REMAINING_PERCENT_PROPERTY =
+  'diskspace_remaining_percent'
+
+/** Radarr/Sonarr disk space properties that accept a disk target path. */
+export const ARR_DISKSPACE_PROPERTIES: readonly string[] = [
+  DISKSPACE_REMAINING_PROPERTY,
+  DISKSPACE_TOTAL_PROPERTY,
+  DISKSPACE_REMAINING_PERCENT_PROPERTY,
+]
 
 /**
  * Properties scoped to the single user named by the rule's `username`. Shared

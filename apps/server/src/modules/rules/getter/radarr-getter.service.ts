@@ -1,4 +1,4 @@
-import { MediaItem } from '@maintainerr/contracts';
+import { ARR_DISKSPACE_PROPERTIES, MediaItem } from '@maintainerr/contracts';
 import { Injectable } from '@nestjs/common';
 import { ServarrService } from '../../api/servarr-api/servarr.service';
 import { MaintainerrLogger } from '../../logging/logs.service';
@@ -52,10 +52,7 @@ export class RadarrGetterService {
       const prop = this.plexProperties.find((el) => el.id === id);
 
       // ARR diskspace check doesn't require a movie lookup - handle early
-      if (
-        prop?.name === 'diskspace_remaining_gb' ||
-        prop?.name === 'diskspace_total_gb'
-      ) {
+      if (ARR_DISKSPACE_PROPERTIES.includes(prop?.name)) {
         const radarrApiClient = await this.servarrService.getRadarrApiClient(
           ruleGroup.collection.radarrSettingsId,
         );
