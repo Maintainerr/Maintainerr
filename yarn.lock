@@ -3225,7 +3225,7 @@ __metadata:
     "@typescript-eslint/parser": "npm:^8.73.0"
     "@vitejs/plugin-react": "npm:^6.3.0"
     axios: "npm:^1.21.1"
-    bowser: "npm:^2.15.0"
+    bowser: "npm:^2.15.1"
     clsx: "npm:^2.1.1"
     compare-versions: "npm:^6.1.1"
     cron-validator: "npm:^1.4.0"
@@ -7569,10 +7569,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"bowser@npm:^2.15.0":
-  version: 2.15.0
-  resolution: "bowser@npm:2.15.0"
-  checksum: 10c0/f412e2650baac8c6ac5cc7fc249dcba994278e94916cfe0243d970d1bcae57e2ca1fae2ea01bdd71e0b932565b840ba230520c6f437f229a9433b359d9f96744
+"bowser@npm:^2.15.1":
+  version: 2.15.1
+  resolution: "bowser@npm:2.15.1"
+  checksum: 10c0/76dbe29481ef1fcc26af0389c325649153de468a73418cfc1d674fb3f24981aa0232768ccd2508419b72666ffba3928ea85557b1000ddfb7af64fcac3312aac1
   languageName: node
   linkType: hard
 
