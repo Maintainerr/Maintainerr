@@ -39,7 +39,7 @@
     "@semantic-release/exec": "^7.1.0",
     "@semantic-release/git": "^11.0.1",
     "@types/node": "^26.6.6",
-    "knip": "^6.47.0",
+    "knip": "^6.48.0",
     "pofile-ts": "^4.0.3",
     "semantic-release": "^26.0.1",
     "turbo": "^2.11.13",
