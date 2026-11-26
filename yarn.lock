@@ -3158,7 +3158,7 @@ __metadata:
     "@typescript-eslint/eslint-plugin": "npm:^8.73.0"
     "@typescript-eslint/parser": "npm:^8.73.0"
     axios: "npm:^1.21.1"
-    better-sqlite3: "npm:^13.0.3"
+    better-sqlite3: "npm:^13.2.0"
     canvas: "npm:^3.2.3"
     chalk: "npm:^4.1.2"
     compression: "npm:^1.8.2"
@@ -7378,13 +7378,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"better-sqlite3@npm:^13.0.3":
-  version: 13.0.3
-  resolution: "better-sqlite3@npm:13.0.3"
+"better-sqlite3@npm:^13.2.0":
+  version: 13.2.0
+  resolution: "better-sqlite3@npm:13.2.0"
   dependencies:
     node-addon-api: "npm:^8.0.0"
     node-gyp: "npm:latest"
-  checksum: 10c0/3daaad4fbd39b3ebddd9840c1aab0a7ccc94a01054fb03f6660ec2c226422b5daf3eb8e55a14103eddb84c2cd16f8e70ae9d41f0e2892b58c8c6152ee7ff09c0
+  checksum: 10c0/b1073206f9fcc73ff31300c90805a71ade2b93b5c43cc2db7117f3f3decd82c9991018f8ffbe58f57310b6b037bb4a6d0986b32e5c3b1266be71410e8fa148ad
   languageName: node
   linkType: hard
 

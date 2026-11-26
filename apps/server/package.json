@@ -39,7 +39,7 @@
     "@types/compression": "^1.8.1",
     "@types/express": "^5.0.6",
     "axios": "^1.21.1",
-    "better-sqlite3": "^13.0.3",
+    "better-sqlite3": "^13.2.0",
     "canvas": "^3.2.3",
     "chalk": "^4.1.2",
     "compression": "^1.8.2",
