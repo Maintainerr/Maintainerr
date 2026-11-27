@@ -8,8 +8,8 @@ msgstr ""
 "Language: nl\n"
 "Project-Id-Version: \n"
 "Report-Msgid-Bugs-To: \n"
-"PO-Revision-Date: 2026-10-05 20:51+0000\n"
-"Last-Translator: COTMO <moermantom1@gmail.com>\n"
+"PO-Revision-Date: 2026-11-27 14:56+0000\n"
+"Last-Translator: COTMO <cotmo@users.noreply.hosted.weblate.org>\n"
 "Language-Team: Dutch <https://hosted.weblate.org/projects/maintainerr/app/nl/>\n"
 "Plural-Forms: nplurals=2; plural=n != 1;\n"
 
@@ -547,7 +547,7 @@ msgstr "Weet u het zeker?"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Artwork left out is restored on the next overlay run"
-msgstr ""
+msgstr "Overgeslagen artwork wordt hersteld bij de volgende overlay-run"
 
 #: src/components/Collection/CollectionDetail/CollectionInfo/index.tsx
 msgid "Ascending"
@@ -727,7 +727,7 @@ msgstr "Kies een kleur voor {fieldLabel}"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Choose a supported action"
-msgstr ""
+msgstr "Kies een ondersteunde actie"
 
 #: src/components/Settings/Main/DatabaseBackupModal.tsx
 msgid "Choose the filename for your database backup."
@@ -2879,7 +2879,7 @@ msgstr "Overlay afhandeling"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Overlay scope"
-msgstr ""
+msgstr "Overlay-bereik"
 
 #: src/components/Settings/Overlays/index.tsx
 msgid "Overlay Settings"
@@ -3662,11 +3662,11 @@ msgstr "Tonen"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Show + seasons"
-msgstr ""
+msgstr "Serie + seizoenen"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Show + seasons + episodes"
-msgstr ""
+msgstr "Serie + seizoenen + afleveringen"
 
 #: src/components/Settings/MediaServerSelector/index.tsx
 msgid "Show incompatible rules ({skippedRules})"
@@ -3686,7 +3686,7 @@ msgstr "Weergeven op {mediaServerName}-bibliotheek aanbevolen"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Show only"
-msgstr ""
+msgstr "Enkel serie"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Show the collection on the {mediaServerName} home screen"
@@ -3825,7 +3825,7 @@ msgstr "Opslagstatistieken zijn niet beschikbaar."
 
 #: src/components/Rules/RuleGroup/AddModal/ArrAction/index.tsx
 msgid "Stored action (unsupported)"
-msgstr ""
+msgstr "Opgeslagen actie (niet ondersteund)"
 
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Stored library (unavailable)"
