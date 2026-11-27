@@ -3167,7 +3167,7 @@ __metadata:
     email-templates: "npm:13.0.1"
     eslint: "npm:^10.15.0"
     eslint-config-prettier: "npm:^10.1.8"
-    eslint-plugin-jest: "npm:^29.17.0"
+    eslint-plugin-jest: "npm:^29.17.1"
     jest: "npm:^30.5.2"
     lodash: "npm:^4.18.1"
     mime-types: "npm:^3.0.2"
@@ -9148,9 +9148,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"eslint-plugin-jest@npm:^29.17.0":
-  version: 29.17.0
-  resolution: "eslint-plugin-jest@npm:29.17.0"
+"eslint-plugin-jest@npm:^29.17.1":
+  version: 29.17.1
+  resolution: "eslint-plugin-jest@npm:29.17.1"
   dependencies:
     "@typescript-eslint/utils": "npm:^8.0.0"
   peerDependencies:
@@ -9165,7 +9165,7 @@ __metadata:
       optional: true
     typescript:
       optional: true
-  checksum: 10c0/2ac9e40361f0e2593c71cac05c676b6a03957946806fb3286e704cadaf534ad68eddfb7f792080fad5fd806c6dd41f249ecf14af9ae6227542e61c5552a23844
+  checksum: 10c0/0565452b5a2808444e2a7410b0e115d4c6610107bbd53e3633a28267133efda75b1c2714750480b6380658f8d0018cf47fe546502eeb0983e2091a46aa06c18b
   languageName: node
   linkType: hard
 
