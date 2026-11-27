@@ -1308,9 +1308,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@hookform/resolvers@npm:^7.0.8":
-  version: 7.0.8
-  resolution: "@hookform/resolvers@npm:7.0.8"
+"@hookform/resolvers@npm:^7.0.9":
+  version: 7.0.9
+  resolution: "@hookform/resolvers@npm:7.0.9"
   dependencies:
     "@standard-schema/utils": "npm:^0.3.0"
   peerDependencies:
@@ -1325,7 +1325,7 @@ __metadata:
     class-validator: ">=0.12.0"
     computed-types: ^1.0.0
     effect: ^4.0.0
-    fluentvalidation-ts: ^3.0.0
+    fluentvalidation-ts: ^3.0.0 || ^4.0.0 || ^5.0.0
     fp-ts: ^2.7.0
     io-ts: ^2.0.0
     joi: ^17.0.0 || ^18.0.0
@@ -1385,7 +1385,7 @@ __metadata:
       optional: true
     zod:
       optional: true
-  checksum: 10c0/377b7c0528e9c013398fdf501d4f98b46077e36e2ab19d8e45471f20c17d9dd065526ec5c13e727c38112849454ddff39de885789f66cc8ee212a42e5b9452a4
+  checksum: 10c0/d6ed1b2432259fd35436cd3d5d9f92be4c628e23c347319ed11762ed1b2940133bbefc9f0fa028f6956c2fc0d9d1b7efe7b75c1e8a6099ac8ae0c49226bb0e8e
   languageName: node
   linkType: hard
 
@@ -3200,7 +3200,7 @@ __metadata:
     "@eslint/js": "npm:^10.0.1"
     "@headlessui/react": "npm:^2.2.10"
     "@heroicons/react": "npm:^1.0.6"
-    "@hookform/resolvers": "npm:^7.0.8"
+    "@hookform/resolvers": "npm:^7.0.9"
     "@lingui/babel-plugin-lingui-macro": "npm:^6.12.0"
     "@lingui/cli": "npm:^6.12.0"
     "@lingui/core": "npm:^6.12.0"
