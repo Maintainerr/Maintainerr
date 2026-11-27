@@ -3235,7 +3235,7 @@ __metadata:
     jsdom: "npm:^31.0.1"
     konva: "npm:^10.10.0"
     lodash-es: "npm:^4.18.1"
-    monaco-editor: "npm:0.57.0"
+    monaco-editor: "npm:0.58.0"
     prettier: "npm:^3.10.1"
     prettier-plugin-tailwindcss: "npm:^0.8.1"
     react: "npm:^19.3.1"
@@ -6811,6 +6811,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@vscode/diff@npm:0.0.2-145":
+  version: 0.0.2-145
+  resolution: "@vscode/diff@npm:0.0.2-145"
+  checksum: 10c0/1874a07de4a6e831f28f5c1edcb2b2004445a9511a810d095ff26851d773f210140a77649b5447728cc73cb877b8cddcafe58bad25df2f76a0f92df0c06658fb
+  languageName: node
+  linkType: hard
+
 "@zone-eu/mailsplit@npm:5.4.8":
   version: 5.4.8
   resolution: "@zone-eu/mailsplit@npm:5.4.8"
@@ -8762,7 +8769,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"dompurify@npm:^3":
+"dompurify@npm:3.4.17":
   version: 3.4.17
   resolution: "dompurify@npm:3.4.17"
   dependencies:
@@ -13177,13 +13184,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"monaco-editor@npm:0.57.0":
-  version: 0.57.0
-  resolution: "monaco-editor@npm:0.57.0"
+"monaco-editor@npm:0.58.0":
+  version: 0.58.0
+  resolution: "monaco-editor@npm:0.58.0"
   dependencies:
-    dompurify: "npm:3.4.15"
+    "@vscode/diff": "npm:0.0.2-145"
+    dompurify: "npm:3.4.17"
     marked: "npm:14.0.0"
-  checksum: 10c0/21a088dbd49cfdd27538d1c4af37bd26832866348ee673d2b43924cdf58d3e89daaafff19e94731758fa2cc81a00402f81968062867cbc5a98e010f1a84460d2
+  checksum: 10c0/c8ce103ffa4279e996165e21c49d0f0d10f25fa32ddfcd9bd19da8c8eaa8720e65c2048ddbb54df012c0c42ccda84c0609320b7e26de4e4405109684154e91ee
   languageName: node
   linkType: hard
 
