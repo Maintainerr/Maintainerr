@@ -39,6 +39,7 @@ export interface ICollection {
   sonarrQualityProfileId?: number;
   sportarrQualityProfileId?: number;
   tagInArr?: boolean;
+  additionalArrSettingsIds?: number[] | null;
   sortTitle?: string;
   mediaServerSort?: MediaServerCollectionSort | null;
   overlayEnabled?: boolean;

@@ -106,3 +106,53 @@ export const servarrActionManager = (
       : ['sonarr', 'sportarr', 'radarr']
   return order.find((manager) => ids[manager] != null)
 }
+
+/**
+ * Whether a collection's action is repeated on additional instances of its own
+ * *arr, for setups that keep a second copy (a 4K instance, say) of what the
+ * media server shows as one item. Only deleting a whole movie from Radarr or a
+ * whole show from Sonarr: the other actions act on what the primary instance
+ * holds (its seasons, episodes or quality profiles), which another instance
+ * need not share. The editor offers the option for exactly these and the
+ * server clears it for anything else.
+ */
+export const supportsAdditionalArrInstances = (
+  type: MediaItemType,
+  arrAction: ServarrAction | undefined,
+  manager: ServarrActionManager | undefined,
+): boolean =>
+  arrAction === DELETE &&
+  ((manager === 'radarr' && type === 'movie') ||
+    (manager === 'sonarr' && type === 'show'))
+
+/**
+ * The additional instances a collection's action is repeated on: none when
+ * its action does not support them, and never its primary instance, which
+ * takes the action itself.
+ */
+export const additionalArrInstanceIds = (collection: {
+  type: MediaItemType
+  arrAction?: ServarrAction
+  radarrSettingsId?: number | null
+  sonarrSettingsId?: number | null
+  sportarrSettingsId?: number | null
+  additionalArrSettingsIds?: readonly number[] | null
+}): number[] => {
+  const manager = servarrActionManager(collection.type, collection)
+  if (
+    !supportsAdditionalArrInstances(
+      collection.type,
+      collection.arrAction,
+      manager,
+    )
+  ) {
+    return []
+  }
+  const primaryId =
+    manager === 'radarr'
+      ? collection.radarrSettingsId
+      : collection.sonarrSettingsId
+  return [...new Set(collection.additionalArrSettingsIds ?? [])].filter(
+    (id) => id !== primaryId,
+  )
+}

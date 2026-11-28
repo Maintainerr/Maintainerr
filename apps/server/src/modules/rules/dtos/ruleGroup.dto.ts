@@ -32,4 +32,5 @@ export class RuleGroupDto {
   sportarrQualityProfileId?: number;
   tagInArr?: boolean;
   keepInMaintainerrOnly?: boolean;
+  additionalArrSettingsIds?: number[];
 }

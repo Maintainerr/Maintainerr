@@ -493,6 +493,10 @@ msgstr "Allow users to also start a chat with your bot and configure their own n
 msgid "Allowed: {chars}"
 msgstr "Allowed: {chars}"
 
+#: src/components/Rules/RuleGroup/AddModal/AdditionalArrServers.tsx
+msgid "Also Delete from Other {serviceName} Servers"
+msgstr "Also Delete from Other {serviceName} Servers"
+
 #: src/components/Settings/Notifications/NotificationAgentCard.tsx
 msgid "Always use STARTTLS"
 msgstr "Always use STARTTLS"
@@ -3230,6 +3234,14 @@ msgstr "Removes the related Ombi request immediately. Otherwise, Ombi keeps list
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Removes the related Seerr request immediately. Otherwise, Maintainerr waits for Seerr availability sync."
 msgstr "Removes the related Seerr request immediately. Otherwise, Maintainerr waits for Seerr availability sync."
+
+#: src/components/Rules/RuleGroup/AddModal/AdditionalArrServers.tsx
+msgid "Removes the same movie, matched by its TMDB ID, from these servers as well, such as one holding a 4K copy"
+msgstr "Removes the same movie, matched by its TMDB ID, from these servers as well, such as one holding a 4K copy"
+
+#: src/components/Rules/RuleGroup/AddModal/AdditionalArrServers.tsx
+msgid "Removes the same show, matched by its TVDB ID, from these servers as well, such as one holding a 4K copy"
+msgstr "Removes the same show, matched by its TVDB ID, from these servers as well, such as one holding a 4K copy"
 
 #: src/components/Collection/CollectionDetail/RemoveFromCollectionButton/index.tsx
 msgid "Removing..."

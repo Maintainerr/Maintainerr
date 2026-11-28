@@ -365,6 +365,114 @@ describe('RulesService.setRules', () => {
     );
   });
 
+  // The delete repeated on further instances of the collection's own *arr,
+  // for a second copy (4K, say) the media server merges into the same item.
+  describe('additional *arr servers', () => {
+    const saveWithAdditional = async (
+      payload: Record<string, unknown>,
+      known: { radarr?: number[]; sonarr?: number[] } = {},
+    ) => {
+      const createCollection = jest
+        .fn()
+        .mockResolvedValue({ dbCollection: { id: 99 } });
+      const repoKnowing = (ids: number[] = []) => ({
+        find: jest.fn().mockResolvedValue(ids.map((id) => ({ id }))),
+      });
+      const service = createRulesService({
+        rulesRepository: { save: jest.fn().mockResolvedValue(undefined) },
+        collectionService: { createCollection },
+        radarrSettingsRepo: repoKnowing(known.radarr),
+        sonarrSettingsRepo: repoKnowing(known.sonarr),
+        mediaServerFactory: createMediaServerFactory([
+          { id: '1', title: 'Movies', type: 'movie' },
+          { id: '2', title: 'TV Shows', type: 'show' },
+        ]),
+      });
+      jest.spyOn(service as any, 'createOrUpdateGroup').mockResolvedValue(7);
+
+      const result = service.setRules({
+        libraryId: '1',
+        name: 'Merged copies',
+        description: '',
+        useRules: true,
+        isActive: true,
+        rules: validRules,
+        arrAction: ServarrAction.DELETE,
+        radarrSettingsId: 1,
+        ...payload,
+      } as any);
+      return { result, createCollection };
+    };
+
+    it('stores the other instances of the same *arr, without the primary', async () => {
+      const { result, createCollection } = await saveWithAdditional(
+        { additionalArrSettingsIds: [1, 2, 2, 3] },
+        { radarr: [2, 3] },
+      );
+
+      await result;
+      expect(createCollection).toHaveBeenCalledWith(
+        expect.objectContaining({ additionalArrSettingsIds: [2, 3] }),
+      );
+    });
+
+    // Hidden in the editor for any other action, so a value left over from
+    // switching action must not stay enabled unseen.
+    it.each([
+      {
+        title: 'an unmonitor',
+        payload: { arrAction: ServarrAction.UNMONITOR },
+      },
+      {
+        title: 'a season delete',
+        payload: {
+          libraryId: '2',
+          dataType: 'season',
+          radarrSettingsId: undefined,
+          sonarrSettingsId: 1,
+        },
+      },
+    ])('clears them for $title', async ({ payload }) => {
+      const { result, createCollection } = await saveWithAdditional(
+        { additionalArrSettingsIds: [2], ...payload },
+        { radarr: [2], sonarr: [2] },
+      );
+
+      await result;
+      expect(createCollection).toHaveBeenCalledWith(
+        expect.objectContaining({ additionalArrSettingsIds: null }),
+      );
+    });
+
+    // Ids are read in the table of the collection's own *arr: a Sonarr
+    // collection naming a Radarr instance names nothing.
+    it.each([
+      {
+        title: 'an id no instance of its own *arr has',
+        payload: {
+          libraryId: '2',
+          dataType: 'show',
+          radarrSettingsId: undefined,
+          sonarrSettingsId: 1,
+          additionalArrSettingsIds: [2],
+        },
+        message: 'Additional Sonarr server 2 does not exist',
+      },
+      {
+        title: 'something other than a list of ids',
+        payload: { additionalArrSettingsIds: ['2'] },
+        message: 'Additional *arr servers must be a list of server ids',
+      },
+    ])('rejects $title', async ({ payload, message }) => {
+      const { result, createCollection } = await saveWithAdditional(payload, {
+        radarr: [2],
+      });
+
+      await expect(result).rejects.toMatchObject({ status: 400, message });
+      expect(createCollection).not.toHaveBeenCalled();
+    });
+  });
+
   it('rejects a payload that binds both Sonarr and Sportarr', async () => {
     // A show-library collection is managed by exactly one arr; the UI
     // enforces this, so the guard exists for raw API payloads.

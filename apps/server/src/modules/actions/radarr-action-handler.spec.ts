@@ -534,4 +534,124 @@ describe('RadarrActionHandler', () => {
       expect(downloadClient.removeDownloads).not.toHaveBeenCalled();
     });
   });
+
+  // A media server can merge two copies of a movie (1080p and 4K, say) into one
+  // item while each copy lives in its own Radarr instance. The collection's
+  // delete repeats on the additional instances, matched there by TMDB ID.
+  describe('additional Radarr instances', () => {
+    const arrangeInstances = () => {
+      const primary = mockRadarrApi(servarrService, logger);
+      const second = mockRadarrApi(servarrService, logger);
+      const third = mockRadarrApi(servarrService, logger);
+      const clients = { 1: primary, 2: second, 3: third };
+      servarrService.getRadarrApiClient.mockImplementation(async (id) => {
+        const client = clients[id as keyof typeof clients];
+        if (!client) {
+          throw new Error('Radarr setting not found');
+        }
+        return client;
+      });
+      return { primary, second, third };
+    };
+
+    const createMirroringCollection = (
+      properties: Parameters<typeof createCollection>[0] = {},
+    ) =>
+      createCollection({
+        arrAction: ServarrAction.DELETE,
+        radarrSettingsId: 1,
+        type: 'movie',
+        listExclusions: true,
+        additionalArrSettingsIds: [1, 2, 3],
+        ...properties,
+      });
+
+    it('deletes the movie from every additional instance by its TMDB ID, with the primary delete arguments', async () => {
+      const collection = createMirroringCollection();
+      const collectionMedia = createCollectionMedia(collection, { tmdbId: 77 });
+      const { primary, second, third } = arrangeInstances();
+      jest
+        .spyOn(primary, 'getMovieByTmdbId')
+        .mockResolvedValue(createRadarrMovie({ id: 5, tmdbId: 77 }));
+      jest
+        .spyOn(second, 'getMovieByTmdbId')
+        .mockResolvedValue(createRadarrMovie({ id: 40, tmdbId: 77 }));
+      jest
+        .spyOn(third, 'getMovieByTmdbId')
+        .mockResolvedValue(createRadarrMovie({ id: 41, tmdbId: 77 }));
+
+      const result = await radarrActionHandler.handleAction(
+        collection,
+        collectionMedia,
+      );
+
+      expect(result).toBe(true);
+      expect(primary.deleteMovie).toHaveBeenCalledTimes(1);
+      expect(primary.deleteMovie).toHaveBeenCalledWith(5, true, true);
+      expect(second.getMovieByTmdbId).toHaveBeenCalledWith(77);
+      expect(second.deleteMovie).toHaveBeenCalledWith(40, true, true);
+      expect(third.deleteMovie).toHaveBeenCalledWith(41, true, true);
+    });
+
+    it('also deletes from the additional instances when the primary does not track the movie', async () => {
+      const collection = createMirroringCollection();
+      const collectionMedia = createCollectionMedia(collection, { tmdbId: 77 });
+      const { primary, second } = arrangeInstances();
+      jest.spyOn(primary, 'getMovieByTmdbId').mockResolvedValue(null);
+      jest
+        .spyOn(second, 'getMovieByTmdbId')
+        .mockResolvedValue(createRadarrMovie({ id: 40, tmdbId: 77 }));
+
+      const result = await radarrActionHandler.handleAction(
+        collection,
+        collectionMedia,
+      );
+
+      expect(result).toBe(true);
+      expect(mediaServer.deleteFromDisk).toHaveBeenCalled();
+      expect(second.deleteMovie).toHaveBeenCalledWith(40, true, true);
+    });
+
+    it('keeps the primary delete when an additional instance lacks the movie or fails', async () => {
+      const collection = createMirroringCollection({
+        additionalArrSettingsIds: [2, 4, 3],
+      });
+      const collectionMedia = createCollectionMedia(collection, { tmdbId: 77 });
+      const { primary, second, third } = arrangeInstances();
+      jest
+        .spyOn(primary, 'getMovieByTmdbId')
+        .mockResolvedValue(createRadarrMovie({ id: 5, tmdbId: 77 }));
+      // 2 does not track it, 4 no longer exists, 3 still gets its delete.
+      jest.spyOn(second, 'getMovieByTmdbId').mockResolvedValue(null);
+      jest
+        .spyOn(third, 'getMovieByTmdbId')
+        .mockResolvedValue(createRadarrMovie({ id: 41, tmdbId: 77 }));
+
+      const result = await radarrActionHandler.handleAction(
+        collection,
+        collectionMedia,
+      );
+
+      expect(result).toBe(true);
+      expect(primary.deleteMovie).toHaveBeenCalledWith(5, true, true);
+      expect(second.deleteMovie).not.toHaveBeenCalled();
+      expect(third.deleteMovie).toHaveBeenCalledWith(41, true, true);
+    });
+
+    it('does not repeat an action other than a delete', async () => {
+      const collection = createMirroringCollection({
+        arrAction: ServarrAction.UNMONITOR_DELETE_EXISTING,
+      });
+      const collectionMedia = createCollectionMedia(collection, { tmdbId: 77 });
+      const { primary, second } = arrangeInstances();
+      jest
+        .spyOn(primary, 'getMovieByTmdbId')
+        .mockResolvedValue(createRadarrMovie({ id: 5, tmdbId: 77 }));
+
+      await radarrActionHandler.handleAction(collection, collectionMedia);
+
+      expect(primary.deleteMovie).toHaveBeenCalledWith(5, true, true);
+      expect(second.getMovieByTmdbId).not.toHaveBeenCalled();
+    });
+  });
 });

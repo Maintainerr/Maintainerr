@@ -196,6 +196,14 @@ describe('database migrations', () => {
         notnull: 1,
         dflt_value: "'all'",
       });
+
+      // AddCollectionAdditionalArrInstances: none by default, so an existing
+      // collection keeps acting on its own *arr server only.
+      expect(collection.additionalArrSettingsIds).toMatchObject({
+        type: 'TEXT',
+        notnull: 0,
+        dflt_value: null,
+      });
     } finally {
       await ds.destroy();
     }
@@ -244,8 +252,9 @@ describe('database migrations', () => {
         title: 'Sample Series Collection',
         overlayEnabled: 1,
         deleteAfterDays: 30,
-        // Saved before the scope existed: it keeps every level.
         overlayScope: 'all',
+        // Saved before the option existed: no additional *arr servers.
+        additionalArrSettingsIds: null,
       });
       expect(await ds.query(`SELECT * FROM collection_media`)).toEqual([
         expect.objectContaining({ collectionId: 1, mediaServerId: 'show-1' }),
@@ -270,16 +279,16 @@ describe('database migrations', () => {
     try {
       await ds.runMigrations();
       expect(
-        byName(await columns(ds, 'collection')).overlayScope,
+        byName(await columns(ds, 'collection')).additionalArrSettingsIds,
       ).toBeDefined();
       await ds.query(
-        `INSERT INTO collection ("libraryId", "title", "type", "overlayScope") VALUES ('2', 'Fresh', 'show', 'show_only')`,
+        `INSERT INTO collection ("libraryId", "title", "type", "additionalArrSettingsIds") VALUES ('2', 'Fresh', 'movie', '[2]')`,
       );
 
       await ds.undoLastMigration();
 
       expect(
-        byName(await columns(ds, 'collection')).overlayScope,
+        byName(await columns(ds, 'collection')).additionalArrSettingsIds,
       ).toBeUndefined();
       const [row] = await ds.query(`SELECT "title" FROM collection`);
       expect(row.title).toBe('Fresh');

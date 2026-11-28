@@ -1,6 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { DownloadClientApiService } from '../api/download-client-api/download-client-api.service';
-import { leftoverCleanupScope } from '@maintainerr/contracts';
+import {
+  additionalArrInstanceIds,
+  leftoverCleanupScope,
+} from '@maintainerr/contracts';
 import { MediaServerFactory } from '../api/media-server/media-server.factory';
 import { RadarrMovie } from '../api/servarr-api/interfaces/radarr.interface';
 import { ServarrService } from '../api/servarr-api/servarr.service';
@@ -126,6 +129,10 @@ export class RadarrActionHandler {
               `Removed movie with ${matchedProvider} ID ${matchedId} from filesystem & Radarr`,
             );
             await this.downloadClient.removeDownloads(downloadIds);
+            await this.deleteFromAdditionalInstances(
+              collection,
+              radarrMedia.tmdbId,
+            );
             return true;
           case ServarrAction.UNMONITOR:
             if (
@@ -241,6 +248,10 @@ export class RadarrActionHandler {
           }
           const mediaServer = await this.mediaServerFactory.getService();
           await mediaServer.deleteFromDisk(media.mediaServerId);
+          await this.deleteFromAdditionalInstances(
+            collection,
+            lookupCandidates.find((c) => c.providerKey === 'tmdb')?.id,
+          );
           return true;
         } else {
           this.logger.log(
@@ -257,6 +268,80 @@ export class RadarrActionHandler {
     }
 
     return false;
+  }
+
+  /**
+   * Repeats a movie delete on the collection's additional Radarr instances,
+   * which hold another copy of what the media server shows as this one item (a
+   * 4K instance, say). The movie is matched there by TMDB ID, never by the
+   * primary instance's movie id, and removed with the primary call's arguments.
+   * Best-effort: the primary delete has already run, so a movie an instance
+   * does not track, or an instance that fails, is logged and never fails it.
+   */
+  private async deleteFromAdditionalInstances(
+    collection: Collection,
+    tmdbId: number | undefined,
+  ): Promise<void> {
+    const settingsIds = additionalArrInstanceIds(collection);
+    if (settingsIds.length === 0) {
+      return;
+    }
+
+    if (!tmdbId) {
+      this.logger.warn(
+        `Couldn't remove the movie from the additional Radarr servers: no TMDB ID is known for it`,
+      );
+      return;
+    }
+
+    for (const settingsId of settingsIds) {
+      try {
+        const radarrApiClient =
+          await this.servarrApi.getRadarrApiClient(settingsId);
+        const movie = await radarrApiClient.getMovieByTmdbId(tmdbId);
+
+        if (movie === undefined) {
+          this.logger.warn(
+            `Couldn't reach additional Radarr server ${settingsId} to remove movie with TMDB ID ${tmdbId}`,
+          );
+          continue;
+        }
+
+        if (!movie?.id) {
+          this.logger.log(
+            `Movie with TMDB ID ${tmdbId} isn't in additional Radarr server ${settingsId}; nothing to remove there`,
+          );
+          continue;
+        }
+
+        const downloadIds = this.settings.downloadClientConfigured()
+          ? await radarrApiClient.getDownloadIdsForMovie(movie.id)
+          : [];
+
+        if (
+          !(await radarrApiClient.deleteMovie(
+            movie.id,
+            true,
+            collection.listExclusions,
+          ))
+        ) {
+          this.logger.warn(
+            `Couldn't remove movie with TMDB ID ${tmdbId} from additional Radarr server ${settingsId}`,
+          );
+          continue;
+        }
+
+        this.logger.log(
+          `Removed movie with TMDB ID ${tmdbId} from filesystem & additional Radarr server ${settingsId}`,
+        );
+        await this.downloadClient.removeDownloads(downloadIds);
+      } catch (error) {
+        this.logger.warn(
+          `Couldn't remove movie with TMDB ID ${tmdbId} from additional Radarr server ${settingsId}`,
+        );
+        this.logger.debug(error);
+      }
+    }
   }
 
   /**

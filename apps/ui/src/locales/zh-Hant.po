@@ -491,6 +491,10 @@ msgstr "允許使用者主動與機器人對話，並設定自己的通知"
 msgid "Allowed: {chars}"
 msgstr "允許的字元：{chars}"
 
+#: src/components/Rules/RuleGroup/AddModal/AdditionalArrServers.tsx
+msgid "Also Delete from Other {serviceName} Servers"
+msgstr ""
+
 #: src/components/Settings/Notifications/NotificationAgentCard.tsx
 msgid "Always use STARTTLS"
 msgstr "一律使用 STARTTLS"
@@ -3228,6 +3232,14 @@ msgstr "立即移除對應的 Ombi 請求，否則 Ombi 仍會將該請求列為
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Removes the related Seerr request immediately. Otherwise, Maintainerr waits for Seerr availability sync."
 msgstr "立即移除對應的 Seerr 請求，否則 Maintainerr 會等待 Seerr 同步可用狀態。"
+
+#: src/components/Rules/RuleGroup/AddModal/AdditionalArrServers.tsx
+msgid "Removes the same movie, matched by its TMDB ID, from these servers as well, such as one holding a 4K copy"
+msgstr ""
+
+#: src/components/Rules/RuleGroup/AddModal/AdditionalArrServers.tsx
+msgid "Removes the same show, matched by its TVDB ID, from these servers as well, such as one holding a 4K copy"
+msgstr ""
 
 #: src/components/Collection/CollectionDetail/RemoveFromCollectionButton/index.tsx
 msgid "Removing..."

@@ -493,6 +493,10 @@ msgstr "Ermöglichen Sie es den Nutzern, auch einen Chat mit Ihrem Bot zu starte
 msgid "Allowed: {chars}"
 msgstr "Erlaubt: {chars}"
 
+#: src/components/Rules/RuleGroup/AddModal/AdditionalArrServers.tsx
+msgid "Also Delete from Other {serviceName} Servers"
+msgstr ""
+
 #: src/components/Settings/Notifications/NotificationAgentCard.tsx
 msgid "Always use STARTTLS"
 msgstr ""
@@ -3230,6 +3234,14 @@ msgstr "Entfernt die zugehörige Ombi-Anfrage sofort. Andernfalls führt Ombi di
 #: src/components/Rules/RuleGroup/AddModal/index.tsx
 msgid "Removes the related Seerr request immediately. Otherwise, Maintainerr waits for Seerr availability sync."
 msgstr "Entfernt die zugehörige Seerr-Anfrage sofort. Andernfalls wartet Maintainerr auf die Verfügbarkeits-Synchronisierung von Seerr."
+
+#: src/components/Rules/RuleGroup/AddModal/AdditionalArrServers.tsx
+msgid "Removes the same movie, matched by its TMDB ID, from these servers as well, such as one holding a 4K copy"
+msgstr ""
+
+#: src/components/Rules/RuleGroup/AddModal/AdditionalArrServers.tsx
+msgid "Removes the same show, matched by its TVDB ID, from these servers as well, such as one holding a 4K copy"
+msgstr ""
 
 #: src/components/Collection/CollectionDetail/RemoveFromCollectionButton/index.tsx
 msgid "Removing..."
