@@ -129,6 +129,13 @@ export class Collection {
   @JoinColumn({ name: 'sportarrSettingsId', referencedColumnName: 'id' })
   sportarrSettings: Relation<SportarrSettings>;
 
+  // Further instances of the collection's own *arr (Radarr ids for a movie
+  // collection, Sonarr ids for a show collection) that repeat its delete, for
+  // a second copy the media server merges into the same item. Only set for the
+  // actions supportsAdditionalArrInstances allows.
+  @Column('simple-json', { nullable: true, default: null })
+  additionalArrSettingsIds: number[] | null;
+
   @Column({ nullable: true })
   sortTitle: string;
 

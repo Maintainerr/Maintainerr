@@ -1147,4 +1147,63 @@ describe('RulesService.updateRules', () => {
       expect(collectionService.stopMediaServerSync).not.toHaveBeenCalled();
     });
   });
+
+  // Deleting a Radarr server leaves its id in the saved list, and the editor
+  // only lists servers that still exist, so the user cannot untick it. The save
+  // must go through and drop it, not fail on an id the user cannot see.
+  it('drops a saved additional server that has since been deleted', async () => {
+    const group = { id: 5, collectionId: 42, dataType: 'movie' };
+    const collectionService = {
+      getCollection: jest.fn().mockResolvedValue({
+        id: 42,
+        libraryId: 'lib-1',
+        additionalArrSettingsIds: [2, 3],
+      }),
+      saveCollection: jest.fn().mockResolvedValue(undefined),
+      addLogRecord: jest.fn().mockResolvedValue(undefined),
+      updateCollection: jest
+        .fn()
+        .mockResolvedValue({ dbCollection: { id: 42 } }),
+    };
+
+    const service = createRulesService({
+      rulesRepository: { delete: jest.fn(), save: jest.fn() },
+      ruleGroupRepository: { findOne: jest.fn().mockResolvedValue(group) },
+      collectionMediaRepository: { delete: jest.fn() },
+      exclusionRepo: { delete: jest.fn() },
+      radarrSettingsRepo: { find: jest.fn().mockResolvedValue([{ id: 3 }]) },
+      collectionService,
+      mediaServerFactory: {
+        getService: jest.fn().mockReturnValue({
+          getLibraries: jest
+            .fn()
+            .mockResolvedValue([
+              { id: 'lib-1', title: 'Movies', type: 'movie' },
+            ]),
+        }),
+      },
+    });
+    jest
+      .spyOn(service as any, 'createOrUpdateGroup')
+      .mockResolvedValue(group.id);
+
+    await service.updateRules({
+      id: group.id,
+      libraryId: 'lib-1',
+      dataType: 'movie',
+      name: 'Merged copies',
+      description: '',
+      rules: [],
+      useRules: true,
+      isActive: true,
+      arrAction: ServarrAction.DELETE,
+      radarrSettingsId: 1,
+      additionalArrSettingsIds: [2, 3],
+      collection: { keepLogsForMonths: 6 },
+    } as any);
+
+    expect(collectionService.updateCollection).toHaveBeenCalledWith(
+      expect.objectContaining({ additionalArrSettingsIds: [3] }),
+    );
+  });
 });

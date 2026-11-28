@@ -2063,4 +2063,88 @@ describe('SonarrActionHandler', () => {
       );
     });
   });
+
+  // The Sonarr side of the merged 1080p/4K item: a whole-show delete repeats on
+  // the additional instances, matched there by TVDB ID.
+  describe('additional Sonarr instances', () => {
+    const arrangeInstances = () => {
+      const primary = mockSonarrApi(servarrService, logger);
+      const second = mockSonarrApi(servarrService, logger);
+      const third = mockSonarrApi(servarrService, logger);
+      const clients = { 1: primary, 2: second, 3: third };
+      servarrService.getSonarrApiClient.mockImplementation(async (id) => {
+        const client = clients[id as keyof typeof clients];
+        if (!client) {
+          throw new Error('Sonarr setting not found');
+        }
+        return client;
+      });
+      return { primary, second, third };
+    };
+
+    const createMirroringCollection = (
+      properties: Parameters<typeof createCollection>[0] = {},
+    ) =>
+      createCollection({
+        arrAction: ServarrAction.DELETE,
+        sonarrSettingsId: 1,
+        type: 'show',
+        listExclusions: true,
+        additionalArrSettingsIds: [1, 2],
+        ...properties,
+      });
+
+    it('deletes the show from every additional instance by its TVDB ID, with the primary delete arguments', async () => {
+      const collection = createMirroringCollection();
+      const collectionMedia = createCollectionMediaWithMetadata(collection, {
+        tvdbId: 70,
+      });
+      const { primary, second } = arrangeInstances();
+      jest
+        .spyOn(primary, 'getSeriesByTvdbId')
+        .mockResolvedValue(createSonarrSeries({ id: 5, tvdbId: 70 }));
+      jest
+        .spyOn(second, 'getSeriesByTvdbId')
+        .mockResolvedValue(createSonarrSeries({ id: 50, tvdbId: 70 }));
+
+      const result = await sonarrActionHandler.handleAction(
+        collection,
+        collectionMedia,
+      );
+
+      expect(result).toBe(true);
+      expect(primary.deleteShow).toHaveBeenCalledTimes(1);
+      expect(primary.deleteShow).toHaveBeenCalledWith(5, true, true);
+      expect(second.getSeriesByTvdbId).toHaveBeenCalledWith(70);
+      expect(second.deleteShow).toHaveBeenCalledWith(50, true, true);
+    });
+
+    it('keeps the primary delete when an additional instance is unreachable or fails', async () => {
+      const collection = createMirroringCollection({
+        additionalArrSettingsIds: [4, 2, 3],
+      });
+      const collectionMedia = createCollectionMediaWithMetadata(collection, {
+        tvdbId: 70,
+      });
+      const { primary, second, third } = arrangeInstances();
+      jest
+        .spyOn(primary, 'getSeriesByTvdbId')
+        .mockResolvedValue(createSonarrSeries({ id: 5, tvdbId: 70 }));
+      // 4 no longer exists, 2 cannot be reached, 3 still gets its delete.
+      jest.spyOn(second, 'getSeriesByTvdbId').mockResolvedValue(undefined);
+      jest
+        .spyOn(third, 'getSeriesByTvdbId')
+        .mockResolvedValue(createSonarrSeries({ id: 51, tvdbId: 70 }));
+
+      const result = await sonarrActionHandler.handleAction(
+        collection,
+        collectionMedia,
+      );
+
+      expect(result).toBe(true);
+      expect(primary.deleteShow).toHaveBeenCalledWith(5, true, true);
+      expect(second.deleteShow).not.toHaveBeenCalled();
+      expect(third.deleteShow).toHaveBeenCalledWith(51, true, true);
+    });
+  });
 });

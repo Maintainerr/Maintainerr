@@ -12,6 +12,7 @@ import {
 } from '@heroicons/react/solid'
 import { zodResolver } from '@hookform/resolvers/zod'
 import {
+  additionalArrInstanceIds,
   Application,
   DEFAULT_OVERLAY_SCOPE,
   DELETE_AFTER_MAX_DAYS,
@@ -29,6 +30,7 @@ import {
   ServarrAction,
   servarrActionManager,
   supportedServarrActions,
+  supportsAdditionalArrInstances,
   supportsFeature,
 } from '@maintainerr/contracts'
 import { isValidCron } from 'cron-validator'
@@ -64,6 +66,7 @@ import { Input } from '../../../Forms/Input'
 import { Select } from '../../../Forms/Select'
 import type { AgentConfiguration } from '../../../../api/notifications'
 import RuleCreator, { IRule } from '../../Rule/RuleCreator'
+import AdditionalArrServers from './AdditionalArrServers'
 import ArrAction, { toActionOptions } from './ArrAction'
 import CollectionPosterPicker from './CollectionPosterPicker'
 import QualityProfileSelector from './QualityProfileSelector'
@@ -358,6 +361,7 @@ export const ruleGroupFormSchema = z
     sportarrQualityProfileId: z.number().int().nullable().optional(),
     tagInArr: z.boolean().optional(),
     keepInMaintainerrOnly: z.boolean().optional(),
+    additionalArrSettingsIds: z.array(z.number().int()).optional(),
     ruleHandlerCronSchedule: z.preprocess(
       (val) => (val === '' ? null : val),
       z
@@ -476,6 +480,8 @@ const buildFormDefaults = (editData?: IRuleGroup): RuleGroupFormValues => ({
     : undefined,
   tagInArr: editData?.collection?.tagInArr ?? false,
   keepInMaintainerrOnly: editData?.collection?.keepInMaintainerrOnly ?? false,
+  additionalArrSettingsIds:
+    editData?.collection?.additionalArrSettingsIds ?? [],
   ruleHandlerCronSchedule: editData?.ruleHandlerCronSchedule ?? null,
 })
 
@@ -603,6 +609,38 @@ const AddModal = (props: AddModal) => {
   })
   const hasSelectedRadarrServer = radarrSettingsId != null
   const hasSelectedSonarrServer = sonarrSettingsId != null
+  const additionalArrSettingsIds = useWatch({
+    control,
+    name: 'additionalArrSettingsIds',
+  })
+  // Which *arr repeats its delete on further servers, or undefined when the
+  // action does not. supportsAdditionalArrInstances is shared with the server,
+  // and the submit drops the selection whenever this is undefined.
+  const additionalArrManager = isValidMediaItemType(selectedType)
+    ? servarrActionManager(selectedType, {
+        radarrSettingsId,
+        sonarrSettingsId,
+        sportarrSettingsId,
+      })
+    : undefined
+  const additionalArrServers =
+    isValidMediaItemType(selectedType) &&
+    supportsAdditionalArrInstances(
+      selectedType,
+      arrActionValue,
+      additionalArrManager,
+    ) ? (
+      <AdditionalArrServers
+        type={additionalArrManager === 'radarr' ? 'Radarr' : 'Sonarr'}
+        primarySettingId={
+          (additionalArrManager === 'radarr'
+            ? radarrSettingsId
+            : sonarrSettingsId) as number
+        }
+        selectedIds={additionalArrSettingsIds ?? []}
+        onChange={(ids) => setValue('additionalArrSettingsIds', ids)}
+      />
+    ) : null
   // Which folder the chosen action strands, or undefined when it strands none.
   // leftoverCleanupScope is shared with the server, so the checkbox is offered
   // for exactly the actions the handlers act on.
@@ -1029,6 +1067,9 @@ const AddModal = (props: AddModal) => {
       keepInMaintainerrOnly: data.manualCollection
         ? false
         : (data.keepInMaintainerrOnly ?? false),
+      additionalArrSettingsIds: isValidMediaItemType(data.dataType)
+        ? additionalArrInstanceIds({ ...data, type: data.dataType })
+        : [],
       collection: {
         visibleOnRecommended: data.showRecommended,
         visibleOnHome: data.showHome,
@@ -1274,6 +1315,7 @@ const AddModal = (props: AddModal) => {
                         error={errors.radarrQualityProfileId?.message}
                       />
                     )}
+                  {selectedLibraryType === 'movie' && additionalArrServers}
 
                   {selectedLibraryType && selectedLibraryType !== 'movie' && (
                     <>
@@ -1388,6 +1430,7 @@ const AddModal = (props: AddModal) => {
                                 error={errors.sonarrQualityProfileId?.message}
                               />
                             )}
+                          {additionalArrServers}
                         </>
                       )}
 

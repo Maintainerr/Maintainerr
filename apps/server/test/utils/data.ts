@@ -88,6 +88,7 @@ export const createCollection = (
     listExclusions: false,
     keepInMaintainerrOnly: false,
     cleanupLeftoverFolders: false,
+    additionalArrSettingsIds: null,
     ruleGroup: undefined,
     visibleOnHome: false,
     visibleOnRecommended: false,

@@ -4818,6 +4818,8 @@ export class CollectionsService {
               collection.sportarrQualityProfileId ?? null,
             tagInArr: collection.tagInArr ?? false,
             keepInMaintainerrOnly: collection.keepInMaintainerrOnly ?? false,
+            additionalArrSettingsIds:
+              collection.additionalArrSettingsIds ?? null,
             sortTitle: collection.sortTitle,
             mediaServerSort: collection.mediaServerSort ?? null,
             overlayEnabled: collection.overlayEnabled ?? false,

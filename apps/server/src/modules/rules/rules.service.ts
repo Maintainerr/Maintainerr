@@ -1,4 +1,5 @@
 import {
+  additionalArrInstanceIds,
   type BulkMediaItemResult,
   type BulkMediaResponse,
   DELETE_AFTER_MAX_DAYS,
@@ -11,6 +12,7 @@ import {
   MediaServerType,
   normalizeArrTagLabel,
   ServarrAction,
+  servarrActionManager,
 } from '@maintainerr/contracts';
 import {
   BadGatewayException,
@@ -481,6 +483,8 @@ export class RulesService {
         type: collectionType,
         arrAction: params.arrAction ?? ServarrAction.DELETE,
       });
+      const additionalArrSettingsIds =
+        await this.resolveAdditionalArrSettingsIds(params, collectionType);
       const collection = (
         await this.collectionService.createCollection({
           libraryId: params.libraryId,
@@ -522,6 +526,7 @@ export class RulesService {
           keepInMaintainerrOnly: params.collection?.manualCollection
             ? false
             : (params.keepInMaintainerrOnly ?? false),
+          additionalArrSettingsIds,
           visibleOnRecommended: params.collection?.visibleOnRecommended,
           visibleOnHome: params.collection?.visibleOnHome,
           deleteAfterDays: params.collection?.deleteAfterDays ?? null,
@@ -653,6 +658,12 @@ export class RulesService {
         const dbCollection = group.collectionId
           ? await this.collectionService.getCollection(group.collectionId)
           : null;
+        const additionalArrSettingsIds =
+          await this.resolveAdditionalArrSettingsIds(
+            params,
+            collectionType,
+            dbCollection?.additionalArrSettingsIds,
+          );
 
         // Behavior A: if a tagging-enabled collection is about to have its members
         // wiped below (crucial-setting change) and tagInArr is being turned off in
@@ -759,6 +770,7 @@ export class RulesService {
             dbCollection?.manualCollection)
               ? false
               : (params.keepInMaintainerrOnly ?? false),
+          additionalArrSettingsIds,
           // If the collection block is left out of an update, keep the saved
           // values instead of sending undefined - otherwise we'd unlink a manual
           // collection or switch off Plex visibility.
@@ -1959,6 +1971,56 @@ export class RulesService {
     }
 
     return null;
+  }
+
+  /**
+   * The additional *arr instances a collection repeats its delete on. Ids are
+   * read in the table of the collection's own *arr, so a Radarr collection
+   * names Radarr instances and a Sonarr collection Sonarr ones. Cleared for an
+   * action the option does not apply to - the UI hides it then, so a value
+   * left behind by switching action must not stay enabled unseen - and the
+   * primary instance is dropped, as it already takes the action. An id that
+   * names no instance is rejected, unless it was saved before: that server has
+   * since been deleted, and the editor no longer lists it to untick.
+   */
+  private async resolveAdditionalArrSettingsIds(
+    params: RuleGroupDto,
+    collectionType: MediaItemType,
+    savedIds?: number[] | null,
+  ): Promise<number[] | null> {
+    const requested = params.additionalArrSettingsIds ?? [];
+    if (!Array.isArray(requested) || !requested.every(Number.isInteger)) {
+      throw new BadRequestException(
+        'Additional *arr servers must be a list of server ids',
+      );
+    }
+
+    const collection = {
+      ...params,
+      type: collectionType,
+      arrAction: params.arrAction ?? ServarrAction.DELETE,
+    };
+    const ids = additionalArrInstanceIds(collection);
+    if (ids.length === 0) {
+      return null;
+    }
+
+    const query = { where: { id: In(ids) }, select: { id: true } };
+    const isRadarr =
+      servarrActionManager(collectionType, collection) === 'radarr';
+    const known = isRadarr
+      ? await this.radarrSettingsRepo.find(query)
+      : await this.sonarrSettingsRepo.find(query);
+    const missing = ids.filter((id) => !known.some((s) => s.id === id));
+    const unknown = missing.filter((id) => !savedIds?.includes(id));
+    if (unknown.length > 0) {
+      throw new BadRequestException(
+        `Additional ${isRadarr ? 'Radarr' : 'Sonarr'} server ${unknown.join(', ')} does not exist`,
+      );
+    }
+
+    const kept = ids.filter((id) => !missing.includes(id));
+    return kept.length > 0 ? kept : null;
   }
 
   // A show-library collection is managed by exactly one of Sonarr/Sportarr.

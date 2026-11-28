@@ -40,6 +40,7 @@ export interface ICollection {
   sportarrQualityProfileId?: number
   tagInArr?: boolean
   keepInMaintainerrOnly?: boolean
+  additionalArrSettingsIds?: number[] | null
   sortTitle?: string
   mediaServerSort?: MediaServerCollectionSort | null
   totalSizeBytes?: number | null

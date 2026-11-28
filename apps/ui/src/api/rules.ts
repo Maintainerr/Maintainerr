@@ -105,6 +105,7 @@ export interface RuleGroupCreatePayload {
   sportarrQualityProfileId?: number
   tagInArr?: boolean
   keepInMaintainerrOnly?: boolean
+  additionalArrSettingsIds?: number[]
   collection: RuleGroupCollectionPayload
   rules: IRule[]
   dataType: MediaItemType

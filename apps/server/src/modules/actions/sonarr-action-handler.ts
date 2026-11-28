@@ -1,4 +1,5 @@
 import {
+  additionalArrInstanceIds,
   LeftoverCleanupScope,
   leftoverCleanupScope,
   MediaItem,
@@ -161,6 +162,10 @@ export class SonarrActionHandler {
           );
         }
         await mediaServer.deleteFromDisk(media.mediaServerId);
+        await this.deleteFromAdditionalInstances(
+          collection,
+          lookupCandidates.find((c) => c.providerKey === 'tvdb')?.id,
+        );
         return true;
       } else {
         this.logger.log(
@@ -362,6 +367,10 @@ export class SonarrActionHandler {
             }
             this.logger.log(`Removed show '${sonarrMedia.title}' from Sonarr`);
             await this.downloadClient.removeDownloads(downloadIds);
+            await this.deleteFromAdditionalInstances(
+              collection,
+              sonarrMedia.tvdbId,
+            );
             return true;
         }
         break;
@@ -589,6 +598,81 @@ export class SonarrActionHandler {
     }
 
     return false;
+  }
+
+  /**
+   * Repeats a show delete on the collection's additional Sonarr instances,
+   * which hold another copy of what the media server shows as this one item (a
+   * 4K instance, say). The show is matched there by TVDB ID, never by the
+   * primary instance's series id, and removed with the primary call's
+   * arguments. Best-effort: the primary delete has already run, so a show an
+   * instance does not track, or an instance that fails, is logged and never
+   * fails it.
+   */
+  private async deleteFromAdditionalInstances(
+    collection: Collection,
+    tvdbId: number | undefined,
+  ): Promise<void> {
+    const settingsIds = additionalArrInstanceIds(collection);
+    if (settingsIds.length === 0) {
+      return;
+    }
+
+    if (!tvdbId) {
+      this.logger.warn(
+        `[Sonarr] Couldn't remove the show from the additional Sonarr servers: no TVDB ID is known for it`,
+      );
+      return;
+    }
+
+    for (const settingsId of settingsIds) {
+      try {
+        const sonarrApiClient =
+          await this.servarrApi.getSonarrApiClient(settingsId);
+        const series = await sonarrApiClient.getSeriesByTvdbId(tvdbId);
+
+        if (series === undefined) {
+          this.logger.warn(
+            `[Sonarr] Couldn't reach additional Sonarr server ${settingsId} to remove show with TVDB ID ${tvdbId}`,
+          );
+          continue;
+        }
+
+        if (!series?.id) {
+          this.logger.log(
+            `[Sonarr] Show with TVDB ID ${tvdbId} isn't in additional Sonarr server ${settingsId}; nothing to remove there`,
+          );
+          continue;
+        }
+
+        const downloadIds = this.settings.downloadClientConfigured()
+          ? await sonarrApiClient.getDownloadIdsForSeries(series.id)
+          : [];
+
+        if (
+          !(await sonarrApiClient.deleteShow(
+            series.id,
+            true,
+            collection.listExclusions,
+          ))
+        ) {
+          this.logger.warn(
+            `[Sonarr] Couldn't remove show '${series.title}' from additional Sonarr server ${settingsId}`,
+          );
+          continue;
+        }
+
+        this.logger.log(
+          `[Sonarr] Removed show '${series.title}' from additional Sonarr server ${settingsId}`,
+        );
+        await this.downloadClient.removeDownloads(downloadIds);
+      } catch (error) {
+        this.logger.warn(
+          `[Sonarr] Couldn't remove show with TVDB ID ${tvdbId} from additional Sonarr server ${settingsId}`,
+        );
+        this.logger.debug(error);
+      }
+    }
   }
 
   /**
